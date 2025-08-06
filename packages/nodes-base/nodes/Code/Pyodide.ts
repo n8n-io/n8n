@@ -1,10 +1,10 @@
 import { dirname } from 'node:path';
 import { createContext, runInContext } from 'node:vm';
-import type { PyodideInterface } from 'pyodide';
+import type { PyodideAPI } from 'pyodide';
 
-let pyodideInstance: PyodideInterface | undefined;
+let pyodideInstance: PyodideAPI | undefined;
 
-export async function LoadPyodide(packageCacheDir: string): Promise<PyodideInterface> {
+export async function LoadPyodide(packageCacheDir: string): Promise<PyodideAPI> {
 	if (pyodideInstance === undefined) {
 		const { loadPyodide } = await import('pyodide');
 		const { XMLHttpRequest } = await import('xmlhttprequest-ssl');

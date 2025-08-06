@@ -269,7 +269,7 @@
 			"description": "Create direct instance-to-instance transfer system for migrating complete n8n setups between different environments",
 			"mode": "DEVELOPMENT",
 			"priority": "medium",
-			"status": "pending",
+			"status": "completed",
 			"success_criteria": [
 				"Direct instance-to-instance data transfer",
 				"Environment variable and configuration migration",
@@ -821,17 +821,139 @@
 				},
 				"overallReady": false
 			}
+		},
+		{
+			"id": "task_1754520546902_vucca34ak",
+			"title": "Implement Migration Preview and Dry-Run Capabilities",
+			"description": "Add preview endpoints that show what changes would be made during migration without actually performing the import",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"dependencies": [],
+			"important_files": [
+				"src/controllers/migration.controller.ts",
+				"src/services/migration.service.ts"
+			],
+			"success_criteria": [
+				"Migration preview endpoint shows all changes to be made",
+				"Dry-run capability simulates migration without making changes",
+				"Preview includes conflict resolution strategies",
+				"Resource impact analysis included in preview",
+				"Preview shows before/after state comparison"
+			],
+			"estimate": "4-6 hours",
+			"requires_research": false,
+			"subtasks": [],
+			"created_at": "2025-08-06T22:49:06.902Z"
+		},
+		{
+			"id": "task_1754520546907_f04uegypl",
+			"title": "Implement Environment Variable and Configuration Migration",
+			"description": "Add capability to migrate environment variables and instance configuration settings between n8n instances",
+			"mode": "DEVELOPMENT",
+			"priority": "medium",
+			"status": "pending",
+			"dependencies": [],
+			"important_files": [
+				"src/services/migration.service.ts",
+				"src/services/config-migration.service.ts"
+			],
+			"success_criteria": [
+				"Environment variable export and import functionality",
+				"Instance configuration migration support",
+				"Secure handling of sensitive configuration data",
+				"Configuration compatibility validation",
+				"Selective configuration migration options"
+			],
+			"estimate": "6-8 hours",
+			"requires_research": false,
+			"subtasks": [],
+			"created_at": "2025-08-06T22:49:06.907Z"
+		},
+		{
+			"id": "task_1754520546909_6uh7872wr",
+			"title": "Enhance Progress Tracking and Error Recovery",
+			"description": "Improve migration progress tracking with detailed status updates and robust error recovery mechanisms",
+			"mode": "DEVELOPMENT",
+			"priority": "medium",
+			"status": "pending",
+			"dependencies": [],
+			"important_files": [
+				"src/services/migration.service.ts",
+				"src/services/instance-sync.service.ts"
+			],
+			"success_criteria": [
+				"Real-time progress updates during migration operations",
+				"Detailed error reporting with recovery suggestions",
+				"Migration rollback capability for failed operations",
+				"Resume capability for interrupted migrations",
+				"Comprehensive logging for troubleshooting"
+			],
+			"estimate": "4-6 hours",
+			"requires_research": false,
+			"subtasks": [],
+			"created_at": "2025-08-06T22:49:06.909Z"
+		},
+		{
+			"id": "task_1754520546911_ldiodndq3",
+			"title": "Complete Advanced Conflict Resolution System",
+			"description": "Implement sophisticated conflict resolution strategies for handling duplicate resources during migration",
+			"mode": "DEVELOPMENT",
+			"priority": "medium",
+			"status": "pending",
+			"dependencies": [],
+			"important_files": [
+				"src/services/migration.service.ts",
+				"src/services/conflict-resolution.service.ts"
+			],
+			"success_criteria": [
+				"Advanced conflict resolution strategies (merge, rename, skip)",
+				"User-configurable conflict resolution rules",
+				"Batch conflict resolution for multiple resources",
+				"Conflict resolution preview and approval workflow",
+				"Automated resolution recommendations"
+			],
+			"estimate": "6-8 hours",
+			"requires_research": false,
+			"subtasks": [],
+			"created_at": "2025-08-06T22:49:06.911Z"
+		},
+		{
+			"id": "task_1754520546913_7njsi3tvu",
+			"title": "Complete Cross-Instance Migration Integration Testing",
+			"description": "Perform comprehensive end-to-end testing of the complete cross-instance migration system",
+			"mode": "DEVELOPMENT",
+			"priority": "high",
+			"status": "pending",
+			"dependencies": [],
+			"important_files": [
+				"src/controllers/migration.controller.ts",
+				"src/services/migration.service.ts",
+				"src/services/instance-sync.service.ts",
+				"src/__tests__/migration-integration.test.ts"
+			],
+			"success_criteria": [
+				"End-to-end migration workflows tested successfully",
+				"All migration endpoints validated with integration tests",
+				"Cross-instance communication reliability verified",
+				"Migration performance benchmarks established",
+				"Error scenarios and recovery testing completed"
+			],
+			"estimate": "4-6 hours",
+			"requires_research": false,
+			"subtasks": [],
+			"created_at": "2025-08-06T22:49:06.913Z"
 		}
 	],
 	"__removedLinterTasks": {
 		"removedCount": 1,
 		"finalTaskCount": 20
 	},
-	"execution_count": 39,
-	"last_hook_activation": 1754520114840,
+	"execution_count": 40,
+	"last_hook_activation": 1754520512326,
 	"project": "unnamed-project",
 	"review_strikes": 0,
 	"strikes_completed_last_run": false,
 	"current_task_index": 0,
-	"last_mode": "DEVELOPMENT"
+	"last_mode": "TASK_CREATION"
 }
