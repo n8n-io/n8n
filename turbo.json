@@ -143,7 +143,7 @@
 			"dependsOn": ["@n8n/stylelint-config#build"]
 		},
 		"test": {
-			"dependsOn": ["^build:incremental"],
+			"dependsOn": [],
 			"inputs": [
 				"src/**/*.{ts,js,jsx,tsx}",
 				"test/**/*.{ts,js}",
@@ -153,7 +153,11 @@
 				"vitest.config.*",
 				"package.json",
 				"tsconfig*.json",
-				"!**/*.d.ts"
+				"!**/*.d.ts",
+				"!test/**/*integration*.{ts,js}",
+				"!test/**/*e2e*.{ts,js}",
+				"!**/*.integration.{test,spec}.{ts,js}",
+				"!**/*.e2e.{test,spec}.{ts,js}"
 			],
 			"outputs": [
 				"coverage/**",
@@ -161,9 +165,10 @@
 				"test-results/**",
 				"junit.xml"
 			],
-			"env": ["COVERAGE_ENABLED", "NODE_ENV", "CI"],
+			"env": ["NODE_ENV"],
 			"cache": true,
-			"passThroughEnv": ["DATABASE_URL", "N8N_LOG_LEVEL", "JEST_JUNIT_CLASSNAME"]
+			"passThroughEnv": ["DATABASE_URL", "N8N_LOG_LEVEL", "JEST_JUNIT_CLASSNAME"],
+			"outputLogs": "errors-only"
 		},
 		"test:unit": {
 			"dependsOn": [],
@@ -189,8 +194,32 @@
 			"passThroughEnv": ["DATABASE_URL", "N8N_LOG_LEVEL", "JEST_JUNIT_CLASSNAME"],
 			"outputLogs": "errors-only"
 		},
+		"test:integration": {
+			"dependsOn": ["^build:incremental"],
+			"inputs": [
+				"src/**/*.{ts,js,jsx,tsx}",
+				"test/**/*integration*.{ts,js}",
+				"test/**/*e2e*.{ts,js}",
+				"**/*.integration.{test,spec}.{ts,js}",
+				"**/*.e2e.{test,spec}.{ts,js}",
+				"jest.config.*",
+				"vitest.config.*",
+				"package.json",
+				"tsconfig*.json",
+				"!**/*.d.ts"
+			],
+			"outputs": [
+				"coverage/**",
+				"*.xml",
+				"test-results/**",
+				"junit.xml"
+			],
+			"env": ["COVERAGE_ENABLED", "NODE_ENV", "CI"],
+			"cache": true,
+			"passThroughEnv": ["DATABASE_URL", "N8N_LOG_LEVEL", "JEST_JUNIT_CLASSNAME"]
+		},
 		"test:ci": {
-			"dependsOn": ["^build:incremental", "build:incremental"],
+			"dependsOn": ["build:incremental"],
 			"inputs": [
 				"src/**/*.{ts,js,jsx,tsx}",
 				"test/**/*.{ts,js}",
@@ -213,7 +242,7 @@
 			"passThroughEnv": ["DATABASE_URL", "N8N_LOG_LEVEL", "JEST_JUNIT_CLASSNAME"]
 		},
 		"test:e2e": {
-			"dependsOn": ["build"],
+			"dependsOn": ["^build"],
 			"inputs": [
 				"cypress/**/*.{ts,js,json}",
 				"playwright/**/*.{ts,js,json}",
@@ -222,19 +251,22 @@
 				"cypress.config.*",
 				"playwright.config.*",
 				"package.json",
+				"tsconfig*.json",
 				"!cypress/screenshots/**",
 				"!cypress/videos/**",
-				"!playwright-report/**"
+				"!playwright-report/**",
+				"!test-results/**"
 			],
 			"outputs": [
 				"cypress/screenshots/**",
-				"cypress/videos/**",
+				"cypress/videos/**", 
 				"playwright-report/**",
 				"test-results/**"
 			],
 			"env": ["NODE_ENV", "CI", "CYPRESS_RECORD_KEY"],
 			"cache": false,
-			"passThroughEnv": ["CYPRESS_*", "PLAYWRIGHT_*"]
+			"passThroughEnv": ["CYPRESS_*", "PLAYWRIGHT_*", "DATABASE_URL"],
+			"outputLogs": "full"
 		},
 		"watch": { 
 			"cache": false, 
@@ -274,19 +306,21 @@
 			"cache": false
 		},
 		"test:standard": {
-			"dependsOn": ["install-browsers:local"],
+			"dependsOn": ["install-browsers:local", "^build"],
 			"inputs": [
 				"playwright/**/*.{ts,js,json}",
 				"e2e/**/*.{ts,js,json}",
 				"package.json",
-				"playwright.config.*"
+				"playwright.config.*",
+				"tsconfig*.json"
 			],
 			"outputs": [
 				"playwright-report/**",
 				"test-results/**"
 			],
 			"cache": false,
-			"passThroughEnv": ["PLAYWRIGHT_*", "CI"]
+			"passThroughEnv": ["PLAYWRIGHT_*", "CI", "DATABASE_URL", "N8N_LOG_LEVEL"],
+			"outputLogs": "full"
 		},
 		"validate:build": {
 			"dependsOn": ["^build"],
