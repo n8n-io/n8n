@@ -1,0 +1,42 @@
+name: Test, Tag and Push Docker image as Latest
+
+on:
+  workflow_run:
+    workflows: ["Build and Publish Docker image"]
+    types:
+      - completed
+
+jobs:
+  test_and_tag_latest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+        with:
+          username: marefati110
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Pull Docker image
+        run: |
+          # Pull the image with the tag based on the date (the IMAGE_TAG variable from the previous job)
+          docker pull marefati110/n8n-ent:${{ env.IMAGE_TAG }}
+
+      - name: Test Docker image
+        run: |
+          # Run a simple test to check if the image starts correctly
+          docker run --rm marefati110/n8n-ent:${{ env.IMAGE_TAG }} /bin/sh -c "echo 'Test passed!'"
+
+      - name: Tag Docker image as latest
+        run: |
+          docker tag marefati110/n8n-ent:${{ env.IMAGE_TAG }} marefati110/n8n-ent:latest
+
+      - name: Push Docker image with latest tag
+        run: |
+          docker push marefati110/n8n-ent:latest
