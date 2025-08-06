@@ -111,10 +111,10 @@ export class ScheduledTaskManager {
 
 		if (!workflowCrons || workflowCrons.size === 0) return;
 
-		const summariesToLog: string[] = [];
+		const summaries: string[] = [];
 
 		for (const cron of workflowCrons.values()) {
-			summariesToLog.push(cron.summary);
+			summaries.push(cron.summary);
 			cron.job.stop();
 		}
 
@@ -122,7 +122,7 @@ export class ScheduledTaskManager {
 
 		this.logger.info('Deregistered all crons for workflow', {
 			workflowId,
-			crons: summariesToLog,
+			crons: summaries,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
 	}
