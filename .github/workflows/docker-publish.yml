@@ -1,4 +1,4 @@
-name: Docker
+name: Docker Image Push To CI
 
 on:
   schedule:
@@ -52,13 +52,15 @@ jobs:
         id: dockerhub-push
         if: github.event_name != 'pull_request'
         run: |
-          IMAGE_TAG=$(date +'%Y%m%d')  # Create tag based on today's date
+          # Set the image tag to today's date in YYYYMMDD format
+          IMAGE_TAG=$(date +'%Y%m%d')  
           docker build -t ${{ env.DOCKER_HUB_IMAGE }}:$IMAGE_TAG .
           docker push ${{ env.DOCKER_HUB_IMAGE }}:$IMAGE_TAG
 
       - name: Sign the published Docker image
         if: ${{ github.event_name != 'pull_request' }}
         env:
-          TAGS: ${{ steps.meta.outputs.tags }}
-          DIGEST: ${{ steps.build-and-push.outputs.digest }}
-        run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+          IMAGE_TAG: ${{ steps.dockerhub-push.outputs.tag }}  # Use the IMAGE_TAG here
+          DIGEST: ${{ steps.dockerhub-push.outputs.digest }}
+        run: |
+          echo "${IMAGE_TAG}" | xargs -I {} cosign sign --yes {}@${DIGEST}
