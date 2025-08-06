@@ -454,7 +454,9 @@ const modifiers = [
 												</li>
 											</template>
 											<li v-else :class="$style.emptyState">
-												<N8nText color="text-base" size="small">No changes</N8nText>
+												<N8nText color="text-base" size="small">{{
+													i18n.baseText('workflowDiff.noChanges')
+												}}</N8nText>
 											</li>
 										</ul>
 										<ul v-if="activeTab === 'settings'">
@@ -471,7 +473,9 @@ const modifiers = [
 												</li>
 											</template>
 											<li v-else :class="$style.emptyState">
-												<N8nText color="text-base" size="small">No changes</N8nText>
+												<N8nText color="text-base" size="small">{{
+													i18n.baseText('workflowDiff.noChanges')
+												}}</N8nText>
 											</li>
 										</ul>
 									</div>
