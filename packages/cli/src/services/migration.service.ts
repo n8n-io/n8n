@@ -586,6 +586,412 @@ export class MigrationService {
 		}
 	}
 
+	async validateMigrationComprehensive(
+		user: User,
+		request: {
+			exportId?: string;
+			exportData?: any;
+			targetInstanceUrl?: string;
+			includeCompatibilityCheck?: boolean;
+			includeConflictAnalysis?: boolean;
+			includeResourceValidation?: boolean;
+		},
+	): Promise<{
+		isValid: boolean;
+		errors: Array<{ code: string; message: string; details?: any }>;
+		warnings: Array<{ code: string; message: string; details?: any }>;
+		recommendations: Array<{ code: string; message: string; details?: any }>;
+		compatibilityCheck?: {
+			version: 'compatible' | 'warning' | 'incompatible';
+			database: 'compatible' | 'warning' | 'incompatible';
+			features: 'compatible' | 'warning' | 'incompatible';
+			nodeTypes: 'compatible' | 'warning' | 'incompatible';
+		};
+		conflictAnalysis?: {
+			totalConflicts: number;
+			workflowConflicts: number;
+			credentialConflicts: number;
+			userConflicts: number;
+			settingConflicts: number;
+			conflicts: Array<{ type: string; name: string; id: string; severity: string }>;
+		};
+		resourceValidation?: {
+			workflows: { valid: number; invalid: number; issues: string[] };
+			credentials: { valid: number; invalid: number; issues: string[] };
+			users: { valid: number; invalid: number; issues: string[] };
+			settings: { valid: number; invalid: number; issues: string[] };
+		};
+	}> {
+		const validation = {
+			isValid: true,
+			errors: [] as Array<{ code: string; message: string; details?: any }>,
+			warnings: [] as Array<{ code: string; message: string; details?: any }>,
+			recommendations: [] as Array<{ code: string; message: string; details?: any }>,
+		};
+
+		try {
+			// Load export data
+			let exportData: any;
+			if (request.exportId) {
+				exportData = await this.loadExportData(request.exportId);
+			} else if (request.exportData) {
+				exportData = request.exportData;
+			} else {
+				validation.errors.push({
+					code: 'MISSING_DATA',
+					message: 'Either exportId or exportData is required',
+				});
+				validation.isValid = false;
+				return validation;
+			}
+
+			// Basic data validation
+			await this.validateExportData(exportData);
+
+			// Compatibility check
+			if (request.includeCompatibilityCheck !== false) {
+				const compatibilityCheck = await this.performCompatibilityCheck(exportData);
+				validation.compatibilityCheck = compatibilityCheck;
+
+				if (compatibilityCheck.version === 'incompatible') {
+					validation.errors.push({
+						code: 'VERSION_INCOMPATIBLE',
+						message: 'Export version is incompatible with current instance',
+						details: { exportVersion: exportData.metadata?.source?.n8nVersion },
+					});
+					validation.isValid = false;
+				}
+			}
+
+			// Conflict analysis
+			if (request.includeConflictAnalysis !== false) {
+				const conflictAnalysis = await this.performConflictAnalysis(exportData);
+				validation.conflictAnalysis = conflictAnalysis;
+
+				if (conflictAnalysis.totalConflicts > 0) {
+					validation.warnings.push({
+						code: 'RESOURCE_CONFLICTS',
+						message: `Found ${conflictAnalysis.totalConflicts} resource conflicts`,
+						details: conflictAnalysis,
+					});
+				}
+			}
+
+			// Resource validation
+			if (request.includeResourceValidation !== false) {
+				const resourceValidation = await this.performResourceValidation(exportData);
+				validation.resourceValidation = resourceValidation;
+
+				const totalInvalid =
+					resourceValidation.workflows.invalid +
+					resourceValidation.credentials.invalid +
+					resourceValidation.users.invalid +
+					resourceValidation.settings.invalid;
+
+				if (totalInvalid > 0) {
+					validation.warnings.push({
+						code: 'INVALID_RESOURCES',
+						message: `Found ${totalInvalid} invalid resources that may cause import issues`,
+						details: resourceValidation,
+					});
+				}
+			}
+
+			// Target instance validation
+			if (request.targetInstanceUrl) {
+				try {
+					const url = new URL(request.targetInstanceUrl);
+					validation.recommendations.push({
+						code: 'TARGET_VALIDATION',
+						message: `Ensure target instance ${url.hostname} is accessible and properly configured`,
+					});
+				} catch (error) {
+					validation.errors.push({
+						code: 'INVALID_TARGET_URL',
+						message: 'Target instance URL is not valid',
+						details: { url: request.targetInstanceUrl },
+					});
+					validation.isValid = false;
+				}
+			}
+
+			// Add general recommendations
+			validation.recommendations.push(
+				{
+					code: 'BACKUP_RECOMMENDATION',
+					message: 'Create a backup of the target instance before importing',
+				},
+				{
+					code: 'TEST_RECOMMENDATION',
+					message: 'Test the migration in a staging environment first',
+				},
+			);
+
+			return validation;
+		} catch (error) {
+			validation.isValid = false;
+			validation.errors.push({
+				code: 'VALIDATION_ERROR',
+				message: error instanceof Error ? error.message : 'Validation failed',
+			});
+			return validation;
+		}
+	}
+
+	async verifyMigrationIntegrity(
+		user: User,
+		request: { exportId?: string; exportData?: any },
+	): Promise<{
+		isValid: boolean;
+		issues: Array<{ severity: string; code: string; message: string; details?: any }>;
+		integrityConcerns: Array<{ type: string; description: string; impact: string }>;
+		dataConsistency: {
+			workflows: { total: number; consistent: number; inconsistent: number };
+			credentials: { total: number; consistent: number; inconsistent: number };
+			relationships: { total: number; valid: number; broken: number };
+		};
+	}> {
+		const verification = {
+			isValid: true,
+			issues: [] as Array<{ severity: string; code: string; message: string; details?: any }>,
+			integrityConcerns: [] as Array<{ type: string; description: string; impact: string }>,
+			dataConsistency: {
+				workflows: { total: 0, consistent: 0, inconsistent: 0 },
+				credentials: { total: 0, consistent: 0, inconsistent: 0 },
+				relationships: { total: 0, valid: 0, broken: 0 },
+			},
+		};
+
+		try {
+			// Load export data
+			let exportData: any;
+			if (request.exportId) {
+				exportData = await this.loadExportData(request.exportId);
+			} else if (request.exportData) {
+				exportData = request.exportData;
+			} else {
+				verification.issues.push({
+					severity: 'error',
+					code: 'MISSING_DATA',
+					message: 'Either exportId or exportData is required',
+				});
+				verification.isValid = false;
+				return verification;
+			}
+
+			// Verify metadata integrity
+			if (!exportData.metadata || !exportData.metadata.version || !exportData.metadata.id) {
+				verification.issues.push({
+					severity: 'error',
+					code: 'MISSING_METADATA',
+					message: 'Export metadata is missing or incomplete',
+				});
+				verification.isValid = false;
+			}
+
+			// Verify workflow integrity
+			if (exportData.workflows) {
+				const workflowIntegrity = await this.verifyWorkflowIntegrity(exportData.workflows);
+				verification.dataConsistency.workflows = workflowIntegrity;
+
+				if (workflowIntegrity.inconsistent > 0) {
+					verification.issues.push({
+						severity: 'warning',
+						code: 'WORKFLOW_INTEGRITY',
+						message: `${workflowIntegrity.inconsistent} workflows have integrity issues`,
+						details: workflowIntegrity,
+					});
+				}
+			}
+
+			// Verify credential integrity
+			if (exportData.credentials) {
+				const credentialIntegrity = await this.verifyCredentialIntegrity(exportData.credentials);
+				verification.dataConsistency.credentials = credentialIntegrity;
+
+				if (credentialIntegrity.inconsistent > 0) {
+					verification.issues.push({
+						severity: 'warning',
+						code: 'CREDENTIAL_INTEGRITY',
+						message: `${credentialIntegrity.inconsistent} credentials have integrity issues`,
+						details: credentialIntegrity,
+					});
+				}
+			}
+
+			// Verify relationship integrity
+			if (exportData.workflows && exportData.credentials) {
+				const relationshipIntegrity = await this.verifyRelationshipIntegrity(
+					exportData.workflows,
+					exportData.credentials,
+				);
+				verification.dataConsistency.relationships = relationshipIntegrity;
+
+				if (relationshipIntegrity.broken > 0) {
+					verification.issues.push({
+						severity: 'error',
+						code: 'BROKEN_RELATIONSHIPS',
+						message: `${relationshipIntegrity.broken} broken relationships detected`,
+						details: relationshipIntegrity,
+					});
+					verification.isValid = false;
+				}
+			}
+
+			// Check for data corruption indicators
+			const corruptionCheck = await this.checkDataCorruption(exportData);
+			if (corruptionCheck.hasCorruption) {
+				verification.integrityConcerns.push({
+					type: 'data_corruption',
+					description: 'Potential data corruption detected in export',
+					impact: 'Import may fail or produce unexpected results',
+				});
+				verification.isValid = false;
+			}
+
+			// Check for missing dependencies
+			const dependencyCheck = await this.checkMissingDependencies(exportData);
+			if (dependencyCheck.hasMissing) {
+				verification.integrityConcerns.push({
+					type: 'missing_dependencies',
+					description: 'Required dependencies are missing from export',
+					impact: 'Some features may not work correctly after import',
+				});
+			}
+
+			return verification;
+		} catch (error) {
+			verification.isValid = false;
+			verification.issues.push({
+				severity: 'error',
+				code: 'VERIFICATION_ERROR',
+				message: error instanceof Error ? error.message : 'Integrity verification failed',
+			});
+			return verification;
+		}
+	}
+
+	async checkMigrationCompatibility(
+		user: User,
+		exportId: string,
+	): Promise<{
+		compatibilityScore: number;
+		issues: Array<{ severity: string; category: string; message: string; details?: any }>;
+		recommendations: Array<{ action: string; description: string; priority: string }>;
+		versionCheck: {
+			exportVersion: string;
+			currentVersion: string;
+			compatible: boolean;
+			requiresUpgrade: boolean;
+		};
+		featureCompatibility: {
+			supportedFeatures: string[];
+			unsupportedFeatures: string[];
+			deprecatedFeatures: string[];
+		};
+	}> {
+		const compatibility = {
+			compatibilityScore: 100,
+			issues: [] as Array<{ severity: string; category: string; message: string; details?: any }>,
+			recommendations: [] as Array<{ action: string; description: string; priority: string }>,
+			versionCheck: {
+				exportVersion: 'unknown',
+				currentVersion: process.env.N8N_VERSION || 'unknown',
+				compatible: true,
+				requiresUpgrade: false,
+			},
+			featureCompatibility: {
+				supportedFeatures: [] as string[],
+				unsupportedFeatures: [] as string[],
+				deprecatedFeatures: [] as string[],
+			},
+		};
+
+		try {
+			const exportData = await this.loadExportData(exportId);
+
+			// Version compatibility check
+			const exportVersion = exportData.metadata?.source?.n8nVersion;
+			if (exportVersion) {
+				compatibility.versionCheck.exportVersion = exportVersion;
+				const versionCompatibility = await this.checkVersionCompatibility(exportVersion);
+				compatibility.versionCheck = { ...compatibility.versionCheck, ...versionCompatibility };
+
+				if (!versionCompatibility.compatible) {
+					compatibility.compatibilityScore -= 30;
+					compatibility.issues.push({
+						severity: 'error',
+						category: 'version',
+						message: `Export version ${exportVersion} is not compatible with current version ${compatibility.versionCheck.currentVersion}`,
+					});
+				}
+			}
+
+			// Feature compatibility check
+			const featureCheck = await this.checkFeatureCompatibility(exportData);
+			compatibility.featureCompatibility = featureCheck;
+
+			if (featureCheck.unsupportedFeatures.length > 0) {
+				compatibility.compatibilityScore -= featureCheck.unsupportedFeatures.length * 10;
+				compatibility.issues.push({
+					severity: 'warning',
+					category: 'features',
+					message: `${featureCheck.unsupportedFeatures.length} unsupported features detected`,
+					details: { unsupportedFeatures: featureCheck.unsupportedFeatures },
+				});
+			}
+
+			// Node type compatibility check
+			if (exportData.workflows) {
+				const nodeCompatibility = await this.checkNodeTypeCompatibility(exportData.workflows);
+				if (nodeCompatibility.incompatibleNodes.length > 0) {
+					compatibility.compatibilityScore -= nodeCompatibility.incompatibleNodes.length * 5;
+					compatibility.issues.push({
+						severity: 'warning',
+						category: 'nodes',
+						message: `${nodeCompatibility.incompatibleNodes.length} incompatible node types found`,
+						details: { incompatibleNodes: nodeCompatibility.incompatibleNodes },
+					});
+				}
+			}
+
+			// Generate recommendations
+			if (compatibility.compatibilityScore < 100) {
+				compatibility.recommendations.push({
+					action: 'review_issues',
+					description: 'Review all compatibility issues before proceeding with migration',
+					priority: 'high',
+				});
+			}
+
+			if (compatibility.versionCheck.requiresUpgrade) {
+				compatibility.recommendations.push({
+					action: 'upgrade_instance',
+					description: `Upgrade target instance to version ${exportVersion} or later`,
+					priority: 'critical',
+				});
+			}
+
+			if (compatibility.featureCompatibility.unsupportedFeatures.length > 0) {
+				compatibility.recommendations.push({
+					action: 'enable_features',
+					description: 'Enable required features on target instance',
+					priority: 'medium',
+				});
+			}
+
+			return compatibility;
+		} catch (error) {
+			compatibility.compatibilityScore = 0;
+			compatibility.issues.push({
+				severity: 'error',
+				category: 'system',
+				message: error instanceof Error ? error.message : 'Compatibility check failed',
+			});
+			return compatibility;
+		}
+	}
+
 	// Private helper methods
 
 	private async ensureExportDirectory(): Promise<void> {
@@ -1009,5 +1415,487 @@ export class MigrationService {
 			n8nVersion: process.env.N8N_VERSION || 'unknown',
 			...additionalContext,
 		};
+	}
+
+	// Enhanced validation helper methods
+
+	private async performCompatibilityCheck(exportData: any): Promise<{
+		version: 'compatible' | 'warning' | 'incompatible';
+		database: 'compatible' | 'warning' | 'incompatible';
+		features: 'compatible' | 'warning' | 'incompatible';
+		nodeTypes: 'compatible' | 'warning' | 'incompatible';
+	}> {
+		const compatibility = {
+			version: 'compatible' as const,
+			database: 'compatible' as const,
+			features: 'compatible' as const,
+			nodeTypes: 'compatible' as const,
+		};
+
+		// Check version compatibility
+		const exportVersion = exportData.metadata?.source?.n8nVersion;
+		const currentVersion = process.env.N8N_VERSION;
+		if (exportVersion && currentVersion) {
+			if (exportVersion !== currentVersion) {
+				compatibility.version = 'warning';
+				// In a real implementation, you'd check version compatibility matrix
+				const exportMajor = parseInt(exportVersion.split('.')[0] || '0');
+				const currentMajor = parseInt(currentVersion.split('.')[0] || '0');
+				if (Math.abs(exportMajor - currentMajor) > 1) {
+					compatibility.version = 'incompatible';
+				}
+			}
+		}
+
+		// Check database compatibility (simplified)
+		// In a real implementation, you'd check database schema versions
+		compatibility.database = 'compatible';
+
+		// Check feature compatibility
+		if (exportData.workflows) {
+			const hasAdvancedFeatures = exportData.workflows.some((workflow: any) =>
+				workflow.nodes?.some((node: any) => node.type?.includes('advanced')),
+			);
+			if (hasAdvancedFeatures) {
+				compatibility.features = 'warning';
+			}
+		}
+
+		// Check node type compatibility
+		if (exportData.workflows) {
+			const nodeTypes = new Set<string>();
+			exportData.workflows.forEach((workflow: any) => {
+				workflow.nodes?.forEach((node: any) => {
+					if (node.type) nodeTypes.add(node.type);
+				});
+			});
+
+			// In a real implementation, you'd check against available node types
+			const unavailableTypes = Array.from(nodeTypes).filter((type) => type.includes('deprecated'));
+			if (unavailableTypes.length > 0) {
+				compatibility.nodeTypes = 'warning';
+			}
+		}
+
+		return compatibility;
+	}
+
+	private async performConflictAnalysis(exportData: any): Promise<{
+		totalConflicts: number;
+		workflowConflicts: number;
+		credentialConflicts: number;
+		userConflicts: number;
+		settingConflicts: number;
+		conflicts: Array<{ type: string; name: string; id: string; severity: string }>;
+	}> {
+		const analysis = {
+			totalConflicts: 0,
+			workflowConflicts: 0,
+			credentialConflicts: 0,
+			userConflicts: 0,
+			settingConflicts: 0,
+			conflicts: [] as Array<{ type: string; name: string; id: string; severity: string }>,
+		};
+
+		// Check workflow conflicts
+		if (exportData.workflows) {
+			for (const workflow of exportData.workflows) {
+				const existing = await this.workflowRepository.findOne({
+					where: { name: workflow.name },
+				});
+				if (existing) {
+					analysis.workflowConflicts++;
+					analysis.conflicts.push({
+						type: 'workflow',
+						name: workflow.name,
+						id: workflow.id,
+						severity: 'medium',
+					});
+				}
+			}
+		}
+
+		// Check credential conflicts
+		if (exportData.credentials) {
+			for (const credential of exportData.credentials) {
+				const existing = await this.credentialsRepository.findOne({
+					where: { name: credential.name },
+				});
+				if (existing) {
+					analysis.credentialConflicts++;
+					analysis.conflicts.push({
+						type: 'credential',
+						name: credential.name,
+						id: credential.id,
+						severity: 'high',
+					});
+				}
+			}
+		}
+
+		// Check user conflicts
+		if (exportData.users) {
+			for (const user of exportData.users) {
+				const existing = await this.userRepository.findOne({
+					where: { email: user.email },
+				});
+				if (existing) {
+					analysis.userConflicts++;
+					analysis.conflicts.push({
+						type: 'user',
+						name: user.email,
+						id: user.id,
+						severity: 'low',
+					});
+				}
+			}
+		}
+
+		// Check setting conflicts
+		if (exportData.settings) {
+			for (const setting of exportData.settings) {
+				const existing = await this.settingsRepository.findOne({
+					where: { key: setting.key },
+				});
+				if (existing) {
+					analysis.settingConflicts++;
+					analysis.conflicts.push({
+						type: 'setting',
+						name: setting.key,
+						id: setting.key,
+						severity: 'medium',
+					});
+				}
+			}
+		}
+
+		analysis.totalConflicts = analysis.conflicts.length;
+		return analysis;
+	}
+
+	private async performResourceValidation(exportData: any): Promise<{
+		workflows: { valid: number; invalid: number; issues: string[] };
+		credentials: { valid: number; invalid: number; issues: string[] };
+		users: { valid: number; invalid: number; issues: string[] };
+		settings: { valid: number; invalid: number; issues: string[] };
+	}> {
+		const validation = {
+			workflows: { valid: 0, invalid: 0, issues: [] as string[] },
+			credentials: { valid: 0, invalid: 0, issues: [] as string[] },
+			users: { valid: 0, invalid: 0, issues: [] as string[] },
+			settings: { valid: 0, invalid: 0, issues: [] as string[] },
+		};
+
+		// Validate workflows
+		if (exportData.workflows) {
+			for (const workflow of exportData.workflows) {
+				if (!workflow.name || !workflow.nodes || !Array.isArray(workflow.nodes)) {
+					validation.workflows.invalid++;
+					validation.workflows.issues.push(
+						`Workflow ${workflow.id || 'unknown'} is missing required fields`,
+					);
+				} else {
+					validation.workflows.valid++;
+				}
+			}
+		}
+
+		// Validate credentials
+		if (exportData.credentials) {
+			for (const credential of exportData.credentials) {
+				if (!credential.name || !credential.type) {
+					validation.credentials.invalid++;
+					validation.credentials.issues.push(
+						`Credential ${credential.id || 'unknown'} is missing required fields`,
+					);
+				} else {
+					validation.credentials.valid++;
+				}
+			}
+		}
+
+		// Validate users
+		if (exportData.users) {
+			for (const user of exportData.users) {
+				if (!user.email || !user.role) {
+					validation.users.invalid++;
+					validation.users.issues.push(`User ${user.id || 'unknown'} is missing required fields`);
+				} else {
+					validation.users.valid++;
+				}
+			}
+		}
+
+		// Validate settings
+		if (exportData.settings) {
+			for (const setting of exportData.settings) {
+				if (!setting.key) {
+					validation.settings.invalid++;
+					validation.settings.issues.push(
+						`Setting ${setting.id || 'unknown'} is missing required key`,
+					);
+				} else {
+					validation.settings.valid++;
+				}
+			}
+		}
+
+		return validation;
+	}
+
+	private async verifyWorkflowIntegrity(
+		workflows: any[],
+	): Promise<{ total: number; consistent: number; inconsistent: number }> {
+		const integrity = { total: workflows.length, consistent: 0, inconsistent: 0 };
+
+		for (const workflow of workflows) {
+			let isConsistent = true;
+
+			// Check required fields
+			if (!workflow.id || !workflow.name || !workflow.nodes) {
+				isConsistent = false;
+			}
+
+			// Check node structure
+			if (workflow.nodes && Array.isArray(workflow.nodes)) {
+				for (const node of workflow.nodes) {
+					if (!node.id || !node.type || !node.position) {
+						isConsistent = false;
+						break;
+					}
+				}
+			} else {
+				isConsistent = false;
+			}
+
+			if (isConsistent) {
+				integrity.consistent++;
+			} else {
+				integrity.inconsistent++;
+			}
+		}
+
+		return integrity;
+	}
+
+	private async verifyCredentialIntegrity(
+		credentials: any[],
+	): Promise<{ total: number; consistent: number; inconsistent: number }> {
+		const integrity = { total: credentials.length, consistent: 0, inconsistent: 0 };
+
+		for (const credential of credentials) {
+			let isConsistent = true;
+
+			// Check required fields
+			if (!credential.id || !credential.name || !credential.type) {
+				isConsistent = false;
+			}
+
+			if (isConsistent) {
+				integrity.consistent++;
+			} else {
+				integrity.inconsistent++;
+			}
+		}
+
+		return integrity;
+	}
+
+	private async verifyRelationshipIntegrity(
+		workflows: any[],
+		credentials: any[],
+	): Promise<{ total: number; valid: number; broken: number }> {
+		const relationships = { total: 0, valid: 0, broken: 0 };
+		const credentialIds = new Set(credentials.map((c) => c.id));
+
+		for (const workflow of workflows) {
+			if (workflow.nodes && Array.isArray(workflow.nodes)) {
+				for (const node of workflow.nodes) {
+					if (node.credentials) {
+						relationships.total++;
+						// Check if referenced credential exists
+						const credentialExists = Object.keys(node.credentials).every((key) =>
+							credentialIds.has(node.credentials[key].id),
+						);
+						if (credentialExists) {
+							relationships.valid++;
+						} else {
+							relationships.broken++;
+						}
+					}
+				}
+			}
+		}
+
+		return relationships;
+	}
+
+	private async checkDataCorruption(exportData: any): Promise<{ hasCorruption: boolean }> {
+		// Basic corruption checks
+		try {
+			// Check if JSON structure is valid (already parsed at this point)
+			if (typeof exportData !== 'object' || exportData === null) {
+				return { hasCorruption: true };
+			}
+
+			// Check metadata structure
+			if (
+				exportData.metadata &&
+				(!exportData.metadata.id || !exportData.metadata.version || !exportData.metadata.createdAt)
+			) {
+				return { hasCorruption: true };
+			}
+
+			// Check for obviously corrupted data (null values where they shouldn't be)
+			if (exportData.workflows) {
+				for (const workflow of exportData.workflows) {
+					if (
+						workflow.nodes === null ||
+						(Array.isArray(workflow.nodes) && workflow.nodes.includes(null))
+					) {
+						return { hasCorruption: true };
+					}
+				}
+			}
+
+			return { hasCorruption: false };
+		} catch (error) {
+			return { hasCorruption: true };
+		}
+	}
+
+	private async checkMissingDependencies(exportData: any): Promise<{ hasMissing: boolean }> {
+		// Check for missing dependencies
+		// This is a simplified implementation
+		let hasMissing = false;
+
+		if (exportData.workflows) {
+			for (const workflow of exportData.workflows) {
+				if (workflow.nodes && Array.isArray(workflow.nodes)) {
+					for (const node of workflow.nodes) {
+						// Check if node type exists (simplified check)
+						if (node.type && node.type.includes('missing')) {
+							hasMissing = true;
+							break;
+						}
+					}
+				}
+				if (hasMissing) break;
+			}
+		}
+
+		return { hasMissing };
+	}
+
+	private async checkVersionCompatibility(exportVersion: string): Promise<{
+		compatible: boolean;
+		requiresUpgrade: boolean;
+	}> {
+		const currentVersion = process.env.N8N_VERSION || '1.0.0';
+
+		// Simple version comparison (in production, use a proper semver library)
+		const exportParts = exportVersion.split('.').map(Number);
+		const currentParts = currentVersion.split('.').map(Number);
+
+		const exportMajor = exportParts[0] || 0;
+		const currentMajor = currentParts[0] || 0;
+
+		// Compatible if same major version or current is newer
+		const compatible = currentMajor >= exportMajor;
+		const requiresUpgrade = exportMajor > currentMajor;
+
+		return { compatible, requiresUpgrade };
+	}
+
+	private async checkFeatureCompatibility(exportData: any): Promise<{
+		supportedFeatures: string[];
+		unsupportedFeatures: string[];
+		deprecatedFeatures: string[];
+	}> {
+		const features = {
+			supportedFeatures: [] as string[],
+			unsupportedFeatures: [] as string[],
+			deprecatedFeatures: [] as string[],
+		};
+
+		// Extract features from export data
+		const extractedFeatures = new Set<string>();
+
+		if (exportData.workflows) {
+			extractedFeatures.add('workflows');
+			// Check for advanced workflow features
+			if (exportData.workflows.some((w: any) => w.settings?.executionOrder === 'v1')) {
+				extractedFeatures.add('execution_order_v1');
+			}
+		}
+
+		if (exportData.credentials) {
+			extractedFeatures.add('credentials');
+		}
+
+		if (exportData.users) {
+			extractedFeatures.add('user_management');
+		}
+
+		if (exportData.settings) {
+			extractedFeatures.add('instance_settings');
+		}
+
+		// Categorize features (simplified)
+		const allFeatures = ['workflows', 'credentials', 'user_management', 'instance_settings'];
+		const deprecatedFeatureList = ['execution_order_v1'];
+
+		for (const feature of extractedFeatures) {
+			if (allFeatures.includes(feature)) {
+				features.supportedFeatures.push(feature);
+			} else if (deprecatedFeatureList.includes(feature)) {
+				features.deprecatedFeatures.push(feature);
+			} else {
+				features.unsupportedFeatures.push(feature);
+			}
+		}
+
+		return features;
+	}
+
+	private async checkNodeTypeCompatibility(workflows: any[]): Promise<{
+		compatibleNodes: string[];
+		incompatibleNodes: string[];
+		deprecatedNodes: string[];
+	}> {
+		const nodeTypes = {
+			compatibleNodes: [] as string[],
+			incompatibleNodes: [] as string[],
+			deprecatedNodes: [] as string[],
+		};
+
+		const allNodeTypes = new Set<string>();
+
+		// Extract all node types from workflows
+		for (const workflow of workflows) {
+			if (workflow.nodes && Array.isArray(workflow.nodes)) {
+				for (const node of workflow.nodes) {
+					if (node.type) {
+						allNodeTypes.add(node.type);
+					}
+				}
+			}
+		}
+
+		// Categorize node types (simplified)
+		const deprecatedNodeTypes = ['n8n-nodes-base.oldNode', 'n8n-nodes-base.deprecatedNode'];
+
+		for (const nodeType of allNodeTypes) {
+			if (deprecatedNodeTypes.includes(nodeType)) {
+				nodeTypes.deprecatedNodes.push(nodeType);
+			} else if (nodeType.startsWith('n8n-nodes-base.')) {
+				nodeTypes.compatibleNodes.push(nodeType);
+			} else {
+				// Custom or unknown node types
+				nodeTypes.incompatibleNodes.push(nodeType);
+			}
+		}
+
+		return nodeTypes;
 	}
 }

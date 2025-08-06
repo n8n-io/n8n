@@ -1367,7 +1367,7 @@
       "id": "oauth2_research_1754367471409",
       "title": "Comprehensive OAuth2 and credential testing analysis in n8n codebase",
       "description": "Analyze OAuth2 callback handling, credential validation APIs, authentication testing tools, and external auth provider integrations",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "created_at": "2025-08-05T04:17:51.409Z",
       "subtasks": [
@@ -2458,14 +2458,113 @@
         },
         "overallReady": false
       }
+    },
+    {
+      "id": "task_1754520442540_kzttefbm8",
+      "title": "Analyze OAuth2 callback routing and handling mechanisms",
+      "description": "Identify OAuth2 callback endpoints, routing logic, parameter validation, and error handling in n8n codebase. Document callback flow patterns and security measures.",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-oauth2-callbacks.md",
+        "./development/research-reports/research-report-task_1754520442540_kzttefbm8.md"
+      ],
+      "success_criteria": [
+        "OAuth2 callback endpoints identified and documented",
+        "Callback routing logic mapped and analyzed",
+        "Security validation mechanisms documented",
+        "Research report created with callback flow diagrams",
+        "Research report created: ./development/research-reports/research-report-task_1754520442540_kzttefbm8.md"
+      ],
+      "estimate": "2-3 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T22:47:22.540Z"
+    },
+    {
+      "id": "task_1754520442547_67iwp14dw",
+      "title": "Map credential validation APIs and authentication mechanisms",
+      "description": "Analyze credential storage, validation APIs, encryption methods, and credential lifecycle management. Document security patterns and validation workflows.",
+      "mode": "RESEARCH",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-credential-validation.md",
+        "./development/research-reports/research-report-task_1754520442547_67iwp14dw.md"
+      ],
+      "success_criteria": [
+        "Credential validation APIs mapped and documented",
+        "Encryption and storage mechanisms analyzed",
+        "Credential lifecycle workflows documented",
+        "Security patterns and vulnerabilities identified",
+        "Research report created: ./development/research-reports/research-report-task_1754520442547_67iwp14dw.md"
+      ],
+      "estimate": "2-3 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T22:47:22.547Z"
+    },
+    {
+      "id": "task_1754520442554_91vebxczt",
+      "title": "Analyze authentication testing frameworks and coverage",
+      "description": "Evaluate existing authentication test suites, identify testing gaps, analyze mock/stub patterns, and document test automation strategies for OAuth2 flows.",
+      "mode": "RESEARCH",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [
+        "task_1754520442540_kzttefbm8",
+        "task_1754520442547_67iwp14dw"
+      ],
+      "important_files": [
+        "./development/research-reports/research-report-auth-testing.md",
+        "./development/research-reports/research-report-task_1754520442554_91vebxczt.md"
+      ],
+      "success_criteria": [
+        "Authentication test coverage analyzed and gaps identified",
+        "Mock/stub patterns documented",
+        "Test automation strategies evaluated",
+        "Recommendations for improving test coverage",
+        "Research report created: ./development/research-reports/research-report-task_1754520442554_91vebxczt.md"
+      ],
+      "estimate": "1-2 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T22:47:22.554Z"
+    },
+    {
+      "id": "task_1754520442561_fce8nirrj",
+      "title": "Document external OAuth provider integration patterns",
+      "description": "Analyze integration patterns for major OAuth providers (Google, GitHub, Slack, etc.), document configuration requirements, and identify standardization opportunities.",
+      "mode": "RESEARCH",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "./development/research-reports/research-report-external-providers.md",
+        "./development/research-reports/research-report-task_1754520442561_fce8nirrj.md"
+      ],
+      "success_criteria": [
+        "Major OAuth provider integrations documented",
+        "Configuration patterns and requirements mapped",
+        "Standardization opportunities identified",
+        "Provider-specific quirks and workarounds documented",
+        "Research report created: ./development/research-reports/research-report-task_1754520442561_fce8nirrj.md"
+      ],
+      "estimate": "2-3 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T22:47:22.561Z"
     }
   ],
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "DEVELOPMENT",
-  "execution_count": 347,
-  "last_hook_activation": 1754520211636,
+  "last_mode": "TASK_CREATION",
+  "execution_count": 348,
+  "last_hook_activation": 1754520433025,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37

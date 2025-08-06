@@ -335,6 +335,193 @@ export class MigrationController {
 		}
 	}
 
+	@Post('/validate/comprehensive')
+	@GlobalScope('instance:admin')
+	async validateMigrationComprehensive(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body
+		request: {
+			exportId?: string;
+			exportData?: any;
+			targetInstanceUrl?: string;
+			includeCompatibilityCheck?: boolean;
+			includeConflictAnalysis?: boolean;
+			includeResourceValidation?: boolean;
+		},
+	): Promise<any> {
+		try {
+			this.logger.info('Comprehensive migration validation endpoint called', {
+				requesterId: req.user.id,
+				userRole: req.user.role,
+				hasExportId: !!request.exportId,
+				hasExportData: !!request.exportData,
+				hasTargetInstance: !!request.targetInstanceUrl,
+				includeCompatibilityCheck: request.includeCompatibilityCheck,
+				includeConflictAnalysis: request.includeConflictAnalysis,
+				includeResourceValidation: request.includeResourceValidation,
+				targetUrl: request.targetInstanceUrl
+					? this.sanitizeUrl(request.targetInstanceUrl)
+					: undefined,
+			});
+
+			if (!request.exportId && !request.exportData) {
+				throw new BadRequestError('Either exportId or exportData is required');
+			}
+
+			const result = await this.migrationService.validateMigrationComprehensive(req.user, request);
+
+			this.eventService.emit('comprehensive-migration-validation-performed', {
+				requesterId: req.user.id,
+				validationPassed: result.isValid,
+				warningCount: result.warnings?.length || 0,
+				errorCount: result.errors?.length || 0,
+				compatibilityCheck: request.includeCompatibilityCheck,
+				conflictAnalysis: request.includeConflictAnalysis,
+				resourceValidation: request.includeResourceValidation,
+			});
+
+			this.logger.info('Comprehensive migration validation endpoint completed', {
+				requesterId: req.user.id,
+				validationPassed: result.isValid,
+				warningCount: result.warnings?.length || 0,
+				errorCount: result.errors?.length || 0,
+			});
+
+			return result;
+		} catch (error) {
+			const errorContext = {
+				requesterId: req.user?.id,
+				userRole: req.user?.role,
+				hasExportId: !!request.exportId,
+				hasExportData: !!request.exportData,
+				hasTargetInstance: !!request.targetInstanceUrl,
+				targetUrl: request.targetInstanceUrl
+					? this.sanitizeUrl(request.targetInstanceUrl)
+					: undefined,
+				error: error instanceof Error ? error.message : 'Unknown error',
+				stack: error instanceof Error ? error.stack : undefined,
+			};
+
+			this.logger.error('Comprehensive migration validation endpoint failed', errorContext);
+
+			if (error instanceof BadRequestError || error instanceof InternalServerError) {
+				throw error;
+			}
+
+			throw new InternalServerError('Comprehensive migration validation failed');
+		}
+	}
+
+	@Post('/verify')
+	@GlobalScope('instance:admin')
+	async verifyMigrationIntegrity(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body request: { exportId?: string; exportData?: any },
+	): Promise<any> {
+		try {
+			this.logger.info('Migration integrity verification endpoint called', {
+				requesterId: req.user.id,
+				userRole: req.user.role,
+				hasExportId: !!request.exportId,
+				hasExportData: !!request.exportData,
+			});
+
+			if (!request.exportId && !request.exportData) {
+				throw new BadRequestError('Either exportId or exportData is required for verification');
+			}
+
+			const result = await this.migrationService.verifyMigrationIntegrity(req.user, request);
+
+			this.eventService.emit('migration-integrity-verified', {
+				requesterId: req.user.id,
+				verificationPassed: result.isValid,
+				issueCount: result.issues?.length || 0,
+				integrityConcerns: result.integrityConcerns?.length || 0,
+			});
+
+			this.logger.info('Migration integrity verification endpoint completed', {
+				requesterId: req.user.id,
+				verificationPassed: result.isValid,
+				issueCount: result.issues?.length || 0,
+			});
+
+			return result;
+		} catch (error) {
+			const errorContext = {
+				requesterId: req.user?.id,
+				userRole: req.user?.role,
+				hasExportId: !!request.exportId,
+				hasExportData: !!request.exportData,
+				error: error instanceof Error ? error.message : 'Unknown error',
+				stack: error instanceof Error ? error.stack : undefined,
+			};
+
+			this.logger.error('Migration integrity verification endpoint failed', errorContext);
+
+			if (error instanceof BadRequestError || error instanceof InternalServerError) {
+				throw error;
+			}
+
+			throw new InternalServerError('Migration integrity verification failed');
+		}
+	}
+
+	@Get('/compatibility/:exportId')
+	@GlobalScope('instance:admin')
+	async checkMigrationCompatibility(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Param('exportId') exportId: string,
+	): Promise<any> {
+		try {
+			this.logger.info('Migration compatibility check endpoint called', {
+				requesterId: req.user.id,
+				userRole: req.user.role,
+				exportId,
+			});
+
+			if (!exportId || typeof exportId !== 'string') {
+				throw new BadRequestError('Valid export ID is required');
+			}
+
+			const result = await this.migrationService.checkMigrationCompatibility(req.user, exportId);
+
+			this.eventService.emit('migration-compatibility-checked', {
+				requesterId: req.user.id,
+				exportId,
+				compatibilityScore: result.compatibilityScore || 0,
+				hasIssues: result.issues?.length > 0,
+			});
+
+			this.logger.info('Migration compatibility check endpoint completed', {
+				requesterId: req.user.id,
+				exportId,
+				compatibilityScore: result.compatibilityScore || 0,
+				issueCount: result.issues?.length || 0,
+			});
+
+			return result;
+		} catch (error) {
+			const errorContext = {
+				requesterId: req.user?.id,
+				userRole: req.user?.role,
+				exportId,
+				error: error instanceof Error ? error.message : 'Unknown error',
+				stack: error instanceof Error ? error.stack : undefined,
+			};
+
+			this.logger.error('Migration compatibility check endpoint failed', errorContext);
+
+			if (error instanceof BadRequestError || error instanceof InternalServerError) {
+				throw error;
+			}
+
+			throw new InternalServerError('Migration compatibility check failed');
+		}
+	}
+
 	@Get('/exports')
 	@GlobalScope('instance:admin')
 	async listExports(req: AuthenticatedRequest): Promise<{
