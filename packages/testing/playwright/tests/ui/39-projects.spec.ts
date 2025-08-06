@@ -1,6 +1,6 @@
-import { test, expect } from '../fixtures/base';
-import { n8nPage } from '../pages/n8nPage';
-import type { ApiHelpers } from '../services/api-helper';
+import { test, expect } from '../../fixtures/base';
+import { n8nPage } from '../../pages/n8nPage';
+import type { ApiHelpers } from '../../services/api-helper';
 
 const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
