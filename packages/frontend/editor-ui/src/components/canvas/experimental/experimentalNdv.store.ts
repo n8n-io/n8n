@@ -27,6 +27,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 
 	const previousViewport = ref<ViewportTransform>();
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
+	const nodeNameToBeFocused = ref<string | undefined>();
 
 	function setNodeExpanded(nodeId: string, isExpanded?: boolean) {
 		collapsedNodes.value = {
@@ -53,6 +54,10 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		return isEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.000001;
 	}
 
+	function setNodeNameToBeFocused(nodeName: string) {
+		nodeNameToBeFocused.value = nodeName;
+	}
+
 	interface FocusNodeOptions {
 		collapseOthers?: boolean;
 		canvasViewport: ViewportTransform;
@@ -74,6 +79,10 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		const topMargin = 80; // pixels
 		const nodeWidth = node.dimensions.width * (isActive(canvasViewport.zoom) ? 1 : 1.5);
 
+		if (nodeNameToBeFocused.value === node.data.name) {
+			nodeNameToBeFocused.value = undefined;
+		}
+
 		// Move the node to top center of the canvas
 		void setCenter(
 			node.position.x + nodeWidth / 2,
@@ -81,7 +90,8 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			{
 				duration: 200,
 				zoom: maxCanvasZoom.value,
-				interpolate: 'linear',
+				// TODO: restore when re-upgrading vue-flow to >= 1.45
+				// interpolate: 'linear',
 			},
 		);
 	}
@@ -99,11 +109,19 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	function toggleZoomMode(options: ToggleZoomModeOptions) {
 		if (isActive(options.canvasViewport.zoom)) {
 			if (previousViewport.value === undefined) {
-				void options.fitView({ duration: 200, interpolate: 'linear' });
+				void options.fitView({
+					duration: 200,
+					// TODO: restore when re-upgrading vue-flow to >= 1.45
+					// interpolate: 'linear',
+				});
 				return;
 			}
 
-			void options.setViewport(previousViewport.value, { duration: 200, interpolate: 'linear' });
+			void options.setViewport(previousViewport.value, {
+				duration: 200,
+				// TODO: restore when re-upgrading vue-flow to >= 1.45
+				// interpolate: 'linear'
+			});
 			return;
 		}
 
@@ -120,7 +138,11 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			return;
 		}
 
-		void options.zoomTo(maxCanvasZoom.value, { duration: 200, interpolate: 'linear' });
+		void options.zoomTo(maxCanvasZoom.value, {
+			duration: 200,
+			// TODO: restore when re-upgrading vue-flow to >= 1.45
+			// interpolate: 'linear',
+		});
 	}
 
 	return {
@@ -128,11 +150,13 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		maxCanvasZoom,
 		previousZoom: computed(() => previousViewport.value),
 		collapsedNodes: computed(() => collapsedNodes.value),
+		nodeNameToBeFocused: computed(() => nodeNameToBeFocused.value),
 		isActive,
 		setNodeExpanded,
 		expandAllNodes,
 		collapseAllNodes,
 		toggleZoomMode,
 		focusNode,
+		setNodeNameToBeFocused,
 	};
 });

@@ -1,0 +1,210 @@
+{
+	"createdAt": "2024-03-04T20:39:24.374Z",
+	"updatedAt": "2024-03-04T20:39:59.000Z",
+	"id": "235",
+	"name": "SummarizationChain:Simple:Map",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "7040b003-e694-4251-9dad-f4245966cfdf",
+			"name": "When clicking \"Test workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [1120, 600]
+		},
+		{
+			"parameters": {
+				"jsCode": "return {\n  text: `The dancing plague of 1518, or dance epidemic of 1518 (French: Épidémie dansante de 1518), was a case of dancing mania that occurred in Strasbourg, Alsace (modern-day France), in the Holy Roman Empire from July 1518 to September 1518. Somewhere between 50 and 400 people took to dancing for weeks. There are many theories behind the phenomenon, the most popular being stress-induced mass hysteria, suggested by John Waller. Other theories include ergot and religious explanations. There is controversy concerning the number of deaths.\n\nHistory\nEvents\nThe outbreak began in July 1518 when a woman called Frau Troffea began to dance fervently and uncontrollably in a street in Strasbourg. Troffea kept up the constant dancing for a week. Soon, three dozen others joined in. By August, the \"dancing plague\" had claimed 400 victims. Dancers were beginning to collapse. It is said some even died from a stroke or heart attack. No one knew what caused this reaction, which meant no one understood how to remedy it. By early September, the outbreak began to subside, when the dancers were sent to a mountain shrine to pray for absolution.\n\nHistorical documents, including \"physician notes, cathedral sermons, local and regional chronicles, and even notes issued by the Strasbourg city council\" are clear that the victims danced; it is not known why. Historical sources agree that there was an outbreak of dancing after a single woman started dancing, and the dancing did not seem to die down. It lasted for such a long time that it even attracted the attention of the authorities; until the council gave up authority to the physicians, who prescribed the afflicted to \"dance themselves free of it.\" There are claims that guild halls were refurbished to accommodate the dancing, as well as musicians and strong people to help keep those dealing with the dancing mania to stay upright. This backfired, and the council was forced to ban public dancing as people danced in fear it was a punishment from Saint Vitus; and to be \"free of sin\" many joined in on the dancing epidemic. The council went as far as to ban music, as well. Those who danced were then ordered to go to the shrine of Saint Vitus, wore red shoes that were sprinkled with holy water and had painted crosses on the tops and soles. They also had to hold small crosses in their hands; and incense and Latin incantations were part of this \"ritual.\" Apparently \"forgiven by Vitus,\" word was spread of a successful ritual and the Dancing Plague had ended.\n\nEvents similar to this are said to have occurred throughout the medieval age including 11th century in Kölbigk, Saxony, where it was believed to be the result of divine judgment . In 15th century Apulia, Italy, a woman was bitten by a tarantula, the venom making her dance convulsively. The only way to cure the bite was to \"shimmy\" and to have the right sort of music available, which was an accepted remedy by scholars like Athanasius Kircher.\n\nContemporaneous explanations included demonic possession and overheated blood.\n\nVeracity of deaths\nControversy exists over whether people ultimately danced to their deaths. Some sources claim that for a period the plague killed around fifteen people per day, but the sources of the city of Strasbourg at the time of the events did not mention the number of deaths, or even if there were fatalities. There do not appear to be any sources related to the events that make note of any fatalities. Ned Pennant-Rea also claims that the final death toll is not known, but if the claims of fifteen people dying per day were true then the toll could be \"into the hundreds.\"\n\nThe main source for the claim is John Waller, who has written several journal articles on the subject and the book A Time to Dance, a Time to Die: The Extraordinary Story of the Dancing Plague of 1518. The sources cited by Waller that mention deaths were all from later accounts of the events. There is also uncertainty around the identity of the initial dancer (either an unnamed woman or \"Frau Troffea\") and the number of dancers involved (somewhere between 50 and 400). Of the six chronicle accounts, four support Lady Troffea as the first dancer.\n\nModern theories\nFood poisoning\nSome believe the dancing could have been brought on by food poisoning caused by the toxic and psychoactive chemical products of ergot fungi (ergotism), which grows commonly on grains (such as rye) used for baking bread. Ergotamine is the main psychoactive product of ergot fungi; it is structurally related to the drug lysergic acid diethylamide (LSD-25) and is the substance from which LSD-25 was originally synthesized. The same fungus has also been implicated in other major historical anomalies, including the Salem witch trials.\n\nIn The Lancet, John Waller argues that \"this theory does not seem tenable, since it is unlikely that those poisoned by ergot could have danced for days at a time. Nor would so many people have reacted to its psychotropic chemicals in the same way. The ergotism theory also fails to explain why almost every outbreak occurred somewhere along the Rhine and Moselle rivers, areas linked by water but with quite different climates and crops\".\n\nStress-induced mass hysteria\nThis could have been an example of fully developed cases of psychogenic movement disorder happening in mass hysteria or mass psychogenic illness, which involves many individuals suddenly exhibiting the same bizarre behavior. The behavior spreads rapidly and broadly in an epidemic pattern. This kind of comportment could have been caused by elevated levels of psychological stress, caused by the ruthless years (even by the rough standards of the early modern period) the people of Alsace were suffering.\n\nWaller speculates that the dancing was \"stress-induced psychosis\" on a mass level, since the region where the people danced was riddled with starvation and disease, and the inhabitants tended to be superstitious. Seven other cases of dancing plague were reported in the same region during the medieval era.\n\nThis psychogenic illness could have created a chorea (from the Greek khoreia meaning \"to dance\"), a situation comprising random and intricate unintentional movements that flit from body part to body part. Diverse choreas (St. Vitus' dance, St. John's dance, and tarantism) were labeled in the Middle Ages referring to the independent epidemics of \"dancing mania\" that happened in central Europe, particularly at the time of the plague.\n\nPop culture and media\nThe event inspired Jonathan Glazer's 2020 short film Strasbourg 1518.\n\nIt was also the inspiration behind the 2022 choral song \"Choreomania\" by Florence and the Machine. It was the third track on the album Dance Fever, which took its title from the song.\n\nThe book series \"A Collection of Utter Speculation\" released a title \"The Dancing Plague: A Collection of Utter Speculation\" in 2022. It is a fictional account about the events that happened in Strasbourg.\n\nThe 2023 novel, The Dance Tree, by Kiran Millwood Hargrave is a fictionalized version of the summer of 1518 in Strasbourg.\n\nThe event is featured as part of the first season of Watcher Entertainment's \"Puppet History\" in the episode \"The Dancing Plague\".`\n}"
+			},
+			"id": "97eb5104-6741-4330-ac11-4c5776aedd79",
+			"name": "Set Article",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1540, 600]
+		},
+		{
+			"parameters": {
+				"model": "gpt-3.5-turbo-0125",
+				"options": {
+					"temperature": 0
+				}
+			},
+			"id": "42de18cf-1320-4f45-bb11-d28523c88a43",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1,
+			"position": [1760, 760],
+			"credentials": {
+				"openAiApi": {
+					"id": "Zak03cqeLUOsgkFI",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "6fa592a3-1cfe-42d7-8d45-a7ec80871e52",
+							"name": "baseline_summary",
+							"value": "The dancing plague of 1518 in Strasbourg, Alsace involved between 50 and 400 people dancing uncontrollably for weeks. The cause is unknown, with theories including stress-induced mass hysteria and ergot poisoning. The outbreak ended when the dancers prayed for absolution at a shrine. There is controversy over the number of deaths, with some sources claiming up to fifteen deaths per day, but historical documents do not confirm any fatalities. Similar events have been reported throughout history, inspiring various works of pop culture.",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "b7f4e65c-2f5b-41eb-bffd-aeb1ec9919b4",
+			"name": "Set Baseline",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [1340, 600]
+		},
+		{
+			"parameters": {
+				"chunkSize": 4000,
+				"options": {}
+			},
+			"id": "584d9374-ce54-42df-9c88-b996754e8967",
+			"name": "Summary - Simple - Map",
+			"type": "@n8n/n8n-nodes-langchain.chainSummarization",
+			"typeVersion": 2,
+			"position": [1740, 600]
+		},
+		{
+			"parameters": {
+				"model": "gpt-3.5-turbo-0125",
+				"options": {
+					"temperature": 0
+				}
+			},
+			"id": "beaf320b-b14d-44a9-b7f3-1d4379875531",
+			"name": "OpenAI Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1,
+			"position": [2080, 760],
+			"credentials": {
+				"openAiApi": {
+					"id": "Zak03cqeLUOsgkFI",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"code": {
+					"execute": {
+						"code": "const { loadEvaluator } = require(\"langchain/evaluation\");\n\nconst llm = await this.getInputConnectionData('ai_languageModel', 0);\nconst inputData = this.getInputData();\nconst inputSummary = inputData[0].json.response.text;\nconst baselineSummary = $('Set Baseline').item.json.baseline_summary\n\nconst evaluator = await loadEvaluator(\"labeled_criteria\", { criteria: 'helpfulness', llm });\n\nconst result = await evaluator.evaluateStrings({\n  input: \"Summarize Wikipedia article about the dancing plague of 1518\",\n  prediction: inputSummary,\n  reference: baselineSummary,\n});\n\n\nreturn [ {json: { ...result } } ];"
+					}
+				},
+				"inputs": {
+					"input": [
+						{
+							"type": "main",
+							"maxConnections": 1,
+							"required": true
+						},
+						{
+							"type": "ai_languageModel",
+							"maxConnections": 1,
+							"required": true
+						}
+					]
+				},
+				"outputs": {
+					"output": [
+						{
+							"type": "main"
+						}
+					]
+				}
+			},
+			"id": "b3f8e974-8f56-4cfe-ae9d-dd0906bb87c4",
+			"name": "Evaluate to Baseline",
+			"type": "@n8n/n8n-nodes-langchain.code",
+			"typeVersion": 1,
+			"position": [2060, 600]
+		}
+	],
+	"connections": {
+		"When clicking \"Test workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Set Baseline",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Article": {
+			"main": [
+				[
+					{
+						"node": "Summary - Simple - Map",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Summary - Simple - Map",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Baseline": {
+			"main": [
+				[
+					{
+						"node": "Set Article",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Summary - Simple - Map": {
+			"main": [
+				[
+					{
+						"node": "Evaluate to Baseline",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Evaluate to Baseline",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": {
+		"templateCredsSetupCompleted": true
+	},
+	"pinData": {},
+	"versionId": "1a8926d6-06a6-4c15-8384-bd74ae4bd8df",
+	"triggerCount": 0,
+	"tags": []
+}

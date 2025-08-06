@@ -58,12 +58,13 @@ const emit = defineEmits<{
 }
 
 .overrideCloseButton {
-	padding: 0px var(--spacing-2xs);
-	border: 0px;
+	padding: 0 var(--spacing-2xs);
+	border: 0;
 	color: var(--color-text-base);
 	margin-left: auto;
 	--button-hover-background-color: transparent;
 	--button-active-background-color: transparent;
+	background-color: var(--color-foreground-base);
 }
 
 .contentOverrideContainer {

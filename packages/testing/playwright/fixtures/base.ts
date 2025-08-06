@@ -20,7 +20,7 @@ type WorkerFixtures = {
 	dbSetup: undefined;
 	chaos: ContainerTestHelpers;
 	n8nContainer: N8NStack;
-	containerConfig: ContainerConfig; // Configuration for container creation
+	containerConfig: ContainerConfig;
 };
 
 interface ContainerConfig {

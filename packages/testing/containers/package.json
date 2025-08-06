@@ -15,7 +15,7 @@
     "stack:clean:networks": "docker network ls --filter 'label=org.testcontainers=true' -q | xargs -r docker network rm 2>/dev/null",
     "stack:clean:all": "pnpm run stack:clean:containers && pnpm run stack:clean:networks",
     "lint": "eslint . --quiet",
-    "lintfix": "eslint . --fix"
+    "lint:fix": "eslint . --fix"
   },
   "keywords": [],
   "author": "",

@@ -22,7 +22,7 @@ beforeEach(() => {
 	setActivePinia(pinia);
 	const workflowsStore = useWorkflowsStore();
 	const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
-	workflowsStore.getCurrentWorkflow = vi.fn().mockReturnValue(workflowObject);
+	workflowsStore.workflowObject = workflowObject;
 });
 
 describe('CanvasNodeDefault', () => {

@@ -261,8 +261,16 @@ const loadTimezones = async () => {
 	}
 };
 
-const loadWorkflows = async () => {
-	const workflowsData = (await workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
+const loadWorkflows = async (searchTerm?: string) => {
+	// Do not call the API if the search term is empty
+	// Call it if searchTerm is undefined for initial load
+	if (searchTerm === '') {
+		return;
+	}
+
+	const workflowsData = (await workflowsStore.searchWorkflows({
+		name: searchTerm,
+	})) as IWorkflowShortResponse[];
 	workflowsData.sort((a, b) => {
 		if (a.name.toLowerCase() < b.name.toLowerCase()) {
 			return -1;
@@ -527,6 +535,9 @@ onMounted(async () => {
 							v-model="workflowSettings.errorWorkflow"
 							placeholder="Select Workflow"
 							filterable
+							remote
+							remote-method="loadWorkflows"
+							remote-show-suffix
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-error-workflow"

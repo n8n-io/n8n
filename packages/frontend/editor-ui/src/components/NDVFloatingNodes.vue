@@ -76,18 +76,18 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 const connectedNodes = computed<
 	Record<FloatingNodePosition, Array<{ node: INodeUi; nodeType: INodeTypeDescription }>>
 >(() => {
-	const workflow = workflowsStore.getCurrentWorkflow();
+	const workflowObject = workflowsStore.workflowObject;
 	const rootName = props.rootNode.name;
 
 	return {
 		[FloatingNodePosition.top]: getINodesFromNames(
-			workflow.getChildNodes(rootName, 'ALL_NON_MAIN'),
+			workflowObject.getChildNodes(rootName, 'ALL_NON_MAIN'),
 		),
 		[FloatingNodePosition.right]: getINodesFromNames(
-			workflow.getChildNodes(rootName, NodeConnectionTypes.Main, 1),
+			workflowObject.getChildNodes(rootName, NodeConnectionTypes.Main, 1),
 		).reverse(),
 		[FloatingNodePosition.left]: getINodesFromNames(
-			workflow.getParentNodes(rootName, NodeConnectionTypes.Main, 1),
+			workflowObject.getParentNodes(rootName, NodeConnectionTypes.Main, 1),
 		).reverse(),
 	};
 });
@@ -163,9 +163,6 @@ defineExpose({
 	z-index: 10;
 	pointer-events: none;
 }
-.floatingNodes {
-	right: 0;
-}
 
 .nodesList {
 	list-style: none;
@@ -189,9 +186,11 @@ defineExpose({
 	}
 	&.outputSub {
 		top: 0;
+		transform: translateY(-50%);
 	}
 	&.inputSub {
 		bottom: 0;
+		transform: translateY(50%);
 	}
 	&.outputMain,
 	&.inputMain {
@@ -200,22 +199,11 @@ defineExpose({
 	}
 	&.outputMain {
 		right: 0;
+		transform: translateX(50%);
 	}
 	&.inputMain {
 		left: 0;
-	}
-
-	&.outputMain {
-		transform: translateX(50%);
-	}
-	&.outputSub {
-		transform: translateY(-50%);
-	}
-	&.inputMain {
 		transform: translateX(-50%);
-	}
-	&.inputSub {
-		transform: translateY(50%);
 	}
 }
 .connectedNode {
@@ -241,6 +229,7 @@ defineExpose({
 		left: -15%;
 		z-index: -1;
 	}
+
 	.outputMain &,
 	.inputMain & {
 		border-radius: var(--border-radius-large);
@@ -248,6 +237,7 @@ defineExpose({
 		align-items: center;
 		justify-content: center;
 	}
+
 	.outputMain & {
 		&:hover {
 			transform: scale(1.2) translateX(-50%);
@@ -268,29 +258,15 @@ defineExpose({
 			transform: scale(1.2) translateY(-50%);
 		}
 	}
-}
 
-.connectedNode {
-	&::after {
-		display: none;
-	}
-	padding: var(--spacing-xs);
-	.v2 .outputMain & {
-		&:hover {
-			transform: scale(1.1);
+	// V2 styles override
+	.v2 & {
+		padding: var(--spacing-xs);
+
+		&::after {
+			display: none;
 		}
-	}
-	.v2 .outputSub & {
-		&:hover {
-			transform: scale(1.1);
-		}
-	}
-	.v2 .inputMain & {
-		&:hover {
-			transform: scale(1.1);
-		}
-	}
-	.v2 .inputSub & {
+
 		&:hover {
 			transform: scale(1.1);
 		}

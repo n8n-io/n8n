@@ -8,6 +8,7 @@ import {
 	type INode,
 	type INodeExecutionData,
 	type NodeTypeAndVersion,
+	CHAT_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 
 import { RespondToWebhook } from '../RespondToWebhook.node';
@@ -20,6 +21,78 @@ describe('RespondToWebhook Node', () => {
 		respondToWebhook = new RespondToWebhook();
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>({
 			helpers: { constructExecutionMetaData },
+		});
+	});
+
+	describe('chatTrigger response', () => {
+		it('should handle chatTrigger correctly when enabled and responseBody is an object', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
+			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.4 }));
+			mockExecuteFunctions.getParentNodes.mockReturnValue([
+				mock<NodeTypeAndVersion>({
+					type: CHAT_TRIGGER_NODE_TYPE,
+					disabled: false,
+					parameters: { options: { responseMode: 'responseNodes' } },
+				}),
+			]);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'respondWith') return 'json';
+				if (paramName === 'responseBody') return { message: 'Hello World' };
+				if (paramName === 'options') return {};
+			});
+			mockExecuteFunctions.putExecutionToWait.mockResolvedValue();
+
+			const result = await respondToWebhook.execute.call(mockExecuteFunctions);
+			expect(result).toEqual([[{ json: {}, sendMessage: 'Hello World' }]]);
+		});
+
+		it('should handle chatTrigger correctly when enabled and responseBody is not an object', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
+			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
+			mockExecuteFunctions.getParentNodes.mockReturnValue([
+				mock<NodeTypeAndVersion>({
+					type: CHAT_TRIGGER_NODE_TYPE,
+					disabled: false,
+					parameters: { options: { responseMode: 'responseNodes' } },
+				}),
+			]);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'respondWith') return 'text';
+				if (paramName === 'responseBody') return 'Just a string';
+				if (paramName === 'options') return {};
+			});
+			mockExecuteFunctions.putExecutionToWait.mockResolvedValue();
+
+			const result = await respondToWebhook.execute.call(mockExecuteFunctions);
+			expect(result).toEqual([[{ json: {}, sendMessage: '' }]]);
+		});
+
+		it('should not handle chatTrigger when disabled', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
+			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
+			mockExecuteFunctions.getParentNodes.mockReturnValue([
+				mock<NodeTypeAndVersion>({ type: CHAT_TRIGGER_NODE_TYPE, disabled: true }),
+			]);
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'respondWith') return 'json';
+				if (paramName === 'responseBody') return { message: 'Hello World' };
+				if (paramName === 'options') return {};
+			});
+			mockExecuteFunctions.sendResponse.mockReturnValue();
+
+			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
+			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalled();
+		});
+
+		it('should return input data onMessage call', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
+			const result = await respondToWebhook.onMessage(mockExecuteFunctions, {
+				json: { message: '' },
+			});
+			expect(result).toEqual([[{ json: { input: true } }]]);
 		});
 	});
 

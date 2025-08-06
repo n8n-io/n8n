@@ -75,7 +75,8 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		v-if="runDataProps"
 		v-bind="runDataProps"
 		:key="`run-data${pipWindow ? '-pip' : ''}`"
-		:workflow="logEntry.workflow"
+		:class="$style.component"
+		:workflow-object="logEntry.workflow"
 		:workflow-execution="logEntry.execution"
 		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
 		:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"
@@ -86,6 +87,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:disable-pin="true"
 		:disable-edit="true"
 		:disable-hover-highlight="true"
+		:disable-settings-hint="true"
 		:display-mode="displayMode"
 		:disable-ai-content="!isSubNodeLog(logEntry)"
 		:is-executing="isExecuting"
@@ -130,6 +132,10 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 </template>
 
 <style lang="scss" module>
+.component {
+	--color-run-data-background: var(--color-background-light);
+}
+
 .title {
 	text-transform: uppercase;
 	letter-spacing: 3px;

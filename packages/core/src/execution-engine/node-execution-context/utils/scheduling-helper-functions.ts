@@ -6,7 +6,6 @@ import { ScheduledTaskManager } from '../../scheduled-task-manager';
 export const getSchedulingFunctions = (workflow: Workflow): SchedulingFunctions => {
 	const scheduledTaskManager = Container.get(ScheduledTaskManager);
 	return {
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
+		registerCron: (cron, onTick) => scheduledTaskManager.registerCron(workflow, cron, onTick),
 	};
 };

@@ -8,7 +8,6 @@ exports[`InputPanel > should render 1`] = `
     data-v-2e5cd75c=""
   >
     <!--v-if-->
-    <!--v-if-->
     <div
       class="header"
       data-v-2e5cd75c=""
@@ -161,19 +160,24 @@ exports[`InputPanel > should render 1`] = `
       </div>
       <!--v-if-->
     </div>
-    <!--v-if-->
-    <!--v-if-->
-    <!--v-if-->
-    <!--v-if-->
-    <!--v-if-->
-    
-    
-    <!--v-if-->
+    <div
+      data-v-2e5cd75c=""
+    >
+      <!--v-if-->
+      <!--v-if-->
+      <!--v-if-->
+      <!--v-if-->
+      <!--v-if-->
+      
+      
+      <!--v-if-->
+    </div>
     <div
       class="dataContainer"
       data-test-id="ndv-data-container"
       data-v-2e5cd75c=""
     >
+      <!--v-if-->
       <!---->
     </div>
     <!--v-if-->

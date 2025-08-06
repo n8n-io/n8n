@@ -1,19 +1,37 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`sandboxHtmlResponse should always sandbox if forceSandbox is true 1`] = `
+"<iframe srcdoc="Hello World" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
+			allowtransparency="true"></iframe>"
+`;
+
 exports[`sandboxHtmlResponse should handle HTML with special characters 1`] = `
 "<iframe srcdoc="<p>Special characters: <>&amp;&quot;'</p>" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
 			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
 			allowtransparency="true"></iframe>"
 `;
 
-exports[`sandboxHtmlResponse should handle empty HTML 1`] = `
-"<iframe srcdoc="" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+exports[`sandboxHtmlResponse should replace ampersands and double quotes in HTML 1`] = `
+"<iframe srcdoc="<div class=&quot;test&quot;>Content &amp; more</div>" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
 			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
 			allowtransparency="true"></iframe>"
 `;
 
-exports[`sandboxHtmlResponse should replace ampersands and double quotes in HTML 1`] = `
-"<iframe srcdoc="<div class=&quot;test&quot;>Content &amp; more</div>" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+exports[`sandboxHtmlResponse should sandbox even with no <body> tag 1`] = `
+"<iframe srcdoc="<html><head><title>Test</title><script>alert(&quot;Hello&quot;)</script></head></html>" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
+			allowtransparency="true"></iframe>"
+`;
+
+exports[`sandboxHtmlResponse should sandbox when outside <body> and <head> tags 1`] = `
+"<iframe srcdoc="<html><head><title>Test</title></head><body></body><script>alert(&quot;Hello&quot;)</script></html>" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
+			allowtransparency="true"></iframe>"
+`;
+
+exports[`sandboxHtmlResponse should sandbox when outside <html> tag 1`] = `
+"<iframe srcdoc="<html><head><title>Test</title></head></html><script>alert(&quot;Hello&quot;)</script>" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
 			style="position:fixed; top:0; left:0; width:100vw; height:100vh; border:none; overflow:auto;"
 			allowtransparency="true"></iframe>"
 `;

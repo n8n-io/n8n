@@ -58,11 +58,20 @@ describe('shouldAssignExecuteMethod', () => {
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(true);
 	});
 
-	it('should return false when node has methods', () => {
+	it('should return false when node has methods and is not declarative', () => {
 		const nodeType = {
 			methods: {},
 		} as unknown as INodeType;
 
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(false);
+	});
+
+	it('should return true when node has methods but is declarative', () => {
+		const nodeType = {
+			description: { requestDefaults: {} }, // Declarative node
+			methods: {},
+		} as unknown as INodeType;
+
+		expect(shouldAssignExecuteMethod(nodeType)).toBe(true);
 	});
 });

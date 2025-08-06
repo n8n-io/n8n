@@ -12,7 +12,7 @@ import { useI18n } from '@n8n/i18n';
 import { nonExistingJsonPath, PiPWindowSymbol } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
-import { inject, computed } from 'vue';
+import { inject, computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { N8nIconButton } from '@n8n/design-system';
@@ -39,7 +39,7 @@ const props = withDefaults(
 	},
 );
 
-const pipWindow = inject(PiPWindowSymbol);
+const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
 const isInPiPWindow = computed(() => pipWindow?.value !== undefined);
 
 const ndvStore = useNDVStore();

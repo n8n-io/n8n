@@ -269,6 +269,7 @@ export class E2EController {
 	private async resetLogStreaming() {
 		for (const id in this.eventBus.destinations) {
 			await this.eventBus.removeDestination(id, false);
+			await this.eventBus.deleteDestination(id);
 		}
 	}
 

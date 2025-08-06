@@ -35,7 +35,7 @@ type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
 	runIndex: number;
-	workflow: Workflow;
+	workflowObject: Workflow;
 	pushRef: string;
 	activeNodeName: string;
 	currentNodeName?: string;
@@ -103,7 +103,7 @@ const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeN
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return props.workflow.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
+	return props.workflowObject.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
 });
 
 const hasRootNodeRun = computed(() => {
@@ -134,12 +134,12 @@ const isActiveNodeConfig = computed(() => {
 	let inputs = activeNodeType.value?.inputs ?? [];
 	let outputs = activeNodeType.value?.outputs ?? [];
 
-	if (props.workflow && activeNode.value) {
-		const node = props.workflow.getNode(activeNode.value.name);
+	if (props.workflowObject && activeNode.value) {
+		const node = props.workflowObject.getNode(activeNode.value.name);
 
 		if (node && activeNodeType.value) {
-			inputs = NodeHelpers.getNodeInputs(props.workflow, node, activeNodeType.value);
-			outputs = NodeHelpers.getNodeOutputs(props.workflow, node, activeNodeType.value);
+			inputs = NodeHelpers.getNodeInputs(props.workflowObject, node, activeNodeType.value);
+			outputs = NodeHelpers.getNodeOutputs(props.workflowObject, node, activeNodeType.value);
 		}
 	}
 
@@ -192,7 +192,7 @@ const isExecutingPrevious = computed(() => {
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return props.workflow.getParentNodesByDepth(rootNode.value);
+	return props.workflowObject.getParentNodesByDepth(rootNode.value);
 });
 
 const currentNode = computed(() => {
@@ -219,7 +219,7 @@ const parentNodes = computed(() => {
 		return [];
 	}
 
-	const parents = props.workflow
+	const parents = props.workflowObject
 		.getParentNodesByDepth(activeNode.value.name)
 		.filter((parent) => parent.name !== activeNode.value?.name);
 	return uniqBy(parents, (parent) => parent.name);
@@ -373,10 +373,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 <template>
 	<RunData
-		:class="$style.runData"
+		:class="[$style.runData, { [$style.runDataV2]: isNDVV2 }]"
 		:node="currentNode"
 		:nodes="isMappingMode ? rootNodesParents : parentNodes"
-		:workflow="workflow"
+		:workflow-object="workflowObject"
 		:run-index="isMappingMode ? 0 : runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="!mappedNode && canLinkRuns"
@@ -430,7 +430,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<InputNodeSelect
 				v-if="parentNodes.length && currentNodeName"
 				:model-value="currentNodeName"
-				:workflow="workflow"
+				:workflow="workflowObject"
 				:nodes="parentNodes"
 				@update:model-value="onInputNodeChange"
 			/>
@@ -444,7 +444,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<div :class="$style.mappedNode">
 				<InputNodeSelect
 					:model-value="mappedNode"
-					:workflow="workflow"
+					:workflow="workflowObject"
 					:nodes="rootNodesParents"
 					@update:model-value="onMappedNodeSelected"
 				/>
@@ -532,8 +532,23 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							</I18nT>
 						</N8nText>
 					</template>
-					<N8nTooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
-						<template #content>
+					<NodeExecuteButton
+						v-if="!readOnly"
+						type="secondary"
+						hide-icon
+						:transparent="true"
+						:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
+						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
+						class="mt-m"
+						telemetry-source="inputs"
+						data-test-id="execute-previous-node"
+						tooltip-placement="bottom"
+						@execute="onNodeExecute"
+					>
+						<template
+							v-if="showDraggableHint && showDraggableHintWithDelay"
+							#persistentTooltipContent
+						>
 							<div
 								v-n8n-html="
 									i18n.baseText('dataMapping.dragFromPreviousHint', {
@@ -542,18 +557,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								"
 							></div>
 						</template>
-						<NodeExecuteButton
-							type="secondary"
-							hide-icon
-							:transparent="true"
-							:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
-							:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
-							class="mt-m"
-							telemetry-source="inputs"
-							data-test-id="execute-previous-node"
-							@execute="onNodeExecute"
-						/>
-					</N8nTooltip>
+					</NodeExecuteButton>
 					<N8nText v-if="!readOnly" tag="div" size="small">
 						<I18nT keypath="ndv.input.noOutputData.hint" scope="global">
 							<template #info>
@@ -638,6 +642,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 <style lang="scss" module>
 .runData {
 	background-color: var(--color-run-data-background);
+}
+
+.runDataV2 {
+	background-color: var(--color-ndvv2-run-data-background);
 }
 
 .mappedNode {

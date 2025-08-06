@@ -7,6 +7,7 @@ import {
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	ExecutionCancelledError,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -31,6 +32,7 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
+import { JsonObject } from 'openid-client';
 
 export interface TestRunMetadata {
 	testRunId: string;
@@ -360,21 +362,32 @@ export class TestRunnerService {
 	/**
 	 * Get the evaluation set metrics nodes from a workflow.
 	 */
-	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
+	static getEvaluationNodes(
+		workflow: IWorkflowBase,
+		operation: 'setMetrics' | 'setOutputs' | 'setInputs',
+		{ isDefaultOperation }: { isDefaultOperation: boolean } = { isDefaultOperation: false },
+	) {
 		return workflow.nodes.filter(
-			(node) => node.type === EVALUATION_NODE_TYPE && node.parameters.operation === 'setMetrics',
+			(node) =>
+				node.type === EVALUATION_NODE_TYPE &&
+				node.disabled !== true &&
+				(node.parameters.operation === operation ||
+					(isDefaultOperation && node.parameters.operation === undefined)),
 		);
+	}
+
+	/**
+	 * Get the evaluation set metrics nodes from a workflow.
+	 */
+	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
+		return this.getEvaluationNodes(workflow, 'setMetrics');
 	}
 
 	/**
 	 * Get the evaluation set outputs nodes from a workflow.
 	 */
 	static getEvaluationSetOutputsNodes(workflow: IWorkflowBase) {
-		return workflow.nodes.filter(
-			(node) =>
-				node.type === EVALUATION_NODE_TYPE &&
-				(node.parameters.operation === 'setOutputs' || node.parameters.operation === undefined),
-		);
+		return this.getEvaluationNodes(workflow, 'setOutputs', { isDefaultOperation: true });
 	}
 
 	/**
@@ -392,13 +405,29 @@ export class TestRunnerService {
 			});
 		}
 
-		const triggerOutput = triggerOutputData?.data?.main?.[0];
+		const triggerOutput = triggerOutputData?.data?.[NodeConnectionTypes.Main]?.[0];
 
 		if (!triggerOutput || triggerOutput.length === 0) {
 			throw new TestRunError('TEST_CASES_NOT_FOUND');
 		}
 
 		return triggerOutput;
+	}
+
+	private getEvaluationData(
+		execution: IRun,
+		workflow: IWorkflowBase,
+		operation: 'setInputs' | 'setOutputs',
+	): JsonObject {
+		const evalNodes = TestRunnerService.getEvaluationNodes(workflow, operation);
+
+		return evalNodes.reduce<JsonObject>((accu, node) => {
+			const runs = execution.data.resultData.runData[node.name];
+			const data = runs?.[0]?.data?.[NodeConnectionTypes.Main]?.[0]?.[0]?.evaluationData ?? {};
+
+			Object.assign(accu, data);
+			return accu;
+		}, {});
 	}
 
 	/**
@@ -594,6 +623,9 @@ export class TestRunnerService {
 							...addedPredefinedMetrics,
 						};
 
+						const inputs = this.getEvaluationData(testCaseExecution, workflow, 'setInputs');
+						const outputs = this.getEvaluationData(testCaseExecution, workflow, 'setOutputs');
+
 						this.logger.debug(
 							'Test case metrics extracted (user-defined)',
 							addedUserDefinedMetrics,
@@ -609,6 +641,8 @@ export class TestRunnerService {
 							completedAt,
 							status: 'success',
 							metrics: combinedMetrics,
+							inputs,
+							outputs,
 						});
 					}
 				} catch (e) {

@@ -328,6 +328,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
@@ -390,6 +391,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>

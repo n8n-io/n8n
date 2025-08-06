@@ -24,10 +24,10 @@ import {
 	isResourceLocatorValue,
 } from 'n8n-workflow';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useDebounce } from '@/composables/useDebounce';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useThrottleFn } from '@vueuse/core';
 import { useStyles } from '@/composables/useStyles';
 import { useExecutionData } from '@/composables/useExecutionData';
@@ -53,10 +53,10 @@ const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
+const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const deviceSupport = useDeviceSupport();
-const { debounce } = useDebounce();
 const styles = useStyles();
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
@@ -65,6 +65,8 @@ const resolvedParameter = computed(() =>
 		? focusedNodeParameter.value
 		: undefined,
 );
+
+const inputValue = ref<string>('');
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
 const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
@@ -114,7 +116,17 @@ const isExecutable = computed(() => {
 
 const node = computed(() => resolvedParameter.value?.node);
 
-const { hasNodeRun } = useExecutionData({ node });
+const { workflowRunData } = useExecutionData({ node });
+
+const hasNodeRun = computed(() => {
+	if (!node.value) return true;
+	const parentNode = workflowsStore.workflowObject.getParentNodes(node.value.name, 'main', 1)[0];
+	return Boolean(
+		parentNode &&
+			workflowRunData.value &&
+			Object.prototype.hasOwnProperty.bind(workflowRunData.value)(parentNode),
+	);
+});
 
 function getTypeOption<T>(optionName: string): T | undefined {
 	return resolvedParameter.value
@@ -262,7 +274,26 @@ function optionSelected(command: string) {
 	}
 }
 
-const valueChangedDebounced = debounce(valueChanged, { debounceTime: 0 });
+function closeFocusPanel() {
+	telemetry.track('User closed focus panel', {
+		source: 'closeIcon',
+		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+	});
+
+	focusPanelStore.closeFocusPanel();
+}
+
+function onExecute() {
+	telemetry.track(
+		'User executed node from focus panel',
+		focusPanelStore.focusedNodeParametersInTelemetryFormat[0],
+	);
+}
+
+function onInputChange(val: string) {
+	inputValue.value = val;
+	valueChanged(val);
+}
 
 // Wait for editor to mount before focusing
 function focusWithDelay() {
@@ -300,6 +331,19 @@ watch(
 			registerKeyboardListener();
 		} else {
 			unregisterKeyboardListener();
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	() => resolvedParameter.value,
+	(newValue) => {
+		if (newValue) {
+			const value = newValue.value;
+			if (typeof value === 'string' && value !== inputValue.value) {
+				inputValue.value = value;
+			}
 		}
 	},
 	{ immediate: true },
@@ -343,13 +387,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								:square="true"
 								:hide-label="true"
 								telemetry-source="focus"
-							></NodeExecuteButton>
+								@execute="onExecute"
+							/>
 							<N8nIcon
 								:class="$style.closeButton"
 								icon="x"
 								color="text-base"
 								size="xlarge"
-								@click="focusPanelStore.closeFocusPanel"
+								@click="closeFocusPanel"
 							/>
 						</div>
 					</div>
@@ -383,83 +428,86 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 							<ExpressionEditorModalInput
 								v-else-if="expressionModeEnabled"
 								ref="inputField"
-								:model-value="resolvedParameter.value"
+								v-model="inputValue"
 								:class="$style.editor"
 								:is-read-only="isReadOnly"
 								:path="resolvedParameter.parameterPath"
 								data-test-id="expression-modal-input"
 								:target-node-parameter-context="targetNodeParameterContext"
-								@change="valueChangedDebounced($event.value)"
+								@change="onInputChange($event.value)"
 							/>
 							<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
 								<CodeNodeEditor
 									v-if="editorType === 'codeNodeEditor'"
 									:id="resolvedParameter.parameterPath"
 									ref="inputField"
+									v-model="inputValue"
 									:class="$style.heightFull"
 									:mode="codeEditorMode"
-									:model-value="resolvedParameter.value"
 									:default-value="resolvedParameter.parameter.default"
 									:language="editorLanguage"
 									:is-read-only="isReadOnly"
 									:target-node-parameter-context="targetNodeParameterContext"
 									fill-parent
 									:disable-ask-ai="true"
-									@update:model-value="valueChangedDebounced" />
+									@update:model-value="onInputChange" />
 								<HtmlEditor
 									v-else-if="editorType === 'htmlEditor'"
 									ref="inputField"
-									:model-value="resolvedParameter.value"
+									v-model="inputValue"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									:disable-expression-coloring="!isHtmlNode"
 									:disable-expression-completions="!isHtmlNode"
 									fullscreen
-									@update:model-value="valueChangedDebounced" />
+									:target-node-parameter-context="targetNodeParameterContext"
+									@update:model-value="onInputChange" />
 								<CssEditor
 									v-else-if="editorType === 'cssEditor'"
 									ref="inputField"
-									:model-value="resolvedParameter.value"
+									v-model="inputValue"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
-									@update:model-value="valueChangedDebounced" />
+									:target-node-parameter-context="targetNodeParameterContext"
+									@update:model-value="onInputChange" />
 								<SqlEditor
 									v-else-if="editorType === 'sqlEditor'"
 									ref="inputField"
-									:model-value="resolvedParameter.value"
+									v-model="inputValue"
 									:dialect="getTypeOption('sqlDialect')"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
-									@update:model-value="valueChangedDebounced" />
+									:target-node-parameter-context="targetNodeParameterContext"
+									@update:model-value="onInputChange" />
 								<JsEditor
 									v-else-if="editorType === 'jsEditor'"
 									ref="inputField"
-									:model-value="resolvedParameter.value"
+									v-model="inputValue"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									:posthog-capture="shouldCaptureForPosthog"
 									fill-parent
-									@update:model-value="valueChangedDebounced" />
+									@update:model-value="onInputChange" />
 								<JsonEditor
 									v-else-if="resolvedParameter.parameter.type === 'json'"
 									ref="inputField"
-									:model-value="resolvedParameter.value"
+									v-model="inputValue"
 									:is-read-only="isReadOnly"
 									:rows="editorRows"
 									fullscreen
 									fill-parent
-									@update:model-value="valueChangedDebounced" />
+									@update:model-value="onInputChange" />
 								<N8nInput
 									v-else
 									ref="inputField"
-									:model-value="resolvedParameter.value"
+									v-model="inputValue"
 									:class="$style.editor"
 									:readonly="isReadOnly"
 									type="textarea"
 									resize="none"
-									@update:model-value="valueChangedDebounced"
+									@update:model-value="onInputChange"
 								></N8nInput
 							></template>
 						</div>

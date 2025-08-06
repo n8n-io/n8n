@@ -2,6 +2,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-for-in-array */
 import {
+	getNodeByName,
+	getConnectedNodes,
+	getChildNodes,
+	getParentNodes,
+	mapConnectionsByDestination,
+} from './common';
+
+import {
 	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	NODES_WITH_RENAMABLE_CONTENT,
 	NODES_WITH_RENAMABLE_FORM_HTML_CONTENT,
@@ -9,7 +17,7 @@ import {
 	STARTING_NODE_TYPES,
 } from './constants';
 import { UserError } from './errors';
-import { ApplicationError } from './errors/application.error';
+import { ApplicationError } from '@n8n/errors';
 import { Expression } from './expression';
 import { getGlobalState } from './global-state';
 import type {
@@ -28,7 +36,6 @@ import type {
 	INodeConnection,
 	IObservableObject,
 	NodeParameterValueType,
-	INodeOutputConfiguration,
 	NodeConnectionType,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
@@ -60,9 +67,9 @@ export class Workflow {
 
 	nodes: INodes = {};
 
-	connectionsBySourceNode: IConnections;
+	connectionsBySourceNode: IConnections = {};
 
-	connectionsByDestinationNode: IConnections;
+	connectionsByDestinationNode: IConnections = {};
 
 	nodeTypes: INodeTypes;
 
@@ -70,7 +77,7 @@ export class Workflow {
 
 	active: boolean;
 
-	settings: IWorkflowSettings;
+	settings: IWorkflowSettings = {};
 
 	readonly timezone: string;
 
@@ -86,15 +93,9 @@ export class Workflow {
 		this.id = parameters.id as string; // @tech_debt Ensure this is not optional
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
-		this.pinData = parameters.pinData;
 
-		// Save nodes in workflow as object to be able to get the
-		// nodes easily by its name.
-		// Also directly add the default values of the node type.
 		let nodeType: INodeType | undefined;
 		for (const node of parameters.nodes) {
-			this.nodes[node.name] = node;
-
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType === undefined) {
@@ -120,12 +121,11 @@ export class Workflow {
 			);
 			node.parameters = nodeParameters !== null ? nodeParameters : {};
 		}
-		this.connectionsBySourceNode = parameters.connections;
 
-		// Save also the connections by the destination nodes
-		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
-			parameters.connections,
-		);
+		this.setNodes(parameters.nodes);
+		this.setConnections(parameters.connections);
+		this.setPinData(parameters.pinData);
+		this.setSettings(parameters.settings ?? {});
 
 		this.active = parameters.active || false;
 
@@ -133,10 +133,30 @@ export class Workflow {
 			ignoreEmptyOnFirstChild: true,
 		});
 
-		this.settings = parameters.settings || {};
 		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
 
 		this.expression = new Expression(this);
+	}
+
+	// Save nodes in workflow as object to be able to get the nodes easily by their name.
+	setNodes(nodes: INode[]) {
+		this.nodes = {};
+		for (const node of nodes) {
+			this.nodes[node.name] = node;
+		}
+	}
+
+	setConnections(connections: IConnections) {
+		this.connectionsBySourceNode = connections;
+		this.connectionsByDestinationNode = mapConnectionsByDestination(this.connectionsBySourceNode);
+	}
+
+	setPinData(pinData: IPinData | undefined) {
+		this.pinData = pinData;
+	}
+
+	setSettings(settings: IWorkflowSettings) {
+		this.settings = settings;
 	}
 
 	overrideStaticData(staticData?: IDataObject) {
@@ -146,11 +166,6 @@ export class Workflow {
 		this.staticData.__dataChanged = true;
 	}
 
-	/**
-	 * The default connections are by source node. This function rewrites them by destination nodes
-	 * to easily find parent nodes.
-	 *
-	 */
 	static getConnectionsByDestination(connections: IConnections): IConnections {
 		const returnConnection: IConnections = {};
 
@@ -288,11 +303,7 @@ export class Workflow {
 	 * @param {string} nodeName Name of the node to return
 	 */
 	getNode(nodeName: string): INode | null {
-		if (this.nodes.hasOwnProperty(nodeName)) {
-			return this.nodes[nodeName];
-		}
-
-		return null;
+		return getNodeByName(this.nodes, nodeName);
 	}
 
 	/**
@@ -475,11 +486,6 @@ export class Workflow {
 				}
 			}
 		}
-
-		// Use the updated connections to create updated connections by destination nodes
-		this.connectionsByDestinationNode = Workflow.getConnectionsByDestination(
-			this.connectionsBySourceNode,
-		);
 	}
 
 	/**
@@ -576,7 +582,7 @@ export class Workflow {
 		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
 	): string[] {
-		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
+		return getChildNodes(this.connectionsBySourceNode, nodeName, type, depth);
 	}
 
 	/**
@@ -590,7 +596,7 @@ export class Workflow {
 		type: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 		depth = -1,
 	): string[] {
-		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
+		return getParentNodes(this.connectionsByDestinationNode, nodeName, type, depth);
 	}
 
 	/**
@@ -607,87 +613,7 @@ export class Workflow {
 		depth = -1,
 		checkedNodesIncoming?: string[],
 	): string[] {
-		depth = depth === -1 ? -1 : depth;
-		const newDepth = depth === -1 ? depth : depth - 1;
-		if (depth === 0) {
-			// Reached max depth
-			return [];
-		}
-
-		if (!connections.hasOwnProperty(nodeName)) {
-			// Node does not have incoming connections
-			return [];
-		}
-
-		let types: NodeConnectionType[];
-		if (connectionType === 'ALL') {
-			types = Object.keys(connections[nodeName]) as NodeConnectionType[];
-		} else if (connectionType === 'ALL_NON_MAIN') {
-			types = Object.keys(connections[nodeName]).filter(
-				(type) => type !== 'main',
-			) as NodeConnectionType[];
-		} else {
-			types = [connectionType];
-		}
-
-		let addNodes: string[];
-		let nodeIndex: number;
-		let i: number;
-		let parentNodeName: string;
-		const returnNodes: string[] = [];
-
-		types.forEach((type) => {
-			if (!connections[nodeName].hasOwnProperty(type)) {
-				// Node does not have incoming connections of given type
-				return;
-			}
-
-			const checkedNodes = checkedNodesIncoming ? [...checkedNodesIncoming] : [];
-
-			if (checkedNodes.includes(nodeName)) {
-				// Node got checked already before
-				return;
-			}
-
-			checkedNodes.push(nodeName);
-
-			connections[nodeName][type].forEach((connectionsByIndex) => {
-				connectionsByIndex?.forEach((connection) => {
-					if (checkedNodes.includes(connection.node)) {
-						// Node got checked already before
-						return;
-					}
-
-					returnNodes.unshift(connection.node);
-
-					addNodes = this.getConnectedNodes(
-						connections,
-						connection.node,
-						connectionType,
-						newDepth,
-						checkedNodes,
-					);
-
-					for (i = addNodes.length; i--; i > 0) {
-						// Because nodes can have multiple parents it is possible that
-						// parts of the tree is parent of both and to not add nodes
-						// twice check first if they already got added before.
-						parentNodeName = addNodes[i];
-						nodeIndex = returnNodes.indexOf(parentNodeName);
-
-						if (nodeIndex !== -1) {
-							// Node got found before so remove it from current location
-							// that node-order stays correct
-							returnNodes.splice(nodeIndex, 1);
-						}
-
-						returnNodes.unshift(parentNodeName);
-					}
-				});
-			});
-		});
-
-		return returnNodes;
+		return getConnectedNodes(connections, nodeName, connectionType, depth, checkedNodesIncoming);
 	}
 
 	/**
@@ -762,40 +688,39 @@ export class Workflow {
 		return returnConns;
 	}
 
-	getParentMainInputNode(node: INode): INode {
-		if (node) {
-			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
+	getParentMainInputNode(
+		node: INode | null | undefined,
+		visitedNodes: Set<string> = new Set(),
+	): INode | null | undefined {
+		if (!node) return node;
 
-			if (
-				outputs.find(
-					(output) =>
-						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionTypes.Main,
-				)
-			) {
-				// Get the first node which is connected to a non-main output
-				const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
-					const parentNodes = this.getChildNodes(
-						node.name,
-						(outputName as INodeOutputConfiguration)?.type ?? outputName,
-					);
-					if (parentNodes.length > 0) {
-						acc.push(...parentNodes);
+		// Prevent infinite recursion by tracking visited nodes
+		if (visitedNodes.has(node.name)) {
+			return node;
+		}
+		visitedNodes.add(node.name);
+
+		const nodeConnections = this.connectionsBySourceNode[node.name];
+		if (!nodeConnections) {
+			return node;
+		}
+
+		// Get non-main connection types that this node connects TO (outgoing connections)
+		const nonMainConnectionTypes = Object.keys(nodeConnections).filter(
+			(type) => type !== NodeConnectionTypes.Main,
+		);
+
+		for (const connectionType of nonMainConnectionTypes) {
+			const connections = nodeConnections[connectionType] ?? [];
+			for (const connectionGroup of connections) {
+				for (const connection of connectionGroup ?? []) {
+					if (connection?.node) {
+						const returnNode = this.getNode(connection.node);
+						if (!returnNode) {
+							throw new ApplicationError(`Node "${connection.node}" not found`);
+						}
+						return this.getParentMainInputNode(returnNode, visitedNodes);
 					}
-					return acc;
-				}, [] as string[]);
-
-				if (nonMainNodesConnected.length) {
-					const returnNode = this.getNode(nonMainNodesConnected[0]);
-					if (returnNode === null) {
-						// This should theoretically never happen as the node is connected
-						// but who knows and it makes TS happy
-						throw new ApplicationError(`Node "${nonMainNodesConnected[0]}" not found`);
-					}
-
-					// The chain of non-main nodes is potentially not finished yet so
-					// keep on going
-					return this.getParentMainInputNode(returnNode);
 				}
 			}
 		}
@@ -1018,6 +943,17 @@ export class Workflow {
 	hasPath(fromNodeName: string, toNodeName: string, maxDepth = 50): boolean {
 		if (fromNodeName === toNodeName) return true;
 
+		// Get connection types that actually exist in this workflow
+		// We need both source and destination connection types for bidirectional search
+		const connectionTypes = new Set<NodeConnectionType>();
+		for (const nodeConnections of Object.values(this.connectionsBySourceNode).concat(
+			Object.values(this.connectionsByDestinationNode),
+		)) {
+			for (const type of Object.keys(nodeConnections)) {
+				connectionTypes.add(type as NodeConnectionType);
+			}
+		}
+
 		const visited = new Set<string>();
 		const queue: Array<{ nodeName: string; depth: number }> = [
 			{ nodeName: fromNodeName, depth: 0 },
@@ -1032,16 +968,7 @@ export class Workflow {
 
 			visited.add(nodeName);
 
-			// Check all connection types for this node
-			const allConnectionTypes = [
-				NodeConnectionTypes.Main,
-				NodeConnectionTypes.AiTool,
-				NodeConnectionTypes.AiMemory,
-				NodeConnectionTypes.AiDocument,
-				NodeConnectionTypes.AiVectorStore,
-			];
-
-			for (const connectionType of allConnectionTypes) {
+			for (const connectionType of connectionTypes) {
 				// Get children (forward direction)
 				const children = this.getChildNodes(nodeName, connectionType);
 				for (const childName of children) {
