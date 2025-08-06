@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const dataStoreTableName = 'data_store_entity';
 const dataStoreColumnTableName = 'data_store_column_entity';
 
-export class CreateDataStoreTables1747814180618 implements ReversibleMigration {
+export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(dataStoreTableName)
 			.withColumns(
