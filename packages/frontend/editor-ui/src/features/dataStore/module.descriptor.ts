@@ -1,6 +1,7 @@
 import { useI18n } from '@n8n/i18n';
 import { type FrontendModuleDescription } from '@/moduleInitializer/module.types';
 import {
+	ADD_DATA_STORE_MODAL_KEY,
 	DATA_STORE_DETAILS,
 	DATA_STORE_VIEW,
 	PROJECT_DATA_STORES,
@@ -16,6 +17,13 @@ export const DataStoreModule: FrontendModuleDescription = {
 	name: 'Data Store',
 	description: 'Manage and store data efficiently with the Data Store module.',
 	icon: 'database',
+	modals: [
+		{
+			key: ADD_DATA_STORE_MODAL_KEY,
+			component: async () => await import('./components/AddDataStoreModal.vue'),
+			initialState: { open: false },
+		},
+	],
 	routes: [
 		{
 			name: DATA_STORE_VIEW,

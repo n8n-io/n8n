@@ -160,6 +160,26 @@ describe('isFilePathBlocked', () => {
 		);
 		expect(await isFilePathBlocked(allowedPath)).toBe(true);
 	});
+
+	it('should handle non-existent file when it is allowed', async () => {
+		const filePath = '/non/existent/file';
+		const error = new Error('ENOENT');
+		// @ts-expect-error undefined property
+		error.code = 'ENOENT';
+		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
+		expect(await isFilePathBlocked(filePath)).toBe(false);
+	});
+
+	it('should handle non-existent file when it is not allowed', async () => {
+		const filePath = '/non/existent/file';
+		const allowedPath = '/some/allowed/path';
+		process.env[RESTRICT_FILE_ACCESS_TO] = allowedPath;
+		const error = new Error('ENOENT');
+		// @ts-expect-error undefined property
+		error.code = 'ENOENT';
+		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
+		expect(await isFilePathBlocked(filePath)).toBe(true);
+	});
 });
 
 describe('getFileSystemHelperFunctions', () => {

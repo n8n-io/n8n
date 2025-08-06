@@ -14,3 +14,9 @@ pre-commit:
       skip:
         - merge
         - rebase
+    styles_check:
+      glob: 'packages/**/*.{scss,sass,vue}'
+      run: pnpm lint:styles:fix
+      skip:
+        - merge
+        - rebase
