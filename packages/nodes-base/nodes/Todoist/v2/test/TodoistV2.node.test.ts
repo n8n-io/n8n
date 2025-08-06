@@ -301,6 +301,10 @@ describe('Execute TodoistV2 Node', () => {
 		todoistNock.post('/sync/v9/quick/add').reply(200, quickAddTaskData);
 	});
 
+	afterEach(() => {
+		nock.cleanAll();
+	});
+
 	const testData: WorkflowTestData = {
 		description: 'Execute operations',
 		input: {
