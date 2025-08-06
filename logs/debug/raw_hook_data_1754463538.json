@@ -1,0 +1,12 @@
+{
+  "session_id": "ca6afdaa-8c8b-42eb-a7fb-a037c867a3a3",
+  "transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/ca6afdaa-8c8b-42eb-a7fb-a037c867a3a3.jsonl",
+  "cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Task",
+  "tool_input": {
+    "description": "Run coverage analysis",
+    "prompt": "Run test coverage analysis for the @n8n/chat package to identify specific untested code paths. Tasks:\n\n1. Navigate to packages/@n8n/chat/ directory\n2. Run the test suite with coverage reporting (try npm run test:coverage, npm test -- --coverage, or vitest --coverage)\n3. Analyze the coverage report to identify:\n   - Current coverage percentages (statements, branches, functions, lines)\n   - Specific files with low coverage\n   - Untested code paths and functions\n   - Critical areas that need immediate attention\n4. Generate a detailed coverage report showing exactly what needs to be tested\n\nProvide specific data on:\n- Current coverage statistics\n- Files with coverage below 80%\n- Specific functions/methods that are untested\n- Code paths that need edge case testing",
+    "subagent_type": "general-purpose"
+  }
+}

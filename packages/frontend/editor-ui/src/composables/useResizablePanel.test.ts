@@ -3,6 +3,15 @@ import { useResizablePanel } from './useResizablePanel';
 import { v4 as uuid } from 'uuid';
 import { nextTick } from 'vue';
 
+// Ensure ResizeObserver is mocked properly before any imports
+const mockResizeObserver = vi.fn().mockImplementation(() => ({
+	disconnect: vi.fn(),
+	observe: vi.fn(),
+	unobserve: vi.fn(),
+}));
+
+vi.stubGlobal('ResizeObserver', mockResizeObserver);
+
 describe(useResizablePanel, () => {
 	let localStorageKey = uuid();
 	let container = document.createElement('div');

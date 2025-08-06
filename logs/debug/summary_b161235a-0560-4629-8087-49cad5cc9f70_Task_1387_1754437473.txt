@@ -1,0 +1,13 @@
+Timeout Debug Summary for Agent b161235a-0560-4629-8087-49cad5cc9f70_Task_1387
+==========================================
+
+Timestamp: 2025-08-05T18:44:33.593946
+Elapsed Time: 65m 58.4s
+Timeout Limit: 120s
+Timeout Exceeded: True
+Hook Type: SubagentStop
+Tool Name: unknown
+Heartbeat Age: 0m 0.0s
+Heartbeat Timeout: False
+
+Full report: logs/debug/debug_report_b161235a-0560-4629-8087-49cad5cc9f70_Task_1387_1754437473.json

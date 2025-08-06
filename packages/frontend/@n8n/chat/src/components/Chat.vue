@@ -32,10 +32,14 @@ async function initialize() {
 	if (!chatStore.loadPreviousSession) {
 		return;
 	}
-	await chatStore.loadPreviousSession();
-	void nextTick(() => {
-		chatEventBus.emit('scrollToBottom');
-	});
+	try {
+		await chatStore.loadPreviousSession();
+		void nextTick(() => {
+			chatEventBus.emit('scrollToBottom');
+		});
+	} catch (error) {
+		console.error('Failed to load previous session:', error);
+	}
 }
 
 function closeChat() {

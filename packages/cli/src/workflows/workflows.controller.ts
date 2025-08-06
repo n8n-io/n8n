@@ -61,6 +61,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
@@ -2865,7 +2866,7 @@ export class WorkflowsController {
 	@Patch('/search/saved/:id')
 	async updateSavedSearch(
 		req: AuthenticatedRequest<{ id: string }, {}, UpdateSavedSearchDto>,
-	): Promise<SavedSearchDto> {
+	): Promise<SavedSearchResponseDto> {
 		this.logger.debug('Update saved search requested', {
 			userId: req.user.id,
 			savedSearchId: req.params.id,
@@ -2947,17 +2948,37 @@ export class WorkflowsController {
 
 		try {
 			// Get the saved search
-			const savedSearch = await this.savedSearchService.getSavedSearchById(req.params.id, req.user);
+			const savedSearch = await this.savedSearchService.getSavedSearch(req.params.id, req.user);
 
 			// Execute the search using the saved query
 			const result = await this.workflowSearchService.searchWorkflows(savedSearch.query, req.user);
 
 			// Update execution statistics
-			await this.savedSearchService.executeSavedSearch(
-				req.params.id,
-				req.user,
-				result.results.length,
-			);
+			await this.savedSearchService.updateExecutionStats(req.params.id, req.user, {
+				resultsCount: result.results.length,
+			});
+
+			// Record search analytics for saved search execution
+			try {
+				const { SearchAnalyticsService } = await import('@/services/search-analytics.service');
+				const searchAnalyticsService = Container.get(SearchAnalyticsService);
+				await searchAnalyticsService.recordSearchQuery({
+					query: `saved_search:${savedSearch.name}`, // Mark as saved search execution
+					userId: req.user.id,
+					searchTimeMs: result.metadata.searchTimeMs,
+					resultCount: result.results.length,
+					searchMethod: result.metadata.searchEngine?.used ? 'search_engine' : 'database',
+					filters: { saved_search_id: req.params.id, ...result.query.appliedFilters },
+					userAgent: req.headers['user-agent'],
+					sessionId: req.sessionID,
+				});
+			} catch (analyticsError) {
+				// Don't fail the search if analytics recording fails
+				this.logger.warn('Failed to record saved search analytics', {
+					savedSearchId: req.params.id,
+					error: analyticsError instanceof Error ? analyticsError.message : String(analyticsError),
+				});
+			}
 
 			this.logger.debug('Saved search executed successfully', {
 				userId: req.user.id,
@@ -2979,6 +3000,37 @@ export class WorkflowsController {
 
 			throw new ApplicationError(
 				`Failed to execute saved search: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	@Get('/search/saved/stats')
+	async getSavedSearchStats(req: AuthenticatedRequest): Promise<SavedSearchStatsDto> {
+		this.logger.debug('Get saved search stats requested', {
+			userId: req.user.id,
+		});
+
+		try {
+			const result = await this.savedSearchService.getSavedSearchStats(req.user);
+
+			this.logger.debug('Saved search stats retrieved successfully', {
+				userId: req.user.id,
+				totalSavedSearches: result.totalSavedSearches,
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error('Get saved search stats failed', {
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			if (error instanceof ApplicationError) {
+				throw error;
+			}
+
+			throw new ApplicationError(
+				`Failed to get saved search stats: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}

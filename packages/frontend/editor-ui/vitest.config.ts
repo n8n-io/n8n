@@ -1,5 +1,9 @@
 import { mergeConfig } from 'vite';
 import { createVitestConfig } from '@n8n/vitest-config/frontend';
+import { resolve } from 'path';
+import vue from '@vitejs/plugin-vue';
+
+const packagesDir = resolve(__dirname, '..', '..');
 
 export default mergeConfig(
 	createVitestConfig({
@@ -98,5 +102,44 @@ export default mergeConfig(
 		unstubEnvs: true,
 		unstubGlobals: true,
 	}),
-	{},
+	{
+		plugins: [vue()],
+		resolve: {
+			alias: [
+				{ find: '@', replacement: resolve(__dirname, 'src') },
+				{
+					find: /^@n8n\/chat(.+)$/,
+					replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
+				},
+				{
+					find: /^@n8n\/api-requests(.+)$/,
+					replacement: resolve(packagesDir, 'frontend', '@n8n', 'api-requests', 'src$1'),
+				},
+				{
+					find: /^@n8n\/composables(.+)$/,
+					replacement: resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
+				},
+				{
+					find: /^@n8n\/constants(.+)$/,
+					replacement: resolve(packagesDir, '@n8n', 'constants', 'src$1'),
+				},
+				{
+					find: /^@n8n\/design-system(.+)$/,
+					replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
+				},
+				{
+					find: /^@n8n\/i18n(.+)$/,
+					replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src$1'),
+				},
+				{
+					find: /^@n8n\/stores(.+)$/,
+					replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
+				},
+				{
+					find: /^@n8n\/utils(.+)$/,
+					replacement: resolve(packagesDir, '@n8n', 'utils', 'src$1'),
+				},
+			],
+		},
+	},
 );

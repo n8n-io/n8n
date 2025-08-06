@@ -8,13 +8,14 @@ process.env.TZ = 'UTC';
 
 configure({ testIdAttribute: 'data-test-id' });
 
-window.ResizeObserver =
-	window.ResizeObserver ||
-	vi.fn().mockImplementation(() => ({
-		disconnect: vi.fn(),
-		observe: vi.fn(),
-		unobserve: vi.fn(),
-	}));
+// Mock ResizeObserver properly
+global.ResizeObserver = vi.fn().mockImplementation(() => ({
+	disconnect: vi.fn(),
+	observe: vi.fn(),
+	unobserve: vi.fn(),
+}));
+
+window.ResizeObserver = global.ResizeObserver;
 
 Element.prototype.scrollIntoView = vi.fn();
 
