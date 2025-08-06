@@ -190,7 +190,10 @@ const onBlur = (): void => {
 						<ParameterInputHint
 							v-if="resolvedExpressionString"
 							data-test-id="parameter-expression-preview-value"
-							:class="$style.hint"
+							:class="{
+								[$style.hint]: true,
+								[$style.optionsPadding]: breakpoint !== 'default' && !isReadOnly,
+							}"
 							:highlight="highlightHint"
 							:hint="hint"
 							single-line
@@ -247,6 +250,10 @@ const onBlur = (): void => {
 		bottom: calc(var(--spacing-s) * -1);
 		left: 0;
 		right: 0;
+	}
+
+	.optionsPadding {
+		width: calc(100% - 140px);
 	}
 }
 

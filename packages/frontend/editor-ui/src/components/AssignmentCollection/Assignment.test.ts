@@ -1,3 +1,4 @@
+import { computed, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -6,6 +7,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
 import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
+import * as useResolvedExpression from '@/composables/useResolvedExpression';
 
 const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
@@ -68,5 +70,28 @@ describe('Assignment.vue', () => {
 
 		// Check if the parameter input hint is not displayed
 		expect(() => getByTestId('parameter-input-hint')).toThrow();
+	});
+
+	it('should shorten the expression preview hint if options are on the bottom', () => {
+		vi.spyOn(useResolvedExpression, 'useResolvedExpression').mockReturnValueOnce({
+			resolvedExpressionString: ref('foo'),
+			resolvedExpression: ref(null),
+			isExpression: computed(() => true),
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				path: 'parameters.fields.0',
+				modelValue: {
+					name: 'test',
+					type: 'string',
+					value: '={{$json.foo}}',
+				},
+				issues: [],
+			},
+		});
+
+		expect(
+			getByTestId('parameter-expression-preview-value').classList.contains('optionsPadding'),
+		).toBe(true);
 	});
 });
