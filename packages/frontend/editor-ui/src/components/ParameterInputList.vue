@@ -415,13 +415,13 @@ function isCalloutVisible(parameter: INodeProperties): boolean {
 	return true;
 }
 
-async function onCalloutAction(action: CalloutActionType) {
+function onCalloutAction(action: CalloutActionType) {
 	if (action === 'openRagStarterTemplate') {
-		await openRagStarterTemplate(activeNode.value?.type ?? 'no active node');
+		openRagStarterTemplate(activeNode.value?.type ?? 'no active node');
 	}
 }
 
-const onCalloutDismiss = async (parameter: INodeProperties) => {
+async function onCalloutDismiss(parameter: INodeProperties) {
 	const dismissConfirmed = await message.confirm(
 		i18n.baseText('parameterInputList.callout.dismiss.confirm.text'),
 		{
@@ -440,7 +440,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 	}
 
 	await dismissCallout(parameter.name);
-};
+}
 </script>
 
 <template>
