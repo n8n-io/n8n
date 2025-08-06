@@ -1,0 +1,20 @@
+{
+	"hook_event_name": "SubagentStop",
+	"hook_data_keys": ["session_id", "transcript_path", "cwd", "hook_event_name", "stop_hook_active"],
+	"extraction_details": [
+		{
+			"strategy": "1: SubagentStop_strategy",
+			"extracted_id": "6114be1c-256e-4556-8924-f6911bf4da0b",
+			"extracted_tool": "unknown",
+			"agent_id_before": "unknown",
+			"agent_id_after": "6114be1c-256e-4556-8924-f6911bf4da0b",
+			"tool_name_before": "unknown",
+			"tool_name_after": "unknown",
+			"success": true
+		}
+	],
+	"final_result": {
+		"agent_id": "6114be1c-256e-4556-8924-f6911bf4da0b",
+		"tool_name": "unknown"
+	}
+}

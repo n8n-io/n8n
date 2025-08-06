@@ -2614,6 +2614,108 @@
       "requires_research": false,
       "subtasks": [],
       "created_at": "2025-08-06T23:01:06.491Z"
+    },
+    {
+      "id": "task_1754521712423_iwobmkqz9",
+      "title": "Fix Vue App.vue Compilation Error in Editor-UI",
+      "description": "Resolve Vue compilation error: \"At least one <template> or <script> is required in a single file component\" preventing editor-ui build success",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/editor-ui/src/App.vue",
+        "packages/frontend/editor-ui/vite.config.ts",
+        "packages/frontend/editor-ui/package.json"
+      ],
+      "success_criteria": [
+        "editor-ui package builds successfully without Vue compilation errors",
+        "npm run build completes for all packages",
+        "Build Strike quality moves from 50% to 100%",
+        "App.vue file properly recognized by Vue compiler"
+      ],
+      "estimate": "2-3 hours",
+      "requires_research": true,
+      "subtasks": [],
+      "created_at": "2025-08-06T23:08:32.423Z"
+    },
+    {
+      "id": "task_1754521712430_lvro1zklf",
+      "title": "Fix ESLint Configuration and Local Rules Issues",
+      "description": "Resolve ESLint configuration problems including missing local rules, import ordering violations, and plugin configuration issues",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "eslint.config.js",
+        "packages/@n8n/api-types/src/**/*.ts",
+        "packages/*/eslint.config.mjs",
+        "package.json"
+      ],
+      "success_criteria": [
+        "All ESLint configuration errors resolved",
+        "Import ordering violations fixed across packages",
+        "Missing plugin dependencies installed or configured",
+        "Lint Strike quality moves from 70% to 95%+",
+        "Clean ESLint run across all packages"
+      ],
+      "estimate": "3-4 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T23:08:32.430Z"
+    },
+    {
+      "id": "task_1754521712435_1blt7axzq",
+      "title": "Stabilize Test Infrastructure and Coverage",
+      "description": "Fix test execution issues, stabilize test infrastructure, and improve coverage reporting to achieve consistent test results",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/*/jest.config.*",
+        "packages/*/vitest.config.*",
+        "turbo.json",
+        "package.json"
+      ],
+      "success_criteria": [
+        "All test suites execute without infrastructure failures",
+        "Test coverage reporting works consistently",
+        "Test Strike quality moves from 80% to 95%+",
+        "No flaky or intermittent test failures",
+        "Coverage thresholds properly configured and met"
+      ],
+      "estimate": "4-6 hours",
+      "requires_research": true,
+      "subtasks": [],
+      "created_at": "2025-08-06T23:08:32.435Z"
+    },
+    {
+      "id": "task_1754521712439_bezzitks5",
+      "title": "Fix Vue Component Type Resolution in Design System",
+      "description": "Resolve TypeScript module resolution issues for Vue components that are preventing proper type checking and builds",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/src/components/**/index.ts",
+        "packages/frontend/@n8n/design-system/src/types/",
+        "packages/frontend/editor-ui/tsconfig.json",
+        "packages/frontend/@n8n/design-system/tsconfig.json"
+      ],
+      "success_criteria": [
+        "All Vue component type resolution errors fixed",
+        "TypeScript compilation succeeds for design system",
+        "Vue component imports work correctly",
+        "Editor-UI build succeeds without type errors",
+        "Proper .vue file type declarations available"
+      ],
+      "estimate": "2-4 hours",
+      "requires_research": true,
+      "subtasks": [],
+      "created_at": "2025-08-06T23:08:32.439Z"
     }
   ],
   "review_strikes": 0,

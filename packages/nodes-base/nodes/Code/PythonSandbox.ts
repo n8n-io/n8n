@@ -70,7 +70,7 @@ export class PythonSandbox extends Sandbox {
 				globalsDict.set(key, value);
 			}
 
-			pyodide.setStdout({ batched: (str) => this.emit('output', str) });
+			pyodide.setStdout({ batched: (str: string) => this.emit('output', str) });
 
 			const runCode = `
 async def __main():

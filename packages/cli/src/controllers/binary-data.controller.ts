@@ -1,5 +1,16 @@
 import { BinaryDataQueryDto, BinaryDataSignedQueryDto, BinaryDataUploadDto } from '@n8n/api-types';
-import { Get, Post, Delete, Query, Body, Param, RestController } from '@n8n/decorators';
+import {
+	Get,
+	Post,
+	Delete,
+	Query,
+	Body,
+	Param,
+	RestController,
+	GlobalScope,
+	Licensed,
+} from '@n8n/decorators';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { Request, Response } from 'express';
 import { JsonWebTokenError } from 'jsonwebtoken';
 import {
@@ -11,7 +22,10 @@ import { ApplicationError } from 'n8n-workflow';
 import multer from 'multer';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { BinaryDataService } from '@/services/binary-data.service';
+import { BinaryMigrationService } from '@/services/binary-migration.service';
+import { BinaryExportService } from '@/services/binary-export.service';
 
 // Configure multer for file uploads
 const upload = multer({
@@ -27,6 +41,8 @@ export class BinaryDataController {
 	constructor(
 		private readonly binaryDataService: BinaryDataService,
 		private readonly coreBinaryDataService: CoreBinaryDataService,
+		private readonly binaryMigrationService: BinaryMigrationService,
+		private readonly binaryExportService: BinaryExportService,
 	) {}
 
 	@Get('/')
@@ -200,6 +216,351 @@ export class BinaryDataController {
 		if (action === 'download' && fileName) {
 			const encodedFilename = encodeURIComponent(fileName);
 			res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"`);
+		}
+	}
+
+	@Post('/bulk/export')
+	@GlobalScope('instance:read')
+	@Licensed('feat:advancedPermissions')
+	async bulkExport(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body request: {
+			workflowIds?: string[];
+			executionIds?: string[];
+			binaryDataIds?: string[];
+			includeWorkflowData?: boolean;
+			includeExecutionData?: boolean;
+			compressionLevel?: number;
+			outputFormat?: 'zip' | 'tar' | 'json';
+			filterByDateRange?: {
+				from: Date;
+				to: Date;
+			};
+			filterBySize?: {
+				minSize?: number;
+				maxSize?: number;
+			};
+		},
+	): Promise<any> {
+		try {
+			if (
+				!request.workflowIds?.length &&
+				!request.executionIds?.length &&
+				!request.binaryDataIds?.length
+			) {
+				return res.status(400).json({
+					error: 'At least one of workflowIds, executionIds, or binaryDataIds must be provided',
+				});
+			}
+
+			const result = await this.binaryExportService.bulkExportBinaryData(req.user, request);
+
+			return res.status(201).json({
+				success: true,
+				data: result,
+			});
+		} catch (error) {
+			if (error instanceof BadRequestError || error instanceof ApplicationError) {
+				return res.status(400).json({ error: error.message });
+			}
+			throw new InternalServerError('Bulk export operation failed');
+		}
+	}
+
+	@Post('/bulk/import')
+	@GlobalScope('instance:write')
+	@Licensed('feat:advancedPermissions')
+	async bulkImport(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body request: {
+			exportPath?: string;
+			exportData?: Buffer;
+			targetWorkflowId?: string;
+			targetExecutionId?: string;
+			overwriteExisting?: boolean;
+			validateChecksums?: boolean;
+		},
+	): Promise<any> {
+		try {
+			if (!request.exportPath && !request.exportData) {
+				return res.status(400).json({
+					error: 'Either exportPath or exportData must be provided',
+				});
+			}
+
+			const result = await this.binaryMigrationService.importBinaryData(req.user, request);
+
+			return res.status(201).json({
+				success: true,
+				data: result,
+			});
+		} catch (error) {
+			if (error instanceof BadRequestError || error instanceof ApplicationError) {
+				return res.status(400).json({ error: error.message });
+			}
+			throw new InternalServerError('Bulk import operation failed');
+		}
+	}
+
+	@Post('/migrate/transfer')
+	@GlobalScope('instance:write')
+	@Licensed('feat:advancedPermissions')
+	async crossInstanceTransfer(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body request: {
+			targetInstanceUrl: string;
+			targetApiKey?: string;
+			targetAuthToken?: string;
+			targetUsername?: string;
+			targetPassword?: string;
+			binaryDataIds: string[];
+			compressionLevel?: number;
+			chunkSize?: number;
+		},
+	): Promise<any> {
+		try {
+			if (!request.targetInstanceUrl) {
+				return res.status(400).json({
+					error: 'Target instance URL is required',
+				});
+			}
+
+			if (!request.binaryDataIds?.length) {
+				return res.status(400).json({
+					error: 'At least one binary data ID must be provided',
+				});
+			}
+
+			if (
+				!request.targetApiKey &&
+				!request.targetAuthToken &&
+				!(request.targetUsername && request.targetPassword)
+			) {
+				return res.status(400).json({
+					error:
+						'Target instance authentication is required (apiKey, authToken, or username/password)',
+				});
+			}
+
+			const result = await this.binaryMigrationService.transferToInstance(req.user, request);
+
+			return res.status(201).json({
+				success: true,
+				data: result,
+			});
+		} catch (error) {
+			if (error instanceof BadRequestError || error instanceof ApplicationError) {
+				return res.status(400).json({ error: error.message });
+			}
+			throw new InternalServerError('Cross-instance transfer failed');
+		}
+	}
+
+	@Post('/validate/integrity')
+	@GlobalScope('instance:read')
+	async validateIntegrity(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body request: { binaryDataIds: string[] },
+	): Promise<any> {
+		try {
+			if (!request.binaryDataIds?.length) {
+				return res.status(400).json({
+					error: 'At least one binary data ID must be provided',
+				});
+			}
+
+			const result = await this.binaryMigrationService.validateBinaryIntegrity(
+				req.user,
+				request.binaryDataIds,
+			);
+
+			return res.status(200).json({
+				success: true,
+				data: result,
+			});
+		} catch (error) {
+			if (error instanceof BadRequestError || error instanceof ApplicationError) {
+				return res.status(400).json({ error: error.message });
+			}
+			throw new InternalServerError('Integrity validation failed');
+		}
+	}
+
+	@Post('/cleanup/orphaned')
+	@GlobalScope('instance:write')
+	@Licensed('feat:advancedPermissions')
+	async cleanupOrphaned(req: AuthenticatedRequest, res: Response): Promise<any> {
+		try {
+			const result = await this.binaryMigrationService.cleanupOrphanedBinaryData(req.user);
+
+			return res.status(200).json({
+				success: true,
+				data: result,
+			});
+		} catch (error) {
+			if (error instanceof BadRequestError || error instanceof ApplicationError) {
+				return res.status(400).json({ error: error.message });
+			}
+			throw new InternalServerError('Cleanup operation failed');
+		}
+	}
+
+	@Post('/workflow/package')
+	@GlobalScope('workflow:read')
+	@Licensed('feat:advancedPermissions')
+	async createWorkflowPackage(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body request: {
+			workflowId: string;
+			includeExecutions?: boolean;
+			includeBinaryData?: boolean;
+			executionLimit?: number;
+			compressionLevel?: number;
+		},
+	): Promise<any> {
+		try {
+			if (!request.workflowId) {
+				return res.status(400).json({
+					error: 'Workflow ID is required',
+				});
+			}
+
+			const result = await this.binaryExportService.createWorkflowPackage(req.user, request);
+
+			return res.status(201).json({
+				success: true,
+				data: result,
+			});
+		} catch (error) {
+			if (error instanceof BadRequestError || error instanceof ApplicationError) {
+				return res.status(400).json({ error: error.message });
+			}
+			throw new InternalServerError('Workflow package creation failed');
+		}
+	}
+
+	@Post('/search')
+	@GlobalScope('instance:read')
+	async searchBinaryData(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body request: {
+			workflowIds?: string[];
+			executionIds?: string[];
+			mimeTypeFilter?: string[];
+			sizeRange?: {
+				minSize: number;
+				maxSize: number;
+			};
+			dateRange?: {
+				from: Date;
+				to: Date;
+			};
+			fileNamePattern?: string;
+			limit?: number;
+			offset?: number;
+		},
+	): Promise<any> {
+		try {
+			const result = await this.binaryExportService.searchBinaryData(req.user, request);
+
+			return res.status(200).json({
+				success: true,
+				data: result,
+			});
+		} catch (error) {
+			if (error instanceof BadRequestError || error instanceof ApplicationError) {
+				return res.status(400).json({ error: error.message });
+			}
+			throw new InternalServerError('Binary data search failed');
+		}
+	}
+
+	@Get('/operations/:operationId/progress')
+	@GlobalScope('instance:read')
+	async getOperationProgress(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('operationId') operationId: string,
+	): Promise<any> {
+		try {
+			if (!operationId) {
+				return res.status(400).json({
+					error: 'Operation ID is required',
+				});
+			}
+
+			const result = await this.binaryExportService.getOperationProgress(operationId);
+
+			if (!result) {
+				return res.status(404).json({
+					error: 'Operation not found',
+				});
+			}
+
+			return res.status(200).json({
+				success: true,
+				data: result,
+			});
+		} catch (error) {
+			if (error instanceof BadRequestError || error instanceof ApplicationError) {
+				return res.status(400).json({ error: error.message });
+			}
+			throw new InternalServerError('Failed to get operation progress');
+		}
+	}
+
+	@Get('/operations')
+	@GlobalScope('instance:read')
+	async listActiveOperations(req: AuthenticatedRequest, res: Response): Promise<any> {
+		try {
+			const result = await this.binaryExportService.listActiveOperations(req.user);
+
+			return res.status(200).json({
+				success: true,
+				data: {
+					operations: result,
+					total: result.length,
+				},
+			});
+		} catch (error) {
+			if (error instanceof BadRequestError || error instanceof ApplicationError) {
+				return res.status(400).json({ error: error.message });
+			}
+			throw new InternalServerError('Failed to list active operations');
+		}
+	}
+
+	@Delete('/operations/:operationId')
+	@GlobalScope('instance:write')
+	async cancelOperation(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('operationId') operationId: string,
+	): Promise<any> {
+		try {
+			if (!operationId) {
+				return res.status(400).json({
+					error: 'Operation ID is required',
+				});
+			}
+
+			const result = await this.binaryExportService.cancelOperation(req.user, operationId);
+
+			return res.status(200).json({
+				success: true,
+				data: result,
+			});
+		} catch (error) {
+			if (error instanceof BadRequestError || error instanceof ApplicationError) {
+				return res.status(400).json({ error: error.message });
+			}
+			throw new InternalServerError('Failed to cancel operation');
 		}
 	}
 }

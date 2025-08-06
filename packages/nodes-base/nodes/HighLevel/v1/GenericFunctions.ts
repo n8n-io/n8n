@@ -34,7 +34,7 @@ export function isPhoneValid(phone: string): boolean {
 
 function dateToIsoSupressMillis(dateTime: string) {
 	const options: ToISOTimeOptions = { suppressMilliseconds: true };
-	return DateTime.fromISO(dateTime).toISO(options);
+	return DateTime.fromISO(dateTime).toISO(options) || undefined;
 }
 
 export async function taskPostReceiceAction(

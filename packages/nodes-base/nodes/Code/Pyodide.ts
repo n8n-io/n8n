@@ -25,9 +25,9 @@ export async function LoadPyodide(packageCacheDir: string): Promise<PyodideAPI> 
 		pyodideInstance = (await runInContext(
 			'loadPyodide({ indexURL, packageCacheDir, jsglobals })',
 			context,
-		)) as PyodideInterface;
+		)) as PyodideAPI;
 
-		await pyodideInstance.runPythonAsync(`
+		await pyodideInstance!.runPythonAsync(`
 import os
 
 def blocked_function(*args, **kwargs):
@@ -54,5 +54,5 @@ sys.modules['js'] = blocked_module()
 `);
 	}
 
-	return pyodideInstance;
+	return pyodideInstance!;
 }

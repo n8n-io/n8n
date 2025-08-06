@@ -264,7 +264,9 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		).hours;
 
 		if (duration < minimalWholeDayDuration) {
-			endDateTime = DateTime.fromISO(startDateTime, { zone: timeZone }).plus({ hours: 24 }).toISO();
+			endDateTime =
+				DateTime.fromISO(startDateTime, { zone: timeZone }).plus({ hours: 24 }).toISO() ||
+				endDateTime;
 		}
 	}
 

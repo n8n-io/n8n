@@ -431,7 +431,7 @@ export class DateTimeV1 implements INodeType {
 					let newDate;
 
 					if ((currentDate as unknown as IDataObject) instanceof LuxonDateTime) {
-						currentDate = (currentDate as unknown as LuxonDateTime).toISO();
+						currentDate = (currentDate as unknown as LuxonDateTime).toISO() || '';
 					}
 
 					// Check if the input is a number

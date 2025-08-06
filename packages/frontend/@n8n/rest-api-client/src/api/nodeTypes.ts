@@ -58,7 +58,11 @@ export async function fetchCommunityNodeAttributes(
 export async function getNodeTranslationHeaders(
 	context: IRestApiContext,
 ): Promise<INodeTranslationHeaders | undefined> {
-	return await makeRestApiRequest(context, 'GET', '/node-translation-headers');
+	return await makeRestApiRequest<INodeTranslationHeaders>(
+		context,
+		'GET',
+		'/node-translation-headers',
+	);
 }
 
 export async function getNodesInformation(
