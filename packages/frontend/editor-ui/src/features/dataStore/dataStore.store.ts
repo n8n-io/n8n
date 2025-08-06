@@ -2,7 +2,12 @@ import { defineStore } from 'pinia';
 import { DATA_STORE_STORE } from '@/features/dataStore/constants';
 import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { fetchDataStores, createDataStore } from '@/features/dataStore/datastore.api';
+import {
+	fetchDataStoresApi,
+	createDataStoreApi,
+	deleteDataStoreApi,
+	updateDataStoreApi,
+} from '@/features/dataStore/datastore.api';
 import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
@@ -11,26 +16,55 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const dataStores = ref<DataStoreEntity[]>([]);
 	const totalCount = ref(0);
 
-	const loadDataStores = async (projectId: string, page: number, pageSize: number) => {
-		const response = await fetchDataStores(rootStore.restApiContext, projectId, {
-			page,
-			pageSize,
+	const fetchDataStores = async (projectId: string, page: number, pageSize: number) => {
+		const response = await fetchDataStoresApi(rootStore.restApiContext, projectId, {
+			skip: (page - 1) * pageSize,
+			take: pageSize,
 		});
+		console.log('Data stores fetched:', response);
+
 		dataStores.value = response.data;
 		totalCount.value = response.count;
 	};
 
-	const createNewDataStore = async (name: string, projectId?: string) => {
-		const newStore = await createDataStore(rootStore.restApiContext, name, projectId);
-		dataStores.value.push(newStore.data);
+	const createDataStore = async (name: string, projectId?: string) => {
+		const newStore = await createDataStoreApi(rootStore.restApiContext, name, projectId);
+		dataStores.value.push(newStore);
 		totalCount.value += 1;
 		return newStore;
+	};
+
+	const deleteDataStore = async (datastoreId: string, projectId?: string) => {
+		const deleted = await deleteDataStoreApi(rootStore.restApiContext, datastoreId, projectId);
+		if (deleted) {
+			dataStores.value = dataStores.value.filter((store) => store.id !== datastoreId);
+			totalCount.value -= 1;
+		}
+		return deleted;
+	};
+
+	const updateDataStore = async (datastoreId: string, name: string, projectId?: string) => {
+		const updated = await updateDataStoreApi(
+			rootStore.restApiContext,
+			datastoreId,
+			name,
+			projectId,
+		);
+		if (updated) {
+			const index = dataStores.value.findIndex((store) => store.id === datastoreId);
+			if (index !== -1) {
+				dataStores.value[index] = { ...dataStores.value[index], name };
+			}
+		}
+		return updated;
 	};
 
 	return {
 		dataStores,
 		totalCount,
-		loadDataStores,
-		createNewDataStore,
+		fetchDataStores,
+		createDataStore,
+		deleteDataStore,
+		updateDataStore,
 	};
 });

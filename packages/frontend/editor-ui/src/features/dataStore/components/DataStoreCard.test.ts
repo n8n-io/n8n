@@ -26,9 +26,9 @@ vi.mock('vue-router', () => {
 const DEFAULT_DATA_STORE: DataStoreResource = {
 	id: '1',
 	name: 'Test Data Store',
-	size: 1024,
+	sizeBytes: 1024,
 	recordCount: 100,
-	columnCount: 5,
+	columns: [],
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
 	resourceType: 'datastore',
@@ -72,7 +72,7 @@ describe('DataStoreCard', () => {
 	it('should render data store info correctly', () => {
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('data-store-card-icon')).toBeInTheDocument();
-		expect(getByTestId('folder-card-name')).toHaveTextContent(DEFAULT_DATA_STORE.name);
+		expect(getByTestId('datastore-name-input')).toHaveTextContent(DEFAULT_DATA_STORE.name);
 		expect(getByTestId('data-store-card-record-count')).toBeInTheDocument();
 		expect(getByTestId('data-store-card-column-count')).toBeInTheDocument();
 		expect(getByTestId('data-store-card-last-updated')).toHaveTextContent('Last updated');
@@ -99,24 +99,18 @@ describe('DataStoreCard', () => {
 				actions: [],
 			},
 		});
-		expect(queryByTestId('folder-card-actions')).not.toBeInTheDocument();
+		expect(queryByTestId('data-store-card-actions')).not.toBeInTheDocument();
 	});
 
 	it('should render action dropdown if actions are provided', () => {
 		const { getByTestId } = renderComponent();
-		expect(getByTestId('folder-card-actions')).toBeInTheDocument();
+		expect(getByTestId('data-store-card-actions')).toBeInTheDocument();
 	});
 
 	it('should render correct route to data store details', () => {
 		const wrapper = renderComponent();
 		const link = wrapper.getByTestId('data-store-card-link');
 		expect(link).toBeInTheDocument();
-	});
-
-	it('should display size information', () => {
-		const { getByTestId } = renderComponent();
-		const sizeElement = getByTestId('folder-card-folder-count');
-		expect(sizeElement).toBeInTheDocument();
 	});
 
 	it('should display record count information', () => {

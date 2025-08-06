@@ -1,5 +1,9 @@
 import type { BaseMessage } from '@langchain/core/messages';
+import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
+import type { BinaryOperator } from '@langchain/langgraph/dist/channels/binop';
+
+import { MAX_USER_MESSAGES } from '@/constants';
 
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
 import type { ChatPayload } from './workflow-builder-agent';
@@ -32,9 +36,44 @@ function operationsReducer(
 	return [...(current ?? []), ...update];
 }
 
+// Creates a reducer that trims the message history to keep only the last `maxUserMessages` HumanMessage instances
+export function createTrimMessagesReducer(maxUserMessages: number) {
+	return (current: BaseMessage[]): BaseMessage[] => {
+		// Count HumanMessage instances and remember their indices
+		const humanMessageIndices: number[] = [];
+		current.forEach((msg, index) => {
+			if (msg instanceof HumanMessage) {
+				humanMessageIndices.push(index);
+			}
+		});
+
+		// If we have fewer than or equal to maxUserMessages, return as is
+		if (humanMessageIndices.length <= maxUserMessages) {
+			return current;
+		}
+
+		// Find the index of the first HumanMessage that we want to keep
+		const startHumanMessageIndex =
+			humanMessageIndices[humanMessageIndices.length - maxUserMessages];
+
+		// Slice from that HumanMessage onwards
+		return current.slice(startHumanMessageIndex);
+	};
+}
+
+// Utility function to combine multiple message reducers into one.
+function combineMessageReducers(...reducers: Array<BinaryOperator<BaseMessage[], BaseMessage[]>>) {
+	return (current: BaseMessage[], update: BaseMessage[]): BaseMessage[] => {
+		return reducers.reduce((acc, reducer) => reducer(acc, update), current);
+	};
+}
+
 export const WorkflowState = Annotation.Root({
 	messages: Annotation<BaseMessage[]>({
-		reducer: messagesStateReducer,
+		reducer: combineMessageReducers(
+			messagesStateReducer,
+			createTrimMessagesReducer(MAX_USER_MESSAGES),
+		),
 		default: () => [],
 	}),
 	// // The original prompt from the user.

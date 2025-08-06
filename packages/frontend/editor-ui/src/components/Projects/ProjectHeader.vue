@@ -21,6 +21,12 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/stores/ui.store';
 
+export type CustomAction = {
+	id: string;
+	label: string;
+	disabled?: boolean;
+};
+
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -31,8 +37,17 @@ const uiStore = useUIStore();
 
 const projectPages = useProjectPages();
 
+type Props = {
+	customActions?: CustomAction[];
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	customActions: () => [],
+});
+
 const emit = defineEmits<{
 	createFolder: [];
+	customActionSelected: [actionId: string, projectId: string];
 }>();
 
 const headerIcon = computed((): IconOrEmoji => {
@@ -139,6 +154,17 @@ const menu = computed(() => {
 				!getResourcePermissions(homeProject.value?.scopes).folder.create,
 		});
 	}
+
+	// Append custom actions
+	if (props.customActions?.length) {
+		props.customActions.forEach((customAction) => {
+			items.push({
+				value: customAction.id,
+				label: customAction.label,
+				disabled: customAction.disabled ?? false,
+			});
+		});
+	}
 	return items;
 });
 
@@ -240,6 +266,13 @@ const onSelect = (action: string) => {
 	if (!homeProject.value) {
 		return;
 	}
+
+	// Check if this is a custom action
+	if (!executableAction) {
+		emit('customActionSelected', action, homeProject.value.id);
+		return;
+	}
+
 	executableAction(homeProject.value.id);
 };
 </script>

@@ -135,6 +135,7 @@ watch(currentRoute, () => {
 			:show-stop="true"
 			:scroll-on-new-message="true"
 			:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
+			:max-length="1000"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@feedback="onFeedback"

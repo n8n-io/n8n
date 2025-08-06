@@ -58,6 +58,11 @@ export class LmChatOllama implements INodeType {
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as ChatOllamaInput;
+		const headers = credentials.apiKey
+			? {
+					Authorization: `Bearer ${credentials.apiKey as string}`,
+				}
+			: undefined;
 
 		const model = new ChatOllama({
 			...options,
@@ -66,6 +71,7 @@ export class LmChatOllama implements INodeType {
 			format: options.format === 'default' ? undefined : options.format,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			headers,
 		});
 
 		return {

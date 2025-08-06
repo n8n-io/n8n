@@ -173,12 +173,17 @@ export const useWorkflowDiff = (
 		targetRefs.workflowObjectRef,
 	);
 
-	const nodesDiff = computed(() =>
-		compareWorkflowsNodes(
+	const nodesDiff = computed(() => {
+		// Don't compute diff until both workflows are loaded to prevent initial flashing
+		if (!source.value?.workflow?.value || !target.value?.workflow?.value) {
+			return new Map<string, NodeDiff<INodeUi>>();
+		}
+
+		return compareWorkflowsNodes(
 			source.value.workflow?.value?.nodes ?? [],
 			target.value.workflow?.value?.nodes ?? [],
-		),
-	);
+		);
+	});
 
 	type Connection = {
 		id: string;
@@ -217,6 +222,11 @@ export const useWorkflowDiff = (
 	}
 
 	const connectionsDiff = computed(() => {
+		// Don't compute diff until both workflows are loaded to prevent initial flashing
+		if (!source.value?.workflow?.value || !target.value?.workflow?.value) {
+			return new Map<string, { status: NodeDiffStatus; connection: Connection }>();
+		}
+
 		const sourceConnections = mapConnections(source.value?.connections ?? []);
 		const targetConnections = mapConnections(target.value?.connections ?? []);
 
