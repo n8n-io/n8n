@@ -369,7 +369,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://eslint.org/docs/rules/prefer-spread
 			 */
-			'prefer-spread': 'error',
+			'prefer-spread': 'off',
 
 			// These are tuned off since we use `noUnusedLocals` and `noUnusedParameters` now
 			'no-unused-vars': 'off',

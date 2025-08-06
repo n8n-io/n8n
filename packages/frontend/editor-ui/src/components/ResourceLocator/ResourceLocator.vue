@@ -1112,5 +1112,5 @@ function removeOverride() {
 </template>
 
 <style lang="scss" module>
-@import './resourceLocator.scss';
+@use './resourceLocator.scss';
 </style>

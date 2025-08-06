@@ -167,10 +167,10 @@ export class AiWorkflowBuilderService {
 		return this.agent;
 	}
 
-	async *chat(payload: ChatPayload, user?: IUser) {
+	async *chat(payload: ChatPayload, user?: IUser, abortSignal?: AbortSignal) {
 		const agent = await this.getAgent(user);
 
-		for await (const output of agent.chat(payload, user?.id?.toString())) {
+		for await (const output of agent.chat(payload, user?.id?.toString(), abortSignal)) {
 			yield output;
 		}
 	}

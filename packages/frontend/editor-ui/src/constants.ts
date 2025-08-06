@@ -223,6 +223,9 @@ export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
 
+// template categories
+export const TEMPLATE_CATEGORY_AI = 'categories/ai';
+
 export const EXECUTABLE_TRIGGER_NODE_TYPES = [
 	START_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -767,12 +770,20 @@ export const TEMPLATE_ONBOARDING_EXPERIMENT = {
 	variantSuggestedTemplates: 'variant-suggested-templates',
 };
 
+export const BATCH_11AUG_EXPERIMENT = {
+	name: '37_onboarding_experiments_batch_aug11',
+	control: 'control',
+	variantReadyToRun: 'variant-ready-to-run-workflows',
+	variantStarterPack: 'variant-starter-pack-v2',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_BUILDER_EXPERIMENT.name,
 	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	NDV_UI_OVERHAUL_EXPERIMENT.name,
+	BATCH_11AUG_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {
