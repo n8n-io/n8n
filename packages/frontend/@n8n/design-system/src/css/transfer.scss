@@ -3,7 +3,6 @@
 @use './common/var';
 @use 'input';
 @use 'checkbox';
-@use 'checkbox-group';
 
 @include mixins.b(transfer) {
 	font-size: var.$font-size-base;

@@ -1,3 +1,6 @@
+import type { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 import { Readable } from 'stream';
 
 import {
@@ -18,7 +21,16 @@ async function consumeStreamToString(stream: NodeJS.ReadableStream): Promise<str
 	});
 }
 
+const securityConfig = mock<SecurityConfig>();
+
 describe('sandboxHtmlResponse', () => {
+	beforeAll(() => {
+		securityConfig.disableIframeSandboxing = false;
+		jest.spyOn(Container, 'get').mockReturnValue(securityConfig);
+	});
+	afterAll(() => {
+		jest.restoreAllMocks();
+	});
 	it('should replace ampersands and double quotes in HTML', () => {
 		const html = '<div class="test">Content & more</div>';
 		expect(sandboxHtmlResponse(html)).toMatchSnapshot();
@@ -305,6 +317,13 @@ describe('createHtmlSandboxTransformStream', () => {
 });
 
 describe('sandboxHtmlResponse > not string types', () => {
+	beforeAll(() => {
+		securityConfig.disableIframeSandboxing = false;
+		jest.spyOn(Container, 'get').mockReturnValue(securityConfig);
+	});
+	afterAll(() => {
+		jest.restoreAllMocks();
+	});
 	it('should not throw if data is number', () => {
 		const data = 123;
 		expect(() => sandboxHtmlResponse(data)).not.toThrow();
@@ -318,5 +337,39 @@ describe('sandboxHtmlResponse > not string types', () => {
 	it('should not throw if data is boolean', () => {
 		const data = true;
 		expect(() => sandboxHtmlResponse(data)).not.toThrow();
+	});
+});
+
+describe('sandboxHtmlResponse > sandboxing disabled', () => {
+	beforeAll(() => {
+		securityConfig.disableIframeSandboxing = true;
+		jest.spyOn(Container, 'get').mockReturnValue(securityConfig);
+	});
+	afterAll(() => {
+		jest.restoreAllMocks();
+	});
+	it('should return unchanged number data', () => {
+		const data = 123;
+		expect(sandboxHtmlResponse(data)).toEqual(data);
+	});
+
+	it('should return unchanged object data', () => {
+		const data = {};
+		expect(sandboxHtmlResponse(data)).toEqual(data);
+	});
+
+	it('should return unchanged boolean data', () => {
+		const data = true;
+		expect(sandboxHtmlResponse(data)).toEqual(data);
+	});
+
+	it('should return unchanged text data', () => {
+		const data = 'string data';
+		expect(sandboxHtmlResponse(data)).toEqual(data);
+	});
+
+	it('should return unchanged html data', () => {
+		const data = '<p>html data</p>';
+		expect(sandboxHtmlResponse(data)).toEqual(data);
 	});
 });

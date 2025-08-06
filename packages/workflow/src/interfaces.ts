@@ -843,8 +843,19 @@ type CronUnit = number | '*' | `*/${number}`;
 export type CronExpression =
 	`${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit}`;
 
+type RecurrenceRule =
+	| { activated: false }
+	| {
+			activated: true;
+			index: number;
+			intervalSize: number;
+			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
+	  };
+
+export type Cron = { expression: CronExpression; recurrence?: RecurrenceRule };
+
 export interface SchedulingFunctions {
-	registerCron(cronExpression: CronExpression, onTick: () => void): void;
+	registerCron(cron: Cron, onTick: () => void): void;
 }
 
 export type NodeTypeAndVersion = {
@@ -1380,6 +1391,7 @@ export interface ResourceMapperTypeOptionsBase {
 		hint?: string;
 	};
 	showTypeConversionOptions?: boolean;
+	allowEmptyValues?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod

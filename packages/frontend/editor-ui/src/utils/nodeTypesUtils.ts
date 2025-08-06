@@ -1,9 +1,4 @@
-import type {
-	AppliedThemeOption,
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	NodeAuthenticationOption,
-} from '@/Interface';
+import type { AppliedThemeOption, INodeUi, NodeAuthenticationOption } from '@/Interface';
 import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
@@ -36,7 +31,7 @@ import {
 
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
-const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\[\"(.+)\"\]/;
 
 export function getAppNameFromCredType(name: string) {
@@ -386,8 +381,8 @@ export const updateNodeAuthType = (node: INodeUi | null, type: string) => {
 						...node.parameters,
 						[nodeAuthField.name]: type,
 					},
-				} as IDataObject,
-			} as INodeUpdatePropertiesInformation;
+				},
+			};
 			useWorkflowsStore().updateNodeProperties(updateInformation);
 		}
 	}

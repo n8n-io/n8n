@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import NodeIcon from '@/components/NodeIcon.vue';
-import NodeSettingsTabs, { type Tab } from '@/components/NodeSettingsTabs.vue';
+import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import { N8nText } from '@n8n/design-system';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import type { NodeSettingsTab } from '@/types/nodeSettings';
 
 defineProps<{
 	node: INode;
@@ -10,12 +11,15 @@ defineProps<{
 	nodeType?: INodeTypeDescription | null;
 	pushRef: string;
 	subTitle?: string;
-	selectedTab: Tab;
+	selectedTab: NodeSettingsTab;
+	includeAction: boolean;
+	includeCredential: boolean;
+	hasCredentialIssue?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'name-changed': [value: string];
-	'tab-changed': [tab: Tab];
+	'tab-changed': [tab: NodeSettingsTab];
 }>();
 
 defineSlots<{ actions?: {} }>();
@@ -38,13 +42,19 @@ defineSlots<{ actions?: {} }>();
 			</N8nText>
 			<slot name="actions" />
 		</div>
-		<NodeSettingsTabs
-			:model-value="selectedTab"
-			:node-type="nodeType"
-			:push-ref="pushRef"
-			tabs-variant="modern"
-			@update:model-value="emit('tab-changed', $event)"
-		/>
+		<div :class="$style.tabsContainer">
+			<NodeSettingsTabs
+				:model-value="selectedTab"
+				:node-type="nodeType"
+				:push-ref="pushRef"
+				tabs-variant="modern"
+				compact
+				:include-action="includeAction"
+				:include-credential="includeCredential"
+				:has-credential-issue="hasCredentialIssue"
+				@update:model-value="emit('tab-changed', $event)"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -58,7 +68,7 @@ defineSlots<{ actions?: {} }>();
 	align-items: center;
 	padding: var(--spacing-2xs) var(--spacing-3xs) var(--spacing-2xs) var(--spacing-xs);
 	border-bottom: var(--border-base);
-	margin-bottom: var(--spacing-xs);
+	margin-bottom: 14px; // to match bottom padding of tabs
 	gap: var(--spacing-4xs);
 
 	.disabled & {
@@ -86,5 +96,9 @@ defineSlots<{ actions?: {} }>();
 	overflow: hidden;
 	text-overflow: ellipsis;
 	padding-top: var(--spacing-5xs);
+}
+
+.tabsContainer {
+	padding-inline: var(--spacing-xs);
 }
 </style>

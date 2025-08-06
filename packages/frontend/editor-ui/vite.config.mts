@@ -110,6 +110,8 @@ const plugins: UserConfig['plugins'] = [
 						overrides: {
 							// disable a default plugin
 							cleanupIds: false,
+							// preserve viewBox for scalability
+							removeViewBox: false,
 						},
 					},
 				},
@@ -126,7 +128,7 @@ const plugins: UserConfig['plugins'] = [
 		transformIndexHtml: (html, ctx) => {
 			const replacement = ctx.server
 				? '' // Skip when using Vite dev server
-				: '<script src="/{{REST_ENDPOINT}}/config.js"></script>';
+				: '<script src="/{{BASE_PATH}}/{{REST_ENDPOINT}}/config.js"></script>';
 
 			return html.replace('%CONFIG_SCRIPT%', replacement);
 		},

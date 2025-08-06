@@ -268,12 +268,10 @@ export class WorkflowRunner {
 			});
 
 			if (data.streamingEnabled) {
-				if (data.executionMode !== 'manual') {
-					lifecycleHooks.addHandler('sendChunk', (chunk) => {
-						data.httpResponse?.write(JSON.stringify(chunk) + '\n');
-						data.httpResponse?.flush?.();
-					});
-				}
+				lifecycleHooks.addHandler('sendChunk', (chunk) => {
+					data.httpResponse?.write(JSON.stringify(chunk) + '\n');
+					data.httpResponse?.flush?.();
+				});
 			}
 
 			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({

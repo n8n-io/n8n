@@ -513,7 +513,7 @@ describe('streaming functionality', () => {
 		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
 	});
 
-	it('should not setup sendChunk handler when streaming is enabled but execution mode is manual', async () => {
+	it('should setup sendChunk handler when streaming is enabled and execution mode is manual', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
@@ -550,6 +550,6 @@ describe('streaming functionality', () => {
 		await runner.run(data);
 
 		// ASSERT
-		expect(mockHooks.addHandler).not.toHaveBeenCalledWith('sendChunk', expect.any(Function));
+		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
 	});
 });

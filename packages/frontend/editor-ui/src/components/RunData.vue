@@ -24,13 +24,7 @@ import {
 } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
-import type {
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	IRunDataDisplayMode,
-	ITab,
-	NodePanelType,
-} from '@/Interface';
+import type { INodeUi, IRunDataDisplayMode, ITab, NodePanelType } from '@/Interface';
 
 import {
 	CORE_NODES_CATEGORY,
@@ -125,7 +119,7 @@ export type EnterEditModeArgs = {
 };
 
 type Props = {
-	workflow: Workflow;
+	workflowObject: Workflow;
 	workflowExecution?: IRunExecutionData;
 	runIndex: number;
 	tooMuchDataTitle: string;
@@ -154,6 +148,7 @@ type Props = {
 	compact?: boolean;
 	tableHeaderBgColor?: 'base' | 'light';
 	disableHoverHighlight?: boolean;
+	disableSettingsHint?: boolean;
 	disableAiContent?: boolean;
 	collapsingTableColumnName: string | null;
 };
@@ -175,6 +170,7 @@ const props = withDefaults(defineProps<Props>(), {
 	disableEdit: false,
 	disablePin: false,
 	disableHoverHighlight: false,
+	disableSettingsHint: false,
 	compact: false,
 	tableHeaderBgColor: 'base',
 	workflowExecution: undefined,
@@ -318,7 +314,7 @@ const hasSubworkflowExecutionError = computed(() => !!workflowsStore.subWorkflow
 
 // Sub-nodes may wish to display the parent node error as it can contain additional metadata
 const parentNodeError = computed(() => {
-	const parentNode = props.workflow.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
+	const parentNode = props.workflowObject.getChildNodes(node.value?.name ?? '', 'ALL_NON_MAIN')[0];
 	return workflowRunData.value?.[parentNode]?.[props.runIndex]?.error as NodeError;
 });
 const workflowRunErrorAsNodeError = computed(() => {
@@ -512,12 +508,12 @@ const showIoSearchNoMatchContent = computed(
 );
 
 const parentNodeOutputData = computed(() => {
-	const parentNode = props.workflow.getParentNodesByDepth(node.value?.name ?? '')[0];
+	const parentNode = props.workflowObject.getParentNodesByDepth(node.value?.name ?? '')[0];
 	let parentNodeData: INodeExecutionData[] = [];
 
 	if (parentNode?.name) {
 		parentNodeData = nodeHelpers.getNodeInputData(
-			props.workflow.getNode(parentNode?.name),
+			props.workflowObject.getNode(parentNode?.name),
 			props.runIndex,
 			outputIndex.value,
 			'input',
@@ -529,8 +525,8 @@ const parentNodeOutputData = computed(() => {
 });
 
 const parentNodePinnedData = computed(() => {
-	const parentNode = props.workflow.getParentNodesByDepth(node.value?.name ?? '')[0];
-	return props.workflow.pinData?.[parentNode?.name || ''] ?? [];
+	const parentNode = props.workflowObject.getParentNodesByDepth(node.value?.name ?? '')[0];
+	return props.workflowObject.pinData?.[parentNode?.name || ''] ?? [];
 });
 
 const showPinButton = computed(() => {
@@ -749,10 +745,14 @@ onBeforeUnmount(() => {
 
 function getResolvedNodeOutputs() {
 	if (node.value && nodeType.value) {
-		const workflowNode = props.workflow.getNode(node.value.name);
+		const workflowNode = props.workflowObject.getNode(node.value.name);
 
 		if (workflowNode) {
-			const outputs = NodeHelpers.getNodeOutputs(props.workflow, workflowNode, nodeType.value);
+			const outputs = NodeHelpers.getNodeOutputs(
+				props.workflowObject,
+				workflowNode,
+				nodeType.value,
+			);
 			return outputs;
 		}
 	}
@@ -784,13 +784,14 @@ function shouldHintBeDisplayed(hint: NodeHint): boolean {
 
 	return true;
 }
-function getNodeHints(): NodeHint[] {
+
+const nodeHints = computed<NodeHint[]>(() => {
 	try {
 		if (node.value && nodeType.value) {
-			const workflowNode = props.workflow.getNode(node.value.name);
+			const workflowNode = props.workflowObject.getNode(node.value.name);
 
 			if (workflowNode) {
-				const nodeHints = nodeHelpers.getNodeHints(props.workflow, workflowNode, nodeType.value, {
+				const hints = nodeHelpers.getNodeHints(props.workflowObject, workflowNode, nodeType.value, {
 					runExecutionData: workflowExecution.value ?? null,
 					runIndex: props.runIndex,
 					connectionInputData: parentNodeOutputData.value,
@@ -807,13 +808,13 @@ function getNodeHints(): NodeHint[] {
 					node: node.value,
 					nodeType: nodeType.value,
 					nodeOutputData,
-					nodes: props.workflow.nodes,
-					connections: props.workflow.connectionsBySourceNode,
+					nodes: props.workflowObject.nodes,
+					connections: props.workflowObject.connectionsBySourceNode,
 					hasNodeRun: hasNodeRun.value,
 					hasMultipleInputItems,
 				});
 
-				return executionHints.value.concat(nodeHints, genericHints).filter(shouldHintBeDisplayed);
+				return executionHints.value.concat(hints, genericHints).filter(shouldHintBeDisplayed);
 			}
 		}
 	} catch (error) {
@@ -821,7 +822,8 @@ function getNodeHints(): NodeHint[] {
 	}
 
 	return [];
-}
+});
+
 function onItemHover(itemIndex: number | null) {
 	if (itemIndex === null) {
 		emit('itemHover', null);
@@ -1311,8 +1313,8 @@ function enableNode() {
 			name: node.value.name,
 			properties: {
 				disabled: !node.value.disabled,
-			} as IDataObject,
-		} as INodeUpdatePropertiesInformation;
+			},
+		};
 
 		workflowsStore.updateNodeProperties(updateInformation);
 	}
@@ -1547,9 +1549,12 @@ defineExpose({ enterEditMode });
 					</slot>
 				</N8nCallout>
 			</div>
-			<NodeSettingsHint v-if="props.paneType === 'output'" :node="node" />
+			<NodeSettingsHint
+				v-if="!props.disableSettingsHint && props.paneType === 'output'"
+				:node="node"
+			/>
 			<N8nCallout
-				v-for="hint in getNodeHints()"
+				v-for="hint in nodeHints"
 				:key="hint.message"
 				:class="$style.hintCallout"
 				:theme="hint.type || 'info'"
@@ -2114,15 +2119,15 @@ defineExpose({ enterEditMode });
 }
 
 .spinner {
+	display: flex;
+	justify-content: center;
+	margin-bottom: var(--ndv-spacing);
+
 	* {
 		color: var(--color-primary);
 		min-height: 40px;
 		min-width: 40px;
 	}
-
-	display: flex;
-	justify-content: center;
-	margin-bottom: var(--ndv-spacing);
 }
 
 .editMode {

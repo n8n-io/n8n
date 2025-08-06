@@ -511,7 +511,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 
 .settingsContainerInfo {
 	display: flex;
-	padding: 8px 0px;
+	padding: 8px 0;
 	flex-direction: column;
 	justify-content: center;
 	align-items: flex-start;

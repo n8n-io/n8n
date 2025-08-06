@@ -1,6 +1,6 @@
 {
   "name": "@n8n/imap",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -9,7 +9,7 @@
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
     "lint": "eslint . --quiet",
-    "lintfix": "eslint . --fix",
+    "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:dev": "vitest --silent=false"

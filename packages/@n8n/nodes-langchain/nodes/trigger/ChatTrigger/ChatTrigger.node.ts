@@ -48,7 +48,7 @@ const lastNodeResponseMode = {
 };
 
 const streamingResponseMode = {
-	name: 'Streaming Response',
+	name: 'Streaming',
 	value: 'streaming',
 	description: 'Streaming response from specified nodes (e.g. Agents)',
 };
@@ -495,7 +495,7 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: [lastNodeResponseMode, respondToWebhookResponseMode],
+						options: [lastNodeResponseMode, streamingResponseMode, respondToWebhookResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['webhook'] } },
@@ -504,7 +504,7 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: [lastNodeResponseMode, respondNodesResponseMode],
+						options: [lastNodeResponseMode, streamingResponseMode, respondNodesResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
 						displayOptions: { show: { '/mode': ['hostedChat'] } },
