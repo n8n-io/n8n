@@ -80,8 +80,11 @@ function assertIsObjectType(parameterName: string, value: unknown): void {
 	);
 }
 
-function createElementValidator(elementType: 'string' | 'number' | 'boolean') {
-	return (val: unknown): val is string | number | boolean => typeof val === elementType;
+function createElementValidator<T extends 'string' | 'number' | 'boolean'>(elementType: T) {
+	return (
+		val: unknown,
+	): val is T extends 'string' ? string : T extends 'number' ? number : boolean =>
+		typeof val === elementType;
 }
 
 function assertIsArrayType(parameterName: string, value: unknown, arrayType: string): void {
@@ -89,7 +92,7 @@ function assertIsArrayType(parameterName: string, value: unknown, arrayType: str
 	const elementType =
 		baseType === 'string' || baseType === 'number' || baseType === 'boolean' ? baseType : 'string';
 
-	const validator = createElementValidator(elementType as 'string' | 'number' | 'boolean');
+	const validator = createElementValidator(elementType);
 	assertIsArray(parameterName, value, validator);
 }
 
