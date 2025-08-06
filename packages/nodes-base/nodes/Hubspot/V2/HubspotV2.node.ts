@@ -1481,9 +1481,12 @@ export class HubspotV2 implements INodeType {
 								});
 							}
 							if (additionalFields.buyingRole) {
+								const buyingRole = Array.isArray(additionalFields.buyingRole)
+									? (additionalFields.buyingRole as string[]).join(';')
+									: additionalFields.buyingRole;
 								body.push({
 									property: 'hs_buying_role',
-									value: (additionalFields.buyingRole as string[]).join(';'),
+									value: buyingRole,
 								});
 							}
 							if (additionalFields.countryRegionCode) {
