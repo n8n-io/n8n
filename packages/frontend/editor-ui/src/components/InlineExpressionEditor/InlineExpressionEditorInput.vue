@@ -15,7 +15,7 @@ import { inputTheme } from './theme';
 import { onKeyStroke } from '@vueuse/core';
 import { expressionCloseBrackets } from '@/plugins/codemirror/expressionCloseBrackets';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
-import { TargetNodeParameterContext } from '@/Interface';
+import { type TargetNodeParameterContext } from '@/Interface';
 
 type Props = {
 	modelValue: string;
