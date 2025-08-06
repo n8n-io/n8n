@@ -346,7 +346,7 @@ describe('NDV', () => {
 		});
 	});
 
-	it('webhook shoul fallback to webhookId if path is empty', () => {
+	it('webhook should fallback to webhookId if path is empty', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
 
