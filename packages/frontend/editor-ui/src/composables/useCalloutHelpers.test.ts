@@ -40,9 +40,9 @@ vi.mock('@/stores/users.store', () => ({
 
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
-		getCurrentWorkflow: vi.fn(() => ({
+		workflowObject: {
 			id: '1',
-		})),
+		},
 		getWorkflowById: mocks.getWorkflowById,
 	}),
 }));

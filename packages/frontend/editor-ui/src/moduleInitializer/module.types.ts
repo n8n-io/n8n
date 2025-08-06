@@ -1,5 +1,13 @@
+import type { ModalState } from '@/Interface';
 import type { DynamicTabOptions } from '@/utils/modules/tabUtils';
 import type { RouteRecordRaw } from 'vue-router';
+import type { Component } from 'vue/dist/vue.js';
+
+export type ModalDefinition = {
+	key: string;
+	component: Component | (() => Promise<Component>);
+	initialState?: ModalState;
+};
 
 export type ResourceMetadata = {
 	key: string;
@@ -19,4 +27,5 @@ export type FrontendModuleDescription = {
 		shared?: DynamicTabOptions[];
 	};
 	resources?: ResourceMetadata[];
+	modals?: ModalDefinition[];
 };

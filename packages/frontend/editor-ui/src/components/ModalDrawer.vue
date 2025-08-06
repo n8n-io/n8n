@@ -95,7 +95,7 @@ onBeforeUnmount(() => {
 <style lang="scss">
 .el-drawer__header {
 	margin: 0;
-	padding: 30px 30px 0 30px;
+	padding: 30px 30px 0;
 }
 
 .el-drawer__body {
