@@ -1,7 +1,6 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
-
 import type { IAttachment } from '../../Interfaces';
 
 export async function post(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {

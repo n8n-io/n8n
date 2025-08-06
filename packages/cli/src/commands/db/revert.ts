@@ -1,14 +1,12 @@
+import { Logger } from '@n8n/backend-common';
+import type { Migration } from '@n8n/db';
+import { wrapMigration, DbConnectionOptions } from '@n8n/db';
+import { Command } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DataSourceOptions as ConnectionOptions } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { MigrationExecutor, DataSource as Connection } from '@n8n/typeorm';
-import { Command, Flags } from '@oclif/core';
-import { Container } from 'typedi';
-
-import { getConnectionOptions } from '@/databases/config';
-import type { Migration } from '@/databases/types';
-import { wrapMigration } from '@/databases/utils/migration-helpers';
-import { Logger } from '@/logging/logger.service';
 
 // This function is extracted to make it easier to unit test it.
 // Mocking turned into a mess due to this command using typeorm and the db
@@ -61,26 +59,18 @@ export async function main(
 	await connection.destroy();
 }
 
-export class DbRevertMigrationCommand extends Command {
-	static description = 'Revert last database migration';
-
-	static examples = ['$ n8n db:revert'];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-	};
-
-	protected logger = Container.get(Logger);
-
+@Command({
+	name: 'db:revert',
+	description: 'Revert last database migration',
+})
+export class DbRevertMigrationCommand {
 	private connection: Connection;
 
-	async init() {
-		await this.parse(DbRevertMigrationCommand);
-	}
+	constructor(private readonly logger: Logger) {}
 
 	async run() {
 		const connectionOptions: ConnectionOptions = {
-			...getConnectionOptions(),
+			...Container.get(DbConnectionOptions).getOptions(),
 			subscribers: [],
 			synchronize: false,
 			migrationsRun: false,
@@ -106,6 +96,6 @@ export class DbRevertMigrationCommand extends Command {
 	protected async finally(error: Error | undefined) {
 		if (this.connection?.isInitialized) await this.connection.destroy();
 
-		this.exit(error ? 1 : 0);
+		process.exit(error ? 1 : 0);
 	}
 }

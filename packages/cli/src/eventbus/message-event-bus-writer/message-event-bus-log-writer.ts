@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
+import { inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { once as eventOnce } from 'events';
 import { createReadStream, existsSync, rmSync } from 'fs';
 import remove from 'lodash/remove';
@@ -8,11 +10,7 @@ import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
 import path, { parse } from 'path';
 import readline from 'readline';
-import Container from 'typedi';
 import { Worker } from 'worker_threads';
-
-import { inTest } from '@/constants';
-import { Logger } from '@/logging/logger.service';
 
 import type { EventMessageTypes } from '../event-message-classes';
 import { isEventMessageOptions } from '../event-message-classes/abstract-event-message';
@@ -70,7 +68,7 @@ export class MessageEventBusLogWriter {
 		this.globalConfig = Container.get(GlobalConfig);
 	}
 
-	public get worker(): Worker | undefined {
+	get worker(): Worker | undefined {
 		return this._worker;
 	}
 

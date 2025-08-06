@@ -1,0 +1,46 @@
+{
+  "private": true,
+  "type": "module",
+  "name": "@n8n/node-cli",
+  "version": "0.1.0",
+  "description": "Official CLI for developing community nodes for n8n",
+  "bin": {
+    "n8n-node": "./bin/n8n-node.js"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsc -w",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "lint": "eslint src --quiet",
+    "lintfix": "eslint src --fix",
+    "build": "tsc",
+    "publish:dry": "pnpm run build && pnpm pub --dry-run",
+    "test": "vitest run",
+    "test:dev": "vitest --silent=false",
+    "start": "./bin/n8n-node.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/n8n-io/n8n"
+  },
+  "oclif": {
+    "bin": "n8n-node",
+    "commands": "./dist/commands",
+    "topicSeparator": " "
+  },
+  "dependencies": {
+    "@oclif/core": "^4.5.2",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@oclif/test": "^4.1.13"
+  }
+}

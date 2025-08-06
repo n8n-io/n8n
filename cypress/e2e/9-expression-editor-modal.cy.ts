@@ -1,4 +1,6 @@
+import { META_KEY } from '../constants';
 import { NDV } from '../pages/ndv';
+import { successToast } from '../pages/notifications';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
@@ -11,11 +13,28 @@ describe('Expression editor modal', () => {
 		cy.on('uncaught:exception', (error) => error.name !== 'ExpressionError');
 	});
 
+	describe('Keybinds', () => {
+		beforeEach(() => {
+			WorkflowPage.actions.addNodeToCanvas('Hacker News');
+			WorkflowPage.actions.zoomToFit();
+			WorkflowPage.actions.openNode('Get many items');
+			WorkflowPage.actions.openExpressionEditorModal();
+		});
+
+		it('should save the workflow with save keybind', () => {
+			WorkflowPage.getters.expressionModalInput().clear();
+			WorkflowPage.getters.expressionModalInput().click().type('{{ "hello"');
+			WorkflowPage.getters.expressionModalOutput().contains('hello');
+			WorkflowPage.getters.expressionModalInput().click().type(`{${META_KEY}+s}`);
+			successToast().should('be.visible');
+		});
+	});
+
 	describe('Static data', () => {
 		beforeEach(() => {
 			WorkflowPage.actions.addNodeToCanvas('Hacker News');
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.actions.openNode('Hacker News');
+			WorkflowPage.actions.openNode('Get many items');
 			WorkflowPage.actions.openExpressionEditorModal();
 		});
 
@@ -71,7 +90,7 @@ describe('Expression editor modal', () => {
 			WorkflowPage.actions.addNodeToCanvas('No Operation');
 			WorkflowPage.actions.addNodeToCanvas('Hacker News');
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.actions.openNode('Hacker News');
+			WorkflowPage.actions.openNode('Get many items');
 			WorkflowPage.actions.openExpressionEditorModal();
 		});
 
@@ -105,8 +124,8 @@ describe('Expression editor modal', () => {
 			// Run workflow
 			cy.get('body').type('{esc}');
 			ndv.actions.close();
-			WorkflowPage.actions.executeNode('No Operation');
-			WorkflowPage.actions.openNode('Hacker News');
+			WorkflowPage.actions.executeNode('No Operation, do nothing', { anchor: 'topLeft' });
+			WorkflowPage.actions.openNode('Get many items');
 			WorkflowPage.actions.openExpressionEditorModal();
 
 			// Previous nodes have run, input can be resolved

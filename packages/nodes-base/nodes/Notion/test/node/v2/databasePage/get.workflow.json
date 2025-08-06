@@ -1,0 +1,91 @@
+{
+	"name": "tests notion",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4260fdbd-e92f-4712-8114-38b85f8289ea",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "databasePage",
+				"operation": "get",
+				"pageId": {
+					"__rl": true,
+					"value": "https://www.notion.so/138fb9cb4cf0804c8663d8ecdd5e692f?v=7bcc03614eed4c95a9e6168c040e9c58&p=15bfb9cb4cf081c7aab4c5855b8cb6c3&pm=s",
+					"mode": "url"
+				}
+			},
+			"id": "5ab80e6a-c9c4-4cc5-9332-2fc7a3f8ae24",
+			"name": "Notion",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 2.2,
+			"position": [1040, 360],
+			"credentials": {
+				"notionApi": {
+					"id": "CiZXWkDmjiZzpcL1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "a664f506-72a5-4e50-80b4-97ed2e6eb334",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1260, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": "15bfb9cb-4cf0-81c7-aab4-c5855b8cb6c3",
+					"name": "new name 1",
+					"url": "https://www.notion.so/new-name-1-15bfb9cb4cf081c7aab4c5855b8cb6c3",
+					"property_tags": [],
+					"property_name": "new name 1"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Notion",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Notion": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "68afba7e-c066-458c-984b-c758ef92463c",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "Ucav6QC99JNMCkd3",
+	"tags": []
+}

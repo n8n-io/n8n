@@ -1,0 +1,20 @@
+name: Test Workflows Nightly and Manual
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      git_ref_to_test:
+        description: 'The Git ref (branch, tag, or SHA) to run tests against.'
+        required: true
+        type: string
+        default: 'master'
+
+jobs:
+  run_workflow_tests:
+    name: Run Workflow Tests
+    uses: ./.github/workflows/test-workflows-callable.yml
+    with:
+      git_ref: ${{ github.event_name == 'schedule' && 'master' || github.event.inputs.git_ref_to_test }}
+    secrets: inherit

@@ -1,5 +1,5 @@
 import 'cypress-real-events';
-import type { FrontendSettings } from '@n8n/api-types';
+import type { FrontendSettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import FakeTimers from '@sinonjs/fake-timers';
 
 import {
@@ -10,7 +10,7 @@ import {
 	N8N_AUTH_COOKIE,
 } from '../constants';
 import { WorkflowPage } from '../pages';
-import { getUniqueWorkflowName, isCanvasV2 } from '../utils/workflowUtils';
+import { getUniqueWorkflowName } from '../utils/workflowUtils';
 
 Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 	cy.window().then((win) => {
@@ -24,10 +24,6 @@ Cypress.Commands.add('setAppDate', (targetDate: number | Date) => {
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
-});
-
-Cypress.Commands.add('ifCanvasVersion', (getterV1, getterV2) => {
-	return isCanvasV2() ? getterV2() : getterV1();
 });
 
 Cypress.Commands.add(
@@ -69,20 +65,11 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 			.request({
 				method: 'POST',
 				url: `${BACKEND_BASE_URL}/rest/login`,
-				body: { email, password },
+				body: { emailOrLdapLoginId: email, password },
 				failOnStatusCode: false,
 			})
 			.then((response) => {
 				Cypress.env('currentUserId', response.body.data.id);
-
-				// @TODO Remove this once the switcher is removed
-				cy.window().then((win) => {
-					win.localStorage.setItem('NodeView.migrated', 'true');
-					win.localStorage.setItem('NodeView.switcher.discovered.beta', 'true');
-
-					const nodeViewVersion = Cypress.env('NODE_VIEW_VERSION');
-					win.localStorage.setItem('NodeView.version', nodeViewVersion ?? '1');
-				});
 			});
 	});
 });
@@ -128,6 +115,25 @@ Cypress.Commands.add('disableFeature', (feature: string) => setFeature(feature, 
 Cypress.Commands.add('enableQueueMode', () => setQueueMode(true));
 Cypress.Commands.add('disableQueueMode', () => setQueueMode(false));
 
+const setEnvFeatureFlags = (flags: N8nEnvFeatFlags) =>
+	cy.request('PATCH', `${BACKEND_BASE_URL}/rest/e2e/env-feature-flags`, {
+		flags,
+	});
+
+const getEnvFeatureFlags = () =>
+	cy.request('GET', `${BACKEND_BASE_URL}/rest/e2e/env-feature-flags`);
+
+// Environment feature flags commands (using E2E API)
+Cypress.Commands.add('setEnvFeatureFlags', (flags: N8nEnvFeatFlags) =>
+	setEnvFeatureFlags(flags).then((response) => response.body.data),
+);
+Cypress.Commands.add('clearEnvFeatureFlags', () =>
+	setEnvFeatureFlags({}).then((response) => response.body.data),
+);
+Cypress.Commands.add('getEnvFeatureFlags', () =>
+	getEnvFeatureFlags().then((response) => response.body.data),
+);
+
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 	if (Cypress.isBrowser('chrome')) {
 		cy.wrap(
@@ -143,7 +149,7 @@ Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 });
 
 Cypress.Commands.add('readClipboard', () =>
-	cy.window().then((win) => win.navigator.clipboard.readText()),
+	cy.window().then(async (win) => await win.navigator.clipboard.readText()),
 );
 
 Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
@@ -172,6 +178,7 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 		};
 		if (options?.realMouse) {
 			element.realMouseDown();
+			element.realMouseMove(0, 0);
 			element.realMouseMove(newPosition.x, newPosition.y);
 			element.realMouseUp();
 		} else {
@@ -218,8 +225,7 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector, optio
 			const pageY = coords.top + coords.height / 2;
 
 			if (draggableSelector) {
-				// We can't use realMouseDown here because it hangs headless run
-				cy.get(draggableSelector).trigger('mousedown');
+				cy.get(draggableSelector).realMouseDown();
 			}
 			// We don't chain these commands to make sure cy.get is re-trying correctly
 			cy.get(droppableSelector).realMouseMove(0, 0);
@@ -252,4 +258,19 @@ Cypress.Commands.add('resetDatabase', () => {
 		members: INSTANCE_MEMBERS,
 		admin: INSTANCE_ADMIN,
 	});
+});
+
+Cypress.Commands.add('interceptNewTab', () => {
+	cy.window().then((win) => {
+		cy.stub(win, 'open').as('windowOpen');
+	});
+});
+
+Cypress.Commands.add('visitInterceptedTab', () => {
+	cy.get('@windowOpen')
+		.should('have.been.called')
+		.then((stub: any) => {
+			const url = stub.firstCall.args[0];
+			cy.visit(url);
+		});
 });

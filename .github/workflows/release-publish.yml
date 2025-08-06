@@ -12,7 +12,7 @@ jobs:
     name: Publish to NPM
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       id-token: write
     env:
@@ -21,15 +21,19 @@ jobs:
       release: ${{ steps.set-release.outputs.release }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
 
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.x
-          cache: 'pnpm'
+          node-version: 22.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
+
       - run: pnpm install --frozen-lockfile
 
       - name: Set release version in env
@@ -39,7 +43,7 @@ jobs:
         run: pnpm build
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
+        uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-release:build
@@ -47,14 +51,20 @@ jobs:
       - name: Dry-run publishing
         run: pnpm publish -r --no-git-checks --dry-run
 
-      - name: Publish to NPM
+      - name: Pre publishing changes
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
           node .github/scripts/trim-fe-packageJson.js
           node .github/scripts/ensure-provenance-fields.mjs
+          cp README.md packages/cli/README.md
           sed -i "s/default: 'dev'/default: 'stable'/g" packages/cli/dist/config/schema.js
-          pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
-          npm dist-tag rm n8n rc
+
+      - name: Publish to NPM
+        run: pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
+
+      - name: Cleanup rc tag
+        run: npm dist-tag rm n8n rc
+        continue-on-error: true
 
       - id: set-release
         run: echo "release=${{ env.RELEASE }}" >> $GITHUB_OUTPUT
@@ -62,47 +72,11 @@ jobs:
   publish-to-docker-hub:
     name: Publish to DockerHub
     needs: [publish-to-npm]
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.1.1
-        with:
-          fetch-depth: 0
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.0.0
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.0.0
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3.0.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v3.0.0
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build
-        uses: docker/build-push-action@v5.1.0
-        with:
-          context: ./docker/images/n8n
-          build-args: |
-            N8N_VERSION=${{ needs.publish-to-npm.outputs.release }}
-          platforms: linux/amd64,linux/arm64
-          provenance: false
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.publish-to-npm.outputs.release }}
-            ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.publish-to-npm.outputs.release }}
+    uses: ./.github/workflows/docker-build-push.yml
+    with:
+      n8n_version: ${{ needs.publish-to-npm.outputs.release }}
+      release_type: stable
+    secrets: inherit
 
   create-github-release:
     name: Create a GitHub Release
@@ -117,7 +91,7 @@ jobs:
 
     steps:
       - name: Create a Release on GitHub
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174 # v1
         with:
           commit: ${{github.event.pull_request.base.ref}}
           tag: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
@@ -136,28 +110,36 @@ jobs:
       SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
 
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.0.0
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-release:build
 
       - name: Create a frontend release
-        uses: getsentry/action-release@v1.7.0
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
         continue-on-error: true
         with:
           projects: ${{ secrets.SENTRY_FRONTEND_PROJECT }}
-          version: ${{ needs.publish-to-npm.outputs.release }}
-          sourcemaps: packages/editor-ui/dist
+          version: n8n@${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/frontend/editor-ui/dist
 
       - name: Create a backend release
-        uses: getsentry/action-release@v1.7.0
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
         continue-on-error: true
         with:
           projects: ${{ secrets.SENTRY_BACKEND_PROJECT }}
-          version: ${{ needs.publish-to-npm.outputs.release }}
+          version: n8n@${{ needs.publish-to-npm.outputs.release }}
           sourcemaps: packages/cli/dist packages/core/dist packages/nodes-base/dist packages/@n8n/n8n-nodes-langchain/dist
+
+      - name: Create a task runner release
+        uses: getsentry/action-release@e769183448303de84c5a06aaaddf9da7be26d6c7 # v1.7.0
+        continue-on-error: true
+        with:
+          projects: ${{ secrets.SENTRY_TASK_RUNNER_PROJECT }}
+          version: n8n@${{ needs.publish-to-npm.outputs.release }}
+          sourcemaps: packages/core/dist packages/workflow/dist/esm packages/@n8n/task-runner/dist
 
   trigger-release-note:
     name: Trigger a release note
@@ -174,8 +156,8 @@ jobs:
   #   if: ${{ github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'release:patch') }}
   #   runs-on: ubuntu-latest
   #   steps:
-  #     - uses: actions/checkout@v4.1.1
-  #       with:
+  #     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+  # v4.1.1
   #         fetch-depth: 0
   #     - run: |
   #         git checkout --track origin/master

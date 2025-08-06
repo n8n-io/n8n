@@ -1,7 +1,8 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { getNodeInputsData } from '../helpers/utils';
-import type { MergeType } from './node.type';
+
 import * as mode from './mode';
+import type { MergeType } from './node.type';
+import { getNodeInputsData } from '../helpers/utils';
 
 export async function router(this: IExecuteFunctions) {
 	const inputsData = getNodeInputsData.call(this);

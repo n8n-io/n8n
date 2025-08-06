@@ -5,12 +5,18 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-
+import { NodeConnectionTypes } from 'n8n-workflow';
 import snowflake from 'snowflake-sdk';
-import { connect, destroy, execute } from './GenericFunctions';
 
 import { getResolvables } from '@utils/utilities';
+
+import {
+	connect,
+	destroy,
+	execute,
+	getConnectionOptions,
+	type SnowflakeCredential,
+} from './GenericFunctions';
 
 export class Snowflake implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,8 +29,9 @@ export class Snowflake implements INodeType {
 		defaults: {
 			name: 'Snowflake',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		parameterPane: 'wide',
 		credentials: [
 			{
@@ -163,16 +170,14 @@ export class Snowflake implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = (await this.getCredentials(
-			'snowflake',
-		)) as unknown as snowflake.ConnectionOptions;
-		const returnData: INodeExecutionData[] = [];
-		let responseData;
+		const credentials = await this.getCredentials<SnowflakeCredential>('snowflake');
 
-		const connection = snowflake.createConnection(credentials);
+		const connectionOptions = getConnectionOptions(credentials);
+		const connection = snowflake.createConnection(connectionOptions);
 
 		await connect(connection);
 
+		const returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
 
@@ -188,7 +193,7 @@ export class Snowflake implements INodeType {
 					query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
 				}
 
-				responseData = await execute(connection, query, []);
+				const responseData = await execute(connection, query, []);
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },

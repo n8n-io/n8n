@@ -1,3 +1,7 @@
+import { CredentialsEntity, type CredentialsRepository } from '@n8n/db';
+import { EntityNotFoundError } from '@n8n/typeorm';
+import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -5,59 +9,54 @@ import type {
 	IHttpRequestOptions,
 	INode,
 	INodeProperties,
+	INodeTypes,
+	INodeCredentialsDetails,
 } from 'n8n-workflow';
-import { NodeConnectionType, deepCopy } from 'n8n-workflow';
-import { Workflow } from 'n8n-workflow';
-import Container from 'typedi';
+import { deepCopy, Workflow } from 'n8n-workflow';
+import { type InstanceSettings, Cipher } from 'n8n-core';
 
+import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeTypes } from '@/node-types';
-import { mockInstance } from '@test/mocking';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 describe('CredentialsHelper', () => {
-	mockInstance(CredentialsRepository);
-	mockInstance(SharedCredentialsRepository);
-	const mockNodesAndCredentials = mockInstance(LoadNodesAndCredentials, {
-		loadedNodes: {
-			'test.set': {
-				sourcePath: '',
-				type: {
-					description: {
-						displayName: 'Set',
-						name: 'set',
-						group: ['input'],
-						version: 1,
-						description: 'Sets a value',
-						defaults: {
-							name: 'Set',
-							color: '#0000FF',
-						},
-						inputs: [NodeConnectionType.Main],
-						outputs: [NodeConnectionType.Main],
-						properties: [
-							{
-								displayName: 'Value1',
-								name: 'value1',
-								type: 'string',
-								default: 'default-value1',
-							},
-							{
-								displayName: 'Value2',
-								name: 'value2',
-								type: 'string',
-								default: 'default-value2',
-							},
-						],
-					},
-				},
-			},
-		},
-	});
+	const nodeTypes = mock<INodeTypes>();
+	const mockNodesAndCredentials = mock<LoadNodesAndCredentials>();
+	const credentialsRepository = mock<CredentialsRepository>();
 
-	const nodeTypes = mockInstance(NodeTypes);
+	// Setup cipher for testing
+	const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'test_key_for_testing' }));
+	Container.set(Cipher, cipher);
+
+	const credentialsHelper = new CredentialsHelper(
+		new CredentialTypes(mockNodesAndCredentials),
+		mock(),
+		credentialsRepository,
+		mock(),
+		mock(),
+	);
+
+	describe('getCredentials', () => {
+		test('turns `EntityNotFoundError` into `CredentialNotFoundError`s', async () => {
+			credentialsRepository.findOneByOrFail.mockRejectedValueOnce(
+				new EntityNotFoundError(CredentialsEntity, 'foo'),
+			);
+
+			await expect(
+				credentialsHelper.getCredentials({ id: '1', name: 'foo' }, 'bar'),
+			).rejects.toThrow(CredentialNotFoundError);
+		});
+
+		test('passes other error through', async () => {
+			const errorMessage = 'Connection terminated due to connection timeout';
+			credentialsRepository.findOneByOrFail.mockRejectedValueOnce(new Error(errorMessage));
+
+			await expect(
+				credentialsHelper.getCredentials({ id: '1', name: 'foo' }, 'bar'),
+			).rejects.toThrow(errorMessage);
+		});
+	});
 
 	describe('authenticate', () => {
 		const tests: Array<{
@@ -272,19 +271,16 @@ describe('CredentialsHelper', () => {
 
 		for (const testData of tests) {
 			test(testData.description, async () => {
-				//@ts-expect-error `loadedCredentials` is a getter and we are replacing it here with a property
-				mockNodesAndCredentials.loadedCredentials = {
-					[testData.input.credentialType.name]: {
-						type: testData.input.credentialType,
-						sourcePath: '',
-					},
-				};
+				const { credentialType } = testData.input;
 
-				const credentialsHelper = Container.get(CredentialsHelper);
+				mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+					type: credentialType,
+					sourcePath: '',
+				});
 
 				const result = await credentialsHelper.authenticate(
 					testData.input.credentials,
-					testData.input.credentialType.name,
+					credentialType.name,
 					deepCopy(incomingRequestOptions),
 					workflow,
 					node,
@@ -293,5 +289,96 @@ describe('CredentialsHelper', () => {
 				expect(result).toEqual(testData.output);
 			});
 		}
+	});
+
+	describe('updateCredentialsOauthTokenData', () => {
+		test('only updates oauthTokenData field while preserving other credential fields', async () => {
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: 'cred-123',
+				name: 'Test OAuth2 Credential',
+			};
+
+			const existingCredentialData = {
+				clientId: 'existing-client-id',
+				clientSecret: 'existing-client-secret',
+				scope: 'read write',
+				customField: 'custom-value',
+				oauthTokenData: {
+					access_token: 'old-access-token',
+					refresh_token: 'old-refresh-token',
+					expires_in: 3600,
+				},
+			};
+
+			const newOauthTokenData = {
+				oauthTokenData: {
+					access_token: 'new-access-token',
+					refresh_token: 'new-refresh-token',
+					expires_in: 7200,
+					token_type: 'Bearer',
+				},
+			};
+
+			const mockCredentialEntity = {
+				id: 'cred-123',
+				name: 'Test OAuth2 Credential',
+				type: 'oAuth2Api',
+				data: cipher.encrypt(existingCredentialData),
+			};
+
+			credentialsRepository.findOneByOrFail.mockResolvedValue(
+				mockCredentialEntity as CredentialsEntity,
+			);
+
+			const beforeUpdateTime = new Date();
+			await credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				newOauthTokenData,
+			);
+
+			expect(credentialsRepository.update).toHaveBeenCalledWith(
+				{ id: 'cred-123', type: 'oAuth2Api' },
+				expect.objectContaining({
+					id: 'cred-123',
+					name: 'Test OAuth2 Credential',
+					type: 'oAuth2Api',
+					data: expect.any(String),
+					updatedAt: expect.any(Date),
+				}),
+			);
+
+			const updateCall = credentialsRepository.update.mock.calls[0];
+			const updatedCredentialData = updateCall[1];
+			const updatedAt = updatedCredentialData.updatedAt as Date;
+
+			expect(updatedAt).toBeInstanceOf(Date);
+			expect(updatedAt.getTime()).toBeGreaterThanOrEqual(beforeUpdateTime.getTime());
+
+			const decryptedUpdatedData = cipher.decrypt(updatedCredentialData.data as string);
+			const parsedUpdatedData = JSON.parse(decryptedUpdatedData);
+
+			expect(parsedUpdatedData).toEqual({
+				clientId: 'existing-client-id',
+				clientSecret: 'existing-client-secret',
+				scope: 'read write',
+				customField: 'custom-value',
+				oauthTokenData: {
+					access_token: 'new-access-token',
+					refresh_token: 'new-refresh-token',
+					expires_in: 7200,
+					token_type: 'Bearer',
+				},
+			});
+
+			expect(parsedUpdatedData.clientId).toBe('existing-client-id');
+			expect(parsedUpdatedData.clientSecret).toBe('existing-client-secret');
+			expect(parsedUpdatedData.scope).toBe('read write');
+			expect(parsedUpdatedData.customField).toBe('custom-value');
+			expect(parsedUpdatedData.oauthTokenData.access_token).toBe('new-access-token');
+			expect(parsedUpdatedData.oauthTokenData.refresh_token).toBe('new-refresh-token');
+			expect(parsedUpdatedData.oauthTokenData.expires_in).toBe(7200);
+			expect(parsedUpdatedData.oauthTokenData.token_type).toBe('Bearer');
+		});
 	});
 });

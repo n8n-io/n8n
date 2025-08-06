@@ -1,8 +1,9 @@
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+
+import { SPLUNK } from '../../../v1/types';
 import * as report from '../../../v2/actions/report';
 import * as transport from '../../../v2/transport';
-import { SPLUNK } from '../../../v1/types';
 
 jest.mock('../../../v2/transport', () => ({
 	splunkApiJsonRequest: jest.fn(),

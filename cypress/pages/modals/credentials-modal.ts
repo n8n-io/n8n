@@ -2,6 +2,14 @@ import { getCredentialSaveButton, saveCredential } from '../../composables/modal
 import { getVisibleSelect } from '../../utils';
 import { BasePage } from '../base';
 
+/**
+ * @deprecated Use functional composables from @composables instead.
+ * If a composable doesn't exist for your use case, please create a new one in:
+ * cypress/composables
+ *
+ * This class-based approach is being phased out in favor of more modular functional composables.
+ * Each getter and action in this class should be moved to individual composable functions.
+ */
 export class CredentialsModal extends BasePage {
 	getters = {
 		newCredentialModal: () => cy.getByTestId('selectCredential-modal', { timeout: 5000 }),
@@ -13,6 +21,8 @@ export class CredentialsModal extends BasePage {
 		connectionParameter: (fieldName: string) =>
 			this.getters.credentialInputs().find(`:contains('${fieldName}') .n8n-input input`),
 		name: () => cy.getByTestId('credential-name'),
+		namePreview: () =>
+			cy.getByTestId('credential-name').find('span[data-test-id=inline-edit-preview]'),
 		nameInput: () => cy.getByTestId('credential-name').find('input'),
 		deleteButton: () => cy.getByTestId('credential-delete-button'),
 		closeButton: () => this.getters.editCredentialModal().find('.el-dialog__close').first(),
@@ -35,7 +45,7 @@ export class CredentialsModal extends BasePage {
 			getVisibleSelect().contains(email.toLowerCase()).click();
 		},
 		setName: (name: string) => {
-			this.getters.name().click();
+			this.getters.name().getByTestId('inline-edit-preview').click();
 			this.getters.nameInput().clear().type(name);
 		},
 		save: (test = false) => {
@@ -61,6 +71,7 @@ export class CredentialsModal extends BasePage {
 			this.getters
 				.credentialInputs()
 				.find('input[type=text], input[type=password]')
+				.filter(':not([readonly])')
 				.each(($el) => {
 					cy.wrap($el).type('test');
 				});
@@ -84,7 +95,7 @@ export class CredentialsModal extends BasePage {
 			this.actions.fillCredentialsForm(closeModal);
 		},
 		renameCredential: (newName: string) => {
-			this.getters.nameInput().type('{selectall}');
+			this.getters.namePreview().click();
 			this.getters.nameInput().type(newName);
 			this.getters.nameInput().type('{enter}');
 		},

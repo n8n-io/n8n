@@ -1,37 +1,40 @@
-import type { Scope } from '@n8n/permissions';
-import { EntityNotFoundError } from '@n8n/typeorm';
-import Container from 'typedi';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { Project } from '@/databases/entities/project';
-import type { ProjectRole } from '@/databases/entities/project-relation';
-import type { GlobalRole } from '@/databases/entities/user';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { RoleService } from '@/services/role.service';
-
-import {
-	getCredentialById,
-	saveCredential,
-	shareCredentialWithProjects,
-} from './shared/db/credentials';
 import {
 	createTeamProject,
 	linkUserToProject,
 	getPersonalProject,
 	findProject,
 	getProjectRelations,
-} from './shared/db/projects';
+	createWorkflow,
+	shareWorkflowWithProjects,
+	randomCredentialPayload,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import type { Project } from '@n8n/db';
+import {
+	FolderRepository,
+	ProjectRelationRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+} from '@n8n/db';
+import { Container } from '@n8n/di';
+import { getRoleScopes, type GlobalRole, type ProjectRole, type Scope } from '@n8n/permissions';
+import { EntityNotFoundError } from '@n8n/typeorm';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
+import { CacheService } from '@/services/cache/cache.service';
+import { createFolder } from '@test-integration/db/folders';
+
+import {
+	getCredentialById,
+	saveCredential,
+	shareCredentialWithProjects,
+} from './shared/db/credentials';
 import { createMember, createOwner, createUser } from './shared/db/users';
-import { createWorkflow, shareWorkflowWithProjects } from './shared/db/workflows';
-import { randomCredentialPayload } from './shared/random';
-import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
-import { mockInstance } from '../shared/mocking';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -177,11 +180,7 @@ describe('GET /projects/my-projects', () => {
 		//
 		// ACT
 		//
-		const resp = await testServer
-			.authAgentFor(testUser1)
-			.get('/projects/my-projects')
-			.query({ includeScopes: true })
-			.expect(200);
+		const resp = await testServer.authAgentFor(testUser1).get('/projects/my-projects').expect(200);
 		const respProjects: Array<Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }> =
 			resp.body.data;
 
@@ -258,11 +257,7 @@ describe('GET /projects/my-projects', () => {
 		//
 		// ACT
 		//
-		const resp = await testServer
-			.authAgentFor(ownerUser)
-			.get('/projects/my-projects')
-			.query({ includeScopes: true })
-			.expect(200);
+		const resp = await testServer.authAgentFor(ownerUser).get('/projects/my-projects').expect(200);
 		const respProjects: Array<Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }> =
 			resp.body.data;
 
@@ -398,7 +393,7 @@ describe('POST /projects/', () => {
 			await findProject(respProject.id);
 		}).not.toThrow();
 		expect(resp.body.data.role).toBe('project:admin');
-		for (const scope of Container.get(RoleService).getRoleScopes('project:admin')) {
+		for (const scope of getRoleScopes('project:admin')) {
 			expect(resp.body.data.scopes).toContain(scope);
 		}
 	});
@@ -441,6 +436,43 @@ describe('POST /projects/', () => {
 
 		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(2);
 	});
+
+	const globalConfig = Container.get(GlobalConfig);
+	// Preventing this relies on transactions and we can't use them with the
+	// sqlite legacy driver due to data loss risks.
+	if (!globalConfig.database.isLegacySqlite) {
+		test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
+			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
+			const maxTeamProjects = 3;
+			testServer.license.setQuota('quota:maxTeamProjects', maxTeamProjects);
+			const ownerUser = await createOwner();
+			const ownerAgent = testServer.authAgentFor(ownerUser);
+			await expect(
+				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
+			).resolves.toBe(0);
+
+			await Promise.all([
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 1' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 2' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 3' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 4' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 5' }),
+				ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
+			]);
+
+			// Some of the calls above will interleave and may fail with a deadlock
+			// error on MySQL (this is not an issue on PG or MariaDB).
+			// That can lead to less projects being created than the quota allows.
+			// So we're only checking here that we didn't create more projects than
+			// are allowed instead of checking for a specific number.
+			// We only want to prevent that this endpoint is exploited. A normal user
+			// using the FE would almost never hit this and if they do they can retry
+			// the action. No need to implement rety logic in the controller.
+			await expect(
+				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
+			).resolves.toBeLessThanOrEqual(maxTeamProjects);
+		});
+	}
 });
 
 describe('PATCH /projects/:projectId', () => {
@@ -481,7 +513,7 @@ describe('PATCH /projects/:projectId', () => {
 		const resp = await ownerAgent
 			.patch(`/projects/${personalProject.id}`)
 			.send({ name: 'New Name' });
-		expect(resp.status).toBe(403);
+		expect(resp.status).toBe(404);
 
 		const updatedProject = await findProject(personalProject.id);
 		expect(updatedProject.name).not.toEqual('New Name');
@@ -1056,7 +1088,7 @@ describe('DELETE /project/:projectId', () => {
 			.expect(404);
 	});
 
-	test('migrates workflows and credentials to another project if `migrateToProject` is passed', async () => {
+	test('migrates folders, workflows and credentials to another project if `migrateToProject` is passed', async () => {
 		//
 		// ARRANGE
 		//
@@ -1078,6 +1110,11 @@ describe('DELETE /project/:projectId', () => {
 		await shareWorkflowWithProjects(ownedWorkflow, [
 			{ project: otherProject, role: 'workflow:editor' },
 		]);
+
+		await createFolder(projectToBeDeleted, { name: 'folder1' });
+		await createFolder(projectToBeDeleted, { name: 'folder2' });
+		await createFolder(targetProject, { name: 'folder1' });
+		await createFolder(otherProject, { name: 'folder3' });
 
 		//
 		// ACT
@@ -1136,6 +1173,22 @@ describe('DELETE /project/:projectId', () => {
 				role: 'credential:user',
 			}),
 		).resolves.toBeDefined();
+
+		// folders are in the target project
+		const foldersInTargetProject = await Container.get(FolderRepository).findBy({
+			homeProject: { id: targetProject.id },
+		});
+
+		const foldersInDeletedProject = await Container.get(FolderRepository).findBy({
+			homeProject: { id: projectToBeDeleted.id },
+		});
+
+		expect(foldersInDeletedProject).toHaveLength(0);
+
+		expect(foldersInTargetProject).toHaveLength(3);
+		expect(foldersInTargetProject.map((f) => f.name)).toEqual(
+			expect.arrayContaining(['folder1', 'folder1', 'folder2']),
+		);
 	});
 
 	// This test is testing behavior that is explicitly not enabled right now,

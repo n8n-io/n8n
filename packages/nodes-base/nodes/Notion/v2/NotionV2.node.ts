@@ -8,6 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError } from 'n8n-workflow';
 
+import { loadOptions } from './methods';
+import { versionDescription } from './VersionDescription';
 import type { SortData, FileRecord } from '../shared/GenericFunctions';
 import {
 	downloadFiles,
@@ -28,10 +30,7 @@ import {
 	simplifyObjects,
 	validateJSON,
 } from '../shared/GenericFunctions';
-
 import { listSearch } from '../shared/methods';
-import { loadOptions } from './methods';
-import { versionDescription } from './VersionDescription';
 
 export class NotionV2 implements INodeType {
 	description: INodeTypeDescription;

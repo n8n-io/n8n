@@ -1,0 +1,77 @@
+{
+	"name": "Google Ads Get",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, -160],
+			"id": "efd3f04e-8695-4f2c-8f8d-0b0166390d3f",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"managerCustomerId": "111-222-3333",
+				"clientCustomerId": "444-555-6666",
+				"campaignId": "12345678901",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.googleAds",
+			"typeVersion": 1,
+			"position": [220, -160],
+			"id": "773cca04-b4be-4bfd-8fb4-e37154df2991",
+			"name": "Get",
+			"credentials": {
+				"googleAdsOAuth2Api": {
+					"id": "VFEJAm9y8GDEsnS4",
+					"name": "Google Ads account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get": [
+			{
+				"json": {
+					"resourceName": "customers/5171368254/campaignBudgets/14669466664",
+					"status": "ENABLED",
+					"advertisingChannelType": "SEARCH",
+					"name": "Search-1",
+					"id": "22682295812",
+					"videoViews": "0",
+					"conversions": 0,
+					"costMicros": "0",
+					"impressions": "0",
+					"interactions": "0",
+					"period": "DAILY",
+					"amountMicros": "10000000"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "b72b855a-9f8a-4872-9311-6e65940e85f1",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
+	},
+	"id": "Ffm7CA1AIhKGiOlK",
+	"tags": []
+}

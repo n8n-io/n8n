@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "accountEnabled": {
+            "type": "boolean"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "userPrincipalName": {
+            "type": "string"
+        }
+    },
+    "version": 4
+}

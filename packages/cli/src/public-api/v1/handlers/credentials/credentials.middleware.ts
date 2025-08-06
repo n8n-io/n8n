@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 
+import { Container } from '@n8n/di';
 import type express from 'express';
 import { validate } from 'jsonschema';
-import { Container } from 'typedi';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';

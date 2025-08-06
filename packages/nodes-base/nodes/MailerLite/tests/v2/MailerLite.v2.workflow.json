@@ -1,0 +1,370 @@
+{
+	"name": "[TEST] MailerLite v2 Node",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "3c72284b-2b88-4d5f-81bc-b1970b14f2af",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [800, 240]
+		},
+		{
+			"parameters": {
+				"email": "user@n8n.io",
+				"additionalFields": {
+					"status": "active"
+				}
+			},
+			"id": "702c6598-cbe8-403e-962e-56621ec727a4",
+			"name": "Create Subscriber",
+			"type": "n8n-nodes-base.mailerLite",
+			"typeVersion": 2,
+			"position": [1000, 0],
+			"credentials": {
+				"mailerLiteApi": {
+					"id": "bm7VHS2C7lRgVOhb",
+					"name": "Mailer Lite account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1220, 0],
+			"id": "540b98b5-b3bf-49a1-a406-acc6872f4b50",
+			"name": "No Operation, do nothing"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1220, 180],
+			"id": "17c0b8e7-a9d7-4a4f-882f-c3fb3f6bc289",
+			"name": "No Operation, do nothing1"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"subscriberId": "user@n8n.io"
+			},
+			"type": "n8n-nodes-base.mailerLite",
+			"typeVersion": 2,
+			"position": [1000, 180],
+			"id": "5598f2b9-4d67-4ad7-a8e4-7b7bf723cd5a",
+			"name": "Get Subscriber",
+			"credentials": {
+				"mailerLiteApi": {
+					"id": "bm7VHS2C7lRgVOhb",
+					"name": "Mailer Lite account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"subscriberId": "user@n8n.io",
+				"additionalFields": {
+					"status": "junk",
+					"optin_ip": "8.8.8.8"
+				}
+			},
+			"type": "n8n-nodes-base.mailerLite",
+			"typeVersion": 2,
+			"position": [1000, 380],
+			"id": "223e4507-c88e-4066-a122-ccaf9cea7b49",
+			"name": "Update Subscriber",
+			"credentials": {
+				"mailerLiteApi": {
+					"id": "bm7VHS2C7lRgVOhb",
+					"name": "Mailer Lite account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1220, 380],
+			"id": "94d04b52-8809-4670-a8ca-135921139fc9",
+			"name": "No Operation, do nothing2"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 2,
+				"filters": {
+					"status": "junk"
+				}
+			},
+			"type": "n8n-nodes-base.mailerLite",
+			"typeVersion": 2,
+			"position": [960, 640],
+			"id": "30c6e797-ceda-4c84-8f34-b61200ffd9e9",
+			"name": "Get Many Subscrbers",
+			"credentials": {
+				"mailerLiteApi": {
+					"id": "bm7VHS2C7lRgVOhb",
+					"name": "Mailer Lite account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1180, 640],
+			"id": "c8529a30-889b-4ac9-a509-73f5dd8eef4a",
+			"name": "No Operation, do nothing3"
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": "139872142007207563",
+					"email": "user@n8n.io",
+					"status": "junk",
+					"source": "api",
+					"sent": 0,
+					"opens_count": 0,
+					"clicks_count": 0,
+					"open_rate": 0,
+					"click_rate": 0,
+					"ip_address": null,
+					"subscribed_at": "2024-12-05 09:54:29",
+					"unsubscribed_at": null,
+					"created_at": "2024-12-05 09:54:29",
+					"updated_at": "2024-12-05 10:20:32",
+					"fields": {
+						"name": null,
+						"last_name": null,
+						"company": null,
+						"country": null,
+						"city": null,
+						"phone": null,
+						"state": null,
+						"z_i_p": null
+					},
+					"groups": [],
+					"opted_in_at": null,
+					"optin_ip": "8.8.8.8"
+				}
+			}
+		],
+		"No Operation, do nothing1": [
+			{
+				"json": {
+					"id": "139872142007207563",
+					"email": "user@n8n.io",
+					"status": "junk",
+					"source": "api",
+					"sent": 0,
+					"opens_count": 0,
+					"clicks_count": 0,
+					"open_rate": 0,
+					"click_rate": 0,
+					"ip_address": null,
+					"subscribed_at": "2024-12-05 09:54:29",
+					"unsubscribed_at": null,
+					"created_at": "2024-12-05 09:54:29",
+					"updated_at": "2024-12-05 10:20:32",
+					"fields": {
+						"name": null,
+						"last_name": null,
+						"company": null,
+						"country": null,
+						"city": null,
+						"phone": null,
+						"state": null,
+						"z_i_p": null
+					},
+					"groups": [],
+					"opted_in_at": null,
+					"optin_ip": "8.8.8.8"
+				}
+			}
+		],
+		"No Operation, do nothing2": [
+			{
+				"json": {
+					"data": {
+						"id": "139872142007207563",
+						"email": "user@n8n.io",
+						"status": "junk",
+						"source": "api",
+						"sent": 0,
+						"opens_count": 0,
+						"clicks_count": 0,
+						"open_rate": 0,
+						"click_rate": 0,
+						"ip_address": null,
+						"subscribed_at": "2024-12-05 09:54:29",
+						"unsubscribed_at": null,
+						"created_at": "2024-12-05 09:54:29",
+						"updated_at": "2024-12-05 10:20:32",
+						"fields": {
+							"name": null,
+							"last_name": null,
+							"company": null,
+							"country": null,
+							"city": null,
+							"phone": null,
+							"state": null,
+							"z_i_p": null
+						},
+						"groups": [],
+						"opted_in_at": null,
+						"optin_ip": "8.8.8.8"
+					}
+				}
+			}
+		],
+		"No Operation, do nothing3": [
+			{
+				"json": {
+					"id": "139872142007207563",
+					"email": "user@n8n.io",
+					"status": "junk",
+					"source": "api",
+					"sent": 0,
+					"opens_count": 0,
+					"clicks_count": 0,
+					"open_rate": 0,
+					"click_rate": 0,
+					"ip_address": null,
+					"subscribed_at": "2024-12-05 09:54:29",
+					"unsubscribed_at": null,
+					"created_at": "2024-12-05 09:54:29",
+					"updated_at": "2024-12-05 10:20:32",
+					"fields": {
+						"name": null,
+						"last_name": null,
+						"company": null,
+						"country": null,
+						"city": null,
+						"phone": null,
+						"state": null,
+						"z_i_p": null
+					},
+					"opted_in_at": null,
+					"optin_ip": "8.8.8.8"
+				}
+			},
+			{
+				"json": {
+					"id": "139059851540038710",
+					"email": "nathan@n8n.io",
+					"status": "junk",
+					"source": "api",
+					"sent": 0,
+					"opens_count": 0,
+					"clicks_count": 0,
+					"open_rate": 0,
+					"click_rate": 0,
+					"ip_address": null,
+					"subscribed_at": null,
+					"unsubscribed_at": null,
+					"created_at": "2024-11-26 10:43:28",
+					"updated_at": "2024-11-27 10:09:34",
+					"fields": {
+						"name": "Nathan",
+						"last_name": "Workflow",
+						"company": null,
+						"country": null,
+						"city": null,
+						"phone": null,
+						"state": null,
+						"z_i_p": null
+					},
+					"opted_in_at": null,
+					"optin_ip": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Create Subscriber",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Subscriber",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Subscriber",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Subscrbers",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Subscriber": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Subscriber": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Subscriber": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Many Subscrbers": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "338331ef-1b38-47dc-9e2b-45340ea3fe3b",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
+	},
+	"id": "0Ov6Vd62DUXrWWQH",
+	"tags": []
+}

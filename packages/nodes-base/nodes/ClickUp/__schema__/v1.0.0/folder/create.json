@@ -1,0 +1,47 @@
+{
+    "type": "object",
+    "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "deleted": {
+            "type": "boolean"
+        },
+        "hidden": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "orderindex": {
+            "type": "integer"
+        },
+        "override_statuses": {
+            "type": "boolean"
+        },
+        "permission_level": {
+            "type": "string"
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "task_count": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

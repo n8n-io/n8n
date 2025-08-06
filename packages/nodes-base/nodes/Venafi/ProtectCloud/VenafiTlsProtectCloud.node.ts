@@ -6,18 +6,10 @@ import {
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { encryptPassphrase, venafiApiRequest, venafiApiRequestAllItems } from './GenericFunctions';
-
 import { certificateFields, certificateOperations } from './CertificateDescription';
-
-import {
-	certificateRequestFields,
-	certificateRequestOperations,
-} from './CertificateRequestDescription';
-
 import type {
 	ICertficateKeystoreRequest,
 	ICertficateRequest,
@@ -25,6 +17,11 @@ import type {
 	IKeyTypeParameters,
 	ISubjectAltNamesByType,
 } from './CertificateInterface';
+import {
+	certificateRequestFields,
+	certificateRequestOperations,
+} from './CertificateRequestDescription';
+import { encryptPassphrase, venafiApiRequest, venafiApiRequestAllItems } from './GenericFunctions';
 
 export class VenafiTlsProtectCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,8 +35,9 @@ export class VenafiTlsProtectCloud implements INodeType {
 		defaults: {
 			name: 'Venafi TLS Protect Cloud',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'venafiTlsProtectCloudApi',

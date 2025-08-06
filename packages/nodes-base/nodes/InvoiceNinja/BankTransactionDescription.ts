@@ -98,6 +98,17 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Currency Name or ID',
+				name: 'currencyId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getCurrencies',
+				},
+				default: '',
+			},
+			{
 				displayName: 'Date',
 				name: 'date',
 				type: 'dateTime',

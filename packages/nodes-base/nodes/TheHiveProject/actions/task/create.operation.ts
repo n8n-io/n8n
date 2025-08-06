@@ -5,11 +5,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { theHiveApiRequest } from '../../transport';
-
-import { fixFieldType, prepareInputItem } from '../../helpers/utils';
-import { caseRLC } from '../../descriptions';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
+
+import { caseRLC } from '../../descriptions';
+import { fixFieldType, prepareInputItem } from '../../helpers/utils';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	caseRLC,

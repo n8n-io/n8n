@@ -5,20 +5,26 @@ import {
 	type ResourceMapperField,
 } from 'n8n-workflow';
 
+import { GOOGLE_SHEETS_SHEET_URL_REGEX } from '../../../../constants';
 import { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
 import {
 	addRowNumber,
 	autoMapInputData,
 	checkForSchemaChanges,
+	getColumnName,
+	getColumnNumber,
+	getExistingSheetNames,
+	getRangeString,
+	getSheetId,
 	getSpreadsheetId,
+	hexToRgb,
+	mapFields,
 	prepareSheetData,
 	removeEmptyColumns,
 	removeEmptyRows,
 	trimLeadingEmptyRows,
 	trimToFirstEmptyRow,
 } from '../../../v2/helpers/GoogleSheets.utils';
-
-import { GOOGLE_SHEETS_SHEET_URL_REGEX } from '../../../../constants';
 
 describe('Test Google Sheets, addRowNumber', () => {
 	it('should add row nomber', () => {
@@ -329,6 +335,7 @@ describe('Test Google Sheets, lookupValues', () => {
 			],
 			returnAllMatches: true,
 			combineFilters: 'OR',
+			nodeVersion: 4.5,
 		});
 
 		expect(result).toBeDefined();
@@ -391,6 +398,7 @@ describe('Test Google Sheets, lookupValues', () => {
 			],
 			returnAllMatches: true,
 			combineFilters: 'AND',
+			nodeVersion: 4.5,
 		});
 
 		expect(result).toBeDefined();
@@ -451,6 +459,27 @@ describe('Test Google Sheets, checkForSchemaChanges', () => {
 				{ id: 'text' },
 			] as ResourceMapperField[]),
 		).toThrow("Column names were updated after the node's setup");
+	});
+
+	it('should filter out empty columns  without throwing an error', async () => {
+		const node: INode = {
+			id: '1',
+			name: 'Google Sheets',
+			typeVersion: 4.4,
+			type: 'n8n-nodes-base.googleSheets',
+			position: [60, 760],
+			parameters: {
+				operation: 'append',
+			},
+		};
+
+		expect(() =>
+			checkForSchemaChanges(node, ['', '', 'id', 'name', 'data'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'data' },
+			] as ResourceMapperField[]),
+		).not.toThrow();
 	});
 });
 
@@ -521,5 +550,186 @@ describe('Test Google Sheets, Google Sheets Sheet URL Regex', () => {
 			expect(match).not.toBeNull();
 			expect(match?.[1]).toBe('12345');
 		}
+	});
+});
+
+describe('Test Google Sheets, getColumnNumber', () => {
+	it('should return the correct number for single-letter columns', () => {
+		expect(getColumnNumber('A')).toBe(1);
+		expect(getColumnNumber('Z')).toBe(26);
+	});
+
+	it('should return the correct number for multi-letter columns', () => {
+		expect(getColumnNumber('AA')).toBe(27);
+		expect(getColumnNumber('AZ')).toBe(52);
+		expect(getColumnNumber('BA')).toBe(53);
+		expect(getColumnNumber('ZZ')).toBe(702);
+		expect(getColumnNumber('AAA')).toBe(703);
+	});
+});
+
+describe('Test Google Sheets, hexToRgb', () => {
+	it('should correctly convert a full hex code to RGB', () => {
+		expect(hexToRgb('#0033FF')).toEqual({ red: 0, green: 51, blue: 255 });
+		expect(hexToRgb('#FF5733')).toEqual({ red: 255, green: 87, blue: 51 });
+	});
+
+	it('should correctly convert a shorthand hex code to RGB', () => {
+		expect(hexToRgb('#03F')).toEqual({ red: 0, green: 51, blue: 255 });
+		expect(hexToRgb('#F00')).toEqual({ red: 255, green: 0, blue: 0 });
+	});
+
+	it('should return null for invalid hex codes', () => {
+		expect(hexToRgb('#XYZ123')).toBeNull(); // Invalid characters
+		expect(hexToRgb('#12345')).toBeNull(); // Incorrect length
+		expect(hexToRgb('')).toBeNull(); // Empty input
+		expect(hexToRgb('#')).toBeNull(); // Just a hash
+	});
+});
+
+describe('Test Google Sheets, getRangeString', () => {
+	it('should return the range in A1 notation when "specifyRangeA1" is set', () => {
+		const result = getRangeString('Sheet1', { rangeDefinition: 'specifyRangeA1', range: 'A1:B2' });
+		expect(result).toBe('Sheet1!A1:B2');
+	});
+
+	it('should return only the sheet name if no range is specified', () => {
+		const result = getRangeString('Sheet1', { rangeDefinition: 'specifyRangeA1', range: '' });
+		expect(result).toBe('Sheet1');
+	});
+
+	it('should return only the sheet name if rangeDefinition is not "specifyRangeA1"', () => {
+		const result = getRangeString('Sheet1', { rangeDefinition: 'detectAutomatically' });
+		expect(result).toBe('Sheet1');
+	});
+});
+
+describe('Test Google Sheets, getExistingSheetNames', () => {
+	const mockGoogleSheetInstance: Partial<GoogleSheet> = {
+		spreadsheetGetSheets: jest.fn(),
+	};
+	it('should return an array of sheet names', async () => {
+		mockGoogleSheetInstance.spreadsheetGetSheets = jest.fn().mockResolvedValue({
+			sheets: [{ properties: { title: 'Sheet1' } }, { properties: { title: 'Sheet2' } }],
+		});
+		const result = await getExistingSheetNames(mockGoogleSheetInstance as GoogleSheet);
+		expect(result).toEqual(['Sheet1', 'Sheet2']);
+	});
+
+	it('should return an empty array if no sheets are present', async () => {
+		mockGoogleSheetInstance.spreadsheetGetSheets = jest.fn().mockResolvedValue({ sheets: [] });
+		const result = await getExistingSheetNames(mockGoogleSheetInstance as GoogleSheet);
+		expect(result).toEqual([]);
+	});
+
+	it('should handle a case where sheets are undefined', async () => {
+		mockGoogleSheetInstance.spreadsheetGetSheets = jest.fn().mockResolvedValue({});
+		const result = await getExistingSheetNames(mockGoogleSheetInstance as GoogleSheet);
+		expect(result).toEqual([]);
+	});
+});
+
+describe('Test Google Sheets, mapFields', () => {
+	const fakeExecuteFunction: Partial<IExecuteFunctions> = {};
+
+	beforeEach(() => {
+		fakeExecuteFunction.getNode = jest.fn();
+		fakeExecuteFunction.getNodeParameter = jest.fn();
+	});
+
+	it('should map fields for node version < 4', () => {
+		fakeExecuteFunction.getNode = jest.fn().mockReturnValue({ typeVersion: 3 });
+		fakeExecuteFunction.getNodeParameter = jest.fn().mockImplementation((_, i) => [
+			{ fieldId: 'field1', fieldValue: `value${i}` },
+			{ fieldId: 'field2', fieldValue: `value${i * 2}` },
+		]);
+
+		const result = mapFields.call(fakeExecuteFunction as IExecuteFunctions, 2);
+		expect(result).toEqual([
+			{ field1: 'value0', field2: 'value0' },
+			{ field1: 'value1', field2: 'value2' },
+		]);
+		expect(fakeExecuteFunction.getNodeParameter).toHaveBeenCalledTimes(2);
+		expect(fakeExecuteFunction.getNodeParameter).toHaveBeenCalledWith(
+			'fieldsUi.fieldValues',
+			0,
+			[],
+		);
+	});
+
+	it('should map columns for node version >= 4', () => {
+		fakeExecuteFunction.getNode = jest.fn().mockReturnValue({ typeVersion: 4 });
+		fakeExecuteFunction.getNodeParameter = jest.fn().mockImplementation((_, i) => ({
+			column1: `value${i}`,
+			column2: `value${i * 2}`,
+		}));
+
+		const result = mapFields.call(fakeExecuteFunction as IExecuteFunctions, 2);
+		expect(result).toEqual([
+			{ column1: 'value0', column2: 'value0' },
+			{ column1: 'value1', column2: 'value2' },
+		]);
+		expect(fakeExecuteFunction.getNodeParameter).toHaveBeenCalledTimes(2);
+		expect(fakeExecuteFunction.getNodeParameter).toHaveBeenCalledWith('columns.value', 0);
+	});
+
+	it('should throw an error if no values are added in version >= 4', () => {
+		fakeExecuteFunction.getNode = jest.fn().mockReturnValue({ typeVersion: 4 });
+		fakeExecuteFunction.getNodeParameter = jest.fn().mockReturnValue({});
+
+		expect(() => mapFields.call(fakeExecuteFunction as IExecuteFunctions, 1)).toThrow(
+			"At least one value has to be added under 'Values to Send'",
+		);
+	});
+
+	it('should return an empty array when inputSize is 0', () => {
+		const result = mapFields.call(fakeExecuteFunction as IExecuteFunctions, 0);
+		expect(result).toEqual([]);
+	});
+});
+
+describe('Test Google Sheets, getSheetId', () => {
+	it('should return 0 when value is "gid=0"', () => {
+		expect(getSheetId('gid=0')).toBe(0);
+	});
+
+	it('should return a parsed integer when value is a numeric string', () => {
+		expect(getSheetId('123')).toBe(123);
+		expect(getSheetId('456')).toBe(456);
+	});
+
+	it('should return NaN for non-numeric strings', () => {
+		expect(getSheetId('abc')).toBeNaN();
+		expect(getSheetId('gid=abc')).toBeNaN();
+	});
+});
+
+describe('Test Google Sheets, getColumnName', () => {
+	it('should return "A" for column number 1', () => {
+		expect(getColumnName(1)).toBe('A');
+	});
+
+	it('should return "Z" for column number 26', () => {
+		expect(getColumnName(26)).toBe('Z');
+	});
+
+	it('should return "AA" for column number 27', () => {
+		expect(getColumnName(27)).toBe('AA');
+	});
+
+	it('should return "AZ" for column number 52', () => {
+		expect(getColumnName(52)).toBe('AZ');
+	});
+
+	it('should return "BA" for column number 53', () => {
+		expect(getColumnName(53)).toBe('BA');
+	});
+
+	it('should return "ZZ" for column number 702', () => {
+		expect(getColumnName(702)).toBe('ZZ');
+	});
+
+	it('should return "AAA" for column number 703', () => {
+		expect(getColumnName(703)).toBe('AAA');
 	});
 });

@@ -13,32 +13,23 @@ if (versionFlags.includes(process.argv.slice(-1)[0])) {
 	process.exit(0);
 }
 
-if (process.argv.length === 2) {
-	// When no command is given choose by default start
-	process.argv.push('start');
-}
-
-const ENFORCE_NODE_VERSION_RANGE = process.env.E2E_TESTS !== 'true';
-if (ENFORCE_NODE_VERSION_RANGE) {
-	const satisfies = require('semver/functions/satisfies');
-	const nodeVersion = process.versions.node;
-	const {
-		engines: { node: supportedNodeVersions },
-	} = require('../package.json');
-	if (!satisfies(nodeVersion, supportedNodeVersions)) {
-		console.error(`
+const satisfies = require('semver/functions/satisfies');
+const nodeVersion = process.versions.node;
+const {
+	engines: { node: supportedNodeVersions },
+} = require('../package.json');
+if (!satisfies(nodeVersion, supportedNodeVersions)) {
+	console.error(`
 Your Node.js version ${nodeVersion} is currently not supported by n8n.
 Please use a Node.js version that satisfies the following version range: ${supportedNodeVersions}
 `);
-		process.exit(1);
-	}
+	process.exit(1);
 }
 
 // Disable nodejs custom inspection across the app
 const { inspect } = require('util');
 inspect.defaultOptions.customInspect = false;
 
-require('express-async-errors');
 require('source-map-support').install();
 require('reflect-metadata');
 
@@ -48,6 +39,11 @@ if (process.env.E2E_TESTS !== 'true') {
 	// Loading dotenv early ensures that `process.env` is up-to-date everywhere in code
 	require('dotenv').config();
 }
+
+// Load config early to ensure `N8N_CONFIG_FILES` values are populated into `GlobalConfig`
+// _before_ typeorm entities in `@n8n/db` are loaded, as typeorm entity decorators rely on
+// `GlobalConfig.database.type` to decide on column types and timestamp syntax.
+require('../dist/config');
 
 if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 	require('dns').setDefaultResultOrder('ipv4first');
@@ -61,12 +57,8 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 // More details: https://github.com/nodejs/node/issues/48145
 require('net').setDefaultAutoSelectFamily?.(false);
 
-// WebCrypto Polyfill for older versions of Node.js 18
-if (!globalThis.crypto?.getRandomValues) {
-	globalThis.crypto = require('node:crypto').webcrypto;
-}
-
 (async () => {
-	const oclif = await import('@oclif/core');
-	await oclif.execute({ dir: __dirname });
+	const { Container } = await import('@n8n/di');
+	const { CommandRegistry } = await import('../dist/command-registry.js');
+	await Container.get(CommandRegistry).execute();
 })();

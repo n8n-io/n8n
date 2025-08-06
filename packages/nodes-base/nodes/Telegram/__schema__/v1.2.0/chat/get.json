@@ -1,0 +1,61 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "result": {
+            "type": "object",
+            "properties": {
+                "accent_color_id": {
+                    "type": "integer"
+                },
+                "accepted_gift_types": {
+                    "type": "object",
+                    "properties": {
+                        "limited_gifts": {
+                            "type": "boolean"
+                        },
+                        "premium_subscription": {
+                            "type": "boolean"
+                        },
+                        "unique_gifts": {
+                            "type": "boolean"
+                        },
+                        "unlimited_gifts": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "active_usernames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "can_send_gift": {
+                    "type": "boolean"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "max_reaction_count": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 4
+}

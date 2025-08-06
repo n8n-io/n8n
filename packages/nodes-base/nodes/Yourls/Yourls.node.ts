@@ -4,11 +4,10 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { yourlsApiRequest } from './GenericFunctions';
-
 import { urlFields, urlOperations } from './UrlDescription';
 
 export class Yourls implements INodeType {
@@ -24,8 +23,9 @@ export class Yourls implements INodeType {
 		defaults: {
 			name: 'Yourls',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'yourlsApi',

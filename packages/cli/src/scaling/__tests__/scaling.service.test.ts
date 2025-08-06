@@ -1,17 +1,17 @@
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
-import Container from 'typedi';
+import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
 
-import type { OrchestrationService } from '@/services/orchestration.service';
-import { mockInstance, mockLogger } from '@test/mocking';
+import type { ActiveExecutions } from '@/active-executions';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
 import { ScalingService } from '../scaling.service';
-import type { Job, JobData, JobQueue } from '../scaling.types';
+import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
 
 const queue = mock<JobQueue>({
 	client: { ping: jest.fn() },
@@ -47,7 +47,6 @@ describe('ScalingService', () => {
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);
-	const orchestrationService = mock<OrchestrationService>({ isMultiMainSetupEnabled: false });
 	const jobProcessor = mock<JobProcessor>();
 
 	let scalingService: ScalingService;
@@ -77,11 +76,11 @@ describe('ScalingService', () => {
 		scalingService = new ScalingService(
 			mockLogger(),
 			mock(),
+			mock(),
 			jobProcessor,
 			globalConfig,
 			mock(),
 			instanceSettings,
-			orchestrationService,
 			mock(),
 		);
 
@@ -203,7 +202,7 @@ describe('ScalingService', () => {
 		});
 
 		describe('if worker', () => {
-			it('should wait for running jobs to finish', async () => {
+			it('should pause queue and wait for running jobs to finish', async () => {
 				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'worker';
 				await scalingService.setupQueue();
@@ -212,7 +211,7 @@ describe('ScalingService', () => {
 				await scalingService.stop();
 
 				expect(getRunningJobsCountSpy).toHaveBeenCalled();
-				expect(queue.pause).not.toHaveBeenCalled();
+				expect(queue.pause).toHaveBeenCalled();
 				expect(stopQueueRecoverySpy).not.toHaveBeenCalled();
 			});
 		});
@@ -288,6 +287,8 @@ describe('ScalingService', () => {
 			const result = await scalingService.stopJob(job);
 
 			expect(job.progress).toHaveBeenCalledWith({ kind: 'abort-job' });
+			expect(job.discard).toHaveBeenCalled();
+			expect(job.moveToFailed).toHaveBeenCalledWith(new ExecutionCancelledError('123'), true);
 			expect(result).toBe(true);
 		});
 
@@ -312,6 +313,44 @@ describe('ScalingService', () => {
 			const result = await scalingService.stopJob(job);
 
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('message handling', () => {
+		it('should handle send-chunk messages', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				mock(),
+				instanceSettings,
+				mock(),
+			);
+
+			await scalingService.setupQueue();
+
+			// Simulate receiving a send-chunk message
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+			expect(messageHandler).toBeDefined();
+
+			const sendChunkMessage = {
+				kind: 'send-chunk',
+				executionId: 'exec-123',
+				chunkText: { type: 'item', content: 'test' },
+				workerId: 'worker-456',
+			};
+
+			messageHandler('job-789', sendChunkMessage);
+
+			expect(activeExecutions.sendChunk).toHaveBeenCalledWith('exec-123', {
+				type: 'item',
+				content: 'test',
+			});
 		});
 	});
 });

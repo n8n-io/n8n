@@ -37,7 +37,7 @@ export class JsTaskRunnerSandbox {
 
 		return executionResult.ok
 			? executionResult.result
-			: this.throwExecutionError(executionResult.error);
+			: this.throwExecutionError('error' in executionResult ? executionResult.error : {});
 	}
 
 	async runCodeForEachItem(numInputItems: number): Promise<INodeExecutionData[]> {
@@ -64,7 +64,7 @@ export class JsTaskRunnerSandbox {
 			);
 
 			if (!executionResult.ok) {
-				return this.throwExecutionError(executionResult.error);
+				return this.throwExecutionError('error' in executionResult ? executionResult.error : {});
 			}
 
 			executionResults = executionResults.concat(executionResult.result);

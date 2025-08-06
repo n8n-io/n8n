@@ -7,8 +7,9 @@ import {
 	type INodeTypeDescription,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
+
 import {
 	appWebhookSubscriptionCreate,
 	appWebhookSubscriptionDelete,
@@ -32,7 +33,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 			name: 'Facebook Lead Ads Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'facebookLeadAdsOAuth2Api',

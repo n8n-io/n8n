@@ -1,10 +1,15 @@
 {
-	"extends": "../../../tsconfig.json",
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
 	"compilerOptions": {
 		"rootDir": ".",
 		"types": ["node", "jest"],
 		"baseUrl": "src",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"references": [
+		{ "path": "../../workflow/tsconfig.build.esm.json" },
+		{ "path": "../config/tsconfig.build.json" },
+		{ "path": "../permissions/tsconfig.build.json" }
+	]
 }

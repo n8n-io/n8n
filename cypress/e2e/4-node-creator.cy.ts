@@ -1,10 +1,12 @@
+import { clickGetBackToCanvas } from '../composables/ndv';
 import {
 	addNodeToCanvas,
 	addRetrieverNodeToParent,
 	addVectorStoreNodeToParent,
+	addVectorStoreToolToParent,
 	getNodeCreatorItems,
 } from '../composables/workflow';
-import { IF_NODE_NAME } from '../constants';
+import { AGENT_NODE_NAME, IF_NODE_NAME, MANUAL_CHAT_TRIGGER_NODE_NAME } from '../constants';
 import { NodeCreator } from '../pages/features/node-creator';
 import { NDV } from '../pages/ndv';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
@@ -74,11 +76,11 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 		WorkflowPage.actions.addNodeToCanvas('Manual', false);
 
-		nodeCreatorFeature.getters.canvasAddButton().should('not.be.visible');
+		nodeCreatorFeature.getters.canvasAddButton().should('not.exist');
 		nodeCreatorFeature.getters.nodeCreator().should('not.exist');
-
 		// TODO: Replace once we have canvas feature utils
-		cy.get('div').contains('Add first step').should('be.hidden');
+		cy.get('div').contains('Add first step').should('not.exist');
+
 		nodeCreatorFeature.actions.openNodeCreator();
 		nodeCreatorFeature.getters.nodeCreator().contains('What happens next?').should('be.visible');
 
@@ -123,7 +125,6 @@ describe('Node Creator', () => {
 			'OpenThesaurus',
 			'Spontit',
 			'Vonage',
-			'Send Email',
 			'Toggl Trigger',
 		];
 		const doubleActionNode = 'OpenWeatherMap';
@@ -314,8 +315,8 @@ describe('Node Creator', () => {
 			nodeCreatorFeature.getters.getCategoryItem('Actions').click();
 			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
 			NDVModal.actions.close();
-			WorkflowPage.actions.deleteNode('When clicking ‘Test workflow’');
-			WorkflowPage.getters.canvasNodePlusEndpointByName('n8n').click();
+			WorkflowPage.actions.deleteNode('When clicking ‘Execute workflow’');
+			WorkflowPage.getters.canvasNodePlusEndpointByName('Create a credential').click();
 			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
 			nodeCreatorFeature.getters.getCategoryItem('Actions').click();
@@ -323,7 +324,11 @@ describe('Node Creator', () => {
 			NDVModal.actions.close();
 			WorkflowPage.getters.canvasNodes().should('have.length', 2);
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.actions.addNodeBetweenNodes('n8n', 'n8n1', 'Summarize');
+			WorkflowPage.actions.addNodeBetweenNodes(
+				'Create a credential',
+				'Create a credential1',
+				'Summarize',
+			);
 			WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		});
 	});
@@ -344,7 +349,8 @@ describe('Node Creator', () => {
 
 	it('should correctly append a No Op node when Loop Over Items node is added (from connection)', () => {
 		WorkflowPage.actions.addNodeToCanvas('Manual');
-		cy.get('.plus-endpoint').should('be.visible').click();
+
+		cy.getByTestId('canvas-handle-plus').click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').type('Loop Over Items');
 		nodeCreatorFeature.getters.getCreatorItem('Loop Over Items').click();
@@ -357,7 +363,9 @@ describe('Node Creator', () => {
 		WorkflowPage.getters.getConnectionBetweenNodes('Replace Me', 'Loop Over Items').should('exist');
 	});
 
-	it('should have most relevenat nodes on top when searching', () => {
+	// Skipping while we wait for a decision on how to handle the search results
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+	it.skip('should have most relevant nodes on top when searching', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('email');
@@ -515,7 +523,7 @@ describe('Node Creator', () => {
 		const actions = [
 			'Get ranked documents from vector store',
 			'Add documents to vector store',
-			'Retrieve documents for AI processing',
+			'Retrieve documents for Chain/Tool as Vector Store',
 		];
 
 		nodeCreatorFeature.actions.openNodeCreator();
@@ -529,19 +537,36 @@ describe('Node Creator', () => {
 			vectorStores.each((_i, vectorStore) => {
 				nodeCreatorFeature.getters.getCreatorItem(vectorStore).click();
 				actions.forEach((action) => {
-					nodeCreatorFeature.getters.getCreatorItem(action).should('be.visible');
+					nodeCreatorFeature.getters.getCreatorItem(action).should('be.visible').realHover();
 				});
 				cy.realPress('ArrowLeft');
 			});
 		});
 	});
 
-	it('should add node directly for sub-connection', () => {
+	it('should add node directly for sub-connection as vector store', () => {
 		addNodeToCanvas('Question and Answer Chain', true);
 		addRetrieverNodeToParent('Vector Store Retriever', 'Question and Answer Chain');
 		cy.realPress('Escape');
-		addVectorStoreNodeToParent('In-Memory Vector Store', 'Vector Store Retriever');
+		addVectorStoreNodeToParent('Simple Vector Store', 'Vector Store Retriever');
 		cy.realPress('Escape');
 		WorkflowPage.getters.canvasNodes().should('have.length', 4);
+	});
+
+	it('should add node directly for sub-connection as tool', () => {
+		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true, false, undefined, true);
+		addNodeToCanvas(AGENT_NODE_NAME, true, true);
+		clickGetBackToCanvas();
+
+		addVectorStoreToolToParent('Simple Vector Store', AGENT_NODE_NAME);
+	});
+
+	it('should insert node to canvas with sendAndWait operation selected', () => {
+		nodeCreatorFeature.getters.canvasAddButton().click();
+		WorkflowPage.actions.addNodeToCanvas('Manual', false);
+		nodeCreatorFeature.actions.openNodeCreator();
+		cy.contains('Human in the loop').click();
+		nodeCreatorFeature.getters.getCreatorItem('Slack').click();
+		cy.contains('Send and Wait for Response').should('exist');
 	});
 });

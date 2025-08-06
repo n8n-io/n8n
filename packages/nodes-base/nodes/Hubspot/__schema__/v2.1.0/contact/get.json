@@ -1,0 +1,198 @@
+{
+    "type": "object",
+    "properties": {
+        "canonical-vid": {
+            "type": "integer"
+        },
+        "form-submissions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "conversion-id": {
+                        "type": "string"
+                    },
+                    "form-id": {
+                        "type": "string"
+                    },
+                    "form-type": {
+                        "type": "string"
+                    },
+                    "page-title": {
+                        "type": "string"
+                    },
+                    "page-url": {
+                        "type": "string"
+                    },
+                    "portal-id": {
+                        "type": "integer"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "identity-profiles": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "deleted-changed-timestamp": {
+                        "type": "integer"
+                    },
+                    "identities": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "is-primary": {
+                                    "type": "boolean"
+                                },
+                                "timestamp": {
+                                    "type": "integer"
+                                },
+                                "type": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "saved-at-timestamp": {
+                        "type": "integer"
+                    },
+                    "vid": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "is-contact": {
+            "type": "boolean"
+        },
+        "list-memberships": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "internal-list-id": {
+                        "type": "integer"
+                    },
+                    "is-member": {
+                        "type": "boolean"
+                    },
+                    "static-list-id": {
+                        "type": "integer"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    },
+                    "vid": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "portal-id": {
+            "type": "integer"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "hs_is_contact": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "data-sensitivity": {
+                                        "type": "null"
+                                    },
+                                    "is-encrypted": {
+                                        "type": "null"
+                                    },
+                                    "selected": {
+                                        "type": "boolean"
+                                    },
+                                    "source-id": {
+                                        "type": "null"
+                                    },
+                                    "source-label": {
+                                        "type": "null"
+                                    },
+                                    "source-type": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "updated-by-user-id": {
+                                        "type": "null"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "lastmodifieddate": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "data-sensitivity": {
+                                        "type": "null"
+                                    },
+                                    "is-encrypted": {
+                                        "type": "null"
+                                    },
+                                    "selected": {
+                                        "type": "boolean"
+                                    },
+                                    "source-label": {
+                                        "type": "null"
+                                    },
+                                    "source-type": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "updated-by-user-id": {
+                                        "type": "null"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "vid": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

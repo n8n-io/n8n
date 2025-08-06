@@ -1,5 +1,5 @@
-import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
-
+import { DateTime } from 'luxon';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IPollFunctions,
@@ -11,7 +11,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { DateTime } from 'luxon';
 import {
 	getQuery,
 	salesforceApiRequest,
@@ -40,7 +39,7 @@ export class SalesforceTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Trigger On',

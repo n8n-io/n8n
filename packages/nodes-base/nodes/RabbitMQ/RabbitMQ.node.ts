@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	parsePublishArguments,
@@ -32,8 +32,9 @@ export class RabbitMQ implements INodeType {
 		defaults: {
 			name: 'RabbitMQ',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'rabbitmq',
@@ -436,7 +437,6 @@ export class RabbitMQ implements INodeType {
 					);
 				}
 
-				// @ts-ignore
 				const promisesResponses = await Promise.allSettled(queuePromises);
 
 				// @ts-ignore
@@ -507,7 +507,6 @@ export class RabbitMQ implements INodeType {
 					);
 				}
 
-				// @ts-ignore
 				const promisesResponses = await Promise.allSettled(exchangePromises);
 
 				// @ts-ignore

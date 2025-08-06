@@ -1,0 +1,126 @@
+name: Security - Scan Docker Image With Trivy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_ref:
+        description: Full image reference to scan e.g ghcr.io/n8n-io/n8n:latest
+        required: true
+        default: 'ghcr.io/n8n-io/n8n:latest'
+  workflow_call:
+    inputs:
+      image_ref:
+        type: string
+        description: Full image reference to scan e.g ghcr.io/n8n-io/n8n:latest
+        required: true
+    secrets:
+      SLACK_WEBHOOK_URL:
+        required: true
+
+jobs:
+  security_scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Pull Docker image with retry
+        run: |
+          for i in {1..4}; do
+            docker pull "${{ inputs.image_ref }}" && break
+            [ $i -lt 4 ] && echo "Retry $i failed, waiting..." && sleep 15
+          done
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4 # v0.30.0
+        with:
+          image-ref: ${{ inputs.image_ref }}
+          format: 'json'
+          output: 'trivy-results.json'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+          vuln-type: 'os,library'
+          ignore-unfixed: false
+          exit-code: '0'
+
+      - name: Process vulnerability results
+        id: process_vulns
+        run: |
+          if [ -f trivy-results.json ]; then
+            CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-results.json)
+            HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' trivy-results.json)
+            MEDIUM_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "MEDIUM")] | length' trivy-results.json)
+            LOW_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "LOW")] | length' trivy-results.json)
+
+            TOTAL_VULNS=$((CRITICAL_COUNT + HIGH_COUNT + MEDIUM_COUNT + LOW_COUNT))
+
+            echo "critical_count=${CRITICAL_COUNT}" >> $GITHUB_OUTPUT
+            echo "high_count=${HIGH_COUNT}" >> $GITHUB_OUTPUT
+            echo "medium_count=${MEDIUM_COUNT}" >> $GITHUB_OUTPUT
+            echo "low_count=${LOW_COUNT}" >> $GITHUB_OUTPUT
+            echo "total_count=${TOTAL_VULNS}" >> $GITHUB_OUTPUT
+
+            if [ $TOTAL_VULNS -gt 0 ]; then
+              echo "vulnerabilities_found=true" >> $GITHUB_OUTPUT
+
+              # Extract top vulnerabilities for display (limit to 10 for readability)
+              TOP_VULNS=$(jq -r '
+                .Results[]?
+                | .Vulnerabilities[]?
+                | select(.Severity == "CRITICAL" or .Severity == "HIGH" or .Severity == "MEDIUM" or .Severity == "LOW")
+                | "• \(.VulnerabilityID): \(.Title // "No title") (\(.Severity))"
+              ' trivy-results.json | head -10)
+
+              echo "top_vulnerabilities<<EOF" >> $GITHUB_OUTPUT
+              echo "$TOP_VULNS" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            else
+              echo "vulnerabilities_found=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Trivy results file not found."
+            echo "vulnerabilities_found=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Notify Slack - Vulnerabilities Found
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        if: steps.process_vulns.outputs.vulnerabilities_found == 'true'
+        with:
+          status: 'warning'
+          channel: '#mission-security'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: |
+            :warning: *Trivy Scan: Vulnerabilities Detected*
+
+            *Repository:* `${{ github.repository }}`
+            *Image Ref:* `${{ inputs.image_ref }}`
+
+            *Vulnerability Summary:*
+            • *Critical:* ${{ steps.process_vulns.outputs.critical_count }}
+            • *High:* ${{ steps.process_vulns.outputs.high_count }}
+            • *Medium:* ${{ steps.process_vulns.outputs.medium_count }}
+            • *Low:* ${{ steps.process_vulns.outputs.low_count }}
+            • *Total:* ${{ steps.process_vulns.outputs.total_count }}
+
+            *Top Vulnerabilities (showing first 10):*
+            ```
+            ${{ steps.process_vulns.outputs.top_vulnerabilities }}
+            ```
+
+            :point_right: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Full Scan Results>
+
+      - name: Notify Slack - No Vulnerabilities
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        if: steps.process_vulns.outputs.vulnerabilities_found == 'false'
+        with:
+          status: 'success'
+          channel: '#mission-security'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: |
+            :white_check_mark: *Trivy Scan: All Clear*
+
+            *Repository:* `${{ github.repository }}`
+            *Image Ref:* `${{ inputs.image_ref }}`
+
+            No vulnerabilities detected in the Docker image scan.
+
+            :point_right: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Scan Results>

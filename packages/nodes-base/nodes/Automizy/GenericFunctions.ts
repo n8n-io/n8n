@@ -40,7 +40,6 @@ export async function automizyApiRequest(
 		if (Object.keys(option).length !== 0) {
 			Object.assign(options, option);
 		}
-		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

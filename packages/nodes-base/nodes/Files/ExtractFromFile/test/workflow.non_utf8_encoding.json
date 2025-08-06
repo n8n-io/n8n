@@ -1,0 +1,98 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-200, -40],
+			"id": "64686c0a-64a4-4a33-9e70-038c9d23c25b",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "text",
+				"binaryPropertyName": "myfile",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.extractFromFile",
+			"typeVersion": 1,
+			"position": [420, -40],
+			"id": "aaac18d3-1e99-4c47-9de8-2dc8bf95abd7",
+			"name": "Extract from File"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "39b5f05f-85c5-499a-86d6-591d6440f147",
+							"name": "text",
+							"value": "Karlovy Vary město lázní Příliš žluťoučký kůň úpěl ďábelské ódy.",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-20, -40],
+			"id": "e74c67f1-171a-42a7-be12-b6687935988f",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"operation": "toText",
+				"sourceProperty": "text",
+				"binaryPropertyName": "myfile",
+				"options": {
+					"encoding": "windows1256"
+				}
+			},
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [180, -40],
+			"id": "77ddd6d4-1d75-4ad2-8301-e70213d8371e",
+			"name": "windows1256"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from File": {
+			"main": [[]]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "windows1256",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"windows1256": {
+			"main": [
+				[
+					{
+						"node": "Extract from File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}

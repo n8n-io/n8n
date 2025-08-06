@@ -14,20 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check out branch
-        uses: actions/checkout@v4.1.1
-
-      - run: corepack enable
-      - uses: actions/setup-node@v4.0.2
-        with:
-          node-version: 20.x
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Validate PR title
-        id: validate_pr_title
-        uses: n8n-io/validate-n8n-pull-request-title@v2.2.0
+        uses: n8n-io/validate-n8n-pull-request-title@c97ff722ac14ee0bda73766473bba764445db805 # v2.2.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

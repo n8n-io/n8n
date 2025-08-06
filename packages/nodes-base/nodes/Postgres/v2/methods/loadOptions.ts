@@ -1,8 +1,8 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
-import { getTableSchema } from '../helpers/utils';
-import { configurePostgres } from '../transport';
+import { configurePostgres } from '../../transport';
 import type { PostgresNodeCredentials } from '../helpers/interfaces';
+import { getTableSchema } from '../helpers/utils';
 
 export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
@@ -18,17 +18,13 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 		extractValue: true,
 	}) as string;
 
-	try {
-		const columns = await getTableSchema(db, schema, table);
+	const columns = await getTableSchema(db, schema, table);
 
-		return columns.map((column) => ({
-			name: column.column_name,
-			value: column.column_name,
-			description: `Type: ${column.data_type.toUpperCase()}, Nullable: ${column.is_nullable}`,
-		}));
-	} finally {
-		if (!db.$pool.ending) await db.$pool.end();
-	}
+	return columns.map((column) => ({
+		name: column.column_name,
+		value: column.column_name,
+		description: `Type: ${column.data_type.toUpperCase()}, Nullable: ${column.is_nullable}`,
+	}));
 }
 
 export async function getColumnsMultiOptions(

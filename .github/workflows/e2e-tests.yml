@@ -27,11 +27,6 @@ on:
         description: 'URL to call after workflow is done.'
         required: false
         default: ''
-      node_view_version:
-        description: 'Node View version to run tests with.'
-        required: false
-        default: '1'
-        type: string
 
 jobs:
   calls-start-url:
@@ -40,29 +35,34 @@ jobs:
     if: ${{ github.event.inputs.start-url != '' }}
     steps:
       - name: Calls start URL
+        env:
+          START_URL: ${{ github.event.inputs.start-url }}
         run: |
-          [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
+          [[ "${{ env.START_URL }}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' "${{ env.START_URL }}" || echo ""
         shell: bash
 
   run-e2e-tests:
-    name: E2E [Electron/Node 18]
+    name: E2E
     uses: ./.github/workflows/e2e-reusable.yml
     with:
       branch: ${{ github.event.inputs.branch || 'master' }}
       user: ${{ github.event.inputs.user || 'PR User' }}
       spec: ${{ github.event.inputs.spec || 'e2e/*' }}
-      node_view_version: ${{ github.event.inputs.node_view_version || '1' }}
-    secrets:
-      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+    secrets: inherit
+
+  run-playwright-tests:
+    name: Playwright
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    secrets: inherit
 
   calls-success-url-notify:
     name: Calls success URL and notifies
     runs-on: ubuntu-latest
-    needs: [run-e2e-tests]
+    needs: [run-e2e-tests, run-playwright-tests]
     if: ${{ github.event.inputs.success-url != '' }}
     steps:
       - name: Notify Slack on failure
-        uses: act10ns/slack@v2.0.0
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: failure()
         with:
           status: ${{ job.status }}
@@ -71,6 +71,8 @@ jobs:
           message: E2E failure for branch `${{ inputs.branch || 'master' }}` deployed by ${{ inputs.user || 'schedule' }} (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
       - name: Call Success URL - optionally
+        env:
+          SUCCESS_URL: ${{ github.event.inputs.success-url }}
         run: |
-          [[ "${{github.event.inputs.success-url}}" != "" ]] && curl -v ${{github.event.inputs.success-url}} || echo ""
+          [[ "${{ env.SUCCESS_URL }}" != "" ]] && curl -v "${{ env.SUCCESS_URL }}" || echo ""
         shell: bash

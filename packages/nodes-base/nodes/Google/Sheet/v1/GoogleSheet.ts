@@ -1,9 +1,8 @@
+import get from 'lodash/get';
 import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
 import { utils as xlsxUtils } from 'xlsx';
 
-import get from 'lodash/get';
 import { googleApiRequest } from './GenericFunctions';
 
 export interface ISheetOptions {
@@ -49,7 +48,7 @@ export class GoogleSheet {
 	constructor(
 		spreadsheetId: string,
 		executeFunctions: IExecuteFunctions | ILoadOptionsFunctions,
-		options?: ISheetOptions | undefined,
+		options?: ISheetOptions,
 	) {
 		// options = <SheetOptions>options || {};
 		if (!options) {

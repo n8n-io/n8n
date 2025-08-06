@@ -1,8 +1,6 @@
+import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
 import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
-
-import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-
 import type {
 	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
@@ -14,7 +12,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
 import { generatePairedItemData } from '../../utils/utilities';
 
 export class Kafka implements INodeType {
@@ -28,8 +27,9 @@ export class Kafka implements INodeType {
 		defaults: {
 			name: 'Kafka',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'kafka',

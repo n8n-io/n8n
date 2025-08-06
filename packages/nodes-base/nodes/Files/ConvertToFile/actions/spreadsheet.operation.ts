@@ -5,10 +5,9 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
 import type { JsonToSpreadsheetBinaryOptions, JsonToSpreadsheetBinaryFormat } from '@utils/binary';
-
 import { convertJsonToSpreadsheetBinary } from '@utils/binary';
+import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
 
 export const operations = ['csv', 'html', 'rtf', 'ods', 'xls', 'xlsx'];
 

@@ -1,0 +1,59 @@
+{
+    "type": "object",
+    "properties": {
+        "allowedOnlineMeetingProviders": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "canEdit": {
+            "type": "boolean"
+        },
+        "canShare": {
+            "type": "boolean"
+        },
+        "canViewPrivateItems": {
+            "type": "boolean"
+        },
+        "changeKey": {
+            "type": "string"
+        },
+        "color": {
+            "type": "string"
+        },
+        "defaultOnlineMeetingProvider": {
+            "type": "string"
+        },
+        "hexColor": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isDefaultCalendar": {
+            "type": "boolean"
+        },
+        "isRemovable": {
+            "type": "boolean"
+        },
+        "isTallyingResponses": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "owner": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

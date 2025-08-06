@@ -5,8 +5,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { versionDescription } from './actions/versionDescription';
 import { router } from './actions/router';
+import { versionDescription } from './actions/versionDescription';
 import { loadOptions } from './methods';
 
 export class MergeV3 implements INodeType {

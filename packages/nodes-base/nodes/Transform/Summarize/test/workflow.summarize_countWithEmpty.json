@@ -1,0 +1,334 @@
+{
+	"name": "Summarize Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e46eed6e-4a6b-4e1f-bd7a-96cf579dd2ee",
+			"name": "When clicking \"Execute workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-900, 260]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  { review: \"Great product!\" },\n  { review: \"\" }, // Empty string\n  { review: null }, // Null value\n  { review: null }, // Null value\n  { review: \"Bad product\" },\n  { review: undefined }, // Undefined value\n  { review: undefined } // Undefined value\n];\n  // { region: \"North\", sales: 100 },\n  // { region: \"North\", sales: 200 },\n  // { region: \"South\", sales: null },\n  // { region: \"\", sales: 300 },\n  // { region: \"East\", sales: undefined },\n  // { region: \"West\", sales: 400 }\n"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [-520, -80],
+			"id": "80f3462d-7ea5-4af1-bd13-f3f46b0ee43f",
+			"name": "sample data1"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"field": "review"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [-280, -320],
+			"id": "98ff6686-bf9f-436a-8a64-3b3b1e648184",
+			"name": "count non-empty"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "countUnique",
+							"field": "review"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [-280, -160],
+			"id": "aa094d4c-5e00-49a4-9799-e7692b49f204",
+			"name": "countUnique non-empty"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"field": "review",
+							"includeEmpty": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [-280, -40],
+			"id": "c4a439c9-4d25-4ebb-b36c-c72d0d738049",
+			"name": "count with Empty"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "countUnique",
+							"field": "review",
+							"includeEmpty": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [-280, 100],
+			"id": "e8abc054-5285-4dcc-980b-4bba4ef45ae0",
+			"name": "countUnique non-empty1"
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  { region: \"North\", sales: 100 },\n  { region: \"North\", sales: 200 },\n  { region: \"South\", sales: null },\n  { region: \"\", sales: 300 },\n  { region: \"East\", sales: undefined },\n  { region: \"West\", sales: 400 }\n];"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [-520, 500],
+			"id": "0de1d232-09c1-412f-9481-0120db0792bf",
+			"name": "sample data2"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"field": "region"
+						},
+						{
+							"field": "sales"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [-260, 300],
+			"id": "b81e9c48-828c-4ac8-b7ca-818022384ca6",
+			"name": "count non-empty1"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "countUnique",
+							"field": "region"
+						},
+						{
+							"field": "sales"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [-260, 440],
+			"id": "22bd90da-9b57-4b38-9cc3-356901a6f666",
+			"name": "countUnique non-empty2"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"field": "region",
+							"includeEmpty": true
+						},
+						{
+							"field": "sales",
+							"includeEmpty": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [-260, 580],
+			"id": "02bfe12f-eb71-483b-bef5-6007af739ace",
+			"name": "count with Empty1"
+		},
+		{
+			"parameters": {
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"aggregation": "countUnique",
+							"field": "region",
+							"includeEmpty": true
+						},
+						{
+							"field": "sales",
+							"includeEmpty": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.summarize",
+			"typeVersion": 1.1,
+			"position": [-260, 720],
+			"id": "e67cd4b5-47ae-4d73-b933-905b04183db8",
+			"name": "countUnique non-empty3"
+		}
+	],
+	"pinData": {
+		"count non-empty": [
+			{
+				"json": {
+					"count_review": 2
+				}
+			}
+		],
+		"countUnique non-empty": [
+			{
+				"json": {
+					"unique_count_review": 2
+				}
+			}
+		],
+		"count with Empty": [
+			{
+				"json": {
+					"count_review": 7
+				}
+			}
+		],
+		"countUnique non-empty1": [
+			{
+				"json": {
+					"unique_count_review": 5
+				}
+			}
+		],
+		"count non-empty1": [
+			{
+				"json": {
+					"count_region": 5,
+					"count_sales": 4
+				}
+			}
+		],
+		"countUnique non-empty2": [
+			{
+				"json": {
+					"unique_count_region": 4,
+					"count_sales": 4
+				}
+			}
+		],
+		"count with Empty1": [
+			{
+				"json": {
+					"count_region": 6,
+					"count_sales": 6
+				}
+			}
+		],
+		"countUnique non-empty3": [
+			{
+				"json": {
+					"unique_count_region": 5,
+					"count_sales": 6
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute workflow\"": {
+			"main": [
+				[
+					{
+						"node": "sample data1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "sample data2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"sample data1": {
+			"main": [
+				[
+					{
+						"node": "count non-empty",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "countUnique non-empty",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "count with Empty",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "countUnique non-empty1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"sample data2": {
+			"main": [
+				[
+					{
+						"node": "count non-empty1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "countUnique non-empty2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "count with Empty1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "countUnique non-empty3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "bb837da6-9160-4c61-b3a4-e7ef192bd5c6",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "b0d1a7f453aa2195078ce658269afa7743e3dc59edb733395b6c75bde57da7ff"
+	},
+	"id": "8ja9H2443AhLdBsS",
+	"tags": []
+}

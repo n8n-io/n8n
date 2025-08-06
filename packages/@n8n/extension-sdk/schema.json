@@ -1,0 +1,64 @@
+{
+	"type": "object",
+	"properties": {
+		"name": { "type": "string" },
+		"displayName": { "type": "string" },
+		"description": { "type": "string" },
+		"publisher": { "type": "string" },
+		"version": { "type": "string" },
+		"categories": { "type": "array", "items": { "type": "string" } },
+		"entry": {
+			"type": "object",
+			"properties": { "backend": { "type": "string" }, "frontend": { "type": "string" } },
+			"required": ["backend", "frontend"],
+			"additionalProperties": false
+		},
+		"minSDKVersion": { "type": "string" },
+		"permissions": {
+			"type": "object",
+			"properties": {
+				"frontend": { "type": "array", "items": { "type": "string" } },
+				"backend": { "type": "array", "items": { "type": "string" } }
+			},
+			"required": ["frontend", "backend"],
+			"additionalProperties": false
+		},
+		"events": { "type": "array", "items": { "type": "string" } },
+		"extends": {
+			"type": "object",
+			"properties": {
+				"views": {
+					"type": "object",
+					"properties": {
+						"workflows": {
+							"type": "object",
+							"properties": { "header": { "type": "string" } },
+							"required": ["header"],
+							"additionalProperties": false
+						}
+					},
+					"required": ["workflows"],
+					"additionalProperties": false
+				}
+			},
+			"required": ["views"],
+			"additionalProperties": false
+		}
+	},
+	"required": [
+		"name",
+		"displayName",
+		"description",
+		"publisher",
+		"version",
+		"categories",
+		"entry",
+		"minSDKVersion",
+		"permissions",
+		"events",
+		"extends"
+	],
+	"additionalProperties": false,
+	"title": "N8nExtensionSchema",
+	"$schema": "http://json-schema.org/draft-07/schema#"
+}

@@ -1,8 +1,9 @@
-import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
-import { constructExecutionMetaData } from 'n8n-core';
 import get from 'lodash/get';
-import { composeReturnItem, parseJsonParameter, validateEntry } from '../../v2/helpers/utils';
+import { constructExecutionMetaData } from 'n8n-core';
+import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
+
 import type { SetNodeOptions } from '../../v2/helpers/interfaces';
+import { composeReturnItem, parseJsonParameter, validateEntry } from '../../v2/helpers/utils';
 
 export const node: INode = {
 	id: '11',
@@ -25,8 +26,8 @@ export const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 		getNodeParameter(
 			parameterName: string,
 			_itemIndex: number,
-			fallbackValue?: IDataObject | undefined,
-			options?: IGetNodeParameterOptions | undefined,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
 		) {
 			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 			return get(nodeParameters, parameter, fallbackValue);

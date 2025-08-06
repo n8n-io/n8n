@@ -1,22 +1,21 @@
+import moment from 'moment-timezone';
 import {
 	type IPollFunctions,
 	type IDataObject,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import { notionApiRequest, simplifyObjects } from './shared/GenericFunctions';
-
-import { listSearch } from './shared/methods';
 import {
 	databaseUrlExtractionRegexp,
 	databaseUrlValidationRegexp,
 	idExtractionRegexp,
 	idValidationRegexp,
 } from './shared/constants';
+import { notionApiRequest, simplifyObjects } from './shared/GenericFunctions';
+import { listSearch } from './shared/methods';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,7 +37,7 @@ export class NotionTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Event',

@@ -1,11 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
+
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
-import {
-	promptTypeOptions,
-	textFromPreviousNode,
-	textInput,
-} from '../../../../../utils/descriptions';
 
 const dataSourceOptions: INodeProperties = {
 	displayName: 'Data Source',
@@ -64,7 +61,6 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 		displayName:
 			"Pass the SQLite database into this node as binary data, e.g. by inserting a 'Read/Write Files from Disk' node beforehand",
 		name: 'sqLiteFileNotice',

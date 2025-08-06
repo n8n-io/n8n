@@ -5,7 +5,13 @@ import type {
 	INodeParameterResourceLocator,
 	ResourceMapperValue,
 	FilterValue,
-} from './Interfaces';
+} from './interfaces';
+
+export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
+	return Boolean(
+		typeof value === 'object' && value && 'mode' in value && 'value' in value && '__rl' in value,
+	);
+}
 
 export const isINodeProperties = (
 	item: INodePropertyOptions | INodeProperties | INodePropertyCollection,

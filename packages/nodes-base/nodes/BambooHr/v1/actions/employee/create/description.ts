@@ -1,6 +1,5 @@
-import type { EmployeeProperties } from '../../Interfaces';
-
 import { createEmployeeSharedDescription } from './shareDescription';
+import type { EmployeeProperties } from '../../Interfaces';
 
 export const employeeCreateDescription: EmployeeProperties = [
 	{

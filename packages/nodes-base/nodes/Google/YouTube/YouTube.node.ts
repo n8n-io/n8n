@@ -1,4 +1,3 @@
-import type { Readable } from 'stream';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,21 +7,17 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-
-import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
-
-import { channelFields, channelOperations } from './ChannelDescription';
-
-import { playlistFields, playlistOperations } from './PlaylistDescription';
-
-import { playlistItemFields, playlistItemOperations } from './PlaylistItemDescription';
-
-import { videoFields, videoOperations } from './VideoDescription';
-
-import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
+import { NodeConnectionTypes, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import { Readable } from 'stream';
 
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
+
+import { channelFields, channelOperations } from './ChannelDescription';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import { playlistFields, playlistOperations } from './PlaylistDescription';
+import { playlistItemFields, playlistItemOperations } from './PlaylistItemDescription';
+import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
+import { videoFields, videoOperations } from './VideoDescription';
 import { validateAndSetDate } from '../GenericFunctions';
 
 const UPLOAD_CHUNK_SIZE = 1024 * 1024;
@@ -40,8 +35,9 @@ export class YouTube implements INodeType {
 		defaults: {
 			name: 'YouTube',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'youTubeOAuth2Api',
@@ -843,7 +839,7 @@ export class YouTube implements INodeType {
 
 						let mimeType: string;
 						let contentLength: number;
-						let fileContent: Buffer | Readable;
+						let fileContent: Readable;
 
 						if (binaryData.id) {
 							// Stream data in 256KB chunks, and upload the via the resumable upload api
@@ -852,8 +848,9 @@ export class YouTube implements INodeType {
 							contentLength = metadata.fileSize;
 							mimeType = metadata.mimeType ?? binaryData.mimeType;
 						} else {
-							fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
-							contentLength = fileContent.length;
+							const buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
+							fileContent = Readable.from(buffer);
+							contentLength = buffer.length;
 							mimeType = binaryData.mimeType;
 						}
 

@@ -1,0 +1,27 @@
+@use './fonts.scss';
+
+@use '../src/css/base.scss'; // @TODO CHECK IF NEEDED with (
+//	$font-path: 'element-ui/lib/theme-chalk/fonts'
+//);
+
+@use '../src/css/reset.scss';
+@use '../src/css/index.scss';
+
+.multi-container > * {
+	margin-bottom: 10px;
+}
+
+#storybook-root > div:not([class]) > *,
+#storybook-root > * {
+	margin: var(--spacing-5xs);
+}
+
+body {
+	padding: 0 !important;
+}
+
+.story {
+	padding: 2rem;
+	display: flex;
+	gap: 1rem;
+}

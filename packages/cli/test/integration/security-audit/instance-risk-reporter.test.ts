@@ -1,11 +1,11 @@
+import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { generateNanoId, WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { NodeConnectionType } from 'n8n-workflow';
-import Container from 'typedi';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { generateNanoId } from '@/databases/utils/generators';
 import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/security-audit/constants';
 import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { toReportTitle } from '@/security-audit/utils';
@@ -17,7 +17,6 @@ import {
 	simulateOutdatedInstanceOnce,
 	simulateUpToDateInstance,
 } from './utils';
-import * as testDb from '../shared/test-db';
 
 let securityAuditService: SecurityAuditService;
 
@@ -30,7 +29,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow']);
+	await testDb.truncate(['WorkflowEntity']);
 });
 
 afterAll(async () => {
@@ -160,7 +159,7 @@ test('should not report webhooks validated by direct children', async () => {
 						[
 							{
 								node: 'My Node',
-								type: NodeConnectionType.Main,
+								type: NodeConnectionTypes.Main,
 								index: 0,
 							},
 						],
@@ -240,6 +239,7 @@ test('should not report outdated instance when up to date', async () => {
 
 test('should report security settings', async () => {
 	Container.get(GlobalConfig).diagnostics.enabled = true;
+
 	const testAudit = await securityAuditService.run(['instance']);
 
 	const section = getRiskSection(

@@ -1,5 +1,4 @@
 import { tz } from 'moment-timezone';
-
 import type { INodeProperties } from 'n8n-workflow';
 
 export const appointmentOperations: INodeProperties[] = [

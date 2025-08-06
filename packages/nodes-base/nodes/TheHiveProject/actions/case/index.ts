@@ -1,15 +1,14 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as addAttachment from './addAttachment.operation';
-
 import * as create from './create.operation';
 import * as deleteAttachment from './deleteAttachment.operation';
 import * as deleteCase from './deleteCase.operation';
 import * as executeResponder from './executeResponder.operation';
 import * as get from './get.operation';
 import * as getAttachment from './getAttachment.operation';
-import * as search from './search.operation';
 import * as getTimeline from './getTimeline.operation';
+import * as search from './search.operation';
 import * as update from './update.operation';
 
 export {

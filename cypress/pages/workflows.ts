@@ -1,5 +1,13 @@
 import { BasePage } from './base';
 
+/**
+ * @deprecated Use functional composables from @composables instead.
+ * If a composable doesn't exist for your use case, please create a new one in:
+ * cypress/composables
+ *
+ * This class-based approach is being phased out in favor of more modular functional composables.
+ * Each getter and action in this class should be moved to individual composable functions.
+ */
 export class WorkflowsPage extends BasePage {
 	url = '/home/workflows';
 
@@ -8,52 +16,15 @@ export class WorkflowsPage extends BasePage {
 		newWorkflowTemplateCard: () => cy.getByTestId('new-workflow-template-card'),
 		searchBar: () => cy.getByTestId('resources-list-search'),
 		createWorkflowButton: () => {
-			cy.getByTestId('resource-add').should('be.visible').click();
-			cy.getByTestId('resource-add')
-				.find('.el-sub-menu__title')
-				.as('menuitem')
-				.should('have.attr', 'aria-describedby');
-
-			cy.get('@menuitem')
-				.should('be.visible')
-				.invoke('attr', 'aria-describedby')
-				.then((el) => cy.get(`[id="${el}"]`))
-				.as('submenu');
-
-			cy.get('@submenu')
-				.should('be.visible')
-				.within((submenu) => {
-					// If submenu has another submenu
-					if (submenu.find('[data-test-id="navigation-submenu"]').length) {
-						cy.wrap(submenu)
-							.find('[data-test-id="navigation-submenu"]')
-							.should('be.visible')
-							.filter(':contains("Workflow")')
-							.as('child')
-							.click();
-
-						cy.get('@child')
-							.should('be.visible')
-							.find('[data-test-id="navigation-submenu-item"]')
-							.should('be.visible')
-							.filter(':contains("Personal")')
-							.as('button');
-					} else {
-						cy.wrap(submenu)
-							.find('[data-test-id="navigation-menu-item"]')
-							.filter(':contains("Workflow")')
-							.as('button');
-					}
-				});
-
-			return cy.get('@button').should('be.visible');
+			cy.getByTestId('add-resource-workflow').should('be.visible');
+			return cy.getByTestId('add-resource-workflow');
 		},
-		workflowCards: () => cy.getByTestId('resources-list-item'),
+		workflowCards: () => cy.getByTestId('resources-list-item-workflow'),
 		workflowCard: (workflowName: string) =>
 			this.getters
 				.workflowCards()
 				.contains(workflowName)
-				.parents('[data-test-id="resources-list-item"]'),
+				.parents('[data-test-id="resources-list-item-workflow"]'),
 		workflowTags: (workflowName: string) =>
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-tags'),
 		workflowCardContent: (workflowName: string) =>
@@ -64,6 +35,11 @@ export class WorkflowsPage extends BasePage {
 			this.getters.workflowActivator(workflowName).findChildByTestId('workflow-activator-status'),
 		workflowCardActions: (workflowName: string) =>
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-actions'),
+		workflowActionItem: (action: string) => cy.getByTestId(`action-${action}`).filter(':visible'),
+		workflowArchiveButton: () =>
+			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Archive'),
+		workflowUnarchiveButton: () =>
+			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Unarchive'),
 		workflowDeleteButton: () =>
 			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
 		workflowMoveButton: () =>
@@ -75,7 +51,20 @@ export class WorkflowsPage extends BasePage {
 		workflowStatusItem: (status: string) => cy.getByTestId('status').contains(status),
 		workflowOwnershipDropdown: () => cy.getByTestId('user-select-trigger'),
 		workflowOwner: (email: string) => cy.getByTestId('user-email').contains(email),
+		workflowArchivedCheckbox: () => cy.getByTestId('show-archived-checkbox'),
 		workflowResetFilters: () => cy.getByTestId('workflows-filter-reset'),
+		workflowSortDropdown: () => cy.getByTestId('resources-list-sort'),
+		workflowSortItem: (sort: string) =>
+			cy.getByTestId('resources-list-sort-item').contains(sort).parent(),
+		workflowPagination: () => cy.getByTestId('resources-list-pagination'),
+		workflowListPageSizeDropdown: () => this.getters.workflowPagination().find('.select-trigger'),
+		workflowListPageSizeItem: (pageSize: string, visible: boolean = true) => {
+			if (visible) {
+				return cy.get('[role=option]').filter(':visible').contains(`${pageSize}/page`);
+			}
+			return cy.get('[role=option]').contains(`${pageSize}/page`).parent();
+		},
+		workflowsListContainer: () => cy.getByTestId('resources-list-wrapper'),
 		// Not yet implemented
 		// myWorkflows: () => cy.getByTestId('my-workflows'),
 		// allWorkflows: () => cy.getByTestId('all-workflows'),

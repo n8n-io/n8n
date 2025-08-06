@@ -1,0 +1,227 @@
+{
+	"name": "[TEST] Hue",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "9e687c5d-e3a5-436d-a96d-7bfde1110f40",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.philipsHue",
+			"typeVersion": 1,
+			"position": [260, 0],
+			"id": "063bcf31-3055-42f1-904f-d517f85db182",
+			"name": "Philips Hue",
+			"credentials": {
+				"philipsHueOAuth2Api": {
+					"id": "s6tRicNTKQoa9TDq",
+					"name": "PhilipHue account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [480, 0],
+			"id": "d6c4f99a-d660-4113-aa08-a7bcc9391236",
+			"name": "No Operation, do nothing"
+		},
+		{
+			"parameters": {
+				"lightId": "=1",
+				"additionalFields": {
+					"bri": 200,
+					"hue": 50000
+				}
+			},
+			"type": "n8n-nodes-base.philipsHue",
+			"typeVersion": 1,
+			"position": [260, 200],
+			"id": "c8311112-d24e-4787-80b1-cc5397aea98e",
+			"name": "Philips Hue1",
+			"credentials": {
+				"philipsHueOAuth2Api": {
+					"id": "s6tRicNTKQoa9TDq",
+					"name": "PhilipHue account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [480, 200],
+			"id": "c438bf28-0cf8-459a-bd3a-28f6c30b3f2f",
+			"name": "No Operation, do nothing1"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"lightId": "=1"
+			},
+			"type": "n8n-nodes-base.philipsHue",
+			"typeVersion": 1,
+			"position": [280, 400],
+			"id": "fd197627-9221-4e6d-ab51-53d262004db8",
+			"name": "Philips Hue2",
+			"credentials": {
+				"philipsHueOAuth2Api": {
+					"id": "s6tRicNTKQoa9TDq",
+					"name": "PhilipHue account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [500, 400],
+			"id": "19796164-8527-462b-b01b-71d7f60c94af",
+			"name": "No Operation, do nothing2"
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"state": {
+						"on": false,
+						"bri": 1,
+						"hue": 33761,
+						"sat": 254,
+						"effect": "none",
+						"xy": [0.3171, 0.3366],
+						"ct": 159,
+						"alert": "none",
+						"colormode": "xy",
+						"mode": "homeautomation",
+						"reachable": true
+					},
+					"swupdate": {
+						"state": "noupdates",
+						"lastinstall": "2018-01-02T19:24:20"
+					},
+					"type": "Extended color light",
+					"name": "Hue color lamp 7",
+					"modelid": "LCT007",
+					"manufacturername": "Philips",
+					"productname": "Hue color lamp",
+					"capabilities": {
+						"certified": true,
+						"control": {
+							"mindimlevel": 5000,
+							"maxlumen": 600,
+							"colorgamuttype": "B",
+							"colorgamut": [[0.675, 0.322], [0.409, 0.518], [0.167, 0.04]],
+							"ct": {
+								"min": 153,
+								"max": 500
+							}
+						},
+						"streaming": {
+							"renderer": true,
+							"proxy": false
+						}
+					},
+					"config": {
+						"archetype": "sultanbulb",
+						"function": "mixed",
+						"direction": "omnidirectional"
+					},
+					"uniqueid": "00:17:88:01:00:bd:c7:b9-0b",
+					"swversion": "5.105.0.21169"
+				}
+			}
+		],
+		"No Operation, do nothing1": [
+			{
+				"json": {
+					"/lights/1/state/bri": 200,
+					"/lights/1/state/on": true,
+					"/lights/1/state/hue": 50000
+				}
+			}
+		],
+		"No Operation, do nothing2": [
+			{
+				"json": {
+					"success": "/lights/1 deleted."
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Philips Hue",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Philips Hue1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Philips Hue2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Philips Hue": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Philips Hue1": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Philips Hue2": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "2c19891b-ba8e-4026-b8c2-b5f3f508b54a",
+	"meta": {
+		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
+	},
+	"id": "LAngRPRzm3OGrfh0",
+	"tags": []
+}

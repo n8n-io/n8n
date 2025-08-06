@@ -7,18 +7,13 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-
-import { discourseApiRequest } from './GenericFunctions';
-
-import { postFields, postOperations } from './PostDescription';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { categoryFields, categoryOperations } from './CategoryDescription';
-
+import { discourseApiRequest } from './GenericFunctions';
 import { groupFields, groupOperations } from './GroupDescription';
-
+import { postFields, postOperations } from './PostDescription';
 import { userFields, userOperations } from './UserDescription';
-
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
 
 export class Discourse implements INodeType {
@@ -33,8 +28,9 @@ export class Discourse implements INodeType {
 		defaults: {
 			name: 'Discourse',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'discourseApi',

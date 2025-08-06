@@ -1,0 +1,303 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`createVectorStoreNode retrieve mode supplies vector store as data 1`] = `
+{
+  "codex": {
+    "categories": [
+      "AI",
+    ],
+    "resources": {
+      "primaryDocumentation": [
+        {
+          "url": undefined,
+        },
+      ],
+    },
+    "subcategories": {
+      "AI": [
+        "Vector Stores",
+        "Tools",
+        "Root Nodes",
+      ],
+      "Tools": [
+        "Other Tools",
+      ],
+      "Vector Stores": [
+        "Other Vector Stores",
+      ],
+    },
+  },
+  "credentials": undefined,
+  "defaults": {
+    "name": undefined,
+  },
+  "description": undefined,
+  "displayName": undefined,
+  "group": [
+    "transform",
+  ],
+  "icon": undefined,
+  "iconColor": undefined,
+  "inputs": "={{
+			((parameters) => {
+				const mode = parameters?.mode;
+				const useReranker = parameters?.useReranker;
+				const inputs = [{ displayName: "Embedding", type: "ai_embedding", required: true, maxConnections: 1}]
+
+				if (['load', 'retrieve', 'retrieve-as-tool'].includes(mode) && useReranker) {
+					inputs.push({ displayName: "Reranker", type: "ai_reranker", required: true, maxConnections: 1})
+				}
+
+				if (mode === 'retrieve-as-tool') {
+					return inputs;
+				}
+
+				if (['insert', 'load', 'update'].includes(mode)) {
+					inputs.push({ displayName: "", type: "main"})
+				}
+
+				if (['insert'].includes(mode)) {
+					inputs.push({ displayName: "Document", type: "ai_document", required: true, maxConnections: 1})
+				}
+				return inputs
+			})($parameter)
+		}}",
+  "name": "mockConstructor",
+  "outputs": "={{
+			((parameters) => {
+				const mode = parameters?.mode ?? 'retrieve';
+
+				if (mode === 'retrieve-as-tool') {
+					return [{ displayName: "Tool", type: "ai_tool"}]
+				}
+
+				if (mode === 'retrieve') {
+					return [{ displayName: "Vector Store", type: "ai_vectorStore"}]
+				}
+				return [{ displayName: "", type: "main"}]
+			})($parameter)
+		}}",
+  "properties": [
+    {
+      "default": "",
+      "displayName": "Tip: Get a feel for vector stores in n8n with our",
+      "name": "ragStarterCallout",
+      "type": "callout",
+      "typeOptions": {
+        "calloutAction": {
+          "label": "RAG starter template",
+          "type": "openRagStarterTemplate",
+        },
+      },
+    },
+    {
+      "default": "retrieve",
+      "displayName": "Operation Mode",
+      "name": "mode",
+      "noDataExpression": true,
+      "options": [
+        {
+          "action": "Get ranked documents from vector store",
+          "description": "Get many ranked documents from vector store for query",
+          "name": "Get Many",
+          "value": "load",
+        },
+        {
+          "action": "Add documents to vector store",
+          "description": "Insert documents into vector store",
+          "name": "Insert Documents",
+          "value": "insert",
+        },
+        {
+          "action": "Retrieve documents for Chain/Tool as Vector Store",
+          "description": "Retrieve documents from vector store to be used as vector store with AI nodes",
+          "name": "Retrieve Documents (As Vector Store for Chain/Tool)",
+          "outputConnectionType": "ai_vectorStore",
+          "value": "retrieve",
+        },
+        {
+          "action": "Retrieve documents for AI Agent as Tool",
+          "description": "Retrieve documents from vector store to be used as tool with AI nodes",
+          "name": "Retrieve Documents (As Tool for AI Agent)",
+          "outputConnectionType": "ai_tool",
+          "value": "retrieve-as-tool",
+        },
+      ],
+      "type": "options",
+    },
+    {
+      "default": "",
+      "displayName": "This node must be connected to a vector store retriever. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_retriever'>Insert one</a>",
+      "displayOptions": {
+        "show": {
+          "mode": [
+            "retrieve",
+          ],
+        },
+      },
+      "name": "notice",
+      "type": "notice",
+      "typeOptions": {
+        "containerClass": "ndv-connection-hint-notice",
+      },
+    },
+    {
+      "default": "",
+      "description": "Name of the vector store",
+      "displayName": "Name",
+      "displayOptions": {
+        "show": {
+          "@version": [
+            {
+              "_cnd": {
+                "lte": 1.2,
+              },
+            },
+          ],
+          "mode": [
+            "retrieve-as-tool",
+          ],
+        },
+      },
+      "name": "toolName",
+      "placeholder": "e.g. company_knowledge_base",
+      "required": true,
+      "type": "string",
+      "validateType": "string-alphanumeric",
+    },
+    {
+      "default": "",
+      "description": "Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often",
+      "displayName": "Description",
+      "displayOptions": {
+        "show": {
+          "mode": [
+            "retrieve-as-tool",
+          ],
+        },
+      },
+      "name": "toolDescription",
+      "placeholder": "e.g. undefined",
+      "required": true,
+      "type": "string",
+      "typeOptions": {
+        "rows": 2,
+      },
+    },
+    {
+      "default": 200,
+      "description": "Number of documents to embed in a single batch",
+      "displayName": "Embedding Batch Size",
+      "displayOptions": {
+        "show": {
+          "@version": [
+            {
+              "_cnd": {
+                "gte": 1.1,
+              },
+            },
+          ],
+          "mode": [
+            "insert",
+          ],
+        },
+      },
+      "name": "embeddingBatchSize",
+      "type": "number",
+    },
+    {
+      "default": "",
+      "description": "Search prompt to retrieve matching documents from the vector store using similarity-based ranking",
+      "displayName": "Prompt",
+      "displayOptions": {
+        "show": {
+          "mode": [
+            "load",
+          ],
+        },
+      },
+      "name": "prompt",
+      "required": true,
+      "type": "string",
+    },
+    {
+      "default": 4,
+      "description": "Number of top results to fetch from vector store",
+      "displayName": "Limit",
+      "displayOptions": {
+        "show": {
+          "mode": [
+            "load",
+            "retrieve-as-tool",
+          ],
+        },
+      },
+      "name": "topK",
+      "type": "number",
+    },
+    {
+      "default": true,
+      "description": "Whether or not to include document metadata",
+      "displayName": "Include Metadata",
+      "displayOptions": {
+        "show": {
+          "mode": [
+            "load",
+            "retrieve-as-tool",
+          ],
+        },
+      },
+      "name": "includeDocumentMetadata",
+      "type": "boolean",
+    },
+    {
+      "default": false,
+      "description": "Whether or not to rerank results",
+      "displayName": "Rerank Results",
+      "displayOptions": {
+        "show": {
+          "mode": [
+            "load",
+            "retrieve",
+            "retrieve-as-tool",
+          ],
+        },
+      },
+      "name": "useReranker",
+      "type": "boolean",
+    },
+    {
+      "default": "",
+      "description": "ID of an embedding entry",
+      "displayName": "ID",
+      "displayOptions": {
+        "show": {
+          "mode": [
+            "update",
+          ],
+        },
+      },
+      "name": "id",
+      "required": true,
+      "type": "string",
+    },
+    {
+      "displayOptions": {
+        "show": {
+          "mode": [
+            "load",
+            "retrieve-as-tool",
+          ],
+        },
+      },
+      "name": "loadField",
+    },
+  ],
+  "version": [
+    1,
+    1.1,
+    1.2,
+    1.3,
+  ],
+}
+`;

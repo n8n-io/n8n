@@ -1,3 +1,5 @@
+import flow from 'lodash/flow';
+import omit from 'lodash/omit';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -5,9 +7,6 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 } from 'n8n-workflow';
-
-import flow from 'lodash/flow';
-import omit from 'lodash/omit';
 
 import type {
 	AllFieldsUi,
@@ -81,13 +80,7 @@ export async function handleListing(
 	const itemsKey = toItemsKey(endpoint);
 
 	do {
-		responseData = await actionNetworkApiRequest.call(
-			this,
-			method as IHttpRequestMethods,
-			endpoint,
-			body,
-			qs,
-		);
+		responseData = await actionNetworkApiRequest.call(this, method, endpoint, body, qs);
 		const items = responseData._embedded[itemsKey];
 		returnData.push(...(items as IDataObject[]));
 

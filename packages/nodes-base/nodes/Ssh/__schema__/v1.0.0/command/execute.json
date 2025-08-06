@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "signal": {
+            "type": "null"
+        },
+        "stderr": {
+            "type": "string"
+        },
+        "stdout": {
+            "type": "string"
+        }
+    },
+    "version": 4
+}

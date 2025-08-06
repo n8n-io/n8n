@@ -1,8 +1,8 @@
-import { ApplicationError, type Level } from './application.error';
-import type { INode } from '../Interfaces';
+import { ApplicationError, type ErrorLevel } from '@n8n/errors';
+import type { INode } from '../interfaces';
 
 interface TriggerCloseErrorOptions extends ErrorOptions {
-	level: Level;
+	level: ErrorLevel;
 }
 
 export class TriggerCloseError extends ApplicationError {

@@ -1,10 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
-import * as message from './message';
 import * as channel from './channel';
 import * as member from './member';
+import * as message from './message';
 import * as webhook from './webhook';
+import { sendAndWaitWebhooksDescription } from '../../../../utils/sendAndWait/descriptions';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Discord',
@@ -17,8 +18,9 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Discord',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
+	webhooks: sendAndWaitWebhooksDescription,
 	credentials: [
 		{
 			name: 'discordBotApi',

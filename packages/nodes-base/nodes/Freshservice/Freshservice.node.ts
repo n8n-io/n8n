@@ -1,3 +1,4 @@
+import { tz } from 'moment-timezone';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,22 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-
-import { tz } from 'moment-timezone';
-import {
-	adjustAddress,
-	adjustAgentRoles,
-	formatFilters,
-	freshserviceApiRequest,
-	handleListing,
-	sanitizeAssignmentScopeGroup,
-	toArray,
-	toOptions,
-	toUserOptions,
-	validateAssignmentScopeGroup,
-	validateUpdateFields,
-} from './GenericFunctions';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
 	agentFields,
@@ -56,7 +42,19 @@ import {
 	ticketFields,
 	ticketOperations,
 } from './descriptions';
-
+import {
+	adjustAddress,
+	adjustAgentRoles,
+	formatFilters,
+	freshserviceApiRequest,
+	handleListing,
+	sanitizeAssignmentScopeGroup,
+	toArray,
+	toOptions,
+	toUserOptions,
+	validateAssignmentScopeGroup,
+	validateUpdateFields,
+} from './GenericFunctions';
 import type { AddressFixedCollection, LoadedResource, LoadedUser, RolesParameter } from './types';
 
 export class Freshservice implements INodeType {
@@ -71,8 +69,9 @@ export class Freshservice implements INodeType {
 		defaults: {
 			name: 'Freshservice',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'freshserviceApi',

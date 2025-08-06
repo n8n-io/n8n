@@ -5,6 +5,7 @@ import type {
 	INodeListSearchResult,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
 import { apiRequest } from '../transport';
 
 export async function baseSearch(

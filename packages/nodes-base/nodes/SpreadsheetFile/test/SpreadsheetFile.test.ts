@@ -1,25 +1,18 @@
-import path from 'path';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { readFileSync } from 'fs';
-import type { IWorkflowBase } from 'n8n-workflow';
-import * as Helpers from '@test/nodes/Helpers';
-import type { WorkflowTestData } from '@test/nodes/types';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+import type { WorkflowTestData } from 'n8n-workflow';
+import path from 'path';
 
 describe('Execute Spreadsheet File Node', () => {
-	beforeEach(async () => {
-		await Helpers.initBinaryDataService();
-	});
-
+	const testHarness = new NodeTestHarness();
 	const readBinaryFile = (fileName: string) =>
 		readFileSync(path.resolve(__dirname, fileName), 'base64');
 
 	const loadWorkflow = (fileName: string, csvName: string) => {
-		const workflow = Helpers.readJsonFileSync<IWorkflowBase>(
-			`nodes/SpreadsheetFile/test/${fileName}`,
-		);
-		const node = workflow.nodes.find((n) => n.name === 'Read Binary File');
-		node!.parameters.fileSelector = path.join(__dirname, csvName);
-		return workflow;
+		const workflowData = testHarness.readWorkflowJSON(fileName);
+		const node = workflowData.nodes.find((n) => n.name === 'Read Binary File')!;
+		node.parameters.fileSelector = path.join(__dirname, csvName);
+		return workflowData;
 	};
 
 	const tests: WorkflowTestData[] = [
@@ -29,6 +22,7 @@ describe('Execute Spreadsheet File Node', () => {
 				workflowData: loadWorkflow('workflow.json', 'spreadsheet.csv'),
 			},
 			output: {
+				assertBinaryData: true,
 				nodeData: {
 					'Read From File': [
 						[
@@ -200,21 +194,7 @@ describe('Execute Spreadsheet File Node', () => {
 		},
 	];
 
-	const nodeTypes = Helpers.setup(tests);
-
 	for (const testData of tests) {
-		// eslint-disable-next-line @typescript-eslint/no-loop-func
-		test(testData.description, async () => {
-			// execute workflow
-			const { result } = await executeWorkflow(testData, nodeTypes);
-
-			// check if result node data matches expected test data
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
-			resultNodeData.forEach(({ nodeName, resultData }) =>
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-			);
-
-			expect(result.finished).toEqual(true);
-		});
+		testHarness.setupTest(testData);
 	}
 });

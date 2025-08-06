@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "_id": {
+            "type": "string"
+        },
+        "_name": {
+            "type": "string"
+        },
+        "_updateTime": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

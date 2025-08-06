@@ -1,10 +1,9 @@
+import type { CredentialPayload } from '@n8n/backend-test-utils';
+import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
-import { Container } from 'typedi';
-
-import type { User } from '@/databases/entities/user';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { createTeamProject } from '@test-integration/db/projects';
 
 import {
 	affixRoleToSaveCredential,
@@ -12,10 +11,7 @@ import {
 	getCredentialSharings,
 } from '../shared/db/credentials';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import { randomName } from '../shared/random';
-import * as testDb from '../shared/test-db';
-import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
-import type { SuperAgentTest } from '../shared/types';
+import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 let owner: User;
@@ -40,7 +36,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'Credentials']);
+	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
 });
 
 describe('POST /credentials', () => {

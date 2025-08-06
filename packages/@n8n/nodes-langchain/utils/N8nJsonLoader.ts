@@ -1,3 +1,7 @@
+import type { Document } from '@langchain/core/documents';
+import type { TextSplitter } from '@langchain/textsplitters';
+import { JSONLoader } from 'langchain/document_loaders/fs/json';
+import { TextLoader } from 'langchain/document_loaders/fs/text';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -5,10 +9,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import type { TextSplitter } from '@langchain/textsplitters';
-import type { Document } from '@langchain/core/documents';
-import { JSONLoader } from 'langchain/document_loaders/fs/json';
-import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { getMetadataFiltersValues } from './helpers';
 
 export class N8nJsonLoader {

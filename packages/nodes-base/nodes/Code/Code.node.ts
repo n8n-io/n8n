@@ -1,7 +1,9 @@
-import { TaskRunnersConfig } from '@n8n/config';
+import { NodesConfig, TaskRunnersConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import set from 'lodash/set';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
+	UserError,
 	type CodeExecutionMode,
 	type CodeNodeEditorLanguage,
 	type IExecuteFunctions,
@@ -9,7 +11,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-import Container from 'typedi';
 
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
@@ -20,6 +21,14 @@ import { getSandboxContext } from './Sandbox';
 import { addPostExecutionWarning, standardizeOutput } from './utils';
 
 const { CODE_ENABLE_STDOUT } = process.env;
+
+class PythonDisabledError extends UserError {
+	constructor() {
+		super(
+			'This instance disallows Python execution because it has the environment variable `N8N_PYTHON_ENABLED` set to `false`. To restore Python execution, remove this environment variable or set it to `true` and restart the instance.',
+		);
+	}
+}
 
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,8 +42,8 @@ export class Code implements INodeType {
 		defaults: {
 			name: 'Code',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		parameterPane: 'wide',
 		properties: [
 			{
@@ -96,16 +105,20 @@ export class Code implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		const runnersConfig = Container.get(TaskRunnersConfig);
-
-		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
-		const workflowMode = this.getMode();
-
 		const node = this.getNode();
 		const language: CodeNodeEditorLanguage =
 			node.typeVersion === 2
 				? (this.getNodeParameter('language', 0) as CodeNodeEditorLanguage)
 				: 'javaScript';
+
+		if (language === 'python' && !Container.get(NodesConfig).pythonEnabled) {
+			// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+			throw new PythonDisabledError();
+		}
+
+		const runnersConfig = Container.get(TaskRunnersConfig);
+		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
+		const workflowMode = this.getMode();
 		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
 
 		if (runnersConfig.enabled && language === 'javaScript') {
@@ -165,7 +178,8 @@ export class Code implements INodeType {
 				standardizeOutput(item.json);
 			}
 
-			return addPostExecutionWarning(items, inputDataItems?.length);
+			addPostExecutionWarning(this, items, inputDataItems?.length);
+			return [items];
 		}
 
 		// ----------------------------------
@@ -201,6 +215,7 @@ export class Code implements INodeType {
 			}
 		}
 
-		return addPostExecutionWarning(returnData, inputDataItems?.length);
+		addPostExecutionWarning(this, returnData, inputDataItems?.length);
+		return [returnData];
 	}
 }

@@ -1,0 +1,145 @@
+{
+    "type": "object",
+    "properties": {
+        "date": {
+            "type": "string"
+        },
+        "from": {
+            "type": "object",
+            "properties": {
+                "html": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "headers": {
+            "type": "object",
+            "properties": {
+                "arc-authentication-results": {
+                    "type": "string"
+                },
+                "arc-message-signature": {
+                    "type": "string"
+                },
+                "arc-seal": {
+                    "type": "string"
+                },
+                "authentication-results": {
+                    "type": "string"
+                },
+                "content-type": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "delivered-to": {
+                    "type": "string"
+                },
+                "dkim-signature": {
+                    "type": "string"
+                },
+                "from": {
+                    "type": "string"
+                },
+                "message-id": {
+                    "type": "string"
+                },
+                "mime-version": {
+                    "type": "string"
+                },
+                "received": {
+                    "type": "string"
+                },
+                "received-spf": {
+                    "type": "string"
+                },
+                "return-path": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                },
+                "x-google-smtp-source": {
+                    "type": "string"
+                },
+                "x-received": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "labelIds": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "messageId": {
+            "type": "string"
+        },
+        "sizeEstimate": {
+            "type": "integer"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "textAsHtml": {
+            "type": "string"
+        },
+        "threadId": {
+            "type": "string"
+        },
+        "to": {
+            "type": "object",
+            "properties": {
+                "html": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 4
+}

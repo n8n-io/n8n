@@ -1,28 +1,29 @@
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { VectorStore } from '@langchain/core/vectorstores';
+import { VectorDBQAChain } from 'langchain/chains';
+import { VectorStoreQATool } from 'langchain/tools';
 import type {
 	INodeType,
 	INodeTypeDescription,
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes, nodeNameToToolName } from 'n8n-workflow';
 
-import { VectorStoreQATool } from 'langchain/tools';
-import type { VectorStore } from '@langchain/core/vectorstores';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { VectorDBQAChain } from 'langchain/chains';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { logWrapper } from '../../../utils/logWrapper';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 export class ToolVectorStore implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Vector Store Tool',
+		displayName: 'Vector Store Question Answer Tool',
 		name: 'toolVectorStore',
 		icon: 'fa:database',
+		iconColor: 'black',
 		group: ['transform'],
-		version: [1],
-		description: 'Retrieve context from vector store',
+		version: [1, 1.1],
+		description: 'Answer questions with a vector store',
 		defaults: {
-			name: 'Vector Store Tool',
+			name: 'Answer questions with a vector store',
 		},
 		codex: {
 			categories: ['AI'],
@@ -38,41 +39,49 @@ export class ToolVectorStore implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			{
 				displayName: 'Vector Store',
 				maxConnections: 1,
-				type: NodeConnectionType.AiVectorStore,
+				type: NodeConnectionTypes.AiVectorStore,
 				required: true,
 			},
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: NodeConnectionTypes.AiLanguageModel,
 				required: true,
 			},
 		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTool],
+
+		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
-				displayName: 'Name',
+				displayName: 'Data Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				placeholder: 'e.g. company_knowledge_base',
+				placeholder: 'e.g. users_info',
 				validateType: 'string-alphanumeric',
-				description: 'Name of the vector store',
+				description:
+					'Name of the data in vector store. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
 			},
 			{
-				displayName: 'Description',
+				displayName: 'Description of Data',
 				name: 'description',
 				type: 'string',
 				default: '',
-				placeholder: 'Retrieves data about [insert information about your data here]...',
+				placeholder: "[Describe your data here, e.g. a user's name, email, etc.]",
+				description:
+					'Describe the data in vector store. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.',
 				typeOptions: {
 					rows: 3,
 				},
@@ -88,17 +97,22 @@ export class ToolVectorStore implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const name = this.getNodeParameter('name', itemIndex) as string;
+		const node = this.getNode();
+		const { typeVersion } = node;
+		const name =
+			typeVersion <= 1
+				? (this.getNodeParameter('name', itemIndex) as string)
+				: nodeNameToToolName(node);
 		const toolDescription = this.getNodeParameter('description', itemIndex) as string;
 		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
 
 		const vectorStore = (await this.getInputConnectionData(
-			NodeConnectionType.AiVectorStore,
+			NodeConnectionTypes.AiVectorStore,
 			itemIndex,
 		)) as VectorStore;
 
 		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			NodeConnectionTypes.AiLanguageModel,
 			0,
 		)) as BaseLanguageModel;
 

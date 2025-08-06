@@ -1,10 +1,12 @@
 import type { DynamicStructuredToolInput } from '@langchain/core/tools';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import type { ISupplyDataFunctions, IDataObject } from 'n8n-workflow';
-import { NodeConnectionType, jsonParse, NodeOperationError } from 'n8n-workflow';
 import { StructuredOutputParser } from 'langchain/output_parsers';
+import type { ISupplyDataFunctions, IDataObject } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { ZodTypeAny } from 'zod';
 import { ZodBoolean, ZodNullable, ZodNumber, ZodObject, ZodOptional } from 'zod';
+
+import type { ZodObjectAny } from '../types/types';
 
 const getSimplifiedType = (schema: ZodTypeAny) => {
 	if (schema instanceof ZodObject) {
@@ -44,10 +46,10 @@ ALL parameters marked as required must be provided`;
 	return description;
 };
 
-export class N8nTool extends DynamicStructuredTool {
+export class N8nTool extends DynamicStructuredTool<ZodObjectAny> {
 	constructor(
 		private context: ISupplyDataFunctions,
-		fields: DynamicStructuredToolInput,
+		fields: DynamicStructuredToolInput<ZodObjectAny>,
 	) {
 		super(fields);
 	}
@@ -96,8 +98,8 @@ export class N8nTool extends DynamicStructuredTool {
 
 				return result;
 			} catch (e) {
-				const { index } = context.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
-				void context.addOutputData(NodeConnectionType.AiTool, index, e);
+				const { index } = context.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query } }]]);
+				void context.addOutputData(NodeConnectionTypes.AiTool, index, e);
 
 				return e.toString();
 			}
