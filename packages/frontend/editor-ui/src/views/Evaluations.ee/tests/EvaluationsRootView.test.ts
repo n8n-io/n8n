@@ -7,6 +7,7 @@ import EvaluationRootView from '../EvaluationsRootView.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useUsageStore } from '@/stores/usage.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
@@ -31,6 +32,16 @@ vi.mock('@/stores/nodeTypes.store', () => ({
 		getNodeType,
 	})),
 }));
+
+vi.mock('@n8n/i18n', async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...actual,
+		useI18n: () => ({
+			baseText: vi.fn((key: string) => `mocked-${key}`),
+		}),
+	};
+});
 
 describe('EvaluationsRootView', () => {
 	const renderComponent = createComponentRenderer(EvaluationRootView);
@@ -125,6 +136,21 @@ describe('EvaluationsRootView', () => {
 		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
 
 		await waitFor(() => expect(container.querySelector('.setupContent')).toBeTruthy());
+	});
+
+	it('should render read-only callout when in protected environment', async () => {
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		const sourceControlStore = mockedStore(useSourceControlStore);
+		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		sourceControlStore.preferences = { branchReadOnly: true };
+
+		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
+
+		await waitFor(() => {
+			const callout = container.querySelector('[role="alert"]');
+			expect(callout).toBeTruthy();
+			expect(callout?.textContent).toContain('mocked-evaluations.readOnlyNotice');
+		});
 	});
 
 	describe('telemetry', () => {
