@@ -195,12 +195,10 @@ const dateTimePickerOptions = ref({
 });
 const isFocused = ref(false);
 
-const node = computed(
-	() =>
-		expressionLocalResolveCtx?.value?.workflow.getNode(expressionLocalResolveCtx.value.nodeName) ??
-		ndvStore.activeNode ??
-		undefined,
+const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
+	expressionLocalResolveCtx.value.nodeName,
 );
+const node = computed(() => contextNode ?? ndvStore.activeNode ?? undefined);
 const nodeType = computed(
 	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 );
