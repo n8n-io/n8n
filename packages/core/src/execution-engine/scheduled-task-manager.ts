@@ -17,7 +17,7 @@ type SettingsCron = CronContext & { workflowId: string };
 export class ScheduledTaskManager {
 	readonly cronsByWorkflow: CronsByWorkflow = new Map();
 
-	private readonly logInterval?: NodeJS.Timeout;
+	private logInterval?: NodeJS.Timeout;
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -121,6 +121,7 @@ export class ScheduledTaskManager {
 		}
 
 		clearInterval(this.logInterval);
+		this.logInterval = undefined;
 	}
 
 	/** Crons currently active instance-wide, to display in logs. */
