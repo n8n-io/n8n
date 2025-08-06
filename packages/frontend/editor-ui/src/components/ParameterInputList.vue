@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type {
-	CalloutActionType,
+	CalloutAction,
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValueType,
@@ -47,6 +47,7 @@ import { storeToRefs } from 'pinia';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -86,8 +87,14 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
-const { dismissCallout, isCalloutDismissed, openRagStarterTemplate, isRagStarterCalloutVisible } =
-	useCalloutHelpers();
+const {
+	dismissCallout,
+	isCalloutDismissed,
+	openPreBuiltAgentsCollection,
+	openSampleWorkflowTemplate,
+	isRagStarterCalloutVisible,
+	isPreBuiltAgentsCalloutVisible,
+} = useCalloutHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -405,6 +412,14 @@ function isRagStarterCallout(parameter: INodeProperties): boolean {
 	return parameter.type === 'callout' && parameter.name === 'ragStarterCallout';
 }
 
+function isAgentDefaultCallout(parameter: INodeProperties): boolean {
+	return parameter.type === 'callout' && parameter.name === 'aiAgentStarterCallout';
+}
+
+function isPreBuiltAgentsCallout(parameter: INodeProperties): boolean {
+	return parameter.type === 'callout' && parameter.name.startsWith('preBuiltAgentsCallout');
+}
+
 function isCalloutVisible(parameter: INodeProperties): boolean {
 	if (isCalloutDismissed(parameter.name)) return false;
 
@@ -412,12 +427,38 @@ function isCalloutVisible(parameter: INodeProperties): boolean {
 		return isRagStarterCalloutVisible.value;
 	}
 
+	if (isAgentDefaultCallout(parameter)) {
+		return !isPreBuiltAgentsCalloutVisible.value;
+	}
+
+	if (isPreBuiltAgentsCallout(parameter)) {
+		return isPreBuiltAgentsCalloutVisible.value;
+	}
+
 	return true;
 }
 
-function onCalloutAction(action: CalloutActionType) {
-	if (action === 'openRagStarterTemplate') {
-		openRagStarterTemplate(activeNode.value?.type ?? 'no active node');
+function onCalloutAction(action: CalloutAction) {
+	switch (action.type) {
+		case 'openPreBuiltAgentsCollection':
+			void openPreBuiltAgentsCollection({
+				telemetry: {
+					source: 'ndv',
+					nodeType: activeNode.value?.type,
+				},
+				resetStacks: true,
+			});
+			break;
+		case 'openSampleWorkflowTemplate':
+			void openSampleWorkflowTemplate(action.templateId, {
+				telemetry: {
+					source: 'ndv',
+					nodeType: activeNode.value?.type,
+				},
+			});
+			break;
+		default:
+			break;
 	}
 }
 
@@ -483,6 +524,8 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 			<template v-else-if="parameter.type === 'callout'">
 				<N8nCallout
 					v-if="isCalloutVisible(parameter)"
+					:icon="(parameter.typeOptions?.calloutAction?.icon as IconName) || 'info'"
+					icon-size="large"
 					:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
 					theme="secondary"
 				>
@@ -499,7 +542,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 								size="small"
 								:bold="true"
 								:underline="true"
-								@click="onCalloutAction(parameter.typeOptions.calloutAction.type)"
+								@click="onCalloutAction(parameter.typeOptions.calloutAction)"
 							>
 								{{ parameter.typeOptions.calloutAction.label }}
 							</N8nLink>
