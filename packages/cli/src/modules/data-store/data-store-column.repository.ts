@@ -46,7 +46,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 			});
 
 			await em.insert(DataStoreColumnEntity, column);
-			await em.query(addColumnQuery(toTableName(dataStoreId), column));
+			await em.query(addColumnQuery(toTableName(dataStoreId), column, em.connection.options.type));
 
 			return column;
 		});
@@ -55,7 +55,9 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 	async deleteColumn(dataStoreId: string, column: DataStoreColumnEntity) {
 		await this.manager.transaction(async (em) => {
 			await em.remove(DataStoreColumnEntity, column);
-			await em.query(deleteColumnQuery(toTableName(dataStoreId), column.name));
+			await em.query(
+				deleteColumnQuery(toTableName(dataStoreId), column.name, em.connection.options.type),
+			);
 			await this.shiftColumns(dataStoreId, column.columnIndex, -1, em);
 		});
 	}

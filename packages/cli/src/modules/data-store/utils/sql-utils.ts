@@ -7,9 +7,9 @@ import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
 import type { DataStoreUserTableName } from '../data-store.types';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -45,8 +45,11 @@ function dataStoreColumnTypeToSql(type: DataStoreCreateColumnSchema['type']) {
 	}
 }
 
-function columnToWildcardAndType(column: DataStoreCreateColumnSchema) {
-	return `\`${column.name}\` ${dataStoreColumnTypeToSql(column.type)}`; // Postgres identifiers use double quotes
+function columnToWildcardAndType(
+	column: DataStoreCreateColumnSchema,
+	dbType: DataSourceOptions['type'],
+) {
+	return `${quoteIdentifier(column.name, dbType)} ${dataStoreColumnTypeToSql(column.type)}`;
 }
 
 function getPrimaryKeyAutoIncrement(dbType: DataSourceOptions['type']) {
@@ -75,7 +78,7 @@ export function createUserTableQuery(
 	if (columns.map((x) => x.name).some((name) => !isValidColumnName(name))) {
 		throw new UnexpectedError('bad column name');
 	}
-	const columnSql = columns.map(columnToWildcardAndType);
+	const columnSql = columns.map((column) => columnToWildcardAndType(column, dbType));
 	const columnsFieldQuery = columnSql.length > 0 ? `, ${columnSql.join(', ')}` : '';
 
 	const primaryKeyType = getPrimaryKeyAutoIncrement(dbType);
@@ -92,17 +95,22 @@ function isValidColumnName(name: string) {
 export function addColumnQuery(
 	tableName: DataStoreUserTableName,
 	column: DataStoreCreateColumnSchema,
+	dbType: DataSourceOptions['type'],
 ) {
 	// API requests should already conform to this, but better safe than sorry
 	if (!isValidColumnName(column.name)) {
 		throw new UnexpectedError('bad column name');
 	}
 
-	return `ALTER TABLE ${tableName} ADD ${columnToWildcardAndType(column)}`;
+	return `ALTER TABLE ${tableName} ADD ${columnToWildcardAndType(column, dbType)}`;
 }
 
-export function deleteColumnQuery(tableName: DataStoreUserTableName, column: string): string {
-	return `ALTER TABLE ${tableName} DROP COLUMN \`${column}\``;
+export function deleteColumnQuery(
+	tableName: DataStoreUserTableName,
+	column: string,
+	dbType: DataSourceOptions['type'],
+): string {
+	return `ALTER TABLE ${tableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
 }
 
 export function buildInsertQuery(
@@ -193,14 +201,13 @@ export function splitRowsByExistence(
 
 export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
 	switch (dbType) {
-		case 'postgres':
-		case 'aurora-postgres':
-		case 'sqlite':
-		case 'sqlite-pooled':
-		case 'better-sqlite3':
-			return `"${name}"`;
-		default:
+		case 'mysql':
+		case 'mariadb':
 			return `\`${name}\``;
+		case 'postgres':
+		case 'sqlite':
+		default:
+			return `"${name}"`;
 	}
 }
 

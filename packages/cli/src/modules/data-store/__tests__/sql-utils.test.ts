@@ -41,9 +41,9 @@ describe('sql-utils', () => {
 			const tableName = 'data_store_user_abc';
 			const column = { name: 'email', type: 'number' as const };
 
-			const query = addColumnQuery(tableName, column);
+			const query = addColumnQuery(tableName, column, 'sqlite');
 
-			expect(query).toBe('ALTER TABLE data_store_user_abc ADD `email` FLOAT');
+			expect(query).toBe('ALTER TABLE data_store_user_abc ADD "email" FLOAT');
 		});
 	});
 
@@ -52,9 +52,9 @@ describe('sql-utils', () => {
 			const tableName = 'data_store_user_abc';
 			const column = 'email';
 
-			const query = deleteColumnQuery(tableName, column);
+			const query = deleteColumnQuery(tableName, column, 'sqlite');
 
-			expect(query).toBe('ALTER TABLE data_store_user_abc DROP COLUMN `email`');
+			expect(query).toBe('ALTER TABLE data_store_user_abc DROP COLUMN "email"');
 		});
 	});
 
