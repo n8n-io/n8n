@@ -151,5 +151,11 @@
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch"
     }
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^1.2.36",
+    "@fortawesome/free-regular-svg-icons": "^7.0.0",
+    "@fortawesome/free-solid-svg-icons": "^5.15.4",
+    "@fortawesome/vue-fontawesome": "^3.0.3"
   }
 }

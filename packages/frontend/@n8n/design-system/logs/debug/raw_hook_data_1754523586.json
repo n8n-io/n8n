@@ -1,0 +1,7 @@
+{
+	"session_id": "6cbb9f19-731b-461a-a0a0-4957644936ef",
+	"transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/6cbb9f19-731b-461a-a0a0-4957644936ef.jsonl",
+	"cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork/packages/frontend/@n8n/design-system",
+	"hook_event_name": "SubagentStop",
+	"stop_hook_active": false
+}

@@ -778,6 +778,145 @@ export class FoldersController {
 		}
 	}
 
+	@Post('/export')
+	@GlobalScope('workflow:read')
+	@Licensed('feat:advancedPermissions')
+	async exportFolders(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body request: {
+			folderIds: string[];
+			includeSubfolders?: boolean;
+			includeWorkflows?: boolean;
+			exportFormat?: 'json' | 'csv' | 'zip';
+			compression?: boolean;
+		},
+	): Promise<any> {
+		try {
+			if (!request.folderIds?.length) {
+				return res.status(400).json({
+					error: 'At least one folder ID is required',
+				});
+			}
+
+			// Check permissions for all folders
+			for (const folderId of request.folderIds) {
+				const permissionCheck = await this.folderPermissionsService.checkFolderPermission(
+					req.user,
+					folderId,
+					'read',
+				);
+
+				if (!permissionCheck.allowed) {
+					return res.status(403).json({
+						error: `Access denied for folder: ${folderId}`,
+					});
+				}
+			}
+
+			const result = await this.workflowOrganizationService.exportFolders(req.user, {
+				folderIds: request.folderIds,
+				includeSubfolders: request.includeSubfolders,
+				includeWorkflows: request.includeWorkflows,
+				exportFormat: request.exportFormat || 'json',
+				compression: request.compression,
+			});
+
+			// Set appropriate response headers based on format
+			switch (result.format) {
+				case 'json':
+					res.setHeader('Content-Type', 'application/json');
+					break;
+				case 'csv':
+					res.setHeader('Content-Type', 'text/csv');
+					res.setHeader('Content-Disposition', 'attachment; filename="folders-export.csv"');
+					break;
+				case 'zip':
+					res.setHeader('Content-Type', 'application/zip');
+					res.setHeader('Content-Disposition', 'attachment; filename="folders-export.zip"');
+					break;
+			}
+
+			return res.status(200).json({
+				success: true,
+				data: result,
+			});
+		} catch (error) {
+			this.logger.error('Failed to export folders', {
+				userId: req.user?.id,
+				folderIds: request.folderIds?.length,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+
+			if (error instanceof BadRequestError || error instanceof ApplicationError) {
+				return res.status(400).json({ error: error.message });
+			}
+
+			throw new InternalServerError('Failed to export folders');
+		}
+	}
+
+	@Post('/import')
+	@GlobalScope('workflow:create')
+	@Licensed('feat:advancedPermissions')
+	async importFolders(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Body request: {
+			importData: any;
+			targetParentId?: string;
+			conflictResolution?: 'skip' | 'overwrite' | 'rename';
+			preserveIds?: boolean;
+		},
+	): Promise<any> {
+		try {
+			if (!request.importData) {
+				return res.status(400).json({
+					error: 'Import data is required',
+				});
+			}
+
+			// Check permissions for target parent folder if specified
+			if (request.targetParentId) {
+				const permissionCheck = await this.folderPermissionsService.checkFolderPermission(
+					req.user,
+					request.targetParentId,
+					'create_subfolder',
+				);
+
+				if (!permissionCheck.allowed) {
+					return res.status(403).json({
+						error: 'Access denied: Cannot create folders in target location',
+					});
+				}
+			}
+
+			const result = await this.workflowOrganizationService.importFolders(req.user, {
+				importData: request.importData,
+				targetParentId: request.targetParentId,
+				conflictResolution: request.conflictResolution || 'rename',
+				preserveIds: request.preserveIds || false,
+			});
+
+			return res.status(201).json({
+				success: true,
+				data: result,
+			});
+		} catch (error) {
+			this.logger.error('Failed to import folders', {
+				userId: req.user?.id,
+				targetParentId: request.targetParentId,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+
+			if (error instanceof BadRequestError || error instanceof ApplicationError) {
+				return res.status(400).json({ error: error.message });
+			}
+
+			throw new InternalServerError('Failed to import folders');
+		}
+	}
+
 	// Private helper methods
 	private async filterFoldersByPermissions(user: any, folders: any[]): Promise<any[]> {
 		const filteredFolders = [];

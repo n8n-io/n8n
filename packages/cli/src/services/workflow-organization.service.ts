@@ -860,6 +860,173 @@ export class WorkflowOrganizationService {
 		}
 	}
 
+	async exportFolders(user: User, request: FolderExportRequest): Promise<any> {
+		try {
+			this.logger.info('Exporting folders', {
+				userId: user.id,
+				folderIds: request.folderIds,
+				format: request.exportFormat,
+				includeWorkflows: request.includeWorkflows,
+			});
+
+			const exportData = {
+				metadata: {
+					exportVersion: '1.0',
+					exportedAt: new Date(),
+					exportedBy: user.id,
+					n8nVersion: process.env.N8N_VERSION || 'unknown',
+				},
+				folders: [],
+				workflows: [],
+			};
+
+			for (const folderId of request.folderIds) {
+				await this.validateFolderAccess(user, folderId, 'read');
+
+				const folder = await this.getFolderById(user, folderId);
+				const folderData = await this.buildExportFolderData(user, folder, request);
+				exportData.folders.push(folderData);
+
+				if (request.includeSubfolders) {
+					const subfolders = await this.getSubfoldersRecursively(user, folderId);
+					for (const subfolder of subfolders) {
+						const subfolderData = await this.buildExportFolderData(user, subfolder, request);
+						exportData.folders.push(subfolderData);
+					}
+				}
+
+				if (request.includeWorkflows) {
+					const workflows = await this.getFolderWorkflows(
+						user,
+						folderId,
+						request.includeSubfolders,
+					);
+					exportData.workflows.push(...workflows);
+				}
+			}
+
+			switch (request.exportFormat) {
+				case 'json':
+					return {
+						operationId: `export-${Date.now()}`,
+						data: exportData,
+						format: 'json',
+						size: JSON.stringify(exportData).length,
+					};
+
+				case 'zip':
+				case 'csv':
+					const archiveData = await this.createArchiveExport(
+						exportData,
+						request.exportFormat,
+						request.compression,
+					);
+					return {
+						operationId: `export-${Date.now()}`,
+						data: archiveData,
+						format: request.exportFormat,
+						size: archiveData.length,
+					};
+
+				default:
+					throw new ApplicationError('Unsupported export format');
+			}
+		} catch (error) {
+			this.logger.error('Failed to export folders', {
+				userId: user.id,
+				folderIds: request.folderIds,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+
+			throw error;
+		}
+	}
+
+	async importFolders(
+		user: User,
+		request: FolderImportRequest,
+	): Promise<{
+		operationId: string;
+		success: boolean;
+		importedFolders: number;
+		importedWorkflows: number;
+		errors: Array<{ item: string; error: string }>;
+	}> {
+		try {
+			this.logger.info('Importing folders', {
+				userId: user.id,
+				targetParentId: request.targetParentId,
+				conflictResolution: request.conflictResolution,
+			});
+
+			const importData =
+				typeof request.importData === 'string'
+					? JSON.parse(request.importData)
+					: request.importData;
+
+			// Validate import data structure
+			if (!importData.metadata || !importData.folders) {
+				throw new ApplicationError('Invalid import data structure');
+			}
+
+			let importedFolders = 0;
+			let importedWorkflows = 0;
+			const errors: Array<{ item: string; error: string }> = [];
+			const folderIdMap = new Map<string, string>(); // old ID -> new ID
+
+			// Import folders first
+			for (const folderData of importData.folders) {
+				try {
+					const newFolderId = await this.importSingleFolder(user, folderData, request, folderIdMap);
+					folderIdMap.set(folderData.id, newFolderId);
+					importedFolders++;
+				} catch (error) {
+					errors.push({
+						item: `folder:${folderData.name}`,
+						error: error instanceof Error ? error.message : 'Unknown error',
+					});
+				}
+			}
+
+			// Import workflows if included
+			if (importData.workflows) {
+				for (const workflowData of importData.workflows) {
+					try {
+						await this.importSingleWorkflow(user, workflowData, request, folderIdMap);
+						importedWorkflows++;
+					} catch (error) {
+						errors.push({
+							item: `workflow:${workflowData.name}`,
+							error: error instanceof Error ? error.message : 'Unknown error',
+						});
+					}
+				}
+			}
+
+			const result = {
+				operationId: `import-${Date.now()}`,
+				success: errors.length === 0,
+				importedFolders,
+				importedWorkflows,
+				errors,
+			};
+
+			this.eventService.emit('folders-imported', {
+				userId: user.id,
+				...result,
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error('Failed to import folders', {
+				userId: user.id,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+
+			throw error;
+		}
+	}
+
 	// Private helper methods
 	private async buildFolderObject(
 		folderData: any,
@@ -1061,5 +1228,306 @@ export class WorkflowOrganizationService {
 			default:
 				return `f.position ASC, f.name ASC`;
 		}
+	}
+
+	private async buildExportFolderData(
+		user: User,
+		folder: WorkflowFolder,
+		request: FolderExportRequest,
+	): Promise<any> {
+		return {
+			id: folder.id,
+			name: folder.name,
+			description: folder.description,
+			parentId: folder.parentId,
+			path: folder.path,
+			level: folder.level,
+			position: folder.position,
+			color: folder.color,
+			icon: folder.icon,
+			metadata: folder.metadata,
+			exportedAt: new Date(),
+		};
+	}
+
+	private async getSubfoldersRecursively(user: User, folderId: string): Promise<WorkflowFolder[]> {
+		const query = `
+			WITH RECURSIVE subfolder_tree AS (
+				SELECT f.* FROM workflow_folders f WHERE f.parent_id = ?
+				UNION ALL
+				SELECT f.* FROM workflow_folders f
+				INNER JOIN subfolder_tree st ON f.parent_id = st.id
+			)
+			SELECT * FROM subfolder_tree ORDER BY level, position
+		`;
+
+		const result = await this.dataSource.query(query, [folderId]);
+
+		const folders = [];
+		for (const folderData of result) {
+			const folder = await this.buildFolderObject(folderData, user, 0, 0);
+			folders.push(folder);
+		}
+
+		return folders;
+	}
+
+	private async getFolderWorkflows(
+		user: User,
+		folderId: string,
+		includeSubfolders: boolean,
+	): Promise<any[]> {
+		let query = `
+			SELECT w.id, w.name, w.active, w.nodes, w.connections, w.settings, w.tags,
+				   w.createdAt, w.updatedAt, w.folder_id
+			FROM workflow_entity w
+			WHERE w.folder_id = ?
+		`;
+
+		const params = [folderId];
+
+		if (includeSubfolders) {
+			query = `
+				SELECT w.id, w.name, w.active, w.nodes, w.connections, w.settings, w.tags,
+					   w.createdAt, w.updatedAt, w.folder_id
+				FROM workflow_entity w
+				WHERE w.folder_id IN (
+					WITH RECURSIVE subfolder_tree AS (
+						SELECT id FROM workflow_folders WHERE id = ?
+						UNION ALL
+						SELECT f.id FROM workflow_folders f
+						INNER JOIN subfolder_tree st ON f.parent_id = st.id
+					)
+					SELECT id FROM subfolder_tree
+				)
+			`;
+		}
+
+		const workflows = await this.dataSource.query(query, params);
+
+		return workflows.map((w: any) => ({
+			id: w.id,
+			name: w.name,
+			active: w.active,
+			nodes: w.nodes,
+			connections: w.connections,
+			settings: w.settings,
+			tags: w.tags,
+			createdAt: w.createdAt,
+			updatedAt: w.updatedAt,
+			folderId: w.folder_id,
+		}));
+	}
+
+	private async createArchiveExport(
+		exportData: any,
+		format: string,
+		compression?: boolean,
+	): Promise<Buffer> {
+		if (format === 'csv') {
+			// Convert folder data to CSV format
+			const csvData = this.convertFoldersToCSV(exportData.folders, exportData.workflows);
+			return Buffer.from(csvData, 'utf-8');
+		}
+
+		if (format === 'zip') {
+			// Create ZIP archive with JSON data and optional compression
+			const JSZip = require('jszip');
+			const zip = new JSZip();
+
+			zip.file('folders.json', JSON.stringify(exportData.folders, null, 2));
+			if (exportData.workflows?.length > 0) {
+				zip.file('workflows.json', JSON.stringify(exportData.workflows, null, 2));
+			}
+			zip.file('metadata.json', JSON.stringify(exportData.metadata, null, 2));
+
+			return await zip.generateAsync({
+				type: 'nodebuffer',
+				compression: compression ? 'DEFLATE' : 'STORE',
+				compressionOptions: compression ? { level: 6 } : undefined,
+			});
+		}
+
+		throw new ApplicationError(`Unsupported archive format: ${format}`);
+	}
+
+	private convertFoldersToCSV(folders: any[], workflows: any[]): string {
+		const csvRows = [];
+
+		// Add header
+		csvRows.push(
+			[
+				'Type',
+				'ID',
+				'Name',
+				'Description',
+				'Parent ID',
+				'Path',
+				'Level',
+				'Position',
+				'Color',
+				'Icon',
+				'Created At',
+				'Updated At',
+			].join(','),
+		);
+
+		// Add folder rows
+		for (const folder of folders) {
+			csvRows.push(
+				[
+					'folder',
+					folder.id,
+					`"${folder.name}"`,
+					`"${folder.description || ''}"`,
+					folder.parentId || '',
+					`"${folder.path}"`,
+					folder.level,
+					folder.position,
+					folder.color,
+					folder.icon,
+					folder.metadata.createdAt,
+					folder.metadata.updatedAt,
+				].join(','),
+			);
+		}
+
+		// Add workflow rows if included
+		for (const workflow of workflows) {
+			csvRows.push(
+				[
+					'workflow',
+					workflow.id,
+					`"${workflow.name}"`,
+					'',
+					workflow.folderId || '',
+					'',
+					'',
+					'',
+					'',
+					'',
+					workflow.createdAt,
+					workflow.updatedAt,
+				].join(','),
+			);
+		}
+
+		return csvRows.join('\n');
+	}
+
+	private async importSingleFolder(
+		user: User,
+		folderData: any,
+		request: FolderImportRequest,
+		folderIdMap: Map<string, string>,
+	): Promise<string> {
+		// Check for existing folder with same name and path
+		const existingFolder = await this.findExistingFolder(
+			folderData.name,
+			folderData.path,
+			request.targetParentId,
+		);
+
+		if (existingFolder) {
+			switch (request.conflictResolution) {
+				case 'skip':
+					return existingFolder.id;
+				case 'overwrite':
+					await this.updateFolder(user, existingFolder.id, {
+						name: folderData.name,
+						description: folderData.description,
+						color: folderData.color,
+						icon: folderData.icon,
+					});
+					return existingFolder.id;
+				case 'rename':
+					folderData.name = await this.generateUniqueFolderName(
+						folderData.name,
+						request.targetParentId,
+					);
+					break;
+			}
+		}
+
+		// Map parent ID if it was imported
+		const mappedParentId =
+			folderData.parentId && folderIdMap.has(folderData.parentId)
+				? folderIdMap.get(folderData.parentId)
+				: request.targetParentId;
+
+		// Generate new ID if preserveIds is false
+		const newId = request.preserveIds ? folderData.id : this.generateFolderId();
+
+		const newFolder = await this.createFolder(user, {
+			name: folderData.name,
+			description: folderData.description,
+			parentId: mappedParentId,
+			color: folderData.color,
+			icon: folderData.icon,
+			position: folderData.position,
+		});
+
+		return newFolder.id;
+	}
+
+	private async importSingleWorkflow(
+		user: User,
+		workflowData: any,
+		request: FolderImportRequest,
+		folderIdMap: Map<string, string>,
+	): Promise<void> {
+		// Map folder ID if it exists
+		const mappedFolderId =
+			workflowData.folderId && folderIdMap.has(workflowData.folderId)
+				? folderIdMap.get(workflowData.folderId)
+				: request.targetParentId;
+
+		// Create workflow using existing workflow service
+		await this.dataSource.query(
+			`
+			INSERT INTO workflow_entity (id, name, active, nodes, connections, settings, tags, folder_id, createdAt, updatedAt)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`,
+			[
+				request.preserveIds ? workflowData.id : this.generateWorkflowId(),
+				workflowData.name,
+				workflowData.active,
+				JSON.stringify(workflowData.nodes),
+				JSON.stringify(workflowData.connections),
+				JSON.stringify(workflowData.settings),
+				JSON.stringify(workflowData.tags),
+				mappedFolderId,
+				workflowData.createdAt,
+				workflowData.updatedAt,
+			],
+		);
+	}
+
+	private async findExistingFolder(name: string, path: string, parentId?: string): Promise<any> {
+		const query = `
+			SELECT * FROM workflow_folders 
+			WHERE name = ? AND parent_id ${parentId ? '= ?' : 'IS NULL'}
+		`;
+
+		const params = parentId ? [name, parentId] : [name];
+		const result = await this.dataSource.query(query, params);
+
+		return result.length > 0 ? result[0] : null;
+	}
+
+	private async generateUniqueFolderName(baseName: string, parentId?: string): Promise<string> {
+		let counter = 1;
+		let uniqueName = `${baseName} (${counter})`;
+
+		while (await this.findExistingFolder(uniqueName, '', parentId)) {
+			counter++;
+			uniqueName = `${baseName} (${counter})`;
+		}
+
+		return uniqueName;
+	}
+
+	private generateWorkflowId(): string {
+		return `workflow-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
 	}
 }

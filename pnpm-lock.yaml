@@ -258,6 +258,19 @@ patchedDependencies:
 importers:
 
   .:
+    dependencies:
+      '@fortawesome/fontawesome-svg-core':
+        specifier: ^1.2.36
+        version: 1.2.36
+      '@fortawesome/free-regular-svg-icons':
+        specifier: ^7.0.0
+        version: 7.0.0
+      '@fortawesome/free-solid-svg-icons':
+        specifier: ^5.15.4
+        version: 5.15.4
+      '@fortawesome/vue-fontawesome':
+        specifier: ^3.0.3
+        version: 3.0.3(@fortawesome/fontawesome-svg-core@1.2.36)(vue@3.5.13(typescript@5.8.3))
     devDependencies:
       '@biomejs/biome':
         specifier: ^1.9.0
@@ -965,7 +978,7 @@ importers:
         version: 4.3.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.29(e83255224da9386305dfb90eaf104268))
+        version: 1.0.12(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.29(685a0af47c92c1c99f5d7c1501acb3dd))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -992,7 +1005,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.47(d228d92214c9f2fb6e5eae953eec872e)
+        version: 0.3.47(92e68c1b54d9dee3dc44bacb7c7b9431)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67))
@@ -1109,7 +1122,7 @@ importers:
         version: 23.0.1
       langchain:
         specifier: 0.3.29
-        version: 0.3.29(e83255224da9386305dfb90eaf104268)
+        version: 0.3.29(685a0af47c92c1c99f5d7c1501acb3dd)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -4638,12 +4651,20 @@ packages:
     resolution: {integrity: sha512-rBevIsj2nclStJ7AxTdfsa3ovHb1H+qApwrxcTVo+NNdeJiB9V75hsKfrkG5AwNcRUNxrPPiScGYCNmLMoh8pg==}
     engines: {node: '>=6'}
 
+  '@fortawesome/fontawesome-common-types@7.0.0':
+    resolution: {integrity: sha512-PGMrIYXLGA5K8RWy8zwBkd4vFi4z7ubxtet6Yn13Plf6krRTwPbdlCwlcfmoX0R7B4Z643QvrtHmdQ5fNtfFCg==}
+    engines: {node: '>=6'}
+
   '@fortawesome/fontawesome-svg-core@1.2.36':
     resolution: {integrity: sha512-YUcsLQKYb6DmaJjIHdDWpBIGCcyE/W+p/LMGvjQem55Mm2XWVAP5kWTMKWLv9lwpCVjpLxPyOMOyUocP1GxrtA==}
     engines: {node: '>=6'}
 
   '@fortawesome/free-regular-svg-icons@6.2.0':
     resolution: {integrity: sha512-M1dG+PAmkYMTL9BSUHFXY5oaHwBYfHCPhbJ8qj8JELsc9XCrUJ6eEHWip4q0tE+h9C0DVyFkwIM9t7QYyCpprQ==}
+    engines: {node: '>=6'}
+
+  '@fortawesome/free-regular-svg-icons@7.0.0':
+    resolution: {integrity: sha512-qAh0mTaCY22sQzMK2lKBrtn/aR4keUu5XmtdYR7d702laMe0h+Ab4Kj2pExR9HZkKhjKoq8pbwt8Td+mjW/ipQ==}
     engines: {node: '>=6'}
 
   '@fortawesome/free-solid-svg-icons@5.15.4':
@@ -19383,6 +19404,8 @@ snapshots:
 
   '@fortawesome/fontawesome-common-types@6.2.0': {}
 
+  '@fortawesome/fontawesome-common-types@7.0.0': {}
+
   '@fortawesome/fontawesome-svg-core@1.2.36':
     dependencies:
       '@fortawesome/fontawesome-common-types': 0.2.36
@@ -19390,6 +19413,10 @@ snapshots:
   '@fortawesome/free-regular-svg-icons@6.2.0':
     dependencies:
       '@fortawesome/fontawesome-common-types': 6.2.0
+
+  '@fortawesome/free-regular-svg-icons@7.0.0':
+    dependencies:
+      '@fortawesome/fontawesome-common-types': 7.0.0
 
   '@fortawesome/free-solid-svg-icons@5.15.4':
     dependencies:
@@ -19403,7 +19430,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.29(e83255224da9386305dfb90eaf104268))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.29(685a0af47c92c1c99f5d7c1501acb3dd))':
     dependencies:
       form-data: 4.0.4
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -19412,7 +19439,7 @@ snapshots:
       zod: 3.25.67
     optionalDependencies:
       '@langchain/core': 0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67))
-      langchain: 0.3.29(e83255224da9386305dfb90eaf104268)
+      langchain: 0.3.29(685a0af47c92c1c99f5d7c1501acb3dd)
     transitivePeerDependencies:
       - encoding
 
@@ -20091,7 +20118,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.47(d228d92214c9f2fb6e5eae953eec872e)':
+  '@langchain/community@0.3.47(92e68c1b54d9dee3dc44bacb7c7b9431)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.54.2)(deepmerge@4.3.1)(dotenv@16.5.0)(encoding@0.1.13)(openai@5.8.1(ws@8.18.2)(zod@3.25.67))(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -20103,7 +20130,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.29(e83255224da9386305dfb90eaf104268)
+      langchain: 0.3.29(685a0af47c92c1c99f5d7c1501acb3dd)
       langsmith: 0.3.45(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67))
       openai: 5.8.1(ws@8.18.2)(zod@3.25.67)
       uuid: 10.0.0
@@ -20118,7 +20145,7 @@ snapshots:
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
       '@elastic/elasticsearch': 8.19.0
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.29(e83255224da9386305dfb90eaf104268))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.29(685a0af47c92c1c99f5d7c1501acb3dd))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 2.6.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -27476,7 +27503,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.1
       '@types/tough-cookie': 4.0.5
-      axios: 1.10.0(debug@4.4.1)
+      axios: 1.10.0
       camelcase: 6.3.0
       debug: 4.4.1(supports-color@8.1.1)
       dotenv: 16.5.0
@@ -27486,7 +27513,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.10.0)
+      retry-axios: 2.6.0(axios@1.10.0(debug@4.4.1))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -28970,7 +28997,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.29(e83255224da9386305dfb90eaf104268):
+  langchain@0.3.29(685a0af47c92c1c99f5d7c1501acb3dd):
     dependencies:
       '@langchain/core': 0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67))
       '@langchain/openai': 0.5.16(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(ws@8.18.2)
@@ -31721,7 +31748,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.10.0):
+  retry-axios@2.6.0(axios@1.10.0(debug@4.4.1)):
     dependencies:
       axios: 1.10.0
 
