@@ -359,6 +359,12 @@ const currentExecutionNodesSchemas = `
 <current_execution_nodes_schemas>
 {executionSchema}
 </current_execution_nodes_schemas>`;
+
+const previousConversationSummary = `
+<previous_summary>
+{previousSummary}
+</previous_summary>`;
+
 export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 	[
 		'system',
@@ -383,6 +389,11 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 			{
 				type: 'text',
 				text: responsePatterns,
+				cache_control: { type: 'ephemeral' },
+			},
+			{
+				type: 'text',
+				text: previousConversationSummary,
 				cache_control: { type: 'ephemeral' },
 			},
 		],

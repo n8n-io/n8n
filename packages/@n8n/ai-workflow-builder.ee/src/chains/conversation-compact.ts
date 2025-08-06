@@ -37,9 +37,7 @@ Provide a structured summary that captures the key points, decisions made, curre
 
 	const structuredOutput = await modelWithStructure.invoke(compactPrompt);
 
-	// Create a new compacted message
-	const compactedMessage = new AIMessage({
-		content: `## Previous Conversation Summary
+	const formattedSummary = `## Previous Conversation Summary
 
 **Summary:** ${structuredOutput.summary}
 
@@ -48,17 +46,22 @@ ${(structuredOutput.key_decisions as string[]).map((d: string) => `- ${d}`).join
 
 **Current State:** ${structuredOutput.current_state}
 
-**Next Steps:** ${structuredOutput.next_steps}`,
-	});
+**Next Steps:** ${structuredOutput.next_steps}`;
 
-	// Keep only the last message(request to compact from user) plus the summary
-	const lastUserMessage = messages.slice(-1);
-	const newMessages = [lastUserMessage[0], compactedMessage];
+	// Create a new compacted message
+	// const compactedMessage = new AIMessage({
+	// 	content: formattedSummary,
+	// });
+
+	// // Keep only the last message plus the summary
+	// const lastUserMessage = messages.slice(-1);
+	// const newMessages = [lastUserMessage[0], compactedMessage];
 
 	return {
 		success: true,
 		summary: structuredOutput,
-		newMessages,
-		messagesRemoved: messages.length - newMessages.length,
+		summaryPlain: formattedSummary,
+		// newMessages,
+		// messagesRemoved: messages.length - newMessages.length,
 	};
 }

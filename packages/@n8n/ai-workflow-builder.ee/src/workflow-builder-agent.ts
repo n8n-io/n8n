@@ -12,7 +12,7 @@ import type {
 	NodeExecutionSchema,
 } from 'n8n-workflow';
 
-import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
+import { AUTO_COMPACT_THRESHOLD_TOKENS, MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 
 import { conversationCompactChain } from './chains/conversation-compact';
 import { LLMServiceError, ValidationError } from './errors';
@@ -97,15 +97,55 @@ export class WorkflowBuilderAgent {
 			return { messages: [response] };
 		};
 
-		const shouldModifyState = ({ messages }: typeof WorkflowState.State) => {
-			const lastMessage = messages[messages.length - 1] as HumanMessage;
+		const shouldAutoCompact = ({ messages }: typeof WorkflowState.State) => {
+			const lastAiAssistantMessage = messages
+				.filter((m): m is AIMessage => m instanceof AIMessage)
+				.slice(-1)[0];
 
-			if (lastMessage.content === '/compact') {
+			if (!lastAiAssistantMessage) {
+				return false;
+			}
+
+			const tokenUsage = lastAiAssistantMessage.response_metadata?.usage as
+				| {
+						input_tokens: number;
+						output_tokens: number;
+				  }
+				| undefined;
+
+			if (!tokenUsage?.input_tokens || !tokenUsage.output_tokens) {
+				this.logger?.debug('No token usage metadata found in last AI message', {
+					messageId: lastAiAssistantMessage.id,
+				});
+				return false;
+			}
+
+			const tokensUsed = tokenUsage.input_tokens + tokenUsage.output_tokens;
+
+			this.logger?.debug('Token usage', {
+				messageId: lastAiAssistantMessage.id,
+				inputTokens: tokenUsage.input_tokens,
+				outputTokens: tokenUsage.output_tokens,
+				totalTokens: tokensUsed,
+			});
+
+			return tokensUsed > AUTO_COMPACT_THRESHOLD_TOKENS;
+		};
+
+		const shouldModifyState = (state: typeof WorkflowState.State) => {
+			const { messages } = state;
+			const lastHumanMessage = messages[messages.length - 1] as HumanMessage;
+
+			if (lastHumanMessage.content === '/compact') {
 				return 'compact_messages';
 			}
 
-			if (lastMessage.content === '/clear') {
+			if (lastHumanMessage.content === '/clear') {
 				return 'delete_messages';
+			}
+
+			if (shouldAutoCompact(state)) {
+				return 'auto_compact_messages';
 			}
 
 			return 'agent';
@@ -139,17 +179,35 @@ export class WorkflowBuilderAgent {
 			return stateUpdate;
 		}
 
+		/**
+		 * Compacts the conversation history by summarizing it
+		 * and removing original messages.
+		 * Might be triggered manually by the user with `/compact` message, or run automatically
+		 * when the conversation history exceeds a certain token limit.
+		 */
 		const compactSession = async (state: typeof WorkflowState.State) => {
 			if (!this.llmSimpleTask) {
 				throw new LLMServiceError('LLM not setup');
 			}
+
 			const messages = state.messages;
+			const lastHumanMessage = messages[messages.length - 1] as HumanMessage;
+			const isAutoCompact = lastHumanMessage.content !== '/compact';
+
 			const compactedMessages = await conversationCompactChain(this.llmSimpleTask, messages);
 
+			// The summarized conversation history will become a part of system prompt
+			// and will be used in the next LLM call.
+			// We will remove all messages and replace them with a mock HumanMessage and AIMessage
+			// to indicate that the conversation history has been compacted.
+			// If this is an auto-compact, we will also keep the last human message, as it will continue executing the workflow.
 			return {
+				previousSummary: compactedMessages.summaryPlain,
 				messages: [
 					...messages.map((m) => new RemoveMessage({ id: m.id! })),
-					...compactedMessages.newMessages,
+					new HumanMessage('Please compress the conversation history'),
+					new AIMessage('Successfully compacted conversation history'),
+					...(isAutoCompact ? [new HumanMessage({ content: lastHumanMessage.content })] : []),
 				],
 			};
 		};
@@ -160,15 +218,18 @@ export class WorkflowBuilderAgent {
 			.addNode('process_operations', processOperations)
 			.addNode('delete_messages', deleteMessages)
 			.addNode('compact_messages', compactSession)
+			.addNode('auto_compact_messages', compactSession)
 			.addConditionalEdges('__start__', shouldModifyState)
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent')
+			.addEdge('auto_compact_messages', 'agent')
 			.addEdge('delete_messages', END)
 			.addEdge('compact_messages', END)
 			.addConditionalEdges('agent', shouldContinue);
 
 		return workflow;
 	}
+
 	async getState(workflowId: string, userId?: string) {
 		const workflow = this.createWorkflow();
 		const agent = workflow.compile({ checkpointer: this.checkpointer });
@@ -204,6 +265,7 @@ export class WorkflowBuilderAgent {
 				`Message exceeds maximum length of ${MAX_AI_BUILDER_PROMPT_LENGTH} characters`,
 			);
 		}
+
 		const agent = this.createWorkflow().compile({ checkpointer: this.checkpointer });
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
