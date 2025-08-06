@@ -217,9 +217,16 @@ describe('dataStore', () => {
 		it('should succeed with deleting a store', async () => {
 			// ACT
 			const result = await dataStoreService.deleteDataStore(dataStore1.id);
+			const userTableName = toTableName(dataStore1.id);
 
 			// ASSERT
 			expect(result).toEqual(true);
+
+			const deletedDatastore = await dataStoreRepository.findOneBy({ id: dataStore1.id });
+			expect(deletedDatastore).toBeNull();
+
+			const queryUserTable = dataStoreRepository.manager.query(`SELECT * FROM "${userTableName}"`);
+			await expect(queryUserTable).rejects.toThrow();
 		});
 
 		it('should fail with deleting non-existent id', async () => {

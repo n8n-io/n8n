@@ -60,8 +60,13 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 	async deleteUserTable(dataStoreId: string, entityManager?: EntityManager) {
 		const executor = entityManager ?? this.manager;
 		return await executor.transaction(async (em) => {
+			const queryRunner = em.queryRunner;
+			if (!queryRunner) {
+				throw new UnexpectedError('QueryRunner is not available');
+			}
+
 			await em.delete(DataStoreEntity, { id: dataStoreId });
-			await em.query(`DROP TABLE ${toTableName(dataStoreId)}`);
+			await queryRunner.dropTable(toTableName(dataStoreId), true);
 
 			return true;
 		});
