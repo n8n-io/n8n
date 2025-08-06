@@ -55,7 +55,7 @@ export class LmOpenHuggingFaceInference implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'string',
-				default: 'gpt2',
+				default: 'mistralai/Mistral-Nemo-Base-2407',
 			},
 			{
 				displayName: 'Options',
