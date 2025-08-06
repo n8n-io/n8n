@@ -1021,7 +1021,7 @@ export function useWorkflowHelpers() {
 		if (trigger.type === WEBHOOK_NODE_TYPE) {
 			return (trigger.parameters.method as string) ?? 'GET';
 		}
-		return 'GET';
+		return 'POST';
 	}
 
 	function getWebhookPath(trigger: INode) {
