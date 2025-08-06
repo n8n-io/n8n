@@ -18,6 +18,19 @@ export class ScheduledTaskManager {
 
 	private logInterval?: NodeJS.Timeout;
 
+	/** Crons currently active instance-wide, to display in logs. */
+	private get loggableCrons() {
+		const loggableCrons: Record<string, string[]> = {};
+
+		for (const [workflowId, crons] of this.cronsByWorkflow) {
+			loggableCrons[`workflowId-${workflowId}`] = Array.from(crons.values()).map(
+				({ summary }) => summary,
+			);
+		}
+
+		return loggableCrons;
+	}
+
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
@@ -121,19 +134,6 @@ export class ScheduledTaskManager {
 
 		clearInterval(this.logInterval);
 		this.logInterval = undefined;
-	}
-
-	/** Crons currently active instance-wide, to display in logs. */
-	private get loggableCrons() {
-		const loggableCrons: Record<string, string[]> = {};
-
-		for (const [workflowId, crons] of this.cronsByWorkflow) {
-			loggableCrons[`workflowId-${workflowId}`] = Array.from(crons.values()).map(
-				({ summary }) => summary,
-			);
-		}
-
-		return loggableCrons;
 	}
 
 	private toCronKey(ctx: CronContext): CronKey {
