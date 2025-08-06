@@ -30,7 +30,10 @@ export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[
 	});
 }
 
-function dataStoreColumnTypeToSql(type: DataStoreCreateColumnSchema['type']) {
+function dataStoreColumnTypeToSql(
+	type: DataStoreCreateColumnSchema['type'],
+	dbType: DataSourceOptions['type'],
+) {
 	switch (type) {
 		case 'string':
 			return 'TEXT';
@@ -39,7 +42,10 @@ function dataStoreColumnTypeToSql(type: DataStoreCreateColumnSchema['type']) {
 		case 'boolean':
 			return 'BOOLEAN';
 		case 'date':
-			return 'DATETIME'; // Postgres has no DATETIME
+			if (dbType === 'postgres') {
+				return 'TIMESTAMP';
+			}
+			return 'DATETIME';
 		default:
 			throw new NotFoundError(`Unsupported field type: ${type as string}`);
 	}
@@ -49,7 +55,7 @@ function columnToWildcardAndType(
 	column: DataStoreCreateColumnSchema,
 	dbType: DataSourceOptions['type'],
 ) {
-	return `${quoteIdentifier(column.name, dbType)} ${dataStoreColumnTypeToSql(column.type)}`;
+	return `${quoteIdentifier(column.name, dbType)} ${dataStoreColumnTypeToSql(column.type, dbType)}`;
 }
 
 function getPrimaryKeyAutoIncrement(dbType: DataSourceOptions['type']) {

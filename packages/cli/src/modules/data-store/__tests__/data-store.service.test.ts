@@ -84,10 +84,10 @@ describe('dataStore', () => {
 			expect(created?.id).toBe(result.id);
 
 			const userTableName = toTableName(result.id);
-			const rows: Array<Record<string, unknown>> = await dataStoreRepository.manager.query(
-				`SELECT * FROM "${userTableName}"`,
-			);
-			expect(rows).toEqual([]);
+			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
+			const tableExists = await queryRunner.hasTable(userTableName);
+			expect(tableExists).toBe(true);
+			await queryRunner.release();
 		});
 
 		it('should return an error if name/project combination already exists', async () => {
@@ -132,10 +132,10 @@ describe('dataStore', () => {
 			expect(created?.id).toBe(result.id);
 
 			const userTableName = toTableName(result.id);
-			const rows: Array<Record<string, unknown>> = await dataStoreRepository.manager.query(
-				`SELECT * FROM "${userTableName}"`,
-			);
-			expect(rows).toEqual([]);
+			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
+			const tableExists = await queryRunner.hasTable(userTableName);
+			expect(tableExists).toBe(true);
+			await queryRunner.release();
 		});
 
 		it('should return an error if name/project combination already exists', async () => {
