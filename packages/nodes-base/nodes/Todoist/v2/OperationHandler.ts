@@ -7,7 +7,7 @@ import {
 	assertIsNodeParameters,
 } from '../../../utils/types';
 
-import type { Section, TodoistResponse } from './Service';
+import type { TodoistResponse } from './Service';
 import type { Context } from '../GenericFunctions';
 import { FormatDueDatetime, todoistApiRequest, todoistSyncRequest } from '../GenericFunctions';
 
@@ -315,20 +315,6 @@ export class GetAllHandler implements OperationHandler {
 			data: responseData,
 		};
 	}
-}
-
-async function getSectionIds(
-	ctx: Context,
-	projectId: string | number,
-): Promise<Map<string, number>> {
-	const sections: Section[] = await todoistApiRequest.call(
-		ctx,
-		'GET',
-		'/sections',
-		{},
-		{ project_id: projectId },
-	);
-	return new Map(sections.map((s) => [s.name, s.id as unknown as number]));
 }
 
 export class ReopenHandler implements OperationHandler {
