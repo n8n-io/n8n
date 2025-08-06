@@ -751,12 +751,6 @@ export const WORKFLOW_BUILDER_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const RAG_STARTER_WORKFLOW_EXPERIMENT = {
-	name: '033_rag_template',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const EXTRA_TEMPLATE_LINKS_EXPERIMENT = {
 	name: '034_extra_template_links',
 	control: 'control',
@@ -779,7 +773,6 @@ export const BATCH_11AUG_EXPERIMENT = {
 
 export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_BUILDER_EXPERIMENT.name,
-	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	NDV_UI_OVERHAUL_EXPERIMENT.name,
