@@ -1110,7 +1110,7 @@
       "description": "Resolve 22 failed tests in n8n-workflow package, primarily TypeError: workflow.nodes.map is not a function and missing method implementations",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "All 22 failed tests in n8n-workflow package pass",
         "TypeError: workflow.nodes.map is not a function resolved",
@@ -1993,9 +1993,9 @@
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "TASK_CREATION",
-  "execution_count": 328,
-  "last_hook_activation": 1754465595269,
+  "last_mode": "DEVELOPMENT",
+  "execution_count": 329,
+  "last_hook_activation": 1754465702477,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37
