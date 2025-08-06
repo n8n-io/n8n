@@ -118,5 +118,7 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 }
 
 function isValidHFProviderOrPolicy(provider: unknown): provider is InferenceProviderOrPolicy {
-	return PROVIDERS_OR_POLICIES.includes(provider as InferenceProviderOrPolicy);
+	return (
+		typeof provider === 'string' && (PROVIDERS_OR_POLICIES as readonly string[]).includes(provider)
+	);
 }
