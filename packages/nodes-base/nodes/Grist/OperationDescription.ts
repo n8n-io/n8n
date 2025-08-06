@@ -8,6 +8,12 @@ export const operationFields: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Insert or update rows in a table',
+			},
+			{
 				name: 'Create Row',
 				value: 'create',
 				description: 'Create rows in a table',
@@ -31,12 +37,6 @@ export const operationFields: INodeProperties[] = [
 				value: 'update',
 				description: 'Update rows in a table',
 				action: 'Update rows in a table',
-			},
-			{
-				name: 'Upsert Row',
-				value: 'upsert',
-				description: 'Insert or update rows in a table',
-				action: 'Insert or update rows in a table',
 			},
 		],
 		default: 'getAll',
