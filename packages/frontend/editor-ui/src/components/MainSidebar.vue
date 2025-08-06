@@ -546,7 +546,8 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 		img {
 			position: relative;
 			left: 1px;
-			height: 20px;
+			/* height: 20px; */
+			height: 36px;
 		}
 	}
 

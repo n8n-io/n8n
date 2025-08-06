@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { FrontendSettings } from '@n8n/api-types';
-import { computed, onMounted, useCssModule, useTemplateRef } from 'vue';
 import { useFavicon } from '@vueuse/core';
+import { computed, onMounted, useCssModule } from 'vue';
 
-import LogoIcon from './logo-icon.svg';
-import LogoText from './logo-text.svg';
+import logoIconUrl from './logo-icon.png';
+import logoTextUrl from './logo-text.png';
 
 const props = defineProps<
 	(
@@ -23,8 +23,9 @@ const props = defineProps<
 const { location, releaseChannel } = props;
 
 const showLogoText = computed(() => {
-	if (location === 'authView') return true;
-	return !props.collapsed;
+	// if (location === 'authView') return true;
+	// return !props.collapsed;
+	return props.collapsed;
 });
 
 const $style = useCssModule();
@@ -39,28 +40,38 @@ const containerClasses = computed(() => {
 	];
 });
 
-const svg = useTemplateRef<{ $el: Element }>('logo');
 onMounted(() => {
-	if (releaseChannel === 'stable' || !('createObjectURL' in URL)) return;
+	if (releaseChannel === 'stable') return;
 
-	const logoEl = svg.value!.$el;
-
-	// Change the logo fill color inline, so that favicon can also use it
-	const logoColor = releaseChannel === 'dev' ? '#838383' : '#E9984B';
-	logoEl.querySelector('path')?.setAttribute('fill', logoColor);
-
-	// Reuse the SVG as favicon
-	const blob = new Blob([logoEl.outerHTML], { type: 'image/svg+xml' });
-	useFavicon(URL.createObjectURL(blob));
+	// For PNG images, we can't dynamically change colors like we could with SVG
+	// So we'll just use the PNG as favicon directly
+	useFavicon(logoTextUrl as string);
 });
 </script>
 
 <template>
-	<div :class="containerClasses" data-test-id="n8n-logo">
-		<LogoIcon ref="logo" :class="$style.logo" />
-		<LogoText v-if="showLogoText" :class="$style.logoText" />
-		<slot />
-	</div>
+  <div
+    :class="containerClasses"
+    data-test-id="n8n-logo"
+  >
+    
+
+    <img
+      v-if="showLogoText"
+      :src="logoTextUrl"
+      :class="$style.logoText"
+      alt="Logo Text"
+    />
+
+		<img
+			v-else
+      ref="logo"
+      :src="logoIconUrl"
+      :class="$style.logo"
+      alt="Logo"
+    />
+    <slot />
+  </div>
 </template>
 
 <style lang="scss" module>
@@ -72,9 +83,9 @@ onMounted(() => {
 
 .logoText {
 	margin-left: var(--spacing-5xs);
-	path {
+	/* path {
 		fill: var(--color-text-dark);
-	}
+	} */
 }
 
 .authView {
@@ -83,7 +94,10 @@ onMounted(() => {
 
 	.logo,
 	.logoText {
-		transform: scale(1.3) translateY(-2px);
+		/* transform: scale(1.3) translateY(-2px);
+		object-fit: 'contain'; */
+		transform: scale(0.5) translateY(-2px);
+		object-fit: contain;
 	}
 
 	.logoText {
