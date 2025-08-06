@@ -927,7 +927,7 @@ describe('NDV', () => {
 			.should('have.value', 'US');
 	});
 
-	it('should not show items count when seaching in schema view', () => {
+	it('should not show items count when searching in schema view', () => {
 		cy.createFixtureWorkflow('Test_ndv_search.json');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Edit Fields');
@@ -938,7 +938,7 @@ describe('NDV', () => {
 		ndv.getters.outputPanel().find('[data-test-id=ndv-items-count]').should('not.exist');
 	});
 
-	it('should show additional tooltip when seaching in schema view if no matches', () => {
+	it('should show additional tooltip when searching in schema view if no matches', () => {
 		cy.createFixtureWorkflow('Test_ndv_search.json');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Edit Fields');
