@@ -742,7 +742,7 @@ describe('NDV', () => {
 		ndv.actions.typeIntoParameterInput('jsCode', 'testets');
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.executeWorkflow();
-		// Manual tigger node should show success indicator
+		// Manual trigger node should show success indicator
 		workflowPage.actions.openNode('When clicking ‘Execute workflow’');
 		ndv.getters.nodeRunSuccessIndicator().should('exist');
 		ndv.getters.nodeRunTooltipIndicator().should('exist');
