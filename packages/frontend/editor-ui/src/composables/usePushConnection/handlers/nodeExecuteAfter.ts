@@ -11,19 +11,24 @@ export async function nodeExecuteAfter({ data: pushData }: NodeExecuteAfter) {
 	const assistantStore = useAssistantStore();
 	const schemaPreviewStore = useSchemaPreviewStore();
 
+	// @TODO Remove once backend sends the data in the correct format
+	const itemCount: Record<string, number> = {};
+	if (pushData.data.data) {
+		for (const connectionType of Object.keys(pushData.data.data)) {
+			itemCount[connectionType as string] = pushData.data.data[connectionType].length;
+		}
+	}
+	pushData.data.data = {};
+
+	// Mock item count for each connection type
+	pushData.itemCount = itemCount;
+
 	/**
-	 * When we receive a placeholder in `nodeExecuteAfter`, we fake the items
-	 * to be the same count as the data the placeholder is standing in for.
-	 * This prevents the items count from jumping up when the execution
-	 * finishes and the full data replaces the placeholder.
+	 * Fill the data object with empty arrays for each connection type
+	 * This is necessary to ensure that the data structure is consistent with the expected format
 	 */
-	if (
-		pushData.itemCount &&
-		pushData.data?.data?.main &&
-		Array.isArray(pushData.data.data.main[0]) &&
-		pushData.data.data.main[0].length < pushData.itemCount
-	) {
-		pushData.data.data.main[0]?.push(...new Array(pushData.itemCount - 1).fill({ json: {} }));
+	for (const connectionType of Object.keys(pushData.itemCount)) {
+		pushData.data.data[connectionType] = [new Array(itemCount[connectionType]).fill({})];
 	}
 
 	workflowsStore.updateNodeExecutionData(pushData);

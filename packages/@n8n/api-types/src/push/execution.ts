@@ -68,7 +68,7 @@ export type NodeExecuteAfter = {
 		 * the client knows ahead of time how many items are there, to prevent the
 		 * items count from jumping up when the execution finishes.
 		 */
-		itemCount?: number;
+		itemCount?: Record<string, number>;
 	};
 };
 
