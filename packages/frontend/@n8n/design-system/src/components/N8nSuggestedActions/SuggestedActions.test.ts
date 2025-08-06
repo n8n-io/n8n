@@ -46,9 +46,9 @@ const stubs = {
 		props: ['text'],
 		template: '<span>{{ text }}</span>',
 	},
-	'n8n-alert': {
-		props: ['type', 'description'],
-		template: '<div data-test-id="n8n-alert" :class="type">{{ description }}</div>',
+	'n8n-callout': {
+		props: ['theme'],
+		template: '<div data-test-id="n8n-callout" :class="theme"><slot /></div>',
 	},
 	N8nPopoverReka: MockN8nPopoverReka,
 };
@@ -297,14 +297,14 @@ describe('N8nSuggestedActions', () => {
 				global: { stubs },
 			});
 
-			// Check that the notice alert is rendered
-			const alert = wrapper.getByTestId('n8n-alert');
-			expect(alert).toBeInTheDocument();
-			expect(alert).toHaveClass('warning');
-			expect(alert).toHaveTextContent(noticeText);
+			// Check that the notice callout is rendered
+			const callout = wrapper.getByTestId('n8n-callout');
+			expect(callout).toBeInTheDocument();
+			expect(callout).toHaveClass('warning');
+			expect(callout).toHaveTextContent(noticeText);
 		});
 
-		it('does not render notice alert when notice prop is not provided', async () => {
+		it('does not render notice callout when notice prop is not provided', async () => {
 			const wrapper = render(N8nSuggestedActions, {
 				props: {
 					actions: mockActions,
@@ -314,11 +314,11 @@ describe('N8nSuggestedActions', () => {
 				global: { stubs },
 			});
 
-			// Check that the notice alert is not rendered
-			expect(wrapper.queryByTestId('n8n-alert')).not.toBeInTheDocument();
+			// Check that the notice callout is not rendered
+			expect(wrapper.queryByTestId('n8n-callout')).not.toBeInTheDocument();
 		});
 
-		it('does not render notice alert when notice prop is empty string', async () => {
+		it('does not render notice callout when notice prop is empty string', async () => {
 			const wrapper = render(N8nSuggestedActions, {
 				props: {
 					actions: mockActions,
@@ -329,8 +329,8 @@ describe('N8nSuggestedActions', () => {
 				global: { stubs },
 			});
 
-			// Check that the notice alert is not rendered
-			expect(wrapper.queryByTestId('n8n-alert')).not.toBeInTheDocument();
+			// Check that the notice callout is not rendered
+			expect(wrapper.queryByTestId('n8n-callout')).not.toBeInTheDocument();
 		});
 	});
 });

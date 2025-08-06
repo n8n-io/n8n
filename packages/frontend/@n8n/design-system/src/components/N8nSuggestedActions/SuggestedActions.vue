@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import N8nAlert from '../N8nAlert';
+import N8nCallout from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
 import N8nIcon from '../N8nIcon';
 import N8nLink from '../N8nLink';
@@ -84,7 +84,7 @@ const handleIgnoreClick = (actionId: string) => {
 		<template #content>
 			<div :class="$style.popoverContent">
 				<N8nHeading tag="h4">{{ title }}</N8nHeading>
-				<N8nAlert v-if="notice" type="warning" :description="notice" />
+				<N8nCallout v-if="notice" theme="warning">{{ notice }}</N8nCallout>
 				<div
 					v-for="action in actions"
 					:key="action.id"
