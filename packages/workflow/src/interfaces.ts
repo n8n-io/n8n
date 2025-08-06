@@ -843,7 +843,7 @@ type CronUnit = number | '*' | `*/${number}`;
 export type CronExpression =
 	`${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit}`;
 
-type RecurrenceRule =
+type CronRecurrenceRule =
 	| { activated: false }
 	| {
 			activated: true;
@@ -852,7 +852,15 @@ type RecurrenceRule =
 			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
 	  };
 
-export type Cron = { expression: CronExpression; recurrence?: RecurrenceRule };
+export type CronContext = {
+	nodeId: string;
+	workflowId: string;
+	timezone: string;
+	expression: CronExpression;
+	recurrence?: CronRecurrenceRule;
+};
+
+export type Cron = { expression: CronExpression; recurrence?: CronRecurrenceRule };
 
 export interface SchedulingFunctions {
 	registerCron(cron: Cron, onTick: () => void): void;
