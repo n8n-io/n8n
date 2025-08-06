@@ -29,8 +29,17 @@ export class DataStoreEntity {
 	@JoinColumn({ name: 'projectId' })
 	project: Project;
 
-	@Column({ type: 'int', default: 0 })
-	sizeBytes: number;
+	// Ideally, BIGINT would be used, but it is not supported by SQLite
+	@Column({ type: 'varchar', length: 255, default: '0' })
+	private _sizeBytes: string;
+
+	get sizeBytes(): number {
+		return Number(this._sizeBytes);
+	}
+
+	set sizeBytes(value: number) {
+		this._sizeBytes = value.toString();
+	}
 
 	@OneToMany(
 		() => DataStoreColumnEntity,
