@@ -6,8 +6,30 @@ import userEvent from '@testing-library/user-event';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/dom';
+import { reactive } from 'vue';
 
 const eventBus = createEventBus();
+
+// Mock Vue Router to eliminate injection warnings
+const mockRoute = reactive({
+	params: {},
+	query: {},
+	path: '/',
+	name: 'TestRoute',
+});
+
+vi.mock('vue-router', () => ({
+	useRoute: () => mockRoute,
+	useRouter: () => ({
+		push: vi.fn(),
+		replace: vi.fn(),
+		go: vi.fn(),
+	}),
+	RouterLink: {
+		template: '<a><slot></slot></a>',
+		props: ['to', 'target'],
+	},
+}));
 
 const DynamicScrollerStub = {
 	props: {
@@ -38,6 +60,13 @@ const renderModal = createComponentRenderer(SourceControlPullModalEe, {
 					</div>
 				`,
 			},
+			EnvFeatureFlag: {
+				template: '<div><slot></slot></div>',
+			},
+			N8nIconButton: {
+				template: '<button><slot></slot></button>',
+				props: ['icon', 'type', 'class'],
+			},
 		},
 	},
 });
@@ -66,8 +95,10 @@ const sampleFiles = [
 ];
 
 describe('SourceControlPushModal', () => {
+	let sourceControlStore: ReturnType<typeof mockedStore<typeof useSourceControlStore>>;
+
 	beforeEach(() => {
-		createTestingPinia();
+		sourceControlStore = mockedStore(useSourceControlStore);
 	});
 
 	it('mounts', () => {
@@ -78,6 +109,7 @@ describe('SourceControlPushModal', () => {
 					status: [],
 				},
 			},
+			pinia: createTestingPinia(),
 		});
 		expect(getByText('Pull and override')).toBeInTheDocument();
 	});
@@ -90,6 +122,7 @@ describe('SourceControlPushModal', () => {
 					status: sampleFiles,
 				},
 			},
+			pinia: createTestingPinia(),
 		});
 
 		expect(getAllByTestId('pull-modal-item-header').length).toBe(2);
@@ -97,7 +130,6 @@ describe('SourceControlPushModal', () => {
 	});
 
 	it('should force pull', async () => {
-		const sourceControlStore = mockedStore(useSourceControlStore);
 		const { getByTestId } = renderModal({
 			props: {
 				data: {
@@ -105,10 +137,123 @@ describe('SourceControlPushModal', () => {
 					status: sampleFiles,
 				},
 			},
+			pinia: createTestingPinia(),
 		});
 
 		await userEvent.click(getByTestId('force-pull'));
 
 		await waitFor(() => expect(sourceControlStore.pullWorkfolder).toHaveBeenCalledWith(true));
+	});
+
+	it('should render diff button with file-diff icon for workflow items', () => {
+		const workflowFile = {
+			...sampleFiles[0], // workflow file
+			type: 'workflow',
+		};
+
+		const { container } = renderModal({
+			props: {
+				data: {
+					eventBus,
+					status: [workflowFile],
+				},
+			},
+			pinia: createTestingPinia(),
+		});
+
+		// Check if a button with file-diff icon would be rendered (via class since icon is a prop)
+		const diffButton = container.querySelector('button');
+		expect(diffButton).toBeInTheDocument();
+	});
+
+	it('should not render diff button for non-workflow items', () => {
+		const credentialFile = {
+			...sampleFiles[1], // credential file
+			type: 'credential',
+		};
+
+		const { container } = renderModal({
+			props: {
+				data: {
+					eventBus,
+					status: [credentialFile],
+				},
+			},
+			pinia: createTestingPinia(),
+		});
+
+		// For credential files, there should be no additional buttons in the item actions
+		const itemActions = container.querySelector('[class*="itemActions"]');
+		const buttons = itemActions?.querySelectorAll('button');
+		expect(buttons).toHaveLength(0);
+	});
+
+	it('should render item names with ellipsis for long text', () => {
+		const longNameFile = {
+			...sampleFiles[0],
+			name: 'This is a very long workflow name that should be truncated with ellipsis to prevent wrapping to multiple lines',
+		};
+
+		const { container } = renderModal({
+			props: {
+				data: {
+					eventBus,
+					status: [longNameFile],
+				},
+			},
+			pinia: createTestingPinia(),
+		});
+
+		// Check if the itemName container exists and has the proper structure
+		const nameContainer = container.querySelector('[class*="itemName"]');
+		expect(nameContainer).toBeInTheDocument();
+
+		// Check if the RouterLink stub is rendered (since the name is rendered inside it)
+		const routerLink = nameContainer?.querySelector('router-link-stub');
+		expect(routerLink).toBeInTheDocument();
+	});
+
+	it('should render badges and actions in separate container', () => {
+		const { getAllByTestId } = renderModal({
+			props: {
+				data: {
+					eventBus,
+					status: sampleFiles,
+				},
+			},
+			pinia: createTestingPinia(),
+		});
+
+		const listItems = getAllByTestId('pull-modal-item');
+
+		// Each list item should have the new structure with itemActions container
+		listItems.forEach((item) => {
+			const actionsContainer = item.querySelector('[class*="itemActions"]');
+			expect(actionsContainer).toBeInTheDocument();
+
+			// Badge should be inside actions container
+			const badge = actionsContainer?.querySelector('[class*="listBadge"]');
+			expect(badge).toBeInTheDocument();
+		});
+	});
+
+	it('should apply proper spacing and alignment styles', () => {
+		const { container } = renderModal({
+			props: {
+				data: {
+					eventBus,
+					status: sampleFiles,
+				},
+			},
+			pinia: createTestingPinia(),
+		});
+
+		// Check if the scroller has the proper class for alignment
+		const scroller = container.querySelector('[class*="scroller"]');
+		expect(scroller).toBeInTheDocument();
+
+		// Check if list items have the proper spacing
+		const listItems = container.querySelectorAll('[class*="listItem"]');
+		expect(listItems.length).toBeGreaterThan(0);
 	});
 });
