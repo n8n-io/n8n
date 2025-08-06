@@ -57,6 +57,11 @@ export class LmOllama implements INodeType {
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as object;
+		const headers = credentials.apiKey
+			? {
+					Authorization: `Bearer ${credentials.apiKey as string}`,
+				}
+			: undefined;
 
 		const model = new Ollama({
 			baseUrl: credentials.baseUrl as string,
@@ -64,6 +69,7 @@ export class LmOllama implements INodeType {
 			...options,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			headers,
 		});
 
 		return {

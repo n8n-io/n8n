@@ -28,10 +28,17 @@ describe('createMessage', () => {
 	const mockSendAndWaitConfig: SendAndWaitConfig = {
 		title: '',
 		message: 'Please approve an option:',
-		url: 'https://example.com/approve',
 		options: [
-			{ label: 'Yes', value: 'yes', style: 'primary' },
-			{ label: 'No', value: 'no', style: 'secondary' },
+			{
+				label: 'Yes',
+				style: 'primary',
+				url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+			},
+			{
+				label: 'No',
+				style: 'secondary',
+				url: 'http://localhost/waiting-webhook/nodeID?approved=false&signature=abc',
+			},
 		],
 	};
 
@@ -55,8 +62,8 @@ describe('createMessage', () => {
 				text: {
 					body:
 						'Please approve an option:\n\n' +
-						'*Yes:*\n_https://example.com/approve?approved=yes_\n\n' +
-						'*No:*\n_https://example.com/approve?approved=no_\n\n',
+						'*Yes:*\n_http://localhost/waiting-webhook/nodeID?approved=true&signature=abc_\n\n' +
+						'*No:*\n_http://localhost/waiting-webhook/nodeID?approved=false&signature=abc_\n\n',
 				},
 				type: 'text',
 				to: recipientPhone,
@@ -68,12 +75,11 @@ describe('createMessage', () => {
 		const singleOptionConfig: SendAndWaitConfig = {
 			title: '',
 			message: 'Choose an option:',
-			url: 'https://example.com/approve',
 			options: [
 				{
 					label: 'Confirm',
-					value: 'confirm',
 					style: '',
+					url: 'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
 				},
 			],
 		};
@@ -92,7 +98,7 @@ describe('createMessage', () => {
 			body: {
 				messaging_product: 'whatsapp',
 				text: {
-					body: 'Choose an option:\n\n*Confirm:*\n_https://example.com/approve?approved=confirm_\n\n',
+					body: 'Choose an option:\n\n*Confirm:*\n_http://localhost/waiting-webhook/nodeID?approved=true&signature=abc_\n\n',
 				},
 				type: 'text',
 				to: recipientPhone,

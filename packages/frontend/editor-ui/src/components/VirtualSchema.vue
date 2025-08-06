@@ -570,9 +570,6 @@ const onDragEnd = (el: HTMLElement) => {
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
-}
-
-.notice {
 	margin-left: calc(var(--spacing-l) * var(--schema-level));
 }
 

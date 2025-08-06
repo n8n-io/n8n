@@ -738,7 +738,7 @@ onBeforeUnmount(() => {
 						/>
 						<InputPanel
 							v-else-if="!isTriggerNode"
-							:workflow="workflowObject"
+							:workflow-object="workflowObject"
 							:can-link-runs="canLinkRuns"
 							:run-index="inputRun"
 							:linked-runs="linked"
@@ -814,7 +814,7 @@ onBeforeUnmount(() => {
 					>
 						<OutputPanel
 							data-test-id="output-panel"
-							:workflow="workflowObject"
+							:workflow-object="workflowObject"
 							:can-link-runs="canLinkRuns"
 							:run-index="outputRun"
 							:linked-runs="linked"
@@ -880,10 +880,13 @@ onBeforeUnmount(() => {
 }
 
 .main {
-	width: 0;
+	width: 100%;
 	flex-grow: 1;
 	display: flex;
 	align-items: stretch;
+	height: 100%;
+	min-height: 0;
+	position: relative;
 }
 
 .column {
@@ -915,14 +918,6 @@ onBeforeUnmount(() => {
 	border-bottom: var(--border-base);
 	border-top-left-radius: var(--border-radius-large);
 	border-top-right-radius: var(--border-radius-large);
-}
-
-.main {
-	display: flex;
-	width: 100%;
-	height: 100%;
-	min-height: 0;
-	position: relative;
 }
 
 .settings {
