@@ -106,6 +106,52 @@ export const contactFields: INodeProperties[] = [
 					'Companies associated with the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
+				displayName: 'Buying Role',
+				name: 'buyingRole',
+				description:
+					'Role the contact plays during the sales process. Contacts can have multiple roles, and can share roles with others.',
+				type: 'multiOptions',
+				default: [],
+				options: [
+					{
+						name: 'Blocker',
+						value: 'BLOCKER',
+					},
+					{
+						name: 'Budget Holder',
+						value: 'BUDGET_HOLDER',
+					},
+					{
+						name: 'Champion',
+						value: 'CHAMPION',
+					},
+					{
+						name: 'Decision Maker',
+						value: 'DECISION_MAKER',
+					},
+					{
+						name: 'End User',
+						value: 'END_USER',
+					},
+					{
+						name: 'Executive Sponsor',
+						value: 'EXECUTIVE_SPONSOR',
+					},
+					{
+						name: 'Influencer',
+						value: 'INFLUENCER',
+					},
+					{
+						name: 'Legal & Compliance',
+						value: 'LEGAL_AND_COMPLIANCE',
+					},
+					{
+						name: 'Other',
+						value: 'OTHER',
+					},
+				],
+			},
+			{
 				displayName: 'City',
 				name: 'city',
 				type: 'string',
@@ -149,8 +195,31 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Contact Properties to Include',
+				name: 'properties',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getContactProperties',
+				},
+				displayOptions: {
+					show: {
+						'/resolveData': [false],
+					},
+				},
+				default: [],
+				description:
+					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
 				displayName: 'Country/Region',
 				name: 'country',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Country/Region Code',
+				name: 'countryRegionCode',
+				description: "The contact's two-letter country code",
 				type: 'string',
 				default: '',
 			},
@@ -202,356 +271,6 @@ export const contactFields: INodeProperties[] = [
 			{
 				displayName: 'Degree',
 				name: 'degree',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Facebook Click ID',
-				name: 'facebookClickId',
-				type: 'number',
-				default: '',
-			},
-			{
-				displayName: 'Fax Number',
-				name: 'faxNumber',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Field Of Study',
-				name: 'fieldOfStudy',
-				type: 'string',
-				default: '',
-				description:
-					"A contact's field of study. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
-			},
-			{
-				displayName: 'First Name',
-				name: 'firstName',
-				type: 'string',
-				default: '',
-				description: "A contact's first name",
-			},
-			{
-				displayName: 'Gender',
-				name: 'gender',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Google Ad Click ID',
-				name: 'googleAdClickId',
-				type: 'number',
-				default: '',
-			},
-			{
-				displayName: 'Graduation Date',
-				name: 'graduationDate',
-				type: 'dateTime',
-				default: '',
-				description:
-					"A contact's graduation date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format",
-			},
-			{
-				displayName: 'Industry',
-				name: 'industry',
-				type: 'string',
-				default: '',
-				description: 'The industry a contact is in',
-			},
-			{
-				displayName: 'Job Function',
-				name: 'jobFunction',
-				type: 'string',
-				default: '',
-				description:
-					"A contact's job function. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
-			},
-			{
-				displayName: 'Job Title',
-				name: 'jobTitle',
-				type: 'string',
-				default: '',
-				description: "A contact's job title",
-			},
-			{
-				displayName: 'Last Name',
-				name: 'lastName',
-				type: 'string',
-				default: '',
-				description: "A contact's last name",
-			},
-			{
-				displayName: 'Lead Status Name or ID',
-				name: 'leadStatus',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getContactLeadStatuses',
-				},
-				default: '',
-				description:
-					'The contact\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Legal Basic For Processing Contact Data Name or ID',
-				name: 'processingContactData',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getContactLealBasics',
-				},
-				default: '',
-				description:
-					"Legal basis for processing contact's data; 'Not applicable' will exempt the contact from GDPR protections. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
-			},
-			{
-				displayName: 'Lifecycle Stage Name or ID',
-				name: 'lifeCycleStage',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getContactLifeCycleStages',
-				},
-				default: '',
-				description:
-					'The qualification of contacts to sales readiness. It can be set through imports, forms, workflows, and manually on a per contact basis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Marital Status',
-				name: 'maritalStatus',
-				type: 'string',
-				default: '',
-				description:
-					"A contact's marital status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
-			},
-			{
-				displayName: 'Membership Note',
-				name: 'membershipNote',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: "The notes relating to the contact's content membership",
-			},
-			{
-				displayName: 'Message',
-				name: 'message',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description:
-					'A default property to be used for any message or comments a contact may want to leave on a form',
-			},
-			{
-				displayName: 'Mobile Phone Number',
-				name: 'mobilePhoneNumber',
-				type: 'string',
-				default: '',
-				description: "A contact's mobile phone number",
-			},
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Number Of Employees',
-				name: 'numberOfEmployees',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getContactNumberOfEmployees',
-				},
-				default: '',
-				description:
-					'The number of company employees. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Original Source Name or ID',
-				name: 'originalSource',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getContactOriginalSources',
-				},
-				default: '',
-				description:
-					'The first known source through which a contact found your website. Source is automatically set by HubSpot, but may be updated manually. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Phone Number',
-				name: 'phoneNumber',
-				type: 'string',
-				default: '',
-				description: "A contact's primary phone number",
-			},
-			{
-				displayName: 'Contact Properties to Include',
-				name: 'properties',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getContactProperties',
-				},
-				displayOptions: {
-					show: {
-						'/resolveData': [false],
-					},
-				},
-				default: [],
-				description:
-					'Whether to include specific Contact properties in the returned results. Choose from a list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Postal Code',
-				name: 'postalCode',
-				type: 'string',
-				default: '',
-				description: "The contact's zip code. This might be set via import, form, or integration.",
-			},
-			{
-				displayName: 'Preffered Language Name or ID',
-				name: 'prefferedLanguage',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getContactPrefferedLanguages',
-				},
-				default: '',
-				description:
-					'Set your contact\'s preferred language for communications. This property can be changed from an import, form, or integration. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Relationship Status',
-				name: 'relationshipStatus',
-				type: 'string',
-				default: '',
-				description:
-					"A contact's relationship status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
-			},
-			{
-				displayName: 'Salutation',
-				name: 'salutation',
-				type: 'string',
-				default: '',
-				description: 'The title used to address a contact',
-			},
-			{
-				displayName: 'School',
-				name: 'school',
-				type: 'string',
-				default: '',
-				description:
-					"A contact's school. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
-			},
-			{
-				displayName: 'Seniority',
-				name: 'seniority',
-				type: 'string',
-				default: '',
-				description:
-					"A contact's seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
-			},
-			{
-				displayName: 'Start Date',
-				name: 'startDate',
-				type: 'dateTime',
-				default: '',
-				description:
-					"A contact's start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format",
-			},
-			{
-				displayName: 'State/Region',
-				name: 'stateRegion',
-				type: 'string',
-				default: '',
-				description:
-					"The contact's state of residence. This might be set via import, form, or integration.",
-			},
-			{
-				displayName: 'Status Name or ID',
-				name: 'status',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getContactStatuses',
-				},
-				default: '',
-				description:
-					'The status of the contact\'s content membership. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Street Address',
-				name: 'streetAddress',
-				type: 'string',
-				default: '',
-				description: "A contact's street address, including apartment or unit #",
-			},
-			{
-				displayName: 'Twitter Username',
-				name: 'twitterUsername',
-				type: 'string',
-				default: '',
-				description:
-					"The contact's Twitter handle. This is set by HubSpot using the contact's email address.",
-			},
-			{
-				displayName: 'Website URL',
-				name: 'websiteUrl',
-				type: 'string',
-				default: '',
-				description: "The contact's company website",
-			},
-			{
-				displayName: 'Work Email',
-				name: 'workEmail',
-				type: 'string',
-				default: '',
-				description:
-					"A contact's work email. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
-			},
-			{
-				displayName: 'Buying Role',
-				name: 'buyingRole',
-				description:
-					'Role the contact plays during the sales process. Contacts can have multiple roles, and can share roles with others.',
-				type: 'multiOptions',
-				default: [],
-				options: [
-					{
-						name: 'Blocker',
-						value: 'BLOCKER',
-					},
-					{
-						name: 'Budget Holder',
-						value: 'BUDGET_HOLDER',
-					},
-					{
-						name: 'Champion',
-						value: 'CHAMPION',
-					},
-					{
-						name: 'Decision Maker',
-						value: 'DECISION_MAKER',
-					},
-					{
-						name: 'End User',
-						value: 'END_USER',
-					},
-					{
-						name: 'Executive Sponsor',
-						value: 'EXECUTIVE_SPONSOR',
-					},
-					{
-						name: 'Influencer',
-						value: 'INFLUENCER',
-					},
-					{
-						name: 'Legal & Compliance',
-						value: 'LEGAL_AND_COMPLIANCE',
-					},
-					{
-						name: 'Other',
-						value: 'OTHER',
-					},
-				],
-			},
-			{
-				displayName: 'Country/Region Code',
-				name: 'countryRegionCode',
-				description: "The contact's two-letter country code",
 				type: 'string',
 				default: '',
 			},
@@ -692,12 +411,6 @@ export const contactFields: INodeProperties[] = [
 						value: 'support',
 					},
 				],
-			},
-			{
-				displayName: 'Enriched Email Bounce Detected',
-				name: 'enrichedEmailBounceDetected',
-				type: 'boolean',
-				default: false,
 			},
 			{
 				displayName: 'Employment Seniority',
@@ -1264,6 +977,66 @@ export const contactFields: INodeProperties[] = [
 						value: 'writer',
 					},
 				],
+			},
+			{
+				displayName: 'Enriched Email Bounce Detected',
+				name: 'enrichedEmailBounceDetected',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Facebook Click ID',
+				name: 'facebookClickId',
+				type: 'number',
+				default: '',
+			},
+			{
+				displayName: 'Fax Number',
+				name: 'faxNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Field Of Study',
+				name: 'fieldOfStudy',
+				type: 'string',
+				default: '',
+				description:
+					"A contact's field of study. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
+			},
+			{
+				displayName: 'First Name',
+				name: 'firstName',
+				type: 'string',
+				default: '',
+				description: "A contact's first name",
+			},
+			{
+				displayName: 'Gender',
+				name: 'gender',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Google Ad Click ID',
+				name: 'googleAdClickId',
+				type: 'number',
+				default: '',
+			},
+			{
+				displayName: 'Graduation Date',
+				name: 'graduationDate',
+				type: 'dateTime',
+				default: '',
+				description:
+					"A contact's graduation date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format",
+			},
+			{
+				displayName: 'Industry',
+				name: 'industry',
+				type: 'string',
+				default: '',
+				description: 'The industry a contact is in',
 			},
 			{
 				displayName: 'Inferred Language Codes',
@@ -2007,6 +1780,28 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
+				displayName: 'Job Function',
+				name: 'jobFunction',
+				type: 'string',
+				default: '',
+				description:
+					"A contact's job function. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
+			},
+			{
+				displayName: 'Job Title',
+				name: 'jobTitle',
+				type: 'string',
+				default: '',
+				description: "A contact's job title",
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				default: '',
+				description: "A contact's last name",
+			},
+			{
 				displayName: 'Latest Traffic Source',
 				name: 'latestTrafficSource',
 				description: 'The source of the latest session for a contact',
@@ -2059,6 +1854,39 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Lead Status Name or ID',
+				name: 'leadStatus',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getContactLeadStatuses',
+				},
+				default: '',
+				description:
+					'The contact\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Legal Basic For Processing Contact Data Name or ID',
+				name: 'processingContactData',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getContactLealBasics',
+				},
+				default: '',
+				description:
+					"Legal basis for processing contact's data; 'Not applicable' will exempt the contact from GDPR protections. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code/expressions/\">expression</a>.",
+			},
+			{
+				displayName: 'Lifecycle Stage Name or ID',
+				name: 'lifeCycleStage',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getContactLifeCycleStages',
+				},
+				default: '',
+				description:
+					'The qualification of contacts to sales readiness. It can be set through imports, forms, workflows, and manually on a per contact basis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
 				displayName: 'LinkedIn URL',
 				name: 'linkedinUrl',
 				description: "The URL of the contact's LinkedIn page",
@@ -2066,11 +1894,40 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Marital Status',
+				name: 'maritalStatus',
+				type: 'string',
+				default: '',
+				description:
+					"A contact's marital status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
+			},
+			{
 				displayName: 'Member Email',
 				name: 'memberEmail',
 				description: 'Email used to send private content information to members',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Membership Note',
+				name: 'membershipNote',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: "The notes relating to the contact's content membership",
+			},
+			{
+				displayName: 'Message',
+				name: 'message',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description:
+					'A default property to be used for any message or comments a contact may want to leave on a form',
 			},
 			{
 				displayName: 'Military Status',
@@ -2081,11 +1938,66 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Mobile Phone Number',
+				name: 'mobilePhoneNumber',
+				type: 'string',
+				default: '',
+				description: "A contact's mobile phone number",
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Number Of Employees',
+				name: 'numberOfEmployees',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getContactNumberOfEmployees',
+				},
+				default: '',
+				description:
+					'The number of company employees. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Original Source Name or ID',
+				name: 'originalSource',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getContactOriginalSources',
+				},
+				default: '',
+				description:
+					'The first known source through which a contact found your website. Source is automatically set by HubSpot, but may be updated manually. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
 				displayName: 'Persona',
 				name: 'persona',
 				description: "A contact's persona",
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Phone Number',
+				name: 'phoneNumber',
+				type: 'string',
+				default: '',
+				description: "A contact's primary phone number",
+			},
+			{
+				displayName: 'Postal Code',
+				name: 'postalCode',
+				type: 'string',
+				default: '',
+				description: "The contact's zip code. This might be set via import, form, or integration.",
+			},
+			{
+				displayName: 'Preffered Language Name or ID',
+				name: 'prefferedLanguage',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getContactPrefferedLanguages',
+				},
+				default: '',
+				description:
+					'Set your contact\'s preferred language for communications. This property can be changed from an import, form, or integration. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Prospecting Agent Last Enrolled',
@@ -2101,11 +2013,76 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Relationship Status',
+				name: 'relationshipStatus',
+				type: 'string',
+				default: '',
+				description:
+					"A contact's relationship status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
+			},
+			{
+				displayName: 'Salutation',
+				name: 'salutation',
+				type: 'string',
+				default: '',
+				description: 'The title used to address a contact',
+			},
+			{
+				displayName: 'School',
+				name: 'school',
+				type: 'string',
+				default: '',
+				description:
+					"A contact's school. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
+			},
+			{
+				displayName: 'Seniority',
+				name: 'seniority',
+				type: 'string',
+				default: '',
+				description:
+					"A contact's seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
+			},
+			{
+				displayName: 'Start Date',
+				name: 'startDate',
+				type: 'dateTime',
+				default: '',
+				description:
+					"A contact's start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format",
+			},
+			{
+				displayName: 'State/Region',
+				name: 'stateRegion',
+				type: 'string',
+				default: '',
+				description:
+					"The contact's state of residence. This might be set via import, form, or integration.",
+			},
+			{
 				displayName: 'State/Region Code',
 				name: 'stateRegionCode',
 				description: "The contact's state or region code",
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Status Name or ID',
+				name: 'status',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getContactStatuses',
+				},
+				default: '',
+				description:
+					'The status of the contact\'s content membership. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Street Address',
+				name: 'streetAddress',
+				type: 'string',
+				default: '',
+				description: "A contact's street address, including apartment or unit #",
 			},
 			{
 				displayName: 'Time Zone',
@@ -4218,11 +4195,34 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 			{
+				displayName: 'Twitter Username',
+				name: 'twitterUsername',
+				type: 'string',
+				default: '',
+				description:
+					"The contact's Twitter handle. This is set by HubSpot using the contact's email address.",
+			},
+			{
+				displayName: 'Website URL',
+				name: 'websiteUrl',
+				type: 'string',
+				default: '',
+				description: "The contact's company website",
+			},
+			{
 				displayName: 'WhatsApp Phone Number',
 				name: 'whatsappPhoneNumber',
 				description: 'The phone number associated with the contact’s WhatsApp account',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Work Email',
+				name: 'workEmail',
+				type: 'string',
+				default: '',
+				description:
+					"A contact's work email. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 		],
 	},
