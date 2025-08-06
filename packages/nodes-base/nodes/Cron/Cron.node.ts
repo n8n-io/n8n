@@ -4,7 +4,6 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 	TriggerTime,
-	NodeCronContext,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, toCronExpression } from 'n8n-workflow';
 
@@ -66,13 +65,7 @@ export class Cron implements INodeType {
 		};
 
 		// Register the cron-jobs
-		expressions.forEach((expression) => {
-			const ctx: NodeCronContext = {
-				nodeId: this.getNode().id,
-				expression,
-			};
-			this.helpers.registerCron(ctx, executeTrigger);
-		});
+		expressions.forEach((expression) => this.helpers.registerCron({ expression }, executeTrigger));
 
 		return {
 			manualTriggerFunction: async () => executeTrigger(),

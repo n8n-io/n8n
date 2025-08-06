@@ -23,6 +23,7 @@ import {
 	type VersionedNodeType,
 	type Workflow,
 	type CronContext,
+	type Cron,
 } from 'n8n-workflow';
 
 const logger = mock({
@@ -91,9 +92,11 @@ export async function testTriggerNode(
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		createDeferredPromise,
 		returnJsonArray,
-		registerCron: (nodeCronContext, onTick) => {
+		registerCron: (cron: Cron, onTick) => {
 			const ctx: CronContext = {
-				...nodeCronContext,
+				expression: cron.expression,
+				recurrence: cron.recurrence,
+				nodeId: node.id,
 				workflowId: workflow.id,
 				timezone: workflow.timezone,
 			};
@@ -161,9 +164,11 @@ export async function testWebhookTriggerNode(
 	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		returnJsonArray,
-		registerCron: (nodeCronContext, onTick) => {
+		registerCron: (cron: Cron, onTick) => {
 			const ctx: CronContext = {
-				...nodeCronContext,
+				expression: cron.expression,
+				recurrence: cron.recurrence,
+				nodeId: node.id,
 				workflowId: workflow.id,
 				timezone: workflow.timezone,
 			};

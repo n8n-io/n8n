@@ -1,16 +1,22 @@
 import { Container } from '@n8n/di';
-import type { SchedulingFunctions, Workflow, CronContext } from 'n8n-workflow';
+import type { SchedulingFunctions, Workflow, CronContext, Cron } from 'n8n-workflow';
 
 import { ScheduledTaskManager } from '../../scheduled-task-manager';
 
-export const getSchedulingFunctions = (workflow: Workflow): SchedulingFunctions => {
+export const getSchedulingFunctions = (
+	workflowId: Workflow['id'],
+	timezone: Workflow['timezone'],
+	nodeId: string,
+): SchedulingFunctions => {
 	const scheduledTaskManager = Container.get(ScheduledTaskManager);
 	return {
-		registerCron: (nodeCronContext, onTick) => {
+		registerCron: ({ expression, recurrence }: Cron, onTick) => {
 			const ctx: CronContext = {
-				...nodeCronContext,
-				workflowId: workflow.id,
-				timezone: workflow.timezone,
+				expression,
+				recurrence,
+				nodeId,
+				workflowId,
+				timezone,
 			};
 
 			return scheduledTaskManager.registerCron(ctx, onTick);

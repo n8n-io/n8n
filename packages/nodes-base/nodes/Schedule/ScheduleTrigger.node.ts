@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	NodeCronContext,
+	Cron,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
@@ -452,12 +452,11 @@ export class ScheduleTrigger implements INodeType {
 		if (this.getMode() !== 'manual') {
 			for (const { interval, cronExpression, recurrence } of rules) {
 				try {
-					const ctx: NodeCronContext = {
-						nodeId: this.getNode().id,
+					const cron: Cron = {
 						expression: cronExpression,
 						recurrence,
 					};
-					this.helpers.registerCron(ctx, () => executeTrigger(recurrence));
+					this.helpers.registerCron(cron, () => executeTrigger(recurrence));
 				} catch (error) {
 					if (interval.field === 'cronExpression') {
 						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {

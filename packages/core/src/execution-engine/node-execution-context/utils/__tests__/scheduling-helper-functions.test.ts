@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { CronContext, NodeCronContext, Workflow } from 'n8n-workflow';
+import type { CronContext, Workflow } from 'n8n-workflow';
 
 import { mockInstance } from '@test/utils';
 
@@ -11,7 +11,11 @@ describe('getSchedulingFunctions', () => {
 	const cronExpression = '* * * * * 0';
 	const onTick = jest.fn();
 	const scheduledTaskManager = mockInstance(ScheduledTaskManager);
-	const schedulingFunctions = getSchedulingFunctions(workflow);
+	const schedulingFunctions = getSchedulingFunctions(
+		workflow.id,
+		workflow.timezone,
+		'test-node-id',
+	);
 
 	it('should return scheduling functions', () => {
 		expect(typeof schedulingFunctions.registerCron).toBe('function');
@@ -19,20 +23,16 @@ describe('getSchedulingFunctions', () => {
 
 	describe('registerCron', () => {
 		it('should invoke scheduledTaskManager.registerCron', () => {
-			const nodeCronContext: NodeCronContext = {
-				nodeId: 'test-node',
+			const ctx: CronContext = {
+				nodeId: 'test-node-id',
 				expression: cronExpression,
-			};
-
-			const cronContext: CronContext = {
-				...nodeCronContext,
 				workflowId: 'test-workflow',
 				timezone: 'Europe/Berlin',
 			};
 
-			schedulingFunctions.registerCron(nodeCronContext, onTick);
+			schedulingFunctions.registerCron({ expression: cronExpression }, onTick);
 
-			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(cronContext, onTick);
+			expect(scheduledTaskManager.registerCron).toHaveBeenCalledWith(ctx, onTick);
 		});
 	});
 });
