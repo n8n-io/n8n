@@ -104,4 +104,57 @@ describe('CanvasNodeStatusIcons', () => {
 
 		expect(getByTestId('canvas-node-status-warning')).toBeInTheDocument();
 	});
+
+	describe('status precedence', () => {
+		it('should render executing status even if node is invalid', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide({
+							isExecuting: true,
+						}),
+						...createCanvasNodeProvide({
+							data: {
+								execution: { running: true },
+								runData: { outputMap: {}, iterations: 15, visible: true },
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { dirtiness: CanvasNodeDirtiness.PARAMETERS_UPDATED },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-node-status-running')).toBeVisible();
+			expect(queryByTestId('canvas-node-status-warning')).not.toBeInTheDocument();
+		});
+
+		it('should render executing status even if node is disabled', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide({
+							isExecuting: true,
+						}),
+						...createCanvasNodeProvide({
+							data: {
+								disabled: true,
+								execution: { running: true },
+								runData: { outputMap: {}, iterations: 15, visible: true },
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { dirtiness: CanvasNodeDirtiness.PARAMETERS_UPDATED },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-node-status-running')).toBeVisible();
+			expect(queryByTestId('canvas-node-status-warning')).not.toBeInTheDocument();
+		});
+	});
 });
