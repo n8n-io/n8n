@@ -88,12 +88,17 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 
 	async deleteDataStoreAll() {
 		return await this.manager.transaction(async (em) => {
+			const queryRunner = em.queryRunner;
+			if (!queryRunner) {
+				throw new UnexpectedError('QueryRunner is not available');
+			}
+
 			const existingTables = await em.findBy(DataStoreEntity, {});
 
 			let changed = false;
 			for (const match of existingTables) {
 				const result = await em.delete(DataStoreEntity, { id: match.id });
-				await em.query(`DROP TABLE ${toTableName(match.id)}`);
+				await queryRunner.dropTable(toTableName(match.id), true);
 				changed = changed || (result.affected ?? 0) > 0;
 			}
 
