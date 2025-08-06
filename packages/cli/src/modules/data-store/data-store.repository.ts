@@ -17,6 +17,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		super(DataStoreEntity, dataSource.manager);
 	}
 
+	// TODO: remove
 	async createUserTableRaw(
 		projectId: string,
 		name: string,
@@ -41,7 +42,11 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 			await em.insert(DataStoreEntity, dataStore);
 
 			const tableName = toTableName(dataStore.id);
-			const queryRunner = em.queryRunner!;
+			const queryRunner = em.queryRunner;
+			if (!queryRunner) {
+				throw new UnexpectedError('QueryRunner is not available');
+			}
+
 			const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
 
 			const createTable = new CreateTable(tableName, '', queryRunner);

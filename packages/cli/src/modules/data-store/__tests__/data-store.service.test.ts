@@ -55,24 +55,39 @@ describe('dataStore', () => {
 		await dataStoreService.deleteDataStoreAll();
 	});
 
+	// TODO: remove
 	describe('createDataStoreRaw', () => {
 		it('should succeed with existing name in different project', async () => {
+			const name = 'myDataStore2';
+
 			// ACT
 			const result = await dataStoreService.createDataStoreRaw(project1.id, {
-				name: 'myDataStore2',
+				name,
 				columns: [],
 			});
 
 			// ASSERT
 			expect(result).toEqual({
 				columns: [],
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				createdAt: expect.any(Date),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				id: expect.any(String),
-				name: 'myDataStore2',
+				name,
 				projectId: project1.id,
 				sizeBytes: 0,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				updatedAt: expect.any(Date),
 			});
+
+			const created = await dataStoreRepository.findOneBy({ name, projectId: project1.id });
+			expect(created?.id).toBe(result.id);
+
+			const userTableName = toTableName(result.id);
+			const rows: Array<Record<string, unknown>> = await dataStoreRepository.manager.query(
+				`SELECT * FROM "${userTableName}"`,
+			);
+			expect(rows).toEqual([]);
 		});
 
 		it('should return an error if name/project combination already exists', async () => {
@@ -91,22 +106,36 @@ describe('dataStore', () => {
 
 	describe('createDataStore', () => {
 		it('should succeed with existing name in different project', async () => {
+			const name = 'myDataStore2';
+
 			// ACT
 			const result = await dataStoreService.createDataStore(project1.id, {
-				name: 'myDataStore2',
+				name,
 				columns: [],
 			});
 
 			// ASSERT
 			expect(result).toEqual({
 				columns: [],
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				createdAt: expect.any(Date),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				id: expect.any(String),
-				name: 'myDataStore2',
+				name,
 				projectId: project1.id,
 				sizeBytes: 0,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				updatedAt: expect.any(Date),
 			});
+
+			const created = await dataStoreRepository.findOneBy({ name, projectId: project1.id });
+			expect(created?.id).toBe(result.id);
+
+			const userTableName = toTableName(result.id);
+			const rows: Array<Record<string, unknown>> = await dataStoreRepository.manager.query(
+				`SELECT * FROM "${userTableName}"`,
+			);
+			expect(rows).toEqual([]);
 		});
 
 		it('should return an error if name/project combination already exists', async () => {
@@ -224,6 +253,7 @@ describe('dataStore', () => {
 				{
 					columnIndex: 0,
 					dataStoreId: dataStore1.id,
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
 					name: 'myColumn1',
 					type: 'string',
@@ -231,6 +261,7 @@ describe('dataStore', () => {
 				{
 					columnIndex: 1,
 					dataStoreId: dataStore1.id,
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
 					name: 'myColumn2',
 					type: 'number',
@@ -238,6 +269,7 @@ describe('dataStore', () => {
 				{
 					columnIndex: 2,
 					dataStoreId: dataStore1.id,
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
 					name: 'myColumn3',
 					type: 'number',
@@ -245,6 +277,7 @@ describe('dataStore', () => {
 				{
 					columnIndex: 3,
 					dataStoreId: dataStore1.id,
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
 					name: 'myColumn4',
 					type: 'date',
@@ -401,7 +434,11 @@ describe('dataStore', () => {
 
 			// ASSERT
 			expect(result.data).toHaveLength(1);
-			expect(result.data[0]).toEqual({ ...dataStore1, project: expect.any(Project) });
+			expect(result.data[0]).toEqual({
+				...dataStore1,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				project: expect.any(Project),
+			});
 			expect(result.data[0].project).toEqual({
 				icon: null,
 				id: project1.id,
@@ -425,8 +462,16 @@ describe('dataStore', () => {
 
 			// ASSERT
 			expect(result.data).toHaveLength(2);
-			expect(result.data).toContainEqual({ ...dataStore3, project: expect.any(Project) });
-			expect(result.data).toContainEqual({ ...dataStore1, project: expect.any(Project) });
+			expect(result.data).toContainEqual({
+				...dataStore3,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				project: expect.any(Project),
+			});
+			expect(result.data).toContainEqual({
+				...dataStore1,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				project: expect.any(Project),
+			});
 			expect(result.count).toEqual(2);
 		});
 
@@ -519,21 +564,25 @@ describe('dataStore', () => {
 			expect(result.count).toEqual(1);
 			expect(result.data[0].columns).toEqual([
 				{
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
 					name: 'myColumn1',
 					type: 'string',
 				},
 				{
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
 					name: 'myColumn2',
 					type: 'number',
 				},
 				{
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
 					name: 'myColumn3',
 					type: 'number',
 				},
 				{
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
 					name: 'myColumn4',
 					type: 'date',

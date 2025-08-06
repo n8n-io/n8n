@@ -32,6 +32,7 @@ export class DataStoreService {
 	async start() {}
 	async shutdown() {}
 
+	// TODO: remove
 	async createDataStoreRaw(projectId: string, dto: CreateDataStoreDto) {
 		const existingTable = await this.dataStoreRepository.findOneBy({
 			name: dto.name,
