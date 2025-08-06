@@ -46,6 +46,10 @@ const stubs = {
 		props: ['text'],
 		template: '<span>{{ text }}</span>',
 	},
+	'n8n-alert': {
+		props: ['type', 'description'],
+		template: '<div data-test-id="n8n-alert" :class="type">{{ description }}</div>',
+	},
 	N8nPopoverReka: MockN8nPopoverReka,
 };
 
@@ -278,5 +282,55 @@ describe('N8nSuggestedActions', () => {
 
 		// Check that the component renders correctly with the alignment prop
 		expect(wrapper.getByTestId('suggested-action-count')).toBeInTheDocument();
+	});
+
+	describe('Notice functionality', () => {
+		it('renders notice alert when notice prop is provided', async () => {
+			const noticeText = 'This is a notice message';
+			const wrapper = render(N8nSuggestedActions, {
+				props: {
+					actions: mockActions,
+					open: true,
+					title: 'Test Title',
+					notice: noticeText,
+				},
+				global: { stubs },
+			});
+
+			// Check that the notice alert is rendered
+			const alert = wrapper.getByTestId('n8n-alert');
+			expect(alert).toBeInTheDocument();
+			expect(alert).toHaveClass('warning');
+			expect(alert).toHaveTextContent(noticeText);
+		});
+
+		it('does not render notice alert when notice prop is not provided', async () => {
+			const wrapper = render(N8nSuggestedActions, {
+				props: {
+					actions: mockActions,
+					open: true,
+					title: 'Test Title',
+				},
+				global: { stubs },
+			});
+
+			// Check that the notice alert is not rendered
+			expect(wrapper.queryByTestId('n8n-alert')).not.toBeInTheDocument();
+		});
+
+		it('does not render notice alert when notice prop is empty string', async () => {
+			const wrapper = render(N8nSuggestedActions, {
+				props: {
+					actions: mockActions,
+					open: true,
+					title: 'Test Title',
+					notice: '',
+				},
+				global: { stubs },
+			});
+
+			// Check that the notice alert is not rendered
+			expect(wrapper.queryByTestId('n8n-alert')).not.toBeInTheDocument();
+		});
 	});
 });

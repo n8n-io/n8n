@@ -2494,6 +2494,7 @@
 	"workflowDetails.addTag": "Add tag",
 	"workflowDetails.chooseOrCreateATag": "Choose or create a tag",
 	"workflowProductionChecklist.title": "Production Checklist",
+	"workflowProductionChecklist.readOnlyNotice": "Read-only environment. Update these items in development and push changes.",
 	"workflowProductionChecklist.ignoreAllConfirmation.title": "Ignore suggested actions globally",
 	"workflowProductionChecklist.ignoreAllConfirmation.description": "Turning this off dismisses these suggestions from every workflow",
 	"workflowProductionChecklist.ignoreAllConfirmation.confirm": "Ignore for all workflows",

@@ -8,8 +8,10 @@ import { useWorkflowSettingsCache } from '@/composables/useWorkflowsCache';
 import { useUIStore } from '@/stores/ui.store';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useRouter } from 'vue-router';
 import type { IWorkflowDb } from '@/Interface';
+import type { SourceControlPreferences } from '@/types/sourceControl.types';
 import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
@@ -91,7 +93,7 @@ let mockN8nSuggestedActionsEmits: Record<string, any> = {};
 
 const mockN8nSuggestedActions = {
 	name: 'N8nSuggestedActions',
-	props: ['actions', 'ignoreAllLabel', 'popoverAlignment', 'open', 'title'],
+	props: ['actions', 'ignoreAllLabel', 'popoverAlignment', 'open', 'title', 'notice'],
 	emits: ['action-click', 'ignore-click', 'ignore-all', 'update:open'],
 	// eslint-disable-next-line
 	setup(props: any, { emit }: any) {
@@ -127,6 +129,7 @@ describe('WorkflowProductionChecklist', () => {
 	let evaluationStore: ReturnType<typeof useEvaluationStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
+	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 
 	beforeEach(() => {
 		router = {
@@ -769,6 +772,74 @@ describe('WorkflowProductionChecklist', () => {
 						completed: true,
 					},
 				]);
+			});
+		});
+	});
+
+	describe('Notice functionality', () => {
+		it('should pass notice prop when source control branch is read-only', async () => {
+			const pinia = createTestingPinia();
+			sourceControlStore = useSourceControlStore(pinia);
+
+			// Mock branch as read-only
+			sourceControlStore.preferences = {
+				branchReadOnly: true,
+			} as SourceControlPreferences;
+
+			renderComponent({
+				props: {
+					workflow: mockWorkflow,
+				},
+				pinia,
+			});
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
+				expect(mockN8nSuggestedActionsProps.notice).toBe(
+					'workflowProductionChecklist.readOnlyNotice',
+				);
+			});
+		});
+
+		it('should not pass notice prop when source control branch is not read-only', async () => {
+			const pinia = createTestingPinia();
+			sourceControlStore = useSourceControlStore(pinia);
+
+			// Mock branch as not read-only
+			sourceControlStore.preferences = {
+				branchReadOnly: false,
+			} as SourceControlPreferences;
+
+			renderComponent({
+				props: {
+					workflow: mockWorkflow,
+				},
+				pinia,
+			});
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
+				expect(mockN8nSuggestedActionsProps.notice).toBe('');
+			});
+		});
+
+		it('should default to empty notice when source control preferences are undefined', async () => {
+			const pinia = createTestingPinia();
+			sourceControlStore = useSourceControlStore(pinia);
+
+			// Mock preferences with no branchReadOnly property
+			sourceControlStore.preferences = {} as SourceControlPreferences;
+
+			renderComponent({
+				props: {
+					workflow: mockWorkflow,
+				},
+				pinia,
+			});
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
+				expect(mockN8nSuggestedActionsProps.notice).toBe('');
 			});
 		});
 	});

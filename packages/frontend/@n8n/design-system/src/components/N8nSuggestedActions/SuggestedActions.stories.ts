@@ -356,3 +356,22 @@ ExternalControl.args = {
 	title: 'External Control Demo',
 	open: false,
 } satisfies SuggestedActionsProps;
+
+export const WithNotice = Template.bind({});
+WithNotice.args = {
+	actions: [
+		{
+			id: 'action-with-notice',
+			title: 'Action with Notice',
+			description: 'This demonstrates how the notice appears in the popover.',
+		},
+		{
+			id: 'second-action',
+			title: 'Another Action',
+			description: 'This shows multiple actions with a notice displayed.',
+		},
+	],
+	title: 'Actions with Notice',
+	notice: 'Read-only environment. Update these items in development and push changes.',
+	open: true,
+} satisfies SuggestedActionsProps;

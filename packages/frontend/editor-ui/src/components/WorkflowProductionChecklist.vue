@@ -20,6 +20,7 @@ import {
 } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 const props = defineProps<{
 	workflow: IWorkflowDb;
@@ -33,6 +34,7 @@ const workflowsCache = useWorkflowSettingsCache();
 const uiStore = useUIStore();
 const message = useMessage();
 const telemetry = useTelemetry();
+const sourceControlStore = useSourceControlStore();
 
 const isPopoverOpen = ref(false);
 const cachedSettings = ref<WorkflowSettings | null>(null);
@@ -59,6 +61,10 @@ const hasTimeSaved = computed(() => {
 
 const isActivationModalOpen = computed(() => {
 	return uiStore.isModalActiveById[WORKFLOW_ACTIVE_MODAL_KEY];
+});
+
+const isProtectedEnvironment = computed(() => {
+	return sourceControlStore.preferences.branchReadOnly;
 });
 
 const availableActions = computed(() => {
@@ -219,6 +225,9 @@ onMounted(async () => {
 		:title="i18n.baseText('workflowProductionChecklist.title')"
 		:actions="availableActions"
 		:ignore-all-label="i18n.baseText('workflowProductionChecklist.turnOffWorkflowSuggestions')"
+		:notice="
+			isProtectedEnvironment ? i18n.baseText('workflowProductionChecklist.readOnlyNotice') : ''
+		"
 		popover-alignment="end"
 		@action-click="handleActionClick"
 		@ignore-click="handleIgnoreClick"
