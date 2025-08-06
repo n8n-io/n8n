@@ -7,7 +7,9 @@ import {
 	access as fsAccess,
 	writeFile as fsWriteFile,
 	realpath as fsRealpath,
+	mkdir as fsMkdir,
 } from 'node:fs/promises';
+import { dirname, extname, basename } from 'node:path';
 
 import {
 	BINARY_DATA_STORAGE_PATH,
@@ -86,6 +88,46 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 			});
 		}
 		return await fsWriteFile(filePath, content, { encoding: 'binary', flag });
+	},
+	async createDirectory(directoryPath) {
+		if (await isFilePathBlocked(directoryPath as string)) {
+			throw new NodeOperationError(
+				node,
+				`The directory "${String(directoryPath)}" is not writable.`,
+				{
+					level: 'warning',
+				},
+			);
+		}
+
+		let targetPath = directoryPath as string;
+		const pathBasename = basename(targetPath);
+
+		// If the basename starts with a dot (hidden file) or has a known file extension pattern,
+		// extract the directory path
+		if (pathBasename.startsWith('.') && extname(targetPath) === '') {
+			// Hidden files like .env, .gitignore
+			targetPath = dirname(targetPath);
+		} else if (extname(targetPath) && !pathBasename.startsWith('.')) {
+			// Regular files with extensions, but not directory names containing dots
+			const ext = extname(targetPath);
+			// Only treat as file if extension looks like a real file extension (short and common)
+			if (ext.length <= 5 && /^\.[a-zA-Z0-9]+$/.test(ext)) {
+				targetPath = dirname(targetPath);
+			}
+		}
+
+		try {
+			await fsMkdir(targetPath, { recursive: true });
+		} catch (error) {
+			throw new NodeOperationError(
+				node,
+				`Failed to create directory "${targetPath}": ${String(error)}`,
+				{
+					level: 'warning',
+				},
+			);
+		}
 	},
 });
 
