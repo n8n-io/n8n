@@ -7,13 +7,15 @@ const dateRangeSchema = z.object({
 });
 
 export class UserAnalyticsQueryDto extends Z.class({
-	...dateRangeSchema.shape,
+	startDate: z.string().datetime().optional(),
+	endDate: z.string().datetime().optional(),
 	groupBy: z.enum(['day', 'week', 'month']).default('day'),
 	includeInactive: z.boolean().default(false),
 }) {}
 
 export class UserActivityQueryDto extends Z.class({
-	...dateRangeSchema.shape,
+	startDate: z.string().datetime().optional(),
+	endDate: z.string().datetime().optional(),
 	activityTypes: z
 		.array(
 			z.enum(['login', 'logout', 'workflow_created', 'workflow_executed', 'credential_created']),

@@ -21,9 +21,9 @@ module.exports = {
 	],
 	prettierPath: null,
 	// Performance optimizations
-	maxWorkers: process.env.CI ? 1 : '25%', // Reduce workers for integration tests
-	testTimeout: 30000, // Increase timeout for integration tests
-	workerIdleMemoryLimit: '256MB', // Reduce memory per worker
+	maxWorkers: process.env.CI ? 1 : 2, // Allow parallel execution in local development
+	testTimeout: 20000, // Increased timeout for complex integration tests
+	workerIdleMemoryLimit: '256MB', // Balanced memory limit for stability
 	detectOpenHandles: false, // Disable for performance unless debugging
-	forceExit: true, // Force exit to prevent hanging
+	forceExit: false, // Allow proper cleanup to prevent resource leaks
 };

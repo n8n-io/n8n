@@ -1,0 +1,12 @@
+{
+	"session_id": "eb7e7c5e-657f-41fd-9912-d32ebd56c304",
+	"transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/eb7e7c5e-657f-41fd-9912-d32ebd56c304.jsonl",
+	"cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork/packages/cli",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Task",
+	"tool_input": {
+		"description": "Analyze existing migration patterns",
+		"prompt": "Search the n8n codebase for existing migration, import/export, and data transfer patterns. I need to understand:\n\n1. Current data migration capabilities - look for existing migration controllers, services, or utilities\n2. Import/export functionality - search for any existing backup, restore, export, or import features\n3. Database migration patterns - check for TypeORM migrations or database schema updates\n4. API patterns for data transfer - look for existing REST endpoints that handle bulk data operations\n5. Configuration and environment handling - check how n8n manages environment variables and instance settings\n6. Authentication and security patterns for cross-instance communication\n\nPlease provide detailed findings including:\n- File locations and key functions\n- Existing API endpoints related to data transfer\n- Database entities and repositories used for core data (workflows, credentials, settings)\n- Security and authentication patterns\n- Any existing cross-instance communication capabilities\n- Configuration management approaches\n\nFocus on finding reusable patterns and identifying any existing foundation I can build upon for implementing cross-instance migration tools.",
+		"subagent_type": "general-purpose"
+	}
+}

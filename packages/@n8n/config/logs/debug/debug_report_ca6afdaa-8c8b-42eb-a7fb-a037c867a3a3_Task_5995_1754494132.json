@@ -1,0 +1,104 @@
+{
+	"metadata": {
+		"report_timestamp": "2025-08-06T10:28:52.032109",
+		"report_type": "timeout_debug_report",
+		"debug_mode": true,
+		"verbose_logging": false,
+		"python_version": "3.13.1 (v3.13.1:06714517797, Dec  3 2024, 14:00:22) [Clang 15.0.0 (clang-1500.3.9.4)]",
+		"pid": 82811
+	},
+	"agent_info": {
+		"agent_id": "ca6afdaa-8c8b-42eb-a7fb-a037c867a3a3_Task_5995",
+		"tracker_data": {
+			"agent_id": "ca6afdaa-8c8b-42eb-a7fb-a037c867a3a3_Task_5995",
+			"start_time": 1754493421.004715,
+			"last_heartbeat": 1754494132.031441,
+			"tool_name": "Task",
+			"status": "running"
+		}
+	},
+	"timing_analysis": {
+		"current_timestamp": 1754494132.031894,
+		"current_datetime": "2025-08-06T10:28:52.031894",
+		"elapsed_time_seconds": 711.0264792442322,
+		"elapsed_time_formatted": "11m 51.0s",
+		"timeout_limit_seconds": 120,
+		"heartbeat_timeout_seconds": 60,
+		"time_until_timeout": -591.0264792442322,
+		"timeout_exceeded": true,
+		"last_heartbeat_timestamp": 1754494132.031441,
+		"last_heartbeat_datetime": "2025-08-06T10:28:52.031441",
+		"heartbeat_age_seconds": 0.00045299530029296875,
+		"heartbeat_age_formatted": "0m 0.0s",
+		"heartbeat_timeout_exceeded": false,
+		"time_until_heartbeat_timeout": 59.99954700469971
+	},
+	"hook_data_analysis": {
+		"keys": ["session_id", "transcript_path", "cwd", "hook_event_name", "stop_hook_active"],
+		"key_count": 5,
+		"data_size_chars": 368,
+		"data_size_bytes": 368,
+		"has_agent_id": false,
+		"has_tool_name": false,
+		"has_hook_event_name": true,
+		"hook_event_name_type": "str",
+		"hook_event_name_value": "SubagentStop",
+		"has_session_id": true,
+		"session_id_type": "str",
+		"session_id_value": "ca6afdaa-8c8b-42eb-a7fb-a037c867a3a3",
+		"has_timestamp": false,
+		"has_tool_info": false,
+		"has_session_info": false,
+		"has_execution": false,
+		"has_request": false,
+		"has_response": false,
+		"tool_name_candidates": [],
+		"extracted_tool_name": "unknown"
+	},
+	"system_state": {
+		"current_working_directory": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork/packages/@n8n/config",
+		"process_id": 82811,
+		"process_parent_id": 8611,
+		"environment_vars_count": 57,
+		"log_files_exist": {
+			"timeout_log": true,
+			"debug_log": true,
+			"timing_log": true,
+			"validation_log": true
+		},
+		"directories_exist": {
+			"logs": true,
+			"tracking": true,
+			"heartbeats": true,
+			"debug": true
+		},
+		"stdin_info": {
+			"is_tty": false,
+			"encoding": "utf-8"
+		}
+	},
+	"configuration": {
+		"MAX_SUBAGENT_TIME_SECONDS": 120,
+		"HEARTBEAT_TIMEOUT_SECONDS": 60,
+		"environment_variables": {
+			"CLAUDE_TIMEOUT_SECONDS": null,
+			"CLAUDE_HEARTBEAT_TIMEOUT": null,
+			"CLAUDE_TIMEOUT_DEBUG": null,
+			"CLAUDE_TIMEOUT_VERBOSE": null
+		}
+	},
+	"hook_data_sanitized": {
+		"session_id": "ca6afdaa-8c8b-42eb-a7fb-a037c867a3a3",
+		"transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/ca6afdaa-8c8b-42eb-a7fb-a037c867a3a3.jsonl",
+		"cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork/packages/@n8n/config",
+		"hook_event_name": "SubagentStop",
+		"stop_hook_active": true
+	},
+	"hook_data_full": {
+		"session_id": "ca6afdaa-8c8b-42eb-a7fb-a037c867a3a3",
+		"transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/ca6afdaa-8c8b-42eb-a7fb-a037c867a3a3.jsonl",
+		"cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork/packages/@n8n/config",
+		"hook_event_name": "SubagentStop",
+		"stop_hook_active": true
+	}
+}

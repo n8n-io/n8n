@@ -264,3 +264,26 @@ export {
 } from './expressions';
 
 export * from './analytics';
+
+export {
+	InstanceMigrationExportRequestDto,
+	InstanceMigrationExportResponseDto,
+	InstanceMigrationImportRequestDto,
+	InstanceMigrationImportResponseDto,
+	InstanceMigrationStatusDto,
+	InstanceMigrationValidationDto,
+	CrossInstanceTransferRequestDto,
+	CrossInstanceTransferResponseDto,
+	CrossInstanceConnectionTestRequestDto,
+	CrossInstanceConnectionTestResponseDto,
+	type InstanceMigrationExportRequest,
+	type InstanceMigrationExportResponse,
+	type InstanceMigrationImportRequest,
+	type InstanceMigrationImportResponse,
+	type InstanceMigrationStatus,
+	type InstanceMigrationValidation,
+	type CrossInstanceTransferRequest,
+	type CrossInstanceTransferResponse,
+	type CrossInstanceConnectionTestRequest,
+	type CrossInstanceConnectionTestResponse,
+} from './migration';

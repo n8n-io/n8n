@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Z } from '@n8n/api-types/utils';
+import { Z } from 'zod-class';
 import { exampleSchema } from './function-documentation.dto';
 
 export const expressionSyntaxDocSchema = z.object({
@@ -27,7 +27,19 @@ export const expressionSyntaxResponseSchema = z.object({
 	}),
 });
 
-export class ExpressionSyntaxQueryDto extends Z.class(expressionSyntaxQuerySchema) {}
-export class ExpressionSyntaxResponseDto extends Z.class(expressionSyntaxResponseSchema) {}
+export class ExpressionSyntaxQueryDto extends Z.class({
+	topic: z.string().optional(),
+	includeExamples: z.boolean().default(true),
+	includeRelated: z.boolean().default(true),
+}) {}
+export class ExpressionSyntaxResponseDto extends Z.class({
+	success: z.boolean(),
+	data: z.any(),
+	metadata: z.object({
+		requestedAt: z.string(),
+		topic: z.string().optional(),
+		totalCount: z.number().optional(),
+	}),
+}) {}
 
 export type ExpressionSyntaxDoc = z.infer<typeof expressionSyntaxDocSchema>;

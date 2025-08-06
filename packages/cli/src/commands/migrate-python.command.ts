@@ -78,7 +78,7 @@ export class MigratePythonCommand extends Command {
 
 	private migrationService!: PyodideToLocalPythonMigrationService;
 	private compatibilityService!: PyodideCompatibilityService;
-	private logger!: Logger;
+	// private logger!: Logger;
 
 	async run(): Promise<void> {
 		const { flags } = await this.parse(MigratePythonCommand);
@@ -238,7 +238,7 @@ export class MigratePythonCommand extends Command {
 
 			// Save migrated workflow if not dry run
 			if (!flags['dry-run'] && result.success) {
-				const outputPath = join(flags.output, `${workflow.id}.json`);
+				// const outputPath = join(flags.output, `${workflow.id}.json`);
 				// Note: This would need the full workflow object, not just the nodes
 				// await fs.writeFile(outputPath, JSON.stringify(workflow, null, 2));
 			}
@@ -395,7 +395,7 @@ export class MigratePythonCommand extends Command {
 		}
 	}
 
-	private displayAnalysisResults(analysis: any, compatibilityReport: any, flags: any): void {
+	private displayAnalysisResults(analysis: any, compatibilityReport: any, _flags: any): void {
 		this.log(chalk.blue.bold('\n📊 Compatibility Analysis Results:'));
 		this.log(
 			`  Overall compatibility: ${this.getCompatibilityColor(compatibilityReport.overallCompatibility)}${compatibilityReport.overallCompatibility}%${chalk.reset()}`,
@@ -415,7 +415,7 @@ export class MigratePythonCommand extends Command {
 		this.log(chalk.blue('\n📈 Complexity Breakdown:'));
 		this.log(`  Simple: ${chalk.green(analysis.complexityBreakdown.simple)}`);
 		this.log(`  Moderate: ${chalk.yellow(analysis.complexityBreakdown.moderate)}`);
-		this.log(`  Complex: ${chalk.orange(analysis.complexityBreakdown.complex)}`);
+		this.log(`  Complex: ${chalk.yellow(analysis.complexityBreakdown.complex)}`);
 		this.log(`  Critical: ${chalk.red(analysis.complexityBreakdown.critical)}`);
 	}
 
@@ -519,7 +519,7 @@ export class MigratePythonCommand extends Command {
 			case 'moderate':
 				return chalk.yellow;
 			case 'hard':
-				return chalk.orange;
+				return chalk.yellow;
 			case 'critical':
 				return chalk.red;
 			default:
@@ -530,7 +530,7 @@ export class MigratePythonCommand extends Command {
 	private getCompatibilityColor(percentage: number): (text: string) => string {
 		if (percentage >= 80) return chalk.green;
 		if (percentage >= 60) return chalk.yellow;
-		if (percentage >= 40) return chalk.orange;
+		if (percentage >= 40) return chalk.yellow;
 		return chalk.red;
 	}
 }

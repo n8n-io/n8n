@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Z } from '@n8n/api-types/utils';
+import { Z } from 'zod-class';
 import { exampleSchema } from './function-documentation.dto';
 
 export const variablePropertySchema = z.object({
@@ -44,10 +44,24 @@ export const variableDocumentationResponseSchema = z.object({
 	}),
 });
 
-export class VariableDocumentationQueryDto extends Z.class(variableDocumentationQuerySchema) {}
-export class VariableDocumentationResponseDto extends Z.class(
-	variableDocumentationResponseSchema,
-) {}
+export class VariableDocumentationQueryDto extends Z.class({
+	variableName: z.string().optional(),
+	category: z.string().optional(),
+	context: z.enum(['all', 'core', 'workflow', 'node', 'environment']).default('all'),
+	includeExamples: z.boolean().default(true),
+	includeProperties: z.boolean().default(true),
+}) {}
+export class VariableDocumentationResponseDto extends Z.class({
+	success: z.boolean(),
+	data: z.any(),
+	metadata: z.object({
+		requestedAt: z.string(),
+		variableName: z.string().optional(),
+		category: z.string().optional(),
+		context: z.string().optional(),
+		totalCount: z.number().optional(),
+	}),
+}) {}
 
 export type VariableProperty = z.infer<typeof variablePropertySchema>;
 export type Availability = z.infer<typeof availabilitySchema>;

@@ -8,7 +8,7 @@ import merge from 'lodash/merge';
 import { setGlobalState, UserError } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { inE2ETests } from '@/constants';
+import { inE2ETests } from '../constants';
 
 const globalConfig = Container.get(GlobalConfig);
 

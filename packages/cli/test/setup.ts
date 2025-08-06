@@ -10,9 +10,10 @@ export default async () => {
 	process.env.NODE_ENV = 'test';
 
 	// Database optimization for tests
-	process.env.DB_SQLITE_POOL_SIZE = '1';
+	process.env.DB_SQLITE_POOL_SIZE = '4'; // Increased from 1 to 4 for better parallel performance
 	process.env.DB_LOGGING_ENABLED = 'false';
 	process.env.CACHE_REDIS_ENABLED = 'false';
+	process.env.DB_TYPE = 'sqlite'; // Force SQLite for fastest test performance
 
 	// Prevent memory leaks in tests
 	process.setMaxListeners(30);

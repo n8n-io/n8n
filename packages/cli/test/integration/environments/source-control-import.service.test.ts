@@ -46,7 +46,14 @@ import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
 import { createCredentials, saveCredential } from '../shared/db/credentials';
 import { createAdmin, createMember, createOwner, getGlobalOwner } from '../shared/db/users';
 
-jest.mock('fast-glob');
+jest.mock('fast-glob', () => ({
+	default: jest.fn(),
+}));
+
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	jsonParse: jest.fn(),
+}));
 
 describe('SourceControlImportService', () => {
 	let credentialsRepository: CredentialsRepository;
@@ -101,6 +108,7 @@ describe('SourceControlImportService', () => {
 		await testDb.truncate(['CredentialsEntity', 'SharedCredentials']);
 
 		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
 	afterAll(async () => {
@@ -163,7 +171,7 @@ describe('SourceControlImportService', () => {
 			},
 		};
 
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
+		const globMock = jest.mocked(fastGlob.default);
 		const fsReadFile = jest.spyOn(fsp, 'readFile');
 
 		let globalAdmin: User;
@@ -433,7 +441,7 @@ describe('SourceControlImportService', () => {
 			},
 		};
 
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
+		const globMock = jest.mocked(fastGlob.default);
 		const fsReadFile = jest.spyOn(fsp, 'readFile');
 
 		let globalAdmin: User;
@@ -790,7 +798,7 @@ describe('SourceControlImportService', () => {
 			],
 		};
 
-		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
+		const globMock = jest.mocked(fastGlob.default);
 		const fsReadFile = jest.spyOn(fsp, 'readFile');
 
 		let globalAdmin: User;
@@ -1092,7 +1100,7 @@ describe('SourceControlImportService', () => {
 					ownedBy: member.email, // user at source instance owns credential
 				};
 
-				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+				jest.mocked(utils.jsonParse).mockReturnValue(stub);
 
 				cipher.encrypt.mockReturnValue('some-encrypted-data');
 
@@ -1129,7 +1137,7 @@ describe('SourceControlImportService', () => {
 					ownedBy: null,
 				};
 
-				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+				jest.mocked(utils.jsonParse).mockReturnValue(stub);
 
 				cipher.encrypt.mockReturnValue('some-encrypted-data');
 
@@ -1166,7 +1174,7 @@ describe('SourceControlImportService', () => {
 					ownedBy: 'user@test.com', // user at source instance owns credential
 				};
 
-				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+				jest.mocked(utils.jsonParse).mockReturnValue(stub);
 
 				cipher.encrypt.mockReturnValue('some-encrypted-data');
 
@@ -1207,7 +1215,7 @@ describe('SourceControlImportService', () => {
 				}, // user at source instance owns credential
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			jest.mocked(utils.jsonParse).mockReturnValue(stub);
 
 			cipher.encrypt.mockReturnValue('some-encrypted-data');
 
@@ -1246,7 +1254,7 @@ describe('SourceControlImportService', () => {
 				}, // user at source instance owns credential
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			jest.mocked(utils.jsonParse).mockReturnValue(stub);
 
 			cipher.encrypt.mockReturnValue('some-encrypted-data');
 
@@ -1307,7 +1315,7 @@ describe('SourceControlImportService', () => {
 				},
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			jest.mocked(utils.jsonParse).mockReturnValue(stub);
 
 			cipher.encrypt.mockReturnValue('some-encrypted-data');
 
@@ -1352,7 +1360,7 @@ describe('SourceControlImportService', () => {
 				},
 			};
 
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			jest.mocked(utils.jsonParse).mockReturnValue(stub);
 
 			await service.importCredentialsFromWorkFolder(
 				[mock<SourceControlledFile>({ id: credential.id })],

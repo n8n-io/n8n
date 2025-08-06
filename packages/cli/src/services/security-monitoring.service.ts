@@ -5,7 +5,7 @@ import type {
 	SecurityEventStatus,
 	ThreatLevel,
 } from '@n8n/db/src/entities/security-event';
-import { Repository, DataSource } from '@n8n/typeorm';
+import { Repository, DataSource, MoreThanOrEqual } from '@n8n/typeorm';
 import { Service, Container } from '@n8n/di';
 import type { IDataObject } from 'n8n-workflow';
 import type { Request } from 'express';
@@ -85,8 +85,8 @@ export interface ISecurityMetrics {
 export class SecurityMonitoringService {
 	private securityEventRepository: Repository<SecurityEvent>;
 	private readonly logger = LoggerProxy;
-	private readonly eventService = Container.get(EventService);
-	private readonly auditLoggingService = Container.get(AuditLoggingService);
+	private readonly eventService: EventService;
+	private readonly auditLoggingService: AuditLoggingService;
 
 	// In-memory rule cache for performance
 	private threatDetectionRules: Map<string, IThreatDetectionRule> = new Map();
@@ -99,6 +99,10 @@ export class SecurityMonitoringService {
 		// Get repository through Container to ensure proper DI
 		const dataSource = Container.get(DataSource);
 		this.securityEventRepository = dataSource.getRepository(SecurityEvent);
+
+		// Inject services through Container
+		this.eventService = Container.get(EventService);
+		this.auditLoggingService = Container.get(AuditLoggingService);
 
 		// Initialize threat detection rules
 		this.initializeThreatDetectionRules();
@@ -125,11 +129,10 @@ export class SecurityMonitoringService {
 			await this.checkThreatPatterns(securityEvent);
 
 			// Emit security event for real-time processing
-			// TODO: Add 'security-event' to relay event map or use existing event
-			// this.eventService.emit('security-event', {
-			//	event: securityEvent,
-			//	timestamp: new Date(),
-			// });
+			this.eventService.emit('security-event', {
+				event: securityEvent,
+				timestamp: new Date(),
+			});
 
 			return securityEvent;
 		} catch (error) {
@@ -600,12 +603,10 @@ export class SecurityMonitoringService {
 			});
 
 			// Emit critical alert
-			// TODO: Add 'critical-security-alert' to relay event map or use existing event
-			// this.eventService.emit('critical-security-alert', {
-			//	event,
-			//	timestamp: new Date(),
-			// });
-			this.logger.error('Critical security alert triggered', { eventId: event.id });
+			this.eventService.emit('critical-security-alert', {
+				event,
+				timestamp: new Date(),
+			});
 		}
 
 		// Execute automatic actions
@@ -622,9 +623,7 @@ export class SecurityMonitoringService {
 			try {
 				switch (action) {
 					case 'alert_admin':
-						// TODO: Add 'admin-alert' to relay event map or use existing event
-						// this.eventService.emit('admin-alert', { event });
-						this.logger.warn('Admin alert triggered', { eventId: event.id });
+						this.eventService.emit('admin-alert', { event });
 						break;
 					case 'block_ip':
 						if (event.ipAddress) {
@@ -635,9 +634,7 @@ export class SecurityMonitoringService {
 						break;
 					case 'rate_limit':
 						if (event.ipAddress) {
-							// TODO: Add 'rate-limit' to relay event map or use existing event
-							// this.eventService.emit('rate-limit', { ip: event.ipAddress, event });
-							this.logger.warn('Rate limit triggered', { eventId: event.id, ip: event.ipAddress });
+							this.eventService.emit('rate-limit', { ip: event.ipAddress, event });
 						}
 						break;
 					case 'immediate_alert':
@@ -673,9 +670,7 @@ export class SecurityMonitoringService {
 			where: {
 				eventType: 'failed_login_attempt',
 				ipAddress,
-				createdAt: {
-					$gte: startTime,
-				} as any,
+				createdAt: MoreThanOrEqual(startTime),
 			},
 			order: { createdAt: 'DESC' },
 		});
@@ -716,9 +711,7 @@ export class SecurityMonitoringService {
 			const windowStart = new Date(Date.now() - rule.timeWindowMinutes * 60 * 1000);
 			const whereCondition: any = {
 				eventType: event.eventType,
-				createdAt: {
-					$gte: windowStart,
-				},
+				createdAt: MoreThanOrEqual(windowStart),
 			};
 
 			if (event.ipAddress) {

@@ -112,13 +112,13 @@ describe('WorkflowSearchService', () => {
 					connections: {},
 					tags: [],
 				},
-			] as WorkflowEntity[];
+			] as unknown as WorkflowEntity[];
 
 			workflowFinderService.findAllWorkflowsForUser.mockResolvedValue(
 				mockWorkflows.map((w) => ({ ...w, projectId: 'project-1' })),
 			);
 
-			workflowRepository.createQueryBuilder = jest.fn().mockReturnValue({
+			(workflowRepository.createQueryBuilder as jest.Mock).mockImplementation(() => ({
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -128,7 +128,7 @@ describe('WorkflowSearchService', () => {
 				skip: jest.fn().mockReturnThis(),
 				take: jest.fn().mockReturnThis(),
 				getMany: jest.fn().mockResolvedValue([mockWorkflows[0]]),
-			});
+			}));
 
 			// Act
 			const result = await workflowSearchService.searchWorkflows(searchQuery, mockUser);
@@ -160,13 +160,13 @@ describe('WorkflowSearchService', () => {
 					connections: {},
 					tags: [],
 				},
-			] as WorkflowEntity[];
+			] as unknown as WorkflowEntity[];
 
 			workflowFinderService.findAllWorkflowsForUser.mockResolvedValue(
 				mockWorkflows.map((w) => ({ ...w, projectId: 'project-1' })),
 			);
 
-			workflowRepository.createQueryBuilder = jest.fn().mockReturnValue({
+			(workflowRepository.createQueryBuilder as jest.Mock).mockImplementation(() => ({
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -176,7 +176,7 @@ describe('WorkflowSearchService', () => {
 				skip: jest.fn().mockReturnThis(),
 				take: jest.fn().mockReturnThis(),
 				getMany: jest.fn().mockResolvedValue(mockWorkflows),
-			});
+			}));
 
 			// Act
 			const result = await workflowSearchService.searchWorkflows(searchQuery, mockUser);
@@ -189,6 +189,15 @@ describe('WorkflowSearchService', () => {
 		it('should apply tags filter', async () => {
 			// Arrange
 			const searchQuery: WorkflowSearchQueryDto = {
+				searchIn: ['all'],
+				fuzzySearch: false,
+				caseSensitive: false,
+				exactMatch: false,
+				sortBy: 'relevance',
+				sortOrder: 'desc',
+				includeContent: false,
+				includeStats: false,
+				includeHighlights: true,
 				tags: ['production', 'automated'],
 				page: 1,
 				limit: 20,
@@ -211,13 +220,13 @@ describe('WorkflowSearchService', () => {
 					connections: {},
 					tags: mockTags,
 				},
-			] as WorkflowEntity[];
+			] as unknown as WorkflowEntity[];
 
 			workflowFinderService.findAllWorkflowsForUser.mockResolvedValue(
 				mockWorkflows.map((w) => ({ ...w, projectId: 'project-1' })),
 			);
 
-			workflowRepository.createQueryBuilder = jest.fn().mockReturnValue({
+			(workflowRepository.createQueryBuilder as jest.Mock).mockImplementation(() => ({
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -227,7 +236,7 @@ describe('WorkflowSearchService', () => {
 				skip: jest.fn().mockReturnThis(),
 				take: jest.fn().mockReturnThis(),
 				getMany: jest.fn().mockResolvedValue(mockWorkflows),
-			});
+			}));
 
 			// Act
 			const result = await workflowSearchService.searchWorkflows(searchQuery, mockUser);
@@ -242,6 +251,14 @@ describe('WorkflowSearchService', () => {
 			// Arrange
 			const searchQuery: WorkflowSearchQueryDto = {
 				query: 'test',
+				searchIn: ['all'],
+				fuzzySearch: false,
+				caseSensitive: false,
+				exactMatch: false,
+				sortBy: 'relevance',
+				sortOrder: 'desc',
+				includeContent: false,
+				includeStats: false,
 				includeHighlights: true,
 				page: 1,
 				limit: 20,
@@ -260,13 +277,13 @@ describe('WorkflowSearchService', () => {
 					connections: {},
 					tags: [],
 				},
-			] as WorkflowEntity[];
+			] as unknown as WorkflowEntity[];
 
 			workflowFinderService.findAllWorkflowsForUser.mockResolvedValue(
 				mockWorkflows.map((w) => ({ ...w, projectId: 'project-1' })),
 			);
 
-			workflowRepository.createQueryBuilder = jest.fn().mockReturnValue({
+			(workflowRepository.createQueryBuilder as jest.Mock).mockImplementation(() => ({
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -276,7 +293,7 @@ describe('WorkflowSearchService', () => {
 				skip: jest.fn().mockReturnThis(),
 				take: jest.fn().mockReturnThis(),
 				getMany: jest.fn().mockResolvedValue(mockWorkflows),
-			});
+			}));
 
 			// Act
 			const result = await workflowSearchService.searchWorkflows(searchQuery, mockUser);
@@ -290,6 +307,15 @@ describe('WorkflowSearchService', () => {
 		it('should handle pagination correctly', async () => {
 			// Arrange
 			const searchQuery: WorkflowSearchQueryDto = {
+				searchIn: ['all'],
+				fuzzySearch: false,
+				caseSensitive: false,
+				exactMatch: false,
+				sortBy: 'relevance',
+				sortOrder: 'desc',
+				includeContent: false,
+				includeStats: false,
+				includeHighlights: true,
 				page: 2,
 				limit: 5,
 			};
@@ -302,7 +328,7 @@ describe('WorkflowSearchService', () => {
 				})) as any[],
 			);
 
-			workflowRepository.createQueryBuilder = jest.fn().mockReturnValue({
+			(workflowRepository.createQueryBuilder as jest.Mock).mockImplementation(() => ({
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -312,7 +338,7 @@ describe('WorkflowSearchService', () => {
 				skip: jest.fn().mockReturnThis(),
 				take: jest.fn().mockReturnThis(),
 				getMany: jest.fn().mockResolvedValue([]),
-			});
+			}));
 
 			// Act
 			const result = await workflowSearchService.searchWorkflows(searchQuery, mockUser);
@@ -330,6 +356,15 @@ describe('WorkflowSearchService', () => {
 			// Arrange
 			const searchQuery: WorkflowSearchQueryDto = {
 				query: 'test',
+				searchIn: ['all'],
+				fuzzySearch: false,
+				caseSensitive: false,
+				exactMatch: false,
+				sortBy: 'relevance',
+				sortOrder: 'desc',
+				includeContent: false,
+				includeStats: false,
+				includeHighlights: true,
 				page: 1,
 				limit: 20,
 			};

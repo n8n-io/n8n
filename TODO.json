@@ -1134,7 +1134,7 @@
       "description": "Ensure test infrastructure is stable and identify any remaining test failures beyond n8n-workflow package",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "Full test suite runs without infrastructure failures",
         "Test timeout issues resolved where identified",
@@ -1156,7 +1156,7 @@
       "description": "Refactor oversized test files (3,000+ lines) into smaller, focused test suites to improve test execution speed and maintainability. Target files: workflow.test.ts (3,585 lines), node-helpers.test.ts (5,758 lines), and useCanvasOperations.test.ts (3,866 lines).",
       "mode": "REFACTORING",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "workflow.test.ts split into focused test modules under 1,000 lines each",
         "node-helpers.test.ts broken into logical test categories",
@@ -1181,7 +1181,7 @@
       "description": "Investigate and resolve the CLI integration tests requiring 30-second timeouts. Optimize test setup, database initialization, and test isolation to reduce execution time and improve reliability.",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "CLI integration test timeout reduced from 30s to 15s or less",
         "Test setup and teardown optimized for faster execution",
@@ -1206,7 +1206,7 @@
       "description": "Analyze and optimize the test task dependencies in turbo.json to reduce unnecessary build dependencies and improve parallel test execution. Focus on separating unit tests from integration tests that require builds.",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "test:unit task optimized to run without build dependencies",
         "test task dependencies streamlined for faster execution",
@@ -1229,7 +1229,7 @@
       "description": "Resolve TypeScript compilation errors preventing clean builds, specifically in test files and service dependencies",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "All TypeScript compilation errors resolved",
         "npm run typecheck passes without errors",
@@ -1249,7 +1249,7 @@
       "description": "Resolve dependency injection and repository issues causing all SecurityMonitoringService tests to fail",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "SecurityMonitoringService tests pass completely",
         "DataSource and repository mocking fixed",
@@ -1268,7 +1268,7 @@
       "description": "Resolve type incompatibilities in compliance reporting service tests including ComplianceStandard and AuditEvent types",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "success_criteria": [
         "All compliance service tests compile without type errors",
         "ComplianceStandard enum properly configured",
@@ -1286,7 +1286,7 @@
       "description": "Enhance test setup, mocking, and dependency injection to prevent test failures and improve reliability",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "in_progress",
       "success_criteria": [
         "Test infrastructure properly configured",
         "Mock setup consistent across test suites",
@@ -1988,14 +1988,308 @@
       "requires_research": false,
       "subtasks": [],
       "created_at": "2025-08-05T22:39:33.880Z"
+    },
+    {
+      "id": "task_1754513676475_6efk9v6uh",
+      "title": "Jest Configuration Analysis",
+      "description": "Examine packages/cli/jest.config.js and related Jest configuration for timeout settings and performance configurations",
+      "mode": "TESTING",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [],
+      "success_criteria": [],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [
+        "Analyze jest.config.js timeout settings",
+        "Check test environment configuration",
+        "Review Jest performance options"
+      ],
+      "created_at": "2025-08-06T20:54:36.475Z"
+    },
+    {
+      "id": "task_1754513677341_ndsoyigwg",
+      "title": "Test Setup Performance Analysis",
+      "description": "Analyze test setup files (setup.ts, setup-mocks.ts) for initialization overhead and performance bottlenecks",
+      "mode": "TESTING",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [],
+      "success_criteria": [],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [
+        "Examine setup.ts initialization patterns",
+        "Analyze setup-mocks.ts overhead",
+        "Identify database setup bottlenecks"
+      ],
+      "created_at": "2025-08-06T20:54:37.341Z"
+    },
+    {
+      "id": "task_1754513678195_3se22juza",
+      "title": "Integration Test Performance Audit",
+      "description": "Audit packages/cli/test/integration/ directory for slow tests and performance patterns",
+      "mode": "TESTING",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [],
+      "success_criteria": [],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [
+        "Map integration test structure",
+        "Identify long-running test patterns",
+        "Find hardcoded timeout values"
+      ],
+      "created_at": "2025-08-06T20:54:38.195Z"
+    },
+    {
+      "id": "task_1754515400179_3tf9stt2q",
+      "title": "Fix @n8n/api-types Package Build Errors",
+      "description": "Resolve TypeScript compilation errors in @n8n/api-types package preventing successful builds. Fix zod-class compatibility issues and path alias resolution problems.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/@n8n/api-types/src/dto/expressions/",
+        "packages/@n8n/api-types/tsconfig.build.json",
+        "packages/@n8n/api-types/package.json"
+      ],
+      "success_criteria": [
+        "@n8n/api-types package builds successfully without errors",
+        "All zod-class usage patterns are compatible",
+        "Import statements resolve correctly",
+        "Full project build completes without api-types blocking",
+        "n8n CLI starts successfully without module errors"
+      ],
+      "estimate": "2-3 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T21:23:20.179Z"
+    },
+    {
+      "id": "task_1754515400183_heruxhx04",
+      "title": "Fix CLI Command Registration and Module Loading",
+      "description": "Resolve CLI command parsing errors that prevent n8n start command from being recognized. Fix module dependency chain and command discovery issues.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/cli/dist/command-registry.js",
+        "packages/cli/src/commands/",
+        "packages/cli/bin/n8n"
+      ],
+      "success_criteria": [
+        "n8n CLI recognizes and loads all commands including start",
+        "Command registry successfully discovers command modules",
+        "Module dependency chain resolves without errors",
+        "n8n starts successfully with proper command handling",
+        "All CLI commands work as expected"
+      ],
+      "estimate": "3-4 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T21:23:20.183Z"
+    },
+    {
+      "id": "task_1754515400186_ck6x0z99c",
+      "title": "Optimize Root ESLint Configuration Performance",
+      "description": "Enhance the root-level ESLint configuration to improve linting performance while maintaining code quality standards. Address any configuration gaps.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "eslint.config.js",
+        "packages/*/eslint.config.*",
+        ".eslintignore"
+      ],
+      "success_criteria": [
+        "ESLint configuration optimized for monorepo structure",
+        "Linting performance improved with proper ignore patterns",
+        "Package-level linting delegated appropriately",
+        "No duplicate rule processing across packages",
+        "All linting passes without performance issues"
+      ],
+      "estimate": "1-2 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T21:23:20.186Z"
+    },
+    {
+      "id": "task_1754515400190_1694lh7yh",
+      "title": "Fix Test Infrastructure and Coverage Reporting",
+      "description": "Resolve test execution issues, coverage reporting problems, and ensure all test suites run reliably across the monorepo.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/*/jest.config.*",
+        "packages/*/vitest.config.*",
+        "packages/@n8n/vitest-config/",
+        "package.json"
+      ],
+      "success_criteria": [
+        "All test suites execute without failures",
+        "Coverage reporting generates accurate reports",
+        "Test infrastructure supports all package types",
+        "Jest and Vitest configurations are optimized",
+        "Coverage thresholds are met across packages"
+      ],
+      "estimate": "2-3 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T21:23:20.190Z"
+    },
+    {
+      "id": "task_1754515511468_xvvz01df5",
+      "title": "Fix @n8n/api-types TypeScript Compilation Errors",
+      "description": "Resolve specific TypeScript compilation errors in @n8n/api-types package that prevent successful builds. Fix zod-class compatibility issues in expression DTOs and incorrect import paths.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/@n8n/api-types/src/dto/expressions/function-documentation.dto.ts",
+        "packages/@n8n/api-types/src/dto/expressions/contextual-documentation.dto.ts",
+        "packages/@n8n/api-types/src/dto/expressions/expression-syntax.dto.ts",
+        "packages/@n8n/api-types/src/dto/expressions/variable-documentation.dto.ts",
+        "packages/@n8n/api-types/package.json",
+        "packages/@n8n/api-types/tsconfig.build.json"
+      ],
+      "success_criteria": [
+        "All TypeScript compilation errors in @n8n/api-types resolved",
+        "Package builds successfully with pnpm run build",
+        "Expression DTOs use correct zod-class patterns",
+        "All import statements resolve without errors",
+        "Turbo build cache works without api-types blocking"
+      ],
+      "estimate": "2-3 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T21:25:11.468Z"
+    },
+    {
+      "id": "task_1754515511472_0v3e1zwz9",
+      "title": "Fix CLI Command Registration Module Loading Errors",
+      "description": "Resolve module loading errors preventing CLI commands from being recognized. Fix dependency chain issues that cause \"Command start not found\" error.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [
+        "task_1754515511468_xvvz01df5"
+      ],
+      "important_files": [
+        "packages/cli/dist/command-registry.js",
+        "packages/cli/src/commands/start.ts",
+        "packages/cli/bin/n8n",
+        "packages/cli/src/config/index.ts"
+      ],
+      "success_criteria": [
+        "CLI commands load and register successfully",
+        "n8n start command executes without module errors",
+        "Command discovery mechanism finds all commands",
+        "Module dependency chain resolves completely",
+        "No \"Cannot find module\" errors during startup"
+      ],
+      "estimate": "2-3 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T21:25:11.472Z"
+    },
+    {
+      "id": "task_1754515511476_s2r5abego",
+      "title": "Fix Task Runner MapIterator TypeScript Error",
+      "description": "Resolve TypeScript error in @n8n/task-runner where Math.max.apply receives MapIterator instead of array. Convert Map.keys() to array before Math.max.apply.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/@n8n/task-runner/src/node-types.ts"
+      ],
+      "success_criteria": [
+        "Task runner package builds without TypeScript errors",
+        "Math.max.apply receives proper array argument",
+        "Node version selection logic works correctly",
+        "No MapIterator type errors in compilation"
+      ],
+      "estimate": "30 minutes",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T21:25:11.476Z"
+    },
+    {
+      "id": "task_1754515511479_25r3tclv0",
+      "title": "Add Missing ESLint Rules and Optimize Ignore Patterns",
+      "description": "Enhance root ESLint configuration to include comprehensive rules while maintaining performance. Add missing rule configurations that may be causing lint quality issues.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "eslint.config.js",
+        "packages/*/eslint.config.*"
+      ],
+      "success_criteria": [
+        "ESLint configuration includes comprehensive rule set",
+        "Linting completes without performance degradation",
+        "Package-specific linting properly delegated",
+        "No rule configuration gaps that affect code quality",
+        "Root-level files follow consistent linting standards"
+      ],
+      "estimate": "1-2 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T21:25:11.479Z"
+    },
+    {
+      "id": "task_1754517276221_dnusvd3sl",
+      "title": "Test Infrastructure Analysis - Coverage and Reliability Issues",
+      "description": "Comprehensive analysis of n8n test infrastructure to identify causes of test failures and poor coverage",
+      "mode": "TESTING",
+      "priority": "HIGH",
+      "status": "completed",
+      "dependencies": [],
+      "important_files": [],
+      "success_criteria": [],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T21:54:36.221Z"
+    },
+    {
+      "id": "task_1754517826687_4oxaf3l3u",
+      "title": "Fix TypeScript compilation errors in @n8n/config package",
+      "description": "Resolve 3 TypeScript compilation errors in test/decorators.test.ts: unused variable \"factory\" and unused classes \"TestConfig\" and \"InvalidConfig\"",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [],
+      "success_criteria": [
+        "All TypeScript errors in @n8n/config resolved",
+        "npm run typecheck passes for @n8n/config package",
+        "Build completes successfully"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-06T22:03:46.687Z"
     }
   ],
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 329,
-  "last_hook_activation": 1754465702477,
+  "execution_count": 343,
+  "last_hook_activation": 1754518240237,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37

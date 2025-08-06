@@ -1,0 +1,11 @@
+Timeout Debug Summary for Agent 6447ed28-fd80-4fca-8d2c-9a8215fbfe2a
+==========================================
+
+Timestamp: 2025-08-06T16:09:52.076748
+Elapsed Time: 0m 0.0s
+Timeout Limit: 120s
+Timeout Exceeded: False
+Hook Type: SubagentStop
+Tool Name: unknown
+
+Full report: logs/debug/debug_report_6447ed28-fd80-4fca-8d2c-9a8215fbfe2a_1754514592.json

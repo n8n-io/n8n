@@ -11,7 +11,7 @@ import type {
 import { ApplicationError, Workflow } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
-import { WorkflowExecute } from '@n8n/core';
+import { WorkflowExecute } from 'n8n-core';
 
 export interface NodeTestOptions {
 	timeoutMs?: number;
@@ -187,9 +187,9 @@ export class NodeTestingService {
 		for (const property of description.properties) {
 			const paramValue = parameters[property.name];
 			const issues = this.validateProperty(property, paramValue, parameters);
-			
+
 			result.issues.push(...issues);
-			
+
 			// Check if any critical errors exist
 			if (issues.some((issue) => issue.severity === 'error')) {
 				result.valid = false;
@@ -203,7 +203,7 @@ export class NodeTestingService {
 		// Validate parameter dependencies
 		const dependencyIssues = this.validateParameterDependencies(description.properties, parameters);
 		result.issues.push(...dependencyIssues);
-		
+
 		if (dependencyIssues.some((issue) => issue.severity === 'error')) {
 			result.valid = false;
 		}
@@ -339,12 +339,10 @@ export class NodeTestingService {
 
 			// Execute with timeout protection
 			const workflowExecute = new WorkflowExecute(additionalData, 'test', runExecutionData);
-			
-			const executionPromise = workflowExecute.runPartialWorkflow(
-				testWorkflow,
-				runExecutionData,
-				[node.name],
-			);
+
+			const executionPromise = workflowExecute.runPartialWorkflow(testWorkflow, runExecutionData, [
+				node.name,
+			]);
 
 			const timeoutPromise = new Promise<never>((_, reject) => {
 				setTimeout(() => {
@@ -396,7 +394,11 @@ export class NodeTestingService {
 	/**
 	 * Validate individual property with detailed feedback
 	 */
-	private validateProperty(property: any, value: any, allParameters: any): Array<{
+	private validateProperty(
+		property: any,
+		value: any,
+		allParameters: any,
+	): Array<{
 		field: string;
 		message: string;
 		severity: 'error' | 'warning';
@@ -558,7 +560,10 @@ export class NodeTestingService {
 	/**
 	 * Validate parameter dependencies and display conditions
 	 */
-	private validateParameterDependencies(properties: any[], parameters: any): Array<{
+	private validateParameterDependencies(
+		properties: any[],
+		parameters: any,
+	): Array<{
 		field: string;
 		message: string;
 		severity: 'error' | 'warning';
@@ -574,7 +579,8 @@ export class NodeTestingService {
 		for (const property of properties) {
 			if (property.displayOptions) {
 				const shouldShow = this.evaluateDisplayCondition(property.displayOptions, parameters);
-				const hasValue = parameters[property.name] !== undefined && parameters[property.name] !== null;
+				const hasValue =
+					parameters[property.name] !== undefined && parameters[property.name] !== null;
 
 				if (!shouldShow && hasValue) {
 					issues.push({
@@ -633,7 +639,11 @@ export class NodeTestingService {
 	/**
 	 * Generate parameter suggestions for improvement
 	 */
-	private generateParameterSuggestions(property: any, value: any, nodeType: string): Array<{
+	private generateParameterSuggestions(
+		property: any,
+		value: any,
+		nodeType: string,
+	): Array<{
 		field: string;
 		suggestion: string;
 		reason: string;
@@ -735,7 +745,10 @@ export class NodeTestingService {
 	/**
 	 * Infer node context from type and description
 	 */
-	private inferNodeContext(nodeType: string, description: INodeTypeDescription): {
+	private inferNodeContext(
+		nodeType: string,
+		description: INodeTypeDescription,
+	): {
 		category: string;
 		isApi: boolean;
 		isDatabase: boolean;
@@ -766,7 +779,11 @@ export class NodeTestingService {
 		}
 
 		// URL patterns
-		if (paramName.includes('url') || displayName.includes('url') || paramName.includes('endpoint')) {
+		if (
+			paramName.includes('url') ||
+			displayName.includes('url') ||
+			paramName.includes('endpoint')
+		) {
 			if (context.isApi) {
 				return `https://api.${context.category}.com/v1/endpoint`;
 			}
@@ -811,11 +828,12 @@ export class NodeTestingService {
 	private generateMockNumber(paramName: string, displayName: string, context: any): number {
 		if (paramName.includes('port')) return context.isDatabase ? 5432 : 8080;
 		if (paramName.includes('timeout')) return context.isApi ? 30000 : 5000;
-		if (paramName.includes('limit') || paramName.includes('max')) return context.isDatabase ? 1000 : 100;
+		if (paramName.includes('limit') || paramName.includes('max'))
+			return context.isDatabase ? 1000 : 100;
 		if (paramName.includes('page')) return 1;
 		if (paramName.includes('amount') || paramName.includes('price')) return 99.99;
 		if (paramName.includes('retry') || paramName.includes('attempt')) return 3;
-		
+
 		return 42;
 	}
 
@@ -826,7 +844,7 @@ export class NodeTestingService {
 		if (paramName.includes('enable') || paramName.includes('active')) return true;
 		if (paramName.includes('disable') || paramName.includes('ignore')) return false;
 		if (paramName.includes('ssl') || paramName.includes('secure')) return true;
-		
+
 		return true;
 	}
 
@@ -837,7 +855,7 @@ export class NodeTestingService {
 		if (paramName.includes('header')) {
 			return {
 				'Content-Type': 'application/json',
-				'Authorization': 'Bearer mock_token',
+				Authorization: 'Bearer mock_token',
 				'X-API-Key': 'mock_api_key',
 			};
 		}
@@ -902,10 +920,9 @@ export class NodeTestingService {
 		}
 
 		const firstOption = property.options[0];
-		const value = typeof firstOption === 'object' && 'value' in firstOption
-			? firstOption.value
-			: firstOption;
-		
+		const value =
+			typeof firstOption === 'object' && 'value' in firstOption ? firstOption.value : firstOption;
+
 		return [value];
 	}
 
@@ -946,7 +963,9 @@ export class NodeTestingService {
 	 * Generate mock input data
 	 */
 	private generateMockInputData(index: number, nodeType: string): INodeExecutionData {
-		const context = this.inferNodeContext(nodeType, { displayName: nodeType } as INodeTypeDescription);
+		const context = this.inferNodeContext(nodeType, {
+			displayName: nodeType,
+		} as INodeTypeDescription);
 
 		return {
 			json: {
@@ -968,7 +987,7 @@ export class NodeTestingService {
 
 		for (const credential of credentials) {
 			const credType = credential.name;
-			
+
 			if (credType.includes('oauth') || credType.includes('OAuth')) {
 				mockCredentials[credType] = {
 					clientId: 'mock_client_id',

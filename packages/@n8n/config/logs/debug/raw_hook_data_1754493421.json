@@ -1,0 +1,12 @@
+{
+	"session_id": "ca6afdaa-8c8b-42eb-a7fb-a037c867a3a3",
+	"transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/ca6afdaa-8c8b-42eb-a7fb-a037c867a3a3.jsonl",
+	"cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork/packages/@n8n/config",
+	"hook_event_name": "PreToolUse",
+	"tool_name": "Task",
+	"tool_input": {
+		"description": "Analyze node-helpers test structure",
+		"prompt": "Analyze the structure and organization of the large node-helpers.test.ts file to understand how it can be split into smaller, focused test files.\n\nPlease:\n1. Find and examine the node-helpers.test.ts file (likely in packages/workflow/test/ directory)\n2. Identify the main test suites and describe blocks within the file\n3. Count the approximate lines for each major test section\n4. Look for logical groupings that could be separated into individual test files\n5. Identify shared setup, utilities, or mock functions that would need to be extracted\n6. Provide a detailed breakdown of the file structure with recommendations for how to split it into 5-8 smaller, focused test files\n\nThis is a 5,758 line file, so focus on finding clear functional boundaries that would make sense as separate test files.",
+		"subagent_type": "general-purpose"
+	}
+}

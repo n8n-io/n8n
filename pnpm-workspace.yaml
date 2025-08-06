@@ -52,6 +52,9 @@ catalog:
   zod-to-json-schema: 3.23.3
   typescript: 5.8.3
   eslint: 9.29.0
+  '@types/jest': ^29.5.12
+  jest: ^29.7.0
+  ts-jest: ^29.2.5
 
 catalogs:
   frontend:

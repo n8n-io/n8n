@@ -10,7 +10,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
-import { ExecutionCancelledError, randomInt, sleep } from 'n8n-workflow';
+import { ExecutionCancelledError, NodeOperationError, randomInt, sleep } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 
@@ -368,8 +368,22 @@ describe('ActiveExecutions', () => {
 					id: '123',
 					name: 'Test Workflow',
 					nodes: [
-						{ name: 'node1', type: 'test', parameters: {}, position: [0, 0] },
-						{ name: 'node2', type: 'test', parameters: {}, position: [100, 0] },
+						{
+							id: 'node1',
+							name: 'node1',
+							type: 'test',
+							typeVersion: 1,
+							parameters: {},
+							position: [0, 0],
+						},
+						{
+							id: 'node2',
+							name: 'node2',
+							type: 'test',
+							typeVersion: 1,
+							parameters: {},
+							position: [100, 0],
+						},
 					],
 					connections: {
 						node1: { main: [[{ node: 'node2', type: 'main', index: 0 }]] },
@@ -378,7 +392,6 @@ describe('ActiveExecutions', () => {
 					settings: {},
 				},
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [],
 					metadata: {},
 					waitingExecution: {},
@@ -498,9 +511,30 @@ describe('ActiveExecutions', () => {
 					id: '123',
 					name: 'Test Workflow',
 					nodes: [
-						{ name: 'start', type: 'start', parameters: {}, position: [0, 0] },
-						{ name: 'middle', type: 'process', parameters: {}, position: [100, 0] },
-						{ name: 'end', type: 'end', parameters: {}, position: [200, 0] },
+						{
+							id: 'start',
+							name: 'start',
+							type: 'start',
+							typeVersion: 1,
+							parameters: {},
+							position: [0, 0],
+						},
+						{
+							id: 'middle',
+							name: 'middle',
+							type: 'process',
+							typeVersion: 1,
+							parameters: {},
+							position: [100, 0],
+						},
+						{
+							id: 'end',
+							name: 'end',
+							type: 'end',
+							typeVersion: 1,
+							parameters: {},
+							position: [200, 0],
+						},
 					],
 					connections: {
 						start: { main: [[{ node: 'middle', type: 'main', index: 0 }]] },
@@ -510,7 +544,6 @@ describe('ActiveExecutions', () => {
 					settings: {},
 				},
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [],
 					metadata: {},
 					waitingExecution: {},
@@ -587,14 +620,20 @@ describe('ActiveExecutions', () => {
 					id: '123',
 					name: 'Test Workflow',
 					nodes: [
-						{ name: 'testNode', type: 'test', parameters: { param1: 'value1' }, position: [0, 0] },
+						{
+							id: 'testNode',
+							name: 'testNode',
+							type: 'test',
+							typeVersion: 1,
+							parameters: { param1: 'value1' },
+							position: [0, 0],
+						},
 					],
 					connections: {},
 					active: true,
 					settings: {},
 				},
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [],
 					metadata: {},
 					waitingExecution: {},
@@ -625,9 +664,9 @@ describe('ActiveExecutions', () => {
 				expect(result).toBe(true);
 
 				const execution = activeExecutions.getExecutionOrFail(FAKE_EXECUTION_ID);
-				const runData = execution.executionData.executionData.resultData.runData;
-				expect(runData.testNode[0].error).toBeDefined();
-				expect(runData.testNode[0].error.message).toBe('Node execution cancelled');
+				const runData = execution.executionData.executionData?.resultData.runData;
+				expect(runData?.testNode[0].error).toBeDefined();
+				expect(runData?.testNode[0].error?.message).toBe('Node execution cancelled');
 			});
 
 			it('should return false for non-existent execution', () => {
@@ -645,9 +684,9 @@ describe('ActiveExecutions', () => {
 				expect(result).toBe(true);
 
 				const execution = activeExecutions.getExecutionOrFail(FAKE_EXECUTION_ID);
-				const runData = execution.executionData.executionData.resultData.runData;
-				expect(runData.newNode).toBeDefined();
-				expect(runData.newNode[0].data.main[0][0].json).toEqual(mockOutput);
+				const runData = execution.executionData.executionData?.resultData.runData;
+				expect(runData?.newNode).toBeDefined();
+				expect(runData?.newNode?.[0].data.main[0][0].json).toEqual(mockOutput);
 			});
 
 			it('should skip node execution without mock output', () => {
@@ -656,8 +695,8 @@ describe('ActiveExecutions', () => {
 				expect(result).toBe(true);
 
 				const execution = activeExecutions.getExecutionOrFail(FAKE_EXECUTION_ID);
-				const runData = execution.executionData.executionData.resultData.runData;
-				expect(runData.newNode[0].data.main[0]).toEqual([]);
+				const runData = execution.executionData.executionData?.resultData.runData;
+				expect(runData?.newNode?.[0].data.main[0]).toEqual([]);
 			});
 
 			it('should return false for non-existent execution', () => {
@@ -684,8 +723,8 @@ describe('ActiveExecutions', () => {
 				expect(node?.parameters).toEqual({ param1: 'newValue' });
 
 				// Should reset state when resetState is true
-				const runData = execution.executionData.executionData.resultData.runData;
-				expect(runData.testNode).toBeUndefined();
+				const runData = execution.executionData.executionData?.resultData.runData;
+				expect(runData?.testNode).toBeUndefined();
 			});
 
 			it('should retry node execution without resetting state', () => {
@@ -699,9 +738,9 @@ describe('ActiveExecutions', () => {
 				expect(result).toBe(true);
 
 				const execution = activeExecutions.getExecutionOrFail(FAKE_EXECUTION_ID);
-				const runData = execution.executionData.executionData.resultData.runData;
+				const runData = execution.executionData.executionData?.resultData.runData;
 				// Should not reset state when resetState is false
-				expect(runData.testNode).toBeDefined();
+				expect(runData?.testNode).toBeDefined();
 			});
 
 			it('should return false for non-existent execution', () => {
@@ -724,10 +763,20 @@ describe('ActiveExecutions', () => {
 			it('should return error status for failed node', () => {
 				// Add error to the node run data
 				const execution = activeExecutions.getExecutionOrFail(FAKE_EXECUTION_ID);
-				execution.executionData.executionData.resultData.runData.testNode[0].error = {
-					message: 'Test error',
-					name: 'TestError',
-				};
+				const executionData = execution.executionData.executionData;
+				if (executionData) {
+					executionData.resultData.runData.testNode[0].error = new NodeOperationError(
+						{
+							id: 'testNode',
+							name: 'testNode',
+							type: 'test',
+							typeVersion: 1,
+							parameters: {},
+							position: [0, 0],
+						},
+						'Test error',
+					);
+				}
 
 				const result = activeExecutions.getNodeExecutionStatus(FAKE_EXECUTION_ID, 'testNode');
 

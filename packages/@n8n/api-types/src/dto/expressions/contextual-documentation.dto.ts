@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Z } from '@n8n/api-types/utils';
+import { Z } from 'zod-class';
 import { functionDocumentationSchema } from './function-documentation.dto';
 import { variableDocumentationSchema } from './variable-documentation.dto';
 
@@ -66,9 +66,40 @@ export const documentationSearchResponseSchema = z.object({
 	}),
 });
 
-export class ContextualDocumentationQueryDto extends Z.class(contextualDocumentationQuerySchema) {}
-export class ContextualDocumentationResponseDto extends Z.class(
-	contextualDocumentationResponseSchema,
-) {}
-export class DocumentationSearchQueryDto extends Z.class(documentationSearchQuerySchema) {}
-export class DocumentationSearchResponseDto extends Z.class(documentationSearchResponseSchema) {}
+export class ContextualDocumentationQueryDto extends Z.class({
+	nodeType: z.string(),
+	context: z.enum(['input', 'output', 'parameters']).optional(),
+	includeVariables: z.boolean().default(true),
+	includeFunctions: z.boolean().default(true),
+	includeTips: z.boolean().default(true),
+}) {}
+export class ContextualDocumentationResponseDto extends Z.class({
+	success: z.boolean(),
+	data: z.any(),
+	metadata: z.object({
+		requestedAt: z.string(),
+		nodeType: z.string(),
+		context: z.string().optional(),
+		totalFunctions: z.number(),
+		totalVariables: z.number(),
+		totalTips: z.number(),
+	}),
+}) {}
+export class DocumentationSearchQueryDto extends Z.class({
+	query: z.string().min(1),
+	type: z.enum(['functions', 'variables', 'syntax']).optional(),
+	limit: z.number().min(1).max(100).default(20),
+	includeExamples: z.boolean().default(true),
+}) {}
+export class DocumentationSearchResponseDto extends Z.class({
+	success: z.boolean(),
+	data: z.any(),
+	metadata: z.object({
+		query: z.string(),
+		requestedAt: z.string(),
+		type: z.string().optional(),
+		limit: z.number(),
+		totalResults: z.number(),
+		searchTimeMs: z.number().optional(),
+	}),
+}) {}

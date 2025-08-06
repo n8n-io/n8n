@@ -1,0 +1,12 @@
+{
+  "session_id": "eb7e7c5e-657f-41fd-9912-d32ebd56c304",
+  "transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/eb7e7c5e-657f-41fd-9912-d32ebd56c304.jsonl",
+  "cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Task",
+  "tool_input": {
+    "description": "Review test optimization patterns",
+    "prompt": "Research optimization strategies for CLI integration test performance in the n8n codebase. Focus on:\n\n1. **Performance Patterns**: Look for existing optimization patterns in other test suites (packages/core/, packages/workflow/, etc.)\n2. **Mock Strategies**: Identify how other packages handle database mocking and service mocking efficiently\n3. **Test Isolation**: Examine successful test isolation patterns that prevent cascading delays\n4. **Setup/Teardown Optimization**: Find examples of efficient test setup and cleanup procedures\n\nYour goal is to:\n- Identify proven optimization techniques already used in the codebase\n- Find patterns that can be applied to CLI integration tests\n- Document successful mock strategies that reduce initialization time\n- Analyze efficient database handling patterns from other test suites\n- Identify opportunities to reuse optimized test infrastructure\n\nProvide actionable optimization strategies based on existing patterns in the codebase. Focus on proven techniques that can be adapted for the CLI integration tests to reduce the 30s timeout requirement to 15s or less.",
+    "subagent_type": "general-purpose"
+  }
+}

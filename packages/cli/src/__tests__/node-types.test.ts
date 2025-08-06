@@ -37,8 +37,8 @@ describe('NodeTypes', () => {
 			}),
 			currentVersion: 2,
 			nodeVersions: {
-				one: v1Node,
-				two: v2Node,
+				1: v1Node,
+				2: v2Node,
 			},
 			getNodeType(version) {
 				if (version === 1) return v1Node;

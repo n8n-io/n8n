@@ -8,7 +8,7 @@ import {
 	isValidNonDefaultMode,
 } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
-import * as multer from 'multer';
+import multer from 'multer';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { BinaryDataService } from '@/services/binary-data.service';

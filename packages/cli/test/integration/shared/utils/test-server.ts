@@ -8,6 +8,8 @@ import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 
+import { loadEndpointGroup, preloadCommonModules } from './module-cache';
+
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
@@ -124,8 +126,17 @@ export const setupTestServer = ({
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
-		if (modules) await testModules.loadModules(modules);
-		await testDb.init();
+		// Preload common modules in parallel with other initialization
+		const preloadPromise = preloadCommonModules();
+
+		// Run module loading and database init in parallel
+		const initPromises = [
+			modules ? testModules.loadModules(modules) : Promise.resolve(),
+			testDb.init(),
+			preloadPromise,
+		];
+
+		await Promise.all(initPromises);
 
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
@@ -159,53 +170,14 @@ export const setupTestServer = ({
 			});
 		}
 		if (endpointGroups.length) {
-			for (const group of endpointGroups) {
+			// Load all endpoint groups in parallel for better performance
+			const modulePromises = endpointGroups.map(async (group) => {
 				switch (group) {
-					case 'annotationTags':
-						await import('@/controllers/annotation-tags.controller.ee');
-						break;
-
-					case 'credentials':
-						await import('@/credentials/credentials.controller');
-						break;
-
-					case 'workflows':
-						await import('@/workflows/workflows.controller');
-						break;
-
-					case 'executions':
-						await import('@/executions/executions.controller');
-						break;
-
-					case 'variables':
-						await import('@/environments.ee/variables/variables.controller.ee');
-						break;
-
-					case 'license':
-						await import('@/license/license.controller');
-						break;
-
 					case 'metrics':
 						const { PrometheusMetricsService } = await import(
 							'@/metrics/prometheus-metrics.service'
 						);
 						await Container.get(PrometheusMetricsService).init(app);
-						break;
-
-					case 'eventBus':
-						await import('@/eventbus/event-bus.controller');
-						break;
-
-					case 'auth':
-						await import('@/controllers/auth.controller');
-						break;
-
-					case 'oauth2':
-						await import('@/controllers/oauth/oauth2-credential.controller');
-						break;
-
-					case 'mfa':
-						await import('@/controllers/mfa.controller');
 						break;
 
 					case 'ldap':
@@ -223,60 +195,12 @@ export const setupTestServer = ({
 						await setSamlLoginEnabled(true);
 						break;
 
-					case 'sourceControl':
-						await import('@/environments.ee/source-control/source-control.controller.ee');
-						break;
-
-					case 'community-packages':
-						await import('@/community-packages/community-packages.controller');
-						break;
-
-					case 'me':
-						await import('@/controllers/me.controller');
-						break;
-
-					case 'passwordReset':
-						await import('@/controllers/password-reset.controller');
-						break;
-
-					case 'owner':
-						await import('@/controllers/owner.controller');
-						break;
-
-					case 'users':
-						await import('@/controllers/users.controller');
-						break;
-
-					case 'invitations':
-						await import('@/controllers/invitation.controller');
-						break;
-
-					case 'tags':
-						await import('@/controllers/tags.controller');
-						break;
-
-					case 'workflowHistory':
-						await import('@/workflows/workflow-history.ee/workflow-history.controller.ee');
-						break;
-
-					case 'binaryData':
-						await import('@/controllers/binary-data.controller');
-						break;
-
 					case 'debug':
 						await import('@/controllers/debug.controller');
 						break;
 
 					case 'project':
 						await import('@/controllers/project.controller');
-						break;
-
-					case 'role':
-						await import('@/controllers/role.controller');
-						break;
-
-					case 'dynamic-node-parameters':
-						await import('@/controllers/dynamic-node-parameters.controller');
 						break;
 
 					case 'apiKeys':
@@ -289,17 +213,28 @@ export const setupTestServer = ({
 
 					case 'ai':
 						await import('@/controllers/ai.controller');
+						break;
 
 					case 'folder':
 						await import('@/controllers/folder.controller');
+						break;
 
 					case 'externalSecrets':
 						await import('@/modules/external-secrets.ee/external-secrets.module');
+						break;
 
 					case 'insights':
 						await import('@/modules/insights/insights.module');
+						break;
+
+					default:
+						// Use cached module loader for common controllers
+						return loadEndpointGroup(group);
 				}
-			}
+			});
+
+			// Wait for all modules to load in parallel
+			await Promise.all(modulePromises);
 
 			await Container.get(ModuleRegistry).initModules();
 			Container.get(ControllerRegistry).activate(app);

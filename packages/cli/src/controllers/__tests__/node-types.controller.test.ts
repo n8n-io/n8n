@@ -17,6 +17,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
+import { NodeTestingService } from '@/services/node-testing.service';
+import { AiHelpersService } from '@/services/ai-helpers.service';
 
 import { NodeTypesController } from '../node-types.controller';
 
@@ -33,6 +35,8 @@ describe('NodeTypesController', () => {
 
 	const nodeTypes = mockInstance(NodeTypes);
 	const globalConfig = mockInstance(GlobalConfig);
+	const nodeTestingService = mockInstance(NodeTestingService);
+	const aiHelpersService = mockInstance(AiHelpersService);
 	const logger = Container.get(Logger);
 
 	const controller = Container.get(NodeTypesController);
@@ -107,6 +111,84 @@ describe('NodeTypesController', () => {
 		nodeTypes.getByNameAndVersion.mockReturnValue({
 			description: mockNodeTypeDescription,
 			sourcePath: '/path/to/node',
+		});
+
+		// Mock NodeTestingService with default successful response
+		nodeTestingService.testNode.mockImplementation(
+			async (nodeType, nodeVersion, parameters, inputData, options) => {
+				if (!nodeType) {
+					throw new BadRequestError('Node type is required');
+				}
+				if (nodeType === 'nonexistent.Node') {
+					throw new NotFoundError("Node type 'nonexistent.Node' version 1 not found");
+				}
+				return {
+					success: true,
+					data: { main: [[{ json: { message: 'Node test successful' } }]] },
+					executionTime: 50,
+					metadata: {
+						executedAt: new Date(),
+						inputItemCount: 0,
+						outputItemCount: 1,
+						mockExecution: true,
+						nodeDescription: mockNodeTypeDescription,
+					},
+				};
+			},
+		);
+
+		nodeTestingService.generateMockData.mockImplementation(
+			async (nodeType, nodeVersion, parameters) => {
+				if (!nodeType) {
+					throw new BadRequestError('Node type is required');
+				}
+				if (nodeType === 'nonexistent.Node') {
+					throw new NotFoundError("Node type 'nonexistent.Node' version 1 not found");
+				}
+				return {
+					success: true,
+					mockData: {
+						parameters: { method: 'GET', url: 'mock-url' },
+						inputData: [],
+					},
+					metadata: {
+						generatedAt: new Date(),
+						nodeDescription: mockNodeTypeDescription,
+						parameterCount: 2,
+						inputDataCount: 0,
+					},
+					nodeType: jest.fn(),
+					nodeVersion: 1,
+				};
+			},
+		);
+
+		nodeTestingService.validateNodeParameters.mockImplementation(
+			async (nodeType, nodeVersion, parameters) => {
+				if (!nodeType) {
+					throw new BadRequestError('Node type is required');
+				}
+				return {
+					valid: false,
+					issues: [
+						{
+							field: 'method',
+							message: "Parameter 'Method' has invalid value. Valid options: GET, POST",
+							severity: 'error',
+						},
+						{ field: 'url', message: "Parameter 'URL' should be a string", severity: 'error' },
+					],
+					validatedParameters: {},
+					nodeType: jest.fn(),
+					nodeVersion: jest.fn(),
+				};
+			},
+		);
+
+		// Mock AiHelpersService
+		aiHelpersService.generateMockData.mockResolvedValue({
+			success: true,
+			mockData: { parameters: { method: 'GET', url: 'mock-url' } },
 		});
 	});
 
@@ -233,6 +315,7 @@ describe('NodeTypesController', () => {
 			});
 
 			const descriptionWithoutTranslation = { ...mockNodeTypeDescription };
+			delete descriptionWithoutTranslation.translation; // Remove translation property
 
 			nodeTypes.getWithSourcePath.mockReturnValue({
 				description: descriptionWithoutTranslation,
@@ -288,6 +371,7 @@ describe('NodeTypesController', () => {
 			const req = mock<AuthenticatedRequest>({
 				user: mockUser,
 				body: {
+					nodeType: undefined, // Explicitly set to undefined
 					nodeVersion: 1,
 					parameters: {},
 				},
@@ -325,7 +409,10 @@ describe('NodeTypesController', () => {
 				},
 			});
 
-			nodeTypes.getByNameAndVersion.mockReturnValue(null);
+			// Override the mock to throw NotFoundError for this specific test
+			nodeTestingService.testNode.mockRejectedValue(
+				new NotFoundError("Node type 'nonexistent.Node' version 1 not found"),
+			);
 
 			// Act & Assert
 			await expect(controller.testNode(req)).rejects.toThrow(NotFoundError);
@@ -404,6 +491,7 @@ describe('NodeTypesController', () => {
 			const req = mock<AuthenticatedRequest>({
 				user: mockUser,
 				body: {
+					nodeType: undefined, // Explicitly set to undefined
 					nodeVersion: 1,
 				},
 			});
@@ -423,7 +511,10 @@ describe('NodeTypesController', () => {
 				},
 			});
 
-			nodeTypes.getByNameAndVersion.mockReturnValue(null);
+			// Override the mock to throw NotFoundError for this specific test
+			nodeTestingService.generateMockData.mockRejectedValue(
+				new NotFoundError("Node type 'nonexistent.Node' version 1 not found"),
+			);
 
 			// Act & Assert
 			await expect(controller.generateMockData(req)).rejects.toThrow(NotFoundError);
@@ -486,6 +577,7 @@ describe('NodeTypesController', () => {
 			const req = mock<AuthenticatedRequest>({
 				user: mockUser,
 				body: {
+					nodeType: undefined, // Explicitly set to undefined
 					parameters: {},
 				},
 			});

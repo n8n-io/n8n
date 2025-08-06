@@ -193,7 +193,7 @@ describe('Types', () => {
 				{ shouldReport: undefined, shouldBeLogged: undefined },
 			];
 
-			reportingConfigs.forEach((config, index) => {
+			reportingConfigs.forEach((config) => {
 				expect(typeof config.shouldReport === 'boolean' || config.shouldReport === undefined).toBe(
 					true,
 				);

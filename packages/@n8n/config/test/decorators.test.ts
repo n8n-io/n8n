@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import { readFileSync } from 'fs';
+import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CommaSeparatedStringArray, ColonSeparatedStringArray } from '../src/custom-types';
@@ -63,7 +64,8 @@ describe('decorators', () => {
 			const InvalidClass = class InvalidClass {};
 
 			expect(() => {
-				const factory = Container.get(InvalidClass as any);
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+				Container.get(InvalidClass as any);
 			}).toThrow();
 		});
 
@@ -513,17 +515,19 @@ describe('decorators', () => {
 			});
 
 			it('should work with object schemas', () => {
-				const objectSchema = z.string().transform((val) => JSON.parse(val));
-				process.env.JSON_VALUE = '{"key": "value", "number": 42}';
+				const objectSchema = z
+					.string()
+					.transform((val) => jsonParse(val) as Record<string, unknown>);
+				process.env.JSON_VALUE = '{"key": "value", "count": 42}';
 
 				@Config
 				class TestConfig {
 					@Env('JSON_VALUE', objectSchema)
-					value: any = {};
+					value: Record<string, unknown> = {};
 				}
 
 				const config = Container.get(TestConfig);
-				expect(config.value).toEqual({ key: 'value', number: 42 });
+				expect(config.value).toEqual({ key: 'value', count: 42 });
 			});
 
 			it('should handle schema parsing errors gracefully', () => {
@@ -646,7 +650,8 @@ describe('decorators', () => {
 				// because they don't provide type information for coercion
 				expect(() => {
 					@Config
-					class TestConfig {
+					// @ts-expect-error - Class is intentionally unused, only testing decorator behavior
+					class TestConfigWithNull {
 						@Env('NULL_VALUE')
 						nullValue: string | null = null;
 					}
@@ -656,21 +661,24 @@ describe('decorators', () => {
 			it('should validate that Object type requires schema', () => {
 				expect(() => {
 					@Config
-					class InvalidConfig {
+					// @ts-expect-error - Class is intentionally unused, only testing decorator behavior
+					class InvalidObjectConfig {
 						@Env('OBJECT_VALUE')
 						value: object = {};
 					}
-				}).toThrow('Invalid decorator metadata on key "value" on InvalidConfig');
+				}).toThrow('Invalid decorator metadata on key "value" on InvalidObjectConfig');
 			});
 
 			it('should allow Object type with Zod schema', () => {
-				const objectSchema = z.string().transform((schema) => JSON.parse(schema));
+				const objectSchema = z
+					.string()
+					.transform((schema) => jsonParse(schema) as Record<string, unknown>);
 				process.env.OBJECT_VALUE = '{"key": "value"}';
 
 				@Config
 				class ValidConfig {
 					@Env('OBJECT_VALUE', objectSchema)
-					value: any = { key: 'default' };
+					value: Record<string, unknown> = { key: 'default' };
 				}
 
 				const config = Container.get(ValidConfig);

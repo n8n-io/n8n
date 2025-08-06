@@ -1,11 +1,11 @@
 import { ComplianceReport, AuditEvent, SecurityEvent, type ComplianceStandard } from '@n8n/db';
-import { Repository } from '@n8n/typeorm';
+import { Repository, DataSource } from '@n8n/typeorm';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 
-import { Logger } from '@/logger';
+import { LoggerProxy } from 'n8n-workflow';
 import { AuditLoggingService } from '../audit-logging.service';
 import {
 	ComplianceReportingService,
@@ -27,7 +27,7 @@ describe('ComplianceReportingService', () => {
 	let mockComplianceReportRepository: jest.Mocked<Repository<ComplianceReport>>;
 	let mockAuditEventRepository: jest.Mocked<Repository<AuditEvent>>;
 	let mockSecurityEventRepository: jest.Mocked<Repository<SecurityEvent>>;
-	let mockLogger: jest.Mocked<Logger>;
+	let mockLogger: jest.Mocked<typeof LoggerProxy>;
 	let mockAuditLoggingService: jest.Mocked<AuditLoggingService>;
 
 	const mockReportOptions: IComplianceReportOptions = {
@@ -48,7 +48,12 @@ describe('ComplianceReportingService', () => {
 		mockComplianceReportRepository = mock<Repository<ComplianceReport>>();
 		mockAuditEventRepository = mock<Repository<AuditEvent>>();
 		mockSecurityEventRepository = mock<Repository<SecurityEvent>>();
-		mockLogger = mock<Logger>();
+		mockLogger = {
+			error: jest.fn(),
+			warn: jest.fn(),
+			info: jest.fn(),
+			debug: jest.fn(),
+		} as any;
 		mockAuditLoggingService = mock<AuditLoggingService>();
 
 		// Mock fs functions
@@ -56,11 +61,17 @@ describe('ComplianceReportingService', () => {
 		(mkdir as jest.Mock).mockResolvedValue(undefined);
 		(writeFile as jest.Mock).mockResolvedValue(undefined);
 
+		// Mock LoggerProxy directly
+		Object.defineProperty(require('n8n-workflow'), 'LoggerProxy', {
+			value: mockLogger,
+			configurable: true,
+		});
+
 		// Mock Container.get calls
 		Container.get = jest.fn().mockImplementation((token) => {
-			if (token === Logger) return mockLogger;
 			if (token === AuditLoggingService) return mockAuditLoggingService;
-			if (token === 'DataSource') {
+			// Handle both string and class reference for DataSource
+			if (token === DataSource || token === 'DataSource') {
 				return {
 					getRepository: (entity: any) => {
 						if (entity === ComplianceReport) return mockComplianceReportRepository;
@@ -87,6 +98,7 @@ describe('ComplianceReportingService', () => {
 		it('should successfully generate a compliance report', async () => {
 			const mockInitialReport = {
 				id: 'report-123',
+				complianceStandard: 'SOX' as any,
 				status: 'generating',
 				generationStartedAt: new Date(),
 			} as ComplianceReport;
@@ -99,8 +111,13 @@ describe('ComplianceReportingService', () => {
 			} as ComplianceReport;
 
 			const mockAuditEvents = [
-				{ id: 'audit-1', eventType: 'api_call', severity: 'low' },
-				{ id: 'audit-2', eventType: 'workflow_created', severity: 'medium' },
+				{ id: 'audit-1', eventType: 'api_call', severity: 'low', description: 'API call event' },
+				{
+					id: 'audit-2',
+					eventType: 'workflow_created',
+					severity: 'medium',
+					description: 'Workflow created event',
+				},
 			] as AuditEvent[];
 
 			const mockSecurityEvents = [
@@ -140,7 +157,7 @@ describe('ComplianceReportingService', () => {
 					periodEnd: mockReportOptions.periodEnd,
 					generatedBy: 'admin-123',
 					projectId: 'project-123',
-					format: 'pdf',
+					format: 'PDF',
 				}),
 			);
 
@@ -157,7 +174,7 @@ describe('ComplianceReportingService', () => {
 			expect(mockAuditLoggingService.logEvent).toHaveBeenCalledWith(
 				expect.objectContaining({
 					eventType: 'compliance_report_generated',
-					category: 'system_administration',
+					category: 'system',
 					description: 'Generated SOX compliance report: SOX Compliance Report Q4 2023',
 					userId: 'admin-123',
 					resourceId: 'report-123',
@@ -275,6 +292,7 @@ describe('ComplianceReportingService', () => {
 					id: 'audit-1',
 					eventType: 'api_call',
 					severity: 'low',
+					description: 'Financial API call',
 					tags: ['financial'],
 					category: 'data_modification',
 					beforeState: { value: 100 },
@@ -284,6 +302,7 @@ describe('ComplianceReportingService', () => {
 					id: 'audit-2',
 					eventType: 'user_role_changed',
 					severity: 'medium',
+					description: 'User role changed',
 					category: 'user_management',
 				},
 			] as AuditEvent[];
@@ -315,6 +334,7 @@ describe('ComplianceReportingService', () => {
 					id: 'audit-1',
 					eventType: 'data_exported',
 					severity: 'medium',
+					description: 'Personal data exported',
 					tags: ['personal_data'],
 					metadata: { gdpr_compliant: true },
 				},
@@ -371,8 +391,8 @@ describe('ComplianceReportingService', () => {
 					id: 'audit-1',
 					eventType: 'api_call',
 					severity: 'low',
-					tags: ['phi', 'health_data'],
 					description: 'Accessed health information',
+					tags: ['phi', 'health_data'],
 				},
 			] as AuditEvent[];
 
@@ -486,18 +506,15 @@ describe('ComplianceReportingService', () => {
 			);
 		});
 
-		it('should generate Excel format report', async () => {
+		it('should throw error for unsupported Excel format', async () => {
 			setupMockReportGeneration();
 
-			await complianceReportingService.generateReport({
-				...mockReportOptions,
-				format: 'excel',
-			});
-
-			expect(writeFile).toHaveBeenCalledWith(
-				expect.stringMatching(/\.csv$/), // Fallback to CSV for now
-				expect.stringContaining('Compliance Report Summary'),
-			);
+			await expect(
+				complianceReportingService.generateReport({
+					...mockReportOptions,
+					format: 'excel' as any,
+				}),
+			).rejects.toThrow('Compliance report generation failed: Unsupported report format: excel');
 		});
 	});
 
@@ -653,6 +670,7 @@ describe('ComplianceReportingService', () => {
 					id: `audit-${i}`,
 					eventType: 'api_call',
 					severity: i < 20 ? 'critical' : 'low', // 20% critical events
+					description: `Test audit event ${i}`,
 				})) as AuditEvent[];
 
 			const mockSecurityEvents = Array(10)

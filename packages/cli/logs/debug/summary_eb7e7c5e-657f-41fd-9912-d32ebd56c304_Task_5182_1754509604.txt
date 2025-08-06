@@ -1,0 +1,13 @@
+Timeout Debug Summary for Agent eb7e7c5e-657f-41fd-9912-d32ebd56c304_Task_5182
+==========================================
+
+Timestamp: 2025-08-06T14:46:44.954435
+Elapsed Time: 53m 17.5s
+Timeout Limit: 120s
+Timeout Exceeded: True
+Hook Type: SubagentStop
+Tool Name: unknown
+Heartbeat Age: 0m 0.0s
+Heartbeat Timeout: False
+
+Full report: logs/debug/debug_report_eb7e7c5e-657f-41fd-9912-d32ebd56c304_Task_5182_1754509604.json

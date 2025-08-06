@@ -1,0 +1,27 @@
+{
+	"hook_event_name": "PreToolUse",
+	"hook_data_keys": [
+		"session_id",
+		"transcript_path",
+		"cwd",
+		"hook_event_name",
+		"tool_name",
+		"tool_input"
+	],
+	"extraction_details": [
+		{
+			"strategy": "1: PreToolUse_strategy",
+			"extracted_id": "eb7e7c5e-657f-41fd-9912-d32ebd56c304_Task_5182",
+			"extracted_tool": "Task",
+			"agent_id_before": "unknown",
+			"agent_id_after": "eb7e7c5e-657f-41fd-9912-d32ebd56c304_Task_5182",
+			"tool_name_before": "unknown",
+			"tool_name_after": "Task",
+			"success": true
+		}
+	],
+	"final_result": {
+		"agent_id": "eb7e7c5e-657f-41fd-9912-d32ebd56c304_Task_5182",
+		"tool_name": "Task"
+	}
+}

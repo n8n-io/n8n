@@ -51,7 +51,7 @@ export class SecurityAudit extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		const result = await Container.get(SecurityAuditService).run(
 			categories,
-			auditFlags['days-abandoned-workflow'],
+			auditFlags.daysAbandonedWorkflow,
 		);
 
 		if (Array.isArray(result) && result.length === 0) {

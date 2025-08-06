@@ -1,0 +1,40 @@
+{
+	"execution": {
+		"timestamp": "2025-08-06T16:41:19.860Z",
+		"projectRoot": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork/packages/@n8n/config",
+		"hookVersion": "1.0.0",
+		"nodeVersion": "v22.18.0",
+		"platform": "darwin",
+		"arch": "arm64",
+		"pid": 8645,
+		"cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork/packages/@n8n/config",
+		"endTimestamp": "2025-08-06T16:41:19.867Z",
+		"durationMs": 7
+	},
+	"input": {},
+	"projectState": {},
+	"decisions": [],
+	"flow": [
+		{
+			"timestamp": "2025-08-06T16:41:19.867Z",
+			"message": "ERROR in stop-hook-main: Unexpected end of JSON input"
+		},
+		{
+			"timestamp": "2025-08-06T16:41:19.867Z",
+			"message": "Exiting with code 0: Error: Unexpected end of JSON input"
+		}
+	],
+	"output": {
+		"exitCode": 0,
+		"exitReason": "Error: Unexpected end of JSON input"
+	},
+	"errors": [
+		{
+			"timestamp": "2025-08-06T16:41:19.866Z",
+			"context": "stop-hook-main",
+			"message": "Unexpected end of JSON input",
+			"stack": "SyntaxError: Unexpected end of JSON input\n    at JSON.parse (<anonymous>)\n    at Socket.<anonymous> (/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/stop-hook.js:20:32)\n    at Socket.emit (node:events:530:35)\n    at endReadableNT (node:internal/streams/readable:1698:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)",
+			"name": "SyntaxError"
+		}
+	]
+}

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Z } from '@n8n/api-types/utils';
+import { Z } from 'zod-class';
 
 export const functionParameterSchema = z.object({
 	name: z.string(),
@@ -47,10 +47,22 @@ export const functionDocumentationResponseSchema = z.object({
 	}),
 });
 
-export class FunctionDocumentationQueryDto extends Z.class(functionDocumentationQuerySchema) {}
-export class FunctionDocumentationResponseDto extends Z.class(
-	functionDocumentationResponseSchema,
-) {}
+export class FunctionDocumentationQueryDto extends Z.class({
+	functionName: z.string().optional(),
+	category: z.string().optional(),
+	includeExamples: z.boolean().default(true),
+	includeRelated: z.boolean().default(true),
+}) {}
+export class FunctionDocumentationResponseDto extends Z.class({
+	success: z.boolean(),
+	data: z.union([functionDocumentationSchema, z.array(functionDocumentationSchema)]),
+	metadata: z.object({
+		requestedAt: z.string(),
+		functionName: z.string().optional(),
+		category: z.string().optional(),
+		totalCount: z.number().optional(),
+	}),
+}) {}
 
 export type FunctionParameter = z.infer<typeof functionParameterSchema>;
 export type ExampleType = z.infer<typeof exampleSchema>;

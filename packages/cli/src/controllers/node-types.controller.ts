@@ -23,7 +23,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
-import { WorkflowExecute } from '@n8n/core';
+import { WorkflowExecute } from 'n8n-core';
 import { NodeTestingService } from '@/services/node-testing.service';
 import { AiHelpersService } from '@/services/ai-helpers.service';
 
@@ -179,7 +179,11 @@ export class NodeTypesController {
 				error: error instanceof Error ? error.message : String(error),
 			});
 
-			if (error instanceof ApplicationError) {
+			if (
+				error instanceof ApplicationError ||
+				error instanceof BadRequestError ||
+				error instanceof NotFoundError
+			) {
 				throw error;
 			}
 
@@ -260,7 +264,11 @@ export class NodeTypesController {
 				error: error instanceof Error ? error.message : String(error),
 			});
 
-			if (error instanceof ApplicationError) {
+			if (
+				error instanceof ApplicationError ||
+				error instanceof BadRequestError ||
+				error instanceof NotFoundError
+			) {
 				throw error;
 			}
 
@@ -336,7 +344,11 @@ export class NodeTypesController {
 				error: error instanceof Error ? error.message : String(error),
 			});
 
-			if (error instanceof ApplicationError) {
+			if (
+				error instanceof ApplicationError ||
+				error instanceof BadRequestError ||
+				error instanceof NotFoundError
+			) {
 				throw error;
 			}
 
@@ -457,7 +469,11 @@ export class NodeTypesController {
 				error: error instanceof Error ? error.message : String(error),
 			});
 
-			if (error instanceof ApplicationError) {
+			if (
+				error instanceof ApplicationError ||
+				error instanceof BadRequestError ||
+				error instanceof NotFoundError
+			) {
 				throw error;
 			}
 
@@ -616,7 +632,11 @@ export class NodeTypesController {
 				error: error instanceof Error ? error.message : String(error),
 			});
 
-			if (error instanceof ApplicationError) {
+			if (
+				error instanceof ApplicationError ||
+				error instanceof BadRequestError ||
+				error instanceof NotFoundError
+			) {
 				throw error;
 			}
 
@@ -681,7 +701,11 @@ export class NodeTypesController {
 				error: error instanceof Error ? error.message : String(error),
 			});
 
-			if (error instanceof ApplicationError) {
+			if (
+				error instanceof ApplicationError ||
+				error instanceof BadRequestError ||
+				error instanceof NotFoundError
+			) {
 				throw error;
 			}
 
