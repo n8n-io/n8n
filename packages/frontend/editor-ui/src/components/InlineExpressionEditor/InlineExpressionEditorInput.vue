@@ -2,7 +2,7 @@
 import { history } from '@codemirror/commands';
 import { type EditorState, Prec, type SelectionRange } from '@codemirror/state';
 import { dropCursor, EditorView, keymap } from '@codemirror/view';
-import { computed, ref, watch } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
@@ -14,6 +14,8 @@ import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
 import { onKeyStroke } from '@vueuse/core';
 import { expressionCloseBrackets } from '@/plugins/codemirror/expressionCloseBrackets';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { TargetNodeParameterContext } from '@/Interface';
 
 type Props = {
 	modelValue: string;
@@ -59,6 +61,13 @@ onKeyStroke(
 	{ target: root },
 );
 
+const localResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const targetNodeParameterContext = computed<TargetNodeParameterContext | undefined>(() =>
+	localResolveCtx?.value
+		? { nodeName: localResolveCtx.value.nodeName, parameterPath: props.path }
+		: undefined,
+);
+
 const {
 	editor: editorRef,
 	segments,
@@ -74,6 +83,7 @@ const {
 	isReadOnly: computed(() => props.isReadOnly),
 	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
 	additionalData: props.additionalData,
+	targetNodeParameterContext,
 });
 
 watch(segments.display, (newSegments) => {

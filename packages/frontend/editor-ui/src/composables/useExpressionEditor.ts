@@ -55,7 +55,7 @@ export const useExpressionEditor = ({
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
 	editorValue?: MaybeRefOrGetter<string>;
-	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext>;
+	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext | undefined>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	additionalData?: MaybeRefOrGetter<IDataObject>;
 	skipSegments?: MaybeRefOrGetter<string[]>;
