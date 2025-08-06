@@ -205,9 +205,6 @@ export interface FrontendSettings {
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];
 	envFeatureFlags: N8nEnvFeatFlags;
-
-	/** Crons currently active instance-wide. Temporary, for debugging. */
-	activeCrons: Array<Record<string, unknown>>;
 }
 
 export type FrontendModuleSettings = {

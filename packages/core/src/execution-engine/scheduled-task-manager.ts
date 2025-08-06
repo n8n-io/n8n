@@ -11,7 +11,6 @@ import { InstanceSettings } from '@/instance-settings';
 type CronKey = string; // see `ScheduledTaskManager.toCronKey`
 type Cron = { job: CronJob; summary: string; ctx: CronContext };
 type CronsByWorkflow = Map<Workflow['id'], Map<CronKey, Cron>>;
-type SettingsCron = CronContext & { workflowId: string };
 
 @Service()
 export class ScheduledTaskManager {
@@ -135,19 +134,6 @@ export class ScheduledTaskManager {
 		}
 
 		return loggableCrons;
-	}
-
-	/** Crons currently active instance-wide, to display via `/rest/settings`. */
-	get settingsCrons() {
-		const debugCrons: SettingsCron[] = [];
-
-		for (const [workflowId, crons] of this.cronsByWorkflow) {
-			for (const cron of crons.values()) {
-				debugCrons.push({ ...cron.ctx, workflowId });
-			}
-		}
-
-		return debugCrons;
 	}
 
 	private toCronKey(ctx: CronContext): CronKey {

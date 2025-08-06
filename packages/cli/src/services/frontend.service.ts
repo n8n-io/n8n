@@ -6,7 +6,7 @@ import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
-import { BinaryDataConfig, InstanceSettings, ScheduledTaskManager } from 'n8n-core';
+import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
@@ -54,7 +54,6 @@ export class FrontendService {
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mfaService: MfaService,
-		private readonly scheduledTaskManager: ScheduledTaskManager,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -279,7 +278,6 @@ export class FrontendService {
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			envFeatureFlags: this.collectEnvFeatureFlags(),
-			activeCrons: [],
 		};
 	}
 
@@ -426,8 +424,6 @@ export class FrontendService {
 
 		// Refresh environment feature flags
 		this.settings.envFeatureFlags = this.collectEnvFeatureFlags();
-
-		this.settings.activeCrons = this.scheduledTaskManager.settingsCrons;
 
 		return this.settings;
 	}

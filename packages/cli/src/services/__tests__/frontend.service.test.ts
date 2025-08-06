@@ -178,7 +178,6 @@ describe('FrontendService', () => {
 				licenseState,
 				moduleRegistry,
 				mfaService,
-				mock(),
 			);
 		};
 
