@@ -46,6 +46,13 @@ export const properties: INodeProperties[] = [
 				description:
 					"Whether to append to an existing file. While it's commonly used with text files, it's not limited to them, however, it wouldn't be applicable for file types that have a specific structure like most binary formats.",
 			},
+			{
+				displayName: 'Create Directory if Not Exists',
+				name: 'createDirectory',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to create the directory if it does not exist',
+			},
 		],
 	},
 ];
@@ -87,6 +94,11 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				fileContent = await this.helpers.getBinaryStream(binaryData.id);
 			} else {
 				fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
+			}
+
+			if (options.createDirectory) {
+				// Create the directory if it does not exist
+				await this.helpers.createDirectory(fileName);
 			}
 
 			// Write the file to disk

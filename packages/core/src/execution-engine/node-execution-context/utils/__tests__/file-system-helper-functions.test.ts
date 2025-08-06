@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
-import { access as fsAccess, realpath as fsRealpath } from 'node:fs/promises';
+import { access as fsAccess, realpath as fsRealpath, mkdir as fsMkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import {
@@ -167,7 +167,12 @@ describe('getFileSystemHelperFunctions', () => {
 	const helperFunctions = getFileSystemHelperFunctions(node);
 
 	it('should create helper functions with correct context', () => {
-		const expectedMethods = ['createReadStream', 'getStoragePath', 'writeContentToFile'] as const;
+		const expectedMethods = [
+			'createReadStream',
+			'getStoragePath',
+			'writeContentToFile',
+			'createDirectory',
+		] as const;
 
 		expectedMethods.forEach((method) => {
 			expect(helperFunctions).toHaveProperty(method);
@@ -222,6 +227,110 @@ describe('getFileSystemHelperFunctions', () => {
 					'w',
 				),
 			).rejects.toThrow('not writable');
+		});
+	});
+
+	describe('createDirectory', () => {
+		beforeEach(() => {
+			(fsMkdir as jest.Mock).mockClear();
+		});
+
+		it('should throw error for blocked directory path', async () => {
+			process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
+			const blockedPath = instanceSettings.n8nFolder + '/test-dir';
+
+			await expect(helperFunctions.createDirectory(blockedPath)).rejects.toThrow(
+				`The directory "${blockedPath}" is not writable.`,
+			);
+
+			expect(fsMkdir).not.toHaveBeenCalled();
+		});
+
+		it('should create directory successfully with allowed path', async () => {
+			const allowedPath = '/allowed/path/test-dir';
+			(fsMkdir as jest.Mock).mockResolvedValueOnce(undefined);
+
+			await helperFunctions.createDirectory(allowedPath);
+
+			expect(fsMkdir).toHaveBeenCalledWith(allowedPath, { recursive: true });
+		});
+
+		it('should extract directory from file path with extension', async () => {
+			const filePathWithExtension = '/allowed/path/subdir/file.txt';
+			const expectedDirPath = '/allowed/path/subdir';
+			(fsMkdir as jest.Mock).mockResolvedValueOnce(undefined);
+
+			await helperFunctions.createDirectory(filePathWithExtension);
+
+			expect(fsMkdir).toHaveBeenCalledWith(expectedDirPath, { recursive: true });
+		});
+
+		it('should handle file path with multiple extensions', async () => {
+			const filePathWithMultipleExtensions = '/allowed/path/subdir/archive.tar.gz';
+			const expectedDirPath = '/allowed/path/subdir';
+			(fsMkdir as jest.Mock).mockResolvedValueOnce(undefined);
+
+			await helperFunctions.createDirectory(filePathWithMultipleExtensions);
+
+			expect(fsMkdir).toHaveBeenCalledWith(expectedDirPath, { recursive: true });
+		});
+
+		it('should handle directory path without extension', async () => {
+			const directoryPath = '/allowed/path/test-directory';
+			(fsMkdir as jest.Mock).mockResolvedValueOnce(undefined);
+
+			await helperFunctions.createDirectory(directoryPath);
+
+			expect(fsMkdir).toHaveBeenCalledWith(directoryPath, { recursive: true });
+		});
+
+		it('should handle nested directory creation', async () => {
+			const nestedPath = '/allowed/path/deep/nested/directory/structure';
+			(fsMkdir as jest.Mock).mockResolvedValueOnce(undefined);
+
+			await helperFunctions.createDirectory(nestedPath);
+
+			expect(fsMkdir).toHaveBeenCalledWith(nestedPath, { recursive: true });
+		});
+
+		it('should throw error when mkdir fails', async () => {
+			const allowedPath = '/allowed/path/test-dir';
+			const mkdirError = new Error('Permission denied');
+			(fsMkdir as jest.Mock).mockRejectedValueOnce(mkdirError);
+
+			await expect(helperFunctions.createDirectory(allowedPath)).rejects.toThrow(
+				`Failed to create directory "${allowedPath}": Error: Permission denied`,
+			);
+		});
+
+		it('should handle path with no extension but containing dots', async () => {
+			const pathWithDots = '/allowed/path/my.special.directory';
+			(fsMkdir as jest.Mock).mockResolvedValueOnce(undefined);
+
+			await helperFunctions.createDirectory(pathWithDots);
+
+			expect(fsMkdir).toHaveBeenCalledWith(pathWithDots, { recursive: true });
+		});
+
+		it('should extract directory from file path when file has no name before extension', async () => {
+			const hiddenFileWithExtension = '/allowed/path/subdir/.env';
+			const expectedDirPath = '/allowed/path/subdir';
+			(fsMkdir as jest.Mock).mockResolvedValueOnce(undefined);
+
+			await helperFunctions.createDirectory(hiddenFileWithExtension);
+
+			expect(fsMkdir).toHaveBeenCalledWith(expectedDirPath, { recursive: true });
+		});
+
+		it('should handle blocked path checks before extraction', async () => {
+			process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
+			const blockedFileWithExtension = instanceSettings.n8nFolder + '/test-dir/file.txt';
+
+			await expect(helperFunctions.createDirectory(blockedFileWithExtension)).rejects.toThrow(
+				'is not writable',
+			);
+
+			expect(fsMkdir).not.toHaveBeenCalled();
 		});
 	});
 });

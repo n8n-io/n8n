@@ -683,6 +683,7 @@ export interface FileSystemHelperFunctions {
 		content: string | Buffer | Readable,
 		flag?: string,
 	): Promise<void>;
+	createDirectory(directoryPath: PathLike): Promise<void>;
 }
 
 export interface BinaryHelperFunctions {
