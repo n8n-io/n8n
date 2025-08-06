@@ -24,17 +24,17 @@ describe('ScheduledTaskManager', () => {
 	});
 
 	it('should not register duplicate crons', () => {
-		const ctx1: CronContext = {
+		const ctx: CronContext = {
 			workflowId: workflow.id,
 			nodeId: 'test-node-id',
 			timezone: workflow.timezone,
 			expression: everyMinute,
 		};
 
-		scheduledTaskManager.registerCron(ctx1, onTick);
+		scheduledTaskManager.registerCron(ctx, onTick);
 		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)?.size).toBe(1);
 
-		scheduledTaskManager.registerCron(ctx1, onTick);
+		scheduledTaskManager.registerCron(ctx, onTick);
 		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)?.size).toBe(1);
 	});
 
