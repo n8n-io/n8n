@@ -4,11 +4,12 @@ import type { EditorState, SelectionRange } from '@codemirror/state';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { Segment } from '@/types/expressions';
-import { onBeforeUnmount, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, useTemplateRef } from 'vue';
 import ExpressionOutput from './ExpressionOutput.vue';
 import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
+import { useElementSize } from '@vueuse/core';
 import { N8nPopover } from '@n8n/design-system';
 
 interface InlineExpressionEditorOutputProps {
@@ -22,7 +23,7 @@ interface InlineExpressionEditorOutputProps {
 	appendTo?: string;
 }
 
-withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
+const props = withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 	editorState: undefined,
 	selection: undefined,
 	isReadOnly: false,
@@ -33,6 +34,7 @@ const i18n = useI18n();
 const theme = outputTheme();
 const ndvStore = useNDVStore();
 const contentRef = useTemplateRef('content');
+const virtualRefSize = useElementSize(computed(() => props.virtualRef));
 
 onBeforeUnmount(() => {
 	ndvStore.expressionOutputItemIndex = 0;
@@ -52,10 +54,20 @@ defineExpose({
 		:persistent="false"
 		:virtual-triggering="virtualRef !== undefined"
 		:virtual-ref="virtualRef"
-		:width="virtualRef?.offsetWidth"
+		:width="virtualRefSize.width.value"
 		:popper-class="$style.popper"
 		:popper-options="{
-			modifiers: [{ name: 'flip', enabled: false }],
+			modifiers: [
+				{ name: 'flip', enabled: false },
+				{
+					// Ensures that the popover is re-positioned when the reference element is resized
+					name: 'custom modifier',
+					options: {
+						width: virtualRefSize.width.value,
+						height: virtualRefSize.height.value,
+					},
+				},
+			],
 		}"
 		:append-to="appendTo"
 	>
