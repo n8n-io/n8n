@@ -1611,14 +1611,19 @@ describe('GET /projects/:projectId/folders', () => {
 	});
 
 	test('should select path field when requested', async () => {
-		const folder1 = await createFolder(ownerProject, { name: 'Test Folder' });
+		const folder1 = await createFolder(ownerProject, {
+			name: 'Test Folder',
+			updatedAt: DateTime.now().minus({ seconds: 2 }).toJSDate(),
+		});
 		const folder2 = await createFolder(ownerProject, {
 			name: 'Test Folder 2',
 			parentFolder: folder1,
+			updatedAt: DateTime.now().minus({ seconds: 1 }).toJSDate(),
 		});
 		const folder3 = await createFolder(ownerProject, {
 			name: 'Test Folder 3',
 			parentFolder: folder2,
+			updatedAt: DateTime.now().toJSDate(),
 		});
 
 		const response = await authOwnerAgent
