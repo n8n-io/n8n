@@ -451,13 +451,36 @@ export class InstanceSyncService {
 	}
 
 	private async getExportData(exportId: string): Promise<any> {
-		// This would typically load from the migration service
-		// For now, we'll assume it's available through the migration service
 		try {
-			// In a real implementation, you'd load the export data
-			// This is a placeholder - the migration service would need a method to retrieve export data
-			return {}; // TODO: Implement actual export data retrieval
+			this.logger.debug('Loading export data for transfer', { exportId });
+
+			// Load export data through the migration service
+			const exportData = await this.migrationService.getExportData(exportId);
+
+			if (!exportData) {
+				throw new Error('Export data not found');
+			}
+
+			// Validate export data structure
+			if (!exportData.metadata || !exportData.metadata.version) {
+				throw new Error('Invalid export data: missing metadata');
+			}
+
+			this.logger.debug('Export data loaded successfully', {
+				exportId,
+				version: exportData.metadata.version,
+				hasWorkflows: !!exportData.workflows,
+				hasCredentials: !!exportData.credentials,
+				hasUsers: !!exportData.users,
+				hasSettings: !!exportData.settings,
+			});
+
+			return exportData;
 		} catch (error) {
+			this.logger.error('Failed to load export data', {
+				exportId,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
 			throw new Error(
 				`Failed to load export data: ${error instanceof Error ? error.message : 'Unknown error'}`,
 			);

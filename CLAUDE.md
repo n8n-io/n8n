@@ -31,6 +31,11 @@
 - Use TaskManager API to get current active task or next pending task
 - NEVER assume what to continue with - always check TODO.json first
 
+**Task Creation Error Protocol:**
+- **IMMEDIATELY** read the task creation file in `development/modes/task-creation.md` when any potential errors or tasks are discovered
+- This file contains critical guidance for identifying and creating proper tasks from errors and issues
+- **ALWAYS** check this file before creating tasks to ensure proper task structuring and categorization
+
 ## 🚨 NEVER MODIFY SETTINGS FILE
 
 The agent MUST NEVER touch, read, modify, or interact with `/Users/jeremyparker/.claude/settings.json` under ANY circumstances. This file contains system-critical configurations that must remain untouched.

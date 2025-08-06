@@ -1,8 +1,8 @@
 import { ApplicationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
+import { PythonExecutorService } from './PythonExecutorService';
 import type { SandboxContext } from './Sandbox';
 import { Sandbox } from './Sandbox';
-import type { IPythonExecutorService } from './types/python-executor.types';
 
 type LocalPythonSandboxContext = {
 	[K in keyof SandboxContext as K extends `$${infer I}` ? `_${I}` : K]: SandboxContext[K];
@@ -50,9 +50,9 @@ export class LocalPythonSandbox extends Sandbox {
 	}
 
 	private async runCodeInLocalPython<T>() {
-		// For now, create a mock service since we can't import across packages
-		// In production, this would be injected properly
-		const pythonExecutorService = this.createMockExecutorService();
+		// Create the Python executor service with storage path
+		const storagePath = this.helpers.getStoragePath();
+		const pythonExecutorService = new PythonExecutorService(storagePath);
 
 		// Prepare context for Python execution
 		const executionContext: Record<string, any> = {};
@@ -110,27 +110,5 @@ export class LocalPythonSandbox extends Sandbox {
 			level: 'error',
 			cause: error,
 		});
-	}
-
-	/**
-	 * Create a mock executor service for development
-	 * In production, this would be properly injected
-	 */
-	private createMockExecutorService(): IPythonExecutorService {
-		return {
-			async executeCode(options) {
-				// Mock implementation that simulates Python execution
-				// In production, this would call the actual PythonExecutorService
-				throw new ApplicationError(
-					'Local Python execution not yet fully implemented. Please use JavaScript for now.',
-					{
-						extra: { code: options.code.substring(0, 100) + '...' },
-					},
-				);
-			},
-			async checkPythonAvailability() {
-				return { available: false, error: 'Local Python execution not yet implemented' };
-			},
-		};
 	}
 }

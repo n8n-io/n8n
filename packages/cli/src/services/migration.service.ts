@@ -563,6 +563,29 @@ export class MigrationService {
 		await pipeline(readStream, res);
 	}
 
+	async getExportData(exportId: string): Promise<any> {
+		this.logger.debug('Getting export data', { exportId });
+
+		const operation = this.operations.get(exportId);
+		if (!operation || operation.type !== 'export') {
+			throw new NotFoundError('Export not found');
+		}
+
+		if (operation.status !== 'completed') {
+			throw new BadRequestError('Export is not completed yet');
+		}
+
+		try {
+			return await this.loadExportData(exportId);
+		} catch (error) {
+			this.logger.error('Failed to get export data', {
+				exportId,
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+			throw error;
+		}
+	}
+
 	// Private helper methods
 
 	private async ensureExportDirectory(): Promise<void> {

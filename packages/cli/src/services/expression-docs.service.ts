@@ -846,6 +846,50 @@ export class ExpressionDocsService {
 	}
 
 	/**
+	 * Get expression categories
+	 */
+	getCategories(): Array<{ name: string; description?: string; functionCount?: number }> {
+		const functions = this.getAllFunctionDocs();
+		const categories = [...new Set(functions.map((func) => func.category))];
+
+		return categories.map((category) => ({
+			name: category,
+			description: `${category.charAt(0).toUpperCase() + category.slice(1)} functions`,
+			functionCount: functions.filter((func) => func.category === category).length,
+		}));
+	}
+
+	/**
+	 * Get functions by category
+	 */
+	getFunctionsByCategory(category?: string): FunctionDocumentation[] {
+		const functions = this.getAllFunctionDocs();
+
+		if (category) {
+			return functions.filter((func) => func.category === category);
+		}
+
+		return functions;
+	}
+
+	/**
+	 * Get context variables
+	 */
+	getContextVariables(context: string = 'all'): VariableDocumentation[] {
+		const variables = this.getAllVariableDocs();
+
+		if (context === 'all') {
+			return variables;
+		}
+
+		return variables.filter(
+			(variable) =>
+				variable.availability?.contexts.includes(context) ||
+				variable.availability?.contexts.includes('all'),
+		);
+	}
+
+	/**
 	 * Get node-specific tips
 	 */
 	private getNodeSpecificTips(nodeType: string, context?: string): string[] {

@@ -103,4 +103,20 @@ export class WorkflowFinderService {
 
 		return sharedWorkflows.map((sw) => ({ ...sw.workflow, projectId: sw.projectId }));
 	}
+
+	/**
+	 * Alias for findWorkflowForUser for backward compatibility
+	 */
+	async findForUser(
+		workflowId: string,
+		user: User,
+		scopes: Scope[],
+		options?: {
+			includeTags?: boolean;
+			includeParentFolder?: boolean;
+			em?: EntityManager;
+		},
+	) {
+		return this.findWorkflowForUser(workflowId, user, scopes, options);
+	}
 }

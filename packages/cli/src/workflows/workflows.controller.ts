@@ -29,11 +29,8 @@ import {
 	DocumentationSearchResponseDto,
 	CreateSavedSearchDto,
 	UpdateSavedSearchDto,
-	SavedSearchResponseDto,
-	ListSavedSearchesQueryDto,
-	ListSavedSearchesResponseDto,
-	ExecuteSavedSearchDto,
-	SavedSearchStatsDto,
+	SavedSearchDto,
+	SavedSearchListResponseDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -107,6 +104,13 @@ import { WorkflowSearchService } from '@/services/workflow-search.service';
 import { SavedSearchService } from '@/services/saved-search.service';
 import { ExpressionDocsService } from '@/services/expression-docs.service';
 import { AiHelpersService } from '@/services/ai-helpers.service';
+import {
+	ExpressionCategoriesResponseDto,
+	ExpressionFunctionsCategoryQueryDto,
+	ExpressionFunctionsResponseDto,
+	ExpressionVariablesContextQueryDto,
+	ExpressionVariablesResponseDto,
+} from './expression-docs.dto';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -2762,7 +2766,7 @@ export class WorkflowsController {
 	@Post('/search/saved')
 	async createSavedSearch(
 		req: AuthenticatedRequest<{}, {}, CreateSavedSearchDto>,
-	): Promise<SavedSearchResponseDto> {
+	): Promise<SavedSearchDto> {
 		this.logger.debug('Create saved search requested', {
 			userId: req.user.id,
 			name: req.body.name,
@@ -2797,8 +2801,8 @@ export class WorkflowsController {
 
 	@Get('/search/saved')
 	async getSavedSearches(
-		req: AuthenticatedRequest<{}, {}, {}, ListSavedSearchesQueryDto>,
-	): Promise<ListSavedSearchesResponseDto> {
+		req: AuthenticatedRequest<{}, {}, {}, Record<string, unknown>>,
+	): Promise<SavedSearchListResponseDto> {
 		this.logger.debug('Get saved searches requested', {
 			userId: req.user.id,
 			includePublic: req.query.includePublic,
@@ -2807,7 +2811,7 @@ export class WorkflowsController {
 		});
 
 		try {
-			const result = await this.savedSearchService.listSavedSearches(req.query, req.user);
+			const result = await this.savedSearchService.getSavedSearches(req.query, req.user);
 
 			this.logger.debug('Saved searches retrieved successfully', {
 				userId: req.user.id,
@@ -2829,9 +2833,7 @@ export class WorkflowsController {
 	}
 
 	@Get('/search/saved/:id')
-	async getSavedSearchById(
-		req: AuthenticatedRequest<{ id: string }>,
-	): Promise<SavedSearchResponseDto> {
+	async getSavedSearchById(req: AuthenticatedRequest<{ id: string }>): Promise<SavedSearchDto> {
 		this.logger.debug('Get saved search by ID requested', {
 			userId: req.user.id,
 			savedSearchId: req.params.id,
@@ -2866,7 +2868,7 @@ export class WorkflowsController {
 	@Patch('/search/saved/:id')
 	async updateSavedSearch(
 		req: AuthenticatedRequest<{ id: string }, {}, UpdateSavedSearchDto>,
-	): Promise<SavedSearchResponseDto> {
+	): Promise<SavedSearchDto> {
 		this.logger.debug('Update saved search requested', {
 			userId: req.user.id,
 			savedSearchId: req.params.id,
@@ -3005,7 +3007,7 @@ export class WorkflowsController {
 	}
 
 	@Get('/search/saved/stats')
-	async getSavedSearchStats(req: AuthenticatedRequest): Promise<SavedSearchStatsDto> {
+	async getSavedSearchStats(req: AuthenticatedRequest): Promise<Record<string, unknown>> {
 		this.logger.debug('Get saved search stats requested', {
 			userId: req.user.id,
 		});

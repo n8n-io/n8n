@@ -1,11 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { SavedSearchRepository } from '@n8n/db';
-import type {
-	CreateSavedSearchDto,
-	UpdateSavedSearchDto,
-	ListSavedSearchesQueryDto,
-} from '@n8n/api-types';
+import type { CreateSavedSearchDto, UpdateSavedSearchDto } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 import { ApplicationError } from 'n8n-workflow';
 
