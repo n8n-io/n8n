@@ -126,7 +126,7 @@ export class Grist implements INodeType {
 
 			// https://support.getgrist.com/api/#tag/records/operation/replaceRecords
 
-			const body = { records: [] } as GristUpsertRowPayload;
+			const body: GristUpsertRowPayload = { records: [] };
 
 			// Process all input items and batch them
 			for (let i = 0; i < items.length; i++) {
