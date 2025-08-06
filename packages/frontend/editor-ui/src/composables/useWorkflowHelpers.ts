@@ -1047,7 +1047,9 @@ export function useWorkflowHelpers() {
 
 		const triggers = data.nodes.filter(
 			(node) =>
-				node.disabled !== true && node.webhookId && node.type.toLowerCase().includes('trigger'),
+				node.disabled !== true &&
+				node.webhookId &&
+				(node.type.toLowerCase().includes('trigger') || node.type === WEBHOOK_NODE_TYPE),
 		);
 
 		for (const trigger of triggers) {
