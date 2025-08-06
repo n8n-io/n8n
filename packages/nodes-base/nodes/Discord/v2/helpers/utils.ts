@@ -32,7 +32,8 @@ export function parseDiscordError(this: IExecuteFunctions, error: any, itemIndex
 	let errorData = error.cause?.error;
 	const errorOptions: IDataObject = { itemIndex };
 
-	error.description = Array.isArray(error.messages) && error.messages.length ? error.messages[0] : error.description;
+	error.description =
+		Array.isArray(error.messages) && error.messages.length ? error.messages[0] : error.description;
 	if (!errorData && error.description) {
 		try {
 			const errorString = (error.description as string).split(' - ')[1];
