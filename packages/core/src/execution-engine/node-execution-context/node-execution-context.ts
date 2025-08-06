@@ -45,8 +45,8 @@ import { cleanupParameterData } from './utils/cleanup-parameter-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
-import { generateUrlSignature } from './utils/signature-helpers';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
+import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -220,10 +220,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			baseURL.searchParams.set(key, value);
 		}
 
-		const token = generateUrlSignature(
-			baseURL.toString(),
-			this.instanceSettings.hmacSignatureSecret,
-		);
+		const urlForSigning = prepareUrlForSigning(baseURL);
+
+		const token = generateUrlSignature(urlForSigning, this.instanceSettings.hmacSignatureSecret);
 
 		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
 
