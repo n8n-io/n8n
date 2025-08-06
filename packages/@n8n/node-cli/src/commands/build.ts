@@ -1,7 +1,7 @@
 import { cancel, intro, outro, spinner } from '@clack/prompts';
 import { Command } from '@oclif/core';
 import { spawn } from 'child_process';
-import { glob } from 'fast-glob';
+import glob from 'fast-glob';
 import { cp } from 'node:fs/promises';
 
 export default class Build extends Command {

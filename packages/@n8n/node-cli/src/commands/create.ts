@@ -11,7 +11,7 @@ import {
 	log,
 } from '@clack/prompts';
 import { Args, Command, Flags } from '@oclif/core';
-import fs from 'fs/promises';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import color from 'picocolors';
 
@@ -31,7 +31,6 @@ export default class Create extends Command {
 	};
 	static override flags = {
 		force: Flags.boolean({ char: 'f' }),
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		'skip-install': Flags.boolean(),
 		type: Flags.string({ char: 't', options: ['declarative', 'programmatic'] as const }),
 	};
@@ -44,9 +43,13 @@ export default class Create extends Command {
 			process.exit(code);
 		};
 
-		const packageManager = detectPackageManager();
+		const maybePackageManager = detectPackageManager();
+		const packageManager = maybePackageManager ?? 'npm';
+		const introMessage = maybePackageManager
+			? ` ${packageManager} create @n8n/node `
+			: ' n8n-node create ';
 
-		intro(color.inverse(` ${packageManager} create @n8n/node `));
+		intro(color.inverse(introMessage));
 
 		const nodeName =
 			args.name ??

@@ -52,7 +52,7 @@ export async function delayAtLeast<T>(promise: Promise<T>, minMs: number): Promi
 	return result;
 }
 
-export function detectPackageManager(): PackageManager {
+export function detectPackageManager(): PackageManager | null {
 	if ('npm_config_user_agent' in process.env) {
 		const ua = process.env['npm_config_user_agent'] ?? '';
 		if (ua.includes('pnpm')) return 'pnpm';
@@ -60,7 +60,7 @@ export function detectPackageManager(): PackageManager {
 		if (ua.includes('npm')) return 'npm';
 	}
 
-	return 'npm';
+	return null;
 }
 
 export async function installDependencies({

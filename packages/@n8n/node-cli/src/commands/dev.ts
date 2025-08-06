@@ -1,5 +1,5 @@
 import { intro } from '@clack/prompts';
-import { Command } from '@oclif/core';
+import { Command, Flags } from '@oclif/core';
 import { spawn } from 'child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -8,38 +8,52 @@ import path from 'node:path';
 import { detectPackageManager } from '../utils';
 
 export default class Dev extends Command {
-	static override description = 'Build an n8n community node';
+	static override description = 'Develop your n8n node with live preview directly in the browser.';
 	static override examples = ['<%= config.bin %> <%= command.id %>'];
-	static override flags = {};
+	static override flags = {
+		'external-n8n': Flags.boolean({
+			default: false,
+			description:
+				'By default n8n-node dev will run n8n in a sub process. Enable this option if you would like to run n8n elsewhere.',
+		}),
+		'custom-nodes-dir': Flags.directory({
+			default: path.join(os.homedir(), '.n8n/custom'),
+			description:
+				'Where to link your custom node. By default it will link to ~/.n8n/custom. You probably want to enable this option if you run n8n with a custom N8N_CUSTOM_EXTENSIONS env variable.',
+		}),
+	};
 
 	async run(): Promise<void> {
-		await this.parse(Dev);
+		const { flags } = await this.parse(Dev);
 
 		intro('n8n-node dev');
 
-		const packageManager = detectPackageManager();
+		const packageManager = detectPackageManager() ?? 'npm';
 
 		// Check n8n is installed
 		const installed = await isN8nInstalled();
-		if (!installed) {
+		if (!installed && !flags['external-n8n']) {
 			console.error('❌ n8n is not installed or not in PATH.');
 			process.exit(1);
 		}
 
 		await runCommand(packageManager, ['link']);
 
-		const customPath = path.join(os.homedir(), '.n8n/custom');
+		const customPath = flags['custom-nodes-dir'];
 
 		await ensureFolder(customPath);
 
 		await runCommand(packageManager, ['link', await readPackageName()], { cwd: customPath });
 
-		// Run n8n with reload enabled
-		runPersistentCommand('n8n', [], {
-			cwd: customPath,
-			env: { N8N_DEV_RELOAD: 'true' },
-			name: 'n8n',
-		});
+		if (!flags['external-n8n']) {
+			// Run n8n with reload enabled
+			runPersistentCommand('n8n', [], {
+				cwd: customPath,
+				env: { N8N_DEV_RELOAD: 'true' },
+				name: 'n8n',
+			});
+		}
+
 		// Run `tsc --watch` in background
 		runPersistentCommand('tsc', ['--watch'], {
 			name: 'tsc --watch',
