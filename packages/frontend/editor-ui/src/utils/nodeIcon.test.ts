@@ -57,6 +57,29 @@ describe('util: Node Icon', () => {
 				getNodeIconUrl(mock<IconNodeType>({ icon: 'foo', iconUrl: undefined })),
 			).toBeUndefined();
 		});
+
+		it('should return the iconUrl from nodeType when using https', () => {
+			expect(
+				getNodeIconUrl(
+					mock<IconNodeType>({
+						iconUrl: 'https://my-site.com/icon.svg',
+					}),
+				),
+			).toBe('https://my-site.com/icon.svg');
+		});
+
+		it('should return the iconUrl from nodeType when using https with themed values', () => {
+			expect(
+				getNodeIconUrl(
+					mock<IconNodeType>({
+						iconUrl: {
+							light: 'https://my-site.com/light-icon.svg',
+							dark: 'https://my-site.com/dark-icon.svg',
+						},
+					}),
+				),
+			).toBe('https://my-site.com/light-icon.svg');
+		});
 	});
 
 	describe('getBadgeIconUrl', () => {

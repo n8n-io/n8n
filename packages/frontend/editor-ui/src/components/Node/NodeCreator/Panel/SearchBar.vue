@@ -80,7 +80,7 @@ defineExpose({
 	padding: 0 var(--spacing-xs);
 	align-items: center;
 	margin: var(--search-margin, var(--spacing-s));
-	filter: drop-shadow(0px 2px 5px rgba(46, 46, 50, 0.04));
+	filter: drop-shadow(0 2px 5px rgba(46, 46, 50, 0.04));
 
 	border: 1px solid $node-creator-border-color;
 	background-color: $node-creator-search-background-color;

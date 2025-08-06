@@ -315,6 +315,15 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			);
 		}
 
+		if (this.globalConfig.database.isLegacySqlite) {
+			// Employ lazy loading to avoid unnecessary imports in the CLI
+			// and to ensure that the legacy recovery service is only used when needed.
+			const { LegacySqliteExecutionRecoveryService } = await import(
+				'@/executions/legacy-sqlite-execution-recovery.service'
+			);
+			await Container.get(LegacySqliteExecutionRecoveryService).cleanupWorkflowExecutions();
+		}
+
 		await this.server.start();
 
 		Container.get(ExecutionsPruningService).init();
