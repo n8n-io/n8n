@@ -1,5 +1,4 @@
 import type { IDataObject } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import {
 	assertIsString,
@@ -503,98 +502,6 @@ export class MoveHandler implements OperationHandler {
 
 		await todoistSyncRequest.call(ctx, body);
 		return { success: true };
-	}
-}
-
-export class SyncHandler implements OperationHandler {
-	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
-		const commandsJson = ctx.getNodeParameter('commands', itemIndex);
-		assertIsString('commands', commandsJson);
-
-		const projectId = ctx.getNodeParameter('project', itemIndex, undefined, {
-			extractValue: true,
-		});
-		assertIsStringOrNumber('project', projectId);
-		const sections = await getSectionIds(ctx, projectId);
-		const commands: Command[] = jsonParse(commandsJson);
-		const tempIdMapping = new Map<string, string>();
-
-		for (let i = 0; i < commands.length; i++) {
-			const command = commands[i];
-			this.enrichUUID(command);
-			this.enrichSection(command, sections);
-			this.enrichProjectId(command, projectId);
-			this.enrichTempId(command, tempIdMapping, projectId);
-		}
-
-		const body: SyncRequest = {
-			commands,
-			temp_id_mapping: this.convertToObject(tempIdMapping),
-		};
-
-		await todoistSyncRequest.call(ctx, body);
-
-		return { success: true };
-	}
-
-	private convertToObject(map: Map<string, string>) {
-		return Array.from(map.entries()).reduce((o, [key, value]) => {
-			o[key] = value;
-			return o;
-		}, {} as IDataObject);
-	}
-
-	private enrichUUID(command: Command) {
-		command.uuid = uuid();
-	}
-
-	private enrichSection(command: Command, sections: Map<string, number>) {
-		if (command.args?.section !== undefined) {
-			const sectionId = sections.get(command.args.section);
-			if (sectionId) {
-				command.args.section_id = sectionId;
-			} else {
-				throw new ApplicationError(
-					'Section ' + command.args.section + " doesn't exist on Todoist",
-					{ level: 'warning' },
-				);
-			}
-		}
-	}
-
-	private enrichProjectId(command: Command, projectId: number | string) {
-		if (this.requiresProjectId(command)) {
-			command.args.project_id = projectId;
-		}
-	}
-
-	private requiresProjectId(command: Command) {
-		const commands: CommandType[] = [CommandTypes.ITEM_ADD, CommandTypes.SECTION_ADD];
-		return commands.includes(command.type);
-	}
-
-	private enrichTempId(
-		command: Command,
-		tempIdMapping: Map<string, string>,
-		projectId: string | number,
-	) {
-		if (this.requiresTempId(command)) {
-			command.temp_id = uuid();
-			tempIdMapping.set(command.temp_id, projectId as unknown as string);
-		}
-	}
-
-	private requiresTempId(command: Command) {
-		const commands: CommandType[] = [
-			CommandTypes.ITEM_ADD,
-			CommandTypes.PROJECT_ADD,
-			CommandTypes.SECTION_ADD,
-			CommandTypes.LABEL_ADD,
-			CommandTypes.FILTER_ADD,
-			CommandTypes.REMINDER_ADD,
-			CommandTypes.NOTE_ADD,
-		];
-		return commands.includes(command.type);
 	}
 }
 

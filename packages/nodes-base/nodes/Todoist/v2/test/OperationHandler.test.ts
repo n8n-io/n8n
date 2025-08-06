@@ -11,7 +11,6 @@ import {
 	ReopenHandler,
 	UpdateHandler,
 	MoveHandler,
-	SyncHandler,
 	ProjectCreateHandler,
 	ProjectDeleteHandler,
 	ProjectGetHandler,
@@ -1128,59 +1127,6 @@ describe('OperationHandler', () => {
 					'/quick/add',
 				);
 				expect(result).toEqual({ data: expectedResponse });
-			});
-		});
-
-		describe('SyncHandler', () => {
-			it('should execute sync commands successfully', async () => {
-				const handler = new SyncHandler();
-				const mockCtx = createMockContext({
-					commands: JSON.stringify([
-						{
-							type: 'item_add',
-							temp_id: 'temp123',
-							uuid: 'uuid123',
-							args: {
-								content: 'New task',
-								project_id: '789',
-							},
-						},
-					]),
-					project: '789',
-				});
-
-				mockTodoistApiRequest.mockResolvedValue([]);
-				mockTodoistSyncRequest.mockResolvedValue(undefined);
-
-				const result = await handler.handleOperation(mockCtx, 0);
-
-				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
-					expect.objectContaining({
-						commands: [
-							expect.objectContaining({
-								type: 'item_add',
-								temp_id: expect.any(String),
-								uuid: 'mock-uuid-123',
-								args: expect.objectContaining({
-									content: 'New task',
-									project_id: '789',
-								}),
-							}),
-						],
-						temp_id_mapping: expect.any(Object),
-					}),
-				);
-				expect(result).toEqual({ success: true });
-			});
-
-			it('should throw error for invalid JSON commands', async () => {
-				const handler = new SyncHandler();
-				const mockCtx = createMockContext({
-					commands: 'invalid-json',
-					project: '789',
-				});
-
-				await expect(handler.handleOperation(mockCtx, 0)).rejects.toThrow('Unexpected token');
 			});
 		});
 	});

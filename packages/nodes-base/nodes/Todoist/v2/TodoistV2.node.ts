@@ -193,11 +193,6 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Reopen a task',
 					action: 'Reopen a task',
 				},
-				// {
-				// 	name: 'Sync',
-				// 	value: 'sync',
-				// 	description: 'Sync a project',
-				// },
 				{
 					name: 'Update',
 					value: 'update',
@@ -449,7 +444,7 @@ const versionDescription: INodeTypeDescription = {
 			displayOptions: {
 				show: {
 					resource: ['task'],
-					operation: ['create', 'move', 'sync'],
+					operation: ['create', 'move'],
 				},
 			},
 			description: 'The destination project. Choose from the list, or specify an ID.',
@@ -605,20 +600,6 @@ const versionDescription: INodeTypeDescription = {
 						'When this option is enabled, the default reminder will be added to the new item if it has a due date with time set',
 				},
 			],
-		},
-		{
-			displayName: 'Sync Commands',
-			name: 'commands',
-			type: 'string',
-			displayOptions: {
-				show: {
-					resource: ['task'],
-					operation: ['sync'],
-				},
-			},
-			default: '[]',
-			hint: 'See docs for possible commands: https://developer.todoist.com/sync/v8/#sync',
-			description: 'Sync body',
 		},
 		{
 			displayName: 'Additional Fields',
