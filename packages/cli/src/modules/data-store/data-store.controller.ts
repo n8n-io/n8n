@@ -35,7 +35,7 @@ export class DataStoreController {
 		_res: Response,
 		@Body dto: CreateDataStoreDto,
 	) {
-		return await this.dataStoreService.createDataStore(req.params.projectId, dto);
+		return await this.dataStoreService.createDataStoreRaw(req.params.projectId, dto);
 	}
 
 	@Get('/')

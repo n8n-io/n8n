@@ -20,7 +20,7 @@ describe('sql-utils', () => {
 
 			const query = createUserTableQuery(tableName, columns, 'sqlite');
 			expect(query).toBe(
-				'CREATE TABLE IF NOT EXISTS data_store_user_abc (id INTEGER PRIMARY KEY AUTOINCREMENT , `name` TEXT, `age` FLOAT)',
+				'CREATE TABLE IF NOT EXISTS data_store_user_abc (id INTEGER PRIMARY KEY AUTOINCREMENT , "name" TEXT, "age" FLOAT)',
 			);
 		});
 

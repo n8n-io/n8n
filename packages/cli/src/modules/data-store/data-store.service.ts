@@ -52,7 +52,7 @@ export class DataStoreService {
 		if (existingTable !== null) {
 			throw new UserError(`Data store with name '${dto.name}' already exists in this project`);
 		}
-		return await this.dataStoreRepository.createUserTable(projectId, dto.name, dto.columns);
+		return await this.dataStoreRepository.createUserTableRaw(projectId, dto.name, dto.columns);
 	}
 
 	// Currently only renames data stores
