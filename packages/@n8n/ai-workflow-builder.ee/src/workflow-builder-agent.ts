@@ -190,11 +190,15 @@ export class WorkflowBuilderAgent {
 				throw new LLMServiceError('LLM not setup');
 			}
 
-			const messages = state.messages;
+			const { messages, previousSummary } = state;
 			const lastHumanMessage = messages[messages.length - 1] as HumanMessage;
 			const isAutoCompact = lastHumanMessage.content !== '/compact';
 
-			const compactedMessages = await conversationCompactChain(this.llmSimpleTask, messages);
+			const compactedMessages = await conversationCompactChain(
+				this.llmSimpleTask,
+				messages,
+				previousSummary,
+			);
 
 			// The summarized conversation history will become a part of system prompt
 			// and will be used in the next LLM call.
