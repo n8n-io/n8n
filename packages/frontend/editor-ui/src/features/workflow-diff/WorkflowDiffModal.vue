@@ -366,7 +366,7 @@ const modifiers = [
 							<div v-if="changesCount" :class="$style.circleBadge">
 								{{ changesCount }}
 							</div>
-							Changes
+							{{ i18n.baseText('workflowDiff.changes') }}
 						</N8nButton>
 						<template #dropdown>
 							<ElDropdownMenu :hide-on-click="false">
@@ -403,7 +403,9 @@ const modifiers = [
 												</ElDropdownItem>
 											</template>
 											<li v-else :class="$style.emptyState">
-												<N8nText color="text-base" size="small">No changes</N8nText>
+												<N8nText color="text-base" size="small">{{
+													i18n.baseText('workflowDiff.noChanges')
+												}}</N8nText>
 											</li>
 										</ul>
 										<ul v-if="activeTab === 'connectors'" :class="$style.changes">
@@ -538,14 +540,15 @@ const modifiers = [
 							</template>
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
-									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nHeading size="large"> Deleted workflow </N8nHeading>
-										<N8nText color="text-base"> The workflow was deleted on the database </N8nText>
-									</template>
-									<template v-else>
-										<N8nHeading size="large"> Deleted workflow </N8nHeading>
-										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
-									</template>
+									<N8nHeading size="large">{{
+										i18n.baseText('workflowDiff.deletedWorkflow')
+									}}</N8nHeading>
+									<N8nText v-if="targetWorkFlow.state.value?.remote" color="text-base">{{
+										i18n.baseText('workflowDiff.deletedWorkflow.database')
+									}}</N8nText>
+									<N8nText v-else color="text-base">{{
+										i18n.baseText('workflowDiff.deletedWorkflow.remote')
+									}}</N8nText>
 								</div>
 							</template>
 						</template>
@@ -582,14 +585,15 @@ const modifiers = [
 							</template>
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
-									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nHeading size="large"> Deleted workflow </N8nHeading>
-										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
-									</template>
-									<template v-else>
-										<N8nHeading size="large"> Deleted workflow </N8nHeading>
-										<N8nText color="text-base"> The workflow was deleted on the data base </N8nText>
-									</template>
+									<N8nHeading size="large">{{
+										i18n.baseText('workflowDiff.deletedWorkflow')
+									}}</N8nHeading>
+									<N8nText v-if="targetWorkFlow.state.value?.remote" color="text-base">{{
+										i18n.baseText('workflowDiff.deletedWorkflow.remote')
+									}}</N8nText>
+									<N8nText v-else color="text-base">{{
+										i18n.baseText('workflowDiff.deletedWorkflow.database')
+									}}</N8nText>
 								</div>
 							</template>
 						</template>

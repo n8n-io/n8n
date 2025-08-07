@@ -3380,5 +3380,9 @@
 	"whatsNew.update": "Update",
 	"whatsNew.updateAvailable": "You're currently on version {currentVersion}. Update to {latestVersion} to get {count} versions worth of new features, improvements, and fixes. See what changed",
 	"whatsNew.updateAvailable.changelogLink": "in the full changelog",
-	"workflowDiff.noChanges": "No changes"
+	"workflowDiff.changes": "Changes",
+	"workflowDiff.noChanges": "No changes",
+	"workflowDiff.deletedWorkflow": "Deleted workflow",
+	"workflowDiff.deletedWorkflow.database": "The workflow was deleted on the database",
+	"workflowDiff.addedWorkflow.remote": "The workflow was deleted on remote"
 }
