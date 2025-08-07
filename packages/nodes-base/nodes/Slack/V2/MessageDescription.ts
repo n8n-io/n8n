@@ -673,12 +673,12 @@ export const messageFields: INodeProperties[] = [
 									'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
 							},
 							{
-								displayName: 'Reply to Thread',
+								displayName: 'Broadcast Reply',
 								name: 'reply_broadcast',
 								type: 'boolean',
 								default: false,
 								description:
-									'Whether the reply should be made visible to everyone in the channel or conversation',
+									'Whether the reply should also be broadcasted to everyone in the channel or conversation',
 							},
 						],
 					},
