@@ -315,7 +315,7 @@ onMounted(async () => {
 	text-align: center;
 
 	canvas {
-		border: 4px solid var(--p-gray-010);
+		border: 4px solid var(--color-qr-code-border);
 	}
 }
 

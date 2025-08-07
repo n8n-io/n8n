@@ -4,6 +4,6 @@
 
 <style lang="scss" scoped>
 i {
-	color: var(--p-color-alt-a-600);
+	color: var(--color-success);
 }
 </style>

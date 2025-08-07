@@ -130,24 +130,6 @@
 
 	// Color Alternate H - Used for errors in dark mode
 	--p-color-alt-h-310: hsl(355, 100%, 69%); // Base
-
-	// Experiments - Primary color (oklch)
-	/* --c-oklch-primary: 0.1819;
-	--h-oklch-primary: 29.74;
-
-	--p-color-primary-oklch-1000: oklch(0 var(--c-oklch-primary) var(--h-oklch-primary));
-	--p-color-primary-oklch-900: oklch(0.1 var(--c-oklch-primary) var(--h-oklch-primary));
-	--p-color-primary-oklch-800: oklch(0.2 var(--c-oklch-primary) var(--h-oklch-primary));
-	--p-color-primary-oklch-700: oklch(0.3 var(--c-oklch-primary) var(--h-oklch-primary));
-	--p-color-primary-oklch-600: oklch(0.4 var(--c-oklch-primary) var(--h-oklch-primary));
-	--p-color-primary-oklch-500: oklch(0.5 var(--c-oklch-primary) var(--h-oklch-primary));
-	--p-color-primary-oklch-400: oklch(0.6 var(--c-oklch-primary) var(--h-oklch-primary));
-	--p-color-primary-oklch-300: oklch(0.7 var(--c-oklch-primary) var(--h-oklch-primary));
-	--p-color-primary-oklch-290: oklch(0.7114 var(--c-oklch-primary) var(--h-oklch-primary)); // Base
-	--p-color-primary-oklch-200: oklch(0.8 var(--c-oklch-primary) var(--h-oklch-primary));
-	--p-color-primary-oklch-100: oklch(0.9 var(--c-oklch-primary) var(--h-oklch-primary));
-	--p-color-primary-oklch-0: oklch(1 var(--c-oklch-primary) var(--h-oklch-primary));
-	*/
 }
 
 :root {
