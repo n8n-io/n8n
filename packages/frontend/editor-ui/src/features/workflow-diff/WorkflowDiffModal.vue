@@ -430,8 +430,8 @@ const modifiers = [
 																	class="ml-2xs mr-4xs"
 																/>
 																<span :class="$style.nodeName">{{
-																change[1].connection.source?.name
-															}}</span>
+																	change[1].connection.source?.name
+																}}</span>
 															</ElDropdownItem>
 															<div :class="$style.separator"></div>
 															<ElDropdownItem
@@ -450,8 +450,8 @@ const modifiers = [
 																	class="ml-2xs mr-4xs"
 																/>
 																<span :class="$style.nodeName">{{
-																change[1].connection.target?.name
-															}}</span>
+																	change[1].connection.target?.name
+																}}</span>
 															</ElDropdownItem>
 														</ul>
 													</div>
