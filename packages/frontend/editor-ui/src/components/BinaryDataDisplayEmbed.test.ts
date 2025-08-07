@@ -21,16 +21,16 @@ vi.mock('@/stores/workflows.store', () => ({
 	})),
 }));
 
-// Mock fetch for testing binary data with ID
-global.fetch = vi.fn();
-
 describe('BinaryDataDisplayEmbed.vue', () => {
 	beforeEach(() => {
+		// Mock fetch for each test to avoid contamination
+		global.fetch = vi.fn();
 		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		vi.clearAllMocks();
+		// Clean up fetch mock after each test
+		vi.restoreAllMocks();
 	});
 
 	describe('CSV parsing and display', () => {
