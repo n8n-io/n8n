@@ -47,3 +47,20 @@ export const validCredentialsProperties = (
 
 	return next();
 };
+
+export const validCredentialUpdate = (
+	req: CredentialRequest.Update,
+	res: express.Response,
+	next: express.NextFunction,
+): express.Response | void => {
+	const { data } = req.body;
+
+	// If no data is being updated, skip validation
+	if (!data) {
+		return next();
+	}
+
+	// For updates, we need to get the credential type first
+	// We'll validate the type exists in the handler instead
+	return next();
+};

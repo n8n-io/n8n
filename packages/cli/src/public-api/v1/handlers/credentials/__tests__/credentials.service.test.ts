@@ -1,8 +1,9 @@
 import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
+import type { User, CredentialsEntity } from '@n8n/db';
 
 import type { IDependency } from '@/public-api/types';
 
-import { toJsonSchema } from '../credentials.service';
+import { toJsonSchema, updateCredential } from '../credentials.service';
 
 describe('CredentialsService', () => {
 	describe('toJsonSchema', () => {
@@ -66,6 +67,46 @@ describe('CredentialsService', () => {
 			expect(
 				condition.else?.allOf.some((notReq: any) => notReq.not?.required?.includes('field3')),
 			).toBe(true);
+		});
+	});
+
+	describe('updateCredential', () => {
+		const mockUser: User = {
+			id: 'user1',
+			role: 'global:member',
+		} as User;
+
+		const mockCredential: CredentialsEntity = {
+			id: 'cred1',
+			name: 'Test Credential',
+			type: 'github',
+			data: 'encrypted-data',
+		} as CredentialsEntity;
+
+		it('should throw error when credential not found', async () => {
+			// Mock getCredentials to return null
+			jest.doMock('../credentials.service', () => ({
+				...jest.requireActual('../credentials.service'),
+				getCredentials: jest.fn().mockResolvedValue(null),
+			}));
+
+			await expect(updateCredential(mockUser, 'nonexistent', { name: 'New Name' })).rejects.toThrow(
+				'Credential not found',
+			);
+		});
+
+		it('should throw error when user has insufficient permissions', async () => {
+			// Mock getCredentials to return a credential
+			// Mock getSharedCredentials to return null (no access)
+			jest.doMock('../credentials.service', () => ({
+				...jest.requireActual('../credentials.service'),
+				getCredentials: jest.fn().mockResolvedValue(mockCredential),
+				getSharedCredentials: jest.fn().mockResolvedValue(null),
+			}));
+
+			await expect(updateCredential(mockUser, 'cred1', { name: 'New Name' })).rejects.toThrow(
+				'Insufficient permissions to update credential',
+			);
 		});
 	});
 });

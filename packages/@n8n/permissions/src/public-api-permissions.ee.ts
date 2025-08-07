@@ -36,6 +36,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'execution:read',
 	'execution:list',
 	'credential:create',
+	'credential:update',
 	'credential:move',
 	'credential:delete',
 ];
@@ -61,6 +62,7 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'execution:read',
 	'execution:list',
 	'credential:create',
+	'credential:update',
 	'credential:move',
 	'credential:delete',
 ];
