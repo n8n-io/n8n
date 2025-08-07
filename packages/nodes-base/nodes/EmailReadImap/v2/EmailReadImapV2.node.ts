@@ -178,11 +178,12 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Sets an interval (in minutes) to force a reconnection',
 				},
 				{
-					displayName: 'Track Last Message ID',
+					displayName: 'Fetch Only New Emails',
 					name: 'trackLastMessageId',
 					type: 'boolean',
 					default: true,
-					description: 'Whether to get only emails after the last processed message ID',
+					description:
+						'Whether to fetch only new emails since the last run, or all emails that match the "Custom Email Rules" (["UNSEEN"] by default)',
 					displayOptions: {
 						show: {
 							'@version': [{ _cnd: { gte: 2.1 } }],
