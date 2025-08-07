@@ -23,9 +23,7 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	const config = getSendAndWaitConfig(this);
 
-	const buttons = config.options.map(
-		(option) => `<a href="${config.url}?approved=${option.value}">${option.label}</a>`,
-	);
+	const buttons = config.options.map((option) => `<a href="${option.url}">${option.label}</a>`);
 
 	let content = `${config.message}<br><br>${buttons.join(' ')}`;
 
