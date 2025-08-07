@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { IUser, UserAction } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import type { UserAction } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import { DATA_STORE_DETAILS } from '../constants';
 import { useI18n } from '@n8n/i18n';
@@ -29,7 +30,7 @@ const emit = defineEmits<{
 	];
 }>();
 
-const renameInput = useTemplateRef('renameInput');
+const renameInput = useTemplateRef<{ forceFocus?: () => void }>('renameInput');
 
 const dataStoreRoute = computed(() => {
 	return {
@@ -47,7 +48,7 @@ const onCardAction = (action: string) => {
 	if (action === 'rename') {
 		if (renameInput.value?.forceFocus) {
 			setTimeout(() => {
-				renameInput.value?.forceFocus();
+				renameInput.value?.forceFocus?.();
 			}, 100);
 		}
 		return;

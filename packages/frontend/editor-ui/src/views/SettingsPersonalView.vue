@@ -4,7 +4,8 @@ import { ROLE, type Role } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
+import type { IFormInputs, ThemeOption } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	MFA_DOCS_URL,

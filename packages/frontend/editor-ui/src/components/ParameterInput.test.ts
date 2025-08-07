@@ -27,6 +27,11 @@ function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 		},
 		isInputPanelEmpty: false,
 		isOutputPanelEmpty: false,
+		ndvInputDataWithPinnedData: [],
+		getHoveringItem: undefined,
+		expressionOutputItemIndex: 0,
+		isTableHoverOnboarded: false,
+		setHighlightDraggables: vi.fn(),
 	};
 }
 
@@ -100,6 +105,11 @@ describe('ParameterInput.vue', () => {
 			},
 			isInputPanelEmpty: false,
 			isOutputPanelEmpty: false,
+			ndvInputDataWithPinnedData: [],
+			getHoveringItem: undefined,
+			expressionOutputItemIndex: 0,
+			isTableHoverOnboarded: false,
+			setHighlightDraggables: vi.fn(),
 		};
 		mockNodeTypesState = {
 			allNodeTypes: [],

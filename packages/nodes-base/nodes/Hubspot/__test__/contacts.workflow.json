@@ -5,8 +5,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-220, 500],
-			"id": "660a58a4-9e3c-4d66-908c-26f4d99daff1",
+			"position": [400, -368],
+			"id": "9b86caa6-4892-4eff-b513-3391bbd36e11",
 			"name": "When clicking ‘Execute workflow’"
 		},
 		{
@@ -24,8 +24,8 @@
 			},
 			"type": "n8n-nodes-base.hubspot",
 			"typeVersion": 2.1,
-			"position": [0, 400],
-			"id": "c8a9eacd-7b90-4c7e-9a01-6d417c8595de",
+			"position": [624, -656],
+			"id": "ec2ae603-783d-4a3a-82b8-1a7049616df6",
 			"name": "HubSpot - Contact - Get",
 			"credentials": {
 				"hubspotApi": {
@@ -45,8 +45,8 @@
 			},
 			"type": "n8n-nodes-base.hubspot",
 			"typeVersion": 2.1,
-			"position": [0, 0],
-			"id": "f580a3eb-ac70-4838-8229-f4b1a9c0fe31",
+			"position": [624, -1040],
+			"id": "b593dd98-8bd0-4a13-ac44-c732835c2354",
 			"name": "HubSpot - Contact - Delete",
 			"credentials": {
 				"hubspotApi": {
@@ -80,8 +80,8 @@
 			},
 			"type": "n8n-nodes-base.hubspot",
 			"typeVersion": 2.1,
-			"position": [0, 200],
-			"id": "6d013a2d-284b-44e3-b1ab-6cd980058d78",
+			"position": [624, -848],
+			"id": "29e2d75f-d62d-43ad-8162-75c4fa7dbc1d",
 			"name": "HubSpot - Contact - Create",
 			"credentials": {
 				"hubspotApi": {
@@ -98,8 +98,8 @@
 			},
 			"type": "n8n-nodes-base.hubspot",
 			"typeVersion": 2.1,
-			"position": [0, 600],
-			"id": "be09f310-c593-41ae-b79c-b44661918e8f",
+			"position": [624, -464],
+			"id": "1abd78f0-cf23-44e5-8575-791de126a05a",
 			"name": "HubSpot - Contact - Get Many",
 			"credentials": {
 				"hubspotApi": {
@@ -116,8 +116,8 @@
 			},
 			"type": "n8n-nodes-base.hubspot",
 			"typeVersion": 2.1,
-			"position": [0, 800],
-			"id": "95b4d7da-612b-4159-b283-36d55d0b6cce",
+			"position": [624, -272],
+			"id": "6c0a7374-7d37-4ff1-b66b-84d1e27cf1b8",
 			"name": "HubSpot - Contact - Get Recently Updated",
 			"credentials": {
 				"hubspotApi": {
@@ -165,9 +165,65 @@
 			},
 			"type": "n8n-nodes-base.hubspot",
 			"typeVersion": 2.1,
-			"position": [0, 1000],
-			"id": "68f5e362-b554-48fd-8b1b-982940dd6e7a",
+			"position": [624, -80],
+			"id": "5b28b56d-bc71-41db-a8ef-03a4c4827038",
 			"name": "HubSpot - Contact - Search",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"email": "test1@test.com",
+				"additionalFields": {},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [624, 128],
+			"id": "24dd6489-8372-43fb-877b-7bbfedbdaa9a",
+			"name": "HubSpot - Contact - Create - Without properties",
+			"credentials": {
+				"hubspotApi": {
+					"id": "EDJsHUkhqof5gr15",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"email": "test2@test.com",
+				"additionalFields": {
+					"buyingRole": ["CHAMPION", "INFLUENCER"],
+					"countryRegionCode": "US",
+					"emailCustomerQuarantinedReason": "BLOCKLIST_REMEDIATION",
+					"employmentRole": "consulting",
+					"enrichedEmailBounceDetected": true,
+					"employmentSeniority": "director",
+					"employmentSubRole": "account_manager",
+					"inferredLanguageCodes": "en",
+					"latestTrafficSource": "OTHER_CAMPAIGNS",
+					"latestTrafficSourceDate": "2025-01-01T00:00:00",
+					"linkedinUrl": "https://linkedin.com/foo",
+					"memberEmail": "member@test.com",
+					"militaryStatus": "Foo",
+					"persona": "persona_1",
+					"prospectingAgentLastEnrolled": "2025-02-01T00:00:00",
+					"prospectingAgentTotalEnrolledCount": 2,
+					"stateRegionCode": "CA",
+					"timeZone": "us_slash_pacific",
+					"whatsappPhoneNumber": "123456789"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [624, 320],
+			"id": "e857588e-3509-47dc-a43c-2889b3b07a01",
+			"name": "HubSpot - Contact - Create - With new properties",
 			"credentials": {
 				"hubspotApi": {
 					"id": "EDJsHUkhqof5gr15",
@@ -544,6 +600,100 @@
 					"updatedAt": "2025-04-16T18:54:48.554Z"
 				}
 			}
+		],
+		"HubSpot - Contact - Create - Without properties": [
+			{
+				"json": {
+					"addedAt": 1390574181854,
+					"canonical-vid": 204727,
+					"form-submissions": [],
+					"identity-profiles": [
+						{
+							"deleted-changed-timestamp": 0,
+							"identities": [
+								{
+									"timestamp": 1390574181878,
+									"type": "LEAD_GUID",
+									"value": "f9d728f1-dff1-49b0-9caa-247dbdf5b8b7"
+								},
+								{
+									"timestamp": 1476768116137,
+									"type": "EMAIL",
+									"value": "mgnew-email@hubspot.com"
+								}
+							],
+							"saved-at-timestamp": 1476768116149,
+							"vid": 204727
+						}
+					],
+					"is-contact": true,
+					"merge-audits": [],
+					"merged-vids": [],
+					"portal-id": 62515,
+					"properties": {
+						"company": {
+							"value": ""
+						},
+						"firstname": {
+							"value": "Bob"
+						},
+						"lastmodifieddate": {
+							"value": "1483461406481"
+						},
+						"lastname": {
+							"value": "Record"
+						}
+					},
+					"vid": 204727
+				}
+			}
+		],
+		"HubSpot - Contact - Create - With new properties": [
+			{
+				"json": {
+					"addedAt": 1390574181854,
+					"canonical-vid": 204727,
+					"form-submissions": [],
+					"identity-profiles": [
+						{
+							"deleted-changed-timestamp": 0,
+							"identities": [
+								{
+									"timestamp": 1390574181878,
+									"type": "LEAD_GUID",
+									"value": "f9d728f1-dff1-49b0-9caa-247dbdf5b8b7"
+								},
+								{
+									"timestamp": 1476768116137,
+									"type": "EMAIL",
+									"value": "mgnew-email@hubspot.com"
+								}
+							],
+							"saved-at-timestamp": 1476768116149,
+							"vid": 204727
+						}
+					],
+					"is-contact": true,
+					"merge-audits": [],
+					"merged-vids": [],
+					"portal-id": 62515,
+					"properties": {
+						"company": {
+							"value": ""
+						},
+						"firstname": {
+							"value": "Bob"
+						},
+						"lastmodifieddate": {
+							"value": "1483461406481"
+						},
+						"lastname": {
+							"value": "Record"
+						}
+					},
+					"vid": 204727
+				}
+			}
 		]
 	},
 	"connections": {
@@ -551,12 +701,12 @@
 			"main": [
 				[
 					{
-						"node": "HubSpot - Contact - Create",
+						"node": "HubSpot - Contact - Delete",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "HubSpot - Contact - Delete",
+						"node": "HubSpot - Contact - Create",
 						"type": "main",
 						"index": 0
 					},
@@ -579,6 +729,16 @@
 						"node": "HubSpot - Contact - Search",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "HubSpot - Contact - Create - Without properties",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Contact - Create - With new properties",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -588,10 +748,11 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "73e9b678-aa88-4d45-9095-285f742173ba",
+	"versionId": "2893ac70-b652-4ada-83de-e1eb3944b0ef",
 	"meta": {
-		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+		"templateCredsSetupCompleted": true,
+		"instanceId": "eeda9e3069aca300d1dfceeb64beb5b53d715db44a50461bbc5cb0cf6daa01e3"
 	},
-	"id": "0okjdr441aloqrhb",
+	"id": "ufE0Naih6reFUYf3",
 	"tags": []
 }
