@@ -45,10 +45,6 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
 	},
 	{
-		find: /^@n8n\/i18n(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src$1'),
-	},
-	{
 		find: /^@n8n\/stores(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
 	},
@@ -100,7 +96,24 @@ const plugins: UserConfig['plugins'] = [
 			},
 		],
 	}),
-	vue(),
+	vue({
+		template: {
+			compilerOptions: {
+				// Enable proper SFC processing
+				hoistStatic: true,
+				cacheHandlers: true,
+			},
+		},
+		script: {
+			// Ensure proper script block handling
+			defineModel: true,
+			propsDestructure: true,
+		},
+		// Explicitly include .vue files
+		include: /\.vue$/,
+		// Add custom block support if needed
+		customElement: false,
+	}),
 	svgLoader({
 		svgoConfig: {
 			plugins: [

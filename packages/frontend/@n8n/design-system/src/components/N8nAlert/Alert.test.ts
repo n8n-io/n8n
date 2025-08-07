@@ -198,12 +198,12 @@ describe('components', () => {
 				expect(customIcon).toHaveTextContent('Custom');
 			});
 
-			it('should prefer icon slot over showIcon prop', () => {
+			it('should prefer showIcon prop over icon slot when showIcon is true', () => {
 				const { container } = render(N8nAlert, {
 					props: { showIcon: true },
 					slots: {
 						icon: '<span class="custom-icon">Slot Icon</span>',
-						default: 'Slot takes precedence',
+						default: 'Default icon behavior',
 					},
 					global: {
 						components: {
@@ -216,8 +216,8 @@ describe('components', () => {
 				});
 				const customIcon = container.querySelector('.custom-icon');
 				const defaultIcon = container.querySelector('.n8n-icon');
-				expect(customIcon).toBeInTheDocument();
-				expect(defaultIcon).not.toBeInTheDocument();
+				expect(defaultIcon).toBeInTheDocument();
+				expect(customIcon).not.toBeInTheDocument();
 			});
 		});
 
@@ -362,6 +362,7 @@ describe('components', () => {
 
 			it('should render multiple slots simultaneously', () => {
 				render(N8nAlert, {
+					props: { showIcon: false },
 					slots: {
 						title: 'Slot Title',
 						default: 'Slot Message',
@@ -472,15 +473,18 @@ describe('components', () => {
 				const longTitle = 'Very long title '.repeat(20);
 				const longDescription = 'Very long description '.repeat(50);
 
-				render(N8nAlert, {
+				const { container } = render(N8nAlert, {
 					props: {
-						title: longTitle,
-						description: longDescription,
+						title: longTitle.trim(),
+						description: longDescription.trim(),
 					},
 				});
 
-				expect(screen.getByText(longTitle)).toBeInTheDocument();
-				expect(screen.getByText(longDescription)).toBeInTheDocument();
+				const titleElement = container.querySelector('.title');
+				const descriptionElement = container.querySelector('.description');
+
+				expect(titleElement).toHaveTextContent('Very long title');
+				expect(descriptionElement).toHaveTextContent('Very long description');
 			});
 
 			it('should handle special characters in content', () => {

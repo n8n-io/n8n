@@ -1,33 +1,17 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`components > N8nButton > Basic Rendering > should render correctly with default props 1`] = `
+exports[`components > N8nButton > basic rendering > should render correctly with default props 1`] = `
 "<button class="button button primary medium" aria-live="polite">
   <!--v-if-->Button
 </button>"
 `;
 
-exports[`components > N8nButton > Icon Configuration > should render icon button 1`] = `"<button class="button button primary medium withIcon" aria-live="polite"><span class="icon"><n8n-icon-stub icon="circle-plus" size="medium" spin="false"></n8n-icon-stub></span>Button</button>"`;
-
-exports[`components > N8nButton > Loading State > should render loading spinner 1`] = `"<button class="button button primary medium loading withIcon" disabled="" aria-busy="true" aria-live="polite"><span class="icon"><n8n-spinner-stub size="medium" type="dots"></n8n-spinner-stub></span>Button</button>"`;
-
-exports[`components > N8nButton > Square Buttons > should render square button 1`] = `
+exports[`components > N8nButton > button states > should render square button 1`] = `
 "<button class="button button primary medium square" aria-live="polite">
   <!--v-if--><span>48</span>
 </button>"
 `;
 
-exports[`components > N8nButton > props > icon > should render icon button 1`] = `"<button class="button button primary medium withIcon" aria-live="polite"><span class="icon"><n8n-icon-stub icon="circle-plus" size="medium" spin="false"></n8n-icon-stub></span>Button</button>"`;
+exports[`components > N8nButton > icon configuration > should render icon button 1`] = `"<button class="button button primary medium withIcon" aria-live="polite"><span class="icon"><svg viewBox="0 0 24 24" width="14px" height="14px" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="circle-plus"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 12h8m-4-4v8"></path></g></svg></span>Button</button>"`;
 
-exports[`components > N8nButton > props > loading > should render loading spinner 1`] = `"<button class="button button primary medium loading withIcon" disabled="" aria-busy="true" aria-live="polite"><span class="icon"><n8n-spinner-stub size="medium" type="dots"></n8n-spinner-stub></span>Button</button>"`;
-
-exports[`components > N8nButton > props > square > should render square button 1`] = `
-"<button class="button button primary medium square" aria-live="polite">
-  <!--v-if--><span>48</span>
-</button>"
-`;
-
-exports[`components > N8nButton > should render correctly 1`] = `
-"<button class="button button primary medium" aria-live="polite">
-  <!--v-if-->Button
-</button>"
-`;
+exports[`components > N8nButton > loading state > should render loading spinner when loading is true 1`] = `"<button class="button button primary medium loading withIcon" disabled="" aria-busy="true" aria-live="polite"><span class="icon"><span class="n8n-spinner"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="n8n-icon spin" aria-hidden="true" focusable="false" role="img" height="14px" width="14px" data-icon="spinner"><path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="M12 2v3M12 19v3M12 2v3M12 19v3M22.005 11.995h-3M5.005 11.995h-3M19.08 19.068l-2.122-2.122M7.059 7.047 4.938 4.926M4.938 19.068l2.12-2.122M16.958 7.047l2.122-2.121" style="stroke: currentColor; stroke-opacity: 1;"></path></svg></span></span>Button</button>"`;
