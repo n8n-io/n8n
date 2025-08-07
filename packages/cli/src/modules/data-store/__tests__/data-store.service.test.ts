@@ -1,3 +1,4 @@
+import type { ModuleName } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -9,7 +10,8 @@ import { DataStoreService } from '../data-store.service';
 import { toTableName } from '../utils/sql-utils';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-store']);
+	// the module is not registered
+	await testModules.loadModules(['data-store'] as unknown as ModuleName[]);
 	await testDb.init();
 });
 
