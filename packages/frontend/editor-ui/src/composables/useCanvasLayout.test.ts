@@ -1,5 +1,5 @@
 import { useVueFlow, type GraphNode, type VueFlowStore } from '@vue-flow/core';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { createCanvasGraphEdge, createCanvasGraphNode } from '../__tests__/data';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../types';
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
@@ -36,7 +36,10 @@ describe('useCanvasLayout', () => {
 
 		vi.mocked(useVueFlow).mockReturnValue(vueFlowStoreMock);
 
-		const { layout } = useCanvasLayout();
+		const { layout } = useCanvasLayout(
+			'test-canvas-id',
+			computed(() => false),
+		);
 
 		return { layout };
 	}

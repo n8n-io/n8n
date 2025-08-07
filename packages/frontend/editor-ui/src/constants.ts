@@ -115,6 +115,9 @@ export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integratio
 export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
+export const EVALUATIONS_DOCS_URL = `https://${DOCS_DOMAIN}/advanced-ai/evaluations/overview/`;
+export const ERROR_WORKFLOW_DOCS_URL = `https://${DOCS_DOMAIN}/flow-logic/error-handling/#create-and-set-an-error-workflow`;
+export const TIME_SAVED_DOCS_URL = `https://${DOCS_DOMAIN}/insights/#setting-the-time-saved-by-a-workflow`;
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 export const N8N_MAIN_GITHUB_REPO_URL = 'https://github.com/n8n-io/n8n';
 
@@ -489,12 +492,11 @@ export const LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON = 'N8N_HIDE_HIDE_GITHUB_STAR_
 export const LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_INPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE = 'N8N_NDV_OUTPUT_PANEL_DISPLAY_MODE';
 export const LOCAL_STORAGE_LOGS_PANEL_OPEN = 'N8N_LOGS_PANEL_OPEN';
+export const LOCAL_STORAGE_TURN_OFF_WORKFLOW_SUGGESTIONS = 'N8N_TURN_OFF_WORKFLOW_SUGGESTIONS';
 export const LOCAL_STORAGE_LOGS_SYNC_SELECTION = 'N8N_LOGS_SYNC_SELECTION_ENABLED';
 export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL = 'N8N_LOGS_DETAILS_PANEL';
 export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL_SUB_NODE = 'N8N_LOGS_DETAILS_PANEL_SUB_NODE';
 export const LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY = 'N8N_WORKFLOWS_LIST_PREFERENCES';
-export const LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS =
-	'N8N_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS';
 export const LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS =
 	'N8N_EXPERIMENTAL_DOCKED_NODE_SETTINGS';
 export const LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES = 'N8N_READ_WHATS_NEW_ARTICLES';
@@ -739,6 +741,12 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
+export const CANVAS_ZOOMED_VIEW_EXPERIMENT = {
+	name: 'canvas_zoomed_view',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const NDV_UI_OVERHAUL_EXPERIMENT = {
 	name: '029_ndv_ui_overhaul',
 	control: 'control',
@@ -747,12 +755,6 @@ export const NDV_UI_OVERHAUL_EXPERIMENT = {
 
 export const WORKFLOW_BUILDER_EXPERIMENT = {
 	name: '036_workflow_builder_agent',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const RAG_STARTER_WORKFLOW_EXPERIMENT = {
-	name: '033_rag_template',
 	control: 'control',
 	variant: 'variant',
 };
@@ -779,7 +781,6 @@ export const BATCH_11AUG_EXPERIMENT = {
 
 export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_BUILDER_EXPERIMENT.name,
-	RAG_STARTER_WORKFLOW_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
 	NDV_UI_OVERHAUL_EXPERIMENT.name,

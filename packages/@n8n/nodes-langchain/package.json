@@ -171,7 +171,7 @@
     "@google-ai/generativelanguage": "2.6.0",
     "@google-cloud/resource-manager": "5.3.0",
     "@google/generative-ai": "0.21.0",
-    "@huggingface/inference": "2.8.0",
+    "@huggingface/inference": "4.0.5",
     "@langchain/anthropic": "catalog:",
     "@langchain/aws": "0.1.11",
     "@langchain/cohere": "0.3.4",
