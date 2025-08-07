@@ -1,9 +1,10 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import * as usersApi from '@/api/users';
+import * as usersApi from '@n8n/rest-api-client/api/users';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { VIEWS } from '@/constants';
-import type { IUser, WorkflowListResource } from '@/Interface';
+import type { WorkflowListResource } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -21,7 +22,7 @@ import { waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 vi.mock('@/api/projects.api');
-vi.mock('@/api/users');
+vi.mock('@n8n/rest-api-client/api/users');
 vi.mock('@/api/sourceControl');
 vi.mock('@/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
