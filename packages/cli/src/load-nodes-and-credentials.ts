@@ -530,7 +530,7 @@ export class LoadNodesAndCredentials {
 				await fsPromises.access(directory);
 			} catch {
 				// If directory doesn't exist, there is nothing to watch
-				return;
+				continue;
 			}
 
 			const reloader = debounce(async () => {

@@ -2794,9 +2794,6 @@ importers:
       cheerio:
         specifier: 1.0.0-rc.6
         version: 1.0.0-rc.6
-      chokidar:
-        specifier: ^4.0.1
-        version: 4.0.1
       cron:
         specifier: 3.1.7
         version: 3.1.7
