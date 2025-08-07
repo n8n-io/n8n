@@ -141,7 +141,7 @@ function openDiffModal(id: string) {
 					ref="scroller"
 					:items="files"
 					:min-item-size="47"
-					class="full-height scroller"
+					:class="$style.scroller"
 					style="max-height: 440px"
 				>
 					<template #default="{ item, index, active }">
@@ -160,32 +160,37 @@ function openDiffModal(id: string) {
 							:data-index="index"
 						>
 							<div :class="$style.listItem" data-test-id="pull-modal-item">
-								<RouterLink
-									v-if="item.type === 'credential'"
-									target="_blank"
-									:to="{ name: VIEWS.CREDENTIALS, params: { credentialId: item.id } }"
-								>
-									<N8nText>{{ item.name }}</N8nText>
-								</RouterLink>
-								<RouterLink
-									v-else-if="item.type === 'workflow'"
-									target="_blank"
-									:to="{ name: VIEWS.WORKFLOW, params: { name: item.id } }"
-								>
-									<N8nText>{{ item.name }}</N8nText>
-								</RouterLink>
-								<N8nText v-else>{{ item.name }}</N8nText>
-								<N8nBadge :theme="getStatusTheme(item.status)" :class="$style.listBadge">
-									{{ getStatusText(item.status) }}
-								</N8nBadge>
-								<EnvFeatureFlag name="SOURCE_CONTROL_WORKFLOW_DIFF">
-									<N8nIconButton
-										v-if="item.type === SOURCE_CONTROL_FILE_TYPE.workflow"
-										icon="git-branch"
-										type="secondary"
-										@click="openDiffModal(item.id)"
-									/>
-								</EnvFeatureFlag>
+								<div :class="$style.itemName">
+									<RouterLink
+										v-if="item.type === 'credential'"
+										target="_blank"
+										:to="{ name: VIEWS.CREDENTIALS, params: { credentialId: item.id } }"
+									>
+										<N8nText>{{ item.name }}</N8nText>
+									</RouterLink>
+									<RouterLink
+										v-else-if="item.type === 'workflow'"
+										target="_blank"
+										:to="{ name: VIEWS.WORKFLOW, params: { name: item.id } }"
+									>
+										<N8nText>{{ item.name }}</N8nText>
+									</RouterLink>
+									<N8nText v-else>{{ item.name }}</N8nText>
+								</div>
+								<div :class="$style.itemActions">
+									<N8nBadge :theme="getStatusTheme(item.status)" :class="$style.listBadge">
+										{{ getStatusText(item.status) }}
+									</N8nBadge>
+									<EnvFeatureFlag name="SOURCE_CONTROL_WORKFLOW_DIFF">
+										<N8nIconButton
+											v-if="item.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+											icon="file-diff"
+											type="secondary"
+											:class="$style.diffButton"
+											@click="openDiffModal(item.id)"
+										/>
+									</EnvFeatureFlag>
+								</div>
 							</div>
 						</DynamicScrollerItem>
 					</template>
@@ -207,8 +212,13 @@ function openDiffModal(id: string) {
 </template>
 
 <style module lang="scss">
-.container > * {
+.container {
 	overflow-wrap: break-word;
+	padding-right: 8px;
+}
+
+.scroller {
+	margin-right: -8px;
 }
 
 .filesList {
@@ -225,17 +235,15 @@ function openDiffModal(id: string) {
 	padding-top: 16px;
 	padding-bottom: 12px;
 	height: 47px;
-}
-
-.listBadge {
-	margin-left: auto;
-	align-self: flex-start;
-	margin-top: 2px;
+	margin-right: 8px;
 }
 
 .listItem {
 	display: flex;
-	padding-bottom: 10px;
+	align-items: center;
+	padding-bottom: 8px;
+	margin-right: 8px;
+
 	&::before {
 		display: block;
 		content: '';
@@ -246,6 +254,37 @@ function openDiffModal(id: string) {
 		margin: 7px 8px 6px 2px;
 		flex-shrink: 0;
 	}
+}
+
+.itemName {
+	flex: 1;
+	min-width: 0;
+	margin-right: 8px;
+
+	a,
+	span {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: block;
+	}
+}
+
+.itemActions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.listBadge {
+	align-self: center;
+	white-space: nowrap;
+	height: 30px;
+}
+
+.diffButton {
+	flex-shrink: 0;
 }
 
 .footer {
