@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { IUser, UserAction } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import type { UserAction } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import { DATA_STORE_DETAILS } from '../constants';
 import { useI18n } from '@n8n/i18n';

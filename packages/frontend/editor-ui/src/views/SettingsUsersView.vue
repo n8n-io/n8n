@@ -15,7 +15,8 @@ import {
 	EnterpriseEditionFeature,
 	INVITE_USER_MODAL_KEY,
 } from '@/constants';
-import type { InvitableRoleName, IUser } from '@/Interface';
+import type { InvitableRoleName } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
