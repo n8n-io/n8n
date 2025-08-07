@@ -41,7 +41,7 @@ const webhookTypeUi = computed((): { title: string; callout: string; suggestion:
 		return {
 			title: 'Chat',
 			callout: 'chat trigger',
-			suggestion: suggestionBase + 'use a new Chat Trigger node in either workflow:',
+			suggestion: suggestionBase + 'insert a new Chat Trigger node in either workflow:',
 		};
 	if (data.triggerType === WEBHOOK_NODE_TYPE)
 		return {
@@ -53,7 +53,7 @@ const webhookTypeUi = computed((): { title: string; callout: string; suggestion:
 	return {
 		title: 'Trigger',
 		callout: 'trigger',
-		suggestion: suggestionBase + 'use a new trigger node of the same type in either workflow:',
+		suggestion: suggestionBase + 'insert a new trigger node of the same type in either workflow:',
 	};
 });
 
@@ -82,8 +82,8 @@ const onClick = async () => {
 			<div :class="$style.container">
 				<div>
 					<n8n-text color="text-base"> You can deactivate </n8n-text>
-					<n8n-link :to="workflowUrl" :underline="true"> '{{ data.workflowName }}' </n8n-link>
-					<n8n-text color="text-base">
+					<n8n-link :to="workflowUrl" :underline="true"> {{ data.workflowName }} </n8n-link>
+					<n8n-text color="text-base" data-test-id="conflicting-webhook-suggestion">
 						{{ webhookTypeUi.suggestion }}
 					</n8n-text>
 				</div>
