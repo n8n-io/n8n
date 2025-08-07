@@ -790,9 +790,7 @@ defineExpose({
 	input {
 		height: 30px;
 	}
-}
 
-.search {
 	@include mixins.breakpoint('sm-and-down') {
 		max-width: 100%;
 	}

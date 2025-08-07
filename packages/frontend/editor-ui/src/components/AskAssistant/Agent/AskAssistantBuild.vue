@@ -132,11 +132,14 @@ watch(currentRoute, () => {
 			:loading-message="loadingMessage"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
 			:title="'n8n AI'"
+			:show-stop="true"
 			:scroll-on-new-message="true"
 			:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
+			:max-length="1000"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@feedback="onFeedback"
+			@stop="builderStore.stopStreaming"
 		>
 			<template #header>
 				<slot name="header" />

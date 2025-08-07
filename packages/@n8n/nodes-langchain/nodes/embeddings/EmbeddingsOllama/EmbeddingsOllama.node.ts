@@ -49,10 +49,16 @@ export class EmbeddingsOllama implements INodeType {
 		this.logger.debug('Supply data for embeddings Ollama');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const credentials = await this.getCredentials('ollamaApi');
+		const headers = credentials.apiKey
+			? {
+					Authorization: `Bearer ${credentials.apiKey as string}`,
+				}
+			: undefined;
 
 		const embeddings = new OllamaEmbeddings({
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
+			headers,
 		});
 
 		return {

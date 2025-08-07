@@ -340,7 +340,8 @@ const modifiers = [
 					<N8nIconButton
 						icon="arrow-left"
 						type="secondary"
-						class="mr-xs"
+						:class="[$style.backButton, 'mr-xs']"
+						icon-size="large"
 						@click="closeDialog"
 					></N8nIconButton>
 					<N8nHeading tag="h1" size="xlarge">
@@ -359,7 +360,7 @@ const modifiers = [
 							modifiers,
 						}"
 						:popper-class="$style.popper"
-						class="mr-xs"
+						class="mr-2xs"
 						@visible-change="setActiveTab"
 					>
 						<N8nButton type="secondary">
@@ -397,8 +398,8 @@ const modifiers = [
 												@click.prevent="setSelectedDetailId(change.node.id, activeTab)"
 											>
 												<DiffBadge :type="change.status" />
-												<NodeIcon :node-type="change.type" :size="16" />
-												{{ change.node.name }}
+												<NodeIcon :node-type="change.type" :size="16" class="ml-2xs mr-4xs" />
+												<span :class="$style.nodeName">{{ change.node.name }}</span>
 											</ElDropdownItem>
 										</ul>
 										<ul v-if="activeTab === 'connectors'" :class="$style.changes">
@@ -406,7 +407,7 @@ const modifiers = [
 												<div>
 													<DiffBadge :type="change[1].status" />
 												</div>
-												<div style="flex: 1">
+												<div style="flex: 1; min-width: 0">
 													<ul :class="$style.changesNested">
 														<ElDropdownItem
 															:class="{
@@ -418,8 +419,14 @@ const modifiers = [
 																setSelectedDetailId(change[1].connection.source?.id, activeTab)
 															"
 														>
-															<NodeIcon :node-type="change[1].connection.sourceType" :size="16" />
-															{{ change[1].connection.source?.name }}
+															<NodeIcon
+																:node-type="change[1].connection.sourceType"
+																:size="16"
+																class="ml-2xs mr-4xs"
+															/>
+															<span :class="$style.nodeName">{{
+																change[1].connection.source?.name
+															}}</span>
 														</ElDropdownItem>
 														<div :class="$style.separator"></div>
 														<ElDropdownItem
@@ -432,8 +439,14 @@ const modifiers = [
 																setSelectedDetailId(change[1].connection.target?.id, activeTab)
 															"
 														>
-															<NodeIcon :node-type="change[1].connection.targetType" :size="16" />
-															{{ change[1].connection.target?.name }}
+															<NodeIcon
+																:node-type="change[1].connection.targetType"
+																:size="16"
+																class="ml-2xs mr-4xs"
+															/>
+															<span :class="$style.nodeName">{{
+																change[1].connection.target?.name
+															}}</span>
 														</ElDropdownItem>
 													</ul>
 												</div>
@@ -459,6 +472,7 @@ const modifiers = [
 					<N8nIconButton
 						icon="chevron-left"
 						type="secondary"
+						class="mr-2xs"
 						:class="$style.navigationButton"
 						@click="previousNodeChange"
 					></N8nIconButton>
@@ -507,11 +521,11 @@ const modifiers = [
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
 									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nHeading size="large"> Deleted workflow </N8nHeading>
 										<N8nText color="text-base"> The workflow was deleted on the database </N8nText>
 									</template>
 									<template v-else>
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nHeading size="large"> Deleted workflow </N8nHeading>
 										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
 									</template>
 								</div>
@@ -551,11 +565,11 @@ const modifiers = [
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
 									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nHeading size="large"> Deleted workflow </N8nHeading>
 										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
 									</template>
 									<template v-else>
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
+										<N8nHeading size="large"> Deleted workflow </N8nHeading>
 										<N8nText color="text-base"> The workflow was deleted on the data base </N8nText>
 									</template>
 								</div>
@@ -577,7 +591,9 @@ const modifiers = [
 	</Modal>
 </template>
 
-<style module>
+<style module lang="scss">
+/* Diff colors are now centralized in @n8n/design-system tokens */
+
 .workflowDiffModal {
 	margin-bottom: 0;
 	border-radius: 0;
@@ -587,7 +603,7 @@ const modifiers = [
 	}
 	:global(.el-dialog__header) {
 		padding: 11px 16px;
-		border-bottom: 1px solid var(--color-border);
+		border-bottom: 1px solid var(--color-foreground-base);
 	}
 	:global(.el-dialog__headerbtn) {
 		display: none;
@@ -622,42 +638,59 @@ const modifiers = [
 }
 
 .popper {
-	box-shadow: 0px 6px 16px 0px rgba(68, 28, 23, 0.06);
+	box-shadow: 0 6px 16px 0 rgba(68, 28, 23, 0.06);
 	:global(.el-popper__arrow) {
 		display: none;
 	}
 }
 
 .changes {
-	list-style: none;
-	margin: 0;
-	padding: 0;
 	> li {
 		display: flex;
 		align-items: flex-start;
-		gap: 8px;
-		padding: 8px;
+		gap: var(--spacing-2xs);
+		padding: 10px 0 var(--spacing-3xs) var(--spacing-2xs);
+
+		ul {
+			margin-top: -3px;
+		}
+
+		.clickableChange {
+			padding: var(--spacing-3xs) var(--spacing-xs) var(--spacing-3xs) 0;
+			margin-left: -4px;
+		}
 	}
+}
+
+.clickableChange {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing-2xs);
+	border-radius: 4px;
+	padding: var(--spacing-xs) var(--spacing-2xs);
+	line-height: unset;
+	min-width: 0;
+}
+
+.clickableChangeActive {
+	background-color: var(--color-background-medium);
+}
+
+.nodeName {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 .separator {
 	width: 1px;
 	height: 10px;
 	background-color: var(--color-foreground-xdark);
-	margin: -5px 23px;
+	margin: 0 0 -5px var(--spacing-xs);
 	position: relative;
 	z-index: 1;
-}
-
-.clickableChange {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	border-radius: 4px;
-}
-
-.clickableChangeActive {
-	background-color: var(--color-background-medium);
 }
 
 .deleted,
@@ -666,13 +699,13 @@ const modifiers = [
 	position: relative;
 	&::before {
 		position: absolute;
-		bottom: 0px;
-		left: 0px;
-		border-bottom-left-radius: 6px;
-		border-top-right-radius: 2px;
+		top: 0;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		border-radius: 4px;
 		color: var(--color-text-xlight);
-		font-family: var(--font-family-monospace);
-		font-size: 8px;
+		font-family: Inter, var(--font-family);
+		font-size: 10px;
 		font-weight: 700;
 		z-index: 1;
 		width: 16px;
@@ -681,54 +714,49 @@ const modifiers = [
 		justify-content: center;
 		align-items: center;
 	}
-
-	&[data-node-type='n8n-nodes-base.stickyNote'],
-	&[data-node-type='n8n-nodes-base.manualTrigger'] {
-		&::before {
-			left: auto;
-			right: 0px;
-			border-top-right-radius: 0;
-			border-top-left-radius: 2px;
-			border-bottom-left-radius: 0;
-			border-bottom-right-radius: 6px;
-		}
-	}
 }
 
 .deleted {
-	--canvas-node--background: rgba(234, 31, 48, 0.2);
-	--canvas-node--border-color: var(--color-node-icon-red);
-	--color-sticky-background: rgba(234, 31, 48, 0.2);
-	--color-sticky-border: var(--color-node-icon-red);
+	--canvas-node--background: var(--diff-del-faint);
+	--canvas-node--border-color: var(--diff-del);
+	--color-sticky-background: var(--diff-del-faint);
+	--color-sticky-border: var(--diff-del);
 	&::before {
 		content: 'D';
-		background-color: var(--color-node-icon-red);
+		background-color: var(--diff-del);
 	}
-	:global(.canvas-node-handle-main-output > div) {
-		background-color: var(--color-node-icon-red);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-del);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-red);
+		background-color: var(--diff-del);
+	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--diff-del) !important;
 	}
 }
 .added {
-	--canvas-node--border-color: var(--color-node-icon-green);
-	--canvas-node--background: rgba(14, 171, 84, 0.2);
-	--color-sticky-background: rgba(14, 171, 84, 0.2);
-	--color-sticky-border: var(--color-node-icon-green);
+	--canvas-node--border-color: var(--diff-new);
+	--canvas-node--background: var(--diff-new-faint);
+	--color-sticky-background: var(--diff-new-faint);
+	--color-sticky-border: var(--diff-new);
 	position: relative;
 	&::before {
 		content: 'N';
-		background-color: var(--color-node-icon-green);
+		background-color: var(--diff-new);
 	}
-	:global(.canvas-node-handle-main-output > div) {
-		background-color: var(--color-node-icon-green);
-	}
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-green);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-new);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-green);
+		background-color: var(--diff-new);
+	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--diff-new) !important;
 	}
 }
 .equal {
@@ -744,30 +772,35 @@ const modifiers = [
 	}
 }
 .modified {
-	--canvas-node--border-color: var(--color-node-icon-orange);
-	--canvas-node--background: rgba(255, 150, 90, 0.2);
-	--color-sticky-background: rgba(255, 150, 90, 0.2);
-	--color-sticky-border: var(--color-node-icon-orange);
+	--canvas-node--border-color: var(--diff-modified);
+	--canvas-node--background: var(--diff-modified-faint);
+	--color-sticky-background: var(--diff-modified-faint);
+	--color-sticky-border: var(--diff-modified);
 	position: relative;
 	&::before {
 		content: 'M';
-		background-color: var(--color-node-icon-orange);
+		background-color: var(--diff-modified);
 	}
-	:global(.canvas-node-handle-main-output .source) {
-		--color-foreground-xdark: var(--color-node-icon-orange);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-modified);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-orange);
+		background-color: var(--diff-modified);
+	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--diff-modified) !important;
 	}
 }
 
 .edge-deleted {
-	--canvas-edge-color: var(--color-node-icon-red);
-	--edge-highlight-color: rgba(234, 31, 48, 0.2);
+	--canvas-edge-color: var(--diff-del);
+	--edge-highlight-color: var(--diff-del-light);
 }
 .edge-added {
-	--canvas-edge-color: var(--color-node-icon-green);
-	--edge-highlight-color: rgba(14, 171, 84, 0.2);
+	--canvas-edge-color: var(--diff-new);
+	--edge-highlight-color: var(--diff-new-light);
 }
 .edge-equal {
 	opacity: 0.5;
@@ -775,7 +808,7 @@ const modifiers = [
 
 .noNumberDiff {
 	min-height: 41px;
-	margin-bottom: 10px !important;
+	margin-bottom: 10px;
 	:global(.blob-num) {
 		display: none;
 	}
@@ -788,8 +821,8 @@ const modifiers = [
 	width: 16px;
 	height: 16px;
 	border-radius: 50%;
-	background-color: var(--color-background-medium);
-	color: var(--color-text-dark);
+	background-color: var(--color-primary);
+	color: var(--color-text-xlight);
 	font-size: 10px;
 	font-weight: bold;
 	line-height: 1;
@@ -798,6 +831,12 @@ const modifiers = [
 .dropdownContent {
 	min-width: 300px;
 	padding: 2px 12px;
+
+	ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
 }
 
 .workflowDiffContent {
@@ -815,7 +854,6 @@ const modifiers = [
 .workflowDiffPanel {
 	flex: 1;
 	position: relative;
-	border-top: 1px solid #ddd;
 }
 
 .emptyWorkflow {
@@ -830,15 +868,19 @@ const modifiers = [
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+
+	.navigationButton {
+		height: 34px;
+		width: 34px;
+	}
+
+	.backButton {
+		border: none;
+	}
 }
 
 .headerLeft {
 	display: flex;
 	align-items: center;
-}
-
-.navigationButton {
-	height: 34px !important;
-	width: 34px !important;
 }
 </style>
