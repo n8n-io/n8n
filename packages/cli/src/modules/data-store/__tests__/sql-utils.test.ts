@@ -20,7 +20,7 @@ describe('sql-utils', () => {
 
 			const query = createUserTableQuery(tableName, columns, 'sqlite');
 			expect(query).toBe(
-				'CREATE TABLE IF NOT EXISTS data_store_user_abc (id INTEGER PRIMARY KEY AUTOINCREMENT , "name" TEXT, "age" FLOAT)',
+				'CREATE TABLE IF NOT EXISTS "data_store_user_abc" (id INTEGER PRIMARY KEY AUTOINCREMENT , "name" TEXT, "age" FLOAT)',
 			);
 		});
 
@@ -31,7 +31,7 @@ describe('sql-utils', () => {
 			const query = createUserTableQuery(tableName, columns, 'postgres');
 
 			expect(query).toBe(
-				'CREATE TABLE IF NOT EXISTS data_store_user_abc (id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY )',
+				'CREATE TABLE IF NOT EXISTS "data_store_user_abc" (id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY )',
 			);
 		});
 	});
@@ -43,7 +43,7 @@ describe('sql-utils', () => {
 
 			const query = addColumnQuery(tableName, column, 'sqlite');
 
-			expect(query).toBe('ALTER TABLE data_store_user_abc ADD "email" FLOAT');
+			expect(query).toBe('ALTER TABLE "data_store_user_abc" ADD "email" FLOAT');
 		});
 	});
 
@@ -54,7 +54,7 @@ describe('sql-utils', () => {
 
 			const query = deleteColumnQuery(tableName, column, 'sqlite');
 
-			expect(query).toBe('ALTER TABLE data_store_user_abc DROP COLUMN "email"');
+			expect(query).toBe('ALTER TABLE "data_store_user_abc" DROP COLUMN "email"');
 		});
 	});
 
@@ -68,7 +68,7 @@ describe('sql-utils', () => {
 
 			const [query, parameters] = buildInsertQuery(tableName, rows);
 
-			expect(query).toBe('INSERT INTO data_store_user_abc ("name", "age") VALUES (?,?),(?,?)');
+			expect(query).toBe('INSERT INTO "data_store_user_abc" ("name", "age") VALUES (?,?),(?,?)');
 			expect(parameters).toEqual(['Alice', 30, 'Bob', 25]);
 		});
 
@@ -101,7 +101,7 @@ describe('sql-utils', () => {
 
 			const [query, parameters] = buildUpdateQuery(tableName, row, matchFields);
 
-			expect(query).toBe('UPDATE data_store_user_abc SET "age" = ?, "city" = ? WHERE "name" = ?');
+			expect(query).toBe('UPDATE "data_store_user_abc" SET "age" = ?, "city" = ? WHERE "name" = ?');
 			expect(parameters).toEqual([30, 'Paris', 'Alice']);
 		});
 
@@ -113,7 +113,7 @@ describe('sql-utils', () => {
 			const [query, parameters] = buildUpdateQuery(tableName, row, matchFields);
 
 			expect(query).toBe(
-				'UPDATE data_store_user_abc SET "age" = ? WHERE "name" = ? AND "city" = ?',
+				'UPDATE "data_store_user_abc" SET "age" = ? WHERE "name" = ? AND "city" = ?',
 			);
 			expect(parameters).toEqual([30, 'Alice', 'Paris']);
 		});
