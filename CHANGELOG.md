@@ -1,3 +1,15 @@
+## [1.106.1](https://github.com/n8n-io/n8n/compare/n8n@1.106.0...n8n@1.106.1) (2025-08-07)
+
+
+### Bug Fixes
+
+* **core:** Handle non-existing files when checking if it is a symlink ([#18010](https://github.com/n8n-io/n8n/issues/18010)) ([c7f0343](https://github.com/n8n-io/n8n/commit/c7f03437cca017077dbe53f84ad26604191009ea))
+* **core:** Prevent re-entry during workflow activation ([#17965](https://github.com/n8n-io/n8n/issues/17965)) ([2453518](https://github.com/n8n-io/n8n/commit/24535185a7a4886e31cab1db375b343c195a1144))
+* **core:** Protect against duplicate cron registration ([#18005](https://github.com/n8n-io/n8n/issues/18005)) ([6f3fcc0](https://github.com/n8n-io/n8n/commit/6f3fcc0d7b43c2846ace6b6dfca58f16dffa584f))
+* **editor:** Connection port mapped incorrectly when changed dynamically ([#17958](https://github.com/n8n-io/n8n/issues/17958)) ([c425630](https://github.com/n8n-io/n8n/commit/c425630454c8cdb85dfdc6b1a917844231607ddc))
+
+
+
 # [1.106.0](https://github.com/n8n-io/n8n/compare/n8n@1.105.0...n8n@1.106.0) (2025-08-04)
 
 
