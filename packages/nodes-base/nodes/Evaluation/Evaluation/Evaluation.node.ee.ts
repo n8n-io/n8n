@@ -22,7 +22,7 @@ import {
 	setOutputs,
 	setInputs,
 } from '../utils/evaluationUtils';
-import { metricRequiresModelConnection } from 'n8n-workflow';
+import { metricRequiresModelConnection } from 'n8n-workflow'; // See packages/workflow/src/evaluation-helpers.ts
 
 export class Evaluation implements INodeType {
 	description: INodeTypeDescription = {
