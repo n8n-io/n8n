@@ -1523,7 +1523,7 @@
       "description": "Implement test coverage for layout and positioning components: N8nPulse, N8nRadioButtons, N8nResizeWrapper, N8nResizeableSticky, N8nSticky",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "dependencies": [],
       "important_files": [
         "packages/frontend/@n8n/design-system/src/components/N8nPulse/",
@@ -2851,8 +2851,8 @@
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 366,
-  "last_hook_activation": 1754531842441,
+  "execution_count": 369,
+  "last_hook_activation": 1754532363149,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37
