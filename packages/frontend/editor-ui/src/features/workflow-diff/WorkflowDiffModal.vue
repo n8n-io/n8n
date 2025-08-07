@@ -399,7 +399,7 @@ const modifiers = [
 												>
 													<DiffBadge :type="change.status" />
 													<NodeIcon :node-type="change.type" :size="16" class="ml-2xs mr-4xs" />
-													{{ change.node.name }}
+													<span :class="$style.nodeName">{{ change.node.name }}</span>
 												</ElDropdownItem>
 											</template>
 											<li v-else :class="$style.emptyState">
@@ -429,7 +429,9 @@ const modifiers = [
 																	:size="16"
 																	class="ml-2xs mr-4xs"
 																/>
-																{{ change[1].connection.source?.name }}
+																<span :class="$style.nodeName">{{
+																change[1].connection.source?.name
+															}}</span>
 															</ElDropdownItem>
 															<div :class="$style.separator"></div>
 															<ElDropdownItem
@@ -447,7 +449,9 @@ const modifiers = [
 																	:size="16"
 																	class="ml-2xs mr-4xs"
 																/>
-																{{ change[1].connection.target?.name }}
+																<span :class="$style.nodeName">{{
+																change[1].connection.target?.name
+															}}</span>
 															</ElDropdownItem>
 														</ul>
 													</div>
@@ -606,32 +610,7 @@ const modifiers = [
 </template>
 
 <style module lang="scss">
-/* Light theme diff colors */
-:root,
-[data-theme='light'] {
-	--diff-new: #0eab54;
-	--diff-new-light: #b4efc4;
-	--diff-new-faint: #ddfbe7;
-	--diff-modified: #bf941f;
-	--diff-modified-light: #f3dca1;
-	--diff-modified-faint: #fbf1d4;
-	--diff-del: #f51f32;
-	--diff-del-light: #fad3d0;
-	--diff-del-faint: #ffedec;
-}
-
-/* Dark theme diff colors */
-[data-theme='dark'] {
-	--diff-new: #38cb7a;
-	--diff-new-light: #43674f;
-	--diff-new-faint: #3a463e;
-	--diff-modified: #d6a625;
-	--diff-modified-light: #6a5c38;
-	--diff-modified-faint: #464236;
-	--diff-del: #fb887a;
-	--diff-del-light: #7a524e;
-	--diff-del-faint: #4d3e3d;
-}
+/* Diff colors are now centralized in @n8n/design-system tokens */
 
 .workflowDiffModal {
 	margin-bottom: 0;
@@ -708,6 +687,7 @@ const modifiers = [
 	border-radius: 4px;
 	padding: var(--spacing-xs) var(--spacing-2xs);
 	line-height: unset;
+	min-width: 0;
 	transition: background-color 0.2s ease;
 
 	&:hover {
@@ -717,6 +697,14 @@ const modifiers = [
 
 .clickableChangeActive {
 	background-color: var(--color-background-xlight);
+}
+
+.nodeName {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 .separator {

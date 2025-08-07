@@ -4,6 +4,17 @@
 	// Primary tokens
 	--color-danger: var(--prim-color-alt-k);
 
+	// Diff colors (dark theme overrides)
+	--diff-new: #38cb7a;
+	--diff-new-light: #43674f;
+	--diff-new-faint: #3a463e;
+	--diff-modified: #d6a625;
+	--diff-modified-light: #6a5c38;
+	--diff-modified-faint: #464236;
+	--diff-del: #fb887a;
+	--diff-del-light: #7a524e;
+	--diff-del-faint: #4d3e3d;
+
 	// Text
 	--color-text-dark: var(--prim-gray-40);
 	--color-text-base: var(--prim-gray-200);
@@ -205,6 +216,18 @@
 	--color-button-secondary-focus-outline: var(--prim-color-primary-alpha-035);
 	--color-button-secondary-disabled-font: var(--prim-gray-0-alpha-030);
 	--color-button-secondary-disabled-border: var(--prim-gray-0-alpha-030);
+
+	// Button highlight
+	--color-button-highlight-font: var(--prim-gray-320);
+	--color-button-highlight-border: transparent;
+	--color-button-highlight-background: transparent;
+	--color-button-highlight-hover-active-focus-font: var(--prim-color-primary-tint-100);
+	--color-button-highlight-hover-active-focus-border: var(--prim-gray-670);
+	--color-button-highlight-hover-background: var(--prim-gray-670);
+	--color-button-highlight-active-focus-background: var(--prim-gray-670);
+	--color-button-highlight-focus-outline: var(--prim-gray-670);
+	--color-button-highlight-disabled-font: var(--prim-gray-0-alpha-010);
+	--color-button-highlight-disabled-border: transparent;
 
 	// Button success, warning, danger
 	--color-button-danger-font: var(--prim-gray-0);
