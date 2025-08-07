@@ -795,10 +795,12 @@ export class CredentialsService {
 			const credType = this.credentialTypes.getByName(credentialType);
 			const properties = credType.properties || [];
 
-			analysis.totalFields = properties.length;
-			analysis.filledFields = Object.keys(credentialData).length;
-			analysis.completeness =
-				analysis.totalFields > 0 ? (analysis.filledFields / analysis.totalFields) * 100 : 0;
+			const totalFields = properties.length;
+			const filledFields = Object.keys(credentialData).length;
+
+			analysis.totalFields = totalFields;
+			analysis.filledFields = filledFields;
+			analysis.completeness = totalFields > 0 ? (filledFields / totalFields) * 100 : 0;
 
 			// Check for common issues and provide recommendations
 			for (const prop of properties) {

@@ -220,7 +220,7 @@ export class AnalyticsService {
 				nodeTypes.map(async (nodeType) => {
 					const executions = await this.getExecutionsForNodeType(nodeType, timeRange);
 					const failedExecutions = executions.filter(
-						(e) => e.status === 'failed' || e.status === 'crashed',
+						(e) => e.status === 'error' || e.status === 'crashed',
 					);
 
 					return {
@@ -230,7 +230,11 @@ export class AnalyticsService {
 							executions.length > 0 ? (failedExecutions.length / executions.length) * 100 : 0,
 						lastUsed:
 							executions.length > 0
-								? new Date(Math.max(...executions.map((e) => e.startedAt.getTime())))
+								? new Date(
+										Math.max(
+											...executions.filter((e) => e.startedAt).map((e) => e.startedAt!.getTime()),
+										),
+									)
 								: new Date(0),
 					};
 				}),
@@ -356,8 +360,8 @@ export class AnalyticsService {
 		const previousErrors = await this.getTotalErrors(previousPeriod);
 
 		const executionTrend = this.calculateTrend(currentExecutions, previousExecutions);
-		const errorTrend = this.calculateTrend(currentErrors, previousErrors, true); // Invert for errors
-		const performanceTrend = 'stable'; // Would need performance metrics to calculate
+		const errorTrend = this.calculateErrorTrend(currentErrors, previousErrors);
+		const performanceTrend: 'improving' | 'degrading' | 'stable' = 'stable'; // Would need performance metrics to calculate
 
 		return {
 			executionTrend,
@@ -369,7 +373,6 @@ export class AnalyticsService {
 	private calculateTrend(
 		current: number,
 		previous: number,
-		invert: boolean = false,
 	): 'increasing' | 'decreasing' | 'stable' {
 		if (previous === 0) return 'stable';
 
@@ -379,12 +382,22 @@ export class AnalyticsService {
 		if (Math.abs(changePercent) < threshold) return 'stable';
 
 		const isIncreasing = changePercent > 0;
-
-		if (invert) {
-			return isIncreasing ? 'worsening' : 'improving';
-		}
-
 		return isIncreasing ? 'increasing' : 'decreasing';
+	}
+
+	private calculateErrorTrend(
+		current: number,
+		previous: number,
+	): 'improving' | 'worsening' | 'stable' {
+		if (previous === 0) return 'stable';
+
+		const changePercent = ((current - previous) / previous) * 100;
+		const threshold = 5; // 5% threshold for considering a trend
+
+		if (Math.abs(changePercent) < threshold) return 'stable';
+
+		const isIncreasing = changePercent > 0;
+		return isIncreasing ? 'worsening' : 'improving';
 	}
 
 	private async getTopErrorNodes(
@@ -411,7 +424,7 @@ export class AnalyticsService {
 		Array<{
 			id: string;
 			status: ExecutionStatus;
-			startedAt: Date;
+			startedAt: Date | null;
 			stoppedAt?: Date;
 		}>
 	> {
@@ -426,11 +439,11 @@ export class AnalyticsService {
 	}
 
 	private async calculateNodePerformanceMetrics(
-		executions: Array<{ startedAt: Date; stoppedAt?: Date }>,
+		executions: Array<{ startedAt: Date | null; stoppedAt?: Date }>,
 	): Promise<NodeTypeAnalytics['performanceMetrics']> {
 		const executionTimes = executions
-			.filter((e) => e.stoppedAt)
-			.map((e) => e.stoppedAt!.getTime() - e.startedAt.getTime())
+			.filter((e) => e.stoppedAt && e.startedAt)
+			.map((e) => e.stoppedAt!.getTime() - e.startedAt!.getTime())
 			.sort((a, b) => a - b);
 
 		if (executionTimes.length === 0) {
@@ -467,7 +480,7 @@ export class AnalyticsService {
 		const issues: string[] = [];
 
 		const failedExecutions = executions.filter(
-			(e) => e.status === 'failed' || e.status === 'crashed',
+			(e) => e.status === 'error' || e.status === 'crashed',
 		);
 		const errorRate =
 			executions.length > 0 ? (failedExecutions.length / executions.length) * 100 : 0;

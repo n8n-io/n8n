@@ -5,7 +5,7 @@ import { pipeline } from 'stream/promises';
 import { createGzip, createGunzip } from 'zlib';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { WorkflowEntity, CredentialsEntity, SettingsEntity, InstalledPackages } from '@n8n/db';
+import type { WorkflowEntity, CredentialsEntity, Settings, InstalledPackages } from '@n8n/db';
 import {
 	WorkflowRepository,
 	CredentialsRepository,
@@ -67,7 +67,7 @@ export class BackupService {
 		private readonly installedPackagesRepository: InstalledPackagesRepository,
 		private readonly binaryDataService: BinaryDataService,
 	) {
-		this.backupDir = join(this.instanceSettings.userFolder, 'backups');
+		this.backupDir = join(this.instanceSettings.n8nFolder, 'backups');
 		this.ensureBackupDirectory();
 		this.loadScheduleConfig();
 	}
@@ -101,7 +101,7 @@ export class BackupService {
 
 			const credentials = options.includeCredentials
 				? await this.credentialsRepository.find({
-						select: ['id', 'name', 'type', 'data', 'nodesAccess'],
+						select: ['id', 'name', 'type', 'data'],
 					})
 				: [];
 

@@ -1,0 +1,11 @@
+Timeout Debug Summary for Agent c43cbd6e-fded-4917-8a96-a338545f1114
+==========================================
+
+Timestamp: 2025-08-07T02:23:21.150144
+Elapsed Time: 0m 0.0s
+Timeout Limit: 120s
+Timeout Exceeded: False
+Hook Type: SubagentStop
+Tool Name: unknown
+
+Full report: logs/debug/debug_report_c43cbd6e-fded-4917-8a96-a338545f1114_1754551401.json

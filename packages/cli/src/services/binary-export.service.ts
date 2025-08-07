@@ -13,8 +13,7 @@ import archiver from 'archiver';
 
 import { BinaryDataService } from './binary-data.service';
 import { EventService } from '@/events/event.service';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { WorkflowRepository, ExecutionRepository } from '@n8n/db';
 
 interface BulkExportRequest {
 	workflowIds?: string[];
@@ -223,13 +222,14 @@ export class BinaryExportService {
 
 			this.completeProgressTracking(operationId);
 
-			this.eventService.emit('bulk-binary-export-completed', {
-				exportId,
-				userId: user.id,
-				totalFiles: result.totalFiles,
-				totalBinaryFiles: result.totalBinaryFiles,
-				compressedSize: result.compressedSize,
-			});
+			// TODO: Add proper event emission once binary export events are defined in EventService
+			// this.eventService.emit('bulk-binary-export-completed', {
+			//	exportId,
+			//	userId: user.id,
+			//	totalFiles: result.totalFiles,
+			//	totalBinaryFiles: result.totalBinaryFiles,
+			//	compressedSize: result.compressedSize,
+			// });
 
 			this.logger.info('Bulk binary data export completed', {
 				exportId,
@@ -251,11 +251,12 @@ export class BinaryExportService {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 
-			this.eventService.emit('bulk-binary-export-failed', {
-				exportId,
-				userId: user.id,
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
+			// TODO: Add proper event emission once binary export events are defined in EventService
+			// this.eventService.emit('bulk-binary-export-failed', {
+			//	exportId,
+			//	userId: user.id,
+			//	error: error instanceof Error ? error.message : 'Unknown error',
+			// });
 
 			throw error;
 		}
@@ -333,12 +334,13 @@ export class BinaryExportService {
 
 			this.completeProgressTracking(operationId);
 
-			this.eventService.emit('workflow-package-created', {
-				packageId,
-				userId: user.id,
-				workflowId: request.workflowId,
-				totalSize: result.totalSize,
-			});
+			// TODO: Add proper event emission once workflow package events are defined in EventService
+			// this.eventService.emit('workflow-package-created', {
+			//	packageId,
+			//	userId: user.id,
+			//	workflowId: request.workflowId,
+			//	totalSize: result.totalSize,
+			// });
 
 			this.logger.info('Workflow package creation completed', {
 				packageId,
@@ -461,7 +463,7 @@ export class BinaryExportService {
 		}
 
 		if (request.workflowIds?.length) {
-			workflows = await this.workflowRepository.findManyByIds(request.workflowIds);
+			workflows = await this.workflowRepository.findByIds(request.workflowIds);
 
 			if (!request.binaryDataIds?.length) {
 				for (const workflowId of request.workflowIds) {
@@ -472,7 +474,7 @@ export class BinaryExportService {
 		}
 
 		if (request.executionIds?.length) {
-			executions = await this.executionRepository.findManyByIds(request.executionIds);
+			executions = await this.executionRepository.findByIds(request.executionIds);
 
 			if (!request.binaryDataIds?.length && !request.workflowIds?.length) {
 				for (const executionId of request.executionIds) {

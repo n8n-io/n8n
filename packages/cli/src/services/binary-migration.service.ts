@@ -160,12 +160,13 @@ export class BinaryMigrationService {
 				},
 			};
 
-			this.eventService.emit('binary-export-completed', {
-				exportId,
-				userId: user.id,
-				totalFiles: result.totalBinaryFiles,
-				totalSize: result.totalSize,
-			});
+			// TODO: Add proper event emission once binary export events are defined in EventService
+			// this.eventService.emit('binary-export-completed', {
+			//	exportId,
+			//	userId: user.id,
+			//	totalFiles: result.totalBinaryFiles,
+			//	totalSize: result.totalSize,
+			// });
 
 			this.logger.info('Binary data export completed', {
 				exportId,
@@ -182,11 +183,12 @@ export class BinaryMigrationService {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 
-			this.eventService.emit('binary-export-failed', {
-				exportId,
-				userId: user.id,
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
+			// TODO: Add proper event emission once binary export events are defined in EventService
+			// this.eventService.emit('binary-export-failed', {
+			//	exportId,
+			//	userId: user.id,
+			//	error: error instanceof Error ? error.message : 'Unknown error',
+			// });
 
 			throw error;
 		}
@@ -230,13 +232,14 @@ export class BinaryMigrationService {
 				errors: importResult.errors,
 			};
 
-			this.eventService.emit('binary-import-completed', {
-				importId,
-				userId: user.id,
-				totalImported: result.totalImported,
-				totalSkipped: result.totalSkipped,
-				totalErrors: result.totalErrors,
-			});
+			// TODO: Add proper event emission once binary import events are defined in EventService
+			// this.eventService.emit('binary-import-completed', {
+			//	importId,
+			//	userId: user.id,
+			//	totalImported: result.totalImported,
+			//	totalSkipped: result.totalSkipped,
+			//	totalErrors: result.totalErrors,
+			// });
 
 			this.logger.info('Binary data import completed', {
 				importId,
@@ -253,11 +256,12 @@ export class BinaryMigrationService {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 
-			this.eventService.emit('binary-import-failed', {
-				importId,
-				userId: user.id,
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
+			// TODO: Add proper event emission once binary import events are defined in EventService
+			// this.eventService.emit('binary-import-failed', {
+			//	importId,
+			//	userId: user.id,
+			//	error: error instanceof Error ? error.message : 'Unknown error',
+			// });
 
 			throw error;
 		}
@@ -296,14 +300,15 @@ export class BinaryMigrationService {
 				errors: results.failed,
 			};
 
-			this.eventService.emit('cross-instance-binary-transfer-completed', {
-				transferId,
-				userId: user.id,
-				targetUrl: this.sanitizeUrl(request.targetInstanceUrl),
-				status: result.status,
-				totalTransferred: result.totalTransferred,
-				totalFailed: result.totalFailed,
-			});
+			// TODO: Add proper event emission once cross-instance transfer events are defined in EventService
+			// this.eventService.emit('cross-instance-binary-transfer-completed', {
+			//	transferId,
+			//	userId: user.id,
+			//	targetUrl: this.sanitizeUrl(request.targetInstanceUrl),
+			//	status: result.status,
+			//	totalTransferred: result.totalTransferred,
+			//	totalFailed: result.totalFailed,
+			// });
 
 			this.logger.info('Cross-instance binary transfer completed', {
 				transferId,
@@ -321,11 +326,12 @@ export class BinaryMigrationService {
 				error: error instanceof Error ? error.message : 'Unknown error',
 			});
 
-			this.eventService.emit('cross-instance-binary-transfer-failed', {
-				transferId,
-				userId: user.id,
-				error: error instanceof Error ? error.message : 'Unknown error',
-			});
+			// TODO: Add proper event emission once cross-instance transfer events are defined in EventService
+			// this.eventService.emit('cross-instance-binary-transfer-failed', {
+			//	transferId,
+			//	userId: user.id,
+			//	error: error instanceof Error ? error.message : 'Unknown error',
+			// });
 
 			throw error;
 		}
@@ -463,12 +469,13 @@ export class BinaryMigrationService {
 				}
 			}
 
-			this.eventService.emit('binary-cleanup-completed', {
-				cleanupId,
-				userId: user.id,
-				totalCleaned: cleanedFiles.length,
-				totalSize,
-			});
+			// TODO: Add proper event emission once binary cleanup events are defined in EventService
+			// this.eventService.emit('binary-cleanup-completed', {
+			//	cleanupId,
+			//	userId: user.id,
+			//	totalCleaned: cleanedFiles.length,
+			//	totalSize,
+			// });
 
 			this.logger.info('Orphaned binary data cleanup completed', {
 				cleanupId,

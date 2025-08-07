@@ -1722,6 +1722,9 @@ importers:
       '@redocly/cli':
         specifier: ^1.28.5
         version: 1.34.5(ajv@8.17.1)(encoding@0.1.13)
+      '@types/archiver':
+        specifier: ^6.0.3
+        version: 6.0.3
       '@types/aws4':
         specifier: ^1.5.1
         version: 1.11.6
@@ -7231,6 +7234,9 @@ packages:
   '@types/amqplib@0.10.7':
     resolution: {integrity: sha512-IVj3avf9AQd2nXCx0PGk/OYq7VmHiyNxWFSb5HhU9ATh+i+gHWvVcljFTcTWQ/dyHJCTrzCixde+r/asL2ErDA==}
 
+  '@types/archiver@6.0.3':
+    resolution: {integrity: sha512-a6wUll6k3zX6qs5KlxIggs1P1JcYJaTCx2gnlr+f0S1yd2DoaEwoIK10HmBaLnZwWneBz+JBm0dwcZu0zECBcQ==}
+
   '@types/argparse@1.0.38':
     resolution: {integrity: sha512-ebDJ9b0e702Yr7pWgB0jzm+CX4Srzz8RcXtLJDJB+BSccqMa36uyH/zUsSYao5+BD1ytv3k3rPYCq4mAE1hsXA==}
 
@@ -7520,6 +7526,9 @@ packages:
 
   '@types/readable-stream@4.0.21':
     resolution: {integrity: sha512-19eKVv9tugr03IgfXlA9UVUVRbW6IuqRO5B92Dl4a6pT7K8uaGrNS0GkxiZD0BOk6PLuXl5FhWl//eX/pzYdTQ==}
+
+  '@types/readdir-glob@1.1.5':
+    resolution: {integrity: sha512-raiuEPUYqXu+nvtY2Pe8s8FEmZ3x5yAH4VkLdihcPdalvsHltomrRC9BzuStrJ9yk06470hS0Crw0f1pXqD+Hg==}
 
   '@types/replacestream@4.0.4':
     resolution: {integrity: sha512-xoDYuN9ccH9FQl387vnJqY10sV3U86qJi/8SFxN+UroDKPT//QZZYyMpG751nju63qA1DnOEAmRetJnkB65/tg==}
@@ -18797,7 +18806,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.11.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.11.0(debug@4.4.1))
+      axios-retry: 4.5.0(axios@1.11.0)
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -21957,6 +21966,10 @@ snapshots:
     dependencies:
       '@types/node': 20.19.9
 
+  '@types/archiver@6.0.3':
+    dependencies:
+      '@types/readdir-glob': 1.1.5
+
   '@types/argparse@1.0.38': {}
 
   '@types/aria-query@5.0.4': {}
@@ -22285,6 +22298,10 @@ snapshots:
       csstype: 3.1.3
 
   '@types/readable-stream@4.0.21':
+    dependencies:
+      '@types/node': 20.19.9
+
+  '@types/readdir-glob@1.1.5':
     dependencies:
       '@types/node': 20.19.9
 
@@ -23512,11 +23529,6 @@ snapshots:
   aws4@1.11.0: {}
 
   axe-core@4.10.3: {}
-
-  axios-retry@4.5.0(axios@1.11.0(debug@4.4.1)):
-    dependencies:
-      axios: 1.11.0(debug@4.4.1)
-      is-retry-allowed: 2.2.0
 
   axios-retry@4.5.0(axios@1.11.0):
     dependencies:

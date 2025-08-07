@@ -4,9 +4,33 @@ import { Service } from '@n8n/di';
 import type {
 	EnterpriseBatchProcessingRequestDto,
 	EnterpriseBatchProcessingResponseDto,
-	BatchOperationStatusDto,
 	WorkflowOperationSummaryDto,
 } from '@n8n/api-types';
+
+// TODO: Move this to @n8n/api-types when the API is properly designed
+export interface BatchOperationStatusDto {
+	batchId: string;
+	operation: string;
+	status: 'failed' | 'completed' | 'cancelled' | 'pending' | 'processing';
+	progress: {
+		processed: number;
+		total: number;
+		percentage: number;
+	};
+	results?: {
+		successCount: number;
+		failedCount: number;
+		errors: Array<{
+			workflowId: string;
+			error: string;
+		}>;
+	};
+	metadata?: {
+		startedAt: string;
+		completedAt?: string;
+		estimatedCompletion?: string;
+	};
+}
 import { v4 as uuid } from 'uuid';
 
 import { EventService } from '@/events/event.service';
@@ -19,7 +43,7 @@ interface BatchOperation {
 	type: 'activate' | 'deactivate' | 'update' | 'transfer';
 	workflowIds: string[];
 	parameters?: Record<string, any>;
-	status: 'queued' | 'processing' | 'completed' | 'failed';
+	status: 'pending' | 'processing' | 'completed' | 'failed';
 	progress: {
 		processed: number;
 		total: number;
@@ -27,7 +51,7 @@ interface BatchOperation {
 	};
 	results?: {
 		successCount: number;
-		errorCount: number;
+		failedCount: number;
 		errors?: Array<{
 			workflowId: string;
 			error: string;
@@ -42,7 +66,7 @@ interface BatchOperation {
 interface BatchJob {
 	id: string;
 	operations: BatchOperation[];
-	status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
+	status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 	priority: 'low' | 'normal' | 'high';
 	scheduledFor?: Date;
 	webhook?: {
@@ -96,7 +120,7 @@ export class BatchProcessingService {
 			type: op.type,
 			workflowIds: op.workflowIds,
 			parameters: op.parameters,
-			status: 'queued',
+			status: 'pending',
 			progress: {
 				processed: 0,
 				total: op.workflowIds.length,
@@ -109,7 +133,7 @@ export class BatchProcessingService {
 		const batchJob: BatchJob = {
 			id: batchId,
 			operations,
-			status: 'queued',
+			status: 'pending',
 			priority: request.priority || 'normal',
 			scheduledFor: request.scheduledFor ? new Date(request.scheduledFor) : undefined,
 			webhook: request.webhook,
@@ -150,9 +174,9 @@ export class BatchProcessingService {
 				operationId: op.id,
 				type: op.type,
 				workflowCount: op.workflowIds.length,
-				status: 'queued',
+				status: 'pending',
 			})),
-			status: 'queued',
+			status: 'pending',
 			estimatedCompletion: operations[0]?.estimatedCompletion?.toISOString(),
 			metadata: {
 				priority: batchJob.priority,
@@ -199,8 +223,8 @@ export class BatchProcessingService {
 								(sum, op) => sum + (op.results?.successCount || 0),
 								0,
 							),
-							errorCount: batchJob.operations.reduce(
-								(sum, op) => sum + (op.results?.errorCount || 0),
+							failedCount: batchJob.operations.reduce(
+								(sum, op) => sum + (op.results?.failedCount || 0),
 								0,
 							),
 							errors: allErrors,
@@ -211,10 +235,6 @@ export class BatchProcessingService {
 					batchJob.metadata.startedAt?.toISOString() || batchJob.metadata.queuedAt.toISOString(),
 				completedAt: batchJob.metadata.completedAt?.toISOString(),
 				estimatedCompletion: batchJob.operations[0]?.estimatedCompletion?.toISOString(),
-				processingTimeMs: batchJob.metadata.completedAt
-					? batchJob.metadata.completedAt.getTime() -
-						(batchJob.metadata.startedAt?.getTime() || batchJob.metadata.queuedAt.getTime())
-					: undefined,
 			},
 		};
 	}
@@ -300,7 +320,7 @@ export class BatchProcessingService {
 			const now = new Date();
 			for (const [batchId, batchJob] of this.batchJobs.entries()) {
 				if (
-					batchJob.status === 'queued' &&
+					batchJob.status === 'pending' &&
 					batchJob.scheduledFor &&
 					batchJob.scheduledFor <= now &&
 					!this.processingQueue.includes(batchId)
@@ -316,7 +336,7 @@ export class BatchProcessingService {
 	 */
 	private async processBatchJob(batchId: string): Promise<void> {
 		const batchJob = this.batchJobs.get(batchId);
-		if (!batchJob || batchJob.status !== 'queued') return;
+		if (!batchJob || batchJob.status !== 'pending') return;
 
 		try {
 			this.logger.info('Starting batch job processing', { batchId });
@@ -385,7 +405,7 @@ export class BatchProcessingService {
 	private async processActivation(operation: BatchOperation, user: User): Promise<void> {
 		// Implementation similar to bulk activate but for batch processing
 		// This would use the same logic as the controller but adapted for batch context
-		operation.results = { successCount: 0, errorCount: 0, errors: [] };
+		operation.results = { successCount: 0, failedCount: 0, errors: [] };
 
 		for (const workflowId of operation.workflowIds) {
 			try {
@@ -398,7 +418,7 @@ export class BatchProcessingService {
 					operation.results.successCount++;
 				}
 			} catch (error) {
-				operation.results.errorCount++;
+				operation.results.failedCount++;
 				operation.results.errors?.push({
 					workflowId,
 					error: error instanceof Error ? error.message : String(error),
@@ -415,7 +435,7 @@ export class BatchProcessingService {
 
 	private async processDeactivation(operation: BatchOperation, user: User): Promise<void> {
 		// Similar implementation for deactivation
-		operation.results = { successCount: 0, errorCount: 0, errors: [] };
+		operation.results = { successCount: 0, failedCount: 0, errors: [] };
 
 		for (const workflowId of operation.workflowIds) {
 			try {
@@ -428,7 +448,7 @@ export class BatchProcessingService {
 					operation.results.successCount++;
 				}
 			} catch (error) {
-				operation.results.errorCount++;
+				operation.results.failedCount++;
 				operation.results.errors?.push({
 					workflowId,
 					error: error instanceof Error ? error.message : String(error),
@@ -445,7 +465,7 @@ export class BatchProcessingService {
 
 	private async processUpdate(operation: BatchOperation, user: User): Promise<void> {
 		// Implementation for bulk updates
-		operation.results = { successCount: 0, errorCount: 0, errors: [] };
+		operation.results = { successCount: 0, failedCount: 0, errors: [] };
 
 		for (const workflowId of operation.workflowIds) {
 			try {
@@ -453,7 +473,7 @@ export class BatchProcessingService {
 				// This would apply the updates specified in operation.parameters
 				operation.results.successCount++;
 			} catch (error) {
-				operation.results.errorCount++;
+				operation.results.failedCount++;
 				operation.results.errors?.push({
 					workflowId,
 					error: error instanceof Error ? error.message : String(error),
@@ -470,7 +490,7 @@ export class BatchProcessingService {
 
 	private async processTransfer(operation: BatchOperation, user: User): Promise<void> {
 		// Implementation for bulk transfers
-		operation.results = { successCount: 0, errorCount: 0, errors: [] };
+		operation.results = { successCount: 0, failedCount: 0, errors: [] };
 
 		for (const workflowId of operation.workflowIds) {
 			try {
@@ -478,7 +498,7 @@ export class BatchProcessingService {
 				// This would transfer workflows based on operation.parameters
 				operation.results.successCount++;
 			} catch (error) {
-				operation.results.errorCount++;
+				operation.results.failedCount++;
 				operation.results.errors?.push({
 					workflowId,
 					error: error instanceof Error ? error.message : String(error),

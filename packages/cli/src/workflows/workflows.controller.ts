@@ -11,7 +11,6 @@ import {
 	BulkUpdateWorkflowsResponseDto,
 	EnterpriseBatchProcessingRequestDto,
 	EnterpriseBatchProcessingResponseDto,
-	BatchOperationStatusDto,
 	WorkflowSearchQueryDto,
 	WorkflowSearchResponseDto,
 	AdvancedWorkflowSearchDto,
@@ -100,7 +99,7 @@ import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { CredentialsService } from '../credentials/credentials.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { BatchProcessingService } from './batch-processing.service';
+import { BatchProcessingService, type BatchOperationStatusDto } from './batch-processing.service';
 import { WorkflowSearchService } from '@/services/workflow-search.service';
 import { SavedSearchService } from '@/services/saved-search.service';
 import { ExpressionDocsService } from '@/services/expression-docs.service';
@@ -193,7 +192,7 @@ export class WorkflowsController {
 		delete req.body.id; // delete if sent
 		// We shouldn't accept this because it can
 		// mess with relations of other workflows
-		delete req.body.shared;
+		delete (req.body as any).shared;
 
 		const newWorkflow = new WorkflowEntity();
 
@@ -307,7 +306,7 @@ export class WorkflowsController {
 
 		// This is added as part of addOwnerAndSharings but
 		// shouldn't be returned to the frontend
-		delete savedWorkflowWithMetaData.shared;
+		delete (savedWorkflowWithMetaData as any).shared;
 
 		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
 		this.eventService.emit('workflow-created', {
@@ -417,7 +416,7 @@ export class WorkflowsController {
 
 			// This is added as part of addOwnerAndSharings but
 			// shouldn't be returned to the frontend
-			delete workflowWithMetaData.shared;
+			delete (workflowWithMetaData as any).shared;
 
 			const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 
@@ -1350,10 +1349,11 @@ export class WorkflowsController {
 				success: true,
 				data: searchResults,
 				metadata: {
-					requestedAt: new Date().toISOString(),
+					limit: limit || 0,
 					query,
-					type,
+					requestedAt: new Date().toISOString(),
 					totalResults,
+					type,
 					searchTimeMs: Date.now() - startTime,
 				},
 			};
