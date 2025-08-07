@@ -97,7 +97,7 @@ export async function request(config: {
 		options.headers!['browser-id'] = getBrowserId();
 	}
 	if (
-		import.meta.env.NODE_ENV !== 'production' &&
+		process.env.NODE_ENV !== 'production' &&
 		!baseURL.includes('api.n8n.io') &&
 		!baseURL.includes('n8n.cloud')
 	) {

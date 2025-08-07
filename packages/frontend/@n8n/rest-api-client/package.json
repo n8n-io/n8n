@@ -35,6 +35,7 @@
   "dependencies": {
     "@n8n/api-types": "workspace:*",
     "@n8n/constants": "workspace:*",
+    "@n8n/i18n": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/utils": "workspace:*",
     "js-base64": "catalog:",
@@ -44,7 +45,6 @@
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
-    "@n8n/i18n": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
