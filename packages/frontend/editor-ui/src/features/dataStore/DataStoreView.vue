@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import ProjectHeader, { type CustomAction } from '@/components/Projects/ProjectHeader.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useProjectPages } from '@/composables/useProjectPages';
@@ -10,19 +10,23 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import { fetchDataStores } from '@/features/dataStore/datastore.api';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import type { IUser, SortingAndPaginationUpdates, UserAction } from '@/Interface';
+import type { SortingAndPaginationUpdates, UserAction } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import {
+	ADD_DATA_STORE_MODAL_KEY,
 	DATA_STORE_CARD_ACTIONS,
 	DEFAULT_DATA_STORE_PAGE_SIZE,
 } from '@/features/dataStore/constants';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
+import { useUIStore } from '@/stores/ui.store';
+import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+import { useMessage } from '@/composables/useMessage';
+import { MODAL_CONFIRM } from '@/constants';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -30,18 +34,36 @@ const projectPages = useProjectPages();
 const { callDebounced } = useDebounce();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
+const message = useMessage();
 
+const dataStoreStore = useDataStoreStore();
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
-const rootStore = useRootStore();
 const sourceControlStore = useSourceControlStore();
 
 const loading = ref(true);
-const dataStores = ref<DataStoreResource[]>([]);
-const totalCount = ref(0);
 
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_DATA_STORE_PAGE_SIZE);
+
+const customProjectActions = computed<CustomAction[]>(() => [
+	{
+		id: 'add-data-store',
+		label: i18n.baseText('dataStore.add.button.label'),
+		disabled: loading.value || projectPages.isOverviewSubPage,
+	},
+]);
+
+const dataStoreResources = computed<DataStoreResource[]>(() =>
+	dataStoreStore.dataStores.map((ds) => {
+		return {
+			...ds,
+			resourceType: 'datastore',
+		};
+	}),
+);
+
+const totalCount = computed(() => dataStoreStore.totalCount);
 
 const currentProject = computed(() => projectsStore.currentProject);
 
@@ -78,11 +100,6 @@ const cardActions = computed<Array<UserAction<IUser>>>(() => [
 		value: DATA_STORE_CARD_ACTIONS.DELETE,
 		disabled: readOnlyEnv.value,
 	},
-	{
-		label: i18n.baseText('generic.clear'),
-		value: DATA_STORE_CARD_ACTIONS.CLEAR,
-		disabled: readOnlyEnv.value,
-	},
 ]);
 
 const initialize = async () => {
@@ -91,15 +108,7 @@ const initialize = async () => {
 		? route.params.projectId[0]
 		: route.params.projectId;
 	try {
-		const response = await fetchDataStores(rootStore.restApiContext, projectId, {
-			page: currentPage.value,
-			pageSize: pageSize.value,
-		});
-		dataStores.value = response.data.map((item) => ({
-			...item,
-			resourceType: 'datastore',
-		}));
-		totalCount.value = response.count;
+		await dataStoreStore.fetchDataStores(projectId, currentPage.value, pageSize.value);
 	} catch (error) {
 		toast.showError(error, 'Error loading data stores');
 	} finally {
@@ -119,6 +128,68 @@ const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
 	}
 };
 
+const onAddModalClick = () => {
+	useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
+};
+
+const onCardAction = async (payload: { action: string; dataStore: DataStoreResource }) => {
+	switch (payload.action) {
+		case DATA_STORE_CARD_ACTIONS.DELETE: {
+			const promptResponse = await message.confirm(
+				i18n.baseText('dataStore.delete.confirm.message', {
+					interpolate: { name: payload.dataStore.name },
+				}),
+				i18n.baseText('dataStore.delete.confirm.title'),
+				{
+					confirmButtonText: i18n.baseText('generic.delete'),
+					cancelButtonText: i18n.baseText('generic.cancel'),
+				},
+			);
+			if (promptResponse === MODAL_CONFIRM) {
+				try {
+					const deleted = await dataStoreStore.deleteDataStore(
+						payload.dataStore.id,
+						payload.dataStore.projectId,
+					);
+					if (!deleted) {
+						toast.showError(
+							new Error(i18n.baseText('generic.unknownError')),
+							i18n.baseText('dataStore.delete.error'),
+						);
+					}
+				} catch (error) {
+					toast.showError(error, i18n.baseText('dataStore.delete.error'));
+				}
+			}
+			break;
+		}
+		case DATA_STORE_CARD_ACTIONS.RENAME: {
+			try {
+				const updated = await dataStoreStore.updateDataStore(
+					payload.dataStore.id,
+					payload.dataStore.name,
+					payload.dataStore.projectId,
+				);
+				if (!updated) {
+					toast.showError(
+						new Error(i18n.baseText('generic.unknownError')),
+						i18n.baseText('dataStore.rename.error'),
+					);
+				}
+			} catch (error) {
+				toast.showError(error, i18n.baseText('dataStore.rename.error'));
+			}
+			break;
+		}
+	}
+};
+
+const onProjectHeaderAction = (action: string) => {
+	if (action === 'add-data-store') {
+		useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
+	}
+};
+
 onMounted(() => {
 	documentTitle.set(i18n.baseText('dataStore.tab.label'));
 });
@@ -128,7 +199,7 @@ onMounted(() => {
 		ref="layout"
 		resource-key="dataStore"
 		type="list-paginated"
-		:resources="dataStores"
+		:resources="dataStoreResources"
 		:initialize="initialize"
 		:type-props="{ itemSize: 80 }"
 		:loading="loading"
@@ -143,7 +214,10 @@ onMounted(() => {
 		@update:pagination-and-sort="onPaginationUpdate"
 	>
 		<template #header>
-			<ProjectHeader>
+			<ProjectHeader
+				:custom-actions="customProjectActions"
+				@custom-action-selected="onProjectHeaderAction"
+			>
 				<InsightsSummary
 					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
@@ -159,6 +233,7 @@ onMounted(() => {
 				:description="emptyCalloutDescription"
 				:button-text="emptyCalloutButtonText"
 				button-type="secondary"
+				@click:button="onAddModalClick"
 			/>
 		</template>
 		<template #item="{ item: data }">
@@ -168,6 +243,7 @@ onMounted(() => {
 				:show-ownership-badge="projectPages.isOverviewSubPage"
 				:actions="cardActions"
 				:read-only="readOnlyEnv"
+				@action="onCardAction"
 			/>
 		</template>
 	</ResourcesListLayout>

@@ -9,7 +9,7 @@ export default {
 	argTypes: {
 		type: {
 			control: 'select',
-			options: ['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'],
+			options: ['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger', 'highlight'],
 		},
 		size: {
 			control: {
@@ -78,6 +78,7 @@ const AllColorsAndSizesTemplate: StoryFn = (args, { argTypes }) => ({
 		<n8n-button v-bind="args" size="large" type="success" @click="onClick" />
 		<n8n-button v-bind="args" size="large" type="warning" @click="onClick" />
 		<n8n-button v-bind="args" size="large" type="danger" @click="onClick" />
+		<n8n-button v-bind="args" size="large" type="highlight" @click="onClick" />
 		<br/>
 		<br/>
 		<n8n-button v-bind="args" size="medium" type="primary" @click="onClick" />
@@ -86,6 +87,7 @@ const AllColorsAndSizesTemplate: StoryFn = (args, { argTypes }) => ({
 		<n8n-button v-bind="args" size="medium" type="success" @click="onClick" />
 		<n8n-button v-bind="args" size="medium" type="warning" @click="onClick" />
 		<n8n-button v-bind="args" size="medium" type="danger" @click="onClick" />
+		<n8n-button v-bind="args" size="medium" type="highlight" @click="onClick" />
 		<br/>
 		<br/>
 		<n8n-button v-bind="args" size="small" type="primary" @click="onClick" />
@@ -94,6 +96,7 @@ const AllColorsAndSizesTemplate: StoryFn = (args, { argTypes }) => ({
 		<n8n-button v-bind="args" size="small" type="success" @click="onClick" />
 		<n8n-button v-bind="args" size="small" type="warning" @click="onClick" />
 		<n8n-button v-bind="args" size="small" type="danger" @click="onClick" />
+		<n8n-button v-bind="args" size="small" type="highlight" @click="onClick" />
 	</div>`,
 	methods,
 });
@@ -150,6 +153,12 @@ export const WithIcon = AllSizesTemplate.bind({});
 WithIcon.args = {
 	label: 'Button',
 	icon: 'circle-plus',
+};
+
+export const Highlight = AllSizesTemplate.bind({});
+Highlight.args = {
+	type: 'highlight',
+	label: 'Button',
 };
 
 export const Square = AllColorsAndSizesTemplate.bind({});

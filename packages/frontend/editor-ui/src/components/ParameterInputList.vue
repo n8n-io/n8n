@@ -46,6 +46,7 @@ import {
 import { storeToRefs } from 'pinia';
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -78,6 +79,7 @@ const emit = defineEmits<{
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
 
 const message = useMessage();
 const nodeSettingsParameters = useNodeSettingsParameters();
@@ -192,11 +194,11 @@ watch(filteredParameterNames, (newValue, oldValue) => {
 });
 
 function updateFormTriggerParameters(parameters: INodeProperties[], triggerName: string) {
-	const workflow = workflowHelpers.getCurrentWorkflow();
-	const connectedNodes = workflow.getChildNodes(triggerName);
+	const workflowObject = workflowsStore.workflowObject;
+	const connectedNodes = workflowObject.getChildNodes(triggerName);
 
 	const hasFormPage = connectedNodes.some((nodeName) => {
-		const _node = workflow.getNode(nodeName);
+		const _node = workflowObject.getNode(nodeName);
 		return _node && _node.type === FORM_NODE_TYPE;
 	});
 
@@ -237,18 +239,18 @@ function updateFormTriggerParameters(parameters: INodeProperties[], triggerName:
 }
 
 function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflow = workflowHelpers.getCurrentWorkflow();
-	const parentNodes = workflow.getParentNodes(nodeName);
+	const workflowObject = workflowsStore.workflowObject;
+	const parentNodes = workflowObject.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(
-		(_node) => workflow.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
+		(_node) => workflowObject.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
 	);
 	if (!formTriggerName) return parameters;
 
-	const connectedNodes = workflow.getChildNodes(formTriggerName);
+	const connectedNodes = workflowObject.getChildNodes(formTriggerName);
 
 	const hasFormPage = connectedNodes.some((_nodeName) => {
-		const _node = workflow.getNode(_nodeName);
+		const _node = workflowObject.getNode(_nodeName);
 		return _node && _node.type === FORM_NODE_TYPE;
 	});
 
@@ -276,11 +278,11 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 }
 
 function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflow = workflowHelpers.getCurrentWorkflow();
-	const parentNodes = workflow.getParentNodes(nodeName);
+	const workflowObject = workflowsStore.workflowObject;
+	const parentNodes = workflowObject.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(
-		(_node) => workflow.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
+		(_node) => workflowObject.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
 	);
 
 	if (formTriggerName) return parameters.filter((parameter) => parameter.name !== 'triggerNotice');
@@ -413,13 +415,13 @@ function isCalloutVisible(parameter: INodeProperties): boolean {
 	return true;
 }
 
-async function onCalloutAction(action: CalloutActionType) {
+function onCalloutAction(action: CalloutActionType) {
 	if (action === 'openRagStarterTemplate') {
-		await openRagStarterTemplate(activeNode.value?.type ?? 'no active node');
+		openRagStarterTemplate(activeNode.value?.type ?? 'no active node');
 	}
 }
 
-const onCalloutDismiss = async (parameter: INodeProperties) => {
+async function onCalloutDismiss(parameter: INodeProperties) {
 	const dismissConfirmed = await message.confirm(
 		i18n.baseText('parameterInputList.callout.dismiss.confirm.text'),
 		{
@@ -438,7 +440,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 	}
 
 	await dismissCallout(parameter.name);
-};
+}
 </script>
 
 <template>
@@ -607,6 +609,7 @@ const onCalloutDismiss = async (parameter: INodeProperties) => {
 				:path="getPath(parameter.name)"
 				:dependent-parameters-values="getDependentParametersValues(parameter)"
 				:is-read-only="isReadOnly"
+				:allow-empty-strings="parameter.typeOptions?.resourceMapper?.allowEmptyValues"
 				input-size="small"
 				label-size="small"
 				@value-changed="valueChanged"

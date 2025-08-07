@@ -10,6 +10,7 @@ import {
 import { Prec, EditorState } from '@codemirror/state';
 import {
 	dropCursor,
+	EditorView,
 	highlightActiveLine,
 	highlightActiveLineGutter,
 	keymap,
@@ -35,7 +36,7 @@ import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
-import { nonTakenRanges } from './utils';
+import { nonTakenRanges, pasteHandler } from './utils';
 import type { TargetNodeParameterContext } from '@/Interface';
 
 type Props = {
@@ -67,6 +68,7 @@ const extensions = computed(() => [
 	]),
 	autoCloseTags,
 	expressionCloseBrackets(),
+	pasteSanitizer(),
 	Prec.highest(keymap.of(editorKeymap)),
 	indentOnInput(),
 	codeEditorTheme({
@@ -228,6 +230,12 @@ async function formatHtml() {
 
 	editor.dispatch({
 		changes: { from: 0, to: editor.state.doc.length, insert: formatted.join('\n\n') },
+	});
+}
+
+function pasteSanitizer() {
+	return EditorView.domEventHandlers({
+		paste: pasteHandler,
 	});
 }
 

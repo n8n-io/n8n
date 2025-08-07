@@ -36,6 +36,12 @@ function handleValueChanged(parameterData: IUpdateInformation) {
 	}
 }
 
+function handleDoubleClickHeader() {
+	if (activeNode.value) {
+		ndvStore.setActiveNodeName(activeNode.value.name);
+	}
+}
+
 function handleCaptureWheelEvent(event: WheelEvent) {
 	if (event.ctrlKey) {
 		// If the event is pinch, let it propagate and zoom canvas
@@ -55,7 +61,7 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 		return;
 	}
 
-	// Otherwise, let it scroll the settings pane
+	// Otherwise, let it scroll the pane
 	event.stopImmediatePropagation();
 }
 </script>
@@ -71,8 +77,11 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 		:executable="!isReadOnly"
 		is-embedded-in-canvas
 		:sub-title="subTitle"
+		extra-tabs-class-name="nodrag"
+		extra-parameter-wrapper-class-name="nodrag"
 		@value-changed="handleValueChanged"
 		@capture-wheel-body="handleCaptureWheelEvent"
+		@dblclick-header="handleDoubleClickHeader"
 	>
 		<template #actions>
 			<slot name="actions" />

@@ -57,7 +57,7 @@ const {
 
 const asyncExec = promisify(exec);
 
-const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
+const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-._/]/;
 
 type PackageJson = {
 	name: 'installed-nodes';

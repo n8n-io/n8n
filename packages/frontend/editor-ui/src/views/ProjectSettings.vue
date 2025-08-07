@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { N8nFormInput } from '@n8n/design-system';
 import { useUsersStore } from '@/stores/users.store';
-import type { IUser } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { Project, ProjectRelation } from '@/types/projects.types';

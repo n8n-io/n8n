@@ -55,14 +55,19 @@ export async function post<T>(url: string, body: object = {}, options: RequestIn
 }
 export async function postWithFiles<T>(
 	url: string,
-	body: Record<string, unknown> = {},
+	body: Record<string, string | object> = {},
 	files: File[] = [],
 	options: RequestInit = {},
 ) {
 	const formData = new FormData();
 
 	for (const key in body) {
-		formData.append(key, body[key] as string);
+		const value = body[key];
+		if (typeof value === 'object' && value !== null) {
+			formData.append(key, JSON.stringify(value));
+		} else {
+			formData.append(key, value);
+		}
 	}
 
 	for (const file of files) {
