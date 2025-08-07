@@ -144,7 +144,7 @@ export class TestRunnerService {
 			if (node.typeVersion >= 4.7) {
 				const metric = (node.parameters.metric ?? 'correctness') as string;
 				if (
-					metricRequiresModelConnection(metric) &&
+					metricRequiresModelConnection(metric) && // See packages/workflow/src/evaluation-helpers.ts
 					!this.hasModelNodeConnected(workflow, node.name)
 				) {
 					return true;

@@ -244,7 +244,7 @@ export function getOutputConnectionTypes(parameters: INodeParameters) {
 export function getInputConnectionTypes(parameters: INodeParameters) {
 	if (
 		parameters.operation === 'setMetrics' &&
-		metricRequiresModelConnection(parameters.metric as string)
+		metricRequiresModelConnection(parameters.metric as string) // See packages/workflow/src/evaluation-helpers.ts
 	) {
 		return [
 			{ type: 'main' },
