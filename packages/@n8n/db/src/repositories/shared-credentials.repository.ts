@@ -28,7 +28,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 				projectId: Not(project.id),
 				role: 'credential:owner',
 			},
-			{ project },
+			{ projectId: project.id },
 		);
 	}
 

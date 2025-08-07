@@ -59,7 +59,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				projectId: Not(project.id),
 				role: 'workflow:owner',
 			},
-			{ project },
+			{ projectId: project.id },
 		);
 	}
 

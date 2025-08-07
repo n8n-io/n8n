@@ -13,7 +13,7 @@ export class WorkflowTagMappingRepository extends Repository<WorkflowTagMapping>
 		return await this.manager.transaction(async (tx) => {
 			await tx.delete(WorkflowTagMapping, { workflowId });
 
-			const taggings = tagIds.map((tagId) => this.create({ workflowId, tagId }));
+			const taggings = tagIds.map((tagId) => ({ workflowId, tagId }));
 
 			return await tx.insert(WorkflowTagMapping, taggings);
 		});
