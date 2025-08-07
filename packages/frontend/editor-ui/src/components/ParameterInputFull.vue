@@ -319,7 +319,6 @@ function removeOverride(clearField = false) {
 		:bold="false"
 		:size="label.size"
 		color="text-dark"
-		data-test-id="parameter-input-wrapper"
 		@mouseenter="onWrapperMouseEnter"
 		@mouseleave="onWrapperMouseLeave"
 	>

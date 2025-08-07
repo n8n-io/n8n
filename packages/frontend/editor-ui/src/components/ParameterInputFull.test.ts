@@ -138,7 +138,7 @@ describe('ParameterInputFull.vue', () => {
 
 	it('should emit on wrapper hover', async () => {
 		const { getByTestId, emitted } = renderComponent();
-		const wrapper = getByTestId('parameter-input-wrapper');
+		const wrapper = getByTestId('input-label');
 
 		await fireEvent.mouseEnter(wrapper);
 		await nextTick();
