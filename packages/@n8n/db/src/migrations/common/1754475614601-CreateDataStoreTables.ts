@@ -36,7 +36,7 @@ export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
-		await dropTable(dataStoreTableName);
 		await dropTable(dataStoreColumnTableName);
+		await dropTable(dataStoreTableName);
 	}
 }
