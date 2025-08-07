@@ -1,7 +1,7 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-const dataStoreTableName = 'data_store_entity';
-const dataStoreColumnTableName = 'data_store_column_entity';
+const dataStoreTableName = 'data_store';
+const dataStoreColumnTableName = 'data_store_column';
 
 export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
