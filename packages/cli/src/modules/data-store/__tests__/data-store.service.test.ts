@@ -83,11 +83,12 @@ describe('dataStore', () => {
 			const created = await dataStoreRepository.findOneBy({ name, projectId: project1.id });
 			expect(created?.id).toBe(result.id);
 
-			const userTableName = toTableName(result.id);
-			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
-			const tableExists = await queryRunner.hasTable(userTableName);
-			expect(tableExists).toBe(true);
-			await queryRunner.release();
+			await expect(dataStoreService.getColumns(result.id)).resolves.toBeInstanceOf(Array);
+
+			await expect(dataStoreService.getManyRowsAndCount(result.id, {})).resolves.toMatchObject({
+				count: 0,
+				data: [],
+			});
 		});
 
 		it('should return an error if name/project combination already exists', async () => {
@@ -131,11 +132,12 @@ describe('dataStore', () => {
 			const created = await dataStoreRepository.findOneBy({ name, projectId: project1.id });
 			expect(created?.id).toBe(result.id);
 
-			const userTableName = toTableName(result.id);
-			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
-			const tableExists = await queryRunner.hasTable(userTableName);
-			expect(tableExists).toBe(true);
-			await queryRunner.release();
+			await expect(dataStoreService.getColumns(result.id)).resolves.toBeInstanceOf(Array);
+
+			await expect(dataStoreService.getManyRowsAndCount(result.id, {})).resolves.toMatchObject({
+				count: 0,
+				data: [],
+			});
 		});
 
 		it('should return an error if name/project combination already exists', async () => {
@@ -225,8 +227,12 @@ describe('dataStore', () => {
 			const deletedDatastore = await dataStoreRepository.findOneBy({ id: dataStore1.id });
 			expect(deletedDatastore).toBeNull();
 
-			const queryUserTable = dataStoreRepository.manager.query(`SELECT * FROM "${userTableName}"`);
-			await expect(queryUserTable).rejects.toThrow();
+			const queryUserTable = dataStoreRepository.manager
+				.createQueryBuilder()
+				.select()
+				.from(userTableName, userTableName)
+				.getMany();
+			await expect(queryUserTable).rejects.toBeDefined();
 		});
 
 		it('should fail with deleting non-existent id', async () => {
