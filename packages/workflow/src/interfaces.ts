@@ -1133,6 +1133,7 @@ export interface IHookFunctions
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
+	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
