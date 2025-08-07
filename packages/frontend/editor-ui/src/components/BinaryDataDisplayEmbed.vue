@@ -25,45 +25,51 @@ const embedClass = computed(() => {
 	return [props.binaryData.fileType ?? 'other'];
 });
 
-// Proper CSV parser that handles quoted values containing commas
+// Proper CSV parser that handles quoted values, CRLF, and newlines in fields
 const parseCSV = (csvText: string): string[][] => {
 	const rows: string[][] = [];
-	const lines = csvText.split('\n');
+	let row: string[] = [];
+	let currentField = '';
+	let inQuotes = false;
 
-	for (const line of lines) {
-		if (!line.trim()) continue;
+	for (let i = 0; i < csvText.length; i++) {
+		const char = csvText[i];
+		const nextChar = csvText[i + 1];
 
-		const row: string[] = [];
-		let currentField = '';
-		let inQuotes = false;
-
-		for (let i = 0; i < line.length; i++) {
-			const char = line[i];
-			const nextChar = line[i + 1];
-
-			if (char === '"') {
-				if (inQuotes && nextChar === '"') {
-					// Double quote within quotes - add single quote
-					currentField += '"';
-					i++; // Skip next quote
-				} else {
-					// Toggle quote state
-					inQuotes = !inQuotes;
-				}
-			} else if (char === ',' && !inQuotes) {
-				// End of field
-				row.push(currentField);
-				currentField = '';
+		if (char === '"') {
+			if (inQuotes && nextChar === '"') {
+				// Double quote within quotes - add single quote
+				currentField += '"';
+				i++; // Skip next quote
 			} else {
-				currentField += char;
+				// Toggle quote state
+				inQuotes = !inQuotes;
 			}
-		}
-
-		// Add last field
-		if (currentField || line.endsWith(',')) {
+		} else if (char === ',' && !inQuotes) {
+			// End of field
 			row.push(currentField);
-		}
+			currentField = '';
+		} else if ((char === '\n' || char === '\r') && !inQuotes) {
+			// End of row (handle both LF and CRLF)
+			if (char === '\r' && nextChar === '\n') {
+				i++; // Skip the \n in CRLF
+			}
 
+			// Only add row if it has content
+			if (row.length > 0 || currentField) {
+				row.push(currentField);
+				rows.push(row);
+				row = [];
+				currentField = '';
+			}
+		} else {
+			currentField += char;
+		}
+	}
+
+	// Add last field and row if there's remaining content
+	if (currentField || row.length > 0) {
+		row.push(currentField);
 		rows.push(row);
 	}
 

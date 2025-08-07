@@ -288,5 +288,38 @@ describe('BinaryDataDisplayEmbed.vue', () => {
 				expect(getByText('Error loading binary data')).toBeInTheDocument();
 			});
 		});
+
+		it('should handle CSV with CRLF line endings and newlines in quoted fields', async () => {
+			// Using CRLF (\r\n) line endings and a newline within a quoted field
+			const csvData = btoa('Name,Description\r\nJohn,"Line 1\nLine 2"\r\nJane,"Single line"');
+			const binaryData: IBinaryData = {
+				data: csvData,
+				fileName: 'test.csv',
+				mimeType: 'text/csv',
+			};
+
+			const { container, getByText } = renderComponent({
+				props: { binaryData },
+				pinia: createTestingPinia(),
+			});
+
+			await waitFor(() => {
+				// Headers
+				expect(getByText('Name')).toBeInTheDocument();
+				expect(getByText('Description')).toBeInTheDocument();
+
+				// Data
+				expect(getByText('John')).toBeInTheDocument();
+				expect(getByText('Jane')).toBeInTheDocument();
+				expect(getByText('Single line')).toBeInTheDocument();
+
+				// Check that the multiline text is preserved in the cell
+				const cells = container.querySelectorAll('td');
+				const multilineCell = Array.from(cells).find((cell) =>
+					cell.textContent?.includes('Line 1'),
+				);
+				expect(multilineCell?.textContent).toBe('Line 1\nLine 2');
+			});
+		});
 	});
 });
