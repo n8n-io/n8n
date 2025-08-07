@@ -1,7 +1,7 @@
 // TODO: remove once all tests pass
 /* eslint-disable n8n-local-rules/no-skipped-tests */
 import type { AddDataStoreColumnDto, CreateDataStoreColumnDto } from '@n8n/api-types';
-import { createTeamProject, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -10,6 +10,11 @@ import { DataStoreRowsRepository } from '../data-store-rows.repository';
 import { DataStoreRepository } from '../data-store.repository';
 import { DataStoreService } from '../data-store.service';
 import { toTableName } from '../utils/sql-utils';
+
+beforeAll(async () => {
+	await testModules.loadModules(['data-store']);
+	await testDb.init();
+});
 
 beforeEach(async () => {
 	await testDb.truncate(['DataStoreEntity', 'DataStoreColumnEntity']);
