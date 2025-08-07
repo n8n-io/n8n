@@ -56,11 +56,11 @@ describe('Jira -> GenericFunctions', () => {
 	});
 
 	describe('handlePagination', () => {
-		it('should initialize offset pagination parameters when responseData is not provided', () => {
-			const body = {};
+		it('should initialize offset pagination parameters with GET when responseData is not provided', () => {
+			const body: IDataObject = {};
 			const query: IDataObject = {};
 
-			const result = handlePagination(body, query, 'offset');
+			const result = handlePagination('GET', body, query, 'offset');
 
 			expect(result).toBe(true);
 			expect(query.startAt).toBe(0);
@@ -68,18 +68,41 @@ describe('Jira -> GenericFunctions', () => {
 			expect(body).toEqual({});
 		});
 
-		it('should initialize token pagination parameters when responseData is not provided', () => {
+		it('should initialize offset pagination parameters with POST when responseData is not provided', () => {
 			const body: IDataObject = {};
 			const query: IDataObject = {};
 
-			const result = handlePagination(body, query, 'token');
+			const result = handlePagination('POST', body, query, 'offset');
+
+			expect(result).toBe(true);
+			expect(body.startAt).toBe(0);
+			expect(body.maxResults).toBe(100);
+			expect(query).toEqual({});
+		});
+
+		it('should initialize token pagination parameters with GET when responseData is not provided', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+
+			const result = handlePagination('GET', body, query, 'token');
+
+			expect(result).toBe(true);
+			expect(query.maxResults).toBe(100);
+			expect(body).toEqual({});
+		});
+
+		it('should initialize token pagination parameters with POST when responseData is not provided', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+
+			const result = handlePagination('POST', body, query, 'token');
 
 			expect(result).toBe(true);
 			expect(query).toEqual({});
 			expect(body.maxResults).toBe(100);
 		});
 
-		it('should handle offset pagination with more pages available', () => {
+		it('should handle offset pagination with GET and more pages available', () => {
 			const body: IDataObject = {};
 			const query: IDataObject = {};
 			const responseData = {
@@ -88,14 +111,30 @@ describe('Jira -> GenericFunctions', () => {
 				total: 250,
 			};
 
-			const result = handlePagination(body, query, 'offset', responseData);
+			const result = handlePagination('GET', body, query, 'offset', responseData);
 
 			expect(result).toBe(true);
 			expect(query.startAt).toBe(100);
 			expect(body).toEqual({});
 		});
 
-		it('should handle offset pagination with no more pages available', () => {
+		it('should handle offset pagination with POST and more pages available', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+			const responseData = {
+				startAt: 0,
+				maxResults: 100,
+				total: 250,
+			};
+
+			const result = handlePagination('POST', body, query, 'offset', responseData);
+
+			expect(result).toBe(true);
+			expect(body.startAt).toBe(100);
+			expect(query).toEqual({});
+		});
+
+		it('should handle offset pagination with GET and no more pages available', () => {
 			const body: IDataObject = {};
 			const query: IDataObject = {};
 			const responseData = {
@@ -104,35 +143,79 @@ describe('Jira -> GenericFunctions', () => {
 				total: 250,
 			};
 
-			const result = handlePagination(body, query, 'offset', responseData);
+			const result = handlePagination('GET', body, query, 'offset', responseData);
 
 			expect(result).toBe(false);
 			expect(query.startAt).toBe(300);
 			expect(body).toEqual({});
 		});
 
-		it('should handle token pagination with more pages available', () => {
+		it('should handle offset pagination with POST and no more pages available', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+			const responseData = {
+				startAt: 200,
+				maxResults: 100,
+				total: 250,
+			};
+
+			const result = handlePagination('POST', body, query, 'offset', responseData);
+
+			expect(result).toBe(false);
+			expect(body.startAt).toBe(300);
+			expect(query).toEqual({});
+		});
+
+		it('should handle token pagination with GET and more pages available', () => {
 			const body: IDataObject = {};
 			const query: IDataObject = {};
 			const responseData = {
 				nextPageToken: 'someToken123',
 			};
 
-			const result = handlePagination(body, query, 'token', responseData);
+			const result = handlePagination('GET', body, query, 'token', responseData);
+
+			expect(result).toBe(true);
+			expect(query.nextPageToken).toBe('someToken123');
+			expect(body).toEqual({});
+		});
+
+		it('should handle token pagination with POST and more pages available', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+			const responseData = {
+				nextPageToken: 'someToken123',
+			};
+
+			const result = handlePagination('POST', body, query, 'token', responseData);
 
 			expect(result).toBe(true);
 			expect(body.nextPageToken).toBe('someToken123');
 			expect(query).toEqual({});
 		});
 
-		it('should handle token pagination with no more pages available', () => {
+		it('should handle token pagination with GET and no more pages available', () => {
 			const body: IDataObject = {};
 			const query: IDataObject = {};
 			const responseData = {
 				nextPageToken: '',
 			};
 
-			const result = handlePagination(body, query, 'token', responseData);
+			const result = handlePagination('GET', body, query, 'token', responseData);
+
+			expect(result).toBe(false);
+			expect(query.nextPageToken).toBe('');
+			expect(body).toEqual({});
+		});
+
+		it('should handle token pagination with POST and no more pages available', () => {
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+			const responseData = {
+				nextPageToken: '',
+			};
+
+			const result = handlePagination('POST', body, query, 'token', responseData);
 
 			expect(result).toBe(false);
 			expect(body.nextPageToken).toBe('');
