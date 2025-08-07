@@ -700,6 +700,7 @@ const modifiers = [
 	gap: var(--spacing-2xs);
 	border-radius: 4px;
 	padding: var(--spacing-xs) var(--spacing-2xs);
+	margin-right: var(--spacing-xs);
 	line-height: unset;
 	min-width: 0;
 	transition: background-color 0.2s ease;
@@ -843,15 +844,6 @@ const modifiers = [
 	opacity: 0.5;
 }
 
-.noNumberDiff {
-	min-height: 41px;
-	margin: 0 12px 10px 0;
-	overflow: hidden;
-	:global(.blob-num) {
-		display: none;
-	}
-}
-
 .circleBadge {
 	display: inline-flex;
 	align-items: center;
@@ -877,6 +869,15 @@ const modifiers = [
 		max-height: 400px;
 		overflow-x: hidden;
 		overflow-y: auto;
+	}
+
+	.noNumberDiff {
+		min-height: 41px;
+		margin: 0 12px 10px 0;
+		overflow: hidden;
+		:global(.blob-num) {
+			display: none;
+		}
 	}
 }
 
