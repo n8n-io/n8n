@@ -1,7 +1,6 @@
 import { mergeConfig } from 'vite';
 import { createVitestConfig } from '@n8n/vitest-config/frontend';
 import { resolve } from 'path';
-import vue from '@vitejs/plugin-vue';
 
 const packagesDir = resolve(__dirname, '..', '..');
 
@@ -103,7 +102,6 @@ export default mergeConfig(
 		unstubGlobals: true,
 	}),
 	{
-		plugins: [vue()],
 		resolve: {
 			alias: [
 				{ find: '@', replacement: resolve(__dirname, 'src') },

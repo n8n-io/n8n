@@ -1,8 +1,8 @@
 import { exec, spawn } from 'child_process';
 import { promises as fs } from 'fs';
+import { ApplicationError } from 'n8n-workflow';
 import { join } from 'path';
 import { promisify } from 'util';
-import { ApplicationError } from 'n8n-workflow';
 
 import type {
 	IPythonExecutorService,
@@ -70,7 +70,8 @@ export class PythonExecutorService implements IPythonExecutorService {
 		error?: string;
 	}> {
 		if (this.pythonPath) {
-			return { available: true, version: await this.getPythonVersion() };
+			const version = await this.getPythonVersion();
+			return { available: true, version };
 		}
 
 		// Try different Python executables
@@ -112,7 +113,8 @@ export class PythonExecutorService implements IPythonExecutorService {
 	}
 
 	private async createTempScript(code: string, context: Record<string, any>): Promise<string> {
-		const tempDir = await fs.mkdtemp(join(require('os').tmpdir(), 'n8n-python-'));
+		const os = await import('os');
+		const tempDir = await fs.mkdtemp(join(os.tmpdir(), 'n8n-python-'));
 		const scriptPath = join(tempDir, 'script.py');
 
 		// Prepare context variables as Python code
@@ -173,7 +175,7 @@ if result is not None:
 		scriptPath: string,
 		timeout: number,
 	): Promise<{ stdout: string; stderr: string; code: number }> {
-		return new Promise((resolve, reject) => {
+		return await new Promise((resolve, reject) => {
 			let stdout = '';
 			let stderr = '';
 

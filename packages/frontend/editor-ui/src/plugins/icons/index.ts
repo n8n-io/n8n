@@ -162,7 +162,7 @@ import {
 	faUserCircle,
 	faUserFriends,
 	faUsers,
-	faVectorSquare,
+	faVectorPolygon,
 	faVideo,
 	faTree,
 	faStickyNote as faSolidStickyNote,
@@ -378,7 +378,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faUsers);
 		addIcon(faVariable);
 		addIcon(faVault);
-		addIcon(faVectorSquare);
+		addIcon(faVectorPolygon);
 		addIcon(faVideo);
 		addIcon(faTree);
 		addIcon(faUserLock);

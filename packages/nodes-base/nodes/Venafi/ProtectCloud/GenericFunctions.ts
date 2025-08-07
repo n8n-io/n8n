@@ -119,7 +119,7 @@ export async function encryptPassphrase(
 
 	const promise = async () => {
 		return await new Promise((resolve, reject) => {
-			nacl_factory.instantiate((nacl: any) => {
+			void nacl_factory.instantiate((nacl: any) => {
 				try {
 					const passphraseUTF8 = nacl.encode_utf8(passphrase) as string;
 					const keyPassBuffer = nacl.crypto_box_seal(passphraseUTF8, Buffer.from(pubKey, 'base64'));
