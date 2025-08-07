@@ -196,9 +196,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		direction: 'DESC' | 'ASC',
 	): void {
 		if (field === 'name') {
-			query
-				.addSelect('LOWER(dataStore.name)', 'dataStore_name_lower')
-				.orderBy('dataStore_name_lower', direction);
+			query.orderBy('LOWER(dataStore.name)', direction);
 		} else if (['createdAt', 'updatedAt'].includes(field)) {
 			query.orderBy(`dataStore.${field}`, direction);
 		}
