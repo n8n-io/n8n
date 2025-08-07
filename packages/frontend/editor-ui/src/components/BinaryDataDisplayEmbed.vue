@@ -52,7 +52,7 @@ const parseCSV = (csvText: string): string[][] => {
 				}
 			} else if (char === ',' && !inQuotes) {
 				// End of field
-				row.push(currentField.trim());
+				row.push(currentField);
 				currentField = '';
 			} else {
 				currentField += char;
@@ -61,7 +61,7 @@ const parseCSV = (csvText: string): string[][] => {
 
 		// Add last field
 		if (currentField || line.endsWith(',')) {
-			row.push(currentField.trim());
+			row.push(currentField);
 		}
 
 		rows.push(row);
