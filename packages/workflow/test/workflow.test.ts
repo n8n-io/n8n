@@ -11,6 +11,7 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
+	IPinData,
 	IRunExecutionData,
 	NodeParameterValueType,
 } from '../src/interfaces';
@@ -3582,6 +3583,57 @@ describe('Workflow', () => {
 
 			expect(workflow.hasPath('Node1', 'Node2')).toBe(false);
 			expect(workflow.hasPath('Node2', 'Node1')).toBe(false);
+		});
+
+		it('should return true when source node has pinned data (virtual path)', () => {
+			const nodes: INode[] = [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.executeWorkflowTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'EditFields',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+				},
+			];
+
+			const connections: IConnections = {
+				Trigger: {
+					main: [[{ node: 'EditFields', type: 'main', index: 0 }]],
+				},
+			};
+
+			const pinData: IPinData = {
+				Trigger: [
+					{
+						json: {
+							name: 'Test item',
+							value: 123,
+						},
+					},
+				],
+			};
+
+			const workflow = new Workflow({
+				nodes,
+				connections,
+				active: false,
+				nodeTypes,
+				pinData,
+			});
+
+			// Should return true because Trigger has pinned data, creating a virtual path
+			expect(workflow.hasPath('Trigger', 'EditFields')).toBe(true);
+			// Should also work for self-reference with pinned data
+			expect(workflow.hasPath('Trigger', 'Trigger')).toBe(true);
 		});
 	});
 });

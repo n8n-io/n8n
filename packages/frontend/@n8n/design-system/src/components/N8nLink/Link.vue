@@ -15,6 +15,7 @@ interface LinkProps {
 	bold?: boolean;
 	underline?: boolean;
 	theme?: (typeof THEME)[number];
+	title?: string;
 }
 
 defineOptions({ name: 'N8nLink' });
@@ -28,7 +29,7 @@ withDefaults(defineProps<LinkProps>(), {
 </script>
 
 <template>
-	<N8nRoute :to="to" :new-window="newWindow" v-bind="$attrs" class="n8n-link">
+	<N8nRoute :to="to" :title="title" :new-window="newWindow" v-bind="$attrs" class="n8n-link">
 		<span :class="$style[`${underline ? `${theme}-underline` : theme}`]">
 			<N8nText :size="size" :bold="bold">
 				<slot></slot>

@@ -301,7 +301,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 							text: option.label,
 							emoji: true,
 						},
-						url: `${config.url}?approved=${option.value}`,
+						url: option.url,
 					};
 				}),
 			},

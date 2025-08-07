@@ -21,9 +21,6 @@ function onResize({ width }: { width: number }) {
 }
 
 const outputFormat = ref<'side-by-side' | 'line-by-line'>('line-by-line');
-function toggleOutputFormat() {
-	outputFormat.value = outputFormat.value === 'line-by-line' ? 'side-by-side' : 'line-by-line';
-}
 
 const emit = defineEmits<{
 	close: [];
@@ -44,22 +41,22 @@ const emit = defineEmits<{
 			style="display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 12px 10px"
 		>
 			<NodeIcon class="ml-xs" :node-type :size="16" />
-			<N8nHeading size="small" color="text-dark" bold>
+			<N8nHeading size="small" color="text-dark" bold :class="$style.nodeTitle">
 				{{ node.name }}
 			</N8nHeading>
 			<N8nIconButton
-				icon="file-diff"
+				icon="x"
 				type="secondary"
+				text
 				class="ml-auto"
-				@click="toggleOutputFormat"
+				@click="emit('close')"
 			></N8nIconButton>
-			<N8nIconButton icon="x" type="secondary" text @click="emit('close')"></N8nIconButton>
 		</div>
-		<slot v-bind="{ outputFormat, toggleOutputFormat }" />
+		<slot v-bind="{ outputFormat }" />
 	</N8nResizeWrapper>
 </template>
 
-<style module>
+<style module lang="scss">
 .workflowDiffAside {
 	width: calc(v-bind(panelWidth) * 1px);
 	display: flex;
@@ -67,5 +64,12 @@ const emit = defineEmits<{
 	height: 100%;
 	border-left: 1px solid var(--color-foreground-base);
 	border-top: 1px solid var(--color-foreground-base);
+}
+
+.nodeTitle {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 </style>

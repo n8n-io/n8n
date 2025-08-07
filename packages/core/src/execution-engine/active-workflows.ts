@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type {
+	CronContext,
 	INode,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
@@ -10,9 +11,9 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
 	toCronExpression,
 	TriggerCloseError,
+	UserError,
 	WorkflowActivationError,
 	WorkflowDeactivationError,
 } from 'n8n-workflow';
@@ -178,14 +179,18 @@ export class ActiveWorkflows {
 		await executeTrigger(true);
 
 		for (const expression of cronExpressions) {
-			const cronTimeParts = expression.split(' ');
-			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
-				throw new ApplicationError(
-					'The polling interval is too short. It has to be at least a minute.',
-				);
+			if (expression.split(' ').at(0)?.includes('*')) {
+				throw new UserError('The polling interval is too short. It has to be at least a minute.');
 			}
 
-			this.scheduledTaskManager.registerCron(workflow, { expression }, executeTrigger);
+			const ctx: CronContext = {
+				workflowId: workflow.id,
+				timezone: workflow.timezone,
+				nodeId: node.id,
+				expression,
+			};
+
+			this.scheduledTaskManager.registerCron(ctx, executeTrigger);
 		}
 	}
 

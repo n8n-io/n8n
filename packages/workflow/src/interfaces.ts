@@ -843,7 +843,7 @@ type CronUnit = number | '*' | `*/${number}`;
 export type CronExpression =
 	`${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit}`;
 
-type RecurrenceRule =
+type CronRecurrenceRule =
 	| { activated: false }
 	| {
 			activated: true;
@@ -852,7 +852,15 @@ type RecurrenceRule =
 			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
 	  };
 
-export type Cron = { expression: CronExpression; recurrence?: RecurrenceRule };
+export type CronContext = {
+	nodeId: string;
+	workflowId: string;
+	timezone: string;
+	expression: CronExpression;
+	recurrence?: CronRecurrenceRule;
+};
+
+export type Cron = { expression: CronExpression; recurrence?: CronRecurrenceRule };
 
 export interface SchedulingFunctions {
 	registerCron(cron: Cron, onTick: () => void): void;
@@ -881,6 +889,10 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
+	/** Get the waiting resume url signed with the signature token */
+	getSignedResumeUrl(parameters?: Record<string, string>): string;
+	/** Set requirement in the execution for signature token validation */
+	setSignatureValidationRequired(): void;
 	getChildNodes(
 		nodeName: string,
 		options?: { includeNodeParameters?: boolean },
@@ -2248,6 +2260,11 @@ export interface IRunExecutionData {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/**
+	 * This is used to prevent breaking change
+	 * for waiting executions started before signature validation was added
+	 */
+	validateSignature?: boolean;
 	waitTill?: Date;
 	pushRef?: string;
 

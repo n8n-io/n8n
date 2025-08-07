@@ -943,6 +943,12 @@ export class Workflow {
 	hasPath(fromNodeName: string, toNodeName: string, maxDepth = 50): boolean {
 		if (fromNodeName === toNodeName) return true;
 
+		// Special case: If the source node has pinned data, consider it as having a valid path
+		// This is important for single node execution scenarios where pinned data creates virtual paths
+		if (this.getPinDataOfNode(fromNodeName)) {
+			return true;
+		}
+
 		// Get connection types that actually exist in this workflow
 		// We need both source and destination connection types for bidirectional search
 		const connectionTypes = new Set<NodeConnectionType>();

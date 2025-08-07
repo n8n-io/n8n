@@ -64,6 +64,23 @@ describe('components', () => {
 					expect(wrapper.html()).toMatchSnapshot();
 				});
 			});
+
+			describe('type', () => {
+				it('should render highlight button', () => {
+					const wrapper = render(N8nButton, {
+						props: {
+							type: 'highlight',
+						},
+						slots,
+						global: {
+							stubs,
+						},
+					});
+					const button = wrapper.container.querySelector('button');
+					expect(button?.className).toContain('highlight');
+					expect(wrapper.html()).toMatchSnapshot();
+				});
+			});
 		});
 	});
 });

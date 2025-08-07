@@ -63,14 +63,14 @@ describe('useCalloutHelpers()', () => {
 	});
 
 	describe('openRagStarterTemplate()', () => {
-		it('opens the RAG starter template successfully', async () => {
+		it('opens the RAG starter template successfully', () => {
 			vi.spyOn(window, 'open').mockImplementation(() => null);
 			mocks.resolve.mockReturnValue({ href: 'n8n.io' });
 
 			const { openRagStarterTemplate } = useCalloutHelpers();
 			const nodeType = 'testNode';
 
-			await openRagStarterTemplate('testNode');
+			openRagStarterTemplate('testNode');
 
 			expect(window.open).toHaveBeenCalledWith('n8n.io', '_blank');
 			expect(mocks.track).toHaveBeenCalledWith('User clicked on RAG callout', {
@@ -79,34 +79,15 @@ describe('useCalloutHelpers()', () => {
 		});
 	});
 
-	describe('isRagStarterWorkflowExperimentEnabled', () => {
-		it('should be false if the RAG starter workflow experiment is not enabled', () => {
-			const { isRagStarterWorkflowExperimentEnabled } = useCalloutHelpers();
-			expect(isRagStarterWorkflowExperimentEnabled.value).toBe(false);
-		});
-
-		it('should be true if the RAG starter workflow experiment is enabled', () => {
-			mocks.getVariant.mockReturnValueOnce('variant');
-
-			const { isRagStarterWorkflowExperimentEnabled } = useCalloutHelpers();
-			expect(isRagStarterWorkflowExperimentEnabled.value).toBe(true);
-		});
-	});
-
 	describe('isRagStarterCalloutVisible', () => {
-		it('should be false if the feature flag is disabled', () => {
-			const { isRagStarterCalloutVisible } = useCalloutHelpers();
-			expect(isRagStarterCalloutVisible.value).toBe(false);
-		});
-
-		it('should be true if the feature flag is enabled and not on the RAG starter template', () => {
+		it('should be true if current route is not on the RAG starter template', () => {
 			mocks.getVariant.mockReturnValueOnce('variant');
 
 			const { isRagStarterCalloutVisible } = useCalloutHelpers();
 			expect(isRagStarterCalloutVisible.value).toBe(true);
 		});
 
-		it('should be false if the feature flag is enabled and currently on unsaved RAG starter template', () => {
+		it('should be false and current route is not on unsaved RAG starter template', () => {
 			mocks.getVariant.mockReturnValueOnce('variant');
 			mocks.useRoute.mockReturnValueOnce({
 				query: { templateId: 'rag-starter-template' },
@@ -117,7 +98,7 @@ describe('useCalloutHelpers()', () => {
 			expect(isRagStarterCalloutVisible.value).toBe(false);
 		});
 
-		it('should be false if the feature flag is enabled and currently on saved RAG starter template', () => {
+		it('should be false if current route is on saved RAG starter template', () => {
 			mocks.getVariant.mockReturnValueOnce('variant');
 			mocks.getWorkflowById.mockReturnValueOnce({
 				meta: { templateId: 'rag-starter-template' },
@@ -129,13 +110,13 @@ describe('useCalloutHelpers()', () => {
 	});
 
 	describe('isCalloutDismissed()', () => {
-		it('should return false if callout is not dismissed', async () => {
+		it('should return false if callout is not dismissed', () => {
 			const { isCalloutDismissed } = useCalloutHelpers();
 			const result = isCalloutDismissed('testNode');
 			expect(result).toBe(false);
 		});
 
-		it('should return true if callout is dismissed', async () => {
+		it('should return true if callout is dismissed', () => {
 			mocks.isCalloutDismissed.mockReturnValueOnce(true);
 
 			const { isCalloutDismissed } = useCalloutHelpers();

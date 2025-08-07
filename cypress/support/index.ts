@@ -90,6 +90,7 @@ declare global {
 				}
 			>;
 			resetDatabase(): void;
+			clearIndexedDB(dbName: string, storeName?: string): Chainable<void>;
 			setAppDate(targetDate: number | Date): void;
 			interceptNewTab(): Chainable<void>;
 			visitInterceptedTab(): Chainable<void>;

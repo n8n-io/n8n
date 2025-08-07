@@ -415,7 +415,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 						type: 2,
 						style: 5,
 						label: option.label,
-						url: `${config.url}?approved=${option.value}`,
+						url: option.url,
 					};
 				}),
 			},

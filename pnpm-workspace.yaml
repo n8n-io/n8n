@@ -50,7 +50,7 @@ catalog:
   xss: 1.0.15
   zod: 3.25.67
   zod-to-json-schema: 3.23.3
-  typescript: 5.8.3
+  typescript: 5.9.2
   eslint: 9.29.0
 
 catalogs:

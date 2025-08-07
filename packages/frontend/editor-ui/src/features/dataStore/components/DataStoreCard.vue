@@ -29,7 +29,7 @@ const emit = defineEmits<{
 	];
 }>();
 
-const renameInput = useTemplateRef('renameInput');
+const renameInput = useTemplateRef<{ forceFocus?: () => void }>('renameInput');
 
 const dataStoreRoute = computed(() => {
 	return {
@@ -47,7 +47,7 @@ const onCardAction = (action: string) => {
 	if (action === 'rename') {
 		if (renameInput.value?.forceFocus) {
 			setTimeout(() => {
-				renameInput.value?.forceFocus();
+				renameInput.value?.forceFocus?.();
 			}, 100);
 		}
 		return;

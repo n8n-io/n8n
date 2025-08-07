@@ -163,7 +163,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const config = getSendAndWaitConfig(context);
 
 	const buttons: string[] = config.options.map(
-		(option) => `*<${`${config.url}?approved=${option.value}`}|${option.label}>*`,
+		(option) => `*<${`${option.url}`}|${option.label}>*`,
 	);
 
 	let text = `${config.message}\n\n\n${buttons.join('   ')}`;

@@ -5,6 +5,7 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router';
 interface RouteProps {
 	to?: RouteLocationRaw | string;
 	newWindow?: boolean;
+	title?: string;
 }
 
 defineOptions({ name: 'N8nRoute' });
@@ -35,6 +36,7 @@ const openNewWindow = computed(() => !useRouterLink.value);
 		:href="to ? `${to}` : undefined"
 		:target="openNewWindow ? '_blank' : '_self'"
 		v-bind="$attrs"
+		:title="title"
 	>
 		<slot></slot>
 	</a>
