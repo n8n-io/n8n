@@ -37,6 +37,11 @@ import {
 	LabelGetHandler,
 	LabelGetAllHandler,
 	LabelUpdateHandler,
+	// Reminder handlers
+	ReminderCreateHandler,
+	ReminderDeleteHandler,
+	ReminderGetAllHandler,
+	ReminderUpdateHandler,
 } from './OperationHandler';
 import type { Context } from '../GenericFunctions';
 
@@ -96,6 +101,13 @@ export class TodoistService implements Service {
 		update: new LabelUpdateHandler(),
 	};
 
+	private reminderHandlers = {
+		create: new ReminderCreateHandler(),
+		delete: new ReminderDeleteHandler(),
+		getAll: new ReminderGetAllHandler(),
+		update: new ReminderUpdateHandler(),
+	};
+
 	async executeProject(
 		ctx: Context,
 		operation: ProjectOperationType,
@@ -126,6 +138,14 @@ export class TodoistService implements Service {
 		itemIndex: number,
 	): Promise<TodoistResponse> {
 		return await this.labelHandlers[operation].handleOperation(ctx, itemIndex);
+	}
+
+	async executeReminder(
+		ctx: Context,
+		operation: ReminderOperationType,
+		itemIndex: number,
+	): Promise<TodoistResponse> {
+		return await this.reminderHandlers[operation].handleOperation(ctx, itemIndex);
 	}
 }
 
@@ -159,12 +179,15 @@ const COMMENT_OPERATIONS = ['create', 'delete', 'get', 'getAll', 'update'] as co
 
 const LABEL_OPERATIONS = ['create', 'delete', 'get', 'getAll', 'update'] as const;
 
+const REMINDER_OPERATIONS = ['create', 'delete', 'getAll', 'update'] as const;
+
 // Derive types from arrays
 export type TaskOperationType = (typeof TASK_OPERATIONS)[number];
 export type ProjectOperationType = (typeof PROJECT_OPERATIONS)[number];
 export type SectionOperationType = (typeof SECTION_OPERATIONS)[number];
 export type CommentOperationType = (typeof COMMENT_OPERATIONS)[number];
 export type LabelOperationType = (typeof LABEL_OPERATIONS)[number];
+export type ReminderOperationType = (typeof REMINDER_OPERATIONS)[number];
 
 // Type guards using the same arrays
 export function isTaskOperationType(operation: string): operation is TaskOperationType {
@@ -185,6 +208,10 @@ export function isCommentOperationType(operation: string): operation is CommentO
 
 export function isLabelOperationType(operation: string): operation is LabelOperationType {
 	return LABEL_OPERATIONS.includes(operation as LabelOperationType);
+}
+
+export function isReminderOperationType(operation: string): operation is ReminderOperationType {
+	return REMINDER_OPERATIONS.includes(operation as ReminderOperationType);
 }
 
 export interface Section {
@@ -216,6 +243,11 @@ export interface Service {
 	executeLabel(
 		ctx: Context,
 		operation: LabelOperationType,
+		itemIndex: number,
+	): Promise<TodoistResponse>;
+	executeReminder(
+		ctx: Context,
+		operation: ReminderOperationType,
 		itemIndex: number,
 	): Promise<TodoistResponse>;
 }

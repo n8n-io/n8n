@@ -50,6 +50,11 @@ export interface Command {
 		project_id?: number | string;
 		section?: string;
 		content?: string;
+		item_id?: number | string;
+		due?: IDataObject;
+		type?: string;
+		minute_offset?: number;
+		notify_uid?: string;
 	};
 }
 
@@ -868,6 +873,140 @@ export class QuickAddHandler implements OperationHandler {
 
 		return {
 			data,
+		};
+	}
+}
+
+// Reminder Handlers
+export class ReminderCreateHandler implements OperationHandler {
+	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
+		const itemId = ctx.getNodeParameter('itemId', itemIndex);
+		assertIsStringOrNumber('itemId', itemId);
+
+		const dueDateType = ctx.getNodeParameter('dueDateType', itemIndex) as string;
+		assertIsString('dueDateType', dueDateType);
+
+		const due: IDataObject = {};
+
+		if (dueDateType === 'natural_language') {
+			const naturalLanguageRep = ctx.getNodeParameter('natural_language_representation', itemIndex);
+			assertIsString('natural_language_representation', naturalLanguageRep);
+			due.string = naturalLanguageRep;
+		} else if (dueDateType === 'full_day') {
+			const date = ctx.getNodeParameter('date', itemIndex);
+			assertIsString('date', date);
+			due.date = date;
+		} else if (dueDateType === 'floating_time') {
+			const datetime = ctx.getNodeParameter('datetime', itemIndex);
+			assertIsString('datetime', datetime);
+			due.datetime = datetime;
+		} else if (dueDateType === 'fixed_timezone') {
+			const datetime = ctx.getNodeParameter('datetime', itemIndex);
+			const timezone = ctx.getNodeParameter('timezone', itemIndex);
+			assertIsString('datetime', datetime);
+			assertIsString('timezone', timezone);
+			due.datetime = datetime;
+			due.timezone = timezone;
+		}
+
+		const options = ctx.getNodeParameter('reminderOptions', itemIndex) as IDataObject;
+		assertIsNodeParameters<{
+			type?: string;
+			minute_offset?: number;
+			notify_uid?: string;
+		}>(options, {
+			type: { type: 'string', optional: true },
+			minute_offset: { type: 'number', optional: true },
+			notify_uid: { type: 'string', optional: true },
+		});
+
+		const body: SyncRequest = {
+			commands: [
+				{
+					type: CommandTypes.REMINDER_ADD,
+					uuid: uuid(),
+					temp_id: uuid(),
+					args: {
+						item_id: itemId,
+						due,
+						...options,
+					},
+				},
+			],
+		};
+
+		await todoistSyncRequest.call(ctx, body);
+		return { success: true };
+	}
+}
+
+export class ReminderUpdateHandler implements OperationHandler {
+	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
+		const id = ctx.getNodeParameter('reminderId', itemIndex);
+		assertIsStringOrNumber('reminderId', id);
+
+		const updateFields = ctx.getNodeParameter('reminderUpdateFields', itemIndex) as IDataObject;
+		assertIsNodeParameters<{
+			due?: IDataObject;
+			type?: string;
+			minute_offset?: number;
+			notify_uid?: string;
+		}>(updateFields, {
+			due: { type: 'object', optional: true },
+			type: { type: 'string', optional: true },
+			minute_offset: { type: 'number', optional: true },
+			notify_uid: { type: 'string', optional: true },
+		});
+
+		const body: SyncRequest = {
+			commands: [
+				{
+					type: CommandTypes.REMINDER_UPDATE,
+					uuid: uuid(),
+					args: {
+						id,
+						...updateFields,
+					},
+				},
+			],
+		};
+
+		await todoistSyncRequest.call(ctx, body);
+		return { success: true };
+	}
+}
+
+export class ReminderDeleteHandler implements OperationHandler {
+	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
+		const id = ctx.getNodeParameter('reminderId', itemIndex);
+		assertIsStringOrNumber('reminderId', id);
+
+		const body: SyncRequest = {
+			commands: [
+				{
+					type: CommandTypes.REMINDER_DELETE,
+					uuid: uuid(),
+					args: {
+						id,
+					},
+				},
+			],
+		};
+
+		await todoistSyncRequest.call(ctx, body);
+		return { success: true };
+	}
+}
+
+export class ReminderGetAllHandler implements OperationHandler {
+	async handleOperation(ctx: Context, _itemIndex: number): Promise<TodoistResponse> {
+		const syncData = await todoistSyncRequest.call(ctx, {
+			sync_token: '*',
+			resource_types: ['reminders'],
+		});
+
+		return {
+			data: syncData.reminders || [],
 		};
 	}
 }

@@ -15,11 +15,12 @@ import {
 import type { TodoistProjectType } from './Service';
 import {
 	TodoistService,
+	isTaskOperationType,
 	isProjectOperationType,
 	isSectionOperationType,
 	isCommentOperationType,
 	isLabelOperationType,
-	isTaskOperationType,
+	isReminderOperationType,
 } from './Service';
 import { todoistApiRequest } from '../GenericFunctions';
 
@@ -128,6 +129,11 @@ const versionDescription: INodeTypeDescription = {
 					name: 'Label',
 					value: 'label',
 					description: 'Label resource',
+				},
+				{
+					name: 'Reminder',
+					value: 'reminder',
+					description: 'Reminder resource',
 				},
 			],
 			default: 'task',
@@ -400,6 +406,46 @@ const versionDescription: INodeTypeDescription = {
 					value: 'update',
 					description: 'Update a label',
 					action: 'Update a label',
+				},
+			],
+			default: 'create',
+		},
+		// Reminder operations
+		{
+			displayName: 'Operation',
+			name: 'operation',
+			type: 'options',
+			noDataExpression: true,
+			required: true,
+			displayOptions: {
+				show: {
+					resource: ['reminder'],
+				},
+			},
+			options: [
+				{
+					name: 'Create',
+					value: 'create',
+					description: 'Create a new reminder',
+					action: 'Create a reminder',
+				},
+				{
+					name: 'Delete',
+					value: 'delete',
+					description: 'Delete a reminder',
+					action: 'Delete a reminder',
+				},
+				{
+					name: 'Get Many',
+					value: 'getAll',
+					description: 'Get many reminders',
+					action: 'Get many reminders',
+				},
+				{
+					name: 'Update',
+					value: 'update',
+					description: 'Update a reminder',
+					action: 'Update a reminder',
 				},
 			],
 			default: 'create',
@@ -1462,6 +1508,281 @@ const versionDescription: INodeTypeDescription = {
 				},
 			],
 		},
+		// Reminder fields
+		{
+			displayName: 'Reminder ID',
+			name: 'reminderId',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					resource: ['reminder'],
+					operation: ['delete', 'update'],
+				},
+			},
+		},
+		{
+			displayName: 'Task ID',
+			name: 'itemId',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					resource: ['reminder'],
+					operation: ['create'],
+				},
+			},
+			description: 'The ID of the task to attach reminder to',
+		},
+		{
+			displayName: 'Due Date Type',
+			name: 'dueDateType',
+			type: 'options',
+			options: [
+				{
+					name: 'Natural Language',
+					value: 'natural_language',
+					description: 'Human-readable date and time (e.g., "tomorrow 2pm")',
+				},
+				{
+					name: 'Full-Day Date',
+					value: 'full_day',
+					description: 'Date without specific time (floating)',
+				},
+				{
+					name: 'Floating Date with Time',
+					value: 'floating_time',
+					description: 'Date and time without timezone',
+				},
+				{
+					name: 'Fixed Timezone Date with Time',
+					value: 'fixed_timezone',
+					description: 'Date and time with specific timezone',
+				},
+			],
+			default: 'natural_language',
+			required: true,
+			displayOptions: {
+				show: {
+					resource: ['reminder'],
+					operation: ['create'],
+				},
+			},
+			description: 'How to specify when the reminder should trigger',
+		},
+		{
+			displayName: 'Natural Language Representation',
+			name: 'natural_language_representation',
+			type: 'string',
+			default: '',
+			placeholder: 'e.g., "tomorrow 2pm", "monday 10:45am"',
+			required: true,
+			displayOptions: {
+				show: {
+					resource: ['reminder'],
+					operation: ['create'],
+					dueDateType: ['natural_language'],
+				},
+			},
+			description: 'Human-readable date and time',
+		},
+		{
+			displayName: 'Date',
+			name: 'date',
+			type: 'string',
+			default: '',
+			placeholder: 'YYYY-MM-DD',
+			required: true,
+			displayOptions: {
+				show: {
+					resource: ['reminder'],
+					operation: ['create'],
+					dueDateType: ['full_day'],
+				},
+			},
+			description: 'Full-day date in YYYY-MM-DD format',
+		},
+		{
+			displayName: 'Date Time',
+			name: 'datetime',
+			type: 'dateTime',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					resource: ['reminder'],
+					operation: ['create'],
+					dueDateType: ['floating_time'],
+				},
+			},
+			description: 'Floating date and time (no timezone)',
+		},
+		{
+			displayName: 'Date Time',
+			name: 'datetime',
+			type: 'dateTime',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					resource: ['reminder'],
+					operation: ['create'],
+					dueDateType: ['fixed_timezone'],
+				},
+			},
+			description: 'Date and time with timezone',
+		},
+		{
+			displayName: 'Timezone',
+			name: 'timezone',
+			type: 'string',
+			default: '',
+			placeholder: 'e.g., "America/New_York"',
+			required: true,
+			displayOptions: {
+				show: {
+					resource: ['reminder'],
+					operation: ['create'],
+					dueDateType: ['fixed_timezone'],
+				},
+			},
+			description: 'Timezone for the fixed timezone date',
+		},
+		{
+			displayName: 'Additional Fields',
+			name: 'reminderOptions',
+			type: 'collection',
+			placeholder: 'Add Field',
+			default: {},
+			displayOptions: {
+				show: {
+					resource: ['reminder'],
+					operation: ['create'],
+				},
+			},
+			options: [
+				{
+					displayName: 'Type',
+					name: 'type',
+					type: 'options',
+					options: [
+						{
+							name: 'Absolute',
+							value: 'absolute',
+						},
+						{
+							name: 'Relative',
+							value: 'relative',
+						},
+					],
+					default: 'absolute',
+					description: 'The reminder type',
+				},
+				{
+					displayName: 'Minute Offset',
+					name: 'minute_offset',
+					type: 'number',
+					default: 0,
+					description: 'Minutes before the task due date',
+				},
+				{
+					displayName: 'Notify User ID',
+					name: 'notify_uid',
+					type: 'string',
+					default: '',
+					description: 'User ID to notify (for shared tasks)',
+				},
+			],
+		},
+		{
+			displayName: 'Update Fields',
+			name: 'reminderUpdateFields',
+			type: 'collection',
+			placeholder: 'Add Field',
+			default: {},
+			displayOptions: {
+				show: {
+					resource: ['reminder'],
+					operation: ['update'],
+				},
+			},
+			options: [
+				{
+					displayName: 'Due',
+					name: 'due',
+					type: 'collection',
+					placeholder: 'Add Due Date Option',
+					default: {},
+					options: [
+						{
+							displayName: 'Natural Language',
+							name: 'string',
+							type: 'string',
+							default: '',
+							placeholder: 'e.g., "tomorrow 2pm", "monday 10:45am"',
+							description: 'Human-readable date and time',
+						},
+						{
+							displayName: 'Date',
+							name: 'date',
+							type: 'string',
+							default: '',
+							placeholder: 'YYYY-MM-DD',
+							description: 'Specific date in YYYY-MM-DD format',
+						},
+						{
+							displayName: 'Date Time',
+							name: 'datetime',
+							type: 'dateTime',
+							default: '',
+							description: 'Specific date and time',
+						},
+						{
+							displayName: 'Timezone',
+							name: 'timezone',
+							type: 'string',
+							default: '',
+							placeholder: 'e.g., "America/New_York"',
+							description: 'Timezone for the reminder',
+						},
+					],
+					description: 'When the reminder should trigger',
+				},
+				{
+					displayName: 'Type',
+					name: 'type',
+					type: 'options',
+					options: [
+						{
+							name: 'Absolute',
+							value: 'absolute',
+						},
+						{
+							name: 'Relative',
+							value: 'relative',
+						},
+					],
+					default: 'absolute',
+					description: 'The reminder type',
+				},
+				{
+					displayName: 'Minute Offset',
+					name: 'minute_offset',
+					type: 'number',
+					default: 0,
+					description: 'Minutes before the task due date',
+				},
+				{
+					displayName: 'Notify User ID',
+					name: 'notify_uid',
+					type: 'string',
+					default: '',
+					description: 'User ID to notify (for shared tasks)',
+				},
+			],
+		},
 	],
 };
 
@@ -1611,7 +1932,7 @@ export class TodoistV2 implements INodeType {
 					if (!isTaskOperationType(operation)) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`Invalid operation '${operation}' for project resource`,
+							`Invalid operation '${operation}' for task resource`,
 						);
 					}
 					responseData = await service.executeTask(this, operation, i);
@@ -1647,6 +1968,14 @@ export class TodoistV2 implements INodeType {
 						);
 					}
 					responseData = await service.executeLabel(this, operation, i);
+				} else if (resource === 'reminder') {
+					if (!isReminderOperationType(operation)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Invalid operation '${operation}' for reminder resource`,
+						);
+					}
+					responseData = await service.executeReminder(this, operation, i);
 				}
 
 				if (responseData !== undefined && Array.isArray(responseData?.data)) {
