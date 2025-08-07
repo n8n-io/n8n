@@ -16,6 +16,7 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
+import type { SourceControlPreferences } from '@/types/sourceControl.types';
 
 vi.mock('@/composables/useTelemetry', () => {
 	const track = vi.fn();
@@ -34,9 +35,8 @@ vi.mock('@/stores/nodeTypes.store', () => ({
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = await importOriginal();
 	return {
-		...actual,
+		...(await importOriginal()),
 		useI18n: () => ({
 			baseText: vi.fn((key: string) => `mocked-${key}`),
 		}),
@@ -142,7 +142,7 @@ describe('EvaluationsRootView', () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		const sourceControlStore = mockedStore(useSourceControlStore);
 		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
-		sourceControlStore.preferences = { branchReadOnly: true };
+		sourceControlStore.preferences = mock<SourceControlPreferences>({ branchReadOnly: true });
 
 		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
 
