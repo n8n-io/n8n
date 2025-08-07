@@ -257,9 +257,13 @@ export async function odooGetAll(
 	operation: OdooCRUD,
 	url: string,
 	filters?: IOdooFilterOperations,
+	domain?: string,
 	fieldsToReturn?: IDataObject[],
 	limit = 0,
 ) {
+	if (domain) {
+		domain = JSON.parse(domain);
+	}
 	try {
 		const body = {
 			jsonrpc: '2.0',
@@ -273,7 +277,7 @@ export async function odooGetAll(
 					password,
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
-					(filters && processFilters(filters)) || [],
+					(filters && processFilters(filters)) || domain || [],
 					fieldsToReturn || [],
 					0, // offset
 					limit,
