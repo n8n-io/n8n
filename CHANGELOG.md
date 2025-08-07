@@ -1,3 +1,13 @@
+## [1.105.4](https://github.com/n8n-io/n8n/compare/n8n@1.105.3...n8n@1.105.4) (2025-08-07)
+
+
+### Bug Fixes
+
+* **core:** Prevent re-entry during workflow activation ([#17965](https://github.com/n8n-io/n8n/issues/17965)) ([93bb412](https://github.com/n8n-io/n8n/commit/93bb412fbcb0d6735c2f27ec97460ba4a2032e90))
+* **core:** Protect against duplicate cron registration ([#18005](https://github.com/n8n-io/n8n/issues/18005)) ([8977143](https://github.com/n8n-io/n8n/commit/89771434385d15ce4594cd87be085271e7c8cd07))
+
+
+
 ## [1.105.3](https://github.com/n8n-io/n8n/compare/n8n@1.105.2...n8n@1.105.3) (2025-08-05)
 
 
