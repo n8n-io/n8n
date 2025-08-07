@@ -3295,6 +3295,7 @@
 	"evaluation.executions.toast.addedTo.title": "Execution added to test ",
 	"evaluation.executions.toast.closeTab": "Close this tab",
 	"evaluation.executions.toast.removedFrom.title": "Execution removed from test ",
+	"evaluations.readOnlyNotice": "Evaluations can't be built in read-only mode. Build your evaluation on your development environment.",
 	"evaluations.paywall.title": "Register to enable evaluation",
 	"evaluations.paywall.description": "Register your Community instance to unlock the evaluation feature",
 	"evaluations.paywall.cta": "Register instance",
