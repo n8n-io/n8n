@@ -138,7 +138,9 @@ onMounted(async () => {
 			/>
 			<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="data" />
 			<div v-else-if="binaryData.mimeType === 'text/csv'" class="csv-container">
-				<div v-if="csvData.length === 0">No CSV data to display</div>
+				<div v-if="csvData.length === 0">
+					{{ i18n.baseText('binaryDataDisplay.noCsvDataToDisplay') }}
+				</div>
 				<table v-else class="csv-table">
 					<thead v-if="csvData.length > 0">
 						<tr>

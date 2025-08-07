@@ -189,7 +189,7 @@ describe('BinaryDataDisplayEmbed.vue', () => {
 			});
 
 			await waitFor(() => {
-				expect(getByText('No CSV data to display')).toBeInTheDocument();
+				expect(getByText('binaryDataDisplay.noCsvDataToDisplay')).toBeInTheDocument();
 			});
 		});
 
