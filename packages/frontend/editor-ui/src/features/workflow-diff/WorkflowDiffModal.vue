@@ -669,14 +669,20 @@ const modifiers = [
 		gap: var(--spacing-2xs);
 		padding: 10px 0 var(--spacing-3xs) var(--spacing-2xs);
 
-		ul {
-			margin-top: -3px;
+		> div {
+			min-width: 0;
 		}
 
 		.clickableChange {
 			padding: var(--spacing-3xs) var(--spacing-xs) var(--spacing-3xs) 0;
 			margin-left: -4px;
 		}
+	}
+
+	.changesNested {
+		margin-top: -3px;
+		width: 100%;
+		min-width: 0;
 	}
 }
 
@@ -831,7 +837,8 @@ const modifiers = [
 
 .noNumberDiff {
 	min-height: 41px;
-	margin-bottom: 10px;
+	margin: 0 12px 10px 0;
+	overflow: hidden;
 	:global(.blob-num) {
 		display: none;
 	}
@@ -852,13 +859,16 @@ const modifiers = [
 }
 
 .dropdownContent {
-	width: 300px;
-	padding: 2px 12px;
+	width: 320px;
+	padding: 2px 0 2px 12px;
 
 	ul {
 		list-style: none;
 		margin: 0;
 		padding: 0;
+		max-height: 400px;
+		overflow-x: hidden;
+		overflow-y: auto;
 	}
 }
 
