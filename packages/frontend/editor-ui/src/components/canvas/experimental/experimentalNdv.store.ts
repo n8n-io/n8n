@@ -1,7 +1,6 @@
 import { computed, ref, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import {
 	type Dimensions,
 	type FitView,
@@ -12,18 +11,18 @@ import {
 	type ZoomTo,
 } from '@vue-flow/core';
 import { CanvasNodeRenderType, type CanvasNodeData } from '@/types';
+import { usePostHog } from '@/stores/posthog.store';
+import { CANVAS_ZOOMED_VIEW_EXPERIMENT } from '@/constants';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const workflowStore = useWorkflowsStore();
-	const settingsStore = useSettingsStore();
+	const postHogStore = usePostHog();
 	const isEnabled = computed(
 		() =>
-			!Number.isNaN(settingsStore.experimental__minZoomNodeSettingsInCanvas) &&
-			settingsStore.experimental__minZoomNodeSettingsInCanvas > 0,
+			postHogStore.getVariant(CANVAS_ZOOMED_VIEW_EXPERIMENT.name) ===
+			CANVAS_ZOOMED_VIEW_EXPERIMENT.variant,
 	);
-	const maxCanvasZoom = computed(() =>
-		isEnabled.value ? settingsStore.experimental__minZoomNodeSettingsInCanvas : 4,
-	);
+	const maxCanvasZoom = computed(() => (isEnabled.value ? 2 : 4));
 
 	const previousViewport = ref<ViewportTransform>();
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
@@ -59,7 +58,6 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	interface FocusNodeOptions {
-		collapseOthers?: boolean;
 		canvasViewport: ViewportTransform;
 		canvasDimensions: Dimensions;
 		setCenter: SetCenter;
@@ -67,14 +65,9 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 
 	function focusNode(
 		node: GraphNode<CanvasNodeData>,
-		{ collapseOthers = true, canvasDimensions, canvasViewport, setCenter }: FocusNodeOptions,
+		{ canvasDimensions, canvasViewport, setCenter }: FocusNodeOptions,
 	) {
-		collapsedNodes.value = collapseOthers
-			? workflowStore.allNodes.reduce<Partial<Record<string, boolean>>>((acc, n) => {
-					acc[n.id] = n.id !== node.id;
-					return acc;
-				}, {})
-			: { ...collapsedNodes.value, [node.id]: false };
+		collapsedNodes.value = { ...collapsedNodes.value, [node.id]: false };
 
 		const topMargin = 80; // pixels
 		const nodeWidth = node.dimensions.width * (isActive(canvasViewport.zoom) ? 1 : 1.5);
@@ -134,7 +127,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			)[0];
 
 		if (toFocus) {
-			focusNode(toFocus, { ...options, collapseOthers: false });
+			focusNode(toFocus, options);
 			return;
 		}
 

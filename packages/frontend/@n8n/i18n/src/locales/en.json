@@ -1161,6 +1161,8 @@
 	"ndv.input.noOutputData.hint.tooltip": "From the earliest node which is unexecuted, or is executed but has since been changed",
 	"ndv.input.noOutputData.schemaPreviewHint": "switch to {schema} to use the schema preview",
 	"ndv.input.noOutputData.or": "or",
+	"ndv.input.noOutputData.embeddedNdv.link": "Execute previous nodes",
+	"ndv.input.noOutputData.embeddedNdv.description": "{link} to use their data here",
 	"ndv.input.executingPrevious": "Executing previous nodes...",
 	"ndv.input.notConnected.title": "Wire me up",
 	"ndv.input.notConnected.v2.title": "No input connected",
