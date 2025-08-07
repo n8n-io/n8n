@@ -8,6 +8,7 @@ import {
 	EVALUATION_TRIGGER_NODE_TYPE,
 	ExecutionCancelledError,
 	NodeConnectionTypes,
+	metricRequiresModelConnection,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -139,11 +140,11 @@ export class TestRunnerService {
 				);
 			}
 
-			// For version 4.7+, check if correctness or helpfulness metrics require model connection
+			// For version 4.7+, check if AI-based metrics require model connection
 			if (node.typeVersion >= 4.7) {
-				const metric = node.parameters.metric ?? 'correctness';
+				const metric = (node.parameters.metric ?? 'correctness') as string;
 				if (
-					(metric === 'correctness' || metric === 'helpfulness') &&
+					metricRequiresModelConnection(metric) &&
 					!this.hasModelNodeConnected(workflow, node.name)
 				) {
 					return true;

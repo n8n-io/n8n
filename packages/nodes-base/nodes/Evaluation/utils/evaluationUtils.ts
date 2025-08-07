@@ -10,6 +10,7 @@ import type {
 
 import { getGoogleSheet, getSheet } from './evaluationTriggerUtils';
 import { metricHandlers } from './metricHandlers';
+import { metricRequiresModelConnection } from 'n8n-workflow';
 import { composeReturnItem } from '../../Set/v2/helpers/utils';
 import assert from 'node:assert';
 
@@ -243,7 +244,7 @@ export function getOutputConnectionTypes(parameters: INodeParameters) {
 export function getInputConnectionTypes(parameters: INodeParameters) {
 	if (
 		parameters.operation === 'setMetrics' &&
-		['correctness', 'helpfulness'].includes(parameters.metric as string)
+		metricRequiresModelConnection(parameters.metric as string)
 	) {
 		return [
 			{ type: 'main' },
