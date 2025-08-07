@@ -2258,6 +2258,43 @@ export class Pipedrive implements INodeType {
 							},
 						],
 					},
+					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name or ID',
+										name: 'name',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getDealCustomFields',
+										},
+										default: '',
+										description:
+											'Name of the property to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set',
+									},
+								],
+							},
+						],
+					},
 				],
 			},
 
@@ -2401,6 +2438,43 @@ export class Pipedrive implements INodeType {
 						type: 'dateTime',
 						default: '',
 						description: 'Date when the lead’s deal is expected to be closed, in ISO-8601 format',
+					},
+					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name or ID',
+										name: 'name',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getDealCustomFields',
+										},
+										default: '',
+										description:
+											'Name of the property to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set',
+									},
+								],
+							},
+						],
 					},
 				],
 			},
@@ -3962,6 +4036,14 @@ export class Pipedrive implements INodeType {
 							name: field.name,
 							value: field.key,
 						});
+					} else if (field.is_subfield) {
+						const parentField = data.find((f: any) => f.id === field.parent_id);
+						if (parentField) {
+							returnData.push({
+								name: field.name,
+								value: field.key,
+							});
+						}
 					}
 				}
 
@@ -4117,7 +4199,7 @@ export class Pipedrive implements INodeType {
 		let customProperties: ICustomProperties | undefined;
 		if (
 			['get', 'getAll', 'update'].includes(operation) &&
-			['activity', 'deal', 'organization', 'person', 'product'].includes(resource)
+			['activity', 'deal', 'organization', 'person', 'product', 'lead'].includes(resource)
 		) {
 			// Request the custom properties once in the beginning to not query it multiple
 			// times if multiple items get updated
@@ -4563,9 +4645,7 @@ export class Pipedrive implements INodeType {
 							organization_id: number;
 						};
 
-						if (Object.keys(rest).length) {
-							Object.assign(body, rest);
-						}
+						addAdditionalFields(body, rest);
 
 						if (value) {
 							Object.assign(body, { value: value.valueProperties });
