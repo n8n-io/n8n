@@ -84,13 +84,16 @@ export function createUserTableQuery(
 	if (columns.map((x) => x.name).some((name) => !isValidColumnName(name))) {
 		throw new UnexpectedError('bad column name');
 	}
+
+	const quotedTableName = quoteIdentifier(tableName, dbType);
+
 	const columnSql = columns.map((column) => columnToWildcardAndType(column, dbType));
 	const columnsFieldQuery = columnSql.length > 0 ? `, ${columnSql.join(', ')}` : '';
 
 	const primaryKeyType = getPrimaryKeyAutoIncrement(dbType);
 
 	// The tableName here is selected by us based on the automatically generated id, not user input
-	return `CREATE TABLE IF NOT EXISTS ${tableName} (id ${primaryKeyType} ${columnsFieldQuery})`;
+	return `CREATE TABLE IF NOT EXISTS ${quotedTableName} (id ${primaryKeyType} ${columnsFieldQuery})`;
 }
 
 function isValidColumnName(name: string) {
@@ -108,7 +111,9 @@ export function addColumnQuery(
 		throw new UnexpectedError('bad column name');
 	}
 
-	return `ALTER TABLE ${tableName} ADD ${columnToWildcardAndType(column, dbType)}`;
+	const quotedTableName = quoteIdentifier(tableName, dbType);
+
+	return `ALTER TABLE ${quotedTableName} ADD ${columnToWildcardAndType(column, dbType)}`;
 }
 
 export function deleteColumnQuery(
@@ -116,7 +121,8 @@ export function deleteColumnQuery(
 	column: string,
 	dbType: DataSourceOptions['type'],
 ): string {
-	return `ALTER TABLE ${tableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
+	const quotedTableName = quoteIdentifier(tableName, dbType);
+	return `ALTER TABLE ${quotedTableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
 }
 
 export function buildInsertQuery(
@@ -135,6 +141,7 @@ export function buildInsertQuery(
 	}
 
 	const quotedKeys = keys.map((key) => quoteIdentifier(key, dbType)).join(', ');
+	const quotedTableName = quoteIdentifier(tableName, dbType);
 
 	const wildcards = keys.map((_) => '?').join(',');
 	const rowsQuery = Array(rows.length).fill(`(${wildcards})`).join(',');
@@ -145,7 +152,7 @@ export function buildInsertQuery(
 			parameters[j * keys.length + i] = rows[j][keys[i]];
 		}
 	}
-	const query = `INSERT INTO ${tableName} (${quotedKeys}) VALUES ${rowsQuery}`;
+	const query = `INSERT INTO ${quotedTableName} (${quotedKeys}) VALUES ${rowsQuery}`;
 
 	return [query, parameters];
 }
@@ -173,7 +180,9 @@ export function buildUpdateQuery(
 
 	const parameters = [...updateKeys.map((k) => row[k]), ...matchFields.map((k) => row[k])];
 
-	const query = `UPDATE ${tableName} SET ${setClause} WHERE ${whereClause}`;
+	const quotedTableName = quoteIdentifier(tableName, dbType);
+
+	const query = `UPDATE ${quotedTableName} SET ${setClause} WHERE ${whereClause}`;
 
 	return [query, parameters];
 }

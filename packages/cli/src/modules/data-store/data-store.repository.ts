@@ -8,6 +8,7 @@ import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { DataStoreColumnEntity } from './data-store-column.entity';
 import { DataStoreEntity } from './data-store.entity';
 import { createUserTableQuery, toDslColumns, toTableName } from './utils/sql-utils';
 
@@ -47,6 +48,22 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 				throw new UnexpectedError('QueryRunner is not available');
 			}
 
+			if (columns.length === 0) {
+				return dataStore;
+			}
+
+			// insert columns
+			const columnEntities = columns.map((col, index) =>
+				em.create(DataStoreColumnEntity, {
+					name: col.name,
+					type: col.type,
+					dataStoreId: dataStore.id,
+					columnIndex: col.columnIndex ?? index,
+				}),
+			);
+			await em.insert(DataStoreColumnEntity, columnEntities);
+
+			// create user table
 			const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
 
 			const createTable = new CreateTable(tableName, '', queryRunner);

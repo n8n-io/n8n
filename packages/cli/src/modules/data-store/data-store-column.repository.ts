@@ -1,10 +1,11 @@
 import { DataStoreCreateColumnSchema } from '@n8n/api-types';
+import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { DataStoreColumnEntity } from './data-store-column.entity';
-import { addColumnQuery, deleteColumnQuery, toTableName } from './utils/sql-utils';
+import { addColumnQuery, deleteColumnQuery, toDslColumns, toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity> {
@@ -46,7 +47,25 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 			});
 
 			await em.insert(DataStoreColumnEntity, column);
-			await em.query(addColumnQuery(toTableName(dataStoreId), column, em.connection.options.type));
+
+			// Create user table if it does not exist
+			const tableName = toTableName(dataStoreId);
+			const queryRunner = em.queryRunner;
+			if (!queryRunner) {
+				throw new Error('QueryRunner is not available');
+			}
+			const tableExists = await queryRunner.hasTable(tableName);
+			if (!tableExists) {
+				const dslColumns = [
+					new DslColumn('id').int.autoGenerate2.primary,
+					...toDslColumns([column]),
+				];
+				const createTable = new CreateTable(tableName, '', queryRunner);
+				createTable.withColumns.apply(createTable, dslColumns);
+				await createTable.execute(queryRunner);
+			} else {
+				await em.query(addColumnQuery(tableName, column, em.connection.options.type));
+			}
 
 			return column;
 		});
