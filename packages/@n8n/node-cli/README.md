@@ -30,6 +30,18 @@ n8n-node create
 n8n-node create   # Scaffold a new node
 ```
 
+## Build a node
+
+```bash
+n8n-node build   # Build your node; should be ran in the root of your custom node
+```
+
+## Develop a node
+
+```bash
+n8n-node dev  # Develop your node with hot reloading; should be ran in the root of your custom node
+```
+
 ## Related
 
 `@n8n/create-node`: Lightweight wrapper to support `npm create @n8n/node`
