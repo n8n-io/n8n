@@ -24,7 +24,7 @@ export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 				column('id').varchar(36).primary.notNull,
 				column('name').varchar(128).notNull,
 				column('type').varchar(32).notNull,
-				column('columnIndex').int.notNull,
+				column('index').int.notNull,
 				column('dataStoreId').varchar(36).notNull,
 			)
 			.withForeignKey('dataStoreId', {
@@ -38,7 +38,5 @@ export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
 		await dropTable(dataStoreTableName);
 		await dropTable(dataStoreColumnTableName);
-
-		// We're not dropping user tables as their names are dynamic
 	}
 }
