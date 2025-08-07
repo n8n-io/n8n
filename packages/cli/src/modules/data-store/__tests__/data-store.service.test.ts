@@ -3,7 +3,6 @@
 import type { AddDataStoreColumnDto, CreateDataStoreColumnDto } from '@n8n/api-types';
 import type { ModuleName } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -30,7 +29,6 @@ describe('dataStore', () => {
 	let dataStoreService: DataStoreService;
 	let dataStoreRepository: DataStoreRepository;
 	let dataStoreRowsRepository: DataStoreRowsRepository;
-	const dbType = Container.get(GlobalConfig).database.type;
 
 	beforeAll(() => {
 		dataStoreService = Container.get(DataStoreService);
@@ -176,10 +174,8 @@ describe('dataStore', () => {
 			});
 
 			// ACT
-			if (dbType === 'sqlite') {
-				// Wait 1s for SQLite as it doesn't store ms
-				await new Promise((resolve) => setTimeout(resolve, 1001));
-			}
+			// Wait to get second difference
+			await new Promise((resolve) => setTimeout(resolve, 1001));
 
 			const result = await dataStoreService.updateDataStore(dataStore.id, { name: 'aNewName' });
 
@@ -780,19 +776,15 @@ describe('dataStore', () => {
 					columns: [],
 				});
 
-				if (dbType === 'sqlite') {
-					// Wait 1s for SQLite as it doesn't store ms
-					await new Promise((resolve) => setTimeout(resolve, 1001));
-				}
+				// Wait to get seconds difference
+				await new Promise((resolve) => setTimeout(resolve, 1001));
 				await dataStoreService.createDataStore(project1.id, {
 					name: 'ds1',
 					columns: [],
 				});
 
-				if (dbType === 'sqlite') {
-					// Wait 1s for SQLite as it doesn't store ms
-					await new Promise((resolve) => setTimeout(resolve, 1001));
-				}
+				// Wait to get seconds difference
+				await new Promise((resolve) => setTimeout(resolve, 1001));
 				await dataStoreService.createDataStore(project1.id, {
 					name: 'ds2',
 					columns: [],
@@ -820,19 +812,15 @@ describe('dataStore', () => {
 					columns: [],
 				});
 
-				if (dbType === 'sqlite') {
-					// Wait 1s for SQLite as it doesn't store ms
-					await new Promise((resolve) => setTimeout(resolve, 1001));
-				}
+				// Wait to get seconds difference
+				await new Promise((resolve) => setTimeout(resolve, 1001));
 				await dataStoreService.createDataStore(project1.id, {
 					name: 'ds2',
 					columns: [],
 				});
 
-				if (dbType === 'sqlite') {
-					// Wait 1s for SQLite as it doesn't store ms
-					await new Promise((resolve) => setTimeout(resolve, 1001));
-				}
+				// Wait to get seconds difference
+				await new Promise((resolve) => setTimeout(resolve, 1001));
 				await dataStoreService.updateDataStore(ds1.id, { name: 'ds1Updated' });
 
 				// ACT
