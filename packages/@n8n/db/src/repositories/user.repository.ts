@@ -1,6 +1,5 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import type { GlobalRole } from '@n8n/permissions';
 import type { DeepPartial, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
@@ -65,13 +64,13 @@ export class UserRepository extends Repository<User> {
 		const rows = (await this.createQueryBuilder()
 			.select(['role', 'COUNT(role) as count'])
 			.groupBy('role')
-			.execute()) as Array<{ role: GlobalRole; count: string }>;
+			.execute()) as Array<{ role: string; count: string }>;
 		return rows.reduce(
 			(acc, row) => {
 				acc[row.role] = parseInt(row.count, 10);
 				return acc;
 			},
-			{} as Record<GlobalRole, number>,
+			{} as Record<string, number>,
 		);
 	}
 
