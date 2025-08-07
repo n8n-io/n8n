@@ -515,7 +515,7 @@ const modifiers = [
 								{{
 									sourceWorkFlow.state.value.remote
 										? i18n.baseText('workflowDiff.remote', {
-												branchName: sourceControlStore.preferences.branchName,
+												interpolate: { branchName: sourceControlStore.preferences.branchName },
 											})
 										: i18n.baseText('workflowDiff.local')
 								}}
@@ -562,7 +562,7 @@ const modifiers = [
 								{{
 									targetWorkFlow.state.value.remote
 										? i18n.baseText('workflowDiff.remote', {
-												branchName: sourceControlStore.preferences.branchName,
+												interpolate: { branchName: sourceControlStore.preferences.branchName },
 											})
 										: i18n.baseText('workflowDiff.local')
 								}}
