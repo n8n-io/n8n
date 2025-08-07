@@ -22,7 +22,7 @@ npm install n8n-node-dev -g
 
 ## Usage
 
-The commandline tool can be started with `n8n-node-dev <COMMAND>`
+The commandline tool can be started withh `n8n-node-dev <COMMAND>`
 
 ## Commands
 
