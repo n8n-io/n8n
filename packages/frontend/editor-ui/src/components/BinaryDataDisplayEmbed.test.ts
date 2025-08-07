@@ -189,7 +189,8 @@ describe('BinaryDataDisplayEmbed.vue', () => {
 			});
 
 			await waitFor(() => {
-				expect(getByText('binaryDataDisplay.noCsvDataToDisplay')).toBeInTheDocument();
+				// The i18n mock in tests returns the actual translated text
+				expect(getByText('No CSV data to display')).toBeInTheDocument();
 			});
 		});
 
