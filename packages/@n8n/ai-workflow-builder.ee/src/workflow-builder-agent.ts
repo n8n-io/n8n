@@ -194,6 +194,10 @@ export class WorkflowBuilderAgent {
 			const lastHumanMessage = messages[messages.length - 1] as HumanMessage;
 			const isAutoCompact = lastHumanMessage.content !== '/compact';
 
+			this.logger?.debug('Compacting conversation history', {
+				isAutoCompact,
+			});
+
 			const compactedMessages = await conversationCompactChain(
 				this.llmSimpleTask,
 				messages,
