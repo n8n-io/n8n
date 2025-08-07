@@ -5,7 +5,6 @@
 		"rootDir": "src",
 		"outDir": "dist",
 		"tsBuildInfoFile": "dist/build.tsbuildinfo",
-		"types": ["node", "reflect-metadata"],
 		"moduleResolution": "node",
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
