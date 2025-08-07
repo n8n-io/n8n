@@ -25,7 +25,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'global:owner' });
+	owner = await createUser({ role: { slug: 'global:owner' } });
 	authOwnerAgent = testServer.authAgentFor(owner);
 });
 

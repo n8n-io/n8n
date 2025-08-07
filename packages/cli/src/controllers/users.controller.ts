@@ -101,35 +101,43 @@ export class UsersController {
 		_res: Response,
 		@Query listQueryOptions: UsersListFilterDto,
 	) {
-		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
+		try {
+			const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
 
-		const response = await userQuery.getManyAndCount();
+			const response = await userQuery.getManyAndCount();
 
-		const [users, count] = response;
+			const [users, count] = response;
 
-		const withInviteUrl = hasGlobalScope(req.user, 'user:create');
+			const withInviteUrl = hasGlobalScope(req.user, 'user:create');
 
-		const publicUsers = await Promise.all(
-			users.map(async (u) => {
-				const user = await this.userService.toPublic(u, {
-					withInviteUrl,
-					inviterId: req.user.id,
-				});
-				return {
-					...user,
-					projectRelations: u.projectRelations?.map((pr) => ({
-						id: pr.projectId,
-						role: pr.role, // normalize role for frontend
-						name: pr.project.name,
-					})),
-				};
-			}),
-		);
+			const publicUsers = await Promise.all(
+				users.map(async (u) => {
+					const user = await this.userService.toPublic(u, {
+						withInviteUrl,
+						inviterId: req.user.id,
+					});
+					if (listQueryOptions.select && !listQueryOptions.select?.includes('role')) {
+						delete user.role;
+					}
+					return {
+						...user,
+						projectRelations: u.projectRelations?.map((pr) => ({
+							id: pr.projectId,
+							role: pr.role, // normalize role for frontend
+							name: pr.project.name,
+						})),
+					};
+				}),
+			);
 
-		return usersListSchema.parse({
-			count,
-			items: this.removeSupplementaryFields(publicUsers, listQueryOptions),
-		});
+			return usersListSchema.parse({
+				count,
+				items: this.removeSupplementaryFields(publicUsers, listQueryOptions),
+			});
+		} catch (error) {
+			this.logger.error('Failed to list users', { error });
+			throw error;
+		}
 	}
 
 	@Get('/:id/password-reset-link')
@@ -142,7 +150,7 @@ export class UsersController {
 			throw new NotFoundError('User not found');
 		}
 
-		if (req.user.role === 'global:admin' && user.role === 'global:owner') {
+		if (req.user.role.slug === 'global:admin' && user.role.slug === 'global:owner') {
 			throw new ForbiddenError('Admin cannot reset password of global owner');
 		}
 
@@ -194,7 +202,7 @@ export class UsersController {
 			);
 		}
 
-		if (userToDelete.role === 'global:owner') {
+		if (userToDelete.role.slug === 'global:owner') {
 			throw new ForbiddenError('Instance owner cannot be deleted.');
 		}
 
@@ -307,11 +315,11 @@ export class UsersController {
 			throw new NotFoundError(NO_USER);
 		}
 
-		if (req.user.role === 'global:admin' && targetUser.role === 'global:owner') {
+		if (req.user.role.slug === 'global:admin' && targetUser.role.slug === 'global:owner') {
 			throw new ForbiddenError(NO_ADMIN_ON_OWNER);
 		}
 
-		if (req.user.role === 'global:owner' && targetUser.role === 'global:owner') {
+		if (req.user.role.slug === 'global:owner' && targetUser.role.slug === 'global:owner') {
 			throw new ForbiddenError(NO_OWNER_ON_OWNER);
 		}
 

@@ -4,6 +4,9 @@ import {
 	CredentialsEntity,
 	type Folder,
 	FolderRepository,
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
 	Project,
 	type TagEntity,
 	TagRepository,
@@ -217,10 +220,10 @@ describe('SourceControlService', () => {
 			*/
 
 		[globalAdmin, globalOwner, globalMember, projectAdmin] = await Promise.all([
-			await createUser({ role: 'global:admin' }),
-			await createUser({ role: 'global:owner' }),
-			await createUser({ role: 'global:member' }),
-			await createUser({ role: 'global:member' }),
+			await createUser({ role: GLOBAL_ADMIN_ROLE }),
+			await createUser({ role: GLOBAL_OWNER_ROLE }),
+			await createUser({ role: GLOBAL_MEMBER_ROLE }),
+			await createUser({ role: GLOBAL_MEMBER_ROLE }),
 		]);
 
 		[projectA, projectB] = await Promise.all([

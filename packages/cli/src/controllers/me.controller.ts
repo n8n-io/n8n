@@ -197,42 +197,50 @@ export class MeController {
 	 */
 	@Post('/survey')
 	async storeSurveyAnswers(req: MeRequest.SurveyAnswers) {
-		const { body: personalizationAnswers } = req;
+		try {
+			const { body: personalizationAnswers } = req;
 
-		if (!personalizationAnswers) {
-			this.logger.debug(
-				'Request to store user personalization survey failed because of undefined payload',
-				{
-					userId: req.user.id,
-				},
+			if (!personalizationAnswers) {
+				this.logger.debug(
+					'Request to store user personalization survey failed because of undefined payload',
+					{
+						userId: req.user.id,
+					},
+				);
+				throw new BadRequestError('Personalization answers are mandatory');
+			}
+
+			const validatedAnswers = plainToInstance(
+				PersonalizationSurveyAnswersV4,
+				personalizationAnswers,
+				{ excludeExtraneousValues: true },
 			);
-			throw new BadRequestError('Personalization answers are mandatory');
+
+			await validateEntity(validatedAnswers);
+
+			await this.userRepository.save(
+				{
+					id: req.user.id,
+					personalizationAnswers: validatedAnswers,
+				},
+				{ transaction: false },
+			);
+
+			this.logger.info('User survey updated successfully', { userId: req.user.id });
+
+			this.eventService.emit('user-submitted-personalization-survey', {
+				userId: req.user.id,
+				answers: validatedAnswers,
+			});
+
+			return { success: true };
+		} catch (error) {
+			this.logger.error('Failed to store user personalization survey', {
+				userId: req.user.id,
+				error,
+			});
+			throw error;
 		}
-
-		const validatedAnswers = plainToInstance(
-			PersonalizationSurveyAnswersV4,
-			personalizationAnswers,
-			{ excludeExtraneousValues: true },
-		);
-
-		await validateEntity(validatedAnswers);
-
-		await this.userRepository.save(
-			{
-				id: req.user.id,
-				personalizationAnswers: validatedAnswers,
-			},
-			{ transaction: false },
-		);
-
-		this.logger.info('User survey updated successfully', { userId: req.user.id });
-
-		this.eventService.emit('user-submitted-personalization-survey', {
-			userId: req.user.id,
-			answers: validatedAnswers,
-		});
-
-		return { success: true };
 	}
 
 	/**

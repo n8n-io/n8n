@@ -61,7 +61,7 @@ export class Reset extends BaseCommand {
 	}
 
 	async getInstanceOwner(): Promise<User> {
-		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+		const owner = await Container.get(UserRepository).findOneBy({ role: { slug: 'global:owner' } });
 
 		if (owner) return owner;
 
@@ -71,7 +71,7 @@ export class Reset extends BaseCommand {
 
 		await Container.get(UserRepository).save(user);
 
-		return await Container.get(UserRepository).findOneByOrFail({ role: 'global:owner' });
+		return await Container.get(UserRepository).findOneByOrFail({ role: { slug: 'global:owner' } });
 	}
 
 	async catch(error: Error): Promise<void> {

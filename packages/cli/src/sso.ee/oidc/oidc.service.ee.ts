@@ -4,6 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	AuthIdentity,
 	AuthIdentityRepository,
+	GLOBAL_MEMBER_ROLE,
 	SettingsRepository,
 	type User,
 	UserRepository,
@@ -138,7 +139,7 @@ export class OidcService {
 					lastName: userInfo.family_name,
 					email: userInfo.email,
 					authIdentities: [],
-					role: 'global:member',
+					role: GLOBAL_MEMBER_ROLE,
 					password: 'no password set',
 				},
 				trx,

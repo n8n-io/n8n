@@ -37,6 +37,8 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		securityAudit: {},
 		folder: {},
 		insights: {},
+		execution: {},
+		workflowTags: {},
 	});
 
 	function addGlobalRole(role: Role) {
