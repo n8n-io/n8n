@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { inject } from 'vue';
+
 import { useOptions } from '@/composables/useOptions';
 import { ChatOptionsSymbol } from '@/constants';
 

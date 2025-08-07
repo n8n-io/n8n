@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { nextTick, ref } from 'vue';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { nextTick } from 'vue';
+
 import Message from '@/components/Message.vue';
 import { useOptions } from '@/composables';
 import type { ChatMessageText, ChatMessageComponent } from '@/types';

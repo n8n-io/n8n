@@ -19,6 +19,7 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { SavedSearch } from './saved-search';
 import { SecurityEvent } from './security-event';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
@@ -33,7 +34,6 @@ import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
-import { SavedSearch } from './saved-search';
 
 export {
 	EventDestinations,

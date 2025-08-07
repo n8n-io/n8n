@@ -1,8 +1,10 @@
-import { DataSource, Repository, FindManyOptions, FindOneOptions, SaveOptions } from '@n8n/typeorm';
-import { AuthIdentityRepository } from '../auth-identity.repository';
+import type { DataSource, FindManyOptions, FindOneOptions, SaveOptions } from '@n8n/typeorm';
+import { Repository } from '@n8n/typeorm';
+
 import { AuthIdentity } from '../../entities/auth-identity';
-import { User } from '../../entities/user';
 import type { AuthProviderType } from '../../entities/types-db';
+import { User } from '../../entities/user';
+import { AuthIdentityRepository } from '../auth-identity.repository';
 
 // Mock DataSource and its manager
 const mockManager = {

@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { nextTick, ref } from 'vue';
+
 import Chat from '@/components/Chat.vue';
 import { useChat, useOptions, useI18n } from '@/composables';
 import { chatEventBus } from '@/event-buses';
@@ -184,7 +185,7 @@ describe('Chat.vue', () => {
 		const getStarted = wrapper.find('[data-testid="get-started"]');
 
 		// Should not throw error
-		expect(() => getStarted.trigger('click:button')).not.toThrow();
+		expect(async () => await getStarted.trigger('click:button')).not.toThrow();
 	});
 
 	it('should load previous session on mount', async () => {

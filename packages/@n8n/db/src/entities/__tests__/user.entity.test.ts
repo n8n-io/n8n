@@ -44,7 +44,7 @@ describe('User Entity', () => {
 			user.mfaRecoveryCodes = ['recovery1', 'recovery2'];
 			user.role = 'global:admin';
 
-			const serialized = JSON.parse(JSON.stringify(user));
+			const serialized = deepCopy(user);
 			expect(serialized).not.toHaveProperty('password');
 			expect(serialized).not.toHaveProperty('mfaSecret');
 			expect(serialized).not.toHaveProperty('mfaRecoveryCodes');
@@ -524,7 +524,7 @@ describe('User Entity', () => {
 
 			it('should not include mfaSecret in JSON serialization', () => {
 				user.mfaSecret = 'secret-key';
-				const serialized = JSON.parse(JSON.stringify(user));
+				const serialized = deepCopy(user);
 				expect(serialized).not.toHaveProperty('mfaSecret');
 			});
 		});
@@ -553,7 +553,7 @@ describe('User Entity', () => {
 
 			it('should not include mfaRecoveryCodes in JSON serialization', () => {
 				user.mfaRecoveryCodes = ['code1', 'code2'];
-				const serialized = JSON.parse(JSON.stringify(user));
+				const serialized = deepCopy(user);
 				expect(serialized).not.toHaveProperty('mfaRecoveryCodes');
 			});
 		});
@@ -569,7 +569,7 @@ describe('User Entity', () => {
 				expect(user.mfaRecoveryCodes).toHaveLength(3);
 
 				// Verify sensitive data is not serialized
-				const serialized = JSON.parse(JSON.stringify(user));
+				const serialized = deepCopy(user);
 				expect(serialized.mfaEnabled).toBe(true);
 				expect(serialized).not.toHaveProperty('mfaSecret');
 				expect(serialized).not.toHaveProperty('mfaRecoveryCodes');
@@ -734,7 +734,7 @@ describe('User Entity', () => {
 				expect(user.isPending).toBe(false);
 
 				// Verify serialization
-				const serialized = JSON.parse(JSON.stringify(user));
+				const serialized = deepCopy(user);
 				expect(serialized).not.toHaveProperty('password');
 				expect(serialized).not.toHaveProperty('mfaSecret');
 				expect(serialized).not.toHaveProperty('mfaRecoveryCodes');

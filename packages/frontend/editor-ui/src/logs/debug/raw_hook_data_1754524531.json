@@ -1,7 +1,0 @@
-{
-	"session_id": "2522bd13-9cc6-48f8-811f-58f3d0f4dc58",
-	"transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/2522bd13-9cc6-48f8-811f-58f3d0f4dc58.jsonl",
-	"cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork/packages/frontend/editor-ui/src",
-	"hook_event_name": "SubagentStop",
-	"stop_hook_active": false
-}

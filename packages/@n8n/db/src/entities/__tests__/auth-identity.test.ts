@@ -1,7 +1,8 @@
 import { validate } from 'class-validator';
+
 import { AuthIdentity } from '../auth-identity';
-import { User } from '../user';
 import type { AuthProviderType } from '../types-db';
+import { User } from '../user';
 
 describe('AuthIdentity', () => {
 	let authIdentity: AuthIdentity;

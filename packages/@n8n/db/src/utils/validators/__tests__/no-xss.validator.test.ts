@@ -24,11 +24,11 @@ describe('NoXss', () => {
 	});
 
 	describe('XSS Attack Vectors', () => {
-		// eslint-disable-next-line n8n-local-rules/no-unneeded-backticks
+		 
 		const XSS_STRINGS = [
 			'<script src/>',
 			"<script>alert('xss')</script>",
-			`<a href="#">Jack</a>`,
+			'<a href="#">Jack</a>',
 			'<img src="x" onerror="alert(1)">',
 			'<svg onload="alert(1)">',
 			'<iframe src="javascript:alert(1)"></iframe>',

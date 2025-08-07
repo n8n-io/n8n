@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { nextTick } from 'vue';
+
 import ChatWindow from '@/components/ChatWindow.vue';
 import { chatEventBus } from '@/event-buses';
 

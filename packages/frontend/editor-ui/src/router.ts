@@ -18,7 +18,7 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
-import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
+// import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue'; // Temporarily commented out due to missing file
 import { MfaRequiredError } from '@n8n/rest-api-client';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
@@ -280,12 +280,12 @@ export const routes: RouteRecordRaw[] = [
 				component: EvaluationsView,
 				props: true,
 			},
-			{
-				path: 'test-runs/:runId',
-				name: VIEWS.EVALUATION_RUNS_DETAIL,
-				component: TestRunDetailView,
-				props: true,
-			},
+			// {
+			//	path: 'test-runs/:runId',
+			//	name: VIEWS.EVALUATION_RUNS_DETAIL,
+			//	component: TestRunDetailView,
+			//	props: true,
+			// }, // Temporarily commented out due to missing TestRunDetailView component
 		],
 	},
 	{

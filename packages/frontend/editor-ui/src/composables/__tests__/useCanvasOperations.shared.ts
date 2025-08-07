@@ -187,7 +187,7 @@ export function createTestCanvasNode(overrides: Partial<CanvasNode> = {}): Canva
 		name: 'Test Node',
 		type: SET_NODE_TYPE,
 		typeVersion: 1,
-		position: [100, 100],
+		position: { x: 100, y: 100 },
 		parameters: {},
 		...overrides,
 	};

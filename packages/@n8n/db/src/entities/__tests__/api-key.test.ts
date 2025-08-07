@@ -1,5 +1,6 @@
-import { validate } from 'class-validator';
 import type { ApiKeyScope } from '@n8n/permissions';
+import { validate } from 'class-validator';
+
 import { ApiKey } from '../api-key';
 import { User } from '../user';
 

@@ -75,6 +75,6 @@ export class TagRepository extends Repository<TagEntity> {
 
 		const workflowIdsPerTag = dbTags.map((tag) => tag.workflows.map((workflow) => workflow.id));
 
-		return intersection(...workflowIdsPerTag);
+		return intersection.apply(undefined, workflowIdsPerTag);
 	}
 }

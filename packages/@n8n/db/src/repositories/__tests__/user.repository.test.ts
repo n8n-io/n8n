@@ -430,7 +430,7 @@ describe('UserRepository', () => {
 				return data ?? {};
 			});
 
-			mockManager.save.mockImplementation((entity) => Promise.resolve(entity));
+			mockManager.save.mockImplementation(async (entity) => await Promise.resolve(entity));
 
 			const result = await userRepository.createUserWithProject(userData, mockManager);
 
@@ -1194,9 +1194,9 @@ describe('UserRepository', () => {
 			const concurrentUserIds = ['concurrent1', 'concurrent2', 'concurrent3'];
 
 			// Simulate concurrent calls
-			const promises = concurrentUserIds.map((id) => {
+			const promises = concurrentUserIds.map(async (id) => {
 				(userRepository.find as jest.Mock).mockResolvedValue([{ id, email: `${id}@example.com` }]);
-				return userRepository.findManyByIds([id]);
+				return await userRepository.findManyByIds([id]);
 			});
 
 			const results = await Promise.all(promises);

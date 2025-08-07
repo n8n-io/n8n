@@ -27,7 +27,7 @@ export class CreateTable extends TableOperation {
 	private foreignKeys = new Set<TableForeignKeyOptions>();
 
 	withColumns(...columns: Column[]) {
-		this.columns.push(...columns);
+		this.columns.push.apply(this.columns, columns);
 		return this;
 	}
 

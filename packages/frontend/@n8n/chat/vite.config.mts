@@ -24,7 +24,9 @@ export default mergeConfig(
 				compiler: 'vue3',
 				autoInstall: true,
 			}),
-			dts(),
+			dts({
+				exclude: ['**/__tests__/**', '**/*.spec.ts', '**/*.test.ts']
+			}),
 			components({
 				dts: './src/components.d.ts',
 				resolvers: [

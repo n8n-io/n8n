@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import { authenticatedFetch, get, post, postWithFiles, put, patch, del } from '@/api/generic';
 
 describe('generic API', () => {

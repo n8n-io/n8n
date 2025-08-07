@@ -1,10 +1,15 @@
 {
-	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
+	"extends": "./tsconfig.json",
 	"compilerOptions": {
 		"composite": true,
 		"rootDir": "src",
 		"outDir": "dist",
-		"tsBuildInfoFile": "dist/build.tsbuildinfo"
+		"tsBuildInfoFile": "dist/build.tsbuildinfo",
+		"types": ["node", "reflect-metadata"],
+		"moduleResolution": "node",
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"declaration": true
 	},
 	"include": ["src/**/*.ts"],
 	"exclude": ["src/**/__tests__/**"]

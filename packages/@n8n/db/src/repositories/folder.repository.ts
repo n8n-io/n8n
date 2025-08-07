@@ -109,17 +109,17 @@ export class FolderRepository extends Repository<Folder> {
 	): void {
 		if (select?.project) {
 			query.leftJoin('folder.homeProject', 'homeProject');
-			selections.push(...this.getProjectFields('homeProject'));
+			selections.push.apply(selections, this.getProjectFields('homeProject'));
 		}
 
 		if (select?.tags) {
 			query.leftJoin('folder.tags', 'tags').addOrderBy('tags.createdAt', 'ASC');
-			selections.push(...this.getTagFields());
+			selections.push.apply(selections, this.getTagFields());
 		}
 
 		if (select?.parentFolder) {
 			query.leftJoin('folder.parentFolder', 'parentFolder');
-			selections.push(...this.getParentFolderFields('parentFolder'));
+			selections.push.apply(selections, this.getParentFolderFields('parentFolder'));
 		}
 
 		if (select?.workflowCount) {

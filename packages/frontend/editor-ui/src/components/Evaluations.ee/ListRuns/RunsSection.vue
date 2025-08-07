@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TestRunRecord } from '@/api/evaluation.ee';
 import MetricsChart from '@/components/Evaluations.ee/ListRuns/MetricsChart.vue';
-import TestRunsTable from '@/components/Evaluations.ee/ListRuns/TestRunsTable.vue';
+import { ElTable, ElTableColumn } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/constants';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
@@ -77,14 +77,24 @@ const handleRowClick = (row: TestRunRecord) => {
 	<div :class="$style.runs">
 		<MetricsChart v-model:selected-metric="selectedMetric" :runs="runs" />
 
-		<TestRunsTable
+		<ElTable
 			:class="$style.runsTable"
-			:runs
-			:columns
-			:selectable="true"
-			data-test-id="past-runs-table"
+			:data="runs"
+			stripe
 			@row-click="handleRowClick"
-		/>
+			data-test-id="past-runs-table"
+		>
+			<ElTableColumn
+				v-for="column in columns"
+				:key="column.prop"
+				:prop="column.prop"
+				:label="column.label"
+				:sortable="column.sortable"
+				:sort-method="column.sortMethod"
+				:show-overflow-tooltip="column.showOverflowTooltip"
+				:formatter="column.formatter"
+			/>
+		</ElTable>
 	</div>
 </template>
 

@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+
 import { CredentialsEntity } from '../credentials-entity';
 
 describe('CredentialsEntity', () => {
@@ -177,7 +178,7 @@ describe('CredentialsEntity', () => {
 			it('should default to false for isManaged', () => {
 				const entity = new CredentialsEntity();
 				// Default value might only be set by database, not on new instances
-				expect(entity.isManaged === false || entity.isManaged === undefined).toBe(true);
+				expect(!entity.isManaged || entity.isManaged === undefined).toBe(true);
 			});
 
 			it('should accept true value for isManaged', () => {

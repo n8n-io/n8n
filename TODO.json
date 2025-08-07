@@ -1447,7 +1447,7 @@
       "description": "Add comprehensive tests for utility functions, directives, and helper modules to improve function coverage from 45% to 70%+",
       "mode": "DEVELOPMENT",
       "priority": "medium",
-      "status": "pending",
+      "status": "completed",
       "parent_task_id": "enhance-design-system-coverage-1754230629258",
       "success_criteria": [
         "All utility functions in src/utils/ reach 80%+ coverage",
@@ -1469,7 +1469,7 @@
       "description": "Implement comprehensive test coverage for fundamental UI components: N8nText, N8nLink, N8nLoading, N8nMenu, N8nMenuItem to improve overall package coverage",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "dependencies": [],
       "important_files": [
         "packages/frontend/@n8n/design-system/src/components/N8nText/",
@@ -1497,7 +1497,7 @@
       "description": "Create comprehensive tests for form-related components: N8nOption, N8nPagination, N8nPopover to ensure proper form interaction and validation",
       "mode": "DEVELOPMENT",
       "priority": "high",
-      "status": "pending",
+      "status": "completed",
       "dependencies": [],
       "important_files": [
         "packages/frontend/@n8n/design-system/src/components/N8nOption/",
@@ -2773,14 +2773,86 @@
       "requires_research": false,
       "subtasks": [],
       "created_at": "2025-08-06T23:55:22.231Z"
+    },
+    {
+      "id": "task_1754531735381_1po3vaudl",
+      "title": "Create comprehensive tests for N8nOption component",
+      "description": "Implement complete test coverage for N8nOption component including prop validation, event handling, and form integration scenarios.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/src/components/N8nOption/",
+        "packages/frontend/@n8n/design-system/src/components/N8nOption/__tests__/Option.test.ts"
+      ],
+      "success_criteria": [
+        "N8nOption component has comprehensive test coverage",
+        "All props, events, and slots are tested",
+        "Form integration scenarios are covered",
+        "Edge cases and accessibility are tested",
+        "Tests pass successfully"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T01:55:35.381Z"
+    },
+    {
+      "id": "task_1754531735398_1flax41vh",
+      "title": "Create comprehensive tests for N8nPagination component",
+      "description": "Implement complete test coverage for N8nPagination component including pagination logic, event emissions, and edge case handling.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/src/components/N8nPagination/",
+        "packages/frontend/@n8n/design-system/src/components/N8nPagination/__tests__/Pagination.test.ts"
+      ],
+      "success_criteria": [
+        "N8nPagination component has comprehensive test coverage",
+        "Pagination logic and calculations are tested",
+        "Event emissions and user interactions are covered",
+        "Edge cases and boundary conditions are tested",
+        "Tests pass successfully"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T01:55:35.398Z"
+    },
+    {
+      "id": "task_1754531735407_l8nufwwlq",
+      "title": "Create comprehensive tests for N8nPopover component",
+      "description": "Implement complete test coverage for N8nPopover component including positioning, trigger behaviors, and content rendering.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/@n8n/design-system/src/components/N8nPopover/",
+        "packages/frontend/@n8n/design-system/src/components/N8nPopover/__tests__/Popover.test.ts"
+      ],
+      "success_criteria": [
+        "N8nPopover component has comprehensive test coverage",
+        "Positioning and trigger behaviors are tested",
+        "Content rendering and slots are covered",
+        "Accessibility and keyboard navigation are tested",
+        "Tests pass successfully"
+      ],
+      "estimate": "",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T01:55:35.407Z"
     }
   ],
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
-  "last_mode": "TASK_CREATION",
-  "execution_count": 360,
-  "last_hook_activation": 1754528963578,
+  "last_mode": "DEVELOPMENT",
+  "execution_count": 365,
+  "last_hook_activation": 1754531781019,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37

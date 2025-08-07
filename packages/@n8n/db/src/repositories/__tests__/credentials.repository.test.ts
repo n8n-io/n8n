@@ -1,7 +1,7 @@
 import type { DataSource, EntityManager } from '@n8n/typeorm';
 import { In, Like } from '@n8n/typeorm';
 
-import { CredentialsEntity, User } from '../../entities';
+import type { CredentialsEntity, User } from '../../entities';
 import type { ListQuery } from '../../entities/types-db';
 import { CredentialsRepository } from '../credentials.repository';
 

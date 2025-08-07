@@ -1,0 +1,11 @@
+Timeout Debug Summary for Agent cbbd55c7-ee38-4c8a-a813-a7550c68192f
+==========================================
+
+Timestamp: 2025-08-06T20:34:09.784190
+Elapsed Time: 0m 0.0s
+Timeout Limit: 120s
+Timeout Exceeded: False
+Hook Type: SubagentStop
+Tool Name: unknown
+
+Full report: logs/debug/debug_report_cbbd55c7-ee38-4c8a-a813-a7550c68192f_1754530449.json
