@@ -1,7 +1,8 @@
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { fireEvent } from '@testing-library/vue';
 import Assignment from './Assignment.vue';
 import { defaultSettings } from '@/__tests__/defaults';
 import { STORES } from '@n8n/stores';
@@ -72,26 +73,21 @@ describe('Assignment.vue', () => {
 		expect(() => getByTestId('parameter-input-hint')).toThrow();
 	});
 
-	it('should shorten the expression preview hint if options are on the bottom', () => {
+	it('should shorten the expression preview hint if options are on the bottom', async () => {
 		vi.spyOn(useResolvedExpression, 'useResolvedExpression').mockReturnValueOnce({
 			resolvedExpressionString: ref('foo'),
 			resolvedExpression: ref(null),
 			isExpression: computed(() => true),
 		});
-		const { getByTestId } = renderComponent({
-			props: {
-				path: 'parameters.fields.0',
-				modelValue: {
-					name: 'test',
-					type: 'string',
-					value: '={{$json.foo}}',
-				},
-				issues: [],
-			},
-		});
+		const { getByTestId } = renderComponent();
 
-		expect(
-			getByTestId('parameter-expression-preview-value').classList.contains('optionsPadding'),
-		).toBe(true);
+		const previewValue = getByTestId('parameter-expression-preview-value');
+
+		expect(previewValue).not.toHaveClass('optionsPadding');
+
+		await fireEvent.mouseEnter(getByTestId('assignment-value'));
+		await nextTick();
+
+		expect(previewValue).toHaveClass('optionsPadding');
 	});
 });
