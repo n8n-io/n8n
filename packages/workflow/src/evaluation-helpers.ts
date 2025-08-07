@@ -11,6 +11,11 @@
  */
 
 /**
+ * Default metric type used in evaluations
+ */
+export const DEFAULT_EVALUATION_METRIC = 'correctness';
+
+/**
  * Determines if a given evaluation metric requires an AI model connection
  * @param metric The metric name to check
  * @returns true if the metric requires an AI model connection

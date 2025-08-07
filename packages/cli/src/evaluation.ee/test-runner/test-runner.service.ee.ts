@@ -9,6 +9,7 @@ import {
 	ExecutionCancelledError,
 	NodeConnectionTypes,
 	metricRequiresModelConnection,
+	DEFAULT_EVALUATION_METRIC,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -142,7 +143,7 @@ export class TestRunnerService {
 
 			// For version 4.7+, check if AI-based metrics require model connection
 			if (node.typeVersion >= 4.7) {
-				const metric = (node.parameters.metric ?? 'correctness') as string;
+				const metric = (node.parameters.metric ?? DEFAULT_EVALUATION_METRIC) as string;
 				if (
 					metricRequiresModelConnection(metric) && // See packages/workflow/src/evaluation-helpers.ts
 					!this.hasModelNodeConnected(workflow, node.name)
