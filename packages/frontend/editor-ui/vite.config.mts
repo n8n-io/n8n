@@ -96,24 +96,7 @@ const plugins: UserConfig['plugins'] = [
 			},
 		],
 	}),
-	vue({
-		template: {
-			compilerOptions: {
-				// Enable proper SFC processing
-				hoistStatic: true,
-				cacheHandlers: true,
-			},
-		},
-		script: {
-			// Ensure proper script block handling
-			defineModel: true,
-			propsDestructure: true,
-		},
-		// Explicitly include .vue files
-		include: /\.vue$/,
-		// Add custom block support if needed
-		customElement: false,
-	}),
+	vue(),
 	svgLoader({
 		svgoConfig: {
 			plugins: [

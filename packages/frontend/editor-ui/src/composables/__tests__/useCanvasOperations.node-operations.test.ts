@@ -32,7 +32,6 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	STICKY_NODE_TYPE,
-	SET_NODE_TYPE,
 	type ICredentialsResponse,
 	type CanvasNode,
 	type CanvasLayoutEvent,

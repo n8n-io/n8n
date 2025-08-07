@@ -116,6 +116,7 @@
       "@azure/identity": "^4.3.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",
+      "@vue/compiler-sfc": "3.5.13",
       "chokidar": "^4.0.1",
       "esbuild": "^0.24.0",
       "multer": "^2.0.2",
@@ -153,9 +154,9 @@
     }
   },
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^1.2.36",
+    "@fortawesome/fontawesome-svg-core": "^7.0.0",
     "@fortawesome/free-regular-svg-icons": "^7.0.0",
-    "@fortawesome/free-solid-svg-icons": "^5.15.4",
+    "@fortawesome/free-solid-svg-icons": "^7.0.0",
     "@fortawesome/vue-fontawesome": "^3.0.3"
   }
 }
