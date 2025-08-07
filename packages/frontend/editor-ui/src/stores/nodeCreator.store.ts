@@ -416,6 +416,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		input_node_type?: string;
 		resource?: string;
 		operation?: string;
+		action?: string;
 	}) {
 		trackNodeCreatorEvent('User added node to workflow canvas', properties);
 	}

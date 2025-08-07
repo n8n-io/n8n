@@ -182,6 +182,7 @@ export const useActions = () => {
 	function actionDataToNodeTypeSelectedPayload(actionData: ActionData): NodeTypeSelectedPayload {
 		const result: NodeTypeSelectedPayload = {
 			type: actionData.key,
+			actionName: actionData.name,
 		};
 
 		if (
