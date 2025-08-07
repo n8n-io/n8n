@@ -3172,16 +3172,17 @@ export class HubspotV2 implements INodeType {
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
-				} catch (errorObject) {
-					const error = errorObject.cause.cause ? errorObject.cause : errorObject;
+				} catch (error) {
 					if (
-						error.cause.error?.validationResults &&
-						error.cause.error.validationResults[0].error === 'INVALID_EMAIL'
+						error.cause?.error?.validationResults &&
+						error.cause.error.validationResults[0]?.error === 'INVALID_EMAIL'
 					) {
-						const message = error.cause.error.validationResults[0].message as string;
+						const message = error.cause?.error?.validationResults?.[0]?.message as string;
 						set(error, 'message', message);
 					}
-					if (error.cause.error?.message !== 'The resource you are requesting could not be found') {
+					if (
+						error.cause?.error?.message !== 'The resource you are requesting could not be found'
+					) {
 						if (error.httpCode === '404' && error.description === 'resource not found') {
 							const message = `${error.node.parameters.resource} #${
 								error.node.parameters[`${error.node.parameters.resource}Id`].value
