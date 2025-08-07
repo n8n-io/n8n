@@ -3381,8 +3381,13 @@
 	"whatsNew.updateAvailable": "You're currently on version {currentVersion}. Update to {latestVersion} to get {count} versions worth of new features, improvements, and fixes. See what changed",
 	"whatsNew.updateAvailable.changelogLink": "in the full changelog",
 	"workflowDiff.changes": "Changes",
+	"workflowDiff.nodes": "Nodes",
+	"workflowDiff.connectors": "Connectors",
+	"workflowDiff.settings": "Settings",
+	"workflowDiff.local": "Local",
+	"workflowDiff.remote": "Remote ({branchName})",
 	"workflowDiff.noChanges": "No changes",
 	"workflowDiff.deletedWorkflow": "Deleted workflow",
 	"workflowDiff.deletedWorkflow.database": "The workflow was deleted on the database",
-	"workflowDiff.addedWorkflow.remote": "The workflow was deleted on remote"
+	"workflowDiff.deletedWorkflow.remote": "The workflow was deleted on remote"
 }

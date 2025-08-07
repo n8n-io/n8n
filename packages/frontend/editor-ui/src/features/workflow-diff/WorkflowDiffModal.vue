@@ -187,7 +187,7 @@ const activeTab = ref<'nodes' | 'connectors' | 'settings'>();
 const tabs = computed(() => [
 	{
 		value: 'nodes' as const,
-		label: 'Nodes',
+		label: i18n.baseText('workflowDiff.nodes'),
 		disabled: false,
 		data: {
 			count: nodeChanges.value.length,
@@ -195,7 +195,7 @@ const tabs = computed(() => [
 	},
 	{
 		value: 'connectors' as const,
-		label: 'Connectors',
+		label: i18n.baseText('workflowDiff.connectors'),
 		disabled: false,
 		data: {
 			count: connectionsDiff.value.size,
@@ -203,7 +203,7 @@ const tabs = computed(() => [
 	},
 	{
 		value: 'settings' as const,
-		label: 'Settings',
+		label: i18n.baseText('workflowDiff.settings'),
 		disabled: false,
 		data: {
 			count: settingsDiff.value.length,
@@ -514,8 +514,10 @@ const modifiers = [
 								<N8nIcon v-if="sourceWorkFlow.state.value.remote" icon="git-branch" />
 								{{
 									sourceWorkFlow.state.value.remote
-										? `Remote (${sourceControlStore.preferences.branchName})`
-										: 'Local'
+										? i18n.baseText('workflowDiff.remote', {
+												branchName: sourceControlStore.preferences.branchName,
+											})
+										: i18n.baseText('workflowDiff.local')
 								}}
 							</N8nText>
 							<template v-if="sourceWorkFlow.state.value.workflow">
@@ -559,8 +561,10 @@ const modifiers = [
 								<N8nIcon v-if="targetWorkFlow.state.value.remote" icon="git-branch" />
 								{{
 									targetWorkFlow.state.value.remote
-										? `Remote (${sourceControlStore.preferences.branchName})`
-										: 'Local'
+										? i18n.baseText('workflowDiff.remote', {
+												branchName: sourceControlStore.preferences.branchName,
+											})
+										: i18n.baseText('workflowDiff.local')
 								}}
 							</N8nText>
 							<template v-if="targetWorkFlow.state.value.workflow">
