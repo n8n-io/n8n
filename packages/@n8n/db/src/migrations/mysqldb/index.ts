@@ -183,8 +183,8 @@ export const mysqlMigrations: Migration[] = [
 	AddWorkflowArchivedColumn1745934666076,
 	DropRoleTable1745934666077,
 	ClearEvaluation1745322634000,
-	CreateDataStoreTables1754475614601,
 	AddProjectDescriptionColumn1747824239000,
 	AddLastActiveAtColumnToUser1750252139166,
 	AddInputsOutputsToTestCaseExecution1752669793000,
+	CreateDataStoreTables1754475614601,
 ];
