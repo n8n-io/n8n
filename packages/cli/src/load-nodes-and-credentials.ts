@@ -524,7 +524,7 @@ export class LoadNodesAndCredentials {
 		const { Push } = await import('@/push');
 		const push = Container.get(Push);
 
-		Object.values(this.loaders).forEach(async (loader) => {
+		for (const loader of Object.values(this.loaders)) {
 			const { directory } = loader;
 			try {
 				await fsPromises.access(directory);
@@ -554,6 +554,7 @@ export class LoadNodesAndCredentials {
 					withFileTypes: true,
 				});
 
+				// Custom nodes are usually symlinked using npm link. Resolve symlinks to support file watching
 				const realCustomNodesPaths = await Promise.all(
 					customNodeEntries
 						.filter(
@@ -565,8 +566,17 @@ export class LoadNodesAndCredentials {
 								await fsPromises.realpath(path.join(customNodesRoot, entry.name)).catch(() => null),
 						),
 				);
-				watchPaths.push(...realCustomNodesPaths.filter((path): path is string => !!path));
+
+				watchPaths.push.apply(
+					watchPaths,
+					realCustomNodesPaths.filter((path): path is string => !!path),
+				);
 			}
+
+			this.logger.debug('Watching node folders for hot reload', {
+				loader: loader.packageName,
+				paths: watchPaths,
+			});
 
 			for (const watchPath of watchPaths) {
 				const onFileEvent: ParcelWatcher.SubscribeCallback = async (_error, events) => {
@@ -582,8 +592,11 @@ export class LoadNodesAndCredentials {
 					}
 				};
 
-				await subscribe(watchPath, onFileEvent, { ignore: ['**/node_modules/**/node_modules/**'] });
+				// Ignore nested node_modules folders
+				const ignore = ['**/node_modules/**/node_modules/**'];
+
+				await subscribe(watchPath, onFileEvent, { ignore });
 			}
-		});
+		}
 	}
 }
