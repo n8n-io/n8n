@@ -209,6 +209,7 @@ const emit = defineEmits<{
 	];
 	displayModeChange: [IRunDataDisplayMode];
 	collapsingTableColumnChanged: [columnName: string | null];
+	captureWheelDataContainer: [WheelEvent];
 }>();
 
 const connectionType = ref<NodeConnectionType>(NodeConnectionTypes.Main);
@@ -1609,7 +1610,12 @@ defineExpose({ enterEditMode });
 			</div>
 		</div>
 
-		<div ref="dataContainerRef" :class="$style.dataContainer" data-test-id="ndv-data-container">
+		<div
+			ref="dataContainerRef"
+			:class="$style.dataContainer"
+			data-test-id="ndv-data-container"
+			@wheel.capture="emit('captureWheelDataContainer', $event)"
+		>
 			<BinaryDataDisplay
 				v-if="binaryDataDisplayData"
 				:window-visible="binaryDataDisplayVisible"

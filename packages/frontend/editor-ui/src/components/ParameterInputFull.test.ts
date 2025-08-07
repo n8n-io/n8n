@@ -26,6 +26,11 @@ beforeEach(() => {
 		},
 		isInputPanelEmpty: false,
 		isOutputPanelEmpty: false,
+		ndvInputDataWithPinnedData: [],
+		getHoveringItem: undefined,
+		expressionOutputItemIndex: 0,
+		isTableHoverOnboarded: false,
+		setHighlightDraggables: vi.fn(),
 	};
 	mockNodeTypesState = {
 		allNodeTypes: [],
