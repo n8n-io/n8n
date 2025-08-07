@@ -48,9 +48,9 @@ export class WorkflowBuilderService {
 		return this.service;
 	}
 
-	async *chat(payload: ChatPayload, user: IUser) {
+	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
 		const service = await this.getService();
-		yield* service.chat(payload, user);
+		yield* service.chat(payload, user, abortSignal);
 	}
 
 	async getSessions(workflowId: string | undefined, user: IUser) {

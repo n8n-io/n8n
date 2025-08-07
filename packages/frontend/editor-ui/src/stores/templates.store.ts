@@ -195,8 +195,11 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 			`${TEMPLATES_URLS.BASE_WEBSITE_URL}${getTemplatePathByRole(userRole.value)}?${websiteTemplateRepositoryParameters.value.toString()}`,
 	);
 
-	const constructTemplateRepositoryURL = (params: URLSearchParams): string => {
-		return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?${params.toString()}`;
+	const constructTemplateRepositoryURL = (params: URLSearchParams, category?: string): string => {
+		const baseUrl = category
+			? `${TEMPLATES_URLS.BASE_WEBSITE_URL}${category}`
+			: TEMPLATES_URLS.BASE_WEBSITE_URL;
+		return `${baseUrl}?${params.toString()}`;
 	};
 
 	const addCategories = (_categories: ITemplatesCategory[]): void => {
