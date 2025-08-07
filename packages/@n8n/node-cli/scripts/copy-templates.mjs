@@ -4,12 +4,14 @@ import glob from 'fast-glob';
 import { cp } from 'node:fs/promises';
 import path from 'path';
 
-const templateFiles = glob.sync(['templates/**/*'], {
-	cwd: path.resolve(import.meta.dirname, '../'),
+const templateFiles = glob.sync(['src/template/templates/**/*'], {
+	cwd: path.resolve(import.meta.dirname, '..'),
 	ignore: ['**/node_modules', '**/dist'],
 	dot: true,
 });
 
-(async () => {
-	await Promise.all(templateFiles.map((path) => cp(path, `dist/${path}`, { recursive: true })));
-})();
+await Promise.all(
+	templateFiles.map((template) =>
+		cp(template, `dist/${template.replace('src/', '')}`, { recursive: true }),
+	),
+);

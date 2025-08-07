@@ -1,27 +1,16 @@
-import {
-	intro,
-	note,
-	outro,
-	select,
-	text,
-	isCancel,
-	cancel,
-	confirm,
-	spinner,
-	log,
-} from '@clack/prompts';
+import { confirm, intro, isCancel, note, outro, select, spinner, text } from '@clack/prompts';
 import { Args, Command, Flags } from '@oclif/core';
+import { camelCase } from 'change-case';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import color from 'picocolors';
+import picocolors from 'picocolors';
 
-import {
-	copyFolder,
-	delayAtLeast,
-	detectPackageManager,
-	folderExists,
-	installDependencies,
-} from '../utils';
+import type { TemplateData, TemplateWithRun } from '../template/core';
+import { templates } from '../template/templates';
+import { delayAtLeast, folderExists } from '../utils/filesystem';
+import { tryReadGitUser } from '../utils/git';
+import { detectPackageManager, installDependencies } from '../utils/package-manager';
+import { onCancel, withCancelHandler } from '../utils/prompts';
 
 export default class Create extends Command {
 	static override description = 'Create a new n8n community node';
@@ -30,18 +19,18 @@ export default class Create extends Command {
 		name: Args.string({ name: 'Name' }),
 	};
 	static override flags = {
-		force: Flags.boolean({ char: 'f' }),
-		'skip-install': Flags.boolean(),
-		type: Flags.string({ char: 't', options: ['declarative', 'programmatic'] as const }),
+		force: Flags.boolean({
+			char: 'f',
+			description: 'Overwrite destination folder if it already exists',
+		}),
+		'skip-install': Flags.boolean({ description: 'Skip installing dependencies' }),
+		template: Flags.string({
+			options: ['declarative/github-issues', 'declarative/custom', 'programmatic/example'] as const,
+		}),
 	};
 
 	async run(): Promise<void> {
 		const { flags, args } = await this.parse(Create);
-
-		const onCancel = (message = 'Cancelled', code = 0) => {
-			cancel(message);
-			process.exit(code);
-		};
 
 		const maybePackageManager = detectPackageManager();
 		const packageManager = maybePackageManager ?? 'npm';
@@ -49,173 +38,111 @@ export default class Create extends Command {
 			? ` ${packageManager} create @n8n/node `
 			: ' n8n-node create ';
 
-		intro(color.inverse(introMessage));
+		intro(picocolors.inverse(introMessage));
 
 		const nodeName =
 			args.name ??
-			(await text({
-				message: 'What is your node called?',
-				placeholder: 'n8n-nodes-example',
-				validate(value) {
-					if (!value) return;
-					const kebabCase = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-					if (!kebabCase.test(value)) return 'Node name should be kebab-case';
-					if (!value.startsWith('n8n-nodes')) return 'Node name should start with n8n-nodes-';
-					return;
-				},
-				defaultValue: 'n8n-nodes-example',
-			}));
-
-		if (isCancel(nodeName)) return onCancel();
+			(await withCancelHandler(
+				text({
+					message: 'What is your node called?',
+					placeholder: 'n8n-nodes-example',
+					validate(value) {
+						if (!value) return;
+						const kebabCase = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+						if (!kebabCase.test(value)) return 'Node name should be kebab-case';
+						if (!value.startsWith('n8n-nodes')) return 'Node name should start with n8n-nodes-';
+						return;
+					},
+					defaultValue: 'n8n-nodes-example',
+				}),
+			));
 
 		const destination = path.resolve(process.cwd(), nodeName);
 
+		let overwrite = false;
 		if (await folderExists(destination)) {
 			if (!flags.force) {
-				const overwrite = await confirm({
+				const shouldOverwrite = await confirm({
 					message: `./${nodeName} already exists, do you want to overwrite?`,
 				});
-				if (isCancel(overwrite) || !overwrite) return onCancel();
+				if (isCancel(shouldOverwrite) || !shouldOverwrite) return onCancel();
 			}
 
-			await fs.rm(destination, { recursive: true, force: true });
+			overwrite = true;
 		}
 
 		const type =
-			flags.type ??
-			(await select<'declarative' | 'programmatic'>({
-				message: 'What kind of node are you building?',
-				options: [
-					{
-						label: 'HTTP API',
-						value: 'declarative',
-						hint: 'Low-code, faster approval for n8n Cloud',
-					},
-					{
-						label: 'Other',
-						value: 'programmatic',
-						hint: 'Programmatic node with full flexibility',
-					},
-				],
-				initialValue: 'declarative',
-			}));
-
-		if (isCancel(type)) return onCancel();
-
-		switch (type) {
-			case 'declarative': {
-				const template = await select<'github-issues' | 'minimal'>({
-					message: 'What template do you want to use?',
+			flags.template?.split('/')[0] ??
+			(await withCancelHandler(
+				select<'declarative' | 'programmatic'>({
+					message: 'What kind of node are you building?',
 					options: [
 						{
-							label: 'GitHub Issues API',
-							value: 'github-issues',
-							hint: 'Demo node with multiple operations and credentials',
+							label: 'HTTP API',
+							value: 'declarative',
+							hint: 'Low-code, faster approval for n8n Cloud',
 						},
 						{
-							label: 'Start from scratch',
-							value: 'minimal',
-							hint: 'Blank template with guided setup',
+							label: 'Other',
+							value: 'programmatic',
+							hint: 'Programmatic node with full flexibility',
 						},
 					],
-					initialValue: 'github-issues',
-				});
+					initialValue: 'declarative',
+				}),
+			));
 
-				if (isCancel(template)) return onCancel();
+		let template = templates.programmatic.example;
+		if (flags.template) {
+			const templateFlag = flags.template.split('/')[1];
+			template = (templates as Record<string, Record<string, TemplateWithRun>>)[type][
+				camelCase(templateFlag)
+			];
+		} else if (type === 'declarative') {
+			const chosenTemplate = await withCancelHandler(
+				select<keyof typeof templates.declarative>({
+					message: 'What template do you want to use?',
+					options: Object.entries(templates.declarative).map(([value, template]) => ({
+						value: value as keyof typeof templates.declarative,
+						label: template.name,
+						hint: template.description,
+					})),
+					initialValue: 'githubIssues',
+				}),
+			);
+			template = templates.declarative[chosenTemplate];
+		}
 
-				if (template === 'github-issues') {
-					const copyingSpinner = spinner();
-					copyingSpinner.start('Copying files');
-					const templateFolder = path.resolve(__dirname, '../templates/declarative/github-issues');
-					const ignore = ['dist', 'node_modules'];
+		const config = (await template.prompts?.()) ?? {};
+		const templateData: TemplateData = {
+			path: destination,
+			nodeName,
+			config,
+			user: tryReadGitUser(),
+			packageManager: {
+				name: packageManager,
+				installCommand: packageManager === 'npm' ? 'ci' : 'install',
+			},
+		};
+		const copyingSpinner = spinner();
+		copyingSpinner.start('Copying files');
+		if (overwrite) {
+			await fs.rm(destination, { recursive: true, force: true });
+		}
+		await delayAtLeast(template.run(templateData), 1000);
+		copyingSpinner.stop('Files copied');
 
-					await delayAtLeast(copyFolder({ source: templateFolder, destination, ignore }), 1000);
-					copyingSpinner.stop('✓ Files copied');
+		if (!flags['skip-install']) {
+			const installingSpinner = spinner();
+			installingSpinner.start('Installing dependencies');
 
-					if (!flags['skip-install']) {
-						const installingSpinner = spinner();
-						installingSpinner.start('Installing dependencies');
-
-						try {
-							await delayAtLeast(installDependencies({ dir: destination, packageManager }), 1000);
-						} catch (error: unknown) {
-							installingSpinner.stop('Could not install dependencies', 1);
-							return onCancel((error as Error).message, 1);
-						}
-						installingSpinner.stop('✓ Dependencies installed');
-					}
-				}
-
-				if (template === 'minimal') {
-					const baseUrl = await text({
-						message: "What's the base URL of the API?",
-						placeholder: 'https://api.example.com/v2',
-						validate: (value) => {
-							if (!value.startsWith('https://') && !value.startsWith('http://')) {
-								return 'Base URL must start with http(s)://';
-							}
-							return;
-						},
-					});
-
-					if (isCancel(baseUrl)) return onCancel();
-
-					log.info(baseUrl);
-
-					const credentialType = await select<'apiKey' | 'oauth2' | 'none'>({
-						message: 'What type of authentication does your API use?',
-						options: [
-							{
-								label: 'API key',
-								value: 'apiKey',
-								hint: 'A secret key sent in the request',
-							},
-							{
-								label: 'OAuth2',
-								value: 'oauth2',
-							},
-							{
-								label: 'None',
-								value: 'none',
-							},
-						],
-						initialValue: 'apiKey',
-					});
-
-					if (isCancel(credentialType)) return onCancel();
-
-					log.info(credentialType);
-
-					if (credentialType === 'oauth2') {
-						const flow = await select<'clientCredentials' | 'authorizationCode'>({
-							message: 'What type of authentication does your API use?',
-							options: [
-								{
-									label: 'Authorization code',
-									value: 'authorizationCode',
-									hint: 'Users log in and approve access (use this if unsure)',
-								},
-								{
-									label: 'Client credentials',
-									value: 'clientCredentials',
-									hint: 'Server-to-server auth without user interaction',
-								},
-							],
-							initialValue: 'authorizationCode',
-						});
-
-						if (isCancel(flow)) return onCancel();
-
-						log.info(flow);
-					}
-				}
-
-				break;
+			try {
+				await delayAtLeast(installDependencies({ dir: destination, packageManager }), 1000);
+			} catch (error: unknown) {
+				installingSpinner.stop('Could not install dependencies', 1);
+				return process.exit(1);
 			}
-
-			case 'programmatic':
-			default:
-				break;
+			installingSpinner.stop('Dependencies installed');
 		}
 
 		note(

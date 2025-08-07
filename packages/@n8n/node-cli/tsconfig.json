@@ -7,5 +7,6 @@
 		"types": ["vite/client", "vitest/globals"],
 		"isolatedModules": true
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"exclude": ["src/template/templates/**/template", "src/template/templates/partials"]
 }

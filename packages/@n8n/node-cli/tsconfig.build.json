@@ -8,5 +8,9 @@
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts"],
-	"exclude": ["src/**/*.test.ts"]
+	"exclude": [
+		"src/**/*.test.ts",
+		"src/template/templates/**/template",
+		"src/template/templates/partials"
+	]
 }

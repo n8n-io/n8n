@@ -3,6 +3,7 @@ import { Command } from '@oclif/core';
 import { spawn } from 'child_process';
 import glob from 'fast-glob';
 import { cp } from 'node:fs/promises';
+import picocolors from 'picocolors';
 
 export default class Build extends Command {
 	static override description = 'Build an n8n community node';
@@ -12,7 +13,7 @@ export default class Build extends Command {
 	async run(): Promise<void> {
 		await this.parse(Build);
 
-		intro('n8n-node build');
+		intro(picocolors.inverse(' n8n-node build '));
 
 		const buildSpinner = spinner();
 		buildSpinner.start('Building TypeScript files');
@@ -67,8 +68,10 @@ async function runTscBuild(): Promise<void> {
 	});
 }
 
-async function copyStaticFiles() {
-	const staticFiles = glob.sync(['**/*.{png,svg}', '**/__schema__/**/*.json']);
+export async function copyStaticFiles() {
+	const staticFiles = glob.sync(['**/*.{png,svg}', '**/__schema__/**/*.json'], {
+		ignore: ['dist'],
+	});
 
 	return await Promise.all(
 		staticFiles.map(async (path) => await cp(path, `dist/${path}`, { recursive: true })),

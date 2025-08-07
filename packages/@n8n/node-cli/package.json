@@ -43,8 +43,11 @@
   "dependencies": {
     "@clack/prompts": "^0.11.0",
     "@oclif/core": "^4.5.2",
+    "change-case": "^5.4.4",
+    "handlebars": "4.7.8",
     "picocolors": "catalog:",
-    "prompts": "^2.4.2"
+    "prompts": "^2.4.2",
+    "ts-morph": "^26.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
@@ -55,6 +58,7 @@
     "eslint-plugin-import-x": "^4.15.2",
     "eslint-plugin-n8n-nodes-base": "1.16.3",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.35.0"
+    "typescript-eslint": "^8.35.0",
+    "n8n-workflow": "workspace:*"
   }
 }
