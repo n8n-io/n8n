@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
-import { OnShutdown } from '@n8n/types';
 
 import { EventService } from '@/events/event.service';
 import { SearchEngineService } from './search-engine.service';
@@ -17,7 +16,7 @@ interface WorkflowEventPayload {
 }
 
 @Service()
-export class WorkflowIndexingEventHandler implements OnShutdown {
+export class WorkflowIndexingEventHandler {
 	private isInitialized = false;
 
 	constructor(
@@ -45,15 +44,24 @@ export class WorkflowIndexingEventHandler implements OnShutdown {
 
 		try {
 			// Listen for workflow lifecycle events
-			this.eventService.on('workflow-created', this.handleWorkflowCreated.bind(this));
-			this.eventService.on('workflow-updated', this.handleWorkflowUpdated.bind(this));
-			this.eventService.on('workflow-deleted', this.handleWorkflowDeleted.bind(this));
-			this.eventService.on('workflow-activated', this.handleWorkflowActivated.bind(this));
-			this.eventService.on('workflow-deactivated', this.handleWorkflowDeactivated.bind(this));
+			(this.eventService as any).on('workflow-created', this.handleWorkflowCreated.bind(this));
+			(this.eventService as any).on('workflow-updated', this.handleWorkflowUpdated.bind(this));
+			(this.eventService as any).on('workflow-deleted', this.handleWorkflowDeleted.bind(this));
+			(this.eventService as any).on('workflow-activated', this.handleWorkflowActivated.bind(this));
+			(this.eventService as any).on(
+				'workflow-deactivated',
+				this.handleWorkflowDeactivated.bind(this),
+			);
 
 			// Listen for bulk operations
-			this.eventService.on('workflows-bulk-updated', this.handleWorkflowsBulkUpdated.bind(this));
-			this.eventService.on('workflows-bulk-deleted', this.handleWorkflowsBulkDeleted.bind(this));
+			(this.eventService as any).on(
+				'workflows-bulk-updated',
+				this.handleWorkflowsBulkUpdated.bind(this),
+			);
+			(this.eventService as any).on(
+				'workflows-bulk-deleted',
+				this.handleWorkflowsBulkDeleted.bind(this),
+			);
 
 			this.isInitialized = true;
 			this.logger.info('Workflow indexing event handlers initialized');
@@ -212,7 +220,7 @@ export class WorkflowIndexingEventHandler implements OnShutdown {
 		try {
 			// Get all updated workflows with relations
 			const workflows = await this.workflowRepository.find({
-				where: { id: payload.workflowIds.includes.bind(payload.workflowIds) as any },
+				where: { id: { $in: payload.workflowIds } as any },
 				relations: ['tags', 'shared', 'shared.project', 'parentFolder'],
 			});
 
@@ -322,13 +330,13 @@ export class WorkflowIndexingEventHandler implements OnShutdown {
 		if (this.isInitialized) {
 			try {
 				// Remove event listeners
-				this.eventService.removeAllListeners('workflow-created');
-				this.eventService.removeAllListeners('workflow-updated');
-				this.eventService.removeAllListeners('workflow-deleted');
-				this.eventService.removeAllListeners('workflow-activated');
-				this.eventService.removeAllListeners('workflow-deactivated');
-				this.eventService.removeAllListeners('workflows-bulk-updated');
-				this.eventService.removeAllListeners('workflows-bulk-deleted');
+				(this.eventService as any).removeAllListeners('workflow-created');
+				(this.eventService as any).removeAllListeners('workflow-updated');
+				(this.eventService as any).removeAllListeners('workflow-deleted');
+				(this.eventService as any).removeAllListeners('workflow-activated');
+				(this.eventService as any).removeAllListeners('workflow-deactivated');
+				(this.eventService as any).removeAllListeners('workflows-bulk-updated');
+				(this.eventService as any).removeAllListeners('workflows-bulk-deleted');
 
 				this.logger.debug('Workflow indexing event handlers cleaned up');
 			} catch (error) {

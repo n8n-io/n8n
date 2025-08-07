@@ -286,10 +286,10 @@ export class BinaryExportService {
 			}
 
 			const executions = request.includeExecutions
-				? await this.executionRepository.findManyByWorkflowId(
-						request.workflowId,
-						request.executionLimit || 50,
-					)
+				? await this.executionRepository.findMultipleExecutions({
+						where: { workflowId: request.workflowId },
+						take: request.executionLimit || 50,
+					})
 				: [];
 
 			const binaryDataIds = request.includeBinaryData

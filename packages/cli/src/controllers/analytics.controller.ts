@@ -92,7 +92,13 @@ export class AnalyticsController {
 			}
 
 			const timeRange = this.parseTimeRange(queryDto.timeRange);
-			const breakdown = await this.errorAnalyticsService.getNodeErrorBreakdown(nodeType, timeRange);
+			const query = {
+				nodeType,
+				limit: 50, // Default limit
+				startDate: timeRange.start.toISOString(),
+				endDate: timeRange.end.toISOString(),
+			};
+			const breakdown = await this.errorAnalyticsService.getNodeErrorBreakdown(query);
 
 			return {
 				success: true,

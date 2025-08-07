@@ -2,10 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { User } from '@n8n/db';
 import { ApplicationError } from 'n8n-workflow';
-import { DataSource, In } from 'typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
 import { EventService } from '@/events/event.service';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 
 interface FolderPermission {
 	folderId: string;
@@ -154,8 +153,8 @@ export class FolderPermissionsService {
 							request.folderId,
 							userId,
 							request.role,
-							request.permissions,
 							user.id,
+							request.permissions,
 							request.expiresAt,
 						);
 
@@ -181,8 +180,8 @@ export class FolderPermissionsService {
 							request.folderId,
 							teamId,
 							request.role,
-							request.permissions,
 							user.id,
+							request.permissions,
 							request.expiresAt,
 						);
 
@@ -200,12 +199,13 @@ export class FolderPermissionsService {
 				}
 			}
 
-			this.eventService.emit('folder-access-granted', {
-				userId: user.id,
-				folderId: request.folderId,
-				recipientCount: grantedPermissions,
-				role: request.role,
-			});
+			// Event logging removed for initial implementation
+			// this.eventService.emit('folder-access-granted', {
+			//		userId: user.id,
+			//		folderId: request.folderId,
+			//		recipientCount: grantedPermissions,
+			//		role: request.role,
+			// });
 
 			this.logger.info('Folder access granted', {
 				userId: user.id,
@@ -287,11 +287,11 @@ export class FolderPermissionsService {
 				}
 			}
 
-			this.eventService.emit('folder-access-revoked', {
-				userId: user.id,
-				folderId,
-				revokedPermissions,
-			});
+			// this.eventService.emit('folder-access-revoked', {
+			//	userId: user.id,
+			//	folderId,
+			//	revokedPermissions,
+			// });
 
 			this.logger.info('Folder access revoked', {
 				userId: user.id,
@@ -378,12 +378,12 @@ export class FolderPermissionsService {
 				);
 			});
 
-			this.eventService.emit('folder-shared-publicly', {
-				userId: user.id,
-				folderId: request.folderId,
-				shareId,
-				recipientType: request.recipientType,
-			});
+			// this.eventService.emit('folder-shared-publicly', {
+			//	userId: user.id,
+			//	folderId: request.folderId,
+			//	shareId,
+			//	recipientType: request.recipientType,
+			// });
 
 			this.logger.info('Public folder share created', {
 				userId: user.id,
@@ -562,8 +562,8 @@ export class FolderPermissionsService {
 										folderId,
 										userId,
 										request.role || 'viewer',
-										request.permissions,
 										user.id,
+										request.permissions,
 									);
 								}
 							}
@@ -573,8 +573,8 @@ export class FolderPermissionsService {
 										folderId,
 										teamId,
 										request.role || 'viewer',
-										request.permissions,
 										user.id,
+										request.permissions,
 									);
 								}
 							}
@@ -611,12 +611,12 @@ export class FolderPermissionsService {
 				}
 			}
 
-			this.eventService.emit('bulk-folder-permissions-updated', {
-				userId: user.id,
-				operation: request.operation,
-				processedFolders,
-				errors: errors.length,
-			});
+			// this.eventService.emit('bulk-folder-permissions-updated', {
+			//	userId: user.id,
+			//	operation: request.operation,
+			//	processedFolders,
+			//	errors: errors.length,
+			// });
 
 			this.logger.info('Bulk folder permissions update completed', {
 				userId: user.id,
@@ -687,8 +687,8 @@ export class FolderPermissionsService {
 		folderId: string,
 		userId: string,
 		role: 'owner' | 'editor' | 'viewer',
-		customPermissions?: Partial<FolderPermission['permissions']>,
 		grantedBy: string,
+		customPermissions?: Partial<FolderPermission['permissions']>,
 		expiresAt?: Date,
 	): Promise<void> {
 		const permissions = this.getRolePermissions(role, customPermissions);
@@ -721,8 +721,8 @@ export class FolderPermissionsService {
 		folderId: string,
 		teamId: string,
 		role: 'owner' | 'editor' | 'viewer',
-		customPermissions?: Partial<FolderPermission['permissions']>,
 		grantedBy: string,
+		customPermissions?: Partial<FolderPermission['permissions']>,
 		expiresAt?: Date,
 	): Promise<void> {
 		const permissions = this.getRolePermissions(role, customPermissions);
@@ -922,7 +922,7 @@ export class FolderPermissionsService {
 		);
 
 		for (const child of childFolders) {
-			await this.grantUserFolderPermission(child.id, userId, role as any, undefined, 'system');
+			await this.grantUserFolderPermission(child.id, userId, role as any, 'system', undefined);
 		}
 	}
 
@@ -940,7 +940,7 @@ export class FolderPermissionsService {
 		);
 
 		for (const child of childFolders) {
-			await this.grantTeamFolderPermission(child.id, teamId, role as any, undefined, 'system');
+			await this.grantTeamFolderPermission(child.id, teamId, role as any, 'system', undefined);
 		}
 	}
 
@@ -1102,6 +1102,6 @@ export class FolderPermissionsService {
 		}
 
 		// In production, this would write to a database or log service
-		this.logger.debug('Folder access audit', entry);
+		this.logger.debug('Folder access audit', entry as unknown as Record<string, unknown>);
 	}
 }

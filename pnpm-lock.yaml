@@ -1824,6 +1824,9 @@ importers:
       ts-essentials:
         specifier: ^7.0.3
         version: 7.0.3(typescript@5.8.3)
+      tsc-alias:
+        specifier: ^1.8.16
+        version: 1.8.16
       typescript-eslint:
         specifier: ^8.35.0
         version: 8.39.0(eslint@9.32.0(jiti@1.21.7))(typescript@5.8.3)

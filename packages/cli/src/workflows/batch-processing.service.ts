@@ -174,9 +174,9 @@ export class BatchProcessingService {
 				operationId: op.id,
 				type: op.type,
 				workflowCount: op.workflowIds.length,
-				status: 'pending',
+				status: 'queued',
 			})),
-			status: 'pending',
+			status: 'queued',
 			estimatedCompletion: operations[0]?.estimatedCompletion?.toISOString(),
 			metadata: {
 				priority: batchJob.priority,

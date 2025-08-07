@@ -1,14 +1,8 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
-import {
-	WorkflowRepository,
-	TagRepository,
-	SharedWorkflowRepository,
-	ExecutionRepository,
-} from '@n8n/db';
+import { WorkflowRepository, TagRepository, ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
+import type { FindOptionsWhere } from '@n8n/typeorm';
 import { In, Like, ILike, Between, MoreThan, LessThan, IsNull, Not } from '@n8n/typeorm';
 import type {
 	WorkflowSearchQueryDto,
@@ -21,9 +15,7 @@ import type {
 import { ApplicationError } from 'n8n-workflow';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { ProjectService } from '@/services/project.service.ee';
 import { SearchEngineService, type SearchQuery } from './search-engine.service';
-import { WorkflowIndexingService, type WorkflowSearchDocument } from './workflow-indexing.service';
 
 interface SearchContext {
 	user: User;
@@ -41,15 +33,11 @@ interface SearchFilters {
 export class WorkflowSearchService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly tagRepository: TagRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly projectService: ProjectService,
 		private readonly searchEngineService: SearchEngineService,
-		private readonly workflowIndexingService: WorkflowIndexingService,
 	) {}
 
 	/**
@@ -338,10 +326,7 @@ export class WorkflowSearchService {
 			};
 
 			// Execute search
-			const searchResult = await this.searchEngineService.search<WorkflowSearchDocument>(
-				'workflows',
-				engineQuery,
-			);
+			const searchResult = await this.searchEngineService.search<any>('workflows', engineQuery);
 
 			// Convert search engine results to workflow entities
 			const workflowIds = searchResult.hits.map((hit) => hit.id);
@@ -538,7 +523,7 @@ export class WorkflowSearchService {
 	 */
 	private async getWorkflowsByIds(
 		workflowIds: string[],
-		context: SearchContext,
+		_context: SearchContext,
 	): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) {
 			return [];
@@ -569,7 +554,7 @@ export class WorkflowSearchService {
 		searchResult: any,
 		workflows: WorkflowEntity[],
 		searchQuery: WorkflowSearchQueryDto,
-		context: SearchContext,
+		_context: SearchContext,
 	): Promise<WorkflowSearchResultItemDto[]> {
 		const results: WorkflowSearchResultItemDto[] = [];
 
@@ -586,7 +571,8 @@ export class WorkflowSearchService {
 			const resultItem: WorkflowSearchResultItemDto = {
 				id: workflow.id,
 				name: workflow.name,
-				description: workflow.description || undefined,
+				// Note: WorkflowEntity doesn't have description field - using undefined
+				description: undefined,
 				active: workflow.active,
 				isArchived: workflow.isArchived,
 				createdAt: workflow.createdAt.toISOString(),
@@ -708,7 +694,7 @@ export class WorkflowSearchService {
 	private async executeSearch(
 		filters: SearchFilters,
 		query: WorkflowSearchQueryDto,
-		context: SearchContext,
+		_context: SearchContext,
 	) {
 		const queryBuilder = this.workflowRepository.createQueryBuilder('workflow');
 
@@ -754,7 +740,7 @@ export class WorkflowSearchService {
 	private async processSearchResults(
 		workflows: WorkflowEntity[],
 		query: WorkflowSearchQueryDto,
-		context: SearchContext,
+		_context: SearchContext,
 	): Promise<WorkflowSearchResultItemDto[]> {
 		const results: WorkflowSearchResultItemDto[] = [];
 
@@ -766,7 +752,8 @@ export class WorkflowSearchService {
 			const resultItem: WorkflowSearchResultItemDto = {
 				id: workflow.id,
 				name: workflow.name,
-				description: workflow.description || undefined,
+				// Note: WorkflowEntity doesn't have description field - using undefined
+				description: undefined,
 				active: workflow.active,
 				isArchived: workflow.isArchived,
 				createdAt: workflow.createdAt.toISOString(),
@@ -823,10 +810,7 @@ export class WorkflowSearchService {
 			score += 5;
 		}
 
-		// Description match
-		if (workflow.description && workflow.description.toLowerCase().includes(searchTerm)) {
-			score += 3;
-		}
+		// Note: WorkflowEntity doesn't have description field - skipping description match
 
 		// Node content match (simplified)
 		if (workflow.nodes) {
@@ -862,10 +846,7 @@ export class WorkflowSearchService {
 			highlights.name = [this.highlightText(workflow.name, searchTerm)];
 		}
 
-		// Description highlights
-		if (workflow.description && workflow.description.toLowerCase().includes(searchTerm)) {
-			highlights.description = [this.highlightText(workflow.description, searchTerm)];
-		}
+		// Note: WorkflowEntity doesn't have description field - skipping description highlights
 
 		// Tag highlights
 		if (workflow.tags) {
@@ -975,9 +956,7 @@ export class WorkflowSearchService {
 			searchConditions.push({ name: likeOperator(`%${searchTerm}%`) });
 		}
 
-		if (searchIn.includes('all') || searchIn.includes('description')) {
-			searchConditions.push({ description: likeOperator(`%${searchTerm}%`) });
-		}
+		// Note: WorkflowEntity doesn't have description field - skipping description search
 
 		// For node content search, we'd need a more sophisticated approach
 		// This is a simplified version
@@ -1024,20 +1003,20 @@ export class WorkflowSearchService {
 	 * Add node types filter
 	 */
 	private addNodeTypesFilter(
-		where: FindOptionsWhere<WorkflowEntity>[],
+		_where: FindOptionsWhere<WorkflowEntity>[],
 		nodeTypes: string[],
-		parameters: Record<string, any>,
+		_parameters: Record<string, any>,
 	): void {
 		// This would require a more sophisticated query to search within JSON
 		// For now, we'll use a basic approach
-		parameters.nodeTypes = nodeTypes;
+		_parameters.nodeTypes = nodeTypes;
 	}
 
 	/**
 	 * Add trigger filters
 	 */
 	private addTriggerFilters(
-		where: FindOptionsWhere<WorkflowEntity>[],
+		_where: FindOptionsWhere<WorkflowEntity>[],
 		query: WorkflowSearchQueryDto,
 		parameters: Record<string, any>,
 	): void {
@@ -1164,7 +1143,7 @@ export class WorkflowSearchService {
 	/**
 	 * Generate facets for filtering UI
 	 */
-	private async generateFacets(userWorkflowIds: string[], query: WorkflowSearchQueryDto) {
+	private async generateFacets(userWorkflowIds: string[], _query: WorkflowSearchQueryDto) {
 		try {
 			if (userWorkflowIds.length === 0) {
 				return undefined;
@@ -1198,12 +1177,10 @@ export class WorkflowSearchService {
 			// Generate facets
 			const facets = {
 				activeStatus: this.generateActiveStatusFacet(workflows),
-				archiveStatus: this.generateArchiveStatusFacet(workflows),
 				tags: this.generateTagsFacet(workflows),
 				nodeTypes: this.generateNodeTypesFacet(workflows),
 				projects: this.generateProjectsFacet(workflows),
 				folders: this.generateFoldersFacet(workflows),
-				dateRanges: this.generateDateRangesFacet(workflows),
 			};
 
 			return facets;
@@ -1220,18 +1197,8 @@ export class WorkflowSearchService {
 		const inactiveCount = workflows.length - activeCount;
 
 		return {
-			active: { count: activeCount, label: 'Active' },
-			inactive: { count: inactiveCount, label: 'Inactive' },
-		};
-	}
-
-	private generateArchiveStatusFacet(workflows: WorkflowEntity[]) {
-		const archivedCount = workflows.filter((w) => w.isArchived).length;
-		const notArchivedCount = workflows.length - archivedCount;
-
-		return {
-			archived: { count: archivedCount, label: 'Archived' },
-			notArchived: { count: notArchivedCount, label: 'Not Archived' },
+			active: activeCount,
+			inactive: inactiveCount,
 		};
 	}
 
@@ -1241,19 +1208,18 @@ export class WorkflowSearchService {
 		workflows.forEach((workflow) => {
 			if (workflow.tags) {
 				workflow.tags.forEach((tag) => {
-					const existing = tagCounts.get(tag.id);
+					const existing = tagCounts.get(tag.name);
 					if (existing) {
 						existing.count++;
 					} else {
-						tagCounts.set(tag.id, { count: 1, name: tag.name });
+						tagCounts.set(tag.name, { count: 1, name: tag.name });
 					}
 				});
 			}
 		});
 
 		return Array.from(tagCounts.entries())
-			.map(([id, data]) => ({
-				id,
+			.map(([, data]) => ({
 				name: data.name,
 				count: data.count,
 			}))
@@ -1281,7 +1247,7 @@ export class WorkflowSearchService {
 
 		return Array.from(nodeTypeCounts.entries())
 			.map(([nodeType, count]) => ({
-				nodeType,
+				type: nodeType,
 				count,
 			}))
 			.sort((a, b) => b.count - a.count)
@@ -1356,35 +1322,10 @@ export class WorkflowSearchService {
 			.sort((a, b) => b.count - a.count);
 	}
 
-	private generateDateRangesFacet(workflows: WorkflowEntity[]) {
-		const now = new Date();
-		const ranges = {
-			lastDay: new Date(now.getTime() - 24 * 60 * 60 * 1000),
-			lastWeek: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
-			lastMonth: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-			lastYear: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000),
-		};
-
-		return {
-			createdAt: {
-				lastDay: workflows.filter((w) => w.createdAt >= ranges.lastDay).length,
-				lastWeek: workflows.filter((w) => w.createdAt >= ranges.lastWeek).length,
-				lastMonth: workflows.filter((w) => w.createdAt >= ranges.lastMonth).length,
-				lastYear: workflows.filter((w) => w.createdAt >= ranges.lastYear).length,
-			},
-			updatedAt: {
-				lastDay: workflows.filter((w) => w.updatedAt >= ranges.lastDay).length,
-				lastWeek: workflows.filter((w) => w.updatedAt >= ranges.lastWeek).length,
-				lastMonth: workflows.filter((w) => w.updatedAt >= ranges.lastMonth).length,
-				lastYear: workflows.filter((w) => w.updatedAt >= ranges.lastYear).length,
-			},
-		};
-	}
-
 	/**
 	 * Get workflow name suggestions
 	 */
-	private async getWorkflowSuggestions(query: string, user: User, limit: number) {
+	private async getWorkflowSuggestions(query: string, _user: User, limit: number) {
 		const workflows = await this.workflowRepository.find({
 			where: { name: ILike(`%${query}%`) },
 			select: ['name'],
@@ -1401,7 +1342,7 @@ export class WorkflowSearchService {
 	/**
 	 * Get tag suggestions
 	 */
-	private async getTagSuggestions(query: string, user: User, limit: number) {
+	private async getTagSuggestions(query: string, _user: User, limit: number) {
 		const tags = await this.tagRepository.find({
 			where: { name: ILike(`%${query}%`) },
 			take: limit,
@@ -1473,7 +1414,7 @@ export class WorkflowSearchService {
 	/**
 	 * Get user suggestions
 	 */
-	private async getUserSuggestions(query: string, user: User, limit: number) {
+	private async getUserSuggestions(_query: string, _user: User, _limit: number) {
 		// This would require querying users that the current user can see
 		// For now, return empty array
 		return [];
@@ -1526,29 +1467,22 @@ export class WorkflowSearchService {
 		clauseType: 'must' | 'should' | 'mustNot',
 		where: FindOptionsWhere<WorkflowEntity>[],
 		joins: string[],
-		parameters: Record<string, any>,
+		_parameters: Record<string, any>,
 	): Promise<void> {
 		for (const clause of clauses) {
-			if (clause.match) {
-				// Handle match clauses (field: value)
-				const field = Object.keys(clause.match)[0];
-				const value = clause.match[field];
+			// Handle the new clause structure with field, value, operator
+			const field = clause.field;
+			const value = clause.value;
 
-				if (field === 'name') {
-					const condition = { name: ILike(`%${value}%`) };
-					if (clauseType === 'mustNot') {
-						where.push({ name: Not(ILike(`%${value}%`)) });
-					} else {
-						where.push(condition);
-					}
-				} else if (field === 'description') {
-					const condition = { description: ILike(`%${value}%`) };
-					if (clauseType === 'mustNot') {
-						where.push({ description: Not(ILike(`%${value}%`)) });
-					} else {
-						where.push(condition);
-					}
+			if (field === 'name') {
+				const condition = { name: ILike(`%${value}%`) };
+				if (clauseType === 'mustNot') {
+					where.push({ name: Not(ILike(`%${value}%`)) });
+				} else {
+					where.push(condition);
 				}
+			} else if (field === 'description') {
+				// Note: WorkflowEntity doesn't have description field - skipping description match
 			} else if (clause.term) {
 				// Handle term clauses (exact match)
 				const field = Object.keys(clause.term)[0];
@@ -1593,7 +1527,7 @@ export class WorkflowSearchService {
 		filters: Record<string, any>,
 		where: FindOptionsWhere<WorkflowEntity>[],
 		joins: string[],
-		parameters: Record<string, any>,
+		_parameters: Record<string, any>,
 	): Promise<void> {
 		// Process standard filters
 		Object.entries(filters).forEach(([key, value]) => {
@@ -1616,7 +1550,7 @@ export class WorkflowSearchService {
 					break;
 				case 'nodeTypes':
 					if (Array.isArray(value) && value.length > 0) {
-						this.addNodeTypesFilter(where, value, parameters);
+						this.addNodeTypesFilter(where, value, _parameters);
 					}
 					break;
 				case 'projectId':
@@ -1639,7 +1573,7 @@ export class WorkflowSearchService {
 	private processAdvancedRanges(
 		ranges: Record<string, any>,
 		where: FindOptionsWhere<WorkflowEntity>[],
-		parameters: Record<string, any>,
+		_parameters: Record<string, any>,
 	): void {
 		Object.entries(ranges).forEach(([field, range]) => {
 			if (field === 'createdAt' || field === 'updatedAt') {
@@ -1662,7 +1596,7 @@ export class WorkflowSearchService {
 	private async executeAdvancedSearch(
 		filters: SearchFilters,
 		query: AdvancedWorkflowSearchDto,
-		context: SearchContext,
+		_context: SearchContext,
 	) {
 		const queryBuilder = this.workflowRepository.createQueryBuilder('workflow');
 
@@ -1719,7 +1653,7 @@ export class WorkflowSearchService {
 	private async processAdvancedSearchResults(
 		workflows: WorkflowEntity[],
 		query: AdvancedWorkflowSearchDto,
-		context: SearchContext,
+		_context: SearchContext,
 	): Promise<WorkflowSearchResultItemDto[]> {
 		const results: WorkflowSearchResultItemDto[] = [];
 
@@ -1728,7 +1662,8 @@ export class WorkflowSearchService {
 			const resultItem: WorkflowSearchResultItemDto = {
 				id: workflow.id,
 				name: workflow.name,
-				description: workflow.description || undefined,
+				// Note: WorkflowEntity doesn't have description field - using undefined
+				description: undefined,
 				active: workflow.active,
 				isArchived: workflow.isArchived,
 				createdAt: workflow.createdAt.toISOString(),
@@ -1789,11 +1724,7 @@ export class WorkflowSearchService {
 				highlights.name.push(this.highlightText(workflow.name, term));
 			}
 
-			// Description highlights
-			if (workflow.description && workflow.description.toLowerCase().includes(term.toLowerCase())) {
-				if (!highlights.description) highlights.description = [];
-				highlights.description.push(this.highlightText(workflow.description, term));
-			}
+			// Note: WorkflowEntity doesn't have description field - skipping description highlights
 
 			// Tag highlights
 			if (workflow.tags) {
@@ -1820,12 +1751,9 @@ export class WorkflowSearchService {
 			// Extract terms from must clauses
 			if (query.query.must) {
 				query.query.must.forEach((clause) => {
-					if (clause.match) {
-						Object.values(clause.match).forEach((value) => {
-							if (typeof value === 'string') {
-								terms.push(value);
-							}
-						});
+					// Note: Advanced search clause structure changed - using field/value pattern
+					if (typeof clause.value === 'string') {
+						terms.push(clause.value);
 					}
 				});
 			}
@@ -1833,12 +1761,9 @@ export class WorkflowSearchService {
 			// Extract terms from should clauses
 			if (query.query.should) {
 				query.query.should.forEach((clause) => {
-					if (clause.match) {
-						Object.values(clause.match).forEach((value) => {
-							if (typeof value === 'string') {
-								terms.push(value);
-							}
-						});
+					// Note: Advanced search clause structure changed - using field/value pattern
+					if (typeof clause.value === 'string') {
+						terms.push(clause.value);
 					}
 				});
 			}
@@ -1852,11 +1777,18 @@ export class WorkflowSearchService {
 	 */
 	private convertAdvancedToBasicQuery(query: AdvancedWorkflowSearchDto): WorkflowSearchQueryDto {
 		return {
-			page: query.page,
-			limit: query.limit,
-			includeStats: query.include?.stats,
-			includeContent: query.include?.content,
-			includeHighlights: query.include?.highlights,
+			query: undefined,
+			searchIn: ['all'],
+			fuzzySearch: false,
+			caseSensitive: false,
+			exactMatch: false,
+			sortBy: 'relevance',
+			sortOrder: 'desc',
+			page: query.page || 1,
+			limit: query.limit || 20,
+			includeStats: query.include?.stats || false,
+			includeContent: query.include?.content || false,
+			includeHighlights: query.include?.highlights || true,
 		};
 	}
 

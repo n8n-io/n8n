@@ -2,11 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { User } from '@n8n/db';
 import { ApplicationError } from 'n8n-workflow';
-import { In, Repository, DataSource, FindManyOptions, Like } from 'typeorm';
+import { In, Repository, DataSource, FindManyOptions, Like } from '@n8n/typeorm';
 
 import { EventService } from '@/events/event.service';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 interface WorkflowFolder {
 	id: string;
@@ -208,13 +206,6 @@ export class WorkflowOrganizationService {
 				return this.buildFolderObject(folderData, user, 0, 0);
 			});
 
-			this.eventService.emit('folder-created', {
-				userId: user.id,
-				folderId: folder.id,
-				folderName: folder.name,
-				parentId: request.parentId,
-			});
-
 			this.logger.info('Folder created successfully', {
 				userId: user.id,
 				folderId: folder.id,
@@ -300,12 +291,6 @@ export class WorkflowOrganizationService {
 				}
 
 				return await this.getFolderById(user, folderId);
-			});
-
-			this.eventService.emit('folder-updated', {
-				userId: user.id,
-				folderId,
-				updates: request,
 			});
 
 			this.logger.info('Folder updated successfully', {
@@ -395,14 +380,6 @@ export class WorkflowOrganizationService {
 				};
 			});
 
-			this.eventService.emit('folder-deleted', {
-				userId: user.id,
-				folderId,
-				forceDelete,
-				affectedFolders: result.affectedFolders,
-				affectedWorkflows: result.affectedWorkflows,
-			});
-
 			this.logger.info('Folder deleted successfully', {
 				userId: user.id,
 				folderId,
@@ -475,12 +452,6 @@ export class WorkflowOrganizationService {
 					affectedWorkflows: 0,
 					errors: [],
 				};
-			});
-
-			this.eventService.emit('folder-moved', {
-				userId: user.id,
-				folderId: request.folderId,
-				targetParentId: request.targetParentId,
 			});
 
 			this.logger.info('Folder moved successfully', {
@@ -573,12 +544,6 @@ export class WorkflowOrganizationService {
 				affectedWorkflows,
 				errors,
 			};
-
-			this.eventService.emit('bulk-folder-operation-completed', {
-				userId: user.id,
-				operation: request.operation,
-				result,
-			});
 
 			this.logger.info('Bulk folder operation completed', {
 				userId: user.id,
@@ -1010,13 +975,6 @@ export class WorkflowOrganizationService {
 				importedWorkflows,
 				errors,
 			};
-
-			this.eventService.emit('folders-imported', {
-				userId: user.id,
-				...result,
-			});
-
-			return result;
 		} catch (error) {
 			this.logger.error('Failed to import folders', {
 				userId: user.id,

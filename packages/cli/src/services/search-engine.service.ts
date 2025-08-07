@@ -537,22 +537,18 @@ export class SearchEngineService {
 
 	private loadConfiguration(): SearchEngineConfig {
 		return {
-			enabled: this.globalConfig.getEnv('N8N_SEARCH_ENGINE_ENABLED') === 'true',
+			enabled: process.env.N8N_SEARCH_ENGINE_ENABLED === 'true',
 			type:
-				(this.globalConfig.getEnv('N8N_SEARCH_ENGINE_TYPE') as 'elasticsearch' | 'opensearch') ||
-				'elasticsearch',
-			host: this.globalConfig.getEnv('N8N_SEARCH_ENGINE_HOST') || 'localhost',
-			port: parseInt(this.globalConfig.getEnv('N8N_SEARCH_ENGINE_PORT') || '9200', 10),
-			username: this.globalConfig.getEnv('N8N_SEARCH_ENGINE_USERNAME'),
-			password: this.globalConfig.getEnv('N8N_SEARCH_ENGINE_PASSWORD'),
-			ssl: this.globalConfig.getEnv('N8N_SEARCH_ENGINE_SSL') === 'true',
-			apiKey: this.globalConfig.getEnv('N8N_SEARCH_ENGINE_API_KEY'),
-			indexPrefix: this.globalConfig.getEnv('N8N_SEARCH_ENGINE_INDEX_PREFIX') || 'n8n',
-			maxRetries: parseInt(this.globalConfig.getEnv('N8N_SEARCH_ENGINE_MAX_RETRIES') || '3', 10),
-			requestTimeout: parseInt(
-				this.globalConfig.getEnv('N8N_SEARCH_ENGINE_REQUEST_TIMEOUT') || '30000',
-				10,
-			),
+				(process.env.N8N_SEARCH_ENGINE_TYPE as 'elasticsearch' | 'opensearch') || 'elasticsearch',
+			host: process.env.N8N_SEARCH_ENGINE_HOST || 'localhost',
+			port: parseInt(process.env.N8N_SEARCH_ENGINE_PORT || '9200', 10),
+			username: process.env.N8N_SEARCH_ENGINE_USERNAME,
+			password: process.env.N8N_SEARCH_ENGINE_PASSWORD,
+			ssl: process.env.N8N_SEARCH_ENGINE_SSL === 'true',
+			apiKey: process.env.N8N_SEARCH_ENGINE_API_KEY,
+			indexPrefix: process.env.N8N_SEARCH_ENGINE_INDEX_PREFIX || 'n8n',
+			maxRetries: parseInt(process.env.N8N_SEARCH_ENGINE_MAX_RETRIES || '3', 10),
+			requestTimeout: parseInt(process.env.N8N_SEARCH_ENGINE_REQUEST_TIMEOUT || '30000', 10),
 		};
 	}
 

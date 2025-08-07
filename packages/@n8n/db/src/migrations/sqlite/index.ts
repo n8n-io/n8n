@@ -86,6 +86,7 @@ import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTabl
 import { AddProjectDescriptionColumn1747824239000 } from '../common/1747824239000-AddProjectDescriptionColumn';
 import { AddLastActiveAtColumnToUser1750252139166 } from '../common/1750252139166-AddLastActiveAtColumnToUser';
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
+import { EnhanceFolderSystemWithAdvancedFeatures1754560000000 } from '../common/1754560000000-EnhanceFolderSystemWithAdvancedFeatures';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -177,6 +178,7 @@ const sqliteMigrations: Migration[] = [
 	AddProjectDescriptionColumn1747824239000,
 	AddLastActiveAtColumnToUser1750252139166,
 	AddInputsOutputsToTestCaseExecution1752669793000,
+	EnhanceFolderSystemWithAdvancedFeatures1754560000000,
 ];
 
 export { sqliteMigrations };

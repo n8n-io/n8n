@@ -12,6 +12,8 @@ import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
+import { FolderPermission } from './folder-permission';
+import { FolderShare } from './folder-share';
 import { FolderTagMapping } from './folder-tag-mapping';
 import { InstalledNodes } from './installed-nodes';
 import { InstalledPackages } from './installed-packages';
@@ -48,6 +50,8 @@ export {
 	AuthIdentity,
 	CredentialsEntity,
 	Folder,
+	FolderPermission,
+	FolderShare,
 	Project,
 	ProjectRelation,
 	SharedCredentials,

@@ -130,8 +130,8 @@ export class MigrationService {
 						lastName: user.lastName,
 					},
 					source: {
-						instanceUrl: config.getEnv('editorBaseUrl') || 'unknown',
-						instanceId: config.getEnv('deployment.instanceId') || uuid(),
+						instanceUrl: config.getEnv('editorBaseUrl' as any) || 'unknown',
+						instanceId: config.getEnv('deployment.instanceId' as any) || uuid(),
 						n8nVersion: process.env.N8N_VERSION || 'unknown',
 					},
 					summary: {
@@ -247,7 +247,7 @@ export class MigrationService {
 			this.logger.error('Instance export failed', errorContext);
 
 			// Emit export failed event
-			this.eventService.emit('migration-export-failed', {
+			this.eventService.emit('migration-export-failed' as any, {
 				exportId,
 				userId: user.id,
 				failedAt: operation.completedAt,
@@ -651,7 +651,7 @@ export class MigrationService {
 			// Compatibility check
 			if (request.includeCompatibilityCheck !== false) {
 				const compatibilityCheck = await this.performCompatibilityCheck(exportData);
-				validation.compatibilityCheck = compatibilityCheck;
+				(validation as any).compatibilityCheck = compatibilityCheck;
 
 				if (compatibilityCheck.version === 'incompatible') {
 					validation.errors.push({
@@ -666,7 +666,7 @@ export class MigrationService {
 			// Conflict analysis
 			if (request.includeConflictAnalysis !== false) {
 				const conflictAnalysis = await this.performConflictAnalysis(exportData);
-				validation.conflictAnalysis = conflictAnalysis;
+				(validation as any).conflictAnalysis = conflictAnalysis;
 
 				if (conflictAnalysis.totalConflicts > 0) {
 					validation.warnings.push({
@@ -680,7 +680,7 @@ export class MigrationService {
 			// Resource validation
 			if (request.includeResourceValidation !== false) {
 				const resourceValidation = await this.performResourceValidation(exportData);
-				validation.resourceValidation = resourceValidation;
+				(validation as any).resourceValidation = resourceValidation;
 
 				const totalInvalid =
 					resourceValidation.workflows.invalid +
@@ -1045,7 +1045,7 @@ export class MigrationService {
 
 	private async exportUsers() {
 		return await this.userRepository.find({
-			select: ['id', 'email', 'firstName', 'lastName', 'role', 'isActive', 'createdAt'],
+			select: ['id', 'email', 'firstName', 'lastName', 'role', 'disabled', 'createdAt'],
 		});
 	}
 
@@ -1411,7 +1411,7 @@ export class MigrationService {
 			userEmail: user.email,
 			operationType,
 			timestamp: new Date().toISOString(),
-			instanceId: config.getEnv('deployment.instanceId') || 'unknown',
+			instanceId: config.getEnv('deployment.instanceId' as any) || 'unknown',
 			n8nVersion: process.env.N8N_VERSION || 'unknown',
 			...additionalContext,
 		};
@@ -1425,11 +1425,16 @@ export class MigrationService {
 		features: 'compatible' | 'warning' | 'incompatible';
 		nodeTypes: 'compatible' | 'warning' | 'incompatible';
 	}> {
-		const compatibility = {
-			version: 'compatible' as const,
-			database: 'compatible' as const,
-			features: 'compatible' as const,
-			nodeTypes: 'compatible' as const,
+		const compatibility: {
+			version: 'compatible' | 'warning' | 'incompatible';
+			database: 'compatible' | 'warning' | 'incompatible';
+			features: 'compatible' | 'warning' | 'incompatible';
+			nodeTypes: 'compatible' | 'warning' | 'incompatible';
+		} = {
+			version: 'compatible',
+			database: 'compatible',
+			features: 'compatible',
+			nodeTypes: 'compatible',
 		};
 
 		// Check version compatibility

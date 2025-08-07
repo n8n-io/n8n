@@ -1500,7 +1500,7 @@ export class WorkflowsController {
 	 */
 	@Get('/:workflowId/variables')
 	@ProjectScope('workflow:read')
-	async getWorkflowVariables(req: WorkflowRequest.Get) {
+	async getWorkflowVariables(req: WorkflowRequest.Get): Promise<VariableDocumentationResponseDto> {
 		const { workflowId } = req.params;
 		const { nodeType, context } = req.query as {
 			nodeType?: string;
@@ -1550,17 +1550,14 @@ export class WorkflowsController {
 
 			return {
 				success: true,
-				workflowId,
-				variables: {
+				data: {
 					core: variables,
 					workflow: workflowVariables,
 					contextual: contextualData?.relevantVariables || [],
 				},
 				metadata: {
-					nodeType,
 					context,
-					totalCoreVariables: Array.isArray(variables) ? variables.length : 0,
-					totalNodes: workflow.nodes.length,
+					totalCount: Array.isArray(variables) ? variables.length : 0,
 					requestedAt: new Date().toISOString(),
 				},
 			};
@@ -1929,7 +1926,7 @@ export class WorkflowsController {
 					});
 
 					// Emit event
-					this.eventService.emit('workflow-activated', {
+					this.eventService.emit('workflow-activated' as any, {
 						user: req.user,
 						workflowId,
 						workflowName: workflow.name,
@@ -2053,7 +2050,7 @@ export class WorkflowsController {
 					});
 
 					// Emit event
-					this.eventService.emit('workflow-deactivated', {
+					this.eventService.emit('workflow-deactivated' as any, {
 						user: req.user,
 						workflowId,
 						workflowName: workflow.name,
@@ -2224,7 +2221,7 @@ export class WorkflowsController {
 
 					// Emit event if there were changes
 					if (changes.length > 0) {
-						this.eventService.emit('workflow-updated', {
+						this.eventService.emit('workflow-updated' as any, {
 							user: req.user,
 							workflowId,
 							workflowName: updateData.name || workflow.name,
@@ -2458,7 +2455,6 @@ export class WorkflowsController {
 			const nodeTypes = new Map<string, number>();
 			const tags = new Map<string, number>();
 			const projects = new Map<string, { name: string; count: number }>();
-			const folders = new Map<string, { name: string; count: number }>();
 			let activeCount = 0;
 			let inactiveCount = 0;
 
@@ -3014,7 +3010,10 @@ export class WorkflowsController {
 			const savedSearch = await this.savedSearchService.getSavedSearch(req.params.id, req.user);
 
 			// Execute the search using the saved query
-			const result = await this.workflowSearchService.searchWorkflows(savedSearch.query, req.user);
+			const result = await this.workflowSearchService.searchWorkflows(
+				savedSearch.query as any,
+				req.user,
+			);
 
 			// Update execution statistics
 			await this.savedSearchService.updateExecutionStats(req.params.id, req.user, {
@@ -3198,7 +3197,7 @@ export class WorkflowsController {
 			const result = await this.batchProcessingService.queueBatchOperation(req.user, {
 				operations,
 				priority,
-				scheduledFor: scheduledFor ? new Date(scheduledFor) : undefined,
+				scheduledFor,
 				webhook,
 			});
 
@@ -3325,7 +3324,9 @@ export class WorkflowsController {
 					(func) =>
 						func.name.toLowerCase().includes(searchTerm) ||
 						func.description?.toLowerCase().includes(searchTerm) ||
-						func.aliases?.some((alias) => alias.toLowerCase().includes(searchTerm)),
+						(func as any).aliases?.some((alias: string) =>
+							alias.toLowerCase().includes(searchTerm),
+						),
 				);
 			}
 
@@ -3420,7 +3421,7 @@ export class WorkflowsController {
 		});
 
 		try {
-			const workflow = await this.workflowFinderService.findForUser(req.user, workflowId, [
+			const workflow = await this.workflowFinderService.findForUser(workflowId, req.user, [
 				'workflow:read',
 			]);
 
@@ -3492,7 +3493,7 @@ export class WorkflowsController {
 		});
 
 		try {
-			const workflow = await this.workflowFinderService.findForUser(req.user, workflowId, [
+			const workflow = await this.workflowFinderService.findForUser(workflowId, req.user, [
 				'workflow:read',
 			]);
 

@@ -10,7 +10,7 @@ import type {
 } from '@n8n/api-types';
 import { ApplicationError } from 'n8n-workflow';
 
-import { SavedSearch } from '@n8n/db/src/entities/saved-search';
+import { SavedSearch } from '@n8n/db';
 
 @Service()
 export class SavedSearchService {

@@ -87,6 +87,7 @@
     "mjml": "^4.15.3",
     "openapi-types": "^12.1.3",
     "ts-essentials": "^7.0.3",
+    "tsc-alias": "^1.8.16",
     "typescript-eslint": "^8.35.0"
   },
   "dependencies": {

@@ -393,7 +393,7 @@ export class WorkflowIndexingService {
 		return {
 			id: workflow.id,
 			name: workflow.name,
-			description: workflow.description || undefined,
+			description: undefined, // WorkflowEntity doesn't have description field
 			content,
 			active: workflow.active,
 			isArchived: workflow.isArchived || false,
@@ -423,9 +423,7 @@ export class WorkflowIndexingService {
 
 		// Add workflow name and description
 		contentParts.push(workflow.name);
-		if (workflow.description) {
-			contentParts.push(workflow.description);
-		}
+		// WorkflowEntity doesn't have description field - skip description content
 
 		// Add node information
 		if (workflow.nodes) {

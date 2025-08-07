@@ -392,7 +392,7 @@ export class ErrorAnalyticsService {
 		workflowId?: string,
 	): Promise<Record<string, { totalExecutions: number; avgExecutionTime: number }>> {
 		// Mock execution statistics
-		const mockStats = {
+		const mockStats: Record<string, { totalExecutions: number; avgExecutionTime: number }> = {
 			'HTTP Request': { totalExecutions: 1250, avgExecutionTime: 2500 },
 			Code: { totalExecutions: 800, avgExecutionTime: 150 },
 			Set: { totalExecutions: 1500, avgExecutionTime: 50 },
@@ -532,8 +532,20 @@ export class ErrorAnalyticsService {
 	/**
 	 * Generate error-based recommendations
 	 */
-	private generateErrorRecommendations(nodeTypeStats: NodeErrorStatDto[]) {
-		const recommendations = [];
+	private generateErrorRecommendations(nodeTypeStats: NodeErrorStatDto[]): Array<{
+		nodeType: string;
+		issue: string;
+		suggestion: string;
+		priority: 'low' | 'medium' | 'high';
+		potentialImpact: string;
+	}> {
+		const recommendations: Array<{
+			nodeType: string;
+			issue: string;
+			suggestion: string;
+			priority: 'low' | 'medium' | 'high';
+			potentialImpact: string;
+		}> = [];
 
 		nodeTypeStats.forEach((stat) => {
 			if (stat.errorRate > 10) {
@@ -692,9 +704,9 @@ export class ErrorAnalyticsService {
 	}
 
 	/**
-	 * Get detailed error breakdown for a specific node type (Controller method)
+	 * Get detailed error breakdown for a specific node type with flexible parameters
 	 */
-	async getNodeErrorBreakdown(
+	async getNodeErrorBreakdownByTimeRange(
 		nodeType: string,
 		timeRange: { start: Date; end: Date },
 	): Promise<NodeErrorBreakdown> {
@@ -981,7 +993,7 @@ export class ErrorAnalyticsService {
 	 * Generate pattern recommendation
 	 */
 	private generatePatternRecommendation(pattern: string): string {
-		const recommendations = {
+		const recommendations: Record<string, string> = {
 			'Connection Timeout': 'Increase timeout values and implement retry logic',
 			'Authentication Failure': 'Verify credentials and implement token refresh mechanism',
 			'Resource Not Found': 'Validate resource URLs and implement fallback handling',

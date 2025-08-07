@@ -1,5 +1,4 @@
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
-import { AddInputsOutputsToTestCaseExecution1752669793000 } from './../common/1752669793000-AddInputsOutputsToTestCaseExecution';
 import { InitialMigration1587669153312 } from './1587669153312-InitialMigration';
 import { WebhookModel1589476000887 } from './1589476000887-WebhookModel';
 import { CreateIndexStoppedAt1594828256133 } from './1594828256133-CreateIndexStoppedAt';
@@ -89,6 +88,8 @@ import { AddWorkflowArchivedColumn1745934666076 } from '../common/1745934666076-
 import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTable';
 import { AddProjectDescriptionColumn1747824239000 } from '../common/1747824239000-AddProjectDescriptionColumn';
 import { AddLastActiveAtColumnToUser1750252139166 } from '../common/1750252139166-AddLastActiveAtColumnToUser';
+import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
+import { EnhanceFolderSystemWithAdvancedFeatures1754560000000 } from '../common/1754560000000-EnhanceFolderSystemWithAdvancedFeatures';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -183,4 +184,5 @@ export const postgresMigrations: Migration[] = [
 	AddProjectDescriptionColumn1747824239000,
 	AddLastActiveAtColumnToUser1750252139166,
 	AddInputsOutputsToTestCaseExecution1752669793000,
+	EnhanceFolderSystemWithAdvancedFeatures1754560000000,
 ];
