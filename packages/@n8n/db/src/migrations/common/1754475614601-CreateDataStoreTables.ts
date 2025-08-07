@@ -7,10 +7,10 @@ export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(dataStoreTableName)
 			.withColumns(
-				column('id').varchar(36).primary.notNull,
+				column('id').varchar(36).primary,
 				column('name').varchar(128).notNull,
 				column('projectId').varchar(36).notNull,
-				column('sizeBytes').varchar(255).default('0').notNull,
+				column('sizeBytes').int.default(0).notNull,
 			)
 			.withForeignKey('projectId', {
 				tableName: 'project',
