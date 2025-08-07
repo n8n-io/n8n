@@ -112,4 +112,18 @@ describe('execution progress', () => {
 		expect(_saveSettings.progress).toBe(false);
 	});
 });
+describe('null workflow settings', () => {
+	it('should handle null workflow settings without throwing', () => {
+		expect(() => (0, to_save_settings_1.toSaveSettings)(null)).not.toThrow();
+		config_1.default.set('executions.saveDataOnError', 'all');
+		config_1.default.set('executions.saveDataOnSuccess', 'all');
+		config_1.default.set('executions.saveDataManualExecutions', true);
+		config_1.default.set('executions.saveExecutionProgress', true);
+		const settingsWithNull = (0, to_save_settings_1.toSaveSettings)(null);
+		expect(settingsWithNull.error).toBe(true);
+		expect(settingsWithNull.success).toBe(true);
+		expect(settingsWithNull.manual).toBe(true);
+		expect(settingsWithNull.progress).toBe(true);
+	});
+});
 //# sourceMappingURL=to-save-settings.test.js.map

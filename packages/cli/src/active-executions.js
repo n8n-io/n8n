@@ -221,6 +221,191 @@ let ActiveExecutions = class ActiveExecutions {
 			executionIds = Object.keys(this.activeExecutions);
 		}
 	}
+	pauseExecution(executionId) {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return false;
+		}
+		if (execution.status === 'running') {
+			execution.status = 'waiting';
+			if (execution.workflowExecution) {
+			}
+			this.logger.debug('Execution paused', { executionId });
+			return true;
+		}
+		return false;
+	}
+	resumeExecution(executionId) {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return false;
+		}
+		if (execution.status === 'waiting') {
+			execution.status = 'running';
+			if (execution.workflowExecution) {
+			}
+			this.logger.debug('Execution resumed', { executionId });
+			return true;
+		}
+		return false;
+	}
+	getExecutionStatus(executionId) {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return null;
+		}
+		const currentNode = execution.executionData?.executionData?.resultData?.lastNodeExecuted;
+		return {
+			status: execution.status,
+			currentNode,
+		};
+	}
+	canPause(executionId) {
+		const execution = this.activeExecutions[executionId];
+		return execution?.status === 'running';
+	}
+	canResume(executionId) {
+		const execution = this.activeExecutions[executionId];
+		return execution?.status === 'waiting';
+	}
+	stepExecution(executionId, steps = 1, nodeNames) {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return { stepsExecuted: 0, nextNodes: [] };
+		}
+		const currentNode = execution.executionData?.executionData?.resultData?.lastNodeExecuted;
+		const nextNodes = nodeNames || this.getNextNodesToExecute(execution, currentNode);
+		this.logger.debug('Execution stepped', {
+			executionId,
+			steps,
+			currentNode,
+			nextNodes,
+		});
+		return {
+			stepsExecuted: Math.min(steps, nextNodes.length),
+			currentNode,
+			nextNodes: nextNodes.slice(0, steps),
+		};
+	}
+	getNextNodesToExecute(execution, currentNode) {
+		const workflowData = execution.executionData.workflowData;
+		const connections = workflowData.connections;
+		if (!currentNode || !connections[currentNode]) {
+			return workflowData.nodes
+				.filter(
+					(node) =>
+						!Object.keys(connections).some((conn) =>
+							connections[conn]?.main?.some((outputs) =>
+								outputs?.some((output) => output?.node === node.name),
+							),
+						),
+				)
+				.map((node) => node.name);
+		}
+		const nextNodes = [];
+		const nodeConnections = connections[currentNode];
+		if (nodeConnections?.main) {
+			for (const outputs of nodeConnections.main) {
+				if (outputs) {
+					for (const connection of outputs) {
+						if (connection?.node) {
+							nextNodes.push(connection.node);
+						}
+					}
+				}
+			}
+		}
+		return [...new Set(nextNodes)];
+	}
+	canStep(executionId) {
+		const execution = this.activeExecutions[executionId];
+		return execution?.status === 'running' || execution?.status === 'waiting';
+	}
+	cancelNodeExecution(executionId, nodeName) {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return false;
+		}
+		if (execution.executionData?.executionData?.resultData?.runData) {
+			const runData = execution.executionData.executionData.resultData.runData;
+			if (runData[nodeName] && runData[nodeName].length > 0) {
+				const lastRun = runData[nodeName][runData[nodeName].length - 1];
+				lastRun.error = {
+					message: `Node execution cancelled`,
+					name: 'NodeExecutionCancelled',
+					timestamp: Date.now(),
+				};
+			}
+		}
+		this.logger.debug('Node execution cancelled', { executionId, nodeName });
+		return true;
+	}
+	skipNodeExecution(executionId, nodeName, mockOutput) {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return false;
+		}
+		if (execution.executionData?.executionData?.resultData?.runData) {
+			const runData = execution.executionData.executionData.resultData.runData;
+			runData[nodeName] = [
+				{
+					startTime: Date.now(),
+					executionIndex: 0,
+					executionTime: 0,
+					data: {
+						main: mockOutput ? [[{ json: mockOutput, pairedItem: { item: 0 } }]] : [[]],
+					},
+					source: [],
+				},
+			];
+		}
+		this.logger.debug('Node execution skipped', { executionId, nodeName });
+		return true;
+	}
+	retryNodeExecution(executionId, nodeName, modifiedParameters, resetState) {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return false;
+		}
+		if (resetState && execution.executionData?.executionData?.resultData?.runData) {
+			const runData = execution.executionData.executionData.resultData.runData;
+			delete runData[nodeName];
+		}
+		if (modifiedParameters) {
+			const workflowData = execution.executionData.workflowData;
+			const node = workflowData.nodes.find((n) => n.name === nodeName);
+			if (node) {
+				node.parameters = {
+					...node.parameters,
+					...modifiedParameters,
+				};
+			}
+		}
+		this.logger.debug('Node execution retry initiated', { executionId, nodeName, resetState });
+		return true;
+	}
+	getNodeExecutionStatus(executionId, nodeName) {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) {
+			return null;
+		}
+		const runData = execution.executionData?.executionData?.resultData?.runData;
+		if (!runData || !runData[nodeName] || runData[nodeName].length === 0) {
+			return { status: 'pending' };
+		}
+		const lastRun = runData[nodeName][runData[nodeName].length - 1];
+		if (lastRun.error) {
+			return {
+				status: 'error',
+				executionTime: lastRun.executionTime,
+				error: lastRun.error,
+			};
+		}
+		return {
+			status: 'success',
+			executionTime: lastRun.executionTime,
+		};
+	}
 	getExecutionOrFail(executionId) {
 		const execution = this.activeExecutions[executionId];
 		if (!execution) {

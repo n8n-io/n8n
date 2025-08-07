@@ -12,10 +12,15 @@ export const instanceMigrationImportRequestSchema = z
 		decryptionKey: z.string().optional(),
 		targetProjectId: z.string().optional(),
 	})
-	.refine((data) => data.exportId || data.exportData, {
-		message: 'Either exportId or exportData must be provided',
-		path: ['exportId'],
-	});
+	.refine(
+		(data) =>
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			data.exportId || data.exportData,
+		{
+			message: 'Either exportId or exportData must be provided',
+			path: ['exportId'],
+		},
+	);
 
 export const instanceMigrationImportResponseSchema = z.object({
 	importId: z.string(),

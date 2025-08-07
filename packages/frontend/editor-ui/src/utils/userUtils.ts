@@ -60,7 +60,7 @@ import {
 	GOOGLE_SHEETS_NODE_TYPE,
 	CODE_NODE_TYPE,
 } from '@/constants';
-import { ROLE } from '@n8n/api-types';
+import { ROLE } from '@/constants';
 import type {
 	IPersonalizationSurveyAnswersV1,
 	IPersonalizationSurveyAnswersV2,

@@ -18,7 +18,7 @@ const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'] as 
 
 export async function rabbitmqConnect(
 	credentials: RabbitMQCredentials,
-): Promise<amqplib.Connection> {
+): Promise<amqplib.ChannelModel> {
 	const credentialData = credentialKeys.reduce((acc, key) => {
 		acc[key] = credentials[key] === '' ? undefined : credentials[key];
 		return acc;
@@ -159,7 +159,6 @@ export class MessageTracker {
 		}
 
 		await channel.close();
-		await channel.connection.close();
 	}
 }
 

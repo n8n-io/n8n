@@ -517,6 +517,85 @@ export type RelayEventMap = {
 
 	// #endregion
 
+	// #region migration
+
+	'instance-export-requested': {
+		requesterId: string;
+		exportId: string;
+		includeWorkflows: boolean;
+		includeCredentials: boolean;
+		includeSettings: boolean;
+		includeUsers: boolean;
+		totalSize: number;
+	};
+
+	'instance-import-requested': {
+		requesterId: string;
+		importId: string;
+		sourceExportId?: string;
+		conflictResolution: string;
+		totalImported: number;
+		totalSkipped: number;
+		totalErrors: number;
+	};
+
+	'cross-instance-transfer-initiated': {
+		requesterId: string;
+		transferId: string;
+		targetInstanceUrl: string;
+		totalResources: number;
+		status: string;
+	};
+
+	'migration-validation-performed': {
+		requesterId: string;
+		validationPassed: boolean;
+		warningCount: number;
+		errorCount: number;
+	};
+
+	'comprehensive-migration-validation-performed': {
+		requesterId: string;
+		validationPassed: boolean;
+		warningCount: number;
+		errorCount: number;
+		compatibilityCheck: boolean;
+		conflictAnalysis: boolean;
+		resourceValidation: boolean;
+	};
+
+	'migration-integrity-verified': {
+		requesterId: string;
+		verificationPassed: boolean;
+		issueCount: number;
+		integrityConcerns: number;
+	};
+
+	'migration-compatibility-checked': {
+		requesterId: string;
+		exportId: string;
+		compatibilityScore: number;
+		hasIssues: boolean;
+	};
+
+	// #endregion
+
+	// #region search
+
+	'search-reindexing-completed': {
+		user: UserLike;
+		triggeredManually: boolean;
+		stats: {
+			totalWorkflows: number;
+			indexedWorkflows: number;
+			failedWorkflows: number;
+			indexingTimeMs: number;
+			searchEngineHealthCheck: boolean;
+		};
+	};
+
+	// #endregion
+
 	// #region queue
 
 	'job-enqueued': {

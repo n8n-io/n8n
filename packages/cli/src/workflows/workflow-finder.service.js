@@ -100,6 +100,9 @@ let WorkflowFinderService = class WorkflowFinderService {
 		});
 		return sharedWorkflows.map((sw) => ({ ...sw.workflow, projectId: sw.projectId }));
 	}
+	async findForUser(workflowId, user, scopes, options) {
+		return this.findWorkflowForUser(workflowId, user, scopes, options);
+	}
 };
 exports.WorkflowFinderService = WorkflowFinderService;
 exports.WorkflowFinderService = WorkflowFinderService = __decorate(

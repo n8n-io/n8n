@@ -15,21 +15,21 @@ describe('Environment Detection', () => {
 	});
 
 	describe('inTest', () => {
-		it('should return true when NODE_ENV is "test"', () => {
+		it('should return true when NODE_ENV is "test"', async () => {
 			process.env.NODE_ENV = 'test';
 
 			// Re-import to get fresh values based on new NODE_ENV
 			jest.resetModules();
-			const { inTest } = require('../environment');
+			const { inTest } = await import('../environment');
 
 			expect(inTest).toBe(true);
 		});
 
-		it('should return false when NODE_ENV is "production"', () => {
+		it('should return false when NODE_ENV is "production"', async () => {
 			process.env.NODE_ENV = 'production';
 
 			jest.resetModules();
-			const { inTest } = require('../environment');
+			const { inTest } = await import('../environment');
 
 			expect(inTest).toBe(false);
 		});

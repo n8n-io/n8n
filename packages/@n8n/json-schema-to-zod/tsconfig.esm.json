@@ -1,12 +1,14 @@
 {
 	"compilerOptions": {
 		"target": "es2020",
+		"lib": ["es2020"],
 		"module": "es2020",
-		"moduleResolution": "node",
+		"moduleResolution": "bundler",
 		"outDir": "dist/esm",
 		"strict": true,
 		"skipLibCheck": true,
-		"esModuleInterop": true
+		"esModuleInterop": true,
+		"types": []
 	},
 	"include": ["src"]
 }

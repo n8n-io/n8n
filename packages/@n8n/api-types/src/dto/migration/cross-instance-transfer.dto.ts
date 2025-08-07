@@ -21,6 +21,7 @@ export const crossInstanceTransferRequestSchema = z
 	})
 	.refine(
 		(data) =>
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			data.targetApiKey || data.targetAuthToken || (data.targetUsername && data.targetPassword),
 		{
 			message:
@@ -85,6 +86,7 @@ export const crossInstanceConnectionTestSchema = z
 	})
 	.refine(
 		(data) =>
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			data.targetApiKey || data.targetAuthToken || (data.targetUsername && data.targetPassword),
 		{
 			message: 'Target instance authentication is required',

@@ -14,7 +14,7 @@ const fs_1 = require('fs');
 const merge_1 = __importDefault(require('lodash/merge'));
 const n8n_workflow_1 = require('n8n-workflow');
 const node_assert_1 = __importDefault(require('node:assert'));
-const constants_1 = require('@/constants');
+const constants_1 = require('../constants');
 const globalConfig = di_1.Container.get(config_1.GlobalConfig);
 if (constants_1.inE2ETests) {
 	globalConfig.diagnostics.enabled = false;

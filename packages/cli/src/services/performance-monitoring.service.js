@@ -30,10 +30,12 @@ const n8n_workflow_1 = require('n8n-workflow');
 const di_1 = require('@n8n/di');
 const active_executions_1 = require('@/active-executions');
 const execution_service_1 = require('@/executions/execution.service');
+const db_1 = require('@n8n/db');
 let PerformanceMonitoringService = class PerformanceMonitoringService {
-	constructor(executionService, activeExecutions) {
+	constructor(executionService, activeExecutions, executionRepository) {
 		this.executionService = executionService;
 		this.activeExecutions = activeExecutions;
+		this.executionRepository = executionRepository;
 		this.logger = n8n_workflow_1.LoggerProxy;
 	}
 	async getExecutionProfile(executionId, options = {}) {
@@ -93,7 +95,29 @@ let PerformanceMonitoringService = class PerformanceMonitoringService {
 	async getPerformanceMetrics(request) {
 		try {
 			const { timeRange, startDate, endDate } = this.parseTimeRange(request);
-			const executions = [];
+			let queryBuilder = this.executionRepository
+				.createQueryBuilder('execution')
+				.where('execution.startedAt >= :start', { start: startDate })
+				.andWhere('execution.startedAt <= :end', { end: endDate })
+				.select([
+					'execution.id',
+					'execution.workflowId',
+					'execution.status',
+					'execution.startedAt',
+					'execution.stoppedAt',
+				]);
+			if (request.workflowId) {
+				queryBuilder = queryBuilder.andWhere('execution.workflowId = :workflowId', {
+					workflowId: request.workflowId,
+				});
+			}
+			if (request.status) {
+				const statusArray = request.status.split(',');
+				queryBuilder = queryBuilder.andWhere('execution.status IN (:...statuses)', {
+					statuses: statusArray,
+				});
+			}
+			const executions = await queryBuilder.getMany();
 			const metrics = this.calculateAggregatedMetrics(executions, timeRange);
 			return {
 				timeRange: {
@@ -302,8 +326,8 @@ let PerformanceMonitoringService = class PerformanceMonitoringService {
 		const failedExecutions = executions.filter((e) => e.status === 'error');
 		const runningExecutions = executions.filter((e) => e.status === 'running');
 		const durations = executions
-			.filter((e) => e.startedAt && e.finishedAt)
-			.map((e) => e.finishedAt.getTime() - e.startedAt.getTime())
+			.filter((e) => e.startedAt && e.stoppedAt)
+			.map((e) => e.stoppedAt.getTime() - e.startedAt.getTime())
 			.sort((a, b) => a - b);
 		const averageDuration =
 			durations.length > 0 ? durations.reduce((sum, d) => sum + d, 0) / durations.length : 0;
@@ -350,8 +374,8 @@ let PerformanceMonitoringService = class PerformanceMonitoringService {
 				const totalCount = intervalExecutions.length;
 				const errorRate = totalCount > 0 ? (totalCount - successCount) / totalCount : 0;
 				const durations = intervalExecutions
-					.filter((e) => e.startedAt && e.finishedAt)
-					.map((e) => e.finishedAt.getTime() - e.startedAt.getTime());
+					.filter((e) => e.startedAt && e.stoppedAt)
+					.map((e) => e.stoppedAt.getTime() - e.startedAt.getTime());
 				const averageDuration =
 					durations.length > 0 ? durations.reduce((sum, d) => sum + d, 0) / durations.length : 0;
 				return {
@@ -384,6 +408,7 @@ exports.PerformanceMonitoringService = PerformanceMonitoringService = __decorate
 		__metadata('design:paramtypes', [
 			execution_service_1.ExecutionService,
 			active_executions_1.ActiveExecutions,
+			db_1.ExecutionRepository,
 		]),
 	],
 	PerformanceMonitoringService,

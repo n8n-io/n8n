@@ -3,7 +3,8 @@
 	"compilerOptions": {
 		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 		"moduleResolution": "bundler",
-		"module": "esnext"
+		"module": "esnext",
+		"types": []
 	},
 	"include": ["src/backend/**/*.ts", "src/index.ts"]
 }

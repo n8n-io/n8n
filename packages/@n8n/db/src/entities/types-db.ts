@@ -380,6 +380,7 @@ export type AuthenticatedRequest<
 	user: User;
 	authInfo?: AuthenticationInformation;
 	cookies: Record<string, string | undefined>;
+	sessionID?: string;
 	headers: express.Request['headers'] & {
 		'push-ref': string;
 	};

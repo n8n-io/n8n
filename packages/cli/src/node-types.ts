@@ -87,6 +87,18 @@ export class NodeTypes implements INodeTypes {
 		return tool;
 	}
 
+	getAll(): INodeType[] {
+		const loadedNodes = this.loadNodesAndCredentials.loadedNodes;
+		return Object.values(loadedNodes).map((node) => {
+			const type = node.type;
+			// Handle versioned node types by getting the current version
+			if ('getNodeType' in type && typeof type.getNodeType === 'function') {
+				return type.getNodeType();
+			}
+			return type as INodeType;
+		});
+	}
+
 	getKnownTypes() {
 		return this.loadNodesAndCredentials.knownNodes;
 	}

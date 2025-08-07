@@ -1,4 +1,9 @@
-import { BinaryDataQueryDto, BinaryDataSignedQueryDto, BinaryDataUploadDto } from '@n8n/api-types';
+import {
+	BinaryDataQueryDto,
+	BinaryDataSignedQueryDto,
+	BinaryDataUploadDto,
+	ViewableMimeTypes,
+} from '@n8n/api-types';
 import {
 	Get,
 	Post,

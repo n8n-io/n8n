@@ -38,7 +38,7 @@ export class AnalyticsController {
 	async getSystemAnalytics(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Query() queryDto: SystemAnalyticsQueryDto,
+		@Query queryDto: SystemAnalyticsQueryDto,
 	): Promise<SystemAnalyticsResponseDto> {
 		this.logger.debug('System analytics requested', {
 			userId: req.user.id,
@@ -78,7 +78,7 @@ export class AnalyticsController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('nodeType') nodeType: string,
-		@Query() queryDto: NodeErrorBreakdownQueryDto,
+		@Query queryDto: NodeErrorBreakdownQueryDto,
 	): Promise<NodeErrorBreakdownResponseDto> {
 		this.logger.debug('Node error breakdown requested', {
 			userId: req.user.id,
@@ -129,7 +129,7 @@ export class AnalyticsController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('nodeType') nodeType: string,
-		@Query() queryDto: NodeTypeAnalyticsQueryDto,
+		@Query queryDto: NodeTypeAnalyticsQueryDto,
 	): Promise<NodeTypeAnalyticsResponseDto> {
 		this.logger.debug('Node type analytics requested', {
 			userId: req.user.id,
@@ -179,7 +179,7 @@ export class AnalyticsController {
 	async getAllNodeTypes(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Query() queryDto: NodeTypeAnalyticsQueryDto,
+		@Query queryDto: NodeTypeAnalyticsQueryDto,
 	): Promise<NodeTypesListResponseDto> {
 		this.logger.debug('All node types requested', {
 			userId: req.user.id,
@@ -219,7 +219,7 @@ export class AnalyticsController {
 	async compareNodeTypes(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Query() queryDto: NodeComparisonQueryDto,
+		@Query queryDto: NodeComparisonQueryDto,
 	): Promise<NodeComparisonResponseDto> {
 		this.logger.debug('Node comparison requested', {
 			userId: req.user.id,
@@ -276,7 +276,7 @@ export class AnalyticsController {
 	async getErrorPatterns(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Query() queryDto: ErrorPatternsQueryDto,
+		@Query queryDto: ErrorPatternsQueryDto,
 	): Promise<ErrorPatternsResponseDto> {
 		this.logger.debug('Error patterns requested', {
 			userId: req.user.id,
@@ -323,7 +323,7 @@ export class AnalyticsController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('nodeType') nodeType: string,
-		@Query() queryDto: PerformanceCorrelationQueryDto,
+		@Query queryDto: PerformanceCorrelationQueryDto,
 	): Promise<PerformanceCorrelationResponseDto> {
 		this.logger.debug('Performance correlation requested', {
 			userId: req.user.id,

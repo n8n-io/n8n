@@ -376,9 +376,9 @@ export class MigrationController {
 				validationPassed: result.isValid,
 				warningCount: result.warnings?.length || 0,
 				errorCount: result.errors?.length || 0,
-				compatibilityCheck: request.includeCompatibilityCheck,
-				conflictAnalysis: request.includeConflictAnalysis,
-				resourceValidation: request.includeResourceValidation,
+				compatibilityCheck: request.includeCompatibilityCheck ?? false,
+				conflictAnalysis: request.includeConflictAnalysis ?? false,
+				resourceValidation: request.includeResourceValidation ?? false,
 			});
 
 			this.logger.info('Comprehensive migration validation endpoint completed', {

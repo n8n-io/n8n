@@ -9,6 +9,7 @@ export interface SearchQueryMetrics {
 	searchTimeMs: number;
 	resultCount: number;
 	searchMethod: 'search_engine' | 'database';
+	searchEngine?: string;
 	filters: Record<string, any>;
 	timestamp: Date;
 	userAgent?: string;

@@ -731,4 +731,327 @@ export class CredentialsService {
 
 		return { ...credential, scopes };
 	}
+
+	/**
+	 * Validate credential fields against the credential type definition
+	 */
+	async validateCredentialFields(
+		credentialType: string,
+		credentialData: ICredentialDataDecryptedObject,
+	): Promise<{ valid: boolean; issues: Array<{ field: string; message: string }> }> {
+		const issues: Array<{ field: string; message: string }> = [];
+
+		try {
+			const credType = this.credentialTypes.getByName(credentialType);
+			const properties = credType.properties || [];
+
+			// Check required fields
+			for (const prop of properties) {
+				if (prop.required && !credentialData[prop.name]) {
+					issues.push({
+						field: prop.name,
+						message: `Required field '${prop.displayName || prop.name}' is missing`,
+					});
+				}
+
+				// Validate field types and formats
+				if (credentialData[prop.name] !== undefined) {
+					const value = credentialData[prop.name];
+
+					if (prop.type === 'string' && typeof value !== 'string') {
+						issues.push({
+							field: prop.name,
+							message: `Field '${prop.displayName || prop.name}' must be a string`,
+						});
+					}
+				}
+			}
+
+			return { valid: issues.length === 0, issues };
+		} catch (error) {
+			return {
+				valid: false,
+				issues: [
+					{
+						field: 'general',
+						message: `Validation error: ${error instanceof Error ? error.message : String(error)}`,
+					},
+				],
+			};
+		}
+	}
+
+	/**
+	 * Analyze credential fields to provide insights and recommendations
+	 */
+	async analyzeCredentialFields(
+		credentialType: string,
+		credentialData: ICredentialDataDecryptedObject,
+	): Promise<{ analysis: Record<string, unknown>; recommendations: string[] }> {
+		const recommendations: string[] = [];
+		const analysis: Record<string, unknown> = {};
+
+		try {
+			const credType = this.credentialTypes.getByName(credentialType);
+			const properties = credType.properties || [];
+
+			analysis.totalFields = properties.length;
+			analysis.filledFields = Object.keys(credentialData).length;
+			analysis.completeness =
+				analysis.totalFields > 0 ? (analysis.filledFields / analysis.totalFields) * 100 : 0;
+
+			// Check for common issues and provide recommendations
+			for (const prop of properties) {
+				const value = credentialData[prop.name];
+
+				if (prop.typeOptions?.password && value && typeof value === 'string') {
+					if (value.length < 8) {
+						recommendations.push(
+							`Consider using a stronger password for '${prop.displayName || prop.name}'`,
+						);
+					}
+				}
+
+				if (prop.type === 'string' && value && typeof value === 'string') {
+					if (prop.name.toLowerCase().includes('url') && !value.startsWith('http')) {
+						recommendations.push(
+							`URL field '${prop.displayName || prop.name}' should start with http:// or https://`,
+						);
+					}
+				}
+			}
+
+			return { analysis, recommendations };
+		} catch (error) {
+			return {
+				analysis: { error: error instanceof Error ? error.message : String(error) },
+				recommendations: ['Unable to analyze credentials due to an error'],
+			};
+		}
+	}
+
+	/**
+	 * Diagnose connection issues and provide detailed information
+	 */
+	async diagnoseConnection(
+		userId: User['id'],
+		credentials: ICredentialsDecrypted,
+	): Promise<{ diagnosis: string; details: Record<string, unknown>; suggestions: string[] }> {
+		const suggestions: string[] = [];
+		const details: Record<string, unknown> = {};
+
+		try {
+			// Run the credential test
+			const testResult = await this.test(userId, credentials);
+			details.testResult = testResult;
+
+			if (testResult.status === 'OK') {
+				return {
+					diagnosis: 'Connection successful',
+					details,
+					suggestions: ['Connection is working properly'],
+				};
+			}
+
+			// Analyze the error message for common patterns
+			const errorMessage = testResult.message.toLowerCase();
+
+			if (errorMessage.includes('timeout')) {
+				suggestions.push('Check network connectivity and firewall settings');
+				suggestions.push('Verify if the service is running and accessible');
+			}
+
+			if (errorMessage.includes('authentication') || errorMessage.includes('unauthorized')) {
+				suggestions.push('Verify username and password are correct');
+				suggestions.push('Check if the account is not locked or suspended');
+			}
+
+			if (errorMessage.includes('not found') || errorMessage.includes('404')) {
+				suggestions.push('Verify the server URL is correct');
+				suggestions.push('Check if the API endpoint exists');
+			}
+
+			return {
+				diagnosis: `Connection failed: ${testResult.message}`,
+				details,
+				suggestions:
+					suggestions.length > 0 ? suggestions : ['Review credential configuration and try again'],
+			};
+		} catch (error) {
+			return {
+				diagnosis: 'Diagnosis failed',
+				details: { error: error instanceof Error ? error.message : String(error) },
+				suggestions: ['Unable to diagnose connection due to an error'],
+			};
+		}
+	}
+
+	/**
+	 * Generate recommendations for credential configuration
+	 */
+	async generateCredentialRecommendations(
+		credentialType: string,
+		credentialData?: ICredentialDataDecryptedObject,
+	): Promise<{
+		recommendations: Array<{ type: string; message: string; priority: 'high' | 'medium' | 'low' }>;
+	}> {
+		const recommendations: Array<{
+			type: string;
+			message: string;
+			priority: 'high' | 'medium' | 'low';
+		}> = [];
+
+		try {
+			const credType = this.credentialTypes.getByName(credentialType);
+
+			// General recommendations based on credential type
+			recommendations.push({
+				type: 'security',
+				message:
+					'Use environment variables or secure vaults for sensitive credentials in production',
+				priority: 'high',
+			});
+
+			if (credType.properties) {
+				const hasPasswordField = credType.properties.some((prop) => prop.typeOptions?.password);
+				if (hasPasswordField) {
+					recommendations.push({
+						type: 'security',
+						message: "Ensure passwords meet your organization's security requirements",
+						priority: 'high',
+					});
+				}
+
+				const hasUrlField = credType.properties.some((prop) =>
+					prop.name.toLowerCase().includes('url'),
+				);
+				if (hasUrlField) {
+					recommendations.push({
+						type: 'configuration',
+						message: 'Use HTTPS URLs when possible for secure communication',
+						priority: 'medium',
+					});
+				}
+			}
+
+			// Specific recommendations based on credential data
+			if (credentialData) {
+				const validation = await this.validateCredentialFields(credentialType, credentialData);
+				if (!validation.valid) {
+					recommendations.push({
+						type: 'validation',
+						message: 'Fix validation errors before using the credential',
+						priority: 'high',
+					});
+				}
+			}
+
+			recommendations.push({
+				type: 'testing',
+				message: 'Test the credential connection before saving to ensure it works correctly',
+				priority: 'medium',
+			});
+
+			return { recommendations };
+		} catch (error) {
+			return {
+				recommendations: [
+					{
+						type: 'error',
+						message: `Unable to generate recommendations: ${error instanceof Error ? error.message : String(error)}`,
+						priority: 'low',
+					},
+				],
+			};
+		}
+	}
+
+	/**
+	 * Generate troubleshooting steps for credential issues
+	 */
+	async generateTroubleshootingSteps(
+		credentialType: string,
+		errorMessage?: string,
+	): Promise<{
+		steps: Array<{ step: number; title: string; description: string; action: string }>;
+	}> {
+		const steps: Array<{ step: number; title: string; description: string; action: string }> = [];
+
+		try {
+			// Basic troubleshooting steps
+			steps.push({
+				step: 1,
+				title: 'Verify Credential Fields',
+				description: 'Check that all required fields are filled correctly',
+				action: 'Review and update credential configuration',
+			});
+
+			steps.push({
+				step: 2,
+				title: 'Test Connection',
+				description: 'Use the test connection feature to verify the credential works',
+				action: 'Click the test button in the credential configuration',
+			});
+
+			// Error-specific troubleshooting
+			if (errorMessage) {
+				const lowerError = errorMessage.toLowerCase();
+
+				if (lowerError.includes('timeout')) {
+					steps.push({
+						step: 3,
+						title: 'Check Network Connectivity',
+						description: 'Ensure the service is reachable from your n8n instance',
+						action: 'Verify firewall settings and network configuration',
+					});
+				}
+
+				if (lowerError.includes('authentication') || lowerError.includes('unauthorized')) {
+					steps.push({
+						step: 3,
+						title: 'Verify Authentication',
+						description: 'Check username, password, API keys, or tokens',
+						action: 'Update authentication credentials in the service',
+					});
+				}
+
+				if (lowerError.includes('ssl') || lowerError.includes('certificate')) {
+					steps.push({
+						step: 3,
+						title: 'SSL Certificate Issues',
+						description: 'Verify SSL certificates are valid and trusted',
+						action: 'Check certificate validity or disable SSL verification if appropriate',
+					});
+				}
+			}
+
+			// Final steps
+			steps.push({
+				step: steps.length + 1,
+				title: 'Check Service Status',
+				description: 'Verify the external service is operational',
+				action: 'Check the service status page or contact support',
+			});
+
+			steps.push({
+				step: steps.length + 1,
+				title: 'Consult Documentation',
+				description: 'Review the service-specific documentation for setup requirements',
+				action: 'Check n8n docs and the service provider documentation',
+			});
+
+			return { steps };
+		} catch (error) {
+			return {
+				steps: [
+					{
+						step: 1,
+						title: 'Error Generating Steps',
+						description: `Unable to generate troubleshooting steps: ${error instanceof Error ? error.message : String(error)}`,
+						action: 'Try again or consult documentation',
+					},
+				],
+			};
+		}
+	}
 }

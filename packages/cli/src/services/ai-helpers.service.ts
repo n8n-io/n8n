@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { Logger } from '@n8n/backend-common';
 import type { IUser, INodeTypeDescription } from 'n8n-workflow';
-import * as NodeHelpers from 'n8n-workflow/src/node-helpers';
+import { NodeHelpers } from 'n8n-workflow';
 import { NodeTypes } from '@/node-types';
 
 // Import AI workflow builder if available (enterprise feature)
@@ -13,7 +13,7 @@ try {
 	// AI workflow builder not available - will use fallback implementations
 }
 
-interface NodeSuggestion {
+export interface NodeSuggestion {
 	nodeType: string;
 	displayName: string;
 	description: string;
@@ -27,7 +27,7 @@ interface NodeSuggestion {
 	};
 }
 
-interface ParameterMapping {
+export interface ParameterMapping {
 	targetParameter: string;
 	sourceExpression: string;
 	sourceDescription: string;
@@ -35,7 +35,7 @@ interface ParameterMapping {
 	mappingType: 'direct' | 'transformation' | 'calculated';
 }
 
-interface WorkflowAssistance {
+export interface WorkflowAssistance {
 	type: 'suggestion' | 'optimization' | 'fix' | 'explanation';
 	title: string;
 	description: string;
@@ -50,7 +50,7 @@ interface WorkflowAssistance {
 	priority: 'low' | 'medium' | 'high';
 }
 
-interface NodeRecommendation {
+export interface NodeRecommendation {
 	nodeType: string;
 	displayName: string;
 	description: string;
@@ -61,7 +61,7 @@ interface NodeRecommendation {
 	tags: string[];
 }
 
-interface WorkflowOptimization {
+export interface WorkflowOptimization {
 	optimizations: Array<{
 		type: 'performance' | 'structure' | 'readability' | 'error_handling';
 		title: string;
@@ -82,7 +82,7 @@ interface WorkflowOptimization {
 	};
 }
 
-interface WorkflowExplanation {
+export interface WorkflowExplanation {
 	overview: string;
 	flow: Array<{
 		nodeId: string;
@@ -221,16 +221,16 @@ export class AiHelpersService {
 		const limit = Math.min(criteria.limit || 10, 50);
 
 		const recommendations: NodeRecommendation[] = allNodeTypes
-			.filter((nodeType) => !nodeType.hidden)
+			.filter((nodeType) => !nodeType.description.hidden)
 			.map((nodeType) => ({
-				nodeType: nodeType.name,
-				displayName: nodeType.displayName,
-				description: nodeType.description,
-				category: this.getNodeCategory(nodeType),
-				useCase: this.getNodeUseCase(nodeType),
-				difficulty: this.getNodeDifficulty(nodeType),
-				popularity: this.getNodePopularity(nodeType),
-				tags: this.getNodeTags(nodeType),
+				nodeType: nodeType.description.name,
+				displayName: nodeType.description.displayName,
+				description: nodeType.description.description,
+				category: this.getNodeCategory(nodeType.description),
+				useCase: this.getNodeUseCase(nodeType.description),
+				difficulty: this.getNodeDifficulty(nodeType.description),
+				popularity: this.getNodePopularity(nodeType.description),
+				tags: this.getNodeTags(nodeType.description),
 			}))
 			.filter((rec) => {
 				if (criteria.category && rec.category !== criteria.category) return false;
@@ -290,16 +290,21 @@ export class AiHelpersService {
 		// Generate workflow explanation
 		const flow = workflowData.nodes.map((node) => {
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const nodeDescription = nodeType?.description;
 			return {
 				nodeId: node.id,
 				nodeName: node.name,
-				purpose: this.getNodePurpose(node, nodeType),
+				purpose: this.getNodePurpose(node, nodeDescription),
 				inputDescription:
-					explanationType !== 'overview' ? this.getInputDescription(node, nodeType) : undefined,
+					explanationType !== 'overview'
+						? this.getInputDescription(node, nodeDescription)
+						: undefined,
 				outputDescription:
-					explanationType !== 'overview' ? this.getOutputDescription(node, nodeType) : undefined,
+					explanationType !== 'overview'
+						? this.getOutputDescription(node, nodeDescription)
+						: undefined,
 				keyParameters:
-					explanationType === 'detailed' ? this.getKeyParameters(node, nodeType) : undefined,
+					explanationType === 'detailed' ? this.getKeyParameters(node, nodeDescription) : undefined,
 			};
 		});
 
@@ -361,13 +366,13 @@ export class AiHelpersService {
 				// Suggest common next nodes based on current node type
 				const nextNodeTypes = this.getCommonNextNodes(currentNode.type);
 				nextNodeTypes.forEach((nodeTypeName, index) => {
-					const nodeType = allNodeTypes.find((nt) => nt.name === nodeTypeName);
-					if (nodeType && !nodeType.hidden) {
+					const nodeType = allNodeTypes.find((nt) => nt.description.name === nodeTypeName);
+					if (nodeType && !nodeType.description.hidden) {
 						suggestions.push({
-							nodeType: nodeType.name,
-							displayName: nodeType.displayName,
-							description: nodeType.description,
-							category: this.getNodeCategory(nodeType),
+							nodeType: nodeType.description.name,
+							displayName: nodeType.description.displayName,
+							description: nodeType.description.description,
+							category: this.getNodeCategory(nodeType.description),
 							confidence: Math.max(0.9 - index * 0.1, 0.5),
 							reasoning: `Commonly used after ${currentNode.type} nodes`,
 							connectionHint: {
@@ -383,13 +388,13 @@ export class AiHelpersService {
 			// General suggestions based on popular nodes
 			const popularNodes = ['Set', 'If', 'HTTP Request', 'Code', 'Merge', 'Switch'];
 			popularNodes.forEach((nodeTypeName, index) => {
-				const nodeType = allNodeTypes.find((nt) => nt.name === nodeTypeName);
-				if (nodeType && !nodeType.hidden) {
+				const nodeType = allNodeTypes.find((nt) => nt.description.name === nodeTypeName);
+				if (nodeType && !nodeType.description.hidden) {
 					suggestions.push({
-						nodeType: nodeType.name,
-						displayName: nodeType.displayName,
-						description: nodeType.description,
-						category: this.getNodeCategory(nodeType),
+						nodeType: nodeType.description.name,
+						displayName: nodeType.description.displayName,
+						description: nodeType.description.description,
+						category: this.getNodeCategory(nodeType.description),
 						confidence: Math.max(0.8 - index * 0.1, 0.4),
 						reasoning: 'Commonly used in workflows',
 					});
@@ -422,18 +427,19 @@ export class AiHelpersService {
 			return { mappings, suggestions };
 		}
 
-		// Use NodeHelpers to get parameter information
+		// Use node type descriptions for parameter analysis
 		const sourceData = sourceNode.parameters || {};
-		const targetOutputs = NodeHelpers.getNodeOutputs(targetNodeType, targetNode.parameters);
-		const sourceInputs = NodeHelpers.getNodeInputs(sourceNodeType, sourceNode.parameters);
+		const targetOutputs = targetNodeType.description.outputs || [];
+		const sourceInputs = sourceNodeType.description.inputs || [];
 
-		if (targetNodeType.properties) {
-			targetNodeType.properties.forEach((prop) => {
+		if (targetNodeType.description.properties) {
+			targetNodeType.description.properties.forEach((prop) => {
 				// Enhanced parameter analysis using NodeHelpers
 				const isDisplayed = NodeHelpers.displayParameter(
 					targetNode.parameters || {},
 					prop,
-					targetNodeType,
+					targetNode,
+					targetNodeType.description,
 				);
 
 				if (!isDisplayed) return;
@@ -449,8 +455,8 @@ export class AiHelpersService {
 					if (similarFields.length > 0) {
 						const bestMatch = similarFields[0];
 						const confidence = this.calculateMappingConfidence(
-							sourceNodeType,
-							targetNodeType,
+							sourceNodeType.description,
+							targetNodeType.description,
 							bestMatch,
 							prop,
 						);
@@ -460,7 +466,11 @@ export class AiHelpersService {
 							sourceExpression: `{{ $json.${bestMatch} }}`,
 							sourceDescription: `Map from ${sourceNode.name}.${bestMatch}`,
 							confidence,
-							mappingType: this.determineMappingType(sourceNodeType, targetNodeType, prop),
+							mappingType: this.determineMappingType(
+								sourceNodeType.description,
+								targetNodeType.description,
+								prop,
+							),
 						});
 					}
 				}
@@ -490,11 +500,19 @@ export class AiHelpersService {
 		}
 
 		// Enhanced suggestions based on node types
-		if (sourceNodeType.group?.includes('trigger') && targetNodeType.group?.includes('action')) {
-			suggestions.push('Trigger to action node: Consider mapping event data to action parameters');
+		if (
+			sourceNodeType.description.group?.includes('trigger') &&
+			targetNodeType.description.group?.includes('transform')
+		) {
+			suggestions.push(
+				'Trigger to transform node: Consider mapping event data to transform parameters',
+			);
 		}
 
-		if (this.isDataProcessingNode(sourceNodeType) && this.isDataProcessingNode(targetNodeType)) {
+		if (
+			this.isDataProcessingNode(sourceNodeType.description) &&
+			this.isDataProcessingNode(targetNodeType.description)
+		) {
 			suggestions.push('Data processing nodes: Use expressions to transform data structure');
 		}
 
@@ -734,7 +752,7 @@ export class AiHelpersService {
 		node: any,
 		nodeType?: INodeTypeDescription,
 	): Array<{ name: string; value: any; explanation: string }> {
-		const params = [];
+		const params: Array<{ name: string; value: any; explanation: string }> = [];
 		if (node.parameters) {
 			Object.entries(node.parameters)
 				.slice(0, 3)

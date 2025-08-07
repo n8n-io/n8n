@@ -11,9 +11,10 @@ exports.default = async () => {
 	nock_1.default.enableNetConnect('127.0.0.1');
 	process.env.N8N_LOG_LEVEL = 'silent';
 	process.env.NODE_ENV = 'test';
-	process.env.DB_SQLITE_POOL_SIZE = '1';
+	process.env.DB_SQLITE_POOL_SIZE = '4';
 	process.env.DB_LOGGING_ENABLED = 'false';
 	process.env.CACHE_REDIS_ENABLED = 'false';
+	process.env.DB_TYPE = 'sqlite';
 	process.setMaxListeners(30);
 	if (global.gc) {
 		global.gc();

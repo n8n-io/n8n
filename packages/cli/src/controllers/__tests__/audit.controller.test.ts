@@ -16,7 +16,6 @@ import {
 	AuditController,
 	type AuditEventsQueryDto,
 	type SecurityEventsQueryDto,
-	type ComplianceReportsQueryDto,
 	type CreateComplianceReportDto,
 	type ManualAuditEventDto,
 	type AcknowledgeEventDto,

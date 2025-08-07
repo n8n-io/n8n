@@ -194,6 +194,400 @@ let CredentialsController = class CredentialsController {
 		}
 		return await this.credentialsService.test(req.user.id, mergedCredentials);
 	}
+	async validateCredentials(req) {
+		const { credentialId, includeConnectionTest = true, includeFieldValidation = true } = req.body;
+		if (!credentialId) {
+			throw new bad_request_error_1.BadRequestError('Credential ID is required');
+		}
+		this.logger.debug('Credential validation requested', {
+			credentialId,
+			userId: req.user.id,
+			includeConnectionTest,
+			includeFieldValidation,
+		});
+		try {
+			const storedCredential = await this.credentialsFinderService.findCredentialForUser(
+				credentialId,
+				req.user,
+				['credential:read'],
+			);
+			if (!storedCredential) {
+				throw new not_found_error_1.NotFoundError('Credential not found or access denied');
+			}
+			const decryptedData = this.credentialsService.decrypt(storedCredential, true);
+			const result = {
+				valid: true,
+				credentialId,
+				credentialType: storedCredential.type,
+				credentialName: storedCredential.name,
+				validationResults: {
+					fieldValidation: null,
+					connectionTest: null,
+				},
+				issues: [],
+				lastTested: new Date(),
+			};
+			if (includeFieldValidation) {
+				try {
+					const fieldValidation = await this.credentialsService.validateCredentialFields(
+						storedCredential.type,
+						decryptedData,
+					);
+					result.validationResults.fieldValidation = fieldValidation;
+					if (!fieldValidation.valid) {
+						result.valid = false;
+						result.issues.push(
+							...fieldValidation.issues.map((issue) => ({
+								type: 'field',
+								severity: issue.severity,
+								message: issue.message,
+								field: issue.field,
+								suggestion: issue.suggestion,
+							})),
+						);
+					}
+				} catch (error) {
+					result.issues.push({
+						type: 'field',
+						severity: 'error',
+						message: `Field validation failed: ${error instanceof Error ? error.message : String(error)}`,
+					});
+					result.valid = false;
+				}
+			}
+			if (includeConnectionTest) {
+				try {
+					const connectionTest = await this.credentialsService.test(req.user.id, {
+						id: storedCredential.id,
+						name: storedCredential.name,
+						type: storedCredential.type,
+						data: decryptedData,
+					});
+					result.validationResults.connectionTest = connectionTest;
+					if (connectionTest.status !== 'OK') {
+						result.valid = false;
+						result.issues.push({
+							type: 'connection',
+							severity: 'error',
+							message: connectionTest.message || 'Connection test failed',
+							suggestion: 'Check credential values and network connectivity',
+						});
+					}
+				} catch (error) {
+					result.issues.push({
+						type: 'connection',
+						severity: 'error',
+						message: `Connection test failed: ${error instanceof Error ? error.message : String(error)}`,
+						suggestion: 'Verify credential configuration and try again',
+					});
+					result.valid = false;
+				}
+			}
+			this.logger.debug('Credential validation completed', {
+				credentialId,
+				userId: req.user.id,
+				valid: result.valid,
+				issuesCount: result.issues.length,
+			});
+			return result;
+		} catch (error) {
+			this.logger.error('Credential validation failed', {
+				credentialId,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			if (
+				error instanceof bad_request_error_1.BadRequestError ||
+				error instanceof not_found_error_1.NotFoundError ||
+				error instanceof forbidden_error_1.ForbiddenError
+			) {
+				throw error;
+			}
+			throw new bad_request_error_1.BadRequestError(
+				`Credential validation failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+	async troubleshootCredentials(req) {
+		const {
+			credentialId,
+			includeConnectionDiagnostics = true,
+			includeFieldAnalysis = true,
+			includeUsageHistory = false,
+		} = req.body;
+		if (!credentialId) {
+			throw new bad_request_error_1.BadRequestError('Credential ID is required');
+		}
+		this.logger.debug('Credential troubleshooting requested', {
+			credentialId,
+			userId: req.user.id,
+			includeConnectionDiagnostics,
+			includeFieldAnalysis,
+			includeUsageHistory,
+		});
+		try {
+			const storedCredential = await this.credentialsFinderService.findCredentialForUser(
+				credentialId,
+				req.user,
+				['credential:read'],
+			);
+			if (!storedCredential) {
+				throw new not_found_error_1.NotFoundError('Credential not found or access denied');
+			}
+			const decryptedData = this.credentialsService.decrypt(storedCredential, true);
+			const troubleshootingResult = {
+				credentialId,
+				credentialType: storedCredential.type,
+				credentialName: storedCredential.name,
+				diagnostics: {
+					fieldAnalysis: null,
+					connectionDiagnostics: null,
+					usageHistory: null,
+				},
+				recommendations: [],
+				troubleshootingSteps: [],
+				analyzedAt: new Date(),
+			};
+			if (includeFieldAnalysis) {
+				troubleshootingResult.diagnostics.fieldAnalysis =
+					await this.credentialsService.analyzeCredentialFields(
+						storedCredential.type,
+						decryptedData,
+					);
+			}
+			if (includeConnectionDiagnostics) {
+				troubleshootingResult.diagnostics.connectionDiagnostics =
+					await this.credentialsService.diagnoseConnection(req.user.id, {
+						id: storedCredential.id,
+						name: storedCredential.name,
+						type: storedCredential.type,
+						data: decryptedData,
+					});
+			}
+			if (includeUsageHistory) {
+				troubleshootingResult.diagnostics.usageHistory = {
+					lastUsed: null,
+					usageCount: 0,
+					recentFailures: [],
+					note: 'Usage history tracking not yet implemented',
+				};
+			}
+			const recommendationsResult = await this.credentialsService.generateCredentialRecommendations(
+				storedCredential.type,
+				troubleshootingResult.diagnostics,
+			);
+			troubleshootingResult.recommendations = recommendationsResult.recommendations.map((rec) => ({
+				type: rec.type,
+				priority: rec.priority,
+				title: rec.message,
+				description: rec.message,
+			}));
+			const troubleshootingStepsResult = await this.credentialsService.generateTroubleshootingSteps(
+				storedCredential.type,
+				troubleshootingResult.diagnostics,
+			);
+			troubleshootingResult.troubleshootingSteps = troubleshootingStepsResult.steps.map((step) => ({
+				step: step.step,
+				title: step.title,
+				description: step.description,
+				completed: false,
+			}));
+			this.logger.debug('Credential troubleshooting completed', {
+				credentialId,
+				userId: req.user.id,
+				recommendationsCount: troubleshootingResult.recommendations.length,
+				troubleshootingStepsCount: troubleshootingResult.troubleshootingSteps.length,
+			});
+			return troubleshootingResult;
+		} catch (error) {
+			this.logger.error('Credential troubleshooting failed', {
+				credentialId,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			if (
+				error instanceof bad_request_error_1.BadRequestError ||
+				error instanceof not_found_error_1.NotFoundError ||
+				error instanceof forbidden_error_1.ForbiddenError
+			) {
+				throw error;
+			}
+			throw new bad_request_error_1.BadRequestError(
+				`Credential troubleshooting failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+	async healthCheckCredentials(req) {
+		const { credentialIds, includePerformanceMetrics = false } = req.body;
+		if (!credentialIds || !Array.isArray(credentialIds) || credentialIds.length === 0) {
+			throw new bad_request_error_1.BadRequestError(
+				'Credential IDs array is required and must not be empty',
+			);
+		}
+		if (credentialIds.length > 20) {
+			throw new bad_request_error_1.BadRequestError(
+				'Maximum 20 credentials allowed per health check',
+			);
+		}
+		this.logger.debug('Credential health check requested', {
+			credentialIds,
+			userId: req.user.id,
+			credentialCount: credentialIds.length,
+			includePerformanceMetrics,
+		});
+		const healthCheckResults = await Promise.allSettled(
+			credentialIds.map(async (credentialId) => {
+				const startTime = Date.now();
+				try {
+					const storedCredential = await this.credentialsFinderService.findCredentialForUser(
+						credentialId,
+						req.user,
+						['credential:read'],
+					);
+					if (!storedCredential) {
+						return {
+							credentialId,
+							status: 'error',
+							message: 'Credential not found or access denied',
+							executionTime: Date.now() - startTime,
+						};
+					}
+					const decryptedData = this.credentialsService.decrypt(storedCredential, true);
+					const testResult = await this.credentialsService.test(req.user.id, {
+						id: storedCredential.id,
+						name: storedCredential.name,
+						type: storedCredential.type,
+						data: decryptedData,
+					});
+					const executionTime = Date.now() - startTime;
+					const isHealthy = testResult.status === 'OK';
+					return {
+						credentialId,
+						credentialName: storedCredential.name,
+						credentialType: storedCredential.type,
+						status: isHealthy ? 'healthy' : 'unhealthy',
+						message:
+							testResult.message || (isHealthy ? 'Connection successful' : 'Connection failed'),
+						executionTime,
+						performanceMetrics: includePerformanceMetrics
+							? {
+									responseTime: executionTime,
+									testType: 'connection',
+									timestamp: new Date(),
+								}
+							: undefined,
+					};
+				} catch (error) {
+					return {
+						credentialId,
+						status: 'error',
+						message: error instanceof Error ? error.message : String(error),
+						executionTime: Date.now() - startTime,
+					};
+				}
+			}),
+		);
+		const results = healthCheckResults.map((result) =>
+			result.status === 'fulfilled'
+				? result.value
+				: {
+						credentialId: 'unknown',
+						status: 'error',
+						message: result.reason instanceof Error ? result.reason.message : String(result.reason),
+						executionTime: 0,
+					},
+		);
+		const summary = {
+			total: credentialIds.length,
+			healthy: results.filter((r) => r.status === 'healthy').length,
+			unhealthy: results.filter((r) => r.status === 'unhealthy').length,
+			errors: results.filter((r) => r.status === 'error').length,
+			averageResponseTime: Math.round(
+				results.reduce((sum, r) => sum + r.executionTime, 0) / results.length,
+			),
+		};
+		this.logger.debug('Credential health check completed', {
+			userId: req.user.id,
+			summary,
+		});
+		return {
+			summary,
+			results,
+			checkedAt: new Date(),
+		};
+	}
+	async testCredentialById(req) {
+		const { credentialId } = req.params;
+		const { includeMetrics = false } = req.body;
+		if (!credentialId) {
+			throw new bad_request_error_1.BadRequestError('Credential ID is required');
+		}
+		this.logger.debug('Credential test by ID requested', {
+			credentialId,
+			userId: req.user.id,
+			includeMetrics,
+		});
+		try {
+			const storedCredential = await this.credentialsFinderService.findCredentialForUser(
+				credentialId,
+				req.user,
+				['credential:read'],
+			);
+			if (!storedCredential) {
+				throw new not_found_error_1.NotFoundError('Credential not found or access denied');
+			}
+			const startTime = Date.now();
+			const decryptedData = this.credentialsService.decrypt(storedCredential, true);
+			const testResult = await this.credentialsService.test(req.user.id, {
+				id: storedCredential.id,
+				name: storedCredential.name,
+				type: storedCredential.type,
+				data: decryptedData,
+			});
+			const executionTime = Date.now() - startTime;
+			const result = {
+				credentialId,
+				credentialName: storedCredential.name,
+				credentialType: storedCredential.type,
+				success: testResult.status === 'OK',
+				message:
+					testResult.message ||
+					(testResult.status === 'OK' ? 'Connection successful' : 'Connection failed'),
+				testResult,
+				testedAt: new Date(),
+				metrics: includeMetrics
+					? {
+							executionTime,
+							testType: 'connection',
+							credentialType: storedCredential.type,
+						}
+					: undefined,
+			};
+			this.logger.debug('Credential test by ID completed', {
+				credentialId,
+				userId: req.user.id,
+				success: result.success,
+				executionTime,
+			});
+			return result;
+		} catch (error) {
+			this.logger.error('Credential test by ID failed', {
+				credentialId,
+				userId: req.user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			if (
+				error instanceof bad_request_error_1.BadRequestError ||
+				error instanceof not_found_error_1.NotFoundError ||
+				error instanceof forbidden_error_1.ForbiddenError
+			) {
+				throw error;
+			}
+			throw new bad_request_error_1.BadRequestError(
+				`Credential test failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
 	async createCredentials(req, _, payload) {
 		const newCredential = await this.credentialsService.createUnmanagedCredential(
 			payload,
@@ -427,6 +821,54 @@ __decorate(
 	],
 	CredentialsController.prototype,
 	'testCredentials',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Post)('/validate'),
+		(0, decorators_1.ProjectScope)('credential:read'),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object]),
+		__metadata('design:returntype', Promise),
+	],
+	CredentialsController.prototype,
+	'validateCredentials',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Post)('/troubleshoot'),
+		(0, decorators_1.ProjectScope)('credential:read'),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object]),
+		__metadata('design:returntype', Promise),
+	],
+	CredentialsController.prototype,
+	'troubleshootCredentials',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Post)('/health-check'),
+		(0, decorators_1.ProjectScope)('credential:read'),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object]),
+		__metadata('design:returntype', Promise),
+	],
+	CredentialsController.prototype,
+	'healthCheckCredentials',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Post)('/:credentialId/test'),
+		(0, decorators_1.ProjectScope)('credential:read'),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object]),
+		__metadata('design:returntype', Promise),
+	],
+	CredentialsController.prototype,
+	'testCredentialById',
 	null,
 );
 __decorate(

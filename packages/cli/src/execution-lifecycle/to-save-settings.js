@@ -19,7 +19,7 @@ function toSaveSettings(workflowSettings = {}) {
 		saveDataSuccessExecution = DEFAULTS.SUCCESS,
 		saveManualExecutions = DEFAULTS.MANUAL,
 		saveExecutionProgress = DEFAULTS.PROGRESS,
-	} = workflowSettings;
+	} = workflowSettings ?? {};
 	return {
 		error: saveDataErrorExecution === 'DEFAULT' ? DEFAULTS.ERROR : saveDataErrorExecution === 'all',
 		success:

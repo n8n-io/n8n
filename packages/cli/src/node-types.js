@@ -87,6 +87,10 @@ let NodeTypes = class NodeTypes {
 		loadedNodes[nodeType + 'Tool'] = { sourcePath: '', type: tool };
 		return tool;
 	}
+	getAll() {
+		const loadedNodes = this.loadNodesAndCredentials.loadedNodes;
+		return Object.values(loadedNodes).map((node) => node.type);
+	}
 	getKnownTypes() {
 		return this.loadNodesAndCredentials.knownNodes;
 	}

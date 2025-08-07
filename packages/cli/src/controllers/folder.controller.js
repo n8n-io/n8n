@@ -143,6 +143,148 @@ let ProjectController = class ProjectController {
 			body.shareCredentials,
 		);
 	}
+	async getFolder(req) {
+		const { projectId, folderId } = req.params;
+		try {
+			const folder = await this.folderService.findFolderInProjectOrFail(folderId, projectId);
+			return folder;
+		} catch (e) {
+			if (e instanceof folder_not_found_error_1.FolderNotFoundError) {
+				throw new not_found_error_1.NotFoundError(e.message);
+			}
+			throw new internal_server_error_1.InternalServerError(undefined, e);
+		}
+	}
+	async getFolderPath(req) {
+		const { projectId, folderId } = req.params;
+		try {
+			const path = await this.folderService.getFolderPath(folderId, projectId);
+			return { path };
+		} catch (e) {
+			if (e instanceof folder_not_found_error_1.FolderNotFoundError) {
+				throw new not_found_error_1.NotFoundError(e.message);
+			}
+			throw new internal_server_error_1.InternalServerError(undefined, e);
+		}
+	}
+	async getFolderAncestors(req) {
+		const { projectId, folderId } = req.params;
+		try {
+			const ancestors = await this.folderService.getFolderAncestors(folderId, projectId);
+			return { ancestors };
+		} catch (e) {
+			if (e instanceof folder_not_found_error_1.FolderNotFoundError) {
+				throw new not_found_error_1.NotFoundError(e.message);
+			}
+			throw new internal_server_error_1.InternalServerError(undefined, e);
+		}
+	}
+	async getFolderDescendants(req) {
+		const { projectId, folderId } = req.params;
+		try {
+			const descendants = await this.folderService.getFolderDescendants(folderId, projectId);
+			return { descendants };
+		} catch (e) {
+			if (e instanceof folder_not_found_error_1.FolderNotFoundError) {
+				throw new not_found_error_1.NotFoundError(e.message);
+			}
+			throw new internal_server_error_1.InternalServerError(undefined, e);
+		}
+	}
+	async duplicateFolder(req, _res, payload) {
+		const { projectId, folderId } = req.params;
+		const { name, parentFolderId, includeWorkflows = false } = payload;
+		try {
+			const duplicatedFolder = await this.folderService.duplicateFolder(folderId, projectId, {
+				name,
+				parentFolderId,
+				includeWorkflows,
+			});
+			return duplicatedFolder;
+		} catch (e) {
+			if (e instanceof folder_not_found_error_1.FolderNotFoundError) {
+				throw new not_found_error_1.NotFoundError(e.message);
+			} else if (e instanceof n8n_workflow_1.UserError) {
+				throw new bad_request_error_1.BadRequestError(e.message);
+			}
+			throw new internal_server_error_1.InternalServerError(undefined, e);
+		}
+	}
+	async bulkMoveFolders(req, _res, payload) {
+		const { projectId } = req.params;
+		const { folderIds, targetFolderId } = payload;
+		if (!folderIds || folderIds.length === 0) {
+			throw new bad_request_error_1.BadRequestError('folderIds is required and cannot be empty');
+		}
+		if (folderIds.length > 50) {
+			throw new bad_request_error_1.BadRequestError('Cannot move more than 50 folders at once');
+		}
+		try {
+			const result = await this.folderService.bulkMoveFolders(folderIds, projectId, targetFolderId);
+			return result;
+		} catch (e) {
+			if (e instanceof folder_not_found_error_1.FolderNotFoundError) {
+				throw new not_found_error_1.NotFoundError(e.message);
+			} else if (e instanceof n8n_workflow_1.UserError) {
+				throw new bad_request_error_1.BadRequestError(e.message);
+			}
+			throw new internal_server_error_1.InternalServerError(undefined, e);
+		}
+	}
+	async bulkDeleteFolders(req, _res, payload) {
+		const { projectId } = req.params;
+		const { folderIds, transferToFolderId } = payload;
+		if (!folderIds || folderIds.length === 0) {
+			throw new bad_request_error_1.BadRequestError('folderIds is required and cannot be empty');
+		}
+		if (folderIds.length > 50) {
+			throw new bad_request_error_1.BadRequestError('Cannot delete more than 50 folders at once');
+		}
+		try {
+			const result = await this.folderService.bulkDeleteFolders(
+				req.user,
+				folderIds,
+				projectId,
+				transferToFolderId,
+			);
+			return result;
+		} catch (e) {
+			if (e instanceof folder_not_found_error_1.FolderNotFoundError) {
+				throw new not_found_error_1.NotFoundError(e.message);
+			} else if (e instanceof n8n_workflow_1.UserError) {
+				throw new bad_request_error_1.BadRequestError(e.message);
+			}
+			throw new internal_server_error_1.InternalServerError(undefined, e);
+		}
+	}
+	async getFolderPermissions(req) {
+		const { projectId, folderId } = req.params;
+		try {
+			const permissions = await this.folderService.getFolderPermissions(
+				req.user,
+				folderId,
+				projectId,
+			);
+			return { permissions };
+		} catch (e) {
+			if (e instanceof folder_not_found_error_1.FolderNotFoundError) {
+				throw new not_found_error_1.NotFoundError(e.message);
+			}
+			throw new internal_server_error_1.InternalServerError(undefined, e);
+		}
+	}
+	async getFolderStatistics(req) {
+		const { projectId, folderId } = req.params;
+		try {
+			const statistics = await this.folderService.getFolderStatistics(folderId, projectId);
+			return statistics;
+		} catch (e) {
+			if (e instanceof folder_not_found_error_1.FolderNotFoundError) {
+				throw new not_found_error_1.NotFoundError(e.message);
+			}
+			throw new internal_server_error_1.InternalServerError(undefined, e);
+		}
+	}
 };
 exports.ProjectController = ProjectController;
 __decorate(
@@ -260,6 +402,126 @@ __decorate(
 	],
 	ProjectController.prototype,
 	'transferFolderToProject',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Get)('/:folderId'),
+		(0, decorators_1.ProjectScope)('folder:read'),
+		(0, decorators_1.Licensed)('feat:folders'),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object]),
+		__metadata('design:returntype', Promise),
+	],
+	ProjectController.prototype,
+	'getFolder',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Get)('/:folderId/path'),
+		(0, decorators_1.ProjectScope)('folder:read'),
+		(0, decorators_1.Licensed)('feat:folders'),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object]),
+		__metadata('design:returntype', Promise),
+	],
+	ProjectController.prototype,
+	'getFolderPath',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Get)('/:folderId/ancestors'),
+		(0, decorators_1.ProjectScope)('folder:read'),
+		(0, decorators_1.Licensed)('feat:folders'),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object]),
+		__metadata('design:returntype', Promise),
+	],
+	ProjectController.prototype,
+	'getFolderAncestors',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Get)('/:folderId/descendants'),
+		(0, decorators_1.ProjectScope)('folder:read'),
+		(0, decorators_1.Licensed)('feat:folders'),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object]),
+		__metadata('design:returntype', Promise),
+	],
+	ProjectController.prototype,
+	'getFolderDescendants',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Post)('/:folderId/duplicate'),
+		(0, decorators_1.ProjectScope)('folder:create'),
+		(0, decorators_1.Licensed)('feat:folders'),
+		__param(2, decorators_1.Body),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object, Object, Object]),
+		__metadata('design:returntype', Promise),
+	],
+	ProjectController.prototype,
+	'duplicateFolder',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Post)('/bulk/move'),
+		(0, decorators_1.ProjectScope)('folder:update'),
+		(0, decorators_1.Licensed)('feat:folders'),
+		__param(2, decorators_1.Body),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object, Object, Object]),
+		__metadata('design:returntype', Promise),
+	],
+	ProjectController.prototype,
+	'bulkMoveFolders',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Post)('/bulk/delete'),
+		(0, decorators_1.ProjectScope)('folder:delete'),
+		(0, decorators_1.Licensed)('feat:folders'),
+		__param(2, decorators_1.Body),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object, Object, Object]),
+		__metadata('design:returntype', Promise),
+	],
+	ProjectController.prototype,
+	'bulkDeleteFolders',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Get)('/:folderId/permissions'),
+		(0, decorators_1.ProjectScope)('folder:read'),
+		(0, decorators_1.Licensed)('feat:folders'),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object]),
+		__metadata('design:returntype', Promise),
+	],
+	ProjectController.prototype,
+	'getFolderPermissions',
+	null,
+);
+__decorate(
+	[
+		(0, decorators_1.Get)('/:folderId/statistics'),
+		(0, decorators_1.ProjectScope)('folder:read'),
+		(0, decorators_1.Licensed)('feat:folders'),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object]),
+		__metadata('design:returntype', Promise),
+	],
+	ProjectController.prototype,
+	'getFolderStatistics',
 	null,
 );
 exports.ProjectController = ProjectController = __decorate(

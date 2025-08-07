@@ -331,10 +331,10 @@ describe('CommunityPackagesService', () => {
 				JSON.stringify({
 					name: PACKAGE_NAME,
 					version: '1.0.0',
-					dependencies: { 'some-actual-dep': '1.2.3' },
-					devDependencies: { 'a-dev-dep': '1.0.0' },
-					peerDependencies: { 'a-peer-dep': '2.0.0' },
-					optionalDependencies: { 'an-optional-dep': '3.0.0' },
+					dependencies: { someActualDep: '1.2.3' },
+					devDependencies: { aDevDep: '1.0.0' },
+					peerDependencies: { aPeerDep: '2.0.0' },
+					optionalDependencies: { anOptionalDep: '3.0.0' },
 				}),
 			);
 			(0, jest_mock_1.mocked)(promises_1.writeFile).mockResolvedValue(undefined);
@@ -392,7 +392,7 @@ describe('CommunityPackagesService', () => {
 					{
 						name: PACKAGE_NAME,
 						version: '1.0.0',
-						dependencies: { 'some-actual-dep': '1.2.3' },
+						dependencies: { someActualDep: '1.2.3' },
 					},
 					null,
 					2,
@@ -552,7 +552,7 @@ describe('CommunityPackagesService', () => {
 			await communityPackagesService.updatePackageJsonDependency('test-package', '1.0.0');
 			expect(promises_1.writeFile).toHaveBeenCalledWith(
 				`${nodesDownloadDir}/package.json`,
-				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
+				JSON.stringify({ dependencies: { testPackage: '1.0.0' } }, null, 2),
 				'utf-8',
 			);
 		});
@@ -560,7 +560,7 @@ describe('CommunityPackagesService', () => {
 			await communityPackagesService.updatePackageJsonDependency('test-package', '1.0.0');
 			expect(promises_1.writeFile).toHaveBeenCalledWith(
 				`${nodesDownloadDir}/package.json`,
-				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
+				JSON.stringify({ dependencies: { testPackage: '1.0.0' } }, null, 2),
 				'utf-8',
 			);
 		});

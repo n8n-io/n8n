@@ -89,7 +89,7 @@ const flagsSchema = zod_1.default.object({
 		.string()
 		.default(constants_1.RISK_CATEGORIES.join(','))
 		.describe('Comma-separated list of categories to include in the audit'),
-	'days-abandoned-workflow': zod_1.default
+	daysAbandonedWorkflow: zod_1.default
 		.number()
 		.int()
 		.default(di_1.Container.get(config_1.SecurityConfig).daysAbandonedWorkflow)
@@ -114,7 +114,7 @@ let SecurityAudit = class SecurityAudit extends base_command_1.BaseCommand {
 		);
 		const result = await di_1.Container.get(SecurityAuditService).run(
 			categories,
-			auditFlags['days-abandoned-workflow'],
+			auditFlags.daysAbandonedWorkflow,
 		);
 		if (Array.isArray(result) && result.length === 0) {
 			this.logger.info('No security issues found');

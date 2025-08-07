@@ -76,9 +76,9 @@ export class MigratePythonCommand extends Command {
 		}),
 	};
 
+	private logger!: Logger;
 	private migrationService!: PyodideToLocalPythonMigrationService;
 	private compatibilityService!: PyodideCompatibilityService;
-	// private logger!: Logger;
 
 	async run(): Promise<void> {
 		const { flags } = await this.parse(MigratePythonCommand);

@@ -57,6 +57,10 @@ let AiController = class AiController {
 	}
 	async build(req, res, payload) {
 		try {
+			const abortController = new AbortController();
+			const { signal } = abortController;
+			const handleClose = () => abortController.abort();
+			res.on('close', handleClose);
 			const { text, workflowContext } = payload.payload;
 			const aiResponse = this.workflowBuilderService.chat(
 				{
@@ -68,6 +72,7 @@ let AiController = class AiController {
 					},
 				},
 				req.user,
+				signal,
 			);
 			res.header('Content-type', 'application/json-lines').flush();
 			try {
@@ -87,6 +92,8 @@ let AiController = class AiController {
 					],
 				};
 				res.write(JSON.stringify(errorChunk) + '⧉⇋⇋➽⌑⧉§§\n');
+			} finally {
+				res.off('close', handleClose);
 			}
 			res.end();
 		} catch (e) {

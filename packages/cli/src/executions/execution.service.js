@@ -740,12 +740,14 @@ let ExecutionService = class ExecutionService {
 		let paused = false;
 		let currentNodeName;
 		try {
-			if (this.activeExecutions.has(executionId)) {
-				paused = true;
-				const activeExecution = this.activeExecutions.getExecutionOrFail(executionId);
-				const executionData = activeExecution.executionData;
-				if (executionData?.executionData?.resultData?.lastNodeExecuted) {
-					currentNodeName = executionData.executionData.resultData.lastNodeExecuted;
+			if (this.activeExecutions.has(executionId) && this.activeExecutions.canPause(executionId)) {
+				paused = this.activeExecutions.pauseExecution(executionId);
+				if (paused) {
+					const statusInfo = this.activeExecutions.getExecutionStatus(executionId);
+					currentNodeName = statusInfo?.currentNode;
+					await this.executionRepository.updateExistingExecution(executionId, {
+						status: 'waiting',
+					});
 				}
 			}
 			this.logger.debug('Execution paused successfully', {
@@ -787,10 +789,14 @@ let ExecutionService = class ExecutionService {
 		let resumed = false;
 		let fromNodeName;
 		try {
-			if (this.activeExecutions.has(executionId)) {
-				resumed = true;
-				if (execution.data?.resultData?.lastNodeExecuted) {
-					fromNodeName = execution.data.resultData.lastNodeExecuted;
+			if (this.activeExecutions.has(executionId) && this.activeExecutions.canResume(executionId)) {
+				resumed = this.activeExecutions.resumeExecution(executionId);
+				if (resumed) {
+					const statusInfo = this.activeExecutions.getExecutionStatus(executionId);
+					fromNodeName = statusInfo?.currentNode;
+					await this.executionRepository.updateExistingExecution(executionId, {
+						status: 'running',
+					});
 				}
 			}
 			this.logger.debug('Execution resumed successfully', {
@@ -833,17 +839,19 @@ let ExecutionService = class ExecutionService {
 		let currentNodeName;
 		let nextNodeNames = [];
 		try {
-			if (this.activeExecutions.has(executionId)) {
-				stepsExecuted = steps;
-				const activeExecution = this.activeExecutions.getExecutionOrFail(executionId);
-				const executionData = activeExecution.executionData;
-				if (executionData?.executionData?.resultData?.lastNodeExecuted) {
-					currentNodeName = executionData.executionData.resultData.lastNodeExecuted;
-				}
-				if (options.nodeNames) {
-					nextNodeNames = options.nodeNames;
-				} else {
-					nextNodeNames = this.getNextNodesInSequence(execution.workflowData, currentNodeName);
+			if (this.activeExecutions.has(executionId) && this.activeExecutions.canStep(executionId)) {
+				const stepResult = this.activeExecutions.stepExecution(
+					executionId,
+					steps,
+					options.nodeNames,
+				);
+				stepsExecuted = stepResult.stepsExecuted;
+				currentNodeName = stepResult.currentNode;
+				nextNodeNames = stepResult.nextNodes;
+				if (stepsExecuted > 0) {
+					await this.executionRepository.updateExistingExecution(executionId, {
+						status: 'running',
+					});
 				}
 			}
 			this.logger.debug('Execution stepped successfully', {
@@ -876,6 +884,30 @@ let ExecutionService = class ExecutionService {
 			throw new not_found_error_1.NotFoundError(
 				`The execution with the ID "${executionId}" does not exist.`,
 			);
+		}
+		if (this.activeExecutions.has(executionId)) {
+			const nodeStatus = this.activeExecutions.getNodeExecutionStatus(executionId, nodeName);
+			if (nodeStatus) {
+				let mappedStatus;
+				switch (nodeStatus.status) {
+					case 'success':
+						mappedStatus = 'completed';
+						break;
+					case 'error':
+						mappedStatus = 'failed';
+						break;
+					default:
+						mappedStatus = nodeStatus.status;
+						break;
+				}
+				return {
+					executionId,
+					nodeName,
+					status: mappedStatus,
+					executionTime: nodeStatus.executionTime,
+					error: nodeStatus.error,
+				};
+			}
 		}
 		const runData = execution.data?.resultData?.runData || {};
 		const nodeRunData = runData[nodeName];
@@ -931,15 +963,33 @@ let ExecutionService = class ExecutionService {
 			throw new n8n_workflow_1.WorkflowOperationError(`Node "${nodeName}" not found in workflow`);
 		}
 		try {
-			if (options.modifiedParameters && Object.keys(options.modifiedParameters).length > 0) {
-				node.parameters = {
-					...node.parameters,
-					...options.modifiedParameters,
-				};
-			}
-			if (options.resetState) {
-				const runData = execution.data?.resultData?.runData || {};
-				delete runData[nodeName];
+			if (this.activeExecutions.has(executionId)) {
+				const retried = this.activeExecutions.retryNodeExecution(
+					executionId,
+					nodeName,
+					options.modifiedParameters,
+					options.resetState,
+				);
+				if (!retried) {
+					throw new internal_server_error_1.InternalServerError(
+						'Failed to retry node in active execution',
+					);
+				}
+			} else {
+				if (options.modifiedParameters && Object.keys(options.modifiedParameters).length > 0) {
+					node.parameters = {
+						...node.parameters,
+						...options.modifiedParameters,
+					};
+				}
+				if (options.resetState) {
+					const runData = execution.data?.resultData?.runData || {};
+					delete runData[nodeName];
+				}
+				await this.executionRepository.updateExistingExecution(executionId, {
+					workflowData: execution.workflowData,
+					data: execution.data,
+				});
 			}
 			this.logger.debug('Node retry completed', {
 				executionId,
@@ -978,20 +1028,36 @@ let ExecutionService = class ExecutionService {
 			throw new n8n_workflow_1.WorkflowOperationError(`Node "${nodeName}" not found in workflow`);
 		}
 		try {
-			const runData = execution.data?.resultData?.runData || {};
-			runData[nodeName] = [
-				{
-					startTime: Date.now(),
-					executionIndex: 0,
-					executionTime: 0,
-					data: {
-						main: options.mockOutputData
-							? [[{ json: options.mockOutputData, pairedItem: { item: 0 } }]]
-							: [[]],
+			if (this.activeExecutions.has(executionId)) {
+				const skipped = this.activeExecutions.skipNodeExecution(
+					executionId,
+					nodeName,
+					options.mockOutputData,
+				);
+				if (!skipped) {
+					throw new internal_server_error_1.InternalServerError(
+						'Failed to skip node in active execution',
+					);
+				}
+			} else {
+				const runData = execution.data?.resultData?.runData || {};
+				runData[nodeName] = [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 0,
+						data: {
+							main: options.mockOutputData
+								? [[{ json: options.mockOutputData, pairedItem: { item: 0 } }]]
+								: [[]],
+						},
+						source: [],
 					},
-					source: [],
-				},
-			];
+				];
+				await this.executionRepository.updateExistingExecution(executionId, {
+					data: execution.data,
+				});
+			}
 			this.logger.debug('Node skipped successfully', {
 				executionId,
 				nodeName,
@@ -1080,9 +1146,13 @@ let ExecutionService = class ExecutionService {
 		const nextNodes = [];
 		for (const connectionType in connections) {
 			const typeConnections = connections[connectionType] || [];
-			for (const connection of typeConnections) {
-				if (connection?.node) {
-					nextNodes.push(connection.node);
+			for (const connectionArray of typeConnections) {
+				if (Array.isArray(connectionArray)) {
+					for (const connection of connectionArray) {
+						if (connection?.node) {
+							nextNodes.push(connection.node);
+						}
+					}
 				}
 			}
 		}

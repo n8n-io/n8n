@@ -6,7 +6,15 @@ import type { Response } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { Logger } from '@n8n/backend-common';
-import { AiHelpersService } from '@/services/ai-helpers.service';
+import {
+	AiHelpersService,
+	type NodeSuggestion,
+	type ParameterMapping,
+	type WorkflowAssistance,
+	type NodeRecommendation,
+	type WorkflowOptimization,
+	type WorkflowExplanation,
+} from '@/services/ai-helpers.service';
 
 interface NodeSuggestionRequest {
 	workflowData: {
@@ -46,7 +54,10 @@ export class AiHelpersController {
 	) {}
 
 	@Post('/suggest-nodes')
-	async suggestNodes(req: AuthenticatedRequest<{}, {}, NodeSuggestionRequest>, _res: Response) {
+	async suggestNodes(
+		req: AuthenticatedRequest<{}, {}, NodeSuggestionRequest>,
+		_res: Response,
+	): Promise<{ success: boolean; suggestions: NodeSuggestion[]; metadata: any }> {
 		const { workflowData, currentNodeId, contextType = 'general' } = req.body;
 
 		if (!workflowData?.nodes) {
@@ -92,7 +103,14 @@ export class AiHelpersController {
 	}
 
 	@Post('/map-parameters')
-	async mapParameters(req: AuthenticatedRequest<{}, {}, ParameterMappingRequest>, _res: Response) {
+	async mapParameters(
+		req: AuthenticatedRequest<{}, {}, ParameterMappingRequest>,
+		_res: Response,
+	): Promise<{
+		success: boolean;
+		mapping: { mappings: ParameterMapping[]; suggestions: string[] };
+		metadata: any;
+	}> {
 		const { sourceNodeId, targetNodeId, workflowData } = req.body;
 
 		if (!sourceNodeId || !targetNodeId || !workflowData?.nodes) {
@@ -144,7 +162,7 @@ export class AiHelpersController {
 	async workflowAssistance(
 		req: AuthenticatedRequest<{}, {}, WorkflowAssistanceRequest>,
 		_res: Response,
-	) {
+	): Promise<{ success: boolean; assistance: WorkflowAssistance[]; metadata: any }> {
 		const { workflowData, query, context } = req.body;
 
 		if (!workflowData?.nodes || !query) {
@@ -206,7 +224,7 @@ export class AiHelpersController {
 			}
 		>,
 		_res: Response,
-	) {
+	): Promise<{ success: boolean; recommendations: NodeRecommendation[]; metadata: any }> {
 		const { category, useCase, difficulty = 'beginner', limit = '10' } = req.query;
 
 		this.logger.debug('AI node recommendations requested', {
@@ -266,7 +284,7 @@ export class AiHelpersController {
 			}
 		>,
 		_res: Response,
-	) {
+	): Promise<{ success: boolean; optimization: WorkflowOptimization; metadata: any }> {
 		const { workflowData, optimizationType = 'all' } = req.body;
 
 		if (!workflowData?.nodes) {
@@ -325,7 +343,7 @@ export class AiHelpersController {
 			}
 		>,
 		_res: Response,
-	) {
+	): Promise<{ success: boolean; explanation: WorkflowExplanation; metadata: any }> {
 		const { workflowData, explanationType = 'overview', focusNodeId } = req.body;
 
 		if (!workflowData?.nodes) {

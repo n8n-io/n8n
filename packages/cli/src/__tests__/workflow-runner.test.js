@@ -305,7 +305,7 @@ describe('enqueueExecution', () => {
 	MockScalingService = __decorate([(0, di_1.Service)()], MockScalingService);
 	beforeAll(() => {
 		jest.mock('@/scaling/scaling.service', () => ({
-			ScalingService: MockScalingService,
+			scalingService: MockScalingService,
 		}));
 	});
 	afterAll(() => {

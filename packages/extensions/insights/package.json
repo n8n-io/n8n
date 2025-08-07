@@ -50,6 +50,7 @@
   "devDependencies": {
     "@n8n/stylelint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@types/psl": "^1.11.0",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "rimraf": "catalog:",

@@ -63,9 +63,9 @@ let WorkflowBuilderService = class WorkflowBuilderService {
 		}
 		return this.service;
 	}
-	async *chat(payload, user) {
+	async *chat(payload, user, abortSignal) {
 		const service = await this.getService();
-		yield* service.chat(payload, user);
+		yield* service.chat(payload, user, abortSignal);
 	}
 	async getSessions(workflowId, user) {
 		const service = await this.getService();

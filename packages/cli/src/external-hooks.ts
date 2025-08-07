@@ -46,6 +46,10 @@ type ExternalHooksMap = {
 	];
 	'oauth2.authenticate': [oAuthOptions: ClientOAuth2Options];
 	'oauth2.callback': [oAuthOptions: ClientOAuth2Options];
+	'oauth2.complete': [completionData: { credentialId: string; userId: string; tokenData: any }];
+	'oauth2.revoke': [
+		revocationData: { credentialId: string; userId: string; revokedTokens: string[] },
+	];
 
 	'tag.beforeCreate': [tag: TagEntity];
 	'tag.afterCreate': [tag: TagEntity];

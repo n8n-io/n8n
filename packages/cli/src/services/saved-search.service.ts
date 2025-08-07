@@ -355,6 +355,87 @@ export class SavedSearchService {
 	}
 
 	/**
+	 * Get a specific saved search by ID (alias for getSavedSearchById for backwards compatibility)
+	 */
+	async getSavedSearch(id: string, user: User): Promise<SavedSearchDto> {
+		return this.getSavedSearchById(id, user);
+	}
+
+	/**
+	 * Update execution statistics for a saved search
+	 */
+	async updateExecutionStats(
+		id: string,
+		user: User,
+		stats: { resultsCount: number },
+	): Promise<void> {
+		this.logger.debug('Updating saved search execution stats', {
+			userId: user.id,
+			savedSearchId: id,
+			resultsCount: stats.resultsCount,
+		});
+
+		try {
+			await this.savedSearchRepository.updateExecutionStats(id, {
+				resultsCount: stats.resultsCount,
+				lastExecutedAt: new Date().toISOString(),
+			});
+		} catch (error) {
+			// Don't fail the search if statistics update fails
+			this.logger.warn('Failed to update saved search execution statistics', {
+				userId: user.id,
+				savedSearchId: id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Get statistics for saved searches
+	 */
+	async getSavedSearchStats(user: User): Promise<Record<string, unknown>> {
+		this.logger.debug('Getting saved search stats', {
+			userId: user.id,
+		});
+
+		try {
+			const userSearches = await this.savedSearchRepository.findByUserId(user.id);
+			const publicSearchesCount = await this.savedSearchRepository.count({
+				where: { isPublic: true },
+			});
+
+			const totalSearches = userSearches.length;
+			const pinnedSearches = userSearches.filter((search) => search.isPinned).length;
+			const publicUserSearches = userSearches.filter((search) => search.isPublic).length;
+
+			const stats = {
+				totalUserSearches: totalSearches,
+				totalPinnedSearches: pinnedSearches,
+				totalPublicUserSearches: publicUserSearches,
+				totalPublicSearches: publicSearchesCount,
+				mostRecentSearch: userSearches.length > 0 ? userSearches[0].createdAt.toISOString() : null,
+			};
+
+			this.logger.debug('Saved search stats retrieved successfully', {
+				userId: user.id,
+				stats,
+			});
+
+			return stats;
+		} catch (error) {
+			this.logger.error('Failed to get saved search stats', {
+				userId: user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			throw new ApplicationError('Failed to retrieve saved search statistics', {
+				cause: error,
+				extra: { userId: user.id },
+			});
+		}
+	}
+
+	/**
 	 * Map entity to DTO
 	 */
 	private mapToDto(savedSearch: SavedSearch): SavedSearchDto {

@@ -34,6 +34,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project } from '@n8n/db';
 import {
 	SharedWorkflow,
@@ -144,6 +145,48 @@ export class WorkflowsController {
 		private readonly expressionDocsService: ExpressionDocsService,
 		private readonly aiHelpersService: AiHelpersService,
 	) {}
+
+	/**
+	 * Convert FunctionDocumentation to ExpressionFunctionDto format
+	 */
+	private convertToExpressionFunctionDto(func: any): any {
+		return {
+			...func,
+			args: func.parameters,
+			examples: func.examples?.map((ex: any) => ({
+				example: ex.code,
+				evaluated: ex.result,
+				description: ex.description,
+			})),
+		};
+	}
+
+	/**
+	 * Convert VariableDocumentation to ExpressionVariableDto format
+	 */
+	private convertToExpressionVariableDto(variable: any): any {
+		return {
+			...variable,
+			context: variable.category, // Map category to context
+			examples: variable.examples?.map((ex: any) => ({
+				example: ex.code,
+				description: ex.description,
+			})),
+		};
+	}
+
+	/**
+	 * Convert category data to ExpressionCategoryDto format
+	 */
+	private convertToExpressionCategoryDto(category: any): any {
+		return {
+			name: category.name,
+			description:
+				category.description ||
+				`${category.name.charAt(0).toUpperCase() + category.name.slice(1)} functions`,
+			functionCount: category.functionCount || 0,
+		};
+	}
 
 	@Post('/')
 	async create(req: WorkflowRequest.Create) {
@@ -992,7 +1035,7 @@ export class WorkflowsController {
 				metadata: {
 					workflowId,
 					nodeId,
-					requestedAt: new Date(),
+					requestedAt: new Date().toISOString(),
 					includeFunctions,
 					includeNodeContext,
 				},
@@ -1037,9 +1080,14 @@ export class WorkflowsController {
 			let data;
 			if (Array.isArray(functionDocs)) {
 				// Filter by category if specified
-				data = category ? functionDocs.filter((func) => func.category === category) : functionDocs;
+				const filteredDocs = category
+					? functionDocs.filter((func) => func.category === category)
+					: functionDocs;
+				data = filteredDocs.map((func) => this.convertToExpressionFunctionDto(func));
+			} else if (functionDocs) {
+				data = this.convertToExpressionFunctionDto(functionDocs);
 			} else {
-				data = functionDocs;
+				data = null;
 			}
 
 			const response: FunctionDocumentationResponseDto = {
@@ -1104,11 +1152,14 @@ export class WorkflowsController {
 			let data;
 			if (Array.isArray(variableDocs)) {
 				// Filter by category if specified
-				data = category
+				const filteredDocs = category
 					? variableDocs.filter((variable) => variable.category === category)
 					: variableDocs;
+				data = filteredDocs.map((variable) => this.convertToExpressionVariableDto(variable));
+			} else if (variableDocs) {
+				data = this.convertToExpressionVariableDto(variableDocs);
 			} else {
-				data = variableDocs;
+				data = null;
 			}
 
 			const response: VariableDocumentationResponseDto = {
@@ -1420,7 +1471,7 @@ export class WorkflowsController {
 				metadata: {
 					workflowId,
 					nodeId,
-					requestedAt: new Date(),
+					requestedAt: new Date().toISOString(),
 					includeNodeDetails,
 					includeConnections,
 					totalNodes: workflow.nodes.length,
@@ -1510,7 +1561,7 @@ export class WorkflowsController {
 					context,
 					totalCoreVariables: Array.isArray(variables) ? variables.length : 0,
 					totalNodes: workflow.nodes.length,
-					requestedAt: new Date(),
+					requestedAt: new Date().toISOString(),
 				},
 			};
 		} catch (error) {
@@ -1611,7 +1662,7 @@ export class WorkflowsController {
 					totalFunctions: uniqueFunctions.length,
 					availableCategories: [...new Set(uniqueFunctions.map((f) => f.category))],
 					workflowNodes: workflow.nodes.length,
-					requestedAt: new Date(),
+					requestedAt: new Date().toISOString(),
 				},
 			};
 		} catch (error) {
@@ -2246,9 +2297,11 @@ export class WorkflowsController {
 					searchTimeMs: result.metadata.searchTimeMs,
 					resultCount: result.results.length,
 					searchMethod: result.metadata.searchEngine?.used ? 'search_engine' : 'database',
+					searchEngine: result.metadata.searchEngine?.name,
 					filters: result.query.appliedFilters || {},
+					timestamp: new Date(),
 					userAgent: req.headers['user-agent'],
-					sessionId: req.sessionID,
+					sessionId: (req as any).sessionID,
 				});
 			} catch (analyticsError) {
 				// Don't fail the search if analytics recording fails
@@ -2309,9 +2362,11 @@ export class WorkflowsController {
 					searchTimeMs: result.metadata.searchTimeMs,
 					resultCount: result.results.length,
 					searchMethod: result.metadata.searchEngine?.used ? 'search_engine' : 'database',
+					searchEngine: result.metadata.searchEngine?.name,
 					filters: { advanced: true, ...result.query.appliedFilters },
+					timestamp: new Date(),
 					userAgent: req.headers['user-agent'],
-					sessionId: req.sessionID,
+					sessionId: (req as any).sessionID,
 				});
 			} catch (analyticsError) {
 				// Don't fail the search if analytics recording fails
@@ -2740,7 +2795,13 @@ export class WorkflowsController {
 			this.eventService.emit('search-reindexing-completed', {
 				user: req.user,
 				triggeredManually: true,
-				stats,
+				stats: {
+					totalWorkflows: stats.totalProcessed,
+					indexedWorkflows: stats.successCount,
+					failedWorkflows: stats.errorCount,
+					indexingTimeMs: stats.processingTimeMs,
+					searchEngineHealthCheck: stats.errorCount === 0,
+				},
 			});
 
 			return response;
@@ -2811,12 +2872,12 @@ export class WorkflowsController {
 		});
 
 		try {
-			const result = await this.savedSearchService.getSavedSearches(req.query, req.user);
+			const result = await this.savedSearchService.getSavedSearches(req.user, req.query);
 
 			this.logger.debug('Saved searches retrieved successfully', {
 				userId: req.user.id,
-				count: result.savedSearches.length,
-				totalCount: result.pagination.total,
+				count: result.searches.length,
+				totalCount: result.pagination?.total || 0,
 			});
 
 			return result;
@@ -2970,9 +3031,11 @@ export class WorkflowsController {
 					searchTimeMs: result.metadata.searchTimeMs,
 					resultCount: result.results.length,
 					searchMethod: result.metadata.searchEngine?.used ? 'search_engine' : 'database',
+					searchEngine: result.metadata.searchEngine?.name,
 					filters: { saved_search_id: req.params.id, ...result.query.appliedFilters },
+					timestamp: new Date(),
 					userAgent: req.headers['user-agent'],
-					sessionId: req.sessionID,
+					sessionId: (req as any).sessionID,
 				});
 			} catch (analyticsError) {
 				// Don't fail the search if analytics recording fails
@@ -3115,7 +3178,7 @@ export class WorkflowsController {
 		return validatedQuery;
 	}
 
-	@Licensed('feat:enterprise')
+	@Licensed(LICENSE_FEATURES.ENTERPRISE)
 	@Post('/batch/process')
 	async enterpriseBatchProcess(
 		req: AuthenticatedRequest<{}, {}, EnterpriseBatchProcessingRequestDto>,
@@ -3165,7 +3228,7 @@ export class WorkflowsController {
 		}
 	}
 
-	@Licensed('feat:enterprise')
+	@Licensed(LICENSE_FEATURES.ENTERPRISE)
 	@Get('/batch/:batchId/status')
 	async getBatchStatus(
 		req: AuthenticatedRequest,
@@ -3216,10 +3279,13 @@ export class WorkflowsController {
 
 		try {
 			const categories = this.expressionDocsService.getCategories();
+			const convertedCategories = categories.map((category) =>
+				this.convertToExpressionCategoryDto(category),
+			);
 
 			return {
-				categories,
-				total: categories.length,
+				categories: convertedCategories,
+				total: convertedCategories.length,
 			};
 		} catch (error) {
 			this.logger.error('Failed to get expression categories', {
@@ -3241,7 +3307,7 @@ export class WorkflowsController {
 		req: AuthenticatedRequest,
 		_res: express.Response,
 		@Param('category') category: string,
-		@Query() queryDto: ExpressionFunctionsCategoryQueryDto,
+		@Query queryDto: ExpressionFunctionsCategoryQueryDto,
 	): Promise<ExpressionFunctionsResponseDto> {
 		this.logger.debug('Expression functions requested', {
 			userId: req.user.id,
@@ -3263,8 +3329,11 @@ export class WorkflowsController {
 				);
 			}
 
+			// Convert to DTO format
+			const convertedFunctions = functions.map((func) => this.convertToExpressionFunctionDto(func));
+
 			return {
-				functions,
+				functions: convertedFunctions,
 				category,
 				total: functions.length,
 			};
@@ -3289,7 +3358,7 @@ export class WorkflowsController {
 	async getExpressionVariables(
 		req: AuthenticatedRequest,
 		_res: express.Response,
-		@Query() queryDto: ExpressionVariablesContextQueryDto,
+		@Query queryDto: ExpressionVariablesContextQueryDto,
 	): Promise<ExpressionVariablesResponseDto> {
 		this.logger.debug('Expression variables requested', {
 			userId: req.user.id,
@@ -3298,11 +3367,14 @@ export class WorkflowsController {
 
 		try {
 			const variables = this.expressionDocsService.getContextVariables(queryDto.context);
+			const convertedVariables = variables.map((variable) =>
+				this.convertToExpressionVariableDto(variable),
+			);
 
 			return {
-				variables,
+				variables: convertedVariables,
 				context: queryDto.context,
-				total: variables.length,
+				total: convertedVariables.length,
 			};
 		} catch (error) {
 			this.logger.error('Failed to get expression variables', {
@@ -3409,7 +3481,7 @@ export class WorkflowsController {
 		>,
 		_res: express.Response,
 		@Param('id') workflowId: string,
-		@Query() queryDto: { optimizationType?: 'performance' | 'readability' | 'structure' | 'all' },
+		@Query queryDto: { optimizationType?: 'performance' | 'readability' | 'structure' | 'all' },
 	) {
 		const { optimizationType = 'all' } = queryDto;
 

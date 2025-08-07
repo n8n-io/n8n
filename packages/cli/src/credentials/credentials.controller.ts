@@ -269,12 +269,12 @@ export class CredentialsController {
 
 					result.validationResults.connectionTest = connectionTest;
 
-					if (!connectionTest.result?.success) {
+					if (connectionTest.status !== 'OK') {
 						result.valid = false;
 						result.issues.push({
 							type: 'connection',
 							severity: 'error',
-							message: connectionTest.result?.message || 'Connection test failed',
+							message: connectionTest.message || 'Connection test failed',
 							suggestion: 'Check credential values and network connectivity',
 						});
 					}
@@ -421,18 +421,28 @@ export class CredentialsController {
 			}
 
 			// Generate recommendations based on analysis
-			troubleshootingResult.recommendations =
-				this.credentialsService.generateCredentialRecommendations(
-					storedCredential,
-					troubleshootingResult.diagnostics,
-				);
+			const recommendationsResult = await this.credentialsService.generateCredentialRecommendations(
+				storedCredential.type,
+				troubleshootingResult.diagnostics,
+			);
+			troubleshootingResult.recommendations = recommendationsResult.recommendations.map((rec) => ({
+				type: rec.type as 'security' | 'configuration' | 'performance' | 'maintenance',
+				priority: rec.priority,
+				title: rec.message,
+				description: rec.message,
+			}));
 
 			// Generate troubleshooting steps
-			troubleshootingResult.troubleshootingSteps =
-				this.credentialsService.generateTroubleshootingSteps(
-					storedCredential.type,
-					troubleshootingResult.diagnostics,
-				);
+			const troubleshootingStepsResult = await this.credentialsService.generateTroubleshootingSteps(
+				storedCredential.type,
+				JSON.stringify(troubleshootingResult.diagnostics),
+			);
+			troubleshootingResult.troubleshootingSteps = troubleshootingStepsResult.steps.map((step) => ({
+				step: step.step,
+				title: step.title,
+				description: step.description,
+				completed: false,
+			}));
 
 			this.logger.debug('Credential troubleshooting completed', {
 				credentialId,
@@ -523,7 +533,7 @@ export class CredentialsController {
 					});
 
 					const executionTime = Date.now() - startTime;
-					const isHealthy = testResult.result?.success === true;
+					const isHealthy = testResult.status === 'OK';
 
 					return {
 						credentialId,
@@ -531,8 +541,7 @@ export class CredentialsController {
 						credentialType: storedCredential.type,
 						status: isHealthy ? 'healthy' : 'unhealthy',
 						message:
-							testResult.result?.message ||
-							(isHealthy ? 'Connection successful' : 'Connection failed'),
+							testResult.message || (isHealthy ? 'Connection successful' : 'Connection failed'),
 						executionTime,
 						performanceMetrics: includePerformanceMetrics
 							? {
@@ -631,10 +640,10 @@ export class CredentialsController {
 				credentialId,
 				credentialName: storedCredential.name,
 				credentialType: storedCredential.type,
-				success: testResult.result?.success === true,
+				success: testResult.status === 'OK',
 				message:
-					testResult.result?.message ||
-					(testResult.result?.success ? 'Connection successful' : 'Connection failed'),
+					testResult.message ||
+					(testResult.status === 'OK' ? 'Connection successful' : 'Connection failed'),
 				testResult,
 				testedAt: new Date(),
 				metrics: includeMetrics

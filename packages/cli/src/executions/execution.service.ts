@@ -1119,10 +1119,24 @@ export class ExecutionService {
 		if (this.activeExecutions.has(executionId)) {
 			const nodeStatus = this.activeExecutions.getNodeExecutionStatus(executionId, nodeName);
 			if (nodeStatus) {
+				// Map status values to match NodeStatus type
+				let mappedStatus: NodeStatus['status'];
+				switch (nodeStatus.status) {
+					case 'success':
+						mappedStatus = 'completed';
+						break;
+					case 'error':
+						mappedStatus = 'failed';
+						break;
+					default:
+						mappedStatus = nodeStatus.status as NodeStatus['status'];
+						break;
+				}
+
 				return {
 					executionId,
 					nodeName,
-					status: nodeStatus.status,
+					status: mappedStatus,
 					executionTime: nodeStatus.executionTime,
 					error: nodeStatus.error,
 				};

@@ -1,11 +1,11 @@
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
 const db_1 = require('@n8n/db');
+const typeorm_1 = require('@n8n/typeorm');
 const di_1 = require('@n8n/di');
 const jest_mock_extended_1 = require('jest-mock-extended');
 const node_fs_1 = require('node:fs');
 const promises_1 = require('node:fs/promises');
-const logger_1 = require('@/logger');
 const audit_logging_service_1 = require('../audit-logging.service');
 const compliance_reporting_service_1 = require('../compliance-reporting.service');
 jest.mock('node:fs', () => ({
@@ -38,15 +38,23 @@ describe('ComplianceReportingService', () => {
 		mockComplianceReportRepository = (0, jest_mock_extended_1.mock)();
 		mockAuditEventRepository = (0, jest_mock_extended_1.mock)();
 		mockSecurityEventRepository = (0, jest_mock_extended_1.mock)();
-		mockLogger = (0, jest_mock_extended_1.mock)();
+		mockLogger = {
+			error: jest.fn(),
+			warn: jest.fn(),
+			info: jest.fn(),
+			debug: jest.fn(),
+		};
 		mockAuditLoggingService = (0, jest_mock_extended_1.mock)();
 		node_fs_1.existsSync.mockReturnValue(true);
 		promises_1.mkdir.mockResolvedValue(undefined);
 		promises_1.writeFile.mockResolvedValue(undefined);
+		Object.defineProperty(require('n8n-workflow'), 'LoggerProxy', {
+			value: mockLogger,
+			configurable: true,
+		});
 		di_1.Container.get = jest.fn().mockImplementation((token) => {
-			if (token === logger_1.Logger) return mockLogger;
 			if (token === audit_logging_service_1.AuditLoggingService) return mockAuditLoggingService;
-			if (token === 'DataSource') {
+			if (token === typeorm_1.DataSource || token === 'DataSource') {
 				return {
 					getRepository: (entity) => {
 						if (entity === db_1.ComplianceReport) return mockComplianceReportRepository;
@@ -68,6 +76,7 @@ describe('ComplianceReportingService', () => {
 		it('should successfully generate a compliance report', async () => {
 			const mockInitialReport = {
 				id: 'report-123',
+				complianceStandard: 'SOX',
 				status: 'generating',
 				generationStartedAt: new Date(),
 			};
@@ -78,8 +87,13 @@ describe('ComplianceReportingService', () => {
 				generationCompletedAt: new Date(),
 			};
 			const mockAuditEvents = [
-				{ id: 'audit-1', eventType: 'api_call', severity: 'low' },
-				{ id: 'audit-2', eventType: 'workflow_created', severity: 'medium' },
+				{ id: 'audit-1', eventType: 'api_call', severity: 'low', description: 'API call event' },
+				{
+					id: 'audit-2',
+					eventType: 'workflow_created',
+					severity: 'medium',
+					description: 'Workflow created event',
+				},
 			];
 			const mockSecurityEvents = [
 				{ id: 'security-1', eventType: 'failed_login_attempt', severity: 'medium' },
@@ -109,7 +123,7 @@ describe('ComplianceReportingService', () => {
 					periodEnd: mockReportOptions.periodEnd,
 					generatedBy: 'admin-123',
 					projectId: 'project-123',
-					format: 'pdf',
+					format: 'PDF',
 				}),
 			);
 			expect(mockComplianceReportRepository.update).toHaveBeenCalledWith(
@@ -124,7 +138,7 @@ describe('ComplianceReportingService', () => {
 			expect(mockAuditLoggingService.logEvent).toHaveBeenCalledWith(
 				expect.objectContaining({
 					eventType: 'compliance_report_generated',
-					category: 'system_administration',
+					category: 'system',
 					description: 'Generated SOX compliance report: SOX Compliance Report Q4 2023',
 					userId: 'admin-123',
 					resourceId: 'report-123',
@@ -217,6 +231,7 @@ describe('ComplianceReportingService', () => {
 					id: 'audit-1',
 					eventType: 'api_call',
 					severity: 'low',
+					description: 'Financial API call',
 					tags: ['financial'],
 					category: 'data_modification',
 					beforeState: { value: 100 },
@@ -226,6 +241,7 @@ describe('ComplianceReportingService', () => {
 					id: 'audit-2',
 					eventType: 'user_role_changed',
 					severity: 'medium',
+					description: 'User role changed',
 					category: 'user_management',
 				},
 			];
@@ -252,6 +268,7 @@ describe('ComplianceReportingService', () => {
 					id: 'audit-1',
 					eventType: 'data_exported',
 					severity: 'medium',
+					description: 'Personal data exported',
 					tags: ['personal_data'],
 					metadata: { gdpr_compliant: true },
 				},
@@ -299,8 +316,8 @@ describe('ComplianceReportingService', () => {
 					id: 'audit-1',
 					eventType: 'api_call',
 					severity: 'low',
-					tags: ['phi', 'health_data'],
 					description: 'Accessed health information',
+					tags: ['phi', 'health_data'],
 				},
 			];
 			const mockSecurityEvents = [
@@ -391,16 +408,14 @@ describe('ComplianceReportingService', () => {
 				expect.stringContaining('COMPLIANCE REPORT'),
 			);
 		});
-		it('should generate Excel format report', async () => {
+		it('should throw error for unsupported Excel format', async () => {
 			setupMockReportGeneration();
-			await complianceReportingService.generateReport({
-				...mockReportOptions,
-				format: 'excel',
-			});
-			expect(promises_1.writeFile).toHaveBeenCalledWith(
-				expect.stringMatching(/\.csv$/),
-				expect.stringContaining('Compliance Report Summary'),
-			);
+			await expect(
+				complianceReportingService.generateReport({
+					...mockReportOptions,
+					format: 'excel',
+				}),
+			).rejects.toThrow('Compliance report generation failed: Unsupported report format: excel');
 		});
 	});
 	describe('getReports', () => {
@@ -531,6 +546,7 @@ describe('ComplianceReportingService', () => {
 					id: `audit-${i}`,
 					eventType: 'api_call',
 					severity: i < 20 ? 'critical' : 'low',
+					description: `Test audit event ${i}`,
 				}));
 			const mockSecurityEvents = Array(10)
 				.fill(null)

@@ -263,11 +263,6 @@ let ExecutionsController = class ExecutionsController {
 			userId: req.user.id,
 		});
 		const result = await this.executionService.pause(req.params.id, workflowIds);
-		this.eventService.emit('workflow-paused', {
-			user: req.user,
-			workflowId: req.params.id,
-			publicApi: false,
-		});
 		return result;
 	}
 	async resume(req) {
@@ -281,11 +276,6 @@ let ExecutionsController = class ExecutionsController {
 			userId: req.user.id,
 		});
 		const result = await this.executionService.resume(req.params.id, workflowIds);
-		this.eventService.emit('workflow-resumed', {
-			user: req.user,
-			workflowId: req.params.id,
-			publicApi: false,
-		});
 		return result;
 	}
 	async step(req) {

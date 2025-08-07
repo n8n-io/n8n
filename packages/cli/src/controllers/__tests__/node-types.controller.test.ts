@@ -5,12 +5,7 @@ import type { AuthenticatedRequest, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
 import { mock } from 'jest-mock-extended';
-import type {
-	INodeTypeDescription,
-	INodeTypeNameVersion,
-	INodeExecutionData,
-	IDataObject,
-} from 'n8n-workflow';
+import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

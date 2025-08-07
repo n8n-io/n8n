@@ -65,6 +65,7 @@ const cookie_parser_1 = __importDefault(require('cookie-parser'));
 const express_1 = __importDefault(require('express'));
 const supertest_1 = __importDefault(require('supertest'));
 const url_1 = require('url');
+const module_cache_1 = require('./module-cache');
 const auth_service_1 = require('@/auth/auth.service');
 const config_1 = __importDefault(require('@/config'));
 const constants_1 = require('@/constants');
@@ -144,8 +145,13 @@ const setupTestServer = ({ endpointGroups, enabledFeatures, quotas, modules }) =
 		license: new license_2.LicenseMocker(),
 	};
 	beforeAll(async () => {
-		if (modules) await backend_test_utils_1.testModules.loadModules(modules);
-		await backend_test_utils_1.testDb.init();
+		const preloadPromise = (0, module_cache_1.preloadCommonModules)();
+		const initPromises = [
+			modules ? backend_test_utils_1.testModules.loadModules(modules) : Promise.resolve(),
+			backend_test_utils_1.testDb.init(),
+			preloadPromise,
+		];
+		await Promise.all(initPromises);
 		config_1.default.set('userManagement.jwtSecret', 'My JWT secret');
 		config_1.default.set('userManagement.isInstanceOwnerSetUp', true);
 		testServer.license.mock(di_1.Container.get(license_1.License));
@@ -174,63 +180,13 @@ const setupTestServer = ({ endpointGroups, enabledFeatures, quotas, modules }) =
 			});
 		}
 		if (endpointGroups.length) {
-			for (const group of endpointGroups) {
+			const modulePromises = endpointGroups.map(async (group) => {
 				switch (group) {
-					case 'annotationTags':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/annotation-tags.controller.ee')),
-						);
-						break;
-					case 'credentials':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/credentials/credentials.controller')),
-						);
-						break;
-					case 'workflows':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/workflows/workflows.controller')),
-						);
-						break;
-					case 'executions':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/executions/executions.controller')),
-						);
-						break;
-					case 'variables':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/environments.ee/variables/variables.controller.ee')),
-						);
-						break;
-					case 'license':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/license/license.controller')),
-						);
-						break;
 					case 'metrics':
 						const { PrometheusMetricsService } = await Promise.resolve().then(() =>
 							__importStar(require('@/metrics/prometheus-metrics.service')),
 						);
 						await di_1.Container.get(PrometheusMetricsService).init(app);
-						break;
-					case 'eventBus':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/eventbus/event-bus.controller')),
-						);
-						break;
-					case 'auth':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/auth.controller')),
-						);
-						break;
-					case 'oauth2':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/oauth/oauth2-credential.controller')),
-						);
-						break;
-					case 'mfa':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/mfa.controller')),
-						);
 						break;
 					case 'ldap':
 						const { LdapService } = await Promise.resolve().then(() =>
@@ -255,60 +211,6 @@ const setupTestServer = ({ endpointGroups, enabledFeatures, quotas, modules }) =
 						);
 						await setSamlLoginEnabled(true);
 						break;
-					case 'sourceControl':
-						await Promise.resolve().then(() =>
-							__importStar(
-								require('@/environments.ee/source-control/source-control.controller.ee'),
-							),
-						);
-						break;
-					case 'community-packages':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/community-packages/community-packages.controller')),
-						);
-						break;
-					case 'me':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/me.controller')),
-						);
-						break;
-					case 'passwordReset':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/password-reset.controller')),
-						);
-						break;
-					case 'owner':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/owner.controller')),
-						);
-						break;
-					case 'users':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/users.controller')),
-						);
-						break;
-					case 'invitations':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/invitation.controller')),
-						);
-						break;
-					case 'tags':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/tags.controller')),
-						);
-						break;
-					case 'workflowHistory':
-						await Promise.resolve().then(() =>
-							__importStar(
-								require('@/workflows/workflow-history.ee/workflow-history.controller.ee'),
-							),
-						);
-						break;
-					case 'binaryData':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/binary-data.controller')),
-						);
-						break;
 					case 'debug':
 						await Promise.resolve().then(() =>
 							__importStar(require('@/controllers/debug.controller')),
@@ -317,16 +219,6 @@ const setupTestServer = ({ endpointGroups, enabledFeatures, quotas, modules }) =
 					case 'project':
 						await Promise.resolve().then(() =>
 							__importStar(require('@/controllers/project.controller')),
-						);
-						break;
-					case 'role':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/role.controller')),
-						);
-						break;
-					case 'dynamic-node-parameters':
-						await Promise.resolve().then(() =>
-							__importStar(require('@/controllers/dynamic-node-parameters.controller')),
 						);
 						break;
 					case 'apiKeys':
@@ -343,20 +235,27 @@ const setupTestServer = ({ endpointGroups, enabledFeatures, quotas, modules }) =
 						await Promise.resolve().then(() =>
 							__importStar(require('@/controllers/ai.controller')),
 						);
+						break;
 					case 'folder':
 						await Promise.resolve().then(() =>
 							__importStar(require('@/controllers/folder.controller')),
 						);
+						break;
 					case 'externalSecrets':
 						await Promise.resolve().then(() =>
 							__importStar(require('@/modules/external-secrets.ee/external-secrets.module')),
 						);
+						break;
 					case 'insights':
 						await Promise.resolve().then(() =>
 							__importStar(require('@/modules/insights/insights.module')),
 						);
+						break;
+					default:
+						return (0, module_cache_1.loadEndpointGroup)(group);
 				}
-			}
+			});
+			await Promise.all(modulePromises);
 			await di_1.Container.get(backend_common_1.ModuleRegistry).initModules();
 			di_1.Container.get(controller_registry_1.ControllerRegistry).activate(app);
 		}

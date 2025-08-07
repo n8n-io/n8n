@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
+
 import { exampleSchema } from './function-documentation.dto';
 
 export const variablePropertySchema = z.object({

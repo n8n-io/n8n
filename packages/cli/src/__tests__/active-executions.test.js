@@ -293,5 +293,370 @@ describe('ActiveExecutions', () => {
 			expect(stopExecutionSpy).toHaveBeenCalledWith(waitingExecutionId2);
 		});
 	});
+	describe('pause/resume execution control', () => {
+		beforeEach(async () => {
+			const executionData = {
+				executionMode: 'manual',
+				workflowData: {
+					id: '123',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: 'node1',
+							name: 'node1',
+							type: 'test',
+							typeVersion: 1,
+							parameters: {},
+							position: [0, 0],
+						},
+						{
+							id: 'node2',
+							name: 'node2',
+							type: 'test',
+							typeVersion: 1,
+							parameters: {},
+							position: [100, 0],
+						},
+					],
+					connections: {
+						node1: { main: [[{ node: 'node2', type: 'main', index: 0 }]] },
+					},
+					active: true,
+					settings: {},
+				},
+				executionData: {
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+					resultData: {
+						runData: {},
+						lastNodeExecuted: 'node1',
+					},
+				},
+			};
+			await activeExecutions.add(executionData, FAKE_EXECUTION_ID);
+		});
+		describe('pauseExecution', () => {
+			it('should pause a running execution', () => {
+				activeExecutions.setStatus(FAKE_EXECUTION_ID, 'running');
+				const result = activeExecutions.pauseExecution(FAKE_EXECUTION_ID);
+				expect(result).toBe(true);
+				expect(activeExecutions.getStatus(FAKE_EXECUTION_ID)).toBe('waiting');
+			});
+			it('should not pause an execution that is not running', () => {
+				activeExecutions.setStatus(FAKE_EXECUTION_ID, 'success');
+				const result = activeExecutions.pauseExecution(FAKE_EXECUTION_ID);
+				expect(result).toBe(false);
+				expect(activeExecutions.getStatus(FAKE_EXECUTION_ID)).toBe('success');
+			});
+			it('should return false for non-existent execution', () => {
+				const result = activeExecutions.pauseExecution('non-existent');
+				expect(result).toBe(false);
+			});
+		});
+		describe('resumeExecution', () => {
+			it('should resume a paused execution', () => {
+				activeExecutions.setStatus(FAKE_EXECUTION_ID, 'waiting');
+				const result = activeExecutions.resumeExecution(FAKE_EXECUTION_ID);
+				expect(result).toBe(true);
+				expect(activeExecutions.getStatus(FAKE_EXECUTION_ID)).toBe('running');
+			});
+			it('should not resume an execution that is not waiting', () => {
+				activeExecutions.setStatus(FAKE_EXECUTION_ID, 'running');
+				const result = activeExecutions.resumeExecution(FAKE_EXECUTION_ID);
+				expect(result).toBe(false);
+				expect(activeExecutions.getStatus(FAKE_EXECUTION_ID)).toBe('running');
+			});
+			it('should return false for non-existent execution', () => {
+				const result = activeExecutions.resumeExecution('non-existent');
+				expect(result).toBe(false);
+			});
+		});
+		describe('getExecutionStatus', () => {
+			it('should return execution status and current node', () => {
+				activeExecutions.setStatus(FAKE_EXECUTION_ID, 'running');
+				const result = activeExecutions.getExecutionStatus(FAKE_EXECUTION_ID);
+				expect(result).toEqual({
+					status: 'running',
+					currentNode: 'node1',
+				});
+			});
+			it('should return null for non-existent execution', () => {
+				const result = activeExecutions.getExecutionStatus('non-existent');
+				expect(result).toBe(null);
+			});
+		});
+		describe('canPause/canResume', () => {
+			it('should return true for canPause when execution is running', () => {
+				activeExecutions.setStatus(FAKE_EXECUTION_ID, 'running');
+				expect(activeExecutions.canPause(FAKE_EXECUTION_ID)).toBe(true);
+				expect(activeExecutions.canResume(FAKE_EXECUTION_ID)).toBe(false);
+			});
+			it('should return true for canResume when execution is waiting', () => {
+				activeExecutions.setStatus(FAKE_EXECUTION_ID, 'waiting');
+				expect(activeExecutions.canPause(FAKE_EXECUTION_ID)).toBe(false);
+				expect(activeExecutions.canResume(FAKE_EXECUTION_ID)).toBe(true);
+			});
+			it('should return false for non-existent execution', () => {
+				expect(activeExecutions.canPause('non-existent')).toBe(false);
+				expect(activeExecutions.canResume('non-existent')).toBe(false);
+			});
+		});
+	});
+	describe('step execution control', () => {
+		beforeEach(async () => {
+			const executionData = {
+				executionMode: 'manual',
+				workflowData: {
+					id: '123',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: 'start',
+							name: 'start',
+							type: 'start',
+							typeVersion: 1,
+							parameters: {},
+							position: [0, 0],
+						},
+						{
+							id: 'middle',
+							name: 'middle',
+							type: 'process',
+							typeVersion: 1,
+							parameters: {},
+							position: [100, 0],
+						},
+						{
+							id: 'end',
+							name: 'end',
+							type: 'end',
+							typeVersion: 1,
+							parameters: {},
+							position: [200, 0],
+						},
+					],
+					connections: {
+						start: { main: [[{ node: 'middle', type: 'main', index: 0 }]] },
+						middle: { main: [[{ node: 'end', type: 'main', index: 0 }]] },
+					},
+					active: true,
+					settings: {},
+				},
+				executionData: {
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+					resultData: {
+						runData: {},
+						lastNodeExecuted: 'start',
+					},
+				},
+			};
+			await activeExecutions.add(executionData, FAKE_EXECUTION_ID);
+		});
+		describe('stepExecution', () => {
+			it('should step through execution successfully', () => {
+				const result = activeExecutions.stepExecution(FAKE_EXECUTION_ID, 1);
+				expect(result.stepsExecuted).toBe(1);
+				expect(result.currentNode).toBe('start');
+				expect(result.nextNodes).toContain('middle');
+			});
+			it('should step with specific node names', () => {
+				const result = activeExecutions.stepExecution(FAKE_EXECUTION_ID, 1, ['end']);
+				expect(result.stepsExecuted).toBe(1);
+				expect(result.nextNodes).toEqual(['end']);
+			});
+			it('should limit steps to available nodes', () => {
+				const result = activeExecutions.stepExecution(FAKE_EXECUTION_ID, 10);
+				expect(result.stepsExecuted).toBeLessThanOrEqual(2);
+			});
+			it('should return empty result for non-existent execution', () => {
+				const result = activeExecutions.stepExecution('non-existent');
+				expect(result).toEqual({ stepsExecuted: 0, nextNodes: [] });
+			});
+		});
+		describe('canStep', () => {
+			it('should return true for running execution', () => {
+				activeExecutions.setStatus(FAKE_EXECUTION_ID, 'running');
+				expect(activeExecutions.canStep(FAKE_EXECUTION_ID)).toBe(true);
+			});
+			it('should return true for waiting execution', () => {
+				activeExecutions.setStatus(FAKE_EXECUTION_ID, 'waiting');
+				expect(activeExecutions.canStep(FAKE_EXECUTION_ID)).toBe(true);
+			});
+			it('should return false for finished execution', () => {
+				activeExecutions.setStatus(FAKE_EXECUTION_ID, 'success');
+				expect(activeExecutions.canStep(FAKE_EXECUTION_ID)).toBe(false);
+			});
+			it('should return false for non-existent execution', () => {
+				expect(activeExecutions.canStep('non-existent')).toBe(false);
+			});
+		});
+	});
+	describe('node-level execution control', () => {
+		beforeEach(async () => {
+			const executionData = {
+				executionMode: 'manual',
+				workflowData: {
+					id: '123',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: 'testNode',
+							name: 'testNode',
+							type: 'test',
+							typeVersion: 1,
+							parameters: { param1: 'value1' },
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: true,
+					settings: {},
+				},
+				executionData: {
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+					resultData: {
+						runData: {
+							testNode: [
+								{
+									startTime: Date.now(),
+									executionIndex: 0,
+									executionTime: 100,
+									data: { main: [[{ json: { result: 'success' } }]] },
+									source: [],
+								},
+							],
+						},
+					},
+				},
+			};
+			await activeExecutions.add(executionData, FAKE_EXECUTION_ID);
+		});
+		describe('cancelNodeExecution', () => {
+			it('should cancel node execution successfully', () => {
+				const result = activeExecutions.cancelNodeExecution(FAKE_EXECUTION_ID, 'testNode');
+				expect(result).toBe(true);
+				const execution = activeExecutions.getExecutionOrFail(FAKE_EXECUTION_ID);
+				const runData = execution.executionData.executionData?.resultData.runData;
+				expect(runData?.testNode[0].error).toBeDefined();
+				expect(runData?.testNode[0].error?.message).toBe('Node execution cancelled');
+			});
+			it('should return false for non-existent execution', () => {
+				const result = activeExecutions.cancelNodeExecution('non-existent', 'testNode');
+				expect(result).toBe(false);
+			});
+		});
+		describe('skipNodeExecution', () => {
+			it('should skip node execution with mock output', () => {
+				const mockOutput = { result: 'mocked' };
+				const result = activeExecutions.skipNodeExecution(FAKE_EXECUTION_ID, 'newNode', mockOutput);
+				expect(result).toBe(true);
+				const execution = activeExecutions.getExecutionOrFail(FAKE_EXECUTION_ID);
+				const runData = execution.executionData.executionData?.resultData.runData;
+				expect(runData?.newNode).toBeDefined();
+				expect(runData?.newNode?.[0].data.main[0][0].json).toEqual(mockOutput);
+			});
+			it('should skip node execution without mock output', () => {
+				const result = activeExecutions.skipNodeExecution(FAKE_EXECUTION_ID, 'newNode');
+				expect(result).toBe(true);
+				const execution = activeExecutions.getExecutionOrFail(FAKE_EXECUTION_ID);
+				const runData = execution.executionData.executionData?.resultData.runData;
+				expect(runData?.newNode?.[0].data.main[0]).toEqual([]);
+			});
+			it('should return false for non-existent execution', () => {
+				const result = activeExecutions.skipNodeExecution('non-existent', 'testNode');
+				expect(result).toBe(false);
+			});
+		});
+		describe('retryNodeExecution', () => {
+			it('should retry node execution with modified parameters', () => {
+				const modifiedParams = { param1: 'newValue' };
+				const result = activeExecutions.retryNodeExecution(
+					FAKE_EXECUTION_ID,
+					'testNode',
+					modifiedParams,
+					true,
+				);
+				expect(result).toBe(true);
+				const execution = activeExecutions.getExecutionOrFail(FAKE_EXECUTION_ID);
+				const node = execution.executionData.workflowData.nodes.find((n) => n.name === 'testNode');
+				expect(node?.parameters).toEqual({ param1: 'newValue' });
+				const runData = execution.executionData.executionData?.resultData.runData;
+				expect(runData?.testNode).toBeUndefined();
+			});
+			it('should retry node execution without resetting state', () => {
+				const result = activeExecutions.retryNodeExecution(
+					FAKE_EXECUTION_ID,
+					'testNode',
+					undefined,
+					false,
+				);
+				expect(result).toBe(true);
+				const execution = activeExecutions.getExecutionOrFail(FAKE_EXECUTION_ID);
+				const runData = execution.executionData.executionData?.resultData.runData;
+				expect(runData?.testNode).toBeDefined();
+			});
+			it('should return false for non-existent execution', () => {
+				const result = activeExecutions.retryNodeExecution('non-existent', 'testNode');
+				expect(result).toBe(false);
+			});
+		});
+		describe('getNodeExecutionStatus', () => {
+			it('should return success status for completed node', () => {
+				const result = activeExecutions.getNodeExecutionStatus(FAKE_EXECUTION_ID, 'testNode');
+				expect(result).toEqual({
+					status: 'success',
+					executionTime: 100,
+				});
+			});
+			it('should return error status for failed node', () => {
+				const execution = activeExecutions.getExecutionOrFail(FAKE_EXECUTION_ID);
+				const executionData = execution.executionData.executionData;
+				if (executionData) {
+					executionData.resultData.runData.testNode[0].error =
+						new n8n_workflow_1.NodeOperationError(
+							{
+								id: 'testNode',
+								name: 'testNode',
+								type: 'test',
+								typeVersion: 1,
+								parameters: {},
+								position: [0, 0],
+							},
+							'Test error',
+						);
+				}
+				const result = activeExecutions.getNodeExecutionStatus(FAKE_EXECUTION_ID, 'testNode');
+				expect(result).toEqual({
+					status: 'error',
+					executionTime: 100,
+					error: {
+						message: 'Test error',
+						name: 'TestError',
+					},
+				});
+			});
+			it('should return pending status for unexecuted node', () => {
+				const result = activeExecutions.getNodeExecutionStatus(
+					FAKE_EXECUTION_ID,
+					'nonExistentNode',
+				);
+				expect(result).toEqual({
+					status: 'pending',
+				});
+			});
+			it('should return null for non-existent execution', () => {
+				const result = activeExecutions.getNodeExecutionStatus('non-existent', 'testNode');
+				expect(result).toBe(null);
+			});
+		});
+	});
 });
 //# sourceMappingURL=active-executions.test.js.map

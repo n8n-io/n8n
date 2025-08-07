@@ -1,1580 +1,7 @@
 {
   "project": "n8n-monorepo",
-  "tasks": [
-    {
-      "id": "cli-test-coverage-1754084008688",
-      "title": "Enhance CLI Package Test Coverage to 80% Minimum",
-      "description": "Increase test coverage in the CLI package by adding missing unit tests for controllers, services, and middleware to meet the 80% minimum threshold required for Strike 3 quality.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "CLI package test coverage reaches 80% minimum",
-        "All new tests follow established testing patterns",
-        "Test execution time remains under acceptable limits",
-        "Coverage reporting shows accurate metrics",
-        "No existing functionality broken by new tests"
-      ],
-      "important_files": [
-        "packages/cli/src/controllers/",
-        "packages/cli/src/services/",
-        "packages/cli/src/middleware/",
-        "packages/cli/jest.config.js",
-        "packages/cli/test/"
-      ],
-      "estimate": "6-8 hours",
-      "requires_research": false,
-      "created_at": "2025-08-01T21:33:28.688Z"
-    },
-    {
-      "id": "core-test-coverage-1754084008689",
-      "title": "Enhance Core Package Test Coverage to 80% Minimum",
-      "description": "Add comprehensive unit tests for n8n-core package components including workflow execution, node processing, and data transformation utilities to achieve 80% coverage.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "n8n-core package test coverage reaches 80% minimum",
-        "Workflow execution logic thoroughly tested",
-        "Node processing functions have complete test coverage",
-        "Data transformation utilities fully tested",
-        "All edge cases and error scenarios covered"
-      ],
-      "important_files": [
-        "packages/core/src/",
-        "packages/core/test/",
-        "packages/core/jest.config.cjs"
-      ],
-      "estimate": "8-10 hours",
-      "requires_research": false,
-      "created_at": "2025-08-01T21:33:28.688Z"
-    },
-    {
-      "id": "workflow-test-coverage-1754084008690",
-      "title": "Enhance Workflow Package Test Coverage to 80% Minimum",
-      "description": "Implement comprehensive test suite for n8n-workflow package covering expression evaluation, node helpers, workflow execution logic, and utility functions.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "n8n-workflow package test coverage reaches 80% minimum",
-        "Expression evaluation engine fully tested",
-        "Node helpers and utilities completely covered",
-        "Workflow execution logic thoroughly tested",
-        "Type validation and guards properly tested"
-      ],
-      "important_files": [
-        "packages/workflow/src/",
-        "packages/workflow/test/",
-        "packages/workflow/jest.config.js"
-      ],
-      "estimate": "6-8 hours",
-      "requires_research": false,
-      "created_at": "2025-08-01T21:33:28.688Z"
-    },
-    {
-      "id": "backend-utils-test-coverage-1754084008691",
-      "title": "Implement Missing Test Suites for Backend Utility Packages",
-      "description": "Create comprehensive test suites for backend utility packages (@n8n/backend-common, @n8n/errors, @n8n/config, @n8n/db) that currently lack adequate test coverage.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "All backend utility packages have 80%+ test coverage",
-        "@n8n/backend-common logging and utilities tested",
-        "@n8n/errors error classes and factories tested",
-        "@n8n/config configuration management tested",
-        "@n8n/db entity and repository tests implemented"
-      ],
-      "important_files": [
-        "packages/@n8n/backend-common/src/",
-        "packages/@n8n/errors/src/",
-        "packages/@n8n/config/src/",
-        "packages/@n8n/db/src/",
-        "packages/@n8n/*/jest.config.js"
-      ],
-      "estimate": "8-10 hours",
-      "requires_research": false,
-      "created_at": "2025-08-01T21:33:28.688Z"
-    },
-    {
-      "id": "frontend-test-coverage-1754084008692",
-      "title": "Enhance Frontend Component Test Coverage",
-      "description": "Improve test coverage for frontend packages including design-system components, editor-ui components, and chat interface to meet quality thresholds.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Design system components have 80%+ test coverage",
-        "Editor UI critical components thoroughly tested",
-        "Chat interface components properly tested",
-        "Component interaction and state management tested",
-        "All frontend test suites execute reliably"
-      ],
-      "important_files": [
-        "packages/frontend/@n8n/design-system/src/",
-        "packages/editor-ui/src/",
-        "packages/@n8n/chat/src/",
-        "packages/frontend/@n8n/design-system/vitest.config.ts",
-        "packages/@n8n/vitest-config/"
-      ],
-      "estimate": "10-12 hours",
-      "requires_research": false,
-      "created_at": "2025-08-01T21:33:28.688Z",
-      "subtasks": [
-        {
-          "id": "analyze-frontend-coverage-baseline-1754230629258",
-          "title": "Analyze Current Frontend Test Coverage Baseline",
-          "description": "Generate comprehensive coverage baseline report for design-system (47%), chat (74%), and editor-ui packages to identify specific gaps and establish improvement targets",
-          "mode": "DEVELOPMENT",
-          "priority": "high",
-          "status": "pending",
-          "parent_task_id": "frontend-test-coverage-1754084008692",
-          "success_criteria": [
-            "Coverage baseline report generated for all three packages",
-            "Specific component gaps identified with coverage percentages",
-            "Editor-ui test performance issues documented and analyzed",
-            "Priority component list created for coverage improvement",
-            "Coverage improvement roadmap established"
-          ],
-          "important_files": [
-            "packages/frontend/@n8n/design-system/coverage/",
-            "packages/@n8n/chat/coverage/",
-            "packages/editor-ui/coverage/",
-            "packages/frontend/@n8n/design-system/vitest.config.ts",
-            "packages/@n8n/vitest-config/"
-          ],
-          "estimate": "2-3 hours",
-          "created_at": "2025-08-03T14:17:09.258Z"
-        },
-        {
-          "id": "enhance-design-system-coverage-1754230629258",
-          "title": "Enhance Design System Component Test Coverage to 80%",
-          "description": "Improve @n8n/design-system test coverage from 47% to 80% by adding tests for untested components and improving function coverage from 45%",
-          "mode": "DEVELOPMENT",
-          "priority": "high",
-          "status": "pending",
-          "parent_task_id": "frontend-test-coverage-1754084008692",
-          "success_criteria": [
-            "Design system package reaches 80%+ statement coverage",
-            "Function coverage improved from 45% to 70%+",
-            "All critical UI components have comprehensive tests",
-            "Component interaction and prop validation tested",
-            "Accessibility features properly tested"
-          ],
-          "important_files": [
-            "packages/frontend/@n8n/design-system/src/components/",
-            "packages/frontend/@n8n/design-system/src/__tests__/",
-            "packages/frontend/@n8n/design-system/vitest.config.ts"
-          ],
-          "estimate": "4-5 hours",
-          "created_at": "2025-08-03T14:17:09.258Z"
-        },
-        {
-          "id": "fix-editor-ui-test-performance-1754230629258",
-          "title": "Fix Editor-UI Test Performance and Coverage Analysis",
-          "description": "Resolve test timeout issues in editor-ui package and establish accurate coverage baseline for the 375 components and 846 source files",
-          "mode": "DEVELOPMENT",
-          "priority": "high",
-          "status": "pending",
-          "parent_task_id": "frontend-test-coverage-1754084008692",
-          "success_criteria": [
-            "Editor-ui test suite runs without timeouts",
-            "Accurate coverage report generated for editor-ui",
-            "Test performance optimized for manageable execution time",
-            "Critical editor components identified for priority testing",
-            "Test infrastructure issues resolved"
-          ],
-          "important_files": [
-            "packages/editor-ui/src/",
-            "packages/editor-ui/src/__tests__/",
-            "packages/editor-ui/vitest.config.ts",
-            "packages/editor-ui/src/test-utils/"
-          ],
-          "estimate": "3-4 hours",
-          "created_at": "2025-08-03T14:17:09.258Z"
-        },
-        {
-          "id": "optimize-chat-test-coverage-1754230629258",
-          "title": "Optimize Chat Interface Test Coverage to 85%+",
-          "description": "Enhance @n8n/chat package test coverage from 74% to 85%+ by adding edge case testing, error handling, and component interaction tests",
-          "mode": "DEVELOPMENT",
-          "priority": "medium",
-          "status": "pending",
-          "parent_task_id": "frontend-test-coverage-1754084008692",
-          "success_criteria": [
-            "Chat package reaches 85%+ statement coverage",
-            "Error handling and edge cases thoroughly tested",
-            "Component state management and events tested",
-            "Chat message flow and user interactions tested",
-            "Integration with parent applications tested"
-          ],
-          "important_files": [
-            "packages/@n8n/chat/src/",
-            "packages/@n8n/chat/src/__tests__/",
-            "packages/@n8n/chat/vitest.config.ts"
-          ],
-          "estimate": "2-3 hours",
-          "created_at": "2025-08-03T14:17:09.258Z"
-        },
-        {
-          "id": "validate-frontend-test-reliability-1754230629258",
-          "title": "Validate Frontend Test Suite Reliability and Performance",
-          "description": "Ensure all frontend test suites execute reliably, consistently pass, and meet performance benchmarks across all three packages",
-          "mode": "DEVELOPMENT",
-          "priority": "medium",
-          "status": "pending",
-          "parent_task_id": "frontend-test-coverage-1754084008692",
-          "success_criteria": [
-            "All frontend test suites execute without flakiness",
-            "Test execution time within acceptable limits (<5 min per package)",
-            "Coverage reporting consistently generates accurate reports",
-            "CI/CD integration validated for all packages",
-            "Test isolation and cleanup verified"
-          ],
-          "important_files": [
-            "packages/frontend/@n8n/design-system/vitest.config.ts",
-            "packages/@n8n/chat/vitest.config.ts",
-            "packages/editor-ui/vitest.config.ts",
-            "packages/@n8n/vitest-config/"
-          ],
-          "estimate": "1-2 hours",
-          "created_at": "2025-08-03T14:17:09.258Z"
-        }
-      ]
-    },
-    {
-      "id": "fix-typescript-errors-1754084902629",
-      "title": "Fix TypeScript compilation errors in n8n package",
-      "description": "Resolve 36 TypeScript compilation errors preventing build completion",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All TypeScript errors resolved",
-        "Build completes successfully"
-      ],
-      "created_at": "2025-08-01T21:48:22.629Z"
-    },
-    {
-      "id": "fix-failing-tests-1754084911944",
-      "title": "Fix failing test suites across monorepo",
-      "description": "Investigate and resolve test failures affecting Strike 3 quality",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All test suites pass",
-        "Jest config issues resolved"
-      ],
-      "created_at": "2025-08-01T21:48:31.944Z",
-      "important_files": [
-        "./development/research-reports/frontend-coverage-baseline-analysis.md"
-      ],
-      "completion_note": "Decomposed into specific actionable tasks: fix-workflow-test-failures-1754270940227, validate-test-infrastructure-1754270940227"
-    },
-    {
-      "id": "validate-build-deps-1754084911944",
-      "title": "Validate and optimize build dependency chain",
-      "description": "Ensure build order and dependencies are optimized for reliability",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Build dependencies optimized",
-        "Turbo config validated"
-      ],
-      "created_at": "2025-08-01T21:48:31.944Z"
-    },
-    {
-      "id": "improve-test-coverage-1754084911944",
-      "title": "Improve test coverage to meet quality thresholds",
-      "description": "Achieve 80%+ test coverage across monorepo packages",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Test coverage above 80%",
-        "Coverage reporting working"
-      ],
-      "created_at": "2025-08-01T21:48:31.944Z"
-    },
-    {
-      "id": "optimize-test-infrastructure-1754084911944",
-      "title": "Optimize test infrastructure and performance",
-      "description": "Improve test execution speed and reliability by 20%",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "20% test speed improvement",
-        "Flaky tests eliminated"
-      ],
-      "created_at": "2025-08-01T21:48:31.944Z"
-    },
-    {
-      "id": "quality-improvement-1754085006497",
-      "title": "Create Quality Improvement Tasks",
-      "description": "Analyze project quality issues and create specific tasks to reach 100% quality for all strikes",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "prompt": "Project quality assessment shows issues preventing 100% strike success:\n\nQuality Status:\n- Strike 1 (Build): 50%\n- Strike 2 (Lint): 100%  \n- Strike 3 (Tests): 30%\n\nIssues Found:\n- Build Verification: Build command fails\n- Test Coverage and Success: Tests are failing\n- Test Coverage and Success: Coverage check failed\n\nTASK: Analyze these quality gaps and create specific improvement tasks to bring ALL strikes to 100% quality. Create tasks for:\n1. Build issues (missing dependencies, build failures, configuration)\n2. Code quality issues (lint errors, style violations, code standards)\n3. Testing issues (failing tests, missing coverage, test setup)\n\nInsert all improvement tasks BEFORE the strike review tasks. Strikes should always remain last in the task list.",
-      "success_criteria": [
-        "All quality issues identified and analyzed",
-        "Specific improvement tasks created for each quality gap",
-        "Tasks properly prioritized and ordered before strikes",
-        "Clear path to 100% quality established"
-      ],
-      "important_files": [
-        "package.json",
-        "eslint.config.js",
-        "**/*.test.js"
-      ],
-      "requires_research": true,
-      "is_quality_improvement_task": true,
-      "quality_analysis": {
-        "strike1": {
-          "name": "Build Verification",
-          "quality": 50,
-          "issues": [
-            "Build command fails"
-          ]
-        },
-        "strike2": {
-          "name": "Lint and Code Quality",
-          "quality": 100,
-          "issues": []
-        },
-        "strike3": {
-          "name": "Test Coverage and Success",
-          "quality": 30,
-          "issues": [
-            "Tests are failing",
-            "Coverage check failed"
-          ]
-        },
-        "overallReady": false
-      }
-    },
-    {
-      "id": "remove-pyodide-enable-local-python-1754179589293",
-      "title": "Remove Pyodide and Enable Local Python Execution with Virtual Environments",
-      "description": "Replace the current Pyodide-based Python execution in Code nodes with native local Python execution using virtual environments for maximum capabilities and performance",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Pyodide dependencies completely removed from codebase",
-        "Local Python execution implemented with venv support",
-        "Full Python standard library access enabled",
-        "Native C-extension support (NumPy, Pandas, TensorFlow, etc.)",
-        "File system access for data processing workflows",
-        "Security sandbox implemented via Docker containers",
-        "Performance benchmarks show 5-10x improvement over Pyodide",
-        "Backward compatibility maintained for existing workflows",
-        "Comprehensive documentation for Python environment setup"
-      ],
-      "important_files": [
-        "packages/nodes-base/nodes/Code/Code.node.ts",
-        "packages/nodes-base/nodes/Code/CodeNodePython.ts",
-        "packages/core/src/NodeExecuteFunctions.ts",
-        "packages/workflow/src/NodeHelpers.ts",
-        "packages/cli/src/services/python-executor.service.ts",
-        "docker/python-executor/Dockerfile",
-        "docs/nodes/code-node-python.md"
-      ],
-      "estimate": "12-16 hours",
-      "requires_research": true,
-      "subtasks": [
-        {
-          "id": "subtask-research-python-execution-1754179589293",
-          "title": "Research Current Pyodide Implementation and Security Model",
-          "description": "Analyze existing Pyodide integration to understand security boundaries and execution model",
-          "status": "pending",
-          "mode": "RESEARCH",
-          "priority": "high",
-          "estimate": "2-3 hours"
-        },
-        {
-          "id": "subtask-design-local-python-architecture-1754179589293",
-          "title": "Design Local Python Execution Architecture with Docker Sandboxing",
-          "description": "Create architecture for secure local Python execution using Docker containers and venv management",
-          "status": "pending",
-          "mode": "DEVELOPMENT",
-          "priority": "high",
-          "estimate": "3-4 hours"
-        },
-        {
-          "id": "subtask-implement-python-executor-service-1754179589293",
-          "title": "Implement Python Executor Service with Virtual Environment Management",
-          "description": "Create service to manage Python virtual environments and execute code securely",
-          "status": "pending",
-          "mode": "DEVELOPMENT",
-          "priority": "high",
-          "estimate": "4-5 hours"
-        },
-        {
-          "id": "subtask-replace-code-node-execution-1754179589293",
-          "title": "Replace Code Node Pyodide Execution with Local Python Service",
-          "description": "Update Code node to use new local Python execution service instead of Pyodide",
-          "status": "pending",
-          "mode": "DEVELOPMENT",
-          "priority": "high",
-          "estimate": "2-3 hours"
-        },
-        {
-          "id": "subtask-docker-python-environment-1754179589293",
-          "title": "Create Docker Container for Secure Python Execution",
-          "description": "Build Docker image with common Python libraries and security constraints",
-          "status": "pending",
-          "mode": "DEVELOPMENT",
-          "priority": "medium",
-          "estimate": "2-3 hours"
-        }
-      ],
-      "created_at": "2025-08-03T00:06:29.293Z"
-    },
-    {
-      "id": "python-security-enhancement-1754179613699",
-      "title": "Implement Advanced Security Model for Local Python Execution",
-      "description": "Create comprehensive security framework for local Python execution that maintains safety while enabling full capabilities",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Docker-based sandboxing with resource limits implemented",
-        "Network isolation and controlled external access",
-        "File system access controls with workspace restrictions",
-        "Python package installation controls and whitelist system",
-        "Execution timeout and resource monitoring",
-        "Audit logging for all Python execution activities",
-        "Security configuration documentation",
-        "Penetration testing completed with no critical vulnerabilities"
-      ],
-      "important_files": [
-        "packages/cli/src/security/python-sandbox.service.ts",
-        "docker/python-executor/security-config.json",
-        "packages/cli/src/middleware/python-security.middleware.ts",
-        "docs/security/python-execution-security.md",
-        "packages/cli/src/services/resource-monitor.service.ts"
-      ],
-      "estimate": "8-10 hours",
-      "requires_research": true,
-      "dependencies": [
-        "remove-pyodide-enable-local-python-1754179589293"
-      ],
-      "created_at": "2025-08-03T00:06:53.699Z"
-    },
-    {
-      "id": "python-performance-optimization-1754179613699",
-      "title": "Optimize Python Execution Performance and Resource Management",
-      "description": "Implement performance optimizations for local Python execution including connection pooling, environment caching, and execution optimization",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Python environment connection pooling implemented",
-        "Virtual environment caching and reuse system",
-        "Hot code execution for frequently used scripts",
-        "Memory usage optimization and garbage collection",
-        "Parallel execution support for independent code blocks",
-        "Performance benchmarks showing 5-10x improvement over Pyodide",
-        "Resource usage monitoring and optimization dashboard",
-        "Load testing completed with acceptable performance under stress"
-      ],
-      "important_files": [
-        "packages/cli/src/services/python-pool.service.ts",
-        "packages/cli/src/services/python-cache.service.ts",
-        "packages/cli/src/performance/python-metrics.service.ts",
-        "scripts/benchmark-python-execution.js",
-        "docs/performance/python-optimization.md"
-      ],
-      "estimate": "6-8 hours",
-      "requires_research": false,
-      "dependencies": [
-        "remove-pyodide-enable-local-python-1754179589293"
-      ],
-      "created_at": "2025-08-03T00:06:53.699Z"
-    },
-    {
-      "id": "python-migration-tools-1754179613699",
-      "title": "Create Migration Tools for Existing Pyodide Workflows",
-      "description": "Develop automated migration tools and compatibility layer to ensure existing Pyodide-based workflows continue working with local Python execution",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Automated workflow migration tool for Pyodide to local Python",
-        "Compatibility layer for Pyodide-specific APIs",
-        "Migration validation and testing framework",
-        "Rollback mechanism for failed migrations",
-        "User migration guide and documentation",
-        "Migration progress tracking and reporting",
-        "All existing n8n community workflows migrated successfully",
-        "Zero breaking changes for end users"
-      ],
-      "important_files": [
-        "packages/cli/src/migration/pyodide-to-local-python.service.ts",
-        "packages/cli/src/compatibility/pyodide-compat.ts",
-        "scripts/migrate-python-workflows.js",
-        "docs/migration/pyodide-to-local-python.md",
-        "packages/cli/src/commands/migrate-python.command.ts"
-      ],
-      "estimate": "6-8 hours",
-      "requires_research": true,
-      "dependencies": [
-        "remove-pyodide-enable-local-python-1754179589293"
-      ],
-      "created_at": "2025-08-03T00:06:53.699Z"
-    },
-    {
-      "id": "refactor-uproc-tools-1754202356060",
-      "title": "Refactor UProc/Json/Tools.ts into Category-Based Modules",
-      "description": "Split the 7,967-line UProc/Json/Tools.ts file into logical modules organized by tool categories (finance, geographic, text, communication, etc.)",
-      "mode": "REFACTORING",
-      "priority": "high",
-      "status": "completed",
-      "parent_task_id": "large-file-refactoring-1753998821937",
-      "success_criteria": [
-        "UProc/Json/Tools.ts split into category-based modules (finance.ts, geographic.ts, text.ts, etc.)",
-        "Each module exports tools specific to its category",
-        "Main Tools.ts file imports and re-exports all tools",
-        "All functionality preserved - no breaking changes",
-        "TypeScript compilation time improved",
-        "File maintainability enhanced"
-      ],
-      "important_files": [
-        "packages/nodes-base/nodes/UProc/Json/Tools.ts",
-        "packages/nodes-base/nodes/UProc/Json/",
-        "packages/nodes-base/nodes/UProc/UProc.node.ts"
-      ],
-      "estimate": "3-4 hours",
-      "created_at": "2025-08-03T06:25:56.060Z"
-    },
-    {
-      "id": "refactor-workflow-tests-1754202356060",
-      "title": "Extract Reusable Test Utilities from Large Test Files",
-      "description": "Refactor large test files like workflow.test.ts (3,585 lines) to extract reusable test utilities and reduce compilation overhead",
-      "mode": "REFACTORING",
-      "priority": "medium",
-      "status": "completed",
-      "parent_task_id": "large-file-refactoring-1753998821937",
-      "success_criteria": [
-        "Common test utilities extracted into separate modules",
-        "Test helper functions modularized and reusable",
-        "Large test files broken into focused test suites",
-        "All tests continue to pass",
-        "Test execution time maintained or improved",
-        "Code duplication eliminated"
-      ],
-      "important_files": [
-        "packages/workflow/test/workflow.test.ts",
-        "packages/frontend/editor-ui/src/composables/useCanvasOperations.test.ts",
-        "packages/workflow/test/helpers/",
-        "packages/frontend/editor-ui/src/test-utils/"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-03T06:25:56.060Z"
-    },
-    {
-      "id": "refactor-pipedrive-node-1754202356060",
-      "title": "Modularize Pipedrive Node Implementation",
-      "description": "Break down the large Pipedrive.node.ts file (4,991 lines) into logical modules for better maintainability and compilation performance",
-      "mode": "REFACTORING",
-      "priority": "medium",
-      "status": "completed",
-      "parent_task_id": "large-file-refactoring-1753998821937",
-      "success_criteria": [
-        "Pipedrive.node.ts split into logical modules (operations, resources, helpers)",
-        "Common functionality extracted into reusable utilities",
-        "Node registration and exports maintained correctly",
-        "All Pipedrive node functionality preserved",
-        "TypeScript compilation performance improved",
-        "Code organization enhanced for future maintenance"
-      ],
-      "important_files": [
-        "packages/nodes-base/nodes/Pipedrive/Pipedrive.node.ts",
-        "packages/nodes-base/nodes/Pipedrive/",
-        "packages/nodes-base/nodes/Pipedrive/descriptions/"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-03T06:25:56.060Z"
-    },
-    {
-      "id": "cli-coverage-analysis-1754203420018",
-      "title": "Analyze CLI Package Test Coverage Gaps",
-      "description": "Generate detailed test coverage report and identify specific untested controllers, services, and middleware files in CLI package",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Current test coverage percentage identified for CLI package",
-        "List of untested controller files generated",
-        "List of untested service files generated",
-        "List of untested middleware files generated",
-        "Coverage report shows specific gaps and missing test files",
-        "Research report created with testing priorities"
-      ],
-      "dependencies": [],
-      "estimate": "1-2 hours",
-      "important_files": [
-        "packages/cli/jest.config.js",
-        "packages/cli/src/controllers/",
-        "packages/cli/src/services/",
-        "packages/cli/src/middleware/",
-        "./development/research-reports/research-report-cli-coverage-analysis-1754203420018.md"
-      ],
-      "created_at": "2025-08-03T06:43:40.018Z"
-    },
-    {
-      "id": "cli-controller-tests-1754203420019",
-      "title": "Add Unit Tests for CLI Controllers",
-      "description": "Write comprehensive unit tests for untested controller files to improve CLI package test coverage",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Unit tests written for all priority controller files",
-        "Tests follow established CLI testing patterns",
-        "Controller test coverage increased by 15-20%",
-        "All new tests pass and integrate with existing test suite",
-        "Test execution time remains acceptable"
-      ],
-      "dependencies": [
-        "cli-coverage-analysis-1754203420018"
-      ],
-      "estimate": "3-4 hours",
-      "important_files": [
-        "packages/cli/src/controllers/",
-        "packages/cli/test/integration/controllers/",
-        "./development/research-reports/research-report-cli-coverage-analysis-1754203420018.md"
-      ],
-      "created_at": "2025-08-03T06:43:40.018Z"
-    },
-    {
-      "id": "cli-service-tests-1754203421226",
-      "title": "Add Unit Tests for CLI Services",
-      "description": "Write comprehensive unit tests for untested service files to improve CLI package test coverage",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Unit tests written for all priority service files",
-        "Tests cover core service functionality and error cases",
-        "Service test coverage increased by 10-15%",
-        "Proper mocking of external dependencies implemented",
-        "All new tests pass and maintain performance standards"
-      ],
-      "dependencies": [
-        "cli-coverage-analysis-1754203420018"
-      ],
-      "estimate": "3-4 hours",
-      "important_files": [
-        "packages/cli/src/",
-        "packages/cli/test/unit/",
-        "./development/research-reports/research-report-cli-coverage-analysis-1754203420018.md"
-      ],
-      "created_at": "2025-08-03T06:43:41.226Z"
-    },
-    {
-      "id": "cli-middleware-tests-1754203421227",
-      "title": "Add Unit Tests for CLI Middleware",
-      "description": "Write comprehensive unit tests for middleware components to improve CLI package test coverage",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Unit tests written for all middleware files",
-        "Tests cover request/response handling and error scenarios",
-        "Middleware test coverage reaches comprehensive levels",
-        "Tests validate middleware integration and chaining",
-        "All new tests follow middleware testing best practices"
-      ],
-      "dependencies": [
-        "cli-coverage-analysis-1754203420018"
-      ],
-      "estimate": "2-3 hours",
-      "important_files": [
-        "packages/cli/src/middleware/",
-        "packages/cli/test/",
-        "./development/research-reports/research-report-cli-coverage-analysis-1754203420018.md"
-      ],
-      "created_at": "2025-08-03T06:43:41.226Z"
-    },
-    {
-      "id": "errors-package-test-suite-1754204776630",
-      "title": "Implement Complete Test Suite for @n8n/errors Package",
-      "description": "Create comprehensive test coverage for the @n8n/errors package which currently has 0% test coverage, focusing on ApplicationError class, Sentry integration, and error handling patterns.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "parent_task_id": "backend-utils-test-coverage-1754084008691",
-      "success_criteria": [
-        "ApplicationError class fully tested with all constructor variations",
-        "Sentry integration and package name detection tested",
-        "Error level handling and reporting options validated",
-        "Test coverage reaches 85%+ for @n8n/errors package",
-        "Jest configuration set up for @n8n/errors package",
-        "All error handling edge cases covered"
-      ],
-      "important_files": [
-        "packages/@n8n/errors/src/application.error.ts",
-        "packages/@n8n/errors/src/types.ts",
-        "packages/@n8n/errors/test/",
-        "packages/@n8n/errors/jest.config.js",
-        "packages/@n8n/errors/package.json"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-03T07:06:16.630Z"
-    },
-    {
-      "id": "db-security-validators-tests-1754204776630",
-      "title": "Create Security-Critical Tests for @n8n/db Validators",
-      "description": "Implement comprehensive tests for security validators in @n8n/db package, focusing on XSS prevention, URL validation, and input sanitization to prevent security vulnerabilities.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "parent_task_id": "backend-utils-test-coverage-1754084008691",
-      "success_criteria": [
-        "no-xss.validator.ts comprehensively tested with malicious input variations",
-        "no-url.validator.ts tested with various URL formats and edge cases",
-        "Entity validation logic tested across user-facing entities",
-        "Security boundary testing for input sanitization",
-        "Performance testing for validation under load",
-        "Edge case testing for validation bypass attempts"
-      ],
-      "important_files": [
-        "packages/@n8n/db/src/utils/validators/no-xss.validator.ts",
-        "packages/@n8n/db/src/utils/validators/no-url.validator.ts",
-        "packages/@n8n/db/src/entities/user.ts",
-        "packages/@n8n/db/src/entities/credentials-entity.ts",
-        "packages/@n8n/db/test/validators/"
-      ],
-      "estimate": "3-4 hours",
-      "created_at": "2025-08-03T07:06:16.630Z"
-    },
-    {
-      "id": "config-decorators-tests-1754204776630",
-      "title": "Implement Tests for @n8n/config Decorators and Type System",
-      "description": "Create comprehensive test coverage for @n8n/config decorators (@Config, @Env, @Nested) and type coercion system which handles environment variable parsing and validation.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "parent_task_id": "backend-utils-test-coverage-1754084008691",
-      "success_criteria": [
-        "@Config decorator tested with various configuration scenarios",
-        "@Env decorator tested with environment variable parsing and validation",
-        "@Nested decorator tested with complex nested configuration structures",
-        "Type coercion tested for Number, Boolean, Date, and Array parsing",
-        "File-based configuration reading tested",
-        "Error handling for invalid configurations tested",
-        "Reflection metadata handling validated"
-      ],
-      "important_files": [
-        "packages/@n8n/config/src/decorators.ts",
-        "packages/@n8n/config/src/custom-types.ts",
-        "packages/@n8n/config/src/configs/",
-        "packages/@n8n/config/test/decorators.test.ts"
-      ],
-      "estimate": "3-4 hours",
-      "created_at": "2025-08-03T07:06:16.630Z"
-    },
-    {
-      "id": "analyze-frontend-coverage-baseline-1754230629258",
-      "title": "Analyze Current Frontend Test Coverage Baseline",
-      "description": "Generate comprehensive coverage baseline report for design-system (47%), chat (74%), and editor-ui packages to identify specific gaps and establish improvement targets",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "parent_task_id": "frontend-test-coverage-1754084008692",
-      "success_criteria": [
-        "Coverage baseline report generated for all three packages",
-        "Specific component gaps identified with coverage percentages",
-        "Editor-ui test performance issues documented and analyzed",
-        "Priority component list created for coverage improvement",
-        "Coverage improvement roadmap established"
-      ],
-      "important_files": [
-        "packages/frontend/@n8n/design-system/coverage/",
-        "packages/@n8n/chat/coverage/",
-        "packages/editor-ui/coverage/",
-        "packages/frontend/@n8n/design-system/vitest.config.ts",
-        "packages/@n8n/vitest-config/"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-03T14:17:09.258Z"
-    },
-    {
-      "id": "extract-test-utilities-1754237724157",
-      "title": "Extract Reusable Test Utilities from Large Test Files",
-      "description": "Refactor large test files like workflow.test.ts (3,585 lines) to extract reusable test utilities and reduce compilation overhead.",
-      "mode": "REFACTORING",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Common test utilities extracted into separate modules",
-        "Test helper functions modularized and reusable",
-        "Large test files broken into focused test suites",
-        "All tests continue to pass",
-        "Test execution time maintained or improved",
-        "Code duplication eliminated"
-      ],
-      "important_files": [
-        "packages/workflow/test/workflow.test.ts",
-        "packages/frontend/editor-ui/src/composables/useCanvasOperations.test.ts",
-        "packages/workflow/test/helpers/",
-        "packages/frontend/editor-ui/src/test-utils/"
-      ],
-      "estimate": "4-6 hours",
-      "created_at": "2025-08-03T16:15:24.157Z"
-    },
-    {
-      "id": "test_perf_baseline_1754279928986",
-      "title": "Analyze n8n monorepo test execution performance and establish baseline metrics",
-      "description": "Comprehensive analysis of test performance across all packages including timing data, bottlenecks, flaky tests, and parallelization opportunities",
-      "status": "completed",
-      "priority": "high",
-      "created_at": "2025-08-04T03:58:48.986Z",
-      "important_files": [],
-      "mode": "DEVELOPMENT"
-    },
-    {
-      "id": "python_integration_investigation_1754283790404",
-      "title": "Investigate n8n Python Integration and Local Execution",
-      "description": "Comprehensive investigation of how n8n integrates with Python environments, subprocess execution, and local Python capabilities",
-      "mode": "RESEARCH",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "Python execution mechanisms identified",
-        "Environment management patterns documented",
-        "Docker/deployment Python integration analyzed",
-        "Code node Python capabilities analyzed",
-        "Local execution security patterns documented"
-      ],
-      "important_files": [],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-04T05:03:10.404Z"
-    },
-    {
-      "id": "db-core-entities-tests-1754204776630",
-      "title": "Create Entity Tests for @n8n/db User-Facing and Security Entities",
-      "description": "Implement comprehensive tests for critical @n8n/db entities focusing on user-facing entities, security-sensitive entities, and core business logic entities.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "parent_task_id": "backend-utils-test-coverage-1754084008691",
-      "success_criteria": [
-        "user.ts entity fully tested including validation and relationships",
-        "credentials-entity.ts tested with encryption and security features",
-        "workflow-entity.ts tested with business logic and data integrity",
-        "auth-identity.ts and api-key.ts security entities tested",
-        "execution-entity.ts tested with performance and data handling",
-        "Entity relationships and cascading operations tested",
-        "Validation constraints and error handling tested"
-      ],
-      "important_files": [
-        "packages/@n8n/db/src/entities/user.ts",
-        "packages/@n8n/db/src/entities/credentials-entity.ts",
-        "packages/@n8n/db/src/entities/workflow-entity.ts",
-        "packages/@n8n/db/src/entities/auth-identity.ts",
-        "packages/@n8n/db/src/entities/api-key.ts",
-        "packages/@n8n/db/src/entities/execution-entity.ts",
-        "packages/@n8n/db/test/entities/"
-      ],
-      "estimate": "4-5 hours",
-      "created_at": "2025-08-03T07:06:16.630Z"
-    },
-    {
-      "id": "db-repositories-tests-1754204776630",
-      "title": "Implement Repository Tests for @n8n/db Critical Repositories",
-      "description": "Create comprehensive tests for critical @n8n/db repositories focusing on data access patterns, query optimization, and business logic implementation.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "parent_task_id": "backend-utils-test-coverage-1754084008691",
-      "success_criteria": [
-        "user.repository.ts tested with all CRUD operations and queries",
-        "execution.repository.ts tested with performance-critical operations",
-        "workflow.repository.ts tested with complex business logic queries",
-        "credentials.repository.ts tested with security and encryption handling",
-        "auth-identity.repository.ts tested with authentication flows",
-        "Repository error handling and transaction management tested",
-        "Query performance and optimization validated"
-      ],
-      "important_files": [
-        "packages/@n8n/db/src/repositories/user.repository.ts",
-        "packages/@n8n/db/src/repositories/execution.repository.ts",
-        "packages/@n8n/db/src/repositories/workflow.repository.ts",
-        "packages/@n8n/db/src/repositories/credentials.repository.ts",
-        "packages/@n8n/db/src/repositories/auth-identity.repository.ts",
-        "packages/@n8n/db/test/repositories/"
-      ],
-      "estimate": "4-5 hours",
-      "created_at": "2025-08-03T07:06:16.630Z"
-    },
-    {
-      "id": "backend-common-modules-tests-1754204776630",
-      "title": "Add Missing Tests for @n8n/backend-common Modules and Environment",
-      "description": "Complete test coverage for @n8n/backend-common package by adding tests for module registry, environment detection, and licensing functionality.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "parent_task_id": "backend-utils-test-coverage-1754084008691",
-      "success_criteria": [
-        "Module registry dynamic loading and configuration tested",
-        "Environment detection logic tested (dev/prod/test detection)",
-        "License state management and validation tested",
-        "Module error handling and recovery tested",
-        "Environment-specific behavior validation tested",
-        "Configuration loading and validation tested",
-        "Package coverage increased from 68% to 85%+"
-      ],
-      "important_files": [
-        "packages/@n8n/backend-common/src/modules/",
-        "packages/@n8n/backend-common/src/environment.ts",
-        "packages/@n8n/backend-common/src/license-state.ts",
-        "packages/@n8n/backend-common/test/modules.test.ts",
-        "packages/@n8n/backend-common/test/environment.test.ts"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-03T07:06:16.630Z"
-    },
-    {
-      "id": "enhance-design-system-coverage-1754230629258",
-      "title": "Enhance Design System Component Test Coverage to 80%",
-      "description": "Improve @n8n/design-system test coverage from 47% to 80% by adding tests for untested components and improving function coverage from 45%",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "parent_task_id": "frontend-test-coverage-1754084008692",
-      "success_criteria": [
-        "Design system package reaches 80%+ statement coverage",
-        "Function coverage improved from 45% to 70%+",
-        "All critical UI components have comprehensive tests",
-        "Component interaction and prop validation tested",
-        "Accessibility features properly tested"
-      ],
-      "important_files": [
-        "packages/frontend/@n8n/design-system/src/components/",
-        "packages/frontend/@n8n/design-system/src/__tests__/",
-        "packages/frontend/@n8n/design-system/vitest.config.ts"
-      ],
-      "estimate": "4-5 hours",
-      "created_at": "2025-08-03T14:17:09.258Z",
-      "subtasks": [
-        {
-          "id": "analyze-coverage-baseline-1754370557436",
-          "title": "Analyze Design System Test Coverage Baseline",
-          "description": "Run comprehensive coverage analysis to identify specific components with low/missing test coverage and establish improvement priorities",
-          "mode": "DEVELOPMENT",
-          "priority": "high",
-          "status": "pending",
-          "parent_task_id": "enhance-design-system-coverage-1754230629258",
-          "success_criteria": [
-            "Coverage baseline report generated with specific percentages per component",
-            "Components with low coverage identified and prioritized",
-            "Missing test files documented for untested components",
-            "Coverage improvement roadmap created with specific targets"
-          ],
-          "important_files": [
-            "packages/frontend/@n8n/design-system/coverage-report.json",
-            "packages/frontend/@n8n/design-system/src/components/",
-            "packages/frontend/@n8n/design-system/vitest.config.ts"
-          ],
-          "estimate": "1-2 hours",
-          "created_at": "2025-08-05T05:09:17.436Z"
-        },
-        {
-          "id": "test-critical-components-1754370557436",
-          "title": "Add Tests for Critical UI Components",
-          "description": "Focus on testing the most critical components (Button, Input, Select, Alert, etc.) to achieve quick coverage gains for high-impact components",
-          "mode": "DEVELOPMENT",
-          "priority": "high",
-          "status": "pending",
-          "parent_task_id": "enhance-design-system-coverage-1754230629258",
-          "success_criteria": [
-            "N8nButton, N8nInput, N8nSelect components reach 90%+ coverage",
-            "N8nAlert, N8nCard, N8nTooltip components fully tested",
-            "Component interaction and prop validation tested",
-            "All critical user interaction scenarios covered"
-          ],
-          "important_files": [
-            "packages/frontend/@n8n/design-system/src/components/N8nButton/",
-            "packages/frontend/@n8n/design-system/src/components/N8nInput/",
-            "packages/frontend/@n8n/design-system/src/components/N8nSelect/",
-            "packages/frontend/@n8n/design-system/src/components/N8nAlert/"
-          ],
-          "estimate": "2-3 hours",
-          "created_at": "2025-08-05T05:09:17.436Z"
-        },
-        {
-          "id": "test-utility-functions-1754370557436",
-          "title": "Improve Utility Functions and Directive Test Coverage",
-          "description": "Add comprehensive tests for utility functions, directives, and helper modules to improve function coverage from 45% to 70%+",
-          "mode": "DEVELOPMENT",
-          "priority": "medium",
-          "status": "pending",
-          "parent_task_id": "enhance-design-system-coverage-1754230629258",
-          "success_criteria": [
-            "All utility functions in src/utils/ reach 80%+ coverage",
-            "Directive functions (n8n-html, n8n-truncate, etc.) fully tested",
-            "Helper functions and type guards comprehensively tested",
-            "Function coverage increases from 45% to 70%+"
-          ],
-          "important_files": [
-            "packages/frontend/@n8n/design-system/src/utils/",
-            "packages/frontend/@n8n/design-system/src/directives/",
-            "packages/frontend/@n8n/design-system/src/composables/"
-          ],
-          "estimate": "1-2 hours",
-          "created_at": "2025-08-05T05:09:17.436Z"
-        }
-      ]
-    },
-    {
-      "id": "fix-editor-ui-test-performance-1754230629258",
-      "title": "Fix Editor-UI Test Performance and Coverage Analysis",
-      "description": "Resolve test timeout issues in editor-ui package and establish accurate coverage baseline for the 375 components and 846 source files",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "parent_task_id": "frontend-test-coverage-1754084008692",
-      "success_criteria": [
-        "Editor-ui test suite runs without timeouts",
-        "Accurate coverage report generated for editor-ui",
-        "Test performance optimized for manageable execution time",
-        "Critical editor components identified for priority testing",
-        "Test infrastructure issues resolved"
-      ],
-      "important_files": [
-        "packages/editor-ui/src/",
-        "packages/editor-ui/src/__tests__/",
-        "packages/editor-ui/vitest.config.ts",
-        "packages/editor-ui/src/test-utils/"
-      ],
-      "estimate": "3-4 hours",
-      "created_at": "2025-08-03T14:17:09.258Z"
-    },
-    {
-      "id": "optimize-chat-test-coverage-1754230629258",
-      "title": "Optimize Chat Interface Test Coverage to 85%+",
-      "description": "Enhance @n8n/chat package test coverage from 74% to 85%+ by adding edge case testing, error handling, and component interaction tests",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "parent_task_id": "frontend-test-coverage-1754084008692",
-      "success_criteria": [
-        "Chat package reaches 85%+ statement coverage",
-        "Error handling and edge cases thoroughly tested",
-        "Component state management and events tested",
-        "Chat message flow and user interactions tested",
-        "Integration with parent applications tested"
-      ],
-      "important_files": [
-        "packages/@n8n/chat/src/",
-        "packages/@n8n/chat/src/__tests__/",
-        "packages/@n8n/chat/vitest.config.ts"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-03T14:17:09.258Z"
-    },
-    {
-      "id": "validate-frontend-test-reliability-1754230629258",
-      "title": "Validate Frontend Test Suite Reliability and Performance",
-      "description": "Ensure all frontend test suites execute reliably, consistently pass, and meet performance benchmarks across all three packages",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "parent_task_id": "frontend-test-coverage-1754084008692",
-      "success_criteria": [
-        "All frontend test suites execute without flakiness",
-        "Test execution time within acceptable limits (<5 min per package)",
-        "Coverage reporting consistently generates accurate reports",
-        "CI/CD integration validated for all packages",
-        "Test isolation and cleanup verified"
-      ],
-      "important_files": [
-        "packages/frontend/@n8n/design-system/vitest.config.ts",
-        "packages/@n8n/chat/vitest.config.ts",
-        "packages/editor-ui/vitest.config.ts",
-        "packages/@n8n/vitest-config/"
-      ],
-      "estimate": "1-2 hours",
-      "created_at": "2025-08-03T14:17:09.258Z"
-    },
-    {
-      "id": "fix-workflow-test-failures-1754270940227",
-      "title": "Fix n8n-workflow Package Test Failures",
-      "description": "Resolve 22 failed tests in n8n-workflow package, primarily TypeError: workflow.nodes.map is not a function and missing method implementations",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All 22 failed tests in n8n-workflow package pass",
-        "TypeError: workflow.nodes.map is not a function resolved",
-        "Missing workflow methods (getConnectionsBySourceNode, checkReadyForExecution) implemented",
-        "Test utilities and factories updated to match Workflow class structure",
-        "No regression in existing passing tests"
-      ],
-      "important_files": [
-        "packages/workflow/test/workflow-connections.test.ts",
-        "packages/workflow/test/workflow-node-renaming.test.ts",
-        "packages/workflow/test/node-helpers-parameters.test.ts",
-        "packages/workflow/test/helpers/test-runner.ts",
-        "packages/workflow/src/workflow.ts"
-      ],
-      "estimate": "3-4 hours",
-      "created_at": "2025-08-04T01:29:00.227Z"
-    },
-    {
-      "id": "validate-test-infrastructure-1754270940227",
-      "title": "Validate and Fix Test Infrastructure Issues",
-      "description": "Ensure test infrastructure is stable and identify any remaining test failures beyond n8n-workflow package",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Full test suite runs without infrastructure failures",
-        "Test timeout issues resolved where identified",
-        "Jest configuration validated across all packages",
-        "Coverage reporting functioning correctly",
-        "CI/CD test execution stable"
-      ],
-      "important_files": [
-        "jest.config.js",
-        "packages/*/jest.config.js",
-        "turbo.json"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-04T01:29:00.227Z"
-    },
-    {
-      "id": "optimize-large-test-files-1754284115795",
-      "title": "Optimize Large Test Files for Better Performance",
-      "description": "Refactor oversized test files (3,000+ lines) into smaller, focused test suites to improve test execution speed and maintainability. Target files: workflow.test.ts (3,585 lines), node-helpers.test.ts (5,758 lines), and useCanvasOperations.test.ts (3,866 lines).",
-      "mode": "REFACTORING",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "workflow.test.ts split into focused test modules under 1,000 lines each",
-        "node-helpers.test.ts broken into logical test categories",
-        "useCanvasOperations.test.ts extracted into multiple component test files",
-        "All existing test functionality preserved",
-        "Test execution time improved by 15-20% for affected suites",
-        "Test maintainability and readability enhanced"
-      ],
-      "important_files": [
-        "packages/workflow/test/workflow.test.ts",
-        "packages/workflow/test/node-helpers.test.ts",
-        "packages/frontend/editor-ui/src/composables/useCanvasOperations.test.ts",
-        "packages/workflow/test/",
-        "packages/frontend/editor-ui/src/composables/"
-      ],
-      "estimate": "4-6 hours",
-      "created_at": "2025-08-04T05:08:35.795Z"
-    },
-    {
-      "id": "fix-cli-test-timeout-issues-1754284135949",
-      "title": "Fix CLI Integration Test Timeout Issues",
-      "description": "Investigate and resolve the CLI integration tests requiring 30-second timeouts. Optimize test setup, database initialization, and test isolation to reduce execution time and improve reliability.",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "CLI integration test timeout reduced from 30s to 15s or less",
-        "Test setup and teardown optimized for faster execution",
-        "Database initialization performance improved",
-        "Test isolation issues resolved",
-        "Flaky test patterns identified and eliminated",
-        "All CLI integration tests pass reliably within new timeout limits"
-      ],
-      "important_files": [
-        "packages/cli/jest.config.js",
-        "packages/cli/test/setup.ts",
-        "packages/cli/test/setup-mocks.ts",
-        "packages/cli/test/integration/",
-        "packages/@n8n/backend-test-utils/"
-      ],
-      "estimate": "3-4 hours",
-      "created_at": "2025-08-04T05:08:55.949Z"
-    },
-    {
-      "id": "optimize-test-build-dependencies-1754284186026",
-      "title": "Optimize Test Build Dependencies in Turbo Configuration",
-      "description": "Analyze and optimize the test task dependencies in turbo.json to reduce unnecessary build dependencies and improve parallel test execution. Focus on separating unit tests from integration tests that require builds.",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "test:unit task optimized to run without build dependencies",
-        "test task dependencies streamlined for faster execution",
-        "Parallel test execution improved through better dependency management",
-        "Cache utilization for test tasks enhanced",
-        "Test execution time reduced by 10-15% through optimized dependencies"
-      ],
-      "important_files": [
-        "turbo.json",
-        "packages/*/jest.config.*",
-        "packages/*/vitest.config.*",
-        "package.json"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-04T05:09:46.026Z"
-    },
-    {
-      "id": "fix-typescript-errors-1754284947648",
-      "title": "Fix TypeScript Compilation Errors in CLI Package",
-      "description": "Resolve TypeScript compilation errors preventing clean builds, specifically in test files and service dependencies",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "All TypeScript compilation errors resolved",
-        "npm run typecheck passes without errors",
-        "Clean build with no type issues"
-      ],
-      "important_files": [
-        "packages/cli/src/controllers/resource-transfer.controller.ts",
-        "packages/cli/src/services/__tests__/compliance-reporting.service.test.ts",
-        "packages/cli/src/services/__tests__/enhanced-role-management.service.test.ts"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-04T05:22:27.648Z"
-    },
-    {
-      "id": "fix-security-service-tests-1754284947648",
-      "title": "Fix SecurityMonitoringService Test Failures",
-      "description": "Resolve dependency injection and repository issues causing all SecurityMonitoringService tests to fail",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "success_criteria": [
-        "SecurityMonitoringService tests pass completely",
-        "DataSource and repository mocking fixed",
-        "All 17 test cases executing successfully"
-      ],
-      "important_files": [
-        "packages/cli/src/services/__tests__/security-monitoring.service.test.ts",
-        "packages/cli/src/services/security-monitoring.service.ts"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-04T05:22:27.648Z"
-    },
-    {
-      "id": "fix-compliance-test-types-1754284947648",
-      "title": "Fix Compliance Service Type Mismatches",
-      "description": "Resolve type incompatibilities in compliance reporting service tests including ComplianceStandard and AuditEvent types",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "All compliance service tests compile without type errors",
-        "ComplianceStandard enum properly configured",
-        "AuditEvent interface properly implemented"
-      ],
-      "important_files": [
-        "packages/cli/src/services/__tests__/compliance-reporting.service.test.ts"
-      ],
-      "estimate": "1-2 hours",
-      "created_at": "2025-08-04T05:22:27.648Z"
-    },
-    {
-      "id": "improve-test-infrastructure-1754284947648",
-      "title": "Improve Test Infrastructure and Coverage",
-      "description": "Enhance test setup, mocking, and dependency injection to prevent test failures and improve reliability",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "success_criteria": [
-        "Test infrastructure properly configured",
-        "Mock setup consistent across test suites",
-        "Dependency injection working correctly in tests"
-      ],
-      "important_files": [
-        "packages/cli/jest.config.js",
-        "packages/cli/test/setup.ts"
-      ],
-      "estimate": "3-4 hours",
-      "created_at": "2025-08-04T05:22:27.648Z"
-    },
-    {
-      "id": "quality-improvement-1754285084632",
-      "title": "Create Quality Improvement Tasks",
-      "description": "Analyze project quality issues and create specific tasks to reach 100% quality for all strikes",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "prompt": "Project quality assessment shows issues preventing 100% strike success:\n\nQuality Status:\n- Strike 1 (Build): 100%\n- Strike 2 (Lint): 100%  \n- Strike 3 (Tests): 30%\n\nIssues Found:\n- Test Coverage and Success: Tests are failing\n- Test Coverage and Success: Coverage check failed\n\nTASK: Analyze these quality gaps and create specific improvement tasks to bring ALL strikes to 100% quality. Create tasks for:\n1. Build issues (missing dependencies, build failures, configuration)\n2. Code quality issues (lint errors, style violations, code standards)\n3. Testing issues (failing tests, missing coverage, test setup)\n\nInsert all improvement tasks BEFORE the strike review tasks. Strikes should always remain last in the task list.",
-      "success_criteria": [
-        "All quality issues identified and analyzed",
-        "Specific improvement tasks created for each quality gap",
-        "Tasks properly prioritized and ordered before strikes",
-        "Clear path to 100% quality established"
-      ],
-      "important_files": [
-        "package.json",
-        "eslint.config.js",
-        "**/*.test.js"
-      ],
-      "requires_research": true,
-      "is_quality_improvement_task": true,
-      "quality_analysis": {
-        "strike1": {
-          "name": "Build Verification",
-          "quality": 100,
-          "issues": []
-        },
-        "strike2": {
-          "name": "Lint and Code Quality",
-          "quality": 100,
-          "issues": []
-        },
-        "strike3": {
-          "name": "Test Coverage and Success",
-          "quality": 30,
-          "issues": [
-            "Tests are failing",
-            "Coverage check failed"
-          ]
-        },
-        "overallReady": false
-      }
-    },
-    {
-      "id": "pyodide-to-local-python-conversion-1754292409540",
-      "title": "Convert n8n Python execution from Pyodide to local Python with venv compatibility",
-      "status": "completed",
-      "priority": "high",
-      "description": "Replace browser-based Pyodide Python execution with local subprocess-based Python execution supporting virtual environments for maximum capabilities and package compatibility",
-      "created_at": "2025-08-04T07:26:49.540Z",
-      "subtasks": [
-        "python-analysis",
-        "python-venv-design",
-        "python-security-model",
-        "python-subprocess-service",
-        "python-venv-manager",
-        "python-package-installer",
-        "python-execution-engine",
-        "python-migration-tests",
-        "python-backward-compatibility",
-        "python-documentation"
-      ],
-      "mode": "DEVELOPMENT"
-    },
-    {
-      "id": "oauth2_research_1754367471409",
-      "title": "Comprehensive OAuth2 and credential testing analysis in n8n codebase",
-      "description": "Analyze OAuth2 callback handling, credential validation APIs, authentication testing tools, and external auth provider integrations",
-      "status": "completed",
-      "priority": "high",
-      "created_at": "2025-08-05T04:17:51.409Z",
-      "subtasks": [
-        "OAuth2 callback routing analysis",
-        "Credential validation API discovery",
-        "Authentication testing framework analysis",
-        "External provider integration patterns",
-        "Credential health checking mechanisms"
-      ],
-      "mode": "DEVELOPMENT"
-    },
-    {
-      "id": "bulk_ops_analysis_1754367488256",
-      "title": "Comprehensive Analysis of n8n Bulk Operation Capabilities",
-      "description": "Search and analyze existing bulk workflow operations vs gaps in n8n codebase",
-      "status": "completed",
-      "priority": "high",
-      "type": "research",
-      "created_at": "2025-08-05T04:18:08.256Z",
-      "estimated_duration": "10-15 minutes",
-      "acceptance_criteria": [
-        "Map all existing bulk workflow activation/deactivation APIs",
-        "Document batch processing capabilities in CLI and controllers",
-        "Identify gaps in multi-workflow management features",
-        "Report on current vs missing bulk operation support"
-      ],
-      "mode": "DEVELOPMENT"
-    },
-    {
-      "id": "analyze-coverage-baseline-1754370557436",
-      "title": "Analyze Design System Test Coverage Baseline",
-      "description": "Run comprehensive coverage analysis to identify specific components with low/missing test coverage and establish improvement priorities",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "parent_task_id": "enhance-design-system-coverage-1754230629258",
-      "success_criteria": [
-        "Coverage baseline report generated with specific percentages per component",
-        "Components with low coverage identified and prioritized",
-        "Missing test files documented for untested components",
-        "Coverage improvement roadmap created with specific targets"
-      ],
-      "important_files": [
-        "packages/frontend/@n8n/design-system/coverage-report.json",
-        "packages/frontend/@n8n/design-system/src/components/",
-        "packages/frontend/@n8n/design-system/vitest.config.ts"
-      ],
-      "estimate": "1-2 hours",
-      "created_at": "2025-08-05T05:09:17.436Z"
-    },
-    {
-      "id": "test-critical-components-1754370557436",
-      "title": "Add Tests for Critical UI Components",
-      "description": "Focus on testing the most critical components (Button, Input, Select, Alert, etc.) to achieve quick coverage gains for high-impact components",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "parent_task_id": "enhance-design-system-coverage-1754230629258",
-      "success_criteria": [
-        "N8nButton, N8nInput, N8nSelect components reach 90%+ coverage",
-        "N8nAlert, N8nCard, N8nTooltip components fully tested",
-        "Component interaction and prop validation tested",
-        "All critical user interaction scenarios covered"
-      ],
-      "important_files": [
-        "packages/frontend/@n8n/design-system/src/components/N8nButton/",
-        "packages/frontend/@n8n/design-system/src/components/N8nInput/",
-        "packages/frontend/@n8n/design-system/src/components/N8nSelect/",
-        "packages/frontend/@n8n/design-system/src/components/N8nAlert/"
-      ],
-      "estimate": "2-3 hours",
-      "created_at": "2025-08-05T05:09:17.436Z"
-    },
-    {
-      "id": "test-utility-functions-1754370557436",
-      "title": "Improve Utility Functions and Directive Test Coverage",
-      "description": "Add comprehensive tests for utility functions, directives, and helper modules to improve function coverage from 45% to 70%+",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "parent_task_id": "enhance-design-system-coverage-1754230629258",
-      "success_criteria": [
-        "All utility functions in src/utils/ reach 80%+ coverage",
-        "Directive functions (n8n-html, n8n-truncate, etc.) fully tested",
-        "Helper functions and type guards comprehensively tested",
-        "Function coverage increases from 45% to 70%+"
-      ],
-      "important_files": [
-        "packages/frontend/@n8n/design-system/src/utils/",
-        "packages/frontend/@n8n/design-system/src/directives/",
-        "packages/frontend/@n8n/design-system/src/composables/"
-      ],
-      "estimate": "1-2 hours",
-      "created_at": "2025-08-05T05:09:17.436Z"
-    },
-    {
-      "id": "task_1754383329209_ehjb2gn73",
-      "title": "Add tests for core N8n UI components (Text, Link, Loading, Menu)",
-      "description": "Implement comprehensive test coverage for fundamental UI components: N8nText, N8nLink, N8nLoading, N8nMenu, N8nMenuItem to improve overall package coverage",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "dependencies": [],
-      "important_files": [
-        "packages/frontend/@n8n/design-system/src/components/N8nText/",
-        "packages/frontend/@n8n/design-system/src/components/N8nLink/",
-        "packages/frontend/@n8n/design-system/src/components/N8nLoading/",
-        "packages/frontend/@n8n/design-system/src/components/N8nMenu/",
-        "packages/frontend/@n8n/design-system/src/components/N8nMenuItem/"
-      ],
-      "success_criteria": [
-        "N8nText component has comprehensive tests covering all props and slots",
-        "N8nLink component tests cover internal/external links and router integration",
-        "N8nLoading component tests cover all loading states and sizes",
-        "N8nMenu and N8nMenuItem components have complete interaction tests",
-        "All tests follow established testing patterns and best practices",
-        "Component test coverage contributes to overall 80% target"
-      ],
-      "estimate": "3-4 hours",
-      "requires_research": false,
-      "subtasks": [],
-      "created_at": "2025-08-05T08:42:09.209Z"
-    },
-    {
-      "id": "task_1754383329224_eatxqpcen",
-      "title": "Add tests for form and input components (Option, Pagination, Popover)",
-      "description": "Create comprehensive tests for form-related components: N8nOption, N8nPagination, N8nPopover to ensure proper form interaction and validation",
-      "mode": "DEVELOPMENT",
-      "priority": "high",
-      "status": "completed",
-      "dependencies": [],
-      "important_files": [
-        "packages/frontend/@n8n/design-system/src/components/N8nOption/",
-        "packages/frontend/@n8n/design-system/src/components/N8nPagination/",
-        "packages/frontend/@n8n/design-system/src/components/N8nPopover/"
-      ],
-      "success_criteria": [
-        "N8nOption component tests cover selection, disabled states, and value handling",
-        "N8nPagination component tests cover page navigation, limits, and edge cases",
-        "N8nPopover component tests cover positioning, triggers, and content rendering",
-        "All form interaction behaviors properly tested",
-        "Accessibility features tested where applicable",
-        "Test coverage meets quality standards"
-      ],
-      "estimate": "2-3 hours",
-      "requires_research": false,
-      "subtasks": [],
-      "created_at": "2025-08-05T08:42:09.224Z"
-    },
-    {
-      "id": "task_1754383329234_4uc2uuia8",
-      "title": "Add tests for layout components (Pulse, RadioButtons, ResizeWrapper, Sticky)",
-      "description": "Implement test coverage for layout and positioning components: N8nPulse, N8nRadioButtons, N8nResizeWrapper, N8nResizeableSticky, N8nSticky",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "completed",
-      "dependencies": [],
-      "important_files": [
-        "packages/frontend/@n8n/design-system/src/components/N8nPulse/",
-        "packages/frontend/@n8n/design-system/src/components/N8nRadioButtons/",
-        "packages/frontend/@n8n/design-system/src/components/N8nResizeWrapper/",
-        "packages/frontend/@n8n/design-system/src/components/N8nResizeableSticky/",
-        "packages/frontend/@n8n/design-system/src/components/N8nSticky/"
-      ],
-      "success_criteria": [
-        "N8nPulse component animation and visibility states tested",
-        "N8nRadioButtons component tests cover selection, groups, and validation",
-        "N8nResizeWrapper component resize behaviors and callbacks tested",
-        "N8nSticky and N8nResizeableSticky positioning logic tested",
-        "Component interaction and state management properly covered",
-        "Tests contribute meaningfully to coverage goals"
-      ],
-      "estimate": "3-4 hours",
-      "requires_research": false,
-      "subtasks": [],
-      "created_at": "2025-08-05T08:42:09.234Z"
-    },
-    {
-      "id": "task_1754383329245_d8xs6ad1o",
-      "title": "Add tests for specialized components (NodeCreator, NodeIcon, Tags, UsersList)",
-      "description": "Create comprehensive tests for specialized workflow components: N8nNodeCreatorNode, N8nNodeIcon, N8nTags, N8nUsersList and utility components",
-      "mode": "DEVELOPMENT",
-      "priority": "medium",
-      "status": "pending",
-      "dependencies": [],
-      "important_files": [
-        "packages/frontend/@n8n/design-system/src/components/N8nNodeCreatorNode/",
-        "packages/frontend/@n8n/design-system/src/components/N8nNodeIcon/",
-        "packages/frontend/@n8n/design-system/src/components/N8nTags/",
-        "packages/frontend/@n8n/design-system/src/components/N8nUsersList/",
-        "packages/frontend/@n8n/design-system/src/components/ResizeObserver/",
-        "packages/frontend/@n8n/design-system/src/components/TableBase/"
-      ],
-      "success_criteria": [
-        "N8nNodeCreatorNode component workflow integration tests implemented",
-        "N8nNodeIcon component icon rendering and fallback tests added",
-        "N8nTags component tag manipulation and display tests created",
-        "N8nUsersList component user display and interaction tests implemented",
-        "ResizeObserver and TableBase utility component tests added",
-        "All specialized functionality properly tested and documented"
-      ],
-      "estimate": "2-3 hours",
-      "requires_research": false,
-      "subtasks": [],
-      "created_at": "2025-08-05T08:42:09.245Z"
-    },
-    {
+  "tasks": {
+    "56": {
       "id": "task_1754383329257_xtsdsakop",
       "title": "Add tests for Assistant Chat message components",
       "description": "Implement comprehensive test coverage for AskAssistantChat message subcomponents: BaseMessage, BlockMessage, CodeDiffMessage, ErrorMessage, EventMessage, MessageRating, MessageWrapper, TextMessage, ToolMessage",
@@ -1599,7 +26,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T08:42:09.257Z"
     },
-    {
+    "57": {
       "id": "task_1754384643394_yza7n1ws7",
       "title": "Analyze editor-ui test dependencies and imports for performance optimization",
       "description": "Comprehensive analysis of test infrastructure to identify performance bottlenecks in dependencies, imports, setup files, and test utilities",
@@ -1621,7 +48,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T09:04:03.394Z"
     },
-    {
+    "58": {
       "id": "task_1754385889365_ox5encokv",
       "title": "File Type Validation Security Analysis",
       "description": "Analyze file type validation, MIME type checking, and extension restrictions for security",
@@ -1640,7 +67,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T09:24:49.365Z"
     },
-    {
+    "59": {
       "id": "task_1754385889370_gnrc03tb8",
       "title": "File Size Limits and Resource Controls",
       "description": "Research file size restrictions, memory limits, and DoS prevention measures",
@@ -1659,7 +86,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T09:24:49.370Z"
     },
-    {
+    "60": {
       "id": "task_1754385889374_oaa2n6ml1",
       "title": "Path Traversal Prevention Analysis",
       "description": "Examine path sanitization, directory traversal prevention, and secure file handling",
@@ -1678,7 +105,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T09:24:49.374Z"
     },
-    {
+    "61": {
       "id": "task_1754385889378_499lsd96y",
       "title": "File Operations Authentication Analysis",
       "description": "Research authentication requirements, JWT validation, and authorization patterns for file ops",
@@ -1697,7 +124,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T09:24:49.378Z"
     },
-    {
+    "62": {
       "id": "task_1754385899525_rljahdb89",
       "title": "CSRF Protection for File Uploads",
       "description": "Analyze CSRF token validation, SameSite cookies, and anti-CSRF measures",
@@ -1716,7 +143,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T09:24:59.525Z"
     },
-    {
+    "63": {
       "id": "task_1754385899530_chcx0jbmj",
       "title": "Security Headers and Content-Type Analysis",
       "description": "Research Content-Type validation, security headers, and response sanitization",
@@ -1735,7 +162,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T09:24:59.530Z"
     },
-    {
+    "64": {
       "id": "task_1754385899534_1sqw5l9lm",
       "title": "Security Middleware and Decorators Analysis",
       "description": "Examine security middleware, decorators, and reusable security patterns",
@@ -1754,7 +181,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T09:24:59.535Z"
     },
-    {
+    "65": {
       "id": "task_1754385899539_2rnqqbj3z",
       "title": "Binary Data Security Patterns",
       "description": "Research binary data handling, encoding security, and storage patterns",
@@ -1773,7 +200,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T09:24:59.539Z"
     },
-    {
+    "66": {
       "id": "task_1754413984831_tscffwf2d",
       "title": "Implement Cancel Node Execution Endpoint",
       "description": "Add POST /executions/:id/cancel-node endpoint for cancelling specific node execution during workflow runs",
@@ -1799,7 +226,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T17:13:04.831Z"
     },
-    {
+    "67": {
       "id": "task_1754413992994_wwg6i8srm",
       "title": "Implement Retry From Node Execution Endpoint",
       "description": "Add POST /executions/:id/retry-from-node endpoint for retrying execution from a specific node with state reset",
@@ -1825,7 +252,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T17:13:12.994Z"
     },
-    {
+    "68": {
       "id": "task_1754414003205_qwsqldj1t",
       "title": "Implement Partial Workflow Execution Endpoint",
       "description": "Add POST /workflows/:id/execute-partial endpoint for executing specific subsets of workflow nodes",
@@ -1852,26 +279,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T17:13:23.205Z"
     },
-    {
-      "id": "task_1754433524819_eogat877k",
-      "title": "Research Advanced Workflow Search Requirements and API Patterns",
-      "description": "Comprehensive analysis of workflow search requirements, API patterns, and n8n architecture for advanced search implementation",
-      "mode": "RESEARCH",
-      "priority": "high",
-      "status": "completed",
-      "dependencies": [],
-      "important_files": [
-        "./development/research-reports/research-report-task_1754433524819_eogat877k.md"
-      ],
-      "success_criteria": [
-        "Research report created: ./development/research-reports/research-report-task_1754433524819_eogat877k.md"
-      ],
-      "estimate": "",
-      "requires_research": false,
-      "subtasks": [],
-      "created_at": "2025-08-05T22:38:44.819Z"
-    },
-    {
+    "70": {
       "id": "task_1754433526298_41mzon60b",
       "title": "Workflow Search Service Analysis",
       "description": "Analyze workflow-search.service.ts implementation, capabilities, and architecture patterns",
@@ -1891,7 +299,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T22:38:46.298Z"
     },
-    {
+    "71": {
       "id": "task_1754433531427_cpen0ngac",
       "title": "Database Repository Pattern Analysis",
       "description": "Examine workflow repository methods, database queries, and schema patterns for search functionality",
@@ -1912,7 +320,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T22:38:51.427Z"
     },
-    {
+    "72": {
       "id": "task_1754433536570_45gbsb9ge",
       "title": "Search Architecture and Performance Analysis",
       "description": "Investigate search service patterns, API endpoints, indexing strategies, and performance considerations",
@@ -1932,7 +340,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T22:38:56.570Z"
     },
-    {
+    "73": {
       "id": "task_1754433573858_83d2odeck",
       "title": "Database Schema & Entity Analysis",
       "description": "Analyze workflow entity schemas, database tables, relationships, and constraints. Focus on WorkflowEntity, ExecutionEntity, CredentialsEntity, and related database structures.",
@@ -1951,7 +359,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T22:39:33.858Z"
     },
-    {
+    "74": {
       "id": "task_1754433573870_ghwpp8x20",
       "title": "Current Search Implementation Analysis",
       "description": "Examine existing workflow search functionality, indexing strategies, query patterns, and performance optimizations in workflow.service.ts and search-related files.",
@@ -1970,7 +378,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T22:39:33.870Z"
     },
-    {
+    "75": {
       "id": "task_1754433573880_862fxuf9o",
       "title": "Workflow Data Structure & Metadata Analysis",
       "description": "Analyze workflow properties, metadata fields, tags, versioning, sharing permissions, and execution history structures. Map all searchable fields and their types.",
@@ -1989,7 +397,7 @@
       "subtasks": [],
       "created_at": "2025-08-05T22:39:33.880Z"
     },
-    {
+    "76": {
       "id": "task_1754513676475_6efk9v6uh",
       "title": "Jest Configuration Analysis",
       "description": "Examine packages/cli/jest.config.js and related Jest configuration for timeout settings and performance configurations",
@@ -2008,7 +416,7 @@
       ],
       "created_at": "2025-08-06T20:54:36.475Z"
     },
-    {
+    "77": {
       "id": "task_1754513677341_ndsoyigwg",
       "title": "Test Setup Performance Analysis",
       "description": "Analyze test setup files (setup.ts, setup-mocks.ts) for initialization overhead and performance bottlenecks",
@@ -2027,7 +435,7 @@
       ],
       "created_at": "2025-08-06T20:54:37.341Z"
     },
-    {
+    "78": {
       "id": "task_1754513678195_3se22juza",
       "title": "Integration Test Performance Audit",
       "description": "Audit packages/cli/test/integration/ directory for slow tests and performance patterns",
@@ -2046,7 +454,7 @@
       ],
       "created_at": "2025-08-06T20:54:38.195Z"
     },
-    {
+    "79": {
       "id": "task_1754515400179_3tf9stt2q",
       "title": "Fix @n8n/api-types Package Build Errors",
       "description": "Resolve TypeScript compilation errors in @n8n/api-types package preventing successful builds. Fix zod-class compatibility issues and path alias resolution problems.",
@@ -2071,7 +479,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T21:23:20.179Z"
     },
-    {
+    "80": {
       "id": "task_1754515400183_heruxhx04",
       "title": "Fix CLI Command Registration and Module Loading",
       "description": "Resolve CLI command parsing errors that prevent n8n start command from being recognized. Fix module dependency chain and command discovery issues.",
@@ -2096,7 +504,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T21:23:20.183Z"
     },
-    {
+    "81": {
       "id": "task_1754515400186_ck6x0z99c",
       "title": "Optimize Root ESLint Configuration Performance",
       "description": "Enhance the root-level ESLint configuration to improve linting performance while maintaining code quality standards. Address any configuration gaps.",
@@ -2121,7 +529,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T21:23:20.186Z"
     },
-    {
+    "82": {
       "id": "task_1754515400190_1694lh7yh",
       "title": "Fix Test Infrastructure and Coverage Reporting",
       "description": "Resolve test execution issues, coverage reporting problems, and ensure all test suites run reliably across the monorepo.",
@@ -2147,7 +555,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T21:23:20.190Z"
     },
-    {
+    "83": {
       "id": "task_1754515511468_xvvz01df5",
       "title": "Fix @n8n/api-types TypeScript Compilation Errors",
       "description": "Resolve specific TypeScript compilation errors in @n8n/api-types package that prevent successful builds. Fix zod-class compatibility issues in expression DTOs and incorrect import paths.",
@@ -2175,7 +583,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T21:25:11.468Z"
     },
-    {
+    "84": {
       "id": "task_1754515511472_0v3e1zwz9",
       "title": "Fix CLI Command Registration Module Loading Errors",
       "description": "Resolve module loading errors preventing CLI commands from being recognized. Fix dependency chain issues that cause \"Command start not found\" error.",
@@ -2203,7 +611,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T21:25:11.472Z"
     },
-    {
+    "85": {
       "id": "task_1754515511476_s2r5abego",
       "title": "Fix Task Runner MapIterator TypeScript Error",
       "description": "Resolve TypeScript error in @n8n/task-runner where Math.max.apply receives MapIterator instead of array. Convert Map.keys() to array before Math.max.apply.",
@@ -2225,7 +633,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T21:25:11.476Z"
     },
-    {
+    "86": {
       "id": "task_1754515511479_25r3tclv0",
       "title": "Add Missing ESLint Rules and Optimize Ignore Patterns",
       "description": "Enhance root ESLint configuration to include comprehensive rules while maintaining performance. Add missing rule configurations that may be causing lint quality issues.",
@@ -2249,22 +657,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T21:25:11.479Z"
     },
-    {
-      "id": "task_1754517276221_dnusvd3sl",
-      "title": "Test Infrastructure Analysis - Coverage and Reliability Issues",
-      "description": "Comprehensive analysis of n8n test infrastructure to identify causes of test failures and poor coverage",
-      "mode": "TESTING",
-      "priority": "HIGH",
-      "status": "completed",
-      "dependencies": [],
-      "important_files": [],
-      "success_criteria": [],
-      "estimate": "",
-      "requires_research": false,
-      "subtasks": [],
-      "created_at": "2025-08-06T21:54:36.221Z"
-    },
-    {
+    "88": {
       "id": "task_1754517826687_4oxaf3l3u",
       "title": "Fix TypeScript compilation errors in @n8n/config package",
       "description": "Resolve 3 TypeScript compilation errors in test/decorators.test.ts: unused variable \"factory\" and unused classes \"TestConfig\" and \"InvalidConfig\"",
@@ -2283,7 +676,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T22:03:46.687Z"
     },
-    {
+    "89": {
       "id": "task_1754519580703_4pdtp3l1r",
       "title": "Fix Pyodide interface import error",
       "description": "Fix missing PyodideInterface export from pyodide module in nodes/Code/Pyodide.ts:3",
@@ -2303,7 +696,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T22:33:00.703Z"
     },
-    {
+    "90": {
       "id": "task_1754519589226_82suc4a45",
       "title": "Fix Python sandbox implicit any type error",
       "description": "Add type annotation for str parameter in nodes/Code/PythonSandbox.ts:73",
@@ -2323,7 +716,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T22:33:09.226Z"
     },
-    {
+    "91": {
       "id": "task_1754519599737_9tops5lyw",
       "title": "Fix null assignment type errors across multiple node files",
       "description": "Fix 7 TypeScript null assignment errors where string|null types are assigned to stricter types across DateTime, Google Calendar/Gmail, HighLevel, and Microsoft Outlook nodes",
@@ -2350,7 +743,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T22:33:19.737Z"
     },
-    {
+    "92": {
       "id": "task_1754519763806_ab84foyqq",
       "title": "Fix ESLint redundant type constituents error in rest-api-client",
       "description": "Fix typescript-eslint/no-redundant-type-constituents error in nodeTypes.ts line 60 where INodeTranslationHeaders acts as any and overrides union types",
@@ -2371,7 +764,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T22:36:03.807Z"
     },
-    {
+    "93": {
       "id": "task_1754519772079_mt32cwegc",
       "title": "Fix test coverage threshold in @n8n/errors package",
       "description": "Improve branch coverage from 85.71% to meet 95% threshold in application.error.ts line 28 (uncovered error handling branch)",
@@ -2393,7 +786,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T22:36:12.079Z"
     },
-    {
+    "94": {
       "id": "task_1754519779010_6jr71ok7p",
       "title": "Fix ts-jest isolatedModules deprecation warnings",
       "description": "Update TypeScript config to use isolatedModules in tsconfig.json instead of deprecated ts-jest config option across packages",
@@ -2414,7 +807,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T22:36:19.010Z"
     },
-    {
+    "95": {
       "id": "quality-improvement-1754519854950",
       "title": "Create Quality Improvement Tasks",
       "description": "Analyze project quality issues and create specific tasks to reach 100% quality for all strikes",
@@ -2459,7 +852,7 @@
         "overallReady": false
       }
     },
-    {
+    "96": {
       "id": "task_1754520442540_kzttefbm8",
       "title": "Analyze OAuth2 callback routing and handling mechanisms",
       "description": "Identify OAuth2 callback endpoints, routing logic, parameter validation, and error handling in n8n codebase. Document callback flow patterns and security measures.",
@@ -2483,7 +876,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T22:47:22.540Z"
     },
-    {
+    "97": {
       "id": "task_1754520442547_67iwp14dw",
       "title": "Map credential validation APIs and authentication mechanisms",
       "description": "Analyze credential storage, validation APIs, encryption methods, and credential lifecycle management. Document security patterns and validation workflows.",
@@ -2507,7 +900,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T22:47:22.547Z"
     },
-    {
+    "98": {
       "id": "task_1754520442554_91vebxczt",
       "title": "Analyze authentication testing frameworks and coverage",
       "description": "Evaluate existing authentication test suites, identify testing gaps, analyze mock/stub patterns, and document test automation strategies for OAuth2 flows.",
@@ -2534,7 +927,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T22:47:22.554Z"
     },
-    {
+    "99": {
       "id": "task_1754520442561_fce8nirrj",
       "title": "Document external OAuth provider integration patterns",
       "description": "Analyze integration patterns for major OAuth providers (Google, GitHub, Slack, etc.), document configuration requirements, and identify standardization opportunities.",
@@ -2558,7 +951,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T22:47:22.561Z"
     },
-    {
+    "100": {
       "id": "task_1754521266457_8mibtp828",
       "title": "Package.json and Dependencies Analysis",
       "description": "Analyze all package.json files, dependencies, versions, and workspace configuration",
@@ -2577,7 +970,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T23:01:06.457Z"
     },
-    {
+    "101": {
       "id": "task_1754521266478_8j3hgcu2h",
       "title": "Build Configuration and Orchestration Analysis",
       "description": "Examine turbo.json, build scripts, and orchestration setup",
@@ -2596,7 +989,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T23:01:06.478Z"
     },
-    {
+    "102": {
       "id": "task_1754521266491_pbxpy1stw",
       "title": "TypeScript and Linting Configuration Analysis",
       "description": "Check tsconfig files, linting setup, and compile-time issues",
@@ -2615,7 +1008,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T23:01:06.491Z"
     },
-    {
+    "103": {
       "id": "task_1754521712423_iwobmkqz9",
       "title": "Fix Vue App.vue Compilation Error in Editor-UI",
       "description": "Resolve Vue compilation error: \"At least one <template> or <script> is required in a single file component\" preventing editor-ui build success",
@@ -2639,7 +1032,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T23:08:32.423Z"
     },
-    {
+    "104": {
       "id": "task_1754521712430_lvro1zklf",
       "title": "Fix ESLint Configuration and Local Rules Issues",
       "description": "Resolve ESLint configuration problems including missing local rules, import ordering violations, and plugin configuration issues",
@@ -2665,7 +1058,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T23:08:32.430Z"
     },
-    {
+    "105": {
       "id": "task_1754521712435_1blt7axzq",
       "title": "Stabilize Test Infrastructure and Coverage",
       "description": "Fix test execution issues, stabilize test infrastructure, and improve coverage reporting to achieve consistent test results",
@@ -2691,7 +1084,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T23:08:32.435Z"
     },
-    {
+    "106": {
       "id": "task_1754521712439_bezzitks5",
       "title": "Fix Vue Component Type Resolution in Design System",
       "description": "Resolve TypeScript module resolution issues for Vue components that are preventing proper type checking and builds",
@@ -2717,64 +1110,7 @@
       "subtasks": [],
       "created_at": "2025-08-06T23:08:32.439Z"
     },
-    {
-      "id": "task_1754524522201_soo09kk6a",
-      "title": "Turbo Configuration and Build Pipeline Analysis",
-      "description": "Analyze turbo.json configuration, build scripts, and pipeline dependencies to identify build order issues",
-      "mode": "RESEARCH",
-      "priority": "high",
-      "status": "completed",
-      "dependencies": [],
-      "important_files": [
-        "./development/research-reports/research-report-task_1754524522201_soo09kk6a.md"
-      ],
-      "success_criteria": [
-        "Research report created: ./development/research-reports/research-report-task_1754524522201_soo09kk6a.md"
-      ],
-      "estimate": "",
-      "requires_research": false,
-      "subtasks": [],
-      "created_at": "2025-08-06T23:55:22.201Z"
-    },
-    {
-      "id": "task_1754524522221_7o07jt0v6",
-      "title": "Package Dependencies and Workspace Configuration Analysis",
-      "description": "Examine pnpm-workspace.yaml, package.json files, and @n8n/* package dependencies for missing or circular dependencies",
-      "mode": "RESEARCH",
-      "priority": "high",
-      "status": "completed",
-      "dependencies": [],
-      "important_files": [
-        "./development/research-reports/research-report-task_1754524522221_7o07jt0v6.md"
-      ],
-      "success_criteria": [
-        "Research report created: ./development/research-reports/research-report-task_1754524522221_7o07jt0v6.md"
-      ],
-      "estimate": "",
-      "requires_research": false,
-      "subtasks": [],
-      "created_at": "2025-08-06T23:55:22.221Z"
-    },
-    {
-      "id": "task_1754524522231_bz0ecp1ud",
-      "title": "Build Process Validation and Missing Steps Analysis",
-      "description": "Identify missing build steps, verify @n8n packages are built correctly, and check for build process gaps",
-      "mode": "RESEARCH",
-      "priority": "high",
-      "status": "completed",
-      "dependencies": [],
-      "important_files": [
-        "./development/research-reports/research-report-task_1754524522231_bz0ecp1ud.md"
-      ],
-      "success_criteria": [
-        "Research report created: ./development/research-reports/research-report-task_1754524522231_bz0ecp1ud.md"
-      ],
-      "estimate": "",
-      "requires_research": false,
-      "subtasks": [],
-      "created_at": "2025-08-06T23:55:22.231Z"
-    },
-    {
+    "110": {
       "id": "task_1754531735381_1po3vaudl",
       "title": "Create comprehensive tests for N8nOption component",
       "description": "Implement complete test coverage for N8nOption component including prop validation, event handling, and form integration scenarios.",
@@ -2798,7 +1134,7 @@
       "subtasks": [],
       "created_at": "2025-08-07T01:55:35.381Z"
     },
-    {
+    "111": {
       "id": "task_1754531735398_1flax41vh",
       "title": "Create comprehensive tests for N8nPagination component",
       "description": "Implement complete test coverage for N8nPagination component including pagination logic, event emissions, and edge case handling.",
@@ -2822,7 +1158,7 @@
       "subtasks": [],
       "created_at": "2025-08-07T01:55:35.398Z"
     },
-    {
+    "112": {
       "id": "task_1754531735407_l8nufwwlq",
       "title": "Create comprehensive tests for N8nPopover component",
       "description": "Implement complete test coverage for N8nPopover component including positioning, trigger behaviors, and content rendering.",
@@ -2845,14 +1181,312 @@
       "requires_research": false,
       "subtasks": [],
       "created_at": "2025-08-07T01:55:35.407Z"
+    },
+    "113": {
+      "id": "task_1754533843854_f0xrl0uuf",
+      "title": "Fix TypeScript compilation error: missing @types/psl in codemirror-lang package",
+      "description": "The @n8n/codemirror-lang package is failing TypeScript compilation due to missing type definitions for the psl library. This is preventing successful typecheck operations across the project.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/@n8n/codemirror-lang/package.json",
+        "packages/@n8n/codemirror-lang/tsconfig.json"
+      ],
+      "success_criteria": [
+        "TypeScript typecheck passes for @n8n/codemirror-lang package",
+        "@types/psl dependency properly installed and configured",
+        "No TypeScript compilation errors related to psl library",
+        "Project-wide typecheck command succeeds without this error"
+      ],
+      "estimate": "30 minutes",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T02:30:43.854Z"
+    },
+    "114": {
+      "id": "task_1754538748108_4k2rgkegg",
+      "title": "Implement Project/Folder Organization System for Workflows",
+      "description": "Design and implement a hierarchical project and folder system for organizing workflows in n8n community edition. Include folder creation, workflow moving, nested folder support, and search within projects.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/editor-ui/src/",
+        "packages/n8n/src/databases/entities/",
+        "packages/@n8n/api-types/src/"
+      ],
+      "success_criteria": [
+        "Project creation and management UI implemented",
+        "Folder hierarchy system with drag-and-drop support",
+        "Workflow organization by projects/folders",
+        "Search and filtering within project scope",
+        "Database schema for project/folder relationships"
+      ],
+      "estimate": "8-12 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T03:52:28.108Z"
+    },
+    "115": {
+      "id": "task_1754538748109_wjsm5vlkk",
+      "title": "Implement Git Integration for Workflow Version Control",
+      "description": "Add native Git integration to n8n for workflow versioning, change tracking, and collaboration. Include commit workflow changes, branch management, merge capabilities, and version history.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/n8n/src/controllers/",
+        "packages/@n8n/backend-common/src/",
+        "packages/frontend/editor-ui/src/components/"
+      ],
+      "success_criteria": [
+        "Git repository initialization for workflow storage",
+        "Workflow commit and version history tracking",
+        "Branch management and merge capabilities",
+        "Conflict resolution UI for workflow merges",
+        "Integration with external Git providers"
+      ],
+      "estimate": "12-16 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T03:52:28.109Z"
+    },
+    "116": {
+      "id": "task_1754538748109_fw5q300ny",
+      "title": "Implement SSO and Advanced User Management System",
+      "description": "Add Single Sign-On support (SAML, LDAP, OAuth2) and advanced user management features including role-based access control, user groups, and enterprise authentication.",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/n8n/src/controllers/auth.controller.ts",
+        "packages/@n8n/backend-common/src/auth/",
+        "packages/frontend/editor-ui/src/views/SigninView.vue"
+      ],
+      "success_criteria": [
+        "SAML 2.0 authentication integration",
+        "LDAP/Active Directory support",
+        "OAuth2 provider configuration UI",
+        "Role-based access control system",
+        "User group management interface"
+      ],
+      "estimate": "10-14 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T03:52:28.109Z"
+    },
+    "117": {
+      "id": "task_1754538748109_uer3hpzei",
+      "title": "Implement Workflow Sharing and Collaboration Features",
+      "description": "Build comprehensive workflow sharing capabilities including real-time collaboration, shared workspace management, permission controls, and workflow templates marketplace.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/editor-ui/src/views/NodeView.vue",
+        "packages/n8n/src/controllers/workflows.controller.ts",
+        "packages/@n8n/db/src/entities/"
+      ],
+      "success_criteria": [
+        "Real-time collaborative editing interface",
+        "Workflow sharing with permission levels",
+        "Shared workspace creation and management",
+        "Template marketplace integration",
+        "Comment and annotation system"
+      ],
+      "estimate": "8-12 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T03:52:28.109Z"
+    },
+    "118": {
+      "id": "task_1754538748109_zxb3qe2rp",
+      "title": "Implement Custom Variables and External Secrets Management",
+      "description": "Add support for custom global variables, environment-specific configurations, and external secrets management integration (Vault, AWS Secrets Manager, Azure Key Vault).",
+      "mode": "DEVELOPMENT",
+      "priority": "high",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/@n8n/config/src/",
+        "packages/n8n/src/environments/",
+        "packages/@n8n/backend-common/src/secrets/"
+      ],
+      "success_criteria": [
+        "Global variables system with scoping",
+        "Environment-specific variable management",
+        "External secrets provider integration",
+        "Secure credential storage and rotation",
+        "Variable usage tracking and auditing"
+      ],
+      "estimate": "6-10 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T03:52:28.109Z"
+    },
+    "119": {
+      "id": "task_1754538748109_sz1cmb8j0",
+      "title": "Implement Advanced Monitoring and Log Streaming",
+      "description": "Build comprehensive monitoring capabilities including real-time log streaming, metrics collection, alerting system, and integration with monitoring platforms (Prometheus, Grafana).",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/@n8n/backend-common/src/logging/",
+        "packages/n8n/src/telemetry/",
+        "packages/frontend/editor-ui/src/views/LogStreamingView.vue"
+      ],
+      "success_criteria": [
+        "Real-time log streaming interface",
+        "Metrics collection and aggregation",
+        "Alert configuration and notifications",
+        "Integration with external monitoring tools",
+        "Performance dashboards and analytics"
+      ],
+      "estimate": "8-12 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T03:52:28.109Z"
+    },
+    "120": {
+      "id": "task_1754538748109_8oynvk3ft",
+      "title": "Implement Environment Management System",
+      "description": "Create comprehensive environment management for staging, production, and development workflows including environment-specific configurations, deployment pipelines, and promotion workflows.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/n8n/src/environments/",
+        "packages/frontend/editor-ui/src/components/EnvironmentSelector.vue",
+        "packages/@n8n/config/src/environments/"
+      ],
+      "success_criteria": [
+        "Environment creation and management UI",
+        "Environment-specific workflow configurations",
+        "Deployment pipeline automation",
+        "Environment promotion and rollback",
+        "Configuration synchronization tools"
+      ],
+      "estimate": "6-8 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T03:52:28.109Z"
+    },
+    "121": {
+      "id": "task_1754538748110_4laaro3rv",
+      "title": "Implement Secure Credential Backup and Migration System",
+      "description": "Build secure credential backup, migration, and synchronization capabilities including encrypted exports, cross-instance migration, and credential versioning.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/n8n/src/controllers/credentials.controller.ts",
+        "packages/@n8n/backend-common/src/credentials/",
+        "packages/frontend/editor-ui/src/views/CredentialsView.vue"
+      ],
+      "success_criteria": [
+        "Encrypted credential export/import system",
+        "Cross-instance migration tools",
+        "Credential versioning and history",
+        "Bulk credential management operations",
+        "Secure backup scheduling and automation"
+      ],
+      "estimate": "6-10 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T03:52:28.110Z"
+    },
+    "122": {
+      "id": "task_1754538748110_mcs02hv8v",
+      "title": "Implement Enhanced Workflow History and Autosave",
+      "description": "Build comprehensive workflow history tracking, autosave functionality, version comparison, and restoration capabilities with detailed change tracking.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/editor-ui/src/stores/workflows.store.ts",
+        "packages/n8n/src/controllers/workflows.controller.ts",
+        "packages/@n8n/db/src/entities/WorkflowEntity.ts"
+      ],
+      "success_criteria": [
+        "Automatic workflow saving with configurable intervals",
+        "Comprehensive version history with timestamps",
+        "Visual diff comparison between versions",
+        "Point-in-time workflow restoration",
+        "Change annotation and commenting system"
+      ],
+      "estimate": "4-6 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T03:52:28.110Z"
+    },
+    "123": {
+      "id": "task_1754538748110_nygmi0qy7",
+      "title": "Implement Advanced Node Features and AI Capabilities",
+      "description": "Enhance node functionality with advanced CRUD operations, AI-powered parameter suggestions, intelligent error handling, and automated workflow optimization suggestions.",
+      "mode": "DEVELOPMENT",
+      "priority": "medium",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/nodes-base/nodes/",
+        "packages/frontend/editor-ui/src/components/ParameterInput.vue",
+        "packages/n8n-workflow/src/NodeHelpers.ts"
+      ],
+      "success_criteria": [
+        "Enhanced CRUD operations for all major nodes",
+        "AI-powered parameter auto-completion",
+        "Intelligent error diagnostics and suggestions",
+        "Workflow optimization recommendations",
+        "Smart node connection suggestions"
+      ],
+      "estimate": "8-12 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T03:52:28.110Z"
+    },
+    "124": {
+      "id": "task_1754538748110_gwha3bow8",
+      "title": "Implement Simplified OAuth Setup for Cloud Providers",
+      "description": "Streamline OAuth integration setup for major cloud providers with guided configuration wizards, pre-configured templates, and automated credential validation.",
+      "mode": "DEVELOPMENT",
+      "priority": "low",
+      "status": "pending",
+      "dependencies": [],
+      "important_files": [
+        "packages/frontend/editor-ui/src/components/CredentialEdit/",
+        "packages/n8n/src/controllers/oauth.controller.ts",
+        "packages/@n8n/backend-common/src/oauth/"
+      ],
+      "success_criteria": [
+        "OAuth setup wizard for major providers",
+        "Pre-configured OAuth templates",
+        "Automated credential validation",
+        "Provider-specific configuration guides",
+        "Simplified callback URL management"
+      ],
+      "estimate": "4-6 hours",
+      "requires_research": false,
+      "subtasks": [],
+      "created_at": "2025-08-07T03:52:28.110Z"
     }
-  ],
+  },
   "review_strikes": 0,
   "strikes_completed_last_run": false,
   "current_task_index": 0,
   "last_mode": "DEVELOPMENT",
-  "execution_count": 369,
-  "last_hook_activation": 1754532363149,
+  "execution_count": 371,
+  "last_hook_activation": 1754532921386,
   "__removedLinterTasks": {
     "removedCount": 1,
     "finalTaskCount": 37

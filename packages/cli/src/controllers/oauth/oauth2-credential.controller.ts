@@ -566,7 +566,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		// Add authentication
 		if (oAuthOptions.authentication === 'body') {
 			body.append('client_id', oAuthOptions.clientId);
-			body.append('client_secret', oAuthOptions.clientSecret);
+			body.append('client_secret', oAuthOptions.clientSecret ?? '');
 		} else {
 			const auth = Buffer.from(`${oAuthOptions.clientId}:${oAuthOptions.clientSecret}`).toString(
 				'base64',

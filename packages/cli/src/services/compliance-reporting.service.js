@@ -195,7 +195,7 @@ let ComplianceReportingService = class ComplianceReportingService {
 			(e) =>
 				e.tags?.includes('financial') ||
 				e.resourceType?.includes('financial') ||
-				e.description.toLowerCase().includes('financial'),
+				e.description?.toLowerCase().includes('financial'),
 		);
 		const accessControlViolations = securityEvents.filter(
 			(e) =>
@@ -230,8 +230,8 @@ let ComplianceReportingService = class ComplianceReportingService {
 		const personalDataEvents = auditEvents.filter(
 			(e) =>
 				e.tags?.includes('personal_data') ||
-				e.description.toLowerCase().includes('personal') ||
-				e.description.toLowerCase().includes('pii'),
+				e.description?.toLowerCase().includes('personal') ||
+				e.description?.toLowerCase().includes('pii'),
 		);
 		const dataExportEvents = auditEvents.filter((e) => e.eventType === 'data_exported');
 		const breachEvents = securityEvents.filter((e) => e.eventType === 'data_breach_attempt');
@@ -265,7 +265,7 @@ let ComplianceReportingService = class ComplianceReportingService {
 			(e) =>
 				e.tags?.includes('phi') ||
 				e.tags?.includes('health_data') ||
-				e.description.toLowerCase().includes('health'),
+				e.description?.toLowerCase().includes('health'),
 		);
 		const unauthorizedAccess = securityEvents.filter(
 			(e) => e.eventType === 'unauthorized_access_attempt' && e.tags?.includes('phi'),

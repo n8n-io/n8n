@@ -2,7 +2,7 @@ import { roleMiddleware } from '@/utils/rbac/middleware/role';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import type { RouteLocationNormalized } from 'vue-router';
-import { ROLE } from '@n8n/api-types';
+import { ROLE } from '@/constants';
 import { VIEWS } from '@/constants';
 
 vi.mock('@/stores/users.store', () => ({

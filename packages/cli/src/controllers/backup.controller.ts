@@ -289,7 +289,7 @@ export class BackupController {
 	}
 
 	@Get('/schedule/status')
-	@GlobalScope('backup:schedule:read')
+	@GlobalScope('backup:read')
 	async getScheduleStatus(): Promise<{
 		enabled: boolean;
 		schedule?: string;
@@ -305,7 +305,7 @@ export class BackupController {
 	}
 
 	@Post('/schedule')
-	@GlobalScope('backup:schedule:create')
+	@GlobalScope('backup:create')
 	async setBackupSchedule(
 		req: Request<
 			{},

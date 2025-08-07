@@ -1,0 +1,59 @@
+{
+  "execution": {
+    "timestamp": "2025-08-07T03:52:49.984Z",
+    "projectRoot": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork",
+    "hookVersion": "1.0.0",
+    "nodeVersion": "v22.18.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "pid": 21258,
+    "cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork",
+    "endTimestamp": "2025-08-07T03:52:49.990Z",
+    "durationMs": 6
+  },
+  "input": {
+    "sessionId": "9c56e436-37b3-4834-a148-71e38a78b4d4",
+    "transcriptPath": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/9c56e436-37b3-4834-a148-71e38a78b4d4.jsonl",
+    "stopHookActive": false,
+    "rawInput": {
+      "session_id": "9c56e436-37b3-4834-a148-71e38a78b4d4",
+      "transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/9c56e436-37b3-4834-a148-71e38a78b4d4.jsonl",
+      "cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork",
+      "hook_event_name": "Stop",
+      "stop_hook_active": false
+    }
+  },
+  "projectState": {},
+  "decisions": [],
+  "flow": [
+    {
+      "timestamp": "2025-08-07T03:52:49.985Z",
+      "message": "Received input from Claude Code"
+    },
+    {
+      "timestamp": "2025-08-07T03:52:49.985Z",
+      "message": "Received Stop event from Claude Code"
+    },
+    {
+      "timestamp": "2025-08-07T03:52:49.990Z",
+      "message": "ERROR in stop-hook-main: todoData.tasks.filter is not a function"
+    },
+    {
+      "timestamp": "2025-08-07T03:52:49.990Z",
+      "message": "Exiting with code 0: Error: todoData.tasks.filter is not a function"
+    }
+  ],
+  "output": {
+    "exitCode": 0,
+    "exitReason": "Error: todoData.tasks.filter is not a function"
+  },
+  "errors": [
+    {
+      "timestamp": "2025-08-07T03:52:49.990Z",
+      "context": "stop-hook-main",
+      "message": "todoData.tasks.filter is not a function",
+      "stack": "TypeError: todoData.tasks.filter is not a function\n    at Logger.logProjectState (/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/logger.js:44:42)\n    at Socket.<anonymous> (/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/stop-hook.js:86:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+      "name": "TypeError"
+    }
+  ]
+}

@@ -116,6 +116,7 @@ describe('AiController', () => {
 					},
 				},
 				request.user,
+				expect.any(AbortSignal),
 			);
 			expect(response.header).toHaveBeenCalledWith('Content-type', 'application/json-lines');
 			expect(response.flush).toHaveBeenCalled();
@@ -186,6 +187,99 @@ describe('AiController', () => {
 			expect(response.status).not.toHaveBeenCalled();
 			expect(response.json).not.toHaveBeenCalled();
 			expect(response.end).toHaveBeenCalled();
+		});
+		describe('Abort handling', () => {
+			it('should create AbortController and handle connection close', async () => {
+				let abortHandler;
+				let abortSignalPassed;
+				response.on.mockImplementation((event, handler) => {
+					if (event === 'close') {
+						abortHandler = handler;
+					}
+					return response;
+				});
+				async function* testGenerator() {
+					yield {
+						messages: [{ role: 'assistant', type: 'message', text: 'Processing...' }],
+					};
+					if (abortSignalPassed?.aborted) {
+						throw new Error('Aborted');
+					}
+				}
+				workflowBuilderService.chat.mockImplementation((_payload, _user, signal) => {
+					abortSignalPassed = signal;
+					return testGenerator();
+				});
+				const buildPromise = controller.build(request, response, payload);
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				expect(abortSignalPassed).toBeDefined();
+				expect(abortSignalPassed).toBeInstanceOf(AbortSignal);
+				expect(abortSignalPassed?.aborted).toBe(false);
+				expect(response.on).toHaveBeenCalledWith('close', expect.any(Function));
+				expect(abortHandler).toBeDefined();
+				abortHandler();
+				expect(abortSignalPassed?.aborted).toBe(true);
+				await buildPromise.catch(() => {});
+				expect(response.end).toHaveBeenCalled();
+			});
+			it('should pass abort signal to workflow builder service', async () => {
+				let capturedSignal;
+				async function* mockGenerator() {
+					yield { messages: [{ role: 'assistant', type: 'message', text: 'Test' }] };
+				}
+				workflowBuilderService.chat.mockImplementation((_payload, _user, signal) => {
+					capturedSignal = signal;
+					return mockGenerator();
+				});
+				await controller.build(request, response, payload);
+				expect(capturedSignal).toBeDefined();
+				expect(capturedSignal).toBeInstanceOf(AbortSignal);
+				expect(workflowBuilderService.chat).toHaveBeenCalledWith(
+					expect.any(Object),
+					request.user,
+					capturedSignal,
+				);
+			});
+			it('should handle stream interruption when connection closes', async () => {
+				let abortHandler;
+				let abortSignalPassed;
+				response.on.mockImplementation((event, handler) => {
+					if (event === 'close') {
+						abortHandler = handler;
+					}
+					return response;
+				});
+				async function* mockChatGenerator() {
+					yield { messages: [{ role: 'assistant', type: 'message', text: 'Chunk 1' }] };
+					if (abortSignalPassed?.aborted) {
+						throw new Error('Aborted');
+					}
+					yield { messages: [{ role: 'assistant', type: 'message', text: 'Chunk 2' }] };
+				}
+				workflowBuilderService.chat.mockImplementation((_payload, _user, signal) => {
+					abortSignalPassed = signal;
+					return mockChatGenerator();
+				});
+				const buildPromise = controller.build(request, response, payload);
+				await new Promise((resolve) => setTimeout(resolve, 20));
+				expect(response.write).toHaveBeenCalled();
+				const writeCallsBeforeAbort = response.write.mock.calls.length;
+				abortHandler();
+				await buildPromise.catch(() => {});
+				expect(response.write).toHaveBeenCalledTimes(writeCallsBeforeAbort);
+				expect(response.end).toHaveBeenCalled();
+			});
+			it('should cleanup abort listener on successful completion', async () => {
+				const onSpy = jest.spyOn(response, 'on');
+				const offSpy = jest.spyOn(response, 'off');
+				async function* mockGenerator() {
+					yield { messages: [{ role: 'assistant', type: 'message', text: 'Complete' }] };
+				}
+				workflowBuilderService.chat.mockReturnValue(mockGenerator());
+				await controller.build(request, response, payload);
+				expect(onSpy).toHaveBeenCalledWith('close', expect.any(Function));
+				expect(offSpy).toHaveBeenCalledWith('close', expect.any(Function));
+			});
 		});
 	});
 });

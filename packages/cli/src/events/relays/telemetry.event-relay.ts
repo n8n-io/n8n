@@ -11,7 +11,7 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
-import { get as pslGet } from 'psl';
+import * as psl from 'psl';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
@@ -782,7 +782,7 @@ export class TelemetryEventRelay extends EventRelay {
 						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
 							?.json as { headers?: { origin?: string } };
 						if (execJson?.headers?.origin && execJson.headers.origin !== '') {
-							manualExecEventProperties.webhook_domain = pslGet(
+							manualExecEventProperties.webhook_domain = psl.get(
 								execJson.headers.origin.replace(/^https?:\/\//, ''),
 							);
 						}

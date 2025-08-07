@@ -41,11 +41,15 @@ const bad_request_error_1 = require('@/errors/response-errors/bad-request.error'
 const internal_server_error_1 = require('@/errors/response-errors/internal-server.error');
 const not_found_error_1 = require('@/errors/response-errors/not-found.error');
 const node_types_1 = require('@/node-types');
+const node_testing_service_1 = require('@/services/node-testing.service');
+const ai_helpers_service_1 = require('@/services/ai-helpers.service');
 let NodeTypesController = class NodeTypesController {
-	constructor(nodeTypes, globalConfig, logger) {
+	constructor(nodeTypes, globalConfig, logger, nodeTestingService, aiHelpersService) {
 		this.nodeTypes = nodeTypes;
 		this.globalConfig = globalConfig;
 		this.logger = logger;
+		this.nodeTestingService = nodeTestingService;
+		this.aiHelpersService = aiHelpersService;
 	}
 	async getNodeInfo(req) {
 		const nodeInfos = (0, get_1.default)(req, 'body.nodeInfos', []);
@@ -78,102 +82,78 @@ let NodeTypesController = class NodeTypesController {
 		return nodeTypes;
 	}
 	async testNode(req) {
-		const { nodeType, nodeVersion = 1, parameters = {}, inputData = [] } = req.body;
+		const {
+			nodeType,
+			nodeVersion = 1,
+			parameters = {},
+			inputData = [],
+			timeoutMs = 30000,
+			safetyLevel = 'moderate',
+			mockExternalCalls = false,
+			validateCredentials = false,
+		} = req.body;
 		if (!nodeType) {
 			throw new bad_request_error_1.BadRequestError('Node type is required');
 		}
-		this.logger.debug('Node test requested', {
+		this.logger.debug('Enhanced node test requested', {
 			nodeType,
 			nodeVersion,
 			userId: req.user.id,
 			parametersCount: Object.keys(parameters).length,
 			inputDataCount: inputData.length,
+			safetyLevel,
+			timeoutMs,
 		});
 		try {
-			const nodeTypeInstance = this.nodeTypes.getByNameAndVersion(nodeType, nodeVersion);
-			if (!nodeTypeInstance) {
-				throw new not_found_error_1.NotFoundError(
-					`Node type '${nodeType}' version ${nodeVersion} not found`,
-				);
-			}
-			const testNode = {
-				name: 'Test Node',
-				typeVersion: nodeVersion,
-				type: nodeType,
-				position: [0, 0],
-				parameters: parameters,
-				disabled: false,
-				id: 'test-node-id',
-			};
-			const testWorkflow = new n8n_workflow_1.Workflow({
-				id: 'test-workflow',
-				name: 'Test Workflow',
-				nodes: [testNode],
-				connections: {},
-				active: false,
-				nodeTypes: this.nodeTypes,
-				settings: {},
-			});
-			const startTime = Date.now();
-			const nodeResult = {
-				startTime,
-				executionTime: Date.now() - startTime + 50,
-				executionIndex: 0,
-				data: {
-					main: [
-						[
-							{
-								json: {
-									message: `Node '${nodeType}' mock execution completed successfully`,
-									nodeType,
-									nodeVersion,
-									parametersReceived: Object.keys(parameters).length,
-									inputItemsReceived: inputData.length,
-									mockExecution: true,
-									timestamp: new Date().toISOString(),
-									testWorkflowGenerated: true,
-									nodeDescription: nodeTypeInstance.description.displayName,
-									testNodeCreated: testNode.name,
-									workflowCreated: testWorkflow.name,
-								},
-							},
-						],
-					],
+			const result = await this.nodeTestingService.testNode(
+				nodeType,
+				nodeVersion,
+				parameters,
+				inputData,
+				{
+					timeoutMs,
+					safetyLevel,
+					mockExternalCalls,
+					validateCredentials,
 				},
-				source: [],
-			};
-			this.logger.debug('Node test completed successfully', {
+			);
+			this.logger.debug('Enhanced node test completed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
-				outputDataCount: nodeResult.data?.main?.[0]?.length || 0,
+				success: result.success,
+				executionTime: result.executionTime,
+				outputItemCount: result.metadata.outputItemCount,
 			});
 			return {
-				success: true,
+				success: result.success,
 				nodeType,
 				nodeVersion,
 				parameters,
 				result: {
-					data: nodeResult.data,
-					executionTime: nodeResult.executionTime,
-					source: nodeResult.source,
+					data: result.data,
+					executionTime: result.executionTime,
+					error: result.error,
 				},
 				metadata: {
+					...result.metadata,
 					executedAt: new Date(),
-					inputItemCount: inputData.length,
-					outputItemCount: nodeResult.data?.main?.[0]?.length || 0,
-					nodeDescription: nodeTypeInstance.description,
-					mockExecution: true,
+					executedBy: req.user.id,
+					enhancedTesting: true,
 				},
 			};
 		} catch (error) {
-			this.logger.error('Node test failed', {
+			this.logger.error('Enhanced node test failed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			if (error instanceof n8n_workflow_1.ApplicationError) {
+			if (
+				error instanceof n8n_workflow_1.ApplicationError ||
+				error instanceof bad_request_error_1.BadRequestError ||
+				error instanceof not_found_error_1.NotFoundError
+			) {
 				throw error;
 			}
 			throw new internal_server_error_1.InternalServerError(
@@ -186,103 +166,58 @@ let NodeTypesController = class NodeTypesController {
 		if (!nodeType) {
 			throw new bad_request_error_1.BadRequestError('Node type is required');
 		}
-		this.logger.debug('Mock data generation requested', {
+		this.logger.debug('Enhanced mock data generation requested', {
 			nodeType,
 			nodeVersion,
 			userId: req.user.id,
 			inputDataCount,
+			overridesCount: Object.keys(parameterOverrides).length,
 		});
 		try {
-			const nodeTypeInstance = this.nodeTypes.getByNameAndVersion(nodeType, nodeVersion);
-			if (!nodeTypeInstance) {
-				throw new not_found_error_1.NotFoundError(
-					`Node type '${nodeType}' version ${nodeVersion} not found`,
-				);
-			}
-			const { description } = nodeTypeInstance;
-			const mockParameters = {};
-			const mockInputData = [];
-			if (description.properties) {
-				for (const property of description.properties) {
-					if (parameterOverrides[property.name] !== undefined) {
-						mockParameters[property.name] = parameterOverrides[property.name];
-						continue;
-					}
-					switch (property.type) {
-						case 'string':
-							if (property.options) {
-								const firstOption = property.options[0];
-								mockParameters[property.name] =
-									firstOption && typeof firstOption === 'object' && 'value' in firstOption
-										? firstOption.value
-										: 'option1';
-							} else {
-								mockParameters[property.name] = property.default || `mock-${property.name}`;
-							}
-							break;
-						case 'number':
-							mockParameters[property.name] = property.default || 42;
-							break;
-						case 'boolean':
-							mockParameters[property.name] =
-								property.default !== undefined ? property.default : true;
-							break;
-						case 'collection':
-							mockParameters[property.name] = property.default || {};
-							break;
-						case 'fixedCollection':
-							mockParameters[property.name] = property.default || {};
-							break;
-						default:
-							mockParameters[property.name] = property.default || null;
-					}
-				}
-			}
-			for (let i = 0; i < inputDataCount; i++) {
-				mockInputData.push({
-					json: {
-						id: i + 1,
-						name: `Mock Item ${i + 1}`,
-						value: `mock-value-${i + 1}`,
-						timestamp: new Date().toISOString(),
-						data: {
-							sample: `Sample data for item ${i + 1}`,
-							number: Math.floor(Math.random() * 1000),
-							boolean: Math.random() > 0.5,
-						},
-					},
-				});
-			}
-			this.logger.debug('Mock data generation completed', {
+			const mockDataResult = await this.nodeTestingService.generateMockData(
+				nodeType,
+				nodeVersion,
+				parameterOverrides,
+				inputDataCount,
+			);
+			this.logger.debug('Enhanced mock data generation completed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
-				parametersGenerated: Object.keys(mockParameters).length,
-				inputItemsGenerated: mockInputData.length,
+				parametersGenerated: Object.keys(mockDataResult.parameters).length,
+				inputItemsGenerated: mockDataResult.inputData.length,
+				hasCredentialData: !!mockDataResult.credentialData,
 			});
 			return {
 				success: true,
 				nodeType,
 				nodeVersion,
 				mockData: {
-					parameters: mockParameters,
-					inputData: mockInputData,
+					parameters: mockDataResult.parameters,
+					inputData: mockDataResult.inputData,
+					credentialData: mockDataResult.credentialData,
 				},
 				metadata: {
 					generatedAt: new Date(),
-					nodeDescription: description,
-					parameterCount: Object.keys(mockParameters).length,
-					inputDataCount: mockInputData.length,
+					generatedBy: req.user.id,
+					parameterCount: Object.keys(mockDataResult.parameters).length,
+					inputDataCount: mockDataResult.inputData.length,
+					contextualGeneration: true,
+					enhancedMockData: true,
 				},
 			};
 		} catch (error) {
-			this.logger.error('Mock data generation failed', {
+			this.logger.error('Enhanced mock data generation failed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			if (error instanceof n8n_workflow_1.ApplicationError) {
+			if (
+				error instanceof n8n_workflow_1.ApplicationError ||
+				error instanceof bad_request_error_1.BadRequestError ||
+				error instanceof not_found_error_1.NotFoundError
+			) {
 				throw error;
 			}
 			throw new internal_server_error_1.InternalServerError(
@@ -298,122 +233,150 @@ let NodeTypesController = class NodeTypesController {
 		if (!parameters || typeof parameters !== 'object') {
 			throw new bad_request_error_1.BadRequestError('Parameters object is required');
 		}
-		this.logger.debug('Node parameter validation requested', {
+		this.logger.debug('Enhanced node parameter validation requested', {
 			nodeType,
 			nodeVersion,
 			userId: req.user.id,
 			parametersCount: Object.keys(parameters).length,
 		});
 		try {
-			const nodeTypeInstance = this.nodeTypes.getByNameAndVersion(nodeType, nodeVersion);
-			if (!nodeTypeInstance) {
-				throw new not_found_error_1.NotFoundError(
-					`Node type '${nodeType}' version ${nodeVersion} not found`,
-				);
-			}
-			const { description } = nodeTypeInstance;
-			const validationResult = {
-				valid: true,
-				issues: [],
+			const validationResult = await this.nodeTestingService.validateNodeParameters(
 				nodeType,
 				nodeVersion,
-				validatedParameters: { ...parameters },
-			};
-			if (description.properties) {
-				for (const property of description.properties) {
-					const paramValue = parameters[property.name];
-					const isRequired = property.required !== false;
-					if (
-						isRequired &&
-						(paramValue === undefined || paramValue === null || paramValue === '')
-					) {
-						validationResult.valid = false;
-						validationResult.issues.push({
-							field: property.name,
-							message: `Required parameter '${property.displayName || property.name}' is missing`,
-							severity: 'error',
-						});
-					}
-					if (paramValue !== undefined && property.type) {
-						const expectedType = property.type;
-						const actualType = typeof paramValue;
-						switch (expectedType) {
-							case 'number':
-								if (actualType !== 'number' || isNaN(Number(paramValue))) {
-									validationResult.issues.push({
-										field: property.name,
-										message: `Parameter '${property.displayName || property.name}' should be a valid number`,
-										severity: 'error',
-									});
-									validationResult.valid = false;
-								}
-								break;
-							case 'boolean':
-								if (actualType !== 'boolean') {
-									validationResult.issues.push({
-										field: property.name,
-										message: `Parameter '${property.displayName || property.name}' should be a boolean`,
-										severity: 'error',
-									});
-									validationResult.valid = false;
-								}
-								break;
-							case 'string':
-								if (actualType !== 'string') {
-									validationResult.issues.push({
-										field: property.name,
-										message: `Parameter '${property.displayName || property.name}' should be a string`,
-										severity: 'error',
-									});
-									validationResult.valid = false;
-								}
-								break;
-							case 'collection':
-							case 'fixedCollection':
-								if (actualType !== 'object') {
-									validationResult.issues.push({
-										field: property.name,
-										message: `Parameter '${property.displayName || property.name}' should be an object`,
-										severity: 'error',
-									});
-									validationResult.valid = false;
-								}
-								break;
-						}
-					}
-					if (property.options && paramValue !== undefined) {
-						const validOptions = property.options.map((opt) => opt.value || opt.name);
-						if (!validOptions.includes(paramValue)) {
-							validationResult.issues.push({
-								field: property.name,
-								message: `Parameter '${property.displayName || property.name}' has invalid value. Valid options: ${validOptions.join(', ')}`,
-								severity: 'error',
-							});
-							validationResult.valid = false;
-						}
-					}
-				}
-			}
-			this.logger.debug('Node parameter validation completed', {
+				parameters,
+			);
+			this.logger.debug('Enhanced node parameter validation completed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
 				valid: validationResult.valid,
 				issuesCount: validationResult.issues.length,
+				suggestionsCount: validationResult.suggestions.length,
 			});
-			return validationResult;
+			return {
+				...validationResult,
+				nodeType,
+				nodeVersion,
+				validatedParameters: { ...parameters },
+				metadata: {
+					validatedAt: new Date(),
+					validatedBy: req.user.id,
+					enhancedValidation: true,
+					hasSuggestions: validationResult.suggestions.length > 0,
+				},
+			};
 		} catch (error) {
-			this.logger.error('Node parameter validation failed', {
+			this.logger.error('Enhanced node parameter validation failed', {
 				nodeType,
 				nodeVersion,
 				userId: req.user.id,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			if (error instanceof n8n_workflow_1.ApplicationError) {
+			if (
+				error instanceof n8n_workflow_1.ApplicationError ||
+				error instanceof bad_request_error_1.BadRequestError ||
+				error instanceof not_found_error_1.NotFoundError
+			) {
 				throw error;
 			}
 			throw new internal_server_error_1.InternalServerError(
 				`Parameter validation failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+	async testNodeSafe(req) {
+		const {
+			nodeType,
+			nodeVersion = 1,
+			parameters = {},
+			inputData = [],
+			safetyLevel = 'moderate',
+			timeoutMs = 30000,
+		} = req.body;
+		if (!nodeType) {
+			throw new bad_request_error_1.BadRequestError('Node type is required');
+		}
+		const maxTimeout =
+			safetyLevel === 'strict' ? 10000 : safetyLevel === 'moderate' ? 30000 : 60000;
+		const effectiveTimeout = Math.min(timeoutMs, maxTimeout);
+		const restrictedNodes =
+			safetyLevel === 'strict'
+				? [
+						'n8n-nodes-base.code',
+						'n8n-nodes-base.executeCommand',
+						'n8n-nodes-base.function',
+						'n8n-nodes-base.functionItem',
+					]
+				: [];
+		if (restrictedNodes.includes(nodeType)) {
+			throw new bad_request_error_1.BadRequestError(
+				`Node type '${nodeType}' is restricted in ${safetyLevel} safety mode`,
+			);
+		}
+		this.logger.debug('Safe node test requested', {
+			nodeType,
+			nodeVersion,
+			userId: req.user.id,
+			safetyLevel,
+			timeoutMs: effectiveTimeout,
+		});
+		try {
+			const result = await this.nodeTestingService.testNode(
+				nodeType,
+				nodeVersion,
+				parameters,
+				inputData,
+				{
+					timeoutMs: effectiveTimeout,
+					safetyLevel,
+					mockExternalCalls: true,
+					validateCredentials: false,
+				},
+			);
+			this.logger.debug('Safe node test completed', {
+				nodeType,
+				nodeVersion,
+				userId: req.user.id,
+				success: result.success,
+				executionTime: result.executionTime,
+				safetyLevel,
+			});
+			return {
+				success: result.success,
+				nodeType,
+				nodeVersion,
+				parameters,
+				result: {
+					data: result.data,
+					executionTime: result.executionTime,
+					error: result.error,
+				},
+				metadata: {
+					...result.metadata,
+					executedAt: new Date(),
+					executedBy: req.user.id,
+					safetyLevel,
+					timeoutMs: effectiveTimeout,
+					enhancedSafeTesting: true,
+				},
+			};
+		} catch (error) {
+			this.logger.error('Safe node test failed', {
+				nodeType,
+				nodeVersion,
+				userId: req.user.id,
+				safetyLevel,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			if (
+				error instanceof n8n_workflow_1.ApplicationError ||
+				error instanceof bad_request_error_1.BadRequestError ||
+				error instanceof not_found_error_1.NotFoundError
+			) {
+				throw error;
+			}
+			throw new internal_server_error_1.InternalServerError(
+				`Safe node test failed: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}
@@ -526,11 +489,62 @@ let NodeTypesController = class NodeTypesController {
 				userId: req.user.id,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			if (error instanceof n8n_workflow_1.ApplicationError) {
+			if (
+				error instanceof n8n_workflow_1.ApplicationError ||
+				error instanceof bad_request_error_1.BadRequestError ||
+				error instanceof not_found_error_1.NotFoundError
+			) {
 				throw error;
 			}
 			throw new internal_server_error_1.InternalServerError(
 				`Batch testing failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+	async autoMapParameters(req) {
+		const { sourceNodeId, targetNodeId, workflowData } = req.body;
+		if (!sourceNodeId || !targetNodeId || !workflowData?.nodes) {
+			throw new bad_request_error_1.BadRequestError(
+				'sourceNodeId, targetNodeId, and workflow data are required',
+			);
+		}
+		this.logger.debug('AI parameter mapping requested', {
+			userId: req.user.id,
+			sourceNodeId,
+			targetNodeId,
+		});
+		try {
+			const mapping = await this.aiHelpersService.mapParameters(
+				sourceNodeId,
+				targetNodeId,
+				workflowData,
+				req.user,
+			);
+			return {
+				success: true,
+				mapping,
+				metadata: {
+					sourceNodeId,
+					targetNodeId,
+					mappedAt: new Date().toISOString(),
+				},
+			};
+		} catch (error) {
+			this.logger.error('Failed to generate parameter mapping', {
+				userId: req.user.id,
+				sourceNodeId,
+				targetNodeId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			if (
+				error instanceof n8n_workflow_1.ApplicationError ||
+				error instanceof bad_request_error_1.BadRequestError ||
+				error instanceof not_found_error_1.NotFoundError
+			) {
+				throw error;
+			}
+			throw new internal_server_error_1.InternalServerError(
+				`Parameter mapping failed: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}
@@ -582,6 +596,17 @@ __decorate(
 );
 __decorate(
 	[
+		(0, decorators_1.Post)('/test-safe'),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object]),
+		__metadata('design:returntype', Promise),
+	],
+	NodeTypesController.prototype,
+	'testNodeSafe',
+	null,
+);
+__decorate(
+	[
 		(0, decorators_1.Post)('/batch-test'),
 		__metadata('design:type', Function),
 		__metadata('design:paramtypes', [Object]),
@@ -591,6 +616,17 @@ __decorate(
 	'batchTestNodes',
 	null,
 );
+__decorate(
+	[
+		(0, decorators_1.Post)('/auto-map-parameters'),
+		__metadata('design:type', Function),
+		__metadata('design:paramtypes', [Object]),
+		__metadata('design:returntype', Promise),
+	],
+	NodeTypesController.prototype,
+	'autoMapParameters',
+	null,
+);
 exports.NodeTypesController = NodeTypesController = __decorate(
 	[
 		(0, decorators_1.RestController)('/node-types'),
@@ -598,6 +634,8 @@ exports.NodeTypesController = NodeTypesController = __decorate(
 			node_types_1.NodeTypes,
 			config_1.GlobalConfig,
 			backend_common_1.Logger,
+			node_testing_service_1.NodeTestingService,
+			ai_helpers_service_1.AiHelpersService,
 		]),
 	],
 	NodeTypesController,

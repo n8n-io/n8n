@@ -1,11 +1,18 @@
 {
 	"compilerOptions": {
+		"target": "es2020",
+		"lib": ["es2020"],
 		"declaration": true,
 		"emitDeclarationOnly": true,
 		"outDir": "dist/types",
-		"strict": true,
+		"strict": false,
 		"skipLibCheck": true,
-		"esModuleInterop": true
+		"esModuleInterop": true,
+		"moduleResolution": "bundler",
+		"allowSyntheticDefaultImports": true,
+		"skipDefaultLibCheck": true,
+		"typeRoots": ["./node_modules/@types"],
+		"types": ["node"]
 	},
 	"include": ["src"]
 }

@@ -132,6 +132,7 @@ require('@/controllers/folder.controller');
 require('@/controllers/users.controller');
 require('@/controllers/user-settings.controller');
 require('@/controllers/workflow-statistics.controller');
+require('@/controllers/system-monitoring.controller');
 require('@/controllers/api-keys.controller');
 require('@/credentials/credentials.controller');
 require('@/eventbus/event-bus.controller');
@@ -330,6 +331,31 @@ let Server = class Server extends abstract_server_1.AbstractServer {
 		const eventBus = di_1.Container.get(message_event_bus_1.MessageEventBus);
 		await eventBus.initialize();
 		di_1.Container.get(log_streaming_event_relay_1.LogStreamingEventRelay).init();
+		try {
+			const { SearchEngineService } = await Promise.resolve().then(() =>
+				__importStar(require('@/services/search-engine.service')),
+			);
+			const { WorkflowIndexingService } = await Promise.resolve().then(() =>
+				__importStar(require('@/services/workflow-indexing.service')),
+			);
+			const { WorkflowIndexingEventHandler } = await Promise.resolve().then(() =>
+				__importStar(require('@/services/workflow-indexing-event-handler.service')),
+			);
+			const searchEngineService = di_1.Container.get(SearchEngineService);
+			const workflowIndexingService = di_1.Container.get(WorkflowIndexingService);
+			const indexingEventHandler = di_1.Container.get(WorkflowIndexingEventHandler);
+			await searchEngineService.initialize();
+			if (searchEngineService.isAvailable()) {
+				await workflowIndexingService.initializeIndex();
+				indexingEventHandler.init();
+				await indexingEventHandler.schedulePeriodicRefresh();
+				this.logger.info('Search engine integration initialized successfully');
+			} else {
+				this.logger.info('Search engine integration disabled or unavailable');
+			}
+		} catch (error) {
+			this.logger.warn(`Search engine initialization failed: ${error.message}`);
+		}
 		if (this.endpointPresetCredentials !== '') {
 			this.app.post(`/${this.endpointPresetCredentials}`, async (req, res) => {
 				if (!this.presetCredentialsLoaded) {

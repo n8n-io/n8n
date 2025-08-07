@@ -1,0 +1,63 @@
+{
+  "execution": {
+    "timestamp": "2025-08-07T04:06:56.570Z",
+    "projectRoot": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork",
+    "hookVersion": "1.0.0",
+    "nodeVersion": "v22.18.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "pid": 55927,
+    "cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork",
+    "endTimestamp": "2025-08-07T04:06:56.573Z",
+    "durationMs": 3
+  },
+  "input": {
+    "sessionId": "a71a600a-7639-41f3-b6ae-54c48a12504f",
+    "transcriptPath": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/a71a600a-7639-41f3-b6ae-54c48a12504f.jsonl",
+    "stopHookActive": true,
+    "rawInput": {
+      "session_id": "a71a600a-7639-41f3-b6ae-54c48a12504f",
+      "transcript_path": "/Users/jeremyparker/.claude/projects/-Users-jeremyparker-Desktop-Claude-Coding-Projects-n8n-fork/a71a600a-7639-41f3-b6ae-54c48a12504f.jsonl",
+      "cwd": "/Users/jeremyparker/Desktop/Claude Coding Projects/n8n-fork",
+      "hook_event_name": "SubagentStop",
+      "stop_hook_active": true
+    }
+  },
+  "projectState": {},
+  "decisions": [],
+  "flow": [
+    {
+      "timestamp": "2025-08-07T04:06:56.571Z",
+      "message": "Received input from Claude Code"
+    },
+    {
+      "timestamp": "2025-08-07T04:06:56.571Z",
+      "message": "Received SubagentStop event from Claude Code"
+    },
+    {
+      "timestamp": "2025-08-07T04:06:56.571Z",
+      "message": "Normal timing detected (6695185ms) - continuing with caution"
+    },
+    {
+      "timestamp": "2025-08-07T04:06:56.573Z",
+      "message": "ERROR in stop-hook-main: todoData.tasks.filter is not a function"
+    },
+    {
+      "timestamp": "2025-08-07T04:06:56.573Z",
+      "message": "Exiting with code 0: Error: todoData.tasks.filter is not a function"
+    }
+  ],
+  "output": {
+    "exitCode": 0,
+    "exitReason": "Error: todoData.tasks.filter is not a function"
+  },
+  "errors": [
+    {
+      "timestamp": "2025-08-07T04:06:56.573Z",
+      "context": "stop-hook-main",
+      "message": "todoData.tasks.filter is not a function",
+      "stack": "TypeError: todoData.tasks.filter is not a function\n    at Logger.logProjectState (/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/logger.js:44:42)\n    at Socket.<anonymous> (/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/stop-hook.js:86:16)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+      "name": "TypeError"
+    }
+  ]
+}

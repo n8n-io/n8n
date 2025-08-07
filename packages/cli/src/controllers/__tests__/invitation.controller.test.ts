@@ -83,10 +83,7 @@ describe('InvitationController', () => {
 					{ email: 'user1@example.com', role: 'global:member', inviteAcceptUrl: 'http://invite1' },
 					{ email: 'user2@example.com', role: 'global:member', inviteAcceptUrl: 'http://invite2' },
 				],
-				usersCreated: [
-					mock<User>({ id: 'invited-1', email: 'user1@example.com' }),
-					mock<User>({ id: 'invited-2', email: 'user2@example.com' }),
-				],
+				usersCreated: ['invited-1', 'invited-2'],
 			};
 
 			userService.inviteUsers.mockResolvedValue(mockInviteResult);
@@ -212,7 +209,7 @@ describe('InvitationController', () => {
 				usersInvited: [
 					{ email: 'admin@example.com', role: 'global:admin', inviteAcceptUrl: 'http://invite' },
 				],
-				usersCreated: [mock<User>({ id: 'invited-admin', email: 'admin@example.com' })],
+				usersCreated: ['invited-admin'],
 			};
 
 			license.isAdvancedPermissionsLicensed.mockReturnValue(true);
@@ -243,10 +240,7 @@ describe('InvitationController', () => {
 					{ email: 'member@example.com', role: 'global:member', inviteAcceptUrl: 'http://invite1' },
 					{ email: 'admin@example.com', role: 'global:admin', inviteAcceptUrl: 'http://invite2' },
 				],
-				usersCreated: [
-					mock<User>({ id: 'invited-member', email: 'member@example.com' }),
-					mock<User>({ id: 'invited-admin', email: 'admin@example.com' }),
-				],
+				usersCreated: ['invited-member', 'invited-admin'],
 			};
 
 			userService.inviteUsers.mockResolvedValue(mockInviteResult);
@@ -270,7 +264,7 @@ describe('InvitationController', () => {
 				usersInvited: [
 					{ email: 'user@example.com', role: 'global:member', inviteAcceptUrl: 'http://invite' },
 				],
-				usersCreated: [mock<User>({ id: 'invited-user', email: 'user@example.com' })],
+				usersCreated: ['invited-user'],
 			};
 
 			userService.inviteUsers.mockResolvedValue(mockInviteResult);

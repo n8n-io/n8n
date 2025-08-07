@@ -3,6 +3,16 @@ import type {
 	EnterpriseEditionFeatureValue,
 	NodeCreatorOpenSource,
 } from './Interface';
+
+// User roles - duplicated from @n8n/api-types to avoid module resolution issues
+export const ROLE = {
+	Owner: 'global:owner',
+	Member: 'global:member',
+	Admin: 'global:admin',
+	Default: 'default', // default user with no email when setting up instance
+} as const;
+
+export type Role = (typeof ROLE)[keyof typeof ROLE];
 import type { NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {

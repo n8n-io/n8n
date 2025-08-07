@@ -384,10 +384,11 @@ export class WorkflowSearchService {
 					filtersApplied: Object.keys(this.getAppliedFilters(searchQuery)).length,
 					searchEngine: {
 						used: true,
+						name: 'elasticsearch',
 						indexSearchTimeMs: searchResult.searchTimeMs,
 						maxScore: searchResult.maxScore,
 					},
-				},
+				} as any,
 				facets,
 			};
 		} catch (error) {
@@ -445,9 +446,10 @@ export class WorkflowSearchService {
 				filtersApplied: Object.keys(this.getAppliedFilters(searchQuery)).length,
 				searchEngine: {
 					used: false,
+					name: 'database',
 					reason: 'fallback',
 				},
-			},
+			} as any,
 			facets,
 		};
 	}

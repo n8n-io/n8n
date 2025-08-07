@@ -20,7 +20,7 @@ const createMockExecution = (overrides = {}, firstExecutionData, nodeData) => {
 			resultData: {
 				lastNodeExecuted: 'TestNode',
 				runData: {
-					TestNode: nodeRunData,
+					testNode: nodeRunData,
 				},
 			},
 		},
@@ -114,7 +114,7 @@ describe('getMessage', () => {
 				resultData: {
 					lastNodeExecuted: 'TestNode',
 					runData: {
-						TestNode: [
+						testNode: [
 							{
 								data: {
 									main: undefined,

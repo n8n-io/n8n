@@ -213,6 +213,15 @@ export const WorkflowSearchResponseDto = z.object({
 			searchedAt: z.string().datetime().describe('Search timestamp'),
 			totalWorkflowsInScope: z.number().describe('Total workflows user has access to'),
 			filtersApplied: z.number().describe('Number of filters applied'),
+			searchEngine: z
+				.object({
+					used: z.boolean().describe('Whether search engine was used'),
+					name: z.string().optional().describe('Search engine name'),
+					indexSearchTimeMs: z.number().optional().describe('Index search time'),
+					maxScore: z.number().optional().describe('Maximum relevance score'),
+				})
+				.optional()
+				.describe('Search engine metadata'),
 		})
 		.describe('Search execution metadata'),
 

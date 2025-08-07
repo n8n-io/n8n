@@ -115,7 +115,7 @@ export async function executeToolsInParallel(
 	// Collect all messages from state updates
 	stateUpdates.forEach((update) => {
 		if (update.messages && Array.isArray(update.messages)) {
-			allMessages.push(...update.messages);
+			allMessages.push.apply(allMessages, update.messages);
 		}
 	});
 
@@ -124,7 +124,7 @@ export async function executeToolsInParallel(
 
 	for (const update of stateUpdates) {
 		if (update.workflowOperations && Array.isArray(update.workflowOperations)) {
-			allOperations.push(...update.workflowOperations);
+			allOperations.push.apply(allOperations, update.workflowOperations);
 		}
 	}
 

@@ -146,6 +146,7 @@ let ActiveWorkflowManager = class ActiveWorkflowManager {
 		this.workflowsConfig = workflowsConfig;
 		this.push = push;
 		this.queuedActivations = {};
+		this.isActivationInProgress = false;
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
 	async init() {
@@ -376,19 +377,28 @@ let ActiveWorkflowManager = class ActiveWorkflowManager {
 		(0, execute_error_workflow_1.executeErrorWorkflow)(workflowData, fullRunData, mode);
 	}
 	async addActiveWorkflows(activationMode) {
-		const dbWorkflowIds = await this.workflowRepository.getAllActiveIds();
-		if (dbWorkflowIds.length === 0) return;
-		if (this.instanceSettings.isLeader) {
-			this.logger.info('Start Active Workflows:');
+		if (this.isActivationInProgress) {
+			this.logger.debug(`Skipping activation - already in progress for mode: ${activationMode}`);
+			return;
 		}
-		const batches = (0, chunk_1.default)(dbWorkflowIds, this.workflowsConfig.activationBatchSize);
-		for (const batch of batches) {
-			const activationPromises = batch.map(async (dbWorkflowId) => {
-				await this.activateWorkflow(dbWorkflowId, activationMode);
-			});
-			await Promise.all(activationPromises);
+		this.isActivationInProgress = true;
+		try {
+			const dbWorkflowIds = await this.workflowRepository.getAllActiveIds();
+			if (dbWorkflowIds.length === 0) return;
+			if (this.instanceSettings.isLeader) {
+				this.logger.info('Start Active Workflows:');
+			}
+			const batches = (0, chunk_1.default)(dbWorkflowIds, this.workflowsConfig.activationBatchSize);
+			for (const batch of batches) {
+				const activationPromises = batch.map(async (dbWorkflowId) => {
+					await this.activateWorkflow(dbWorkflowId, activationMode);
+				});
+				await Promise.all(activationPromises);
+			}
+			this.logger.debug('Finished activating all workflows');
+		} finally {
+			this.isActivationInProgress = false;
 		}
-		this.logger.debug('Finished activating all workflows');
 	}
 	async activateWorkflow(workflowId, activationMode) {
 		const dbWorkflow = await this.workflowRepository.findById(workflowId);

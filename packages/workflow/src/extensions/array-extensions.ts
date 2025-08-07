@@ -76,7 +76,7 @@ const ensureNumberArray = (arr: unknown[], { fnName }: { fnName: string }) => {
 function sum(value: unknown[]): number {
 	ensureNumberArray(value, { fnName: 'sum' });
 
-	return value.reduce((p: number, c: unknown) => {
+	return (value as number[]).reduce((p: number, c: number) => {
 		if (typeof c === 'string') {
 			return p + parseFloat(c);
 		}

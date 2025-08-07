@@ -74,7 +74,13 @@ const folders_1 = require('@test-integration/db/folders');
 const tags_1 = require('@test-integration/db/tags');
 const credentials_1 = require('../shared/db/credentials');
 const users_1 = require('../shared/db/users');
-jest.mock('fast-glob');
+jest.mock('fast-glob', () => ({
+	default: jest.fn(),
+}));
+jest.mock('n8n-workflow', () => ({
+	...jest.requireActual('n8n-workflow'),
+	jsonParse: jest.fn(),
+}));
 describe('SourceControlImportService', () => {
 	let credentialsRepository;
 	let projectRepository;
@@ -125,6 +131,7 @@ describe('SourceControlImportService', () => {
 	afterEach(async () => {
 		await backend_test_utils_1.testDb.truncate(['CredentialsEntity', 'SharedCredentials']);
 		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 	afterAll(async () => {
 		await backend_test_utils_1.testDb.terminate();
@@ -183,7 +190,7 @@ describe('SourceControlImportService', () => {
 				teamName: 'Team 1',
 			},
 		};
-		const globMock = fastGlob.default;
+		const globMock = jest.mocked(fastGlob.default);
 		const fsReadFile = jest.spyOn(promises_1.default, 'readFile');
 		let globalAdmin;
 		let globalOwner;
@@ -439,7 +446,7 @@ describe('SourceControlImportService', () => {
 				teamName: 'Team 1',
 			},
 		};
-		const globMock = fastGlob.default;
+		const globMock = jest.mocked(fastGlob.default);
 		const fsReadFile = jest.spyOn(promises_1.default, 'readFile');
 		let globalAdmin;
 		let globalOwner;
@@ -786,7 +793,7 @@ describe('SourceControlImportService', () => {
 				},
 			],
 		};
-		const globMock = fastGlob.default;
+		const globMock = jest.mocked(fastGlob.default);
 		const fsReadFile = jest.spyOn(promises_1.default, 'readFile');
 		let globalAdmin;
 		let globalOwner;
@@ -1072,7 +1079,7 @@ describe('SourceControlImportService', () => {
 					data: {},
 					ownedBy: member.email,
 				};
-				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+				jest.mocked(utils.jsonParse).mockReturnValue(stub);
 				cipher.encrypt.mockReturnValue('some-encrypted-data');
 				await service.importCredentialsFromWorkFolder(
 					[(0, jest_mock_extended_1.mock)({ id: CREDENTIAL_ID })],
@@ -1099,7 +1106,7 @@ describe('SourceControlImportService', () => {
 					data: {},
 					ownedBy: null,
 				};
-				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+				jest.mocked(utils.jsonParse).mockReturnValue(stub);
 				cipher.encrypt.mockReturnValue('some-encrypted-data');
 				await service.importCredentialsFromWorkFolder(
 					[(0, jest_mock_extended_1.mock)({ id: CREDENTIAL_ID })],
@@ -1126,7 +1133,7 @@ describe('SourceControlImportService', () => {
 					data: {},
 					ownedBy: 'user@test.com',
 				};
-				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+				jest.mocked(utils.jsonParse).mockReturnValue(stub);
 				cipher.encrypt.mockReturnValue('some-encrypted-data');
 				await service.importCredentialsFromWorkFolder(
 					[(0, jest_mock_extended_1.mock)({ id: CREDENTIAL_ID })],
@@ -1157,7 +1164,7 @@ describe('SourceControlImportService', () => {
 					personalEmail: 'test@example.com',
 				},
 			};
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			jest.mocked(utils.jsonParse).mockReturnValue(stub);
 			cipher.encrypt.mockReturnValue('some-encrypted-data');
 			await service.importCredentialsFromWorkFolder(
 				[(0, jest_mock_extended_1.mock)({ id: CREDENTIAL_ID })],
@@ -1186,7 +1193,7 @@ describe('SourceControlImportService', () => {
 					teamName: 'Marketing',
 				},
 			};
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			jest.mocked(utils.jsonParse).mockReturnValue(stub);
 			cipher.encrypt.mockReturnValue('some-encrypted-data');
 			{
 				const project = await projectRepository.findOne({
@@ -1234,7 +1241,7 @@ describe('SourceControlImportService', () => {
 					teamName: 'Sales',
 				},
 			};
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			jest.mocked(utils.jsonParse).mockReturnValue(stub);
 			cipher.encrypt.mockReturnValue('some-encrypted-data');
 			await service.importCredentialsFromWorkFolder(
 				[(0, jest_mock_extended_1.mock)({ id: CREDENTIAL_ID })],
@@ -1271,7 +1278,7 @@ describe('SourceControlImportService', () => {
 					teamName: 'Sales',
 				},
 			};
-			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+			jest.mocked(utils.jsonParse).mockReturnValue(stub);
 			await service.importCredentialsFromWorkFolder(
 				[(0, jest_mock_extended_1.mock)({ id: credential.id })],
 				importingUser.id,

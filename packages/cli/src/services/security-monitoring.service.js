@@ -35,12 +35,12 @@ const audit_logging_service_1 = require('./audit-logging.service');
 let SecurityMonitoringService = class SecurityMonitoringService {
 	constructor() {
 		this.logger = n8n_workflow_1.LoggerProxy;
-		this.eventService = di_1.Container.get(event_service_1.EventService);
-		this.auditLoggingService = di_1.Container.get(audit_logging_service_1.AuditLoggingService);
 		this.threatDetectionRules = new Map();
 		this.eventAggregator = new Map();
 		const dataSource = di_1.Container.get(typeorm_1.DataSource);
 		this.securityEventRepository = dataSource.getRepository(db_1.SecurityEvent);
+		this.eventService = di_1.Container.get(event_service_1.EventService);
+		this.auditLoggingService = di_1.Container.get(audit_logging_service_1.AuditLoggingService);
 		this.initializeThreatDetectionRules();
 		this.startEventAggregationCleanup();
 	}
@@ -50,6 +50,10 @@ let SecurityMonitoringService = class SecurityMonitoringService {
 			await this.analyzeSecurityEvent(securityEvent);
 			this.updateEventAggregation(securityEvent);
 			await this.checkThreatPatterns(securityEvent);
+			this.eventService.emit('security-event', {
+				event: securityEvent,
+				timestamp: new Date(),
+			});
 			return securityEvent;
 		} catch (error) {
 			this.logger.error('Failed to report security event', {
@@ -385,7 +389,10 @@ let SecurityMonitoringService = class SecurityMonitoringService {
 				threatLevel: event.threatLevel,
 				description: event.description,
 			});
-			this.logger.error('Critical security alert triggered', { eventId: event.id });
+			this.eventService.emit('critical-security-alert', {
+				event,
+				timestamp: new Date(),
+			});
 		}
 		if (event.automaticActions && event.automaticActions.length > 0) {
 			await this.executeAutomaticActions(event);
@@ -396,7 +403,7 @@ let SecurityMonitoringService = class SecurityMonitoringService {
 			try {
 				switch (action) {
 					case 'alert_admin':
-						this.logger.warn('Admin alert triggered', { eventId: event.id });
+						this.eventService.emit('admin-alert', { event });
 						break;
 					case 'block_ip':
 						if (event.ipAddress) {
@@ -405,7 +412,7 @@ let SecurityMonitoringService = class SecurityMonitoringService {
 						break;
 					case 'rate_limit':
 						if (event.ipAddress) {
-							this.logger.warn('Rate limit triggered', { eventId: event.id, ip: event.ipAddress });
+							this.eventService.emit('rate-limit', { ip: event.ipAddress, event });
 						}
 						break;
 					case 'immediate_alert':
@@ -431,9 +438,7 @@ let SecurityMonitoringService = class SecurityMonitoringService {
 			where: {
 				eventType: 'failed_login_attempt',
 				ipAddress,
-				createdAt: {
-					$gte: startTime,
-				},
+				createdAt: (0, typeorm_1.MoreThanOrEqual)(startTime),
 			},
 			order: { createdAt: 'DESC' },
 		});
@@ -459,9 +464,7 @@ let SecurityMonitoringService = class SecurityMonitoringService {
 			const windowStart = new Date(Date.now() - rule.timeWindowMinutes * 60 * 1000);
 			const whereCondition = {
 				eventType: event.eventType,
-				createdAt: {
-					$gte: windowStart,
-				},
+				createdAt: (0, typeorm_1.MoreThanOrEqual)(windowStart),
 			};
 			if (event.ipAddress) {
 				whereCondition.ipAddress = event.ipAddress;

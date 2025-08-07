@@ -1,11 +1,6 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-const dateRangeSchema = z.object({
-	startDate: z.string().datetime().optional(),
-	endDate: z.string().datetime().optional(),
-});
-
 export class UserAnalyticsQueryDto extends Z.class({
 	startDate: z.string().datetime().optional(),
 	endDate: z.string().datetime().optional(),

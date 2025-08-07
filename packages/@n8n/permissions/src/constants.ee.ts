@@ -3,6 +3,7 @@ export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list']
 export const RESOURCES = {
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
+	backup: ['download', 'verify', 'restore', 'schedule', ...DEFAULT_OPERATIONS] as const,
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list', 'manage'] as const,
@@ -10,6 +11,7 @@ export const RESOURCES = {
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
 	externalSecret: ['list', 'use'] as const,
 	eventBusDestination: ['test', ...DEFAULT_OPERATIONS] as const,
+	instance: ['admin', 'write', 'read'] as const,
 	ldap: ['sync', 'manage'] as const,
 	license: ['manage'] as const,
 	logStreaming: ['manage'] as const,

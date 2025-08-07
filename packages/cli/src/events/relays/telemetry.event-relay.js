@@ -1,4 +1,33 @@
 'use strict';
+var __createBinding =
+	(this && this.__createBinding) ||
+	(Object.create
+		? function (o, m, k, k2) {
+				if (k2 === undefined) k2 = k;
+				var desc = Object.getOwnPropertyDescriptor(m, k);
+				if (!desc || ('get' in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+					desc = {
+						enumerable: true,
+						get: function () {
+							return m[k];
+						},
+					};
+				}
+				Object.defineProperty(o, k2, desc);
+			}
+		: function (o, m, k, k2) {
+				if (k2 === undefined) k2 = k;
+				o[k2] = m[k];
+			});
+var __setModuleDefault =
+	(this && this.__setModuleDefault) ||
+	(Object.create
+		? function (o, v) {
+				Object.defineProperty(o, 'default', { enumerable: true, value: v });
+			}
+		: function (o, v) {
+				o['default'] = v;
+			});
 var __decorate =
 	(this && this.__decorate) ||
 	function (decorators, target, key, desc) {
@@ -18,6 +47,29 @@ var __decorate =
 					r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
 		return c > 3 && r && Object.defineProperty(target, key, r), r;
 	};
+var __importStar =
+	(this && this.__importStar) ||
+	(function () {
+		var ownKeys = function (o) {
+			ownKeys =
+				Object.getOwnPropertyNames ||
+				function (o) {
+					var ar = [];
+					for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+					return ar;
+				};
+			return ownKeys(o);
+		};
+		return function (mod) {
+			if (mod && mod.__esModule) return mod;
+			var result = {};
+			if (mod != null)
+				for (var k = ownKeys(mod), i = 0; i < k.length; i++)
+					if (k[i] !== 'default') __createBinding(result, mod, k[i]);
+			__setModuleDefault(result, mod);
+			return result;
+		};
+	})();
 var __metadata =
 	(this && this.__metadata) ||
 	function (k, v) {
@@ -38,7 +90,7 @@ const change_case_1 = require('change-case');
 const n8n_core_1 = require('n8n-core');
 const n8n_workflow_1 = require('n8n-workflow');
 const node_os_1 = __importDefault(require('node:os'));
-const psl_1 = require('psl');
+const psl = __importStar(require('psl'));
 const config_2 = __importDefault(require('@/config'));
 const constants_1 = require('@/constants');
 const event_service_1 = require('@/events/event.service');
@@ -645,7 +697,7 @@ let TelemetryEventRelay = class TelemetryEventRelay extends event_relay_1.EventR
 					nodeGraphResult.webhookNodeNames.forEach((name) => {
 						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]?.json;
 						if (execJson?.headers?.origin && execJson.headers.origin !== '') {
-							manualExecEventProperties.webhook_domain = (0, psl_1.get)(
+							manualExecEventProperties.webhook_domain = psl.get(
 								execJson.headers.origin.replace(/^https?:\/\//, ''),
 							);
 						}

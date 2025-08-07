@@ -311,8 +311,18 @@ The `development/` directory should ONLY contain universal files needed for EVER
 
 ## TaskManager API Reference
 
+### **Primary Reference Guide**
+
 For complete TaskManager API documentation with all methods, examples, and usage patterns, see:
-**[TaskManager API Guide](./development/taskmanager-api-guide.md)**
+**[TaskManager API Guide](./guides/taskmanager-api-guide.md)**
+
+**🚨 IMPORTANT**: If you encounter ANY issues with TaskManager API operations, consult the complete guide above for:
+- Advanced operations and error handling
+- Dependency management and validation
+- Backup and recovery operations  
+- Batch operations and task filtering
+- Quality gates and workflow management
+- Task templates and error tracking
 
 ### **Quick Reference - Most Common Operations**
 
@@ -326,9 +336,18 @@ node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding 
 # Create new development task quickly  
 node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.createTask({title: 'Quick Task', description: 'Task description', mode: 'DEVELOPMENT'}).then(id => console.log('Created:', id));"
 
+# Remove a task by ID (NEW - see guide for batch removal)
+node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.removeTask('task_id').then(removed => console.log('Task removed:', removed));"
+
 # Check what tasks are ready to execute (no unmet dependencies)
 node -e "const TaskManager = require('/Users/jeremyparker/Desktop/Claude Coding Projects/infinite-continue-stop-hook/lib/taskManager'); const tm = new TaskManager('./TODO.json'); tm.getExecutableTasks().then(tasks => console.log('Ready to execute:', tasks.length, 'tasks'));"
 ```
+
+### **When to Consult the Full API Guide**
+- TaskManager operations fail or return unexpected results
+- Need advanced features like dependency management, quality gates, or batch operations
+- Working with task templates, error tracking, or backup systems
+- Troubleshooting file corruption or validation issues
 
 ## 🚨 Task Management
 

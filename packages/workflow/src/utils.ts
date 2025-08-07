@@ -12,6 +12,12 @@ const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
 // NOTE: BigInt.prototype.toJSON is not available, which causes JSON.stringify to throw an error
 // as well as the flatted stringify method. This is a workaround for that.
+declare global {
+	interface BigInt {
+		toJSON(): string;
+	}
+}
+
 BigInt.prototype.toJSON = function () {
 	return this.toString();
 };
