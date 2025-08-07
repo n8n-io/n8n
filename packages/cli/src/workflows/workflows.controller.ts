@@ -148,7 +148,7 @@ export class WorkflowsController {
 	@Post('/')
 	async create(req: WorkflowRequest.Create) {
 		delete req.body.id; // delete if sent
-		// @ts-expect-error: We shouldn't accept this because it can
+		// We shouldn't accept this because it can
 		// mess with relations of other workflows
 		delete req.body.shared;
 
@@ -262,7 +262,7 @@ export class WorkflowsController {
 		const savedWorkflowWithMetaData =
 			this.enterpriseWorkflowService.addOwnerAndSharings(savedWorkflow);
 
-		// @ts-expect-error: This is added as part of addOwnerAndSharings but
+		// This is added as part of addOwnerAndSharings but
 		// shouldn't be returned to the frontend
 		delete savedWorkflowWithMetaData.shared;
 
@@ -372,7 +372,7 @@ export class WorkflowsController {
 
 			await enterpriseWorkflowService.addCredentialsToWorkflow(workflowWithMetaData, req.user);
 
-			// @ts-expect-error: This is added as part of addOwnerAndSharings but
+			// This is added as part of addOwnerAndSharings but
 			// shouldn't be returned to the frontend
 			delete workflowWithMetaData.shared;
 
@@ -3132,7 +3132,7 @@ export class WorkflowsController {
 		});
 
 		try {
-			const result = await this.batchProcessingService.createBatchJob(req.user, {
+			const result = await this.batchProcessingService.queueBatchOperation(req.user, {
 				operations,
 				priority,
 				scheduledFor: scheduledFor ? new Date(scheduledFor) : undefined,
@@ -3178,7 +3178,7 @@ export class WorkflowsController {
 		});
 
 		try {
-			const status = await this.batchProcessingService.getBatchStatus(batchId, req.user);
+			const status = await this.batchProcessingService.getBatchStatus(batchId);
 
 			if (!status) {
 				throw new NotFoundError(`Batch operation with ID "${batchId}" not found`);
