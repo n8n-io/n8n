@@ -1,20 +1,88 @@
 import type {
 	LoginRequestDto,
 	PasswordUpdateRequestDto,
-	Role,
 	SettingsUpdateRequestDto,
-	UsersList,
 	UsersListFilterDto,
 	UserUpdateRequestDto,
+	Role,
+	UsersList,
+	User,
 } from '@n8n/api-types';
+import type { Scope } from '@n8n/permissions';
 import type {
-	CurrentUserResponse,
-	IPersonalizationLatestVersion,
-	IUserResponse,
-} from '@/Interface';
-import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { IDataObject, IUserSettings } from 'n8n-workflow';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+	FeatureFlags,
+	IDataObject,
+	IPersonalizationSurveyAnswersV4,
+	IUserSettings,
+} from 'n8n-workflow';
+
+import type { IRestApiContext } from '../types';
+import { makeRestApiRequest } from '../utils';
+
+export type IPersonalizationSurveyAnswersV1 = {
+	codingSkill?: string | null;
+	companyIndustry?: string[] | null;
+	companySize?: string | null;
+	otherCompanyIndustry?: string | null;
+	otherWorkArea?: string | null;
+	workArea?: string[] | string | null;
+};
+
+export type IPersonalizationSurveyAnswersV2 = {
+	version: 'v2';
+	automationGoal?: string | null;
+	codingSkill?: string | null;
+	companyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	customerType?: string | null;
+	mspFocus?: string[] | null;
+	mspFocusOther?: string | null;
+	otherAutomationGoal?: string | null;
+	otherCompanyIndustryExtended?: string[] | null;
+};
+
+export type IPersonalizationSurveyAnswersV3 = {
+	version: 'v3';
+	automationGoal?: string | null;
+	otherAutomationGoal?: string | null;
+	companyIndustryExtended?: string[] | null;
+	otherCompanyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	automationGoalSm?: string[] | null;
+	automationGoalSmOther?: string | null;
+	usageModes?: string[] | null;
+	email?: string | null;
+};
+
+export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
+
+export type IPersonalizationSurveyVersions =
+	| IPersonalizationSurveyAnswersV1
+	| IPersonalizationSurveyAnswersV2
+	| IPersonalizationSurveyAnswersV3
+	| IPersonalizationSurveyAnswersV4;
+
+export interface IUserResponse extends User {
+	globalScopes?: Scope[];
+	personalizationAnswers?: IPersonalizationSurveyVersions | null;
+	settings?: IUserSettings | null;
+}
+
+export interface CurrentUserResponse extends IUserResponse {
+	featureFlags?: FeatureFlags;
+}
+
+export interface IUser extends IUserResponse {
+	isDefaultUser: boolean;
+	isPendingUser: boolean;
+	inviteAcceptUrl?: string;
+	fullName?: string;
+	createdAt?: string;
+	mfaEnabled: boolean;
+	mfaAuthenticated?: boolean;
+}
 
 export async function loginCurrentUser(
 	context: IRestApiContext,
