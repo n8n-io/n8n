@@ -904,6 +904,13 @@ export function useCanvasOperations() {
 	}
 
 	function trackAddDefaultNode(nodeData: INodeUi, options: AddNodeOptions) {
+		// Extract action-related parameters from node parameters if available
+		const nodeParameters = nodeData.parameters;
+		const resource =
+			typeof nodeParameters?.resource === 'string' ? nodeParameters.resource : undefined;
+		const operation =
+			typeof nodeParameters?.operation === 'string' ? nodeParameters.operation : undefined;
+
 		nodeCreatorStore.onNodeAddedToCanvas({
 			node_id: nodeData.id,
 			node_type: nodeData.type,
@@ -914,6 +921,8 @@ export function useCanvasOperations() {
 			input_node_type: uiStore.lastInteractedWithNode
 				? uiStore.lastInteractedWithNode.type
 				: undefined,
+			resource,
+			operation,
 		});
 	}
 
