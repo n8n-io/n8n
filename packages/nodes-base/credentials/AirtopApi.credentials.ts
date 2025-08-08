@@ -28,6 +28,29 @@ export class AirtopApi implements ICredentialType {
 			},
 			noDataExpression: true,
 		},
+		{
+			displayName: 'Custom API',
+			name: 'customApi',
+			type: 'boolean',
+			default: false,
+			noDataExpression: true,
+			description:
+				'Whether to change the default URL for the API. Only enable this if you are using a custom Airtop instance.',
+		},
+		{
+			displayName: 'API URL',
+			name: 'apiUrl',
+			type: 'string',
+			default: '',
+			description: 'The base URL for the Airtop API. Leave empty to use the default.',
+			placeholder: 'https://api.airtop.ai/api/v1',
+			noDataExpression: true,
+			displayOptions: {
+				show: {
+					customApi: [true],
+				},
+			},
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -43,7 +66,7 @@ export class AirtopApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			method: 'GET',
-			baseURL: BASE_URL,
+			baseURL: '={{$credentials.apiUrl || "' + BASE_URL + '"}}',
 			url: '/sessions',
 			qs: {
 				limit: 10,
