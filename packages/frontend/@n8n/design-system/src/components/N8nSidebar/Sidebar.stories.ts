@@ -662,4 +662,15 @@ primary.args = {
 	personal: mockPersonalItems,
 	shared: mockSharedItems,
 	projects: mockProjects,
+	collapsed: false,
+	releaseChannel: 'stable' as const,
+};
+
+export const collapsed = Template.bind({});
+collapsed.args = {
+	personal: mockPersonalItems,
+	shared: mockSharedItems,
+	projects: mockProjects,
+	collapsed: true,
+	releaseChannel: 'stable' as const,
 };

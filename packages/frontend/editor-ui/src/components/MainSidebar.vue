@@ -23,7 +23,6 @@ import { useUserHelpers } from '@/composables/useUserHelpers';
 import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
-import Logo from '@/components/Logo/Logo.vue';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';
@@ -350,5 +349,11 @@ async function onResizeEnd() {
 </script>
 
 <template>
-	<N8nSidebar :personal="personalItems" :shared="sharedItems" :projects="projects" />
+	<N8nSidebar
+		:personal="personalItems"
+		:shared="sharedItems"
+		:projects="projects"
+		:collapsed="isCollapsed"
+		:release-channel="settingsStore.settings.releaseChannel"
+	/>
 </template>

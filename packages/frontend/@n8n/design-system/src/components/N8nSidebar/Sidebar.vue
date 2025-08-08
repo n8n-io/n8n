@@ -2,6 +2,7 @@
 import { TreeItemType } from '.';
 import N8nIcon from '../N8nIcon';
 import { IconName } from '../N8nIcon/icons';
+import N8nLogo from '../N8nLogo';
 import N8nText from '../N8nText';
 import SidebarSection from './SidebarSection.vue';
 
@@ -9,19 +10,26 @@ const props = defineProps<{
 	personal: { id: string; items: TreeItemType[] };
 	shared: TreeItemType[];
 	projects: { title: string; id: string; icon: IconName; items: TreeItemType[] }[];
+	collapsed?: boolean;
+	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
 }>();
-
-console.log(props.projects);
 </script>
 
 <template>
 	<nav class="sidebar">
-		<header class="sidebarItem">
+		<header class="sidebarHeader">
+			<N8nLogo
+				location="sidebar"
+				:collapsed="props.collapsed ?? false"
+				:release-channel="props.releaseChannel"
+			/>
+		</header>
+		<div class="sidebarItem">
 			<div class="icon">
 				<N8nIcon icon="house" />
 			</div>
 			<N8nText>Overview</N8nText>
-		</header>
+		</div>
 		<SidebarSection
 			title="Personal"
 			:id="personal.id"
@@ -55,22 +63,31 @@ console.log(props.projects);
 
 <style scoped>
 .sidebar {
-	padding: 8px;
+	padding: 12px;
 	background-color: var(--color-background-xlight);
 	position: relative;
 	height: 100%;
 	border-right: 1px solid var(--color-foreground-base);
+	width: 300px;
+}
+
+.sidebarHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
 }
 
 .sidebarItem {
 	display: flex;
 	align-items: center;
 	padding: 4px;
+	gap: 4px;
 }
 
 .sidebarItem .icon {
-	width: 26px;
-	height: 26px;
+	width: 16px;
+	height: 16px;
 	display: flex;
 	align-items: center;
 	justify-content: center;

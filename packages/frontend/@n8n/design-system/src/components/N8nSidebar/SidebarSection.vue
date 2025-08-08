@@ -44,22 +44,14 @@ const link = computed(() => {
 				<div class="icon">
 					<N8nIcon :icon="icon ?? 'layers'" />
 				</div>
-				<N8nIconButton
-					class="button"
-					square
-					type="tertiary"
-					text
-					size="small"
-					:icon="open.includes(id) ? 'chevron-down' : 'chevron-right'"
-					@click="toggleSection(id)"
-					:aria-label="`Toggle ${title} section`"
-				/>
+				<button class="button" @click="toggleSection(id)" :aria-label="`Toggle ${title} section`">
+					<N8nIcon :icon="open.includes(id) ? 'chevron-down' : 'chevron-right'" />
+				</button>
 			</div>
 			<N8nLink :to="link">{{ title }}</N8nLink>
 		</header>
-		<div class="items">
+		<div v-if="open.includes(id)" class="items">
 			<TreeRoot
-				v-if="open.includes(id)"
 				:items="props.items"
 				:get-key="(item: TreeItemType) => item.id"
 				v-slot="{ flattenItems }"
@@ -102,8 +94,9 @@ const link = computed(() => {
 .items {
 	display: flex;
 	padding-left: 8px;
-	margin-left: 16px;
+	margin-left: 12px;
 	border-left: 1px solid var(--color-foreground-light);
+	margin-bottom: 12px;
 }
 
 .item {
@@ -117,7 +110,7 @@ const link = computed(() => {
 	position: relative;
 	width: 8px;
 	align-self: stretch;
-	margin-left: 16px;
+	margin-left: 12px;
 	border-left: 1px solid var(--color-foreground-light);
 }
 
@@ -135,6 +128,7 @@ const link = computed(() => {
 	display: flex;
 	align-items: center;
 	padding: 4px;
+	gap: 4px;
 	cursor: pointer;
 }
 
@@ -165,5 +159,18 @@ const link = computed(() => {
 	&:focus-within .icon {
 		opacity: 0;
 	}
+}
+
+.button {
+	width: 16px;
+	height: 16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: transparent;
+	cursor: pointer;
+	outline: none;
+	border: none;
+	padding: 0;
 }
 </style>

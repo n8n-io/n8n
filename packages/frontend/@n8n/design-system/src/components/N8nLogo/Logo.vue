@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { FrontendSettings } from '@n8n/api-types';
 import { computed, onMounted, useCssModule, useTemplateRef } from 'vue';
 import { useFavicon } from '@vueuse/core';
 
 import LogoIcon from './logo-icon.svg';
 import LogoText from './logo-text.svg';
+
+type ReleaseChannel = 'stable' | 'dev' | 'beta' | 'nightly';
 
 const props = defineProps<
 	(
@@ -13,30 +14,20 @@ const props = defineProps<
 		  }
 		| {
 				location: 'sidebar';
-				collapsed: boolean;
 		  }
 	) & {
-		releaseChannel: FrontendSettings['releaseChannel'];
+		releaseChannel: ReleaseChannel;
 	}
 >();
 
 const { location, releaseChannel } = props;
-
-const showLogoText = computed(() => {
-	if (location === 'authView') return true;
-	return !props.collapsed;
-});
 
 const $style = useCssModule();
 const containerClasses = computed(() => {
 	if (location === 'authView') {
 		return [$style.logoContainer, $style.authView];
 	}
-	return [
-		$style.logoContainer,
-		$style.sidebar,
-		props.collapsed ? $style.sidebarCollapsed : $style.sidebarExpanded,
-	];
+	return [$style.logoContainer, $style.sidebar];
 });
 
 const svg = useTemplateRef<{ $el: Element }>('logo');
@@ -58,7 +49,7 @@ onMounted(() => {
 <template>
 	<div :class="containerClasses" data-test-id="n8n-logo">
 		<LogoIcon ref="logo" :class="$style.logo" />
-		<LogoText v-if="showLogoText" :class="$style.logoText" />
+		<LogoText :class="$style.logoText" />
 		<slot />
 	</div>
 </template>
