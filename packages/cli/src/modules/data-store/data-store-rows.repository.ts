@@ -7,13 +7,14 @@ import type {
 import { Service } from '@n8n/di';
 import { DataSource, DataSourceOptions, SelectQueryBuilder } from '@n8n/typeorm';
 
+import { DataStoreColumnEntity } from './data-store-column.entity';
 import {
 	buildInsertQuery,
 	buildUpdateQuery,
+	getPlaceholder,
 	quoteIdentifier,
 	splitRowsByExistence,
 } from './utils/sql-utils';
-import { DataStoreColumnEntity } from './data-store-column.entity';
 
 type QueryBuilder = SelectQueryBuilder<any>;
 
@@ -163,6 +164,7 @@ export class DataStoreRowsRepository {
 		matchFields: string[],
 		rows: DataStoreRows,
 	): Promise<{ rowsToInsert: DataStoreRows; rowsToUpdate: DataStoreRows }> {
+		const dbType = this.dataSource.options.type;
 		const whereClauses: string[] = [];
 		const params: unknown[] = [];
 
@@ -170,18 +172,20 @@ export class DataStoreRowsRepository {
 			const clause = matchFields
 				.map((field) => {
 					params.push(row[field]);
-					return `"${field}" = $${params.length}`;
+					return `${quoteIdentifier(field, dbType)} = ${getPlaceholder(params.length, dbType)}`;
 				})
 				.join(' AND ');
 			whereClauses.push(`(${clause})`);
 		}
 
-		const query = `
-		SELECT ${matchFields.map((field) => `"${field}"`).join(', ')}
-		FROM "${tableName}"
-		WHERE ${whereClauses.join(' OR ')}
-	`;
+		const quotedFields = matchFields.map((field) => quoteIdentifier(field, dbType)).join(', ');
+		const quotedTableName = quoteIdentifier(tableName, dbType);
 
+		const query = `
+        SELECT ${quotedFields}
+        FROM ${quotedTableName}
+        WHERE ${whereClauses.join(' OR ')}
+    `;
 		const existing: Array<Record<string, unknown>> = await this.dataSource.query(query, params);
 
 		return splitRowsByExistence(existing, matchFields, rows);

@@ -269,7 +269,7 @@ function toMySQLDateTimeString(date: Date | string, convertFromDate = true): str
 	return dateString.replace('T', ' ').replace('Z', '');
 }
 
-function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
+export function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
 	return dbType.includes('postgres') ? `$${index}` : '?';
 }
 
