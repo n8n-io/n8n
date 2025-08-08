@@ -1,15 +1,20 @@
 import type { IDataObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import {
-	assertIsString,
-	assertIsNumber,
-	assertIsStringOrNumber,
-	assertIsNodeParameters,
-} from '../../../utils/types';
+import { assertParamIsString, assertParamIsNumber, validateNodeParameters } from 'n8n-workflow';
 
 import type { TodoistResponse } from './Service';
 import type { Context } from '../GenericFunctions';
 import { FormatDueDatetime, todoistApiRequest, todoistSyncRequest } from '../GenericFunctions';
+
+// Helper function for string or number validation
+function assertParamIsStringOrNumber(
+	parameterName: string,
+	value: unknown,
+): asserts value is string | number {
+	if (typeof value !== 'string' && typeof value !== 'number') {
+		throw new Error(`Parameter "${parameterName}" must be a string or number`);
+	}
+}
 
 export interface OperationHandler {
 	handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse>;
@@ -51,7 +56,7 @@ export interface Command {
 		section?: string;
 		content?: string;
 		item_id?: number | string;
-		due?: IDataObject;
+		due?: Record<string, unknown>;
 		type?: string;
 		minute_offset?: number;
 		notify_uid?: string;
@@ -118,44 +123,44 @@ export class CreateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		//https://developer.todoist.com/rest/v2/#create-a-new-task
 		const content = ctx.getNodeParameter('content', itemIndex);
-		assertIsString('content', content);
+		assertParamIsString('content', content);
 
 		const projectId = ctx.getNodeParameter('project', itemIndex, undefined, {
 			extractValue: true,
 		});
-		assertIsStringOrNumber('project', projectId);
+		assertParamIsStringOrNumber('project', projectId);
 
 		const labels = ctx.getNodeParameter('labels', itemIndex) as string[];
 		const options = ctx.getNodeParameter('options', itemIndex) as IDataObject;
 
-		assertIsNodeParameters<{
-			description?: string;
-			dueDateTime?: string;
-			dueString?: string;
-			section?: string | number;
-			dueLang?: string;
-			parentId?: string | number;
-			priority?: string | number;
-			order?: number;
-			dueDate?: string;
-			assigneeId?: string;
-			duration?: number;
-			durationUnit?: string;
-			deadlineDate?: string;
+		validateNodeParameters<{
+			description: { type: 'string'; required?: boolean };
+			dueDateTime: { type: 'string'; required?: boolean };
+			dueString: { type: 'string'; required?: boolean };
+			section: { type: ['string', 'number']; required?: boolean };
+			dueLang: { type: 'string'; required?: boolean };
+			parentId: { type: ['string', 'number']; required?: boolean };
+			priority: { type: ['string', 'number']; required?: boolean };
+			order: { type: 'number'; required?: boolean };
+			dueDate: { type: 'string'; required?: boolean };
+			assigneeId: { type: 'string'; required?: boolean };
+			duration: { type: 'number'; required?: boolean };
+			durationUnit: { type: 'string'; required?: boolean };
+			deadlineDate: { type: 'string'; required?: boolean };
 		}>(options, {
-			description: { type: 'string', optional: true },
-			dueDateTime: { type: 'string', optional: true },
-			dueString: { type: 'string', optional: true },
-			section: { type: ['string', 'number'], optional: true },
-			dueLang: { type: 'string', optional: true },
-			parentId: { type: ['string', 'number'], optional: true },
-			priority: { type: ['string', 'number'], optional: true },
-			order: { type: 'number', optional: true },
-			dueDate: { type: 'string', optional: true },
-			assigneeId: { type: 'string', optional: true },
-			duration: { type: 'number', optional: true },
-			durationUnit: { type: 'string', optional: true },
-			deadlineDate: { type: 'string', optional: true },
+			description: { type: 'string' },
+			dueDateTime: { type: 'string' },
+			dueString: { type: 'string' },
+			section: { type: ['string', 'number'] },
+			dueLang: { type: 'string' },
+			parentId: { type: ['string', 'number'] },
+			priority: { type: ['string', 'number'] },
+			order: { type: 'number' },
+			dueDate: { type: 'string' },
+			assigneeId: { type: 'string' },
+			duration: { type: 'number' },
+			durationUnit: { type: 'string' },
+			deadlineDate: { type: 'string' },
 		});
 
 		const body: CreateTaskRequest = {
@@ -230,7 +235,7 @@ export class CreateHandler implements OperationHandler {
 export class CloseHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('taskId', itemIndex);
-		assertIsStringOrNumber('taskId', id);
+		assertParamIsStringOrNumber('taskId', id);
 
 		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}/close`);
 
@@ -243,7 +248,7 @@ export class CloseHandler implements OperationHandler {
 export class DeleteHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('taskId', itemIndex);
-		assertIsStringOrNumber('taskId', id);
+		assertParamIsStringOrNumber('taskId', id);
 
 		await todoistApiRequest.call(ctx, 'DELETE', `/tasks/${id}`);
 
@@ -256,7 +261,7 @@ export class DeleteHandler implements OperationHandler {
 export class GetHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('taskId', itemIndex);
-		assertIsStringOrNumber('taskId', id);
+		assertParamIsStringOrNumber('taskId', id);
 
 		const responseData = await todoistApiRequest.call(ctx, 'GET', `/tasks/${id}`);
 		return {
@@ -271,20 +276,20 @@ export class GetAllHandler implements OperationHandler {
 		const returnAll = ctx.getNodeParameter('returnAll', itemIndex) as boolean;
 		const filters = ctx.getNodeParameter('filters', itemIndex) as IDataObject;
 
-		assertIsNodeParameters<{
-			projectId?: string | number;
-			sectionId?: string | number;
-			labelId?: string | number;
-			filter?: string;
-			lang?: string;
-			ids?: string;
+		validateNodeParameters<{
+			projectId: { type: ['string', 'number']; required?: boolean };
+			sectionId: { type: ['string', 'number']; required?: boolean };
+			labelId: { type: ['string', 'number']; required?: boolean };
+			filter: { type: 'string'; required?: boolean };
+			lang: { type: 'string'; required?: boolean };
+			ids: { type: 'string'; required?: boolean };
 		}>(filters, {
-			projectId: { type: ['string', 'number'], optional: true },
-			sectionId: { type: ['string', 'number'], optional: true },
-			labelId: { type: ['string', 'number'], optional: true },
-			filter: { type: 'string', optional: true },
-			lang: { type: 'string', optional: true },
-			ids: { type: 'string', optional: true },
+			projectId: { type: ['string', 'number'] },
+			sectionId: { type: ['string', 'number'] },
+			labelId: { type: ['string', 'number'] },
+			filter: { type: 'string' },
+			lang: { type: 'string' },
+			ids: { type: 'string' },
 		});
 
 		const qs: IDataObject = {};
@@ -312,7 +317,7 @@ export class GetAllHandler implements OperationHandler {
 
 		if (!returnAll) {
 			const limit = ctx.getNodeParameter('limit', itemIndex);
-			assertIsNumber('limit', limit);
+			assertParamIsNumber('limit', limit);
 			responseData = responseData.splice(0, limit);
 		}
 
@@ -326,7 +331,7 @@ export class ReopenHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		//https://developer.todoist.com/rest/v2/#get-an-active-task
 		const id = ctx.getNodeParameter('taskId', itemIndex);
-		assertIsStringOrNumber('taskId', id);
+		assertParamIsStringOrNumber('taskId', id);
 
 		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}/reopen`);
 
@@ -340,37 +345,37 @@ export class UpdateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		//https://developer.todoist.com/rest/v2/#update-a-task
 		const id = ctx.getNodeParameter('taskId', itemIndex);
-		assertIsStringOrNumber('taskId', id);
+		assertParamIsStringOrNumber('taskId', id);
 
 		const updateFields = ctx.getNodeParameter('updateFields', itemIndex) as IDataObject;
-		assertIsNodeParameters<{
-			content?: string;
-			priority?: number | string;
-			description?: string;
-			dueDateTime?: string;
-			dueString?: string;
-			labels?: string[];
-			dueLang?: string;
-			order?: number;
-			dueDate?: string;
-			assigneeId?: string;
-			duration?: number;
-			durationUnit?: string;
-			deadlineDate?: string;
+		validateNodeParameters<{
+			content: { type: 'string'; required?: boolean };
+			priority: { type: ['number', 'string']; required?: boolean };
+			description: { type: 'string'; required?: boolean };
+			dueDateTime: { type: 'string'; required?: boolean };
+			dueString: { type: 'string'; required?: boolean };
+			labels: { type: 'string[]'; required?: boolean };
+			dueLang: { type: 'string'; required?: boolean };
+			order: { type: 'number'; required?: boolean };
+			dueDate: { type: 'string'; required?: boolean };
+			assigneeId: { type: 'string'; required?: boolean };
+			duration: { type: 'number'; required?: boolean };
+			durationUnit: { type: 'string'; required?: boolean };
+			deadlineDate: { type: 'string'; required?: boolean };
 		}>(updateFields, {
-			content: { type: 'string', optional: true },
-			priority: { type: ['number', 'string'], optional: true },
-			description: { type: 'string', optional: true },
-			dueDateTime: { type: 'string', optional: true },
-			dueString: { type: 'string', optional: true },
-			labels: { type: 'string[]', optional: true },
-			dueLang: { type: 'string', optional: true },
-			order: { type: 'number', optional: true },
-			dueDate: { type: 'string', optional: true },
-			assigneeId: { type: 'string', optional: true },
-			duration: { type: 'number', optional: true },
-			durationUnit: { type: 'string', optional: true },
-			deadlineDate: { type: 'string', optional: true },
+			content: { type: 'string' },
+			priority: { type: ['number', 'string'] },
+			description: { type: 'string' },
+			dueDateTime: { type: 'string' },
+			dueString: { type: 'string' },
+			labels: { type: 'string[]' },
+			dueLang: { type: 'string' },
+			order: { type: 'number' },
+			dueDate: { type: 'string' },
+			assigneeId: { type: 'string' },
+			duration: { type: 'number' },
+			durationUnit: { type: 'string' },
+			deadlineDate: { type: 'string' },
 		});
 
 		const body: CreateTaskRequest = {};
@@ -441,12 +446,12 @@ export class MoveHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		//https://api.todoist.com/sync/v9/sync
 		const taskId = ctx.getNodeParameter('taskId', itemIndex);
-		assertIsStringOrNumber('taskId', taskId);
+		assertParamIsStringOrNumber('taskId', taskId);
 
 		const projectId = ctx.getNodeParameter('project', itemIndex, undefined, {
 			extractValue: true,
 		});
-		assertIsStringOrNumber('project', projectId);
+		assertParamIsStringOrNumber('project', projectId);
 		const nodeVersion = ctx.getNode().typeVersion;
 
 		const body: SyncRequest = {
@@ -461,7 +466,7 @@ export class MoveHandler implements OperationHandler {
 							? {
 									section_id: (() => {
 										const section = ctx.getNodeParameter('section', itemIndex);
-										assertIsStringOrNumber('section', section);
+										assertParamIsStringOrNumber('section', section);
 										return section;
 									})(),
 								}
@@ -473,12 +478,9 @@ export class MoveHandler implements OperationHandler {
 
 		if (nodeVersion >= 2.1) {
 			const options = ctx.getNodeParameter('options', itemIndex, {}) as IDataObject;
-			assertIsNodeParameters<{
-				parent?: string | number;
-				section?: string | number;
-			}>(options, {
-				parent: { type: ['string', 'number'], optional: true },
-				section: { type: ['string', 'number'], optional: true },
+			validateNodeParameters(options, {
+				parent: { type: ['string', 'number'] },
+				section: { type: ['string', 'number'] },
 			});
 
 			// Only one of parent_id, section_id, or project_id must be set to move the task
@@ -500,19 +502,14 @@ export class MoveHandler implements OperationHandler {
 export class ProjectCreateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const name = ctx.getNodeParameter('name', itemIndex);
-		assertIsString('name', name);
+		assertParamIsString('name', name);
 
 		const options = ctx.getNodeParameter('projectOptions', itemIndex) as IDataObject;
-		assertIsNodeParameters<{
-			color?: string;
-			is_favorite?: boolean;
-			parent_id?: string;
-			view_style?: string;
-		}>(options, {
-			color: { type: 'string', optional: true },
-			is_favorite: { type: 'boolean', optional: true },
-			parent_id: { type: 'string', optional: true },
-			view_style: { type: 'string', optional: true },
+		validateNodeParameters(options, {
+			color: { type: 'string' },
+			is_favorite: { type: 'boolean' },
+			parent_id: { type: 'string' },
+			view_style: { type: 'string' },
 		});
 
 		const body: IDataObject = {
@@ -528,7 +525,7 @@ export class ProjectCreateHandler implements OperationHandler {
 export class ProjectDeleteHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
-		assertIsStringOrNumber('projectId', id);
+		assertParamIsStringOrNumber('projectId', id);
 
 		await todoistApiRequest.call(ctx, 'DELETE', `/projects/${id}`);
 		return { success: true };
@@ -538,7 +535,7 @@ export class ProjectDeleteHandler implements OperationHandler {
 export class ProjectGetHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
-		assertIsStringOrNumber('projectId', id);
+		assertParamIsStringOrNumber('projectId', id);
 
 		const data = await todoistApiRequest.call(ctx, 'GET', `/projects/${id}`);
 		return { data };
@@ -555,19 +552,14 @@ export class ProjectGetAllHandler implements OperationHandler {
 export class ProjectUpdateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
-		assertIsStringOrNumber('projectId', id);
+		assertParamIsStringOrNumber('projectId', id);
 
 		const updateFields = ctx.getNodeParameter('projectUpdateFields', itemIndex) as IDataObject;
-		assertIsNodeParameters<{
-			name?: string;
-			color?: string;
-			is_favorite?: boolean;
-			view_style?: string;
-		}>(updateFields, {
-			name: { type: 'string', optional: true },
-			color: { type: 'string', optional: true },
-			is_favorite: { type: 'boolean', optional: true },
-			view_style: { type: 'string', optional: true },
+		validateNodeParameters(updateFields, {
+			name: { type: 'string' },
+			color: { type: 'string' },
+			is_favorite: { type: 'boolean' },
+			view_style: { type: 'string' },
 		});
 
 		await todoistApiRequest.call(ctx, 'POST', `/projects/${id}`, updateFields);
@@ -578,7 +570,7 @@ export class ProjectUpdateHandler implements OperationHandler {
 export class ProjectArchiveHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
-		assertIsStringOrNumber('projectId', id);
+		assertParamIsStringOrNumber('projectId', id);
 
 		await todoistApiRequest.call(ctx, 'POST', `/projects/${id}/archive`);
 		return { success: true };
@@ -588,7 +580,7 @@ export class ProjectArchiveHandler implements OperationHandler {
 export class ProjectUnarchiveHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
-		assertIsStringOrNumber('projectId', id);
+		assertParamIsStringOrNumber('projectId', id);
 
 		await todoistApiRequest.call(ctx, 'POST', `/projects/${id}/unarchive`);
 		return { success: true };
@@ -598,7 +590,7 @@ export class ProjectUnarchiveHandler implements OperationHandler {
 export class ProjectGetCollaboratorsHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
-		assertIsStringOrNumber('projectId', id);
+		assertParamIsStringOrNumber('projectId', id);
 
 		const data = await todoistApiRequest.call(ctx, 'GET', `/projects/${id}/collaborators`);
 		return { data };
@@ -609,18 +601,16 @@ export class ProjectGetCollaboratorsHandler implements OperationHandler {
 export class SectionCreateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const name = ctx.getNodeParameter('sectionName', itemIndex);
-		assertIsString('sectionName', name);
+		assertParamIsString('sectionName', name);
 
 		const projectId = ctx.getNodeParameter('sectionProject', itemIndex, undefined, {
 			extractValue: true,
 		});
-		assertIsStringOrNumber('sectionProject', projectId);
+		assertParamIsStringOrNumber('sectionProject', projectId);
 
 		const options = ctx.getNodeParameter('sectionOptions', itemIndex) as IDataObject;
-		assertIsNodeParameters<{
-			order?: number;
-		}>(options, {
-			order: { type: 'number', optional: true },
+		validateNodeParameters(options, {
+			order: { type: 'number' },
 		});
 
 		const body: IDataObject = {
@@ -637,7 +627,7 @@ export class SectionCreateHandler implements OperationHandler {
 export class SectionDeleteHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('sectionId', itemIndex);
-		assertIsStringOrNumber('sectionId', id);
+		assertParamIsStringOrNumber('sectionId', id);
 
 		await todoistApiRequest.call(ctx, 'DELETE', `/sections/${id}`);
 		return { success: true };
@@ -647,7 +637,7 @@ export class SectionDeleteHandler implements OperationHandler {
 export class SectionGetHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('sectionId', itemIndex);
-		assertIsStringOrNumber('sectionId', id);
+		assertParamIsStringOrNumber('sectionId', id);
 
 		const data = await todoistApiRequest.call(ctx, 'GET', `/sections/${id}`);
 		return { data };
@@ -660,7 +650,7 @@ export class SectionGetAllHandler implements OperationHandler {
 		const qs: IDataObject = {};
 
 		if (filters.project_id) {
-			assertIsStringOrNumber('project_id', filters.project_id);
+			assertParamIsStringOrNumber('project_id', filters.project_id);
 			qs.project_id = filters.project_id;
 		}
 
@@ -672,13 +662,11 @@ export class SectionGetAllHandler implements OperationHandler {
 export class SectionUpdateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('sectionId', itemIndex);
-		assertIsStringOrNumber('sectionId', id);
+		assertParamIsStringOrNumber('sectionId', id);
 
 		const updateFields = ctx.getNodeParameter('sectionUpdateFields', itemIndex) as IDataObject;
-		assertIsNodeParameters<{
-			name?: string;
-		}>(updateFields, {
-			name: { type: 'string', optional: true },
+		validateNodeParameters(updateFields, {
+			name: { type: 'string' },
 		});
 
 		await todoistApiRequest.call(ctx, 'POST', `/sections/${id}`, updateFields);
@@ -690,10 +678,10 @@ export class SectionUpdateHandler implements OperationHandler {
 export class CommentCreateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const taskId = ctx.getNodeParameter('commentTaskId', itemIndex);
-		assertIsStringOrNumber('commentTaskId', taskId);
+		assertParamIsStringOrNumber('commentTaskId', taskId);
 
 		const content = ctx.getNodeParameter('commentContent', itemIndex);
-		assertIsString('commentContent', content);
+		assertParamIsString('commentContent', content);
 
 		const body: IDataObject = {
 			task_id: taskId,
@@ -708,7 +696,7 @@ export class CommentCreateHandler implements OperationHandler {
 export class CommentDeleteHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('commentId', itemIndex);
-		assertIsStringOrNumber('commentId', id);
+		assertParamIsStringOrNumber('commentId', id);
 
 		await todoistApiRequest.call(ctx, 'DELETE', `/comments/${id}`);
 		return { success: true };
@@ -718,7 +706,7 @@ export class CommentDeleteHandler implements OperationHandler {
 export class CommentGetHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('commentId', itemIndex);
-		assertIsStringOrNumber('commentId', id);
+		assertParamIsStringOrNumber('commentId', id);
 
 		const data = await todoistApiRequest.call(ctx, 'GET', `/comments/${id}`);
 		return { data };
@@ -731,12 +719,12 @@ export class CommentGetAllHandler implements OperationHandler {
 		const qs: IDataObject = {};
 
 		if (filters.task_id) {
-			assertIsStringOrNumber('task_id', filters.task_id);
+			assertParamIsStringOrNumber('task_id', filters.task_id);
 			qs.task_id = filters.task_id;
 		}
 
 		if (filters.project_id) {
-			assertIsStringOrNumber('project_id', filters.project_id);
+			assertParamIsStringOrNumber('project_id', filters.project_id);
 			qs.project_id = filters.project_id;
 		}
 
@@ -748,13 +736,11 @@ export class CommentGetAllHandler implements OperationHandler {
 export class CommentUpdateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('commentId', itemIndex);
-		assertIsStringOrNumber('commentId', id);
+		assertParamIsStringOrNumber('commentId', id);
 
 		const updateFields = ctx.getNodeParameter('commentUpdateFields', itemIndex) as IDataObject;
-		assertIsNodeParameters<{
-			content?: string;
-		}>(updateFields, {
-			content: { type: 'string', optional: true },
+		validateNodeParameters(updateFields, {
+			content: { type: 'string' },
 		});
 
 		await todoistApiRequest.call(ctx, 'POST', `/comments/${id}`, updateFields);
@@ -766,17 +752,13 @@ export class CommentUpdateHandler implements OperationHandler {
 export class LabelCreateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const name = ctx.getNodeParameter('labelName', itemIndex);
-		assertIsString('labelName', name);
+		assertParamIsString('labelName', name);
 
 		const options = ctx.getNodeParameter('labelOptions', itemIndex) as IDataObject;
-		assertIsNodeParameters<{
-			color?: string;
-			order?: number;
-			is_favorite?: boolean;
-		}>(options, {
-			color: { type: 'string', optional: true },
-			order: { type: 'number', optional: true },
-			is_favorite: { type: 'boolean', optional: true },
+		validateNodeParameters(options, {
+			color: { type: 'string' },
+			order: { type: 'number' },
+			is_favorite: { type: 'boolean' },
 		});
 
 		const body: IDataObject = {
@@ -792,7 +774,7 @@ export class LabelCreateHandler implements OperationHandler {
 export class LabelDeleteHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('labelId', itemIndex);
-		assertIsStringOrNumber('labelId', id);
+		assertParamIsStringOrNumber('labelId', id);
 
 		await todoistApiRequest.call(ctx, 'DELETE', `/labels/${id}`);
 		return { success: true };
@@ -802,7 +784,7 @@ export class LabelDeleteHandler implements OperationHandler {
 export class LabelGetHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('labelId', itemIndex);
-		assertIsStringOrNumber('labelId', id);
+		assertParamIsStringOrNumber('labelId', id);
 
 		const data = await todoistApiRequest.call(ctx, 'GET', `/labels/${id}`);
 		return { data };
@@ -819,19 +801,14 @@ export class LabelGetAllHandler implements OperationHandler {
 export class LabelUpdateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('labelId', itemIndex);
-		assertIsStringOrNumber('labelId', id);
+		assertParamIsStringOrNumber('labelId', id);
 
 		const updateFields = ctx.getNodeParameter('labelUpdateFields', itemIndex) as IDataObject;
-		assertIsNodeParameters<{
-			name?: string;
-			color?: string;
-			order?: number;
-			is_favorite?: boolean;
-		}>(updateFields, {
-			name: { type: 'string', optional: true },
-			color: { type: 'string', optional: true },
-			order: { type: 'number', optional: true },
-			is_favorite: { type: 'boolean', optional: true },
+		validateNodeParameters(updateFields, {
+			name: { type: 'string' },
+			color: { type: 'string' },
+			order: { type: 'number' },
+			is_favorite: { type: 'boolean' },
 		});
 
 		await todoistApiRequest.call(ctx, 'POST', `/labels/${id}`, updateFields);
@@ -842,17 +819,13 @@ export class LabelUpdateHandler implements OperationHandler {
 export class QuickAddHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const text = ctx.getNodeParameter('text', itemIndex);
-		assertIsString('text', text);
+		assertParamIsString('text', text);
 
 		const options = ctx.getNodeParameter('options', itemIndex, {}) as IDataObject;
-		assertIsNodeParameters<{
-			note?: string;
-			reminder?: string;
-			auto_reminder?: boolean;
-		}>(options, {
-			note: { type: 'string', optional: true },
-			reminder: { type: 'string', optional: true },
-			auto_reminder: { type: 'boolean', optional: true },
+		validateNodeParameters(options, {
+			note: { type: 'string' },
+			reminder: { type: 'string' },
+			auto_reminder: { type: 'boolean' },
 		});
 
 		const body: IDataObject = { text };
@@ -881,43 +854,39 @@ export class QuickAddHandler implements OperationHandler {
 export class ReminderCreateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const itemId = ctx.getNodeParameter('itemId', itemIndex);
-		assertIsStringOrNumber('itemId', itemId);
+		assertParamIsStringOrNumber('itemId', itemId);
 
 		const dueDateType = ctx.getNodeParameter('dueDateType', itemIndex) as string;
-		assertIsString('dueDateType', dueDateType);
+		assertParamIsString('dueDateType', dueDateType);
 
 		const due: IDataObject = {};
 
 		if (dueDateType === 'natural_language') {
 			const naturalLanguageRep = ctx.getNodeParameter('natural_language_representation', itemIndex);
-			assertIsString('natural_language_representation', naturalLanguageRep);
+			assertParamIsString('natural_language_representation', naturalLanguageRep);
 			due.string = naturalLanguageRep;
 		} else if (dueDateType === 'full_day') {
 			const date = ctx.getNodeParameter('date', itemIndex);
-			assertIsString('date', date);
+			assertParamIsString('date', date);
 			due.date = date;
 		} else if (dueDateType === 'floating_time') {
 			const datetime = ctx.getNodeParameter('datetime', itemIndex);
-			assertIsString('datetime', datetime);
+			assertParamIsString('datetime', datetime);
 			due.datetime = datetime;
 		} else if (dueDateType === 'fixed_timezone') {
 			const datetime = ctx.getNodeParameter('datetime', itemIndex);
 			const timezone = ctx.getNodeParameter('timezone', itemIndex);
-			assertIsString('datetime', datetime);
-			assertIsString('timezone', timezone);
+			assertParamIsString('datetime', datetime);
+			assertParamIsString('timezone', timezone);
 			due.datetime = datetime;
 			due.timezone = timezone;
 		}
 
 		const options = ctx.getNodeParameter('reminderOptions', itemIndex) as IDataObject;
-		assertIsNodeParameters<{
-			type?: string;
-			minute_offset?: number;
-			notify_uid?: string;
-		}>(options, {
-			type: { type: 'string', optional: true },
-			minute_offset: { type: 'number', optional: true },
-			notify_uid: { type: 'string', optional: true },
+		validateNodeParameters(options, {
+			type: { type: 'string' },
+			minute_offset: { type: 'number' },
+			notify_uid: { type: 'string' },
 		});
 
 		const body: SyncRequest = {
@@ -943,19 +912,14 @@ export class ReminderCreateHandler implements OperationHandler {
 export class ReminderUpdateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('reminderId', itemIndex);
-		assertIsStringOrNumber('reminderId', id);
+		assertParamIsStringOrNumber('reminderId', id);
 
 		const updateFields = ctx.getNodeParameter('reminderUpdateFields', itemIndex) as IDataObject;
-		assertIsNodeParameters<{
-			due?: IDataObject;
-			type?: string;
-			minute_offset?: number;
-			notify_uid?: string;
-		}>(updateFields, {
-			due: { type: 'object', optional: true },
-			type: { type: 'string', optional: true },
-			minute_offset: { type: 'number', optional: true },
-			notify_uid: { type: 'string', optional: true },
+		validateNodeParameters(updateFields, {
+			due: { type: 'object' },
+			type: { type: 'string' },
+			minute_offset: { type: 'number' },
+			notify_uid: { type: 'string' },
 		});
 
 		const body: SyncRequest = {
@@ -979,7 +943,7 @@ export class ReminderUpdateHandler implements OperationHandler {
 export class ReminderDeleteHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('reminderId', itemIndex);
-		assertIsStringOrNumber('reminderId', id);
+		assertParamIsStringOrNumber('reminderId', id);
 
 		const body: SyncRequest = {
 			commands: [
