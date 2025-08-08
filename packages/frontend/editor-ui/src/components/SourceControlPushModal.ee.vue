@@ -826,7 +826,7 @@ function openDiffModal(id: string) {
 												<EnvFeatureFlag name="SOURCE_CONTROL_WORKFLOW_DIFF">
 													<N8nIconButton
 														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
-														icon="git-branch"
+														icon="file-diff"
 														type="secondary"
 														@click="openDiffModal(file.id)"
 													/>
