@@ -1,9 +1,20 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { Request, Response } from 'express';
+import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';
+import stream from 'stream/promises';
 
 import { Webhook } from '../Webhook.node';
+
+jest.mock('fs/promises');
+const mockFs = mock<typeof fs>();
+fs.rm = mockFs.rm;
+fs.stat = mockFs.stat;
+
+jest.mock('stream/promises');
+const mockStream = mock<typeof stream>();
+stream.pipeline = mockStream.pipeline;
 
 describe('Test Webhook Node', () => {
 	new NodeTestHarness().setupTests();
@@ -33,11 +44,50 @@ describe('Test Webhook Node', () => {
 
 		it('should handle when files are present', async () => {
 			req.body = {
-				files: { file1: {} },
+				files: { file1: { filepath: '/tmp/test.txt' } },
 			};
 			const returnData = await node.webhook(context);
 			expect(returnData.workflowData?.[0][0].binary).not.toBeUndefined();
 			expect(context.nodeHelpers.copyBinaryFile).toHaveBeenCalled();
+			expect(mockFs.rm).toHaveBeenCalledWith('/tmp/test.txt');
+		});
+	});
+
+	describe('handleBinaryData', () => {
+		const node = new Webhook();
+		const context = mock<IWebhookFunctions>({
+			nodeHelpers: mock(),
+		});
+		context.getNode.calledWith().mockReturnValue({
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1.1,
+		} as any);
+		const req = mock<Request>();
+		context.getRequestObject.mockReturnValue(req);
+
+		mockFs.stat.mockResolvedValue({ size: 1024 } as fs.Stats);
+
+		beforeEach(() => {
+			mockFs.rm.mockClear();
+			jest.clearAllMocks();
+			req.headers = {};
+			req.params = {};
+			req.query = {};
+			req.body = {};
+		});
+
+		it('should handle binary data when binaryData option is enabled', async () => {
+			context.getNodeParameter.calledWith('options').mockReturnValue({
+				binaryData: true,
+			});
+			req.contentType = 'application/octet-stream';
+			req.contentDisposition = { type: 'attachment', filename: 'test.bin' };
+
+			const returnData = await node.webhook(context);
+
+			expect(returnData.workflowData?.[0][0].binary).toBeDefined();
+			expect(context.nodeHelpers.copyBinaryFile).toHaveBeenCalled();
+			expect(mockFs.rm).toHaveBeenCalledWith(expect.stringContaining('n8n-webhook-'));
 		});
 	});
 

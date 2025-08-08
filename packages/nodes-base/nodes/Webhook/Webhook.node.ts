@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
 import { createWriteStream } from 'fs';
-import { stat } from 'fs/promises';
+import { rm, stat } from 'fs/promises';
 import isbot from 'isbot';
 import type {
 	IWebhookFunctions,
@@ -363,6 +363,9 @@ export class Webhook extends Node {
 					file.mimetype,
 				);
 
+				// Delete original file to prevent tmp directory from growing too large
+				await rm(file.filepath);
+
 				count += 1;
 			}
 		}
@@ -401,11 +404,15 @@ export class Webhook extends Node {
 					fileName,
 					req.contentType ?? 'application/octet-stream',
 				);
+
+				// Delete original file to prevent tmp directory from growing too large
+				await rm(binaryFile.path);
 				returnItem.binary = { [binaryPropertyName]: binaryData };
 			}
 
 			return { workflowData: prepareOutput(returnItem) };
 		} catch (error) {
+			console.log(error);
 			throw new NodeOperationError(context.getNode(), error as Error);
 		} finally {
 			await binaryFile.cleanup();
