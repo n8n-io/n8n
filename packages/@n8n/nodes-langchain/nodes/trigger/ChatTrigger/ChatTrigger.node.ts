@@ -631,10 +631,6 @@ export class ChatTrigger extends Node {
 					| 'basicAuth'
 					| 'n8nUserAuth';
 				const initialMessagesRaw = ctx.getNodeParameter('initialMessages', '') as string;
-				const initialMessages = initialMessagesRaw
-					.split('\n')
-					.filter((line) => line)
-					.map((line) => line.trim());
 				const instanceId = ctx.getInstanceId();
 
 				const i18nConfig = pick(options, ['getStarted', 'inputPlaceholder', 'subtitle', 'title']);
@@ -645,7 +641,7 @@ export class ChatTrigger extends Node {
 					},
 					showWelcomeScreen: options.showWelcomeScreen,
 					loadPreviousSession: options.loadPreviousSession,
-					initialMessages,
+					initialMessages: initialMessagesRaw,
 					webhookUrl,
 					mode,
 					instanceId,
