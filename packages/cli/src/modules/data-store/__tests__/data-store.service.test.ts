@@ -842,7 +842,7 @@ describe('dataStore', () => {
 	});
 
 	describe('insertRows', () => {
-		it.skip('inserts rows into an existing table', async () => {
+		it('inserts rows into an existing table', async () => {
 			// ARRANGE
 			const dataStore = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -865,21 +865,21 @@ describe('dataStore', () => {
 			// ASSERT
 			expect(result).toBe(true);
 
-			const { count, data } = await dataStoreRowsRepository.getManyAndCount(
-				toTableName(dataStore.id),
-				{},
-			);
+			const { count, data } = await dataStoreService.getManyRowsAndCount(dataStore.id, {});
 			expect(count).toEqual(3);
 			expect(data).toEqual(
 				rows.map((row, i) => ({
 					...row,
-					id: i + 1,
-					c2: row.c2 ? 1 : 0, // booleans are stored as numbers in the db
+					id: i + 1, // Assuming IDs are auto-incremented starting from 1
+					c1: row.c1,
+					c2: row.c2,
+					c3: row.c3 instanceof Date ? row.c3.toISOString() : row.c3,
+					c4: row.c4,
 				})),
 			);
 		});
 
-		it.skip('inserts a row even if it matches with the existing one', async () => {
+		it('inserts a row even if it matches with the existing one', async () => {
 			// ARRANGE
 			const dataStore = await dataStoreService.createDataStore(project1.id, {
 				name: 'myDataStore',

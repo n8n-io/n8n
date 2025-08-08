@@ -143,16 +143,28 @@ export function buildInsertQuery(
 	const quotedKeys = keys.map((key) => quoteIdentifier(key, dbType)).join(', ');
 	const quotedTableName = quoteIdentifier(tableName, dbType);
 
-	const wildcards = keys.map((_) => '?').join(',');
-	const rowsQuery = Array(rows.length).fill(`(${wildcards})`).join(',');
-	const parameters = Array(rows.length * keys.length);
+	const parameters: unknown[] = [];
+	const valuePlaceholders: string[] = [];
 
-	for (let i = 0; i < keys.length; ++i) {
-		for (let j = 0; j < rows.length; ++j) {
-			parameters[j * keys.length + i] = rows[j][keys[i]];
+	let placeholderIndex = 1;
+
+	for (const row of rows) {
+		const rowPlaceholders: string[] = [];
+
+		for (const key of keys) {
+			parameters.push(row[key]);
+
+			if (dbType.includes('postgres')) {
+				rowPlaceholders.push(`$${placeholderIndex++}`);
+			} else {
+				rowPlaceholders.push('?');
+			}
 		}
+
+		valuePlaceholders.push(`(${rowPlaceholders.join(', ')})`);
 	}
-	const query = `INSERT INTO ${quotedTableName} (${quotedKeys}) VALUES ${rowsQuery}`;
+
+	const query = `INSERT INTO ${quotedTableName} (${quotedKeys}) VALUES ${valuePlaceholders.join(', ')}`;
 
 	return [query, parameters];
 }

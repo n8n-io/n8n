@@ -13,6 +13,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
+import { DataStoreColumnEntity } from './data-store-column.entity';
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
@@ -154,11 +155,57 @@ export class DataStoreService {
 		// unclear if we should validate here, only use case would be to reduce the chance of
 		// a renamed/removed column appearing here (or added column missing) if the store was
 		// modified between when the frontend sent the request and we received it
-		return await this.dataStoreRowsRepository.getManyAndCount(toTableName(dataStoreId), dto);
+		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+		const result = await this.dataStoreRowsRepository.getManyAndCount(
+			toTableName(dataStoreId),
+			dto,
+		);
+		return {
+			count: result.count,
+			data: this.normalizeRows(result.data, columns),
+		};
 	}
 
 	async getColumns(dataStoreId: string) {
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
+	}
+
+	// TODO: move to utils and test
+	private normalizeRows(rows: Array<Record<string, unknown>>, columns: DataStoreColumnEntity[]) {
+		const typeMap = new Map(columns.map((col) => [col.name, col.type]));
+		return rows.map((row) => {
+			const normalized = { ...row };
+			for (const [key, value] of Object.entries(row)) {
+				const type = typeMap.get(key);
+
+				if (type === 'boolean') {
+					// Convert boolean values to true/false
+					if (typeof value === 'boolean') {
+						normalized[key] = value;
+					} else if (value === 1 || value === '1') {
+						normalized[key] = true;
+					} else if (value === 0 || value === '0') {
+						normalized[key] = false;
+					}
+				}
+				if (type === 'date' && value !== null && value !== undefined) {
+					// Convert date objects or strings to ISO string
+					let dateObj: Date | null = null;
+
+					if (value instanceof Date) {
+						dateObj = value;
+					} else if (typeof value === 'string' || typeof value === 'number') {
+						const parsed = new Date(value);
+						if (!isNaN(parsed.getTime())) {
+							dateObj = parsed;
+						}
+					}
+
+					normalized[key] = dateObj ? dateObj.toISOString() : value;
+				}
+			}
+			return normalized;
+		});
 	}
 
 	private async validateRows(dataStoreId: string, rows: DataStoreRows): Promise<void> {

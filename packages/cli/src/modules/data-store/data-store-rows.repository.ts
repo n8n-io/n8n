@@ -36,9 +36,10 @@ function getConditionAndParams(
 export class DataStoreRowsRepository {
 	constructor(private dataSource: DataSource) {}
 
+	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
 	async insertRows(tableName: DataStoreUserTableName, rows: DataStoreRows) {
 		const dbType = this.dataSource.options.type;
-		await this.dataSource.query(...buildInsertQuery(tableName, rows, dbType));
+		await this.dataSource.query.apply(this.dataSource, buildInsertQuery(tableName, rows, dbType));
 		return true;
 	}
 
@@ -75,10 +76,12 @@ export class DataStoreRowsRepository {
 		dto: Partial<ListDataStoreContentQueryDto>,
 	) {
 		const [countQuery, query] = this.getManyQuery(dataStoreId, dto);
-		const data = await query.select('*').getRawMany();
-		const count = (await countQuery.select('COUNT(*)').getRawOne())['COUNT(*)'] as
-			| number
-			| undefined;
+		const data: Array<Record<string, unknown>> = await query.select('*').getRawMany();
+		const countResult = (await countQuery.select('COUNT(*) as count').getRawOne()) as {
+			count: number | string | null;
+		};
+		const count =
+			typeof countResult?.count === 'number' ? countResult.count : Number(countResult?.count) || 0;
 		return { count: count ?? -1, data };
 	}
 

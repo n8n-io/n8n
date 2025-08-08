@@ -66,9 +66,11 @@ describe('sql-utils', () => {
 				{ name: 'Bob', age: 25 },
 			];
 
-			const [query, parameters] = buildInsertQuery(tableName, rows);
+			const [query, parameters] = buildInsertQuery(tableName, rows, 'postgres');
 
-			expect(query).toBe('INSERT INTO "data_store_user_abc" ("name", "age") VALUES (?,?),(?,?)');
+			expect(query).toBe(
+				'INSERT INTO "data_store_user_abc" ("name", "age") VALUES ($1, $2), ($3, $4)',
+			);
 			expect(parameters).toEqual(['Alice', 30, 'Bob', 25]);
 		});
 
