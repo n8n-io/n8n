@@ -7,7 +7,6 @@ import {
 	type IExecuteFunctions,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
-
 import { metadataFilterField } from '@utils/sharedFields';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
@@ -166,9 +165,9 @@ export async function getDatabase(context: IFunctionsContext, client: MongoClien
  * @returns The list of collections.
  */
 export async function getCollections(this: ILoadOptionsFunctions) {
-	const client = await getMongoClient(this);
-	const db = await getDatabase(this, client);
 	try {
+		const client = await getMongoClient(this);
+		const db = await getDatabase(this, client);
 		const collections = await db.listCollections().toArray();
 		const results = collections.map((collection) => ({
 			name: collection.name,
@@ -178,8 +177,6 @@ export async function getCollections(this: ILoadOptionsFunctions) {
 		return { results };
 	} catch (error) {
 		throw new NodeOperationError(this.getNode(), `Error: ${error.message}`);
-	} finally {
-		await client.close();
 	}
 }
 
@@ -227,8 +224,8 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	insertFields,
 	sharedFields,
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
-		const client = await getMongoClient(context);
 		try {
+			const client = await getMongoClient(context);
 			const db = await getDatabase(context, client);
 			const collectionName = getCollectionName(context, itemIndex);
 			const mongoVectorIndexName = getVectorIndexName(context, itemIndex);
@@ -266,8 +263,8 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 		}
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const client = await getMongoClient(context);
 		try {
+			const client = await getMongoClient(context);
 			const db = await getDatabase(context, client);
 			const collectionName = getCollectionName(context, itemIndex);
 			const mongoVectorIndexName = getVectorIndexName(context, itemIndex);
