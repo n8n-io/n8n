@@ -274,7 +274,7 @@ describe('useCanvasOperations', () => {
 			await waitFor(() => expect(ndvStore.setActiveNodeName).not.toHaveBeenCalled());
 		});
 
-		it('should pass actionName to telemetry when adding node with action', () => {
+		it('should pass actionName to telemetry when adding node with action', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeCreatorStore = mockedStore(useNodeCreatorStore);
 			const nodeTypeDescription = mockNodeTypeDescription({ name: 'hubspot' });
@@ -296,12 +296,14 @@ describe('useCanvasOperations', () => {
 				},
 			);
 
-			expect(nodeCreatorStore.onNodeAddedToCanvas).toHaveBeenCalledWith(
-				expect.objectContaining({
-					action: actionName,
-					node_type: 'hubspot',
-				}),
-			);
+			await waitFor(() => {
+				expect(nodeCreatorStore.onNodeAddedToCanvas).toHaveBeenCalledWith(
+					expect.objectContaining({
+						action: actionName,
+						node_type: 'hubspot',
+					}),
+				);
+			});
 		});
 	});
 
