@@ -28,6 +28,9 @@ export const getRagStarterWorkflowJson = (): WorkflowDataWithTemplateId => {
 	return getWorkflowJson(ragStarterJson);
 };
 
+export const RAG_STARTER_TEMPLATE_ID = getRagStarterWorkflowJson().meta.templateId;
+export const EASY_AI_TEMPLATE_ID = getEasyAiWorkflowJson().meta.templateId;
+
 export const PrebuiltAgentTemplates = {
 	VoiceAssistantAgent: 'voice_assistant_agent_with_telegram_and_gcal',
 	EmailTriageAgent: 'email_triage_agent_with_gmail',

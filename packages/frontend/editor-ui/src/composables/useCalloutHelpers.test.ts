@@ -1,7 +1,7 @@
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { createTestingPinia } from '@pinia/testing';
-import { PrebuiltAgentTemplates } from '@/utils/templates/workflowSamples';
+import { PrebuiltAgentTemplates, RAG_STARTER_TEMPLATE_ID } from '@/utils/templates/workflowSamples';
 import { useNDVStore } from '@/stores/ndv.store';
 import { mockedStore } from '@/__tests__/utils';
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 	resolve: vi.fn(),
 	track: vi.fn(),
 	useRoute: vi.fn(() => ({ query: {}, params: {} })),
-	getVariant: vi.fn(() => 'default'),
+	isVariantEnabled: vi.fn(() => false),
 	isCalloutDismissed: vi.fn(() => false),
 	setCalloutDismissed: vi.fn(),
 	restApiContext: vi.fn(() => ({})),
@@ -33,7 +33,7 @@ vi.mock('@/composables/useTelemetry', () => ({
 
 vi.mock('@/stores/posthog.store', () => ({
 	usePostHog: () => ({
-		getVariant: mocks.getVariant,
+		isVariantEnabled: mocks.isVariantEnabled,
 	}),
 }));
 
@@ -85,7 +85,7 @@ describe('useCalloutHelpers()', () => {
 			const { openSampleWorkflowTemplate } = useCalloutHelpers();
 			const nodeType = 'testNode';
 
-			openSampleWorkflowTemplate('rag-starter-template', {
+			openSampleWorkflowTemplate(RAG_STARTER_TEMPLATE_ID, {
 				telemetry: {
 					source: 'ndv',
 					nodeType,
@@ -104,7 +104,7 @@ describe('useCalloutHelpers()', () => {
 
 			const { openSampleWorkflowTemplate } = useCalloutHelpers();
 
-			openSampleWorkflowTemplate('rag-starter-template', {
+			openSampleWorkflowTemplate(RAG_STARTER_TEMPLATE_ID, {
 				telemetry: {
 					source: 'nodeCreator',
 					section: 'testSection',
@@ -227,7 +227,7 @@ describe('useCalloutHelpers()', () => {
 
 		it('should be false and current route is not on unsaved RAG starter template', () => {
 			mocks.useRoute.mockReturnValueOnce({
-				query: { templateId: 'rag-starter-template' },
+				query: { templateId: RAG_STARTER_TEMPLATE_ID },
 				params: {},
 			});
 
@@ -237,7 +237,7 @@ describe('useCalloutHelpers()', () => {
 
 		it('should be false if current route is on saved RAG starter template', () => {
 			mocks.getWorkflowById.mockReturnValueOnce({
-				meta: { templateId: 'rag-starter-template' },
+				meta: { templateId: RAG_STARTER_TEMPLATE_ID },
 			});
 
 			const { isRagStarterCalloutVisible } = useCalloutHelpers();
@@ -247,14 +247,14 @@ describe('useCalloutHelpers()', () => {
 
 	describe('isPreBuiltAgentsCalloutVisible', () => {
 		it('should be false with experiment disabled', () => {
-			mocks.getVariant.mockReturnValueOnce('control');
+			mocks.isVariantEnabled.mockReturnValueOnce(false);
 
 			const { isPreBuiltAgentsCalloutVisible } = useCalloutHelpers();
 			expect(isPreBuiltAgentsCalloutVisible.value).toBe(false);
 		});
 
 		it('should be true with experiment enabled', () => {
-			mocks.getVariant.mockReturnValueOnce('variant');
+			mocks.isVariantEnabled.mockReturnValueOnce(true);
 
 			const { isPreBuiltAgentsCalloutVisible } = useCalloutHelpers();
 			expect(isPreBuiltAgentsCalloutVisible.value).toBe(true);

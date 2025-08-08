@@ -22,6 +22,7 @@ import {
 	getRagStarterWorkflowJson,
 	getSampleWorkflowByTemplateId,
 	isPrebuiltAgentTemplateId,
+	RAG_STARTER_TEMPLATE_ID,
 } from '@/utils/templates/workflowSamples';
 import type { INodeCreateElement, OpenTemplateElement } from '@/Interface';
 
@@ -129,7 +130,7 @@ export function useCalloutHelpers() {
 			};
 		},
 	) => {
-		if (templateId === 'rag-starter-template') {
+		if (templateId === RAG_STARTER_TEMPLATE_ID) {
 			telemetry.track('User clicked on RAG callout', {
 				node_type: options.telemetry.nodeType ?? null,
 			});
@@ -157,8 +158,9 @@ export function useCalloutHelpers() {
 	};
 
 	const isPreBuiltAgentsExperimentEnabled = computed(() => {
-		return (
-			postHog.getVariant(PRE_BUILT_AGENTS_EXPERIMENT.name) === PRE_BUILT_AGENTS_EXPERIMENT.variant
+		return postHog.isVariantEnabled(
+			PRE_BUILT_AGENTS_EXPERIMENT.name,
+			PRE_BUILT_AGENTS_EXPERIMENT.variant,
 		);
 	});
 
