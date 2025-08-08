@@ -119,7 +119,7 @@ describe('Mandrill GenericFunctions', () => {
 			expect(result).toEqual([]);
 		});
 
-		it('should return empty array for null input', () => {
+		it('should return null for null JSON string', () => {
 			const result = validateJSON('null');
 			expect(result).toEqual(null);
 		});

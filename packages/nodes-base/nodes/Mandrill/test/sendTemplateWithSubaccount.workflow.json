@@ -1,5 +1,5 @@
 {
-	"name": "sendTemplate",
+	"name": "sendTemplateWithSubaccount",
 	"nodes": [
 		{
 			"parameters": {},
@@ -13,11 +13,12 @@
 			"parameters": {
 				"resource": "message",
 				"operation": "sendTemplate",
-				"template": "test-template",
+				"template": "test-template-subaccount",
 				"fromEmail": "sender@example.com",
 				"toEmail": "recipient@example.com",
 				"options": {
-					"subAccount": "test-subaccount"
+					"subAccount": "regression-test-subaccount",
+					"subject": "Testing subaccount functionality"
 				}
 			},
 			"id": "test-mandrill-node-id",
@@ -53,7 +54,7 @@
 					"email": "recipient@example.com",
 					"status": "sent",
 					"reject_reason": null,
-					"_id": "test-message-id-456"
+					"_id": "test-subaccount-message-id"
 				}
 			}
 		]
@@ -66,6 +67,6 @@
 	"meta": {
 		"instanceId": "test-instance"
 	},
-	"id": "test-workflow-id",
+	"id": "test-workflow-subaccount-id",
 	"tags": []
 }
