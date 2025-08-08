@@ -60,6 +60,25 @@ export function assertParamIsBoolean(
 	assertParamIsType<boolean>(parameterName, value, 'boolean', node);
 }
 
+type TypeofMap = {
+	string: string;
+	number: number;
+	boolean: boolean;
+};
+
+export function assertParamIsOfAnyTypes<T extends ReadonlyArray<keyof TypeofMap>>(
+	parameterName: string,
+	value: unknown,
+	types: T,
+	node: INode,
+): asserts value is TypeofMap[T[number]] {
+	const isValid = types.some((type) => typeof value === type);
+	if (!isValid) {
+		const typeList = types.join(' or ');
+		assertUserInput(false, `Parameter "${parameterName}" must be ${typeList}`, node);
+	}
+}
+
 export function assertParamIsArray<T>(
 	parameterName: string,
 	value: unknown,

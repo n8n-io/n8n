@@ -1,0 +1,947 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, -112],
+			"id": "ba3ea0f4-81ec-46d4-9705-7fffc01cf0df",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "get",
+				"projectId": "={{ $json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [448, 80],
+			"id": "d9bea9ce-cbc3-4a91-83fe-8f497aeb57d0",
+			"name": "Get a project",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "archive",
+				"projectId": "={{ $json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [672, 80],
+			"id": "a4793b6f-1c03-4648-a750-2123fda14abd",
+			"name": "Archive a project",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "unarchive",
+				"projectId": "={{ $('Get a project').item.json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [896, 80],
+			"id": "68a4b65b-514c-4879-807a-ff4693548f4c",
+			"name": "Unarchive a project",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "update",
+				"projectId": "={{ $('Get a project').item.json.id }}",
+				"projectUpdateFields": {
+					"name": "Hello world",
+					"color": "red",
+					"is_favorite": true,
+					"view_style": "board"
+				}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1120, 80],
+			"id": "442f5e3a-e0d3-41e5-b087-90c37efc50ff",
+			"name": "Update a project",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "getCollaborators",
+				"projectId": "={{ $('Get a project').item.json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1344, 80],
+			"id": "8719feca-b43b-4143-a0f1-694918e159e3",
+			"name": "Get project collaborators",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "delete",
+				"projectId": "={{ $('Get a project').item.json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1568, 80],
+			"id": "b8d56d72-eb9f-4e94-9405-cadb1d4e1851",
+			"name": "Delete a project",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "getAll"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1792, 80],
+			"id": "07a60756-c0b3-4f50-b4da-82630cbdf6f6",
+			"name": "Get many projects",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"name": "Test",
+				"projectOptions": {}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [224, -112],
+			"id": "e5c3ba6f-1a4f-46ee-a9cb-78a106a1f57a",
+			"name": "Create a project1",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "section",
+				"sectionProject": {
+					"__rl": true,
+					"value": "={{ $json.id }}",
+					"mode": "id"
+				},
+				"sectionName": "Section ",
+				"sectionOptions": {
+					"order": 0
+				}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [448, -592],
+			"id": "1f661708-8f3b-4cf8-b422-5d4a6ec02891",
+			"name": "Create a section",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"project": {
+					"__rl": true,
+					"value": "={{ $json.project_id }}",
+					"mode": "id"
+				},
+				"content": "test content",
+				"options": {
+					"description": "test description",
+					"dueDateTime": "2025-08-30T00:00:00",
+					"dueLang": "EN",
+					"dueString": "Next monday",
+					"priority": 1
+				}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [672, -592],
+			"id": "692f5b29-77f2-4750-99fa-7d9a9f62a339",
+			"name": "Create a task",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "section",
+				"operation": "get",
+				"sectionId": "={{ $json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [896, -112],
+			"id": "08b90997-595b-44f0-be49-7cb4d5d641f1",
+			"name": "Get a section",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "section",
+				"operation": "update",
+				"sectionId": "={{ $json.id }}",
+				"sectionUpdateFields": {
+					"name": "hello section"
+				}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1120, -112],
+			"id": "0446c635-e9d6-491e-8bed-b0463f99192d",
+			"name": "Update a section",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "section",
+				"operation": "delete",
+				"sectionId": "={{ $('Get a section').item.json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1344, -112],
+			"id": "c396cb2f-d2a1-40d1-a478-5896ff6f5c16",
+			"name": "Delete a section",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "section",
+				"operation": "getAll",
+				"sectionFilters": {
+					"project_id": "={{ $json.id }}"
+				}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [624, -112],
+			"id": "59ae95fd-93b4-42e4-9c11-c177b34422c4",
+			"name": "Get many sections",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"labelName": "hot",
+				"labelOptions": {
+					"color": "red",
+					"order": 1,
+					"is_favorite": true
+				}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [896, -688],
+			"id": "028ca51f-6b0b-4200-b236-92aed48bffc3",
+			"name": "Create a label",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "get",
+				"labelId": "={{ $json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1120, -688],
+			"id": "0cc74ce5-6295-421c-b252-a44d354c3723",
+			"name": "Get a label",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"project": {
+					"__rl": true,
+					"value": "={{ $('Create a project1').item.json.id }}",
+					"mode": "id"
+				},
+				"content": "sub test content",
+				"options": {
+					"order": 3,
+					"dueDate": "2029-03-03",
+					"assigneeId": "={{ $json.creator_id }}",
+					"duration": 100,
+					"durationUnit": "minute",
+					"deadlineDate": "2025-03-05"
+				}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [672, -304],
+			"id": "c3971f85-6ed1-4028-becd-34a66d18846d",
+			"name": "Create a task1",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"taskId": "={{ $json.id }}",
+				"updateFields": {
+					"content": "Hello world",
+					"description": "my world",
+					"dueDateTime": "2025-08-03T11:43:45",
+					"priority": "={{ \"3\" }}",
+					"duration": 100,
+					"durationUnit": "day",
+					"deadlineDate": "2026-03-03"
+				}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [896, -304],
+			"id": "886f2a8a-5110-408b-b932-d1ac58281000",
+			"name": "Update a task",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "move",
+				"taskId": "={{ $('Create a task1').item.json.id }}",
+				"project": {
+					"__rl": true,
+					"value": "={{ $('Create a task1').item.json.project_id }}",
+					"mode": "id"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1120, -304],
+			"id": "206840f5-f7e4-48bc-b75a-62ada06d9edd",
+			"name": "Move a task",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "close",
+				"taskId": "={{ $('Create a task1').item.json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1344, -304],
+			"id": "6e3f776a-70b5-4f8a-956b-eab674be806a",
+			"name": "Close a task",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "reopen",
+				"taskId": "={{ $('Create a task1').item.json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1568, -304],
+			"id": "09e514ed-556e-4869-bb1d-d537122c6f16",
+			"name": "Reopen a task",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"taskId": "={{ $('Create a task1').item.json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1792, -304],
+			"id": "796f82f8-681c-4f53-aaf8-213ddce86b38",
+			"name": "Delete a task",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "update",
+				"labelId": "={{ $json.id }}",
+				"labelUpdateFields": {
+					"name": "test",
+					"color": "orange",
+					"order": 10,
+					"is_favorite": false
+				}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1344, -688],
+			"id": "5515991b-831c-4f22-b6cb-76f4f2763634",
+			"name": "Update a label",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "delete",
+				"labelId": "={{ $('Create a label').item.json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1568, -688],
+			"id": "be79dbb3-5b35-44d3-a99b-4954375b9dd2",
+			"name": "Delete a label",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "getAll"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1792, -688],
+			"id": "2e1eabe1-1322-488d-b2de-2cdd2a839d16",
+			"name": "Get many labels",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 10,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [2016, -304],
+			"id": "6694b9d6-7e2f-442d-be53-dcae97b2b59c",
+			"name": "Get many tasks",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "comment",
+				"commentTaskId": "={{ $json.id }}",
+				"commentContent": "my comment"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [896, -496],
+			"id": "eef98ea0-c28b-49a5-b155-4bd62bebb85c",
+			"name": "Create a comment",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "comment",
+				"operation": "get",
+				"commentId": "={{ $json.id }}"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1120, -496],
+			"id": "01d4e22d-e2de-49d7-8551-cdc58016b5d5",
+			"name": "Get a comment",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "comment",
+				"operation": "update",
+				"commentId": "={{ $json.id }}",
+				"commentUpdateFields": {
+					"content": "change my comment"
+				}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1344, -496],
+			"id": "344608b2-8f2f-49e1-8b55-35cbbc50afe5",
+			"name": "Update a comment",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "comment",
+				"operation": "getAll",
+				"commentFilters": {
+					"task_id": "={{ $('Create a task').item.json.id }}"
+				}
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [1568, -496],
+			"id": "b98749e6-a153-47d5-8f27-dbcc5d4f158c",
+			"name": "Get many comments",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "quickAdd",
+				"text": "hello world!!!"
+			},
+			"type": "n8n-nodes-base.todoist",
+			"typeVersion": 2.1,
+			"position": [672, -784],
+			"id": "acb416b1-2ff2-49de-9793-3e535cd61ede",
+			"name": "Quick add a task",
+			"credentials": {
+				"todoistApi": {
+					"id": "I8WGOzhOQTmj9nfz",
+					"name": "Todoist account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Create a project1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get a project": {
+			"main": [
+				[
+					{
+						"node": "Archive a project",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Archive a project": {
+			"main": [
+				[
+					{
+						"node": "Unarchive a project",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Unarchive a project": {
+			"main": [
+				[
+					{
+						"node": "Update a project",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update a project": {
+			"main": [
+				[
+					{
+						"node": "Get project collaborators",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get project collaborators": {
+			"main": [
+				[
+					{
+						"node": "Delete a project",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete a project": {
+			"main": [
+				[
+					{
+						"node": "Get many projects",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a project1": {
+			"main": [
+				[
+					{
+						"node": "Get a project",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get many sections",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create a section",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a section": {
+			"main": [
+				[
+					{
+						"node": "Create a task",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Quick add a task",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create a task1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a task": {
+			"main": [
+				[
+					{
+						"node": "Create a label",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create a comment",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get a section": {
+			"main": [
+				[
+					{
+						"node": "Update a section",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update a section": {
+			"main": [
+				[
+					{
+						"node": "Delete a section",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete a section": {
+			"main": [[]]
+		},
+		"Get many sections": {
+			"main": [
+				[
+					{
+						"node": "Get a section",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a label": {
+			"main": [
+				[
+					{
+						"node": "Get a label",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get a label": {
+			"main": [
+				[
+					{
+						"node": "Update a label",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a task1": {
+			"main": [
+				[
+					{
+						"node": "Update a task",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update a task": {
+			"main": [
+				[
+					{
+						"node": "Move a task",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Move a task": {
+			"main": [
+				[
+					{
+						"node": "Close a task",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Close a task": {
+			"main": [
+				[
+					{
+						"node": "Reopen a task",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Reopen a task": {
+			"main": [
+				[
+					{
+						"node": "Delete a task",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete a task": {
+			"main": [
+				[
+					{
+						"node": "Get many tasks",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update a label": {
+			"main": [
+				[
+					{
+						"node": "Delete a label",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete a label": {
+			"main": [
+				[
+					{
+						"node": "Get many labels",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a comment": {
+			"main": [
+				[
+					{
+						"node": "Get a comment",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get a comment": {
+			"main": [
+				[
+					{
+						"node": "Update a comment",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update a comment": {
+			"main": [
+				[
+					{
+						"node": "Get many comments",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
