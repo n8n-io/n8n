@@ -2,8 +2,8 @@
 import { TreeRoot, TreeItem, TreeItemToggleEvent } from 'reka-ui';
 import type { TreeItemType } from '.';
 import { computed, ref } from 'vue';
-import { N8nIcon, N8nIconButton, N8nLink, N8nText } from '..';
 import { IconName } from '../N8nIcon/icons';
+import SidebarItem from './SidebarItem.vue';
 
 interface Props {
 	title: string;
@@ -47,20 +47,16 @@ const itemLink = ({ type, id }: TreeItemType) =>
 
 <template>
 	<div>
-		<header class="itemHeader">
-			<div class="dropdownButton">
-				<div class="icon">
-					<N8nIcon color="foreground-xdark" :icon="icon ?? 'layers'" />
-				</div>
-				<button class="button" @click="toggleSection(id)" :aria-label="`Toggle ${title} section`">
-					<N8nIcon
-						color="foreground-xdark"
-						:icon="open.includes(id) ? 'chevron-down' : 'chevron-right'"
-					/>
-				</button>
-			</div>
-			<N8nLink class="itemLink" :to="link">{{ title }}</N8nLink>
-		</header>
+		<SidebarItem
+			:title="props.title"
+			:id="props.id"
+			:icon="props.icon"
+			:click="() => toggleSection(props.id)"
+			:open="open.includes(props.id)"
+			:link="link"
+			:ariaLabel="`Toggle ${props.title} section`"
+			type="project"
+		/>
 		<div v-if="open.includes(id)" class="items">
 			<TreeRoot
 				:items="props.items"
@@ -77,26 +73,16 @@ const itemLink = ({ type, id }: TreeItemType) =>
 					class="item"
 				>
 					<span class="itemIdent" v-for="level in new Array(item.level - 1)" :key="level" />
-					<div class="itemHeader">
-						<div class="dropdownButton" v-if="item.value.type === 'folder'">
-							<div class="icon">
-								<N8nIcon color="foreground-xdark" :icon="isExpanded ? 'folder-open' : 'folder'" />
-							</div>
-							<button
-								class="button"
-								@click.stop="handleToggle"
-								:aria-label="`Toggle ${item.value.label} item`"
-							>
-								<N8nIcon
-									color="foreground-xdark"
-									:icon="open.includes(id) ? 'chevron-down' : 'chevron-right'"
-								/>
-							</button>
-						</div>
-						<N8nLink theme="text" class="itemLink" :to="itemLink(item.value).value">{{
-							item.value.label
-						}}</N8nLink>
-					</div>
+					<SidebarItem
+						:title="item.value.label"
+						:id="item.value.id"
+						:icon="item.value.type === 'folder' ? 'folder' : undefined"
+						:click="handleToggle"
+						:open="isExpanded"
+						:link="itemLink(item.value).value"
+						:ariaLabel="`Open ${item.value.label}`"
+						:type="item.value.type"
+					/>
 				</TreeItem>
 			</TreeRoot>
 		</div>
@@ -121,22 +107,6 @@ const itemLink = ({ type, id }: TreeItemType) =>
 	overflow: hidden;
 }
 
-.itemLink {
-	white-space: nowrap;
-	text-overflow: ellipsis;
-	overflow: hidden;
-}
-
-.itemLink * {
-	color: var(--color-text-base);
-}
-
-.itemLink:hover *,
-.itemLink:focus * {
-	color: var(--color-text-dark);
-	text-decoration: underline;
-}
-
 .itemIdent {
 	display: block;
 	position: relative;
@@ -154,56 +124,5 @@ const itemLink = ({ type, id }: TreeItemType) =>
 	width: 1px;
 	height: 1px;
 	background-color: var(--color-foreground-light);
-}
-
-.itemHeader {
-	display: flex;
-	align-items: center;
-	padding: 4px;
-	gap: 4px;
-	cursor: pointer;
-	width: 100%;
-}
-
-.dropdownButton {
-	position: relative;
-	border-radius: var(--border-radius-small);
-
-	.icon {
-		position: absolute;
-		width: 100%;
-		height: 100%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		pointer-events: none;
-	}
-
-	.button {
-		opacity: 0;
-	}
-
-	&:hover .button,
-	.button:focus {
-		opacity: 1;
-	}
-
-	&:hover .icon,
-	&:focus-within .icon {
-		opacity: 0;
-	}
-}
-
-.button {
-	width: 16px;
-	height: 16px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background-color: transparent;
-	cursor: pointer;
-	outline: none;
-	border: none;
-	padding: 0;
 }
 </style>

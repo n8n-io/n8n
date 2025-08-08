@@ -4,6 +4,7 @@ import N8nIcon from '../N8nIcon';
 import { IconName } from '../N8nIcon/icons';
 import N8nLogo from '../N8nLogo';
 import N8nText from '../N8nText';
+import SidebarItem from './SidebarItem.vue';
 import SidebarSection from './SidebarSection.vue';
 
 const props = defineProps<{
@@ -24,12 +25,14 @@ const props = defineProps<{
 				:release-channel="props.releaseChannel"
 			/>
 		</header>
-		<div class="sidebarItem">
-			<div class="icon">
-				<N8nIcon icon="house" />
-			</div>
-			<N8nText>Overview</N8nText>
-		</div>
+		<SidebarItem
+			title="Overview"
+			id="home"
+			icon="house"
+			link="/"
+			ariaLabel="Go to Home"
+			type="other"
+		/>
 		<SidebarSection
 			title="Personal"
 			:id="personal.id"
