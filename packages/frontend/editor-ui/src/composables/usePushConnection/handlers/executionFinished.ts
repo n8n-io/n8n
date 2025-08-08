@@ -14,7 +14,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { EASY_AI_TEMPLATE_ID, isPrebuiltAgentTemplateId } from '@/utils/templates/workflowSamples';
+import { SampleTemplates, isPrebuiltAgentTemplateId } from '@/utils/templates/workflowSamples';
 import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,
@@ -62,7 +62,7 @@ export async function executionFinished(
 	const templateId = workflow?.meta?.templateId;
 
 	if (templateId) {
-		const isEasyAIWorkflow = templateId === EASY_AI_TEMPLATE_ID;
+		const isEasyAIWorkflow = templateId === SampleTemplates.EasyAiTemplate;
 		if (isEasyAIWorkflow) {
 			telemetry.track('User executed test AI workflow', {
 				status: data.status,

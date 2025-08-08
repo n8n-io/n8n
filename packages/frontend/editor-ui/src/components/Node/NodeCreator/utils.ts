@@ -39,7 +39,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { NodeIconSource } from '../../../utils/nodeIcon';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
-import { PrebuiltAgentTemplates, RAG_STARTER_TEMPLATE_ID } from '@/utils/templates/workflowSamples';
+import { PrebuiltAgentTemplates, SampleTemplates } from '@/utils/templates/workflowSamples';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 
@@ -318,11 +318,11 @@ export function prepareCommunityNodeDetailsViewStack(
 
 export function getRagStarterCallout(): OpenTemplateElement {
 	return {
-		uuid: RAG_STARTER_TEMPLATE_ID,
-		key: RAG_STARTER_TEMPLATE_ID,
+		uuid: SampleTemplates.RagStarterTemplate,
+		key: SampleTemplates.RagStarterTemplate,
 		type: 'openTemplate',
 		properties: {
-			templateId: RAG_STARTER_TEMPLATE_ID,
+			templateId: SampleTemplates.RagStarterTemplate,
 			title: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.title'),
 			icon: 'database',
 			description: i18n.baseText('nodeCreator.ragStarterTemplate.openTemplateItem.description'),

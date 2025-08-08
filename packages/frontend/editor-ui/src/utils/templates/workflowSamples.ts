@@ -28,21 +28,21 @@ export const getRagStarterWorkflowJson = (): WorkflowDataWithTemplateId => {
 	return getWorkflowJson(ragStarterJson);
 };
 
-export const RAG_STARTER_TEMPLATE_ID = getRagStarterWorkflowJson().meta.templateId;
-export const EASY_AI_TEMPLATE_ID = getEasyAiWorkflowJson().meta.templateId;
-
-export const PrebuiltAgentTemplates = {
-	VoiceAssistantAgent: 'voice_assistant_agent_with_telegram_and_gcal',
-	EmailTriageAgent: 'email_triage_agent_with_gmail',
-	KnowledgeStoreAgent: 'knowledge_store_agent_with_google_drive',
-	TaskManagementAgent: 'task_management_agent_with_google_sheets',
-	JokeAgent: 'joke_agent_with_http_tool',
+export const SampleTemplates = {
+	RagStarterTemplate: getRagStarterWorkflowJson().meta.templateId,
+	EasyAiTemplate: getEasyAiWorkflowJson().meta.templateId,
 } as const;
 
-type PrebuiltAgentTemplateId = (typeof PrebuiltAgentTemplates)[keyof typeof PrebuiltAgentTemplates];
+export const PrebuiltAgentTemplates = {
+	VoiceAssistantAgent: getWorkflowJson(voiceAssistantAgentWithTelegramAndGcalJson).meta.templateId,
+	EmailTriageAgent: getWorkflowJson(emailTriageAgentWithGmailJson).meta.templateId,
+	KnowledgeStoreAgent: getWorkflowJson(knowledgeStoreAgentWithGoogleDriveJson).meta.templateId,
+	TaskManagementAgent: getWorkflowJson(taskManagementAgentWithGoogleSheetsJson).meta.templateId,
+	JokeAgent: getWorkflowJson(jokeAgentWithHttpToolJson).meta.templateId,
+} as const;
 
-export const isPrebuiltAgentTemplateId = (value: string): value is PrebuiltAgentTemplateId => {
-	return (Object.values(PrebuiltAgentTemplates) as readonly string[]).includes(value);
+export const isPrebuiltAgentTemplateId = (value: string): boolean => {
+	return Object.values(PrebuiltAgentTemplates).includes(value);
 };
 
 interface PrebuiltAgentTemplate {

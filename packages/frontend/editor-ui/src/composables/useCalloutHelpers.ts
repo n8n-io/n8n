@@ -22,7 +22,7 @@ import {
 	getRagStarterWorkflowJson,
 	getSampleWorkflowByTemplateId,
 	isPrebuiltAgentTemplateId,
-	RAG_STARTER_TEMPLATE_ID,
+	SampleTemplates,
 } from '@/utils/templates/workflowSamples';
 import type { INodeCreateElement, OpenTemplateElement } from '@/Interface';
 
@@ -130,7 +130,7 @@ export function useCalloutHelpers() {
 			};
 		},
 	) => {
-		if (templateId === RAG_STARTER_TEMPLATE_ID) {
+		if (templateId === SampleTemplates.RagStarterTemplate) {
 			telemetry.track('User clicked on RAG callout', {
 				node_type: options.telemetry.nodeType ?? null,
 			});

@@ -1,7 +1,7 @@
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { createTestingPinia } from '@pinia/testing';
-import { PrebuiltAgentTemplates, RAG_STARTER_TEMPLATE_ID } from '@/utils/templates/workflowSamples';
+import { PrebuiltAgentTemplates, SampleTemplates } from '@/utils/templates/workflowSamples';
 import { useNDVStore } from '@/stores/ndv.store';
 import { mockedStore } from '@/__tests__/utils';
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
@@ -85,7 +85,7 @@ describe('useCalloutHelpers()', () => {
 			const { openSampleWorkflowTemplate } = useCalloutHelpers();
 			const nodeType = 'testNode';
 
-			openSampleWorkflowTemplate(RAG_STARTER_TEMPLATE_ID, {
+			openSampleWorkflowTemplate(SampleTemplates.RagStarterTemplate, {
 				telemetry: {
 					source: 'ndv',
 					nodeType,
@@ -104,7 +104,7 @@ describe('useCalloutHelpers()', () => {
 
 			const { openSampleWorkflowTemplate } = useCalloutHelpers();
 
-			openSampleWorkflowTemplate(RAG_STARTER_TEMPLATE_ID, {
+			openSampleWorkflowTemplate(SampleTemplates.RagStarterTemplate, {
 				telemetry: {
 					source: 'nodeCreator',
 					section: 'testSection',
@@ -227,7 +227,7 @@ describe('useCalloutHelpers()', () => {
 
 		it('should be false and current route is not on unsaved RAG starter template', () => {
 			mocks.useRoute.mockReturnValueOnce({
-				query: { templateId: RAG_STARTER_TEMPLATE_ID },
+				query: { templateId: SampleTemplates.RagStarterTemplate },
 				params: {},
 			});
 
@@ -237,7 +237,7 @@ describe('useCalloutHelpers()', () => {
 
 		it('should be false if current route is on saved RAG starter template', () => {
 			mocks.getWorkflowById.mockReturnValueOnce({
-				meta: { templateId: RAG_STARTER_TEMPLATE_ID },
+				meta: { templateId: SampleTemplates.RagStarterTemplate },
 			});
 
 			const { isRagStarterCalloutVisible } = useCalloutHelpers();
