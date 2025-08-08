@@ -7,7 +7,6 @@ import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { DataStoreColumnEntity } from '../data-store-column.entity';
 import type { DataStoreUserTableName } from '../data-store.types';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -129,7 +128,7 @@ export function deleteColumnQuery(
 export function buildInsertQuery(
 	tableName: DataStoreUserTableName,
 	rows: DataStoreRows,
-	columns: DataStoreColumnEntity[],
+	columns: Array<{ name: string; type: string }>,
 	dbType: DataSourceOptions['type'] = 'sqlite',
 ): [string, unknown[]] {
 	if (rows.length === 0 || Object.keys(rows[0]).length === 0) {
@@ -161,7 +160,7 @@ export function buildInsertQuery(
 export function buildUpdateQuery(
 	tableName: DataStoreUserTableName,
 	row: Record<string, unknown>,
-	columns: DataStoreColumnEntity[],
+	columns: Array<{ name: string; type: string }>,
 	matchFields: string[],
 	dbType: DataSourceOptions['type'] = 'sqlite',
 ): [string, unknown[]] {
@@ -266,6 +265,8 @@ function getPlaceholder(index: number, dbType: DataSourceOptions['type']): strin
 	return dbType.includes('postgres') ? `$${index}` : '?';
 }
 
-function buildColumnTypeMap(columns: DataStoreColumnEntity[]): Record<string, string> {
+function buildColumnTypeMap(
+	columns: Array<{ name: string; type: string }>,
+): Record<string, string> {
 	return Object.fromEntries(columns.map((col) => [col.name, col.type]));
 }
