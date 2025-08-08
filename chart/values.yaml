@@ -1,0 +1,434 @@
+# Default values for n8n
+# This is a YAML-formatted file.
+
+# Global configuration
+global:
+  # Global image registry
+  imageRegistry: ""
+  # Global image pull secrets
+  imagePullSecrets: []
+  # Global storage class
+  storageClass: ""
+
+# Image configuration
+image:
+  registry: docker.io
+  repository: n8nio/n8n
+  tag: "1.106.0"
+  pullPolicy: IfNotPresent
+
+# Image pull secrets
+imagePullSecrets: []
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 1000
+  runAsUser: 1000
+  runAsGroup: 1000
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5678
+  annotations: {}
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: n8n.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Replica count
+replicaCount: 1
+
+# Autoscaling configuration
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Persistence configuration
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /home/node/.n8n
+
+# Database configuration
+database:
+  # Database type: sqlite, postgresdb, mysqldb, mariadb
+  type: sqlite
+
+  # Database table prefix
+  tablePrefix: ""
+
+  # Database ping interval in seconds
+  pingIntervalSeconds: 2
+
+  # Database logging configuration
+  logging:
+    enabled: false
+    options: "error" # query, error, schema, warn, info, log, all
+    maxQueryExecutionTime: 0
+
+  # SQLite configuration
+  sqlite:
+    database: "database.sqlite"
+    poolSize: 0
+    enableWAL: false
+    executeVacuumOnStartup: false
+
+  # PostgreSQL configuration
+  postgresql:
+    host: ""
+    port: 5432
+    database: n8n
+    user: postgres
+    password: ""
+    schema: "public"
+    poolSize: 2
+    connectionTimeoutMs: 20000
+    idleTimeoutMs: 30000
+    ssl:
+      enabled: false
+      ca: ""
+      cert: ""
+      key: ""
+      rejectUnauthorized: true
+
+  # MySQL configuration
+  mysql:
+    host: ""
+    port: 3306
+    database: n8n
+    user: root
+    password: ""
+
+# Redis configuration
+redis:
+  enabled: false
+  host: ""
+  port: 6379
+  password: ""
+  db: 0
+  keyPrefix: "n8n"
+
+# Generic configuration
+generic:
+  timezone: "America/New_York"
+  releaseChannel: "dev" # stable, beta, nightly, dev
+  gracefulShutdownTimeout: 30
+
+# Security configuration
+security:
+  restrictFileAccessTo: ""
+  blockFileAccessToN8nFiles: true
+  daysAbandonedWorkflow: 90
+  contentSecurityPolicy: "{}"
+  contentSecurityPolicyReportOnly: false
+  disableIframeSandboxing: false
+
+# Authentication configuration
+auth:
+  cookie:
+    secure: true
+    samesite: "lax" # strict, lax, none
+
+# Endpoints configuration
+endpoints:
+  payloadSizeMax: 16 # MiB
+  formDataFileSizeMax: 200 # MiB
+  rest: "rest"
+  form: "form"
+  formTest: "form-test"
+  formWaiting: "form-waiting"
+  webhook: "webhook"
+  webhookTest: "webhook-test"
+  webhookWaiting: "webhook-waiting"
+  mcp: "mcp"
+  mcpTest: "mcp-test"
+  disableUi: false
+  disableProductionWebhooksOnMainProcess: false
+  additionalNonUIRoutes: ""
+
+  # Prometheus metrics configuration
+  metrics:
+    enable: false
+    prefix: "n8n_"
+    includeDefaultMetrics: true
+    includeWorkflowIdLabel: false
+    includeNodeTypeLabel: false
+    includeCredentialTypeLabel: false
+    includeApiEndpoints: false
+    includeApiPathLabel: false
+    includeApiMethodLabel: false
+    includeApiStatusCodeLabel: false
+    includeCacheMetrics: false
+    includeMessageEventBusMetrics: false
+    includeQueueMetrics: false
+    queueMetricsInterval: 20
+    activeWorkflowCountInterval: 60
+    includeWorkflowNameLabel: false
+
+# Executions configuration
+executions:
+  pruneData: true
+  pruneDataMaxAge: 336 # hours
+  pruneDataMaxCount: 10000
+  pruneDataHardDeleteBuffer: 1 # hours
+  pruneDataIntervals:
+    hardDelete: 15 # minutes
+    softDelete: 60 # minutes
+
+# Logging configuration
+logging:
+  level: "info" # error, warn, info, debug, silent
+  outputs: ["console"] # console, file
+  format: "text" # text, json
+  scopes: [] # concurrency, external-secrets, license, multi-main-setup, pruning, pubsub, push, redis, scaling, waiting-executions, task-runner, insights, workflow-activation, ssh-client, cron, community-nodes, legacy-sqlite-execution-recovery
+  file:
+    fileCountMax: 100
+    fileSizeMax: 16 # MiB
+    location: "logs/n8n.log"
+  cron:
+    activeInterval: 0 # minutes
+
+# Workflows configuration
+workflows:
+  defaultName: "My workflow"
+  callerPolicyDefaultOption: "workflowsFromSameOwner" # any, none, workflowsFromAList, workflowsFromSameOwner
+  activationBatchSize: 1
+
+# User management configuration
+userManagement:
+  emails:
+    mode: "smtp" # "", smtp
+    smtp:
+      host: ""
+      port: 465
+      secure: true
+      startTLS: true
+      sender: ""
+      auth:
+        user: ""
+        pass: ""
+        serviceClient: ""
+        privateKey: ""
+    template:
+      userInvited: ""
+      passwordResetRequested: ""
+      workflowShared: ""
+      credentialsShared: ""
+      projectShared: ""
+
+# Basic authentication
+basicAuth:
+  active: false
+  user: ""
+  password: ""
+
+# Webhook configuration
+webhook:
+  url: ""
+  testUrl: ""
+
+# Encryption and JWT
+encryption:
+  key: ""
+jwt:
+  secret: ""
+
+# Liveness probe
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+  path: /healthz
+
+# Readiness probe
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+  path: /healthz
+
+# Startup probe
+startupProbe:
+  enabled: false
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+  successThreshold: 1
+  path: /healthz
+
+# Network policy
+networkPolicy:
+  enabled: false
+  ingressRules: []
+  egressRules: []
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Horizontal pod autoscaler
+hpa:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Service monitor for Prometheus
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  path: /metrics
+  port: http
+
+# Pod monitor for Prometheus
+podMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  path: /metrics
+  port: http
+
+# Grafana dashboard
+grafanaDashboard:
+  enabled: false
+  label: grafana_dashboard
+  labelValue: "1"
+
+# Additional volumes
+extraVolumes: []
+
+# Additional volume mounts
+extraVolumeMounts: []
+
+# Init containers
+initContainers: []
+
+# Sidecar containers
+sidecarContainers: []
+
+# Additional labels
+labels: {}
+
+# Additional annotations
+annotations: {}
+
+# Pod template metadata
+podTemplateMetadata: {}
+
+# Deployment strategy
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 25%
+
+# Job configuration for one-time tasks
+job:
+  enabled: false
+  restartPolicy: OnFailure
+  backoffLimit: 4
+  activeDeadlineSeconds: 100
+  ttlSecondsAfterFinished: 100
+
+# CronJob configuration
+cronJob:
+  enabled: false
+  schedule: "0 0 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  restartPolicy: OnFailure
+  backoffLimit: 4
+  activeDeadlineSeconds: 100
+  ttlSecondsAfterFinished: 100
+
+# StatefulSet configuration (for multi-replica with persistent storage)
+statefulSet:
+  enabled: false
+  serviceName: ""
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+  revisionHistoryLimit: 10
+
+# DaemonSet configuration
+daemonSet:
+  enabled: false
+  updateStrategy:
+    type: RollingUpdate
+  revisionHistoryLimit: 10
+
+# ConfigMap for additional configuration
+configMap:
+  enabled: false
+  data: {}
+
+# Secret for sensitive data
+secret:
+  enabled: false
+  data: {}
+
+# Additional environment variables
+env: {}
