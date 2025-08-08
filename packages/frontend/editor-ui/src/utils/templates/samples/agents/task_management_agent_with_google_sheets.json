@@ -20,12 +20,7 @@
 			"position": [-608, 272],
 			"id": "7ebac830-d775-47af-a56c-9ff428f385d0",
 			"name": "Model",
-			"credentials": {
-				"openAiApi": {
-					"id": "sgo43aDR9Kxq7WYj",
-					"name": "OpenAi account"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {
@@ -71,12 +66,7 @@
 			"position": [-352, 272],
 			"id": "a1792c3e-4248-49e2-b4c2-db58c4eb1b59",
 			"name": "Get tasks",
-			"credentials": {
-				"googleSheetsOAuth2Api": {
-					"id": "uXOAVVIOEfukZO4m",
-					"name": "Google Sheets"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {
@@ -153,12 +143,7 @@
 			"position": [-224, 272],
 			"id": "1ebd8dd5-13e0-4f57-bb37-a3a5d8cf4e80",
 			"name": "Create task",
-			"credentials": {
-				"googleSheetsOAuth2Api": {
-					"id": "uXOAVVIOEfukZO4m",
-					"name": "Google Sheets"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {
@@ -258,12 +243,7 @@
 			"position": [-96, 272],
 			"id": "a118d819-41ef-4323-a4d1-d83d70e41ec5",
 			"name": "Update task",
-			"credentials": {
-				"googleSheetsOAuth2Api": {
-					"id": "uXOAVVIOEfukZO4m",
-					"name": "Google Sheets"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {
@@ -290,12 +270,7 @@
 			"position": [32, 272],
 			"id": "c15d7d0f-d24c-4e5a-aa3f-a23abf2f6853",
 			"name": "Delete task",
-			"credentials": {
-				"googleSheetsOAuth2Api": {
-					"id": "uXOAVVIOEfukZO4m",
-					"name": "Google Sheets"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {

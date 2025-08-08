@@ -3415,7 +3415,9 @@ describe('useCanvasOperations', () => {
 				templateName,
 				projectsStore.currentProjectId,
 			);
-			expect(workflowsStore.addToWorkflowMetadata).toHaveBeenCalledWith({ templateId });
+			expect(workflowsStore.addToWorkflowMetadata).toHaveBeenCalledWith({
+				templateId,
+			});
 		});
 	});
 	describe('replaceNodeParameters', () => {

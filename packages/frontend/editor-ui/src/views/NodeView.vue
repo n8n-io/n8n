@@ -606,7 +606,11 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 		query: { templateId, parentFolderId },
 	});
 
-	await importTemplate({ id: templateId, name: workflow.name, workflow });
+	await importTemplate({
+		id: templateId,
+		name: workflow.name,
+		workflow,
+	});
 
 	uiStore.stateIsDirty = true;
 

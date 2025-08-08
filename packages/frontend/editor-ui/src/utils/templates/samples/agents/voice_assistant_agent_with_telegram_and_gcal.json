@@ -19,12 +19,7 @@
 			"typeVersion": 1.2,
 			"position": [-192, 0],
 			"webhookId": "55acc711-c248-4ac9-b6cd-e295c2d33f4b",
-			"credentials": {
-				"telegramApi": {
-					"id": "Il4Z04464B4kBst1",
-					"name": "Telegram"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {
@@ -50,12 +45,7 @@
 			"id": "7dea5c17-bfdb-4874-918b-a6583298efa2",
 			"name": "Reply in Telegram",
 			"webhookId": "b96b7a41-9806-455f-b72e-00aa638eda71",
-			"credentials": {
-				"telegramApi": {
-					"id": "Il4Z04464B4kBst1",
-					"name": "Telegram"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {
@@ -69,12 +59,7 @@
 			"id": "66219c83-6371-4cc6-ad43-57cee44f52da",
 			"name": "Get a file",
 			"webhookId": "e0769871-efe3-49da-81a5-2f88a6fdd33f",
-			"credentials": {
-				"telegramApi": {
-					"id": "Il4Z04464B4kBst1",
-					"name": "Telegram"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {
@@ -118,12 +103,7 @@
 			"position": [480, -96],
 			"id": "6f314aef-7ff1-4211-8656-e2c1f8fea374",
 			"name": "Transcribe audio",
-			"credentials": {
-				"openAiApi": {
-					"id": "AM5S7b55nmwWyVH4",
-					"name": "AI Assistant Service - n8n WFs"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {
@@ -163,12 +143,7 @@
 			"position": [928, 288],
 			"id": "a533f343-5bf8-48d7-bc35-b12072e32602",
 			"name": "Get events",
-			"credentials": {
-				"googleCalendarOAuth2Api": {
-					"id": "B2sqRj3YDUIcF2jd",
-					"name": "Google Calendar account 30"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {
@@ -185,12 +160,7 @@
 			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
 			"typeVersion": 1.2,
 			"position": [624, 288],
-			"credentials": {
-				"openAiApi": {
-					"id": "AM5S7b55nmwWyVH4",
-					"name": "AI Assistant Service - n8n WFs"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {

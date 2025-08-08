@@ -31,12 +31,7 @@
 			"position": [-432, 32],
 			"id": "604a4e5e-5ccc-4db1-94dc-673711bea6af",
 			"name": "Download file",
-			"credentials": {
-				"googleDriveOAuth2Api": {
-					"id": "q0QZ0QPr0Jimpgvw",
-					"name": "Google Drive account"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {
@@ -47,12 +42,7 @@
 			"position": [-336, 656],
 			"id": "e8db240e-bb3f-43ab-b4ed-527c6c2e8f54",
 			"name": "Embedding model",
-			"credentials": {
-				"openAiApi": {
-					"id": "sgo43aDR9Kxq7WYj",
-					"name": "OpenAi account"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {
@@ -92,12 +82,7 @@
 			"position": [288, 240],
 			"id": "9751b75b-50ac-49c8-8f4d-24a8035b6e73",
 			"name": "Model",
-			"credentials": {
-				"openAiApi": {
-					"id": "sgo43aDR9Kxq7WYj",
-					"name": "OpenAi account"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {},
@@ -132,12 +117,7 @@
 			"position": [-640, 32],
 			"id": "0cddc21e-a75f-48df-b168-8e288be12469",
 			"name": "File uploaded",
-			"credentials": {
-				"googleDriveOAuth2Api": {
-					"id": "q0QZ0QPr0Jimpgvw",
-					"name": "Google Drive account"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {

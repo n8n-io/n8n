@@ -66,12 +66,7 @@
 			"position": [-576, 272],
 			"id": "93fdc1ff-4dee-4f7f-8b37-b8c041a22073",
 			"name": "Model",
-			"credentials": {
-				"openAiApi": {
-					"id": "sgo43aDR9Kxq7WYj",
-					"name": "OpenAi account"
-				}
-			}
+			"credentials": {}
 		},
 		{
 			"parameters": {},
