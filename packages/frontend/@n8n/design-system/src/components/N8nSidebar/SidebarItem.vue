@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import N8nIcon from '../N8nIcon';
-import { IconName } from '../N8nIcon/icons';
+import { IconName, isSupportedIconName } from '../N8nIcon/icons';
 import N8nLink from '../N8nLink';
 
 defineProps<{
 	title: string;
 	id: string;
-	icon?: IconName;
+	icon?: IconName | string;
 	click?: () => void;
 	open?: boolean;
 	link: string;
@@ -17,9 +17,14 @@ defineProps<{
 
 <template>
 	<div class="sidebarItem">
-		<div v-if="type !== 'workflow'" class="sidebarItemDropdown">
+		<div v-if="type !== 'workflow'" :class="{ sidebarItemDropdown: true, other: type === 'other' }">
 			<div class="sidebarItemDropdownIcon">
-				<N8nIcon color="foreground-xdark" :icon="icon ?? 'layers'" />
+				<span v-if="icon && !isSupportedIconName(icon)" class="sidebarItemEmoji">{{ icon }}</span>
+				<N8nIcon
+					v-else
+					color="foreground-xdark"
+					:icon="isSupportedIconName(icon) ? icon : 'layers'"
+				/>
 			</div>
 			<button
 				v-if="type !== 'other'"
@@ -38,7 +43,7 @@ defineProps<{
 .sidebarItem {
 	display: flex;
 	align-items: center;
-	padding: 4px;
+	padding: 8px 4px;
 	gap: 4px;
 	cursor: pointer;
 	width: 100%;
@@ -100,5 +105,10 @@ defineProps<{
 	outline: none;
 	border: none;
 	padding: 0;
+}
+
+.sidebarItemEmoji {
+	font-size: 16px;
+	line-height: 1;
 }
 </style>

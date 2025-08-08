@@ -36,13 +36,22 @@ const link = computed(() => {
 	return `/projects/${props.id}/workflows`;
 });
 
-const itemLink = ({ type, id }: TreeItemType) =>
-	computed(() => {
-		if (type === 'workflow') {
-			return `/workflow/${id}`;
-		}
-		return `/projects/${props.id}/folders/${id}/workflows`;
-	});
+const itemLink = ({ type, id }: TreeItemType) => {
+	if (type === 'workflow') {
+		return `/workflow/${id}`;
+	}
+	return `/projects/${props.id}/folders/${id}/workflows`;
+};
+
+const itemIcon = (type: string, open: boolean) => {
+	if (type === 'workflow') {
+		return undefined;
+	}
+	if (open) {
+		return 'folder-open';
+	}
+	return 'folder';
+};
 </script>
 
 <template>
@@ -76,10 +85,10 @@ const itemLink = ({ type, id }: TreeItemType) =>
 					<SidebarItem
 						:title="item.value.label"
 						:id="item.value.id"
-						:icon="item.value.type === 'folder' ? 'folder' : undefined"
+						:icon="itemIcon(item.value.type, isExpanded)"
 						:click="handleToggle"
 						:open="isExpanded"
-						:link="itemLink(item.value).value"
+						:link="itemLink(item.value)"
 						:ariaLabel="`Open ${item.value.label}`"
 						:type="item.value.type"
 					/>
