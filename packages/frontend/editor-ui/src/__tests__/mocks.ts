@@ -245,6 +245,7 @@ export function createMockEnterpriseSettings(
 		workerView: false,
 		advancedPermissions: false,
 		apiKeyScopes: false,
+		workflowDiffs: false,
 		projects: {
 			team: {
 				limit: 0,
