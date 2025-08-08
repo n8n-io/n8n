@@ -2,7 +2,9 @@ import {
 	validateNodeParameters,
 	assertParamIsString,
 	assertParamIsNumber,
+	assertParamIsBoolean,
 	assertParamIsArray,
+	assertUserInput,
 } from '../../src/node-parameters/parameter-type-validation';
 
 describe('Type assertion functions', () => {
@@ -320,6 +322,69 @@ describe('Type assertion functions', () => {
 		});
 	});
 
+	describe('assertUserInput', () => {
+		it('should pass for truthy conditions', () => {
+			expect(() => assertUserInput(true)).not.toThrow();
+			expect(() => assertUserInput(1)).not.toThrow();
+			expect(() => assertUserInput('string')).not.toThrow();
+			expect(() => assertUserInput({})).not.toThrow();
+		});
+
+		it('should throw UserError for falsy conditions', () => {
+			expect(() => assertUserInput(false)).toThrow();
+			expect(() => assertUserInput(0)).toThrow();
+			expect(() => assertUserInput('')).toThrow();
+			expect(() => assertUserInput(null)).toThrow();
+			expect(() => assertUserInput(undefined)).toThrow();
+		});
+
+		it('should throw UserError with custom message', () => {
+			const customMessage = 'Custom error message';
+			expect(() => assertUserInput(false, customMessage)).toThrow(customMessage);
+		});
+
+		it('should preserve stack trace from original error', () => {
+			try {
+				assertUserInput(false, 'test message');
+			} catch (error) {
+				expect(error.stack).toBeDefined();
+			}
+		});
+
+		it('should set shouldReport to false in UserError', () => {
+			try {
+				assertUserInput(false);
+			} catch (error) {
+				expect(error.shouldReport).toBe(false);
+			}
+		});
+	});
+
+	describe('assertParamIsBoolean', () => {
+		it('should pass for valid boolean values', () => {
+			expect(() => assertParamIsBoolean('testParam', true)).not.toThrow();
+			expect(() => assertParamIsBoolean('testParam', false)).not.toThrow();
+		});
+
+		it('should throw for non-boolean values', () => {
+			expect(() => assertParamIsBoolean('testParam', 'true')).toThrow(
+				'Parameter "testParam" is not boolean',
+			);
+			expect(() => assertParamIsBoolean('testParam', 1)).toThrow(
+				'Parameter "testParam" is not boolean',
+			);
+			expect(() => assertParamIsBoolean('testParam', 0)).toThrow(
+				'Parameter "testParam" is not boolean',
+			);
+			expect(() => assertParamIsBoolean('testParam', null)).toThrow(
+				'Parameter "testParam" is not boolean',
+			);
+			expect(() => assertParamIsBoolean('testParam', undefined)).toThrow(
+				'Parameter "testParam" is not boolean',
+			);
+		});
+	});
+
 	describe('assertIsString', () => {
 		it('should pass for valid string', () => {
 			expect(() => assertParamIsString('testParam', 'hello')).not.toThrow();
@@ -390,6 +455,223 @@ describe('Type assertion functions', () => {
 			expect(() => assertParamIsArray('testParam', [1, 'b', 3], isNumber)).toThrow(
 				'Parameter "testParam" has elements that don\'t match expected types',
 			);
+		});
+	});
+
+	describe('Edge cases and additional scenarios', () => {
+		describe('validateNodeParameters edge cases', () => {
+			it('should handle NaN values correctly', () => {
+				const value = {
+					number: NaN,
+				};
+
+				const parameters = {
+					number: { type: 'number' as const },
+				};
+
+				// NaN is of type 'number' in JavaScript
+				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			});
+
+			it('should handle Infinity values correctly', () => {
+				const value = {
+					number: Infinity,
+				};
+
+				const parameters = {
+					number: { type: 'number' as const },
+				};
+
+				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			});
+
+			it('should handle mixed array types correctly', () => {
+				const value = {
+					mixed: [1, '2', 3], // Invalid: mixed types in array
+				};
+
+				const parameters = {
+					mixed: { type: 'number[]' as const },
+				};
+
+				expect(() => validateNodeParameters(value, parameters)).toThrow(
+					'Parameter "mixed" does not match any of the expected types: number[]',
+				);
+			});
+
+			it('should handle nested arrays', () => {
+				const value = {
+					nested: [
+						[1, 2],
+						[3, 4],
+					], // Array of arrays
+				};
+
+				const parameters = {
+					nested: { type: 'object' as const },
+				};
+
+				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			});
+
+			it('should handle resource-locator with false __rl property', () => {
+				const value = {
+					resource: {
+						__rl: false, // Should still be valid as it has the property
+						mode: 'list',
+						value: 'some-value',
+					},
+				};
+
+				const parameters = {
+					resource: { type: 'resource-locator' as const },
+				};
+
+				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			});
+
+			it('should handle resource-locator missing __rl property', () => {
+				const value = {
+					resource: {
+						mode: 'list',
+						value: 'some-value',
+						// __rl is missing
+					},
+				};
+
+				const parameters = {
+					resource: { type: 'resource-locator' as const },
+				};
+
+				expect(() => validateNodeParameters(value, parameters)).toThrow(
+					'Parameter "resource" does not match any of the expected types: resource-locator',
+				);
+			});
+
+			it('should handle empty string as valid string parameter', () => {
+				const value = {
+					name: '',
+				};
+
+				const parameters = {
+					name: { type: 'string' as const },
+				};
+
+				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			});
+
+			it('should handle zero as valid number parameter', () => {
+				const value = {
+					count: 0,
+				};
+
+				const parameters = {
+					count: { type: 'number' as const },
+				};
+
+				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			});
+
+			it('should handle arrays with only false values', () => {
+				const value = {
+					flags: [false, false, false],
+				};
+
+				const parameters = {
+					flags: { type: 'boolean[]' as const },
+				};
+
+				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			});
+
+			it('should handle three or more type unions', () => {
+				const value = {
+					multiType: 'string value',
+				};
+
+				const parameters = {
+					multiType: {
+						type: ['string', 'number', 'boolean'] as Array<'string' | 'number' | 'boolean'>,
+					},
+				};
+
+				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+
+				// Test with boolean value
+				const value2 = {
+					multiType: true,
+				};
+
+				expect(() => validateNodeParameters(value2, parameters)).not.toThrow();
+			});
+
+			it('should handle array types in multi-type parameters', () => {
+				const value = {
+					flexParam: ['a', 'b', 'c'],
+				};
+
+				const parameters = {
+					flexParam: { type: ['string', 'string[]'] as Array<'string' | 'string[]'> },
+				};
+
+				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+
+				// Test with single string
+				const value2 = {
+					flexParam: 'single string',
+				};
+
+				expect(() => validateNodeParameters(value2, parameters)).not.toThrow();
+			});
+
+			it('should handle object with null prototype', () => {
+				const value = Object.create(null);
+				value.name = 'test';
+
+				const parameters = {
+					name: { type: 'string' as const },
+				};
+
+				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			});
+		});
+
+		describe('assertParamIsArray edge cases', () => {
+			const isString = (val: unknown): val is string => typeof val === 'string';
+
+			it('should handle array-like objects', () => {
+				const arrayLike = { 0: 'a', 1: 'b', length: 2 };
+
+				expect(() => assertParamIsArray('testParam', arrayLike, isString)).toThrow(
+					'Parameter "testParam" is not an array',
+				);
+			});
+
+			it('should handle sparse arrays', () => {
+				const sparse = new Array(3);
+				sparse[0] = 'a';
+				sparse[2] = 'c';
+				// sparse[1] is undefined
+
+				// Sparse arrays should fail validation because undefined is not a string
+				expect(() => assertParamIsArray('testParam', sparse, isString)).toThrow(
+					'Parameter "testParam" has elements that don\'t match expected types',
+				);
+			});
+
+			it('should handle arrays with explicit undefined values', () => {
+				const arrayWithUndefined = ['a', undefined, 'c'];
+
+				expect(() => assertParamIsArray('testParam', arrayWithUndefined, isString)).toThrow(
+					'Parameter "testParam" has elements that don\'t match expected types',
+				);
+			});
+
+			it('should handle very large arrays efficiently', () => {
+				const largeArray = new Array(1000).fill('test');
+
+				expect(() => assertParamIsArray('testParam', largeArray, isString)).not.toThrow();
+			});
 		});
 	});
 });

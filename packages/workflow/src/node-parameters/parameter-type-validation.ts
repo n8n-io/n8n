@@ -53,7 +53,7 @@ export function assertParamIsBoolean(
 	parameterName: string,
 	value: unknown,
 ): asserts value is boolean {
-	assertParamIsType<string>(parameterName, value, 'boolean');
+	assertParamIsType<boolean>(parameterName, value, 'boolean');
 }
 
 export function assertParamIsArray<T>(
@@ -62,10 +62,17 @@ export function assertParamIsArray<T>(
 	validator: (val: unknown) => val is T,
 ): asserts value is T[] {
 	assertUserInput(Array.isArray(value), `Parameter "${parameterName}" is not an array`);
-	assertUserInput(
-		value.every(validator),
-		`Parameter "${parameterName}" has elements that don't match expected types`,
-	);
+
+	// Use for loop instead of .every() to properly handle sparse arrays
+	// .every() skips empty/sparse indices, which could allow invalid arrays to pass
+	for (let i = 0; i < value.length; i++) {
+		if (!validator(value[i])) {
+			assertUserInput(
+				false,
+				`Parameter "${parameterName}" has elements that don't match expected types`,
+			);
+		}
+	}
 }
 
 function assertIsValidObject(value: unknown): asserts value is Record<string, unknown> {
