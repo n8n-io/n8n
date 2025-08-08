@@ -393,5 +393,4 @@ jobs:
     uses: ./.github/workflows/security-trivy-scan-callable.yml
     with:
       image_ref: ${{ needs.build-and-push-docker.outputs.image_ref }}
-    secrets:
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    secrets: inherit
