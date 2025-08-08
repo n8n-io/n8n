@@ -397,6 +397,19 @@ describe('WorkflowsView', () => {
 			await waitAllPromises();
 			await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
 		});
+
+		it('should show archived only hint', async () => {
+			foldersStore.totalWorkflowCount = 1;
+			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const showArchivedLink = getByTestId('show-archived-link');
+			expect(showArchivedLink).toBeInTheDocument();
+
+			await userEvent.click(showArchivedLink);
+			expect(router.currentRoute.value.query).toStrictEqual({ showArchived: 'true' });
+		});
 	});
 
 	describe('source control', () => {
