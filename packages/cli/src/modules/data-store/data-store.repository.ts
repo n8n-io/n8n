@@ -220,7 +220,8 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 				'dataStore',
 				...this.getDataStoreColumnFields('data_store_column_entity'),
 				...this.getProjectFields('project'),
-			]);
+			])
+			.addOrderBy('data_store_column_entity.columnIndex', 'ASC');
 	}
 
 	private getDataStoreColumnFields(alias: string): string[] {
