@@ -38,6 +38,7 @@ export class Evaluation implements INodeType {
 			name: 'Evaluation',
 			color: '#c3c9d5',
 		},
+		// Pass function explicitly since expression context doesn't allow imports in getInputConnectionTypes
 		inputs: `={{(${getInputConnectionTypes})($parameter, ${metricRequiresModelConnection})}}`,
 		outputs: `={{(${getOutputConnectionTypes})($parameter)}}`,
 		codex: {
