@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
 
 export const prepareFieldsArray = (fields: string | string[], fieldName = 'Fields') => {
 	if (typeof fields === 'string') {

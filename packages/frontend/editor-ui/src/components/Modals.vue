@@ -82,6 +82,7 @@ import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflow-diff/WorkflowDiffModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
+import DynamicModalLoader from './DynamicModalLoader.vue';
 </script>
 
 <template>
@@ -340,5 +341,8 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 				<WhatsNewModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
+
+		<!-- Dynamic modals from modules -->
+		<DynamicModalLoader />
 	</div>
 </template>

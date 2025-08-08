@@ -187,24 +187,24 @@ const activeTab = ref<'nodes' | 'connectors' | 'settings'>();
 const tabs = computed(() => [
 	{
 		value: 'nodes' as const,
-		label: 'Nodes',
-		disabled: nodeChanges.value.length === 0,
+		label: i18n.baseText('workflowDiff.nodes'),
+		disabled: false,
 		data: {
 			count: nodeChanges.value.length,
 		},
 	},
 	{
 		value: 'connectors' as const,
-		label: 'Connectors',
-		disabled: connectionsDiff.value.size === 0,
+		label: i18n.baseText('workflowDiff.connectors'),
+		disabled: false,
 		data: {
 			count: connectionsDiff.value.size,
 		},
 	},
 	{
 		value: 'settings' as const,
-		label: 'Settings',
-		disabled: settingsDiff.value.length === 0,
+		label: i18n.baseText('workflowDiff.settings'),
+		disabled: false,
 		data: {
 			count: settingsDiff.value.length,
 		},
@@ -220,8 +220,7 @@ function setActiveTab(active: boolean) {
 	telemetry.track('User clicked workflow diff changes button', {
 		workflow_id: props.data.workflowId,
 	});
-	const value = tabs.value.find((tab) => !tab.disabled)?.value ?? 'nodes';
-	activeTab.value = value;
+	activeTab.value = 'nodes';
 }
 
 function trackTabChange(value: 'nodes' | 'connectors' | 'settings') {
@@ -340,7 +339,8 @@ const modifiers = [
 					<N8nIconButton
 						icon="arrow-left"
 						type="secondary"
-						class="mr-xs"
+						:class="[$style.backButton, 'mr-xs']"
+						icon-size="large"
 						@click="closeDialog"
 					></N8nIconButton>
 					<N8nHeading tag="h1" size="xlarge">
@@ -359,14 +359,14 @@ const modifiers = [
 							modifiers,
 						}"
 						:popper-class="$style.popper"
-						class="mr-xs"
+						class="mr-2xs"
 						@visible-change="setActiveTab"
 					>
 						<N8nButton type="secondary">
 							<div v-if="changesCount" :class="$style.circleBadge">
 								{{ changesCount }}
 							</div>
-							Changes
+							{{ i18n.baseText('workflowDiff.changes') }}
 						</N8nButton>
 						<template #dropdown>
 							<ElDropdownMenu :hide-on-click="false">
@@ -387,68 +387,101 @@ const modifiers = [
 									</N8nRadioButtons>
 									<div>
 										<ul v-if="activeTab === 'nodes'">
-											<ElDropdownItem
-												v-for="change in nodeChanges"
-												:key="change.node.id"
-												:class="{
-													[$style.clickableChange]: true,
-													[$style.clickableChangeActive]: selectedDetailId === change.node.id,
-												}"
-												@click.prevent="setSelectedDetailId(change.node.id, activeTab)"
-											>
-												<DiffBadge :type="change.status" />
-												<NodeIcon :node-type="change.type" :size="16" />
-												{{ change.node.name }}
-											</ElDropdownItem>
+											<template v-if="nodeChanges.length > 0">
+												<ElDropdownItem
+													v-for="change in nodeChanges"
+													:key="change.node.id"
+													:class="{
+														[$style.clickableChange]: true,
+														[$style.clickableChangeActive]: selectedDetailId === change.node.id,
+													}"
+													@click.prevent="setSelectedDetailId(change.node.id, activeTab)"
+												>
+													<DiffBadge :type="change.status" />
+													<NodeIcon :node-type="change.type" :size="16" class="ml-2xs mr-4xs" />
+													<span :class="$style.nodeName">{{ change.node.name }}</span>
+												</ElDropdownItem>
+											</template>
+											<li v-else :class="$style.emptyState">
+												<N8nText color="text-base" size="small">{{
+													i18n.baseText('workflowDiff.noChanges')
+												}}</N8nText>
+											</li>
 										</ul>
 										<ul v-if="activeTab === 'connectors'" :class="$style.changes">
-											<li v-for="change in connectionsDiff" :key="change[0]">
-												<div>
-													<DiffBadge :type="change[1].status" />
-												</div>
-												<div style="flex: 1">
-													<ul :class="$style.changesNested">
-														<ElDropdownItem
-															:class="{
-																[$style.clickableChange]: true,
-																[$style.clickableChangeActive]:
-																	selectedDetailId === change[1].connection.source?.id,
-															}"
-															@click.prevent="
-																setSelectedDetailId(change[1].connection.source?.id, activeTab)
-															"
-														>
-															<NodeIcon :node-type="change[1].connection.sourceType" :size="16" />
-															{{ change[1].connection.source?.name }}
-														</ElDropdownItem>
-														<div :class="$style.separator"></div>
-														<ElDropdownItem
-															:class="{
-																[$style.clickableChange]: true,
-																[$style.clickableChangeActive]:
-																	selectedDetailId === change[1].connection.target?.id,
-															}"
-															@click.prevent="
-																setSelectedDetailId(change[1].connection.target?.id, activeTab)
-															"
-														>
-															<NodeIcon :node-type="change[1].connection.targetType" :size="16" />
-															{{ change[1].connection.target?.name }}
-														</ElDropdownItem>
-													</ul>
-												</div>
+											<template v-if="connectionsDiff.size > 0">
+												<li v-for="change in connectionsDiff" :key="change[0]">
+													<div>
+														<DiffBadge :type="change[1].status" />
+													</div>
+													<div style="flex: 1">
+														<ul :class="$style.changesNested">
+															<ElDropdownItem
+																:class="{
+																	[$style.clickableChange]: true,
+																	[$style.clickableChangeActive]:
+																		selectedDetailId === change[1].connection.source?.id,
+																}"
+																@click.prevent="
+																	setSelectedDetailId(change[1].connection.source?.id, activeTab)
+																"
+															>
+																<NodeIcon
+																	:node-type="change[1].connection.sourceType"
+																	:size="16"
+																	class="ml-2xs mr-4xs"
+																/>
+																<span :class="$style.nodeName">{{
+																	change[1].connection.source?.name
+																}}</span>
+															</ElDropdownItem>
+															<div :class="$style.separator"></div>
+															<ElDropdownItem
+																:class="{
+																	[$style.clickableChange]: true,
+																	[$style.clickableChangeActive]:
+																		selectedDetailId === change[1].connection.target?.id,
+																}"
+																@click.prevent="
+																	setSelectedDetailId(change[1].connection.target?.id, activeTab)
+																"
+															>
+																<NodeIcon
+																	:node-type="change[1].connection.targetType"
+																	:size="16"
+																	class="ml-2xs mr-4xs"
+																/>
+																<span :class="$style.nodeName">{{
+																	change[1].connection.target?.name
+																}}</span>
+															</ElDropdownItem>
+														</ul>
+													</div>
+												</li>
+											</template>
+											<li v-else :class="$style.emptyState">
+												<N8nText color="text-base" size="small">{{
+													i18n.baseText('workflowDiff.noChanges')
+												}}</N8nText>
 											</li>
 										</ul>
 										<ul v-if="activeTab === 'settings'">
-											<li v-for="setting in settingsDiff" :key="setting.name">
-												<N8nText color="text-dark" size="medium" tag="div" bold>{{
-													i18n.baseText(`workflowSettings.${setting.name}` as BaseTextKey)
+											<template v-if="settingsDiff.length > 0">
+												<li v-for="setting in settingsDiff" :key="setting.name">
+													<N8nText color="text-dark" size="medium" tag="div" bold>{{
+														i18n.baseText(`workflowSettings.${setting.name}` as BaseTextKey)
+													}}</N8nText>
+													<NodeDiff
+														:old-string="setting.before"
+														:new-string="setting.after"
+														:class="$style.noNumberDiff"
+													/>
+												</li>
+											</template>
+											<li v-else :class="$style.emptyState">
+												<N8nText color="text-base" size="small">{{
+													i18n.baseText('workflowDiff.noChanges')
 												}}</N8nText>
-												<NodeDiff
-													:old-string="setting.before"
-													:new-string="setting.after"
-													:class="$style.noNumberDiff"
-												/>
 											</li>
 										</ul>
 									</div>
@@ -459,6 +492,7 @@ const modifiers = [
 					<N8nIconButton
 						icon="chevron-left"
 						type="secondary"
+						class="mr-2xs"
 						:class="$style.navigationButton"
 						@click="previousNodeChange"
 					></N8nIconButton>
@@ -480,8 +514,10 @@ const modifiers = [
 								<N8nIcon v-if="sourceWorkFlow.state.value.remote" icon="git-branch" />
 								{{
 									sourceWorkFlow.state.value.remote
-										? `Remote (${sourceControlStore.preferences.branchName})`
-										: 'Local'
+										? i18n.baseText('workflowDiff.remote', {
+												interpolate: { branchName: sourceControlStore.preferences.branchName },
+											})
+										: i18n.baseText('workflowDiff.local')
 								}}
 							</N8nText>
 							<template v-if="sourceWorkFlow.state.value.workflow">
@@ -506,14 +542,15 @@ const modifiers = [
 							</template>
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
-									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
-										<N8nText color="text-base"> The workflow was deleted on the database </N8nText>
-									</template>
-									<template v-else>
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
-										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
-									</template>
+									<N8nHeading size="large">{{
+										i18n.baseText('workflowDiff.deletedWorkflow')
+									}}</N8nHeading>
+									<N8nText v-if="targetWorkFlow.state.value?.remote" color="text-base">{{
+										i18n.baseText('workflowDiff.deletedWorkflow.database')
+									}}</N8nText>
+									<N8nText v-else color="text-base">{{
+										i18n.baseText('workflowDiff.deletedWorkflow.remote')
+									}}</N8nText>
 								</div>
 							</template>
 						</template>
@@ -524,8 +561,10 @@ const modifiers = [
 								<N8nIcon v-if="targetWorkFlow.state.value.remote" icon="git-branch" />
 								{{
 									targetWorkFlow.state.value.remote
-										? `Remote (${sourceControlStore.preferences.branchName})`
-										: 'Local'
+										? i18n.baseText('workflowDiff.remote', {
+												interpolate: { branchName: sourceControlStore.preferences.branchName },
+											})
+										: i18n.baseText('workflowDiff.local')
 								}}
 							</N8nText>
 							<template v-if="targetWorkFlow.state.value.workflow">
@@ -550,14 +589,15 @@ const modifiers = [
 							</template>
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
-									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
-										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
-									</template>
-									<template v-else>
-										<N8nText color="text-dark" size="large"> Deleted workflow </N8nText>
-										<N8nText color="text-base"> The workflow was deleted on the data base </N8nText>
-									</template>
+									<N8nHeading size="large">{{
+										i18n.baseText('workflowDiff.deletedWorkflow')
+									}}</N8nHeading>
+									<N8nText v-if="targetWorkFlow.state.value?.remote" color="text-base">{{
+										i18n.baseText('workflowDiff.deletedWorkflow.remote')
+									}}</N8nText>
+									<N8nText v-else color="text-base">{{
+										i18n.baseText('workflowDiff.deletedWorkflow.database')
+									}}</N8nText>
 								</div>
 							</template>
 						</template>
@@ -577,7 +617,9 @@ const modifiers = [
 	</Modal>
 </template>
 
-<style module>
+<style module lang="scss">
+/* Diff colors are now centralized in @n8n/design-system tokens */
+
 .workflowDiffModal {
 	margin-bottom: 0;
 	border-radius: 0;
@@ -587,7 +629,7 @@ const modifiers = [
 	}
 	:global(.el-dialog__header) {
 		padding: 11px 16px;
-		border-bottom: 1px solid var(--color-border);
+		border-bottom: 1px solid var(--color-foreground-base);
 	}
 	:global(.el-dialog__headerbtn) {
 		display: none;
@@ -622,42 +664,71 @@ const modifiers = [
 }
 
 .popper {
-	box-shadow: 0px 6px 16px 0px rgba(68, 28, 23, 0.06);
+	box-shadow: 0 6px 16px 0 rgba(68, 28, 23, 0.06);
 	:global(.el-popper__arrow) {
 		display: none;
 	}
 }
 
 .changes {
-	list-style: none;
-	margin: 0;
-	padding: 0;
 	> li {
 		display: flex;
 		align-items: flex-start;
-		gap: 8px;
-		padding: 8px;
+		gap: var(--spacing-2xs);
+		padding: 10px 0 var(--spacing-3xs) var(--spacing-2xs);
+
+		> div {
+			min-width: 0;
+		}
+
+		.clickableChange {
+			padding: var(--spacing-3xs) var(--spacing-xs) var(--spacing-3xs) 0;
+			margin-left: -4px;
+		}
 	}
+
+	.changesNested {
+		margin-top: -3px;
+		width: 100%;
+		min-width: 0;
+	}
+}
+
+.clickableChange {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing-2xs);
+	border-radius: 4px;
+	padding: var(--spacing-xs) var(--spacing-2xs);
+	margin-right: var(--spacing-xs);
+	line-height: unset;
+	min-width: 0;
+	transition: background-color 0.2s ease;
+
+	&:hover {
+		background-color: var(--color-background-xlight);
+	}
+}
+
+.clickableChangeActive {
+	background-color: var(--color-background-xlight);
+}
+
+.nodeName {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 .separator {
 	width: 1px;
 	height: 10px;
 	background-color: var(--color-foreground-xdark);
-	margin: -5px 23px;
+	margin: 0 0 -5px var(--spacing-xs);
 	position: relative;
 	z-index: 1;
-}
-
-.clickableChange {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	border-radius: 4px;
-}
-
-.clickableChangeActive {
-	background-color: var(--color-background-medium);
 }
 
 .deleted,
@@ -666,13 +737,13 @@ const modifiers = [
 	position: relative;
 	&::before {
 		position: absolute;
-		bottom: 0px;
-		left: 0px;
-		border-bottom-left-radius: 6px;
-		border-top-right-radius: 2px;
+		top: 0;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		border-radius: 4px;
 		color: var(--color-text-xlight);
-		font-family: var(--font-family-monospace);
-		font-size: 8px;
+		font-family: Inter, var(--font-family);
+		font-size: 10px;
 		font-weight: 700;
 		z-index: 1;
 		width: 16px;
@@ -681,54 +752,49 @@ const modifiers = [
 		justify-content: center;
 		align-items: center;
 	}
-
-	&[data-node-type='n8n-nodes-base.stickyNote'],
-	&[data-node-type='n8n-nodes-base.manualTrigger'] {
-		&::before {
-			left: auto;
-			right: 0px;
-			border-top-right-radius: 0;
-			border-top-left-radius: 2px;
-			border-bottom-left-radius: 0;
-			border-bottom-right-radius: 6px;
-		}
-	}
 }
 
 .deleted {
-	--canvas-node--background: rgba(234, 31, 48, 0.2);
-	--canvas-node--border-color: var(--color-node-icon-red);
-	--color-sticky-background: rgba(234, 31, 48, 0.2);
-	--color-sticky-border: var(--color-node-icon-red);
+	--canvas-node--background: var(--diff-del-faint);
+	--canvas-node--border-color: var(--diff-del);
+	--color-sticky-background: var(--diff-del-faint);
+	--color-sticky-border: var(--diff-del);
 	&::before {
 		content: 'D';
-		background-color: var(--color-node-icon-red);
+		background-color: var(--diff-del);
 	}
-	:global(.canvas-node-handle-main-output > div) {
-		background-color: var(--color-node-icon-red);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-del);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-red);
+		background-color: var(--diff-del);
+	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--diff-del) !important;
 	}
 }
 .added {
-	--canvas-node--border-color: var(--color-node-icon-green);
-	--canvas-node--background: rgba(14, 171, 84, 0.2);
-	--color-sticky-background: rgba(14, 171, 84, 0.2);
-	--color-sticky-border: var(--color-node-icon-green);
+	--canvas-node--border-color: var(--diff-new);
+	--canvas-node--background: var(--diff-new-faint);
+	--color-sticky-background: var(--diff-new-faint);
+	--color-sticky-border: var(--diff-new);
 	position: relative;
 	&::before {
 		content: 'N';
-		background-color: var(--color-node-icon-green);
+		background-color: var(--diff-new);
 	}
-	:global(.canvas-node-handle-main-output > div) {
-		background-color: var(--color-node-icon-green);
-	}
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-green);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-new);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-green);
+		background-color: var(--diff-new);
+	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--diff-new) !important;
 	}
 }
 .equal {
@@ -744,41 +810,38 @@ const modifiers = [
 	}
 }
 .modified {
-	--canvas-node--border-color: var(--color-node-icon-orange);
-	--canvas-node--background: rgba(255, 150, 90, 0.2);
-	--color-sticky-background: rgba(255, 150, 90, 0.2);
-	--color-sticky-border: var(--color-node-icon-orange);
+	--canvas-node--border-color: var(--diff-modified);
+	--canvas-node--background: var(--diff-modified-faint);
+	--color-sticky-background: var(--diff-modified-faint);
+	--color-sticky-border: var(--diff-modified);
 	position: relative;
 	&::before {
 		content: 'M';
-		background-color: var(--color-node-icon-orange);
+		background-color: var(--diff-modified);
 	}
-	:global(.canvas-node-handle-main-output .source) {
-		--color-foreground-xdark: var(--color-node-icon-orange);
+	:global(.canvas-node-handle-main-output > div:empty) {
+		background-color: var(--diff-modified);
 	}
 	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--color-node-icon-orange);
+		background-color: var(--diff-modified);
+	}
+
+	/* Ensure disabled nodes still show diff border color */
+	:global([class*='disabled']) {
+		--canvas-node--border-color: var(--diff-modified) !important;
 	}
 }
 
 .edge-deleted {
-	--canvas-edge-color: var(--color-node-icon-red);
-	--edge-highlight-color: rgba(234, 31, 48, 0.2);
+	--canvas-edge-color: var(--diff-del);
+	--edge-highlight-color: var(--diff-del-light);
 }
 .edge-added {
-	--canvas-edge-color: var(--color-node-icon-green);
-	--edge-highlight-color: rgba(14, 171, 84, 0.2);
+	--canvas-edge-color: var(--diff-new);
+	--edge-highlight-color: var(--diff-new-light);
 }
 .edge-equal {
 	opacity: 0.5;
-}
-
-.noNumberDiff {
-	min-height: 41px;
-	margin-bottom: 10px !important;
-	:global(.blob-num) {
-		display: none;
-	}
 }
 
 .circleBadge {
@@ -788,16 +851,34 @@ const modifiers = [
 	width: 16px;
 	height: 16px;
 	border-radius: 50%;
-	background-color: var(--color-background-medium);
-	color: var(--color-text-dark);
+	background-color: var(--color-primary);
+	color: var(--color-text-xlight);
 	font-size: 10px;
 	font-weight: bold;
 	line-height: 1;
 }
 
 .dropdownContent {
-	min-width: 300px;
-	padding: 2px 12px;
+	width: 320px;
+	padding: 2px 0 2px 12px;
+
+	ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		max-height: 400px;
+		overflow-x: hidden;
+		overflow-y: auto;
+	}
+
+	.noNumberDiff {
+		min-height: 41px;
+		margin: 0 12px 10px 0;
+		overflow: hidden;
+		:global(.blob-num) {
+			display: none;
+		}
+	}
 }
 
 .workflowDiffContent {
@@ -815,7 +896,6 @@ const modifiers = [
 .workflowDiffPanel {
 	flex: 1;
 	position: relative;
-	border-top: 1px solid #ddd;
 }
 
 .emptyWorkflow {
@@ -830,6 +910,15 @@ const modifiers = [
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+
+	.navigationButton {
+		height: 34px;
+		width: 34px;
+	}
+
+	.backButton {
+		border: none;
+	}
 }
 
 .headerLeft {
@@ -837,8 +926,10 @@ const modifiers = [
 	align-items: center;
 }
 
-.navigationButton {
-	height: 34px !important;
-	width: 34px !important;
+.emptyState {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: var(--spacing-m) var(--spacing-xs);
 }
 </style>

@@ -4,6 +4,9 @@ import type { N8nLocale } from '@n8n/design-system/types';
 export default {
 	'generic.retry': 'Retry',
 	'generic.cancel': 'Cancel',
+	'generic.ignore': 'Ignore',
+	'generic.ignoreAll': 'Ignore all',
+	'generic.moreInfo': 'More info',
 	'nds.auth.roles.owner': 'Owner',
 	'nds.userInfo.you': '(you)',
 	'nds.userSelect.selectUser': 'Select User',
@@ -65,6 +68,7 @@ export default {
 	'assistantChat.inputPlaceholder': 'Enter your response...',
 	'assistantChat.copy': 'Copy',
 	'assistantChat.copied': 'Copied',
+	'aiAssistant.builder.canvas.thinking': 'Working...',
 	'inlineAskAssistantButton.asked': 'Asked',
 	'iconPicker.button.defaultToolTip': 'Choose icon',
 	'iconPicker.tabs.icons': 'Icons',

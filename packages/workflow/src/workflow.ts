@@ -17,7 +17,7 @@ import {
 	STARTING_NODE_TYPES,
 } from './constants';
 import { UserError } from './errors';
-import { ApplicationError } from './errors/application.error';
+import { ApplicationError } from '@n8n/errors';
 import { Expression } from './expression';
 import { getGlobalState } from './global-state';
 import type {
@@ -67,9 +67,9 @@ export class Workflow {
 
 	nodes: INodes = {};
 
-	connectionsBySourceNode: IConnections;
+	connectionsBySourceNode: IConnections = {};
 
-	connectionsByDestinationNode: IConnections;
+	connectionsByDestinationNode: IConnections = {};
 
 	nodeTypes: INodeTypes;
 
@@ -77,7 +77,7 @@ export class Workflow {
 
 	active: boolean;
 
-	settings: IWorkflowSettings;
+	settings: IWorkflowSettings = {};
 
 	readonly timezone: string;
 
@@ -93,15 +93,9 @@ export class Workflow {
 		this.id = parameters.id as string; // @tech_debt Ensure this is not optional
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
-		this.pinData = parameters.pinData;
 
-		// Save nodes in workflow as object to be able to get the
-		// nodes easily by its name.
-		// Also directly add the default values of the node type.
 		let nodeType: INodeType | undefined;
 		for (const node of parameters.nodes) {
-			this.nodes[node.name] = node;
-
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType === undefined) {
@@ -127,10 +121,11 @@ export class Workflow {
 			);
 			node.parameters = nodeParameters !== null ? nodeParameters : {};
 		}
-		this.connectionsBySourceNode = parameters.connections;
 
-		// Save also the connections by the destination nodes
-		this.connectionsByDestinationNode = mapConnectionsByDestination(parameters.connections);
+		this.setNodes(parameters.nodes);
+		this.setConnections(parameters.connections);
+		this.setPinData(parameters.pinData);
+		this.setSettings(parameters.settings ?? {});
 
 		this.active = parameters.active || false;
 
@@ -138,10 +133,30 @@ export class Workflow {
 			ignoreEmptyOnFirstChild: true,
 		});
 
-		this.settings = parameters.settings || {};
 		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
 
 		this.expression = new Expression(this);
+	}
+
+	// Save nodes in workflow as object to be able to get the nodes easily by their name.
+	setNodes(nodes: INode[]) {
+		this.nodes = {};
+		for (const node of nodes) {
+			this.nodes[node.name] = node;
+		}
+	}
+
+	setConnections(connections: IConnections) {
+		this.connectionsBySourceNode = connections;
+		this.connectionsByDestinationNode = mapConnectionsByDestination(this.connectionsBySourceNode);
+	}
+
+	setPinData(pinData: IPinData | undefined) {
+		this.pinData = pinData;
+	}
+
+	setSettings(settings: IWorkflowSettings) {
+		this.settings = settings;
 	}
 
 	overrideStaticData(staticData?: IDataObject) {
@@ -471,9 +486,6 @@ export class Workflow {
 				}
 			}
 		}
-
-		// Use the updated connections to create updated connections by destination nodes
-		this.connectionsByDestinationNode = mapConnectionsByDestination(this.connectionsBySourceNode);
 	}
 
 	/**
@@ -676,13 +688,24 @@ export class Workflow {
 		return returnConns;
 	}
 
-	getParentMainInputNode(node: INode | null | undefined): INode | null | undefined {
+	getParentMainInputNode(
+		node: INode | null | undefined,
+		visitedNodes: Set<string> = new Set(),
+	): INode | null | undefined {
 		if (!node) return node;
 
-		const nodeConnections = this.connectionsBySourceNode[node.name];
-		if (!nodeConnections) return node;
+		// Prevent infinite recursion by tracking visited nodes
+		if (visitedNodes.has(node.name)) {
+			return node;
+		}
+		visitedNodes.add(node.name);
 
-		// Get non-main connection types
+		const nodeConnections = this.connectionsBySourceNode[node.name];
+		if (!nodeConnections) {
+			return node;
+		}
+
+		// Get non-main connection types that this node connects TO (outgoing connections)
 		const nonMainConnectionTypes = Object.keys(nodeConnections).filter(
 			(type) => type !== NodeConnectionTypes.Main,
 		);
@@ -696,7 +719,7 @@ export class Workflow {
 						if (!returnNode) {
 							throw new ApplicationError(`Node "${connection.node}" not found`);
 						}
-						return this.getParentMainInputNode(returnNode);
+						return this.getParentMainInputNode(returnNode, visitedNodes);
 					}
 				}
 			}
@@ -919,6 +942,12 @@ export class Workflow {
 	 */
 	hasPath(fromNodeName: string, toNodeName: string, maxDepth = 50): boolean {
 		if (fromNodeName === toNodeName) return true;
+
+		// Special case: If the source node has pinned data, consider it as having a valid path
+		// This is important for single node execution scenarios where pinned data creates virtual paths
+		if (this.getPinDataOfNode(fromNodeName)) {
+			return true;
+		}
 
 		// Get connection types that actually exist in this workflow
 		// We need both source and destination connection types for bidirectional search

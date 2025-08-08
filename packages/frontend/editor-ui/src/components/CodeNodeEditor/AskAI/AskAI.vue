@@ -91,12 +91,11 @@ function getErrorMessageByStatusCode(statusCode: number, message: string | undef
 
 function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
-	const { getCurrentWorkflow, getNodeByName } = useWorkflowsStore();
-	const workflow = getCurrentWorkflow();
+	const { workflowObject, getNodeByName } = useWorkflowsStore();
 
-	if (!activeNode || !workflow) return [];
+	if (!activeNode || !workflowObject) return [];
 
-	return workflow
+	return workflowObject
 		.getParentNodesByDepth(activeNode?.name)
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;

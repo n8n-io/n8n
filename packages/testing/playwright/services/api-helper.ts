@@ -12,7 +12,7 @@ import { TestError } from '../Types';
 
 export interface LoginResponseData {
 	id: string;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 export type UserRole = 'owner' | 'admin' | 'member';
@@ -182,15 +182,15 @@ export class ApiHelpers {
 			throw new TestError(errorText);
 		}
 
-		let responseData: any;
+		let responseData: unknown;
 		try {
 			responseData = await response.json();
-		} catch (error) {
+		} catch (error: unknown) {
 			const errorText = await response.text();
 			throw new TestError(errorText);
 		}
 
-		const loginData: LoginResponseData = responseData.data;
+		const loginData: LoginResponseData = (responseData as { data: LoginResponseData }).data;
 
 		if (!loginData?.id) {
 			throw new TestError('Login did not return expected user data (missing user ID)');

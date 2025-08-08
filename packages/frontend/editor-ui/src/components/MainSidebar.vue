@@ -110,7 +110,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		id: 'variables',
 		icon: 'variable',
 		label: i18n.baseText('mainSidebar.variables'),
-		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.VARIABLES } },
 	},
@@ -118,11 +117,10 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		id: 'insights',
 		icon: 'chart-column-decreasing',
 		label: 'Insights',
-		customIconSize: 'medium',
 		position: 'bottom',
 		route: { to: { name: VIEWS.INSIGHTS } },
 		available:
-			settingsStore.settings.activeModules.includes('insights') &&
+			settingsStore.isModuleActive('insights') &&
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
 	},
 	{

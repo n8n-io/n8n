@@ -6,8 +6,8 @@ import { ExecutionsPage } from './ExecutionsPage';
 import { NodeDisplayViewPage } from './NodeDisplayViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
-import { ProjectWorkflowsPage } from './ProjectWorkflowsPage';
 import { SidebarPage } from './SidebarPage';
+import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
@@ -19,28 +19,18 @@ export class n8nPage {
 
 	// Pages
 	readonly canvas: CanvasPage;
-
 	readonly ndv: NodeDisplayViewPage;
-
-	readonly projectWorkflows: ProjectWorkflowsPage;
-
 	readonly projectSettings: ProjectSettingsPage;
-
 	readonly workflows: WorkflowsPage;
-
 	readonly notifications: NotificationsPage;
-
 	readonly credentials: CredentialsPage;
-
 	readonly executions: ExecutionsPage;
-
 	readonly sideBar: SidebarPage;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
-
+	readonly workflowSharingModal: WorkflowSharingModal;
 	readonly projectComposer: ProjectComposer;
-
 	readonly canvasComposer: CanvasComposer;
 
 	constructor(page: Page) {
@@ -49,13 +39,13 @@ export class n8nPage {
 		// Pages
 		this.canvas = new CanvasPage(page);
 		this.ndv = new NodeDisplayViewPage(page);
-		this.projectWorkflows = new ProjectWorkflowsPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.workflows = new WorkflowsPage(page);
 		this.notifications = new NotificationsPage(page);
 		this.credentials = new CredentialsPage(page);
 		this.executions = new ExecutionsPage(page);
 		this.sideBar = new SidebarPage(page);
+		this.workflowSharingModal = new WorkflowSharingModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);
