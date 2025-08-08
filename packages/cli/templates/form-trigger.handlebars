@@ -295,9 +295,46 @@
 			}
 
 			input[type='checkbox'] {
+			  appearance: none;
 				width: var(--checkbox-size);
 				height: var(--checkbox-size);
+				border: 1px solid var(--color-input-border);
+        border-radius: 3px;
 				cursor: pointer;
+				position: relative;
+			}
+			.multiselect-checkbox:checked {
+				background: var(--color-focus-border);
+				border-color: var(--color-focus-border);
+			}
+
+			.multiselect-checkbox:checked::after {
+				content: '✔';
+				position: absolute;
+				top: -2px;
+				left: 2px;
+				color: white;
+				font-size: var(--font-size-label);
+				font-weight: bold;
+			}
+
+			.multiselect[data-radio-select] .multiselect-checkbox {
+				border-radius: 50%;
+				width: var(--checkbox-size);
+				height: var(--checkbox-size);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			.multiselect[data-radio-select] .multiselect-checkbox:checked {
+				background: white;
+				border-color: var(--color-focus-border);
+				border-width: 4px;
+				border-radius: 50%;
+			}
+			.multiselect[data-radio-select] .multiselect-checkbox:checked::after {
+				content: '';
 			}
 			/* required field ----------------------------- */
 			.form-required {
@@ -703,11 +740,12 @@
 				return { radio, exact, maxSelect, minSelect };
 			}
 
-			function validateMultiselect(input, errorElement, checkRequired = true) {
+			function validateMultiselect(input, errorElement) {
 				const values = getSelectedValues(input);
 				const data = getDataValues(input);
+				const required = input.classList.contains('form-required');
 
-				if (checkRequired && !values.length) {
+				if (required && !values.length) {
 					updateError(errorElement, 'add', 'This field is required');
 					return false;
 				}
@@ -794,7 +832,7 @@
 				}
 
 				input.addEventListener('click', () => {
-					validateMultiselect(input, errorElement, false);
+					validateMultiselect(input, errorElement);
 				});
 			});
 
