@@ -65,7 +65,7 @@ describe('Test Webhook Node', () => {
 		const req = mock<Request>();
 		context.getRequestObject.mockReturnValue(req);
 
-		mockFs.stat.mockResolvedValue({ size: 1024 } as fs.Stats);
+		mockFs.stat.mockResolvedValue({ size: BigInt(1024) } as any);
 
 		beforeEach(() => {
 			mockFs.rm.mockClear();
