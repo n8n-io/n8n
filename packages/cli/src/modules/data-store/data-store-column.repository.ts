@@ -18,6 +18,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 		return await executor
 			.createQueryBuilder(DataStoreColumnEntity, 'dsc')
 			.where('dsc.dataStoreId = :dataStoreId', { dataStoreId: rawDataStoreId })
+			.orderBy({ columnIndex: 'ASC' })
 			.getMany();
 	}
 

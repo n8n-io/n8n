@@ -532,18 +532,18 @@ describe('dataStore', () => {
 			const columns = await dataStoreService.getColumns(dataStore.id);
 			expect(columns).toMatchObject([
 				{
-					columnIndex: 1,
-					dataStoreId: dataStore.id,
-					id: c1.id,
-					name: 'myColumn1',
-					type: 'string',
-				},
-				{
 					columnIndex: 0,
 					dataStoreId: dataStore.id,
 					id: c2.id,
 					name: 'myColumn2',
 					type: 'number',
+				},
+				{
+					columnIndex: 1,
+					dataStoreId: dataStore.id,
+					id: c1.id,
+					name: 'myColumn1',
+					type: 'string',
 				},
 			]);
 		});
