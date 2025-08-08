@@ -389,8 +389,11 @@ async function initializeRoute(force = false) {
 	if (isBlankRedirect.value) {
 		isBlankRedirect.value = false;
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
-		const templateId = route.params.id;
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
+		const templateId = route.params.id;
+		if (!templateId) {
+			return;
+		}
 
 		if (loadWorkflowFromJSON) {
 			const workflow = getSampleWorkflowByTemplateId(templateId.toString());
