@@ -378,13 +378,17 @@ function resolveParameterImpl<T = IDataObject>(
 	) as T;
 }
 
-let nodeTypes: INodeTypes = {};
+let nodeTypes: INodeTypes;
 
 function getNodeType(nodeTypeName: string, version?: number): INodeTypeDescription | null {
 	// @TODO Currently unsupported node types
 	// if (nodeTypeUtils.isCredentialOnlyNodeType(nodeTypeName)) {
 	// 	return getCredentialOnlyNodeType.value(nodeTypeName, version);
 	// }
+
+	if (!nodeTypes) {
+		return null;
+	}
 
 	const nodeVersions = nodeTypes[nodeTypeName];
 
@@ -408,7 +412,7 @@ export const actions = {
 			pinData: string;
 			inputNode?: string;
 			additionalKeys: string;
-		} = {},
+		},
 	): Promise<T | null> {
 		const db = await dbPromise;
 		const executionId = options.executionId ?? null;
@@ -426,7 +430,7 @@ export const actions = {
 		const workflowId = options.workflowId;
 		const nodeName = options.nodeName ?? null;
 		const nodes = options.nodes ? jsonParse<INode[]>(options.nodes) : [];
-		const node = nodes.find((n) => n.name === nodeName);
+		const node = nodes.find((n) => n.name === nodeName) ?? null;
 		const connectionsBySourceNode = options.connectionsBySourceNode
 			? jsonParse<IConnections>(options.connectionsBySourceNode)
 			: {};
@@ -468,7 +472,7 @@ export const actions = {
 							undefined,
 					};
 				},
-			},
+			} as INodeTypes,
 		});
 
 		console.log('resolveParameter in WORKER', parameter, {

@@ -15,10 +15,12 @@ export async function useSQLite() {
 	if (!promiser) throw new Error('Failed to initialize promiser');
 
 	// Get configuration and open database
-	await promiser('config-get', {});
+	const cfg = await promiser('config-get', {});
 	const openResponse = await promiser('open', {
 		filename: databaseConfig.filename,
 	});
+
+	console.log('sqlite config', cfg);
 
 	if (openResponse.type === 'error') {
 		throw new Error(openResponse.result.message);
