@@ -29,7 +29,10 @@ function peakSidebar() {
 	state.value = 'peak';
 }
 
-function handleLeave() {
+function handleLeave(event: MouseEvent) {
+	if (event.relatedTarget == null) {
+		return;
+	}
 	if (state.value === 'peak') {
 		state.value = 'hidden';
 	}
@@ -93,6 +96,7 @@ const panelIcon = computed(() => {
 			:selectable="false"
 			:collapsible="false"
 		/>
+		<slot name="sourceControl" />
 		<footer class="sidebarFooter">
 			<SidebarItem title="Admin panel" id="templates" icon="cloud" type="other" />
 			<SidebarItem title="Templates" id="templates" icon="box" type="other" />

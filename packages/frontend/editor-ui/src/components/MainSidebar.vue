@@ -355,5 +355,9 @@ async function onResizeEnd() {
 		:projects="projects"
 		:collapsed="isCollapsed"
 		:release-channel="settingsStore.settings.releaseChannel"
-	/>
+	>
+		<template #sourceControl>
+			<MainSidebarSourceControl :is-collapsed="false" />
+		</template>
+	</N8nSidebar>
 </template>
