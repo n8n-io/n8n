@@ -1097,9 +1097,9 @@ async function executeDatapointCreate(
 	}
 
 	validateNodeParameters(options, {
-		comment: { type: 'string', optional: true },
-		timestamp: { type: 'number', optional: true },
-		requestid: { type: 'string', optional: true },
+		comment: { type: 'string' },
+		timestamp: { type: 'number' },
+		requestid: { type: 'string' },
 	});
 
 	const data = {
@@ -1119,9 +1119,9 @@ async function executeDatapointGetAll(
 	const returnAll = context.getNodeParameter('returnAll', itemIndex);
 	const options = context.getNodeParameter('options', itemIndex);
 	validateNodeParameters(options, {
-		sort: { type: 'string', optional: true },
-		page: { type: 'number', optional: true },
-		per: { type: 'number', optional: true },
+		sort: { type: 'string' },
+		page: { type: 'number' },
+		per: { type: 'number' },
 	});
 
 	const data = {
@@ -1147,9 +1147,9 @@ async function executeDatapointUpdate(
 	}
 
 	validateNodeParameters(options, {
-		value: { type: 'number', optional: true },
-		comment: { type: 'string', optional: true },
-		timestamp: { type: 'number', optional: true },
+		value: { type: 'number' },
+		comment: { type: 'string' },
+		timestamp: { type: 'number' },
 	});
 
 	const data = {
@@ -1244,8 +1244,8 @@ async function executeChargeOperations(
 		assertParamIsNumber('amount', amount);
 		const options = context.getNodeParameter('additionalFields', itemIndex);
 		validateNodeParameters(options, {
-			note: { type: 'string', optional: true },
-			dryrun: { type: 'boolean', optional: true },
+			note: { type: 'string' },
+			dryrun: { type: 'boolean' },
 		});
 		const data = {
 			amount,
@@ -1279,15 +1279,15 @@ async function executeGoalCreate(
 	}
 
 	validateNodeParameters(options, {
-		goaldate: { type: 'number', optional: true },
-		goalval: { type: 'number', optional: true },
-		rate: { type: 'number', optional: true },
-		initval: { type: 'number', optional: true },
-		secret: { type: 'boolean', optional: true },
-		datapublic: { type: 'boolean', optional: true },
-		datasource: { type: 'string', optional: true },
-		dryrun: { type: 'boolean', optional: true },
-		tags: { type: 'string[]', optional: true },
+		goaldate: { type: 'number' },
+		goalval: { type: 'number' },
+		rate: { type: 'number' },
+		initval: { type: 'number' },
+		secret: { type: 'boolean' },
+		datapublic: { type: 'boolean' },
+		datasource: { type: 'string' },
+		dryrun: { type: 'boolean' },
+		tags: { type: 'string[]' },
 	});
 
 	const data = {
@@ -1309,8 +1309,8 @@ async function executeGoalGet(
 	assertParamIsString('goalName', goalName);
 	const options = context.getNodeParameter('additionalFields', itemIndex);
 	validateNodeParameters(options, {
-		datapoints: { type: 'boolean', optional: true },
-		emaciated: { type: 'boolean', optional: true },
+		datapoints: { type: 'boolean' },
+		emaciated: { type: 'boolean' },
 	});
 	const data = {
 		goalName,
@@ -1326,7 +1326,7 @@ async function executeGoalGetAll(
 ): Promise<JsonObject[]> {
 	const options = context.getNodeParameter('additionalFields', itemIndex);
 	validateNodeParameters(options, {
-		emaciated: { type: 'boolean', optional: true },
+		emaciated: { type: 'boolean' },
 	});
 	const data = { ...options };
 
@@ -1339,7 +1339,7 @@ async function executeGoalGetArchived(
 ): Promise<JsonObject[]> {
 	const options = context.getNodeParameter('additionalFields', itemIndex);
 	validateNodeParameters(options, {
-		emaciated: { type: 'boolean', optional: true },
+		emaciated: { type: 'boolean' },
 	});
 	const data = { ...options };
 
@@ -1364,16 +1364,16 @@ async function executeGoalUpdate(
 		options.goaldate = moment.tz(options.goaldate, timezone).unix();
 	}
 	validateNodeParameters(options, {
-		title: { type: 'string', optional: true },
-		yaxis: { type: 'string', optional: true },
-		tmin: { type: 'string', optional: true },
-		tmax: { type: 'string', optional: true },
-		goaldate: { type: 'number', optional: true },
-		secret: { type: 'boolean', optional: true },
-		datapublic: { type: 'boolean', optional: true },
-		roadall: { type: 'object', optional: true },
-		datasource: { type: 'string', optional: true },
-		tags: { type: 'string[]', optional: true },
+		title: { type: 'string' },
+		yaxis: { type: 'string' },
+		tmin: { type: 'string' },
+		tmax: { type: 'string' },
+		goaldate: { type: 'number' },
+		secret: { type: 'boolean' },
+		datapublic: { type: 'boolean' },
+		roadall: { type: 'object' },
+		datasource: { type: 'string' },
+		tags: { type: 'string[]' },
 	});
 	const data = {
 		goalName,
@@ -1489,11 +1489,11 @@ async function executeUserOperations(
 			options.diff_since = moment.tz(options.diff_since, timezone).unix();
 		}
 		validateNodeParameters(options, {
-			associations: { type: 'boolean', optional: true },
-			diff_since: { type: 'number', optional: true },
-			skinny: { type: 'boolean', optional: true },
-			emaciated: { type: 'boolean', optional: true },
-			datapoints_count: { type: 'number', optional: true },
+			associations: { type: 'boolean' },
+			diff_since: { type: 'number' },
+			skinny: { type: 'boolean' },
+			emaciated: { type: 'boolean' },
+			datapoints_count: { type: 'number' },
 		});
 		const data = { ...options };
 

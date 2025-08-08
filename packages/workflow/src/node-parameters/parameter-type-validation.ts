@@ -82,9 +82,9 @@ function assertIsValidObject(value: unknown): asserts value is Record<string, un
 function assertIsRequiredParameter(
 	parameterName: string,
 	value: unknown,
-	isOptional: boolean,
+	isRequired: boolean,
 ): void {
-	if (!isOptional && value === undefined) {
+	if (isRequired && value === undefined) {
 		assertUserInput(false, `Required parameter "${parameterName}" is missing`);
 	}
 }
@@ -196,14 +196,14 @@ type InferSingleParameterType<T extends ParameterType> = T extends 'string'
 								: unknown;
 
 export function validateNodeParameters<
-	T extends Record<string, { type: ParameterType | ParameterType[]; optional?: boolean }>,
+	T extends Record<string, { type: ParameterType | ParameterType[]; required?: boolean }>,
 >(
 	value: unknown,
 	parameters: T,
 ): asserts value is {
-	[K in keyof T]: T[K]['optional'] extends true
-		? InferParameterType<T[K]['type']> | undefined
-		: InferParameterType<T[K]['type']>;
+	[K in keyof T]: T[K]['required'] extends true
+		? InferParameterType<T[K]['type']>
+		: InferParameterType<T[K]['type']> | undefined;
 } {
 	assertIsValidObject(value);
 
@@ -211,9 +211,11 @@ export function validateNodeParameters<
 		const param = parameters[key];
 		const paramValue = value[key];
 
-		assertIsRequiredParameter(key, paramValue, param.optional ?? false);
+		assertIsRequiredParameter(key, paramValue, param.required ?? false);
 
-		if (paramValue !== undefined) {
+		// If required, value cannot be undefined and must be validated
+		// If not required, value can be undefined but should be validated when present
+		if (param.required || paramValue !== undefined) {
 			const types = Array.isArray(param.type) ? param.type : [param.type];
 			validateParameterAgainstTypes(key, paramValue, types);
 		}

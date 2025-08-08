@@ -601,16 +601,16 @@ export class ChatTrigger extends Node {
 
 		const options = ctx.getNodeParameter('options', {});
 		validateNodeParameters(options, {
-			getStarted: { type: 'string', optional: true },
-			inputPlaceholder: { type: 'string', optional: true },
-			loadPreviousSession: { type: 'string', optional: true },
-			showWelcomeScreen: { type: 'boolean', optional: true },
-			subtitle: { type: 'string', optional: true },
-			title: { type: 'string', optional: true },
-			allowFileUploads: { type: 'boolean', optional: true },
-			allowedFilesMimeTypes: { type: 'string', optional: true },
-			customCss: { type: 'string', optional: true },
-			responseMode: { type: 'string', optional: true },
+			getStarted: { type: 'string' },
+			inputPlaceholder: { type: 'string' },
+			loadPreviousSession: { type: 'string' },
+			showWelcomeScreen: { type: 'boolean' },
+			subtitle: { type: 'string' },
+			title: { type: 'string' },
+			allowFileUploads: { type: 'boolean' },
+			allowedFilesMimeTypes: { type: 'string' },
+			customCss: { type: 'string' },
+			responseMode: { type: 'string' },
 		});
 
 		const loadPreviousSession = options.loadPreviousSession;

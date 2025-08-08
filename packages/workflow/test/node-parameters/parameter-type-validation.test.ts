@@ -16,9 +16,9 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				name: { type: 'string' as const },
-				age: { type: 'number' as const },
-				active: { type: 'boolean' as const },
+				name: { type: 'string' as const, required: true },
+				age: { type: 'number' as const, required: true },
+				active: { type: 'boolean' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -31,8 +31,8 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				name: { type: 'string' as const },
-				description: { type: 'string' as const, optional: true },
+				name: { type: 'string' as const, required: true },
+				description: { type: 'string' as const },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -44,8 +44,8 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				name: { type: 'string' as const },
-				description: { type: 'string' as const, optional: true },
+				name: { type: 'string' as const, required: true },
+				description: { type: 'string' as const },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -59,9 +59,9 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				tags: { type: 'string[]' as const },
-				numbers: { type: 'number[]' as const },
-				flags: { type: 'boolean[]' as const },
+				tags: { type: 'string[]' as const, required: true },
+				numbers: { type: 'number[]' as const, required: true },
+				flags: { type: 'boolean[]' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -77,7 +77,7 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				resource: { type: 'resource-locator' as const },
+				resource: { type: 'resource-locator' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -92,7 +92,7 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				config: { type: 'object' as const },
+				config: { type: 'object' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -104,7 +104,7 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				multiType: { type: ['string', 'number'] as Array<'string' | 'number'> },
+				multiType: { type: ['string', 'number'] as Array<'string' | 'number'>, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -119,7 +119,7 @@ describe('Type assertion functions', () => {
 
 		it('should throw for null value', () => {
 			const parameters = {
-				name: { type: 'string' as const },
+				name: { type: 'string' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(null, parameters)).toThrow('Value is not a valid object');
@@ -127,7 +127,7 @@ describe('Type assertion functions', () => {
 
 		it('should throw for non-object value', () => {
 			const parameters = {
-				name: { type: 'string' as const },
+				name: { type: 'string' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters('not an object', parameters)).toThrow(
@@ -143,7 +143,7 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				name: { type: 'string' as const },
+				name: { type: 'string' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).toThrow(
@@ -157,7 +157,7 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				name: { type: 'string' as const },
+				name: { type: 'string' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).toThrow(
@@ -171,7 +171,7 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				tags: { type: 'string[]' as const },
+				tags: { type: 'string[]' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).toThrow(
@@ -185,7 +185,7 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				tags: { type: 'string[]' as const },
+				tags: { type: 'string[]' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).toThrow(
@@ -202,7 +202,7 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				resource: { type: 'resource-locator' as const },
+				resource: { type: 'resource-locator' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).toThrow(
@@ -216,7 +216,7 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				config: { type: 'object' as const },
+				config: { type: 'object' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).toThrow(
@@ -230,7 +230,7 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				multiType: { type: ['string', 'number'] as Array<'string' | 'number'> },
+				multiType: { type: ['string', 'number'] as Array<'string' | 'number'>, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).toThrow(
@@ -265,11 +265,11 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				name: { type: 'string' as const },
-				tags: { type: 'string[]' as const },
-				config: { type: 'object' as const },
-				resource: { type: 'resource-locator' as const },
-				optionalField: { type: 'string' as const, optional: true },
+				name: { type: 'string' as const, required: true },
+				tags: { type: 'string[]' as const, required: true },
+				config: { type: 'object' as const, required: true },
+				resource: { type: 'resource-locator' as const, required: true },
+				optionalField: { type: 'string' as const },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -281,7 +281,7 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				emptyTags: { type: 'string[]' as const },
+				emptyTags: { type: 'string[]' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -294,8 +294,8 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				name: { type: 'string' as const },
-				optionalField: { type: 'string' as const, optional: true },
+				name: { type: 'string' as const, required: true },
+				optionalField: { type: 'string' as const },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).toThrow(
@@ -314,7 +314,7 @@ describe('Type assertion functions', () => {
 			};
 
 			const parameters = {
-				resource: { type: 'resource-locator' as const },
+				resource: { type: 'resource-locator' as const, required: true },
 			};
 
 			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -427,7 +427,7 @@ describe('Type assertion functions', () => {
 				};
 
 				const parameters = {
-					number: { type: 'number' as const },
+					number: { type: 'number' as const, required: true },
 				};
 
 				// NaN is of type 'number' in JavaScript
@@ -440,7 +440,7 @@ describe('Type assertion functions', () => {
 				};
 
 				const parameters = {
-					number: { type: 'number' as const },
+					number: { type: 'number' as const, required: true },
 				};
 
 				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -452,7 +452,7 @@ describe('Type assertion functions', () => {
 				};
 
 				const parameters = {
-					mixed: { type: 'number[]' as const },
+					mixed: { type: 'number[]' as const, required: true },
 				};
 
 				expect(() => validateNodeParameters(value, parameters)).toThrow(
@@ -469,7 +469,7 @@ describe('Type assertion functions', () => {
 				};
 
 				const parameters = {
-					nested: { type: 'object' as const },
+					nested: { type: 'object' as const, required: true },
 				};
 
 				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -485,7 +485,7 @@ describe('Type assertion functions', () => {
 				};
 
 				const parameters = {
-					resource: { type: 'resource-locator' as const },
+					resource: { type: 'resource-locator' as const, required: true },
 				};
 
 				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -501,7 +501,7 @@ describe('Type assertion functions', () => {
 				};
 
 				const parameters = {
-					resource: { type: 'resource-locator' as const },
+					resource: { type: 'resource-locator' as const, required: true },
 				};
 
 				expect(() => validateNodeParameters(value, parameters)).toThrow(
@@ -515,7 +515,7 @@ describe('Type assertion functions', () => {
 				};
 
 				const parameters = {
-					name: { type: 'string' as const },
+					name: { type: 'string' as const, required: true },
 				};
 
 				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -527,7 +527,7 @@ describe('Type assertion functions', () => {
 				};
 
 				const parameters = {
-					count: { type: 'number' as const },
+					count: { type: 'number' as const, required: true },
 				};
 
 				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -539,7 +539,7 @@ describe('Type assertion functions', () => {
 				};
 
 				const parameters = {
-					flags: { type: 'boolean[]' as const },
+					flags: { type: 'boolean[]' as const, required: true },
 				};
 
 				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -553,6 +553,7 @@ describe('Type assertion functions', () => {
 				const parameters = {
 					multiType: {
 						type: ['string', 'number', 'boolean'] as Array<'string' | 'number' | 'boolean'>,
+						required: true,
 					},
 				};
 
@@ -572,7 +573,10 @@ describe('Type assertion functions', () => {
 				};
 
 				const parameters = {
-					flexParam: { type: ['string', 'string[]'] as Array<'string' | 'string[]'> },
+					flexParam: {
+						type: ['string', 'string[]'] as Array<'string' | 'string[]'>,
+						required: true,
+					},
 				};
 
 				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -590,7 +594,7 @@ describe('Type assertion functions', () => {
 				value.name = 'test';
 
 				const parameters = {
-					name: { type: 'string' as const },
+					name: { type: 'string' as const, required: true },
 				};
 
 				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
@@ -614,9 +618,10 @@ describe('Type assertion functions', () => {
 				sparse[2] = 'c';
 				// sparse[1] is undefined
 
-				// Note: Array.every() skips sparse/empty indices, so this passes validation
-				// This may be unintended behavior but matches current implementation
-				expect(() => assertParamIsArray('testParam', sparse, isString)).not.toThrow();
+				// For loop implementation properly validates sparse arrays and throws on undefined elements
+				expect(() => assertParamIsArray('testParam', sparse, isString)).toThrow(
+					'Parameter "testParam" has elements that don\'t match expected types',
+				);
 			});
 
 			it('should handle arrays with explicit undefined values', () => {
