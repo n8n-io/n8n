@@ -1,5 +1,5 @@
 import { camelCase, capitalCase } from 'change-case';
-import { SyntaxKind } from 'ts-morph';
+import { ts, SyntaxKind, printNode } from 'ts-morph';
 
 import {
 	getChildObjectLiteral,
@@ -144,7 +144,17 @@ export function addCredentialToNode({
 		const initializer = credentialsProp.getFirstDescendantByKindOrThrow(
 			SyntaxKind.ArrayLiteralExpression,
 		);
-		initializer.addElement(`{ name: '${credentialName}', required: true }`);
+		const credentialObject = ts.factory.createObjectLiteralExpression([
+			ts.factory.createPropertyAssignment(
+				ts.factory.createIdentifier('name'),
+				ts.factory.createStringLiteral(credentialName),
+			),
+			ts.factory.createPropertyAssignment(
+				ts.factory.createIdentifier('required'),
+				ts.factory.createTrue(),
+			),
+		]);
+		initializer.addElement(printNode(credentialObject));
 	}
 
 	return sourceFile;

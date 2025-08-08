@@ -9,7 +9,7 @@ import { declarativeTemplatePrompt, nodeNamePrompt, nodeTypePrompt } from './pro
 import { createIntro } from './utils';
 import { validateNodeName } from './validation';
 import type { TemplateData, TemplateWithRun } from '../../template/core';
-import { templates } from '../../template/templates';
+import { getTemplate, isTemplateName, isTemplateType, templates } from '../../template/templates';
 import { delayAtLeast, folderExists } from '../../utils/filesystem';
 import { tryReadGitUser } from '../../utils/git';
 import { detectPackageManager, installDependencies } from '../../utils/package-manager';
@@ -63,22 +63,27 @@ export default class Create extends Command {
 		}
 
 		const type = typeFlag ?? (await nodeTypePrompt());
+		if (!isTemplateType(type)) {
+			return onCancel(`Invalid template type: ${type}`);
+		}
 
-		let template = templates.programmatic.example;
+		let template: TemplateWithRun = templates.programmatic.example;
 		if (templateFlag) {
-			template = (templates as Record<string, Record<string, TemplateWithRun>>)[type][
-				camelCase(templateFlag)
-			];
+			const name = camelCase(templateFlag);
+			if (!isTemplateName(type, name)) {
+				return onCancel(`Invalid template name: ${name} for type: ${type}`);
+			}
+			template = getTemplate(type, name);
 		} else if (type === 'declarative') {
 			const chosenTemplate = await declarativeTemplatePrompt();
-			template = templates.declarative[chosenTemplate];
+			template = getTemplate('declarative', chosenTemplate) as TemplateWithRun;
 		}
 
 		const config = (await template.prompts?.()) ?? {};
 		const packageManager = detectPackageManager() ?? 'npm';
 		const templateData: TemplateData = {
-			path: destination,
-			nodeName,
+			destinationPath: destination,
+			nodePackageName: nodeName,
 			config,
 			user: tryReadGitUser(),
 			packageManager: {

@@ -1,4 +1,4 @@
-# {{nodeName}}
+# {{nodePackageName}}
 
 This is an n8n community node. It lets you use Github Issues in your n8n workflows.
 

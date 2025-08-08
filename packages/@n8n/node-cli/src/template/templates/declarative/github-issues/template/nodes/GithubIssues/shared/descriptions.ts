@@ -145,7 +145,7 @@ export const issueSelect: INodeProperties = {
 			name: 'name',
 			type: 'string',
 			placeholder: 'e.g. 123',
-			url: '=https://github.com/{{$parameter.owner}}/{{$parameter.repository}}/{{$value}}',
+			url: '=https://github.com/{{$parameter.owner}}/{{$parameter.repository}}/issues/{{$value}}',
 		},
 	],
 };

@@ -1,11 +1,11 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ExampleOAuth2Api implements ICredentialType {
-	name = 'exampleApi';
+	name = 'exampleOAuth2Api';
 
 	extends = ['oAuth2Api'];
 
-	displayName = 'Example API';
+	displayName = 'Example OAuth2 API';
 
 	// Link to your community node's README
 	documentationUrl = 'https://github.com/org/repo?tab=readme-ov-file#credentials';

@@ -2,7 +2,8 @@ import { cancel, intro, log, outro, spinner } from '@clack/prompts';
 import { Command } from '@oclif/core';
 import { spawn } from 'child_process';
 import glob from 'fast-glob';
-import { cp } from 'node:fs/promises';
+import { cp, mkdir } from 'node:fs/promises';
+import path from 'node:path';
 import picocolors from 'picocolors';
 
 export default class Build extends Command {
@@ -53,6 +54,11 @@ async function runTscBuild(): Promise<void> {
 			stderr += chunk.toString();
 		});
 
+		child.on('error', (error) => {
+			log.error(`${stdout.trim()}\n${stderr.trim()}`);
+			reject(error);
+		});
+
 		child.on('close', (code) => {
 			if (code === 0) {
 				resolve();
@@ -70,6 +76,10 @@ export async function copyStaticFiles() {
 	});
 
 	return await Promise.all(
-		staticFiles.map(async (path) => await cp(path, `dist/${path}`, { recursive: true })),
+		staticFiles.map(async (filePath) => {
+			const destPath = path.join('dist', filePath);
+			await mkdir(path.dirname(destPath), { recursive: true });
+			return await cp(filePath, destPath, { recursive: true });
+		}),
 	);
 }

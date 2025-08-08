@@ -7,7 +7,7 @@ export class GithubIssuesOAuth2Api implements ICredentialType {
 
 	displayName = 'GitHub Issues OAuth2 API';
 
-	icon: Icon = { light: 'file:github.svg', dark: 'file:github.dark.svg' };
+	icon: Icon = { light: 'file:../icons/github.svg', dark: 'file:../icons/github.dark.svg' };
 
 	documentationUrl = 'https://docs.github.com/en/apps/oauth-apps';
 

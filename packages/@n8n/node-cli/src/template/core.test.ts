@@ -21,8 +21,8 @@ const mockHandlebars = vi.mocked(handlebars);
 const mockCopyFolder = vi.mocked(copyFolder);
 
 const baseData: TemplateData = {
-	path: '/dest',
-	nodeName: 'MyNode',
+	destinationPath: '/dest',
+	nodePackageName: 'MyNode',
 	packageManager: {
 		name: 'npm',
 		installCommand: 'npm ci',
@@ -60,7 +60,7 @@ describe('Templates > core', () => {
 
 		it('renders and writes changed content', async () => {
 			mockGlob.default.mockResolvedValue(['/dest/file.md']);
-			mockFs.readFile.mockResolvedValue('Hello {{nodeName}}');
+			mockFs.readFile.mockResolvedValue('Hello {{nodePackageName}}');
 			mockHandlebars.compile.mockReturnValue(() => 'Hello MyNode');
 			mockFs.writeFile.mockResolvedValue();
 

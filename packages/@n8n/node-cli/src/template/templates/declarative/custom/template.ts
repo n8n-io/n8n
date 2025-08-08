@@ -30,15 +30,15 @@ export const customTemplate = createTemplate({
 		return { credentialType, baseUrl };
 	},
 	run: async (data) => {
-		const config = data.config as CustomTemplateConfig;
-		await renameNode(data, config, 'Example');
-		await addCredential(data, config);
+		await renameNode(data, 'Example');
+		await addCredential(data);
 	},
 });
 
-async function renameNode(data: TemplateData, config: CustomTemplateConfig, oldNodeName: string) {
-	const newClassName = pascalCase(data.nodeName.replace('n8n-nodes-', ''));
-	const oldNodeDir = path.resolve(data.path, `nodes/${oldNodeName}`);
+async function renameNode(data: TemplateData<CustomTemplateConfig>, oldNodeName: string) {
+	const { config, nodePackageName: nodeName, destinationPath } = data;
+	const newClassName = pascalCase(nodeName.replace('n8n-nodes-', ''));
+	const oldNodeDir = path.resolve(destinationPath, `nodes/${oldNodeName}`);
 
 	await renameFilesInDirectory(oldNodeDir, oldNodeName, newClassName);
 	const newNodeDir = await renameDirectory(oldNodeDir, newClassName);
@@ -52,10 +52,11 @@ async function renameNode(data: TemplateData, config: CustomTemplateConfig, oldN
 	await writeFileSafe(newNodePath, newNodeAst.getFullText());
 
 	const nodes = [`dist/nodes/${newClassName}/${newClassName}.node.js`];
-	await setNodesPackageJson(data.path, nodes);
+	await setNodesPackageJson(destinationPath, nodes);
 }
 
-async function addCredential(data: TemplateData, config: CustomTemplateConfig) {
+async function addCredential(data: TemplateData<CustomTemplateConfig>) {
+	const { config, destinationPath, nodePackageName } = data;
 	if (config.credentialType === 'none') return;
 
 	const credentialTemplateName =
@@ -67,8 +68,8 @@ async function addCredential(data: TemplateData, config: CustomTemplateConfig) {
 		`../../shared/credentials/${credentialTemplateName}.credentials.ts`,
 	);
 
-	const nodeName = data.nodeName.replace('n8n-nodes', '');
-	const repoName = data.nodeName;
+	const nodeName = nodePackageName.replace('n8n-nodes', '');
+	const repoName = nodeName;
 	const { baseUrl, credentialType } = config;
 	const credentialClassName =
 		config.credentialType === 'oauth2'
@@ -91,18 +92,18 @@ async function addCredential(data: TemplateData, config: CustomTemplateConfig) {
 	});
 
 	await writeFileSafe(
-		path.resolve(data.path, `credentials/${credentialClassName}.credentials.ts`),
+		path.resolve(destinationPath, `credentials/${credentialClassName}.credentials.ts`),
 		updatedCredentialAst.getFullText(),
 	);
 
 	await addCredentialPackageJson(
-		data.path,
+		destinationPath,
 		`dist/credentials/${credentialClassName}.credentials.js`,
 	);
 
-	for (const nodePath of await getPackageJsonNodes(data.path)) {
+	for (const nodePath of await getPackageJsonNodes(destinationPath)) {
 		const srcNodePath = path.resolve(
-			data.path,
+			destinationPath,
 			nodePath.replace(/.js$/, '.ts').replace(/^dist\//, ''),
 		);
 
