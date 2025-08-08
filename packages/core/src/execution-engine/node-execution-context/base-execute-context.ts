@@ -173,18 +173,18 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	}
 
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData {
-		return new WorkflowDataProxy(
-			this.workflow,
-			this.runExecutionData,
-			this.runIndex,
+		return new WorkflowDataProxy({
+			workflow: this.workflow,
+			runExecutionData: this.runExecutionData,
+			runIndex: this.runIndex,
 			itemIndex,
-			this.node.name,
-			this.connectionInputData,
-			{},
-			this.mode,
-			this.additionalKeys,
-			this.executeData,
-		).getDataProxy();
+			activeNodeName: this.node.name,
+			connectionInputData: this.connectionInputData,
+			siblingParameters: {},
+			mode: this.mode,
+			additionalKeys: this.additionalKeys,
+			executeData: this.executeData,
+		}).getDataProxy();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any

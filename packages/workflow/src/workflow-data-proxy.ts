@@ -57,6 +57,23 @@ const PAIRED_ITEM_METHOD = {
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
 
+export interface IWorkflowDataProxyOptions {
+	workflow: Workflow;
+	runExecutionData: IRunExecutionData | null;
+	runIndex: number;
+	itemIndex: number;
+	activeNodeName: string;
+	connectionInputData: INodeExecutionData[];
+	siblingParameters: INodeParameters;
+	mode: WorkflowExecuteMode;
+	additionalKeys: IWorkflowDataProxyAdditionalKeys;
+	executeData?: IExecuteData;
+	defaultReturnRunIndex?: number;
+	selfData?: IDataObject;
+	contextNodeName?: string;
+	envProviderState?: EnvProviderState;
+}
+
 export class WorkflowDataProxy {
 	private runExecutionData: IRunExecutionData | null;
 
@@ -64,34 +81,30 @@ export class WorkflowDataProxy {
 
 	private timezone: string;
 
-	// TODO: Clean that up at some point and move all the options into an options object
-	constructor(
-		private workflow: Workflow,
-		runExecutionData: IRunExecutionData | null,
-		private runIndex: number,
-		private itemIndex: number,
-		private activeNodeName: string,
-		connectionInputData: INodeExecutionData[],
-		private siblingParameters: INodeParameters,
-		private mode: WorkflowExecuteMode,
-		private additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		private executeData?: IExecuteData,
-		private defaultReturnRunIndex = -1,
-		private selfData: IDataObject = {},
-		private contextNodeName: string = activeNodeName,
-		private envProviderState?: EnvProviderState,
-	) {
-		this.runExecutionData = isScriptingNode(this.contextNodeName, workflow)
-			? runExecutionData !== null
-				? augmentObject(runExecutionData)
+	constructor(options: IWorkflowDataProxyOptions) {
+		this.workflow = options.workflow;
+		this.runIndex = options.runIndex;
+		this.itemIndex = options.itemIndex;
+		this.activeNodeName = options.activeNodeName;
+		this.siblingParameters = options.siblingParameters;
+		this.mode = options.mode;
+		this.additionalKeys = options.additionalKeys;
+		this.executeData = options.executeData;
+		this.defaultReturnRunIndex = options.defaultReturnRunIndex ?? -1;
+		this.selfData = options.selfData ?? {};
+		this.contextNodeName = options.contextNodeName ?? options.activeNodeName;
+		this.envProviderState = options.envProviderState;
+		this.runExecutionData = isScriptingNode(this.contextNodeName, this.workflow)
+			? options.runExecutionData !== null
+				? augmentObject(options.runExecutionData)
 				: null
-			: runExecutionData;
+			: options.runExecutionData;
 
-		this.connectionInputData = isScriptingNode(this.contextNodeName, workflow)
-			? augmentArray(connectionInputData)
-			: connectionInputData;
+		this.connectionInputData = isScriptingNode(this.contextNodeName, this.workflow)
+			? augmentArray(options.connectionInputData)
+			: options.connectionInputData;
 
-		this.timezone = workflow.settings?.timezone ?? getGlobalState().defaultTimezone;
+		this.timezone = this.workflow.settings?.timezone ?? getGlobalState().defaultTimezone;
 		Settings.defaultZone = this.timezone;
 	}
 
@@ -1424,21 +1437,21 @@ export class WorkflowDataProxy {
 			},
 			$item: (itemIndex: number, runIndex?: number) => {
 				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
-				const dataProxy = new WorkflowDataProxy(
-					this.workflow,
-					this.runExecutionData,
-					this.runIndex,
+				const dataProxy = new WorkflowDataProxy({
+					workflow: this.workflow,
+					runExecutionData: this.runExecutionData,
+					runIndex: this.runIndex,
 					itemIndex,
-					this.activeNodeName,
-					this.connectionInputData,
-					that.siblingParameters,
-					that.mode,
-					that.additionalKeys,
-					that.executeData,
+					activeNodeName: this.activeNodeName,
+					connectionInputData: this.connectionInputData,
+					siblingParameters: that.siblingParameters,
+					mode: that.mode,
+					additionalKeys: that.additionalKeys,
+					executeData: that.executeData,
 					defaultReturnRunIndex,
-					{},
-					that.contextNodeName,
-				);
+					selfData: {},
+					contextNodeName: that.contextNodeName,
+				});
 				return dataProxy.getDataProxy();
 			},
 			$fromAI: handleFromAi,

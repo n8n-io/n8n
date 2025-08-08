@@ -210,8 +210,8 @@ describe('BuiltInsParser', () => {
 				node: data.node,
 				source: data.connectionInputSource,
 			};
-			const dataProxy = new WorkflowDataProxy(
-				new Workflow({
+			const dataProxy = new WorkflowDataProxy({
+				workflow: new Workflow({
 					...data.workflow,
 					nodeTypes: {
 						getByName() {
@@ -225,30 +225,30 @@ describe('BuiltInsParser', () => {
 						},
 					},
 				}),
-				data.runExecutionData,
-				data.runIndex,
-				0,
-				data.activeNodeName,
-				[],
-				data.siblingParameters,
-				data.mode,
-				getAdditionalKeys(
+				runExecutionData: data.runExecutionData,
+				runIndex: data.runIndex,
+				itemIndex: 0,
+				activeNodeName: data.activeNodeName,
+				connectionInputData: [],
+				siblingParameters: data.siblingParameters,
+				mode: data.mode,
+				additionalKeys: getAdditionalKeys(
 					data.additionalData as IWorkflowExecuteAdditionalData,
 					data.mode,
 					data.runExecutionData,
 				),
 				executeData,
-				data.defaultReturnRunIndex,
-				data.selfData,
-				data.contextNodeName,
+				defaultReturnRunIndex: data.defaultReturnRunIndex,
+				selfData: data.selfData,
+				contextNodeName: data.contextNodeName,
 				// Make sure that even if we don't receive the envProviderState for
 				// whatever reason, we don't expose the task runner's env to the code
-				data.envProviderState ?? {
+				envProviderState: data.envProviderState ?? {
 					env: {},
 					isEnvAccessBlocked: false,
 					isProcessAvailable: true,
 				},
-			).getDataProxy({ throwOnMissingExecutionData: false });
+			}).getDataProxy({ throwOnMissingExecutionData: false });
 
 			/**
 			 * NOTE! If you are adding new built-ins to the WorkflowDataProxy class
