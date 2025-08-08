@@ -161,12 +161,22 @@ const credentialsParameterIndex = computed(() => {
 	return filteredParameters.value.findIndex((parameter) => parameter.type === 'credentials');
 });
 
+const calloutParameterIndex = computed(() => {
+	return filteredParameters.value.findIndex((parameter) => parameter.type === 'callout');
+});
+
 const indexToShowSlotAt = computed(() => {
 	if (credentialsParameterIndex.value !== -1) {
 		return credentialsParameterIndex.value;
 	}
 
 	let index = 0;
+
+	// If the node has a callout don't show credentials before it
+	if (calloutParameterIndex.value !== -1) {
+		index = calloutParameterIndex.value + 1;
+	}
+
 	// For nodes that use old credentials UI, keep credentials below authentication field in NDV
 	// otherwise credentials will use auth filed position since the auth field is moved to credentials modal
 	const fieldOffset = KEEP_AUTH_IN_NDV_FOR_NODES.includes(nodeType.value?.name || '') ? 1 : 0;
