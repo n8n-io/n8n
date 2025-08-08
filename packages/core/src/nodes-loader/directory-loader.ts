@@ -234,11 +234,13 @@ export abstract class DirectoryLoader {
 		this.fixIconPaths(tempCredential, filePath);
 
 		const credentialType = tempCredential.name;
+		tempCredential.supportedNodes = this.nodesByCredential[credentialType];
+
 		this.known.credentials[credentialType] = {
 			className: tempCredential.constructor.name,
 			sourcePath: filePath,
 			extends: tempCredential.extends,
-			supportedNodes: this.nodesByCredential[credentialType],
+			supportedNodes: tempCredential.supportedNodes,
 		};
 
 		this.credentialTypes[credentialType] = {

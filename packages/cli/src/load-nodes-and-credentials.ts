@@ -346,7 +346,7 @@ export class LoadNodesAndCredentials {
 				types.credentials.map(({ supportedNodes, ...rest }) => ({
 					...rest,
 					supportedNodes:
-						loader instanceof PackageDirectoryLoader
+						loader instanceof PackageDirectoryLoader || loader instanceof CustomDirectoryLoader
 							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
 							: undefined,
 				})),
@@ -380,7 +380,7 @@ export class LoadNodesAndCredentials {
 					className,
 					sourcePath: path.join(directory, sourcePath),
 					supportedNodes:
-						loader instanceof PackageDirectoryLoader
+						loader instanceof PackageDirectoryLoader || loader instanceof CustomDirectoryLoader
 							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
 							: undefined,
 					extends: extendsArr,
