@@ -38,11 +38,6 @@ export function loadNodesFromFile(): INodeTypeDescription[] {
 			let selectedNode: NodeWithVersion | undefined;
 
 			for (const node of versions) {
-				// const versionInfo = Array.isArray(node.version)
-				// 	? `[${node.version.join(', ')}]`
-				// 	: node.version;
-				// console.log(`  - Version: ${versionInfo}, Default: ${node.defaultVersion}`);
-
 				// Select the node that matches the default version
 				if (node.defaultVersion !== undefined) {
 					if (Array.isArray(node.version)) {
@@ -58,12 +53,8 @@ export function loadNodesFromFile(): INodeTypeDescription[] {
 
 			// If we found a matching node, use it; otherwise use the first one
 			if (selectedNode) {
-				// console.log(
-				// 	`  Selected version: ${Array.isArray(selectedNode.version) ? selectedNode.version.join(', ') : selectedNode.version}`,
-				// );
 				latestNodes.push(selectedNode);
 			} else {
-				// console.log('  Warning: No node matches defaultVersion, using first node');
 				latestNodes.push(versions[0]);
 			}
 		} else {
