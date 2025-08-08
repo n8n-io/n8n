@@ -10,10 +10,10 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	jsonParse,
-	assertIsString,
-	assertIsNodeParameters,
-	assertIsNumber,
-	assertIsArray,
+	assertParamIsString,
+	validateNodeParameters,
+	assertParamIsNumber,
+	assertParamIsArray,
 } from 'n8n-workflow';
 
 import type { Datapoint } from './Beeminder.node.functions';
@@ -1040,7 +1040,7 @@ export class Beeminder implements INodeType {
 
 				if (resource === 'datapoint') {
 					const goalName = this.getNodeParameter('goalName', i);
-					assertIsString('goalName', goalName);
+					assertParamIsString('goalName', goalName);
 					results = await executeDatapointOperations(this, operation, goalName, i, timezone);
 				} else if (resource === 'charge') {
 					results = await executeChargeOperations(this, operation, i);
@@ -1089,14 +1089,14 @@ async function executeDatapointCreate(
 	timezone: string,
 ): Promise<JsonObject[]> {
 	const value = context.getNodeParameter('value', itemIndex);
-	assertIsNumber('value', value);
+	assertParamIsNumber('value', value);
 
 	const options = context.getNodeParameter('additionalFields', itemIndex);
 	if (options.timestamp) {
 		options.timestamp = moment.tz(options.timestamp, timezone).unix();
 	}
 
-	assertIsNodeParameters<{
+	validateNodeParameters<{
 		comment?: string;
 		timestamp?: number;
 		requestid?: string;
@@ -1122,7 +1122,7 @@ async function executeDatapointGetAll(
 ): Promise<JsonObject[]> {
 	const returnAll = context.getNodeParameter('returnAll', itemIndex);
 	const options = context.getNodeParameter('options', itemIndex);
-	assertIsNodeParameters<{
+	validateNodeParameters<{
 		sort?: string;
 		page?: number;
 		per?: number;
@@ -1148,13 +1148,13 @@ async function executeDatapointUpdate(
 	timezone: string,
 ): Promise<JsonObject[]> {
 	const datapointId = context.getNodeParameter('datapointId', itemIndex);
-	assertIsString('datapointId', datapointId);
+	assertParamIsString('datapointId', datapointId);
 	const options = context.getNodeParameter('updateFields', itemIndex);
 	if (options.timestamp) {
 		options.timestamp = moment.tz(options.timestamp, timezone).unix();
 	}
 
-	assertIsNodeParameters<{
+	validateNodeParameters<{
 		value?: number;
 		comment?: string;
 		timestamp?: number;
@@ -1179,7 +1179,7 @@ async function executeDatapointDelete(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const datapointId = context.getNodeParameter('datapointId', itemIndex);
-	assertIsString('datapointId', datapointId);
+	assertParamIsString('datapointId', datapointId);
 	const data = {
 		goalName,
 		datapointId,
@@ -1194,7 +1194,7 @@ async function executeDatapointCreateAll(
 ): Promise<JsonObject[]> {
 	const datapoints = context.getNodeParameter('datapoints', itemIndex);
 	const parsedDatapoints = typeof datapoints === 'string' ? jsonParse(datapoints) : datapoints;
-	assertIsArray<Datapoint>(
+	assertParamIsArray<Datapoint>(
 		'datapoints',
 		parsedDatapoints,
 		(val): val is Datapoint => typeof val === 'object' && val !== null && 'value' in val,
@@ -1213,7 +1213,7 @@ async function executeDatapointGet(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const datapointId = context.getNodeParameter('datapointId', itemIndex);
-	assertIsString('datapointId', datapointId);
+	assertParamIsString('datapointId', datapointId);
 	const data = {
 		goalName,
 		datapointId,
@@ -1253,9 +1253,9 @@ async function executeChargeOperations(
 ): Promise<JsonObject[]> {
 	if (operation === 'create') {
 		const amount = context.getNodeParameter('amount', itemIndex);
-		assertIsNumber('amount', amount);
+		assertParamIsNumber('amount', amount);
 		const options = context.getNodeParameter('additionalFields', itemIndex);
-		assertIsNodeParameters<{
+		validateNodeParameters<{
 			note?: string;
 			dryrun?: boolean;
 		}>(options, {
@@ -1278,13 +1278,13 @@ async function executeGoalCreate(
 	timezone: string,
 ): Promise<JsonObject[]> {
 	const slug = context.getNodeParameter('slug', itemIndex);
-	assertIsString('slug', slug);
+	assertParamIsString('slug', slug);
 	const title = context.getNodeParameter('title', itemIndex);
-	assertIsString('title', title);
+	assertParamIsString('title', title);
 	const goalType = context.getNodeParameter('goal_type', itemIndex);
-	assertIsString('goalType', goalType);
+	assertParamIsString('goalType', goalType);
 	const gunits = context.getNodeParameter('gunits', itemIndex);
-	assertIsString('gunits', gunits);
+	assertParamIsString('gunits', gunits);
 	const options = context.getNodeParameter('additionalFields', itemIndex);
 	if ('tags' in options && typeof options.tags === 'string') {
 		options.tags = jsonParse(options.tags);
@@ -1293,7 +1293,7 @@ async function executeGoalCreate(
 		options.goaldate = moment.tz(options.goaldate, timezone).unix();
 	}
 
-	assertIsNodeParameters<{
+	validateNodeParameters<{
 		goaldate?: number;
 		goalval?: number;
 		rate?: number;
@@ -1331,9 +1331,9 @@ async function executeGoalGet(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName);
 	const options = context.getNodeParameter('additionalFields', itemIndex);
-	assertIsNodeParameters<{
+	validateNodeParameters<{
 		datapoints?: boolean;
 		emaciated?: boolean;
 	}>(options, {
@@ -1353,7 +1353,7 @@ async function executeGoalGetAll(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const options = context.getNodeParameter('additionalFields', itemIndex);
-	assertIsNodeParameters<{
+	validateNodeParameters<{
 		emaciated?: boolean;
 	}>(options, {
 		emaciated: { type: 'boolean', optional: true },
@@ -1368,7 +1368,7 @@ async function executeGoalGetArchived(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const options = context.getNodeParameter('additionalFields', itemIndex);
-	assertIsNodeParameters<{
+	validateNodeParameters<{
 		emaciated?: boolean;
 	}>(options, {
 		emaciated: { type: 'boolean', optional: true },
@@ -1384,7 +1384,7 @@ async function executeGoalUpdate(
 	timezone: string,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName);
 	const options = context.getNodeParameter('updateFields', itemIndex);
 	if ('tags' in options && typeof options.tags === 'string') {
 		options.tags = jsonParse(options.tags);
@@ -1393,7 +1393,7 @@ async function executeGoalUpdate(
 		options.roadall = jsonParse(options.roadall);
 	}
 	console.log('roadall', typeof options.roadall, options.roadall);
-	assertIsNodeParameters<{
+	validateNodeParameters<{
 		title?: string;
 		yaxis?: string;
 		tmin?: string;
@@ -1431,7 +1431,7 @@ async function executeGoalRefresh(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName);
 	const data = {
 		goalName,
 	};
@@ -1443,7 +1443,7 @@ async function executeGoalShortCircuit(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName);
 
 	const data = {
 		goalName,
@@ -1456,7 +1456,7 @@ async function executeGoalStepDown(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName);
 
 	const data = {
 		goalName,
@@ -1469,7 +1469,7 @@ async function executeGoalCancelStepDown(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName);
 	const data = {
 		goalName,
 	};
@@ -1481,7 +1481,7 @@ async function executeGoalUncle(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const goalName = context.getNodeParameter('goalName', itemIndex);
-	assertIsString('goalName', goalName);
+	assertParamIsString('goalName', goalName);
 	const data = {
 		goalName,
 	};
@@ -1532,7 +1532,7 @@ async function executeUserOperations(
 		if (options.diff_since) {
 			options.diff_since = moment.tz(options.diff_since, timezone).unix();
 		}
-		assertIsNodeParameters<{
+		validateNodeParameters<{
 			associations?: boolean;
 			diff_since?: number;
 			skinny?: boolean;

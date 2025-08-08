@@ -1,6 +1,16 @@
 import { UserError } from '../errors';
 import { assert } from '../utils';
 
+type ParameterType =
+	| 'string'
+	| 'boolean'
+	| 'number'
+	| 'resource-locator'
+	| 'string[]'
+	| 'number[]'
+	| 'boolean[]'
+	| 'object';
+
 export function assertUserInput<T>(condition: T, message?: string): asserts condition {
 	try {
 		assert(condition, message);
@@ -17,7 +27,7 @@ export function assertUserInput<T>(condition: T, message?: string): asserts cond
 	}
 }
 
-function assertIsType<T>(
+function assertParamIsType<T>(
 	parameterName: string,
 	value: unknown,
 	type: 'string' | 'number' | 'boolean',
@@ -25,19 +35,28 @@ function assertIsType<T>(
 	assertUserInput(typeof value === type, `Parameter "${parameterName}" is not ${type}`);
 }
 
-export function assertIsNumber(parameterName: string, value: unknown): asserts value is number {
-	assertIsType<number>(parameterName, value, 'number');
+export function assertParamIsNumber(
+	parameterName: string,
+	value: unknown,
+): asserts value is number {
+	assertParamIsType<number>(parameterName, value, 'number');
 }
 
-export function assertIsString(parameterName: string, value: unknown): asserts value is string {
-	assertIsType<string>(parameterName, value, 'string');
+export function assertParamIsString(
+	parameterName: string,
+	value: unknown,
+): asserts value is string {
+	assertParamIsType<string>(parameterName, value, 'string');
 }
 
-export function assertIsBoolean(parameterName: string, value: unknown): asserts value is boolean {
-	assertIsType<string>(parameterName, value, 'boolean');
+export function assertParamIsBoolean(
+	parameterName: string,
+	value: unknown,
+): asserts value is boolean {
+	assertParamIsType<string>(parameterName, value, 'boolean');
 }
 
-export function assertIsArray<T>(
+export function assertParamIsArray<T>(
 	parameterName: string,
 	value: unknown,
 	validator: (val: unknown) => val is T,
@@ -48,16 +67,6 @@ export function assertIsArray<T>(
 		`Parameter "${parameterName}" has elements that don't match expected types`,
 	);
 }
-
-type ParameterType =
-	| 'string'
-	| 'boolean'
-	| 'number'
-	| 'resource-locator'
-	| 'string[]'
-	| 'number[]'
-	| 'boolean[]'
-	| 'object';
 
 function assertIsValidObject(value: unknown): asserts value is Record<string, unknown> {
 	assertUserInput(typeof value === 'object' && value !== null, 'Value is not a valid object');
@@ -84,7 +93,7 @@ function assertIsResourceLocator(parameterName: string, value: unknown): void {
 	);
 }
 
-function assertIsObjectType(parameterName: string, value: unknown): void {
+function assertParamIsObject(parameterName: string, value: unknown): void {
 	assertUserInput(
 		typeof value === 'object' && value !== null,
 		`Parameter "${parameterName}" is not a valid object`,
@@ -98,16 +107,16 @@ function createElementValidator<T extends 'string' | 'number' | 'boolean'>(eleme
 		typeof val === elementType;
 }
 
-function assertIsArrayType(parameterName: string, value: unknown, arrayType: string): void {
+function assertParamIsArrayOfType(parameterName: string, value: unknown, arrayType: string): void {
 	const baseType = arrayType.slice(0, -2);
 	const elementType =
 		baseType === 'string' || baseType === 'number' || baseType === 'boolean' ? baseType : 'string';
 
 	const validator = createElementValidator(elementType);
-	assertIsArray(parameterName, value, validator);
+	assertParamIsArray(parameterName, value, validator);
 }
 
-function assertIsPrimitiveType(parameterName: string, value: unknown, type: string): void {
+function assertParamIsPrimitive(parameterName: string, value: unknown, type: string): void {
 	assertUserInput(typeof value === type, `Parameter "${parameterName}" is not a valid ${type}`);
 }
 
@@ -120,11 +129,11 @@ function validateParameterType(
 		if (type === 'resource-locator') {
 			assertIsResourceLocator(parameterName, value);
 		} else if (type === 'object') {
-			assertIsObjectType(parameterName, value);
+			assertParamIsObject(parameterName, value);
 		} else if (type.endsWith('[]')) {
-			assertIsArrayType(parameterName, value, type);
+			assertParamIsArrayOfType(parameterName, value, type);
 		} else {
-			assertIsPrimitiveType(parameterName, value, type);
+			assertParamIsPrimitive(parameterName, value, type);
 		}
 		return true;
 	} catch {
@@ -155,7 +164,7 @@ function validateParameterAgainstTypes(
 	}
 }
 
-export function assertIsNodeParameters<T>(
+export function validateNodeParameters<T>(
 	value: unknown,
 	parameters: Record<
 		string,

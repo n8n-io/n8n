@@ -4,9 +4,9 @@ import {
 	Node,
 	NodeConnectionTypes,
 	NodeOperationError,
-	assertIsBoolean,
-	assertIsNodeParameters,
-	assertIsString,
+	assertParamIsBoolean,
+	validateNodeParameters,
+	assertParamIsString,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -587,10 +587,10 @@ export class ChatTrigger extends Node {
 		const res = ctx.getResponseObject();
 
 		const isPublic = ctx.getNodeParameter('public', false);
-		assertIsBoolean('isPublic', isPublic);
+		assertParamIsBoolean('isPublic', isPublic);
 
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
-		assertIsString('mode', nodeMode);
+		assertParamIsString('mode', nodeMode);
 
 		if (!isPublic) {
 			res.status(404).end();
@@ -600,7 +600,7 @@ export class ChatTrigger extends Node {
 		}
 
 		const options = ctx.getNodeParameter('options', {});
-		assertIsNodeParameters<{
+		validateNodeParameters<{
 			getStarted?: string;
 			inputPlaceholder?: string;
 			loadPreviousSession?: string;
@@ -661,7 +661,7 @@ export class ChatTrigger extends Node {
 					| 'basicAuth'
 					| 'n8nUserAuth';
 				const initialMessagesRaw = ctx.getNodeParameter('initialMessages', '');
-				assertIsString('initialRawMessage', initialMessagesRaw);
+				assertParamIsString('initialRawMessage', initialMessagesRaw);
 				const instanceId = ctx.getInstanceId();
 
 				const i18nConfig = pick(options, ['getStarted', 'inputPlaceholder', 'subtitle', 'title']);
