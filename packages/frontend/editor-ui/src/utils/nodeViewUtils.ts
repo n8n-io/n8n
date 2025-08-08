@@ -617,9 +617,11 @@ export function calculateNodeSize(
 	mainInputCount: number,
 	mainOutputCount: number,
 	nonMainInputCount: number,
+	isExperimentalNdvActive: boolean,
 ): { width: number; height: number } {
 	const maxVerticalHandles = Math.max(mainInputCount, mainOutputCount, 1);
 	const height = DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
+	const widthScale = isExperimentalNdvActive ? 1.5 : 1;
 
 	if (isConfigurable) {
 		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount);
@@ -627,15 +629,16 @@ export function calculateNodeSize(
 		return {
 			// Configuration node has extra width so that its centered port aligns to the grid
 			width:
-				CONFIGURATION_NODE_RADIUS * 2 +
-				GRID_SIZE * ((isConfiguration ? 1 : 0) + (portCount - 1) * 3),
+				(CONFIGURATION_NODE_RADIUS * 2 +
+					GRID_SIZE * ((isConfiguration ? 1 : 0) + (portCount - 1) * 3)) *
+				widthScale,
 			height: isConfiguration ? CONFIGURATION_NODE_SIZE[1] : height,
 		};
 	}
 
 	if (isConfiguration) {
-		return { width: CONFIGURATION_NODE_SIZE[0], height: CONFIGURATION_NODE_SIZE[1] };
+		return { width: CONFIGURATION_NODE_SIZE[0] * widthScale, height: CONFIGURATION_NODE_SIZE[1] };
 	}
 
-	return { width: DEFAULT_NODE_SIZE[0], height };
+	return { width: DEFAULT_NODE_SIZE[0] * widthScale, height };
 }

@@ -1,13 +1,21 @@
+#cm-tooltip-container {
+	position: relative;
+	z-index: var(--z-index-codemirror-tooltip);
+	max-width: 0;
+	max-height: 0;
+}
+
 .code-node-editor .cm-editor .cm-tooltip-autocomplete > ul[role='listbox'] {
 	border-bottom: none;
 	border-bottom-left-radius: 0;
 	border-bottom-right-radius: 0;
 }
 
-.cm-editor .cm-tooltip-autocomplete {
+#cm-tooltip-container .cm-tooltip-autocomplete {
 	background-color: var(--color-background-xlight) !important;
 	box-shadow: var(--box-shadow-light);
 	border: none;
+	border-radius: var(--border-radius-base);
 
 	.cm-tooltip {
 		overflow: hidden;
@@ -90,9 +98,9 @@
 	}
 }
 
-.cm-editor .cm-tooltip.cm-completionInfo,
-.cm-editor .cm-tooltip.cm-cursorInfo,
-.cm-editor .cm-tooltip-hover {
+#cm-tooltip-container .cm-tooltip.cm-completionInfo,
+#cm-tooltip-container .cm-tooltip.cm-cursorInfo,
+#cm-tooltip-container .cm-tooltip-hover {
 	// Add padding when infobox only contains text
 	&:not(:has(div)) {
 		padding: var(--spacing-xs);
@@ -293,7 +301,7 @@
 	}
 }
 
-.cm-editor .cm-tooltip.cm-completionInfo {
+#cm-tooltip-container .cm-tooltip.cm-completionInfo {
 	background-color: var(--color-background-xlight);
 	border: var(--border-base);
 	box-shadow: var(--box-shadow-light);
@@ -335,8 +343,8 @@
 	}
 }
 
-.cm-editor .cm-tooltip.cm-cursorInfo,
-.cm-editor .cm-tooltip-hover {
+#cm-tooltip-container .cm-tooltip.cm-cursorInfo,
+#cm-tooltip-container .cm-tooltip-hover {
 	background-color: var(--color-infobox-background);
 	border: var(--border-base);
 	box-shadow: var(--box-shadow-light);

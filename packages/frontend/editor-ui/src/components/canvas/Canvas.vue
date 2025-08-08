@@ -137,6 +137,9 @@ const props = withDefaults(
 );
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
+const experimentalNdvStore = useExperimentalNdvStore();
+
+const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
 const vueFlow = useVueFlow(props.id);
 const {
@@ -174,13 +177,9 @@ const {
 	getDownstreamNodes,
 	getUpstreamNodes,
 } = useCanvasTraversal(vueFlow);
-const { layout } = useCanvasLayout({ id: props.id });
-
-const experimentalNdvStore = useExperimentalNdvStore();
+const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive);
 
 const isPaneReady = ref(false);
-
-const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -886,7 +885,6 @@ watch([vueFlow.nodes, () => experimentalNdvStore.nodeNameToBeFocused], ([nodes, 
 	// setTimeout() so that this happens after layout recalculation with the node to be focused
 	setTimeout(() => {
 		experimentalNdvStore.focusNode(toFocusNode, {
-			collapseOthers: false,
 			canvasViewport: viewport.value,
 			canvasDimensions: dimensions.value,
 			setCenter,

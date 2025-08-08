@@ -386,6 +386,7 @@ describe('operations-processor', () => {
 			workflowOperations,
 			messages: [],
 			workflowContext: {},
+			previousSummary: 'EMPTY',
 		});
 
 		it('should process operations and clear them', () => {
