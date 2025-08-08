@@ -247,18 +247,26 @@ function normalizeValue(
 	columnType: string | undefined,
 	dbType: DataSourceOptions['type'],
 ): unknown {
-	if (
-		(dbType === 'mysql' || dbType === 'mariadb') &&
-		columnType === 'date' &&
-		value instanceof Date
-	) {
-		return toMySQLDateTimeString(value);
+	if (['mysql', 'mariadb'].includes(dbType)) {
+		if (columnType === 'date') {
+			if (
+				value instanceof Date ||
+				(typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/))
+			) {
+				return toMySQLDateTimeString(value);
+			}
+		}
 	}
 	return value;
 }
 
-function toMySQLDateTimeString(date: Date): string {
-	return date.toISOString().replace('T', ' ').replace('Z', '');
+function toMySQLDateTimeString(date: Date | string, convertFromDate = true): string {
+	const dateString = convertFromDate
+		? date instanceof Date
+			? date.toISOString()
+			: date
+		: (date as string);
+	return dateString.replace('T', ' ').replace('Z', '');
 }
 
 function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
