@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+  SLACK_BOT_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
   SLACK_CHANNEL_ID: C042WDXPTEZ #mission-security
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
           image-ref: ${{ inputs.image_ref }}
           format: 'json'
           output: 'trivy-results.json'
-          severity: 'CRITICAL,HIGH'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
           ignore-unfixed: false
           exit-code: '0'
 
