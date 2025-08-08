@@ -35,6 +35,14 @@ const link = computed(() => {
 	}
 	return `/projects/${props.id}/workflows`;
 });
+
+const itemLink = ({ type, id }: TreeItemType) =>
+	computed(() => {
+		if (type === 'workflow') {
+			return `/workflow/${id}`;
+		}
+		return `/projects/${props.id}/folders/${id}/workflows`;
+	});
 </script>
 
 <template>
@@ -42,13 +50,16 @@ const link = computed(() => {
 		<header class="itemHeader">
 			<div class="dropdownButton">
 				<div class="icon">
-					<N8nIcon :icon="icon ?? 'layers'" />
+					<N8nIcon color="foreground-xdark" :icon="icon ?? 'layers'" />
 				</div>
 				<button class="button" @click="toggleSection(id)" :aria-label="`Toggle ${title} section`">
-					<N8nIcon :icon="open.includes(id) ? 'chevron-down' : 'chevron-right'" />
+					<N8nIcon
+						color="foreground-xdark"
+						:icon="open.includes(id) ? 'chevron-down' : 'chevron-right'"
+					/>
 				</button>
 			</div>
-			<N8nLink :to="link">{{ title }}</N8nLink>
+			<N8nLink class="itemLink" :to="link">{{ title }}</N8nLink>
 		</header>
 		<div v-if="open.includes(id)" class="items">
 			<TreeRoot
@@ -69,20 +80,22 @@ const link = computed(() => {
 					<div class="itemHeader">
 						<div class="dropdownButton" v-if="item.value.type === 'folder'">
 							<div class="icon">
-								<N8nIcon :icon="isExpanded ? 'folder-open' : 'folder'" />
+								<N8nIcon color="foreground-xdark" :icon="isExpanded ? 'folder-open' : 'folder'" />
 							</div>
-							<N8nIconButton
+							<button
 								class="button"
-								square
-								type="tertiary"
-								text
-								size="small"
-								:icon="isExpanded ? 'chevron-down' : 'chevron-right'"
 								@click.stop="handleToggle"
 								:aria-label="`Toggle ${item.value.label} item`"
-							/>
+							>
+								<N8nIcon
+									color="foreground-xdark"
+									:icon="open.includes(id) ? 'chevron-down' : 'chevron-right'"
+								/>
+							</button>
 						</div>
-						<N8nText>{{ item.value.label }}</N8nText>
+						<N8nLink theme="text" class="itemLink" :to="itemLink(item.value).value">{{
+							item.value.label
+						}}</N8nLink>
 					</div>
 				</TreeItem>
 			</TreeRoot>
@@ -92,7 +105,7 @@ const link = computed(() => {
 
 <style lang="scss" scoped>
 .items {
-	display: flex;
+	position: relative;
 	padding-left: 8px;
 	margin-left: 12px;
 	border-left: 1px solid var(--color-foreground-light);
@@ -100,9 +113,28 @@ const link = computed(() => {
 }
 
 .item {
+	position: relative;
 	display: flex;
 	align-items: center;
 	cursor: pointer;
+	max-width: 100%;
+	overflow: hidden;
+}
+
+.itemLink {
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+}
+
+.itemLink * {
+	color: var(--color-text-base);
+}
+
+.itemLink:hover *,
+.itemLink:focus * {
+	color: var(--color-text-dark);
+	text-decoration: underline;
 }
 
 .itemIdent {
@@ -130,6 +162,7 @@ const link = computed(() => {
 	padding: 4px;
 	gap: 4px;
 	cursor: pointer;
+	width: 100%;
 }
 
 .dropdownButton {
