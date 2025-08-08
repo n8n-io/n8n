@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
@@ -475,6 +475,10 @@ onMounted(async () => {
 	telemetry.track('User opened workflow settings', {
 		workflow_id: workflowsStore.workflowId,
 	});
+});
+
+onBeforeUnmount(() => {
+	debouncedLoadWorkflows.cancel?.();
 });
 </script>
 
