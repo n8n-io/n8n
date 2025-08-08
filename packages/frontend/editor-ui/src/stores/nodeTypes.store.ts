@@ -340,9 +340,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 		nodeTypesRequestInProgress.value = (async () => {
 			try {
-				const fetchedNodeTypes = (await nodeTypesApi.getNodeTypes(
+				const fetchedNodeTypes: INodeTypeDescription[] = await nodeTypesApi.getNodeTypes(
 					rootStore.baseUrl,
-				)) as INodeTypeDescription[];
+				);
 				await fetchCommunityNodePreviews();
 
 				if (fetchedNodeTypes.length) {
