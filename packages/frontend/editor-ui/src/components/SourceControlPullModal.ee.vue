@@ -148,11 +148,18 @@ const filteredWorkflows = computed(() => {
 			return false;
 		}
 
-		if (workflow.project && filters.value.project) {
-			return workflow.project.id === filters.value.project.id;
+		// Project filter logic: if a project filter is set, only show items from that project
+		if (filters.value.project) {
+			// Item must have a project and it must match the filter
+			return workflow.project?.id === filters.value.project.id;
 		}
 
-		return !(filters.value.status && filters.value.status !== workflow.status);
+		// Status filter (only applied when no project filter is active)
+		if (filters.value.status && filters.value.status !== workflow.status) {
+			return false;
+		}
+
+		return true;
 	});
 });
 
@@ -174,11 +181,18 @@ const filteredCredentials = computed(() => {
 			return false;
 		}
 
-		if (credential.project && filters.value.project) {
-			return credential.project.id === filters.value.project.id;
+		// Project filter logic: if a project filter is set, only show items from that project
+		if (filters.value.project) {
+			// Item must have a project and it must match the filter
+			return credential.project?.id === filters.value.project.id;
 		}
 
-		return !(filters.value.status && filters.value.status !== credential.status);
+		// Status filter (only applied when no project filter is active)
+		if (filters.value.status && filters.value.status !== credential.status) {
+			return false;
+		}
+
+		return true;
 	});
 });
 
@@ -293,8 +307,22 @@ function castType(type: string): ResourceType {
 	return ResourceType.Credential;
 }
 
-function castProject(project: ProjectListItem) {
-	return { homeProject: project } as unknown as WorkflowResource;
+function castProject(project: ProjectListItem): WorkflowResource {
+	// Create a properly typed object that satisfies WorkflowResource
+	// This is a workaround for the ProjectCardBadge component expecting WorkflowResource
+	const resource: WorkflowResource = {
+		homeProject: project,
+		id: '',
+		name: '',
+		active: false,
+		createdAt: '',
+		updatedAt: '',
+		isArchived: false,
+		readOnly: false,
+		resourceType: 'workflow',
+		sharedWithProjects: [],
+	};
+	return resource;
 }
 
 const workflowDiffEventBus = createEventBus();
