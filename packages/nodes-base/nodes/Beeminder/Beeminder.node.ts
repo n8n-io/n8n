@@ -10,6 +10,10 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	jsonParse,
+	assertIsString,
+	assertIsNodeParameters,
+	assertIsNumber,
+	assertIsArray,
 } from 'n8n-workflow';
 
 import type { Datapoint } from './Beeminder.node.functions';
@@ -34,12 +38,6 @@ import {
 	getUser,
 } from './Beeminder.node.functions';
 import { beeminderApiRequest } from './GenericFunctions';
-import {
-	assertIsString,
-	assertIsNodeParameters,
-	assertIsNumber,
-	assertIsArray,
-} from '../../utils/types';
 
 export class Beeminder implements INodeType {
 	description: INodeTypeDescription = {
