@@ -52,7 +52,7 @@ export function compareWorkflowsNodes<T extends { id: string }>(
 
 	const diff: WorkflowDiff<T> = new Map();
 
-	baseNodes.entries().forEach(([id, node]) => {
+	for (const [id, node] of baseNodes.entries()) {
 		if (!targetNodes.has(id)) {
 			diff.set(id, { status: NodeDiffStatus.Deleted, node });
 		} else if (!nodesEqual(baseNodes.get(id), targetNodes.get(id))) {
@@ -60,13 +60,13 @@ export function compareWorkflowsNodes<T extends { id: string }>(
 		} else {
 			diff.set(id, { status: NodeDiffStatus.Eq, node });
 		}
-	});
+	}
 
-	targetNodes.entries().forEach(([id, node]) => {
+	for (const [id, node] of targetNodes.entries()) {
 		if (!baseNodes.has(id)) {
 			diff.set(id, { status: NodeDiffStatus.Added, node });
 		}
-	});
+	}
 
 	return diff;
 }

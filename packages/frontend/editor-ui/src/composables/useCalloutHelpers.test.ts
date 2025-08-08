@@ -1,5 +1,5 @@
 import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
-import { updateCurrentUserSettings } from '@/api/users';
+import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 
 const mocks = vi.hoisted(() => ({
 	resolve: vi.fn(),
@@ -53,7 +53,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/api/users', () => ({
+vi.mock('@n8n/rest-api-client/api/users', () => ({
 	updateCurrentUserSettings: vi.fn(),
 }));
 

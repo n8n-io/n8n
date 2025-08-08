@@ -1,5 +1,5 @@
 import type { Scope, ProjectRole } from '@n8n/permissions';
-import type { IUserResponse } from '@/Interface';
+import type { IUserResponse } from '@n8n/rest-api-client/api/users';
 
 export const ProjectTypes = {
 	Personal: 'personal',

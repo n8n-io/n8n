@@ -4,7 +4,7 @@ import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { type FrontendSettings, type Role, ROLE, type UsersList } from '@n8n/api-types';
-import type { IUser } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import {
 	INVITE_USER_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,

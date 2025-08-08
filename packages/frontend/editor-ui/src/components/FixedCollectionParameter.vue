@@ -257,6 +257,7 @@ const trackWorkflowInputFieldAdded = () => {
 			/>
 			<div v-if="multipleValues">
 				<Draggable
+					:item-key="property.name"
 					v-model="mutableValues[property.name]"
 					handle=".drag-handle"
 					drag-class="dragging"

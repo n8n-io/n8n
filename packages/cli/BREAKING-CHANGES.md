@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 1.107.0
+
+## What changed?
+
+The CLI flag `--reinstallMissingPackages`, deprecated a year ago in version 1.154.0, has been removed.
+
+### When is action necessary?
+
+If you are using this flag, please switch to the environment variable `N8N_REINSTALL_MISSING_PACKAGES`.
+
 ## 1.103.0
 
 ### What changed?

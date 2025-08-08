@@ -70,7 +70,7 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 
 <template>
 	<div :class="$style.wrapper" data-test-id="canvas-wrapper">
-		<div :class="$style.canvas">
+		<div id="canvas" :class="$style.canvas">
 			<Canvas
 				v-if="workflow"
 				:id="id"

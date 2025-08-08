@@ -73,6 +73,8 @@ const props = withDefaults(
 		activeNode?: INodeUi;
 		isEmbeddedInCanvas?: boolean;
 		subTitle?: string;
+		extraTabsClassName?: string;
+		extraParameterWrapperClassName?: string;
 	}>(),
 	{
 		inputSize: 0,
@@ -94,6 +96,7 @@ const emit = defineEmits<{
 	activate: [];
 	execute: [];
 	captureWheelBody: [WheelEvent];
+	dblclickHeader: [MouseEvent];
 }>();
 
 const slots = defineSlots<{ actions?: {} }>();
@@ -596,11 +599,13 @@ function handleSelectAction(params: INodeParameters) {
 			:node-type="nodeType"
 			:push-ref="pushRef"
 			:sub-title="subTitle"
+			:extra-tabs-class-name="extraTabsClassName"
 			:include-action="parametersByTab.action.length > 0"
 			:include-credential="isDisplayingCredentials"
 			:has-credential-issue="!areAllCredentialsSet"
 			@name-changed="nameChanged"
 			@tab-changed="onTabSelect"
+			@dblclick-title="emit('dblclickHeader', $event)"
 		>
 			<template #actions>
 				<slot name="actions" />
@@ -662,6 +667,7 @@ function handleSelectAction(params: INodeParameters) {
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
 				{ 'ndv-v2': isNDVV2 },
+				extraParameterWrapperClassName ?? '',
 			]"
 			data-test-id="node-parameters"
 			@wheel.capture="emit('captureWheelBody', $event)"

@@ -14,7 +14,7 @@ import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { useSSOStore } from '@/stores/sso.store';
 import { UserManagementAuthenticationMethod } from '@/Interface';
-import type { IUser } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import type { Cloud } from '@n8n/rest-api-client';

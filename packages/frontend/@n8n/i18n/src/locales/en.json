@@ -1161,6 +1161,8 @@
 	"ndv.input.noOutputData.hint.tooltip": "From the earliest node which is unexecuted, or is executed but has since been changed",
 	"ndv.input.noOutputData.schemaPreviewHint": "switch to {schema} to use the schema preview",
 	"ndv.input.noOutputData.or": "or",
+	"ndv.input.noOutputData.embeddedNdv.link": "Execute previous nodes",
+	"ndv.input.noOutputData.embeddedNdv.description": "{link} to use their data here",
 	"ndv.input.executingPrevious": "Executing previous nodes...",
 	"ndv.input.notConnected.title": "Wire me up",
 	"ndv.input.notConnected.v2.title": "No input connected",
@@ -3293,6 +3295,7 @@
 	"evaluation.executions.toast.addedTo.title": "Execution added to test ",
 	"evaluation.executions.toast.closeTab": "Close this tab",
 	"evaluation.executions.toast.removedFrom.title": "Execution removed from test ",
+	"evaluations.readOnlyNotice": "Evaluations can't be built in read-only mode. Build your evaluation on your development environment.",
 	"evaluations.paywall.title": "Register to enable evaluation",
 	"evaluations.paywall.description": "Register your Community instance to unlock the evaluation feature",
 	"evaluations.paywall.cta": "Register instance",
@@ -3379,5 +3382,15 @@
 	"whatsNew.versionsBehind": "{count} version behind | {count} versions behind",
 	"whatsNew.update": "Update",
 	"whatsNew.updateAvailable": "You're currently on version {currentVersion}. Update to {latestVersion} to get {count} versions worth of new features, improvements, and fixes. See what changed",
-	"whatsNew.updateAvailable.changelogLink": "in the full changelog"
+	"whatsNew.updateAvailable.changelogLink": "in the full changelog",
+	"workflowDiff.changes": "Changes",
+	"workflowDiff.nodes": "Nodes",
+	"workflowDiff.connectors": "Connectors",
+	"workflowDiff.settings": "Settings",
+	"workflowDiff.local": "Local",
+	"workflowDiff.remote": "Remote ({branchName})",
+	"workflowDiff.noChanges": "No changes",
+	"workflowDiff.deletedWorkflow": "Deleted workflow",
+	"workflowDiff.deletedWorkflow.database": "The workflow was deleted on the database",
+	"workflowDiff.deletedWorkflow.remote": "The workflow was deleted on remote"
 }

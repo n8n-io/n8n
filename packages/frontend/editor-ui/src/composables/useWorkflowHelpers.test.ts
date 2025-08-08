@@ -14,10 +14,11 @@ import {
 	createTestWorkflowExecutionResponse,
 	createTestWorkflowObject,
 } from '@/__tests__/mocks';
-import { NodeConnectionTypes, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
+import { SLACK_TRIGGER_NODE_TYPE } from '../constants';
 
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -308,6 +309,7 @@ describe('useWorkflowHelpers', () => {
 				nodes: [
 					{
 						type: WEBHOOK_NODE_TYPE,
+						webhookId: '1',
 						parameters: {
 							method: 'GET',
 							path: 'test-path',
@@ -334,6 +336,73 @@ describe('useWorkflowHelpers', () => {
 						path: 'test-path',
 					},
 					type: 'n8n-nodes-base.webhook',
+					webhookId: '1',
+				},
+			});
+		});
+
+		it('should return conflicting webhook data and workflow id is different in trigger', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: SLACK_TRIGGER_NODE_TYPE,
+						webhookId: '1',
+						parameters: {},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue({
+				method: 'POST',
+				webhookPath: '1/webhook',
+				node: 'Webhook 1',
+				workflowId: '456',
+			});
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual({
+				conflict: {
+					method: 'POST',
+					node: 'Webhook 1',
+					webhookPath: '1/webhook',
+					workflowId: '456',
+				},
+				trigger: {
+					parameters: {},
+					type: SLACK_TRIGGER_NODE_TYPE,
+					webhookId: '1',
+				},
+			});
+		});
+
+		it('should return conflicting webhook data and workflow id is different in chat', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.stateIsDirty = false;
+			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{
+						type: CHAT_TRIGGER_NODE_TYPE,
+						webhookId: '1',
+						parameters: {},
+					},
+				],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue({
+				method: 'POST',
+				webhookPath: '1/chat',
+				node: 'Webhook 1',
+				workflowId: '456',
+			});
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual({
+				conflict: {
+					method: 'POST',
+					node: 'Webhook 1',
+					webhookPath: '1/chat',
+					workflowId: '456',
+				},
+				trigger: {
+					parameters: {},
+					type: CHAT_TRIGGER_NODE_TYPE,
+					webhookId: '1',
 				},
 			});
 		});
@@ -345,6 +414,7 @@ describe('useWorkflowHelpers', () => {
 				nodes: [
 					{
 						type: WEBHOOK_NODE_TYPE,
+						webhookId: '1',
 						parameters: {
 							method: 'GET',
 							path: 'test-path',

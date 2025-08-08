@@ -8,7 +8,7 @@ import type { ExpressionLocalResolveContext } from '@/types/expressions';
 import { N8nText } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
-import { computed, provide, ref, useTemplateRef } from 'vue';
+import { computed, provide, ref } from 'vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import { useI18n } from '@n8n/i18n';
@@ -18,10 +18,9 @@ import { getNodeSubTitleText } from '@/components/canvas/experimental/experiment
 import ExperimentalEmbeddedNdvActions from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvActions.vue';
 import { useCanvas } from '@/composables/useCanvas';
 
-const { nodeId, isReadOnly, isConfigurable } = defineProps<{
+const { nodeId, isReadOnly } = defineProps<{
 	nodeId: string;
 	isReadOnly?: boolean;
-	isConfigurable: boolean;
 }>();
 
 const i18n = useI18n();
@@ -51,8 +50,6 @@ const isVisible = computed(() =>
 	),
 );
 const isOnceVisible = ref(isVisible.value);
-
-const containerRef = useTemplateRef('container');
 
 const subTitle = computed(() =>
 	node.value && nodeType.value
@@ -105,6 +102,7 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	};
 });
 
+const maxHeightOnFocus = computed(() => vf.dimensions.value.height * 0.8);
 const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 function handleToggleExpand() {
@@ -126,44 +124,34 @@ watchOnce(isVisible, (visible) => {
 
 <template>
 	<div
-		ref="container"
 		:class="[
 			$style.component,
 			isExpanded ? $style.expanded : $style.collapsed,
 			node?.disabled ? $style.disabled : '',
-			isExpanded ? 'nodrag' : '',
 		]"
 		:style="{
-			'--zoom': `${1 / experimentalNdvStore.maxCanvasZoom}`,
-			'--node-width-scaler': isConfigurable ? 1 : 1.5,
-			'--max-height-on-focus': `${(vf.dimensions.value.height * 0.8) / experimentalNdvStore.maxCanvasZoom}px`,
+			'--max-height-on-focus': `${maxHeightOnFocus / experimentalNdvStore.maxCanvasZoom}px`,
 			pointerEvents: isPaneMoving ? 'none' : 'auto', // Don't interrupt canvas panning
 		}"
 	>
 		<template v-if="!node || !isOnceVisible" />
-		<ExperimentalEmbeddedNdvMapper
+		<ExperimentalCanvasNodeSettings
 			v-else-if="isExpanded"
-			:workflow="workflowObject"
-			:node="node"
+			tabindex="-1"
+			:node-id="nodeId"
+			:class="$style.settingsView"
+			:is-read-only="isReadOnly"
+			:sub-title="subTitle"
 			:input-node-name="expressionResolveCtx?.inputNode?.name"
-			:container="containerRef"
 		>
-			<ExperimentalCanvasNodeSettings
-				tabindex="-1"
-				:node-id="nodeId"
-				:class="$style.settingsView"
-				:is-read-only="isReadOnly"
-				:sub-title="subTitle"
-			>
-				<template #actions>
-					<ExperimentalEmbeddedNdvActions
-						:is-expanded="isExpanded"
-						@open-ndv="handleOpenNdv"
-						@toggle-expand="handleToggleExpand"
-					/>
-				</template>
-			</ExperimentalCanvasNodeSettings>
-		</ExperimentalEmbeddedNdvMapper>
+			<template #actions>
+				<ExperimentalEmbeddedNdvActions
+					:is-expanded="isExpanded"
+					@open-ndv="handleOpenNdv"
+					@toggle-expand="handleToggleExpand"
+				/>
+			</template>
+		</ExperimentalCanvasNodeSettings>
 		<div v-else role="button" :class="$style.collapsedContent" @click="handleToggleExpand">
 			<NodeIcon :node-type="nodeType" :size="18" />
 			<div :class="$style.collapsedNodeName">
@@ -189,7 +177,6 @@ watchOnce(isVisible, (visible) => {
 	justify-content: stretch;
 	border-width: 1px !important;
 	border-radius: var(--border-radius-base) !important;
-	width: calc(var(--canvas-node--width) * var(--node-width-scaler)) !important;
 	overflow: hidden;
 
 	--canvas-node--border-color: var(--color-text-lighter);
@@ -253,7 +240,7 @@ watchOnce(isVisible, (visible) => {
 	}
 
 	& > * {
-		zoom: var(--zoom);
+		zoom: var(--canvas-zoom-compensation-factor, 1);
 		flex-grow: 0;
 		flex-shrink: 0;
 	}
@@ -275,7 +262,7 @@ watchOnce(isVisible, (visible) => {
 
 .settingsView {
 	& > * {
-		zoom: var(--zoom);
+		zoom: var(--canvas-zoom-compensation-factor, 1);
 	}
 }
 </style>

@@ -8,9 +8,14 @@ import { CanvasNodeDirtiness, CanvasNodeRenderType } from '@/types';
 import { N8nTooltip } from '@n8n/design-system';
 import { useCanvas } from '@/composables/useCanvas';
 
-const { size = 'large', spinnerScrim = false } = defineProps<{
+const {
+	size = 'large',
+	spinnerScrim = false,
+	spinnerLayout = 'absolute',
+} = defineProps<{
 	size?: 'small' | 'medium' | 'large';
 	spinnerScrim?: boolean;
+	spinnerLayout?: 'absolute' | 'static';
 }>();
 
 const nodeHelpers = useNodeHelpers();
@@ -44,7 +49,11 @@ const isNodeExecuting = computed(() => {
 		executionRunning.value || executionWaitingForNext.value || executionStatus.value === 'running' // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing
 	);
 });
-const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinnerScrim : '']);
+const commonClasses = computed(() => [
+	$style.status,
+	spinnerScrim ? $style.spinnerScrim : '',
+	spinnerLayout === 'absolute' ? $style.absoluteSpinner : '',
+]);
 </script>
 
 <template>
@@ -57,7 +66,10 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 				<N8nIcon icon="clock" :size="size" />
 			</N8nTooltip>
 		</div>
-		<div :class="[...commonClasses, $style['node-waiting-spinner']]">
+		<div
+			v-if="spinnerLayout === 'absolute'"
+			:class="[...commonClasses, $style['node-waiting-spinner']]"
+		>
 			<N8nIcon icon="refresh-cw" spin />
 		</div>
 	</div>
@@ -142,17 +154,21 @@ const commonClasses = computed(() => [$style.status, spinnerScrim ? $style.spinn
 
 .node-waiting-spinner,
 .running {
-	width: 100%;
-	height: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 3.75em;
-	color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
-	position: absolute;
-	left: 0;
-	top: 0;
-	padding: var(--canvas-node--status-icons-offset);
+	color: hsl(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l));
+
+	&.absoluteSpinner {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 3.75em;
+		color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
+		position: absolute;
+		left: 0;
+		top: 0;
+		padding: var(--canvas-node--status-icons-offset);
+	}
 
 	&.spinnerScrim {
 		z-index: 10;

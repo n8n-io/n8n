@@ -24,6 +24,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
 	NodeHelpers,
@@ -1020,7 +1021,7 @@ export function useWorkflowHelpers() {
 		if (trigger.type === WEBHOOK_NODE_TYPE) {
 			return (trigger.parameters.method as string) ?? 'GET';
 		}
-		return 'GET';
+		return 'POST';
 	}
 
 	function getWebhookPath(trigger: INode) {
@@ -1030,7 +1031,10 @@ export function useWorkflowHelpers() {
 		if (trigger.type === FORM_TRIGGER_NODE_TYPE) {
 			return ((trigger.parameters.options as { path: string }) || {}).path ?? trigger.webhookId;
 		}
-		return '';
+		if (trigger.type === CHAT_TRIGGER_NODE_TYPE) {
+			return `${trigger.webhookId}/chat`;
+		}
+		return `${trigger.webhookId}/webhook`;
 	}
 
 	async function checkConflictingWebhooks(workflowId: string) {
@@ -1043,7 +1047,9 @@ export function useWorkflowHelpers() {
 
 		const triggers = data.nodes.filter(
 			(node) =>
-				node.disabled !== true && [WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(node.type),
+				node.disabled !== true &&
+				node.webhookId &&
+				(node.type.toLowerCase().includes('trigger') || node.type === WEBHOOK_NODE_TYPE),
 		);
 
 		for (const trigger of triggers) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
@@ -16,6 +16,7 @@ import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
+import { CanvasKey, ExpressionLocalResolveContextSymbol } from '@/constants';
 
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
@@ -23,6 +24,7 @@ const editorState = ref<EditorState>();
 const selection = ref<SelectionRange>();
 const inlineInput = ref<InstanceType<typeof InlineExpressionEditorInput>>();
 const container = ref<HTMLDivElement>();
+const outputPopover = ref<InstanceType<typeof InlineExpressionEditorOutput>>();
 
 type Props = {
 	path: string;
@@ -46,14 +48,21 @@ const emit = defineEmits<{
 	'modal-opener-click': [];
 	'update:model-value': [value: string];
 	focus: [];
-	blur: [];
+	blur: [FocusEvent | KeyboardEvent | undefined];
 }>();
 
 const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 
+const canvas = inject(CanvasKey, undefined);
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const isInExperimentalNdv = computed(() => expressionLocalResolveCtx?.value !== undefined);
+
 const isDragging = computed(() => ndvStore.isDraggableDragging);
+const isOutputPopoverVisible = computed(
+	() => isFocused.value && (!isInExperimentalNdv.value || !canvas?.isPaneMoving.value),
+);
 
 function select() {
 	if (inlineInput.value) {
@@ -80,12 +89,16 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 		return; // prevent blur on resizing
 	}
 
+	if (event?.target instanceof Element && outputPopover.value?.contentRef?.contains(event.target)) {
+		return;
+	}
+
 	const wasFocused = isFocused.value;
 
 	isFocused.value = false;
 
 	if (wasFocused) {
-		emit('blur');
+		emit('blur', event);
 
 		const telemetryPayload = createExpressionTelemetryPayload(
 			segments.value,
@@ -161,7 +174,8 @@ onBeforeUnmount(() => {
 });
 
 watch(isDragging, (newIsDragging) => {
-	if (newIsDragging) {
+	// The input must stay focused in experimental NDV so that the input panel popover is open while dragging
+	if (newIsDragging && !isInExperimentalNdv.value) {
 		onBlur();
 	}
 });
@@ -212,13 +226,17 @@ defineExpose({ focus, select });
 				@click="emit('modal-opener-click')"
 			/>
 		</div>
+
 		<InlineExpressionEditorOutput
+			ref="outputPopover"
+			:visible="isOutputPopoverVisible"
 			:unresolved-expression="modelValue"
 			:selection="selection"
 			:editor-state="editorState"
 			:segments="segments"
 			:is-read-only="isReadOnly"
-			:visible="isFocused"
+			:virtual-ref="container"
+			:append-to="isInExperimentalNdv ? '#canvas' : undefined"
 		/>
 	</div>
 </template>

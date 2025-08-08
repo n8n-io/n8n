@@ -5,7 +5,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/stores/users.store';
 import { VIEWS } from '@/constants';
 import { getRagStarterWorkflowJson } from '@/utils/easyAiWorkflowUtils';
-import { updateCurrentUserSettings } from '@/api/users';
+import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export function useCalloutHelpers() {

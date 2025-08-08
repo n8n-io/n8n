@@ -11,6 +11,7 @@ defineProps<{
 	nodeType?: INodeTypeDescription | null;
 	pushRef: string;
 	subTitle?: string;
+	extraTabsClassName?: string;
 	selectedTab: NodeSettingsTab;
 	includeAction: boolean;
 	includeCredential: boolean;
@@ -19,6 +20,7 @@ defineProps<{
 
 const emit = defineEmits<{
 	'name-changed': [value: string];
+	'dblclick-title': [event: MouseEvent];
 	'tab-changed': [tab: NodeSettingsTab];
 }>();
 
@@ -27,7 +29,7 @@ defineSlots<{ actions?: {} }>();
 
 <template>
 	<div :class="[$style.component, node.disabled ? $style.disabled : '']">
-		<div :class="$style.title">
+		<div :class="$style.title" @dblclick="emit('dblclick-title', $event)">
 			<NodeIcon :node-type="nodeType" :size="16" />
 			<div :class="$style.titleText">
 				<N8nInlineTextEdit
@@ -44,6 +46,7 @@ defineSlots<{ actions?: {} }>();
 		</div>
 		<div :class="$style.tabsContainer">
 			<NodeSettingsTabs
+				:class="extraTabsClassName"
 				:model-value="selectedTab"
 				:node-type="nodeType"
 				:push-ref="pushRef"
@@ -68,8 +71,8 @@ defineSlots<{ actions?: {} }>();
 	align-items: center;
 	padding: var(--spacing-2xs) var(--spacing-3xs) var(--spacing-2xs) var(--spacing-xs);
 	border-bottom: var(--border-base);
-	margin-bottom: 14px; // to match bottom padding of tabs
 	gap: var(--spacing-4xs);
+	cursor: grab;
 
 	.disabled & {
 		background-color: var(--color-foreground-light);
@@ -99,6 +102,7 @@ defineSlots<{ actions?: {} }>();
 }
 
 .tabsContainer {
+	padding-top: var(--spacing-xs);
 	padding-inline: var(--spacing-xs);
 }
 </style>

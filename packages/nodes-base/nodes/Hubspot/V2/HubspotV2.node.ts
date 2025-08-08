@@ -1480,6 +1480,125 @@ export class HubspotV2 implements INodeType {
 									value: additionalFields.workEmail,
 								});
 							}
+							if (additionalFields.buyingRole) {
+								const buyingRole = Array.isArray(additionalFields.buyingRole)
+									? (additionalFields.buyingRole as string[]).join(';')
+									: additionalFields.buyingRole;
+								body.push({
+									property: 'hs_buying_role',
+									value: buyingRole,
+								});
+							}
+							if (additionalFields.countryRegionCode) {
+								body.push({
+									property: 'hs_country_region_code',
+									value: additionalFields.countryRegionCode,
+								});
+							}
+							if (additionalFields.emailCustomerQuarantinedReason) {
+								body.push({
+									property: 'hs_email_customer_quarantined_reason',
+									value: additionalFields.emailCustomerQuarantinedReason,
+								});
+							}
+							if (additionalFields.employmentRole) {
+								body.push({
+									property: 'hs_role',
+									value: additionalFields.employmentRole,
+								});
+							}
+							if (additionalFields.employmentSeniority) {
+								body.push({
+									property: 'hs_seniority',
+									value: additionalFields.employmentSeniority,
+								});
+							}
+							if (additionalFields.employmentSubRole) {
+								body.push({
+									property: 'hs_sub_role',
+									value: additionalFields.employmentSubRole,
+								});
+							}
+							if (additionalFields.enrichedEmailBounceDetected) {
+								body.push({
+									property: 'hs_enriched_email_bounce_detected',
+									value: additionalFields.enrichedEmailBounceDetected,
+								});
+							}
+							if (additionalFields.inferredLanguageCodes) {
+								body.push({
+									property: 'hs_inferred_language_codes',
+									value: additionalFields.inferredLanguageCodes,
+								});
+							}
+							if (additionalFields.latestTrafficSource) {
+								body.push({
+									property: 'hs_latest_source',
+									value: additionalFields.latestTrafficSource,
+								});
+							}
+							if (additionalFields.latestTrafficSourceDate) {
+								body.push({
+									property: 'hs_latest_source_timestamp',
+									value: new Date(additionalFields.latestTrafficSourceDate as string).getTime(),
+								});
+							}
+							if (additionalFields.linkedinUrl) {
+								body.push({
+									property: 'hs_linkedin_url',
+									value: additionalFields.linkedinUrl,
+								});
+							}
+							if (additionalFields.memberEmail) {
+								body.push({
+									property: 'hs_content_membership_email',
+									value: additionalFields.memberEmail,
+								});
+							}
+							if (additionalFields.militaryStatus) {
+								body.push({
+									property: 'military_status',
+									value: additionalFields.militaryStatus,
+								});
+							}
+							if (additionalFields.persona) {
+								body.push({
+									property: 'hs_persona',
+									value: additionalFields.persona,
+								});
+							}
+							if (additionalFields.prospectingAgentLastEnrolled) {
+								body.push({
+									property: 'hs_prospecting_agent_last_enrolled',
+									value: new Date(
+										additionalFields.prospectingAgentLastEnrolled as string,
+									).getTime(),
+								});
+							}
+							if (additionalFields.prospectingAgentTotalEnrolledCount) {
+								body.push({
+									property: 'hs_prospecting_agent_total_enrolled_count',
+									value: additionalFields.prospectingAgentTotalEnrolledCount,
+								});
+							}
+							if (additionalFields.stateRegionCode) {
+								body.push({
+									property: 'hs_state_code',
+									value: additionalFields.stateRegionCode,
+								});
+							}
+							if (additionalFields.timeZone) {
+								body.push({
+									property: 'hs_timezone',
+									value: additionalFields.timeZone,
+								});
+							}
+							if (additionalFields.whatsappPhoneNumber) {
+								body.push({
+									property: 'hs_whatsapp_phone_number',
+									value: additionalFields.whatsappPhoneNumber,
+								});
+							}
 
 							if (additionalFields.customPropertiesUi) {
 								const customProperties = (additionalFields.customPropertiesUi as IDataObject)
@@ -3053,16 +3172,17 @@ export class HubspotV2 implements INodeType {
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
-				} catch (errorObject) {
-					const error = errorObject.cause.cause ? errorObject.cause : errorObject;
+				} catch (error) {
 					if (
-						error.cause.error?.validationResults &&
-						error.cause.error.validationResults[0].error === 'INVALID_EMAIL'
+						error.cause?.error?.validationResults &&
+						error.cause.error.validationResults[0]?.error === 'INVALID_EMAIL'
 					) {
-						const message = error.cause.error.validationResults[0].message as string;
+						const message = error.cause?.error?.validationResults?.[0]?.message as string;
 						set(error, 'message', message);
 					}
-					if (error.cause.error?.message !== 'The resource you are requesting could not be found') {
+					if (
+						error.cause?.error?.message !== 'The resource you are requesting could not be found'
+					) {
 						if (error.httpCode === '404' && error.description === 'resource not found') {
 							const message = `${error.node.parameters.resource} #${
 								error.node.parameters[`${error.node.parameters.resource}Id`].value
