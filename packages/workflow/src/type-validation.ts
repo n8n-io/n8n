@@ -1,14 +1,14 @@
 import isObject from 'lodash/isObject';
 import { DateTime } from 'luxon';
 
-import { ApplicationError } from './errors';
+import { ApplicationError, UserError } from './errors';
 import type {
 	FieldType,
 	FormFieldsParameter,
 	INodePropertyOptions,
 	ValidationResult,
 } from './interfaces';
-import { jsonParse } from './utils';
+import { jsonParse, assert } from './utils';
 
 export const tryToParseNumber = (value: unknown): number => {
 	const isValidNumber = !isNaN(Number(value));
