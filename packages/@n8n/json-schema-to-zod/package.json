@@ -64,6 +64,8 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@types/json-schema": "^7.0.15",
+    "@types/node": "*",
+    "@types/psl": "^1.1.0",
     "zod": "catalog:"
   }
 }

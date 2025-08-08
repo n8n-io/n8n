@@ -8,11 +8,9 @@
 		"strict": false,
 		"skipLibCheck": true,
 		"esModuleInterop": true,
-		"moduleResolution": "bundler",
+		"moduleResolution": "node",
 		"allowSyntheticDefaultImports": true,
-		"skipDefaultLibCheck": true,
-		"typeRoots": ["./node_modules/@types"],
-		"types": ["node"]
+		"skipDefaultLibCheck": true
 	},
 	"include": ["src"]
 }
