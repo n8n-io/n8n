@@ -7,8 +7,7 @@ import type { IWebhookFunctions } from 'n8n-workflow';
 import { Webhook } from '../Webhook.node';
 
 jest.mock('fs/promises');
-const mockFs = mock<typeof fs>();
-fs.rm = mockFs.rm;
+const mockFs = jest.mocked(fs);
 
 describe('Test Webhook Node', () => {
 	new NodeTestHarness().setupTests();
