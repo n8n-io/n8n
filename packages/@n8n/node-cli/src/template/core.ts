@@ -1,6 +1,7 @@
 import glob from 'fast-glob';
 import handlebars from 'handlebars';
 import fs from 'node:fs/promises';
+import path from 'node:path';
 
 import { copyFolder } from '../utils/filesystem';
 
@@ -37,6 +38,14 @@ export async function copyTemplateFilesToDestination(template: Template, data: T
 	});
 }
 
+export async function copyDefaultTemplateFilesToDestination(data: TemplateData) {
+	await copyFolder({
+		source: path.resolve(__dirname, 'templates/shared/default'),
+		destination: data.path,
+		ignore: ['dist', 'node_modules'],
+	});
+}
+
 export async function templateStaticFiles(data: TemplateData) {
 	const files = await glob('**/*.{md,json,yml}', {
 		ignore: ['tsconfig.json', 'tsconfig.build.json'],
@@ -61,6 +70,7 @@ export function createTemplate(template: Template): TemplateWithRun {
 	return {
 		...template,
 		run: async (data) => {
+			await copyDefaultTemplateFilesToDestination(data);
 			await copyTemplateFilesToDestination(template, data);
 			await templateStaticFiles(data);
 			await template.run?.(data);

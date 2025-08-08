@@ -64,7 +64,7 @@ async function addCredential(data: TemplateData, config: CustomTemplateConfig) {
 			: config.credentialType;
 	const credentialTemplatePath = path.resolve(
 		__dirname,
-		`../../credentials/${credentialTemplateName}.credentials.ts`,
+		`../../shared/credentials/${credentialTemplateName}.credentials.ts`,
 	);
 
 	const nodeName = data.nodeName.replace('n8n-nodes', '');
