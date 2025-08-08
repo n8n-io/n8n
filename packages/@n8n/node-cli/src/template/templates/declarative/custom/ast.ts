@@ -1,7 +1,6 @@
 import { camelCase, capitalCase } from 'change-case';
 import { SyntaxKind } from 'ts-morph';
 
-import type { CredentialType } from './types';
 import {
 	getChildObjectLiteral,
 	loadSingleSourceFile,
@@ -71,17 +70,17 @@ export function updateNodeAst({
 }
 
 export function updateCredentialAst({
-	nodeName,
 	repoName,
 	baseUrl,
 	credentialPath,
-	credentialType,
+	credentialName,
+	credentialDisplayName,
 	credentialClassName,
 }: {
-	nodeName: string;
 	repoName: string;
-	credentialType: CredentialType;
 	credentialPath: string;
+	credentialName: string;
+	credentialDisplayName: string;
 	credentialClassName: string;
 	baseUrl: string;
 }) {
@@ -90,18 +89,12 @@ export function updateCredentialAst({
 
 	classDecl.rename(credentialClassName);
 
-	const credentialDisplayName = `${capitalCase(nodeName)} ${
-		credentialType === 'oauth2' ? 'OAuth2 API' : 'API'
-	}`;
 	updateStringProperty({
 		obj: classDecl,
 		key: 'displayName',
 		value: credentialDisplayName,
 	});
 
-	const credentialName = camelCase(
-		`${nodeName}${credentialType === 'oauth2' ? 'OAuth2Api' : 'Api'}`,
-	);
 	updateStringProperty({
 		obj: classDecl,
 		key: 'name',
@@ -115,18 +108,21 @@ export function updateCredentialAst({
 		initializer.setLiteralValue(newUrl);
 	}
 
-	const testRequest = classDecl
-		.getPropertyOrThrow('test')
-		.getInitializerIfKindOrThrow(SyntaxKind.ObjectLiteralExpression)
-		.getPropertyOrThrow('request')
-		.asKindOrThrow(SyntaxKind.PropertyAssignment)
-		.getInitializerIfKindOrThrow(SyntaxKind.ObjectLiteralExpression);
+	const testProperty = classDecl.getProperty('test');
 
-	updateStringProperty({
-		obj: testRequest,
-		key: 'baseURL',
-		value: baseUrl,
-	});
+	if (testProperty) {
+		const testRequest = testProperty
+			.getInitializerIfKindOrThrow(SyntaxKind.ObjectLiteralExpression)
+			.getPropertyOrThrow('request')
+			.asKindOrThrow(SyntaxKind.PropertyAssignment)
+			.getInitializerIfKindOrThrow(SyntaxKind.ObjectLiteralExpression);
+
+		updateStringProperty({
+			obj: testRequest,
+			key: 'baseURL',
+			value: baseUrl,
+		});
+	}
 
 	return sourceFile;
 }

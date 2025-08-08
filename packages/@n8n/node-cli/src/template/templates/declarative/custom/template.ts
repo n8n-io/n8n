@@ -1,4 +1,4 @@
-import { pascalCase } from 'change-case';
+import { camelCase, capitalCase, pascalCase } from 'change-case';
 import path from 'node:path';
 
 import { addCredentialToNode, updateCredentialAst, updateNodeAst } from './ast';
@@ -74,12 +74,18 @@ async function addCredential(data: TemplateData, config: CustomTemplateConfig) {
 		config.credentialType === 'oauth2'
 			? pascalCase(`${nodeName}-OAuth2-api`)
 			: pascalCase(`${nodeName}-api`);
+	const credentialName = camelCase(
+		`${nodeName}${credentialType === 'oauth2' ? 'OAuth2Api' : 'Api'}`,
+	);
+	const credentialDisplayName = `${capitalCase(nodeName)} ${
+		credentialType === 'oauth2' ? 'OAuth2 API' : 'API'
+	}`;
 
 	const updatedCredentialAst = updateCredentialAst({
 		repoName,
 		baseUrl,
-		nodeName,
-		credentialType,
+		credentialName,
+		credentialDisplayName,
 		credentialClassName,
 		credentialPath: credentialTemplatePath,
 	});
@@ -102,7 +108,7 @@ async function addCredential(data: TemplateData, config: CustomTemplateConfig) {
 
 		const updatedNodeAst = addCredentialToNode({
 			nodePath: srcNodePath,
-			credentialName: credentialClassName,
+			credentialName,
 		});
 
 		await writeFileSafe(srcNodePath, updatedNodeAst.getFullText());

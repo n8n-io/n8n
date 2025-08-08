@@ -13,6 +13,7 @@ import { delayAtLeast, folderExists } from '../../utils/filesystem';
 import { tryReadGitUser } from '../../utils/git';
 import { detectPackageManager, installDependencies } from '../../utils/package-manager';
 import { onCancel } from '../../utils/prompts';
+import { validateNodeName } from './validation';
 
 export default class Create extends Command {
 	static override description = 'Create a new n8n community node';
@@ -43,6 +44,9 @@ export default class Create extends Command {
 		intro(picocolors.inverse(createIntro()));
 
 		const nodeName = args.name ?? (await nodeNamePrompt());
+		const invalidNodeNameError = validateNodeName(nodeName);
+
+		if (invalidNodeNameError) return onCancel(invalidNodeNameError);
 
 		const destination = path.resolve(process.cwd(), nodeName);
 

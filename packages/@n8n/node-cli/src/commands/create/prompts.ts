@@ -1,5 +1,6 @@
 import { select, text } from '@clack/prompts';
 
+import { validateNodeName } from './validation';
 import { templates } from '../../template/templates';
 import { withCancelHandler } from '../../utils/prompts';
 
@@ -8,13 +9,7 @@ export const nodeNamePrompt = async () =>
 		text({
 			message: 'What is your node called?',
 			placeholder: 'n8n-nodes-example',
-			validate(value) {
-				if (!value) return;
-				const kebabCase = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-				if (!kebabCase.test(value)) return 'Node name should be kebab-case';
-				if (!value.startsWith('n8n-nodes')) return 'Node name should start with n8n-nodes-';
-				return;
-			},
+			validate: validateNodeName,
 			defaultValue: 'n8n-nodes-example',
 		}),
 	);
