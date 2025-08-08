@@ -159,6 +159,11 @@ redis:
   password: ""
   db: 0
   keyPrefix: "n8n"
+  username: ""
+  clusterNodes: ""
+  tls: false
+  dualStack: false
+  timeoutThreshold: 10000
 
 # Generic configuration
 generic:
@@ -226,6 +231,8 @@ executions:
   pruneDataIntervals:
     hardDelete: 15 # minutes
     softDelete: 60 # minutes
+  mode: "regular" # regular, queue
+  offloadManualExecutionsToWorkers: false
 
 # Logging configuration
 logging:
@@ -429,6 +436,43 @@ configMap:
 secret:
   enabled: false
   data: {}
+
+# Scaling mode configuration (Queue mode)
+scaling:
+  enabled: false
+  health:
+    active: false
+    port: 5678
+    address: "::"
+  bull:
+    prefix: "bull"
+    gracefulShutdownTimeout: 30
+    settings:
+      lockDuration: 30000
+      lockRenewTime: 15000
+      stalledInterval: 30000
+      maxStalledCount: 1
+
+# Multi-main setup configuration
+multiMain:
+  enabled: false
+  ttl: 10
+  interval: 3
+
+# Task runners configuration
+taskRunners:
+  enabled: false
+  mode: "internal" # internal, external
+  path: "/runners"
+  authToken: ""
+  brokerPort: 5679
+  listenAddress: "127.0.0.1"
+  maxPayload: 1073741824 # 1GB
+  maxOldSpaceSize: ""
+  maxConcurrency: 10
+  taskTimeout: 300
+  heartbeatInterval: 30
+  insecureMode: false
 
 # Additional environment variables
 env: {}

@@ -112,6 +112,59 @@ redis:
   password: "your-redis-password"
   db: 0
   keyPrefix: "n8n"
+  username: ""
+  clusterNodes: ""
+  tls: false
+  dualStack: false
+  timeoutThreshold: 10000
+```
+
+### Queue Mode Configuration
+
+n8n supports queue mode for horizontal scaling. This requires PostgreSQL and Redis.
+
+```yaml
+# Enable queue mode
+executions:
+  mode: "queue"  # regular, queue
+  offloadManualExecutionsToWorkers: true
+
+# Enable scaling mode
+scaling:
+  enabled: true
+  health:
+    active: true
+    port: 5678
+    address: "::"
+  bull:
+    prefix: "bull"
+    gracefulShutdownTimeout: 30
+    settings:
+      lockDuration: 30000
+      lockRenewTime: 15000
+      stalledInterval: 30000
+      maxStalledCount: 1
+
+# Multi-main setup (Enterprise feature)
+multiMain:
+  enabled: false
+  ttl: 10
+  interval: 3
+
+# Task runners configuration
+taskRunners:
+  enabled: false
+  mode: "internal"  # internal, external
+  path: "/runners"
+  authToken: ""
+  brokerPort: 5679
+  listenAddress: "127.0.0.1"
+  maxPayload: 1073741824  # 1GB
+  maxOldSpaceSize: ""
+  maxConcurrency: 10
+  taskTimeout: 300
+  heartbeatInterval: 30
+  insecureMode: false
 ```
 
 ### Basic Authentication
@@ -234,7 +287,7 @@ serviceMonitor:
 
 ## Examples
 
-### Production Deployment with PostgreSQL
+### Production Deployment with PostgreSQL and Queue Mode
 
 ```yaml
 # values-production.yaml
@@ -261,6 +314,32 @@ redis:
   host: "redis-service"
   port: 6379
   password: "your-redis-password"
+  db: 0
+  keyPrefix: "n8n"
+
+# Enable queue mode for horizontal scaling
+executions:
+  mode: "queue"
+  offloadManualExecutionsToWorkers: true
+  pruneData: true
+  pruneDataMaxAge: 336
+  pruneDataMaxCount: 10000
+
+# Enable scaling mode
+scaling:
+  enabled: true
+  health:
+    active: true
+    port: 5678
+    address: "::"
+  bull:
+    prefix: "bull"
+    gracefulShutdownTimeout: 30
+    settings:
+      lockDuration: 30000
+      lockRenewTime: 15000
+      stalledInterval: 30000
+      maxStalledCount: 1
 
 basicAuth:
   active: true

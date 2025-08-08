@@ -1,20 +1,21 @@
+{{- if and .Values.scaling.enabled (eq .Values.executions.mode "queue") }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "n8n.fullname" . }}
+  name: {{ include "n8n.fullname" . }}-worker
   labels:
     {{- include "n8n.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
   {{- with .Values.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "n8n.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
   {{- with .Values.deploymentStrategy }}
   strategy:
     {{- toYaml . | nindent 4 }}
@@ -26,6 +27,7 @@ spec:
       {{- end }}
       labels:
         {{- include "n8n.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
         {{- with .Values.labels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -58,19 +60,20 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: {{ .Chart.Name }}-worker
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ include "n8n.image" . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["n8n", "worker"]
           ports:
             - name: http
-              containerPort: {{ .Values.service.targetPort }}
+              containerPort: {{ .Values.scaling.health.port }}
               protocol: TCP
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
-              path: {{ .Values.livenessProbe.path }}
+              path: /healthz
               port: http
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
@@ -81,24 +84,13 @@ spec:
           {{- if .Values.readinessProbe.enabled }}
           readinessProbe:
             httpGet:
-              path: {{ .Values.readinessProbe.path }}
+              path: /healthz/readiness
               port: http
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
             failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
             successThreshold: {{ .Values.readinessProbe.successThreshold }}
-          {{- end }}
-          {{- if .Values.startupProbe.enabled }}
-          startupProbe:
-            httpGet:
-              path: {{ .Values.startupProbe.path }}
-              port: http
-            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
-            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
-            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
-            successThreshold: {{ .Values.startupProbe.successThreshold }}
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
@@ -202,4 +194,5 @@ spec:
       {{- end }}
       {{- with .Values.extraVolumes }}
       {{- toYaml . | nindent 6 }}
-      {{- end }} 
+      {{- end }}
+{{- end }} 

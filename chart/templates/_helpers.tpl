@@ -228,6 +228,20 @@ Create environment variables for Redis configuration
   value: {{ .Values.redis.db | quote }}
 - name: N8N_REDIS_KEY_PREFIX
   value: {{ .Values.redis.keyPrefix | quote }}
+{{- if .Values.redis.username }}
+- name: QUEUE_BULL_REDIS_USERNAME
+  value: {{ .Values.redis.username | quote }}
+{{- end }}
+{{- if .Values.redis.clusterNodes }}
+- name: QUEUE_BULL_REDIS_CLUSTER_NODES
+  value: {{ .Values.redis.clusterNodes | quote }}
+{{- end }}
+- name: QUEUE_BULL_REDIS_TLS
+  value: {{ .Values.redis.tls | quote }}
+- name: QUEUE_BULL_REDIS_DUALSTACK
+  value: {{ .Values.redis.dualStack | quote }}
+- name: QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD
+  value: {{ .Values.redis.timeoutThreshold | quote }}
 {{- end }}
 {{- end }}
 
@@ -365,6 +379,10 @@ Create environment variables for executions configuration
   value: {{ .Values.executions.pruneDataIntervals.hardDelete | quote }}
 - name: EXECUTIONS_DATA_PRUNE_SOFT_DELETE_INTERVAL
   value: {{ .Values.executions.pruneDataIntervals.softDelete | quote }}
+- name: EXECUTIONS_MODE
+  value: {{ .Values.executions.mode | quote }}
+- name: OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS
+  value: {{ .Values.executions.offloadManualExecutionsToWorkers | quote }}
 {{- end }}
 
 {{/*
@@ -500,5 +518,81 @@ Create environment variables for encryption and JWT
 {{- if .Values.jwt.secret }}
 - name: N8N_JWT_SECRET
   value: {{ .Values.jwt.secret | quote }}
+{{- end }}
+{{- end }}
+
+{{/*
+Create environment variables for scaling mode configuration
+*/}}
+{{- define "n8n.scalingEnvVars" -}}
+{{- if .Values.scaling.enabled }}
+- name: QUEUE_HEALTH_CHECK_ACTIVE
+  value: {{ .Values.scaling.health.active | quote }}
+- name: QUEUE_HEALTH_CHECK_PORT
+  value: {{ .Values.scaling.health.port | quote }}
+- name: N8N_WORKER_SERVER_ADDRESS
+  value: {{ .Values.scaling.health.address | quote }}
+- name: QUEUE_BULL_PREFIX
+  value: {{ .Values.scaling.bull.prefix | quote }}
+- name: QUEUE_WORKER_TIMEOUT
+  value: {{ .Values.scaling.bull.gracefulShutdownTimeout | quote }}
+- name: QUEUE_WORKER_LOCK_DURATION
+  value: {{ .Values.scaling.bull.settings.lockDuration | quote }}
+- name: QUEUE_WORKER_LOCK_RENEW_TIME
+  value: {{ .Values.scaling.bull.settings.lockRenewTime | quote }}
+- name: QUEUE_WORKER_STALLED_INTERVAL
+  value: {{ .Values.scaling.bull.settings.stalledInterval | quote }}
+- name: QUEUE_WORKER_MAX_STALLED_COUNT
+  value: {{ .Values.scaling.bull.settings.maxStalledCount | quote }}
+{{- end }}
+{{- end }}
+
+{{/*
+Create environment variables for multi-main setup configuration
+*/}}
+{{- define "n8n.multiMainEnvVars" -}}
+{{- if .Values.multiMain.enabled }}
+- name: N8N_MULTI_MAIN_SETUP_ENABLED
+  value: "true"
+- name: N8N_MULTI_MAIN_SETUP_KEY_TTL
+  value: {{ .Values.multiMain.ttl | quote }}
+- name: N8N_MULTI_MAIN_SETUP_CHECK_INTERVAL
+  value: {{ .Values.multiMain.interval | quote }}
+{{- end }}
+{{- end }}
+
+{{/*
+Create environment variables for task runners configuration
+*/}}
+{{- define "n8n.taskRunnersEnvVars" -}}
+{{- if .Values.taskRunners.enabled }}
+- name: N8N_RUNNERS_ENABLED
+  value: "true"
+- name: N8N_RUNNERS_MODE
+  value: {{ .Values.taskRunners.mode | quote }}
+- name: N8N_RUNNERS_PATH
+  value: {{ .Values.taskRunners.path | quote }}
+{{- if .Values.taskRunners.authToken }}
+- name: N8N_RUNNERS_AUTH_TOKEN
+  value: {{ .Values.taskRunners.authToken | quote }}
+{{- end }}
+- name: N8N_RUNNERS_BROKER_PORT
+  value: {{ .Values.taskRunners.brokerPort | quote }}
+- name: N8N_RUNNERS_BROKER_LISTEN_ADDRESS
+  value: {{ .Values.taskRunners.listenAddress | quote }}
+- name: N8N_RUNNERS_MAX_PAYLOAD
+  value: {{ .Values.taskRunners.maxPayload | quote }}
+{{- if .Values.taskRunners.maxOldSpaceSize }}
+- name: N8N_RUNNERS_MAX_OLD_SPACE_SIZE
+  value: {{ .Values.taskRunners.maxOldSpaceSize | quote }}
+{{- end }}
+- name: N8N_RUNNERS_MAX_CONCURRENCY
+  value: {{ .Values.taskRunners.maxConcurrency | quote }}
+- name: N8N_RUNNERS_TASK_TIMEOUT
+  value: {{ .Values.taskRunners.taskTimeout | quote }}
+- name: N8N_RUNNERS_HEARTBEAT_INTERVAL
+  value: {{ .Values.taskRunners.heartbeatInterval | quote }}
+- name: N8N_RUNNERS_INSECURE_MODE
+  value: {{ .Values.taskRunners.insecureMode | quote }}
 {{- end }}
 {{- end }} 
