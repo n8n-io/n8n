@@ -284,7 +284,11 @@ const globalCallouts = computed<INodeCreateElement[]>(() => [
 	...getRootSearchCallouts(activeViewStack.value.search ?? '', {
 		isRagStarterCalloutVisible: calloutHelpers.isRagStarterCalloutVisible.value,
 	}),
-	...getActiveViewCallouts(activeViewStack.value.title),
+	...getActiveViewCallouts(
+		activeViewStack.value.title,
+		calloutHelpers.isPreBuiltAgentsCalloutVisible.value,
+		calloutHelpers.getPreBuiltAgentNodeCreatorItems(),
+	),
 ]);
 
 function arrowLeft() {

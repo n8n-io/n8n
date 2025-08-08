@@ -39,7 +39,7 @@ export const PrebuiltAgentTemplates = {
 type PrebuiltAgentTemplateId = (typeof PrebuiltAgentTemplates)[keyof typeof PrebuiltAgentTemplates];
 
 export const isPrebuiltAgentTemplateId = (value: string): value is PrebuiltAgentTemplateId => {
-	return Object.values(PrebuiltAgentTemplates).includes(value as PrebuiltAgentTemplateId);
+	return (Object.values(PrebuiltAgentTemplates) as readonly string[]).includes(value);
 };
 
 interface PrebuiltAgentTemplate {

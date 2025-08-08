@@ -247,7 +247,11 @@ onMounted(() => {
 });
 
 const callouts = computed<INodeCreateElement[]>(() =>
-	getActiveViewCallouts(useViewStacks().activeViewStack.title),
+	getActiveViewCallouts(
+		useViewStacks().activeViewStack.title,
+		calloutHelpers.isPreBuiltAgentsCalloutVisible.value,
+		calloutHelpers.getPreBuiltAgentNodeCreatorItems(),
+	),
 );
 </script>
 

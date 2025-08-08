@@ -36,7 +36,6 @@ import * as changeCase from 'change-case';
 
 import { useSettingsStore } from '@/stores/settings.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { NodeIconSource } from '../../../utils/nodeIcon';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
@@ -400,11 +399,11 @@ export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisib
 	return results;
 }
 
-const getPrebuiltAgentTemplateLink = (templateId: string): OpenTemplateElement | undefined => {
-	const calloutHelpers = useCalloutHelpers();
-	const templateLink = calloutHelpers
-		.getPreBuiltAgentNodeCreatorItems()
-		.find((template) => template.key === templateId);
+const getTemplateLink = (
+	templateId: string,
+	availableTemplates: OpenTemplateElement[],
+): OpenTemplateElement | undefined => {
+	const templateLink = availableTemplates.find((template) => template.key === templateId);
 
 	if (templateLink?.properties) {
 		templateLink.properties.compact = true;
@@ -413,32 +412,35 @@ const getPrebuiltAgentTemplateLink = (templateId: string): OpenTemplateElement |
 	return templateLink;
 };
 
-export function getActiveViewCallouts(title: string | undefined) {
+export function getActiveViewCallouts(
+	title: string | undefined,
+	isPreBuiltAgentsCalloutVisible: boolean,
+	templates: OpenTemplateElement[],
+) {
 	const results: INodeCreateElement[] = [];
-	const calloutHelpers = useCalloutHelpers();
 
-	if (calloutHelpers.isPreBuiltAgentsCalloutVisible.value && title) {
+	if (isPreBuiltAgentsCalloutVisible && title) {
 		if (title === AI_CATEGORY_LANGUAGE_MODELS) {
 			results.push(getPreBuiltAgentsCalloutWithDivider());
 		} else if ([AI_CATEGORY_MEMORY, AI_CATEGORY_TOOLS].includes(title)) {
 			results.push(getPreBuiltAgentsCallout());
 		} else if (title === 'Google Calendar') {
-			const templateLink = getPrebuiltAgentTemplateLink(PrebuiltAgentTemplates.VoiceAssistantAgent);
+			const templateLink = getTemplateLink(PrebuiltAgentTemplates.VoiceAssistantAgent, templates);
 			if (templateLink) {
 				results.push(templateLink);
 			}
 		} else if (title === 'Google Drive') {
-			const templateLink = getPrebuiltAgentTemplateLink(PrebuiltAgentTemplates.KnowledgeStoreAgent);
+			const templateLink = getTemplateLink(PrebuiltAgentTemplates.KnowledgeStoreAgent, templates);
 			if (templateLink) {
 				results.push(templateLink);
 			}
 		} else if (title === 'Google Sheets') {
-			const templateLink = getPrebuiltAgentTemplateLink(PrebuiltAgentTemplates.TaskManagementAgent);
+			const templateLink = getTemplateLink(PrebuiltAgentTemplates.TaskManagementAgent, templates);
 			if (templateLink) {
 				results.push(templateLink);
 			}
 		} else if (title === 'Gmail') {
-			const templateLink = getPrebuiltAgentTemplateLink(PrebuiltAgentTemplates.EmailTriageAgent);
+			const templateLink = getTemplateLink(PrebuiltAgentTemplates.EmailTriageAgent, templates);
 			if (templateLink) {
 				results.push(templateLink);
 			}
