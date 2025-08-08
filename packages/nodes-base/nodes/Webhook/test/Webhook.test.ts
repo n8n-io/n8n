@@ -3,18 +3,12 @@ import type { Request, Response } from 'express';
 import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';
-import stream from 'stream/promises';
 
 import { Webhook } from '../Webhook.node';
 
 jest.mock('fs/promises');
 const mockFs = mock<typeof fs>();
 fs.rm = mockFs.rm;
-fs.stat = mockFs.stat;
-
-jest.mock('stream/promises');
-const mockStream = mock<typeof stream>();
-stream.pipeline = mockStream.pipeline;
 
 describe('Test Webhook Node', () => {
 	new NodeTestHarness().setupTests();
@@ -49,7 +43,7 @@ describe('Test Webhook Node', () => {
 			const returnData = await node.webhook(context);
 			expect(returnData.workflowData?.[0][0].binary).not.toBeUndefined();
 			expect(context.nodeHelpers.copyBinaryFile).toHaveBeenCalled();
-			expect(mockFs.rm).toHaveBeenCalledWith('/tmp/test.txt');
+			expect(mockFs.rm).toHaveBeenCalledWith('/tmp/test.txt', { force: true });
 		});
 	});
 

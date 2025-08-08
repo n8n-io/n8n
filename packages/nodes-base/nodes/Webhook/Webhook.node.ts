@@ -364,7 +364,7 @@ export class Webhook extends Node {
 				);
 
 				// Delete original file to prevent tmp directory from growing too large
-				await rm(file.filepath);
+				await rm(file.filepath, { force: true });
 
 				count += 1;
 			}
@@ -409,7 +409,6 @@ export class Webhook extends Node {
 
 			return { workflowData: prepareOutput(returnItem) };
 		} catch (error) {
-			console.log(error);
 			throw new NodeOperationError(context.getNode(), error as Error);
 		} finally {
 			await binaryFile.cleanup();
