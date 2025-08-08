@@ -381,6 +381,17 @@ const hasFilters = computed(() => {
 	);
 });
 
+// When there are no visible results but the project contains archived workflows,
+// inform the user how to reveal them
+const showArchivedOnlyHint = computed(() => {
+	return (
+		workflowsAndFolders.value.length === 0 &&
+		!hasFilters.value &&
+		!filters.value.showArchived &&
+		foldersStore.totalWorkflowCount > 0
+	);
+});
+
 const isSelfHostedDeployment = computed(() => settingsStore.deploymentType === 'default');
 
 const canUserRegisterCommunityPlus = computed(
@@ -914,6 +925,11 @@ const openAIWorkflow = async (source: string) => {
 const dismissStarterCollectionCallout = () => {
 	aiStarterTemplatesStore.dismissCallout();
 	aiStarterTemplatesStore.trackUserDismissedCallout();
+};
+
+const onShowArchived = async () => {
+	filters.value.showArchived = true;
+	await onFiltersUpdated();
 };
 
 const dismissEasyAICallout = () => {
@@ -2130,6 +2146,12 @@ const onNameSubmit = async (name: string) => {
 				:class="$style['empty-folder-container']"
 				data-test-id="empty-folder-container"
 			>
+				<N8nInfoTip v-if="showArchivedOnlyHint" :bold="false">
+					{{ i18n.baseText('workflows.archivedOnly.hint') }}
+					<N8nLink size="small" data-test-id="show-archived-link" @click="onShowArchived">
+						{{ i18n.baseText('workflows.archivedOnly.hint.link') }}
+					</N8nLink>
+				</N8nInfoTip>
 				<EmptySharedSectionActionBox
 					v-if="projectPages.isSharedSubPage && personalProject"
 					:personal-project="personalProject"

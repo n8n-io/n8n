@@ -35,3 +35,4 @@ compiled_app_output
 trivy_report*
 compiled
 packages/cli/src/modules/my-feature
+.secrets

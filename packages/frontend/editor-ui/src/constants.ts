@@ -953,8 +953,8 @@ export const ExpressionLocalResolveContextSymbol = Symbol(
 	'ExpressionLocalResolveContext',
 ) as InjectionKey<ComputedRef<ExpressionLocalResolveContext | undefined>>;
 
-/** Auth */
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
+export const CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID = 'cm-tooltip-container';
 
 export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 
