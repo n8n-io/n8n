@@ -7,13 +7,13 @@ import picocolors from 'picocolors';
 
 import { declarativeTemplatePrompt, nodeNamePrompt, nodeTypePrompt } from './prompts';
 import { createIntro } from './utils';
+import { validateNodeName } from './validation';
 import type { TemplateData, TemplateWithRun } from '../../template/core';
 import { templates } from '../../template/templates';
 import { delayAtLeast, folderExists } from '../../utils/filesystem';
 import { tryReadGitUser } from '../../utils/git';
 import { detectPackageManager, installDependencies } from '../../utils/package-manager';
 import { onCancel } from '../../utils/prompts';
-import { validateNodeName } from './validation';
 
 export default class Create extends Command {
 	static override description = 'Create a new n8n community node';
