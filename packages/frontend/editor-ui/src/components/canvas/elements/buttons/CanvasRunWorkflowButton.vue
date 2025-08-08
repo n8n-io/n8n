@@ -51,7 +51,7 @@ const actions = computed(() =>
 			return aY === bY ? aX - bX : aY - bY;
 		})
 		.map<ActionDropdownItem>((node) => ({
-			label: truncateBeforeLast(node.name, 25),
+			label: truncateBeforeLast(node.name, 50),
 			disabled: !!node.disabled || props.executing,
 			id: node.name,
 			checked: props.selectedTriggerNodeName === node.name,
@@ -112,6 +112,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				:items="actions"
 				:disabled="disabled"
 				placement="top"
+				:extra-popper-class="$style.menuPopper"
 				@select="emit('selectTriggerNode', $event)"
 			>
 				<template #activator>
@@ -172,6 +173,11 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .menu :global(.el-dropdown) {
 	height: 100%;
+}
+
+.menuPopper {
+	// Width upper bound is enforced by char count instead
+	max-width: none !important;
 }
 
 .menuItem {
