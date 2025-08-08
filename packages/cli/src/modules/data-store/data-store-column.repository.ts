@@ -15,11 +15,17 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 
 	async getColumns(rawDataStoreId: string, em?: EntityManager) {
 		const executor = em ?? this.manager;
-		return await executor
+		const columns = await executor
 			.createQueryBuilder(DataStoreColumnEntity, 'dsc')
 			.where('dsc.dataStoreId = :dataStoreId', { dataStoreId: rawDataStoreId })
-			.orderBy('dsc.columnIndex', 'ASC')
 			.getMany();
+
+		// Ensure columns are always returned in the correct order by columnIndex,
+		// since the database does not guarantee ordering and TypeORM does not preserve
+		// join order in @OneToMany relations.
+		columns.sort((a, b) => a.columnIndex - b.columnIndex);
+
+		return columns;
 	}
 
 	async addColumn(dataStoreId: string, schema: DataStoreCreateColumnSchema) {
