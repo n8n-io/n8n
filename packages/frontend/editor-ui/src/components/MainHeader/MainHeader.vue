@@ -341,7 +341,7 @@ function hideGithubButton() {
 	cursor: pointer;
 
 	&:hover {
-		color: var(--prim-color-primary-shade-100);
+		color: var(--p-color-primary-420);
 	}
 }
 .github-button-container {
