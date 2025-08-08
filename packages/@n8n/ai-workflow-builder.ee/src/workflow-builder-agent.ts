@@ -12,7 +12,7 @@ import type {
 	NodeExecutionSchema,
 } from 'n8n-workflow';
 
-import { AUTO_COMPACT_THRESHOLD_TOKENS, MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
+import { DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS, MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 
 import { conversationCompactChain } from './chains/conversation-compact';
 import { LLMServiceError, ValidationError } from './errors';
@@ -26,6 +26,7 @@ import { createUpdateNodeParametersTool } from './tools/update-node-parameters.t
 import type { SimpleWorkflow } from './types/workflow';
 import { processOperations } from './utils/operations-processor';
 import { createStreamProcessor, formatMessages } from './utils/stream-processor';
+import { extractLastTokenUsage } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
 
@@ -36,6 +37,7 @@ export interface WorkflowBuilderAgentConfig {
 	logger?: Logger;
 	checkpointer?: MemorySaver;
 	tracer?: LangChainTracer;
+	autoCompactThresholdTokens?: number;
 }
 
 export interface ChatPayload {
@@ -54,6 +56,7 @@ export class WorkflowBuilderAgent {
 	private llmComplexTask: BaseChatModel;
 	private logger?: Logger;
 	private tracer?: LangChainTracer;
+	private autoCompactThresholdTokens: number;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -62,6 +65,8 @@ export class WorkflowBuilderAgent {
 		this.logger = config.logger;
 		this.checkpointer = config.checkpointer ?? new MemorySaver();
 		this.tracer = config.tracer;
+		this.autoCompactThresholdTokens =
+			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
 	}
 
 	private createWorkflow() {
@@ -98,43 +103,27 @@ export class WorkflowBuilderAgent {
 		};
 
 		const shouldAutoCompact = ({ messages }: typeof WorkflowState.State) => {
-			const lastAiAssistantMessage = messages
-				.filter((m): m is AIMessage => m instanceof AIMessage)
-				.slice(-1)[0];
+			const tokenUsage = extractLastTokenUsage(messages);
 
-			if (!lastAiAssistantMessage) {
-				return false;
-			}
-
-			const tokenUsage = lastAiAssistantMessage.response_metadata?.usage as
-				| {
-						input_tokens: number;
-						output_tokens: number;
-				  }
-				| undefined;
-
-			if (!tokenUsage?.input_tokens || !tokenUsage.output_tokens) {
-				this.logger?.debug('No token usage metadata found in last AI message', {
-					messageId: lastAiAssistantMessage.id,
-				});
+			if (!tokenUsage) {
+				this.logger?.debug('No token usage metadata found');
 				return false;
 			}
 
 			const tokensUsed = tokenUsage.input_tokens + tokenUsage.output_tokens;
 
 			this.logger?.debug('Token usage', {
-				messageId: lastAiAssistantMessage.id,
 				inputTokens: tokenUsage.input_tokens,
 				outputTokens: tokenUsage.output_tokens,
 				totalTokens: tokensUsed,
 			});
 
-			return tokensUsed > AUTO_COMPACT_THRESHOLD_TOKENS;
+			return tokensUsed > this.autoCompactThresholdTokens;
 		};
 
 		const shouldModifyState = (state: typeof WorkflowState.State) => {
 			const { messages } = state;
-			const lastHumanMessage = messages[messages.length - 1] as HumanMessage;
+			const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!; // There always should be at least one human message in the array
 
 			if (lastHumanMessage.content === '/compact') {
 				return 'compact_messages';
