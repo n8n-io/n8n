@@ -32,7 +32,7 @@ export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withIndexOn(['dataStoreId', 'name'], true).withTimestamps;
+			.withUniqueConstraintOn(['dataStoreId', 'name']).withTimestamps;
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
