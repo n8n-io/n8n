@@ -1,4 +1,4 @@
-import type { IExecutionResponse } from '@/Interface';
+import type { SimplifiedExecution } from '@/Interface';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -29,11 +29,7 @@ import { parse } from 'flatted';
 import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
-
-export type SimplifiedExecution = Pick<
-	IExecutionResponse,
-	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt' | 'id'
->;
+import { useDatabase } from '@/data/useDatabase';
 
 /**
  * Handles the 'executionFinished' event, which happens when a workflow execution is finished.
@@ -109,6 +105,9 @@ export async function executionFinished(
 			return;
 		}
 	}
+
+	const db = useDatabase();
+	await db.insertExecution(execution);
 
 	const runExecutionData = getRunExecutionData(execution);
 	uiStore.setProcessingExecutionResults(false);
