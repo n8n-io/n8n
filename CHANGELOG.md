@@ -1,3 +1,13 @@
+## [1.106.2](https://github.com/n8n-io/n8n/compare/n8n@1.106.1...n8n@1.106.2) (2025-08-08)
+
+
+### Bug Fixes
+
+* **Beeminder Node:** Remove unnecessary form data conversion for API token auth to work ([#18133](https://github.com/n8n-io/n8n/issues/18133)) ([e593468](https://github.com/n8n-io/n8n/commit/e593468b61659edd90409b6437012d9fbe45ecb2))
+* **core:** Fix metric default value handling and add AI model connection validation for setMetric operation in Evaluation ([#18088](https://github.com/n8n-io/n8n/issues/18088)) ([8eefda9](https://github.com/n8n-io/n8n/commit/8eefda9388c00ecea7863433d246427dec3c2a41))
+
+
+
 ## [1.106.1](https://github.com/n8n-io/n8n/compare/n8n@1.106.0...n8n@1.106.1) (2025-08-07)
 
 
