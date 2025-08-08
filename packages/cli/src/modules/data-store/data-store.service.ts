@@ -254,14 +254,16 @@ export class DataStoreService {
 
 	async insertRows(dataStoreId: string, rows: DataStoreRows) {
 		await this.validateRows(dataStoreId, rows);
+		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 
-		return await this.dataStoreRowsRepository.insertRows(toTableName(dataStoreId), rows);
+		return await this.dataStoreRowsRepository.insertRows(toTableName(dataStoreId), rows, columns);
 	}
 
 	async upsertRows(dataStoreId: string, dto: UpsertDataStoreRowsDto) {
 		await this.validateRows(dataStoreId, dto.rows);
+		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 
-		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto);
+		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto, columns);
 	}
 
 	private async validateDataStoreExists(dataStoreId: string, msg?: string) {

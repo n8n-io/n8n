@@ -13,6 +13,7 @@ import {
 	quoteIdentifier,
 	splitRowsByExistence,
 } from './utils/sql-utils';
+import { DataStoreColumnEntity } from './data-store-column.entity';
 
 type QueryBuilder = SelectQueryBuilder<any>;
 
@@ -37,13 +38,24 @@ export class DataStoreRowsRepository {
 	constructor(private dataSource: DataSource) {}
 
 	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
-	async insertRows(tableName: DataStoreUserTableName, rows: DataStoreRows) {
+	async insertRows(
+		tableName: DataStoreUserTableName,
+		rows: DataStoreRows,
+		columns: DataStoreColumnEntity[],
+	) {
 		const dbType = this.dataSource.options.type;
-		await this.dataSource.query.apply(this.dataSource, buildInsertQuery(tableName, rows, dbType));
+		await this.dataSource.query.apply(
+			this.dataSource,
+			buildInsertQuery(tableName, rows, columns, dbType),
+		);
 		return true;
 	}
 
-	async upsertRows(tableName: DataStoreUserTableName, dto: UpsertDataStoreRowsDto) {
+	async upsertRows(
+		tableName: DataStoreUserTableName,
+		dto: UpsertDataStoreRowsDto,
+		columns: DataStoreColumnEntity[],
+	) {
 		const dbType = this.dataSource.options.type;
 		const { rows, matchFields } = dto;
 
@@ -58,13 +70,13 @@ export class DataStoreRowsRepository {
 		);
 
 		if (rowsToInsert.length > 0) {
-			await this.insertRows(tableName, rowsToInsert);
+			await this.insertRows(tableName, rowsToInsert, columns);
 		}
 
 		if (rowsToUpdate.length > 0) {
 			for (const row of rowsToUpdate) {
 				// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
-				const [query, parameters] = buildUpdateQuery(tableName, row, matchFields, dbType);
+				const [query, parameters] = buildUpdateQuery(tableName, row, columns, matchFields, dbType);
 				await this.dataSource.query(query, parameters);
 			}
 		}

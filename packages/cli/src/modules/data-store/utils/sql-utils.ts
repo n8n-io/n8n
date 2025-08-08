@@ -7,6 +7,7 @@ import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
+import type { DataStoreColumnEntity } from '../data-store-column.entity';
 import type { DataStoreUserTableName } from '../data-store.types';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -128,6 +129,7 @@ export function deleteColumnQuery(
 export function buildInsertQuery(
 	tableName: DataStoreUserTableName,
 	rows: DataStoreRows,
+	columns: DataStoreColumnEntity[],
 	dbType: DataSourceOptions['type'] = 'sqlite',
 ): [string, unknown[]] {
 	if (rows.length === 0 || Object.keys(rows[0]).length === 0) {
@@ -138,13 +140,15 @@ export function buildInsertQuery(
 	const quotedKeys = keys.map((key) => quoteIdentifier(key, dbType)).join(', ');
 	const quotedTableName = quoteIdentifier(tableName, dbType);
 
+	const columnTypeMap = buildColumnTypeMap(columns);
 	const parameters: unknown[] = [];
 	const valuePlaceholders: string[] = [];
 	let placeholderIndex = 1;
 
 	for (const row of rows) {
 		const rowPlaceholders = keys.map((key) => {
-			parameters.push(row[key]);
+			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
+			parameters.push(value);
 			return getPlaceholder(placeholderIndex++, dbType);
 		});
 		valuePlaceholders.push(`(${rowPlaceholders.join(', ')})`);
@@ -157,6 +161,7 @@ export function buildInsertQuery(
 export function buildUpdateQuery(
 	tableName: DataStoreUserTableName,
 	row: Record<string, unknown>,
+	columns: DataStoreColumnEntity[],
 	matchFields: string[],
 	dbType: DataSourceOptions['type'] = 'sqlite',
 ): [string, unknown[]] {
@@ -164,28 +169,29 @@ export function buildUpdateQuery(
 		return ['', []];
 	}
 
-	const allKeys = Object.keys(row);
-	const updateKeys = allKeys.filter((key) => !matchFields.includes(key));
-
+	const updateKeys = Object.keys(row).filter((key) => !matchFields.includes(key));
 	if (updateKeys.length === 0) {
 		return ['', []];
 	}
 
 	const quotedTableName = quoteIdentifier(tableName, dbType);
+	const columnTypeMap = buildColumnTypeMap(columns);
 
 	const parameters: unknown[] = [];
 	let placeholderIndex = 1;
 
 	const setClause = updateKeys
 		.map((key) => {
-			parameters.push(row[key]);
+			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
+			parameters.push(value);
 			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
 		})
 		.join(', ');
 
 	const whereClause = matchFields
 		.map((key) => {
-			parameters.push(row[key]);
+			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
+			parameters.push(value);
 			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
 		})
 		.join(' AND ');
@@ -237,6 +243,29 @@ export function toTableName(dataStoreId: string): DataStoreUserTableName {
 	return `data_store_user_${dataStoreId}`;
 }
 
+function normalizeValue(
+	value: unknown,
+	columnType: string | undefined,
+	dbType: DataSourceOptions['type'],
+): unknown {
+	if (
+		(dbType === 'mysql' || dbType === 'mariadb') &&
+		columnType === 'date' &&
+		value instanceof Date
+	) {
+		return toMySQLDateTimeString(value);
+	}
+	return value;
+}
+
+function toMySQLDateTimeString(date: Date): string {
+	return date.toISOString().replace('T', ' ').replace('Z', '');
+}
+
 function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
 	return dbType.includes('postgres') ? `$${index}` : '?';
+}
+
+function buildColumnTypeMap(columns: DataStoreColumnEntity[]): Record<string, string> {
+	return Object.fromEntries(columns.map((col) => [col.name, col.type]));
 }
