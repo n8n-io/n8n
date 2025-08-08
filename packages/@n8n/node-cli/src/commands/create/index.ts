@@ -1,20 +1,27 @@
-import { confirm, intro, isCancel, note, outro, select, spinner, text } from '@clack/prompts';
+import { confirm, intro, isCancel, note, outro, spinner } from '@clack/prompts';
 import { Args, Command, Flags } from '@oclif/core';
 import { camelCase } from 'change-case';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import picocolors from 'picocolors';
 
-import type { TemplateData, TemplateWithRun } from '../template/core';
-import { templates } from '../template/templates';
-import { delayAtLeast, folderExists } from '../utils/filesystem';
-import { tryReadGitUser } from '../utils/git';
-import { detectPackageManager, installDependencies } from '../utils/package-manager';
-import { onCancel, withCancelHandler } from '../utils/prompts';
+import { declarativeTemplatePrompt, nodeNamePrompt, nodeTypePrompt } from './prompts';
+import { createIntro } from './utils';
+import type { TemplateData, TemplateWithRun } from '../../template/core';
+import { templates } from '../../template/templates';
+import { delayAtLeast, folderExists } from '../../utils/filesystem';
+import { tryReadGitUser } from '../../utils/git';
+import { detectPackageManager, installDependencies } from '../../utils/package-manager';
+import { onCancel } from '../../utils/prompts';
 
 export default class Create extends Command {
 	static override description = 'Create a new n8n community node';
-	static override examples = ['<%= config.bin %> <%= command.id %>'];
+	static override examples = [
+		'<%= config.bin %> <%= command.id %>',
+		'<%= config.bin %> <%= command.id %> n8n-nodes-my-app --skip-install',
+		'<%= config.bin %> <%= command.id %> n8n-nodes-my-app --force',
+		'<%= config.bin %> <%= command.id %> n8n-nodes-my-app --template declarative/custom',
+	];
 	static override args = {
 		name: Args.string({ name: 'Name' }),
 	};
@@ -31,31 +38,11 @@ export default class Create extends Command {
 
 	async run(): Promise<void> {
 		const { flags, args } = await this.parse(Create);
+		const [typeFlag, templateFlag] = flags.template?.split('/') ?? [];
 
-		const maybePackageManager = detectPackageManager();
-		const packageManager = maybePackageManager ?? 'npm';
-		const introMessage = maybePackageManager
-			? ` ${packageManager} create @n8n/node `
-			: ' n8n-node create ';
+		intro(picocolors.inverse(createIntro()));
 
-		intro(picocolors.inverse(introMessage));
-
-		const nodeName =
-			args.name ??
-			(await withCancelHandler(
-				text({
-					message: 'What is your node called?',
-					placeholder: 'n8n-nodes-example',
-					validate(value) {
-						if (!value) return;
-						const kebabCase = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-						if (!kebabCase.test(value)) return 'Node name should be kebab-case';
-						if (!value.startsWith('n8n-nodes')) return 'Node name should start with n8n-nodes-';
-						return;
-					},
-					defaultValue: 'n8n-nodes-example',
-				}),
-			));
+		const nodeName = args.name ?? (await nodeNamePrompt());
 
 		const destination = path.resolve(process.cwd(), nodeName);
 
@@ -71,49 +58,20 @@ export default class Create extends Command {
 			overwrite = true;
 		}
 
-		const type =
-			flags.template?.split('/')[0] ??
-			(await withCancelHandler(
-				select<'declarative' | 'programmatic'>({
-					message: 'What kind of node are you building?',
-					options: [
-						{
-							label: 'HTTP API',
-							value: 'declarative',
-							hint: 'Low-code, faster approval for n8n Cloud',
-						},
-						{
-							label: 'Other',
-							value: 'programmatic',
-							hint: 'Programmatic node with full flexibility',
-						},
-					],
-					initialValue: 'declarative',
-				}),
-			));
+		const type = typeFlag ?? (await nodeTypePrompt());
 
 		let template = templates.programmatic.example;
-		if (flags.template) {
-			const templateFlag = flags.template.split('/')[1];
+		if (templateFlag) {
 			template = (templates as Record<string, Record<string, TemplateWithRun>>)[type][
 				camelCase(templateFlag)
 			];
 		} else if (type === 'declarative') {
-			const chosenTemplate = await withCancelHandler(
-				select<keyof typeof templates.declarative>({
-					message: 'What template do you want to use?',
-					options: Object.entries(templates.declarative).map(([value, template]) => ({
-						value: value as keyof typeof templates.declarative,
-						label: template.name,
-						hint: template.description,
-					})),
-					initialValue: 'githubIssues',
-				}),
-			);
+			const chosenTemplate = await declarativeTemplatePrompt();
 			template = templates.declarative[chosenTemplate];
 		}
 
 		const config = (await template.prompts?.()) ?? {};
+		const packageManager = detectPackageManager() ?? 'npm';
 		const templateData: TemplateData = {
 			path: destination,
 			nodeName,
@@ -142,6 +100,7 @@ export default class Create extends Command {
 				installingSpinner.stop('Could not install dependencies', 1);
 				return process.exit(1);
 			}
+
 			installingSpinner.stop('Dependencies installed');
 		}
 

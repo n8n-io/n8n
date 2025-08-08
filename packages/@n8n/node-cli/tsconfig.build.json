@@ -11,6 +11,6 @@
 	"exclude": [
 		"src/**/*.test.ts",
 		"src/template/templates/**/template",
-		"src/template/templates/partials"
+		"src/template/templates/credentials"
 	]
 }

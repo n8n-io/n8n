@@ -28,8 +28,8 @@ export async function installDependencies({
 
 		const output: Buffer[] = [];
 
-		child.stdout.on('data', (chunk) => output.push(chunk));
-		child.stderr.on('data', (chunk) => output.push(chunk));
+		child.stdout.on('data', (chunk: Buffer) => output.push(chunk));
+		child.stderr.on('data', (chunk: Buffer) => output.push(chunk));
 
 		child.on('close', (code) => {
 			if (code === 0) {

@@ -8,8 +8,8 @@
   },
   "exports": {
     "./eslint": {
-      "default": "./dist/configs/eslint.js",
-      "types": "./dist/configs/eslint.d.js"
+      "types": "./dist/configs/eslint.d.js",
+      "default": "./dist/configs/eslint.js"
     }
   },
   "files": [
@@ -37,7 +37,11 @@
   },
   "oclif": {
     "bin": "n8n-node",
-    "commands": "./dist/commands",
+    "commands": {
+      "strategy": "explicit",
+      "target": "./dist/index.js",
+      "identifier": "commands"
+    },
     "topicSeparator": " "
   },
   "dependencies": {
@@ -59,6 +63,7 @@
     "eslint-plugin-n8n-nodes-base": "1.16.3",
     "typescript": "catalog:",
     "typescript-eslint": "^8.35.0",
-    "n8n-workflow": "workspace:*"
+    "n8n-workflow": "workspace:*",
+    "vitest-mock-extended": "catalog:"
   }
 }

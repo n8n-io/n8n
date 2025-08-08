@@ -8,5 +8,5 @@
 		"isolatedModules": true
 	},
 	"include": ["src/**/*.ts"],
-	"exclude": ["src/template/templates/**/template", "src/template/templates/partials"]
+	"exclude": ["src/template/templates/**/template", "src/template/templates/credentials"]
 }

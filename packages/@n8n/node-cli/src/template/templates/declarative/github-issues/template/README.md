@@ -22,9 +22,7 @@ Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes
     - Get many issues in a repository
     - Create a new issue
 - Issue Comments
-    - Get an issue comment
-    - Get many comments on an issue
-    - Create a new issue comment
+    - Get many issue comments
 
 ## Credentials
 

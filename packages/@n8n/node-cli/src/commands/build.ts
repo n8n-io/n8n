@@ -1,4 +1,4 @@
-import { cancel, intro, outro, spinner } from '@clack/prompts';
+import { cancel, intro, log, outro, spinner } from '@clack/prompts';
 import { Command } from '@oclif/core';
 import { spawn } from 'child_process';
 import glob from 'fast-glob';
@@ -20,7 +20,7 @@ export default class Build extends Command {
 
 		try {
 			await runTscBuild();
-			buildSpinner.stop('✓ TypeScript build successful');
+			buildSpinner.stop('TypeScript build successful');
 		} catch (error) {
 			cancel('TypeScript build failed');
 			this.exit(1);
@@ -28,10 +28,8 @@ export default class Build extends Command {
 
 		const copyStaticFilesSpinner = spinner();
 		copyStaticFilesSpinner.start('Copying static files');
-
 		await copyStaticFiles();
-
-		copyStaticFilesSpinner.stop('✓ Copied static files');
+		copyStaticFilesSpinner.stop('Copied static files');
 
 		outro('✓ Build successful');
 	}
@@ -59,9 +57,7 @@ async function runTscBuild(): Promise<void> {
 			if (code === 0) {
 				resolve();
 			} else {
-				console.error(`\ntsc build failed (exit code ${code})`);
-				if (stdout) console.error(stdout.trim());
-				if (stderr) console.error(stderr.trim());
+				log.error(`${stdout.trim()}\n${stderr.trim()}`);
 				reject(new Error(`tsc exited with code ${code}`));
 			}
 		});

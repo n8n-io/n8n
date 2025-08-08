@@ -1,3 +1,4 @@
+import { camelCase } from 'change-case';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -53,4 +54,36 @@ export async function writeFileSafe(
 ): Promise<void> {
 	await fs.mkdir(path.dirname(filePath), { recursive: true });
 	await fs.writeFile(filePath, contents);
+}
+
+export async function ensureFolder(dir: string) {
+	return await fs.mkdir(dir, { recursive: true });
+}
+
+export async function renameFilesInDirectory(
+	dirPath: string,
+	oldName: string,
+	newName: string,
+): Promise<void> {
+	const files = await fs.readdir(dirPath);
+
+	for (const file of files) {
+		const oldPath = path.resolve(dirPath, file);
+		const oldFileName = path.basename(oldPath);
+		const newFileName = oldFileName
+			.replace(oldName, newName)
+			.replace(camelCase(oldName), camelCase(newName));
+
+		if (newFileName !== oldFileName) {
+			const newPath = path.resolve(dirPath, newFileName);
+			await fs.rename(oldPath, newPath);
+		}
+	}
+}
+
+export async function renameDirectory(oldDirPath: string, newDirName: string): Promise<string> {
+	const parentDir = path.dirname(oldDirPath);
+	const newDirPath = path.resolve(parentDir, newDirName);
+	await fs.rename(oldDirPath, newDirPath);
+	return newDirPath;
 }
