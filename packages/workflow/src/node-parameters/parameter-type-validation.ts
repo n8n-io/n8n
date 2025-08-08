@@ -11,7 +11,7 @@ type ParameterType =
 	| 'boolean[]'
 	| 'object';
 
-export function assertUserInput<T>(condition: T, message?: string): asserts condition {
+function assertUserInput<T>(condition: T, message?: string): asserts condition {
 	try {
 		assert(condition, message);
 	} catch (e: unknown) {
