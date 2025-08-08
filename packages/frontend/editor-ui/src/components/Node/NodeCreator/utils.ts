@@ -424,7 +424,7 @@ export function getActiveViewCallouts(
 			results.push(getPreBuiltAgentsCalloutWithDivider());
 		} else if ([AI_CATEGORY_MEMORY, AI_CATEGORY_TOOLS].includes(title)) {
 			results.push(getPreBuiltAgentsCallout());
-		} else if (title === 'Google Calendar') {
+		} else if (title === 'Google Calendar' || title === 'Telegram') {
 			const templateLink = getTemplateLink(PrebuiltAgentTemplates.VoiceAssistantAgent, templates);
 			if (templateLink) {
 				results.push(templateLink);
