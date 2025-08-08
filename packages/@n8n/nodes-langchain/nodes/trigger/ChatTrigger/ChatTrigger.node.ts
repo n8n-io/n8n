@@ -1,6 +1,13 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import pick from 'lodash/pick';
-import { Node, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	Node,
+	NodeConnectionTypes,
+	NodeOperationError,
+	assertIsBoolean,
+	assertIsNodeParameters,
+	assertIsString,
+} from 'n8n-workflow';
 import type {
 	IDataObject,
 	IWebhookFunctions,
@@ -15,7 +22,7 @@ import type {
 import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
 import { createPage } from './templates';
-import type { LoadPreviousSessionChatOption } from './types';
+import { assertValidLoadPreviousSessionOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
 const allowFileUploadsOption: INodeProperties = {
@@ -579,8 +586,12 @@ export class ChatTrigger extends Node {
 	async webhook(ctx: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const res = ctx.getResponseObject();
 
-		const isPublic = ctx.getNodeParameter('public', false) as boolean;
-		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat') as string;
+		const isPublic = ctx.getNodeParameter('public', false);
+		assertIsBoolean('isPublic', isPublic);
+
+		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
+		assertIsString('mode', nodeMode);
+
 		if (!isPublic) {
 			res.status(404).end();
 			return {
@@ -588,10 +599,11 @@ export class ChatTrigger extends Node {
 			};
 		}
 
-		const options = ctx.getNodeParameter('options', {}) as {
+		const options = ctx.getNodeParameter('options', {});
+		assertIsNodeParameters<{
 			getStarted?: string;
 			inputPlaceholder?: string;
-			loadPreviousSession?: LoadPreviousSessionChatOption;
+			loadPreviousSession?: string;
 			showWelcomeScreen?: boolean;
 			subtitle?: string;
 			title?: string;
@@ -599,7 +611,21 @@ export class ChatTrigger extends Node {
 			allowedFilesMimeTypes?: string;
 			customCss?: string;
 			responseMode?: string;
-		};
+		}>(options, {
+			getStarted: { type: 'string', optional: true },
+			inputPlaceholder: { type: 'string', optional: true },
+			loadPreviousSession: { type: 'string', optional: true },
+			showWelcomeScreen: { type: 'boolean', optional: true },
+			subtitle: { type: 'string', optional: true },
+			title: { type: 'string', optional: true },
+			allowFileUploads: { type: 'boolean', optional: true },
+			allowedFilesMimeTypes: { type: 'string', optional: true },
+			customCss: { type: 'string', optional: true },
+			responseMode: { type: 'string', optional: true },
+		});
+
+		const loadPreviousSession = options.loadPreviousSession;
+		assertValidLoadPreviousSessionOption(loadPreviousSession, ctx.getNode());
 
 		const enableStreaming = options.responseMode === 'streaming';
 
@@ -623,14 +649,19 @@ export class ChatTrigger extends Node {
 		if (nodeMode === 'hostedChat') {
 			// Show the chat on GET request
 			if (webhookName === 'setup') {
-				const webhookUrlRaw = ctx.getNodeWebhookUrl('default') as string;
+				const webhookUrlRaw = ctx.getNodeWebhookUrl('default');
+				if (!webhookUrlRaw) {
+					throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
+				}
+
 				const webhookUrl =
 					mode === 'test' ? webhookUrlRaw.replace('/webhook', '/webhook-test') : webhookUrlRaw;
 				const authentication = ctx.getNodeParameter('authentication') as
 					| 'none'
 					| 'basicAuth'
 					| 'n8nUserAuth';
-				const initialMessagesRaw = ctx.getNodeParameter('initialMessages', '') as string;
+				const initialMessagesRaw = ctx.getNodeParameter('initialMessages', '');
+				assertIsString('initialRawMessage', initialMessagesRaw);
 				const instanceId = ctx.getInstanceId();
 
 				const i18nConfig = pick(options, ['getStarted', 'inputPlaceholder', 'subtitle', 'title']);
@@ -640,7 +671,7 @@ export class ChatTrigger extends Node {
 						en: i18nConfig,
 					},
 					showWelcomeScreen: options.showWelcomeScreen,
-					loadPreviousSession: options.loadPreviousSession,
+					loadPreviousSession,
 					initialMessages: initialMessagesRaw,
 					webhookUrl,
 					mode,
