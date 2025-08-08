@@ -1,3 +1,5 @@
+import N8nSidebar from './Sidebar.vue';
+
 export type TreeItemType = FolderItem | WorkflowItem;
 
 export interface BaseItem {
@@ -15,3 +17,5 @@ export interface FolderItem extends BaseItem {
 export interface WorkflowItem extends BaseItem {
 	type: 'workflow';
 }
+
+export default N8nSidebar;

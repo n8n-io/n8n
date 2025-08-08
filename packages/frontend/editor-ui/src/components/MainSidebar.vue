@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 import { useI18n } from '@n8n/i18n';
-import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
+import { N8nTooltip, N8nLink, N8nIconButton, N8nSidebar } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import { ABOUT_MODAL_KEY, RELEASE_NOTES_URL, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -23,12 +22,12 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useUserHelpers } from '@/composables/useUserHelpers';
 import { useBugReporting } from '@/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import Logo from '@/components/Logo/Logo.vue';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';
+import { useSidebarData } from '@/composables/useSidebarData';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -58,6 +57,10 @@ const user = ref<Element | null>(null);
 // Component data
 const basePath = ref('');
 const fullyExpanded = ref(false);
+
+// Use the sidebar data composable
+const { personalItems, sharedItems, projects } = useSidebarData();
+
 const userMenuItems = ref([
 	{
 		id: 'settings',
@@ -224,7 +227,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		],
 	},
 ]);
-const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
@@ -345,183 +347,8 @@ async function onResizeEnd() {
 		fullyExpanded.value = !isCollapsed.value;
 	});
 }
-
-const {
-	menu,
-	handleSelect: handleMenuSelect,
-	createProjectAppendSlotName,
-	createWorkflowsAppendSlotName,
-	createCredentialsAppendSlotName,
-	projectsLimitReachedMessage,
-	upgradeLabel,
-	hasPermissionToCreateProjects,
-} = useGlobalEntityCreation();
-onClickOutside(createBtn as Ref<VueInstance>, () => {
-	createBtn.value?.close();
-});
 </script>
 
 <template>
-	<div
-		id="side-menu"
-		:class="{
-			['side-menu']: true,
-			[$style.sideMenu]: true,
-			[$style.sideMenuCollapsed]: isCollapsed,
-		}"
-	>
-		<div
-			id="collapse-change-button"
-			:class="['clickable', $style.sideMenuCollapseButton]"
-			@click="toggleCollapse"
-		>
-			<N8nIcon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
-			<N8nIcon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
-		</div>
-		<div :class="$style.logo">
-			<Logo
-				location="sidebar"
-				:collapsed="isCollapsed"
-				:release-channel="settingsStore.settings.releaseChannel"
-			>
-				<N8nTooltip
-					v-if="sourceControlStore.preferences.branchReadOnly && !isCollapsed"
-					placement="bottom"
-				>
-					<template #content>
-						<I18nT keypath="readOnlyEnv.tooltip" scope="global">
-							<template #link>
-								<N8nLink
-									to="https://docs.n8n.io/source-control-environments/setup/#step-4-connect-n8n-and-configure-your-instance"
-									size="small"
-								>
-									{{ i18n.baseText('readOnlyEnv.tooltip.link') }}
-								</N8nLink>
-							</template>
-						</I18nT>
-					</template>
-					<N8nIcon
-						data-test-id="read-only-env-icon"
-						icon="lock"
-						size="xsmall"
-						:class="$style.readOnlyEnvironmentIcon"
-					/>
-				</N8nTooltip>
-			</Logo>
-			<N8nNavigationDropdown
-				ref="createBtn"
-				data-test-id="universal-add"
-				:menu="menu"
-				@select="handleMenuSelect"
-			>
-				<N8nIconButton icon="plus" type="secondary" outline />
-				<template #[createWorkflowsAppendSlotName]>
-					<N8nTooltip
-						v-if="sourceControlStore.preferences.branchReadOnly"
-						placement="right"
-						:content="i18n.baseText('readOnlyEnv.cantAdd.workflow')"
-					>
-						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
-					</N8nTooltip>
-				</template>
-				<template #[createCredentialsAppendSlotName]>
-					<N8nTooltip
-						v-if="sourceControlStore.preferences.branchReadOnly"
-						placement="right"
-						:content="i18n.baseText('readOnlyEnv.cantAdd.credential')"
-					>
-						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
-					</N8nTooltip>
-				</template>
-				<template #[createProjectAppendSlotName]="{ item }">
-					<N8nTooltip
-						v-if="sourceControlStore.preferences.branchReadOnly"
-						placement="right"
-						:content="i18n.baseText('readOnlyEnv.cantAdd.project')"
-					>
-						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
-					</N8nTooltip>
-					<N8nTooltip
-						v-else-if="item.disabled"
-						placement="right"
-						:content="projectsLimitReachedMessage"
-					>
-						<N8nIcon
-							v-if="!hasPermissionToCreateProjects"
-							style="margin-left: auto; margin-right: 5px"
-							icon="lock"
-							size="xsmall"
-						/>
-						<N8nButton
-							v-else
-							:size="'mini'"
-							style="margin-left: auto"
-							type="tertiary"
-							@click="handleMenuSelect(item.id)"
-						>
-							{{ upgradeLabel }}
-						</N8nButton>
-					</N8nTooltip>
-				</template>
-			</N8nNavigationDropdown>
-		</div>
-		<N8nMenu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
-			<template #header>
-				<ProjectNavigation
-					:collapsed="isCollapsed"
-					:plan-name="cloudPlanStore.currentPlanData?.displayName"
-				/>
-			</template>
-
-			<template #beforeLowerMenu>
-				<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
-			</template>
-			<template #menuSuffix>
-				<div>
-					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
-				</div>
-			</template>
-			<template v-if="showUserArea" #footer>
-				<div ref="user" :class="$style.userArea">
-					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
-						<!-- This dropdown is only enabled when sidebar is collapsed -->
-						<ElDropdown placement="right-end" trigger="click" @command="onUserActionToggle">
-							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
-								<N8nAvatar
-									:first-name="usersStore.currentUser?.firstName"
-									:last-name="usersStore.currentUser?.lastName"
-									size="small"
-								/>
-							</div>
-							<template v-if="isCollapsed" #dropdown>
-								<ElDropdownMenu>
-									<ElDropdownItem command="settings">
-										{{ i18n.baseText('settings') }}
-									</ElDropdownItem>
-									<ElDropdownItem command="logout">
-										{{ i18n.baseText('auth.signout') }}
-									</ElDropdownItem>
-								</ElDropdownMenu>
-							</template>
-						</ElDropdown>
-					</div>
-					<div
-						:class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }"
-					>
-						<N8nText size="small" :bold="true" color="text-dark">{{
-							usersStore.currentUser?.fullName
-						}}</N8nText>
-					</div>
-					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
-						<N8nActionDropdown
-							:items="userMenuItems"
-							placement="top-start"
-							data-test-id="user-menu"
-							@select="onUserActionToggle"
-						/>
-					</div>
-				</div>
-			</template>
-		</N8nMenu>
-	</div>
+	<N8nSidebar :personal="personalItems" :shared="sharedItems" :projects="projects" />
 </template>

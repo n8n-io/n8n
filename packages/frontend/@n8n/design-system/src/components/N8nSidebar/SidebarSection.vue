@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { TreeRoot, TreeItem, TreeItemToggleEvent } from 'reka-ui';
 import type { TreeItemType } from '.';
-import { ref } from 'vue';
-import { N8nIcon, N8nIconButton, N8nText } from '..';
+import { computed, ref } from 'vue';
+import { N8nIcon, N8nIconButton, N8nLink, N8nText } from '..';
 import { IconName } from '../N8nIcon/icons';
 
 interface Props {
@@ -28,6 +28,13 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 		event.detail.originalEvent.preventDefault();
 	}
 }
+
+const link = computed(() => {
+	if (props.id === 'shared') {
+		return '/shared/workflows';
+	}
+	return `/projects/${props.id}/workflows`;
+});
 </script>
 
 <template>
@@ -48,7 +55,7 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 					:aria-label="`Toggle ${title} section`"
 				/>
 			</div>
-			<N8nText>{{ title }}</N8nText>
+			<N8nLink :to="link">{{ title }}</N8nLink>
 		</header>
 		<div class="items">
 			<TreeRoot

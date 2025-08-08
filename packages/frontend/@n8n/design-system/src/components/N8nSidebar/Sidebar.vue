@@ -1,14 +1,17 @@
 <script lang="ts" setup>
 import { TreeItemType } from '.';
 import N8nIcon from '../N8nIcon';
+import { IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
 import SidebarSection from './SidebarSection.vue';
 
 const props = defineProps<{
-	personal: TreeItemType[];
+	personal: { id: string; items: TreeItemType[] };
 	shared: TreeItemType[];
-	projects: { title: string; id: string; icon: 'string'; items: TreeItemType[] }[];
+	projects: { title: string; id: string; icon: IconName; items: TreeItemType[] }[];
 }>();
+
+console.log(props.projects);
 </script>
 
 <template>
@@ -21,9 +24,9 @@ const props = defineProps<{
 		</header>
 		<SidebarSection
 			title="Personal"
-			id="personal"
+			:id="personal.id"
 			icon="user"
-			:items="props.personal"
+			:items="personal.items"
 			:selectable="false"
 			:collapsible="false"
 		/>
@@ -32,7 +35,7 @@ const props = defineProps<{
 			title="Shared with me"
 			id="shared"
 			icon="share"
-			:items="props.shared"
+			:items="shared"
 			:selectable="false"
 			:collapsible="false"
 		/>
@@ -41,6 +44,7 @@ const props = defineProps<{
 			v-for="project in props.projects"
 			:title="project.title"
 			:id="project.id"
+			:icon="project.icon"
 			:key="project.id"
 			:items="project.items"
 			:selectable="false"
@@ -50,6 +54,14 @@ const props = defineProps<{
 </template>
 
 <style scoped>
+.sidebar {
+	padding: 8px;
+	background-color: var(--color-background-xlight);
+	position: relative;
+	height: 100%;
+	border-right: 1px solid var(--color-foreground-base);
+}
+
 .sidebarItem {
 	display: flex;
 	align-items: center;

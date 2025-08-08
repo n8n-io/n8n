@@ -357,6 +357,7 @@ const mockProjects = [
 	{
 		id: 'project-1',
 		title: 'E-commerce Platform',
+		icon: 'folder' as const,
 		items: [
 			{
 				id: 'ecommerce-folder-1',
@@ -392,6 +393,7 @@ const mockProjects = [
 	{
 		id: 'project-2',
 		title: 'Marketing Automation',
+		icon: 'folder' as const,
 		items: [
 			{ id: 'workflow-14', label: 'Lead Scoring', type: 'workflow' },
 			{
@@ -414,6 +416,7 @@ const mockProjects = [
 	{
 		id: 'project-3',
 		title: 'Stress Test - Deep Nesting',
+		icon: 'folder' as const,
 		items: [
 			{
 				id: 'stress-test-folder',
