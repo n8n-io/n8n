@@ -1089,7 +1089,7 @@ async function executeDatapointCreate(
 	timezone: string,
 ): Promise<JsonObject[]> {
 	const value = context.getNodeParameter('value', itemIndex);
-	assertParamIsNumber('value', value, this.getNode());
+	assertParamIsNumber('value', value, context.getNode());
 
 	const options = context.getNodeParameter('additionalFields', itemIndex);
 	if (options.timestamp) {
