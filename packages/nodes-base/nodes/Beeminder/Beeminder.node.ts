@@ -1096,11 +1096,7 @@ async function executeDatapointCreate(
 		options.timestamp = moment.tz(options.timestamp, timezone).unix();
 	}
 
-	validateNodeParameters<{
-		comment?: string;
-		timestamp?: number;
-		requestid?: string;
-	}>(options, {
+	validateNodeParameters(options, {
 		comment: { type: 'string', optional: true },
 		timestamp: { type: 'number', optional: true },
 		requestid: { type: 'string', optional: true },
@@ -1122,11 +1118,7 @@ async function executeDatapointGetAll(
 ): Promise<JsonObject[]> {
 	const returnAll = context.getNodeParameter('returnAll', itemIndex);
 	const options = context.getNodeParameter('options', itemIndex);
-	validateNodeParameters<{
-		sort?: string;
-		page?: number;
-		per?: number;
-	}>(options, {
+	validateNodeParameters(options, {
 		sort: { type: 'string', optional: true },
 		page: { type: 'number', optional: true },
 		per: { type: 'number', optional: true },
@@ -1154,11 +1146,7 @@ async function executeDatapointUpdate(
 		options.timestamp = moment.tz(options.timestamp, timezone).unix();
 	}
 
-	validateNodeParameters<{
-		value?: number;
-		comment?: string;
-		timestamp?: number;
-	}>(options, {
+	validateNodeParameters(options, {
 		value: { type: 'number', optional: true },
 		comment: { type: 'string', optional: true },
 		timestamp: { type: 'number', optional: true },
@@ -1255,10 +1243,7 @@ async function executeChargeOperations(
 		const amount = context.getNodeParameter('amount', itemIndex);
 		assertParamIsNumber('amount', amount);
 		const options = context.getNodeParameter('additionalFields', itemIndex);
-		validateNodeParameters<{
-			note?: string;
-			dryrun?: boolean;
-		}>(options, {
+		validateNodeParameters(options, {
 			note: { type: 'string', optional: true },
 			dryrun: { type: 'boolean', optional: true },
 		});
@@ -1293,17 +1278,7 @@ async function executeGoalCreate(
 		options.goaldate = moment.tz(options.goaldate, timezone).unix();
 	}
 
-	validateNodeParameters<{
-		goaldate?: number;
-		goalval?: number;
-		rate?: number;
-		initval?: number;
-		secret?: boolean;
-		datapublic?: boolean;
-		datasource?: string;
-		dryrun?: boolean;
-		tags?: string[];
-	}>(options, {
+	validateNodeParameters(options, {
 		goaldate: { type: 'number', optional: true },
 		goalval: { type: 'number', optional: true },
 		rate: { type: 'number', optional: true },
@@ -1333,10 +1308,7 @@ async function executeGoalGet(
 	const goalName = context.getNodeParameter('goalName', itemIndex);
 	assertParamIsString('goalName', goalName);
 	const options = context.getNodeParameter('additionalFields', itemIndex);
-	validateNodeParameters<{
-		datapoints?: boolean;
-		emaciated?: boolean;
-	}>(options, {
+	validateNodeParameters(options, {
 		datapoints: { type: 'boolean', optional: true },
 		emaciated: { type: 'boolean', optional: true },
 	});
@@ -1353,9 +1325,7 @@ async function executeGoalGetAll(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const options = context.getNodeParameter('additionalFields', itemIndex);
-	validateNodeParameters<{
-		emaciated?: boolean;
-	}>(options, {
+	validateNodeParameters(options, {
 		emaciated: { type: 'boolean', optional: true },
 	});
 	const data = { ...options };
@@ -1368,9 +1338,7 @@ async function executeGoalGetArchived(
 	itemIndex: number,
 ): Promise<JsonObject[]> {
 	const options = context.getNodeParameter('additionalFields', itemIndex);
-	validateNodeParameters<{
-		emaciated?: boolean;
-	}>(options, {
+	validateNodeParameters(options, {
 		emaciated: { type: 'boolean', optional: true },
 	});
 	const data = { ...options };
@@ -1392,23 +1360,15 @@ async function executeGoalUpdate(
 	if ('roadall' in options && typeof options.roadall === 'string') {
 		options.roadall = jsonParse(options.roadall);
 	}
-	console.log('roadall', typeof options.roadall, options.roadall);
-	validateNodeParameters<{
-		title?: string;
-		yaxis?: string;
-		tmin?: string;
-		tmax?: string;
-		goaldate?: number;
-		secret?: boolean;
-		datapublic?: boolean;
-		roadall?: object;
-		datasource?: string;
-		tags?: string[];
-	}>(options, {
+	if ('goaldate' in options && options.goaldate) {
+		options.goaldate = moment.tz(options.goaldate, timezone).unix();
+	}
+	validateNodeParameters(options, {
 		title: { type: 'string', optional: true },
 		yaxis: { type: 'string', optional: true },
 		tmin: { type: 'string', optional: true },
 		tmax: { type: 'string', optional: true },
+		goaldate: { type: 'number', optional: true },
 		secret: { type: 'boolean', optional: true },
 		datapublic: { type: 'boolean', optional: true },
 		roadall: { type: 'object', optional: true },
@@ -1419,10 +1379,6 @@ async function executeGoalUpdate(
 		goalName,
 		...options,
 	};
-
-	if (data.goaldate) {
-		data.goaldate = moment.tz(data.goaldate, timezone).unix();
-	}
 	return await updateGoal.call(context, data);
 }
 
@@ -1532,13 +1488,7 @@ async function executeUserOperations(
 		if (options.diff_since) {
 			options.diff_since = moment.tz(options.diff_since, timezone).unix();
 		}
-		validateNodeParameters<{
-			associations?: boolean;
-			diff_since?: number;
-			skinny?: boolean;
-			emaciated?: boolean;
-			datapoints_count?: number;
-		}>(options, {
+		validateNodeParameters(options, {
 			associations: { type: 'boolean', optional: true },
 			diff_since: { type: 'number', optional: true },
 			skinny: { type: 'boolean', optional: true },

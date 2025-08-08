@@ -600,18 +600,7 @@ export class ChatTrigger extends Node {
 		}
 
 		const options = ctx.getNodeParameter('options', {});
-		validateNodeParameters<{
-			getStarted?: string;
-			inputPlaceholder?: string;
-			loadPreviousSession?: string;
-			showWelcomeScreen?: boolean;
-			subtitle?: string;
-			title?: string;
-			allowFileUploads?: boolean;
-			allowedFilesMimeTypes?: string;
-			customCss?: string;
-			responseMode?: string;
-		}>(options, {
+		validateNodeParameters(options, {
 			getStarted: { type: 'string', optional: true },
 			inputPlaceholder: { type: 'string', optional: true },
 			loadPreviousSession: { type: 'string', optional: true },
@@ -664,7 +653,13 @@ export class ChatTrigger extends Node {
 				assertParamIsString('initialRawMessage', initialMessagesRaw);
 				const instanceId = ctx.getInstanceId();
 
-				const i18nConfig = pick(options, ['getStarted', 'inputPlaceholder', 'subtitle', 'title']);
+				const i18nConfig: Record<string, string> = {};
+				const keys = ['getStarted', 'inputPlaceholder', 'subtitle', 'title'] as const;
+				for (const key of keys) {
+					if (options[key] !== undefined) {
+						i18nConfig[key] = options[key];
+					}
+				}
 
 				const page = createPage({
 					i18n: {

@@ -171,16 +171,40 @@ function validateParameterAgainstTypes(
 	}
 }
 
-export function validateNodeParameters<T>(
+type InferParameterType<T extends ParameterType | ParameterType[]> = T extends ParameterType[]
+	? InferSingleParameterType<T[number]>
+	: T extends ParameterType
+		? InferSingleParameterType<T>
+		: never;
+
+type InferSingleParameterType<T extends ParameterType> = T extends 'string'
+	? string
+	: T extends 'boolean'
+		? boolean
+		: T extends 'number'
+			? number
+			: T extends 'resource-locator'
+				? Record<string, unknown>
+				: T extends 'string[]'
+					? string[]
+					: T extends 'number[]'
+						? number[]
+						: T extends 'boolean[]'
+							? boolean[]
+							: T extends 'object'
+								? Record<string, unknown>
+								: unknown;
+
+export function validateNodeParameters<
+	T extends Record<string, { type: ParameterType | ParameterType[]; optional?: boolean }>,
+>(
 	value: unknown,
-	parameters: Record<
-		string,
-		{
-			type: ParameterType | ParameterType[];
-			optional?: boolean;
-		}
-	>,
-): asserts value is T {
+	parameters: T,
+): asserts value is {
+	[K in keyof T]: T[K]['optional'] extends true
+		? InferParameterType<T[K]['type']> | undefined
+		: InferParameterType<T[K]['type']>;
+} {
 	assertIsValidObject(value);
 
 	Object.keys(parameters).forEach((key) => {
