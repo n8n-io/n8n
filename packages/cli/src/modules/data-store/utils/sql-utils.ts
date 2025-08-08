@@ -130,42 +130,27 @@ export function buildInsertQuery(
 	rows: DataStoreRows,
 	dbType: DataSourceOptions['type'] = 'sqlite',
 ): [string, unknown[]] {
-	if (rows.length === 0) {
+	if (rows.length === 0 || Object.keys(rows[0]).length === 0) {
 		return ['', []];
 	}
 
 	const keys = Object.keys(rows[0]);
-
-	if (keys.length === 0) {
-		return ['', []];
-	}
-
 	const quotedKeys = keys.map((key) => quoteIdentifier(key, dbType)).join(', ');
 	const quotedTableName = quoteIdentifier(tableName, dbType);
 
 	const parameters: unknown[] = [];
 	const valuePlaceholders: string[] = [];
-
 	let placeholderIndex = 1;
 
 	for (const row of rows) {
-		const rowPlaceholders: string[] = [];
-
-		for (const key of keys) {
+		const rowPlaceholders = keys.map((key) => {
 			parameters.push(row[key]);
-
-			if (dbType.includes('postgres')) {
-				rowPlaceholders.push(`$${placeholderIndex++}`);
-			} else {
-				rowPlaceholders.push('?');
-			}
-		}
-
+			return getPlaceholder(placeholderIndex++, dbType);
+		});
 		valuePlaceholders.push(`(${rowPlaceholders.join(', ')})`);
 	}
 
 	const query = `INSERT INTO ${quotedTableName} (${quotedKeys}) VALUES ${valuePlaceholders.join(', ')}`;
-
 	return [query, parameters];
 }
 
@@ -186,16 +171,26 @@ export function buildUpdateQuery(
 		return ['', []];
 	}
 
-	const setClause = updateKeys.map((key) => `${quoteIdentifier(key, dbType)} = ?`).join(', ');
-
-	const whereClause = matchFields.map((key) => `${quoteIdentifier(key, dbType)} = ?`).join(' AND ');
-
-	const parameters = [...updateKeys.map((k) => row[k]), ...matchFields.map((k) => row[k])];
-
 	const quotedTableName = quoteIdentifier(tableName, dbType);
 
-	const query = `UPDATE ${quotedTableName} SET ${setClause} WHERE ${whereClause}`;
+	const parameters: unknown[] = [];
+	let placeholderIndex = 1;
 
+	const setClause = updateKeys
+		.map((key) => {
+			parameters.push(row[key]);
+			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
+		})
+		.join(', ');
+
+	const whereClause = matchFields
+		.map((key) => {
+			parameters.push(row[key]);
+			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
+		})
+		.join(' AND ');
+
+	const query = `UPDATE ${quotedTableName} SET ${setClause} WHERE ${whereClause}`;
 	return [query, parameters];
 }
 
@@ -240,4 +235,8 @@ export function quoteIdentifier(name: string, dbType: DataSourceOptions['type'])
 
 export function toTableName(dataStoreId: string): DataStoreUserTableName {
 	return `data_store_user_${dataStoreId}`;
+}
+
+function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
+	return dbType.includes('postgres') ? `$${index}` : '?';
 }

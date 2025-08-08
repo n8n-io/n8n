@@ -1,5 +1,3 @@
-// TODO: remove once all tests pass
-/* eslint-disable n8n-local-rules/no-skipped-tests */
 import type { AddDataStoreColumnDto, CreateDataStoreColumnDto } from '@n8n/api-types';
 import type { ModuleName } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
@@ -841,6 +839,41 @@ describe('dataStore', () => {
 		});
 	});
 
+	describe('getManyRowsAndCount', () => {
+		it('retrieves rows correctly', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'c1', type: 'number' },
+					{ name: 'c2', type: 'boolean' },
+					{ name: 'c3', type: 'date' },
+					{ name: 'c4', type: 'string' },
+				],
+			});
+
+			const rows = [
+				{ c1: 3, c2: true, c3: new Date(0), c4: 'hello?' },
+				{ c1: 4, c2: false, c3: new Date(1), c4: 'hello!' },
+				{ c1: 5, c2: true, c3: new Date(2), c4: 'hello.' },
+			];
+
+			await dataStoreService.insertRows(dataStore.id, rows);
+
+			// ACT
+			const result = await dataStoreService.getManyRowsAndCount(dataStore.id, {});
+
+			// ASSERT
+			expect(result.count).toEqual(3);
+			// Assuming IDs are auto-incremented starting from 1
+			expect(result.data).toEqual([
+				{ c1: rows[0].c1, c2: rows[0].c2, c3: '1970-01-01T00:00:00.000Z', c4: rows[0].c4, id: 1 },
+				{ c1: rows[1].c1, c2: rows[1].c2, c3: '1970-01-01T00:00:00.001Z', c4: rows[1].c4, id: 2 },
+				{ c1: rows[2].c1, c2: rows[2].c2, c3: '1970-01-01T00:00:00.002Z', c4: rows[2].c4, id: 3 },
+			]);
+		});
+	});
+
 	describe('insertRows', () => {
 		it('inserts rows into an existing table', async () => {
 			// ARRANGE
@@ -870,7 +903,7 @@ describe('dataStore', () => {
 			expect(data).toEqual(
 				rows.map((row, i) => ({
 					...row,
-					id: i + 1, // Assuming IDs are auto-incremented starting from 1
+					id: i + 1,
 					c1: row.c1,
 					c2: row.c2,
 					c3: row.c3 instanceof Date ? row.c3.toISOString() : row.c3,
@@ -1028,7 +1061,7 @@ describe('dataStore', () => {
 	});
 
 	describe('upsertRows', () => {
-		it.skip('updates a row if filter matches', async () => {
+		it('updates a row if filter matches', async () => {
 			// ARRANGE
 			const dataStore = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1062,7 +1095,7 @@ describe('dataStore', () => {
 			expect(data).toEqual([{ fullName: 'Alicia', age: 31, id: 1, pid: '1995-111a' }]);
 		});
 
-		it.skip('inserts a row if filter does not match', async () => {
+		it('inserts a row if filter does not match', async () => {
 			// ARRANGE
 			const dataStore = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1096,38 +1129,6 @@ describe('dataStore', () => {
 			expect(data).toEqual([
 				{ fullName: 'Alice', age: 30, id: 1, pid: '1995-111a' },
 				{ fullName: 'Alice', age: 30, id: 2, pid: '1992-222b' },
-			]);
-		});
-	});
-
-	describe('getManyRowsAndCount', () => {
-		it.skip('retrieves rows correctly', async () => {
-			// ARRANGE
-			const dataStore = await dataStoreService.createDataStore(project1.id, {
-				name: 'dataStore',
-				columns: [
-					{ name: 'c1', type: 'number' },
-					{ name: 'c2', type: 'boolean' },
-					{ name: 'c3', type: 'date' },
-					{ name: 'c4', type: 'string' },
-				],
-			});
-
-			await dataStoreService.insertRows(dataStore.id, [
-				{ c1: 3, c2: true, c3: new Date(0), c4: 'hello?' },
-				{ c1: 4, c2: false, c3: new Date(1), c4: 'hello!' },
-				{ c1: 5, c2: true, c3: new Date(2), c4: 'hello.' },
-			]);
-
-			// ACT
-			const result = await dataStoreService.getManyRowsAndCount(dataStore.id, {});
-
-			// ASSERT
-			expect(result.count).toEqual(3);
-			expect(result.data).toEqual([
-				{ c1: 3, c2: 1, c3: '1970-01-01T00:00:00.000Z', c4: 'hello?', id: 1 },
-				{ c1: 4, c2: 0, c3: '1970-01-01T00:00:00.001Z', c4: 'hello!', id: 2 },
-				{ c1: 5, c2: 1, c3: '1970-01-01T00:00:00.002Z', c4: 'hello.', id: 3 },
 			]);
 		});
 	});

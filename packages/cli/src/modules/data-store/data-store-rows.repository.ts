@@ -63,6 +63,7 @@ export class DataStoreRowsRepository {
 
 		if (rowsToUpdate.length > 0) {
 			for (const row of rowsToUpdate) {
+				// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
 				const [query, parameters] = buildUpdateQuery(tableName, row, matchFields, dbType);
 				await this.dataSource.query(query, parameters);
 			}
