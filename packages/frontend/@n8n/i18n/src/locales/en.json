@@ -2738,6 +2738,8 @@
 	"workflows.readyToRunWorkflows.cta": "Run a workflow",
 	"workflows.readyToRunWorkflows.folder.name": "🚀 Ready-to-run workflows",
 	"workflows.readyToRunWorkflows.error": "Error loading n8n collection. Please try again later.",
+	"workflows.archivedOnly.hint": "Archived workflows are hidden in this view. {link}",
+	"workflows.archivedOnly.hint.link": "Update filters",
 	"workflowSelectorParameterInput.createNewSubworkflow.name": "My Sub-Workflow",
 	"importCurlModal.title": "Import cURL command",
 	"importCurlModal.input.label": "cURL Command",
