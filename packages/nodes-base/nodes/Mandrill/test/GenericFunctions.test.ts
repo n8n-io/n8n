@@ -100,13 +100,13 @@ describe('Mandrill GenericFunctions', () => {
 
 	describe('validateJSON', () => {
 		it('should parse valid JSON object', () => {
-			const result = validateJSON('{"test": "value", "number": 123}');
-			expect(result).toEqual({ test: 'value', number: 123 });
+			const result = validateJSON('{"Test": "value", "number": 123}');
+			expect(result).toEqual({ Test: 'value', number: 123 });
 		});
 
 		it('should parse valid JSON array', () => {
-			const result = validateJSON('[{"name": "test", "value": "data"}]');
-			expect(result).toEqual([{ name: 'test', value: 'data' }]);
+			const result = validateJSON('[{"name": "Test", "value": "data"}]');
+			expect(result).toEqual([{ name: 'Test', value: 'data' }]);
 		});
 
 		it('should return empty array for invalid JSON', () => {
