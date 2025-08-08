@@ -1,5 +1,6 @@
-import { UserError } from '../errors';
+import { NodeOperationError } from '../errors';
 import { assert } from '../utils';
+import type { INode } from '../interfaces';
 
 type ParameterType =
 	| 'string'
@@ -11,16 +12,15 @@ type ParameterType =
 	| 'boolean[]'
 	| 'object';
 
-function assertUserInput<T>(condition: T, message?: string): asserts condition {
+function assertUserInput<T>(condition: T, message: string, node: INode): asserts condition {
 	try {
 		assert(condition, message);
 	} catch (e: unknown) {
 		if (e instanceof Error) {
-			const userError = new UserError(e.message, {
-				shouldReport: false,
-			});
-			userError.stack = e.stack;
-			throw userError;
+			// Use level 'info' to prevent reporting to Sentry (only 'error' and 'fatal' levels are reported)
+			const nodeError = new NodeOperationError(node, e.message, { level: 'info' });
+			nodeError.stack = e.stack;
+			throw nodeError;
 		}
 
 		throw e;
@@ -31,29 +31,33 @@ function assertParamIsType<T>(
 	parameterName: string,
 	value: unknown,
 	type: 'string' | 'number' | 'boolean',
+	node: INode,
 ): asserts value is T {
-	assertUserInput(typeof value === type, `Parameter "${parameterName}" is not ${type}`);
+	assertUserInput(typeof value === type, `Parameter "${parameterName}" is not ${type}`, node);
 }
 
 export function assertParamIsNumber(
 	parameterName: string,
 	value: unknown,
+	node: INode,
 ): asserts value is number {
-	assertParamIsType<number>(parameterName, value, 'number');
+	assertParamIsType<number>(parameterName, value, 'number', node);
 }
 
 export function assertParamIsString(
 	parameterName: string,
 	value: unknown,
+	node: INode,
 ): asserts value is string {
-	assertParamIsType<string>(parameterName, value, 'string');
+	assertParamIsType<string>(parameterName, value, 'string', node);
 }
 
 export function assertParamIsBoolean(
 	parameterName: string,
 	value: unknown,
+	node: INode,
 ): asserts value is boolean {
-	assertParamIsType<boolean>(parameterName, value, 'boolean');
+	assertParamIsType<boolean>(parameterName, value, 'boolean', node);
 }
 
 type TypeofMap = {
@@ -78,8 +82,9 @@ export function assertParamIsArray<T>(
 	parameterName: string,
 	value: unknown,
 	validator: (val: unknown) => val is T,
+	node: INode,
 ): asserts value is T[] {
-	assertUserInput(Array.isArray(value), `Parameter "${parameterName}" is not an array`);
+	assertUserInput(Array.isArray(value), `Parameter "${parameterName}" is not an array`, node);
 
 	// Use for loop instead of .every() to properly handle sparse arrays
 	// .every() skips empty/sparse indices, which could allow invalid arrays to pass
@@ -88,26 +93,31 @@ export function assertParamIsArray<T>(
 			assertUserInput(
 				false,
 				`Parameter "${parameterName}" has elements that don't match expected types`,
+				node,
 			);
 		}
 	}
 }
 
-function assertIsValidObject(value: unknown): asserts value is Record<string, unknown> {
-	assertUserInput(typeof value === 'object' && value !== null, 'Value is not a valid object');
+function assertIsValidObject(
+	value: unknown,
+	node: INode,
+): asserts value is Record<string, unknown> {
+	assertUserInput(typeof value === 'object' && value !== null, 'Value is not a valid object', node);
 }
 
 function assertIsRequiredParameter(
 	parameterName: string,
 	value: unknown,
 	isRequired: boolean,
+	node: INode,
 ): void {
 	if (isRequired && value === undefined) {
-		assertUserInput(false, `Required parameter "${parameterName}" is missing`);
+		assertUserInput(false, `Required parameter "${parameterName}" is missing`, node);
 	}
 }
 
-function assertIsResourceLocator(parameterName: string, value: unknown): void {
+function assertIsResourceLocator(parameterName: string, value: unknown, node: INode): void {
 	assertUserInput(
 		typeof value === 'object' &&
 			value !== null &&
@@ -115,13 +125,15 @@ function assertIsResourceLocator(parameterName: string, value: unknown): void {
 			'mode' in value &&
 			'value' in value,
 		`Parameter "${parameterName}" is not a valid resource locator object`,
+		node,
 	);
 }
 
-function assertParamIsObject(parameterName: string, value: unknown): void {
+function assertParamIsObject(parameterName: string, value: unknown, node: INode): void {
 	assertUserInput(
 		typeof value === 'object' && value !== null,
 		`Parameter "${parameterName}" is not a valid object`,
+		node,
 	);
 }
 
@@ -132,33 +144,48 @@ function createElementValidator<T extends 'string' | 'number' | 'boolean'>(eleme
 		typeof val === elementType;
 }
 
-function assertParamIsArrayOfType(parameterName: string, value: unknown, arrayType: string): void {
+function assertParamIsArrayOfType(
+	parameterName: string,
+	value: unknown,
+	arrayType: string,
+	node: INode,
+): void {
 	const baseType = arrayType.slice(0, -2);
 	const elementType =
 		baseType === 'string' || baseType === 'number' || baseType === 'boolean' ? baseType : 'string';
 
 	const validator = createElementValidator(elementType);
-	assertParamIsArray(parameterName, value, validator);
+	assertParamIsArray(parameterName, value, validator, node);
 }
 
-function assertParamIsPrimitive(parameterName: string, value: unknown, type: string): void {
-	assertUserInput(typeof value === type, `Parameter "${parameterName}" is not a valid ${type}`);
+function assertParamIsPrimitive(
+	parameterName: string,
+	value: unknown,
+	type: string,
+	node: INode,
+): void {
+	assertUserInput(
+		typeof value === type,
+		`Parameter "${parameterName}" is not a valid ${type}`,
+		node,
+	);
 }
 
 function validateParameterType(
 	parameterName: string,
 	value: unknown,
 	type: ParameterType,
+	node: INode,
 ): boolean {
 	try {
 		if (type === 'resource-locator') {
-			assertIsResourceLocator(parameterName, value);
+			assertIsResourceLocator(parameterName, value, node);
 		} else if (type === 'object') {
-			assertParamIsObject(parameterName, value);
+			assertParamIsObject(parameterName, value, node);
 		} else if (type.endsWith('[]')) {
-			assertParamIsArrayOfType(parameterName, value, type);
+			assertParamIsArrayOfType(parameterName, value, type, node);
 		} else {
-			assertParamIsPrimitive(parameterName, value, type);
+			assertParamIsPrimitive(parameterName, value, type, node);
 		}
 		return true;
 	} catch {
@@ -170,11 +197,12 @@ function validateParameterAgainstTypes(
 	parameterName: string,
 	value: unknown,
 	types: ParameterType[],
+	node: INode,
 ): void {
 	let isValid = false;
 
 	for (const type of types) {
-		if (validateParameterType(parameterName, value, type)) {
+		if (validateParameterType(parameterName, value, type, node)) {
 			isValid = true;
 			break;
 		}
@@ -185,6 +213,7 @@ function validateParameterAgainstTypes(
 		assertUserInput(
 			false,
 			`Parameter "${parameterName}" does not match any of the expected types: ${typeList}`,
+			node,
 		);
 	}
 }
@@ -218,24 +247,25 @@ export function validateNodeParameters<
 >(
 	value: unknown,
 	parameters: T,
+	node: INode,
 ): asserts value is {
 	[K in keyof T]: T[K]['required'] extends true
 		? InferParameterType<T[K]['type']>
 		: InferParameterType<T[K]['type']> | undefined;
 } {
-	assertIsValidObject(value);
+	assertIsValidObject(value, node);
 
 	Object.keys(parameters).forEach((key) => {
 		const param = parameters[key];
 		const paramValue = value[key];
 
-		assertIsRequiredParameter(key, paramValue, param.required ?? false);
+		assertIsRequiredParameter(key, paramValue, param.required ?? false, node);
 
 		// If required, value cannot be undefined and must be validated
 		// If not required, value can be undefined but should be validated when present
 		if (param.required || paramValue !== undefined) {
 			const types = Array.isArray(param.type) ? param.type : [param.type];
-			validateParameterAgainstTypes(key, paramValue, types);
+			validateParameterAgainstTypes(key, paramValue, types, node);
 		}
 	});
 }
