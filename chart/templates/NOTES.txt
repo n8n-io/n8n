@@ -1,0 +1,99 @@
+{{- if .Values.statefulSet.enabled }}
+{{- else if .Values.job.enabled }}
+{{- else if .Values.cronJob.enabled }}
+{{- else }}
+1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "n8n.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo n8n URL: http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "n8n.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "n8n.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo n8n URL: http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "n8n.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your n8n application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+{{- if .Values.basicAuth.active }}
+2. Login credentials:
+   Username: {{ .Values.basicAuth.user }}
+   Password: {{ .Values.basicAuth.password }}
+{{- end }}
+
+{{- if .Values.database.type }}
+3. Database configuration:
+   Type: {{ .Values.database.type }}
+   {{- if eq .Values.database.type "postgresdb" }}
+   Host: {{ .Values.database.postgresql.host }}
+   Port: {{ .Values.database.postgresql.port }}
+   Database: {{ .Values.database.postgresql.database }}
+   User: {{ .Values.database.postgresql.user }}
+   {{- else if eq .Values.database.type "mysqldb" }}
+   Host: {{ .Values.database.mysql.host }}
+   Port: {{ .Values.database.mysql.port }}
+   Database: {{ .Values.database.mysql.database }}
+   User: {{ .Values.database.mysql.user }}
+   {{- else }}
+   Database file: {{ .Values.database.sqlite.database }}
+   {{- end }}
+{{- end }}
+
+{{- if .Values.redis.enabled }}
+4. Redis configuration:
+   Host: {{ .Values.redis.host }}
+   Port: {{ .Values.redis.port }}
+   Database: {{ .Values.redis.db }}
+{{- end }}
+
+{{- if .Values.endpoints.metrics.enable }}
+5. Prometheus metrics are enabled:
+   Metrics endpoint: /metrics
+   Metrics prefix: {{ .Values.endpoints.metrics.prefix }}
+{{- end }}
+
+{{- if .Values.serviceMonitor.enabled }}
+6. ServiceMonitor is enabled for Prometheus monitoring
+{{- end }}
+
+{{- if .Values.hpa.enabled }}
+7. Horizontal Pod Autoscaler is enabled:
+   Min replicas: {{ .Values.hpa.minReplicas }}
+   Max replicas: {{ .Values.hpa.maxReplicas }}
+{{- end }}
+
+{{- if .Values.persistence.enabled }}
+8. Persistent storage is enabled:
+   Storage size: {{ .Values.persistence.size }}
+   Storage class: {{ .Values.persistence.storageClass | default "default" }}
+{{- end }}
+
+{{- if .Values.logging.level }}
+9. Logging configuration:
+   Level: {{ .Values.logging.level }}
+   Outputs: {{ join ", " .Values.logging.outputs }}
+   Format: {{ .Values.logging.format }}
+{{- end }}
+
+10. For more information about n8n, visit:
+    - https://docs.n8n.io/
+    - https://n8n.io/
+
+{{- if .Values.ingress.enabled }}
+{{- else }}
+To access n8n from outside the cluster, you may need to:
+- Set up an Ingress controller
+- Use a LoadBalancer service type
+- Use port-forwarding for development
+{{- end }}
+{{- end }} 

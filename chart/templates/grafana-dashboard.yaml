@@ -1,0 +1,73 @@
+{{- if .Values.grafanaDashboard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "n8n.fullname" . }}-dashboard
+  labels:
+    {{- include "n8n.labels" . | nindent 4 }}
+    {{ .Values.grafanaDashboard.label }}: {{ .Values.grafanaDashboard.labelValue }}
+data:
+  dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "n8n Dashboard",
+        "tags": ["n8n"],
+        "style": "dark",
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "n8n Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=\"{{ include \"n8n.fullname\" . }}\"}",
+                "legendFormat": "n8n Status"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": 0},
+                    {"color": "green", "value": 1}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 2,
+            "title": "n8n HTTP Requests",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job=\"{{ include \"n8n.fullname\" . }}\"}[5m])",
+                "legendFormat": "{{method}} {{path}}"
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "title": "n8n Workflow Executions",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(n8n_workflow_executions_total{job=\"{{ include \"n8n.fullname\" . }}\"}[5m])",
+                "legendFormat": "{{workflow_name}}"
+              }
+            ]
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "refresh": "30s"
+      }
+    }
+{{- end }} 
