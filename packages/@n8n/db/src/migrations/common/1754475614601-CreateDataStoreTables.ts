@@ -1,11 +1,11 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-const dataStoreTableName = 'data_store';
-const dataStoreColumnTableName = 'data_store_column';
+const DATA_STORE_TABLE_NAME = 'data_store';
+const DATA_STORE_COLUMN_TABLE_NAME = 'data_store_column';
 
 export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
-		await createTable(dataStoreTableName)
+		await createTable(DATA_STORE_TABLE_NAME)
 			.withColumns(
 				column('id').varchar(36).primary,
 				column('name').varchar(128).notNull,
@@ -19,7 +19,7 @@ export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 			})
 			.withIndexOn(['projectId', 'name'], true).withTimestamps;
 
-		await createTable(dataStoreColumnTableName)
+		await createTable(DATA_STORE_COLUMN_TABLE_NAME)
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
 				column('name').varchar(128).notNull,
@@ -28,7 +28,7 @@ export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 				column('dataStoreId').varchar(36).notNull,
 			)
 			.withForeignKey('dataStoreId', {
-				tableName: dataStoreTableName,
+				tableName: DATA_STORE_TABLE_NAME,
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
@@ -36,7 +36,7 @@ export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
-		await dropTable(dataStoreColumnTableName);
-		await dropTable(dataStoreTableName);
+		await dropTable(DATA_STORE_COLUMN_TABLE_NAME);
+		await dropTable(DATA_STORE_TABLE_NAME);
 	}
 }
