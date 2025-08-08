@@ -17,7 +17,8 @@ function assertUserInput<T>(condition: T, message: string, node: INode): asserts
 		assert(condition, message);
 	} catch (e: unknown) {
 		if (e instanceof Error) {
-			const nodeError = new NodeOperationError(node, e.message);
+			// Use level 'info' to prevent reporting to Sentry (only 'error' and 'fatal' levels are reported)
+			const nodeError = new NodeOperationError(node, e.message, { level: 'info' });
 			nodeError.stack = e.stack;
 			throw nodeError;
 		}
