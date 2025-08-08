@@ -587,7 +587,7 @@ export class ChatTrigger extends Node {
 		const res = ctx.getResponseObject();
 
 		const isPublic = ctx.getNodeParameter('public', false);
-		assertParamIsBoolean('isPublic', isPublic, ctx.getNode());
+		assertParamIsBoolean('public', isPublic, ctx.getNode());
 
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
 		assertParamIsString('mode', nodeMode, ctx.getNode());
@@ -654,7 +654,7 @@ export class ChatTrigger extends Node {
 					| 'basicAuth'
 					| 'n8nUserAuth';
 				const initialMessagesRaw = ctx.getNodeParameter('initialMessages', '');
-				assertParamIsString('initialRawMessage', initialMessagesRaw, ctx.getNode());
+				assertParamIsString('initialMessage', initialMessagesRaw, ctx.getNode());
 				const instanceId = ctx.getInstanceId();
 
 				const i18nConfig: Record<string, string> = {};

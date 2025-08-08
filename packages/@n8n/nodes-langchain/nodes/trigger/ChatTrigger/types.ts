@@ -6,7 +6,7 @@ export type AuthenticationChatOption = 'none' | 'basicAuth' | 'n8nUserAuth';
 export type LoadPreviousSessionChatOption = (typeof validOptions)[number];
 
 function isValidLoadPreviousSessionOption(value: unknown): value is LoadPreviousSessionChatOption {
-	return typeof value === 'string' && validOptions.includes(value as LoadPreviousSessionChatOption);
+	return typeof value === 'string' && (validOptions as readonly string[]).includes(value);
 }
 
 export function assertValidLoadPreviousSessionOption(
