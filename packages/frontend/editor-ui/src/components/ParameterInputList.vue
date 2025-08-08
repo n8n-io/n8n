@@ -456,7 +456,7 @@ function onCalloutAction(action: CalloutAction) {
 					source: 'ndv',
 					nodeType: activeNode.value?.type,
 				},
-				resetStacks: true,
+				resetStacks: false,
 			});
 			break;
 		case 'openSampleWorkflowTemplate':

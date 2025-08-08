@@ -112,6 +112,7 @@ function onSelected(item: INodeCreateElement) {
 				source: 'nodeCreator',
 				section: activeViewStack.value.title,
 			},
+			resetStacks: false,
 		});
 		return;
 	}
