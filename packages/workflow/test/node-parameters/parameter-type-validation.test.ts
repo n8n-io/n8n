@@ -5,8 +5,18 @@ import {
 	assertParamIsBoolean,
 	assertParamIsArray,
 } from '../../src/node-parameters/parameter-type-validation';
+import type { INode } from '../../src/interfaces';
 
 describe('Type assertion functions', () => {
+	const mockNode: INode = {
+		id: 'test-node-id',
+		name: 'TestNode',
+		type: 'n8n-nodes-base.testNode',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	};
+
 	describe('assertIsNodeParameters', () => {
 		it('should pass for valid object with all required parameters', () => {
 			const value = {
@@ -21,7 +31,7 @@ describe('Type assertion functions', () => {
 				active: { type: 'boolean' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 		});
 
 		it('should pass for valid object with optional parameters present', () => {
@@ -35,7 +45,7 @@ describe('Type assertion functions', () => {
 				description: { type: 'string' as const },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 		});
 
 		it('should pass for valid object with optional parameters missing', () => {
@@ -48,7 +58,7 @@ describe('Type assertion functions', () => {
 				description: { type: 'string' as const },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 		});
 
 		it('should pass for valid array parameters', () => {
@@ -64,7 +74,7 @@ describe('Type assertion functions', () => {
 				flags: { type: 'boolean[]' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 		});
 
 		it('should pass for valid resource-locator parameter', () => {
@@ -80,7 +90,7 @@ describe('Type assertion functions', () => {
 				resource: { type: 'resource-locator' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 		});
 
 		it('should pass for valid object parameter', () => {
@@ -95,7 +105,7 @@ describe('Type assertion functions', () => {
 				config: { type: 'object' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 		});
 
 		it('should pass for parameter with multiple allowed types', () => {
@@ -107,14 +117,14 @@ describe('Type assertion functions', () => {
 				multiType: { type: ['string', 'number'] as Array<'string' | 'number'>, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 
 			// Test with number value
 			const value2 = {
 				multiType: 42,
 			};
 
-			expect(() => validateNodeParameters(value2, parameters)).not.toThrow();
+			expect(() => validateNodeParameters(value2, parameters, mockNode)).not.toThrow();
 		});
 
 		it('should throw for null value', () => {
@@ -122,7 +132,9 @@ describe('Type assertion functions', () => {
 				name: { type: 'string' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(null, parameters)).toThrow('Value is not a valid object');
+			expect(() => validateNodeParameters(null, parameters, mockNode)).toThrow(
+				'Value is not a valid object',
+			);
 		});
 
 		it('should throw for non-object value', () => {
@@ -130,11 +142,15 @@ describe('Type assertion functions', () => {
 				name: { type: 'string' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters('not an object', parameters)).toThrow(
+			expect(() => validateNodeParameters('not an object', parameters, mockNode)).toThrow(
 				'Value is not a valid object',
 			);
-			expect(() => validateNodeParameters(123, parameters)).toThrow('Value is not a valid object');
-			expect(() => validateNodeParameters(true, parameters)).toThrow('Value is not a valid object');
+			expect(() => validateNodeParameters(123, parameters, mockNode)).toThrow(
+				'Value is not a valid object',
+			);
+			expect(() => validateNodeParameters(true, parameters, mockNode)).toThrow(
+				'Value is not a valid object',
+			);
 		});
 
 		it('should throw for missing required parameter', () => {
@@ -146,7 +162,7 @@ describe('Type assertion functions', () => {
 				name: { type: 'string' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).toThrow(
+			expect(() => validateNodeParameters(value, parameters, mockNode)).toThrow(
 				'Required parameter "name" is missing',
 			);
 		});
@@ -160,7 +176,7 @@ describe('Type assertion functions', () => {
 				name: { type: 'string' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).toThrow(
+			expect(() => validateNodeParameters(value, parameters, mockNode)).toThrow(
 				'Parameter "name" does not match any of the expected types: string',
 			);
 		});
@@ -174,7 +190,7 @@ describe('Type assertion functions', () => {
 				tags: { type: 'string[]' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).toThrow(
+			expect(() => validateNodeParameters(value, parameters, mockNode)).toThrow(
 				'Parameter "tags" does not match any of the expected types: string[]',
 			);
 		});
@@ -188,7 +204,7 @@ describe('Type assertion functions', () => {
 				tags: { type: 'string[]' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).toThrow(
+			expect(() => validateNodeParameters(value, parameters, mockNode)).toThrow(
 				'Parameter "tags" does not match any of the expected types: string[]',
 			);
 		});
@@ -205,7 +221,7 @@ describe('Type assertion functions', () => {
 				resource: { type: 'resource-locator' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).toThrow(
+			expect(() => validateNodeParameters(value, parameters, mockNode)).toThrow(
 				'Parameter "resource" does not match any of the expected types: resource-locator',
 			);
 		});
@@ -219,7 +235,7 @@ describe('Type assertion functions', () => {
 				config: { type: 'object' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).toThrow(
+			expect(() => validateNodeParameters(value, parameters, mockNode)).toThrow(
 				'Parameter "config" does not match any of the expected types: object',
 			);
 		});
@@ -233,7 +249,7 @@ describe('Type assertion functions', () => {
 				multiType: { type: ['string', 'number'] as Array<'string' | 'number'>, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).toThrow(
+			expect(() => validateNodeParameters(value, parameters, mockNode)).toThrow(
 				'Parameter "multiType" does not match any of the expected types: string or number',
 			);
 		});
@@ -245,7 +261,7 @@ describe('Type assertion functions', () => {
 
 			const parameters = {};
 
-			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 		});
 
 		it('should handle complex nested scenarios', () => {
@@ -272,7 +288,7 @@ describe('Type assertion functions', () => {
 				optionalField: { type: 'string' as const },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 		});
 
 		it('should handle empty arrays', () => {
@@ -284,7 +300,7 @@ describe('Type assertion functions', () => {
 				emptyTags: { type: 'string[]' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 		});
 
 		it('should handle null values for optional parameters', () => {
@@ -298,7 +314,7 @@ describe('Type assertion functions', () => {
 				optionalField: { type: 'string' as const },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).toThrow(
+			expect(() => validateNodeParameters(value, parameters, mockNode)).toThrow(
 				'Parameter "optionalField" does not match any of the expected types: string',
 			);
 		});
@@ -317,30 +333,30 @@ describe('Type assertion functions', () => {
 				resource: { type: 'resource-locator' as const, required: true },
 			};
 
-			expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+			expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 		});
 	});
 
 	describe('assertParamIsBoolean', () => {
 		it('should pass for valid boolean values', () => {
-			expect(() => assertParamIsBoolean('testParam', true)).not.toThrow();
-			expect(() => assertParamIsBoolean('testParam', false)).not.toThrow();
+			expect(() => assertParamIsBoolean('testParam', true, mockNode)).not.toThrow();
+			expect(() => assertParamIsBoolean('testParam', false, mockNode)).not.toThrow();
 		});
 
 		it('should throw for non-boolean values', () => {
-			expect(() => assertParamIsBoolean('testParam', 'true')).toThrow(
+			expect(() => assertParamIsBoolean('testParam', 'true', mockNode)).toThrow(
 				'Parameter "testParam" is not boolean',
 			);
-			expect(() => assertParamIsBoolean('testParam', 1)).toThrow(
+			expect(() => assertParamIsBoolean('testParam', 1, mockNode)).toThrow(
 				'Parameter "testParam" is not boolean',
 			);
-			expect(() => assertParamIsBoolean('testParam', 0)).toThrow(
+			expect(() => assertParamIsBoolean('testParam', 0, mockNode)).toThrow(
 				'Parameter "testParam" is not boolean',
 			);
-			expect(() => assertParamIsBoolean('testParam', null)).toThrow(
+			expect(() => assertParamIsBoolean('testParam', null, mockNode)).toThrow(
 				'Parameter "testParam" is not boolean',
 			);
-			expect(() => assertParamIsBoolean('testParam', undefined)).toThrow(
+			expect(() => assertParamIsBoolean('testParam', undefined, mockNode)).toThrow(
 				'Parameter "testParam" is not boolean',
 			);
 		});
@@ -348,20 +364,20 @@ describe('Type assertion functions', () => {
 
 	describe('assertIsString', () => {
 		it('should pass for valid string', () => {
-			expect(() => assertParamIsString('testParam', 'hello')).not.toThrow();
+			expect(() => assertParamIsString('testParam', 'hello', mockNode)).not.toThrow();
 		});
 
 		it('should throw for non-string values', () => {
-			expect(() => assertParamIsString('testParam', 123)).toThrow(
+			expect(() => assertParamIsString('testParam', 123, mockNode)).toThrow(
 				'Parameter "testParam" is not string',
 			);
-			expect(() => assertParamIsString('testParam', true)).toThrow(
+			expect(() => assertParamIsString('testParam', true, mockNode)).toThrow(
 				'Parameter "testParam" is not string',
 			);
-			expect(() => assertParamIsString('testParam', null)).toThrow(
+			expect(() => assertParamIsString('testParam', null, mockNode)).toThrow(
 				'Parameter "testParam" is not string',
 			);
-			expect(() => assertParamIsString('testParam', undefined)).toThrow(
+			expect(() => assertParamIsString('testParam', undefined, mockNode)).toThrow(
 				'Parameter "testParam" is not string',
 			);
 		});
@@ -369,22 +385,22 @@ describe('Type assertion functions', () => {
 
 	describe('assertIsNumber', () => {
 		it('should pass for valid number', () => {
-			expect(() => assertParamIsNumber('testParam', 123)).not.toThrow();
-			expect(() => assertParamIsNumber('testParam', 0)).not.toThrow();
-			expect(() => assertParamIsNumber('testParam', -5.5)).not.toThrow();
+			expect(() => assertParamIsNumber('testParam', 123, mockNode)).not.toThrow();
+			expect(() => assertParamIsNumber('testParam', 0, mockNode)).not.toThrow();
+			expect(() => assertParamIsNumber('testParam', -5.5, mockNode)).not.toThrow();
 		});
 
 		it('should throw for non-number values', () => {
-			expect(() => assertParamIsNumber('testParam', '123')).toThrow(
+			expect(() => assertParamIsNumber('testParam', '123', mockNode)).toThrow(
 				'Parameter "testParam" is not number',
 			);
-			expect(() => assertParamIsNumber('testParam', true)).toThrow(
+			expect(() => assertParamIsNumber('testParam', true, mockNode)).toThrow(
 				'Parameter "testParam" is not number',
 			);
-			expect(() => assertParamIsNumber('testParam', null)).toThrow(
+			expect(() => assertParamIsNumber('testParam', null, mockNode)).toThrow(
 				'Parameter "testParam" is not number',
 			);
-			expect(() => assertParamIsNumber('testParam', undefined)).toThrow(
+			expect(() => assertParamIsNumber('testParam', undefined, mockNode)).toThrow(
 				'Parameter "testParam" is not number',
 			);
 		});
@@ -395,25 +411,27 @@ describe('Type assertion functions', () => {
 		const isNumber = (val: unknown): val is number => typeof val === 'number';
 
 		it('should pass for valid array with correct element types', () => {
-			expect(() => assertParamIsArray('testParam', ['a', 'b', 'c'], isString)).not.toThrow();
-			expect(() => assertParamIsArray('testParam', [1, 2, 3], isNumber)).not.toThrow();
-			expect(() => assertParamIsArray('testParam', [], isString)).not.toThrow(); // empty array
+			expect(() =>
+				assertParamIsArray('testParam', ['a', 'b', 'c'], isString, mockNode),
+			).not.toThrow();
+			expect(() => assertParamIsArray('testParam', [1, 2, 3], isNumber, mockNode)).not.toThrow();
+			expect(() => assertParamIsArray('testParam', [], isString, mockNode)).not.toThrow(); // empty array
 		});
 
 		it('should throw for non-array values', () => {
-			expect(() => assertParamIsArray('testParam', 'not array', isString)).toThrow(
+			expect(() => assertParamIsArray('testParam', 'not array', isString, mockNode)).toThrow(
 				'Parameter "testParam" is not an array',
 			);
-			expect(() => assertParamIsArray('testParam', { length: 3 }, isString)).toThrow(
+			expect(() => assertParamIsArray('testParam', { length: 3 }, isString, mockNode)).toThrow(
 				'Parameter "testParam" is not an array',
 			);
 		});
 
 		it('should throw for array with incorrect element types', () => {
-			expect(() => assertParamIsArray('testParam', ['a', 1, 'c'], isString)).toThrow(
+			expect(() => assertParamIsArray('testParam', ['a', 1, 'c'], isString, mockNode)).toThrow(
 				'Parameter "testParam" has elements that don\'t match expected types',
 			);
-			expect(() => assertParamIsArray('testParam', [1, 'b', 3], isNumber)).toThrow(
+			expect(() => assertParamIsArray('testParam', [1, 'b', 3], isNumber, mockNode)).toThrow(
 				'Parameter "testParam" has elements that don\'t match expected types',
 			);
 		});
@@ -431,7 +449,7 @@ describe('Type assertion functions', () => {
 				};
 
 				// NaN is of type 'number' in JavaScript
-				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+				expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 			});
 
 			it('should handle Infinity values correctly', () => {
@@ -443,7 +461,7 @@ describe('Type assertion functions', () => {
 					number: { type: 'number' as const, required: true },
 				};
 
-				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+				expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 			});
 
 			it('should handle mixed array types correctly', () => {
@@ -455,7 +473,7 @@ describe('Type assertion functions', () => {
 					mixed: { type: 'number[]' as const, required: true },
 				};
 
-				expect(() => validateNodeParameters(value, parameters)).toThrow(
+				expect(() => validateNodeParameters(value, parameters, mockNode)).toThrow(
 					'Parameter "mixed" does not match any of the expected types: number[]',
 				);
 			});
@@ -472,7 +490,7 @@ describe('Type assertion functions', () => {
 					nested: { type: 'object' as const, required: true },
 				};
 
-				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+				expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 			});
 
 			it('should handle resource-locator with false __rl property', () => {
@@ -488,7 +506,7 @@ describe('Type assertion functions', () => {
 					resource: { type: 'resource-locator' as const, required: true },
 				};
 
-				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+				expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 			});
 
 			it('should handle resource-locator missing __rl property', () => {
@@ -504,7 +522,7 @@ describe('Type assertion functions', () => {
 					resource: { type: 'resource-locator' as const, required: true },
 				};
 
-				expect(() => validateNodeParameters(value, parameters)).toThrow(
+				expect(() => validateNodeParameters(value, parameters, mockNode)).toThrow(
 					'Parameter "resource" does not match any of the expected types: resource-locator',
 				);
 			});
@@ -518,7 +536,7 @@ describe('Type assertion functions', () => {
 					name: { type: 'string' as const, required: true },
 				};
 
-				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+				expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 			});
 
 			it('should handle zero as valid number parameter', () => {
@@ -530,7 +548,7 @@ describe('Type assertion functions', () => {
 					count: { type: 'number' as const, required: true },
 				};
 
-				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+				expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 			});
 
 			it('should handle arrays with only false values', () => {
@@ -542,7 +560,7 @@ describe('Type assertion functions', () => {
 					flags: { type: 'boolean[]' as const, required: true },
 				};
 
-				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+				expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 			});
 
 			it('should handle three or more type unions', () => {
@@ -557,14 +575,14 @@ describe('Type assertion functions', () => {
 					},
 				};
 
-				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+				expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 
 				// Test with boolean value
 				const value2 = {
 					multiType: true,
 				};
 
-				expect(() => validateNodeParameters(value2, parameters)).not.toThrow();
+				expect(() => validateNodeParameters(value2, parameters, mockNode)).not.toThrow();
 			});
 
 			it('should handle array types in multi-type parameters', () => {
@@ -579,14 +597,14 @@ describe('Type assertion functions', () => {
 					},
 				};
 
-				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+				expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 
 				// Test with single string
 				const value2 = {
 					flexParam: 'single string',
 				};
 
-				expect(() => validateNodeParameters(value2, parameters)).not.toThrow();
+				expect(() => validateNodeParameters(value2, parameters, mockNode)).not.toThrow();
 			});
 
 			it('should handle object with null prototype', () => {
@@ -597,7 +615,7 @@ describe('Type assertion functions', () => {
 					name: { type: 'string' as const, required: true },
 				};
 
-				expect(() => validateNodeParameters(value, parameters)).not.toThrow();
+				expect(() => validateNodeParameters(value, parameters, mockNode)).not.toThrow();
 			});
 		});
 
@@ -607,7 +625,7 @@ describe('Type assertion functions', () => {
 			it('should handle array-like objects', () => {
 				const arrayLike = { 0: 'a', 1: 'b', length: 2 };
 
-				expect(() => assertParamIsArray('testParam', arrayLike, isString)).toThrow(
+				expect(() => assertParamIsArray('testParam', arrayLike, isString, mockNode)).toThrow(
 					'Parameter "testParam" is not an array',
 				);
 			});
@@ -619,7 +637,7 @@ describe('Type assertion functions', () => {
 				// sparse[1] is undefined
 
 				// For loop implementation properly validates sparse arrays and throws on undefined elements
-				expect(() => assertParamIsArray('testParam', sparse, isString)).toThrow(
+				expect(() => assertParamIsArray('testParam', sparse, isString, mockNode)).toThrow(
 					'Parameter "testParam" has elements that don\'t match expected types',
 				);
 			});
@@ -627,15 +645,15 @@ describe('Type assertion functions', () => {
 			it('should handle arrays with explicit undefined values', () => {
 				const arrayWithUndefined = ['a', undefined, 'c'];
 
-				expect(() => assertParamIsArray('testParam', arrayWithUndefined, isString)).toThrow(
-					'Parameter "testParam" has elements that don\'t match expected types',
-				);
+				expect(() =>
+					assertParamIsArray('testParam', arrayWithUndefined, isString, mockNode),
+				).toThrow('Parameter "testParam" has elements that don\'t match expected types');
 			});
 
 			it('should handle very large arrays efficiently', () => {
 				const largeArray = new Array(1000).fill('test');
 
-				expect(() => assertParamIsArray('testParam', largeArray, isString)).not.toThrow();
+				expect(() => assertParamIsArray('testParam', largeArray, isString, mockNode)).not.toThrow();
 			});
 		});
 	});

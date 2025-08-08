@@ -587,10 +587,10 @@ export class ChatTrigger extends Node {
 		const res = ctx.getResponseObject();
 
 		const isPublic = ctx.getNodeParameter('public', false);
-		assertParamIsBoolean('isPublic', isPublic);
+		assertParamIsBoolean('isPublic', isPublic, ctx.getNode());
 
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
-		assertParamIsString('mode', nodeMode);
+		assertParamIsString('mode', nodeMode, ctx.getNode());
 
 		if (!isPublic) {
 			res.status(404).end();
@@ -600,18 +600,22 @@ export class ChatTrigger extends Node {
 		}
 
 		const options = ctx.getNodeParameter('options', {});
-		validateNodeParameters(options, {
-			getStarted: { type: 'string' },
-			inputPlaceholder: { type: 'string' },
-			loadPreviousSession: { type: 'string' },
-			showWelcomeScreen: { type: 'boolean' },
-			subtitle: { type: 'string' },
-			title: { type: 'string' },
-			allowFileUploads: { type: 'boolean' },
-			allowedFilesMimeTypes: { type: 'string' },
-			customCss: { type: 'string' },
-			responseMode: { type: 'string' },
-		});
+		validateNodeParameters(
+			options,
+			{
+				getStarted: { type: 'string' },
+				inputPlaceholder: { type: 'string' },
+				loadPreviousSession: { type: 'string' },
+				showWelcomeScreen: { type: 'boolean' },
+				subtitle: { type: 'string' },
+				title: { type: 'string' },
+				allowFileUploads: { type: 'boolean' },
+				allowedFilesMimeTypes: { type: 'string' },
+				customCss: { type: 'string' },
+				responseMode: { type: 'string' },
+			},
+			ctx.getNode(),
+		);
 
 		const loadPreviousSession = options.loadPreviousSession;
 		assertValidLoadPreviousSessionOption(loadPreviousSession, ctx.getNode());
@@ -650,7 +654,7 @@ export class ChatTrigger extends Node {
 					| 'basicAuth'
 					| 'n8nUserAuth';
 				const initialMessagesRaw = ctx.getNodeParameter('initialMessages', '');
-				assertParamIsString('initialRawMessage', initialMessagesRaw);
+				assertParamIsString('initialRawMessage', initialMessagesRaw, ctx.getNode());
 				const instanceId = ctx.getInstanceId();
 
 				const i18nConfig: Record<string, string> = {};
