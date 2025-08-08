@@ -629,7 +629,6 @@ const modifiers = [
 	}
 	:global(.el-dialog__header) {
 		padding: 11px 16px;
-		border-bottom: 1px solid var(--color-foreground-base);
 	}
 	:global(.el-dialog__headerbtn) {
 		display: none;
@@ -896,6 +895,7 @@ const modifiers = [
 .workflowDiffPanel {
 	flex: 1;
 	position: relative;
+	border-top: 1px solid var(--color-foreground-base);
 }
 
 .emptyWorkflow {
