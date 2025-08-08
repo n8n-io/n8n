@@ -58,6 +58,8 @@ Evaluate whether expressions correctly reference nodes and data using modern n8n
 - All items: \`{{ $('Node Name').all() }}\`
 - First item: \`{{ $('Node Name').all()[0].json.fieldName }}\`
 - Previous node: \`{{ $json.fieldName }}\`
+- All items: \`{{ $json }}\`
+- AI Tool nodes: \`{{ $fromAI('parameterName', 'description') }}\` - Dynamic parameter placeholder for AI Agent to populate (only valid in AI Tool nodes connected to AI Agent nodes)
 
 ### 4. Node Configuration (15% weight)
 Evaluate whether nodes are configured with correct parameters and settings.
@@ -86,11 +88,8 @@ If a reference workflow is provided, evaluate how well the generated workflow fo
 1. Start each category at 100 points
 2. Deduct points for each violation found based on severity
 3. A category score cannot go below 0
-4. Calculate weighted final score:
-   - Functional Correctness: 35%
-   - Connections: 25%
-   - Expressions: 25%
-   - Node Configuration: 15%
+4. Convert scores to 0-1 scale by dividing by 100
+5. Do NOT calculate the weighted final score yourself - just provide individual category scores
 
 Remember: Focus on objective technical evaluation. Be specific about violations and reference exact node names and expressions when identifying issues.`;
 
@@ -138,7 +137,12 @@ ${JSON.stringify(input.referenceWorkflow, null, 2)}
 		referenceSection,
 	});
 
-	return result as z.infer<typeof evaluationResultSchema>;
+	const evaluationResult = result as z.infer<typeof evaluationResultSchema>;
+
+	// Calculate the overall score using the deterministic weighted calculation
+	evaluationResult.overallScore = calculateWeightedScore(evaluationResult);
+
+	return evaluationResult;
 }
 
 // Helper function to calculate weighted score
@@ -154,23 +158,25 @@ export function calculateWeightedScore(result: {
 		connections: 0.25,
 		expressions: 0.25,
 		nodeConfiguration: 0.15,
+		structuralSimilarity: 0.05,
 	};
 
-	let totalWeight = Object.values(weights).reduce((sum, w) => sum + w, 0);
-	let weightedSum =
-		result.functionality.score * weights.functionality +
-		result.connections.score * weights.connections +
-		result.expressions.score * weights.expressions +
-		result.nodeConfiguration.score * weights.nodeConfiguration;
+	let totalWeight = 0;
+	let weightedSum = 0;
 
-	// Add structural similarity if applicable
+	// Add scores for categories that are always evaluated
+	weightedSum += result.functionality.score * weights.functionality;
+	weightedSum += result.connections.score * weights.connections;
+	weightedSum += result.expressions.score * weights.expressions;
+	weightedSum += result.nodeConfiguration.score * weights.nodeConfiguration;
+	totalWeight +=
+		weights.functionality + weights.connections + weights.expressions + weights.nodeConfiguration;
+
+	// Add structural similarity only if applicable
 	if (result.structuralSimilarity?.applicable) {
-		const structuralWeight = 0.1; // 10% when available
-		// Adjust other weights proportionally
-		const scaleFactor = (1 - structuralWeight) / totalWeight;
-		weightedSum = weightedSum * scaleFactor + result.structuralSimilarity.score * structuralWeight;
-		totalWeight = 1;
+		weightedSum += result.structuralSimilarity.score * weights.structuralSimilarity;
+		totalWeight += weights.structuralSimilarity;
 	}
 
-	return weightedSum / totalWeight;
+	return totalWeight > 0 ? weightedSum / totalWeight : 0;
 }

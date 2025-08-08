@@ -37,7 +37,6 @@ import {
 } from './utils/evaluation-runner.js';
 import type { SimpleWorkflow } from '../src/types/workflow.js';
 import { Client } from 'langsmith/client';
-import { BaseMessage } from '@langchain/core/messages.js';
 
 interface TestEnvironment {
 	parsedNodeTypes: INodeTypeDescription[];
@@ -239,9 +238,15 @@ async function runFullEvaluation(): Promise<void> {
 async function llmBasedMultiMetricEvaluator(
 	llm: BaseChatModel,
 ): Promise<(rootRun: Run, example?: Example) => Promise<LangsmithEvaluationResult[]>> {
-	return async (rootRun: Run, example?: Example): Promise<LangsmithEvaluationResult[]> => {
+	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
 		const generatedWorkflow = rootRun.outputs?.workflow as SimpleWorkflow;
 		const prompt = rootRun.outputs?.prompt as string;
+		const usage = rootRun.outputs?.usage as {
+			input_tokens: number;
+			cache_create_input_tokens: number;
+			cache_read_input_tokens: number;
+			output_tokens: number;
+		};
 		// @ts-ignore
 		const referenceWorkflow = rootRun?.referenceOutputs?.workflowJSON as SimpleWorkflow | undefined;
 
@@ -298,16 +303,33 @@ async function llmBasedMultiMetricEvaluator(
 						: 'All nodes properly configured',
 			});
 
-			// Structural Similarity
+			// Usage Metadata
 			results.push({
-				key: 'structuralSimilarity',
-				score: evaluationResult.structuralSimilarity.score,
-				comment: evaluationResult.structuralSimilarity.applicable
-					? evaluationResult.structuralSimilarity.violations.length > 0
-						? `Found ${evaluationResult.structuralSimilarity.violations.length} structural difference(s): ${evaluationResult.structuralSimilarity.violations.map((v) => `${v.type} - ${v.description}`).join('; ')}`
-						: 'Structure matches reference workflow'
-					: 'No reference workflow provided for comparison (not applicable)',
+				key: 'inputTokens',
+				score: usage.input_tokens,
 			});
+			results.push({
+				key: 'outputTokens',
+				score: usage.output_tokens,
+			});
+			results.push({
+				key: 'cacheCreationInputTokens',
+				score: usage.cache_create_input_tokens,
+			});
+			results.push({
+				key: 'cacheReadInputTokens',
+				score: usage.cache_read_input_tokens,
+			});
+			// Structural Similarity
+			// results.push({
+			// 	key: 'structuralSimilarity',
+			// 	score: evaluationResult.structuralSimilarity.score,
+			// 	comment: evaluationResult.structuralSimilarity.applicable
+			// 		? evaluationResult.structuralSimilarity.violations.length > 0
+			// 			? `Found ${evaluationResult.structuralSimilarity.violations.length} structural difference(s): ${evaluationResult.structuralSimilarity.violations.map((v) => `${v.type} - ${v.description}`).join('; ')}`
+			// 			: 'Structure matches reference workflow'
+			// 		: 'No reference workflow provided for comparison (not applicable)',
+			// });
 
 			// Overall Score
 			results.push({
@@ -407,10 +429,29 @@ async function runLangsmithEvaluation(): Promise<void> {
 			// Get generated workflow
 			const state = await agent.getState(runId, 'langsmith-eval-user');
 			const generatedWorkflow = (state.values as typeof WorkflowState.State).workflowJSON;
-
+			// @ts-ignore
+			const usage = state.values.messages.reduce(
+				(acc, curr) => {
+					const usageMetadata = curr?.response_metadata?.usage;
+					if (usageMetadata) {
+						acc.input_tokens += usageMetadata?.input_tokens ?? 0;
+						acc.output_tokens += usageMetadata?.output_tokens ?? 0;
+						acc.cache_read_input_tokens += usageMetadata?.cache_read_input_tokens ?? 0;
+						acc.cache_create_input_tokens += usageMetadata?.cache_creation_input_tokens ?? 0;
+					}
+					return acc;
+				},
+				{
+					input_tokens: 0,
+					cache_create_input_tokens: 0,
+					cache_read_input_tokens: 0,
+					output_tokens: 0,
+				},
+			);
 			return {
 				workflow: generatedWorkflow,
 				prompt: chatPayload.message,
+				usage,
 			};
 		};
 
@@ -422,7 +463,7 @@ async function runLangsmithEvaluation(): Promise<void> {
 		const results = await evaluate(generateWorkflow, {
 			data: datasetName, // Just pass the dataset name
 			evaluators: [evaluator],
-			maxConcurrency: 4,
+			maxConcurrency: 7,
 			experimentPrefix: 'workflow-builder-evaluation',
 			metadata: {
 				evaluationType: 'llm-based',

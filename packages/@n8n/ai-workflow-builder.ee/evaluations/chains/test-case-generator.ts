@@ -11,11 +11,8 @@ const testCasesSchema = z.object({
 		z.object({
 			id: z.string(),
 			name: z.string(),
-			description: z.string(),
+			summary: z.string(),
 			prompt: z.string(),
-			expectedNodeTypes: z.array(z.string()),
-			complexity: z.enum(['simple', 'medium', 'complex']),
-			tags: z.array(z.string()),
 		}),
 	),
 });
@@ -99,70 +96,51 @@ export async function generateTestCases(
 // Pre-defined basic test cases for immediate use
 export const basicTestCases: TestCase[] = [
 	{
-		id: 'test_simple_001',
-		name: 'Basic API Data Fetch',
-		description: 'Fetch data from an API and save to Google Sheets',
+		id: 'invoice-pipeline',
+		name: 'Invoice processing pipeline',
 		prompt:
-			'Create a workflow that fetches weather data from OpenWeatherMap API for New York and saves it to a Google Sheet',
-		expectedNodeTypes: ['n8n-nodes-base.httpRequest', 'n8n-nodes-base.googleSheets'],
-		complexity: 'simple',
-		tags: ['api', 'integration', 'data-collection'],
+			'Create an invoice parsing workflow using n8n forms. Extract key information (vendor, date, amount, line items) using AI, validate the data, and store structured information in Airtable. Generate a weekly spending report every Sunday at 6 PM using AI analysis and send via email.',
 	},
 	{
-		id: 'test_simple_002',
-		name: 'CSV Data Processing',
-		description: 'Read CSV file, transform data, and send email',
+		id: 'ai-news-digest',
+		name: 'Daily AI news digest',
 		prompt:
-			'Build a workflow that reads a CSV file with customer data, filters for customers who spent over $100, and sends them a thank you email',
-		expectedNodeTypes: [
-			'n8n-nodes-base.readBinaryFile',
-			'n8n-nodes-base.if',
-			'n8n-nodes-base.emailSend',
-		],
-		complexity: 'simple',
-		tags: ['file-processing', 'filtering', 'email'],
+			'Create a workflow that fetches the latest AI news every morning at 8 AM. It should aggregate news from multiple sources, use LLM to summarize the top 5 stories, generate a relevant image using AI, and send everything as a structured Telegram message with article links. I should be able to chat about the news with the LLM so at least 40 last messages should be stored.',
 	},
 	{
-		id: 'test_medium_001',
-		name: 'Slack Notification System',
-		description: 'Monitor GitHub repo and notify Slack on new issues',
+		id: 'rag-assistant',
+		name: 'RAG knowledge assistant',
 		prompt:
-			'Create a workflow that monitors a GitHub repository for new issues, checks if they have a "bug" label, and sends a notification to Slack with issue details and assigns it to the on-call engineer',
-		expectedNodeTypes: ['n8n-nodes-base.github', 'n8n-nodes-base.if', 'n8n-nodes-base.slack'],
-		complexity: 'medium',
-		tags: ['monitoring', 'conditional-logic', 'notifications'],
+			'Build a pipeline that accepts PDF, CSV, or JSON files through an n8n form. Chunk documents into 1000-token segments, generate embeddings, and store in a vector database. Use the filename as the document key and add metadata including upload date and file type. Include a chatbot that can answer questions based on a knowledge base.',
 	},
-	// {
-	// 	id: 'test_medium_002',
-	// 	name: 'Data Sync Pipeline',
-	// 	description: 'Sync data between multiple systems with transformation',
-	// 	prompt:
-	// 		'Build a workflow that fetches new orders from Shopify, transforms the data format, checks inventory in a PostgreSQL database, and updates the order status in both systems',
-	// 	expectedNodeTypes: [
-	// 		'n8n-nodes-base.shopify',
-	// 		'n8n-nodes-base.postgres',
-	// 		'n8n-nodes-base.set',
-	// 		'n8n-nodes-base.if',
-	// 	],
-	// 	complexity: 'medium',
-	// 	tags: ['e-commerce', 'data-sync', 'database'],
-	// },
-	// {
-	// 	id: 'test_complex_001',
-	// 	name: 'Customer Support Automation',
-	// 	description: 'Multi-branch support ticket processing system',
-	// 	prompt:
-	// 		'Create a workflow that receives support tickets via webhook, categorizes them using AI, routes high-priority tickets to Slack, creates Jira issues for bugs, updates the customer via email, and logs everything to a database. Include error handling for each branch.',
-	// 	expectedNodeTypes: [
-	// 		'n8n-nodes-base.webhook',
-	// 		'@n8n/n8n-nodes-langchain.agent',
-	// 		'n8n-nodes-base.if',
-	// 		'n8n-nodes-base.slack',
-	// 		'n8n-nodes-base.jira',
-	// 		'n8n-nodes-base.emailSend',
-	// 		'n8n-nodes-base.postgres',
-	// 	],
-	// 	complexity: 'complex',
-	// 	tags: ['automation', 'ai', 'multi-branch', 'error-handling'],
-	// },
+	{
+		id: 'email-summary',
+		name: 'Summarize emails with AI',
+		prompt:
+			'Build a workflow that retrieves the last 50 emails from multiple email accounts. Merge all emails, perform AI analysis to identify action items, priorities, and sentiment. Generate a brief summary and send to Slack with categorized insights and recommended actions.',
+	},
+	{
+		id: 'youtube-auto-chapters',
+		name: 'YouTube video chapters',
+		prompt:
+			"I want to build an n8n workflow that automatically creates YouTube chapter timestamps by analyzing the video captions. When I trigger it manually, it should take a video ID as input, fetch the existing video metadata and captions from YouTube, use an AI language model like Google Gemini to parse the transcript into chapters with timestamps, and then update the video's description with these chapters appended. The goal is to save time and improve SEO by automating the whole process.",
+	},
+	{
+		id: 'pizza-delivery',
+		name: 'Pizza delivery chatbot',
+		prompt:
+			"I need an n8n workflow that creates a chatbot for my pizza delivery service. The bot should be able to answer customer questions about our pizza menu, take their orders accurately by capturing pizza type, quantity, and customer details, and also provide real-time updates when customers ask about their order status. It should use OpenAI's gpt-4.1-mini to handle conversations and integrate with HTTP APIs to get product info and manage orders. The workflow must maintain conversation context so the chatbot feels natural and can process multiple user queries sequentially.",
+	},
+	{
+		id: 'lead-qualification',
+		name: 'Lead qualification and call scheduling',
+		prompt:
+			'Create a form with fields for email, company, and role. Build an automation that processes form submissions, enrich with company data from their website, uses AI to qualify the lead, sends data to Google Sheets. For high-score leads it should also schedule a 15-min call in a free slot in my calendar and send a confirmation email to both me and the lead.',
+	},
+	{
+		id: 'multi-agent-research',
+		name: 'Multi-agent research workflow',
+		prompt:
+			'Create a multi-agent AI workflow where different AI agents collaborate to research a topic, fact-check information, and compile comprehensive reports.',
+	},
 ];

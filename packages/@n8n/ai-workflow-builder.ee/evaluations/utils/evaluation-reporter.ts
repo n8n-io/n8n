@@ -62,7 +62,10 @@ export function generateMarkdownReport(
 
 `;
 
-		if (result.evaluationResult.criticalIssues.length > 0) {
+		if (
+			result.evaluationResult.criticalIssues &&
+			result.evaluationResult.criticalIssues.length > 0
+		) {
 			report += '**Critical Issues**:\n';
 			result.evaluationResult.criticalIssues.forEach((issue) => {
 				report += `- ${issue}\n`;

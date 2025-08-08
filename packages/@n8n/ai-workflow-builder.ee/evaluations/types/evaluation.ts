@@ -52,12 +52,8 @@ export type EvaluationResult = z.infer<typeof evaluationResultSchema>;
 export const testCaseSchema = z.object({
 	id: z.string(),
 	name: z.string(),
-	description: z.string(),
 	prompt: z.string(),
 	referenceWorkflow: z.custom<SimpleWorkflow>().optional(),
-	expectedNodeTypes: z.array(z.string()).optional(),
-	complexity: z.enum(['simple', 'medium', 'complex']),
-	tags: z.array(z.string()).optional(),
 });
 
 export type TestCase = z.infer<typeof testCaseSchema>;
