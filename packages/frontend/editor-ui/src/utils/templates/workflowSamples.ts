@@ -14,7 +14,7 @@ import voiceAssistantAgentWithTelegramAndGcalJson from '@/utils/templates/sample
 
 const getWorkflowJson = (json: unknown): WorkflowDataWithTemplateId => {
 	if (!isWorkflowDataWithTemplateId(json)) {
-		throw new ApplicationError('Invalid Easy AI workflow JSON structure');
+		throw new ApplicationError('Invalid workflow template JSON structure');
 	}
 
 	return json;
