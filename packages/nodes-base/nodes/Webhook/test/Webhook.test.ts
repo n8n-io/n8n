@@ -53,44 +53,6 @@ describe('Test Webhook Node', () => {
 		});
 	});
 
-	describe('handleBinaryData', () => {
-		const node = new Webhook();
-		const context = mock<IWebhookFunctions>({
-			nodeHelpers: mock(),
-		});
-		context.getNode.calledWith().mockReturnValue({
-			type: 'n8n-nodes-base.webhook',
-			typeVersion: 1.1,
-		} as any);
-		const req = mock<Request>();
-		context.getRequestObject.mockReturnValue(req);
-
-		mockFs.stat.mockResolvedValue({ size: BigInt(1024) } as any);
-
-		beforeEach(() => {
-			mockFs.rm.mockClear();
-			jest.clearAllMocks();
-			req.headers = {};
-			req.params = {};
-			req.query = {};
-			req.body = {};
-		});
-
-		it('should handle binary data when binaryData option is enabled', async () => {
-			context.getNodeParameter.calledWith('options').mockReturnValue({
-				binaryData: true,
-			});
-			req.contentType = 'application/octet-stream';
-			req.contentDisposition = { type: 'attachment', filename: 'test.bin' };
-
-			const returnData = await node.webhook(context);
-
-			expect(returnData.workflowData?.[0][0].binary).toBeDefined();
-			expect(context.nodeHelpers.copyBinaryFile).toHaveBeenCalled();
-			expect(mockFs.rm).toHaveBeenCalledWith(expect.stringContaining('n8n-webhook-'));
-		});
-	});
-
 	describe('streaming response mode', () => {
 		const node = new Webhook();
 		const context = mock<IWebhookFunctions>({

@@ -404,9 +404,6 @@ export class Webhook extends Node {
 					fileName,
 					req.contentType ?? 'application/octet-stream',
 				);
-
-				// Delete original file to prevent tmp directory from growing too large
-				await rm(binaryFile.path);
 				returnItem.binary = { [binaryPropertyName]: binaryData };
 			}
 
