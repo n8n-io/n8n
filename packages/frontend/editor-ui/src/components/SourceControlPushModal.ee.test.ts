@@ -1,6 +1,5 @@
 import { within, waitFor } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
-import { useRoute } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
 import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -58,7 +57,6 @@ vi.mock('@/composables/useLoadingService', () => ({
 	}),
 }));
 
-let route: ReturnType<typeof useRoute>;
 let telemetry: ReturnType<typeof useTelemetry>;
 
 const DynamicScrollerStub = {
@@ -125,7 +123,6 @@ describe('SourceControlPushModal', () => {
 		mockRoute.params = {};
 		mockRoute.fullPath = '';
 
-		route = useRoute();
 		telemetry = useTelemetry();
 		createTestingPinia();
 	});
