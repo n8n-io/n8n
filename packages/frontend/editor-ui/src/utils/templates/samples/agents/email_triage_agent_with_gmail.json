@@ -1,0 +1,156 @@
+{
+	"name": "Email Triage Agent (with Gmail)",
+	"meta": {
+		"templateCredsSetupCompleted": false,
+		"templateId": "email_triage_agent_with_gmail"
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyMinute"
+						}
+					]
+				},
+				"simple": false,
+				"filters": {
+					"readStatus": "unread"
+				},
+				"options": {}
+			},
+			"id": "0280aa41-d55c-47e4-b99b-03b4c7c9e4e7",
+			"name": "New Email Trigger",
+			"type": "n8n-nodes-base.gmailTrigger",
+			"typeVersion": 1.3,
+			"position": [-64, -32],
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "=Categorize this email:\n\n**From:** {{ $json.from.value[0].address }}\n**Subject:** {{ $json.subject }}\n**Content:** \n{{ $json.html }}\n\nPlease analyze this email and apply appropriate labels using the available tools.",
+				"options": {
+					"systemMessage": "=You are an email categorization assistant. Your task is to analyze emails and apply appropriate labels to help organize the user's inbox.\n\nYou have access to two tools:\n1. **Get all Labels** - Retrieves available email labels\n2. **Add Labels** - Applies labels to emails\n\n### Instructions:\n- First, always use \"Get all Labels\" to see available categories\n- Analyze email content for: subject, sender, keywords, and context\n- Apply 1-3 most relevant labels per email\n- Be consistent in categorization patterns\n- If unsure between labels, choose the most specific one\n\n### Response Format:\n1. Brief summary of email content (1 sentence)\n2. Chosen labels with reasoning\n3. Use \"Add Labels\" tool with selected labels\n\nBe efficient and accurate. Focus on helping the user maintain an organized inbox."
+				}
+			},
+			"id": "a4dccc7a-008e-40c5-90dd-c91090a144fd",
+			"name": "Email Classification Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [224, -32]
+		},
+		{
+			"parameters": {
+				"operation": "addLabels",
+				"messageId": "={{ $json.id }}",
+				"labelIds": "={{ $fromAI('Label_Names_or_IDs', `Array of Gmail label ids to add. Use the id field from the \"Get all labels\" tool`, 'string') }}"
+			},
+			"id": "a5e4168b-1ce7-4cfe-ae6d-a1a4ab9b96df",
+			"name": "Add Label",
+			"type": "n8n-nodes-base.gmailTool",
+			"typeVersion": 2.1,
+			"position": [320, 192],
+			"webhookId": "e7289911-d937-45bd-9e91-410a0dc959f8",
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"descriptionType": "manual",
+				"toolDescription": "Use this tool to get all existing labels from Gmail",
+				"resource": "label",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.gmailTool",
+			"typeVersion": 2.1,
+			"position": [464, 192],
+			"id": "79ee166d-4443-45c6-84e1-8820299cf2de",
+			"name": "Get all Labels",
+			"webhookId": "291b9995-7ae1-4f65-9ffb-ba62c980b829",
+			"credentials": {}
+		},
+		{
+			"parameters": {
+				"content": "### Email Triage Agent\nAutomatically categorizes new, unread emails by analyzing their content and applying relevant labels using AI.\n\n#### Set up\n- Configure credentials in the **Gmail** and **Model** nodes\n- Create the labels you want to use in Gmail\n- Click **Execute workflow** button to test with the last email in your inbox\n\n#### Next steps\nTry setting up the agent to configure draft responses to important emails.\n",
+				"height": 384,
+				"width": 304,
+				"color": 5
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-464, -96],
+			"typeVersion": 1,
+			"id": "db4fcd5d-7f0a-41f6-9dd7-4100a63f38cc",
+			"name": "Sticky Note"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"value": "gpt-4.1-mini",
+					"mode": "list",
+					"cachedResultName": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"id": "1fda1d78-a669-4be1-9aba-56c0abb7c247",
+			"name": "Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [160, 192],
+			"credentials": {}
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"New Email Trigger": {
+			"main": [
+				[
+					{
+						"node": "Email Classification Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add Label": {
+			"ai_tool": [
+				[
+					{
+						"node": "Email Classification Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get all Labels": {
+			"ai_tool": [
+				[
+					{
+						"node": "Email Classification Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Email Classification Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"tags": []
+}

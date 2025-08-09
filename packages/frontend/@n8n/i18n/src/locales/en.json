@@ -1398,6 +1398,8 @@
 	"nodeCreator.nodeItem.triggerIconTitle": "Trigger Node",
 	"nodeCreator.nodeItem.aiIconTitle": "LangChain AI Node",
 	"nodeCreator.nodeItem.deprecated": "Deprecated",
+	"nodeCreator.preBuiltAgents.title": "Pre-built agents",
+	"nodeCreator.preBuiltAgents.description": "Get started faster with ready to go agents",
 	"nodeCredentials.createNew": "Create new credential",
 	"nodeCredentials.credentialFor": "Credential for {credentialType}",
 	"nodeCredentials.credentialsLabel": "Credential to connect with",
