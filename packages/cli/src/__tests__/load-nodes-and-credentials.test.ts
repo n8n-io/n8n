@@ -86,6 +86,36 @@ describe('LoadNodesAndCredentials', () => {
 			expect(toolDescriptionProp?.default).toBe(fullNodeWrapper.description.description);
 		});
 
+		it('should add toolDescription property after callout property', () => {
+			fullNodeWrapper.description.properties = [
+				{
+					displayName: 'Callout 1',
+					name: 'callout1',
+					type: 'callout',
+					default: '',
+				},
+				{
+					displayName: 'Callout 2',
+					name: 'callout2',
+					type: 'callout',
+					default: '',
+				},
+				{
+					displayName: 'Another',
+					name: 'another',
+					type: 'boolean',
+					default: true,
+				},
+			] satisfies INodeProperties[];
+
+			const result = instance.convertNodeToAiTool(fullNodeWrapper);
+			const toolDescriptionPropIndex = result.description.properties.findIndex(
+				(prop) => prop.name === 'toolDescription',
+			);
+			expect(toolDescriptionPropIndex).toBe(2);
+			expect(result.description.properties).toHaveLength(4);
+		});
+
 		it('should set codex categories correctly', () => {
 			const result = instance.convertNodeToAiTool(fullNodeWrapper);
 			expect(result.description.codex).toEqual({

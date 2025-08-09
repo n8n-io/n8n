@@ -49,7 +49,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
-import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { getEasyAiWorkflowJson } from '@/utils/templates/workflowSamples';
 import {
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
@@ -907,6 +907,15 @@ const handleCreateReadyToRunWorkflows = async (source: 'card' | 'callout') => {
 	}
 };
 
+const dismissStarterCollectionCallout = () => {
+	aiStarterTemplatesStore.dismissCallout();
+	aiStarterTemplatesStore.trackUserDismissedCallout();
+};
+
+const dismissEasyAICallout = () => {
+	easyAICalloutVisible.value = false;
+};
+
 const openAIWorkflow = async (source: string) => {
 	dismissEasyAICallout();
 	telemetry.track('User clicked test AI workflow', {
@@ -922,18 +931,9 @@ const openAIWorkflow = async (source: string) => {
 	});
 };
 
-const dismissStarterCollectionCallout = () => {
-	aiStarterTemplatesStore.dismissCallout();
-	aiStarterTemplatesStore.trackUserDismissedCallout();
-};
-
 const onShowArchived = async () => {
 	filters.value.showArchived = true;
 	await onFiltersUpdated();
-};
-
-const dismissEasyAICallout = () => {
-	easyAICalloutVisible.value = false;
 };
 
 const handleDismissReadyToRunCallout = () => {

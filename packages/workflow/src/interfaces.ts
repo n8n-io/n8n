@@ -1344,11 +1344,24 @@ export type NodePropertyAction = {
 	target?: string;
 };
 
-export type CalloutActionType = 'openRagStarterTemplate';
-export interface CalloutAction {
-	type: CalloutActionType;
+export interface CalloutActionBase {
+	type: string;
 	label: string;
+	icon?: string;
 }
+
+export interface CalloutActionOpenPreBuiltAgentsCollection extends CalloutActionBase {
+	type: 'openPreBuiltAgentsCollection';
+}
+
+export interface CalloutActionOpenSampleWorkflowTemplate extends CalloutActionBase {
+	type: 'openSampleWorkflowTemplate';
+	templateId: string;
+}
+
+export type CalloutAction =
+	| CalloutActionOpenPreBuiltAgentsCollection
+	| CalloutActionOpenSampleWorkflowTemplate;
 
 export interface INodePropertyTypeOptions {
 	// Supported by: button
