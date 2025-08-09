@@ -920,13 +920,31 @@ importers:
 
   packages/@n8n/node-cli:
     dependencies:
+      '@clack/prompts':
+        specifier: ^0.11.0
+        version: 0.11.0
       '@oclif/core':
         specifier: ^4.5.2
         version: 4.5.2
+      change-case:
+        specifier: ^5.4.4
+        version: 5.4.4
+      handlebars:
+        specifier: 4.7.8
+        version: 4.7.8
+      picocolors:
+        specifier: 'catalog:'
+        version: 1.0.1
       prompts:
         specifier: ^2.4.2
         version: 2.4.2
+      ts-morph:
+        specifier: ^26.0.0
+        version: 26.0.0
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.29.0
+        version: 9.29.0
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -936,6 +954,27 @@ importers:
       '@oclif/test':
         specifier: ^4.1.13
         version: 4.1.13(@oclif/core@4.5.2)
+      eslint-import-resolver-typescript:
+        specifier: ^4.4.3
+        version: 4.4.3(eslint-plugin-import-x@4.15.2(@typescript-eslint/utils@8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint@9.29.0(jiti@1.21.7)))(eslint-plugin-import@2.32.0)(eslint@9.29.0(jiti@1.21.7))
+      eslint-plugin-import-x:
+        specifier: ^4.15.2
+        version: 4.15.2(@typescript-eslint/utils@8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint@9.29.0(jiti@1.21.7))
+      eslint-plugin-n8n-nodes-base:
+        specifier: 1.16.3
+        version: 1.16.3(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2)
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+      typescript-eslint:
+        specifier: ^8.35.0
+        version: 8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2)
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@5.9.2)(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.1)(jiti@1.21.7)(jsdom@23.0.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
 
   packages/@n8n/nodes-langchain:
     dependencies:
@@ -4215,6 +4254,12 @@ packages:
     peerDependencies:
       storybook: ^8.2.0 || ^8.3.0-0 || ^8.4.0-0 || ^8.5.0-0 || ^8.6.0-0
 
+  '@clack/core@0.5.0':
+    resolution: {integrity: sha512-p3y0FIOwaYRUPRcMO7+dlmLh8PSRcrjuTndsiA0WAFbWES0mLZlrjVoBRZ9DzkPFJZG6KGkJmoEAY0ZcVWTkow==}
+
+  '@clack/prompts@0.11.0':
+    resolution: {integrity: sha512-pMN5FcrEw9hUkZA4f+zLlzivQSeQf5dRGJjSUbvVYDLvpKCdQx5OaknvKzgbtXOizhP+SJJJjqEbOe55uKKfAw==}
+
   '@codemirror/autocomplete@6.16.0':
     resolution: {integrity: sha512-P/LeCTtZHRTCU4xQsa89vSKWecYv1ZqwzOd5topheGRf+qtacFgBeIMQi3eL8Kt/BUNvxUWkx+5qP2jlGoARrg==}
     peerDependencies:
@@ -7103,6 +7148,9 @@ packages:
     resolution: {integrity: sha512-w071DSzP94YfN6XiWhOxnLpYT3uqtxJBDYdh6Jdjzt+Ce6DNspJsPQgpC7rbts/B8tEkq0LHoYuIF/O5Jh5rPg==}
     engines: {node: '>=18'}
 
+  '@ts-morph/common@0.27.0':
+    resolution: {integrity: sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ==}
+
   '@tsconfig/node10@1.0.11':
     resolution: {integrity: sha512-DcRjDCujK/kCk/cUe8Xz8ZSpm8mS3mNNpta+jGCA6USEDfktlNvm1+IuZ9eTcDbNk41BHwpHHeW+N1lKCz4zOw==}
 
@@ -8955,6 +9003,9 @@ packages:
   co@4.6.0:
     resolution: {integrity: sha512-QVb0dM5HvG+uaxitm8wONl7jltx8dqhfU33DcqtOZcLSVIKSDDLDi7+0LbAKiyI8hD9u42m2YxXSkMGWThaecQ==}
     engines: {iojs: '>= 1.0.0', node: '>= 0.12.0'}
+
+  code-block-writer@13.0.3:
+    resolution: {integrity: sha512-Oofo0pq3IKnsFtuHqSF7TqBfr71aeyZDVJ0HpmqB7FBM2qEigL0iPONSCZSO9pE9dZTAxANe5XHG9Uy0YMv8cg==}
 
   codemirror-lang-html-n8n@1.0.0:
     resolution: {integrity: sha512-ofNP6VTDGJ5rue+kTCZlDZdF1PnE0sl2cAkfrsCAd5MlBgDmqTwuFJIkTI6KXOJXs0ucdTYH6QLhy9BSW7EaOQ==}
@@ -15421,6 +15472,9 @@ packages:
   ts-map@1.0.3:
     resolution: {integrity: sha512-vDWbsl26LIcPGmDpoVzjEP6+hvHZkBkLW7JpvwbCv/5IYPJlsbzCVXY3wsCeAxAUeTclNOUZxnLdGh3VBD/J6w==}
 
+  ts-morph@26.0.0:
+    resolution: {integrity: sha512-ztMO++owQnz8c/gIENcM9XfCEzgoGphTv+nKpYNM1bgsdOVC/jRZuEBf6N+mLLDNg68Kl+GgUZfOySaRiG1/Ug==}
+
   ts-node@10.9.2:
     resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
     hasBin: true
@@ -18520,6 +18574,17 @@ snapshots:
       - '@chromatic-com/cypress'
       - '@chromatic-com/playwright'
       - react
+
+  '@clack/core@0.5.0':
+    dependencies:
+      picocolors: 1.1.1
+      sisteransi: 1.0.5
+
+  '@clack/prompts@0.11.0':
+    dependencies:
+      '@clack/core': 0.5.0
+      picocolors: 1.1.1
+      sisteransi: 1.0.5
 
   '@codemirror/autocomplete@6.16.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.3)(@lezer/common@1.1.0)':
     dependencies:
@@ -21788,6 +21853,12 @@ snapshots:
       '@ts-graphviz/ast': 2.0.7
       '@ts-graphviz/common': 2.1.5
 
+  '@ts-morph/common@0.27.0':
+    dependencies:
+      fast-glob: 3.3.3
+      minimatch: 10.0.3
+      path-browserify: 1.0.1
+
   '@tsconfig/node10@1.0.11':
     optional: true
 
@@ -23324,21 +23395,13 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.10.0):
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.3.6)
       is-retry-allowed: 2.2.0
 
   axios-retry@4.5.0(axios@1.8.3):
     dependencies:
       axios: 1.8.3
       is-retry-allowed: 2.2.0
-
-  axios@1.10.0:
-    dependencies:
-      follow-redirects: 1.15.9(debug@4.3.6)
-      form-data: 4.0.4
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
 
   axios@1.10.0(debug@4.3.6):
     dependencies:
@@ -23697,7 +23760,7 @@ snapshots:
 
   bundlemon@3.1.0(typescript@5.9.2):
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.3.6)
       axios-retry: 4.5.0(axios@1.10.0)
       brotli-size: 4.0.0
       bundlemon-utils: 2.0.1
@@ -24050,6 +24113,8 @@ snapshots:
   cluster-key-slot@1.1.2: {}
 
   co@4.6.0: {}
+
+  code-block-writer@13.0.3: {}
 
   codemirror-lang-html-n8n@1.0.0:
     dependencies:
@@ -26837,7 +26902,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.3.6)
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -28013,7 +28078,7 @@ snapshots:
       '@langchain/groq': 0.2.3(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/mistralai': 0.2.1(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))(zod@3.25.67)
       '@langchain/ollama': 0.2.3(@langchain/core@0.3.61(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.8.1(ws@8.18.2)(zod@3.25.67)))
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.3.6)
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
@@ -30051,7 +30116,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.3.6)
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -30732,7 +30797,7 @@ snapshots:
 
   retry-axios@2.6.0(axios@1.10.0):
     dependencies:
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.3.6)
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -31237,7 +31302,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.10.0
+      axios: 1.10.0(debug@4.3.6)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
@@ -32132,6 +32197,11 @@ snapshots:
       babel-jest: 29.6.2(@babel/core@7.26.10)
 
   ts-map@1.0.3: {}
+
+  ts-morph@26.0.0:
+    dependencies:
+      '@ts-morph/common': 0.27.0
+      code-block-writer: 13.0.3
 
   ts-node@10.9.2(@types/node@20.17.57)(typescript@5.9.2):
     dependencies:
