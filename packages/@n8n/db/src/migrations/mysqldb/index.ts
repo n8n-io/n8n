@@ -89,6 +89,7 @@ import { DropRoleTable1745934666077 } from '../common/1745934666077-DropRoleTabl
 import { AddProjectDescriptionColumn1747824239000 } from '../common/1747824239000-AddProjectDescriptionColumn';
 import { AddLastActiveAtColumnToUser1750252139166 } from '../common/1750252139166-AddLastActiveAtColumnToUser';
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
+import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
 
@@ -185,4 +186,5 @@ export const mysqlMigrations: Migration[] = [
 	AddProjectDescriptionColumn1747824239000,
 	AddLastActiveAtColumnToUser1750252139166,
 	AddInputsOutputsToTestCaseExecution1752669793000,
+	CreateDataStoreTables1754475614601,
 ];

@@ -1,5 +1,5 @@
 import type { TableForeignKeyOptions, TableIndexOptions, QueryRunner } from '@n8n/typeorm';
-import { Table, TableColumn, TableForeignKey } from '@n8n/typeorm';
+import { Table, TableColumn, TableForeignKey, TableUnique } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 import LazyPromise from 'p-lazy';
 
@@ -24,6 +24,8 @@ export class CreateTable extends TableOperation {
 
 	private indices = new Set<TableIndexOptions>();
 
+	private uniqueConstraints = new Set<TableUnique>();
+
 	private foreignKeys = new Set<TableForeignKeyOptions>();
 
 	withColumns(...columns: Column[]) {
@@ -42,6 +44,12 @@ export class CreateTable extends TableOperation {
 	withIndexOn(columnName: string | string[], isUnique = false) {
 		const columnNames = Array.isArray(columnName) ? columnName : [columnName];
 		this.indices.add({ columnNames, isUnique });
+		return this;
+	}
+
+	withUniqueConstraintOn(columnName: string | string[]) {
+		const columnNames = Array.isArray(columnName) ? columnName : [columnName];
+		this.uniqueConstraints.add(new TableUnique({ columnNames }));
 		return this;
 	}
 
@@ -69,12 +77,13 @@ export class CreateTable extends TableOperation {
 
 	async execute(queryRunner: QueryRunner) {
 		const { driver } = queryRunner.connection;
-		const { columns, tableName: name, prefix, indices, foreignKeys } = this;
+		const { columns, tableName: name, prefix, indices, uniqueConstraints, foreignKeys } = this;
 		return await queryRunner.createTable(
 			new Table({
 				name: `${prefix}${name}`,
 				columns: columns.map((c) => c.toOptions(driver)),
 				...(indices.size ? { indices: [...indices] } : {}),
+				...(uniqueConstraints.size ? { uniques: [...uniqueConstraints] } : {}),
 				...(foreignKeys.size ? { foreignKeys: [...foreignKeys] } : {}),
 				...('mysql' in driver ? { engine: 'InnoDB' } : {}),
 			}),
