@@ -1,6 +1,5 @@
 import { within, waitFor } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
-import { useRoute } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
 import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -12,15 +11,19 @@ import { VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
+import { reactive } from 'vue';
 
 const eventBus = createEventBus();
 
+// Create a reactive route mock to avoid Vue warnings
+const mockRoute = reactive({
+	name: '',
+	params: {},
+	fullPath: '',
+});
+
 vi.mock('vue-router', () => ({
-	useRoute: vi.fn().mockReturnValue({
-		name: vi.fn(),
-		params: vi.fn(),
-		fullPath: vi.fn(),
-	}),
+	useRoute: () => mockRoute,
 	RouterLink: vi.fn(),
 	useRouter: vi.fn(),
 }));
@@ -36,21 +39,48 @@ vi.mock('@/composables/useTelemetry', () => {
 	};
 });
 
-let route: ReturnType<typeof useRoute>;
+vi.mock('@/composables/useToast', () => ({
+	useToast: () => ({
+		showMessage: vi.fn(),
+		showError: vi.fn(),
+		showSuccess: vi.fn(),
+		showToast: vi.fn(),
+		clear: vi.fn(),
+	}),
+}));
+
+vi.mock('@/composables/useLoadingService', () => ({
+	useLoadingService: () => ({
+		startLoading: vi.fn(),
+		stopLoading: vi.fn(),
+		setLoading: vi.fn(),
+	}),
+}));
+
 let telemetry: ReturnType<typeof useTelemetry>;
 
 const DynamicScrollerStub = {
 	props: {
 		items: Array,
+		minItemSize: Number,
+		class: String,
+		itemClass: String,
 	},
-	template: '<div><template v-for="item in items"><slot v-bind="{ item }"></slot></template></div>',
+	template:
+		'<div><template v-for="(item, index) in items" :key="index"><slot v-bind="{ item, index, active: false }"></slot></template></div>',
 	methods: {
 		scrollToItem: vi.fn(),
 	},
 };
 
 const DynamicScrollerItemStub = {
-	template: '<slot></slot>',
+	props: {
+		item: Object,
+		active: Boolean,
+		sizeDependencies: Array,
+		dataIndex: Number,
+	},
+	template: '<div><slot></slot></div>',
 };
 
 const projects = [
@@ -88,14 +118,16 @@ const renderModal = createComponentRenderer(SourceControlPushModal, {
 describe('SourceControlPushModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		route = useRoute();
+		// Reset route mock to default values
+		mockRoute.name = '';
+		mockRoute.params = {};
+		mockRoute.fullPath = '';
+
 		telemetry = useTelemetry();
 		createTestingPinia();
 	});
 
 	it('mounts', () => {
-		vi.spyOn(route, 'fullPath', 'get').mockReturnValue('');
-
 		const { getByText } = renderModal({
 			pinia: createTestingPinia(),
 			props: {
@@ -303,8 +335,8 @@ describe('SourceControlPushModal', () => {
 			},
 		];
 
-		vi.spyOn(route, 'name', 'get').mockReturnValue(VIEWS.WORKFLOW);
-		vi.spyOn(route, 'params', 'get').mockReturnValue({ name: 'gTbbBkkYTnNyX1jD' });
+		mockRoute.name = VIEWS.WORKFLOW;
+		mockRoute.params = { name: 'gTbbBkkYTnNyX1jD' };
 
 		const { getByTestId, getAllByTestId } = renderModal({
 			props: {
@@ -710,8 +742,8 @@ describe('SourceControlPushModal', () => {
 
 			const sourceControlStore = mockedStore(useSourceControlStore);
 
-			vi.spyOn(route, 'name', 'get').mockReturnValue('SOME_OTHER_VIEW');
-			vi.spyOn(route, 'params', 'get').mockReturnValue({ name: 'differentId' });
+			mockRoute.name = 'SOME_OTHER_VIEW';
+			mockRoute.params = { name: 'differentId' };
 
 			const { getByTestId, getAllByTestId } = renderModal({
 				props: {
