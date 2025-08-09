@@ -6,7 +6,6 @@ import N8nLogo from '../N8nLogo';
 import N8nText from '../N8nText';
 import SidebarItem from './SidebarItem.vue';
 import SidebarSection from './SidebarSection.vue';
-import N8nIcon from '../N8nIcon';
 import N8nResizeWrapper from '../N8nResizeWrapper';
 import type { ResizeData } from '@n8n/design-system/types';
 import { N8nIconButton } from '..';

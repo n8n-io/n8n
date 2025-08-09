@@ -217,9 +217,8 @@ export const useSidebarData = () => {
 			return true;
 		});
 
-		// For shared items, we don't have a specific project ID, so we'll use a generic approach
-		// This might need to be refined based on how shared folders work
-		const items = await organizeIntoFolders(sharedWorkflows, personalProjectId || '');
+		// Shared items should only contain workflows, not folders
+		const items = sharedWorkflows.map(workflowToTreeItem);
 		sharedItems.value = items;
 	};
 
