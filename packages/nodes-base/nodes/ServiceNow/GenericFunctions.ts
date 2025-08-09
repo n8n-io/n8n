@@ -30,12 +30,26 @@ export async function serviceNowApiRequest(
 		credentials = await this.getCredentials('serviceNowOAuth2Api');
 	}
 
+	/* -----------------------------------------------------------------------
+	   Build base URL
+	   -----------------------------------------------------------------------
+	   • Using subdomain:  subdomain         → https://<sub>.service-now.com
+	   • Using full host:  customHost toggle → https://your.host.tld
+	--------------------------------------------------------------------- */
+	let baseUrl;
+
+	if (credentials.useCustomHost && credentials.customHost) {
+		baseUrl = String(credentials.customHost).replace(/\/$/, ''); // strip trailing slash
+	} else {
+		baseUrl = `https://${credentials.subdomain}.service-now.com`;
+	}
+
 	const options = {
 		headers,
 		method,
 		qs,
 		body,
-		uri: uri || `https://${credentials.subdomain}.service-now.com/api${resource}`,
+		uri: uri ?? `${baseUrl}/api${resource}`,
 		json: true,
 	} satisfies IRequestOptions;
 	if (!Object.keys(body as IDataObject).length) {
