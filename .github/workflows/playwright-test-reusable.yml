@@ -49,6 +49,8 @@ jobs:
         with:
           build-command: ${{ inputs.test-mode == 'docker-build' && 'pnpm build:docker' || 'pnpm turbo build:playwright' }}
           enable-docker-cache: ${{ inputs.test-mode != 'local' }}
+        env:
+          INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
 
       - name: Install Browsers (Docker Build)
         if: inputs.test-mode == 'docker-build'

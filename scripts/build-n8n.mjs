@@ -14,6 +14,10 @@ import path from 'path';
 // Check if running in a CI environment
 const isCI = process.env.CI === 'true';
 
+// Check if test controller should be excluded (CI + flag not set)
+const excludeTestController =
+	process.env.CI === 'true' && process.env.INCLUDE_TEST_CONTROLLER !== 'true';
+
 // Disable verbose output and force color only if not in CI
 $.verbose = !isCI;
 process.env.FORCE_COLOR = isCI ? '0' : '1';
@@ -168,6 +172,15 @@ echo(chalk.yellow(`INFO: Creating pruned production deployment in '${config.comp
 startTimer('package_deploy');
 
 await fs.ensureDir(config.compiledAppDir);
+
+if (excludeTestController) {
+	const cliPackagePath = path.join(config.rootDir, 'packages/cli/package.json');
+	const content = await fs.readFile(cliPackagePath, 'utf8');
+	const packageJson = JSON.parse(content);
+	packageJson.files.push('!dist/**/e2e.*');
+	await fs.writeFile(cliPackagePath, JSON.stringify(packageJson, null, 2));
+	echo(chalk.gray('  - Excluded test controller from packages/cli/package.json'));
+}
 
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
 
