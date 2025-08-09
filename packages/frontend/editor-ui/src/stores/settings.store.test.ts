@@ -32,6 +32,8 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 		setEndpointWebhook: vi.fn(),
 		setEndpointWebhookTest: vi.fn(),
 		setEndpointWebhookWaiting: vi.fn(),
+		setEndpointMcp: vi.fn(),
+		setEndpointMcpTest: vi.fn(),
 		setTimezone: vi.fn(),
 		setExecutionTimeout: vi.fn(),
 		setMaxExecutionTimeout: vi.fn(),
