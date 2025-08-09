@@ -68,5 +68,5 @@ jobs:
           DIGEST: ${{ steps.dockerhub-push.outputs.digest }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-          echo "$DOCKERHUB_TOKEN" | cosign login --username marefati110 --password-stdin
+          echo "$DOCKERHUB_TOKEN" | cosign login docker.io --username marefati110 --password-stdin
           echo "${IMAGE_TAG}" | xargs -I {} cosign sign --yes {}@${DIGEST}
