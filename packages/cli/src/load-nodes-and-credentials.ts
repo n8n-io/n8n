@@ -188,6 +188,14 @@ export class LoadNodesAndCredentials {
 		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
 	}
 
+	findLastCalloutIndex(properties: INodeProperties[]): number {
+		for (let i = properties.length - 1; i >= 0; i--) {
+			if (properties[i].type === 'callout') return i;
+		}
+
+		return -1;
+	}
+
 	getCustomDirectories(): string[] {
 		const customDirectories = [this.instanceSettings.customExtensionDir];
 
@@ -486,12 +494,14 @@ export class LoadNodesAndCredentials {
 						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
 				};
 
-				item.description.properties.unshift(descProp);
+				const lastCallout = this.findLastCalloutIndex(item.description.properties);
+
+				item.description.properties.splice(lastCallout + 1, 0, descProp);
 
 				// If node has resource or operation we can determine pre-populate tool description based on it
-				// so we add the descriptionType property as the first property
+				// so we add the descriptionType property as the first property after possible callout param(s).
 				if (hasResource || hasOperation) {
-					item.description.properties.unshift(descriptionType);
+					item.description.properties.splice(lastCallout + 1, 0, descriptionType);
 
 					descProp.displayOptions = {
 						show: {
