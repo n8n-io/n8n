@@ -2,7 +2,7 @@ name: Test, Tag and Push Docker image as Latest
 
 on:
   workflow_run:
-    workflows: ["Build and Publish Docker image"]
+    workflows: ["Docker Image Push To CI"]
     types:
       - completed
 
