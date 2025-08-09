@@ -136,7 +136,7 @@ onUnmounted(() => {
 				title="Overview"
 				id="home"
 				icon="house"
-				link="/"
+				link="/home/workflows"
 				ariaLabel="Go to Home"
 				type="other"
 			/>

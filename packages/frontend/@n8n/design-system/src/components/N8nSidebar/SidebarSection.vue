@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { TreeRoot, TreeItem, TreeItemToggleEvent } from 'reka-ui';
+import { TreeRoot } from 'reka-ui';
 import type { TreeItemType } from '.';
 import { computed, ref } from 'vue';
 import { IconName } from '../N8nIcon/icons';
 import SidebarItem from './SidebarItem.vue';
+import SidebarTree from './SidebarTree.vue';
 
 interface Props {
 	title: string;
@@ -23,12 +24,6 @@ function toggleSection(id: string) {
 	}
 }
 
-function preventDefault<T>(event: TreeItemToggleEvent<T>) {
-	if (event.detail.originalEvent.type === 'click') {
-		event.detail.originalEvent.preventDefault();
-	}
-}
-
 const link = computed(() => {
 	if (props.id === 'shared') {
 		return '/shared/workflows';
@@ -36,24 +31,6 @@ const link = computed(() => {
 	return `/projects/${props.id}/workflows`;
 });
 
-const itemLink = ({ type, id }: TreeItemType) => {
-	if (type === 'workflow') {
-		return `/workflow/${id}`;
-	}
-	return `/projects/${props.id}/folders/${id}/workflows`;
-};
-
-const itemIcon = (type: string, open: boolean) => {
-	if (type === 'workflow') {
-		return undefined;
-	}
-	if (open) {
-		return 'folder-open';
-	}
-	return 'folder';
-};
-
-// Transition methods for smooth collapse animation - only height changes
 const beforeEnter = (el: Element) => {
 	(el as HTMLElement).style.height = '0';
 	(el as HTMLElement).style.paddingTop = '0';
@@ -122,42 +99,8 @@ const afterLeave = (el: Element) => {
 			@after-leave="afterLeave"
 		>
 			<div v-if="open.includes(id)" class="items">
-				<TreeRoot
-					:items="props.items"
-					:get-key="(item: TreeItemType) => item.id"
-					v-slot="{ flattenItems }"
-				>
-					<TransitionGroup
-						name="collapse-transition"
-						@before-enter="beforeEnter"
-						@enter="enter"
-						@after-enter="afterEnter"
-						@before-leave="beforeLeave"
-						@leave="leave"
-						@after-leave="afterLeave"
-					>
-						<TreeItem
-							v-for="item in flattenItems"
-							:key="item._id"
-							v-bind="item.bind"
-							v-slot="{ isExpanded, handleToggle }"
-							@toggle="preventDefault"
-							@select="preventDefault"
-							class="item"
-						>
-							<span class="itemIdent" v-for="level in new Array(item.level - 1)" :key="level" />
-							<SidebarItem
-								:title="item.value.label"
-								:id="item.value.id"
-								:icon="itemIcon(item.value.type, isExpanded)"
-								:click="handleToggle"
-								:open="isExpanded"
-								:link="itemLink(item.value)"
-								:ariaLabel="`Open ${item.value.label}`"
-								:type="item.value.type"
-							/>
-						</TreeItem>
-					</TransitionGroup>
+				<TreeRoot :items="props.items" :get-key="(item: TreeItemType) => item.id">
+					<SidebarTree :project-id="props.id" :tree-items="props.items" :level="0" />
 				</TreeRoot>
 			</div>
 		</Transition>
@@ -172,36 +115,6 @@ const afterLeave = (el: Element) => {
 	border-left: 1px solid var(--color-foreground-light);
 	margin-bottom: 12px;
 	overflow: hidden;
-}
-
-.item {
-	position: relative;
-	display: flex;
-	align-items: center;
-	cursor: pointer;
-	max-width: 100%;
-	overflow: hidden;
-	transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
-}
-
-.itemIdent {
-	display: block;
-	position: relative;
-	width: 8px;
-	min-width: 8px;
-	align-self: stretch;
-	margin-left: 12px;
-	border-left: 1px solid var(--color-foreground-light);
-}
-
-.itemIdent::before {
-	content: '';
-	position: absolute;
-	bottom: -1px;
-	left: -1px;
-	width: 1px;
-	height: 1px;
-	background-color: var(--color-foreground-light);
 }
 
 // Section collapse animation - height only, no scaling
