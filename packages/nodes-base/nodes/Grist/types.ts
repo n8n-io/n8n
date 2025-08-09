@@ -42,6 +42,13 @@ export type GristUpdateRowPayload = {
 	}>;
 };
 
+export type GristUpsertRowPayload = {
+	records: Array<{
+		require: { [key: string]: any };
+		fields: { [key: string]: any };
+	}>;
+};
+
 export type SendingOptions = 'defineInNode' | 'autoMapInputs';
 
 export type FieldsToSend = { properties: GristDefinedFields };
