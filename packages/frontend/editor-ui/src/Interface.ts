@@ -499,6 +499,10 @@ export interface IExecutionResponse extends IExecutionBase {
 	triggerNode?: string;
 }
 
+export type SimplifiedExecution = Pick<
+	IExecutionResponse,
+	'workflowId' | 'workflowData' | 'data' | 'status' | 'startedAt' | 'stoppedAt' | 'id'
+>;
 export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
 
 export interface IExecutionsListResponse {

@@ -170,10 +170,17 @@ export default mergeConfig(
 			sourcemap: !!release,
 			target,
 		},
+		server: {
+			headers: {
+				'Cross-Origin-Opener-Policy': 'same-origin',
+				'Cross-Origin-Embedder-Policy': 'require-corp',
+			},
+		},
 		optimizeDeps: {
 			esbuildOptions: {
 				target,
 			},
+			exclude: ['@sqlite.org/sqlite-wasm'],
 		},
 		worker: {
 			format: 'es',

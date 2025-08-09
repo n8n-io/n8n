@@ -462,6 +462,9 @@ export class Server extends AbstractServer {
 				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
 					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
 				}
+
+				res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+				res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
 			};
 
 			this.app.use(

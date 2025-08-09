@@ -27,6 +27,7 @@ import {
 	registerModuleResources,
 	registerModuleModals,
 } from '@/moduleInitializer/moduleInitializer';
+import { useDatabase } from '@/data/useDatabase';
 
 export const state = {
 	initialized: false,
@@ -41,6 +42,10 @@ export async function initializeCore() {
 	if (state.initialized) {
 		return;
 	}
+
+	const { executeQuery } = useDatabase();
+	const result = await executeQuery('SELECT * from executions');
+	console.log({ result });
 
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
