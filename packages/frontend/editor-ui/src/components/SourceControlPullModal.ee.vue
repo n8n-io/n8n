@@ -310,7 +310,7 @@ function close() {
 }
 
 async function pullWorkfolder() {
-	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.pull'));
+	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
 	close();
 
 	try {

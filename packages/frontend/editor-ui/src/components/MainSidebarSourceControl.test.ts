@@ -17,13 +17,6 @@ let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 let rbacStore: ReturnType<typeof useRBACStore>;
 let projectStore: ReturnType<typeof useProjectsStore>;
 
-const showMessage = vi.fn();
-const showError = vi.fn();
-const showToast = vi.fn();
-vi.mock('@/composables/useToast', () => ({
-	useToast: () => ({ showMessage, showError, showToast }),
-}));
-
 const mockRoute = reactive({
 	query: {},
 });
@@ -190,24 +183,7 @@ describe('MainSidebarSourceControl', () => {
 			expect(pushButton).toBeDisabled();
 		});
 
-		it('should show toast error if pull response http status code is not 409', async () => {
-			vi.spyOn(sourceControlStore, 'pullWorkfolder').mockRejectedValueOnce({
-				response: { status: 400 },
-			});
-			const { getAllByRole } = renderComponent({
-				pinia,
-				props: { isCollapsed: false },
-			});
-
-			await userEvent.click(getAllByRole('button')[0]);
-			await waitFor(() => expect(showError).toHaveBeenCalled());
-		});
-
-		it('should navigate to pull route if pull response http status code is 409', async () => {
-			vi.spyOn(sourceControlStore, 'pullWorkfolder').mockRejectedValueOnce({
-				response: { status: 409, data: { data: {} } },
-			});
-
+		it('should navigate to pull route when pull button is clicked', async () => {
 			const { getAllByRole } = renderComponent({
 				pinia,
 				props: { isCollapsed: false },

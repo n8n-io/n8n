@@ -29,12 +29,20 @@ export function useWorkflowDiffRouting() {
 		}
 	};
 
-	const reopenSourceControlModal = (direction: Direction) => {
+	const reopenSourceControlModal = (direction: Direction, preserveData = false) => {
 		const modalKey =
 			direction === 'push' ? SOURCE_CONTROL_PUSH_MODAL_KEY : SOURCE_CONTROL_PULL_MODAL_KEY;
+
+		// If preserving data, try to reuse existing data from recently closed modal
+		// This helps when returning from diff modal via query manipulation (no browser history)
+		const modalData =
+			preserveData && uiStore.modalsById[modalKey]?.data?.eventBus
+				? uiStore.modalsById[modalKey].data
+				: { eventBus: createEventBus() };
+
 		uiStore.openModalWithData({
 			name: modalKey,
-			data: { eventBus: createEventBus() },
+			data: modalData,
 		});
 	};
 
@@ -83,7 +91,9 @@ export function useWorkflowDiffRouting() {
 			const isOpen = uiStore.modalsById[modalKey]?.open;
 
 			if (!isOpen) {
-				reopenSourceControlModal(direction);
+				// Always preserve data when returning from diff modal
+				// This handles both router.back() and query manipulation scenarios
+				reopenSourceControlModal(direction, true);
 			}
 			return;
 		}

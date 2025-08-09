@@ -263,11 +263,18 @@ const nodeDiffs = computed(() => {
 
 function handleBeforeClose() {
 	selectedDetailId.value = undefined;
-	// Remove diff and direction query params to close the modal
-	const newQuery = { ...route.query };
-	delete newQuery.diff;
-	delete newQuery.direction;
-	void router.replace({ query: newQuery });
+
+	// Check if we have history to go back to avoid empty navigation issues
+	if (window.history.length > 1) {
+		// Use router.back() to maintain proper navigation flow when possible
+		router.back();
+	} else {
+		// Fallback to query parameter manipulation when no navigation history
+		const newQuery = { ...route.query };
+		delete newQuery.diff;
+		delete newQuery.direction;
+		void router.replace({ query: newQuery });
+	}
 }
 
 // Handle ESC key since Element Plus Dialog doesn't trigger before-close on ESC

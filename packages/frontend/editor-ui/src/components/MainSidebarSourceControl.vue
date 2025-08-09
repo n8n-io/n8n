@@ -3,11 +3,7 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useToast } from '@/composables/useToast';
-import { useLoadingService } from '@/composables/useLoadingService';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { sourceControlEventBus } from '@/event-bus/source-control';
-import { notifyUserAboutPullWorkFolderOutcome } from '@/utils/sourceControlUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -15,14 +11,8 @@ defineProps<{
 	isCollapsed: boolean;
 }>();
 
-const responseStatuses = {
-	CONFLICT: 409,
-};
-
-const loadingService = useLoadingService();
 const sourceControlStore = useSourceControlStore();
 const projectStore = useProjectsStore();
-const toast = useToast();
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -63,34 +53,14 @@ async function pushWorkfolder() {
 	});
 }
 
-async function pullWorkfolder() {
-	loadingService.startLoading();
-	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
-
-	try {
-		const status = await sourceControlStore.pullWorkfolder(false);
-
-		await notifyUserAboutPullWorkFolderOutcome(status, toast);
-
-		sourceControlEventBus.emit('pull');
-	} catch (error) {
-		const errorResponse = error.response;
-
-		if (errorResponse?.status === responseStatuses.CONFLICT) {
-			// Navigate to route with sourceControl param - modal will be opened by route watcher
-			void router.push({
-				query: {
-					...route.query,
-					sourceControl: 'pull',
-				},
-			});
-		} else {
-			toast.showError(error, 'Error');
-		}
-	} finally {
-		loadingService.stopLoading();
-		loadingService.setLoadingText(i18n.baseText('genericHelpers.loading'));
-	}
+function pullWorkfolder() {
+	// Navigate to route with sourceControl param - modal will handle the pull operation
+	void router.push({
+		query: {
+			...route.query,
+			sourceControl: 'pull',
+		},
+	});
 }
 </script>
 
