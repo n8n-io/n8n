@@ -9,6 +9,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { createRouter, createWebHistory } from 'vue-router';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+
 vi.mock('@/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
