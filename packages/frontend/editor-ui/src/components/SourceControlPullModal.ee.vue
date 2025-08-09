@@ -10,7 +10,6 @@ import EnvFeatureFlag from '@/features/env-feature-flag/EnvFeatureFlag.vue';
 import type { WorkflowResource } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useUIStore } from '@/stores/ui.store';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import { ResourceType } from '@/utils/projects.utils';
 import {
@@ -366,7 +365,6 @@ function castProject(project: ProjectListItem): WorkflowResource {
 	return resource;
 }
 
-const workflowDiffEventBus = createEventBus();
 function openDiffModal(id: string) {
 	telemetry.track('User clicks compare workflows', {
 		workflow_id: id,

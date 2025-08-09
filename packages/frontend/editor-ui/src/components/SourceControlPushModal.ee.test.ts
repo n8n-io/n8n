@@ -21,6 +21,7 @@ const mockRoute = reactive({
 	query: {},
 	path: '/',
 	name: 'TestRoute',
+	fullPath: '/',
 });
 
 vi.mock('vue-router', () => ({
