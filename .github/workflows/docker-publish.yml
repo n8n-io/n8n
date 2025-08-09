@@ -66,7 +66,9 @@ jobs:
         env:
           IMAGE_TAG: ${{ steps.dockerhub-push.outputs.tag }}
           DIGEST: ${{ steps.dockerhub-push.outputs.digest }}
+          DOCKER_HUB_IMAGE: ${{ env.DOCKER_HUB_IMAGE }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           echo "$DOCKERHUB_TOKEN" | cosign login docker.io --username marefati110 --password-stdin
-          echo "${IMAGE_TAG}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+          FULL_IMAGE="${DOCKER_HUB_IMAGE}:${IMAGE_TAG}@${DIGEST}"
+          cosign sign --yes "$FULL_IMAGE"
