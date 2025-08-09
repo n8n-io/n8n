@@ -52,6 +52,52 @@ const itemIcon = (type: string, open: boolean) => {
 	}
 	return 'folder';
 };
+
+// Transition methods for smooth collapse animation - only height changes
+const beforeEnter = (el: Element) => {
+	(el as HTMLElement).style.height = '0';
+	(el as HTMLElement).style.paddingTop = '0';
+	(el as HTMLElement).style.paddingBottom = '0';
+	(el as HTMLElement).style.marginBottom = '0';
+};
+
+const enter = (el: Element) => {
+	const htmlEl = el as HTMLElement;
+	// Get the natural height without any transforms
+	htmlEl.style.height = 'auto';
+	const height = htmlEl.offsetHeight;
+	htmlEl.style.height = '0';
+	// Force reflow
+	htmlEl.offsetHeight;
+	// Animate to natural height
+	htmlEl.style.height = height + 'px';
+	htmlEl.style.paddingTop = '';
+	htmlEl.style.paddingBottom = '';
+	htmlEl.style.marginBottom = '';
+};
+
+const afterEnter = (el: Element) => {
+	(el as HTMLElement).style.height = 'auto';
+};
+
+const beforeLeave = (el: Element) => {
+	(el as HTMLElement).style.height = (el as HTMLElement).offsetHeight + 'px';
+};
+
+const leave = (el: Element) => {
+	(el as HTMLElement).style.height = '0';
+	(el as HTMLElement).style.paddingTop = '0';
+	(el as HTMLElement).style.paddingBottom = '0';
+	(el as HTMLElement).style.marginBottom = '0';
+};
+
+const afterLeave = (el: Element) => {
+	const htmlEl = el as HTMLElement;
+	htmlEl.style.height = '';
+	htmlEl.style.paddingTop = '';
+	htmlEl.style.paddingBottom = '';
+	htmlEl.style.marginBottom = '';
+};
 </script>
 
 <template>
@@ -66,35 +112,55 @@ const itemIcon = (type: string, open: boolean) => {
 			:ariaLabel="`Toggle ${props.title} section`"
 			type="project"
 		/>
-		<div v-if="open.includes(id)" class="items">
-			<TreeRoot
-				:items="props.items"
-				:get-key="(item: TreeItemType) => item.id"
-				v-slot="{ flattenItems }"
-			>
-				<TreeItem
-					v-for="item in flattenItems"
-					:key="item._id"
-					v-bind="item.bind"
-					v-slot="{ isExpanded, handleToggle }"
-					@toggle="preventDefault"
-					@select="preventDefault"
-					class="item"
+		<Transition
+			name="collapse-transition"
+			@before-enter="beforeEnter"
+			@enter="enter"
+			@after-enter="afterEnter"
+			@before-leave="beforeLeave"
+			@leave="leave"
+			@after-leave="afterLeave"
+		>
+			<div v-if="open.includes(id)" class="items">
+				<TreeRoot
+					:items="props.items"
+					:get-key="(item: TreeItemType) => item.id"
+					v-slot="{ flattenItems }"
 				>
-					<span class="itemIdent" v-for="level in new Array(item.level - 1)" :key="level" />
-					<SidebarItem
-						:title="item.value.label"
-						:id="item.value.id"
-						:icon="itemIcon(item.value.type, isExpanded)"
-						:click="handleToggle"
-						:open="isExpanded"
-						:link="itemLink(item.value)"
-						:ariaLabel="`Open ${item.value.label}`"
-						:type="item.value.type"
-					/>
-				</TreeItem>
-			</TreeRoot>
-		</div>
+					<TransitionGroup
+						name="collapse-transition"
+						@before-enter="beforeEnter"
+						@enter="enter"
+						@after-enter="afterEnter"
+						@before-leave="beforeLeave"
+						@leave="leave"
+						@after-leave="afterLeave"
+					>
+						<TreeItem
+							v-for="item in flattenItems"
+							:key="item._id"
+							v-bind="item.bind"
+							v-slot="{ isExpanded, handleToggle }"
+							@toggle="preventDefault"
+							@select="preventDefault"
+							class="item"
+						>
+							<span class="itemIdent" v-for="level in new Array(item.level - 1)" :key="level" />
+							<SidebarItem
+								:title="item.value.label"
+								:id="item.value.id"
+								:icon="itemIcon(item.value.type, isExpanded)"
+								:click="handleToggle"
+								:open="isExpanded"
+								:link="itemLink(item.value)"
+								:ariaLabel="`Open ${item.value.label}`"
+								:type="item.value.type"
+							/>
+						</TreeItem>
+					</TransitionGroup>
+				</TreeRoot>
+			</div>
+		</Transition>
 	</div>
 </template>
 
@@ -105,6 +171,7 @@ const itemIcon = (type: string, open: boolean) => {
 	margin-left: 12px;
 	border-left: 1px solid var(--color-foreground-light);
 	margin-bottom: 12px;
+	overflow: hidden;
 }
 
 .item {
@@ -114,6 +181,7 @@ const itemIcon = (type: string, open: boolean) => {
 	cursor: pointer;
 	max-width: 100%;
 	overflow: hidden;
+	transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 }
 
 .itemIdent {
@@ -134,5 +202,15 @@ const itemIcon = (type: string, open: boolean) => {
 	width: 1px;
 	height: 1px;
 	background-color: var(--color-foreground-light);
+}
+
+// Section collapse animation - height only, no scaling
+.collapse-transition-enter-active,
+.collapse-transition-leave-active {
+	transition:
+		height 0.3s cubic-bezier(0.645, 0.045, 0.355, 1),
+		padding 0.3s cubic-bezier(0.645, 0.045, 0.355, 1),
+		margin 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+	overflow: hidden;
 }
 </style>
