@@ -40,6 +40,10 @@ interface ModeleSelectionRule {
 	};
 }
 
+interface PredefinedSelectionRule {
+	strategy: 'firstWorking';
+}
+
 function getCallbacksArray(
 	callbacks: Callbacks | undefined,
 ): Array<BaseCallbackHandler | CallbackHandlerMethods> {
@@ -92,18 +96,20 @@ export class ModelSelector implements INodeType {
 			{
 				displayName: 'Rules',
 				name: 'rules',
-				placeholder: 'Add Rule',
+				placeholder: 'Add Selection',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
 					sortable: true,
 				},
-				description: 'Rules to map workflow data to specific models',
+				description:
+					'Choose between a custom condition or a predefined strategy for model selection',
 				default: {},
 				options: [
 					{
-						displayName: 'Rule',
-						name: 'rule',
+						displayName: 'Custom Condition',
+						// Keep this first so it is the default when adding a new entry
+						name: 'custom',
 						values: [
 							{
 								displayName: 'Model',
@@ -134,6 +140,25 @@ export class ModelSelector implements INodeType {
 							},
 						],
 					},
+					{
+						displayName: 'Predefined Strategy',
+						name: 'predefined',
+						values: [
+							{
+								displayName: 'Strategy',
+								name: 'strategy',
+								type: 'options',
+								default: 'firstWorking',
+								description: 'Automatically try connected models in order until one succeeds',
+								options: [
+									{
+										name: 'First Non-Failing Model',
+										value: 'firstWorking',
+									},
+								],
+							},
+						],
+					},
 				],
 			},
 		],
@@ -144,10 +169,11 @@ export class ModelSelector implements INodeType {
 			async getModels(this: ILoadOptionsFunctions) {
 				const numberInputs = this.getCurrentNodeParameter('numberInputs') as number;
 
-				return Array.from({ length: numberInputs ?? 2 }, (_, i) => ({
+				const options = Array.from({ length: numberInputs ?? 2 }, (_, i) => ({
 					value: i + 1,
 					name: `Model ${(i + 1).toString()}`,
 				}));
+				return await Promise.resolve(options);
 			},
 		},
 	};
@@ -166,18 +192,51 @@ export class ModelSelector implements INodeType {
 		}
 		models.reverse();
 
-		const rules = this.getNodeParameter('rules.rule', itemIndex, []) as ModeleSelectionRule[];
+		const customRules = this.getNodeParameter(
+			'rules.custom',
+			itemIndex,
+			[],
+		) as ModeleSelectionRule[];
+		const legacyRules = this.getNodeParameter('rules.rule', itemIndex, []) as ModeleSelectionRule[];
+		const predefinedRules = this.getNodeParameter(
+			'rules.predefined',
+			itemIndex,
+			[],
+		) as PredefinedSelectionRule[];
 
-		if (!rules || rules.length === 0) {
+		if (
+			(!customRules || customRules.length === 0) &&
+			(!legacyRules || legacyRules.length === 0) &&
+			(!predefinedRules || predefinedRules.length === 0)
+		) {
 			throw new NodeOperationError(this.getNode(), 'No rules defined', {
 				itemIndex,
-				description: 'At least one rule must be defined to select a model',
+				description: 'Add a Custom Condition or a Predefined Strategy to select a model',
 			});
 		}
 
-		for (let i = 0; i < rules.length; i++) {
-			const rule = rules[i];
-			const modelIndex = rule.modelIndex;
+		// First, try custom condition rules in order
+		const selectionCandidates: Array<{ path: string; modelIndex: number }> = [];
+		if (customRules && customRules.length > 0) {
+			for (let i = 0; i < customRules.length; i++) {
+				selectionCandidates.push({
+					path: `rules.custom[${i}].conditions`,
+					modelIndex: customRules[i].modelIndex,
+				});
+			}
+		}
+		// Backward compatibility: also consider legacy rules as custom
+		if (legacyRules && legacyRules.length > 0) {
+			for (let i = 0; i < legacyRules.length; i++) {
+				selectionCandidates.push({
+					path: `rules.rule[${i}].conditions`,
+					modelIndex: legacyRules[i].modelIndex,
+				});
+			}
+		}
+
+		for (const candidate of selectionCandidates) {
+			const modelIndex = candidate.modelIndex;
 
 			if (modelIndex <= 0 || modelIndex > models.length) {
 				throw new NodeOperationError(this.getNode(), `Invalid model index ${modelIndex}`, {
@@ -186,7 +245,7 @@ export class ModelSelector implements INodeType {
 				});
 			}
 
-			const conditionsMet = this.getNodeParameter(`rules.rule[${i}].conditions`, itemIndex, false, {
+			const conditionsMet = this.getNodeParameter(candidate.path, itemIndex, false, {
 				extractValue: true,
 			}) as boolean;
 
@@ -209,9 +268,38 @@ export class ModelSelector implements INodeType {
 			}
 		}
 
+		// If no custom rule matched, try predefined strategies (currently only: first non-failing model)
+		if (predefinedRules && predefinedRules.length > 0) {
+			// Attach tracing to all connected models to preserve run context regardless of which succeeds
+			const typedModels = models as BaseChatModel[];
+			for (const model of typedModels) {
+				const originalCallbacks = getCallbacksArray(model.callbacks);
+				for (const currentCallback of originalCallbacks) {
+					if (currentCallback instanceof N8nLlmTracing) {
+						currentCallback.setParentRunIndex(this.getNextRunIndex());
+					}
+				}
+				const modelSelectorTracing = new N8nNonEstimatingTracing(this);
+				model.callbacks = [...originalCallbacks, modelSelectorTracing];
+			}
+
+			const primaryModel = typedModels[0];
+			const fallbackModels = typedModels.slice(1) || [];
+
+			// Return a runnable with fallbacks: try primary, then fallbacks until one succeeds
+			const modelWithFallbacks =
+				fallbackModels.length > 0 ? primaryModel.withFallbacks(fallbackModels) : primaryModel;
+
+			return {
+				// typed as unknown to avoid over-constraining; downstream nodes accept AiLanguageModel runnables
+				response: modelWithFallbacks as unknown as BaseChatModel,
+			};
+		}
+
 		throw new NodeOperationError(this.getNode(), 'No matching rule found', {
 			itemIndex,
-			description: 'None of the defined rules matched the workflow data',
+			description:
+				'None of the Custom Condition rules matched, and no Predefined Strategy could be applied',
 		});
 	}
 }
