@@ -148,7 +148,6 @@ function peakMouseOver(event: MouseEvent) {
 				:selectable="false"
 				:collapsible="false"
 			/>
-
 			<footer class="sidebarFooter">
 				<SidebarItem title="Admin panel" id="templates" icon="cloud" type="other" />
 				<SidebarItem title="Templates" id="templates" icon="box" type="other" />
@@ -157,6 +156,7 @@ function peakMouseOver(event: MouseEvent) {
 				<SidebarItem title="Settings" id="templates" icon="settings" type="other" />
 			</footer>
 		</nav>
+		<slot name="creatorCallout" />
 		<slot name="sourceControl" />
 	</N8nResizeWrapper>
 	<div

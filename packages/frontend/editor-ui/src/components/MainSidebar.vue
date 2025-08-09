@@ -37,6 +37,7 @@ import { I18nT } from 'vue-i18n';
 import { useSidebarData } from '@/composables/useSidebarData';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
+import BecomeTemplateCreatorCta from './BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -49,7 +50,6 @@ const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 
-const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const route = useRoute();
@@ -249,13 +249,10 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	},
 ]);
 
-const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
-
 const showUserArea = computed(() => hasPermission(['authenticated']));
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
 onMounted(async () => {
-	window.addEventListener('resize', onResize);
 	basePath.value = rootStore.baseUrl;
 	if (user.value) {
 		void externalHooks.run('mainSidebar.mounted', {
@@ -264,13 +261,10 @@ onMounted(async () => {
 	}
 
 	becomeTemplateCreatorStore.startMonitoringCta();
-
-	await nextTick(onResizeEnd);
 });
 
 onBeforeUnmount(() => {
 	becomeTemplateCreatorStore.stopMonitoringCta();
-	window.removeEventListener('resize', onResize);
 });
 
 const trackHelpItemClick = (itemType: string) => {
@@ -295,18 +289,6 @@ const onUserActionToggle = (action: string) => {
 
 const onLogout = () => {
 	void router.push({ name: VIEWS.SIGNOUT });
-};
-
-const toggleCollapse = () => {
-	uiStore.toggleSidebarMenuCollapse();
-	// When expanding, delay showing some element to ensure smooth animation
-	if (!isCollapsed.value) {
-		setTimeout(() => {
-			fullyExpanded.value = !isCollapsed.value;
-		}, 300);
-	} else {
-		fullyExpanded.value = !isCollapsed.value;
-	}
 };
 
 const handleSelect = (key: string) => {
@@ -352,22 +334,6 @@ const handleSelect = (key: string) => {
 			break;
 	}
 };
-
-function onResize() {
-	void callDebounced(onResizeEnd, { debounceTime: 250 });
-}
-
-async function onResizeEnd() {
-	if (window.outerWidth < 900) {
-		uiStore.sidebarMenuCollapsed = true;
-	} else {
-		uiStore.sidebarMenuCollapsed = uiStore.sidebarMenuCollapsedPreference;
-	}
-
-	void nextTick(() => {
-		fullyExpanded.value = !isCollapsed.value;
-	});
-}
 </script>
 
 <template>
@@ -375,7 +341,6 @@ async function onResizeEnd() {
 		:personal="personalItems"
 		:shared="sharedItems"
 		:projects="projects"
-		:collapsed="isCollapsed"
 		:release-channel="settingsStore.settings.releaseChannel"
 	>
 		<template #createButton>
@@ -435,6 +400,9 @@ async function onResizeEnd() {
 					</N8nTooltip>
 				</template>
 			</N8nNavigationDropdown>
+		</template>
+		<template #creatorCallout>
+			<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
 		</template>
 		<template #sourceControl>
 			<MainSidebarSourceControl :is-collapsed="false" />
