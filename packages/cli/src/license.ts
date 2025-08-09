@@ -224,6 +224,15 @@ export class License implements LicenseProvider {
 		if (feature === LICENSE_FEATURES.SHOW_NON_PROD_BANNER) {
 			return false;
 		}
+		if (feature === LICENSE_FEATURES.ASK_AI) {
+			return false;
+		}
+		if (feature === LICENSE_FEATURES.AI_ASSISTANT) {
+			return false;
+		}
+		if (feature === LICENSE_FEATURES.AI_CREDITS) {
+			return false;
+		}
 		return true;
 	}
 	/** @deprecated Use `LicenseState.isSharingLicensed` instead. */
