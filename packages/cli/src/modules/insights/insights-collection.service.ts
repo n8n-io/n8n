@@ -135,12 +135,18 @@ export class InsightsCollectionService {
 
 		// run time event
 		if (ctx.runData.stoppedAt) {
-			const value = ctx.runData.stoppedAt.getTime() - ctx.runData.startedAt.getTime();
-			this.bufferedInsights.add({
-				...commonWorkflowData,
-				type: 'runtime_ms',
-				value,
-			});
+		    const runtimeMs = ctx.runData.stoppedAt.getTime() - ctx.runData.startedAt.getTime();
+		    const MIN_RUNTIME = 0;
+		    const MAX_RUNTIME = 2_147_483_647; // PostgreSQL INTEGER max
+		    if (runtimeMs < MIN_RUNTIME || runtimeMs > MAX_RUNTIME) {
+		        this.logger.warn(`Invalid runtime detected: ${runtimeMs}ms, clamping to safe range`);
+		    }
+		    const value = Math.min(Math.max(runtimeMs, MIN_RUNTIME), MAX_RUNTIME);
+		    this.bufferedInsights.add({
+		        ...commonWorkflowData,
+		        type: 'runtime_ms',
+		        value,
+		    });
 		}
 
 		// time saved event
