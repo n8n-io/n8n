@@ -1,8 +1,6 @@
 name: Docker Image Push To CI
 
 on:
-  schedule:
-    - cron: '40 23 * * *'
   push:
     branches: [ "master" ]
     tags: [ 'v*.*.*' ]
@@ -25,7 +23,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Install the cosign tool except on PR
       - name: Install cosign
         if: github.event_name != 'pull_request'
         uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
@@ -35,7 +32,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
 
-      # Login to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
         with:
@@ -52,15 +48,23 @@ jobs:
         id: dockerhub-push
         if: github.event_name != 'pull_request'
         run: |
-          # Set the image tag to today's date in YYYYMMDD format
-          IMAGE_TAG=$(date +'%Y%m%d')  
+          IMAGE_TAG=$(date +'%Y%m%d')
           docker build -t ${{ env.DOCKER_HUB_IMAGE }}:$IMAGE_TAG .
           docker push ${{ env.DOCKER_HUB_IMAGE }}:$IMAGE_TAG
+          docker tag ${{ env.DOCKER_HUB_IMAGE }}:$IMAGE_TAG ${{ env.DOCKER_HUB_IMAGE }}:latest
+          docker push ${{ env.DOCKER_HUB_IMAGE }}:latest
+          
+          # ذخیره مقدار IMAGE_TAG به عنوان خروجی مرحله
+          echo "tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          
+          # استخراج digest از image push
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ env.DOCKER_HUB_IMAGE }}:$IMAGE_TAG | cut -d'@' -f2)
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
 
       - name: Sign the published Docker image
         if: ${{ github.event_name != 'pull_request' }}
         env:
-          IMAGE_TAG: ${{ steps.dockerhub-push.outputs.tag }}  # Use the IMAGE_TAG here
+          IMAGE_TAG: ${{ steps.dockerhub-push.outputs.tag }}
           DIGEST: ${{ steps.dockerhub-push.outputs.digest }}
         run: |
           echo "${IMAGE_TAG}" | xargs -I {} cosign sign --yes {}@${DIGEST}
