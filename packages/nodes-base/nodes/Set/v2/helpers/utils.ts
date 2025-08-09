@@ -236,7 +236,7 @@ export function resolveRawData(
 			if (typeof resolvedValue === 'object' && resolvedValue !== null) {
 				returnData = returnData.replace(resolvable, () => JSON.stringify(resolvedValue));
 			} else {
-				returnData = returnData.replace(resolvable, () => resolvedValue as string);
+				returnData = returnData.replace(resolvable, () => String(resolvedValue));
 			}
 		}
 	}
