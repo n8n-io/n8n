@@ -37,7 +37,7 @@ on:
             - '!packages/@n8n/benchmark/**'
             - '!**/*.md'
       excluded_source_branch_patterns:
-        description: "Newline-separated list of glob patterns for source branches to EXCLUDE."
+        description: 'Newline-separated list of glob patterns for source branches to EXCLUDE.'
         required: false
         type: string
         default: |
@@ -84,6 +84,7 @@ jobs:
 
           source_branch_excluded="false"
           while IFS= read -r pattern; do
+            # shellcheck disable=SC2053
             if [[ -n "$pattern" && "$HEAD_REF" == $pattern ]]; then
                 source_branch_excluded="true"
                 break
@@ -102,8 +103,8 @@ jobs:
                 "$source_branch_excluded" == "false" && \
                 "$IS_APPROVED" == "true" ]]; then
             echo "Decision: Conditions met. Setting should_run=true."
-            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "Decision: Conditions not met. Setting should_run=false."
-            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
           fi

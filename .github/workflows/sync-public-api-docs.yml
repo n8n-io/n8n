@@ -49,10 +49,10 @@ jobs:
         run: |
           if [[ -f "packages/cli/dist/public-api/v1/openapi.yml" ]]; then
             echo "OpenAPI file found: packages/cli/dist/public-api/v1/openapi.yml"
-            echo "file_exists=true" >> $GITHUB_OUTPUT
+            echo "file_exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "ERROR: OpenAPI file not found at packages/cli/dist/public-api/v1/openapi.yml after build."
-            echo "file_exists=false" >> $GITHUB_OUTPUT
+            echo "file_exists=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Generate GitHub App Token

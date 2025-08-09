@@ -77,7 +77,7 @@ jobs:
           wait-on: 'http://localhost:5678'
           wait-on-timeout: 120
           record: ${{ inputs.record }}
-          parallel: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.parallel || false ) }}
+          parallel: ${{ inputs.spec == 'e2e/*' && inputs.parallel || false }}
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
           ci-build-id: ${{ github.run_id }}-${{ github.run_attempt }}
