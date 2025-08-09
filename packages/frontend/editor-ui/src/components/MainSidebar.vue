@@ -3,7 +3,15 @@ import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useI18n } from '@n8n/i18n';
-import { N8nTooltip, N8nLink, N8nIconButton, N8nSidebar } from '@n8n/design-system';
+import {
+	N8nTooltip,
+	N8nLink,
+	N8nIconButton,
+	N8nSidebar,
+	N8nNavigationDropdown,
+	N8nIcon,
+	N8nButton,
+} from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import { ABOUT_MODAL_KEY, RELEASE_NOTES_URL, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -27,6 +35,8 @@ import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';
 import { useSidebarData } from '@/composables/useSidebarData';
+import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
+import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -59,6 +69,18 @@ const fullyExpanded = ref(false);
 
 // Use the sidebar data composable
 const { personalItems, sharedItems, projects } = useSidebarData();
+
+// Use global entity creation composable
+const {
+	menu,
+	handleSelect: handleMenuSelect,
+	createWorkflowsAppendSlotName,
+	createCredentialsAppendSlotName,
+	createProjectAppendSlotName,
+	hasPermissionToCreateProjects,
+	projectsLimitReachedMessage,
+	upgradeLabel,
+} = useGlobalEntityCreation();
 
 const userMenuItems = ref([
 	{
@@ -356,6 +378,64 @@ async function onResizeEnd() {
 		:collapsed="isCollapsed"
 		:release-channel="settingsStore.settings.releaseChannel"
 	>
+		<template #createButton>
+			<N8nNavigationDropdown
+				ref="createBtn"
+				data-test-id="universal-add"
+				:menu="menu"
+				@select="handleMenuSelect"
+			>
+				<N8nIconButton icon-size="large" size="mini" icon="square-plus" type="secondary" text />
+				<template #[createWorkflowsAppendSlotName]>
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.workflow')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+				</template>
+				<template #[createCredentialsAppendSlotName]>
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.credential')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+				</template>
+				<template #[createProjectAppendSlotName]="{ item }">
+					<N8nTooltip
+						v-if="sourceControlStore.preferences.branchReadOnly"
+						placement="right"
+						:content="i18n.baseText('readOnlyEnv.cantAdd.project')"
+					>
+						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
+					</N8nTooltip>
+					<N8nTooltip
+						v-else-if="item.disabled"
+						placement="right"
+						:content="projectsLimitReachedMessage"
+					>
+						<N8nIcon
+							v-if="!hasPermissionToCreateProjects"
+							style="margin-left: auto; margin-right: 5px"
+							icon="lock"
+							size="xsmall"
+						/>
+						<N8nButton
+							v-else
+							:size="'mini'"
+							style="margin-left: auto"
+							type="tertiary"
+							@click="handleMenuSelect(item.id)"
+						>
+							{{ upgradeLabel }}
+						</N8nButton>
+					</N8nTooltip>
+				</template>
+			</N8nNavigationDropdown>
+		</template>
 		<template #sourceControl>
 			<MainSidebarSourceControl :is-collapsed="false" />
 		</template>

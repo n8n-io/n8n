@@ -120,6 +120,7 @@ const itemIcon = (type: string, open: boolean) => {
 	display: block;
 	position: relative;
 	width: 8px;
+	min-width: 8px;
 	align-self: stretch;
 	margin-left: 12px;
 	border-left: 1px solid var(--color-foreground-light);

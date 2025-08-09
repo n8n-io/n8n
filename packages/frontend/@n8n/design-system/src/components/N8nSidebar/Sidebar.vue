@@ -9,6 +9,7 @@ import SidebarSection from './SidebarSection.vue';
 import N8nIcon from '../N8nIcon';
 import N8nResizeWrapper from '../N8nResizeWrapper';
 import type { ResizeData } from '@n8n/design-system/types';
+import { N8nIconButton } from '..';
 
 const props = defineProps<{
 	personal: { id: string; items: TreeItemType[] };
@@ -95,15 +96,21 @@ function peakMouseOver(event: MouseEvent) {
 			@mouseleave="peakMouseOver"
 		>
 			<header class="sidebarHeader">
-				<N8nLogo location="sidebar" :release-channel="props.releaseChannel" />
-				<button class="sidebarStateButton" @click="toggleSidebar">
-					<N8nIcon
-						class="sidebarStateButtonIcon"
-						:icon="panelIcon"
-						color="foreground-xdark"
-						aria-label="Toggle sidebar"
-					/>
-				</button>
+				<N8nLogo
+					class="sidebarHeaderLogo"
+					location="sidebar"
+					:release-channel="props.releaseChannel"
+				/>
+				<slot name="createButton" />
+				<N8nIconButton
+					icon-size="large"
+					size="mini"
+					:icon="panelIcon"
+					type="secondary"
+					text
+					square
+					@click="toggleSidebar"
+				/>
 			</header>
 			<SidebarItem
 				title="Overview"
@@ -141,7 +148,7 @@ function peakMouseOver(event: MouseEvent) {
 				:selectable="false"
 				:collapsible="false"
 			/>
-			<slot name="sourceControl" />
+
 			<footer class="sidebarFooter">
 				<SidebarItem title="Admin panel" id="templates" icon="cloud" type="other" />
 				<SidebarItem title="Templates" id="templates" icon="box" type="other" />
@@ -150,6 +157,7 @@ function peakMouseOver(event: MouseEvent) {
 				<SidebarItem title="Settings" id="templates" icon="settings" type="other" />
 			</footer>
 		</nav>
+		<slot name="sourceControl" />
 	</N8nResizeWrapper>
 	<div
 		v-if="state === 'hidden' || state === 'peak'"
@@ -161,14 +169,14 @@ function peakMouseOver(event: MouseEvent) {
 </template>
 
 <style scoped>
-.sidebar {
-	padding: 12px;
-	background-color: var(--color-foreground-xlight);
-	position: relative;
-	height: 100%;
+.resizeWrapper {
 	max-height: 100%;
+	height: 100%;
+	overflow-x: hidden;
 	overflow-y: scroll;
 	border-right: 1px solid var(--color-foreground-base);
+	display: flex;
+	flex-direction: column;
 }
 
 .resizeWrapperHidden,
@@ -177,6 +185,10 @@ function peakMouseOver(event: MouseEvent) {
 	height: calc(100vh - 64px);
 	top: 20px;
 	z-index: 1000;
+	border-bottom-right-radius: 8px;
+	border-top-right-radius: 8px;
+	border-top: 1px solid var(--color-foreground-base);
+	border-bottom: 1px solid var(--color-foreground-base);
 }
 
 /* exit */
@@ -191,14 +203,18 @@ function peakMouseOver(event: MouseEvent) {
 	transition: transform 0.21s ease-out;
 }
 
+.sidebar {
+	padding: 12px;
+	background-color: var(--color-foreground-xlight);
+	position: relative;
+	max-height: 100%;
+	overflow-y: scroll;
+	flex-grow: 1;
+}
+
 .sidebarHidden,
 .sidebarPeak {
-	border-bottom-right-radius: 8px;
-	border-top-right-radius: 8px;
 	overflow: auto;
-	border-top: 1px solid var(--color-foreground-base);
-	border-bottom: 1px solid var(--color-foreground-base);
-	height: 100%;
 }
 
 .sidebarHeader {
@@ -206,6 +222,11 @@ function peakMouseOver(event: MouseEvent) {
 	align-items: center;
 	justify-content: space-between;
 	margin-bottom: 12px;
+	gap: 8px;
+}
+
+.sidebarHeaderLogo {
+	margin-right: auto;
 }
 
 .sidebarSubheader {
@@ -218,20 +239,6 @@ function peakMouseOver(event: MouseEvent) {
 	position: sticky;
 	top: 100%;
 	margin-top: auto;
-}
-
-.sidebarStateButton {
-	background: none;
-	border: none;
-	cursor: pointer;
-	width: 16px;
-	height: 16px;
-	padding: 0;
-}
-
-.sidebarStateButtonIcon {
-	width: 100%;
-	height: 100%;
 }
 
 .interactiveArea {

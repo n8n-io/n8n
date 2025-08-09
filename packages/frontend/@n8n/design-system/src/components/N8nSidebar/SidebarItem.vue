@@ -86,6 +86,7 @@ function click(event: MouseEvent) {
 	position: relative;
 	width: 16px;
 	height: 16px;
+	min-width: 16px;
 	border-radius: var(--border-radius-small);
 
 	.sidebarItemDropdownIcon {
