@@ -20,7 +20,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { computed, ref, useCssModule } from 'vue';
+import { computed, ref, useCssModule, onMounted, onUnmounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import HighlightedEdge from './HighlightedEdge.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
 
@@ -35,6 +36,8 @@ const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
+const router = useRouter();
+const route = useRoute();
 
 const workflowsStore = useWorkflowsStore();
 
@@ -260,11 +263,51 @@ const nodeDiffs = computed(() => {
 
 function handleBeforeClose() {
 	selectedDetailId.value = undefined;
+
+	// Check if we have history to go back to avoid empty navigation issues
+	if (window.history.length > 1) {
+		// Use router.back() to maintain proper navigation flow when possible
+		router.back();
+	} else {
+		// Fallback to query parameter manipulation when no navigation history
+		const newQuery = { ...route.query };
+		delete newQuery.diff;
+		delete newQuery.direction;
+		void router.replace({ query: newQuery });
+	}
 }
+
+// Handle ESC key since Element Plus Dialog doesn't trigger before-close on ESC
+function handleEscapeKey(event: KeyboardEvent) {
+	if (event.key === 'Escape') {
+		event.preventDefault();
+		event.stopPropagation();
+		handleBeforeClose();
+	}
+}
+
+onMounted(() => {
+	document.addEventListener('keydown', handleEscapeKey, true);
+});
+
+onUnmounted(() => {
+	document.removeEventListener('keydown', handleEscapeKey, true);
+});
 
 const changesCount = computed(
 	() => nodeChanges.value.length + connectionsDiff.value.size + settingsDiff.value.length,
 );
+
+const isSourceWorkflowNew = computed(() => {
+	const sourceExists = !!sourceWorkFlow.value.state.value?.workflow;
+	const targetExists = !!targetWorkFlow.value.state.value?.workflow;
+
+	// Source is "new" only when it doesn't exist but target does AND
+	// we're in a context where the target is being pushed/pulled to create the source
+	// Push: remote (source) doesn't exist, local (target) does -> creating new on remote
+	// Pull: local (source) doesn't exist, remote (target) does -> creating new on local
+	return !sourceExists && targetExists;
+});
 
 onNodeClick((nodeId) => {
 	const node = nodesDiff.value.get(nodeId);
@@ -331,9 +374,10 @@ const modifiers = [
 		width="100%"
 		max-width="100%"
 		max-height="100%"
+		:close-on-press-escape="false"
 		@before-close="handleBeforeClose"
 	>
-		<template #header="{ closeDialog }">
+		<template #header>
 			<div :class="$style.header">
 				<div :class="$style.headerLeft">
 					<N8nIconButton
@@ -341,7 +385,7 @@ const modifiers = [
 						type="secondary"
 						:class="[$style.backButton, 'mr-xs']"
 						icon-size="large"
-						@click="closeDialog"
+						@click="handleBeforeClose"
 					></N8nIconButton>
 					<N8nHeading tag="h1" size="xlarge">
 						{{
@@ -543,13 +587,19 @@ const modifiers = [
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
 									<N8nHeading size="large">{{
-										i18n.baseText('workflowDiff.deletedWorkflow')
+										isSourceWorkflowNew
+											? i18n.baseText('workflowDiff.newWorkflow')
+											: i18n.baseText('workflowDiff.deletedWorkflow')
 									}}</N8nHeading>
-									<N8nText v-if="targetWorkFlow.state.value?.remote" color="text-base">{{
-										i18n.baseText('workflowDiff.deletedWorkflow.database')
+									<N8nText v-if="sourceWorkFlow.state.value?.remote" color="text-base">{{
+										isSourceWorkflowNew
+											? i18n.baseText('workflowDiff.newWorkflow.remote')
+											: i18n.baseText('workflowDiff.deletedWorkflow.remote')
 									}}</N8nText>
 									<N8nText v-else color="text-base">{{
-										i18n.baseText('workflowDiff.deletedWorkflow.remote')
+										isSourceWorkflowNew
+											? i18n.baseText('workflowDiff.newWorkflow.database')
+											: i18n.baseText('workflowDiff.deletedWorkflow.database')
 									}}</N8nText>
 								</div>
 							</template>
@@ -629,7 +679,6 @@ const modifiers = [
 	}
 	:global(.el-dialog__header) {
 		padding: 11px 16px;
-		border-bottom: 1px solid var(--color-foreground-base);
 	}
 	:global(.el-dialog__headerbtn) {
 		display: none;
@@ -896,6 +945,7 @@ const modifiers = [
 .workflowDiffPanel {
 	flex: 1;
 	position: relative;
+	border-top: 1px solid var(--color-foreground-base);
 }
 
 .emptyWorkflow {

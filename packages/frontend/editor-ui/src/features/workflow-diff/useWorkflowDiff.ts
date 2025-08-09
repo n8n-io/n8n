@@ -174,15 +174,16 @@ export const useWorkflowDiff = (
 	);
 
 	const nodesDiff = computed(() => {
-		// Don't compute diff until both workflows are loaded to prevent initial flashing
-		if (!source.value?.workflow?.value || !target.value?.workflow?.value) {
+		// Handle case where one or both workflows don't exist
+		const sourceNodes = source.value?.workflow?.value?.nodes ?? [];
+		const targetNodes = target.value?.workflow?.value?.nodes ?? [];
+
+		// If neither workflow exists, return empty diff
+		if (sourceNodes.length === 0 && targetNodes.length === 0) {
 			return new Map<string, NodeDiff<INodeUi>>();
 		}
 
-		return compareWorkflowsNodes(
-			source.value.workflow?.value?.nodes ?? [],
-			target.value.workflow?.value?.nodes ?? [],
-		);
+		return compareWorkflowsNodes(sourceNodes, targetNodes);
 	});
 
 	type Connection = {
@@ -222,13 +223,14 @@ export const useWorkflowDiff = (
 	}
 
 	const connectionsDiff = computed(() => {
-		// Don't compute diff until both workflows are loaded to prevent initial flashing
-		if (!source.value?.workflow?.value || !target.value?.workflow?.value) {
-			return new Map<string, { status: NodeDiffStatus; connection: Connection }>();
-		}
-
+		// Handle case where one or both workflows don't exist
 		const sourceConnections = mapConnections(source.value?.connections ?? []);
 		const targetConnections = mapConnections(target.value?.connections ?? []);
+
+		// If neither workflow has connections, return empty diff
+		if (sourceConnections.set.size === 0 && targetConnections.set.size === 0) {
+			return new Map<string, { status: NodeDiffStatus; connection: Connection }>();
+		}
 
 		const added = targetConnections.set.difference(sourceConnections.set);
 		const removed = sourceConnections.set.difference(targetConnections.set);
