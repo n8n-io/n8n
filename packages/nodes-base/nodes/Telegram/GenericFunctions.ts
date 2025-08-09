@@ -114,6 +114,10 @@ export function addAdditionalFields(
 			body.disable_web_page_preview = true;
 		}
 
+		if (additionalFields.protect_content === true) {
+			body.protect_content = true;
+		}
+
 		delete additionalFields.appendAttribution;
 	}
 
