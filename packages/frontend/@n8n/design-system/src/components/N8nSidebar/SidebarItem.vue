@@ -1,8 +1,12 @@
 <script lang="ts" setup>
+import { useRouter } from 'vue-router';
 import N8nIcon from '../N8nIcon';
 import { IconName, isSupportedIconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
 import N8nText from '../N8nText';
+import { computed } from 'vue';
+
+const router = useRouter();
 
 const props = defineProps<{
 	title: string;
@@ -23,10 +27,14 @@ function click(event: MouseEvent) {
 		props.click();
 	}
 }
+
+const active = computed(() => {
+	return router.currentRoute.value.path === props.link;
+});
 </script>
 
 <template>
-	<N8nRoute :to="link" class="sidebarItem" @click.stop>
+	<N8nRoute :to="link" :class="{ sidebarItem: true, active }" @click.stop>
 		<div v-if="type !== 'workflow'" :class="{ sidebarItemDropdown: true, other: type === 'other' }">
 			<div class="sidebarItemDropdownIcon">
 				<span v-if="icon && !isSupportedIconName(icon)" class="sidebarItemEmoji">{{ icon }}</span>
@@ -68,8 +76,10 @@ function click(event: MouseEvent) {
 	color: var(--color-text-dark);
 }
 
-.sidebarItem:focus {
-	background-color: var(--color-foreground-light);
+.sidebarItem:focus-visible,
+.sidebarItem:has(:focus-visible) {
+	outline: 1px solid var(--color-secondary);
+	outline-offset: -1px;
 }
 
 .sidebarItemText {
@@ -101,15 +111,8 @@ function click(event: MouseEvent) {
 	}
 
 	&:not(.other) {
-		.sidebarItemDropdownButton {
-			opacity: 0;
-		}
-
-		&:hover .sidebarItemDropdownButton {
-			opacity: 1;
-		}
-
-		&:hover .sidebarItemDropdownIcon {
+		&:hover .sidebarItemDropdownIcon,
+		&:has(:focus-visible) .sidebarItemDropdownIcon {
 			opacity: 0;
 		}
 	}
@@ -123,11 +126,34 @@ function click(event: MouseEvent) {
 	cursor: pointer;
 	outline: none;
 	border: none;
+	width: 16px;
+	height: 16px;
+	border-radius: 2px;
 	padding: 0;
+	opacity: 0;
+}
+
+.sidebarItemDropdownButton:hover {
+	background-color: var(--color-foreground-base);
+	opacity: 1;
+}
+
+.sidebarItemDropdownButton:focus-visible {
+	outline: 1px solid var(--color-secondary);
+	outline-offset: -1px;
+	opacity: 1;
 }
 
 .sidebarItemEmoji {
 	font-size: 16px;
 	line-height: 1;
+}
+
+.sidebarItem.active {
+	background-color: var(--color-foreground-light);
+
+	.sidebarItemDropdownIcon {
+		color: var(--color-foreground-xdark);
+	}
 }
 </style>
