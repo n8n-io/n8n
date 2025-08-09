@@ -59,15 +59,11 @@ function peakMouseOver(event: MouseEvent) {
 		return;
 	}
 
-	console.log('peakMouseOver', event.relatedTarget);
-
 	const target = event.relatedTarget as Element;
 
-	// Check if the mouse is moving to the sidebar or interactive area
 	const isSidebar = target.closest('.sidebar') || target.closest('.resizeWrapper');
 	const isInteractiveArea = target.closest('.interactiveArea');
 
-	// Only hide if we're moving to neither the sidebar nor interactive area
 	if (state.value === 'peak' && !isSidebar && !isInteractiveArea && !isResizing.value) {
 		state.value = 'hidden';
 	}
