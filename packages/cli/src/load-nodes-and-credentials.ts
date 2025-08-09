@@ -1,6 +1,7 @@
 import { inTest, isContainedWithin, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
+import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
@@ -26,12 +27,12 @@ import type {
 	LoadedNodesAndCredentials,
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-workflow';
-import { type Stats } from 'node:fs';
 import path from 'path';
 import picocolors from 'picocolors';
 
-import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 import { CommunityPackagesConfig } from './community-packages/community-packages.config';
+
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -528,18 +529,18 @@ export class LoadNodesAndCredentials {
 	async setupHotReload() {
 		const { default: debounce } = await import('lodash/debounce');
 
-		const { watch } = await import('chokidar');
+		const { subscribe } = await import('@parcel/watcher');
 
 		const { Push } = await import('@/push');
 		const push = Container.get(Push);
 
-		Object.values(this.loaders).forEach(async (loader) => {
+		for (const loader of Object.values(this.loaders)) {
 			const { directory } = loader;
 			try {
 				await fsPromises.access(directory);
 			} catch {
 				// If directory doesn't exist, there is nothing to watch
-				return;
+				continue;
 			}
 
 			const reloader = debounce(async () => {
@@ -555,35 +556,57 @@ export class LoadNodesAndCredentials {
 			}, 100);
 
 			// For lazy loaded packages, we need to watch the dist directory
-			const watchPath = loader.isLazyLoaded ? path.join(directory, 'dist') : directory;
+			const watchPaths = loader.isLazyLoaded ? [path.join(directory, 'dist')] : [directory];
+			const customNodesRoot = path.join(directory, 'node_modules');
 
-			// Watch options for chokidar v4
-			const watchOptions = {
-				ignoreInitial: true,
-				cwd: directory,
-				// Filter which files to watch based on loader type
-				ignored: (filePath: string, stats?: Stats) => {
-					if (!stats) return false;
-					if (stats.isDirectory()) return false;
-					if (filePath.includes('node_modules')) return true;
+			if (loader.packageName === 'CUSTOM') {
+				const customNodeEntries = await fsPromises.readdir(customNodesRoot, {
+					withFileTypes: true,
+				});
 
-					if (loader.isLazyLoaded) {
-						// Only watch nodes.json and credentials.json files
-						const basename = path.basename(filePath);
-						return basename !== 'nodes.json' && basename !== 'credentials.json';
+				// Custom nodes are usually symlinked using npm link. Resolve symlinks to support file watching
+				const realCustomNodesPaths = await Promise.all(
+					customNodeEntries
+						.filter(
+							(entry) =>
+								(entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith('.'),
+						)
+						.map(
+							async (entry) =>
+								await fsPromises.realpath(path.join(customNodesRoot, entry.name)).catch(() => null),
+						),
+				);
+
+				watchPaths.push.apply(
+					watchPaths,
+					realCustomNodesPaths.filter((path): path is string => !!path),
+				);
+			}
+
+			this.logger.debug('Watching node folders for hot reload', {
+				loader: loader.packageName,
+				paths: watchPaths,
+			});
+
+			for (const watchPath of watchPaths) {
+				const onFileEvent: ParcelWatcher.SubscribeCallback = async (_error, events) => {
+					if (events.some((event) => event.type !== 'delete')) {
+						const modules = Object.keys(require.cache).filter((module) =>
+							module.startsWith(watchPath),
+						);
+
+						for (const module of modules) {
+							delete require.cache[module];
+						}
+						await reloader();
 					}
+				};
 
-					// Watch all .js and .json files
-					return !filePath.endsWith('.js') && !filePath.endsWith('.json');
-				},
-			};
+				// Ignore nested node_modules folders
+				const ignore = ['**/node_modules/**/node_modules/**'];
 
-			const watcher = watch(watchPath, watchOptions);
-
-			// Watch for file changes and additions
-			// Not watching removals to prevent issues during build processes
-			watcher.on('change', reloader);
-			watcher.on('add', reloader);
-		});
+				await subscribe(watchPath, onFileEvent, { ignore });
+			}
+		}
 	}
 }

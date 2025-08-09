@@ -1660,6 +1660,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
+      '@parcel/watcher':
+        specifier: ^2.5.1
+        version: 2.5.1
       '@redocly/cli':
         specifier: ^1.28.5
         version: 1.28.5(encoding@0.1.13)
@@ -2791,9 +2794,6 @@ importers:
       cheerio:
         specifier: 1.0.0-rc.6
         version: 1.0.0-rc.6
-      chokidar:
-        specifier: ^4.0.1
-        version: 4.0.1
       cron:
         specifier: 3.1.7
         version: 3.1.7
@@ -20502,7 +20502,6 @@ snapshots:
       '@parcel/watcher-win32-arm64': 2.5.1
       '@parcel/watcher-win32-ia32': 2.5.1
       '@parcel/watcher-win32-x64': 2.5.1
-    optional: true
 
   '@petamoriken/float16@3.9.2': {}
 
@@ -24798,8 +24797,7 @@ snapshots:
 
   destr@2.0.5: {}
 
-  detect-libc@1.0.3:
-    optional: true
+  detect-libc@1.0.3: {}
 
   detect-libc@2.0.4: {}
 
