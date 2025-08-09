@@ -878,7 +878,9 @@
     "n8n-core": "workspace:*"
   },
   "dependencies": {
+    "@aws-sdk/types": "3.804.0",
     "@aws-sdk/client-sso-oidc": "3.808.0",
+    "@aws-sdk/credential-providers": "3.808.0",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/config": "workspace:*",

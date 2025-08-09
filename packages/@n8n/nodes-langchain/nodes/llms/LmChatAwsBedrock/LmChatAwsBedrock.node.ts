@@ -7,6 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { Aws } from 'n8n-nodes-base/dist/credentials/Aws.credentials';
+
 import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
@@ -237,11 +239,7 @@ export class LmChatAwsBedrock implements INodeType {
 			clientConfig: {
 				httpAgent: getProxyAgent(),
 			},
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey as string,
-				accessKeyId: credentials.accessKeyId as string,
-				sessionToken: credentials.sessionToken as string,
-			},
+			credentials: Aws.getCredentialProvider(credentials),
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});

@@ -22,4 +22,10 @@ export class CredentialsConfig {
 
 	@Nested
 	overwrite: CredentialsOverwrite;
+
+	/**
+	 * If enabled, some credentials are allowed to use system-level credentials (e.g., ECS, EKS, ENV, etc.).
+	 */
+	@Env('CREDENTIALS_ALLOW_SYSTEMS')
+	allowSystems: boolean = false;
 }
