@@ -33,6 +33,7 @@ export class MemoryZep implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Zep',
 		name: 'memoryZep',
+		hidden: true,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:zep.png',
 		group: ['transform'],
@@ -67,6 +68,12 @@ export class MemoryZep implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'This Zep integration is deprecated and will be removed in a future version.',
+				name: 'deprecationNotice',
+				type: 'notice',
+				default: '',
+			},
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Only works with Zep Cloud and Community edition <= v0.27.2',
