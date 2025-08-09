@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { TreeItemType } from '.';
 import { IconName } from '../N8nIcon/icons';
 import N8nLogo from '../N8nLogo';
@@ -8,7 +8,8 @@ import SidebarItem from './SidebarItem.vue';
 import SidebarSection from './SidebarSection.vue';
 import N8nResizeWrapper from '../N8nResizeWrapper';
 import type { ResizeData } from '@n8n/design-system/types';
-import { N8nIconButton } from '..';
+import { N8nIconButton, N8nTooltip } from '..';
+import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 
 const props = defineProps<{
 	personal: { id: string; items: TreeItemType[] };
@@ -68,6 +69,18 @@ function peakMouseOver(event: MouseEvent) {
 		state.value = 'hidden';
 	}
 }
+
+onMounted(() => {
+	window.addEventListener('keydown', (event) => {
+		if (event.key === ']') {
+			toggleSidebar();
+		}
+	});
+});
+
+onUnmounted(() => {
+	window.removeEventListener('keydown', toggleSidebar);
+});
 </script>
 
 <template>
@@ -101,15 +114,23 @@ function peakMouseOver(event: MouseEvent) {
 					:release-channel="props.releaseChannel"
 				/>
 				<slot name="createButton" />
-				<N8nIconButton
-					icon-size="large"
-					size="mini"
-					:icon="panelIcon"
-					type="secondary"
-					text
-					square
-					@click="toggleSidebar"
-				/>
+				<N8nTooltip placement="right">
+					<template #content>
+						<div class="toggleTooltip">
+							<N8nText size="small" class="tooltipText">Toggle sidebar</N8nText>
+							<N8nKeyboardShortcut :keys="[']']" />
+						</div>
+					</template>
+					<N8nIconButton
+						icon-size="large"
+						size="mini"
+						:icon="panelIcon"
+						type="secondary"
+						text
+						square
+						@click="toggleSidebar"
+					/>
+				</N8nTooltip>
 			</header>
 			<SidebarItem
 				title="Overview"
@@ -246,5 +267,11 @@ function peakMouseOver(event: MouseEvent) {
 	top: 0;
 	height: 100%;
 	pointer-events: auto;
+}
+
+.toggleTooltip {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 </style>
