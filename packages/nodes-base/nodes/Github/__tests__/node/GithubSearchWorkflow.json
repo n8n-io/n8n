@@ -76,7 +76,7 @@
 							"full_name": "test-owner/test-repo",
 							"description": "A test repository",
 							"language": "JavaScript",
-							"stars": 1000,
+               "stargazers_count": 1000,
 							"forks": 10
 						}
 					]
