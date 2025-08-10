@@ -16,6 +16,8 @@ export async function executionStarted({ data }: ExecutionStarted) {
 	}
 
 	if (workflowsStore.workflowExecutionData?.data && data.flattedRunData) {
-		workflowsStore.workflowExecutionData.data.resultData.runData = parse(data.flattedRunData);
+		workflowsStore.setWorkflowExecutionRunData({
+			resultData: { runData: parse(data.flattedRunData) },
+		});
 	}
 }

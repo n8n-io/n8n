@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import type { IDataObject, ExecutionSummary, AnnotationVote, ExecutionStatus } from 'n8n-workflow';
 import type {
 	ExecutionFilterType,
@@ -29,7 +29,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const loading = ref(false);
 	const itemsPerPage = ref(10);
 
-	const activeExecution = ref<ExecutionSummary | null>(null);
+	const activeExecution = shallowRef<ExecutionSummary | null>(null);
 
 	const filters = ref<ExecutionFilterType>(getDefaultExecutionFilters());
 	const executionsFilters = computed<ExecutionsQueryFilter>(() => {

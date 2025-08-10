@@ -90,7 +90,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@n8n/i18n';
 
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PushPayload } from '@n8n/api-types';
@@ -104,6 +104,9 @@ import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
 import { snapPositionToGrid } from '@/utils/nodeViewUtils';
+import * as PinDataUtils from '@/utils/pinDataUtils';
+import * as ExecutionResponseUtils from '@/utils/executionResponseUtils';
+import type { Change } from '@/types/utils';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -151,9 +154,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const activeWorkflows = ref<string[]>([]);
 	const activeWorkflowExecution = ref<ExecutionSummary | null>(null);
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
-	const workflowExecutionData = ref<IExecutionResponse | null>(null);
+	const workflowExecutionData = shallowRef<IExecutionResponse | null>(null);
 	const workflowExecutionStartedData =
-		ref<[executionId: string, data: { [nodeName: string]: ITaskStartedData[] }]>();
+		shallowRef<[executionId: string, data: { [nodeName: string]: ITaskStartedData[] }]>();
 	const workflowExecutionResultDataLastUpdate = ref<number>();
 	const workflowExecutionPairedItemMappings = ref<Record<string, Set<string>>>({});
 	const subWorkflowExecutionError = ref<Error | null>(null);
@@ -1201,15 +1204,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowObject.value.setConnections(workflow.value.connections);
 	}
 
-	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
+	function renameNodeSelectedAndExecution(nameData: Change<string>): void {
 		uiStore.stateIsDirty = true;
 
 		// If node has any WorkflowResultData rename also that one that the data
 		// does still get displayed also after node got renamed
-		const runData = workflowExecutionData.value?.data?.resultData?.runData;
-		if (runData?.[nameData.old]) {
-			runData[nameData.new] = runData[nameData.old];
-			delete runData[nameData.old];
+		if (workflowExecutionData.value) {
+			workflowExecutionData.value = ExecutionResponseUtils.renameNode(
+				workflowExecutionData.value,
+				nameData,
+			);
 		}
 
 		// In case the renamed node was last selected set it also there with the new name
@@ -1220,47 +1224,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const { [nameData.old]: removed, ...rest } = nodeMetadata.value;
 		nodeMetadata.value = { ...rest, [nameData.new]: nodeMetadata.value[nameData.old] };
 
-		if (workflow.value.pinData?.[nameData.old]) {
-			const { [nameData.old]: renamed, ...restPinData } = workflow.value.pinData;
-			workflow.value.pinData = {
-				...restPinData,
-				[nameData.new]: renamed,
-			};
-
+		// Update the name in pinData
+		if (workflow.value.pinData) {
+			workflow.value.pinData = PinDataUtils.renameNode(workflow.value.pinData, nameData);
 			workflowObject.value.setPinData(workflow.value.pinData);
 		}
-
-		const resultData = workflowExecutionData.value?.data?.resultData;
-		if (resultData?.pinData?.[nameData.old]) {
-			resultData.pinData[nameData.new] = resultData.pinData[nameData.old];
-			delete resultData.pinData[nameData.old];
-		}
-
-		// Update the name in pinData
-		Object.values(workflow.value.pinData ?? {})
-			.concat(Object.values(workflowExecutionData.value?.data?.resultData.pinData ?? {}))
-			.flatMap((executionData) =>
-				executionData.flatMap((nodeExecution) =>
-					Array.isArray(nodeExecution.pairedItem)
-						? nodeExecution.pairedItem
-						: [nodeExecution.pairedItem],
-				),
-			)
-			.forEach((pairedItem) => {
-				if (
-					typeof pairedItem === 'number' ||
-					pairedItem?.sourceOverwrite?.previousNode !== nameData.old
-				)
-					return;
-				pairedItem.sourceOverwrite.previousNode = nameData.new;
-			});
-
-		Object.values(workflowExecutionData.value?.data?.resultData.runData ?? {})
-			.flatMap((taskData) => taskData.flatMap((task) => task.source))
-			.forEach((source) => {
-				if (!source || source.previousNode !== nameData.old) return;
-				source.previousNode = nameData.new;
-			});
 	}
 
 	function setParentFolder(folder: IWorkflowDb['parentFolder']) {
@@ -1556,25 +1524,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const node = getNodeByName(nodeName);
 		if (!node) return;
 
-		if (workflowExecutionData.value.data.resultData.runData[nodeName] === undefined) {
-			workflowExecutionData.value = {
-				...workflowExecutionData.value,
-				data: {
-					...workflowExecutionData.value.data,
-					resultData: {
-						...workflowExecutionData.value.data.resultData,
-						runData: {
-							...workflowExecutionData.value.data.resultData.runData,
-							[nodeName]: [],
-						},
-					},
-				},
-			};
-		}
-
-		const tasksData = workflowExecutionData.value.data!.resultData.runData[nodeName];
 		if (isNodeWaiting) {
-			tasksData.push(data);
+			workflowExecutionData.value = ExecutionResponseUtils.upsertRunDataByNodeName(
+				workflowExecutionData.value,
+				nodeName,
+				(tasks) => [...tasks, data],
+			);
 			workflowExecutionResultDataLastUpdate.value = Date.now();
 
 			if (
@@ -1585,23 +1540,29 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				openFormPopupWindow(testUrl);
 			}
 		} else {
-			// If we process items in paralell on subnodes we get several placeholder taskData items.
-			// We need to find and replace the item with the matching executionIndex and only append if we don't find anything matching.
-			const existingRunIndex = tasksData.findIndex(
-				(item) => item.executionIndex === data.executionIndex,
+			workflowExecutionData.value = ExecutionResponseUtils.upsertRunDataByNodeName(
+				workflowExecutionData.value,
+				nodeName,
+				(tasksData) => {
+					// If we process items in parallel on subnodes we get several placeholder taskData items.
+					// We need to find and replace the item with the matching executionIndex and only append if we don't find anything matching.
+					const existingRunIndex = tasksData.findIndex(
+						(item) => item.executionIndex === data.executionIndex,
+					);
+
+					// For waiting nodes always replace the last item as executionIndex will always be different
+					const hasWaitingItems = tasksData.some((it) => it.executionStatus === 'waiting');
+					const index =
+						existingRunIndex > -1 && !hasWaitingItems ? existingRunIndex : tasksData.length - 1;
+					const status = tasksData[index]?.executionStatus ?? 'unknown';
+
+					if ('waiting' === status || 'running' === status) {
+						return tasksData.map((t, i) => (i === index ? data : t));
+					}
+
+					return [...tasksData, data];
+				},
 			);
-
-			// For waiting nodes always replace the last item as executionIndex will always be different
-			const hasWaitingItems = tasksData.some((it) => it.executionStatus === 'waiting');
-			const index =
-				existingRunIndex > -1 && !hasWaitingItems ? existingRunIndex : tasksData.length - 1;
-			const status = tasksData[index]?.executionStatus ?? 'unknown';
-
-			if ('waiting' === status || 'running' === status) {
-				tasksData.splice(index, 1, data);
-			} else {
-				tasksData.push(data);
-			}
 
 			workflowExecutionResultDataLastUpdate.value = Date.now();
 
@@ -1610,22 +1571,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function clearNodeExecutionData(nodeName: string): void {
-		if (!workflowExecutionData.value?.data) {
-			return;
+		if (workflowExecutionData.value) {
+			workflowExecutionData.value = ExecutionResponseUtils.removeRunDataByNodeName(
+				workflowExecutionData.value,
+				nodeName,
+			);
 		}
-
-		const { [nodeName]: removedRunData, ...remainingRunData } =
-			workflowExecutionData.value.data.resultData.runData;
-		workflowExecutionData.value = {
-			...workflowExecutionData.value,
-			data: {
-				...workflowExecutionData.value.data,
-				resultData: {
-					...workflowExecutionData.value.data.resultData,
-					runData: remainingRunData,
-				},
-			},
-		};
 	}
 
 	function pinDataByNodeName(nodeName: string): INodeExecutionData[] | undefined {
@@ -1865,10 +1816,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		clearPopupWindowState();
 
-		const runData = workflowExecutionData.value?.data?.resultData.runData ?? {};
-		for (const nodeName in runData) {
-			runData[nodeName] = runData[nodeName].filter(
-				({ executionStatus }) => executionStatus === 'success',
+		if (workflowExecutionData.value) {
+			workflowExecutionData.value = ExecutionResponseUtils.removeNonSuccessfulTasks(
+				workflowExecutionData.value,
 			);
 		}
 	}

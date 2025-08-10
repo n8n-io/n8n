@@ -1,6 +1,7 @@
 import { type IPairedItemData, type IRunData, type ITaskData } from 'n8n-workflow';
 import type { IExecutionResponse, TargetItem } from '@/Interface';
 import { isNotNull } from '@/utils/typeGuards';
+import type { Change } from '@/types/utils';
 
 export const MAX_ITEM_COUNT_FOR_PAIRING = 1000;
 
@@ -235,4 +236,10 @@ export function getPairedItemsMapping(executionResponse: Partial<IExecutionRespo
 	}
 
 	return getMapping(paths);
+}
+
+export function renameNode(item: IPairedItemData, change: Change<string>): IPairedItemData {
+	return item.sourceOverwrite?.previousNode !== change.old
+		? item
+		: { ...item, sourceOverwrite: { ...item.sourceOverwrite, previousNode: change.new } };
 }

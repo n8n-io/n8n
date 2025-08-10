@@ -14,7 +14,6 @@ import {
 	type RelatedExecution,
 } from 'n8n-workflow';
 import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs.types';
-import { isProxy, isReactive, isRef, toRaw } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { type ChatMessage } from '@n8n/chat/types';
 import get from 'lodash/get';
@@ -27,19 +26,24 @@ function getConsumedTokens(task: ITaskData): LlmTokenUsageData {
 		return emptyTokenUsageData;
 	}
 
-	const tokenUsage = Object.values(task.data)
-		.flat()
-		.flat()
-		.reduce<LlmTokenUsageData>((acc, curr) => {
-			const tokenUsageData = curr?.json?.tokenUsage ?? curr?.json?.tokenUsageEstimate;
+	let tokenUsage = emptyTokenUsageData;
 
-			if (!tokenUsageData) return acc;
+	for (const runDataForNode of Object.values(task.data)) {
+		for (const taskList of runDataForNode) {
+			if (!taskList) continue;
 
-			return addTokenUsageData(acc, {
-				...(tokenUsageData as Omit<LlmTokenUsageData, 'isEstimate'>),
-				isEstimate: !!curr?.json.tokenUsageEstimate,
-			});
-		}, emptyTokenUsageData);
+			for (const task of taskList) {
+				const tokenUsageData = task?.json?.tokenUsage ?? task?.json?.tokenUsageEstimate;
+
+				if (!tokenUsageData) continue;
+
+				tokenUsage = addTokenUsageData(tokenUsage, {
+					...(tokenUsageData as Omit<LlmTokenUsageData, 'isEstimate'>),
+					isEstimate: !!task?.json.tokenUsageEstimate,
+				});
+			}
+		}
+	}
 
 	return tokenUsage;
 }
@@ -310,44 +314,6 @@ export function findSelectedLogEntry(
 			return found;
 		}
 	}
-}
-
-export function deepToRaw<T>(sourceObj: T): T {
-	const seen = new WeakMap();
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const objectIterator = (input: any): any => {
-		if (seen.has(input)) {
-			return input;
-		}
-
-		if (input !== null && typeof input === 'object') {
-			seen.set(input, true);
-		}
-
-		if (Array.isArray(input)) {
-			return input.map((item) => objectIterator(item));
-		}
-
-		if (isRef(input) || isReactive(input) || isProxy(input)) {
-			return objectIterator(toRaw(input));
-		}
-
-		if (
-			input !== null &&
-			typeof input === 'object' &&
-			Object.getPrototypeOf(input) === Object.prototype
-		) {
-			return Object.keys(input).reduce((acc, key) => {
-				acc[key as keyof typeof acc] = objectIterator(input[key]);
-				return acc;
-			}, {} as T);
-		}
-
-		return input;
-	};
-
-	return objectIterator(sourceObj);
 }
 
 export function flattenLogEntries(
