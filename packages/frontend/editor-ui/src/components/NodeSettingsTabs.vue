@@ -15,14 +15,18 @@ import { N8nTabs } from '@n8n/design-system';
 import { useNodeDocsUrl } from '@/composables/useNodeDocsUrl';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useUsersStore } from '@/stores/users.store';
+import type { NodeSettingsTab } from '@/types/nodeSettings';
 
-export type Tab = 'settings' | 'params' | 'communityNode' | 'docs';
 type Props = {
-	modelValue?: Tab;
+	modelValue?: NodeSettingsTab;
 	nodeType?: INodeTypeDescription | null;
 	pushRef?: string;
 	hideDocs?: boolean;
 	tabsVariant?: 'modern' | 'legacy';
+	includeAction?: boolean;
+	includeCredential?: boolean;
+	hasCredentialIssue?: boolean;
+	compact?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -30,9 +34,10 @@ const props = withDefaults(defineProps<Props>(), {
 	nodeType: undefined,
 	pushRef: '',
 	tabsVariant: undefined,
+	hasCredentialIssue: false,
 });
 const emit = defineEmits<{
-	'update:model-value': [tab: Tab];
+	'update:model-value': [tab: NodeSettingsTab];
 }>();
 
 const externalHooks = useExternalHooks();
@@ -66,20 +71,45 @@ const documentationUrl = computed(() => {
 });
 
 const options = computed(() => {
-	const options: Array<ITab<Tab>> = [
+	const ret: Array<ITab<NodeSettingsTab>> = [];
+
+	if (props.includeAction) {
+		ret.push({
+			label: i18n.baseText('nodeSettings.action'),
+			value: 'action',
+		});
+	}
+
+	if (props.includeCredential) {
+		ret.push({
+			label: i18n.baseText('nodeSettings.credential'),
+			value: 'credential',
+			...(props.hasCredentialIssue && {
+				icon: 'triangle-alert',
+				iconPosition: 'right',
+				variant: 'danger',
+			}),
+		});
+	}
+
+	ret.push(
 		{
-			label: i18n.baseText('nodeSettings.parameters'),
+			label: i18n.baseText(
+				props.compact ? 'nodeSettings.parametersShort' : 'nodeSettings.parameters',
+			),
 			value: 'params',
 		},
 		{
-			label: i18n.baseText('nodeSettings.settings'),
 			value: 'settings',
 			notification: installedPackage.value?.updateAvailable ? true : undefined,
+			...(props.compact
+				? { icon: 'settings', align: 'right', tooltip: i18n.baseText('nodeSettings.settings') }
+				: { label: i18n.baseText('nodeSettings.settings') }),
 		},
-	];
+	);
 
 	if (isCommunityNode.value) {
-		options.push({
+		ret.push({
 			icon: 'box',
 			value: 'communityNode',
 			align: 'right',
@@ -93,18 +123,20 @@ const options = computed(() => {
 	}
 
 	if (documentationUrl.value) {
-		options.push({
-			label: i18n.baseText('nodeSettings.docs'),
+		ret.push({
 			value: 'docs',
 			href: documentationUrl.value,
 			align: 'right',
+			...(props.compact
+				? { icon: 'book-open', tooltip: i18n.baseText('nodeSettings.docs') }
+				: { label: i18n.baseText('nodeSettings.docs') }),
 		});
 	}
 
-	return options;
+	return ret;
 });
 
-function onTabSelect(tab: string | number) {
+function onTabSelect(tab: NodeSettingsTab) {
 	if (tab === 'docs' && props.nodeType) {
 		void externalHooks.run('dataDisplay.onDocumentationUrlClick', {
 			nodeType: props.nodeType,
@@ -127,12 +159,12 @@ function onTabSelect(tab: string | number) {
 		});
 	}
 
-	if (tab === 'settings' || tab === 'params') {
+	if (tab === 'settings' || tab === 'params' || tab === 'action' || tab === 'credential') {
 		emit('update:model-value', tab);
 	}
 }
 
-function onTooltipClick(tab: string | number, event: MouseEvent) {
+function onTooltipClick(tab: NodeSettingsTab, event: MouseEvent) {
 	if (tab === 'communityNode' && (event.target as Element).localName === 'a') {
 		telemetry.track('user clicked cnr docs link', { source: 'node details view' });
 	}
@@ -150,6 +182,7 @@ onMounted(async () => {
 		:options="options"
 		:model-value="modelValue"
 		:variant="tabsVariant"
+		:size="compact ? 'small' : 'medium'"
 		@update:model-value="onTabSelect"
 		@tooltip-click="onTooltipClick"
 	/>

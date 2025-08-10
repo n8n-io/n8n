@@ -10,7 +10,6 @@ import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
-import N8nIconButton from '../N8nIconButton';
 
 const { t } = useI18n();
 
@@ -28,10 +27,13 @@ interface Props {
 	title?: string;
 	placeholder?: string;
 	scrollOnNewMessage?: boolean;
+	showStop?: boolean;
+	maxLength?: number;
 }
 
 const emit = defineEmits<{
 	close: [];
+	stop: [];
 	message: [string, string?, boolean?];
 	codeReplace: [number];
 	codeUndo: [number];
@@ -248,16 +250,30 @@ watch(
 					:placeholder="placeholder ?? t('assistantChat.inputPlaceholder')"
 					rows="1"
 					wrap="hard"
+					:maxlength="maxLength"
 					data-test-id="chat-input"
 					@keydown.enter.exact.prevent="onSendMessage"
 					@input.prevent="growInput"
 					@keydown.stop
 				/>
-				<N8nIconButton
-					:class="{ [$style.sendButton]: true }"
+				<N8nButton
+					v-if="showStop && streaming"
+					:class="$style.stopButton"
+					icon="square"
+					size="large"
+					type="danger"
+					outline
+					square
+					data-test-id="send-message-button"
+					@click="emit('stop')"
+				/>
+				<N8nButton
+					v-else
+					:class="$style.sendButton"
 					icon="send"
 					:text="true"
 					size="large"
+					square
 					data-test-id="send-message-button"
 					:disabled="sendDisabled"
 					@click="onSendMessage"
@@ -274,7 +290,9 @@ watch(
 	display: grid;
 	grid-template-rows: auto 1fr auto;
 }
-
+:root .stopButton {
+	--button-border-color: transparent;
+}
 .header {
 	height: 65px; // same as header height in editor
 	padding: 0 var(--spacing-l);

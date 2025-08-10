@@ -21,6 +21,10 @@ interface Props {
 	 * Popover max height
 	 */
 	maxHeight?: string;
+	/**
+	 * The preferred alignment against the trigger. May change when collisions occur.
+	 */
+	align?: 'start' | 'center' | 'end';
 }
 
 interface Emits {
@@ -33,6 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
 	width: undefined,
 	enableScrolling: true,
 	scrollType: 'hover',
+	align: undefined,
 });
 
 const emit = defineEmits<Emits>();
@@ -44,7 +49,7 @@ const emit = defineEmits<Emits>();
 			<slot name="trigger"></slot>
 		</PopoverTrigger>
 		<PopoverPortal>
-			<PopoverContent side="bottom" :side-offset="5" :class="$style.popoverContent">
+			<PopoverContent side="bottom" :align="align" :side-offset="5" :class="$style.popoverContent">
 				<N8nScrollArea
 					v-if="enableScrolling"
 					:max-height="props.maxHeight"
@@ -52,11 +57,11 @@ const emit = defineEmits<Emits>();
 					:enable-vertical-scroll="true"
 					:enable-horizontal-scroll="false"
 				>
-					<div :class="$style.contentContainer" :style="{ width }">
+					<div :style="{ width }">
 						<slot name="content" :close="() => emit('update:open', false)" />
 					</div>
 				</N8nScrollArea>
-				<div v-else :class="$style.contentContainer" :style="{ width }">
+				<div v-else :style="{ width }">
 					<slot name="content" :close="() => emit('update:open', false)" />
 				</div>
 			</PopoverContent>
@@ -70,16 +75,12 @@ const emit = defineEmits<Emits>();
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	box-shadow:
-		rgba(0, 0, 0, 0.1) 0px 10px 15px -3px,
-		rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;
+		rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
+		rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 	animation-duration: 400ms;
 	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 	will-change: transform, opacity;
-	z-index: 1;
-}
-
-.contentContainer {
-	padding: var(--spacing-s);
+	z-index: 999;
 }
 
 .popoverContent[data-state='open'][data-side='top'] {

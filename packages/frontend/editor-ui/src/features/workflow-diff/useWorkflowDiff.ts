@@ -52,7 +52,7 @@ export function compareWorkflowsNodes<T extends { id: string }>(
 
 	const diff: WorkflowDiff<T> = new Map();
 
-	baseNodes.entries().forEach(([id, node]) => {
+	for (const [id, node] of baseNodes.entries()) {
 		if (!targetNodes.has(id)) {
 			diff.set(id, { status: NodeDiffStatus.Deleted, node });
 		} else if (!nodesEqual(baseNodes.get(id), targetNodes.get(id))) {
@@ -60,13 +60,13 @@ export function compareWorkflowsNodes<T extends { id: string }>(
 		} else {
 			diff.set(id, { status: NodeDiffStatus.Eq, node });
 		}
-	});
+	}
 
-	targetNodes.entries().forEach(([id, node]) => {
+	for (const [id, node] of targetNodes.entries()) {
 		if (!baseNodes.has(id)) {
 			diff.set(id, { status: NodeDiffStatus.Added, node });
 		}
-	});
+	}
 
 	return diff;
 }
@@ -84,17 +84,20 @@ export function mapConnections(connections: CanvasConnection[]) {
 
 function createWorkflowRefs(
 	workflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
-	getWorkflow: (nodes: INodeUi[], connections: IConnections) => Workflow,
+	createWorkflowObject: (nodes: INodeUi[], connections: IConnections) => Workflow,
 ) {
 	const workflowRef = computed(() => toValue(workflow));
 	const workflowNodes = ref<INodeUi[]>([]);
 	const workflowConnections = ref<IConnections>({});
-	const workflowObjectRef = shallowRef<Workflow>(getWorkflow([], {}));
+	const workflowObjectRef = shallowRef<Workflow>(createWorkflowObject([], {}));
 
 	watchEffect(() => {
 		const workflowValue = workflowRef.value;
 		if (workflowValue) {
-			workflowObjectRef.value = getWorkflow(workflowValue.nodes, workflowValue.connections);
+			workflowObjectRef.value = createWorkflowObject(
+				workflowValue.nodes,
+				workflowValue.connections,
+			);
 			workflowNodes.value = workflowValue.nodes;
 			workflowConnections.value = workflowValue.connections;
 		}
@@ -153,8 +156,8 @@ export const useWorkflowDiff = (
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const sourceRefs = createWorkflowRefs(sourceWorkflow, workflowsStore.getWorkflow);
-	const targetRefs = createWorkflowRefs(targetWorkflow, workflowsStore.getWorkflow);
+	const sourceRefs = createWorkflowRefs(sourceWorkflow, workflowsStore.createWorkflowObject);
+	const targetRefs = createWorkflowRefs(targetWorkflow, workflowsStore.createWorkflowObject);
 
 	const source = createWorkflowDiff(
 		sourceRefs.workflowRef,
@@ -170,12 +173,17 @@ export const useWorkflowDiff = (
 		targetRefs.workflowObjectRef,
 	);
 
-	const nodesDiff = computed(() =>
-		compareWorkflowsNodes(
+	const nodesDiff = computed(() => {
+		// Don't compute diff until both workflows are loaded to prevent initial flashing
+		if (!source.value?.workflow?.value || !target.value?.workflow?.value) {
+			return new Map<string, NodeDiff<INodeUi>>();
+		}
+
+		return compareWorkflowsNodes(
 			source.value.workflow?.value?.nodes ?? [],
 			target.value.workflow?.value?.nodes ?? [],
-		),
-	);
+		);
+	});
 
 	type Connection = {
 		id: string;
@@ -214,6 +222,11 @@ export const useWorkflowDiff = (
 	}
 
 	const connectionsDiff = computed(() => {
+		// Don't compute diff until both workflows are loaded to prevent initial flashing
+		if (!source.value?.workflow?.value || !target.value?.workflow?.value) {
+			return new Map<string, { status: NodeDiffStatus; connection: Connection }>();
+		}
+
 		const sourceConnections = mapConnections(source.value?.connections ?? []);
 		const targetConnections = mapConnections(target.value?.connections ?? []);
 

@@ -31,6 +31,7 @@ import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
+import { CommunityPackagesConfig } from './community-packages/community-packages.config';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -88,7 +89,7 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		if (!this.globalConfig.nodes.communityPackages.preventLoading) {
+		if (!Container.get(CommunityPackagesConfig).preventLoading) {
 			// Load nodes from any other `n8n-nodes-*` packages in the download directory
 			// This includes the community nodes
 			await this.loadNodesFromNodeModules(
@@ -185,6 +186,14 @@ export class LoadNodesAndCredentials {
 		const filePath = path.resolve(nodeParentPath, schemaPath + '.json');
 
 		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
+	}
+
+	findLastCalloutIndex(properties: INodeProperties[]): number {
+		for (let i = properties.length - 1; i >= 0; i--) {
+			if (properties[i].type === 'callout') return i;
+		}
+
+		return -1;
 	}
 
 	getCustomDirectories(): string[] {
@@ -485,12 +494,14 @@ export class LoadNodesAndCredentials {
 						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
 				};
 
-				item.description.properties.unshift(descProp);
+				const lastCallout = this.findLastCalloutIndex(item.description.properties);
+
+				item.description.properties.splice(lastCallout + 1, 0, descProp);
 
 				// If node has resource or operation we can determine pre-populate tool description based on it
-				// so we add the descriptionType property as the first property
+				// so we add the descriptionType property as the first property after possible callout param(s).
 				if (hasResource || hasOperation) {
-					item.description.properties.unshift(descriptionType);
+					item.description.properties.splice(lastCallout + 1, 0, descriptionType);
 
 					descProp.displayOptions = {
 						show: {
