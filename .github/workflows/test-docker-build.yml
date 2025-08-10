@@ -132,30 +132,50 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-      - name: Test Docker image from GHCR
+      - name: Smoke-test container (strict health check + logs)
+        shell: bash
         run: |
+          set -Eeuo pipefail
+      
           IMAGE="ghcr.io/${{ github.repository_owner }}/n8n:${{ steps.picktag.outputs.tag }}"
-          echo "Pulling $IMAGE..."
+          CNAME="n8n-test-${GITHUB_RUN_ID}"
+      
+          echo "::group::Pull image"
           docker pull "$IMAGE"
-
-          echo "Testing n8n version..."
+          echo "::endgroup::"
+      
+          echo "::group::Sanity: version/help"
           docker run --rm "$IMAGE" --version
-          
-          echo "Testing n8n help..."
-          docker run --rm "$IMAGE" --help
-          
-          echo "Starting n8n in background for 10 seconds..."
-          docker run -d --name n8n-test -p 5678:5678 "$IMAGE"
-          sleep 10
-          
-          echo "Checking if n8n is responding..."
-          curl -f http://localhost:5678/healthz || echo "Health check failed (expected for initial setup)"
-          
-          echo "Stopping test container..."
-          docker stop n8n-test
-          docker rm n8n-test
-          
-          echo "✅ Docker image test completed successfully!"
+          docker run --rm "$IMAGE" --help >/dev/null
+          echo "::endgroup::"
+      
+          echo "Starting $CNAME..."
+          docker run -d --name "$CNAME" -p 5678:5678 "$IMAGE" > /dev/null
+      
+          # Always try to clean up; never fail the job because cleanup failed
+          cleanup() { docker rm -f "$CNAME" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+      
+          echo "Waiting up to 120s for /healthz..."
+          for i in {1..60}; do
+            if curl -fsS http://localhost:5678/healthz >/dev/null; then
+              echo "✅ Healthy after $((i*2))s"
+              break
+            fi
+            sleep 2
+          done
+      
+          # Hard fail if still not healthy; show logs to make it actionable
+          if ! curl -fsS http://localhost:5678/healthz >/dev/null; then
+            echo "❌ Health check failed. Recent logs:"
+            docker logs --tail 200 --timestamps "$CNAME" || true
+            echo "Inspect state:"
+            docker inspect "$CNAME" || true
+            exit 1
+          fi
+      
+          echo "✅ Container passed health check."
+
 
       - name: Show image info and pull instructions
         run: |
