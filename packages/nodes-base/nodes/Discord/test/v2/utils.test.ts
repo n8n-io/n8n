@@ -82,6 +82,56 @@ describe('Test Discord > prepareEmbeds', () => {
 
 		expect(result).toEqual(embeds);
 	});
+
+	it('should wrap string image URLs but preserve object format', () => {
+		const executeFunction = {};
+
+		// Test with string URL (should be wrapped)
+		const embedsWithStringUrl = [
+			{
+				description: 'Test embed',
+				image: 'https://example.com/image.png',
+			},
+		];
+
+		const resultString = prepareEmbeds.call(
+			executeFunction as unknown as IExecuteFunctions,
+			embedsWithStringUrl,
+		);
+
+		expect(resultString).toEqual([
+			{
+				description: 'Test embed',
+				image: {
+					url: 'https://example.com/image.png',
+				},
+			},
+		]);
+
+		// Test with already formatted object (should NOT be wrapped again)
+		const embedsWithObject = [
+			{
+				description: 'Test embed',
+				image: {
+					url: 'https://example.com/image.png',
+				},
+			},
+		];
+
+		const resultObject = prepareEmbeds.call(
+			executeFunction as unknown as IExecuteFunctions,
+			embedsWithObject,
+		);
+
+		expect(resultObject).toEqual([
+			{
+				description: 'Test embed',
+				image: {
+					url: 'https://example.com/image.png',
+				},
+			},
+		]);
+	});
 });
 
 describe('Test Discord > checkAccessToGuild', () => {
