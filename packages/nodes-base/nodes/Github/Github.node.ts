@@ -2807,7 +2807,7 @@ export class Github implements INodeType {
 
 						endpoint = '/search/repositories';
 
-							const query: string = this.getNodeParameter('query', i);
+						const query = this.getNodeParameter('query', i) as string;
 						const sort = this.getNodeParameter('sort', i) as string;
 						const order = this.getNodeParameter('order', i) as string;
 

@@ -1,7 +1,4 @@
-import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import * as utilities from '../../../../utils/utilities';
+import { NodeApiError } from 'n8n-workflow';
 import { Github } from '../../Github.node';
 
 // Mock the GitHub API functions
