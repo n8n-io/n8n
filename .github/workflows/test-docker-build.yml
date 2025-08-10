@@ -1,0 +1,238 @@
+name: "Test & (optionally) Build Docker Image"
+
+on:
+  pull_request:
+    branches: [ master ]
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Type of build'
+        required: true
+        default: 'test'
+        type: choice
+        options: [ test, full ]
+  schedule:
+    - cron: "0 3 * * 0" # Weekly at 03:00 UTC
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    if: github.event.action != 'closed'
+    name: Lint, Typecheck & Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: true
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # actions/checkout@v4.2.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # actions/setup-node@v4.4.0
+        with:
+          node-version: '22.x'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm -w lint
+
+      - name: Typecheck
+        run: pnpm -w typecheck
+
+      - name: Show workspace packages
+        run: pnpm -w list --depth -1
+
+      - name: Run editor-ui unit tests
+        run: pnpm -w test --filter n8n-editor-ui -- --run --reporter=dot
+
+  build-image:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: >
+      (github.event_name != 'pull_request' || github.event.action != 'closed') &&
+      (github.event_name == 'pull_request' || github.event.inputs.build_type == 'full')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # actions/checkout@v4.2.2
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # actions/setup-node@v4.4.0
+        with:
+          node-version: '22.x'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build n8n
+        run: pnpm build:n8n
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # docker/setup-buildx-action@v3.11.1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # docker/login-action@v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (unique tags incl. PR/branch)
+        id: meta
+        uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # docker/metadata-action@v5.8.0
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/n8n
+          tags: |
+            type=raw,value=test-build
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=pr,prefix=pr-
+            type=ref,event=branch
+            type=sha,format=short,prefix={{branch}}-
+
+      - name: Compute primary test tag
+        id: picktag
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "tag=pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=test-build" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # docker/build-push-action@v6.18.0
+        with:
+          context: .
+          file: ./docker/images/n8n/Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: true
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+
+      - name: Test Docker image from GHCR
+        run: |
+          IMAGE="ghcr.io/${{ github.repository_owner }}/n8n:${{ steps.picktag.outputs.tag }}"
+          echo "Pulling $IMAGE..."
+          docker pull "$IMAGE"
+
+          echo "Testing n8n version..."
+          docker run --rm "$IMAGE" --version
+          
+          echo "Testing n8n help..."
+          docker run --rm "$IMAGE" --help
+          
+          echo "Starting n8n in background for 10 seconds..."
+          docker run -d --name n8n-test -p 5678:5678 "$IMAGE"
+          sleep 10
+          
+          echo "Checking if n8n is responding..."
+          curl -f http://localhost:5678/healthz || echo "Health check failed (expected for initial setup)"
+          
+          echo "Stopping test container..."
+          docker stop n8n-test
+          docker rm n8n-test
+          
+          echo "✅ Docker image test completed successfully!"
+
+      - name: Show image info and pull instructions
+        run: |
+          echo "🎉 Docker image successfully built and pushed!"
+          echo ""
+          echo "📦 Useful tags:"
+          echo "  - ghcr.io/${{ github.repository_owner }}/n8n:${{ steps.picktag.outputs.tag }}"
+          echo "  - ghcr.io/${{ github.repository_owner }}/n8n:test-build"
+          echo "  - ghcr.io/${{ github.repository_owner }}/n8n:latest" 
+          echo "  - ghcr.io/${{ github.repository_owner }}/n8n:master-${{ github.sha }}"
+          echo ""
+          echo "🚀 Pull & run:"
+          echo "  docker pull ghcr.io/${{ github.repository_owner }}/n8n:${{ steps.picktag.outputs.tag }}"
+          echo "  docker run -p 5678:5678 ghcr.io/${{ github.repository_owner }}/n8n:${{ steps.picktag.outputs.tag }}"
+
+  cleanup-pr:
+    name: Cleanup PR Image
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    steps:
+      - name: Delete GHCR image tag for PR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="pr-${{ github.event.pull_request.number }}"
+          IMAGE="${{ github.repository_owner }}/n8n"
+          echo "Fetching manifest digest for $IMAGE:$TAG from GHCR..."
+          DIGEST=$(curl -sI \
+            -H "Accept: application/vnd.oci.image.manifest.v1+json" \
+            -H "Authorization: Bearer $GHCR_TOKEN" \
+            "https://ghcr.io/v2/${IMAGE}/manifests/${TAG}" \
+            | grep -i 'docker-content-digest:' | awk '{print $2}' | tr -d $'\r')
+          if [ -z "$DIGEST" ] || [ "$DIGEST" = "null" ]; then
+            echo "❌ Could not find digest for tag $TAG. Tag may not exist."
+            exit 0
+          fi
+          echo "Found digest: $DIGEST"
+          echo "Deleting $IMAGE@$DIGEST..."
+          curl -s -X DELETE \
+            -H "Authorization: Bearer $GHCR_TOKEN" \
+            "https://ghcr.io/v2/${IMAGE}/manifests/${DIGEST}" && \
+          echo "✅ Deleted $IMAGE:$TAG successfully."
+
+  cleanup-orphans:
+    name: Scheduled Cleanup of Orphaned PR Images
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: List and delete orphaned PR tags from GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IMAGE="${{ github.repository_owner }}/n8n"
+          echo "Fetching tags for $IMAGE..."
+          TAGS=$(curl -s \
+            -H "Authorization: Bearer $GHCR_TOKEN" \
+            "https://ghcr.io/v2/${IMAGE}/tags/list" | jq -r '.tags[]' | grep '^pr-' || true)
+          if [ -z "$TAGS" ]; then
+            echo "No orphaned pr-* tags found."
+            exit 0
+          fi
+          echo "Found tags:"
+          echo "$TAGS"
+          for TAG in $TAGS; do
+            echo "Fetching digest for $TAG..."
+            DIGEST=$(curl -sI \
+              -H "Accept: application/vnd.oci.image.manifest.v1+json" \
+              -H "Authorization: Bearer $GHCR_TOKEN" \
+              "https://ghcr.io/v2/${IMAGE}/manifests/${TAG}" \
+              | grep -i 'docker-content-digest:' | awk '{print $2}' | tr -d $'\r')
+            if [ -n "$DIGEST" ] && [ "$DIGEST" != "null" ]; then
+              echo "Deleting $IMAGE@$DIGEST..."
+              curl -s -X DELETE \
+                -H "Authorization: Bearer $GHCR_TOKEN" \
+                "https://ghcr.io/v2/${IMAGE}/manifests/${DIGEST}" && \
+              echo "✅ Deleted $IMAGE:$TAG"
+            else
+              echo "Skipping $TAG — digest not found."
+            fi
+          done

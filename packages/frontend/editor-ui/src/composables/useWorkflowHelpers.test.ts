@@ -1,6 +1,6 @@
-import type { IExecutionResponse, IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
-import { resolveParameter, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { resolveParameter, useWorkflowHelpers, __test__ } from '@/composables/useWorkflowHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -1040,4 +1040,67 @@ describe(resolveParameter, () => {
 			});
 		});
 	});
+});
+
+//
+// UI-only $parameter[...] resolution tests
+//
+describe('UI-only $parameter[...] resolution', () => {
+  const { resolveParameterFromUiContext } = __test__;
+
+  function makeActiveNode(parameters: Record<string, unknown>) {
+    return {
+      id: '1',
+      name: 'Test Node',
+      type: 'n8n-nodes-base.test',
+      typeVersion: 1,
+      position: [0, 0],
+      parameters,
+		} as INodeUi;
+  }
+
+  it('returns the parameter value for {{ $parameter["key"] }}', () => {
+    const activeNode = makeActiveNode({ path: 'foo', count: 42 });
+    expect(resolveParameterFromUiContext<string>('{{ $parameter["path"] }}', activeNode)).toBe('foo');
+  });
+
+  it('preserves non-string values (e.g., number)', () => {
+    const activeNode = makeActiveNode({ count: 42 });
+    expect(resolveParameterFromUiContext<number>('{{ $parameter["count"] }}', activeNode)).toBe(42);
+  });
+
+  it('supports surrounding whitespace inside {{ }}', () => {
+    const activeNode = makeActiveNode({ path: 'foo' });
+    expect(resolveParameterFromUiContext<string>('{{   $parameter["path"]   }}', activeNode)).toBe('foo');
+  });
+
+  it('returns null when activeNode is null', () => {
+    expect(resolveParameterFromUiContext<string>('{{ $parameter["anything"] }}', null)).toBeNull();
+  });
+
+	it('returns null when parameter is not a string', () => {
+	  const activeNode = makeActiveNode({ path: 'foo' });
+	  expect(resolveParameterFromUiContext<string>(123, activeNode)).toBeNull();
+	});
+	
+  it('returns null when expression is not a {{ $parameter[...] }} expression', () => {
+    const activeNode = makeActiveNode({ path: 'foo' });
+    expect(resolveParameterFromUiContext<string>('={{$json["path"]}}', activeNode)).toBeNull();
+  });
+
+  it('returns null when the referenced key is missing', () => {
+    const activeNode = makeActiveNode({ path: 'foo' });
+    expect(resolveParameterFromUiContext<string>('{{ $parameter["missing"] }}', activeNode)).toBeNull();
+  });
+
+  it('does not match embedded usage (must be a pure expression)', () => {
+    const activeNode = makeActiveNode({ path: 'foo' });
+    expect(resolveParameterFromUiContext<string>('prefix {{ $parameter["path"] }} suffix', activeNode)).toBeNull();
+  });
+
+  it('returns object values when the key exists', () => {
+    const activeNode = makeActiveNode({ cfg: { url: 'x' } });
+    expect(resolveParameterFromUiContext<{ url: string } | null>('{{ $parameter["cfg"] }}', activeNode))
+      .toEqual({ url: 'x' });
+  });
 });

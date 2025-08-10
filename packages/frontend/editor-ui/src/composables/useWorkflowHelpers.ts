@@ -65,22 +65,18 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
-export type ResolveParameterOptions = {
-	targetItem?: TargetItem;
-	inputNodeName?: string;
-	inputRunIndex?: number;
-	inputBranchIndex?: number;
-	additionalKeys?: IWorkflowDataProxyAdditionalKeys;
-	isForCredential?: boolean;
-	contextNodeName?: string;
-	connections?: IConnections;
-};
+// Type guard to discriminate ExpressionLocalResolveContext at runtime
+function isExpressionLocalResolveContext(
+	value: ResolveParameterOptions<unknown> | ExpressionLocalResolveContext | undefined,
+): value is ExpressionLocalResolveContext {
+	return !!value && typeof value === 'object' && 'localResolve' in value && value.localResolve === true;
+}
 
 export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
+	opts?: ResolveParameterOptions<T> | ExpressionLocalResolveContext,
 ): T | null {
-	if ('localResolve' in opts && opts.localResolve) {
+	if (isExpressionLocalResolveContext(opts)) {
 		return resolveParameterImpl(
 			parameter,
 			opts.workflow,
@@ -101,6 +97,9 @@ export function resolveParameter<T = IDataObject>(
 
 	const workflowsStore = useWorkflowsStore();
 
+	// Narrow to ResolveParameterOptions<T> without casting
+	const options: ResolveParameterOptions<T> = opts ?? {};
+
 	return resolveParameterImpl(
 		parameter,
 		workflowsStore.workflowObject as Workflow,
@@ -110,8 +109,26 @@ export function resolveParameter<T = IDataObject>(
 		workflowsStore.workflowExecutionData,
 		workflowsStore.shouldReplaceInputDataWithPinData,
 		workflowsStore.pinnedWorkflowData,
-		opts,
+		options,
 	);
+}
+
+/**
+ * UI-only helper to preview a `{{ $parameter["..."] }}` expression from `activeNode.parameters`
+ * when no execution data is available. Returns `null` if not a pure `$parameter[...]` expression.
+ */
+function resolveParameterFromUiContext(
+	parameter: NodeParameterValue,
+	activeNode: INodeUi | null,
+): NodeParameterValue | null {
+	if (!activeNode || typeof parameter !== 'string') return null;
+
+	// Require the entire string to be exactly a {{ $parameter["..."] }} expression
+	const m = parameter.match(/^\s*\{\{\s*\$parameter\["(.+?)"\]\s*\}\}\s*$/);
+	if (!m) return null;
+
+	const value = (activeNode.parameters ?? {})[m[1]];
+	return value === undefined ? null : value;
 }
 
 // TODO: move to separate file
@@ -124,8 +141,14 @@ function resolveParameterImpl<T = IDataObject>(
 	executionData: IExecutionResponse | null,
 	shouldReplaceInputDataWithPinData: boolean,
 	pinData: IPinData | undefined,
-	opts: ResolveParameterOptions = {},
+	opts: ResolveParameterOptions<T> = {},
 ): T | null {
+	if (!executionData && opts.uiPreviewParamOnly === true && typeof parameter !== 'object') {
+		const uiVal = resolveParameterFromUiContext(parameter, ndvActiveNode);
+		if (uiVal !== null && (typeof opts.uiPreviewGuard !== 'function' || opts.uiPreviewGuard(uiVal))) {
+			return uiVal;
+		}
+	}
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
@@ -463,11 +486,11 @@ function executeDataImpl(
 ): IExecuteData {
 	const connectionsByDestinationNode = workflowUtils.mapConnectionsByDestination(connections);
 
-	const executeData = {
+	const executeData: IExecuteData = {
 		node: {},
 		data: {},
 		source: null,
-	} as IExecuteData;
+	};
 
 	parentRunIndex = parentRunIndex ?? runIndex;
 
@@ -495,8 +518,8 @@ function executeDataImpl(
 			!workflowRunData[parentNodeName] ||
 			workflowRunData[parentNodeName].length <= parentRunIndex ||
 			!workflowRunData[parentNodeName][parentRunIndex] ||
-			!workflowRunData[parentNodeName][parentRunIndex].hasOwnProperty('data') ||
-			!workflowRunData[parentNodeName][parentRunIndex].data?.hasOwnProperty(inputName)
+			!Object.prototype.hasOwnProperty.call(workflowRunData[parentNodeName][parentRunIndex], 'data') ||
+			!Object.prototype.hasOwnProperty.call(workflowRunData[parentNodeName][parentRunIndex].data ?? {}, inputName)
 		) {
 			executeData.data = {};
 		} else {
@@ -825,7 +848,7 @@ export function useWorkflowHelpers() {
 					let resolved;
 					try {
 						resolved = resolveExpression(value, undefined, { isForCredential: false });
-					} catch (error) {
+					} catch (error: any) {
 						resolved = `Error in expression: "${error.message}"`;
 					}
 					newObj[key] = {
@@ -1095,3 +1118,8 @@ export function useWorkflowHelpers() {
 		checkConflictingWebhooks,
 	};
 }
+
+/** Test-only hook (non-public) */
+export const __test__ = {
+  resolveParameterFromUiContext,
+};
