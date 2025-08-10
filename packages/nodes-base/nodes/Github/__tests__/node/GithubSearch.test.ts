@@ -173,8 +173,6 @@ describe('Test Github Search Node', () => {
 					{},
 					{
 						q: 'react hooks',
-						sort: 'best-match',
-						order: 'desc',
 					},
 				);
 
@@ -319,7 +317,10 @@ describe('Test Github Search Node', () => {
 				});
 
 				(githubApiRequest as jest.Mock).mockRejectedValue(
-					new NodeApiError('GitHub API Error', { statusCode: 422 }),
+					new NodeApiError(mockExecutionContext.getNode(), {
+						statusCode: 422,
+						message: 'GitHub API Error',
+					}),
 				);
 
 				await expect(githubNode.execute.call(mockExecutionContext)).rejects.toThrow(NodeApiError);

@@ -876,6 +876,10 @@ export class Github implements INodeType {
 				name: 'limit',
 				type: 'number',
 				default: 30,
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
 				displayOptions: {
 					show: {
 						resource: ['search'],
@@ -883,7 +887,7 @@ export class Github implements INodeType {
 						returnAll: [false],
 					},
 				},
-				description: 'Max number of results to return',
+				description: 'Max number of results to return (GitHub API limit: 100)',
 			},
 
 			// ----------------------------------
@@ -2808,8 +2812,13 @@ export class Github implements INodeType {
 						const order = this.getNodeParameter('order', i) as string;
 
 						qs.q = query;
-						qs.sort = sort;
-						qs.order = order;
+
+						// GitHub API doesn't accept 'best-match' as a sort parameter
+						// When sort is 'best-match', we omit the sort and order parameters
+						if (sort !== 'best-match') {
+							qs.sort = sort;
+							qs.order = order;
+						}
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
