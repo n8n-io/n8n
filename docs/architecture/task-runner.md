@@ -1,6 +1,6 @@
 # Task Runner Architecture
 
-> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+> **⚠️ Notice**: This document was created by AI and not properly reviewed by the team yet.
 
 ## Overview
 

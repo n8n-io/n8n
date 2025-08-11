@@ -1,6 +1,6 @@
 # n8n Package Architecture
 
-> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+> **⚠️ Notice**: This document was created by AI and not properly reviewed by the team yet.
 
 n8n uses a monorepo structure with pnpm workspaces. This document describes the package organization and their relationships.
 

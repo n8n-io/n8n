@@ -1,6 +1,6 @@
 # n8n Data Flow Architecture
 
-> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+> **⚠️ Notice**: This document was created by AI and not properly reviewed by the team yet.
 
 This document explains how data flows through n8n, from workflow creation to execution completion, including data storage, transformation, and security considerations.
 

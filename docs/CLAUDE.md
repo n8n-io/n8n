@@ -35,7 +35,7 @@ This document defines the principles and standards for maintaining technical arc
 
 ### AI-generated content disclaimer
 - **Add a notice** at the top of AI-generated documents indicating they were created by AI:
-	> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+	> **⚠️ Notice**: This document was created by AI and not properly reviewed by the team yet.
 
 ## Information Gathering Methodology
 

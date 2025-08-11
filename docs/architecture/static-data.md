@@ -1,6 +1,6 @@
 # Static Data
 
-> **⚠️ Notice**: This documentation is a placeholder and needs to be completed.
+> **⚠️ Notice**: This document is a placeholder and needs to be completed.
 
 ## Overview
 
@@ -70,16 +70,16 @@ Static data in n8n provides a mechanism for nodes to persist information between
 async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
     const staticData = this.getWorkflowStaticData('node');
     const lastId = staticData.lastId as string || '0';
-    
+
     const newItems = await this.helpers.httpRequest({
         url: `https://api.example.com/items?since=${lastId}`,
     });
-    
+
     if (newItems.length) {
         staticData.lastId = newItems[newItems.length - 1].id;
         return [this.helpers.returnJsonArray(newItems)];
     }
-    
+
     return null;
 }
 ```

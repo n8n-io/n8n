@@ -1,6 +1,6 @@
 # n8n Architecture Documentation
 
-> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+> **⚠️ Notice**: This document was created by AI and not properly reviewed by the team yet.
 
 Welcome to the n8n architecture documentation. This guide provides a comprehensive overview of n8n's system design, components, and architectural patterns.
 

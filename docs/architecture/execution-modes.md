@@ -1,6 +1,6 @@
 # n8n Execution Modes
 
-> **⚠️ Notice**: This documentation was created by AI and not properly reviewed by the team yet.
+> **⚠️ Notice**: This document was created by AI and not properly reviewed by the team yet.
 
 n8n supports two execution modes to accommodate various deployment scenarios, from simple single-instance setups to highly scalable distributed systems.
 
