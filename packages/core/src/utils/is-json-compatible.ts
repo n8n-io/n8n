@@ -6,7 +6,7 @@ const check = (
 ): { isValid: true } | { isValid: false; errorPath: string; errorMessage: string } => {
 	const type = typeof val;
 
-	if (val === null || type === 'boolean' || type === 'string') {
+	if (val === null || type === 'boolean' || type === 'string' || type === 'undefined') {
 		return { isValid: true };
 	}
 
