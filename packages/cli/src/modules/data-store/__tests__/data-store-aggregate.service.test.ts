@@ -1,0 +1,117 @@
+import type { ModuleName } from '@n8n/backend-common';
+import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { ProjectRelationRepository, type Project, type User } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
+import { mock } from 'jest-mock-extended';
+
+import { createUser } from '@test-integration/db/users';
+
+import { DataStoreAggregateService } from '../data-store-aggregate.service';
+import { DataStoreRowsRepository } from '../data-store-rows.repository';
+import { DataStoreRepository } from '../data-store.repository';
+import { DataStoreService } from '../data-store.service';
+
+beforeAll(async () => {
+	// the module is not registered
+	await testModules.loadModules(['data-store'] as unknown as ModuleName[]);
+	await testDb.init();
+});
+
+beforeEach(async () => {
+	await testDb.truncate(['DataStoreEntity', 'DataStoreColumnEntity']);
+});
+
+afterAll(async () => {
+	await testDb.terminate();
+});
+
+describe('dataStoreAggregate', () => {
+	let dataStoreService: DataStoreService;
+	let dataStoreAggregateService: DataStoreAggregateService;
+	let dataStoreRepository: DataStoreRepository;
+	let dataStoreRowsRepository: DataStoreRowsRepository;
+	const manager = mock<EntityManager>();
+	const projectRelationRepository = mock<ProjectRelationRepository>({ manager });
+
+	beforeAll(() => {
+		Container.set(ProjectRelationRepository, projectRelationRepository);
+		dataStoreAggregateService = Container.get(DataStoreAggregateService);
+		dataStoreService = Container.get(DataStoreService);
+		dataStoreRepository = Container.get(DataStoreRepository);
+		dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
+	});
+
+	let user: User;
+	let project1: Project;
+	let project2: Project;
+
+	beforeEach(async () => {
+		project1 = await createTeamProject();
+		project2 = await createTeamProject();
+		user = await createUser({ role: 'global:owner' });
+	});
+
+	afterEach(async () => {
+		// Clean up any created user data stores
+		await dataStoreService.deleteDataStoreAll();
+	});
+
+	describe('getManyAndCount', () => {
+		it('should return the correct data stores for the user', async () => {
+			// ARRANGE
+			const ds1 = await dataStoreService.createDataStore(project1.id, {
+				name: 'store1',
+				columns: [],
+			});
+			const ds2 = await dataStoreService.createDataStore(project1.id, {
+				name: 'store2',
+				columns: [],
+			});
+
+			projectRelationRepository.find.mockResolvedValueOnce([
+				{
+					userId: user.id,
+					projectId: project1.id,
+					role: 'project:admin',
+					user,
+					project: project1,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: jest.fn(),
+				},
+				{
+					userId: user.id,
+					projectId: project2.id,
+					role: 'project:viewer',
+					user,
+					project: project2,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: jest.fn(),
+				},
+			]);
+
+			await dataStoreService.createDataStore(project2.id, {
+				name: 'store3',
+				columns: [],
+			});
+
+			// ACT
+			const result = await dataStoreAggregateService.getManyAndCount(user, {
+				filter: { projectId: project1.id },
+				skip: 0,
+				take: 10,
+			});
+
+			// ASSERT
+			expect(result.data).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ id: ds1.id, name: ds1.name }),
+					expect.objectContaining({ id: ds2.id, name: ds2.name }),
+				]),
+			);
+			expect(result.count).toBe(2);
+		});
+	});
+});

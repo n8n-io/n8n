@@ -3,11 +3,12 @@ import { Logger } from '@n8n/backend-common';
 import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { DataStoreRepository } from './data-store.repository';
 import { ProjectService } from '@/services/project.service.ee';
 
+import { DataStoreRepository } from './data-store.repository';
+
 @Service()
-export class DataStoreSharedService {
+export class DataStoreAggregateService {
 	constructor(
 		private readonly dataStoreRepository: DataStoreRepository,
 		private readonly projectService: ProjectService,
@@ -25,6 +26,7 @@ export class DataStoreSharedService {
 			const mask = [options.filter?.projectId].flat();
 			projectIds = projectIds.filter((x) => mask.includes(x));
 		}
+
 		return await this.dataStoreRepository.getManyAndCount({
 			...options,
 			filter: {
