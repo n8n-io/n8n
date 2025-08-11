@@ -8,7 +8,6 @@ import type {
 	IVersionNotificationSettings,
 	ROLE,
 	Role,
-	User,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
@@ -37,12 +36,10 @@ import type {
 	ExecutionStatus,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
-	IUserSettings,
 	INodeExecutionData,
 	INodeProperties,
 	NodeConnectionType,
 	StartNodeData,
-	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
 	ITaskData,
 	ISourceData,
@@ -70,7 +67,8 @@ import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { type IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
+import type { IUser, IUserResponse } from '@n8n/rest-api-client/api/users';
 
 export * from '@n8n/design-system/types';
 
@@ -531,72 +529,7 @@ export interface IExecutionDeleteFilter {
 	ids?: string[];
 }
 
-export type IPersonalizationSurveyAnswersV1 = {
-	codingSkill?: string | null;
-	companyIndustry?: string[] | null;
-	companySize?: string | null;
-	otherCompanyIndustry?: string | null;
-	otherWorkArea?: string | null;
-	workArea?: string[] | string | null;
-};
-
-export type IPersonalizationSurveyAnswersV2 = {
-	version: 'v2';
-	automationGoal?: string | null;
-	codingSkill?: string | null;
-	companyIndustryExtended?: string[] | null;
-	companySize?: string | null;
-	companyType?: string | null;
-	customerType?: string | null;
-	mspFocus?: string[] | null;
-	mspFocusOther?: string | null;
-	otherAutomationGoal?: string | null;
-	otherCompanyIndustryExtended?: string[] | null;
-};
-
-export type IPersonalizationSurveyAnswersV3 = {
-	version: 'v3';
-	automationGoal?: string | null;
-	otherAutomationGoal?: string | null;
-	companyIndustryExtended?: string[] | null;
-	otherCompanyIndustryExtended?: string[] | null;
-	companySize?: string | null;
-	companyType?: string | null;
-	automationGoalSm?: string[] | null;
-	automationGoalSmOther?: string | null;
-	usageModes?: string[] | null;
-	email?: string | null;
-};
-
-export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
-
-export type IPersonalizationSurveyVersions =
-	| IPersonalizationSurveyAnswersV1
-	| IPersonalizationSurveyAnswersV2
-	| IPersonalizationSurveyAnswersV3
-	| IPersonalizationSurveyAnswersV4;
-
 export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
-
-export interface IUserResponse extends User {
-	globalScopes?: Scope[];
-	personalizationAnswers?: IPersonalizationSurveyVersions | null;
-	settings?: IUserSettings | null;
-}
-
-export interface CurrentUserResponse extends IUserResponse {
-	featureFlags?: FeatureFlags;
-}
-
-export interface IUser extends IUserResponse {
-	isDefaultUser: boolean;
-	isPendingUser: boolean;
-	inviteAcceptUrl?: string;
-	fullName?: string;
-	createdAt?: string;
-	mfaEnabled: boolean;
-	mfaAuthenticated?: boolean;
-}
 
 export interface IUserListAction {
 	label: string;
@@ -712,11 +645,13 @@ export interface LinkItemProps {
 }
 
 export interface OpenTemplateItemProps {
-	key: 'rag-starter-template';
+	templateId: string;
 	title: string;
 	description: string;
-	icon: string;
+	nodes?: INodeTypeDescription[];
+	icon?: string;
 	tag?: NodeCreatorTag;
+	compact?: boolean;
 }
 
 export interface ActionTypeDescription extends SimplifiedNodeType {
@@ -809,6 +744,7 @@ export type NodeTypeSelectedPayload = {
 		resource?: string;
 		operation?: string;
 	};
+	actionName?: string;
 };
 
 export interface SubcategorizedNodeTypes {
@@ -989,7 +925,8 @@ export type NodeCreatorOpenSource =
 	| 'notice_error_message'
 	| 'add_node_button'
 	| 'add_evaluation_trigger_button'
-	| 'add_evaluation_node_button';
+	| 'add_evaluation_node_button'
+	| 'templates_callout';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
@@ -1294,6 +1231,7 @@ export type AddedNode = {
 	type: string;
 	openDetail?: boolean;
 	isAutoAdd?: boolean;
+	actionName?: string;
 } & Partial<INodeUi>;
 
 export type AddedNodeConnection = {
