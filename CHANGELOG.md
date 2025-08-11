@@ -1,3 +1,12 @@
+## [1.106.3](https://github.com/n8n-io/n8n/compare/n8n@1.106.2...n8n@1.106.3) (2025-08-11)
+
+
+### Features
+
+* Add token to sendAndWait operations links to walidate in webhook ([#17566](https://github.com/n8n-io/n8n/issues/17566)) ([08f9f6f](https://github.com/n8n-io/n8n/commit/08f9f6fbe0ff349ee2717b1703eab2b554c77c86))
+
+
+
 ## [1.106.2](https://github.com/n8n-io/n8n/compare/n8n@1.106.1...n8n@1.106.2) (2025-08-08)
 
 
