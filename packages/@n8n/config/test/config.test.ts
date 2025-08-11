@@ -1,8 +1,8 @@
 import { Container } from '@n8n/di';
-import type { UserManagementConfig } from 'configs/user-management.config';
 import fs from 'fs';
 import { mock } from 'jest-mock-extended';
 
+import type { UserManagementConfig } from '../src/configs/user-management.config';
 import { GlobalConfig } from '../src/index';
 
 jest.mock('fs');
