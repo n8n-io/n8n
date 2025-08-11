@@ -645,11 +645,13 @@ export interface LinkItemProps {
 }
 
 export interface OpenTemplateItemProps {
-	key: 'rag-starter-template';
+	templateId: string;
 	title: string;
 	description: string;
-	icon: string;
+	nodes?: INodeTypeDescription[];
+	icon?: string;
 	tag?: NodeCreatorTag;
+	compact?: boolean;
 }
 
 export interface ActionTypeDescription extends SimplifiedNodeType {
@@ -742,6 +744,7 @@ export type NodeTypeSelectedPayload = {
 		resource?: string;
 		operation?: string;
 	};
+	actionName?: string;
 };
 
 export interface SubcategorizedNodeTypes {
@@ -922,7 +925,8 @@ export type NodeCreatorOpenSource =
 	| 'notice_error_message'
 	| 'add_node_button'
 	| 'add_evaluation_trigger_button'
-	| 'add_evaluation_node_button';
+	| 'add_evaluation_node_button'
+	| 'templates_callout';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
@@ -1227,6 +1231,7 @@ export type AddedNode = {
 	type: string;
 	openDetail?: boolean;
 	isAutoAdd?: boolean;
+	actionName?: string;
 } & Partial<INodeUi>;
 
 export type AddedNodeConnection = {

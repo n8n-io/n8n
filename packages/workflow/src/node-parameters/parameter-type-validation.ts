@@ -1,6 +1,6 @@
 import { NodeOperationError } from '../errors';
-import { assert } from '../utils';
 import type { INode } from '../interfaces';
+import { assert } from '../utils';
 
 type ParameterType =
 	| 'string'

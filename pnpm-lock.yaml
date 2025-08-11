@@ -1660,6 +1660,9 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
+      '@parcel/watcher':
+        specifier: ^2.5.1
+        version: 2.5.1
       '@redocly/cli':
         specifier: ^1.28.5
         version: 1.28.5(encoding@0.1.13)
@@ -2791,9 +2794,6 @@ importers:
       cheerio:
         specifier: 1.0.0-rc.6
         version: 1.0.0-rc.6
-      chokidar:
-        specifier: ^4.0.1
-        version: 4.0.1
       cron:
         specifier: 3.1.7
         version: 3.1.7
@@ -2912,8 +2912,8 @@ importers:
         specifier: 1.3.5
         version: 1.3.5(promise-ftp-common@1.1.5)
       pyodide:
-        specifier: 0.27.5
-        version: 0.27.5
+        specifier: 0.28.0
+        version: 0.28.0
       redis:
         specifier: 4.6.14
         version: 4.6.14
@@ -14003,8 +14003,8 @@ packages:
   pure-rand@6.0.1:
     resolution: {integrity: sha512-t+x1zEHDjBwkDGY5v5ApnZ/utcd4XYDiJsaQQoptTXgUXX95sDg1elCdJghzicm7n2mbCBJ3uYWr6M22SO19rg==}
 
-  pyodide@0.27.5:
-    resolution: {integrity: sha512-nXErpLzEdtQolt+sNQ/5mKuN9XTUwhxR2MRhRhZ6oDRGpYLXrOp5+kkTPGEwK+wn1ZA8+poNmoxKTj2sq/p9og==}
+  pyodide@0.28.0:
+    resolution: {integrity: sha512-QML/Gh8eu50q5zZKLNpW6rgS0XUdK+94OSL54AUSKV8eJAxgwZrMebqj+CyM0EbF3EUX8JFJU3ryaxBViHammQ==}
     engines: {node: '>=18.0.0'}
 
   python-struct@1.1.3:
@@ -20502,7 +20502,6 @@ snapshots:
       '@parcel/watcher-win32-arm64': 2.5.1
       '@parcel/watcher-win32-ia32': 2.5.1
       '@parcel/watcher-win32-x64': 2.5.1
-    optional: true
 
   '@petamoriken/float16@3.9.2': {}
 
@@ -24798,8 +24797,7 @@ snapshots:
 
   destr@2.0.5: {}
 
-  detect-libc@1.0.3:
-    optional: true
+  detect-libc@1.0.3: {}
 
   detect-libc@2.0.4: {}
 
@@ -30314,9 +30312,9 @@ snapshots:
 
   pure-rand@6.0.1: {}
 
-  pyodide@0.27.5:
+  pyodide@0.28.0:
     dependencies:
-      ws: 8.17.1
+      ws: 8.18.2
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate

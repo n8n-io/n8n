@@ -1008,7 +1008,7 @@ describe('JsTaskRunner', () => {
 							code: `return require('${module}')`,
 							inputItems,
 						}),
-					).rejects.toThrow(`Cannot find module '${module}'`);
+					).rejects.toThrow(`Module '${module}' is disallowed`);
 				},
 			);
 
@@ -1020,7 +1020,7 @@ describe('JsTaskRunner', () => {
 							code: `return require('${module}')`,
 							inputItems,
 						}),
-					).rejects.toThrow(`Cannot find module '${module}'`);
+					).rejects.toThrow(`Module '${module}' is disallowed`);
 				},
 			);
 		});
@@ -1138,7 +1138,7 @@ describe('JsTaskRunner', () => {
 							inputItems,
 							runner,
 						}),
-					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+					).rejects.toThrow(`Module '${moduleName}' is disallowed`);
 				},
 			);
 
@@ -1151,7 +1151,7 @@ describe('JsTaskRunner', () => {
 							inputItems,
 							runner,
 						}),
-					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+					).rejects.toThrow(`Module '${moduleName}' is disallowed`);
 				},
 			);
 		});
@@ -1200,7 +1200,7 @@ describe('JsTaskRunner', () => {
 							inputItems,
 							runner,
 						}),
-					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+					).rejects.toThrow(`Module '${moduleName}' is disallowed`);
 				},
 			);
 
@@ -1213,7 +1213,7 @@ describe('JsTaskRunner', () => {
 							inputItems,
 							runner,
 						}),
-					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+					).rejects.toThrow(`Module '${moduleName}' is disallowed`);
 				},
 			);
 		});

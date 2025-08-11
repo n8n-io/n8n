@@ -1,9 +1,13 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { Request, Response } from 'express';
+import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';
 
 import { Webhook } from '../Webhook.node';
+
+jest.mock('fs/promises');
+const mockFs = jest.mocked(fs);
 
 describe('Test Webhook Node', () => {
 	new NodeTestHarness().setupTests();
@@ -33,11 +37,12 @@ describe('Test Webhook Node', () => {
 
 		it('should handle when files are present', async () => {
 			req.body = {
-				files: { file1: {} },
+				files: { file1: { filepath: '/tmp/test.txt' } },
 			};
 			const returnData = await node.webhook(context);
 			expect(returnData.workflowData?.[0][0].binary).not.toBeUndefined();
 			expect(context.nodeHelpers.copyBinaryFile).toHaveBeenCalled();
+			expect(mockFs.rm).toHaveBeenCalledWith('/tmp/test.txt', { force: true });
 		});
 	});
 
