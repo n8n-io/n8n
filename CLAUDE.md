@@ -23,11 +23,9 @@ frontend, and extensible node-based workflow engine.
 ## Essential Commands
 
 ### Building
-- `pnpm build` - Build all packages
-- `pnpm build:backend` - Build backend only
-- `pnpm build:frontend` - Build frontend only
+Use `pnpm build` to build all packages. ALWAYS redirect the output of the
+build command to a file:
 
-ALWAYS redirect the output of the build command to a file:
 ```bash
 pnpm build > build.log 2>&1
 ```
@@ -39,8 +37,8 @@ tail -n 20 build.log
 
 ### Testing
 - `pnpm test` - Run all tests
-- `pnpm test:backend` - Backend tests only
-- `pnpm test:frontend` - Frontend tests only
+- `pnpm test:affected` - Runs tests based on what has changed since the last
+  commit
 - `pnpm dev:e2e` - E2E tests in development mode
 
 Running a particular test file requires going to the directory of that test
@@ -54,10 +52,12 @@ your current directory.
 - `pnpm lint` - Lint code
 - `pnpm typecheck` - Run type checks
 
-Always run lint and typecheck before committing code to ensure quality. Don't
-run it on the entire repository unless necessary, as it can be slow, and don't
-run it every time you save a file, as it can be disruptive. However, sometimes
-you need to build the system before running linting and typechecking.
+Always run lint and typecheck before committing code to ensure quality.
+Execute these commands from within the specific package directory you're
+working on (e.g., `cd packages/cli && pnpm lint`). Run the full repository
+check only when preparing the final PR. When your changes affect type
+definitions, interfaces in `@n8n/api-types`, or cross-package dependencies,
+build the system before running lint and typecheck.
 
 ## Architecture Overview
 
@@ -80,11 +80,11 @@ The monorepo is organized into these key packages:
 
 ## Technology Stack
 
-- **Frontend:** Vue 3 + TypeScript + Vite + Pinia
+- **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
 - **Backend:** Node.js + TypeScript + Express + TypeORM
 - **Testing:** Jest (unit) + Playwright (E2E)
 - **Database:** TypeORM with SQLite/PostgreSQL/MySQL support
-- **Code Quality:** Biome + ESLint + lefthook git hooks
+- **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
 
 ### Key Architectural Patterns
 
@@ -93,6 +93,9 @@ The monorepo is organized into these key packages:
 3. **Event-Driven**: Internal event bus for decoupled communication
 4. **Context-Based Execution**: Different contexts for different node types
 5. **State Management**: Frontend uses Pinia stores
+6. **Design System**: Reusable components and design tokens are centralized in
+   `@n8n/design-system`, where all pure Vue components should be placed to
+   ensure consistency and reusability
 
 ## Key Development Patterns
 
@@ -108,7 +111,9 @@ The monorepo is organized into these key packages:
 - **Define shared interfaces in `@n8n/api-types`** package for FE/BE communication
 
 ### Error Handling
-- Use `ApplicationError` class in CLI and nodes for throwing errors
+- Don't use `ApplicationError` class in CLI and nodes for throwing errors,
+  because it's deprecated. Use `UnexpectedError`, `OperationalError` or
+  `UserError` instead.
 - Import from appropriate error classes in each package
 
 ### Frontend Development
@@ -130,13 +135,15 @@ What we use for testing and writing tests:
 - For testing nodes and other backend components, we use Jest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
 - We use `nock` for server mocking
 - For frontend we use `vitest`
-- For e2e tests we use `Playwright` and `pnpm dev:e2e`.
+- For e2e tests we use `Playwright` and `pnpm dev:e2e`. The old Cypress tests
+  are being migrated to Playwright, so please use Playwright for new tests.
 
 ### Common Development Tasks
 
 When implementing features:
 1. Define API types in `packages/@n8n/api-types`
-2. Implement backend logic in `packages/cli` services
+2. Implement backend logic in `packages/cli` module, follow
+   `@packages/cli/scripts/backend-module/backend-module.guide.md`
 3. Add API endpoints via controllers
 4. Update frontend in `packages/editor-ui` with i18n support
 5. Write tests with proper mocks
