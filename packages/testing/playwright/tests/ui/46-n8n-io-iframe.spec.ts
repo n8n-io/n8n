@@ -42,8 +42,6 @@ test.describe('n8n.io iframe', () => {
 
 			await n8n.page.goto('/');
 			await n8n.page.waitForLoadState();
-
-			// Verify no iframe exists (should not be in DOM at all)
 			await expect(n8n.iframe.getIframe()).not.toBeAttached();
 		});
 	});
@@ -65,11 +63,9 @@ test.describe('n8n.io iframe', () => {
 			await n8n.page.goto('/');
 			await n8n.page.waitForLoadState();
 
-			// Wait for the iframe to exist with the expected src (it's hidden by design)
 			const iframeElement = n8n.iframe.getIframeBySrc(iframeUrl);
 			await expect(iframeElement).toBeAttached();
 
-			// Verify iframe has correct src attribute
 			await expect(iframeElement).toHaveAttribute('src', iframeUrl);
 		});
 	});

@@ -214,4 +214,49 @@ export class CanvasPage extends BasePage {
 
 		return tags;
 	}
+
+	// Production Checklist methods
+	getProductionChecklistButton(): Locator {
+		return this.page.getByTestId('suggested-action-count');
+	}
+
+	getProductionChecklistPopover(): Locator {
+		return this.page.locator('[data-reka-popper-content-wrapper=""]').filter({ hasText: /./ });
+	}
+
+	getProductionChecklistActionItem(text?: string): Locator {
+		const items = this.page.getByTestId('suggested-action-item');
+		if (text) {
+			return items.getByText(text);
+		}
+		return items;
+	}
+
+	getProductionChecklistIgnoreAllButton(): Locator {
+		return this.page.getByTestId('suggested-action-ignore-all');
+	}
+
+	getErrorActionItem(): Locator {
+		return this.getProductionChecklistActionItem('Set up error notifications');
+	}
+
+	getTimeSavedActionItem(): Locator {
+		return this.getProductionChecklistActionItem('Track time saved');
+	}
+
+	getEvaluationsActionItem(): Locator {
+		return this.getProductionChecklistActionItem('Test reliability of AI steps');
+	}
+
+	async clickProductionChecklistButton(): Promise<void> {
+		await this.getProductionChecklistButton().click();
+	}
+
+	async clickProductionChecklistIgnoreAll(): Promise<void> {
+		await this.getProductionChecklistIgnoreAllButton().click();
+	}
+
+	async clickProductionChecklistAction(actionText: string): Promise<void> {
+		await this.getProductionChecklistActionItem(actionText).click();
+	}
 }

@@ -12,6 +12,8 @@ import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SettingsPage } from './SettingsPage';
 import { SidebarPage } from './SidebarPage';
 import { VersionsPage } from './VersionsPage';
+import { WorkflowActivationModal } from './WorkflowActivationModal';
+import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
 import { CanvasComposer } from '../composables/CanvasComposer';
@@ -38,9 +40,13 @@ export class n8nPage {
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
 
+	// Modals
+	readonly workflowActivationModal: WorkflowActivationModal;
+	readonly workflowSettingsModal: WorkflowSettingsModal;
+	readonly workflowSharingModal: WorkflowSharingModal;
+
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
-	readonly workflowSharingModal: WorkflowSharingModal;
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
 
@@ -63,6 +69,10 @@ export class n8nPage {
 		this.executions = new ExecutionsPage(page);
 		this.sideBar = new SidebarPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
+
+		// Modals
+		this.workflowActivationModal = new WorkflowActivationModal(page);
+		this.workflowSettingsModal = new WorkflowSettingsModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);

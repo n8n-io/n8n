@@ -1,3 +1,4 @@
+/* eslint-disable n8n-local-rules/no-skipped-tests */
 import { type ICredentialType } from 'n8n-workflow';
 
 import { clickCreateNewCredential, openCredentialSelect } from '../composables/ndv';
@@ -14,7 +15,6 @@ const credentialsModal = new CredentialsModal();
 const nodeCreatorFeature = new NodeCreator();
 
 // Migrated to Playwright
-// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 describe.skip('AI Assistant::disabled', () => {
 	beforeEach(() => {
 		aiAssistant.actions.disableAssistant();
@@ -26,9 +26,7 @@ describe.skip('AI Assistant::disabled', () => {
 	});
 });
 
-// Migrated to Playwright
-// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-describe.skip('AI Assistant::enabled', () => {
+describe('AI Assistant::enabled', () => {
 	beforeEach(() => {
 		aiAssistant.actions.enableAssistant();
 		wf.actions.visit();
@@ -38,7 +36,7 @@ describe.skip('AI Assistant::enabled', () => {
 		aiAssistant.actions.disableAssistant();
 	});
 
-	it('renders placeholder UI', () => {
+	it.skip('renders placeholder UI', () => {
 		aiAssistant.getters.askAssistantCanvasActionButton().should('be.visible');
 		aiAssistant.getters.askAssistantCanvasActionButton().click();
 		aiAssistant.getters.askAssistantChat().should('be.visible');
@@ -84,7 +82,7 @@ describe.skip('AI Assistant::enabled', () => {
 		});
 	});
 
-	it('should start chat session from node error view', () => {
+	it.skip('should start chat session from node error view', () => {
 		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
@@ -102,7 +100,7 @@ describe.skip('AI Assistant::enabled', () => {
 		aiAssistant.getters.nodeErrorViewAssistantButton().should('be.disabled');
 	});
 
-	it('should render chat input correctly', () => {
+	it.skip('should render chat input correctly', () => {
 		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
@@ -135,7 +133,7 @@ describe.skip('AI Assistant::enabled', () => {
 		});
 	});
 
-	it('should render and handle quick replies', () => {
+	it.skip('should render and handle quick replies', () => {
 		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/quick_reply_message_response.json',
@@ -152,7 +150,7 @@ describe.skip('AI Assistant::enabled', () => {
 		aiAssistant.getters.chatMessagesUser().eq(0).should('contain.text', "Sure, let's do it");
 	});
 
-	it('should warn before starting a new session', () => {
+	it.skip('should warn before starting a new session', () => {
 		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/simple_message_response.json',
@@ -277,7 +275,7 @@ describe.skip('AI Assistant::enabled', () => {
 			);
 	});
 
-	it('should end chat session when `end_session` event is received', () => {
+	it.skip('should end chat session when `end_session` event is received', () => {
 		cy.intercept('POST', '/rest/ai/chat', {
 			statusCode: 200,
 			fixture: 'aiAssistant/responses/end_session_response.json',
