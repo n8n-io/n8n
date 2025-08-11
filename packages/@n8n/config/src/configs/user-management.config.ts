@@ -110,7 +110,7 @@ export class UserManagementConfig {
 	@Env('N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS')
 	jwtRefreshTimeoutHours: number = 0;
 
-	validate() {
+	sanitize() {
 		if (this.jwtRefreshTimeoutHours >= this.jwtSessionDurationHours) {
 			console.warn(INVALID_JWT_REFRESH_TIMEOUT_WARNING);
 			this.jwtRefreshTimeoutHours = 0;

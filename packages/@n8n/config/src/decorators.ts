@@ -82,7 +82,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 			}
 		}
 
-		if (typeof config.validate === 'function') config.validate();
+		if (typeof config.sanitize === 'function') config.sanitize();
 
 		return config;
 	};
