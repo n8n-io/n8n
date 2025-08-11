@@ -94,14 +94,22 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- if .Values.persistence.enabled }}
-          volumeMounts:
-            - name: {{ include "n8n.fullname" . }}-data
-              mountPath: {{ .Values.persistence.mountPath }}
-          {{- end }}
-          {{- with .Values.extraVolumeMounts }}
-          {{- toYaml . | nindent 10 }}
-          {{- end }}
+                     volumeMounts:
+           {{- if .Values.persistence.enabled }}
+             - name: {{ include "n8n.fullname" . }}-data
+               mountPath: {{ .Values.persistence.mountPath }}
+           {{- end }}
+           {{- if .Values.cacheVolume.enabled }}
+             - name: cache-volume
+               mountPath: {{ .Values.cacheVolume.mountPath }}
+           {{- end }}
+           {{- if .Values.tmpVolume.enabled }}
+             - name: tmp-volume
+               mountPath: {{ .Values.tmpVolume.mountPath }}
+           {{- end }}
+           {{- with .Values.extraVolumeMounts }}
+           {{- toYaml . | nindent 12 }}
+           {{- end }}
           env:
             # Database configuration
             {{- include "n8n.databaseEnvVars" . | nindent 12 }}
@@ -154,6 +162,9 @@ spec:
             # Task runners configuration
             {{- include "n8n.taskRunnersEnvVars" . | nindent 12 }}
             
+            # System configuration
+            {{- include "n8n.systemEnvVars" . | nindent 12 }}
+            
             # ConfigMap environment variables
             {{- if .Values.configMap.enabled }}
             {{- range $key, $value := .Values.configMap.data }}
@@ -183,16 +194,24 @@ spec:
               value: {{ $value | quote }}
             {{- end }}
             {{- end }}
-      {{- with .Values.sidecarContainers }}
-      {{- toYaml . | nindent 6 }}
-      {{- end }}
-      {{- if .Values.persistence.enabled }}
-      volumes:
-        - name: {{ include "n8n.fullname" . }}-data
-          persistentVolumeClaim:
-            claimName: {{ include "n8n.fullname" . }}-data
-      {{- end }}
-      {{- with .Values.extraVolumes }}
-      {{- toYaml . | nindent 6 }}
-      {{- end }}
+             {{- with .Values.sidecarContainers }}
+       {{- toYaml . | nindent 6 }}
+       {{- end }}
+       volumes:
+       {{- if .Values.persistence.enabled }}
+         - name: {{ include "n8n.fullname" . }}-data
+           persistentVolumeClaim:
+             claimName: {{ include "n8n.fullname" . }}-data
+       {{- end }}
+       {{- if .Values.cacheVolume.enabled }}
+         - name: cache-volume
+           emptyDir: {{- toYaml .Values.cacheVolume.emptyDir | nindent 12 }}
+       {{- end }}
+       {{- if .Values.tmpVolume.enabled }}
+         - name: tmp-volume
+           emptyDir: {{- toYaml .Values.tmpVolume.emptyDir | nindent 12 }}
+       {{- end }}
+       {{- with .Values.extraVolumes }}
+       {{- toYaml . | nindent 6 }}
+       {{- end }}
 {{- end }} 

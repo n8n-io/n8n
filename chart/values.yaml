@@ -22,7 +22,7 @@ imagePullSecrets: []
 
 # Service account configuration
 serviceAccount:
-  create: true
+  create: false
   annotations: {}
   name: ""
 
@@ -369,6 +369,18 @@ extraVolumes: []
 # Additional volume mounts
 extraVolumeMounts: []
 
+# Cache volume configuration
+cacheVolume:
+  enabled: true
+  mountPath: "/home/node/.cache"
+  emptyDir: {}
+
+# Temporary directory volume configuration
+tmpVolume:
+  enabled: true
+  mountPath: "/tmp"
+  emptyDir: {}
+
 # Init containers
 initContainers: []
 
@@ -386,10 +398,10 @@ podTemplateMetadata: {}
 
 # Deployment strategy
 deploymentStrategy:
-  type: RollingUpdate
-  rollingUpdate:
-    maxSurge: 25%
-    maxUnavailable: 25%
+  type: Recreate
+  # rollingUpdate:
+  #   maxSurge: 25%
+  #   maxUnavailable: 25%
 
 # Job configuration for one-time tasks
 job:
@@ -455,13 +467,13 @@ scaling:
 
 # Multi-main setup configuration
 multiMain:
-  enabled: false
+  enabled: true
   ttl: 10
   interval: 3
 
 # Task runners configuration
 taskRunners:
-  enabled: false
+  enabled: true # Enable by default to avoid deprecation warnings
   mode: "internal" # internal, external
   path: "/runners"
   authToken: ""

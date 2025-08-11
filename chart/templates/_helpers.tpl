@@ -595,4 +595,12 @@ Create environment variables for task runners configuration
 - name: N8N_RUNNERS_INSECURE_MODE
   value: {{ .Values.taskRunners.insecureMode | quote }}
 {{- end }}
-{{- end }} 
+{{- end }}
+
+{{/*
+Create environment variables for system configuration
+*/}}
+{{- define "n8n.systemEnvVars" -}}
+- name: N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS
+  value: "false"
+{{- end }}

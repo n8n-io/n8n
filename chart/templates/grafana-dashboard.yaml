@@ -7,7 +7,8 @@ metadata:
     {{- include "n8n.labels" . | nindent 4 }}
     {{ .Values.grafanaDashboard.label }}: {{ .Values.grafanaDashboard.labelValue }}
 data:
-  dashboard.json: |
+  dashboard.json: |-
+    {{- $fullname := include "n8n.fullname" . -}}
     {
       "dashboard": {
         "id": null,
@@ -22,7 +23,7 @@ data:
             "type": "stat",
             "targets": [
               {
-                "expr": "up{job=\"{{ include \"n8n.fullname\" . }}\"}",
+                "expr": "up{job=\"{{ $fullname }}\"}",
                 "legendFormat": "n8n Status"
               }
             ],
@@ -46,8 +47,8 @@ data:
             "type": "graph",
             "targets": [
               {
-                "expr": "rate(http_requests_total{job=\"{{ include \"n8n.fullname\" . }}\"}[5m])",
-                "legendFormat": "{{method}} {{path}}"
+                "expr": "rate(http_requests_total{job=\"{{ $fullname }}\"}[5m])",
+                "legendFormat": "{{ "{{" }}method{{ "}}" }} {{ "{{" }}path{{ "}}" }}"
               }
             ]
           },
@@ -57,8 +58,8 @@ data:
             "type": "graph",
             "targets": [
               {
-                "expr": "rate(n8n_workflow_executions_total{job=\"{{ include \"n8n.fullname\" . }}\"}[5m])",
-                "legendFormat": "{{workflow_name}}"
+                "expr": "rate(n8n_workflow_executions_total{job=\"{{ $fullname }}\"}[5m])",
+                "legendFormat": "{{ "{{" }}workflow_name{{ "}}" }}"
               }
             ]
           }
