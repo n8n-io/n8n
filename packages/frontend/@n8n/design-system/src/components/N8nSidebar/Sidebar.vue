@@ -7,7 +7,7 @@ import N8nText from '../N8nText';
 import SidebarItem from './SidebarItem.vue';
 import SidebarSection from './SidebarSection.vue';
 import N8nResizeWrapper from '../N8nResizeWrapper';
-import { N8nButton, N8nIconButton, N8nTooltip } from '..';
+import { N8nButton, N8nIconButton, N8nRoute, N8nTooltip } from '..';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 import { useSidebarLayout } from './useSidebarLayout';
 
@@ -20,6 +20,7 @@ const props = defineProps<{
 
 defineEmits<{
 	(createProject: void): void;
+	(logout: void): void;
 }>();
 
 const {
@@ -152,8 +153,6 @@ onUnmounted(() => {
 				<SidebarItem title="Templates" id="templates" icon="box" type="other" />
 				<SidebarItem title="Variables" id="templates" icon="variable" type="other" />
 				<SidebarItem title="Insights" id="templates" icon="chart-column-decreasing" type="other" />
-				<SidebarItem title="What's new" id="templates" icon="bell" type="other" />
-				<SidebarItem title="Help" id="templates" icon="circle-help" type="other" />
 			</footer>
 		</nav>
 
@@ -166,6 +165,8 @@ onUnmounted(() => {
 					<N8nText size="small">Sign out</N8nText>
 				</template>
 				<N8nIconButton
+					@click="$emit('logout')"
+					aria-label="Sign out"
 					icon-size="large"
 					size="mini"
 					icon="door-open"
@@ -178,7 +179,16 @@ onUnmounted(() => {
 				<template #content>
 					<N8nText size="small">Settings</N8nText>
 				</template>
-				<N8nIconButton icon-size="large" size="mini" icon="settings" type="secondary" text square />
+				<N8nRoute to="/settings">
+					<N8nIconButton
+						icon-size="large"
+						size="mini"
+						icon="settings"
+						type="secondary"
+						text
+						square
+					/>
+				</N8nRoute>
 			</N8nTooltip>
 			<N8nTooltip placement="top">
 				<template #content>
