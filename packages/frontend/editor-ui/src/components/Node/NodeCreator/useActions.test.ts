@@ -273,4 +273,150 @@ describe('useActions', () => {
 			});
 		});
 	});
+
+	describe('actionDataToNodeTypeSelectedPayload', () => {
+		test('should include actionName from ActionData', () => {
+			const { actionDataToNodeTypeSelectedPayload } = useActions();
+
+			const actionData = {
+				name: 'Create Contact',
+				key: 'hubspot',
+				value: {
+					resource: 'contact',
+					operation: 'create',
+				},
+			};
+
+			const result = actionDataToNodeTypeSelectedPayload(actionData);
+
+			expect(result).toEqual({
+				type: 'hubspot',
+				actionName: 'Create Contact',
+				parameters: {
+					resource: 'contact',
+					operation: 'create',
+				},
+			});
+		});
+
+		test('should include actionName even when parameters are undefined', () => {
+			const { actionDataToNodeTypeSelectedPayload } = useActions();
+
+			const actionData = {
+				name: 'Send Message',
+				key: 'slack',
+				value: {},
+			};
+
+			const result = actionDataToNodeTypeSelectedPayload(actionData);
+
+			expect(result).toEqual({
+				type: 'slack',
+				actionName: 'Send Message',
+			});
+		});
+
+		test('should preserve existing resource and operation alongside actionName', () => {
+			const { actionDataToNodeTypeSelectedPayload } = useActions();
+
+			const actionData = {
+				name: 'Update Record',
+				key: 'airtable',
+				value: {
+					resource: 'base',
+					operation: 'update',
+					someOtherParam: 'value',
+				},
+			};
+
+			const result = actionDataToNodeTypeSelectedPayload(actionData);
+
+			expect(result).toEqual({
+				type: 'airtable',
+				actionName: 'Update Record',
+				parameters: {
+					resource: 'base',
+					operation: 'update',
+				},
+			});
+		});
+	});
+
+	describe('getAddedNodesAndConnections with actionName', () => {
+		test('should preserve actionName in nodes array', () => {
+			const workflowsStore = useWorkflowsStore();
+			const nodeCreatorStore = useNodeCreatorStore();
+
+			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([]);
+			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
+				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
+			);
+			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
+
+			const { getAddedNodesAndConnections } = useActions();
+
+			const result = getAddedNodesAndConnections([
+				{ type: HTTP_REQUEST_NODE_TYPE, actionName: 'Make API Call' },
+			]);
+
+			expect(result).toEqual({
+				connections: [{ from: { nodeIndex: 0 }, to: { nodeIndex: 1 } }],
+				nodes: [
+					{ type: MANUAL_TRIGGER_NODE_TYPE, isAutoAdd: true },
+					{ type: HTTP_REQUEST_NODE_TYPE, openDetail: true, actionName: 'Make API Call' },
+				],
+			});
+		});
+
+		test('should preserve actionName when no trigger is prepended', () => {
+			const workflowsStore = useWorkflowsStore();
+			const nodeCreatorStore = useNodeCreatorStore();
+
+			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([
+				{ type: MANUAL_TRIGGER_NODE_TYPE } as never,
+			]);
+			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
+				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
+			);
+			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
+
+			const { getAddedNodesAndConnections } = useActions();
+
+			const result = getAddedNodesAndConnections([
+				{ type: SLACK_NODE_TYPE, actionName: 'Post Message' },
+			]);
+
+			expect(result).toEqual({
+				connections: [],
+				nodes: [{ type: SLACK_NODE_TYPE, openDetail: true, actionName: 'Post Message' }],
+			});
+		});
+
+		test('should work with multiple nodes having actionNames', () => {
+			const workflowsStore = useWorkflowsStore();
+			const nodeCreatorStore = useNodeCreatorStore();
+
+			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([
+				{ type: MANUAL_TRIGGER_NODE_TYPE } as never,
+			]);
+			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
+				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
+			);
+
+			const { getAddedNodesAndConnections } = useActions();
+
+			const result = getAddedNodesAndConnections([
+				{ type: WEBHOOK_NODE_TYPE, openDetail: true, actionName: 'Receive Webhook' },
+				{ type: SLACK_NODE_TYPE, actionName: 'Send Notification' },
+			]);
+
+			expect(result).toEqual({
+				connections: [{ from: { nodeIndex: 0 }, to: { nodeIndex: 1 } }],
+				nodes: [
+					{ type: WEBHOOK_NODE_TYPE, openDetail: true, actionName: 'Receive Webhook' },
+					{ type: SLACK_NODE_TYPE, actionName: 'Send Notification' },
+				],
+			});
+		});
+	});
 });

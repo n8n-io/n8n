@@ -302,4 +302,92 @@ describe('WorkflowDiffModal', () => {
 		expect(pullComponent.container.querySelector('.header')).toBeInTheDocument();
 		expect(pushComponent.container.querySelector('.header')).toBeInTheDocument();
 	});
+
+	it('should show empty state when no changes exist in tabs', async () => {
+		const { getByText } = renderModal({
+			pinia: createTestingPinia(),
+			props: {
+				data: {
+					eventBus,
+					workflowId: 'test-workflow-id',
+					direction: 'push',
+				},
+			},
+		});
+
+		// Open changes dropdown
+		const changesButton = getByText('Changes');
+		await userEvent.click(changesButton);
+
+		// Wait for dropdown to open and check tabs
+		await waitFor(() => {
+			expect(getByText('Nodes')).toBeInTheDocument();
+		});
+
+		// Click on Nodes tab to make it active
+		await userEvent.click(getByText('Nodes'));
+
+		// Should show "No changes" when there are no node changes
+		await waitFor(() => {
+			expect(getByText('No changes')).toBeInTheDocument();
+		});
+	});
+
+	it('should show empty state for connectors tab when no connector changes', async () => {
+		const { getByText } = renderModal({
+			pinia: createTestingPinia(),
+			props: {
+				data: {
+					eventBus,
+					workflowId: 'test-workflow-id',
+					direction: 'push',
+				},
+			},
+		});
+
+		// Open changes dropdown
+		const changesButton = getByText('Changes');
+		await userEvent.click(changesButton);
+
+		await waitFor(() => {
+			expect(getByText('Connectors')).toBeInTheDocument();
+		});
+
+		// Click on Connectors tab
+		await userEvent.click(getByText('Connectors'));
+
+		// Should show "No changes" when there are no connector changes
+		await waitFor(() => {
+			expect(getByText('No changes')).toBeInTheDocument();
+		});
+	});
+
+	it('should show empty state for settings tab when no settings changes', async () => {
+		const { getByText } = renderModal({
+			pinia: createTestingPinia(),
+			props: {
+				data: {
+					eventBus,
+					workflowId: 'test-workflow-id',
+					direction: 'push',
+				},
+			},
+		});
+
+		// Open changes dropdown
+		const changesButton = getByText('Changes');
+		await userEvent.click(changesButton);
+
+		await waitFor(() => {
+			expect(getByText('Settings')).toBeInTheDocument();
+		});
+
+		// Click on Settings tab
+		await userEvent.click(getByText('Settings'));
+
+		// Should show "No changes" when there are no settings changes
+		await waitFor(() => {
+			expect(getByText('No changes')).toBeInTheDocument();
+		});
+	});
 });

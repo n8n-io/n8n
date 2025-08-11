@@ -12,12 +12,14 @@ import {
 	hoverTooltip,
 	keymap,
 	showTooltip,
+	tooltips,
 	type Command,
 	type EditorView,
 	type Tooltip,
 } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import type { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
+import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/constants';
 
 const findNearestParentOfType =
 	(type: string) =>
@@ -308,6 +310,9 @@ export const closeCursorInfoBox: Command = (view) => {
 
 export const infoBoxTooltips = (): Extension[] => {
 	return [
+		tooltips({
+			parent: document.getElementById(CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID) ?? undefined,
+		}),
 		cursorInfoBoxTooltip,
 		hoverInfoBoxTooltip,
 		keymap.of([
