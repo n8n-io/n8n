@@ -16,8 +16,6 @@ const props = defineProps<{
 	shared: TreeItemType[];
 	projects: { title: string; id: string; icon: IconName; items: TreeItemType[] }[];
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
-	localStorageWidthKey: string;
-	localStorageStateKey: string;
 }>();
 
 defineEmits<{
