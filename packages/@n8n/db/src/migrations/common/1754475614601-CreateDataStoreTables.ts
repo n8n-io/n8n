@@ -25,7 +25,9 @@ export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 				column('name').varchar(128).notNull,
 				column('type')
 					.varchar(32)
-					.notNull.comment('Column type - string, number, boolean, or date'),
+					.notNull.comment(
+						'Expected: string, number, boolean, or date (not enforced as a constraint)',
+					),
 				column('index').int.notNull.comment('Column order, starting from 0 (0 = first column)'),
 				column('dataStoreId').varchar(36).notNull,
 			)
