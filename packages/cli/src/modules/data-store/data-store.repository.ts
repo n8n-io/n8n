@@ -8,14 +8,14 @@ import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { DataStoreColumnEntity } from './data-store-column.entity';
-import { DataStoreEntity } from './data-store.entity';
+import { DataStoreColumn } from './data-store-column.entity';
+import { DataStore } from './data-store.entity';
 import { createUserTableQuery, toDslColumns, toTableName } from './utils/sql-utils';
 
 @Service()
-export class DataStoreRepository extends Repository<DataStoreEntity> {
+export class DataStoreRepository extends Repository<DataStore> {
 	constructor(dataSource: DataSource) {
-		super(DataStoreEntity, dataSource.manager);
+		super(DataStore, dataSource.manager);
 	}
 
 	// TODO: remove
@@ -25,8 +25,8 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		columns: DataStoreCreateColumnSchema[],
 	) {
 		return await this.manager.transaction(async (em) => {
-			const dataStore = em.create(DataStoreEntity, { name, columns, projectId });
-			await em.insert(DataStoreEntity, dataStore);
+			const dataStore = em.create(DataStore, { name, columns, projectId });
+			await em.insert(DataStore, dataStore);
 			const dbType = em.connection.options.type;
 			await em.query(createUserTableQuery(toTableName(dataStore.id), columns, dbType));
 			return dataStore;
@@ -39,8 +39,8 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		}
 
 		return await this.manager.transaction(async (em) => {
-			const dataStore = em.create(DataStoreEntity, { name, columns, projectId });
-			await em.insert(DataStoreEntity, dataStore);
+			const dataStore = em.create(DataStore, { name, columns, projectId });
+			await em.insert(DataStore, dataStore);
 
 			const tableName = toTableName(dataStore.id);
 			const queryRunner = em.queryRunner;
@@ -54,14 +54,14 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 
 			// insert columns
 			const columnEntities = columns.map((col, index) =>
-				em.create(DataStoreColumnEntity, {
+				em.create(DataStoreColumn, {
 					name: col.name,
 					type: col.type,
 					dataStoreId: dataStore.id,
 					index: col.index ?? index,
 				}),
 			);
-			await em.insert(DataStoreColumnEntity, columnEntities);
+			await em.insert(DataStoreColumn, columnEntities);
 
 			// create user table
 			const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
@@ -82,7 +82,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 				throw new UnexpectedError('QueryRunner is not available');
 			}
 
-			await em.delete(DataStoreEntity, { id: dataStoreId });
+			await em.delete(DataStore, { id: dataStoreId });
 			await queryRunner.dropTable(toTableName(dataStoreId), true);
 
 			return true;
@@ -91,7 +91,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 
 	async deleteDataStoreByProjectId(projectId: string) {
 		return await this.manager.transaction(async (em) => {
-			const existingTables = await em.findBy(DataStoreEntity, { projectId });
+			const existingTables = await em.findBy(DataStore, { projectId });
 
 			let changed = false;
 			for (const match of existingTables) {
@@ -110,11 +110,11 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 				throw new UnexpectedError('QueryRunner is not available');
 			}
 
-			const existingTables = await em.findBy(DataStoreEntity, {});
+			const existingTables = await em.findBy(DataStore, {});
 
 			let changed = false;
 			for (const match of existingTables) {
-				const result = await em.delete(DataStoreEntity, { id: match.id });
+				const result = await em.delete(DataStore, { id: match.id });
 				await queryRunner.dropTable(toTableName(match.id), true);
 				changed = changed || (result.affected ?? 0) > 0;
 			}
@@ -134,9 +134,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		return await query.getMany();
 	}
 
-	private getManyQuery(
-		options: Partial<ListDataStoreQueryDto>,
-	): SelectQueryBuilder<DataStoreEntity> {
+	private getManyQuery(options: Partial<ListDataStoreQueryDto>): SelectQueryBuilder<DataStore> {
 		const query = this.createQueryBuilder('dataStore');
 
 		this.applySelections(query);
@@ -147,12 +145,12 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		return query;
 	}
 
-	private applySelections(query: SelectQueryBuilder<DataStoreEntity>): void {
+	private applySelections(query: SelectQueryBuilder<DataStore>): void {
 		this.applyDefaultSelect(query);
 	}
 
 	private applyFilters(
-		query: SelectQueryBuilder<DataStoreEntity>,
+		query: SelectQueryBuilder<DataStore>,
 		filter: Partial<ListDataStoreQueryDto>['filter'],
 	): void {
 		for (const x of ['id', 'projectId'] as const) {
@@ -175,7 +173,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		}
 	}
 
-	private applySorting(query: SelectQueryBuilder<DataStoreEntity>, sortBy?: string): void {
+	private applySorting(query: SelectQueryBuilder<DataStore>, sortBy?: string): void {
 		if (!sortBy) {
 			query.orderBy('dataStore.updatedAt', 'DESC');
 			return;
@@ -191,7 +189,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 	}
 
 	private applySortingByField(
-		query: SelectQueryBuilder<DataStoreEntity>,
+		query: SelectQueryBuilder<DataStore>,
 		field: string,
 		direction: 'DESC' | 'ASC',
 	): void {
@@ -203,7 +201,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 	}
 
 	private applyPagination(
-		query: SelectQueryBuilder<DataStoreEntity>,
+		query: SelectQueryBuilder<DataStore>,
 		options: Partial<ListDataStoreQueryDto>,
 	): void {
 		query.skip(options.skip ?? 0);
@@ -212,7 +210,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 		}
 	}
 
-	private applyDefaultSelect(query: SelectQueryBuilder<DataStoreEntity>): void {
+	private applyDefaultSelect(query: SelectQueryBuilder<DataStore>): void {
 		query
 			.leftJoinAndSelect('dataStore.project', 'project')
 			.leftJoinAndSelect('dataStore.columns', 'data_store_column')

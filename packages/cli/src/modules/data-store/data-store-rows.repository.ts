@@ -7,7 +7,7 @@ import type {
 import { Service } from '@n8n/di';
 import { DataSource, DataSourceOptions, SelectQueryBuilder } from '@n8n/typeorm';
 
-import { DataStoreColumnEntity } from './data-store-column.entity';
+import { DataStoreColumn } from './data-store-column.entity';
 import {
 	buildInsertQuery,
 	buildUpdateQuery,
@@ -43,7 +43,7 @@ export class DataStoreRowsRepository {
 	async insertRows(
 		tableName: DataStoreUserTableName,
 		rows: DataStoreRows,
-		columns: DataStoreColumnEntity[],
+		columns: DataStoreColumn[],
 	) {
 		const dbType = this.dataSource.options.type;
 		await this.dataSource.query.apply(
@@ -56,7 +56,7 @@ export class DataStoreRowsRepository {
 	async upsertRows(
 		tableName: DataStoreUserTableName,
 		dto: UpsertDataStoreRowsDto,
-		columns: DataStoreColumnEntity[],
+		columns: DataStoreColumn[],
 	) {
 		const dbType = this.dataSource.options.type;
 		const { rows, matchFields } = dto;

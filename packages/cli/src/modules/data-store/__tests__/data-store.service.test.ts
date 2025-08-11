@@ -16,7 +16,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['DataStoreEntity', 'DataStoreColumnEntity']);
+	await testDb.truncate(['DataStore', 'DataStoreColumn']);
 });
 
 afterAll(async () => {
@@ -74,11 +74,9 @@ describe('dataStore', () => {
 			const created = await dataStoreRepository.findOneBy({ name, projectId: project1.id });
 			expect(created?.id).toBe(result.id);
 
-			const columns = await dataStoreRepository.manager
-				.getRepository('DataStoreColumnEntity')
-				.find({
-					where: { dataStoreId: result.id },
-				});
+			const columns = await dataStoreRepository.manager.getRepository('DataStoreColumn').find({
+				where: { dataStoreId: result.id },
+			});
 			expect(columns).toEqual([]);
 
 			const userTableName = toTableName(result.id);

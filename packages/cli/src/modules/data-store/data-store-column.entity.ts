@@ -1,11 +1,11 @@
 import { WithStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
-import { type DataStoreEntity } from './data-store.entity';
+import { type DataStore } from './data-store.entity';
 
-@Entity('data_store_column')
+@Entity()
 @Index(['dataStoreId', 'name'], { unique: true })
-export class DataStoreColumnEntity extends WithStringId {
+export class DataStoreColumn extends WithStringId {
 	@Column()
 	dataStoreId: string;
 
@@ -18,7 +18,7 @@ export class DataStoreColumnEntity extends WithStringId {
 	@Column({ type: 'int' })
 	index: number;
 
-	@ManyToOne('DataStoreEntity', 'columns')
+	@ManyToOne('DataStore', 'columns')
 	@JoinColumn({ name: 'dataStoreId' })
-	dataStore: DataStoreEntity;
+	dataStore: DataStore;
 }

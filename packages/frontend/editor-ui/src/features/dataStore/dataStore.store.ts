@@ -8,12 +8,12 @@ import {
 	deleteDataStoreApi,
 	updateDataStoreApi,
 } from '@/features/dataStore/dataStore.api';
-import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
+import type { DataStore } from '@/features/dataStore/datastore.types';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const rootStore = useRootStore();
 
-	const dataStores = ref<DataStoreEntity[]>([]);
+	const dataStores = ref<DataStore[]>([]);
 	const totalCount = ref(0);
 
 	const fetchDataStores = async (projectId: string, page: number, pageSize: number) => {

@@ -13,7 +13,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { DataStoreColumnEntity } from './data-store-column.entity';
+import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
@@ -171,7 +171,7 @@ export class DataStoreService {
 	}
 
 	// TODO: move to utils and test
-	private normalizeRows(rows: Array<Record<string, unknown>>, columns: DataStoreColumnEntity[]) {
+	private normalizeRows(rows: Array<Record<string, unknown>>, columns: DataStoreColumn[]) {
 		const typeMap = new Map(columns.map((col) => [col.name, col.type]));
 		return rows.map((row) => {
 			const normalized = { ...row };

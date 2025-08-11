@@ -4,19 +4,19 @@ import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { DataStoreColumnEntity } from './data-store-column.entity';
+import { DataStoreColumn } from './data-store-column.entity';
 import { addColumnQuery, deleteColumnQuery, toDslColumns, toTableName } from './utils/sql-utils';
 
 @Service()
-export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity> {
+export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 	constructor(dataSource: DataSource) {
-		super(DataStoreColumnEntity, dataSource.manager);
+		super(DataStoreColumn, dataSource.manager);
 	}
 
 	async getColumns(rawDataStoreId: string, em?: EntityManager) {
 		const executor = em ?? this.manager;
 		const columns = await executor
-			.createQueryBuilder(DataStoreColumnEntity, 'dsc')
+			.createQueryBuilder(DataStoreColumn, 'dsc')
 			.where('dsc.dataStoreId = :dataStoreId', { dataStoreId: rawDataStoreId })
 			.getMany();
 
@@ -30,7 +30,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 
 	async addColumn(dataStoreId: string, schema: DataStoreCreateColumnSchema) {
 		return await this.manager.transaction(async (em) => {
-			const existingColumnMatch = await em.existsBy(DataStoreColumnEntity, {
+			const existingColumnMatch = await em.existsBy(DataStoreColumn, {
 				name: schema.name,
 				dataStoreId,
 			});
@@ -48,12 +48,12 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 				await this.shiftColumns(dataStoreId, schema.index, 1, em);
 			}
 
-			const column = em.create(DataStoreColumnEntity, {
+			const column = em.create(DataStoreColumn, {
 				...schema,
 				dataStoreId,
 			});
 
-			await em.insert(DataStoreColumnEntity, column);
+			await em.insert(DataStoreColumn, column);
 
 			// Create user table if it does not exist
 			const tableName = toTableName(dataStoreId);
@@ -78,9 +78,9 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 		});
 	}
 
-	async deleteColumn(dataStoreId: string, column: DataStoreColumnEntity) {
+	async deleteColumn(dataStoreId: string, column: DataStoreColumn) {
 		await this.manager.transaction(async (em) => {
-			await em.remove(DataStoreColumnEntity, column);
+			await em.remove(DataStoreColumn, column);
 			await em.query(
 				deleteColumnQuery(toTableName(dataStoreId), column.name, em.connection.options.type),
 			);
@@ -90,7 +90,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 
 	async moveColumn(rawDataStoreId: string, columnId: string, targetIndex: number) {
 		await this.manager.transaction(async (em) => {
-			const columnCount = await em.countBy(DataStoreColumnEntity, { dataStoreId: rawDataStoreId });
+			const columnCount = await em.countBy(DataStoreColumn, { dataStoreId: rawDataStoreId });
 
 			if (targetIndex >= columnCount) {
 				throw new UserError('tried to move column to index larger than column count');
@@ -100,7 +100,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 				throw new UserError('tried to move column to negative index');
 			}
 
-			const existingColumn = await em.findOneBy(DataStoreColumnEntity, {
+			const existingColumn = await em.findOneBy(DataStoreColumn, {
 				id: columnId,
 				dataStoreId: rawDataStoreId,
 			});
@@ -111,7 +111,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 
 			await this.shiftColumns(rawDataStoreId, existingColumn.index, -1, em);
 			await this.shiftColumns(rawDataStoreId, targetIndex, 1, em);
-			await em.update(DataStoreColumnEntity, { id: existingColumn.id }, { index: targetIndex });
+			await em.update(DataStoreColumn, { id: existingColumn.id }, { index: targetIndex });
 		});
 	}
 
@@ -124,7 +124,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 		const executor = em ?? this.manager;
 		await executor
 			.createQueryBuilder()
-			.update(DataStoreColumnEntity)
+			.update(DataStoreColumn)
 			.set({
 				index: () => `index + ${delta}`,
 			})

@@ -1,18 +1,18 @@
 import type { ProjectSharingData } from 'n8n-workflow';
 
-export type DataStoreEntity = {
+export type DataStore = {
 	id: string;
 	name: string;
 	sizeBytes: number;
 	recordCount: number;
-	columns: DataStoreColumnEntity[];
+	columns: DataStoreColumn[];
 	createdAt: string;
 	updatedAt: string;
 	projectId?: string;
 	project?: ProjectSharingData;
 };
 
-export type DataStoreColumnEntity = {
+export type DataStoreColumn = {
 	id: string;
 	name: string;
 	type: string;

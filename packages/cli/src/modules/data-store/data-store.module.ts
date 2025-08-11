@@ -26,9 +26,9 @@ export class DataStoreModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { DataStoreEntity } = await import('./data-store.entity');
-		const { DataStoreColumnEntity } = await import('./data-store-column.entity');
+		const { DataStore } = await import('./data-store.entity');
+		const { DataStoreColumn } = await import('./data-store-column.entity');
 
-		return [DataStoreEntity, DataStoreColumnEntity] as unknown as Array<new () => BaseEntity>;
+		return [DataStore, DataStoreColumn] as unknown as Array<new () => BaseEntity>;
 	}
 }

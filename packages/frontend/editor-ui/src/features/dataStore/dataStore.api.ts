@@ -1,7 +1,7 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-import { type DataStoreEntity } from '@/features/dataStore/datastore.types';
+import { type DataStore } from '@/features/dataStore/datastore.types';
 
 export const fetchDataStoresApi = async (
 	context: IRestApiContext,
@@ -12,7 +12,7 @@ export const fetchDataStoresApi = async (
 	},
 ) => {
 	const apiEndpoint = projectId ? `/projects/${projectId}/data-stores` : '/data-stores-global';
-	return await makeRestApiRequest<{ count: number; data: DataStoreEntity[] }>(
+	return await makeRestApiRequest<{ count: number; data: DataStore[] }>(
 		context,
 		'GET',
 		apiEndpoint,
@@ -27,7 +27,7 @@ export const createDataStoreApi = async (
 	name: string,
 	projectId?: string,
 ) => {
-	return await makeRestApiRequest<DataStoreEntity>(
+	return await makeRestApiRequest<DataStore>(
 		context,
 		'POST',
 		`/projects/${projectId}/data-stores`,
@@ -60,7 +60,7 @@ export const updateDataStoreApi = async (
 	name: string,
 	projectId?: string,
 ) => {
-	return await makeRestApiRequest<DataStoreEntity>(
+	return await makeRestApiRequest<DataStore>(
 		context,
 		'PATCH',
 		`/projects/${projectId}/data-stores/${dataStoreId}`,
