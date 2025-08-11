@@ -21,7 +21,7 @@ export const dataStoreColumnTypeSchema = z.enum(['string', 'number', 'boolean', 
 export const dataStoreCreateColumnSchema = z.object({
 	name: dataStoreColumnNameSchema,
 	type: dataStoreColumnTypeSchema,
-	columnIndex: z.number().optional(),
+	index: z.number().optional(),
 });
 export type DataStoreCreateColumnSchema = z.infer<typeof dataStoreCreateColumnSchema>;
 

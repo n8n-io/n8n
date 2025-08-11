@@ -58,7 +58,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 					name: col.name,
 					type: col.type,
 					dataStoreId: dataStore.id,
-					columnIndex: col.columnIndex ?? index,
+					index: col.index ?? index,
 				}),
 			);
 			await em.insert(DataStoreColumnEntity, columnEntities);
@@ -221,7 +221,7 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 				...this.getDataStoreColumnFields('data_store_column_entity'),
 				...this.getProjectFields('project'),
 			])
-			.addOrderBy('data_store_column_entity.columnIndex', 'ASC');
+			.addOrderBy('data_store_column_entity.index', 'ASC');
 	}
 
 	private getDataStoreColumnFields(alias: string): string[] {

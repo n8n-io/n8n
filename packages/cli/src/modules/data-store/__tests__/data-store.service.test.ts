@@ -121,7 +121,7 @@ describe('dataStore', () => {
 				{
 					name: 'foo',
 					type: 'string',
-					columnIndex: 0,
+					index: 0,
 					dataStoreId: dataStore.id,
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
@@ -314,7 +314,7 @@ describe('dataStore', () => {
 			const columnResult = await dataStoreService.getColumns(dataStore.id);
 			expect(columnResult).toEqual([
 				{
-					columnIndex: 0,
+					index: 0,
 					dataStoreId: dataStore.id,
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
@@ -322,7 +322,7 @@ describe('dataStore', () => {
 					type: 'string',
 				},
 				{
-					columnIndex: 1,
+					index: 1,
 					dataStoreId: dataStore.id,
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
@@ -330,7 +330,7 @@ describe('dataStore', () => {
 					type: 'string',
 				},
 				{
-					columnIndex: 2,
+					index: 2,
 					dataStoreId: dataStore.id,
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
@@ -338,7 +338,7 @@ describe('dataStore', () => {
 					type: 'number',
 				},
 				{
-					columnIndex: 3,
+					index: 3,
 					dataStoreId: dataStore.id,
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
@@ -346,7 +346,7 @@ describe('dataStore', () => {
 					type: 'number',
 				},
 				{
-					columnIndex: 4,
+					index: 4,
 					dataStoreId: dataStore.id,
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
@@ -448,7 +448,7 @@ describe('dataStore', () => {
 			const columns = await dataStoreService.getColumns(dataStore.id);
 			expect(columns).toEqual([
 				{
-					columnIndex: 0,
+					index: 0,
 					dataStoreId: dataStore.id,
 					id: c2.id,
 					name: 'myColumn2',
@@ -530,14 +530,14 @@ describe('dataStore', () => {
 			const columns = await dataStoreService.getColumns(dataStore.id);
 			expect(columns).toMatchObject([
 				{
-					columnIndex: 0,
+					index: 0,
 					dataStoreId: dataStore.id,
 					id: c2.id,
 					name: 'myColumn2',
 					type: 'number',
 				},
 				{
-					columnIndex: 1,
+					index: 1,
 					dataStoreId: dataStore.id,
 					id: c1.id,
 					name: 'myColumn1',

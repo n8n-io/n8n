@@ -20,10 +20,10 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 			.where('dsc.dataStoreId = :dataStoreId', { dataStoreId: rawDataStoreId })
 			.getMany();
 
-		// Ensure columns are always returned in the correct order by columnIndex,
+		// Ensure columns are always returned in the correct order by index,
 		// since the database does not guarantee ordering and TypeORM does not preserve
 		// join order in @OneToMany relations.
-		columns.sort((a, b) => a.columnIndex - b.columnIndex);
+		columns.sort((a, b) => a.index - b.index);
 
 		return columns;
 	}
@@ -41,11 +41,11 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 				);
 			}
 
-			if (schema.columnIndex === undefined) {
+			if (schema.index === undefined) {
 				const columns = await this.getColumns(dataStoreId, em);
-				schema.columnIndex = columns.length;
+				schema.index = columns.length;
 			} else {
-				await this.shiftColumns(dataStoreId, schema.columnIndex, 1, em);
+				await this.shiftColumns(dataStoreId, schema.index, 1, em);
 			}
 
 			const column = em.create(DataStoreColumnEntity, {
@@ -84,7 +84,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 			await em.query(
 				deleteColumnQuery(toTableName(dataStoreId), column.name, em.connection.options.type),
 			);
-			await this.shiftColumns(dataStoreId, column.columnIndex, -1, em);
+			await this.shiftColumns(dataStoreId, column.index, -1, em);
 		});
 	}
 
@@ -109,13 +109,9 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 				throw new UserError(`tried to move column not present in data store '${rawDataStoreId}'`);
 			}
 
-			await this.shiftColumns(rawDataStoreId, existingColumn.columnIndex, -1, em);
+			await this.shiftColumns(rawDataStoreId, existingColumn.index, -1, em);
 			await this.shiftColumns(rawDataStoreId, targetIndex, 1, em);
-			await em.update(
-				DataStoreColumnEntity,
-				{ id: existingColumn.id },
-				{ columnIndex: targetIndex },
-			);
+			await em.update(DataStoreColumnEntity, { id: existingColumn.id }, { index: targetIndex });
 		});
 	}
 
@@ -130,9 +126,9 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumnEntity>
 			.createQueryBuilder()
 			.update(DataStoreColumnEntity)
 			.set({
-				columnIndex: () => `columnIndex + ${delta}`,
+				index: () => `index + ${delta}`,
 			})
-			.where('dataStoreId = :dataStoreId AND columnIndex >= :thresholdValue', {
+			.where('dataStoreId = :dataStoreId AND index >= :thresholdValue', {
 				dataStoreId: rawDataStoreId,
 				thresholdValue: lowestIndex,
 			})

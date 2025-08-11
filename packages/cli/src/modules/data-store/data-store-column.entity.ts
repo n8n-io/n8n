@@ -16,7 +16,7 @@ export class DataStoreColumnEntity extends WithStringId {
 	type: 'string' | 'number' | 'boolean' | 'date';
 
 	@Column({ type: 'int' })
-	columnIndex: number;
+	index: number;
 
 	@ManyToOne('DataStoreEntity', 'columns')
 	@JoinColumn({ name: 'dataStoreId' })
