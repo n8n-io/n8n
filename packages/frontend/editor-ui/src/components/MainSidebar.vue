@@ -342,7 +342,7 @@ const handleSelect = (key: string) => {
 		:shared="sharedItems"
 		:projects="projects"
 		:release-channel="settingsStore.settings.releaseChannel"
-		@createProject="handleMenuSelect('createProject')"
+		@createProject="handleMenuSelect('create-project')"
 	>
 		<template #createButton>
 			<N8nNavigationDropdown
