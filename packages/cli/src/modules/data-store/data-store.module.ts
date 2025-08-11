@@ -25,11 +25,6 @@ export class DataStoreModule implements ModuleInterface {
 		await Container.get(DataStoreAggregateService).start();
 	}
 
-	// Default modules aren't loaded without a settings() function
-	async settings() {
-		return {};
-	}
-
 	async entities() {
 		const { DataStoreEntity } = await import('./data-store.entity');
 		const { DataStoreColumnEntity } = await import('./data-store-column.entity');

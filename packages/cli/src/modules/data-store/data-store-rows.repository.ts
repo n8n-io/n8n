@@ -16,6 +16,7 @@ import {
 	splitRowsByExistence,
 } from './utils/sql-utils';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
 
 function getConditionAndParams(
@@ -106,12 +107,12 @@ export class DataStoreRowsRepository {
 	}
 
 	private getManyQuery(
-		dataStoreId: DataStoreUserTableName,
+		dataStoreTableName: DataStoreUserTableName,
 		dto: Partial<ListDataStoreContentQueryDto>,
 	): [QueryBuilder, QueryBuilder] {
 		const query = this.dataSource.createQueryBuilder();
 
-		query.from(dataStoreId, 'dataStore');
+		query.from(dataStoreTableName, 'dataStore');
 		this.applyFilters(query, dto);
 		const countQuery = query.clone().select('COUNT(*)');
 		this.applySorting(query, dto);
