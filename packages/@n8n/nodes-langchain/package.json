@@ -221,7 +221,7 @@
     "mongodb": "6.11.0",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "openai": "5.8.1",
+    "openai": "5.12.2",
     "pdf-parse": "1.1.1",
     "pg": "8.12.0",
     "proxy-from-env": "^1.1.0",
