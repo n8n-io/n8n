@@ -483,7 +483,7 @@ const showInsights = computed(() => {
 	return (
 		projectPages.isOverviewSubPage &&
 		insightsStore.isSummaryEnabled &&
-		(!personalizedTemplatesV2Store.isFeatureEnabled() || foldersStore.totalWorkflowCount > 0)
+		(!personalizedTemplatesV2Store.isFeatureEnabled() || workflowListResources.value.length > 0)
 	);
 });
 
