@@ -17,7 +17,7 @@ export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withIndexOn(['projectId', 'name'], true).withTimestamps;
+			.withUniqueConstraintOn(['projectId', 'name']).withTimestamps;
 
 		await createTable(DATA_STORE_COLUMN_TABLE_NAME)
 			.withColumns(
