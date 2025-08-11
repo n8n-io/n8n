@@ -6,7 +6,7 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 import { computed } from 'vue';
-import { NODE_DATA, PredefinedNodeData } from '../nodes/predefinedData';
+import { NODE_DATA, type PredefinedNodeData } from '../nodes/predefinedData';
 
 const PREDEFINED_NODES = Object.keys(NODE_DATA);
 
