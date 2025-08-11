@@ -40,11 +40,7 @@ export class ScenarioDataImporter {
 			// We need to update the id and name of the credential in the workflows
 			for (const workflow of data.workflows) {
 				this.replaceValuesInObject(workflow, credential.id, createdCredential.id);
-				this.replaceValuesInObject(
-					workflow,
-					credential.name,
-					this.getBenchmarkCredentialName(createdCredential),
-				);
+				this.replaceValuesInObject(workflow, credential.name, createdCredential.name);
 			}
 		}
 
