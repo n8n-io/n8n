@@ -1,4 +1,4 @@
-import { inTest, isContainedWithin, Logger } from '@n8n/backend-common';
+import { inTest, isContainedWithin, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
@@ -57,6 +57,7 @@ export class LoadNodesAndCredentials {
 		private readonly errorReporter: ErrorReporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async init() {
@@ -95,6 +96,10 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(
 				path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
 			);
+		}
+
+		for (const dir of this.moduleRegistry.loadDirs) {
+			await this.loadNodesFromNodeModules(dir);
 		}
 
 		await this.loadNodesFromCustomDirectories();
