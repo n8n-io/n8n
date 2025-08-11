@@ -3,6 +3,7 @@ import { TreeItem, TreeItemToggleEvent } from 'reka-ui';
 import { TreeItemType } from '.';
 import SidebarItem from './SidebarItem.vue';
 import SidebarCollapseTransition from './SidebarCollapseTransition.vue';
+import N8nText from '../N8nText';
 
 const props = withDefaults(
 	defineProps<{
@@ -61,8 +62,21 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 				:type="item.type"
 			/>
 			<SidebarCollapseTransition>
-				<ul class="children" v-if="isExpanded && item.type !== 'workflow' && item.children">
-					<SidebarTree :project-id="projectId" :tree-items="item.children" :level="level + 1" />
+				<ul class="children" v-if="isExpanded && item.type !== 'workflow'">
+					<N8nText
+						v-if="!item.children?.length"
+						class="childrenEmpty"
+						size="small"
+						color="text-light"
+					>
+						No workflows or folders
+					</N8nText>
+					<SidebarTree
+						v-else
+						:project-id="projectId"
+						:tree-items="item.children"
+						:level="level + 1"
+					/>
 				</ul>
 			</SidebarCollapseTransition>
 		</TreeItem>
@@ -86,5 +100,10 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 	margin-left: 12px;
 	border-left: 1px solid var(--color-foreground-light);
 	overflow: hidden;
+}
+
+.childrenEmpty {
+	display: block;
+	padding: 6px 4px;
 }
 </style>

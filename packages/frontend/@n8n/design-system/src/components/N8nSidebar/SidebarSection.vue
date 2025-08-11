@@ -6,6 +6,7 @@ import { IconName } from '../N8nIcon/icons';
 import SidebarItem from './SidebarItem.vue';
 import SidebarTree from './SidebarTree.vue';
 import SidebarCollapseTransition from './SidebarCollapseTransition.vue';
+import N8nText from '../N8nText';
 
 interface Props {
 	title: string;
@@ -45,9 +46,13 @@ const link = computed(() => {
 			:ariaLabel="`Toggle ${props.title} section`"
 			type="project"
 		/>
+
 		<SidebarCollapseTransition>
 			<div v-if="open.includes(id)" class="items">
-				<TreeRoot :items="props.items" :get-key="(item: TreeItemType) => item.id">
+				<N8nText class="itemsEmpty" v-if="!props.items.length" size="small" color="text-light"
+					>No workflows or folders</N8nText
+				>
+				<TreeRoot v-else :items="props.items" :get-key="(item: TreeItemType) => item.id">
 					<SidebarTree :project-id="props.id" :tree-items="props.items" :level="0" />
 				</TreeRoot>
 			</div>
@@ -63,5 +68,10 @@ const link = computed(() => {
 	border-left: 1px solid var(--color-foreground-light);
 	margin-bottom: 12px;
 	overflow: hidden;
+}
+
+.itemsEmpty {
+	display: block;
+	padding: 6px 4px;
 }
 </style>
