@@ -63,7 +63,7 @@ const youtubeVideos = computed(() => {
 const starterLink = computed(() => {
 	const name = nodeTypes.value.get(selectedNode.value)?.displayName ?? '';
 	const encodedName = encodeURIComponent(name);
-	return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?integrations='${encodedName}&q=Simple`;
+	return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?integrations=${encodedName}&q=Simple`;
 });
 
 const popularLink = computed(() => {
