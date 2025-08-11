@@ -307,12 +307,12 @@
 				background: var(--color-focus-border);
 				border-color: var(--color-focus-border);
 			}
-
 			.multiselect-checkbox:checked::after {
 				content: '✔';
 				position: absolute;
-				top: -2px;
-				left: 2px;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
 				color: white;
 				font-size: var(--font-size-label);
 				font-weight: bold;
