@@ -122,6 +122,16 @@ MacOS:
 
 No additional packages required.
 
+#### actionlint (for GitHub Actions workflow development)
+
+If you plan to modify GitHub Actions workflow files (`.github/workflows/*.yml`), you'll need [actionlint](https://github.com/rhysd/actionlint) for workflow validation:
+
+**macOS (Homebrew):**
+```
+brew install actionlint
+```
+> **Note:** actionlint is only required if you're modifying workflow files. It runs automatically via git hooks when workflow files are changed.
+
 ### Actual n8n setup
 
 > **IMPORTANT**: All the steps below have to get executed at least once to get the development setup up and running!
