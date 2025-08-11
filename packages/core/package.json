@@ -59,7 +59,6 @@
     "http-proxy-agent": "catalog:",
     "https-proxy-agent": "catalog:",
     "iconv-lite": "catalog:",
-    "jsdom": "23.0.1",
     "jsonwebtoken": "catalog:",
     "lodash": "catalog:",
     "luxon": "catalog:",
