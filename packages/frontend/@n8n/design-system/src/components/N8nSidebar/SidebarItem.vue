@@ -57,12 +57,12 @@ const active = computed(() => {
 .sidebarItem {
 	display: flex;
 	align-items: center;
-	padding: 6px 4px;
-	gap: 4px;
+	padding: var(--spacing-3xs) var(--spacing-4xs);
+	gap: var(--spacing-4xs);
 	cursor: pointer;
 	width: 100%;
 	color: var(--color-text-base);
-	border-radius: 4px;
+	border-radius: var(--spacing-4xs);
 	margin-top: 1px;
 	cursor: pointer;
 
@@ -94,9 +94,9 @@ const active = computed(() => {
 
 .sidebarItemDropdown {
 	position: relative;
-	width: 16px;
-	height: 16px;
-	min-width: 16px;
+	width: var(--spacing-s);
+	height: var(--spacing-s);
+	min-width: var(--spacing-s);
 	border-radius: var(--border-radius-small);
 
 	.sidebarItemDropdownIcon {
@@ -126,9 +126,9 @@ const active = computed(() => {
 	cursor: pointer;
 	outline: none;
 	border: none;
-	width: 16px;
-	height: 16px;
-	border-radius: 2px;
+	width: var(--spacing-s);
+	height: var(--spacing-s);
+	border-radius: var(--border-radius-small);
 	padding: 0;
 	opacity: 0;
 }
@@ -145,7 +145,7 @@ const active = computed(() => {
 }
 
 .sidebarItemEmoji {
-	font-size: 16px;
+	font-size: var(--spacing-s);
 	line-height: 1;
 }
 

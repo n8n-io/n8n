@@ -96,14 +96,14 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 
 .children {
 	position: relative;
-	padding-left: 8px;
-	margin-left: 12px;
+	padding-left: var(--spacing-2xs);
+	margin-left: var(--spacing-xs);
 	border-left: 1px solid var(--color-foreground-light);
 	overflow: hidden;
 }
 
 .childrenEmpty {
 	display: block;
-	padding: 6px 4px;
+	padding: var(--spacing-3xs) var(--spacing-4xs);
 }
 </style>

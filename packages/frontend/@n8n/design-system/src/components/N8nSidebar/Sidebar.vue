@@ -250,7 +250,7 @@ onUnmounted(() => {
 	height: 100%;
 	overflow-x: hidden;
 	overflow-y: auto;
-	border-right: 1px solid var(--color-foreground-base);
+	border-right: var(--border-base);
 	display: flex;
 	flex-direction: column;
 }
@@ -258,13 +258,13 @@ onUnmounted(() => {
 .resizeWrapperHidden,
 .resizeWrapperPeak {
 	position: fixed;
-	height: calc(100vh - 64px);
-	top: 20px;
+	height: calc(100vh - var(--spacing-3xl));
+	top: 0;
 	z-index: 1000;
-	border-bottom-right-radius: 8px;
-	border-top-right-radius: 8px;
-	border-top: 1px solid var(--color-foreground-base);
-	border-bottom: 1px solid var(--color-foreground-base);
+	border-bottom-right-radius: var(--border-radius-large);
+	border-top-right-radius: var(--border-radius-large);
+	border-top: var(--border-base);
+	border-bottom: var(--border-base);
 }
 
 /* exit */
@@ -280,7 +280,7 @@ onUnmounted(() => {
 }
 
 .sidebar {
-	padding: 12px;
+	padding: var(--spacing-2xs);
 	background-color: var(--color-foreground-xlight);
 	position: relative;
 	max-height: 100%;
@@ -297,8 +297,8 @@ onUnmounted(() => {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: 12px;
-	gap: 8px;
+	margin-bottom: var(--spacing-2xs);
+	gap: var(--spacing-2xs);
 }
 
 .sidebarHeaderLogo {
@@ -306,12 +306,12 @@ onUnmounted(() => {
 }
 
 .sidebarSubheader {
-	margin: 16px 0 8px;
+	margin: var(--spacing-s) 0 var(--spacing-2xs);
 	display: block;
 }
 
 .sidebarFooter {
-	padding-top: 32px;
+	padding-top: var(--spacing-xl);
 	position: sticky;
 	top: 100%;
 	margin-top: auto;
@@ -328,16 +328,16 @@ onUnmounted(() => {
 .toggleTooltip {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: var(--spacing-2xs);
 }
 
 .sidebarUserArea {
 	position: relative;
-	padding: 12px;
+	padding: var(--spacing-2xs);
 	background-color: var(--color-foreground-xlight);
-	border-top: 1px solid var(--color-foreground-base);
+	border-top: var(--border-base);
 	display: flex;
-	gap: 8px;
+	gap: var(--spacing-2xs);
 
 	align-items: center;
 }
@@ -347,13 +347,13 @@ onUnmounted(() => {
 }
 
 .sidebarProjectsEmpty {
-	padding: 24px 12px;
+	padding: var(--spacing-l) var(--spacing-2xs);
 	text-align: center;
 	border: dashed 1px var(--color-foreground-base);
 	border-radius: var(--border-radius-small);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 8px;
+	gap: var(--spacing-2xs);
 }
 </style>

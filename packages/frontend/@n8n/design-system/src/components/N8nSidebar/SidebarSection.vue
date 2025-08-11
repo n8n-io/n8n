@@ -63,15 +63,15 @@ const link = computed(() => {
 <style lang="scss" scoped>
 .items {
 	position: relative;
-	padding-left: 8px;
-	margin-left: 12px;
+	padding-left: var(--spacing-2xs);
 	border-left: 1px solid var(--color-foreground-light);
-	margin-bottom: 12px;
+	margin-bottom: var(--spacing-xs);
+	margin-left: var(--spacing-xs);
 	overflow: hidden;
 }
 
 .itemsEmpty {
 	display: block;
-	padding: 6px 4px;
+	padding: var(--spacing-3xs) var(--spacing-4xs);
 }
 </style>
