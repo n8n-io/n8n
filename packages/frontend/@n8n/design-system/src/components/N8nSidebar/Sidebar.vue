@@ -8,7 +8,7 @@ import SidebarItem from './SidebarItem.vue';
 import SidebarSection from './SidebarSection.vue';
 import N8nResizeWrapper from '../N8nResizeWrapper';
 import type { ResizeData } from '@n8n/design-system/types';
-import { N8nIconButton, N8nTooltip } from '..';
+import { N8nButton, N8nIconButton, N8nTooltip } from '..';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 
 const props = defineProps<{
@@ -16,6 +16,10 @@ const props = defineProps<{
 	shared: TreeItemType[];
 	projects: { title: string; id: string; icon: IconName; items: TreeItemType[] }[];
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
+}>();
+
+defineEmits<{
+	(createProject: void): void;
 }>();
 
 const state = ref<'open' | 'hidden' | 'peak'>('open');
@@ -73,6 +77,10 @@ function peakMouseOver(event: MouseEvent) {
 onMounted(() => {
 	window.addEventListener('keydown', (event) => {
 		if (event.key === ']') {
+			const target = event.target as HTMLElement;
+			if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+				return;
+			}
 			toggleSidebar();
 		}
 	});
@@ -159,6 +167,7 @@ onUnmounted(() => {
 			/>
 			<N8nText size="small" bold color="text-light" class="sidebarSubheader">Projects</N8nText>
 			<SidebarSection
+				v-if="props.projects.length"
 				v-for="project in props.projects"
 				:title="project.title"
 				:id="project.id"
@@ -168,6 +177,16 @@ onUnmounted(() => {
 				:selectable="false"
 				:collapsible="false"
 			/>
+			<div class="sidebarProjectsEmpty" v-else>
+				<N8nButton
+					text
+					size="small"
+					icon="plus"
+					type="secondary"
+					label="Create project"
+					@click="$emit('createProject')"
+				/>
+			</div>
 			<footer class="sidebarFooter">
 				<SidebarItem title="Admin panel" id="templates" icon="cloud" type="other" />
 				<SidebarItem title="Templates" id="templates" icon="box" type="other" />
@@ -325,5 +344,16 @@ onUnmounted(() => {
 
 .userName {
 	margin-right: auto;
+}
+
+.sidebarProjectsEmpty {
+	padding: 24px 12px;
+	text-align: center;
+	border: dashed 1px var(--color-foreground-base);
+	border-radius: var(--border-radius-small);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
 }
 </style>
