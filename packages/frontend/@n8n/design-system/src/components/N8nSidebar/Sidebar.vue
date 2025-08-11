@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 import { TreeItemType } from '.';
 import { IconName } from '../N8nIcon/icons';
 import N8nLogo from '../N8nLogo';
@@ -7,72 +7,34 @@ import N8nText from '../N8nText';
 import SidebarItem from './SidebarItem.vue';
 import SidebarSection from './SidebarSection.vue';
 import N8nResizeWrapper from '../N8nResizeWrapper';
-import type { ResizeData } from '@n8n/design-system/types';
 import { N8nButton, N8nIconButton, N8nTooltip } from '..';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
+import { useSidebarLayout } from './useSidebarLayout';
 
 const props = defineProps<{
 	personal: { id: string; items: TreeItemType[] };
 	shared: TreeItemType[];
 	projects: { title: string; id: string; icon: IconName; items: TreeItemType[] }[];
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
+	localStorageWidthKey: string;
+	localStorageStateKey: string;
 }>();
 
 defineEmits<{
 	(createProject: void): void;
 }>();
 
-const state = ref<'open' | 'hidden' | 'peak'>('open');
-const sidebarWidth = ref(300);
-const isResizing = ref(false);
-
-function toggleSidebar() {
-	if (state.value === 'open') {
-		state.value = 'hidden';
-	} else {
-		state.value = 'open';
-	}
-}
-
-function peakSidebar() {
-	state.value = 'peak';
-}
-
-const panelIcon = computed(() => {
-	return state.value === 'open' ? 'panel-left-close' : 'panel-left-open';
-});
-
-function onResizeStart() {
-	isResizing.value = true;
-}
-
-function onResize(event: ResizeData) {
-	if (event.x < 30) {
-		state.value = 'hidden';
-		return;
-	}
-
-	sidebarWidth.value = event.width;
-}
-
-function onResizeEnd() {
-	isResizing.value = false;
-}
-
-function peakMouseOver(event: MouseEvent) {
-	if (event.relatedTarget == null) {
-		return;
-	}
-
-	const target = event.relatedTarget as Element;
-
-	const isSidebar = target.closest('.sidebar') || target.closest('.resizeWrapper');
-	const isInteractiveArea = target.closest('.interactiveArea');
-
-	if (state.value === 'peak' && !isSidebar && !isInteractiveArea && !isResizing.value) {
-		state.value = 'hidden';
-	}
-}
+const {
+	state,
+	sidebarWidth,
+	panelIcon,
+	toggleSidebar,
+	peakSidebar,
+	onResizeStart,
+	onResize,
+	onResizeEnd,
+	peakMouseOver,
+} = useSidebarLayout({});
 
 onMounted(() => {
 	window.addEventListener('keydown', (event) => {
@@ -259,7 +221,7 @@ onUnmounted(() => {
 .resizeWrapperPeak {
 	position: fixed;
 	height: calc(100vh - var(--spacing-3xl));
-	top: 0;
+	top: var(--spacing-l);
 	z-index: 1000;
 	border-bottom-right-radius: var(--border-radius-large);
 	border-top-right-radius: var(--border-radius-large);

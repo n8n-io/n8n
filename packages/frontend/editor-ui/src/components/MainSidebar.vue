@@ -13,7 +13,14 @@ import {
 	N8nButton,
 } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
-import { ABOUT_MODAL_KEY, RELEASE_NOTES_URL, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
+import {
+	ABOUT_MODAL_KEY,
+	RELEASE_NOTES_URL,
+	VIEWS,
+	WHATS_NEW_MODAL_KEY,
+	LOCAL_STORAGE_SIDEBAR_WIDTH,
+	LOCAL_STORAGE_SIDEBAR_STATE,
+} from '@/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -342,6 +349,8 @@ const handleSelect = (key: string) => {
 		:shared="sharedItems"
 		:projects="projects"
 		:release-channel="settingsStore.settings.releaseChannel"
+		:local-storage-width-key="LOCAL_STORAGE_SIDEBAR_WIDTH"
+		:local-storage-state-key="LOCAL_STORAGE_SIDEBAR_STATE"
 		@createProject="handleMenuSelect('create-project')"
 	>
 		<template #createButton>
