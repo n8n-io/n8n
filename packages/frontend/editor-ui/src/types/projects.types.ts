@@ -1,3 +1,4 @@
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { Scope, ProjectRole } from '@n8n/permissions';
 import type { IUserResponse } from '@n8n/rest-api-client/api/users';
 
@@ -17,7 +18,7 @@ export type ProjectRelationPayload = { userId: string; role: ProjectRole };
 export type ProjectSharingData = {
 	id: string;
 	name: string | null;
-	icon: { type: 'emoji'; value: string } | { type: 'icon'; value: string } | null;
+	icon: { type: 'emoji'; value: string } | { type: 'icon'; value: IconName } | null;
 	type: ProjectType;
 	description?: string | null;
 	createdAt: string;
