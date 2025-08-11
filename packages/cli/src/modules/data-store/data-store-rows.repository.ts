@@ -92,9 +92,9 @@ export class DataStoreRowsRepository {
 	) {
 		const [countQuery, query] = this.getManyQuery(dataStoreId, dto);
 		const data: Array<Record<string, unknown>> = await query.select('*').getRawMany();
-		const countResult = (await countQuery.select('COUNT(*) as count').getRawOne()) as {
+		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 			count: number | string | null;
-		};
+		}>();
 		const count =
 			typeof countResult?.count === 'number' ? countResult.count : Number(countResult?.count) || 0;
 		return { count: count ?? -1, data };
@@ -102,8 +102,8 @@ export class DataStoreRowsRepository {
 
 	async getRowIds(dataStoreId: DataStoreUserTableName, dto: Partial<ListDataStoreContentQueryDto>) {
 		const [_, query] = this.getManyQuery(dataStoreId, dto);
-		const result = await query.select('dataStore.id').getRawMany();
-		return result as number[];
+		const result = await query.select('dataStore.id').getRawMany<number>();
+		return result;
 	}
 
 	private getManyQuery(
