@@ -276,7 +276,7 @@ export const formFields: INodeProperties = {
 				},
 				{
 					displayName:
-						'Multiple Choice is a legacy option, pleas use Checkboxes or Radio Buttons field type instead',
+						'Multiple Choice is a legacy option, please use Checkboxes or Radio Buttons field type instead',
 					name: 'multiselectLegacyNotice',
 					type: 'notice',
 					default: '',
