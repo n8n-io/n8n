@@ -119,7 +119,7 @@ describe('isJsonCompatible', () => {
 	const objectRef = {};
 	test.each([
 		{ name: 'null', value: { null: null } },
-		{ name: 'undefined', value: { undefined: undefined } },
+		{ name: 'undefined', value: { noValue: undefined } },
 		{ name: 'an array of primitives', value: { array: [1, 'string', true, false] } },
 		{
 			name: 'an object without a prototype chain',
