@@ -1,8 +1,8 @@
 import { ApplicationError } from '@n8n/errors';
 
-import { ExecutionError } from '@/js-task-runner/errors/execution-error';
-
 import { createRequireResolver, type RequireResolverOpts } from '../require-resolver';
+
+import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 
 describe('require resolver', () => {
 	let defaultOpts: RequireResolverOpts;
