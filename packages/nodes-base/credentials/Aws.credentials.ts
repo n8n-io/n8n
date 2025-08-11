@@ -9,7 +9,7 @@ import type {
 	INodeProperties,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { isObjectEmpty } from 'n8n-workflow';
+import { ApplicationError, isObjectEmpty } from 'n8n-workflow';
 import { parseString } from 'xml2js';
 
 export const regions = [
@@ -588,20 +588,20 @@ export class Aws implements ICredentialType {
 
 		if (credentialType === 'assumeRole') {
 			if (!credentials.roleArn || credentials.roleArn.trim() === '') {
-				throw new Error('Role ARN is required when assuming a role.');
+				throw new ApplicationError('Role ARN is required when assuming a role.');
 			}
 			if (!credentials.externalId || credentials.externalId.trim() === '') {
-				throw new Error('External ID is required when assuming a role.');
+				throw new ApplicationError('External ID is required when assuming a role.');
 			}
 			if (!credentials.roleSessionName || credentials.roleSessionName.trim() === '') {
-				throw new Error('Role Session Name is required when assuming a role.');
+				throw new ApplicationError('Role Session Name is required when assuming a role.');
 			}
 			try {
 				assumedCredentials = await this.assumeRole(credentials, region);
 				finalCredentials = { ...credentials, ...assumedCredentials };
 			} catch (error) {
 				console.error('Failed to assume role:', error);
-				throw new Error(
+				throw new ApplicationError(
 					`Failed to assume role: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				);
 			}
@@ -766,10 +766,10 @@ export class Aws implements ICredentialType {
 		if (credentialType === 'iam') {
 			// Use manually provided credentials
 			if (!credentials.accessKeyId || credentials.accessKeyId.trim() === '') {
-				throw new Error('Access Key ID is required for IAM credentials.');
+				throw new ApplicationError('Access Key ID is required for IAM credentials.');
 			}
 			if (!credentials.secretAccessKey || credentials.secretAccessKey.trim() === '') {
-				throw new Error('Secret Access Key is required for IAM credentials.');
+				throw new ApplicationError('Secret Access Key is required for IAM credentials.');
 			}
 			return {
 				accessKeyId: `${credentials.accessKeyId}`.trim(),
@@ -779,7 +779,9 @@ export class Aws implements ICredentialType {
 					: undefined,
 			};
 		} else {
-			throw new Error('Invalid credential type. Expected IAM credentials for direct access.');
+			throw new ApplicationError(
+				'Invalid credential type. Expected IAM credentials for direct access.',
+			);
 		}
 	}
 
@@ -996,7 +998,7 @@ export class Aws implements ICredentialType {
 			// Use system credentials for the STS call
 			const systemCredentials = await this.getSystemCredentials();
 			if (!systemCredentials) {
-				throw new Error(
+				throw new ApplicationError(
 					'System AWS credentials are required for role assumption. Please ensure AWS credentials are available via environment variables, instance metadata, or container role.',
 				);
 			}
@@ -1004,10 +1006,14 @@ export class Aws implements ICredentialType {
 		} else {
 			// Use manually provided STS credentials
 			if (!credentials.stsAccessKeyId || credentials.stsAccessKeyId.trim() === '') {
-				throw new Error('STS Access Key ID is required when not using system credentials.');
+				throw new ApplicationError(
+					'STS Access Key ID is required when not using system credentials.',
+				);
 			}
 			if (!credentials.stsSecretAccessKey || credentials.stsSecretAccessKey.trim() === '') {
-				throw new Error('STS Secret Access Key is required when not using system credentials.');
+				throw new ApplicationError(
+					'STS Secret Access Key is required when not using system credentials.',
+				);
 			}
 
 			// For backward compatibility: if temporaryStsCredentials is not set, default to false
@@ -1060,7 +1066,7 @@ export class Aws implements ICredentialType {
 			sign(signOpts, stsCallCredentials);
 		} catch (err) {
 			console.error('Failed to sign STS request:', err);
-			throw new Error('Failed to sign STS request');
+			throw new ApplicationError('Failed to sign STS request');
 		}
 
 		// Make the STS request
@@ -1072,7 +1078,7 @@ export class Aws implements ICredentialType {
 
 		if (!response.ok) {
 			const errorText = await response.text();
-			throw new Error(
+			throw new ApplicationError(
 				`STS AssumeRole failed: ${response.status} ${response.statusText} - ${errorText}`,
 			);
 		}
@@ -1091,7 +1097,7 @@ export class Aws implements ICredentialType {
 		const assumeRoleResult = (responseData.AssumeRoleResponse as IDataObject)
 			?.AssumeRoleResult as IDataObject;
 		if (!assumeRoleResult?.Credentials) {
-			throw new Error('Invalid response from STS AssumeRole');
+			throw new ApplicationError('Invalid response from STS AssumeRole');
 		}
 
 		const assumedCredentials = assumeRoleResult.Credentials as IDataObject;
