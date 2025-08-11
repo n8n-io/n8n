@@ -201,6 +201,7 @@ overrides:
   date-fns: 2.30.0
   date-fns-tz: 2.0.0
   form-data: 4.0.4
+  tmp: 0.2.4
 
 patchedDependencies:
   '@lezer/highlight':
@@ -13288,10 +13289,6 @@ packages:
   os-browserify@0.3.0:
     resolution: {integrity: sha512-gjcpUc3clBf9+210TRaDWbf+rZZZEshZ+DlXMRCeAjp0xhTrnQsKHypIy1J3d5hKdUzj69t708EHtU8P6bUn0A==}
 
-  os-tmpdir@1.0.2:
-    resolution: {integrity: sha512-D2FR03Vir7FIu45XBY20mTb+/ZSWB00sjU9jdQXt83gDrI4Ztz5Fs7/yy74g2N5SVQY4xY1qDr4rNddwYRVX0g==}
-    engines: {node: '>=0.10.0'}
-
   ospath@1.2.2:
     resolution: {integrity: sha512-o6E5qJV5zkAbIDNhGSIlyOhScKXgQrSRMilfph0clDfM0nEnBOlKlH4sWDmG95BW/CvwNz0vmm7dJVtU2KlMiA==}
 
@@ -15258,12 +15255,8 @@ packages:
   tmp-promise@3.0.3:
     resolution: {integrity: sha512-RwM7MoPojPxsOBYnyd2hy0bxtIlVrihNs9pj5SUvY8Zz1sQcQG2tG1hSr8PDxfgEB8RNKDhqbIlroIarSNDNsQ==}
 
-  tmp@0.0.33:
-    resolution: {integrity: sha512-jRCJlojKnZ3addtTOjdIqoRuPEKBvNXcGYqzO6zWZX8KfKEpnGY5jfggJQ3EjKuu8D4bJRr0y+cYJFmYbImXGw==}
-    engines: {node: '>=0.6.0'}
-
-  tmp@0.2.3:
-    resolution: {integrity: sha512-nZD7m9iCPC5g0pYmcaxogYKggSfLsdxl8of3Q/oIbqCqLLIO9IAF0GWjX1z9NZRHPiXv8Wex4yDCaZsgEw0Y8w==}
+  tmp@0.2.4:
+    resolution: {integrity: sha512-UdiSoX6ypifLmrfQ/XfiawN6hkjSBpCjhKxxZcWlUUmoXLaCKQU0bx4HF/tdDK2uzRuchf1txGvrWBzYREssoQ==}
     engines: {node: '>=14.14'}
 
   tmpl@1.0.5:
@@ -18700,7 +18693,7 @@ snapshots:
       regexp.escape: 2.0.1
       source-map-support: 0.5.21
       stack-utils: 2.0.6
-      tmp: 0.2.3
+      tmp: 0.2.4
       tmp-promise: 3.0.3
       ts-pattern: 5.7.1
       ws: 8.18.2
@@ -24552,7 +24545,7 @@ snapshots:
       request-progress: 3.0.0
       semver: 7.7.2
       supports-color: 8.1.1
-      tmp: 0.2.3
+      tmp: 0.2.4
       tree-kill: 1.2.2
       untildify: 4.0.0
       yauzl: 2.10.0
@@ -25815,7 +25808,7 @@ snapshots:
     dependencies:
       chardet: 0.7.0
       iconv-lite: 0.4.24
-      tmp: 0.0.33
+      tmp: 0.2.4
 
   extract-zip@2.0.1(supports-color@8.1.1):
     dependencies:
@@ -25904,7 +25897,7 @@ snapshots:
     dependencies:
       readline-sync: 1.4.10
       sprintf-js: 1.1.2
-      tmp: 0.0.33
+      tmp: 0.2.4
 
   fetch-blob@3.2.0:
     dependencies:
@@ -29573,8 +29566,6 @@ snapshots:
 
   os-browserify@0.3.0: {}
 
-  os-tmpdir@1.0.2: {}
-
   ospath@1.2.2: {}
 
   otpauth@9.1.1:
@@ -31915,7 +31906,7 @@ snapshots:
       properties-reader: 2.3.0
       ssh-remote-port-forward: 1.0.4
       tar-fs: 2.1.3
-      tmp: 0.2.3
+      tmp: 0.2.4
       undici: 7.10.0
     transitivePeerDependencies:
       - supports-color
@@ -31983,13 +31974,9 @@ snapshots:
 
   tmp-promise@3.0.3:
     dependencies:
-      tmp: 0.2.3
+      tmp: 0.2.4
 
-  tmp@0.0.33:
-    dependencies:
-      os-tmpdir: 1.0.2
-
-  tmp@0.2.3: {}
+  tmp@0.2.4: {}
 
   tmpl@1.0.5: {}
 
