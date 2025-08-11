@@ -490,7 +490,7 @@ describe('Aws Credential', () => {
 				ok: false,
 				status: 403,
 				statusText: 'Forbidden',
-				text: async () => Promise.resolve('<Error><Message>Access Denied</Message></Error>'),
+				text: async () => '<Error><Message>Access Denied</Message></Error>',
 			};
 
 			// Mock fetch for role assumption
