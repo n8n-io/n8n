@@ -34,7 +34,7 @@ const active = computed(() => {
 </script>
 
 <template>
-	<N8nRoute :to="link" :class="{ sidebarItem: true, active }" @click.stop>
+	<N8nRoute :to="link" :class="{ sidebarItem: true, active }">
 		<div v-if="type !== 'workflow'" :class="{ sidebarItemDropdown: true, other: type === 'other' }">
 			<div class="sidebarItemDropdownIcon">
 				<span v-if="icon && !isSupportedIconName(icon)" class="sidebarItemEmoji">{{ icon }}</span>

@@ -46,7 +46,7 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 			v-slot="{ isExpanded, handleToggle }"
 			@toggle="preventDefault"
 			@select="preventDefault"
-			@click.stop
+			@click="preventDefault"
 			class="item"
 			:level="props.level"
 			:value="item"
