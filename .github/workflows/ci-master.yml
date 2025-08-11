@@ -13,7 +13,7 @@ jobs:
       matrix:
         node-version: [20.x, 22.x, 24.3.x]
     with:
-      ref: ${{ inputs.branch }}
+      ref: ${{ github.sha }}
       nodeVersion: ${{ matrix.node-version }}
       collectCoverage: ${{ matrix.node-version == '22.x' }}
     secrets:
@@ -23,7 +23,7 @@ jobs:
     name: Lint
     uses: ./.github/workflows/linting-reusable.yml
     with:
-      ref: ${{ inputs.branch }}
+      ref: ${{ github.sha }}
 
   notify-on-failure:
     name: Notify Slack on failure
