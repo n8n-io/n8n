@@ -2,6 +2,7 @@
 import { TreeItem, TreeItemToggleEvent } from 'reka-ui';
 import { TreeItemType } from '.';
 import SidebarItem from './SidebarItem.vue';
+import SidebarCollapseTransition from './SidebarCollapseTransition.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -34,51 +35,6 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 		event.detail.originalEvent.preventDefault();
 	}
 }
-
-const beforeEnter = (el: Element) => {
-	(el as HTMLElement).style.height = '0';
-	(el as HTMLElement).style.paddingTop = '0';
-	(el as HTMLElement).style.paddingBottom = '0';
-	(el as HTMLElement).style.marginBottom = '0';
-};
-
-const enter = (el: Element) => {
-	const htmlEl = el as HTMLElement;
-	// Get the natural height without any transforms
-	htmlEl.style.height = 'auto';
-	const height = htmlEl.offsetHeight;
-	htmlEl.style.height = '0';
-	// Force reflow
-	htmlEl.offsetHeight;
-	// Animate to natural height
-	htmlEl.style.height = height + 'px';
-	htmlEl.style.paddingTop = '';
-	htmlEl.style.paddingBottom = '';
-	htmlEl.style.marginBottom = '';
-};
-
-const afterEnter = (el: Element) => {
-	(el as HTMLElement).style.height = 'auto';
-};
-
-const beforeLeave = (el: Element) => {
-	(el as HTMLElement).style.height = (el as HTMLElement).offsetHeight + 'px';
-};
-
-const leave = (el: Element) => {
-	(el as HTMLElement).style.height = '0';
-	(el as HTMLElement).style.paddingTop = '0';
-	(el as HTMLElement).style.paddingBottom = '0';
-	(el as HTMLElement).style.marginBottom = '0';
-};
-
-const afterLeave = (el: Element) => {
-	const htmlEl = el as HTMLElement;
-	htmlEl.style.height = '';
-	htmlEl.style.paddingTop = '';
-	htmlEl.style.paddingBottom = '';
-	htmlEl.style.marginBottom = '';
-};
 </script>
 
 <template>
@@ -104,19 +60,11 @@ const afterLeave = (el: Element) => {
 				:ariaLabel="`Open ${item.label}`"
 				:type="item.type"
 			/>
-			<Transition
-				name="collapse-transition"
-				@before-enter="beforeEnter"
-				@enter="enter"
-				@after-enter="afterEnter"
-				@before-leave="beforeLeave"
-				@leave="leave"
-				@after-leave="afterLeave"
-			>
+			<SidebarCollapseTransition>
 				<ul class="children" v-if="isExpanded && item.type !== 'workflow' && item.children">
 					<SidebarTree :project-id="projectId" :tree-items="item.children" :level="level + 1" />
 				</ul>
-			</Transition>
+			</SidebarCollapseTransition>
 		</TreeItem>
 	</li>
 </template>
@@ -137,16 +85,6 @@ const afterLeave = (el: Element) => {
 	padding-left: 8px;
 	margin-left: 12px;
 	border-left: 1px solid var(--color-foreground-light);
-	overflow: hidden;
-}
-
-// Section collapse animation - height only, no scaling
-.collapse-transition-enter-active,
-.collapse-transition-leave-active {
-	transition:
-		height 0.3s cubic-bezier(0.645, 0.045, 0.355, 1),
-		padding 0.3s cubic-bezier(0.645, 0.045, 0.355, 1),
-		margin 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
 	overflow: hidden;
 }
 </style>
