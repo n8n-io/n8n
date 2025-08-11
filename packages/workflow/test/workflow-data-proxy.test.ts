@@ -262,8 +262,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Error finding the referenced node');
-				expect(exprError.context.type).toEqual('paired_item_no_connection');
+				expect(exprError.message).toEqual('No execution data available');
 			}
 		});
 

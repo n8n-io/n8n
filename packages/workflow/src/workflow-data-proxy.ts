@@ -1090,28 +1090,6 @@ export class WorkflowDataProxy {
 					}
 				};
 
-				const ensureValidPath = () => {
-					// Check path before execution data
-					const referencedNode = that.workflow.getNode(nodeName);
-					if (!referencedNode) {
-						throw createNodeReferenceError(nodeName);
-					}
-
-					const activeNode = that.workflow.getNode(that.activeNodeName);
-					let contextNode = that.contextNodeName;
-					if (activeNode) {
-						const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
-						contextNode = parentMainInputNode?.name ?? contextNode;
-					}
-
-					// For .first(), .last(), .all() methods, use unidirectional path checking
-					// (forward only) to maintain traditional paired item behavior
-					const hasForwardPath = that.workflow.getChildNodes(nodeName).includes(contextNode);
-					if (!hasForwardPath) {
-						throw createNodeReferenceError(nodeName);
-					}
-				};
-
 				return new Proxy(
 					{},
 					{
@@ -1242,7 +1220,6 @@ export class WorkflowDataProxy {
 							}
 
 							if (property === 'first') {
-								ensureValidPath();
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
@@ -1261,7 +1238,6 @@ export class WorkflowDataProxy {
 								};
 							}
 							if (property === 'last') {
-								ensureValidPath();
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
@@ -1283,7 +1259,6 @@ export class WorkflowDataProxy {
 								};
 							}
 							if (property === 'all') {
-								ensureValidPath();
 								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									branchIndex =
