@@ -1,9 +1,29 @@
+import fs from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { DirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import watcher from '@parcel/watcher';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
+import { Service } from '@n8n/di';
+
+jest.mock('lodash/debounce', () => (fn: () => void) => fn);
+
+jest.mock('@parcel/watcher', () => ({
+	subscribe: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('fs/promises');
+
+jest.mock('@/push', () => {
+	@Service()
+	class Push {
+		broadcast = jest.fn();
+	}
+
+	return { Push };
+});
 
 describe('LoadNodesAndCredentials', () => {
 	describe('resolveIcon', () => {
@@ -420,6 +440,70 @@ describe('LoadNodesAndCredentials', () => {
 					resources: {},
 				},
 			});
+		});
+	});
+
+	describe('setupHotReload', () => {
+		let instance: LoadNodesAndCredentials;
+
+		const mockLoader = mock<DirectoryLoader>({
+			packageName: 'CUSTOM',
+			directory: '/some/custom/path',
+			isLazyLoaded: false,
+			reset: jest.fn(),
+			loadAll: jest.fn(),
+		});
+
+		beforeEach(() => {
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance.loaders = { CUSTOM: mockLoader };
+
+			// Allow access to directory
+			(fs.access as jest.Mock).mockResolvedValue(undefined);
+
+			// Simulate custom node dir structure
+			(fs.readdir as jest.Mock).mockResolvedValue([
+				{ name: 'test-node', isDirectory: () => true, isSymbolicLink: () => false },
+			]);
+
+			// Simulate symlink resolution
+			(fs.realpath as jest.Mock).mockResolvedValue('/resolved/test-node');
+		});
+
+		afterEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should subscribe to file changes and reload on changes', async () => {
+			const postProcessSpy = jest
+				.spyOn(instance, 'postProcessLoaders')
+				.mockResolvedValue(undefined);
+			const subscribe = jest.mocked(watcher.subscribe);
+
+			await instance.setupHotReload();
+
+			console.log(subscribe);
+			expect(subscribe).toHaveBeenCalledTimes(2);
+			expect(subscribe).toHaveBeenCalledWith('/some/custom/path', expect.any(Function), {
+				ignore: ['**/node_modules/**/node_modules/**'],
+			});
+			expect(subscribe).toHaveBeenCalledWith('/resolved/test-node', expect.any(Function), {
+				ignore: ['**/node_modules/**/node_modules/**'],
+			});
+
+			const [watchPath, onFileUpdate] = subscribe.mock.calls[0];
+
+			expect(watchPath).toBe('/some/custom/path');
+
+			// Simulate file change
+			const fakeModule = '/some/custom/path/some-module.js';
+			require.cache[fakeModule] = mock<NodeJS.Module>({ filename: fakeModule });
+			await onFileUpdate(null, [{ type: 'update', path: fakeModule }]);
+
+			expect(require.cache[fakeModule]).toBeUndefined(); // cache should be cleared
+			expect(mockLoader.reset).toHaveBeenCalled();
+			expect(mockLoader.loadAll).toHaveBeenCalled();
+			expect(postProcessSpy).toHaveBeenCalled();
 		});
 	});
 });
