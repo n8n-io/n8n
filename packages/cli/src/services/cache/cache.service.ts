@@ -41,7 +41,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 			const prefixBase = this.globalConfig.redis.prefix;
 			const cachePrefix = this.globalConfig.cache.redis.prefix;
-			
+
 			// For cluster mode, we need to ensure proper hash tagging: {n8n:cache}:
 			// instead of {n8n:cache:} to keep the colon outside the hash tag
 			const hashTagPart = `${prefixBase}:${cachePrefix}`;
