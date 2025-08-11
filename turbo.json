@@ -23,7 +23,7 @@
 		},
 		"test": {
 			"dependsOn": ["^build", "build"],
-			"outputs": ["coverage/**", "*.xml"]
+			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"]
 		},
 		"watch": { "cache": false, "persistent": true },
 		"dev": { "cache": false, "persistent": true },

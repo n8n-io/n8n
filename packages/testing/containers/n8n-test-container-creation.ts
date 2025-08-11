@@ -66,6 +66,10 @@ export interface N8NConfig {
 		  };
 	env?: Record<string, string>;
 	projectName?: string;
+	resourceQuota?: {
+		memory?: number; // in GB
+		cpu?: number; // in cores
+	};
 }
 
 export interface N8NStack {
@@ -97,7 +101,7 @@ export interface N8NStack {
  * });
  */
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
-	const { postgres = false, queueMode = false, env = {}, projectName } = config;
+	const { postgres = false, queueMode = false, env = {}, projectName, resourceQuota } = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const usePostgres = postgres || !!queueConfig;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
@@ -195,6 +199,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			uniqueProjectName,
 			environment,
 			network,
+			resourceQuota,
 		});
 		containers.push(...instances);
 
@@ -216,6 +221,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			environment,
 			network,
 			directPort: assignedPort,
+			resourceQuota,
 		});
 		containers.push(...instances);
 	}
@@ -285,6 +291,10 @@ interface CreateInstancesOptions {
 	environment: Record<string, string>;
 	network?: StartedNetwork;
 	directPort?: number;
+	resourceQuota?: {
+		memory?: number; // in GB
+		cpu?: number; // in cores
+	};
 }
 
 async function createN8NInstances({
@@ -295,6 +305,7 @@ async function createN8NInstances({
 	network,
 	/** The host port to use for the main instance */
 	directPort,
+	resourceQuota,
 }: CreateInstancesOptions): Promise<StartedTestContainer[]> {
 	const instances: StartedTestContainer[] = [];
 
@@ -311,6 +322,7 @@ async function createN8NInstances({
 			instanceNumber: i,
 			networkAlias,
 			directPort: i === 1 ? directPort : undefined, // Only first main gets direct port
+			resourceQuota,
 		});
 		instances.push(container);
 	}
@@ -325,6 +337,7 @@ async function createN8NInstances({
 			network,
 			isWorker: true,
 			instanceNumber: i,
+			resourceQuota,
 		});
 		instances.push(container);
 	}
@@ -341,6 +354,10 @@ interface CreateContainerOptions {
 	instanceNumber: number;
 	networkAlias?: string;
 	directPort?: number;
+	resourceQuota?: {
+		memory?: number; // in GB
+		cpu?: number; // in cores
+	};
 }
 
 async function createN8NContainer({
@@ -352,6 +369,7 @@ async function createN8NContainer({
 	instanceNumber,
 	networkAlias,
 	directPort,
+	resourceQuota,
 }: CreateContainerOptions): Promise<StartedTestContainer> {
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
@@ -367,8 +385,17 @@ async function createN8NContainer({
 		.withPullPolicy(new N8nImagePullPolicy(N8N_IMAGE))
 		.withName(name)
 		.withLogConsumer(consumer)
-		.withName(name)
 		.withReuse();
+
+	if (resourceQuota) {
+		console.log(
+			`📊 Applying resource limits to ${name}: ${resourceQuota.memory}GB memory, ${resourceQuota.cpu} CPU cores`,
+		);
+		container = container.withResourcesQuota({
+			memory: resourceQuota.memory,
+			cpu: resourceQuota.cpu,
+		});
+	}
 
 	if (network) {
 		container = container.withNetwork(network);
