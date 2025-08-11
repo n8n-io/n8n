@@ -4,6 +4,7 @@ import {
 	assertParamIsNumber,
 	assertParamIsBoolean,
 	assertParamIsArray,
+	assertParamIsOfAnyTypes,
 } from '../../src/node-parameters/parameter-type-validation';
 import type { INode } from '../../src/interfaces';
 
@@ -433,6 +434,151 @@ describe('Type assertion functions', () => {
 			);
 			expect(() => assertParamIsArray('testParam', [1, 'b', 3], isNumber, mockNode)).toThrow(
 				'Parameter "testParam" has elements that don\'t match expected types',
+			);
+		});
+	});
+
+	describe('assertParamIsOfAnyTypes', () => {
+		it('should pass for string value when string is in types array', () => {
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', 'hello', ['string'], mockNode),
+			).not.toThrow();
+		});
+
+		it('should pass for number value when number is in types array', () => {
+			expect(() => assertParamIsOfAnyTypes('testParam', 42, ['number'], mockNode)).not.toThrow();
+		});
+
+		it('should pass for boolean value when boolean is in types array', () => {
+			expect(() => assertParamIsOfAnyTypes('testParam', true, ['boolean'], mockNode)).not.toThrow();
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', false, ['boolean'], mockNode),
+			).not.toThrow();
+		});
+
+		it('should pass for string when multiple types include string', () => {
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', 'hello', ['string', 'number'], mockNode),
+			).not.toThrow();
+		});
+
+		it('should pass for number when multiple types include number', () => {
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', 42, ['string', 'number'], mockNode),
+			).not.toThrow();
+		});
+
+		it('should pass for boolean when multiple types include boolean', () => {
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', true, ['string', 'boolean'], mockNode),
+			).not.toThrow();
+		});
+
+		it('should pass for value matching any of three types', () => {
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', 'test', ['string', 'number', 'boolean'], mockNode),
+			).not.toThrow();
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', 123, ['string', 'number', 'boolean'], mockNode),
+			).not.toThrow();
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', false, ['string', 'number', 'boolean'], mockNode),
+			).not.toThrow();
+		});
+
+		it('should throw for string when types array does not include string', () => {
+			expect(() => assertParamIsOfAnyTypes('testParam', 'hello', ['number'], mockNode)).toThrow(
+				'Parameter "testParam" must be number',
+			);
+		});
+
+		it('should throw for number when types array does not include number', () => {
+			expect(() => assertParamIsOfAnyTypes('testParam', 42, ['string'], mockNode)).toThrow(
+				'Parameter "testParam" must be string',
+			);
+		});
+
+		it('should throw for boolean when types array does not include boolean', () => {
+			expect(() => assertParamIsOfAnyTypes('testParam', true, ['string'], mockNode)).toThrow(
+				'Parameter "testParam" must be string',
+			);
+		});
+
+		it('should throw for value that matches none of multiple types', () => {
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', 'hello', ['number', 'boolean'], mockNode),
+			).toThrow('Parameter "testParam" must be number or boolean');
+		});
+
+		it('should throw for null value', () => {
+			expect(() => assertParamIsOfAnyTypes('testParam', null, ['string'], mockNode)).toThrow(
+				'Parameter "testParam" must be string',
+			);
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', null, ['string', 'number'], mockNode),
+			).toThrow('Parameter "testParam" must be string or number');
+		});
+
+		it('should throw for undefined value', () => {
+			expect(() => assertParamIsOfAnyTypes('testParam', undefined, ['string'], mockNode)).toThrow(
+				'Parameter "testParam" must be string',
+			);
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', undefined, ['boolean', 'number'], mockNode),
+			).toThrow('Parameter "testParam" must be boolean or number');
+		});
+
+		it('should throw for object when primitive types are expected', () => {
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', {}, ['string', 'number'], mockNode),
+			).toThrow('Parameter "testParam" must be string or number');
+			expect(() => assertParamIsOfAnyTypes('testParam', [], ['boolean'], mockNode)).toThrow(
+				'Parameter "testParam" must be boolean',
+			);
+		});
+
+		it('should handle special number values correctly', () => {
+			expect(() => assertParamIsOfAnyTypes('testParam', NaN, ['number'], mockNode)).not.toThrow();
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', Infinity, ['number'], mockNode),
+			).not.toThrow();
+			expect(() =>
+				assertParamIsOfAnyTypes('testParam', -Infinity, ['number'], mockNode),
+			).not.toThrow();
+		});
+
+		it('should handle empty string correctly', () => {
+			expect(() => assertParamIsOfAnyTypes('testParam', '', ['string'], mockNode)).not.toThrow();
+		});
+
+		it('should handle zero correctly', () => {
+			expect(() => assertParamIsOfAnyTypes('testParam', 0, ['number'], mockNode)).not.toThrow();
+		});
+
+		it('should format error message correctly for single type', () => {
+			expect(() => assertParamIsOfAnyTypes('myParam', 123, ['string'], mockNode)).toThrow(
+				'Parameter "myParam" must be string',
+			);
+		});
+
+		it('should format error message correctly for two types', () => {
+			expect(() =>
+				assertParamIsOfAnyTypes('myParam', 'test', ['number', 'boolean'], mockNode),
+			).toThrow('Parameter "myParam" must be number or boolean');
+		});
+
+		it('should format error message correctly for three types', () => {
+			expect(() =>
+				assertParamIsOfAnyTypes('myParam', {}, ['string', 'number', 'boolean'], mockNode),
+			).toThrow('Parameter "myParam" must be string or number or boolean');
+		});
+
+		it('should handle readonly array types correctly', () => {
+			const types = ['string', 'number'] as const;
+			expect(() => assertParamIsOfAnyTypes('testParam', 'hello', types, mockNode)).not.toThrow();
+			expect(() => assertParamIsOfAnyTypes('testParam', 42, types, mockNode)).not.toThrow();
+			expect(() => assertParamIsOfAnyTypes('testParam', true, types, mockNode)).toThrow(
+				'Parameter "testParam" must be string or number',
 			);
 		});
 	});
