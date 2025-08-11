@@ -90,5 +90,3 @@ export { AddDataStoreRowsDto } from './data-store/add-data-store-rows.dto';
 export { AddDataStoreColumnDto } from './data-store/add-data-store-column.dto';
 export { DeleteDataStoreColumnDto } from './data-store/delete-data-store-column.dto';
 export { MoveDataStoreColumnDto } from './data-store/move-data-store-column.dto';
-export { DataStoreColumnResultDto } from './data-store/data-store-column-result.dto';
-export { DataStoreResultDto } from './data-store/data-store-result.dto';
