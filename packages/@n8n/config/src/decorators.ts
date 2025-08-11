@@ -81,6 +81,9 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 				}
 			}
 		}
+
+		if (typeof config.validate === 'function') config.validate();
+
 		return config;
 	};
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
