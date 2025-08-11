@@ -89,6 +89,7 @@ const afterLeave = (el: Element) => {
 			v-slot="{ isExpanded, handleToggle }"
 			@toggle="preventDefault"
 			@select="preventDefault"
+			@click.stop
 			class="item"
 			:level="props.level"
 			:value="item"

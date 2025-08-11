@@ -173,11 +173,48 @@ onUnmounted(() => {
 				<SidebarItem title="Templates" id="templates" icon="box" type="other" />
 				<SidebarItem title="Variables" id="templates" icon="variable" type="other" />
 				<SidebarItem title="Insights" id="templates" icon="chart-column-decreasing" type="other" />
-				<SidebarItem title="Settings" id="templates" icon="settings" type="other" />
+				<SidebarItem title="What's new" id="templates" icon="bell" type="other" />
+				<SidebarItem title="Help" id="templates" icon="circle-help" type="other" />
 			</footer>
 		</nav>
+
 		<slot name="creatorCallout" />
 		<slot name="sourceControl" />
+		<div class="sidebarUserArea">
+			<N8nText class="userName" size="small" bold>Rob Squires</N8nText>
+			<N8nTooltip placement="top">
+				<template #content>
+					<N8nText size="small">Sign out</N8nText>
+				</template>
+				<N8nIconButton
+					icon-size="large"
+					size="mini"
+					icon="door-open"
+					type="secondary"
+					text
+					square
+				/>
+			</N8nTooltip>
+			<N8nTooltip placement="top">
+				<template #content>
+					<N8nText size="small">Settings</N8nText>
+				</template>
+				<N8nIconButton icon-size="large" size="mini" icon="settings" type="secondary" text square />
+			</N8nTooltip>
+			<N8nTooltip placement="top">
+				<template #content>
+					<N8nText size="small">Help</N8nText>
+				</template>
+				<N8nIconButton
+					icon-size="large"
+					size="mini"
+					icon="circle-help"
+					type="secondary"
+					text
+					square
+				/>
+			</N8nTooltip>
+		</div>
 	</N8nResizeWrapper>
 	<div
 		v-if="state === 'hidden' || state === 'peak'"
@@ -193,7 +230,7 @@ onUnmounted(() => {
 	max-height: 100%;
 	height: 100%;
 	overflow-x: hidden;
-	overflow-y: scroll;
+	overflow-y: auto;
 	border-right: 1px solid var(--color-foreground-base);
 	display: flex;
 	flex-direction: column;
@@ -228,7 +265,7 @@ onUnmounted(() => {
 	background-color: var(--color-foreground-xlight);
 	position: relative;
 	max-height: 100%;
-	overflow-y: scroll;
+	overflow-y: auto;
 	flex-grow: 1;
 }
 
@@ -273,5 +310,20 @@ onUnmounted(() => {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+}
+
+.sidebarUserArea {
+	position: relative;
+	padding: 12px;
+	background-color: var(--color-foreground-xlight);
+	border-top: 1px solid var(--color-foreground-base);
+	display: flex;
+	gap: 8px;
+
+	align-items: center;
+}
+
+.userName {
+	margin-right: auto;
 }
 </style>

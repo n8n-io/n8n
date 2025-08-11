@@ -43,13 +43,13 @@ const active = computed(() => {
 			<button
 				v-if="type !== 'other'"
 				class="sidebarItemDropdownButton"
-				@click.stop="click"
+				@click="click"
 				:aria-label="ariaLabel"
 			>
 				<N8nIcon :icon="open ? 'chevron-down' : 'chevron-right'" />
 			</button>
 		</div>
-		<N8nText class="sidebarItemText">{{ title }}</N8nText>
+		<N8nText size="small" class="sidebarItemText">{{ title }}</N8nText>
 	</N8nRoute>
 </template>
 
@@ -67,7 +67,7 @@ const active = computed(() => {
 	cursor: pointer;
 
 	&:hover .sidebarItemDropdownIcon {
-		color: var(--color-foreground-xdark);
+		color: var(--color-text-dark);
 	}
 }
 
@@ -107,7 +107,7 @@ const active = computed(() => {
 		align-items: center;
 		justify-content: center;
 		pointer-events: none;
-		color: var(--color-foreground-dark);
+		color: var(--color-foreground-xdark);
 	}
 
 	&:not(.other) {
