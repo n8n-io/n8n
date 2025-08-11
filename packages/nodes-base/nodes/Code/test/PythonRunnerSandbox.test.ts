@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { PythonSandbox } from '../PythonSandbox';
-import { SandboxContext } from '../Sandbox';
+import type { SandboxContext } from '../Sandbox';
 
 describe('PythonSandbox', () => {
 	describe('runCodeForAlltems', () => {
