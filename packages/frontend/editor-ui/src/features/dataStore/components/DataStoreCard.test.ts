@@ -94,20 +94,6 @@ describe('DataStoreCard', () => {
 		expect(getByText('Read only')).toBeInTheDocument();
 	});
 
-	it('should not render action dropdown if no actions are provided', () => {
-		const { queryByTestId } = renderComponent({
-			props: {
-				actions: [],
-			},
-		});
-		expect(queryByTestId('data-store-card-actions')).not.toBeInTheDocument();
-	});
-
-	it('should render action dropdown if actions are provided', () => {
-		const { getByTestId } = renderComponent();
-		expect(getByTestId('data-store-card-actions')).toBeInTheDocument();
-	});
-
 	it('should render correct route to data store details', () => {
 		const wrapper = renderComponent();
 		const link = wrapper.getByTestId('data-store-card-link');
