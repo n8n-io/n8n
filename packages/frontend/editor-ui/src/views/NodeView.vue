@@ -1841,6 +1841,17 @@ watch(
 	},
 );
 
+// Watch for workflow ID changes to handle navigation between different workflows
+watch(
+	() => workflowId.value,
+	async (newWorkflowId, oldWorkflowId) => {
+		// Only reinitialize if we're navigating between different workflows (not initial load)
+		if (newWorkflowId && oldWorkflowId && newWorkflowId !== oldWorkflowId) {
+			await initializeRoute(true);
+		}
+	},
+);
+
 watch(
 	() => {
 		return isLoading.value || isCanvasReadOnly.value || editableWorkflow.value.nodes.length !== 0;
