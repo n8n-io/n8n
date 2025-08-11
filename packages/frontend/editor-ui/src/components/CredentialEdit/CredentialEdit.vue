@@ -860,7 +860,7 @@ async function updateCredential(
 		) {
 			credential = await credentialsStore.setCredentialSharedWith({
 				credentialId: credentialDetails.id,
-				sharedWithProjects: credentialDetails.sharedWithProjects as ProjectSharingData[],
+				sharedWithProjects: credentialDetails.sharedWithProjects,
 			});
 			isSharedWithChanged.value = false;
 		}

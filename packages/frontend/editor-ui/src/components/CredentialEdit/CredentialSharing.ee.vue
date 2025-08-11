@@ -41,9 +41,7 @@ const rolesStore = useRolesStore();
 
 const pageRedirectionHelper = usePageRedirectionHelper();
 
-const sharedWithProjects = ref([
-	...((props.credential?.sharedWithProjects as ProjectSharingData[]) ?? []),
-]);
+const sharedWithProjects = ref([...(props.credential?.sharedWithProjects ?? [])]);
 
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -74,7 +72,7 @@ const projects = computed<ProjectListItem[]>(() => {
 });
 
 const homeProject = computed<ProjectSharingData | undefined>(
-	() => (props.credential?.homeProject as ProjectSharingData) ?? credentialDataHomeProject.value,
+	() => props.credential?.homeProject ?? credentialDataHomeProject.value,
 );
 const isHomeTeamProject = computed(() => homeProject.value?.type === ProjectTypes.Team);
 const credentialRoleTranslations = computed<Record<string, string>>(() => {

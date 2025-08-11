@@ -335,7 +335,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			if (data.sharedWithProjects) {
 				await setCredentialSharedWith({
 					credentialId: credential.id,
-					sharedWithProjects: data.sharedWithProjects as ProjectSharingData[],
+					sharedWithProjects: data.sharedWithProjects,
 				});
 			}
 		} else {
