@@ -32,7 +32,13 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'folder:list',
 	'folder:move',
 	'sourceControl:push',
-	'dataStore:*',
+	'dataStore:create',
+	'dataStore:delete',
+	'dataStore:read',
+	'dataStore:update',
+	'dataStore:list',
+	'dataStore:readRow',
+	'dataStore:writeRow',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
@@ -59,7 +65,13 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'folder:delete',
 	'folder:list',
 	'folder:move',
-	'dataStore:*',
+	'dataStore:create',
+	'dataStore:delete',
+	'dataStore:read',
+	'dataStore:update',
+	'dataStore:list',
+	'dataStore:readRow',
+	'dataStore:writeRow',
 ];
 
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
@@ -81,7 +93,13 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'folder:update',
 	'folder:delete',
 	'folder:list',
-	'dataStore:*',
+	'dataStore:create',
+	'dataStore:delete',
+	'dataStore:read',
+	'dataStore:update',
+	'dataStore:list',
+	'dataStore:readRow',
+	'dataStore:writeRow',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
