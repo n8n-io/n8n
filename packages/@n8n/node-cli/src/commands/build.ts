@@ -6,6 +6,8 @@ import { cp, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import picocolors from 'picocolors';
 
+import { ensureN8nPackage } from '../utils/prompts';
+
 export default class Build extends Command {
 	static override description = 'Build an n8n community node';
 	static override examples = ['<%= config.bin %> <%= command.id %>'];
@@ -14,7 +16,10 @@ export default class Build extends Command {
 	async run(): Promise<void> {
 		await this.parse(Build);
 
-		intro(picocolors.inverse(' n8n-node build '));
+		const commandName = 'n8n-node build';
+		intro(picocolors.inverse(` ${commandName} `));
+
+		await ensureN8nPackage(commandName);
 
 		const buildSpinner = spinner();
 		buildSpinner.start('Building TypeScript files');

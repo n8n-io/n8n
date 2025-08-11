@@ -2,7 +2,6 @@ import { camelCase, capitalCase, pascalCase } from 'change-case';
 import path from 'node:path';
 
 import { addCredentialToNode, updateCredentialAst, updateNodeAst } from './ast';
-import { setNodesPackageJson, addCredentialPackageJson, getPackageJsonNodes } from './package';
 import { baseUrlPrompt, credentialTypePrompt, oauthFlowPrompt } from './prompts';
 import type { CustomTemplateConfig } from './types';
 import {
@@ -10,6 +9,11 @@ import {
 	renameFilesInDirectory,
 	writeFileSafe,
 } from '../../../../utils/filesystem';
+import {
+	setNodesPackageJson,
+	addCredentialPackageJson,
+	getPackageJsonNodes,
+} from '../../../../utils/package';
 import { createTemplate, type TemplateData } from '../../../core';
 
 export const customTemplate = createTemplate({

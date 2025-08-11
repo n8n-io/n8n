@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import prettier from 'prettier';
 
-import { writeFileSafe } from '../../../../utils/filesystem';
+import { writeFileSafe } from './filesystem';
 
 type N8nPackageJson = {
 	name: string;
@@ -33,6 +33,12 @@ export async function getPackageJson(dirPath: string) {
 	const packageJson = jsonParse<N8nPackageJson>(await fs.readFile(packageJsonPath, 'utf-8'));
 
 	return packageJson;
+}
+
+export async function isN8nNodePackage(dirPath = process.cwd()) {
+	const packageJson = await getPackageJson(dirPath).catch(() => null);
+
+	return Array.isArray(packageJson?.n8n?.nodes);
 }
 
 export async function getPackageJsonNodes(dirPath: string) {

@@ -7,6 +7,7 @@ import { ensureFolder } from '../../utils/filesystem';
 import { detectPackageManager } from '../../utils/package-manager';
 import { copyStaticFiles } from '../build';
 import { commands, readPackageName } from './utils';
+import { ensureN8nPackage } from '../../utils/prompts';
 
 export default class Dev extends Command {
 	static override description = 'Develop your n8n node with live preview directly in the browser.';
@@ -33,6 +34,8 @@ export default class Dev extends Command {
 
 		const packageManager = detectPackageManager() ?? 'npm';
 		const { isN8nInstalled, runCommand, runPersistentCommand } = commands();
+
+		await ensureN8nPackage('n8n-node dev');
 
 		const installed = await isN8nInstalled();
 		if (!installed && !flags['external-n8n']) {
