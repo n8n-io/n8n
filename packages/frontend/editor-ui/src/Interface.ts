@@ -744,6 +744,7 @@ export type NodeTypeSelectedPayload = {
 		resource?: string;
 		operation?: string;
 	};
+	actionName?: string;
 };
 
 export interface SubcategorizedNodeTypes {
@@ -1230,6 +1231,7 @@ export type AddedNode = {
 	type: string;
 	openDetail?: boolean;
 	isAutoAdd?: boolean;
+	actionName?: string;
 } & Partial<INodeUi>;
 
 export type AddedNodeConnection = {
