@@ -23,8 +23,10 @@ export class CreateDataStoreTables1754475614601 implements ReversibleMigration {
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
 				column('name').varchar(128).notNull,
-				column('type').varchar(32).notNull,
-				column('index').int.notNull,
+				column('type')
+					.varchar(32)
+					.notNull.comment('Column type - string, number, boolean, or date'),
+				column('index').int.notNull.comment('Column order'),
 				column('dataStoreId').varchar(36).notNull,
 			)
 			.withForeignKey('dataStoreId', {
