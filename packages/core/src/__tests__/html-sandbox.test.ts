@@ -6,6 +6,7 @@ import { Readable } from 'stream';
 import {
 	bufferEscapeHtml,
 	createHtmlSandboxTransformStream,
+	hasHtml,
 	isHtmlRenderedContentType,
 	sandboxHtmlResponse,
 } from '../html-sandbox';
@@ -371,5 +372,23 @@ describe('sandboxHtmlResponse > sandboxing disabled', () => {
 	it('should return unchanged html data', () => {
 		const data = '<p>html data</p>';
 		expect(sandboxHtmlResponse(data)).toEqual(data);
+	});
+});
+
+describe('hasHtml', () => {
+	test('returns true for valid HTML', () => {
+		expect(hasHtml('<p>Hello</p>')).toBe(true);
+	});
+
+	test('returns true for malformed but still HTML-like content', () => {
+		expect(hasHtml('<div><span>Test')).toBe(true);
+	});
+
+	test('returns false for plain text', () => {
+		expect(hasHtml('Just a string')).toBe(false);
+	});
+
+	test('returns false for empty string', () => {
+		expect(hasHtml('')).toBe(false);
 	});
 });
