@@ -12,32 +12,28 @@ The node execution context system follows a clear inheritance pattern that provi
 
 ```mermaid
 graph TD
-    NodeExecutionContext["NodeExecutionContext<br/>(Base Class)<br/>packages/core/src/execution-engine/node-execution-context/node-execution-context.ts"]
-    
-    BaseExecuteContext["BaseExecuteContext<br/>(Execution Base)<br/>packages/core/src/execution-engine/node-execution-context/base-execute-context.ts"]
-    
-    ExecuteContext["ExecuteContext<br/>(Regular Nodes)<br/>execute-context.ts"]
-    ExecuteSingleContext["ExecuteSingleContext<br/>(Single Item Processing)<br/>execute-single-context.ts"]
-    SupplyDataContext["SupplyDataContext<br/>(Sub-nodes)<br/>supply-data-context.ts"]
-    
-    TriggerContext["TriggerContext<br/>(Trigger Nodes)<br/>trigger-context.ts"]
-    WebhookContext["WebhookContext<br/>(Webhook Nodes)<br/>webhook-context.ts"]
-    PollContext["PollContext<br/>(Polling Nodes)<br/>poll-context.ts"]
-    LoadOptionsContext["LoadOptionsContext<br/>(Dynamic Options)<br/>load-options-context.ts"]
-    HookContext["HookContext<br/>(Workflow Hooks)<br/>hook-context.ts"]
-    WorkflowNodeContext["LoadWorkflowNodeContext<br/>(Workflow Loading)<br/>workflow-node-context.ts"]
-    
-    CredentialTestContext["CredentialTestContext<br/>(Standalone)<br/>credentials-test-context.ts"]
-    LocalLoadOptionsContext["LocalLoadOptionsContext<br/>(Standalone)<br/>local-load-options-context.ts"]
-    
+    NodeExecutionContext
+    BaseExecuteContext
+    ExecuteContext
+    ExecuteSingleContext
+    SupplyDataContext
+    TriggerContext
+    WebhookContext
+    PollContext
+    LoadOptionsContext
+    HookContext
+    LoadWorkflowNodeContext
+    CredentialTestContext
+    LocalLoadOptionsContext
+
     NodeExecutionContext --> BaseExecuteContext
     NodeExecutionContext --> TriggerContext
     NodeExecutionContext --> WebhookContext
     NodeExecutionContext --> PollContext
     NodeExecutionContext --> LoadOptionsContext
     NodeExecutionContext --> HookContext
-    NodeExecutionContext --> WorkflowNodeContext
-    
+    NodeExecutionContext --> LoadWorkflowNodeContext
+
     BaseExecuteContext --> ExecuteContext
     BaseExecuteContext --> ExecuteSingleContext
     BaseExecuteContext --> SupplyDataContext
@@ -129,7 +125,7 @@ Used by regular nodes during standard execution. Processes all items at once and
 async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData();
     const operation = this.getNodeParameter('operation', 0) as string;
-    
+
     for (let i = 0; i < items.length; i++) {
         if (operation === 'create') {
             const response = await this.helpers.httpRequest({
@@ -140,7 +136,7 @@ async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
             items[i].json = response;
         }
     }
-    
+
     return [items];
 }
 ```
@@ -162,11 +158,11 @@ async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> 
     const item = this.getInputData();
     const itemIndex = this.getItemIndex();
     const value = this.getNodeParameter('value', '') as string;
-    
+
     // Process single item
     item.json.processed = true;
     item.json.value = value;
-    
+
     return item;
 }
 ```
@@ -193,17 +189,17 @@ Used by trigger nodes that initiate workflow execution based on events or schedu
 ```typescript
 async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
     const interval = this.getNodeParameter('interval', 60) as number;
-    
+
     const executeTrigger = () => {
         this.emit([this.helpers.returnJsonArray([{ timestamp: Date.now() }])]);
     };
-    
+
     const intervalObj = setInterval(executeTrigger, interval * 1000);
-    
+
     async function closeFunction() {
         clearInterval(intervalObj);
     }
-    
+
     return {
         closeFunction,
     };
@@ -232,14 +228,14 @@ async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
     const resp = this.getResponseObject();
     const headers = this.getHeaderData();
     const body = this.getBodyData();
-    
+
     // Validate webhook signature
     const signature = headers['x-webhook-signature'];
     if (!this.validateSignature(signature, body)) {
         resp.status(401).send('Invalid signature');
         return { noWebhookResponse: true };
     }
-    
+
     return {
         workflowData: [this.helpers.returnJsonArray([body])],
     };
@@ -263,16 +259,16 @@ Used by polling trigger nodes that periodically check for new data.
 async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
     const staticData = this.getWorkflowStaticData('node');
     const lastId = staticData.lastId as string || '0';
-    
+
     const newItems = await this.helpers.httpRequest({
         url: `https://api.example.com/items?since=${lastId}`,
     });
-    
+
     if (newItems.length) {
         staticData.lastId = newItems[newItems.length - 1].id;
         return [this.helpers.returnJsonArray(newItems)];
     }
-    
+
     return null;
 }
 ```
@@ -292,12 +288,12 @@ Loads dynamic options for node parameters (dropdown values, etc.).
 ```typescript
 async loadOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
     const credentials = await this.getCredentials('apiKey');
-    
+
     const response = await this.helpers.httpRequest({
         url: 'https://api.example.com/options',
         headers: { Authorization: `Bearer ${credentials.apiKey}` },
     });
-    
+
     return response.map((item: any) => ({
         name: item.label,
         value: item.id,
@@ -393,42 +389,6 @@ Helper functions are categorized utilities available through the `helpers` prope
 - `summarize()`: Create execution summaries
 - `validateFieldType()`: Validate data types
 
-## State Management
-
-### Static Data
-
-Static data persists between node executions and workflow runs:
-
-```typescript
-const staticData = this.getWorkflowStaticData('node');
-
-// Store state
-staticData.lastProcessedId = 12345;
-staticData.counter = (staticData.counter as number || 0) + 1;
-
-// Retrieve in next execution
-const lastId = staticData.lastProcessedId as number;
-```
-
-**Use Cases**:
-- Tracking last processed item in polling triggers
-- Maintaining counters across executions
-- Storing temporary tokens or session data
-
-**Limitations**:
-- Data is stored in memory (lost on restart unless using database)
-- Should not store large amounts of data
-- Not shared between workflow instances
-
-### Workflow Data Proxy
-
-The WorkflowDataProxy provides access to workflow data in expressions:
-
-```typescript
-const dataProxy = this.getWorkflowDataProxy(itemIndex);
-// Access in expressions: $input, $json, $node, $workflow, etc.
-```
-
 ## Context Selection Guide
 
 | Context Type | When to Use | Key Features |
@@ -442,64 +402,13 @@ const dataProxy = this.getWorkflowDataProxy(itemIndex);
 | **SupplyDataContext** | Providing data to other nodes | Sub-workflows, loops |
 | **HookContext** | Workflow lifecycle events | Pre/post execution hooks |
 
-## Security Considerations
-
-### Credential Access
-
-Credentials are protected through multiple layers:
-- Node type must declare required credentials
-- Credentials must be explicitly granted to nodes
-- Special nodes (HTTP Request) have full access
-- Credentials are decrypted only when needed
-
-```typescript
-// Credential access validation in NodeExecutionContext
-if (!fullAccess && !node.credentials?.[type]) {
-    if (nodeCredentialDescription?.required === true) {
-        throw new NodeOperationError(node, 'Node does not have any credentials set');
-    }
-}
-```
-
-### Expression Evaluation
-
-Expressions are evaluated in a sandboxed environment with controlled access to:
-- Workflow data through the data proxy
-- Additional keys for special functions
-- Node parameters and metadata
-
-## Performance Implications
-
-### Memory Management
-
-1. **ExecuteContext**: Loads all items in memory
-   - Best for: Small to medium datasets
-   - Concern: Memory usage with large arrays
-
-2. **ExecuteSingleContext**: Processes one item at a time
-   - Best for: Large datasets, streaming operations
-   - Concern: Slight overhead per item
-
-3. **Context Creation**: Lightweight operation
-   - Contexts are created per node execution
-   - Minimal overhead for context instantiation
-
 ### Best Practices
 
 1. **Use ExecuteSingleContext for**:
    - Processing files larger than 100MB
    - Operations that don't need access to all items
-   - Memory-constrained environments
 
-2. **Cache expensive operations**:
-   ```typescript
-   const staticData = this.getWorkflowStaticData('node');
-   if (!staticData.cachedData) {
-       staticData.cachedData = await expensiveOperation();
-   }
-   ```
-
-3. **Clean up resources**:
+2. **Clean up resources**:
    ```typescript
    // In trigger/webhook contexts
    async function closeFunction() {
@@ -528,7 +437,7 @@ describe('ExecuteContext', () => {
             mockInputData,
             mockExecuteData,
         );
-        
+
         const param = context.getNodeParameter('test', 'default');
         expect(param).toBe('expected-value');
     });
@@ -572,80 +481,6 @@ this.helpers = {
     ...getCustomHelperFunctions(),
     // ... other helpers
 };
-```
-
-## Common Patterns and Examples
-
-### Handling Pagination
-
-```typescript
-async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-    const returnData: INodeExecutionData[] = [];
-    let hasNextPage = true;
-    let page = 1;
-    
-    while (hasNextPage) {
-        const response = await this.helpers.httpRequest({
-            url: `https://api.example.com/items?page=${page}`,
-        });
-        
-        returnData.push(...this.helpers.returnJsonArray(response.items));
-        hasNextPage = response.hasMore;
-        page++;
-    }
-    
-    return [returnData];
-}
-```
-
-### Error Handling with Continue on Fail
-
-```typescript
-async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-    const items = this.getInputData();
-    const returnData: INodeExecutionData[] = [];
-    
-    for (let i = 0; i < items.length; i++) {
-        try {
-            const result = await this.helpers.httpRequest({
-                url: this.getNodeParameter('url', i) as string,
-            });
-            returnData.push({ json: result });
-        } catch (error) {
-            if (this.continueOnFail()) {
-                returnData.push({
-                    json: { error: error.message },
-                    error,
-                });
-            } else {
-                throw error;
-            }
-        }
-    }
-    
-    return [returnData];
-}
-```
-
-### Using Static Data for Rate Limiting
-
-```typescript
-async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-    const staticData = this.getWorkflowStaticData('node');
-    const now = Date.now();
-    const lastRun = staticData.lastRun as number || 0;
-    const minInterval = 60000; // 1 minute
-    
-    if (now - lastRun < minInterval) {
-        return null; // Skip this poll
-    }
-    
-    staticData.lastRun = now;
-    // Perform actual polling
-    const items = await this.helpers.httpRequest({ url: 'https://api.example.com/updates' });
-    
-    return items.length ? [this.helpers.returnJsonArray(items)] : null;
-}
 ```
 
 ## Related Documentation
