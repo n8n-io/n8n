@@ -8,8 +8,6 @@ import { mock } from 'jest-mock-extended';
 import { createUser } from '@test-integration/db/users';
 
 import { DataStoreAggregateService } from '../data-store-aggregate.service';
-import { DataStoreRowsRepository } from '../data-store-rows.repository';
-import { DataStoreRepository } from '../data-store.repository';
 import { DataStoreService } from '../data-store.service';
 
 beforeAll(async () => {
@@ -29,8 +27,6 @@ afterAll(async () => {
 describe('dataStoreAggregate', () => {
 	let dataStoreService: DataStoreService;
 	let dataStoreAggregateService: DataStoreAggregateService;
-	let dataStoreRepository: DataStoreRepository;
-	let dataStoreRowsRepository: DataStoreRowsRepository;
 	const manager = mock<EntityManager>();
 	const projectRelationRepository = mock<ProjectRelationRepository>({ manager });
 
@@ -38,8 +34,6 @@ describe('dataStoreAggregate', () => {
 		Container.set(ProjectRelationRepository, projectRelationRepository);
 		dataStoreAggregateService = Container.get(DataStoreAggregateService);
 		dataStoreService = Container.get(DataStoreService);
-		dataStoreRepository = Container.get(DataStoreRepository);
-		dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
 	});
 
 	let user: User;
