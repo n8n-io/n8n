@@ -144,16 +144,33 @@ scaling:
       lockRenewTime: 15000
       stalledInterval: 30000
       maxStalledCount: 1
+  # Worker concurrency - n8n recommends 5 or higher
+  workerConcurrency: 5
+  # Webhook processor configuration
+  webhookProcessor:
+    enabled: true
+    replicas: 2
+    port: 5678
+    # Disable webhook processing in main process when using webhook processors
+    disableProductionWebhooksOnMainProcess: true
 
 # Multi-main setup (Enterprise feature)
 multiMain:
-  enabled: false
+  enabled: true
   ttl: 10
   interval: 3
+  # Load balancer configuration for multi-main setup
+  loadBalancer:
+    # Enable sticky sessions (required for multi-main)
+    stickySessions: true
+    # Session cookie name
+    sessionCookieName: "n8n-session"
+    # Session timeout in seconds
+    sessionTimeout: 3600
 
 # Task runners configuration
 taskRunners:
-  enabled: false
+  enabled: true
   mode: "internal"  # internal, external
   path: "/runners"
   authToken: ""
@@ -161,11 +178,29 @@ taskRunners:
   listenAddress: "127.0.0.1"
   maxPayload: 1073741824  # 1GB
   maxOldSpaceSize: ""
-  maxConcurrency: 10
+  # n8n recommends 5 or higher to avoid database connection pool exhaustion
+  maxConcurrency: 5
   taskTimeout: 300
   heartbeatInterval: 30
   insecureMode: false
 ```
+
+#### Load Balancer Configuration
+
+When using webhook processors and multi-main setup, configure your load balancer to route traffic as follows:
+
+- **Webhook requests** (`/webhook/*`) → Route to webhook processor pool
+- **All other requests** → Route to main process pool
+- **Manual executions** (`/webhook-test/*`) → Route to main process pool
+- **Enable sticky sessions** for multi-main setup
+
+#### Architecture Components
+
+1. **Main Process**: Handles UI, API, and manual executions
+2. **Worker Process**: Executes workflows from the queue
+3. **Webhook Processor**: Handles incoming webhook requests
+4. **Redis**: Message broker for job queuing
+5. **PostgreSQL**: Persistent data storage
 
 ### Basic Authentication
 

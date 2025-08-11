@@ -1,0 +1,217 @@
+{{- if and .Values.scaling.enabled (eq .Values.executions.mode "queue") .Values.scaling.webhookProcessor.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "n8n.fullname" . }}-webhook-processor
+  labels:
+    {{- include "n8n.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhook-processor
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.scaling.webhookProcessor.replicas }}
+  selector:
+    matchLabels:
+      {{- include "n8n.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: webhook-processor
+  {{- with .Values.deploymentStrategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      {{- with .Values.podTemplateMetadata }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+      labels:
+        {{- include "n8n.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: webhook-processor
+        {{- with .Values.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "n8n.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}-webhook-processor
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ include "n8n.image" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["n8n", "webhook"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.scaling.webhookProcessor.port }}
+              protocol: TCP
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /healthz/readiness
+              port: http
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: {{ include "n8n.fullname" . }}-data
+              mountPath: {{ .Values.persistence.mountPath }}
+          {{- end }}
+          {{- if .Values.cacheVolume.enabled }}
+            - name: cache-volume
+              mountPath: {{ .Values.cacheVolume.mountPath }}
+          {{- end }}
+          {{- if .Values.tmpVolume.enabled }}
+            - name: tmp-volume
+              mountPath: {{ .Values.tmpVolume.mountPath }}
+          {{- end }}
+          {{- with .Values.extraVolumeMounts }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          env:
+            # Database configuration
+            {{- include "n8n.databaseEnvVars" . | nindent 12 }}
+            
+            # Redis configuration
+            {{- include "n8n.redisEnvVars" . | nindent 12 }}
+            
+            # Generic configuration
+            {{- include "n8n.genericEnvVars" . | nindent 12 }}
+            
+            # Security configuration
+            {{- include "n8n.securityEnvVars" . | nindent 12 }}
+            
+            # Authentication configuration
+            {{- include "n8n.authEnvVars" . | nindent 12 }}
+            
+            # Endpoints configuration
+            {{- include "n8n.endpointsEnvVars" . | nindent 12 }}
+            
+            # Prometheus metrics configuration
+            {{- include "n8n.metricsEnvVars" . | nindent 12 }}
+            
+            # Executions configuration
+            {{- include "n8n.executionsEnvVars" . | nindent 12 }}
+            
+            # Logging configuration
+            {{- include "n8n.loggingEnvVars" . | nindent 12 }}
+            
+            # Workflows configuration
+            {{- include "n8n.workflowsEnvVars" . | nindent 12 }}
+            
+            # User management configuration
+            {{- include "n8n.userManagementEnvVars" . | nindent 12 }}
+            
+            # Basic authentication
+            {{- include "n8n.basicAuthEnvVars" . | nindent 12 }}
+            
+            # Webhook configuration
+            {{- include "n8n.webhookEnvVars" . | nindent 12 }}
+            
+            # Encryption and JWT
+            {{- include "n8n.encryptionEnvVars" . | nindent 12 }}
+            
+            # Scaling mode configuration
+            {{- include "n8n.scalingEnvVars" . | nindent 12 }}
+            
+            # Multi-main setup configuration
+            {{- include "n8n.multiMainEnvVars" . | nindent 12 }}
+            
+            # Task runners configuration
+            {{- include "n8n.taskRunnersEnvVars" . | nindent 12 }}
+            
+            # System configuration
+            {{- include "n8n.systemEnvVars" . | nindent 12 }}
+            
+            # ConfigMap environment variables
+            {{- if .Values.configMap.enabled }}
+            {{- range $key, $value := .Values.configMap.data }}
+            - name: {{ $key }}
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "n8n.configMapName" $ }}
+                  key: {{ $key }}
+            {{- end }}
+            {{- end }}
+            
+            # Secret environment variables
+            {{- if .Values.secret.enabled }}
+            {{- range $key, $value := .Values.secret.data }}
+            - name: {{ $key }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "n8n.secretName" $ }}
+                  key: {{ $key }}
+            {{- end }}
+            {{- end }}
+            
+            # Additional environment variables
+            {{- with .Values.env }}
+            {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+      {{- with .Values.sidecarContainers }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- if .Values.persistence.enabled }}
+      volumes:
+        - name: {{ include "n8n.fullname" . }}-data
+          persistentVolumeClaim:
+            claimName: {{ include "n8n.fullname" . }}-data
+      {{- end }}
+      {{- if .Values.cacheVolume.enabled }}
+        - name: cache-volume
+          emptyDir: {{- toYaml .Values.cacheVolume.emptyDir | nindent 12 }}
+      {{- end }}
+      {{- if .Values.tmpVolume.enabled }}
+        - name: tmp-volume
+          emptyDir: {{- toYaml .Values.tmpVolume.emptyDir | nindent 12 }}
+      {{- end }}
+      {{- with .Values.extraVolumes }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+{{- end }} 

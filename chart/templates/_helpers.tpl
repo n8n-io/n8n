@@ -544,6 +544,12 @@ Create environment variables for scaling mode configuration
   value: {{ .Values.scaling.bull.settings.stalledInterval | quote }}
 - name: QUEUE_WORKER_MAX_STALLED_COUNT
   value: {{ .Values.scaling.bull.settings.maxStalledCount | quote }}
+- name: QUEUE_WORKER_CONCURRENCY
+  value: {{ .Values.scaling.workerConcurrency | quote }}
+{{- if .Values.scaling.webhookProcessor.disableProductionWebhooksOnMainProcess }}
+- name: N8N_DISABLE_PRODUCTION_MAIN_PROCESS
+  value: "true"
+{{- end }}
 {{- end }}
 {{- end }}
 
