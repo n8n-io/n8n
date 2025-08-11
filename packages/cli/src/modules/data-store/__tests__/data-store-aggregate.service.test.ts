@@ -107,5 +107,111 @@ describe('dataStoreAggregate', () => {
 			);
 			expect(result.count).toBe(2);
 		});
+
+		it('should return an empty array if user has no access to any project', async () => {
+			// ARRANGE
+			const currentUser = await createUser({ role: 'global:member' });
+
+			await dataStoreService.createDataStore(project1.id, {
+				name: 'store1',
+				columns: [],
+			});
+			projectRelationRepository.find.mockResolvedValueOnce([]);
+
+			// ACT
+			const result = await dataStoreAggregateService.getManyAndCount(currentUser, {
+				skip: 0,
+				take: 10,
+			});
+
+			// ASSERT
+			expect(result.data).toEqual([]);
+			expect(result.count).toBe(0);
+		});
+
+		it('should return only the data store matching the given data store id filter', async () => {
+			// ARRANGE
+			await dataStoreService.createDataStore(project1.id, {
+				name: 'store1',
+				columns: [],
+			});
+			const ds2 = await dataStoreService.createDataStore(project1.id, {
+				name: 'store2',
+				columns: [],
+			});
+			projectRelationRepository.find.mockResolvedValueOnce([
+				{
+					userId: user.id,
+					projectId: project1.id,
+					role: 'project:admin',
+					user,
+					project: project1,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: jest.fn(),
+				},
+				{
+					userId: user.id,
+					projectId: project2.id,
+					role: 'project:viewer',
+					user,
+					project: project2,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: jest.fn(),
+				},
+			]);
+
+			// ACT
+			const result = await dataStoreAggregateService.getManyAndCount(user, {
+				filter: { id: ds2.id },
+				skip: 0,
+				take: 10,
+			});
+
+			// ASSERT
+			expect(result.data).toEqual([expect.objectContaining({ id: ds2.id, name: ds2.name })]);
+			expect(result.count).toBe(1);
+		});
+
+		it('should respect pagination (skip/take)', async () => {
+			// ARRANGE
+			const ds1 = await dataStoreService.createDataStore(project1.id, {
+				name: 'store1',
+				columns: [],
+			});
+			const ds2 = await dataStoreService.createDataStore(project1.id, {
+				name: 'store2',
+				columns: [],
+			});
+			const ds3 = await dataStoreService.createDataStore(project1.id, {
+				name: 'store3',
+				columns: [],
+			});
+			projectRelationRepository.find.mockResolvedValueOnce([
+				{
+					userId: user.id,
+					projectId: project1.id,
+					role: 'project:admin',
+					user,
+					project: project1,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: jest.fn(),
+				},
+			]);
+
+			// ACT
+			const result = await dataStoreAggregateService.getManyAndCount(user, {
+				filter: { projectId: project1.id },
+				skip: 1,
+				take: 1,
+			});
+
+			// ASSERT
+			expect(result.data.length).toBe(1);
+			expect([ds1.id, ds2.id, ds3.id]).toContain(result.data[0].id);
+			expect(result.count).toBe(3);
+		});
 	});
 });

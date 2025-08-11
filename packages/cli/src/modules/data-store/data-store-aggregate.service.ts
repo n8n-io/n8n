@@ -27,6 +27,10 @@ export class DataStoreAggregateService {
 			projectIds = projectIds.filter((x) => mask.includes(x));
 		}
 
+		if (projectIds.length === 0) {
+			return { count: 0, data: [] };
+		}
+
 		return await this.dataStoreRepository.getManyAndCount({
 			...options,
 			filter: {
