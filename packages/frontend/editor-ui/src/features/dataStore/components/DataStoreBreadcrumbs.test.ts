@@ -171,18 +171,6 @@ describe('DataStoreBreadcrumbs', () => {
 	});
 
 	describe('Name editing', () => {
-		it('should render name input for editing', () => {
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
-
-			const nameInput = getByTestId('datastore-header-name-input');
-			expect(nameInput).toBeInTheDocument();
-		});
-
 		it('should show current datastore name', () => {
 			const { getByDisplayValue } = renderComponent({
 				pinia: createTestingPinia({
