@@ -1,9 +1,12 @@
 <script lang="ts" setup>
-const beforeEnter = (el: Element) => {
-	(el as HTMLElement).style.height = '0';
-	(el as HTMLElement).style.paddingTop = '0';
-	(el as HTMLElement).style.paddingBottom = '0';
-	(el as HTMLElement).style.marginBottom = '0';
+const beforeEnterAndLeave = (el: Element) => {
+	const htmlEl = el as HTMLElement;
+
+	htmlEl.style.height = '0';
+	htmlEl.style.paddingTop = '0';
+	htmlEl.style.paddingBottom = '0';
+	htmlEl.style.marginBottom = '0';
+	htmlEl.style.opacity = '0';
 };
 
 const enter = (el: Element) => {
@@ -19,6 +22,7 @@ const enter = (el: Element) => {
 	htmlEl.style.paddingTop = '';
 	htmlEl.style.paddingBottom = '';
 	htmlEl.style.marginBottom = '';
+	htmlEl.style.opacity = '1';
 };
 
 const afterEnter = (el: Element) => {
@@ -27,13 +31,6 @@ const afterEnter = (el: Element) => {
 
 const beforeLeave = (el: Element) => {
 	(el as HTMLElement).style.height = (el as HTMLElement).offsetHeight + 'px';
-};
-
-const leave = (el: Element) => {
-	(el as HTMLElement).style.height = '0';
-	(el as HTMLElement).style.paddingTop = '0';
-	(el as HTMLElement).style.paddingBottom = '0';
-	(el as HTMLElement).style.marginBottom = '0';
 };
 
 const afterLeave = (el: Element) => {
@@ -48,11 +45,11 @@ const afterLeave = (el: Element) => {
 <template>
 	<Transition
 		name="collapse-transition"
-		@before-enter="beforeEnter"
+		@before-enter="beforeEnterAndLeave"
 		@enter="enter"
 		@after-enter="afterEnter"
 		@before-leave="beforeLeave"
-		@leave="leave"
+		@leave="beforeEnterAndLeave"
 		@after-leave="afterLeave"
 	>
 		<slot />
@@ -65,6 +62,7 @@ const afterLeave = (el: Element) => {
 	transition:
 		height 0.3s cubic-bezier(0.645, 0.045, 0.355, 1),
 		padding 0.3s cubic-bezier(0.645, 0.045, 0.355, 1),
+		opacity 0.3s cubic-bezier(0.645, 0.045, 0.355, 1),
 		margin 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
 	overflow: hidden;
 }
