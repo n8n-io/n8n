@@ -147,6 +147,26 @@ npm run evaluate
 
 ## Configuration
 
+### Required Files
+
+#### nodes.json
+**IMPORTANT**: The evaluation framework requires a `nodes.json` file in the evaluations root directory (`evaluations/nodes.json`). 
+
+This file contains all n8n node type definitions and is used by the AI Workflow Builder agent to:
+- Know what nodes are available in n8n
+- Understand node parameters and their schemas
+- Generate valid workflows with proper node configurations
+
+**Why is this required?**
+The AI Workflow Builder agent needs access to node definitions to generate workflows. In a normal n8n runtime, these definitions are loaded automatically. However, since the evaluation framework instantiates the agent without a running n8n instance, we must provide the node definitions manually via `nodes.json`.
+
+**How to generate nodes.json:**
+1. Run your n8n instance
+2. Export the node definitions to `evaluations/nodes.json`
+3. The file should contain an array of all available node type descriptions
+
+The evaluation will fail with a clear error message if `nodes.json` is missing.
+
 ### Environment Variables
 
 - `N8N_AI_ANTHROPIC_KEY` - Required for LLM access

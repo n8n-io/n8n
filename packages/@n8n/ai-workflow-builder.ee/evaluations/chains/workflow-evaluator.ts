@@ -51,9 +51,18 @@ Evaluate whether the workflow correctly implements what the user EXPLICITLY requ
 - Alternative valid approaches to solve the same problem
 
 **Check for these violations:**
-- **Critical (-40 to -50 points)**: Missing core functionality explicitly requested, incorrect operation logic
-- **Major (-15 to -25 points)**: Missing explicitly required data transformations, incomplete implementation of requested features
-- **Minor (-5 to -10 points)**: Missing optional features explicitly mentioned by user
+- **Critical (-40 to -50 points)**: 
+  - Missing core functionality explicitly requested
+  - Incorrect operation logic that prevents the workflow from working
+  - Workflows missing a trigger node when they need to start automatically
+- **Major (-15 to -25 points)**: 
+  - Missing explicitly required data transformations
+  - Incomplete implementation of requested features
+  - Using completely wrong node type for the task (e.g., Set node when HTTP Request is clearly needed)
+  - Workflows that would fail immediately on first execution due to structural issues
+- **Minor (-5 to -10 points)**: 
+  - Missing optional features explicitly mentioned by user
+  - Using less optimal but functional node choices
 
 **Questions to consider:**
 - Does the workflow perform all EXPLICITLY requested operations?
@@ -110,8 +119,14 @@ Evaluate whether expressions correctly reference nodes and data using modern n8n
 - Focus on whether expressions would cause runtime FAILURES, not style preferences
 
 **Check for these violations:**
-- **Critical (-40 to -50 points)**: Referencing truly non-existent nodes or fields that would cause runtime errors
-- **Major (-15 to -25 points)**: Wrong data paths that would prevent execution, type mismatches
+- **Critical (-40 to -50 points)**: 
+  - Invalid JavaScript syntax that would cause runtime errors (unclosed brackets, syntax errors, malformed JSON)
+  - Referencing truly non-existent nodes or fields that would cause runtime errors
+- **Major (-20 to -25 points)**: 
+  - Missing required = prefix for expressions (e.g., \`{{ $json.name }}\` instead of \`={{ $json.name }}\`)
+  - Using $fromAI in non-tool nodes (would cause runtime error)
+  - Referencing undefined variables or functions
+  - Wrong data paths that would prevent execution, type mismatches
 - **Minor (-5 to -10 points)**:
   - Inefficient but working expressions
   - Outdated syntax that still functions (e.g., \`$node["NodeName"]\` instead of \`$('NodeName')\`)
@@ -158,6 +173,14 @@ Evaluate whether expressions correctly reference nodes and data using modern n8n
 
 **Important: $fromAI is ONLY valid in tool nodes (ending with "Tool"), NOT in regular nodes**
 
+**DO NOT penalize these valid expression patterns:**
+- Simple = prefix for strings: \`="Hello World"\`
+- Mixed text/expression: \`="Total: {{ $json.amount }}"\`
+- JavaScript operations that are syntactically correct
+- Any working expression format, even if not optimal
+- Alternative date formats that produce valid output
+- String concatenation in any valid form
+
 ### Expression Context Understanding
 When evaluating expressions, consider the data flow context:
 - Field names may differ between nodes (e.g., 'articles' in one node, 'topArticles' in another)
@@ -181,11 +204,18 @@ Evaluate whether nodes are configured with correct parameters and settings.
 **Check for these violations:**
 - **Critical (-40 to -50 points)**: ONLY for actual breaking issues:
   - User provided specific value that's incorrectly implemented
-  - Required parameter completely missing (not empty/placeholder)
+  - Truly required parameters completely absent (not empty/placeholder):
+    - HTTP Request without URL (unless using $fromAI)
+    - Database operations without operation type specified
+    - Code node without any code
+  - Parameters with invalid values that would crash:
+    - Invalid JSON in JSON fields
+    - Non-numeric values in number-only fields
   - Configuration that would cause runtime crash
 - **Major (-15 to -25 points)**:
   - Wrong operation mode when explicitly specified by user
   - Significant deviation from requested behavior
+  - Missing resource/operation selection that prevents node from functioning
 - **Minor (-5 to -10 points)**:
   - Suboptimal but working configurations
   - Style preferences or minor inefficiencies
@@ -263,22 +293,32 @@ If a reference workflow is provided, evaluate how well the generated workflow fo
 - Missing core functionality explicitly requested
 - Completely broken connections that prevent execution
 - Fatal expression errors that would crash the workflow
+- Invalid syntax that prevents parsing
 
 **When to use Major (-15 to -25 points):**
 - Issues that significantly impact functionality
 - Missing important features explicitly mentioned
 - Incorrect data flow that affects results
 - Wrong operation modes when specifically requested
+- Errors that would likely cause runtime failures
 
 **When to use Minor (-5 to -10 points):**
 - Style preferences and inefficiencies
 - Alternative valid approaches
 - Field naming inconsistencies that don't break functionality
 - Missing nice-to-have features not explicitly requested
+- Outdated but functional syntax
 
-**Default to lower severity when uncertain** - If you're not sure whether something would actually break, lean towards Minor severity.
+**Apply severity based on actual impact on workflow execution:**
+- Consider: Will this definitely break? (Critical)
+- Will this likely cause issues? (Major)
+- Is this just suboptimal? (Minor)
+- Focus on functional impact, not perfection
 
-Remember: Focus on objective technical evaluation. Be specific about violations and reference exact node names and expressions when identifying issues. Consider the n8n AI architecture and don't penalize valid patterns.`;
+Remember: Focus on objective technical evaluation. Be specific about violations and reference exact node names and expressions when identifying issues. Consider the n8n AI architecture and don't penalize valid patterns.
+
+## Final Balance Statement
+While being thorough in identifying issues, remember the goal is functional correctness, not perfection. Focus on issues that would actually prevent the workflow from achieving its intended purpose. The evaluator should identify real problems that would cause failures or prevent the requested functionality, not enforce style preferences or require unrequested optimizations.`;
 
 const humanTemplate = `Please evaluate the following workflow:
 

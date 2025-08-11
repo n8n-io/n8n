@@ -93,7 +93,6 @@ export async function generateTestCases(
 	return result.testCases;
 }
 
-// Pre-defined basic test cases for immediate use
 export const basicTestCases: TestCase[] = [
 	{
 		id: 'invoice-pipeline',

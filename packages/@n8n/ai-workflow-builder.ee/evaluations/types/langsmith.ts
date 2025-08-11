@@ -125,7 +125,7 @@ export function extractMessageContent(message: BaseMessage | undefined): string 
 		throw new Error('No message provided');
 	}
 
-	// @ts-expect-error Testing custom types
+	// @ts-expect-error We need to extract content from kwargs as that's how Langsmith messages are structured
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	const content = message.content ?? message.kwargs?.content;
 

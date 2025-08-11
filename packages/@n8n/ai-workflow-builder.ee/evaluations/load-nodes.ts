@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { jsonParse, type INodeTypeDescription } from 'n8n-workflow';
 import { join } from 'path';
 
@@ -11,6 +11,26 @@ export function loadNodesFromFile(): INodeTypeDescription[] {
 	console.log('Loading nodes from nodes.json...');
 
 	const nodesPath = join(__dirname, 'nodes.json');
+
+	// Check if nodes.json exists
+	if (!existsSync(nodesPath)) {
+		const errorMessage = `
+ERROR: nodes.json file not found at ${nodesPath}
+
+The nodes.json file is required for evaluations to work properly.
+Please ensure nodes.json is present in the evaluations root directory.
+
+To generate nodes.json:
+1. Run the n8n instance
+2. Export the node definitions to evaluations/nodes.json
+3. This file contains all available n8n node type definitions needed for validation
+
+Without nodes.json, the evaluator cannot validate node types and parameters.
+`;
+		console.error(errorMessage);
+		throw new Error('nodes.json file not found. See console output for details.');
+	}
+
 	const nodesData = readFileSync(nodesPath, 'utf-8');
 	const allNodes = jsonParse<NodeWithVersion[]>(nodesData);
 
