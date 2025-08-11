@@ -14,7 +14,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { SampleTemplates, isPrebuiltAgentTemplateId } from '@/utils/templates/workflowSamples';
 import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,
@@ -59,25 +59,26 @@ export async function executionFinished(
 	clearPopupWindowState();
 
 	const workflow = workflowsStore.getWorkflowById(data.workflowId);
-	if (workflow?.meta?.templateId) {
-		const easyAiWorkflowJson = getEasyAiWorkflowJson();
-		const isEasyAIWorkflow = workflow.meta.templateId === easyAiWorkflowJson.meta.templateId;
+	const templateId = workflow?.meta?.templateId;
+
+	if (templateId) {
+		const isEasyAIWorkflow = templateId === SampleTemplates.EasyAiTemplate;
 		if (isEasyAIWorkflow) {
 			telemetry.track('User executed test AI workflow', {
 				status: data.status,
 			});
-		}
-		if (workflow.meta.templateId.startsWith('035_template_onboarding')) {
+		} else if (templateId.startsWith('035_template_onboarding')) {
 			aiTemplatesStarterCollectionStore.trackUserExecutedWorkflow(
-				workflow.meta.templateId.split('-').pop() ?? '',
+				templateId.split('-').pop() ?? '',
 				data.status,
 			);
-		}
-		if (workflow.meta.templateId.startsWith('37_onboarding_experiments_batch_aug11')) {
-			readyToRunWorkflowsStore.trackExecuteWorkflow(
-				workflow.meta.templateId.split('-').pop() ?? '',
-				data.status,
-			);
+		} else if (templateId.startsWith('37_onboarding_experiments_batch_aug11')) {
+			readyToRunWorkflowsStore.trackExecuteWorkflow(templateId.split('-').pop() ?? '', data.status);
+		} else if (isPrebuiltAgentTemplateId(templateId)) {
+			telemetry.track('User executed pre-built Agent', {
+				template: templateId,
+				status: data.status,
+			});
 		}
 	}
 

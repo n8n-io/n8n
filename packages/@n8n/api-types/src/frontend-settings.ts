@@ -153,6 +153,7 @@ export interface FrontendSettings {
 		workerView: boolean;
 		advancedPermissions: boolean;
 		apiKeyScopes: boolean;
+		workflowDiffs: boolean;
 		projects: {
 			team: {
 				limit: number;

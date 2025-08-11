@@ -206,7 +206,11 @@ export const useExpressionEditor = ({
 		const state = EditorState.create({
 			doc: toValue(editorValue),
 			extensions: [
-				TARGET_NODE_PARAMETER_FACET.of(toValue(targetNodeParameterContext)),
+				TARGET_NODE_PARAMETER_FACET.of(
+					expressionLocalResolveContext.value
+						? { nodeName: expressionLocalResolveContext.value.nodeName, parameterPath: '' }
+						: toValue(targetNodeParameterContext),
+				),
 				customExtensions.value.of(toValue(extensions)),
 				readOnlyExtensions.value.of([EditorState.readOnly.of(toValue(isReadOnly))]),
 				telemetryExtensions.value.of([]),
