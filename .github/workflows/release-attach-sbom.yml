@@ -8,7 +8,7 @@ jobs:
   generate-and-attach-sbom:
     name: Generate and Attach SBOM to Release
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: write
       id-token: write
@@ -41,38 +41,53 @@ jobs:
         run: |
           # Comprehensive SBOM validation
           if [[ ! -f "sbom-npm.cdx.json" ]]; then
-            echo "Error: SBOM file not found"
+            echo "Error: SBOM file 'sbom-npm.cdx.json' not found in workspace"
+            ls -la
             exit 1
           fi
           
           # Validate JSON structure
           if ! jq empty sbom-npm.cdx.json 2>/dev/null; then
-            echo "Error: SBOM is not valid JSON"
+            echo "Error: SBOM file contains invalid JSON syntax"
+            echo "File contents preview:"
+            head -10 sbom-npm.cdx.json
             exit 1
           fi
           
           # Check for required CycloneDX fields
           COMPONENT_COUNT=$(jq '.components | length' sbom-npm.cdx.json 2>/dev/null || echo "0")
           BOM_FORMAT=$(jq -r '.bomFormat // "unknown"' sbom-npm.cdx.json 2>/dev/null)
+          SPEC_VERSION=$(jq -r '.specVersion // "unknown"' sbom-npm.cdx.json 2>/dev/null)
           
           if [[ "$BOM_FORMAT" != "CycloneDX" ]]; then
-            echo "Error: Invalid bomFormat: $BOM_FORMAT"
+            echo "Error: Invalid bomFormat '$BOM_FORMAT', expected 'CycloneDX'"
             exit 1
           fi
           
-          echo "SBOM validation successful: $COMPONENT_COUNT components, format: $BOM_FORMAT"
+          if [[ "$SPEC_VERSION" == "unknown" ]]; then
+            echo "Error: Missing required field 'specVersion' in CycloneDX SBOM"
+            exit 1
+          fi
+          
+          if [[ "$COMPONENT_COUNT" == "0" ]]; then
+            echo "Warning: SBOM contains no components, this may indicate an issue with generation"
+          fi
+          
+          echo "SBOM validation successful: $COMPONENT_COUNT components, format: $BOM_FORMAT, spec: $SPEC_VERSION"
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@9e9de2292db7abb3f51b7f4808d98f0d347a8919 # v3.7.0
 
       - name: Sign SBOM (keyless)
-        run: cosign sign-blob --yes --output-signature sbom-npm.cdx.sig --output-certificate sbom-npm.cdx.pem sbom-npm.cdx.json
+        run: |
+          # Sign SBOM using Cosign keyless signing with GitHub OIDC
+          # This provides cryptographic proof of authenticity and integrity
+          cosign sign-blob --yes --output-signature sbom-npm.cdx.sig --output-certificate sbom-npm.cdx.pem sbom-npm.cdx.json
 
       - name: Attach SBOM files to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Add descriptive comment to SBOM
           COMPONENT_COUNT=$(jq '.components | length' sbom-npm.cdx.json)
           
           # Upload SBOM files to the existing release
