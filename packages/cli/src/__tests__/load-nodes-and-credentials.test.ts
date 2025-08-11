@@ -455,7 +455,7 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 			instance.loaders = { CUSTOM: mockLoader };
 
 			// Allow access to directory
