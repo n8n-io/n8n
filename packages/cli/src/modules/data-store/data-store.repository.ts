@@ -215,13 +215,13 @@ export class DataStoreRepository extends Repository<DataStoreEntity> {
 	private applyDefaultSelect(query: SelectQueryBuilder<DataStoreEntity>): void {
 		query
 			.leftJoinAndSelect('dataStore.project', 'project')
-			.leftJoinAndSelect('dataStore.columns', 'data_store_column_entity')
+			.leftJoinAndSelect('dataStore.columns', 'data_store_column')
 			.select([
 				'dataStore',
-				...this.getDataStoreColumnFields('data_store_column_entity'),
+				...this.getDataStoreColumnFields('data_store_column'),
 				...this.getProjectFields('project'),
 			])
-			.addOrderBy('data_store_column_entity.index', 'ASC');
+			.addOrderBy('data_store_column.index', 'ASC');
 	}
 
 	private getDataStoreColumnFields(alias: string): string[] {

@@ -3,7 +3,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
 import { type DataStoreEntity } from './data-store.entity';
 
-@Entity()
+@Entity('data_store_column')
 @Index(['dataStoreId', 'name'], { unique: true })
 export class DataStoreColumnEntity extends WithStringId {
 	@Column()

@@ -3,7 +3,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from '@n8n/ty
 
 import { DataStoreColumnEntity } from './data-store-column.entity';
 
-@Entity()
+@Entity('data_store')
 @Index(['name', 'projectId'], { unique: true })
 export class DataStoreEntity extends WithTimestampsAndStringId {
 	constructor() {
