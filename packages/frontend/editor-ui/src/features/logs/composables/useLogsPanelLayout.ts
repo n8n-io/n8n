@@ -1,9 +1,9 @@
-import { computed, type ShallowRef } from 'vue';
+import { computed, type ComputedRef, type ShallowRef } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { watch } from 'vue';
 import { useLogsStore } from '@/stores/logs.store';
 import { useResizablePanel } from '@/composables/useResizablePanel';
-import { usePiPWindow } from '@/features/logs/composables/usePiPWindow';
+import { usePopOutWindow } from '@/features/logs/composables/usePopOutWindow';
 import {
 	LOGS_PANEL_STATE,
 	LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH,
@@ -12,8 +12,9 @@ import {
 } from '@/features/logs/logs.constants';
 
 export function useLogsPanelLayout(
-	pipContainer: Readonly<ShallowRef<HTMLElement | null>>,
-	pipContent: Readonly<ShallowRef<HTMLElement | null>>,
+	workflowName: ComputedRef<string>,
+	popOutContainer: Readonly<ShallowRef<HTMLElement | null>>,
+	popOutContent: Readonly<ShallowRef<HTMLElement | null>>,
 	container: Readonly<ShallowRef<HTMLElement | null>>,
 	logsContainer: Readonly<ShallowRef<HTMLElement | null>>,
 ) {
@@ -52,11 +53,16 @@ export function useLogsPanelLayout(
 	);
 	const isCollapsingDetailsPanel = computed(() => overviewPanelResizer.isFullSize.value);
 
-	const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
+	const {
+		canPopOut,
+		isPoppedOut,
+		popOutWindow: popOutWindow,
+	} = usePopOutWindow({
+		workflowName,
 		initialHeight: 400,
 		initialWidth: window.document.body.offsetWidth * 0.8,
-		container: pipContainer,
-		content: pipContent,
+		container: popOutContainer,
+		content: popOutContent,
 		shouldPopOut: computed(() => logsStore.state === LOGS_PANEL_STATE.FLOATING),
 		onRequestClose: () => {
 			if (!isOpen.value) {
@@ -86,6 +92,10 @@ export function useLogsPanelLayout(
 		telemetry.track('User toggled log view', { new_state: 'floating' });
 		logsStore.toggleOpen(true);
 		logsStore.setPreferPoppedOut(true);
+	}
+
+	function handlePopIn() {
+		logsStore.setPreferPoppedOut(false);
 	}
 
 	function handleResizeEnd() {
@@ -123,9 +133,10 @@ export function useLogsPanelLayout(
 		isCollapsingDetailsPanel,
 		isPoppedOut,
 		isOverviewPanelFullWidth: overviewPanelResizer.isFullSize,
-		pipWindow,
+		popOutWindow,
 		onToggleOpen: handleToggleOpen,
 		onPopOut: handlePopOut,
+		onPopIn: handlePopIn,
 		onResize: resizer.onResize,
 		onResizeEnd: handleResizeEnd,
 		onChatPanelResize: chatPanelResizer.onResize,

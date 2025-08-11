@@ -1,12 +1,12 @@
 /* eslint-disable vue/one-component-per-file */
 import { computed, defineComponent, h, ref } from 'vue';
-import { usePiPWindow } from './usePiPWindow';
+import { usePopOutWindow } from './usePopOutWindow';
 import { waitFor } from '@testing-library/vue';
 import { renderComponent } from '@/__tests__/render';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 
-describe(usePiPWindow, () => {
+describe(usePopOutWindow, () => {
 	const documentPictureInPicture: NonNullable<Window['documentPictureInPicture']> = {
 		window: null,
 		requestWindow: async () =>
@@ -27,7 +27,8 @@ describe(usePiPWindow, () => {
 				setup() {
 					const container = ref<HTMLDivElement | null>(null);
 					const content = ref<HTMLDivElement | null>(null);
-					const pipWindow = usePiPWindow({
+					const popOutWindow = usePopOutWindow({
+						workflowName: computed(() => ''),
 						container,
 						content,
 						shouldPopOut: computed(() => true),
@@ -38,7 +39,7 @@ describe(usePiPWindow, () => {
 						h(
 							'div',
 							{ ref: container },
-							h('div', { ref: content }, String(pipWindow.canPopOut.value)),
+							h('div', { ref: content }, String(popOutWindow.canPopOut.value)),
 						);
 				},
 			});
@@ -55,7 +56,8 @@ describe(usePiPWindow, () => {
 				setup() {
 					const container = ref<HTMLDivElement | null>(null);
 					const content = ref<HTMLDivElement | null>(null);
-					const pipWindow = usePiPWindow({
+					const popOutWindow = usePopOutWindow({
+						workflowName: computed(() => ''),
 						container,
 						content,
 						shouldPopOut: computed(() => true),
@@ -66,7 +68,7 @@ describe(usePiPWindow, () => {
 						h(
 							'div',
 							{ ref: container },
-							h('div', { ref: content }, String(pipWindow.canPopOut.value)),
+							h('div', { ref: content }, String(popOutWindow.canPopOut.value)),
 						);
 				},
 			});
@@ -88,7 +90,8 @@ describe(usePiPWindow, () => {
 				setup() {
 					const container = ref<HTMLDivElement | null>(null);
 					const content = ref<HTMLDivElement | null>(null);
-					const pipWindow = usePiPWindow({
+					const popOutWindow = usePopOutWindow({
+						workflowName: computed(() => ''),
 						container,
 						content,
 						shouldPopOut: computed(() => shouldPopOut.value),
@@ -99,7 +102,7 @@ describe(usePiPWindow, () => {
 						h(
 							'div',
 							{ ref: container },
-							h('div', { ref: content }, String(pipWindow.isPoppedOut.value)),
+							h('div', { ref: content }, String(popOutWindow.isPoppedOut.value)),
 						);
 				},
 			});

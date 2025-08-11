@@ -964,7 +964,7 @@ export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
-export const PiPWindowSymbol = 'PiPWindow' as unknown as InjectionKey<Ref<Window | undefined>>;
+export const PopOutWindowSymbol = Symbol('PopOutWindow') as InjectionKey<Ref<Window | undefined>>;
 export const ExpressionLocalResolveContextSymbol = Symbol(
 	'ExpressionLocalResolveContext',
 ) as InjectionKey<ComputedRef<ExpressionLocalResolveContext | undefined>>;
