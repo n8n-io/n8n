@@ -223,7 +223,13 @@ export class DataStoreRepository extends Repository<DataStore> {
 	}
 
 	private getDataStoreColumnFields(alias: string): string[] {
-		return [`${alias}.id`, `${alias}.name`, `${alias}.type`];
+		return [
+			`${alias}.id`,
+			`${alias}.name`,
+			`${alias}.type`,
+			`${alias}.createdAt`,
+			`${alias}.updatedAt`,
+		];
 	}
 
 	private getProjectFields(alias: string): string[] {

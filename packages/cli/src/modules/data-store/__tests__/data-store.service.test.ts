@@ -121,6 +121,10 @@ describe('dataStore', () => {
 					dataStoreId: dataStore.id,
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					createdAt: expect.any(Date),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					updatedAt: expect.any(Date),
 				},
 			]);
 
@@ -316,6 +320,10 @@ describe('dataStore', () => {
 					id: expect.any(String),
 					name: 'myColumn0',
 					type: 'string',
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					createdAt: expect.any(Date),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					updatedAt: expect.any(Date),
 				},
 				{
 					index: 1,
@@ -324,6 +332,10 @@ describe('dataStore', () => {
 					id: expect.any(String),
 					name: 'myColumn1',
 					type: 'string',
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					createdAt: expect.any(Date),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					updatedAt: expect.any(Date),
 				},
 				{
 					index: 2,
@@ -332,6 +344,10 @@ describe('dataStore', () => {
 					id: expect.any(String),
 					name: 'myColumn2',
 					type: 'number',
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					createdAt: expect.any(Date),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					updatedAt: expect.any(Date),
 				},
 				{
 					index: 3,
@@ -340,6 +356,10 @@ describe('dataStore', () => {
 					id: expect.any(String),
 					name: 'myColumn3',
 					type: 'number',
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					createdAt: expect.any(Date),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					updatedAt: expect.any(Date),
 				},
 				{
 					index: 4,
@@ -348,6 +368,10 @@ describe('dataStore', () => {
 					id: expect.any(String),
 					name: 'myColumn4',
 					type: 'date',
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					createdAt: expect.any(Date),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					updatedAt: expect.any(Date),
 				},
 			]);
 		});
@@ -449,6 +473,9 @@ describe('dataStore', () => {
 					id: c2.id,
 					name: 'myColumn2',
 					type: 'number',
+					createdAt: c2.createdAt,
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					updatedAt: expect.any(Date),
 				},
 			]);
 		});
@@ -702,35 +729,59 @@ describe('dataStore', () => {
 
 			// ASSERT
 			expect(result.count).toEqual(1);
-			// TODO: Switch back to checking order once MariaDB order is fixed
-			expect(result.data[0].columns).toEqual(
+
+			const resultColumns = result.data[0].columns;
+
+			expect(resultColumns).toEqual(
 				expect.arrayContaining([
 					{
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						id: expect.any(String),
 						name: 'myColumn1',
 						type: 'string',
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						createdAt: expect.any(Date),
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						updatedAt: expect.any(Date),
 					},
 					{
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						id: expect.any(String),
 						name: 'myColumn2',
 						type: 'number',
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						createdAt: expect.any(Date),
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						updatedAt: expect.any(Date),
 					},
 					{
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						id: expect.any(String),
 						name: 'myColumn3',
 						type: 'number',
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						createdAt: expect.any(Date),
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						updatedAt: expect.any(Date),
 					},
 					{
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						id: expect.any(String),
 						name: 'myColumn4',
 						type: 'date',
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						createdAt: expect.any(Date),
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						updatedAt: expect.any(Date),
 					},
 				]),
 			);
+
+			for (let i = 1; i < resultColumns.length; i++) {
+				expect(new Date(resultColumns[i].updatedAt).getTime()).toBeGreaterThanOrEqual(
+					new Date(resultColumns[i - 1].updatedAt).getTime(),
+				);
+			}
 		});
 
 		describe('sorts as expected', () => {
