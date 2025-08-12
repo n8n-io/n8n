@@ -1,12 +1,12 @@
 import type { BaseResource } from '@/Interface';
-import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
+import type { DataStore } from '@/features/dataStore/datastore.types';
 
 /**
  * Data Store resource type definition
  * This extends the ModuleResources interface to add DataStore as a resource type
  */
 export type DataStoreResource = BaseResource &
-	DataStoreEntity & {
+	DataStore & {
 		resourceType: 'datastore';
 	};
 

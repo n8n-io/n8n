@@ -3,7 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { vi } from 'vitest';
 import DataStoreBreadcrumbs from '@/features/dataStore/components/DataStoreBreadcrumbs.vue';
-import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
+import type { DataStore } from '@/features/dataStore/datastore.types';
 
 const mockRouter = {
 	push: vi.fn(),
@@ -48,7 +48,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
-const mockDataStore: DataStoreEntity = {
+const mockDataStore: DataStore = {
 	id: '1',
 	name: 'Test DataStore',
 	sizeBytes: 1024,
@@ -69,7 +69,7 @@ const mockDataStore: DataStoreEntity = {
 	},
 };
 
-const mockDataStoreWithoutProject: DataStoreEntity = {
+const mockDataStoreWithoutProject: DataStore = {
 	...mockDataStore,
 	project: undefined,
 };
