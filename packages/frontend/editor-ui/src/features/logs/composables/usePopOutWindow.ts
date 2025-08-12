@@ -14,7 +14,7 @@ import {
 } from 'vue';
 
 interface UsePopOutWindowOptions {
-	workflowName: ComputedRef<string>;
+	title: ComputedRef<string>;
 	initialWidth?: number;
 	initialHeight?: number;
 	container: Readonly<ShallowRef<HTMLElement | null>>;
@@ -62,7 +62,7 @@ function syncStyleMutations(destination: Window, mutations: MutationRecord[]) {
  * A composable that allows to pop out given content in child window
  */
 export function usePopOutWindow({
-	workflowName,
+	title,
 	container,
 	content,
 	initialHeight,
@@ -159,10 +159,11 @@ export function usePopOutWindow({
 	});
 
 	watch(
-		[workflowName, popOutWindow],
-		([name, win]) => {
+		[title, popOutWindow],
+		([newTitle, win]) => {
 			if (win) {
-				documentTitle.set(`Logs - ${name}`);
+				console.log(newTitle);
+				documentTitle.set(newTitle);
 			}
 		},
 		{ immediate: true },

@@ -52,18 +52,20 @@ export function useLogsPanelLayout(
 			: resizer.isResizing.value && resizer.size.value > 0,
 	);
 	const isCollapsingDetailsPanel = computed(() => overviewPanelResizer.isFullSize.value);
+	const popOutWindowTitle = computed(() => `Logs - ${workflowName.value}`);
+	const shouldPopOut = computed(() => logsStore.state === LOGS_PANEL_STATE.FLOATING);
 
 	const {
 		canPopOut,
 		isPoppedOut,
 		popOutWindow: popOutWindow,
 	} = usePopOutWindow({
-		workflowName,
+		title: popOutWindowTitle,
 		initialHeight: 400,
 		initialWidth: window.document.body.offsetWidth * 0.8,
 		container: popOutContainer,
 		content: popOutContent,
-		shouldPopOut: computed(() => logsStore.state === LOGS_PANEL_STATE.FLOATING),
+		shouldPopOut: shouldPopOut,
 		onRequestClose: () => {
 			if (!isOpen.value) {
 				return;

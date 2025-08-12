@@ -28,7 +28,7 @@ describe(usePopOutWindow, () => {
 					const container = ref<HTMLDivElement | null>(null);
 					const content = ref<HTMLDivElement | null>(null);
 					const popOutWindow = usePopOutWindow({
-						workflowName: computed(() => ''),
+						title: computed(() => ''),
 						container,
 						content,
 						shouldPopOut: computed(() => true),
@@ -57,7 +57,7 @@ describe(usePopOutWindow, () => {
 					const container = ref<HTMLDivElement | null>(null);
 					const content = ref<HTMLDivElement | null>(null);
 					const popOutWindow = usePopOutWindow({
-						workflowName: computed(() => ''),
+						title: computed(() => ''),
 						container,
 						content,
 						shouldPopOut: computed(() => true),
@@ -91,7 +91,7 @@ describe(usePopOutWindow, () => {
 					const container = ref<HTMLDivElement | null>(null);
 					const content = ref<HTMLDivElement | null>(null);
 					const popOutWindow = usePopOutWindow({
-						workflowName: computed(() => ''),
+						title: computed(() => ''),
 						container,
 						content,
 						shouldPopOut: computed(() => shouldPopOut.value),
