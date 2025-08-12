@@ -252,11 +252,18 @@ const filteredWorkflows = computed(() => {
 			return false;
 		}
 
-		if (workflow.project && filters.value.project) {
-			return workflow.project.id === filters.value.project.id;
+		// Project filter logic: if a project filter is set, only show items from that project
+		if (filters.value.project) {
+			// Item must have a project and it must match the filter
+			return workflow.project?.id === filters.value.project.id;
 		}
 
-		return !(filters.value.status && filters.value.status !== workflow.status);
+		// Status filter (only applied when no project filter is active)
+		if (filters.value.status && filters.value.status !== workflow.status) {
+			return false;
+		}
+
+		return true;
 	});
 });
 
@@ -283,11 +290,18 @@ const filteredCredentials = computed(() => {
 			return false;
 		}
 
-		if (credential.project && filters.value.project) {
-			return credential.project.id === filters.value.project.id;
+		// Project filter logic: if a project filter is set, only show items from that project
+		if (filters.value.project) {
+			// Item must have a project and it must match the filter
+			return credential.project?.id === filters.value.project.id;
 		}
 
-		return !(filters.value.status && filters.value.status !== credential.status);
+		// Status filter (only applied when no project filter is active)
+		if (filters.value.status && filters.value.status !== credential.status) {
+			return false;
+		}
+
+		return true;
 	});
 });
 
@@ -559,8 +573,22 @@ function castType(type: string): ResourceType {
 	return ResourceType.Credential;
 }
 
-function castProject(project: ProjectListItem) {
-	return { homeProject: project } as unknown as WorkflowResource;
+function castProject(project: ProjectListItem): WorkflowResource {
+	// Create a properly typed object that satisfies WorkflowResource
+	// This is a workaround for the ProjectCardBadge component expecting WorkflowResource
+	const resource: WorkflowResource = {
+		homeProject: project,
+		id: '',
+		name: '',
+		active: false,
+		createdAt: '',
+		updatedAt: '',
+		isArchived: false,
+		readOnly: false,
+		resourceType: 'workflow',
+		sharedWithProjects: [],
+	};
+	return resource;
 }
 
 const workflowDiffEventBus = createEventBus();
@@ -761,29 +789,8 @@ function openDiffModal(id: string) {
 											@update:model-value="toggleSelected(file.id)"
 										>
 											<span>
-												<N8nText
-													v-if="file.status === SOURCE_CONTROL_FILE_STATUS.deleted"
-													color="text-light"
-												>
-													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow">
-														Deleted Workflow:
-													</span>
-													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential">
-														Deleted Credential:
-													</span>
-													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.folders">
-														Deleted Folders:
-													</span>
-													<strong>{{ file.name || file.id }}</strong>
-												</N8nText>
-												<N8nText
-													v-else
-													tag="div"
-													bold
-													color="text-dark"
-													:class="[$style.listItemName]"
-												>
-													{{ file.name }}
+												<N8nText tag="div" bold color="text-dark" :class="[$style.listItemName]">
+													{{ file.name || file.id }}
 												</N8nText>
 												<N8nText
 													v-if="file.updatedAt"
@@ -820,13 +827,13 @@ function openDiffModal(id: string) {
 														:show-badge-border="false"
 													/>
 												</template>
-												<N8nBadge :theme="getStatusTheme(file.status)">
+												<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
 													{{ getStatusText(file.status) }}
 												</N8nBadge>
 												<EnvFeatureFlag name="SOURCE_CONTROL_WORKFLOW_DIFF">
 													<N8nIconButton
 														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
-														icon="git-branch"
+														icon="file-diff"
 														type="secondary"
 														@click="openDiffModal(file.id)"
 													/>
@@ -951,6 +958,7 @@ function openDiffModal(id: string) {
 .badges {
 	display: flex;
 	gap: 10px;
+	align-items: center;
 }
 
 .footer {
