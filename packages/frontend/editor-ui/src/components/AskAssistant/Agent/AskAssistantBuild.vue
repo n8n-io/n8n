@@ -104,18 +104,29 @@ watch(
 	{ deep: true },
 );
 
+// If this is the initial generation, streaming has ended, and there were workflow updates,
+// we want to save the workflow
 watch(
 	() => builderStore.streaming,
 	async () => {
-		// If this is the initial generation, streaming has ended, and there were workflow updates,
-		// we want to save the workflow
 		if (
 			initialGeneration.value &&
 			!builderStore.streaming &&
 			workflowsStore.workflow.nodes.length > 0
 		) {
+			// Check if the generation completed successfully (no error or cancellation)
+			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+			const successful =
+				lastMessage &&
+				lastMessage.type !== 'error' &&
+				!(lastMessage.type === 'text' && lastMessage.content === '[Task aborted]');
+
 			initialGeneration.value = false;
-			await workflowSaver.saveCurrentWorkflow();
+
+			// Only save if generation completed successfully
+			if (successful) {
+				await workflowSaver.saveCurrentWorkflow();
+			}
 		}
 	},
 );
