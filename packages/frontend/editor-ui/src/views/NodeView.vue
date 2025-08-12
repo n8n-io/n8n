@@ -139,6 +139,7 @@ import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatBut
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { expressionsWorker } from '@/data/workers/instances';
 
 defineOptions({
 	name: 'NodeView',
@@ -338,6 +339,8 @@ async function initializeData() {
 
 	try {
 		await Promise.all(loadPromises);
+
+		expressionsWorker.run('setNodeTypes', JSON.stringify(nodeTypesStore.nodeTypes));
 	} catch (error) {
 		toast.showError(
 			error,

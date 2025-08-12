@@ -856,9 +856,10 @@ export const ALLOWED_HTML_TAGS = [
 	'mark',
 ];
 
-export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')
-	? 'https://stage-app.n8n.cloud/account/change-plan'
-	: 'https://app.n8n.cloud/account/change-plan';
+export const CLOUD_CHANGE_PLAN_PAGE =
+	typeof window !== 'undefined' && window.location.host.includes('stage-app.n8n.cloud')
+		? 'https://stage-app.n8n.cloud/account/change-plan'
+		: 'https://app.n8n.cloud/account/change-plan';
 
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
 
