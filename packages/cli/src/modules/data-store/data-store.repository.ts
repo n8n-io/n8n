@@ -10,7 +10,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStore } from './data-store.entity';
-import { createUserTableQuery, toTableName } from './utils/sql-utils';
+import { toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataStore> {
@@ -21,22 +21,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 		super(DataStore, dataSource.manager);
 	}
 
-	// TODO: remove
-	async createUserTableRaw(
-		projectId: string,
-		name: string,
-		columns: DataStoreCreateColumnSchema[],
-	) {
-		return await this.manager.transaction(async (em) => {
-			const dataStore = em.create(DataStore, { name, columns, projectId });
-			await em.insert(DataStore, dataStore);
-			const dbType = em.connection.options.type;
-			await em.query(createUserTableQuery(toTableName(dataStore.id), columns, dbType));
-			return dataStore;
-		});
-	}
-
-	async createUserTable(projectId: string, name: string, columns: DataStoreCreateColumnSchema[]) {
+	async createDataStore(projectId: string, name: string, columns: DataStoreCreateColumnSchema[]) {
 		if (columns.some((c) => !DATA_STORE_COLUMN_REGEX.test(c.name))) {
 			throw new UnexpectedError('bad column name');
 		}
@@ -77,7 +62,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 		});
 	}
 
-	async deleteUserTable(dataStoreId: string, entityManager?: EntityManager) {
+	async deleteDataStore(dataStoreId: string, entityManager?: EntityManager) {
 		const executor = entityManager ?? this.manager;
 		return await executor.transaction(async (em) => {
 			const queryRunner = em.queryRunner;
@@ -98,7 +83,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 
 			let changed = false;
 			for (const match of existingTables) {
-				const result = await this.deleteUserTable(match.id, em);
+				const result = await this.deleteDataStore(match.id, em);
 				changed = changed || result;
 			}
 

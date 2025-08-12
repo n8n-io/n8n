@@ -33,18 +33,6 @@ export class DataStoreService {
 	async start() {}
 	async shutdown() {}
 
-	// TODO: remove
-	async createDataStoreRaw(projectId: string, dto: CreateDataStoreDto) {
-		const existingTable = await this.dataStoreRepository.findOneBy({
-			name: dto.name,
-			projectId,
-		});
-		if (existingTable !== null) {
-			throw new UserError(`Data store with name '${dto.name}' already exists in this project`);
-		}
-		return await this.dataStoreRepository.createUserTableRaw(projectId, dto.name, dto.columns);
-	}
-
 	async createDataStore(projectId: string, dto: CreateDataStoreDto) {
 		const existingTable = await this.dataStoreRepository.findOneBy({
 			name: dto.name,
@@ -53,7 +41,7 @@ export class DataStoreService {
 		if (existingTable !== null) {
 			throw new UserError(`Data store with name '${dto.name}' already exists in this project`);
 		}
-		return await this.dataStoreRepository.createUserTable(projectId, dto.name, dto.columns);
+		return await this.dataStoreRepository.createDataStore(projectId, dto.name, dto.columns);
 	}
 
 	// Currently only renames data stores
@@ -100,7 +88,7 @@ export class DataStoreService {
 			`Tried to delete non-existent data store '${dataStoreId}'`,
 		);
 
-		await this.dataStoreRepository.deleteUserTable(dataStoreId);
+		await this.dataStoreRepository.deleteDataStore(dataStoreId);
 
 		return true;
 	}

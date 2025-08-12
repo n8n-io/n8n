@@ -76,26 +76,6 @@ function getPrimaryKeyAutoIncrement(dbType: DataSourceOptions['type']) {
 	throw new UnexpectedError('Unexpected database type');
 }
 
-export function createUserTableQuery(
-	tableName: DataStoreUserTableName,
-	columns: DataStoreCreateColumnSchema[],
-	dbType: DataSourceOptions['type'],
-) {
-	if (columns.map((x) => x.name).some((name) => !isValidColumnName(name))) {
-		throw new UnexpectedError('bad column name');
-	}
-
-	const quotedTableName = quoteIdentifier(tableName, dbType);
-
-	const columnSql = columns.map((column) => columnToWildcardAndType(column, dbType));
-	const columnsFieldQuery = columnSql.length > 0 ? `, ${columnSql.join(', ')}` : '';
-
-	const primaryKeyType = getPrimaryKeyAutoIncrement(dbType);
-
-	// The tableName here is selected by us based on the automatically generated id, not user input
-	return `CREATE TABLE IF NOT EXISTS ${quotedTableName} (id ${primaryKeyType} ${columnsFieldQuery})`;
-}
-
 function isValidColumnName(name: string) {
 	// Only allow alphanumeric and underscore
 	return DATA_STORE_COLUMN_REGEX.test(name);

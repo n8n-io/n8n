@@ -1,7 +1,6 @@
-import type { DataStoreColumn, DataStoreRows } from '@n8n/api-types';
+import type { DataStoreRows } from '@n8n/api-types';
 
 import {
-	createUserTableQuery,
 	addColumnQuery,
 	deleteColumnQuery,
 	buildInsertQuery,
@@ -10,32 +9,6 @@ import {
 } from '../utils/sql-utils';
 
 describe('sql-utils', () => {
-	describe('createUserTableQuery', () => {
-		it('should generate a valid SQL query for creating a user table with columns', () => {
-			const tableName = 'data_store_user_abc';
-			const columns = [
-				{ dataStoreId: '1', name: 'name', type: 'string' },
-				{ dataStoreId: '2', name: 'age', type: 'number' },
-			] satisfies DataStoreColumn[];
-
-			const query = createUserTableQuery(tableName, columns, 'sqlite');
-			expect(query).toBe(
-				'CREATE TABLE IF NOT EXISTS "data_store_user_abc" (id INTEGER PRIMARY KEY AUTOINCREMENT , "name" TEXT, "age" FLOAT)',
-			);
-		});
-
-		it('should generate a valid SQL query for creating a user table without columns', () => {
-			const tableName = 'data_store_user_abc';
-			const columns: [] = [];
-
-			const query = createUserTableQuery(tableName, columns, 'postgres');
-
-			expect(query).toBe(
-				'CREATE TABLE IF NOT EXISTS "data_store_user_abc" (id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY )',
-			);
-		});
-	});
-
 	describe('addColumnQuery', () => {
 		it('should generate a valid SQL query for adding columns to a table', () => {
 			const tableName = 'data_store_user_abc';
