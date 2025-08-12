@@ -689,7 +689,6 @@ export const messageFields: INodeProperties[] = [
 								placeholder: '1663233118.856619',
 								description:
 									'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
-
 								validation: [
 									{
 										type: 'regex',
