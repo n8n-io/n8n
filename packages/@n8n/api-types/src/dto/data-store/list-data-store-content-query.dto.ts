@@ -1,3 +1,4 @@
+import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
@@ -15,17 +16,44 @@ const filterRecord = z.object({
 
 const chainedFilterSchema = z.union([z.literal('and'), z.literal('or')]);
 
-export type ListDataStoreContentFilter = z.infer<typeof filterValidator>;
+export type ListDataStoreContentFilter = z.infer<typeof filterSchema>;
 
 // ---------------------
 // Parameter Validators
 // ---------------------
 
-// Filter parameter validation
-const filterValidator = z.object({
+const filterSchema = z.object({
 	type: chainedFilterSchema.default('and'),
 	filters: z.array(filterRecord).default([]),
 });
+
+// Filter parameter validation
+const filterValidator = z
+	.string()
+	.optional()
+	.transform((val, ctx) => {
+		if (!val) return undefined;
+		try {
+			const parsed: unknown = jsonParse(val);
+			try {
+				return filterSchema.parse(parsed);
+			} catch (e) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Invalid filter fields',
+					path: ['filter'],
+				});
+				return z.NEVER;
+			}
+		} catch (e) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Invalid filter format',
+				path: ['filter'],
+			});
+			return z.NEVER;
+		}
+	});
 
 // SortBy parameter validation
 const sortByValidator = z
