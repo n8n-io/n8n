@@ -6,7 +6,9 @@ import {
 } from '../composables/workflow';
 import { AGENT_NODE_NAME, AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME } from '../constants';
 
-describe('AI-716 Correctly set up agent model shows error', () => {
+// Migrated to Playwright
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('AI-716 Correctly set up agent model shows error', () => {
 	beforeEach(() => {
 		cy.visit(getCredentialsPageUrl());
 		createNewCredential('OpenAi', 'OpenAI Account', 'API Key', 'sk-123', true);
