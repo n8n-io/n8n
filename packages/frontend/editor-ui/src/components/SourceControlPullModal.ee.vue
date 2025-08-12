@@ -1,47 +1,25 @@
 <script lang="ts" setup>
-import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
-import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import EnvFeatureFlag from '@/features/env-feature-flag/EnvFeatureFlag.vue';
-import type { WorkflowResource } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
-import { ResourceType } from '@/utils/projects.utils';
+import type { ProjectListItem } from '@/types/projects.types';
 import {
 	getPullPriorityByStatus,
 	getStatusText,
 	getStatusTheme,
 	notifyUserAboutPullWorkFolderOutcome,
 } from '@/utils/sourceControlUtils';
-import {
-	type SourceControlledFile,
-	SOURCE_CONTROL_FILE_STATUS,
-	SOURCE_CONTROL_FILE_TYPE,
-} from '@n8n/api-types';
-import {
-	N8nBadge,
-	N8nButton,
-	N8nHeading,
-	N8nIcon,
-	N8nInfoTip,
-	N8nInput,
-	N8nInputLabel,
-	N8nLink,
-	N8nOption,
-	N8nPopover,
-	N8nSelect,
-	N8nText,
-} from '@n8n/design-system';
+import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
+import { N8nBadge, N8nButton, N8nHeading, N8nInfoTip, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { refDebounced } from '@vueuse/core';
 import dateformat from 'dateformat';
 import orderBy from 'lodash/orderBy';
 import { computed, onBeforeMount, ref } from 'vue';
@@ -51,7 +29,6 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from './Modal.vue';
 
 type SourceControlledFileType = SourceControlledFile['type'];
-type SourceControlledFileStatus = SourceControlledFile['status'];
 type SourceControlledFileWithProject = SourceControlledFile & { project?: ProjectListItem };
 
 const props = defineProps<{
@@ -74,48 +51,6 @@ onBeforeMount(() => {
 const activeTab = ref<
 	typeof SOURCE_CONTROL_FILE_TYPE.workflow | typeof SOURCE_CONTROL_FILE_TYPE.credential
 >(SOURCE_CONTROL_FILE_TYPE.workflow);
-
-// Filtering state
-const search = ref('');
-const debouncedSearch = refDebounced(search, 250);
-const filters = ref<{ status?: SourceControlledFileStatus; project: ProjectSharingData | null }>({
-	project: null,
-});
-
-const statusFilterOptions: Array<{ label: string; value: SourceControlledFileStatus }> = [
-	{
-		label: 'New',
-		value: SOURCE_CONTROL_FILE_STATUS.created,
-	},
-	{
-		label: 'Modified',
-		value: SOURCE_CONTROL_FILE_STATUS.modified,
-	},
-	{
-		label: 'Deleted',
-		value: SOURCE_CONTROL_FILE_STATUS.deleted,
-	},
-] as const;
-
-const projectsForFilters = computed(() => {
-	return projectsStore.availableProjects.filter(
-		// global admins role is empty...
-		(project) => !project.role || project.role === 'project:admin',
-	);
-});
-
-const filterCount = computed(() =>
-	Object.values(filters.value).reduce((acc, item) => (item ? acc + 1 : acc), 0),
-);
-
-const filtersApplied = computed(
-	() => Boolean(search.value) || Boolean(Object.values(filters.value).filter(Boolean).length),
-);
-
-const resetFilters = () => {
-	filters.value = { project: null };
-	search.value = '';
-};
 
 // Group files by type with project information
 const filesWithProjects = computed(() =>
@@ -141,26 +76,7 @@ const groupedFilesByType = computed(() => {
 // Filtered workflows
 const filteredWorkflows = computed(() => {
 	const workflows = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.workflow] || [];
-	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
-
-	return workflows.filter((workflow) => {
-		if (!workflow.name.toLocaleLowerCase().includes(searchQuery)) {
-			return false;
-		}
-
-		// Project filter logic: if a project filter is set, only show items from that project
-		if (filters.value.project) {
-			// Item must have a project and it must match the filter
-			return workflow.project?.id === filters.value.project.id;
-		}
-
-		// Status filter (only applied when no project filter is active)
-		if (filters.value.status && filters.value.status !== workflow.status) {
-			return false;
-		}
-
-		return true;
-	});
+	return workflows;
 });
 
 const sortedWorkflows = computed(() =>
@@ -174,26 +90,7 @@ const sortedWorkflows = computed(() =>
 // Filtered credentials
 const filteredCredentials = computed(() => {
 	const credentials = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential] || [];
-	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
-
-	return credentials.filter((credential) => {
-		if (!credential.name.toLocaleLowerCase().includes(searchQuery)) {
-			return false;
-		}
-
-		// Project filter logic: if a project filter is set, only show items from that project
-		if (filters.value.project) {
-			// Item must have a project and it must match the filter
-			return credential.project?.id === filters.value.project.id;
-		}
-
-		// Status filter (only applied when no project filter is active)
-		if (filters.value.status && filters.value.status !== credential.status) {
-			return false;
-		}
-
-		return true;
-	});
+	return credentials;
 });
 
 const sortedCredentials = computed(() =>
@@ -213,13 +110,6 @@ const activeDataSourceFiltered = computed(() => {
 		return sortedCredentials.value;
 	}
 	return [];
-});
-
-const activeEntityLocale = computed(() => {
-	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
-		return 'generic.workflows';
-	}
-	return 'generic.credentials';
 });
 
 const filtersNoResultText = computed(() => {
@@ -251,15 +141,15 @@ const otherFiles = computed(() => {
 
 	const variables = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.variables];
 	if (variables) {
-		others.push(...variables);
+		others.push.apply(others, variables);
 	}
 	const tags = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.tags];
 	if (tags) {
-		others.push(...tags);
+		others.push.apply(others, tags);
 	}
 	const folders = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.folders];
 	if (folders) {
-		others.push(...folders);
+		others.push.apply(others, folders);
 	}
 
 	return others;
@@ -300,31 +190,6 @@ function renderUpdatedAt(file: SourceControlledFile) {
 	});
 }
 
-function castType(type: string): ResourceType {
-	if (type === SOURCE_CONTROL_FILE_TYPE.workflow) {
-		return ResourceType.Workflow;
-	}
-	return ResourceType.Credential;
-}
-
-function castProject(project: ProjectListItem): WorkflowResource {
-	// Create a properly typed object that satisfies WorkflowResource
-	// This is a workaround for the ProjectCardBadge component expecting WorkflowResource
-	const resource: WorkflowResource = {
-		homeProject: project,
-		id: '',
-		name: '',
-		active: false,
-		createdAt: '',
-		updatedAt: '',
-		isArchived: false,
-		readOnly: false,
-		resourceType: 'workflow',
-		sharedWithProjects: [],
-	};
-	return resource;
-}
-
 const workflowDiffEventBus = createEventBus();
 
 function openDiffModal(id: string) {
@@ -359,73 +224,14 @@ const modalHeight = computed(() =>
 				{{ i18n.baseText('settings.sourceControl.modals.pull.title') }}
 			</N8nHeading>
 
-			<div v-if="tabs.some((tab) => tab.total > 0)" :class="[$style.filtersRow]" class="mt-l">
-				<div :class="[$style.filters]">
-					<N8nInput
-						v-model="search"
-						data-test-id="source-control-pull-search"
-						placeholder="Filter by title"
-						clearable
-						style="width: 234px"
-					>
-						<template #prefix>
-							<N8nIcon icon="search" />
-						</template>
-					</N8nInput>
-					<N8nPopover trigger="click" width="304" style="align-self: normal">
-						<template #reference>
-							<N8nButton
-								icon="funnel"
-								type="tertiary"
-								style="height: 100%"
-								:active="Boolean(filterCount)"
-								data-test-id="source-control-filter-dropdown"
-							>
-								<N8nBadge v-if="filterCount" theme="primary" class="mr-4xs">
-									{{ filterCount }}
-								</N8nBadge>
-							</N8nButton>
-						</template>
-						<N8nInputLabel
-							:label="i18n.baseText('workflows.filters.status')"
-							:bold="false"
-							size="small"
-							color="text-base"
-							class="mb-3xs"
-						/>
-						<N8nSelect
-							v-model="filters.status"
-							data-test-id="source-control-status-filter"
-							clearable
-						>
-							<N8nOption
-								v-for="option in statusFilterOptions"
-								:key="option.label"
-								data-test-id="source-control-status-filter-option"
-								v-bind="option"
-							/>
-						</N8nSelect>
-						<N8nInputLabel
-							:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
-							:bold="false"
-							size="small"
-							color="text-base"
-							class="mb-3xs mt-3xs"
-						/>
-						<ProjectSharing
-							v-model="filters.project"
-							data-test-id="source-control-pull-modal-project-search"
-							:projects="projectsForFilters"
-							:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
-							:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
-						/>
-						<div v-if="filterCount" class="mt-s">
-							<N8nLink @click="resetFilters">
-								{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}
-							</N8nLink>
-						</div>
-					</N8nPopover>
-				</div>
+			<div :class="[$style.filtersRow]" class="mt-l">
+				<N8nText tag="div" class="mb-xs">
+					{{ i18n.baseText('settings.sourceControl.modals.pull.description') }}
+					<br />
+					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
+						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
+					</N8nLink>
+				</N8nText>
 			</div>
 		</template>
 		<template #content>
@@ -460,32 +266,6 @@ const modalHeight = computed(() =>
 							<div :class="$style.headerTitle">
 								<N8nText>Title</N8nText>
 							</div>
-							<N8nInfoTip
-								v-if="filtersApplied"
-								class="p-xs"
-								:bold="false"
-								:class="$style.filtersApplied"
-							>
-								{{
-									i18n.baseText('settings.sourceControl.modals.push.filter', {
-										interpolate: {
-											count: `${activeDataSourceFiltered.length} / ${
-												activeTab === SOURCE_CONTROL_FILE_TYPE.workflow
-													? groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.workflow]?.length || 0
-													: groupedFilesByType[SOURCE_CONTROL_FILE_TYPE.credential]?.length || 0
-											}`,
-											entity: i18n.baseText(activeEntityLocale).toLowerCase(),
-										},
-									})
-								}}
-								<N8nLink
-									size="small"
-									data-test-id="source-control-filters-reset"
-									@click="resetFilters"
-								>
-									{{ i18n.baseText('workflows.filters.active.reset') }}
-								</N8nLink>
-							</N8nInfoTip>
 						</div>
 						<div style="flex: 1; overflow: hidden">
 							<N8nInfoTip v-if="!activeDataSourceFiltered.length" class="p-xs" :bold="false">
@@ -507,25 +287,7 @@ const modalHeight = computed(() =>
 									>
 										<div :class="[$style.listItem]" data-test-id="pull-modal-item">
 											<div :class="[$style.itemContent]">
-												<N8nText
-													v-if="file.status === SOURCE_CONTROL_FILE_STATUS.deleted"
-													color="text-light"
-												>
-													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow">
-														Deleted Workflow:
-													</span>
-													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential">
-														Deleted Credential:
-													</span>
-													<strong>{{ file.name || file.id }}</strong>
-												</N8nText>
-												<N8nText
-													v-else
-													tag="div"
-													bold
-													color="text-dark"
-													:class="[$style.listItemName]"
-												>
+												<N8nText tag="div" bold color="text-dark" :class="[$style.listItemName]">
 													<RouterLink
 														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential"
 														target="_blank"
@@ -553,25 +315,7 @@ const modalHeight = computed(() =>
 												</N8nText>
 											</div>
 											<span :class="[$style.badges]">
-												<template
-													v-if="
-														file.type === SOURCE_CONTROL_FILE_TYPE.workflow ||
-														file.type === SOURCE_CONTROL_FILE_TYPE.credential
-													"
-												>
-													<ProjectCardBadge
-														v-if="file.project"
-														data-test-id="source-control-pull-modal-project-badge"
-														:resource="castProject(file.project)"
-														:resource-type="castType(file.type)"
-														:resource-type-label="
-															i18n.baseText(`generic.${file.type}`).toLowerCase()
-														"
-														:personal-project="projectsStore.personalProject"
-														:show-badge-border="false"
-													/>
-												</template>
-												<N8nBadge :theme="getStatusTheme(file.status)">
+												<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
 													{{ getStatusText(file.status) }}
 												</N8nBadge>
 												<EnvFeatureFlag name="SOURCE_CONTROL_WORKFLOW_DIFF">
