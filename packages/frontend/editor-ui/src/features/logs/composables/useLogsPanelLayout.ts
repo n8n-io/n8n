@@ -96,10 +96,6 @@ export function useLogsPanelLayout(
 		logsStore.setPreferPoppedOut(true);
 	}
 
-	function handlePopIn() {
-		logsStore.setPreferPoppedOut(false);
-	}
-
 	function handleResizeEnd() {
 		if (!logsStore.isOpen && !resizer.isCollapsed.value) {
 			handleToggleOpen(true);
@@ -138,7 +134,6 @@ export function useLogsPanelLayout(
 		popOutWindow,
 		onToggleOpen: handleToggleOpen,
 		onPopOut: handlePopOut,
-		onPopIn: handlePopIn,
 		onResize: resizer.onResize,
 		onResizeEnd: handleResizeEnd,
 		onChatPanelResize: chatPanelResizer.onResize,
