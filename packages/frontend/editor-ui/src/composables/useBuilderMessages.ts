@@ -32,10 +32,10 @@ export function useBuilderMessages() {
 	 * when no tools are running
 	 */
 	function applyRatingLogic(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
-		const { hasAnyRunningTools, isDoneThinking } = getThinkingState(messages);
+		const { hasAnyRunningTools, isStillThinking } = getThinkingState(messages);
 
 		// Don't apply rating if tools are still running
-		if (hasAnyRunningTools || !isDoneThinking) {
+		if (hasAnyRunningTools || isStillThinking) {
 			// Remove any existing ratings
 			return clearRatingLogic(messages);
 		}
@@ -190,7 +190,7 @@ export function useBuilderMessages() {
 	 */
 	function getThinkingState(messages: ChatUI.AssistantMessage[]): {
 		hasAnyRunningTools: boolean;
-		isDoneThinking: boolean;
+		isStillThinking: boolean;
 	} {
 		const allToolMessages = messages.filter(
 			(msg): msg is ChatUI.ToolMessage => msg.type === 'tool',
@@ -199,7 +199,7 @@ export function useBuilderMessages() {
 		if (hasAnyRunningTools) {
 			return {
 				hasAnyRunningTools: true,
-				isDoneThinking: false,
+				isStillThinking: false,
 			};
 		}
 
@@ -230,7 +230,7 @@ export function useBuilderMessages() {
 
 		return {
 			hasAnyRunningTools: false,
-			isDoneThinking: hasCompletedTools && hasTextAfterTools,
+			isStillThinking: hasCompletedTools && !hasTextAfterTools,
 		};
 	}
 
@@ -238,11 +238,11 @@ export function useBuilderMessages() {
 	 * Determine the thinking message based on tool states
 	 */
 	function determineThinkingMessage(messages: ChatUI.AssistantMessage[]): string | undefined {
-		const { hasAnyRunningTools, isDoneThinking } = getThinkingState(messages);
+		const { hasAnyRunningTools, isStillThinking } = getThinkingState(messages);
 
 		if (hasAnyRunningTools) {
 			return locale.baseText('aiAssistant.thinkingSteps.runningTools');
-		} else if (!isDoneThinking) {
+		} else if (isStillThinking) {
 			return locale.baseText('aiAssistant.thinkingSteps.processingResults');
 		}
 
