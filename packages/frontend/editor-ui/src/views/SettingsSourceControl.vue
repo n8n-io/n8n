@@ -12,7 +12,7 @@ import type { TupleToUnion } from '@/utils/typeHelpers';
 import type { Rule, RuleGroup } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import type { Validatable } from '@n8n/design-system';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 const locale = useI18n();
@@ -24,6 +24,10 @@ const documentTitle = useDocumentTitle();
 const loadingService = useLoadingService();
 
 const isConnected = ref(false);
+const connectionType = ref<'ssh' | 'https'>('ssh');
+const httpsUsername = ref('');
+const httpsPassword = ref('');
+
 const branchNameOptions = computed(() =>
 	sourceControlStore.preferences.branches.map((branch) => ({
 		value: branch,
@@ -31,13 +35,26 @@ const branchNameOptions = computed(() =>
 	})),
 );
 
+const connectionTypeOptions = [
+	{ value: 'ssh', label: 'SSH' },
+	{ value: 'https', label: 'HTTPS' },
+];
+
 const onConnect = async () => {
 	loadingService.startLoading();
 	loadingService.setLoadingText(locale.baseText('settings.sourceControl.loading.connecting'));
 	try {
-		await sourceControlStore.savePreferences({
+		const connectionData: any = {
 			repositoryUrl: sourceControlStore.preferences.repositoryUrl,
-		});
+			connectionType: connectionType.value,
+		};
+
+		if (connectionType.value === 'https') {
+			connectionData.username = httpsUsername.value;
+			connectionData.password = httpsPassword.value;
+		}
+
+		await sourceControlStore.savePreferences(connectionData);
 		await sourceControlStore.getBranches();
 		isConnected.value = true;
 		toast.showMessage({
@@ -66,6 +83,8 @@ const onDisconnect = async () => {
 			loadingService.startLoading();
 			await sourceControlStore.disconnect(true);
 			isConnected.value = false;
+			httpsUsername.value = '';
+			httpsPassword.value = '';
 			toast.showMessage({
 				title: locale.baseText('settings.sourceControl.toast.disconnected.title'),
 				message: locale.baseText('settings.sourceControl.toast.disconnected.message'),
@@ -111,6 +130,8 @@ const initialize = async () => {
 	await sourceControlStore.getPreferences();
 	if (sourceControlStore.preferences.connected) {
 		isConnected.value = true;
+		// Load connection type from preferences
+		connectionType.value = sourceControlStore.preferences.connectionType || 'ssh';
 		void sourceControlStore.getBranches();
 	}
 };
@@ -124,27 +145,55 @@ onMounted(async () => {
 const formValidationStatus = reactive<Record<string, boolean>>({
 	repoUrl: false,
 	keyGeneratorType: false,
+	httpsUsername: false,
+	httpsPassword: false,
 });
 
 function onValidate(key: string, value: boolean) {
 	formValidationStatus[key] = value;
 }
 
-const repoUrlValidationRules: Array<Rule | RuleGroup> = [
-	{ name: 'REQUIRED' },
-	{
-		name: 'MATCH_REGEX',
-		config: {
-			regex:
-				/^(?:git@|ssh:\/\/git@|[\w-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
-			message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
-		},
-	},
-];
+// Dynamic validation rules based on connection type
+const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
+	const baseRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
+
+	if (connectionType.value === 'ssh') {
+		baseRules.push({
+			name: 'MATCH_REGEX',
+			config: {
+				regex:
+					/^(?:git@|ssh:\/\/git@|[\w-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
+				message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
+			},
+		});
+	} else {
+		baseRules.push({
+			name: 'MATCH_REGEX',
+			config: {
+				regex: /^https?:\/\/.+$/,
+				message: 'Please enter a valid HTTPS URL',
+			},
+		});
+	}
+
+	return baseRules;
+});
 
 const keyGeneratorTypeValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
+const httpsCredentialValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
 
-const validForConnection = computed(() => formValidationStatus.repoUrl);
+const validForConnection = computed(() => {
+	if (connectionType.value === 'ssh') {
+		return formValidationStatus.repoUrl;
+	} else {
+		return (
+			formValidationStatus.repoUrl &&
+			formValidationStatus.httpsUsername &&
+			formValidationStatus.httpsPassword
+		);
+	}
+});
+
 const branchNameValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
 
 async function refreshSshKey() {
@@ -189,6 +238,19 @@ const onSelectSshKeyType = (value: Validatable) => {
 	}
 	sourceControlStore.preferences.keyGeneratorType = sshKeyType;
 };
+
+// Watch connection type changes to reset validation
+watch(connectionType, () => {
+	// Reset validation status when switching connection types
+	formValidationStatus.repoUrl = false;
+	formValidationStatus.httpsUsername = false;
+	formValidationStatus.httpsPassword = false;
+
+	// Clear repository URL if switching types and not connected
+	if (!isConnected.value) {
+		sourceControlStore.preferences.repositoryUrl = '';
+	}
+});
 </script>
 
 <template>
@@ -212,8 +274,26 @@ const onSelectSshKeyType = (value: Validatable) => {
 			<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
 				locale.baseText('settings.sourceControl.gitConfig')
 			}}</n8n-heading>
+
+			<!-- Connection Type Selector -->
+			<div v-if="!isConnected" :class="$style.group">
+				<label for="connectionType">Connection Type</label>
+				<n8n-form-input
+					id="connectionType"
+					v-model="connectionType"
+					label=""
+					type="select"
+					name="connectionType"
+					:options="connectionTypeOptions"
+					data-test-id="source-control-connection-type-select"
+				/>
+			</div>
+
+			<!-- Repository URL -->
 			<div :class="$style.group">
-				<label for="repoUrl">{{ locale.baseText('settings.sourceControl.repoUrl') }}</label>
+				<label for="repoUrl">
+					{{ connectionType === 'ssh' ? 'SSH Repository URL' : 'HTTPS Repository URL' }}
+				</label>
 				<div :class="$style.groupFlex">
 					<n8n-form-input
 						id="repoUrl"
@@ -224,7 +304,11 @@ const onSelectSshKeyType = (value: Validatable) => {
 						validate-on-blur
 						:validation-rules="repoUrlValidationRules"
 						:disabled="isConnected"
-						:placeholder="locale.baseText('settings.sourceControl.repoUrlPlaceholder')"
+						:placeholder="
+							connectionType === 'ssh'
+								? 'git@github.com:user/repository.git'
+								: 'https://github.com/user/repository.git'
+						"
 						@validate="(value: boolean) => onValidate('repoUrl', value)"
 					/>
 					<n8n-button
@@ -238,8 +322,56 @@ const onSelectSshKeyType = (value: Validatable) => {
 						>{{ locale.baseText('settings.sourceControl.button.disconnect') }}</n8n-button
 					>
 				</div>
+				<n8n-notice v-if="!isConnected && connectionType === 'ssh'" type="info" class="mt-s">
+					Use SSH format: git@github.com:user/repository.git
+				</n8n-notice>
+				<n8n-notice v-if="!isConnected && connectionType === 'https'" type="info" class="mt-s">
+					Use HTTPS format: https://github.com/user/repository.git
+				</n8n-notice>
 			</div>
-			<div v-if="sourceControlStore.preferences.publicKey" :class="$style.group">
+
+			<!-- HTTPS Credentials -->
+			<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
+				<label for="httpsUsername">Username / Access Token</label>
+				<n8n-form-input
+					id="httpsUsername"
+					v-model="httpsUsername"
+					label=""
+					name="httpsUsername"
+					type="text"
+					validate-on-blur
+					:validation-rules="httpsCredentialValidationRules"
+					placeholder="Enter your username or personal access token"
+					@validate="(value: boolean) => onValidate('httpsUsername', value)"
+				/>
+				<n8n-notice type="info" class="mt-s">
+					For GitHub, use a Personal Access Token instead of username
+				</n8n-notice>
+			</div>
+
+			<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
+				<label for="httpsPassword">Password / Token Secret</label>
+				<n8n-form-input
+					id="httpsPassword"
+					v-model="httpsPassword"
+					label=""
+					name="httpsPassword"
+					type="password"
+					validate-on-blur
+					:validation-rules="httpsCredentialValidationRules"
+					placeholder="Enter your password or token secret"
+					@validate="(value: boolean) => onValidate('httpsPassword', value)"
+				/>
+				<n8n-notice type="warning" class="mt-s">
+					Credentials will be securely stored and encrypted
+				</n8n-notice>
+			</div>
+
+			<!-- SSH Key (only for SSH connection) -->
+			<div
+				v-if="connectionType === 'ssh' && sourceControlStore.preferences.publicKey"
+				:class="$style.group"
+			>
 				<label>{{ locale.baseText('settings.sourceControl.sshKey') }}</label>
 				<div :class="{ [$style.sshInput]: !isConnected }">
 					<n8n-form-input
@@ -287,6 +419,7 @@ const onSelectSshKeyType = (value: Validatable) => {
 					</I18nT>
 				</n8n-notice>
 			</div>
+
 			<n8n-button
 				v-if="!isConnected"
 				size="large"
@@ -296,6 +429,8 @@ const onSelectSshKeyType = (value: Validatable) => {
 				@click="onConnect"
 				>{{ locale.baseText('settings.sourceControl.button.connect') }}</n8n-button
 			>
+
+			<!-- Connected Settings -->
 			<div v-if="isConnected" data-test-id="source-control-connected-content">
 				<div :class="$style.group">
 					<hr />
