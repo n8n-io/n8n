@@ -9,7 +9,7 @@ import picocolors from 'picocolors';
 import { ensureN8nPackage } from '../utils/prompts';
 
 export default class Build extends Command {
-	static override description = 'Build an n8n community node';
+	static override description = 'Compile the node in the current directory and copy assets';
 	static override examples = ['<%= config.bin %> <%= command.id %>'];
 	static override flags = {};
 

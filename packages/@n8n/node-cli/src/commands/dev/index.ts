@@ -10,7 +10,7 @@ import { commands, readPackageName } from './utils';
 import { ensureN8nPackage } from '../../utils/prompts';
 
 export default class Dev extends Command {
-	static override description = 'Develop your n8n node with live preview directly in the browser.';
+	static override description = 'Run n8n with the node and rebuild on changes for live preview';
 	static override examples = [
 		'<%= config.bin %> <%= command.id %>',
 		'<%= config.bin %> <%= command.id %> --external-n8n',

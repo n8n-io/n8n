@@ -15,8 +15,8 @@ import { tryReadGitUser } from '../../utils/git';
 import { detectPackageManager, installDependencies } from '../../utils/package-manager';
 import { onCancel } from '../../utils/prompts';
 
-export default class Create extends Command {
-	static override description = 'Create a new n8n community node';
+export default class New extends Command {
+	static override description = 'Create a starter community node in a new directory';
 	static override examples = [
 		'<%= config.bin %> <%= command.id %>',
 		'<%= config.bin %> <%= command.id %> n8n-nodes-my-app --skip-install',
@@ -38,7 +38,7 @@ export default class Create extends Command {
 	};
 
 	async run(): Promise<void> {
-		const { flags, args } = await this.parse(Create);
+		const { flags, args } = await this.parse(New);
 		const [typeFlag, templateFlag] = flags.template?.split('/') ?? [];
 
 		intro(picocolors.inverse(createIntro()));

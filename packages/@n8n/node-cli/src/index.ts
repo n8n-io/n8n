@@ -1,9 +1,9 @@
 import Build from './commands/build';
-import Create from './commands/create';
 import Dev from './commands/dev';
+import New from './commands/new';
 
 export const commands = {
-	create: Create,
+	new: New,
 	build: Build,
 	dev: Dev,
 };
