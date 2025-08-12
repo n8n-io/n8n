@@ -75,7 +75,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 						config[key] = new Date(timestamp);
 					}
 				} else if (type === String) {
-					config[key] = value;
+					config[key] = value.trim().replace(/^(['"])(.*)\1$/, '$2');
 				} else {
 					config[key] = new (type as Constructable)(value);
 				}
