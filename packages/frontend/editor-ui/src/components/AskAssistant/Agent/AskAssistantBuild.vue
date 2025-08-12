@@ -29,6 +29,11 @@ const workflowSaver = useWorkflowSaving({ router });
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
 
+// Flag to indicate if this is the initial workflow generation
+// This is used to initiate the workflow saving process after initial generation
+// and to avoid re-saving the workflow on subsequent messages.
+const initialGeneration = ref(false);
+
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
 	lastName: usersStore.currentUser?.lastName ?? '',
@@ -44,6 +49,10 @@ async function onUserMessage(content: string) {
 	if (isNewWorkflow) {
 		await workflowSaver.saveCurrentWorkflow();
 	}
+
+	// If the workflow is empty, set the initial generation flag
+	initialGeneration.value = workflowsStore.workflow.nodes.length === 0;
+
 	builderStore.sendChatMessage({ text: content });
 }
 
@@ -70,6 +79,7 @@ watch(
 							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
 						});
+
 						// Track tool usage for telemetry
 						const newToolMessages = builderStore.toolMessages.filter(
 							(toolMsg) =>
@@ -92,6 +102,22 @@ watch(
 			});
 	},
 	{ deep: true },
+);
+
+watch(
+	() => builderStore.streaming,
+	async () => {
+		// If this is the initial generation, streaming has ended, and there were workflow updates,
+		// we want to save the workflow
+		if (
+			initialGeneration.value &&
+			!builderStore.streaming &&
+			workflowsStore.workflow.nodes.length > 0
+		) {
+			initialGeneration.value = false;
+			await workflowSaver.saveCurrentWorkflow();
+		}
+	},
 );
 
 function onNewWorkflow() {

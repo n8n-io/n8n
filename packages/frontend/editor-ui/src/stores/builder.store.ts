@@ -370,7 +370,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		// Capture current state before clearing
-		const { nodePositions } = captureCurrentWorkflowState();
+		const { nodePositions, existingNodeIds } = captureCurrentWorkflowState();
 
 		// Clear existing workflow
 		workflowsStore.removeAllConnections({ setStateDirty: false });
@@ -391,7 +391,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			});
 		}
 
-		return { success: true, workflowData, newNodeIds: nodesIdsToTidyUp };
+		return {
+			success: true,
+			workflowData,
+			newNodeIds: nodesIdsToTidyUp,
+			oldNodeIds: Array.from(existingNodeIds),
+		};
 	}
 
 	function getWorkflowSnapshot() {
