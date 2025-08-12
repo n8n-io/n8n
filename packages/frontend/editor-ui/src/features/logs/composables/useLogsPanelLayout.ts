@@ -65,7 +65,7 @@ export function useLogsPanelLayout(
 		initialWidth: window.document.body.offsetWidth * 0.8,
 		container: popOutContainer,
 		content: popOutContent,
-		shouldPopOut: shouldPopOut,
+		shouldPopOut,
 		onRequestClose: () => {
 			if (!isOpen.value) {
 				return;
