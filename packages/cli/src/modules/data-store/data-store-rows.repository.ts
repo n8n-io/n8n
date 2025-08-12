@@ -6,13 +6,20 @@ import type {
 } from '@n8n/api-types';
 import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, DataSourceOptions, QueryRunner, SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	DataSourceOptions,
+	EntityManager,
+	QueryRunner,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
 
 import { DataStoreColumn } from './data-store-column.entity';
 import {
 	addColumnQuery,
 	buildInsertQuery,
 	buildUpdateQuery,
+	deleteColumnQuery,
 	getPlaceholder,
 	quoteIdentifier,
 	splitRowsByExistence,
@@ -114,6 +121,15 @@ export class DataStoreRowsRepository {
 		} else {
 			await queryRunner.manager.query(addColumnQuery(tableName, column, dbType));
 		}
+	}
+
+	async dropColumnFromTable(
+		dataStoreId: string,
+		columnName: string,
+		em: EntityManager,
+		dbType: DataSourceOptions['type'],
+	) {
+		await em.query(deleteColumnQuery(toTableName(dataStoreId), columnName, dbType));
 	}
 
 	async getManyAndCount(

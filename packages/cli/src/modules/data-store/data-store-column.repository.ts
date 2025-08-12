@@ -5,7 +5,6 @@ import { UserError } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
-import { deleteColumnQuery, toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
@@ -77,8 +76,11 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 	async deleteColumn(dataStoreId: string, column: DataStoreColumn) {
 		await this.manager.transaction(async (em) => {
 			await em.remove(DataStoreColumn, column);
-			await em.query(
-				deleteColumnQuery(toTableName(dataStoreId), column.name, em.connection.options.type),
+			await this.dataStoreRowsRepository.dropColumnFromTable(
+				dataStoreId,
+				column.name,
+				em,
+				em.connection.options.type,
 			);
 			await this.shiftColumns(dataStoreId, column.index, -1, em);
 		});
