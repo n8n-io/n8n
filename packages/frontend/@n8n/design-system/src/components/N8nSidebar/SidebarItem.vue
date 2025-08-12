@@ -8,13 +8,16 @@ import { computed } from 'vue';
 
 const router = useRouter();
 
+// TODO RECONCILE WITH MENU ITEM TYPE
+
 const props = defineProps<{
 	title: string;
 	id: string;
 	icon?: IconName | string;
 	click?: () => void;
 	open?: boolean;
-	link: string;
+	link?: string;
+	route?: { name: string };
 	ariaLabel: string;
 	type: 'folder' | 'workflow' | 'project' | 'other';
 }>();
@@ -34,7 +37,7 @@ const active = computed(() => {
 </script>
 
 <template>
-	<N8nRoute :to="link" :class="{ sidebarItem: true, active }">
+	<N8nRoute :to="route ? route : link" :class="{ sidebarItem: true, active }">
 		<div v-if="type !== 'workflow'" :class="{ sidebarItemDropdown: true, other: type === 'other' }">
 			<div class="sidebarItemDropdownIcon">
 				<span v-if="icon && !isSupportedIconName(icon)" class="sidebarItemEmoji">{{ icon }}</span>

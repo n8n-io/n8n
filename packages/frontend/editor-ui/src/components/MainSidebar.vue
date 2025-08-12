@@ -248,6 +248,9 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		],
 	},
 ]);
+const visibleMenuItems = computed(() => {
+	return mainMenuItems.value.filter((item) => item.available !== false);
+});
 
 const showUserArea = computed(() => hasPermission(['authenticated']));
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
@@ -342,6 +345,8 @@ const handleSelect = (key: string) => {
 		:shared="sharedItems"
 		:projects="projects"
 		:release-channel="settingsStore.settings.releaseChannel"
+		:menu-items="visibleMenuItems"
+		:handle-select="handleSelect"
 		@logout="onLogout"
 		@createProject="handleMenuSelect('create-project')"
 	>

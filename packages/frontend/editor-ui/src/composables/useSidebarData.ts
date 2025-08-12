@@ -56,7 +56,6 @@ export const useSidebarData = () => {
 		try {
 			const foldersResponse = await foldersStore.fetchProjectFolders(projectId);
 			allFolders = foldersResponse.data || [];
-			console.log(`Fetched ${allFolders.length} folders for project ${projectId}:`, allFolders);
 		} catch (error) {
 			console.warn('Failed to fetch project folders:', error);
 			// Fall back to folders found in workflows
@@ -171,10 +170,6 @@ export const useSidebarData = () => {
 			return a.label.localeCompare(b.label);
 		});
 
-		console.log(
-			`Final tree structure for project ${projectId}:`,
-			JSON.stringify(sortedItems, null, 2),
-		);
 		return sortedItems;
 	};
 

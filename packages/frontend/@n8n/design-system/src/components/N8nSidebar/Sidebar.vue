@@ -10,12 +10,15 @@ import N8nResizeWrapper from '../N8nResizeWrapper';
 import { N8nButton, N8nIconButton, N8nRoute, N8nTooltip } from '..';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 import { useSidebarLayout } from './useSidebarLayout';
+import { IMenuItem } from '@n8n/design-system/types';
 
 const props = defineProps<{
 	personal: { id: string; items: TreeItemType[] };
 	shared: TreeItemType[];
 	projects: { title: string; id: string; icon: IconName; items: TreeItemType[] }[];
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
+	menuItems: IMenuItem[];
+	handleSelect?: (item: IMenuItem) => void;
 }>();
 
 defineEmits<{
@@ -50,6 +53,19 @@ onMounted(() => {
 onUnmounted(() => {
 	window.removeEventListener('keydown', toggleSidebar);
 });
+
+function getMenuItemRoute(item: IMenuItem) {
+	if (!item.route) {
+		return undefined;
+	}
+
+	const routeTo = item.route.to as any;
+	if (routeTo && typeof routeTo.name === 'string') {
+		return routeTo;
+	}
+
+	return undefined;
+}
 </script>
 
 <template>
@@ -149,10 +165,17 @@ onUnmounted(() => {
 				/>
 			</div>
 			<footer class="sidebarFooter">
-				<SidebarItem title="Admin panel" id="templates" icon="cloud" type="other" />
-				<SidebarItem title="Templates" id="templates" icon="box" type="other" />
-				<SidebarItem title="Variables" id="templates" icon="variable" type="other" />
-				<SidebarItem title="Insights" id="templates" icon="chart-column-decreasing" type="other" />
+				<SidebarItem
+					v-for="item in menuItems"
+					type="other"
+					:title="item.label"
+					:id="item.id"
+					:key="item.id"
+					:link="item.link ? item.link.href : undefined"
+					:route="getMenuItemRoute(item)"
+					:ariaLabel="`Go to ${item.label}`"
+					:icon="item.icon as IconName"
+				/>
 			</footer>
 		</nav>
 
