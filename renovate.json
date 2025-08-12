@@ -20,7 +20,7 @@
 		},
 		{
 			"description": "Group all catalog updates together",
-			"matchFiles": ["pnpm-workspace.yaml"],
+			"matchFileNames": ["pnpm-workspace.yaml"],
 			"groupName": "pnpm catalog",
 			"commitMessageTopic": "pnpm catalog"
 		},
@@ -47,7 +47,6 @@
 		},
 		{
 			"description": "Security updates get highest priority",
-			"matchPackagePatterns": ["*"],
 			"vulnerabilityAlerts": true,
 			"prPriority": 20,
 			"labels": ["security", "dependencies"]
@@ -88,7 +87,7 @@
 	"commitMessagePrefix": "chore(deps): ",
 	"commitMessageTopic": "{{depName}}",
 	"commitMessageExtra": "to {{newVersion}}",
-	"prTitle": "{{#if isSingleManager}}{{#if isGrouped}}{{commitMessagePrefix}}update {{groupName}}{{else}}{{commitMessagePrefix}}update {{depName}}{{/if}}{{else}}{{commitMessagePrefix}}update dependencies{{/if}}{{#if hasReleaseNotes}} ({{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#each newValue}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}{{/if}}){{/if}}",
+	"prTitle": "{{commitMessagePrefix}}update {{#if isSingleManager}}{{#if isGrouped}}{{groupName}}{{else}}{{depName}}{{/if}}{{else}}dependencies{{/if}}{{#if hasReleaseNotes}} ({{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#each newValue}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}{{/if}}){{/if}}",
 	"ignoreDeps": [],
 	"ignorePaths": ["**/node_modules/**", "**/dist/**", "**/build/**"],
 	"enabledManagers": ["npm", "pnpm", "dockerfile", "github-actions"],
