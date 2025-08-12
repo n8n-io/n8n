@@ -8,7 +8,7 @@ import { waitingNodeTooltip } from '@/utils/executionUtils';
 import { N8nLink, N8nText } from '@n8n/design-system';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { PopOutWindowSymbol } from '@/constants';
+import { PopOutWindowKey } from '@/constants';
 import { isSubNodeLog } from '../logs.utils';
 
 const { title, logEntry, paneType, collapsingTableColumnName } = defineProps<{
@@ -25,7 +25,7 @@ const emit = defineEmits<{
 const locale = useI18n();
 const ndvStore = useNDVStore();
 
-const popOutWindow = inject(PopOutWindowSymbol, ref<Window | undefined>());
+const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 
 const displayMode = ref<IRunDataDisplayMode>(paneType === 'input' ? 'schema' : 'table');
 const isMultipleInput = computed(

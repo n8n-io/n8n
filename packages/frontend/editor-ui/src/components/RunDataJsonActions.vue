@@ -9,7 +9,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { nonExistingJsonPath, PopOutWindowSymbol } from '@/constants';
+import { nonExistingJsonPath, PopOutWindowKey } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { inject, computed, ref } from 'vue';
@@ -39,7 +39,7 @@ const props = withDefaults(
 	},
 );
 
-const popOutWindow = inject(PopOutWindowSymbol, ref<Window | undefined>());
+const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 const isInPopOutWindow = computed(() => popOutWindow?.value !== undefined);
 
 const ndvStore = useNDVStore();

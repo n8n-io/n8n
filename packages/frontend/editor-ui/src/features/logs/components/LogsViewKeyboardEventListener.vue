@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { type KeyMap, useKeybindings } from '@/composables/useKeybindings';
-import { PopOutWindowSymbol } from '@/constants';
+import { PopOutWindowKey } from '@/constants';
 import { useActiveElement } from '@vueuse/core';
 import { ref, computed, toRef, inject } from 'vue';
 
 const { container, keyMap } = defineProps<{ keyMap: KeyMap; container: HTMLElement | null }>();
-const popOutWindow = inject(PopOutWindowSymbol, ref<Window | undefined>());
+const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 
 const activeElement = useActiveElement({ window: popOutWindow?.value });
 const isBlurred = computed(() => {

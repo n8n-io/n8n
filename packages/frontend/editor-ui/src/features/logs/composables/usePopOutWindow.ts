@@ -1,5 +1,5 @@
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { PopOutWindowSymbol } from '@/constants';
+import { PopOutWindowKey } from '@/constants';
 import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
 import {
 	computed,
@@ -87,7 +87,7 @@ export function usePopOutWindow({
 	// Copy over dynamic styles to child window to support lazily imported modules
 	observer.observe(document.head, { childList: true, subtree: true });
 
-	provide(PopOutWindowSymbol, popOutWindow);
+	provide(PopOutWindowKey, popOutWindow);
 	useProvideTooltipAppendTo(tooltipContainer);
 
 	async function showPopOut() {
@@ -162,7 +162,6 @@ export function usePopOutWindow({
 		[title, popOutWindow],
 		([newTitle, win]) => {
 			if (win) {
-				console.log(newTitle);
 				documentTitle.set(newTitle);
 			}
 		},

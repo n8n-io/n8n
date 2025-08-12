@@ -1,4 +1,4 @@
-import { PopOutWindowSymbol } from '@/constants';
+import { PopOutWindowKey } from '@/constants';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import type { MaybeRefOrGetter } from 'vue';
@@ -30,7 +30,7 @@ export const useKeybindings = (
 		disabled: MaybeRefOrGetter<boolean>;
 	},
 ) => {
-	const popOutWindow = inject(PopOutWindowSymbol, ref<Window | undefined>());
+	const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 	const activeElement = useActiveElement({ window: popOutWindow?.value });
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
