@@ -24,7 +24,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 		...actualObj,
 		useI18n: vi.fn(() => ({
 			baseText: vi.fn((key: string) => {
-				if (key === 'dataStore.tab.label') return 'Data Store';
+				if (key === 'dataStore.dataStores') return 'Data Stores';
 				if (key === 'projects.menu.personal') return 'Personal';
 				if (key === 'dataStore.empty.label') return 'No data stores';
 				if (key === 'dataStore.empty.description') return 'No data stores description';
@@ -143,7 +143,7 @@ describe('DataStoreView', () => {
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(mockDocumentTitle.set).toHaveBeenCalledWith('Data Store');
+			expect(mockDocumentTitle.set).toHaveBeenCalledWith('Data Stores');
 		});
 
 		it('should handle initialization error', async () => {

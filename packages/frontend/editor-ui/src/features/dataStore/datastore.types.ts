@@ -1,4 +1,4 @@
-import type { ProjectSharingData } from 'n8n-workflow';
+import type { Project } from '@/types/projects.types';
 
 export type DataStore = {
 	id: string;
@@ -9,7 +9,7 @@ export type DataStore = {
 	createdAt: string;
 	updatedAt: string;
 	projectId?: string;
-	project?: ProjectSharingData;
+	project?: Project;
 };
 
 export type DataStoreColumn = {

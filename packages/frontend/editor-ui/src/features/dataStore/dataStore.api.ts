@@ -10,6 +10,11 @@ export const fetchDataStoresApi = async (
 		skip?: number;
 		take?: number;
 	},
+	filter?: {
+		id?: string | string[];
+		name?: string | string[];
+		projectId?: string | string[];
+	},
 ) => {
 	const apiEndpoint = projectId ? `/projects/${projectId}/data-stores` : '/data-stores-global';
 	return await makeRestApiRequest<{ count: number; data: DataStore[] }>(
@@ -18,6 +23,7 @@ export const fetchDataStoresApi = async (
 		apiEndpoint,
 		{
 			...options,
+			...(filter ?? {}),
 		},
 	);
 };
