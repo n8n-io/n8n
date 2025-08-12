@@ -248,13 +248,6 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 </template>
 
 <style lang="scss" module>
-@media all and (display-mode: picture-in-picture) {
-	.resizeWrapper {
-		height: 100% !important;
-		max-height: 100vh !important;
-	}
-}
-
 .popOutContent {
 	height: 100%;
 	position: relative;

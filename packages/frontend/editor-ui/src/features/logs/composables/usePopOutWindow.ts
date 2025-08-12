@@ -139,7 +139,7 @@ export function usePopOutWindow({
 			}
 		}
 
-		// Move the content to the Picture-in-Picture window.
+		// Move the content to child window.
 		popOutWindow.value.document.body.append(content.value);
 		popOutWindow.value.addEventListener('pagehide', () => !isUnmounting.value && onRequestClose());
 	}
