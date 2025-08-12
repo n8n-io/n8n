@@ -174,7 +174,10 @@ export function usePopOutWindow({
 
 	onBeforeUnmount(() => {
 		isUnmounting.value = true;
-		popOutWindow.value?.close();
+		if (popOutWindow.value) {
+			popOutWindow.value.close();
+			onRequestClose();
+		}
 	});
 
 	return { canPopOut, isPoppedOut, popOutWindow };
