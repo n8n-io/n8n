@@ -1,4 +1,4 @@
-import { AddMfaColumns1690000000030 } from '../common/1690000000040-AddMfaColumns';
+import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from './../common/1752669793000-AddInputsOutputsToTestCaseExecution';
 import { InitialMigration1587669153312 } from './1587669153312-InitialMigration';
 import { WebhookModel1589476000887 } from './1589476000887-WebhookModel';
