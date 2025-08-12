@@ -3,18 +3,21 @@ import {
 	type DataStoreCreateColumnSchema,
 	type ListDataStoreQueryDto,
 } from '@n8n/api-types';
-import { DslColumn, CreateTable } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
+import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStore } from './data-store.entity';
-import { createUserTableQuery, toDslColumns, toTableName } from './utils/sql-utils';
+import { createUserTableQuery, toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataStore> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private dataStoreRowsRepository: DataStoreRowsRepository,
+	) {
 		super(DataStore, dataSource.manager);
 	}
 
@@ -64,11 +67,11 @@ export class DataStoreRepository extends Repository<DataStore> {
 			await em.insert(DataStoreColumn, columnEntities);
 
 			// create user table
-			const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
-
-			const createTable = new CreateTable(tableName, '', queryRunner);
-			createTable.withColumns.apply(createTable, dslColumns);
-			await createTable.execute(queryRunner);
+			await this.dataStoreRowsRepository.createTableWithColumns(
+				tableName,
+				columnEntities,
+				queryRunner,
+			);
 
 			return dataStore;
 		});

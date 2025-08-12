@@ -4,16 +4,20 @@ import type {
 	DataStoreRows,
 	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
+import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, DataSourceOptions, SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, DataSourceOptions, QueryRunner, SelectQueryBuilder } from '@n8n/typeorm';
 
 import { DataStoreColumn } from './data-store-column.entity';
 import {
+	addColumnQuery,
 	buildInsertQuery,
 	buildUpdateQuery,
 	getPlaceholder,
 	quoteIdentifier,
 	splitRowsByExistence,
+	toDslColumns,
+	toTableName,
 } from './utils/sql-utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -84,6 +88,32 @@ export class DataStoreRowsRepository {
 		}
 
 		return true;
+	}
+
+	async createTableWithColumns(
+		tableName: string,
+		columns: DataStoreColumn[],
+		queryRunner: QueryRunner,
+	) {
+		const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
+		const createTable = new CreateTable(tableName, '', queryRunner);
+		createTable.withColumns.apply(createTable, dslColumns);
+		await createTable.execute(queryRunner);
+	}
+
+	async ensureTableAndAddColumn(
+		dataStoreId: string,
+		column: DataStoreColumn,
+		queryRunner: QueryRunner,
+		dbType: DataSourceOptions['type'],
+	) {
+		const tableName = toTableName(dataStoreId);
+		const tableExists = await queryRunner.hasTable(tableName);
+		if (!tableExists) {
+			await this.createTableWithColumns(tableName, [column], queryRunner);
+		} else {
+			await queryRunner.manager.query(addColumnQuery(tableName, column, dbType));
+		}
 	}
 
 	async getManyAndCount(
