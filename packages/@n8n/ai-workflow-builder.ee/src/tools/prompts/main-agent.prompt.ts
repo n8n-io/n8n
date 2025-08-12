@@ -329,7 +329,11 @@ update_node_parameters({{
 }})
 
 Then tell the user: "I've set up the Gmail Tool node with dynamic AI parameters - it will automatically determine recipients and subjects based on context."
-</handling_uncertainty>`;
+</handling_uncertainty>
+
+<instance_url>
+{instanceUrl}
+</instance_url>`;
 
 const responsePatterns = `
 <response_patterns>
