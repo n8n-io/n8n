@@ -6,7 +6,7 @@ import type {
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 
-import type { IAirtopApiCredentials, IAirtopResponse } from './types';
+import type { IAirtopResponse } from './types';
 import { BASE_URL, N8N_VERSION } from '../constants';
 
 const defaultHeaders = {
@@ -22,13 +22,12 @@ export async function apiRequest<T extends IAirtopResponse = IAirtopResponse>(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ): Promise<T> {
-	const { apiUrl } = await this.getCredentials<IAirtopApiCredentials>('airtopApi');
 	const options: IHttpRequestOptions = {
 		headers: defaultHeaders,
 		method,
 		body,
 		qs: query,
-		url: `${apiUrl || BASE_URL}${endpoint}`,
+		url: `${BASE_URL}${endpoint}`,
 		json: true,
 	};
 

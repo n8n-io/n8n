@@ -1,8 +1,4 @@
-import type { ICredentialDataDecryptedObject, IDataObject, INodeExecutionData } from 'n8n-workflow';
-
-export interface IAirtopApiCredentials extends ICredentialDataDecryptedObject {
-	apiUrl: string;
-}
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 export interface IAirtopSessionResponse extends IDataObject {
 	data: {
@@ -65,6 +61,7 @@ export interface IAirtopInteractionRequest extends IDataObject {
 		waitForNavigationConfig?: {
 			waitUntil: string;
 		};
+		clickType?: string;
 	};
 }
 

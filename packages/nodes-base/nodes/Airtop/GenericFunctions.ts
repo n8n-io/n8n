@@ -24,7 +24,6 @@ import type {
 	IAirtopResponse,
 	IAirtopServerEvent,
 	IAirtopSessionResponse,
-	IAirtopApiCredentials,
 } from './transport/types';
 
 /**
@@ -499,8 +498,7 @@ export async function waitForSessionEvent(
 	condition: (event: IAirtopServerEvent) => boolean,
 	timeoutInSeconds = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
 ): Promise<IAirtopServerEvent> {
-	const { apiUrl } = await this.getCredentials<IAirtopApiCredentials>('airtopApi');
-	const url = `${apiUrl || BASE_URL}/sessions/${sessionId}/events?all=true`;
+	const url = `${BASE_URL}/sessions/${sessionId}/events?all=true`;
 	let stream: Stream;
 
 	const eventPromise = new Promise<IAirtopServerEvent>(async (resolve) => {
