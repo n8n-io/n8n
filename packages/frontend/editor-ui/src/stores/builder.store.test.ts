@@ -17,6 +17,13 @@ import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
 
+// Mock useI18n to return the keys instead of translations
+vi.mock('@n8n/i18n', () => ({
+	useI18n: () => ({
+		baseText: (key: string) => key,
+	}),
+}));
+
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
 
@@ -195,8 +202,8 @@ describe('AI Builder store', () => {
 
 		builderStore.sendChatMessage({ text: 'Add nodes and connect them' });
 
-		// Initially shows "Thinking..." from prepareForStreaming
-		expect(builderStore.assistantThinkingMessage).toBe('Thinking...');
+		// Initially shows "aiAssistant.thinkingSteps.thinking" from prepareForStreaming
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// First tool starts
 		onMessageCallback({
@@ -212,8 +219,8 @@ describe('AI Builder store', () => {
 			],
 		});
 
-		// Should show "Running tools..."
-		expect(builderStore.assistantThinkingMessage).toBe('Running tools...');
+		// Should show "aiAssistant.thinkingSteps.runningTools"
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 
 		// Second tool starts (different toolCallId)
 		onMessageCallback({
@@ -229,8 +236,8 @@ describe('AI Builder store', () => {
 			],
 		});
 
-		// Still showing "Running tools..." with multiple tools
-		expect(builderStore.assistantThinkingMessage).toBe('Running tools...');
+		// Still showing "aiAssistant.thinkingSteps.runningTools" with multiple tools
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 
 		// First tool completes
 		onMessageCallback({
@@ -246,8 +253,8 @@ describe('AI Builder store', () => {
 			],
 		});
 
-		// Still "Running tools..." because second tool is still running
-		expect(builderStore.assistantThinkingMessage).toBe('Running tools...');
+		// Still "aiAssistant.thinkingSteps.runningTools" because second tool is still running
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 
 		// Second tool completes
 		onMessageCallback({
@@ -263,15 +270,19 @@ describe('AI Builder store', () => {
 			],
 		});
 
-		// Now should show "Processing results..." because all tools completed
-		expect(builderStore.assistantThinkingMessage).toBe('Processing results...');
+		// Now should show "aiAssistant.thinkingSteps.processingResults" because all tools completed
+		expect(builderStore.assistantThinkingMessage).toBe(
+			'aiAssistant.thinkingSteps.processingResults',
+		);
 
 		// Call onDone to stop streaming
 		onDoneCallback();
 
 		// Message should persist after streaming ends
 		expect(builderStore.streaming).toBe(false);
-		expect(builderStore.assistantThinkingMessage).toBe('Processing results...');
+		expect(builderStore.assistantThinkingMessage).toBe(
+			'aiAssistant.thinkingSteps.processingResults',
+		);
 
 		vi.useRealTimers();
 	});
@@ -311,14 +322,18 @@ describe('AI Builder store', () => {
 
 		builderStore.sendChatMessage({ text: 'Add a node' });
 
-		// Should show "Processing results..." when tool completes
+		// Should show "aiAssistant.thinkingSteps.processingResults" when tool completes
 		await vi.waitFor(() =>
-			expect(builderStore.assistantThinkingMessage).toBe('Processing results...'),
+			expect(builderStore.assistantThinkingMessage).toBe(
+				'aiAssistant.thinkingSteps.processingResults',
+			),
 		);
 
-		// Should still show "Processing results..." after workflow-updated
+		// Should still show "aiAssistant.thinkingSteps.processingResults" after workflow-updated
 		await vi.waitFor(() => expect(builderStore.chatMessages).toHaveLength(3)); // user + tool + workflow
-		expect(builderStore.assistantThinkingMessage).toBe('Processing results...');
+		expect(builderStore.assistantThinkingMessage).toBe(
+			'aiAssistant.thinkingSteps.processingResults',
+		);
 
 		// Verify streaming has ended
 		expect(builderStore.streaming).toBe(false);

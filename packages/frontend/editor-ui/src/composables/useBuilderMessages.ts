@@ -83,10 +83,7 @@ export function useBuilderMessages() {
 			// Remove any existing rating from other messages
 			if (message.type === 'text' && 'showRating' in message) {
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const { showRating, ratingStyle, ...cleanMessage } = message as ChatUI.TextMessage & {
-					showRating?: boolean;
-					ratingStyle?: string;
-				};
+				const { showRating, ratingStyle, ...cleanMessage } = message;
 				return cleanMessage;
 			}
 			return message;
@@ -110,14 +107,14 @@ export function useBuilderMessages() {
 				type: 'text',
 				content: msg.text,
 				read: false,
-			} as ChatUI.AssistantMessage);
+			} satisfies ChatUI.AssistantMessage);
 			shouldClearThinking = true;
 		} else if (isWorkflowUpdatedMessage(msg)) {
 			messages.push({
 				...msg,
 				id: messageId,
 				read: false,
-			} as ChatUI.AssistantMessage);
+			} satisfies ChatUI.AssistantMessage);
 			// Don't clear thinking for workflow updates - they're just state changes
 		} else if (isToolMessage(msg)) {
 			processToolMessage(messages, msg, messageId);
@@ -150,9 +147,7 @@ export function useBuilderMessages() {
 
 		// Check if we already have this tool message
 		const existingIndex = msg.toolCallId
-			? messages.findIndex(
-					(m) => m.type === 'tool' && (m as ChatUI.ToolMessage).toolCallId === msg.toolCallId,
-				)
+			? messages.findIndex((m) => m.type === 'tool' && m.toolCallId === msg.toolCallId)
 			: -1;
 
 		if (existingIndex !== -1) {
@@ -283,7 +278,7 @@ export function useBuilderMessages() {
 			type: 'text',
 			content,
 			read: true,
-		} as ChatUI.AssistantMessage;
+		};
 	}
 
 	function createAssistantMessage(content: string, id: string): ChatUI.AssistantMessage {
@@ -293,7 +288,7 @@ export function useBuilderMessages() {
 			type: 'text',
 			content,
 			read: true,
-		} as ChatUI.AssistantMessage;
+		};
 	}
 
 	function createErrorMessage(
@@ -308,7 +303,7 @@ export function useBuilderMessages() {
 			content,
 			retry,
 			read: false,
-		} as ChatUI.AssistantMessage;
+		};
 	}
 
 	function clearMessages(): ChatUI.AssistantMessage[] {
@@ -334,7 +329,7 @@ export function useBuilderMessages() {
 				type: 'text',
 				content: message.text,
 				read: false,
-			} as ChatUI.AssistantMessage;
+			} satisfies ChatUI.AssistantMessage;
 		}
 
 		if (isWorkflowUpdatedMessage(message)) {
@@ -342,7 +337,7 @@ export function useBuilderMessages() {
 				...message,
 				id,
 				read: false,
-			} as ChatUI.AssistantMessage;
+			} satisfies ChatUI.AssistantMessage;
 		}
 
 		if (isToolMessage(message)) {
@@ -355,7 +350,7 @@ export function useBuilderMessages() {
 				status: message.status,
 				updates: message.updates || [],
 				read: false,
-			} as ChatUI.AssistantMessage;
+			} satisfies ChatUI.AssistantMessage;
 		}
 
 		// Handle event messages
@@ -364,7 +359,7 @@ export function useBuilderMessages() {
 				...message,
 				id,
 				read: false,
-			} as ChatUI.AssistantMessage;
+			} satisfies ChatUI.AssistantMessage;
 		}
 
 		// Default fallback
@@ -374,7 +369,7 @@ export function useBuilderMessages() {
 			type: 'text',
 			content: locale.baseText('aiAssistant.thinkingSteps.thinking'),
 			read: false,
-		} as ChatUI.AssistantMessage;
+		} satisfies ChatUI.AssistantMessage;
 	}
 
 	return {
