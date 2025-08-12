@@ -1,5 +1,5 @@
 import type { BaseResource } from '@/Interface';
-import type { DataStoreEntity } from './datastore.types';
+import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
 
 /**
  * Data Store resource type definition
