@@ -253,6 +253,15 @@ export const messageFields: INodeProperties[] = [
 		},
 		description: 'Timestamp of the message to message',
 		placeholder: '1663233118.856619',
+		validation: [
+			{
+				type: 'regex',
+				properties: {
+					regex: '^[0-9]+(.[0-9]+)?$',
+					errorMessage: 'Not a valid timestamp',
+				},
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -517,6 +526,15 @@ export const messageFields: INodeProperties[] = [
 				default: '',
 				description: 'Timestamp of the message to post',
 				placeholder: '1663233118.856619',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[0-9]+(.[0-9]+)?$',
+							errorMessage: 'Not a valid timestamp',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Fields',
@@ -671,6 +689,16 @@ export const messageFields: INodeProperties[] = [
 								placeholder: '1663233118.856619',
 								description:
 									'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
+
+								validation: [
+									{
+										type: 'regex',
+										properties: {
+											regex: '^[0-9]+(.[0-9]+)?$',
+											errorMessage: 'Not a valid timestamp',
+										},
+									},
+								],
 							},
 							{
 								displayName: 'Reply to Thread',
@@ -873,6 +901,15 @@ export const messageFields: INodeProperties[] = [
 		},
 		description: 'Timestamp of the message to update',
 		placeholder: '1663233118.856619',
+		validation: [
+			{
+				type: 'regex',
+				properties: {
+					regex: '^[0-9]+(.[0-9]+)?$',
+					errorMessage: 'Not a valid timestamp',
+				},
+			},
+		],
 	},
 	{
 		displayName: 'Message Type',
@@ -1166,6 +1203,15 @@ export const messageFields: INodeProperties[] = [
 		},
 		description: 'Timestamp of the message to delete',
 		placeholder: '1663233118.856619',
+		validation: [
+			{
+				type: 'regex',
+				properties: {
+					regex: '^[0-9]+(.[0-9]+)?$',
+					errorMessage: 'Not a valid timestamp',
+				},
+			},
+		],
 	},
 
 	/* ----------------------------------------------------------------------- */

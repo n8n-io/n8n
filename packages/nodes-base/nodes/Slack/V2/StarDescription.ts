@@ -153,6 +153,15 @@ export const starFields: INodeProperties[] = [
 		},
 		description: 'Timestamp of the message to add',
 		placeholder: '1663233118.856619',
+		validation: [
+			{
+				type: 'regex',
+				properties: {
+					regex: '^[0-9]+(.[0-9]+)?$',
+					errorMessage: 'Not a valid timestamp',
+				},
+			},
+		],
 	},
 	{
 		displayName: 'Options',
@@ -227,6 +236,15 @@ export const starFields: INodeProperties[] = [
 				default: '',
 				description: 'Timestamp of the message to delete',
 				placeholder: '1663233118.856619',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[0-9]+(.[0-9]+)?$',
+							errorMessage: 'Not a valid timestamp',
+						},
+					},
+				],
 			},
 		],
 	},

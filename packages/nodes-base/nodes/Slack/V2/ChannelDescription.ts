@@ -1201,6 +1201,15 @@ export const channelFields: INodeProperties[] = [
 		required: true,
 		description: 'Timestamp of the message to reply',
 		placeholder: '1663233118.856619',
+		validation: [
+			{
+				type: 'regex',
+				properties: {
+					regex: '^[0-9]+(.[0-9]+)?$',
+					errorMessage: 'Not a valid timestamp',
+				},
+			},
+		],
 	},
 	{
 		displayName: 'Return All',
