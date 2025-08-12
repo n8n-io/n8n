@@ -26,9 +26,11 @@ export class DataStoreRepository extends Repository<DataStore> {
 			throw new UnexpectedError('bad column name');
 		}
 
-		return await this.manager.transaction(async (em) => {
+		let dataStoreId: string | undefined;
+		await this.manager.transaction(async (em) => {
 			const dataStore = em.create(DataStore, { name, columns, projectId });
 			await em.insert(DataStore, dataStore);
+			dataStoreId = dataStore.id;
 
 			const tableName = toTableName(dataStore.id);
 			const queryRunner = em.queryRunner;
@@ -37,7 +39,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 			}
 
 			if (columns.length === 0) {
-				return dataStore;
+				return;
 			}
 
 			// insert columns
@@ -57,8 +59,15 @@ export class DataStoreRepository extends Repository<DataStore> {
 				columnEntities,
 				queryRunner,
 			);
+		});
 
-			return dataStore;
+		if (!dataStoreId) {
+			throw new UnexpectedError('Data store creation failed');
+		}
+
+		return await this.findOne({
+			where: { id: dataStoreId },
+			relations: ['project', 'columns'],
 		});
 	}
 
