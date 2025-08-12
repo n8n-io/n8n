@@ -37,6 +37,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const streaming = ref<boolean>(false);
 	const assistantThinkingMessage = ref<string | undefined>();
 	const streamingAbortController = ref<AbortController | null>(null);
+	const initialGeneration = ref<boolean>(false);
 
 	// Store dependencies
 	const settings = useSettingsStore();
@@ -101,6 +102,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function resetBuilderChat() {
 		chatMessages.value = clearMessages();
 		assistantThinkingMessage.value = undefined;
+		initialGeneration.value = false;
 	}
 
 	/**
@@ -234,12 +236,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		text: string;
 		source?: 'chat' | 'canvas';
 		quickReplyType?: string;
+		initialGeneration?: boolean;
 	}) {
 		if (streaming.value) {
 			return;
 		}
 
 		const { text, source = 'chat', quickReplyType } = options;
+
+		// Set initial generation flag if provided
+		if (options.initialGeneration !== undefined) {
+			initialGeneration.value = options.initialGeneration;
+		}
 		const messageId = generateMessageId();
 
 		const currentWorkflowJson = getWorkflowSnapshot();
@@ -421,6 +429,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		workflowMessages,
 		trackingSessionId,
 		streamingAbortController,
+		initialGeneration,
 
 		// Methods
 		updateWindowWidth,

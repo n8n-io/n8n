@@ -725,4 +725,236 @@ describe('AskAssistantBuild', () => {
 			expect(saveCurrentWorkflowMock).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('canvas-initiated generation', () => {
+		it('should save workflow after initial generation from canvas', async () => {
+			// Setup: empty workflow
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.isNewWorkflow = false;
+
+			renderComponent();
+
+			// Simulate canvas-initiated generation with initialGeneration flag
+			builderStore.initialGeneration = true;
+
+			// Simulate streaming starts
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			// Simulate workflow update with nodes
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			// Add successful message to chat
+			builderStore.$patch({
+				chatMessages: [
+					{ id: '1', role: 'user', type: 'text', content: 'Create workflow from canvas' },
+					{ id: '2', role: 'assistant', type: 'text', content: 'Workflow created successfully' },
+				],
+			});
+
+			// Simulate streaming ends
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			// Verify workflow was saved
+			expect(saveCurrentWorkflowMock).toHaveBeenCalled();
+			// Verify initialGeneration flag was reset
+			expect(builderStore.initialGeneration).toBe(false);
+		});
+
+		it('should NOT save workflow from canvas when generation fails', async () => {
+			// Setup: empty workflow
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.isNewWorkflow = false;
+
+			renderComponent();
+
+			// Simulate canvas-initiated generation with initialGeneration flag
+			builderStore.initialGeneration = true;
+
+			// Simulate streaming starts
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			// Simulate workflow update with nodes
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			// Add error message to chat
+			builderStore.$patch({
+				chatMessages: [
+					{ id: '1', role: 'user', type: 'text', content: 'Create workflow from canvas' },
+					{ id: '2', role: 'assistant', type: 'error', content: 'Generation failed' },
+				],
+			});
+
+			// Simulate streaming ends
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			// Verify workflow was NOT saved
+			expect(saveCurrentWorkflowMock).not.toHaveBeenCalled();
+			// Verify initialGeneration flag was reset
+			expect(builderStore.initialGeneration).toBe(false);
+		});
+
+		it('should NOT save workflow from canvas when generation is cancelled', async () => {
+			// Setup: empty workflow
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.isNewWorkflow = false;
+
+			renderComponent();
+
+			// Simulate canvas-initiated generation with initialGeneration flag
+			builderStore.initialGeneration = true;
+
+			// Simulate streaming starts
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			// Simulate workflow update with nodes
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			// Add cancellation message to chat
+			builderStore.$patch({
+				chatMessages: [
+					{ id: '1', role: 'user', type: 'text', content: 'Create workflow from canvas' },
+					{ id: '2', role: 'assistant', type: 'text', content: '[Task aborted]' },
+				],
+			});
+
+			// Simulate streaming ends
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			// Verify workflow was NOT saved
+			expect(saveCurrentWorkflowMock).not.toHaveBeenCalled();
+			// Verify initialGeneration flag was reset
+			expect(builderStore.initialGeneration).toBe(false);
+		});
+
+		it('should handle multiple canvas generations correctly', async () => {
+			// Setup: empty workflow
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.isNewWorkflow = false;
+
+			renderComponent();
+
+			// First canvas generation
+			builderStore.initialGeneration = true;
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			builderStore.$patch({
+				chatMessages: [
+					{ id: '1', role: 'user', type: 'text', content: 'First generation' },
+					{ id: '2', role: 'assistant', type: 'text', content: 'Success' },
+				],
+			});
+
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			// Verify first generation saved
+			expect(saveCurrentWorkflowMock).toHaveBeenCalledTimes(1);
+			expect(builderStore.initialGeneration).toBe(false);
+
+			// User clears workflow manually
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			// Second canvas generation
+			builderStore.initialGeneration = true;
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node2',
+							name: 'HTTP',
+							type: 'n8n-nodes-base.httpRequest',
+							position: [100, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			builderStore.$patch({
+				chatMessages: [
+					{ id: '1', role: 'user', type: 'text', content: 'First generation' },
+					{ id: '2', role: 'assistant', type: 'text', content: 'Success' },
+					{ id: '3', role: 'user', type: 'text', content: 'Second generation' },
+					{ id: '4', role: 'assistant', type: 'text', content: 'Success again' },
+				],
+			});
+
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			// Verify second generation also saved
+			expect(saveCurrentWorkflowMock).toHaveBeenCalledTimes(2);
+			expect(builderStore.initialGeneration).toBe(false);
+		});
+	});
 });

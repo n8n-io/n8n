@@ -29,11 +29,6 @@ const workflowSaver = useWorkflowSaving({ router });
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
 
-// Flag to indicate if this is the initial workflow generation
-// This is used to initiate the workflow saving process after initial generation
-// and to avoid re-saving the workflow on subsequent messages.
-const initialGeneration = ref(false);
-
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
 	lastName: usersStore.currentUser?.lastName ?? '',
@@ -51,9 +46,9 @@ async function onUserMessage(content: string) {
 	}
 
 	// If the workflow is empty, set the initial generation flag
-	initialGeneration.value = workflowsStore.workflow.nodes.length === 0;
+	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
 
-	builderStore.sendChatMessage({ text: content });
+	builderStore.sendChatMessage({ text: content, initialGeneration: isInitialGeneration });
 }
 
 // Watch for workflow updates and apply them
@@ -110,7 +105,7 @@ watch(
 	() => builderStore.streaming,
 	async () => {
 		if (
-			initialGeneration.value &&
+			builderStore.initialGeneration &&
 			!builderStore.streaming &&
 			workflowsStore.workflow.nodes.length > 0
 		) {
@@ -121,7 +116,7 @@ watch(
 				lastMessage.type !== 'error' &&
 				!(lastMessage.type === 'text' && lastMessage.content === '[Task aborted]');
 
-			initialGeneration.value = false;
+			builderStore.initialGeneration = false;
 
 			// Only save if generation completed successfully
 			if (successful) {
