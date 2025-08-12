@@ -2857,6 +2857,10 @@ export type FormFieldsParameter = Array<{
 	placeholder?: string;
 	fieldName?: string;
 	fieldValue?: string;
+	limitSelection?: 'exact' | 'range' | 'unlimited';
+	numberOfSelections?: number;
+	minSelections?: number;
+	maxSelections?: number;
 }>;
 
 export type FieldTypeMap = {

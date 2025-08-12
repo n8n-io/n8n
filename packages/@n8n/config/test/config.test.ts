@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 import fs from 'fs';
 import { mock } from 'jest-mock-extended';
 
+import type { UserManagementConfig } from '../src/configs/user-management.config';
 import { GlobalConfig } from '../src/index';
 
 jest.mock('fs');
@@ -101,6 +102,9 @@ describe('GlobalConfig', () => {
 			},
 		},
 		userManagement: {
+			jwtSecret: '',
+			jwtSessionDurationHours: 168,
+			jwtRefreshTimeoutHours: 0,
 			emails: {
 				mode: 'smtp',
 				smtp: {
@@ -124,7 +128,7 @@ describe('GlobalConfig', () => {
 					'project-shared': '',
 				},
 			},
-		},
+		} as UserManagementConfig,
 		eventBus: {
 			checkUnsentInterval: 0,
 			crashRecoveryMode: 'extensive',
