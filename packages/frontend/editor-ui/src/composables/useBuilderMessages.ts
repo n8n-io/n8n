@@ -13,30 +13,31 @@ export function useBuilderMessages() {
 	const locale = useI18n();
 
 	/**
+	 * Clear rating from all messages
+	 */
+	function clearRatingLogic(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+		return messages.map((message) => {
+			if (message.type === 'text' && 'showRating' in message) {
+				// Pick all properties except showRating and ratingStyle
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+				const { showRating, ratingStyle, ...cleanMessage } = message;
+				return cleanMessage;
+			}
+			return message;
+		});
+	}
+
+	/**
 	 * Apply rating logic to messages - only show rating on the last AI text message after workflow-updated
 	 * when no tools are running
 	 */
 	function applyRatingLogic(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
-		// Check if any tools are still running
-		const hasRunningTools = messages.some(
-			(m) => m.type === 'tool' && (m as ChatUI.ToolMessage).status === 'running',
-		);
+		const { hasAnyRunningTools, isDoneThinking } = getThinkingState(messages);
 
 		// Don't apply rating if tools are still running
-		if (hasRunningTools) {
+		if (hasAnyRunningTools || !isDoneThinking) {
 			// Remove any existing ratings
-			return messages.map((message) => {
-				if (message.type === 'text' && 'showRating' in message) {
-					// Pick all properties except showRating and ratingStyle
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					const { showRating, ratingStyle, ...cleanMessage } = message as ChatUI.TextMessage & {
-						showRating?: boolean;
-						ratingStyle?: string;
-					};
-					return cleanMessage;
-				}
-				return message;
-			});
+			return clearRatingLogic(messages);
 		}
 
 		// Find the index of the last workflow-updated message
@@ -180,21 +181,35 @@ export function useBuilderMessages() {
 	}
 
 	/**
-	 * Determine the thinking message based on tool states
+	 * If any tools are running, then it's still running tools and not done thinking
+	 * If all tools are done and no text response yet, then it's still thinking
+	 * Otherwise, it's done
+	 *
+	 * @param messages
+	 * @returns
 	 */
-	function determineThinkingMessage(messages: ChatUI.AssistantMessage[]): string | undefined {
-		// Check ALL messages to determine state
+	function getThinkingState(messages: ChatUI.AssistantMessage[]): {
+		hasAnyRunningTools: boolean;
+		isDoneThinking: boolean;
+	} {
 		const allToolMessages = messages.filter(
 			(msg): msg is ChatUI.ToolMessage => msg.type === 'tool',
 		);
 		const hasAnyRunningTools = allToolMessages.some((msg) => msg.status === 'running');
+		if (hasAnyRunningTools) {
+			return {
+				hasAnyRunningTools: true,
+				isDoneThinking: false,
+			};
+		}
+
 		const hasCompletedTools = allToolMessages.some((msg) => msg.status === 'completed');
 
 		// Find the last completed tool message
 		let lastCompletedToolIndex = -1;
 		for (let i = messages.length - 1; i >= 0; i--) {
 			const msg = messages[i];
-			if (msg.type === 'tool' && (msg as ChatUI.ToolMessage).status === 'completed') {
+			if (msg.type === 'tool' && msg.status === 'completed') {
 				lastCompletedToolIndex = i;
 				break;
 			}
@@ -213,12 +228,21 @@ export function useBuilderMessages() {
 			}
 		}
 
-		// - If any tools are running, show "Running tools..."
-		// - If all tools are done and no text response yet, show "Processing results..."
-		// - Otherwise, clear the thinking message
+		return {
+			hasAnyRunningTools: false,
+			isDoneThinking: hasCompletedTools && hasTextAfterTools,
+		};
+	}
+
+	/**
+	 * Determine the thinking message based on tool states
+	 */
+	function determineThinkingMessage(messages: ChatUI.AssistantMessage[]): string | undefined {
+		const { hasAnyRunningTools, isDoneThinking } = getThinkingState(messages);
+
 		if (hasAnyRunningTools) {
 			return locale.baseText('aiAssistant.thinkingSteps.runningTools');
-		} else if (hasCompletedTools && !hasTextAfterTools) {
+		} else if (!isDoneThinking) {
 			return locale.baseText('aiAssistant.thinkingSteps.processingResults');
 		}
 
@@ -361,5 +385,7 @@ export function useBuilderMessages() {
 		clearMessages,
 		addMessages,
 		mapAssistantMessageToUI,
+		applyRatingLogic,
+		clearRatingLogic,
 	};
 }
