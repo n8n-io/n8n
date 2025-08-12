@@ -528,7 +528,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 
 <style lang="scss" module>
 .sideMenu {
-	display: grid;
+	display: none;
 	position: relative;
 	height: 100%;
 	grid-template-rows: auto 1fr auto;
