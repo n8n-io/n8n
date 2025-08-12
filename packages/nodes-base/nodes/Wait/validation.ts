@@ -4,5 +4,5 @@ export function validateWaitAmount(amount: unknown): amount is number {
 
 export type WaitUnit = 'seconds' | 'minutes' | 'hours' | 'days';
 export function validateWaitUnit(unit: unknown): unit is WaitUnit {
-	return typeof unit === 'string' && ['seconds', 'minutes', 'hours'].includes(unit);
+	return typeof unit === 'string' && ['seconds', 'minutes', 'hours', 'days'].includes(unit);
 }

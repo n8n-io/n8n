@@ -71,9 +71,24 @@ describe('Execute Wait Node', () => {
 		describe('Time interval', () => {
 			it.each([
 				{
+					unit: 'seconds',
+					amount: 300,
+					expectedWaitTill: () => DateTime.now().plus({ seconds: 300 }).toJSDate(),
+				},
+				{
+					unit: 'minutes',
+					amount: 2,
+					expectedWaitTill: () => DateTime.now().plus({ minutes: 2 }).toJSDate(),
+				},
+				{
 					unit: 'hours',
 					amount: 1,
 					expectedWaitTill: () => DateTime.now().plus({ hours: 1 }).toJSDate(),
+				},
+				{
+					unit: 'days',
+					amount: 10,
+					expectedWaitTill: () => DateTime.now().plus({ days: 10 }).toJSDate(),
 				},
 				{
 					unit: 'seconds',
