@@ -31,6 +31,7 @@ const eventBus = new MessageEventBus(
 	mock(),
 	mock(),
 	mock(),
+	mock(),
 );
 
 describe('workflow_success_total', () => {
