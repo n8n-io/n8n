@@ -1,4 +1,5 @@
 {
+	"globalEnv": ["CI", "COVERAGE_ENABLED"],
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {
