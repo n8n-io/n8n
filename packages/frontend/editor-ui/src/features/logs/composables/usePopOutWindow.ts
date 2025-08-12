@@ -58,6 +58,19 @@ function syncStyleMutations(destination: Window, mutations: MutationRecord[]) {
 	}
 }
 
+function copeFavicon(popOutWindow: Window) {
+	const iconUrl = document.querySelector('link[rel=icon]')?.getAttribute('href');
+
+	if (iconUrl) {
+		const link = document.createElement('link');
+
+		link.setAttribute('rel', 'icon');
+		link.setAttribute('href', iconUrl);
+
+		popOutWindow.document.head.appendChild(link);
+	}
+}
+
 /**
  * A composable that allows to pop out given content in child window
  */
@@ -106,28 +119,15 @@ export function usePopOutWindow({
 			return;
 		}
 
-		popOutWindow.value.document.title = 'Logs'; // TODO: include workflow name
+		copeFavicon(popOutWindow.value);
 
-		const iconUrl = document.querySelector('link[rel=icon]')?.getAttribute('href');
-
-		if (iconUrl) {
-			const link = document.createElement('link');
-
-			link.setAttribute('rel', 'icon');
-			link.setAttribute('href', iconUrl);
-
-			popOutWindow.value?.document.head.appendChild(link);
-		}
-
-		// Copy style sheets over from the initial document
-		// so that the content looks the same.
-		[...document.styleSheets].forEach((styleSheet) => {
+		for (const styleSheet of [...document.styleSheets]) {
 			try {
 				const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join('');
 				const style = document.createElement('style');
 
 				style.textContent = cssRules;
-				popOutWindow.value?.document.head.appendChild(style);
+				popOutWindow.value.document.head.appendChild(style);
 			} catch (e) {
 				const link = document.createElement('link');
 
@@ -135,13 +135,13 @@ export function usePopOutWindow({
 				link.type = styleSheet.type;
 				link.media = styleSheet.media as unknown as string;
 				link.href = styleSheet.href as string;
-				popOutWindow.value?.document.head.appendChild(link);
+				popOutWindow.value.document.head.appendChild(link);
 			}
-		});
+		}
 
 		// Move the content to the Picture-in-Picture window.
-		popOutWindow.value?.document.body.append(content.value);
-		popOutWindow.value?.addEventListener('pagehide', () => !isUnmounting.value && onRequestClose());
+		popOutWindow.value.document.body.append(content.value);
+		popOutWindow.value.addEventListener('pagehide', () => !isUnmounting.value && onRequestClose());
 	}
 
 	function hidePopOut() {
