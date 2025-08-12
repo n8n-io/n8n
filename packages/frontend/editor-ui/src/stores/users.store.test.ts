@@ -1,4 +1,4 @@
-import type { CurrentUserResponse } from '@/Interface';
+import type { CurrentUserResponse } from '@n8n/rest-api-client/api/users';
 import { useUsersStore } from './users.store';
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -10,7 +10,7 @@ const { loginCurrentUser, inviteUsers } = vi.hoisted(() => {
 	};
 });
 
-vi.mock('@/api/users', () => ({
+vi.mock('@n8n/rest-api-client/api/users', () => ({
 	loginCurrentUser,
 }));
 

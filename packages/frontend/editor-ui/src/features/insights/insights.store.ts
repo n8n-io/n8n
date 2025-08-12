@@ -18,9 +18,7 @@ export const useInsightsStore = defineStore('insights', () => {
 		() => getResourcePermissions(usersStore.currentUser?.globalScopes).insights,
 	);
 
-	const isInsightsEnabled = computed(() =>
-		settingsStore.settings.activeModules.includes('insights'),
-	);
+	const isInsightsEnabled = computed(() => settingsStore.isModuleActive('insights'));
 
 	const isDashboardEnabled = computed(() => !!settingsStore.moduleSettings.insights?.dashboard);
 

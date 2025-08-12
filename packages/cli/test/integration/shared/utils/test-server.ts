@@ -21,6 +21,7 @@ import { LicenseMocker } from '@test-integration/license';
 
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
+import { GlobalConfig } from '@n8n/config';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -127,7 +128,7 @@ export const setupTestServer = ({
 		if (modules) await testModules.loadModules(modules);
 		await testDb.init();
 
-		config.set('userManagement.jwtSecret', 'My JWT secret');
+		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
 		testServer.license.mock(Container.get(License));
@@ -228,7 +229,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'community-packages':
-						await import('@/controllers/community-packages.controller');
+						await import('@/community-packages/community-packages.controller');
 						break;
 
 					case 'me':

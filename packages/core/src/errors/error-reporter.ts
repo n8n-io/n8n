@@ -1,9 +1,10 @@
-import { inTest, Logger } from '@n8n/backend-common';
-import type { InstanceType } from '@n8n/constants';
+import { inProduction, inTest, Logger } from '@n8n/backend-common';
+import { type InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { ErrorEvent, EventHint } from '@sentry/core';
 import type { NodeOptions } from '@sentry/node';
+import { eventLoopBlockIntegration } from '@sentry/node-native';
 import { AxiosError } from 'axios';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
@@ -130,7 +131,7 @@ export class ErrorReporter {
 			dsn,
 			release,
 			environment,
-			tracesSampleRate: 0,
+			tracesSampleRate: inProduction ? 0.01 : 0,
 			serverName,
 			beforeBreadcrumb: () => null,
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
@@ -146,6 +147,7 @@ export class ErrorReporter {
 						url: true,
 					},
 				}),
+				eventLoopBlockIntegration(),
 			],
 		});
 

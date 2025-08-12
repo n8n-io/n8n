@@ -46,12 +46,12 @@ vi.mock('@/stores/workflows.store', () => {
 			}),
 			workflowTriggerNodes: [],
 			workflowId: 'dummy-workflow-id',
-			getCurrentWorkflow: vi.fn(() => ({
+			workflowObject: {
 				getNode: vi.fn(() => ({
 					type: 'n8n-node.example',
 					typeVersion: 1,
 				})),
-			})),
+			},
 		}),
 	};
 });
@@ -332,6 +332,34 @@ describe('useNodeCreatorStore', () => {
 			});
 
 			expect(nodeCreatorStore.selectedView).not.toEqual(REGULAR_NODE_CREATOR_VIEW);
+		});
+	});
+
+	it('tracks when node is added to canvas with action parameter', () => {
+		nodeCreatorStore.onCreatorOpened({
+			source,
+			mode,
+			workflow_id,
+		});
+		nodeCreatorStore.onNodeAddedToCanvas({
+			node_id,
+			node_type,
+			node_version,
+			workflow_id,
+			action: 'Create Contact',
+			resource: 'contact',
+			operation: 'create',
+		});
+
+		expect(useTelemetry().track).toHaveBeenCalledWith('User added node to workflow canvas', {
+			node_id,
+			node_type,
+			node_version,
+			workflow_id,
+			action: 'Create Contact',
+			resource: 'contact',
+			operation: 'create',
+			nodes_panel_session_id: getSessionId(now),
 		});
 	});
 });

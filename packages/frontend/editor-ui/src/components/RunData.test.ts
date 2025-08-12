@@ -706,7 +706,7 @@ describe('RunData', () => {
 				node: {
 					name: 'Test Node',
 				},
-				workflow: createTestWorkflowObject({
+				workflowObject: createTestWorkflowObject({
 					id: workflowId,
 					nodes: workflowNodes,
 				}),

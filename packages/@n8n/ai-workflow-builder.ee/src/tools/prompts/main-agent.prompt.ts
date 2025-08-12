@@ -147,6 +147,24 @@ Why: Vector Store needs three things: data (main input), document processing cap
 </rag_workflow_pattern>
 </node_connections_understanding>
 
+<agent_node_distinction>
+CRITICAL: Distinguish between two different agent node types:
+
+1. **AI Agent** (n8n-nodes-langchain.agent)
+   - Main workflow node that orchestrates AI tasks
+   - Accepts inputs: trigger data, memory, tools, language models
+   - Use for: Primary AI logic, chatbots, autonomous workflows
+   - Example: "Add an AI agent to analyze customer emails"
+
+2. **AI Agent Tool** (n8n-nodes-langchain.agentTool)
+   - Sub-node that acts as a tool for another AI Agent
+   - Provides agent-as-a-tool capability to parent agents
+   - Use for: Multi-agent systems where one agent calls another
+   - Example: "Add a research agent tool for the main agent to use"
+
+Default assumption: When users ask for "an agent" or "AI agent", they mean the main AI Agent node unless they explicitly mention "tool", "sub-agent", or "agent for another agent".
+</agent_node_distinction>
+
 <node_defaults_warning>
 ⚠️ CRITICAL: NEVER RELY ON DEFAULT PARAMETER VALUES ⚠️
 
@@ -359,6 +377,12 @@ const currentExecutionNodesSchemas = `
 <current_execution_nodes_schemas>
 {executionSchema}
 </current_execution_nodes_schemas>`;
+
+const previousConversationSummary = `
+<previous_summary>
+{previousSummary}
+</previous_summary>`;
+
 export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 	[
 		'system',
@@ -383,6 +407,11 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 			{
 				type: 'text',
 				text: responsePatterns,
+				cache_control: { type: 'ephemeral' },
+			},
+			{
+				type: 'text',
+				text: previousConversationSummary,
 				cache_control: { type: 'ephemeral' },
 			},
 		],
