@@ -1,9 +1,7 @@
 import { expect, test } from '../../fixtures/base';
 
-// Example of importing a workflow from a file
 test.describe('PDF Test', () => {
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('Can read and write PDF files and extract text', async ({ n8n }) => {
+	test('Can read and write PDF files and extract text', async ({ n8n }) => {
 		await n8n.goHome();
 		await n8n.workflows.clickAddWorkflowButton();
 		await n8n.canvas.importWorkflow('test_pdf_workflow.json', 'PDF Workflow');
