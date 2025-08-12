@@ -58,24 +58,6 @@ function columnToWildcardAndType(
 	return `${quoteIdentifier(column.name, dbType)} ${dataStoreColumnTypeToSql(column.type, dbType)}`;
 }
 
-function getPrimaryKeyAutoIncrement(dbType: DataSourceOptions['type']) {
-	switch (dbType) {
-		case 'sqlite':
-		case 'sqlite-pooled':
-		case 'better-sqlite3':
-			return 'INTEGER PRIMARY KEY AUTOINCREMENT';
-		case 'postgres':
-		case 'aurora-postgres':
-			return 'INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY';
-		case 'mysql':
-		case 'aurora-mysql':
-		case 'mariadb':
-			return 'INT AUTO_INCREMENT PRIMARY KEY';
-	}
-
-	throw new UnexpectedError('Unexpected database type');
-}
-
 function isValidColumnName(name: string) {
 	// Only allow alphanumeric and underscore
 	return DATA_STORE_COLUMN_REGEX.test(name);
