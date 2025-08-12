@@ -30,7 +30,7 @@ const onUpdateClick = async () => {
 	<div :class="$style.container">
 		<N8nLink
 			size="small"
-			theme="text"
+			:class="$style.link"
 			data-test-id="version-update-next-versions-link"
 			@click="openUpdatesPanel"
 		>
@@ -41,7 +41,7 @@ const onUpdateClick = async () => {
 							versionsStore.nextVersions.length > 99 ? '99+' : versionsStore.nextVersions.length,
 					},
 				})
-			}}
+			}}{{ ', ' }}
 		</N8nLink>
 
 		<N8nButton
@@ -49,6 +49,7 @@ const onUpdateClick = async () => {
 			:label="i18n.baseText('whatsNew.update')"
 			data-test-id="version-update-cta-button"
 			size="mini"
+			text
 			@click="onUpdateClick"
 		/>
 	</div>
@@ -56,19 +57,17 @@ const onUpdateClick = async () => {
 
 <style lang="scss" module>
 .container {
-	display: flex;
-	flex-direction: column;
-	justify-content: space-between;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-2xs) var(--spacing-xs);
-	margin-left: var(--spacing-s);
-	margin-bottom: var(--spacing-3xs);
+	margin-top: var(--spacing-xs);
+	padding: var(--spacing-xs) var(--spacing-xs);
 	border-radius: var(--border-radius-base);
 	border: var(--border-base);
-	background: var(--color-background-light-base);
+	background: var(--color-background-light);
+	width: 100%;
 }
 
-.button {
-	width: 100%;
+.button,
+.link {
+	display: inline;
+	padding: 0;
 }
 </style>

@@ -241,7 +241,7 @@ function getMenuItemRoute(item: IMenuItem) {
 								v-else
 								:title="subItem.label"
 								:id="subItem.id"
-								:icon="subItem.icon as IconName"
+								:icon="subItem.icon"
 								@click="handleSelect ? handleSelect(subItem.id) : undefined"
 								:link="subItem.link ? subItem.link.href : undefined"
 								:route="getMenuItemRoute(subItem)"

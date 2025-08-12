@@ -297,7 +297,7 @@ const helpMenuItems = ref([
 						label: article.title,
 						size: 'small',
 						customIconSize: 'small',
-						icon: '•',
+						icon: 'dot',
 					}) satisfies IMenuItem,
 			),
 			{
