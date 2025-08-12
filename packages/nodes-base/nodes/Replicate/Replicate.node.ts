@@ -46,10 +46,10 @@ export class Replicate implements INodeType {
 						name: 'FLUX Dev',
 						value: 'black-forest-labs/flux-dev',
 					},
-					{
-						name: 'FLUX Kontext Pro',
-						value: 'black-forest-labs/flux-kontext-pro',
-					},
+					// {
+					// 	name: 'FLUX Kontext Pro',
+					// 	value: 'black-forest-labs/flux-kontext-pro',
+					// },
 					{
 						name: 'Recraft V3',
 						value: 'recraft-ai/recraft-v3',
@@ -93,7 +93,7 @@ export class Replicate implements INodeType {
 			},
 			{
 				displayName: 'Aspect Ratio',
-				name: 'aspectRatio',
+				name: 'aspectRatioFlux',
 				type: 'options',
 				displayOptions: {
 					show: {
@@ -101,7 +101,7 @@ export class Replicate implements INodeType {
 							'black-forest-labs/flux-schnell',
 							'black-forest-labs/flux-pro',
 							'black-forest-labs/flux-dev',
-							'black-forest-labs/flux-kontext-pro',
+							// 'black-forest-labs/flux-kontext-pro',
 						],
 					},
 				},
@@ -121,7 +121,7 @@ export class Replicate implements INodeType {
 			},
 			{
 				displayName: 'Aspect Ratio',
-				name: 'aspectRatio',
+				name: 'aspectRatioStability',
 				type: 'options',
 				displayOptions: {
 					show: {
@@ -163,11 +163,6 @@ export class Replicate implements INodeType {
 				console.log(`Selected model: ${model}`); // Log the selected model
 
 				const promptField = this.getNodeParameter('promptField', itemIndex) as string;
-				// Access 'imageResolution' only if the model is 'recraft-ai/recraft-v3'
-				let imageResolution: string | undefined;
-				if (model === 'recraft-ai/recraft-v3') {
-					imageResolution = this.getNodeParameter('imageResolution', itemIndex) as string;
-				}
 
 				// Get prompt from input data with fallback logic
 				let prompt: string | undefined;
@@ -205,52 +200,45 @@ export class Replicate implements INodeType {
 
 				const input: Record<string, any> = { prompt };
 
-				let inputImage: string | undefined;
-				if (model === 'black-forest-labs/flux-kontext-pro') {
-					if (item.binary && item.binary.data) {
-						const binaryData = item.binary.data;
-						const base64Image = Buffer.from(binaryData.data, 'base64').toString('base64');
-						inputImage = `data:${binaryData.mimeType};base64,${base64Image}`;
-					} else {
-						throw new NodeOperationError(this.getNode(), 'No binary data found for input_image', {
-							itemIndex,
-						});
-					}
-				}
+				// let inputImage: string | undefined;
+				// if (model === 'black-forest-labs/flux-kontext-pro') {
+				// 	if (item.binary && item.binary.data) {
+				// 		const binaryData = item.binary.data;
+				// 		const base64Image = Buffer.from(binaryData.data, 'base64').toString('base64');
+				// 		inputImage = `data:${binaryData.mimeType};base64,${base64Image}`;
+				// 	} else {
+				// 		throw new NodeOperationError(this.getNode(), 'No binary data found for input_image', {
+				// 			itemIndex,
+				// 		});
+				// 	}
+				// }
 
 				if (model === 'recraft-ai/recraft-v3') {
+					let imageResolution: string | undefined;
+					imageResolution = this.getNodeParameter('imageResolution', itemIndex) as string;
 					input.size = imageResolution;
 					input.style = 'any';
 					input.aspect_ratio = 'Not set';
 				} else if (model === 'stability-ai/stable-diffusion-3') {
-					// Remove width and height logic for stability-ai/stable-diffusion-3
-					// let width: number | undefined;
-					// let height: number | undefined;
-					// if (model === 'stability-ai/stable-diffusion-3') {
-					// 	width = this.getNodeParameter('width', itemIndex) as number;
-					// 	height = this.getNodeParameter('height', itemIndex) as number;
-					// 	console.log(`Width: ${width}, Height: ${height}`); // Log width and height
-					// }
-
-					// Ensure aspectRatio is used
 					let aspectRatio: string | undefined;
-					if (
-						[
-							'black-forest-labs/flux-schnell',
-							'black-forest-labs/flux-pro',
-							'black-forest-labs/flux-dev',
-							'black-forest-labs/flux-kontext-pro',
-							'stability-ai/stable-diffusion-3', // Include stability-ai/stable-diffusion-3
-						].includes(model)
-					) {
-						aspectRatio = this.getNodeParameter('aspectRatio', itemIndex) as string;
-						input.aspect_ratio = aspectRatio;
-					}
+					aspectRatio = this.getNodeParameter('aspectRatioStability', itemIndex) as string;
+					input.aspect_ratio = aspectRatio;
+				} else if (
+					[
+						'black-forest-labs/flux-schnell',
+						'black-forest-labs/flux-pro',
+						'black-forest-labs/flux-dev',
+						// 'black-forest-labs/flux-kontext-pro',
+					].includes(model)
+				) {
+					let aspectRatio: string | undefined;
+					aspectRatio = this.getNodeParameter('aspectRatioFlux', itemIndex) as string;
+					input.aspect_ratio = aspectRatio;
 				}
 
-				if (model === 'black-forest-labs/flux-kontext-pro') {
-					input.input_image = inputImage;
-				}
+				// if (model === 'black-forest-labs/flux-kontext-pro') {
+				// 	input.input_image = inputImage;
+				// }
 
 				console.log(`Input object: ${JSON.stringify(input)}`); // Log the input object
 
