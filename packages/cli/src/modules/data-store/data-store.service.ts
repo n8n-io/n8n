@@ -139,7 +139,7 @@ export class DataStoreService {
 		return await this.dataStoreRepository.getManyAndCount(options);
 	}
 
-	async getManyRowsAndCount(dataStoreId: string, dto: Partial<ListDataStoreContentQueryDto>) {
+	async getManyRowsAndCount(dataStoreId: string, dto: ListDataStoreContentQueryDto) {
 		// unclear if we should validate here, only use case would be to reduce the chance of
 		// a renamed/removed column appearing here (or added column missing) if the store was
 		// modified between when the frontend sent the request and we received it

@@ -123,7 +123,7 @@ export class DataStoreController {
 		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: Partial<ListDataStoreContentQueryDto>,
+		@Query dto: ListDataStoreContentQueryDto,
 	) {
 		return await this.dataStoreService.getManyRowsAndCount(dataStoreId, dto);
 	}

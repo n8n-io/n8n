@@ -70,7 +70,8 @@ const sortByValidator = z
 	});
 
 export class ListDataStoreContentQueryDto extends Z.class({
-	...paginationSchema,
-	filter: filterValidator,
-	sortBy: sortByValidator,
+	take: paginationSchema.take.optional(),
+	skip: paginationSchema.skip.optional(),
+	filter: filterValidator.optional(),
+	sortBy: sortByValidator.optional(),
 }) {}

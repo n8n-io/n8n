@@ -1,5 +1,6 @@
 import type {
 	ListDataStoreContentQueryDto,
+	ListDataStoreContentFilter,
 	DataStoreUserTableName,
 	DataStoreRows,
 	UpsertDataStoreRowsDto,
@@ -31,7 +32,7 @@ import {
 type QueryBuilder = SelectQueryBuilder<any>;
 
 function getConditionAndParams(
-	filter: ListDataStoreContentQueryDto['filter']['filters'][number],
+	filter: ListDataStoreContentFilter['filters'][number],
 	index: number,
 	dbType: DataSourceOptions['type'],
 ): [string, Record<string, unknown>] {
@@ -132,10 +133,7 @@ export class DataStoreRowsRepository {
 		await em.query(deleteColumnQuery(toTableName(dataStoreId), columnName, dbType));
 	}
 
-	async getManyAndCount(
-		dataStoreId: DataStoreUserTableName,
-		dto: Partial<ListDataStoreContentQueryDto>,
-	) {
+	async getManyAndCount(dataStoreId: DataStoreUserTableName, dto: ListDataStoreContentQueryDto) {
 		const [countQuery, query] = this.getManyQuery(dataStoreId, dto);
 		const data: Array<Record<string, unknown>> = await query.select('*').getRawMany();
 		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
@@ -146,7 +144,7 @@ export class DataStoreRowsRepository {
 		return { count: count ?? -1, data };
 	}
 
-	async getRowIds(dataStoreId: DataStoreUserTableName, dto: Partial<ListDataStoreContentQueryDto>) {
+	async getRowIds(dataStoreId: DataStoreUserTableName, dto: ListDataStoreContentQueryDto) {
 		const [_, query] = this.getManyQuery(dataStoreId, dto);
 		const result = await query.select('dataStore.id').getRawMany<number>();
 		return result;
@@ -154,7 +152,7 @@ export class DataStoreRowsRepository {
 
 	private getManyQuery(
 		dataStoreTableName: DataStoreUserTableName,
-		dto: Partial<ListDataStoreContentQueryDto>,
+		dto: ListDataStoreContentQueryDto,
 	): [QueryBuilder, QueryBuilder] {
 		const query = this.dataSource.createQueryBuilder();
 
@@ -167,7 +165,7 @@ export class DataStoreRowsRepository {
 		return [countQuery, query];
 	}
 
-	private applyFilters(query: QueryBuilder, dto: Partial<ListDataStoreContentQueryDto>): void {
+	private applyFilters(query: QueryBuilder, dto: ListDataStoreContentQueryDto): void {
 		const filters = dto.filter?.filters ?? [];
 		const filterType = dto.filter?.type ?? 'and';
 
@@ -185,7 +183,7 @@ export class DataStoreRowsRepository {
 		}
 	}
 
-	private applySorting(query: QueryBuilder, dto: Partial<ListDataStoreContentQueryDto>): void {
+	private applySorting(query: QueryBuilder, dto: ListDataStoreContentQueryDto): void {
 		if (!dto.sortBy) {
 			// query.orderBy('dataStore.', 'DESC');
 			return;
@@ -201,7 +199,7 @@ export class DataStoreRowsRepository {
 		query.orderBy(quotedField, direction);
 	}
 
-	private applyPagination(query: QueryBuilder, dto: Partial<ListDataStoreContentQueryDto>): void {
+	private applyPagination(query: QueryBuilder, dto: ListDataStoreContentQueryDto): void {
 		query.skip(dto.skip);
 		query.take(dto.take);
 	}
