@@ -1,7 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useBuilderMessages } from '@/composables/useBuilderMessages';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '@/types/assistant.types';
+
+// Mock useI18n to return the keys instead of translations
+vi.mock('@n8n/i18n', () => ({
+	useI18n: () => ({
+		baseText: (key: string) => key,
+	}),
+}));
 
 describe('useBuilderMessages', () => {
 	let builderMessages: ReturnType<typeof useBuilderMessages>;
@@ -282,7 +289,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.thinkingMessage).toBe('Running tools...');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 			expect(result.shouldClearThinking).toBe(false);
 		});
 
@@ -309,7 +316,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.thinkingMessage).toBe('Processing results...');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
 			expect(result.shouldClearThinking).toBe(false);
 		});
 
@@ -382,8 +389,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should show "Running tools..." for the new running tool, not "Processing results..."
-			expect(result.thinkingMessage).toBe('Running tools...');
+			// Should show "aiAssistant.thinkingSteps.runningTools" for the new running tool, not "aiAssistant.thinkingSteps.processingResults"
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 		});
 
 		it('should show processing message when second tool completes', () => {
@@ -419,7 +426,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			expect(result.thinkingMessage).toBe('Processing results...');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
 		});
 
 		it('should keep showing running tools message when parallel tools complete one by one', () => {
@@ -466,8 +473,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should still show "Running tools..." because call-456 is still running
-			expect(result.thinkingMessage).toBe('Running tools...');
+			// Should still show "aiAssistant.thinkingSteps.runningTools" because call-456 is still running
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 
 			// Verify first tool is now completed
 			const firstTool = result.messages.find(
@@ -526,8 +533,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should now show "Processing results..." because all tools are completed
-			expect(result.thinkingMessage).toBe('Processing results...');
+			// Should now show "aiAssistant.thinkingSteps.processingResults" because all tools are completed
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
 		});
 
 		it('should keep processing message when workflow-updated arrives after tools complete', () => {
@@ -561,8 +568,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should still show "Processing results..." because workflow-updated is not a text response
-			expect(result.thinkingMessage).toBe('Processing results...');
+			// Should still show "aiAssistant.thinkingSteps.processingResults" because workflow-updated is not a text response
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
 			// Should NOT clear thinking for workflow updates
 			expect(result.shouldClearThinking).toBe(false);
 		});
@@ -1256,7 +1263,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			let result = builderMessages.processAssistantMessages(currentMessages, batch1, 'batch-1');
-			expect(result.thinkingMessage).toBe('Running tools...');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 			currentMessages = result.messages;
 
 			// Second batch: tool completes
@@ -1272,7 +1279,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			result = builderMessages.processAssistantMessages(currentMessages, batch2, 'batch-2');
-			expect(result.thinkingMessage).toBe('Processing results...');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
 			currentMessages = result.messages;
 
 			// Third batch: workflow updated
@@ -1285,7 +1292,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			result = builderMessages.processAssistantMessages(currentMessages, batch3, 'batch-3');
-			expect(result.thinkingMessage).toBe('Processing results...');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
 			currentMessages = result.messages;
 
 			// Fourth batch: final text response
