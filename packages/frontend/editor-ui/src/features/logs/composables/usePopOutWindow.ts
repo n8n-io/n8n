@@ -58,16 +58,16 @@ function syncStyleMutations(destination: Window, mutations: MutationRecord[]) {
 	}
 }
 
-function copeFavicon(popOutWindow: Window) {
-	const iconUrl = document.querySelector('link[rel=icon]')?.getAttribute('href');
+function copyFavicon(source: Window, target: Window) {
+	const iconUrl = source.document.querySelector('link[rel=icon]')?.getAttribute('href');
 
 	if (iconUrl) {
-		const link = document.createElement('link');
+		const link = target.document.createElement('link');
 
 		link.setAttribute('rel', 'icon');
 		link.setAttribute('href', iconUrl);
 
-		popOutWindow.document.head.appendChild(link);
+		target.document.head.appendChild(link);
 	}
 }
 
@@ -119,7 +119,7 @@ export function usePopOutWindow({
 			return;
 		}
 
-		copeFavicon(popOutWindow.value);
+		copyFavicon(window, popOutWindow.value);
 
 		for (const styleSheet of [...document.styleSheets]) {
 			try {
