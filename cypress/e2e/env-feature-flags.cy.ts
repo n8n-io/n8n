@@ -1,4 +1,6 @@
-describe('Environment Feature Flags', () => {
+// Migrated to Playwright
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('Environment Feature Flags', () => {
 	it('should set feature flags at runtime and load it back in envFeatureFlags from backend settings', () => {
 		cy.setEnvFeatureFlags({
 			N8N_ENV_FEAT_TEST: true,

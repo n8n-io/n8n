@@ -1,9 +1,9 @@
-import { computed, type ShallowRef } from 'vue';
+import { computed, type ComputedRef, type ShallowRef } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { watch } from 'vue';
 import { useLogsStore } from '@/stores/logs.store';
 import { useResizablePanel } from '@/composables/useResizablePanel';
-import { usePiPWindow } from '@/features/logs/composables/usePiPWindow';
+import { usePopOutWindow } from '@/features/logs/composables/usePopOutWindow';
 import {
 	LOGS_PANEL_STATE,
 	LOCAL_STORAGE_OVERVIEW_PANEL_WIDTH,
@@ -12,8 +12,9 @@ import {
 } from '@/features/logs/logs.constants';
 
 export function useLogsPanelLayout(
-	pipContainer: Readonly<ShallowRef<HTMLElement | null>>,
-	pipContent: Readonly<ShallowRef<HTMLElement | null>>,
+	workflowName: ComputedRef<string>,
+	popOutContainer: Readonly<ShallowRef<HTMLElement | null>>,
+	popOutContent: Readonly<ShallowRef<HTMLElement | null>>,
 	container: Readonly<ShallowRef<HTMLElement | null>>,
 	logsContainer: Readonly<ShallowRef<HTMLElement | null>>,
 ) {
@@ -51,13 +52,20 @@ export function useLogsPanelLayout(
 			: resizer.isResizing.value && resizer.size.value > 0,
 	);
 	const isCollapsingDetailsPanel = computed(() => overviewPanelResizer.isFullSize.value);
+	const popOutWindowTitle = computed(() => `Logs - ${workflowName.value}`);
+	const shouldPopOut = computed(() => logsStore.state === LOGS_PANEL_STATE.FLOATING);
 
-	const { canPopOut, isPoppedOut, pipWindow } = usePiPWindow({
+	const {
+		canPopOut,
+		isPoppedOut,
+		popOutWindow: popOutWindow,
+	} = usePopOutWindow({
+		title: popOutWindowTitle,
 		initialHeight: 400,
 		initialWidth: window.document.body.offsetWidth * 0.8,
-		container: pipContainer,
-		content: pipContent,
-		shouldPopOut: computed(() => logsStore.state === LOGS_PANEL_STATE.FLOATING),
+		container: popOutContainer,
+		content: popOutContent,
+		shouldPopOut,
 		onRequestClose: () => {
 			if (!isOpen.value) {
 				return;
@@ -123,7 +131,7 @@ export function useLogsPanelLayout(
 		isCollapsingDetailsPanel,
 		isPoppedOut,
 		isOverviewPanelFullWidth: overviewPanelResizer.isFullSize,
-		pipWindow,
+		popOutWindow,
 		onToggleOpen: handleToggleOpen,
 		onPopOut: handlePopOut,
 		onResize: resizer.onResize,

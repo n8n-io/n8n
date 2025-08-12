@@ -10,14 +10,12 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { SortingAndPaginationUpdates, UserAction } from '@/Interface';
-import type { IUser } from '@n8n/rest-api-client/api/users';
+import type { SortingAndPaginationUpdates } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import {
 	ADD_DATA_STORE_MODAL_KEY,
-	DATA_STORE_CARD_ACTIONS,
 	DEFAULT_DATA_STORE_PAGE_SIZE,
 } from '@/features/dataStore/constants';
 import { useDebounce } from '@/composables/useDebounce';
@@ -25,8 +23,6 @@ import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
-import { useMessage } from '@/composables/useMessage';
-import { MODAL_CONFIRM } from '@/constants';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -34,7 +30,6 @@ const projectPages = useProjectPages();
 const { callDebounced } = useDebounce();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
-const message = useMessage();
 
 const dataStoreStore = useDataStoreStore();
 const insightsStore = useInsightsStore();
@@ -89,19 +84,6 @@ const emptyCalloutButtonText = computed(() => {
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
-const cardActions = computed<Array<UserAction<IUser>>>(() => [
-	{
-		label: i18n.baseText('generic.rename'),
-		value: DATA_STORE_CARD_ACTIONS.RENAME,
-		disabled: readOnlyEnv.value,
-	},
-	{
-		label: i18n.baseText('generic.delete'),
-		value: DATA_STORE_CARD_ACTIONS.DELETE,
-		disabled: readOnlyEnv.value,
-	},
-]);
-
 const initialize = async () => {
 	loading.value = true;
 	const projectId = Array.isArray(route.params.projectId)
@@ -132,66 +114,32 @@ const onAddModalClick = () => {
 	useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
 };
 
-const onCardAction = async (payload: { action: string; dataStore: DataStoreResource }) => {
-	switch (payload.action) {
-		case DATA_STORE_CARD_ACTIONS.DELETE: {
-			const promptResponse = await message.confirm(
-				i18n.baseText('dataStore.delete.confirm.message', {
-					interpolate: { name: payload.dataStore.name },
-				}),
-				i18n.baseText('dataStore.delete.confirm.title'),
-				{
-					confirmButtonText: i18n.baseText('generic.delete'),
-					cancelButtonText: i18n.baseText('generic.cancel'),
-				},
-			);
-			if (promptResponse === MODAL_CONFIRM) {
-				try {
-					const deleted = await dataStoreStore.deleteDataStore(
-						payload.dataStore.id,
-						payload.dataStore.projectId,
-					);
-					if (!deleted) {
-						toast.showError(
-							new Error(i18n.baseText('generic.unknownError')),
-							i18n.baseText('dataStore.delete.error'),
-						);
-					}
-				} catch (error) {
-					toast.showError(error, i18n.baseText('dataStore.delete.error'));
-				}
-			}
-			break;
-		}
-		case DATA_STORE_CARD_ACTIONS.RENAME: {
-			try {
-				const updated = await dataStoreStore.updateDataStore(
-					payload.dataStore.id,
-					payload.dataStore.name,
-					payload.dataStore.projectId,
-				);
-				if (!updated) {
-					toast.showError(
-						new Error(i18n.baseText('generic.unknownError')),
-						i18n.baseText('dataStore.rename.error'),
-					);
-				}
-			} catch (error) {
-				toast.showError(error, i18n.baseText('dataStore.rename.error'));
-			}
-			break;
-		}
-	}
-};
-
 const onProjectHeaderAction = (action: string) => {
 	if (action === 'add-data-store') {
 		useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
 	}
 };
 
+const onCardRename = async (payload: { dataStore: DataStoreResource }) => {
+	try {
+		const updated = await dataStoreStore.updateDataStore(
+			payload.dataStore.id,
+			payload.dataStore.name,
+			payload.dataStore.projectId,
+		);
+		if (!updated) {
+			toast.showError(
+				new Error(i18n.baseText('generic.unknownError')),
+				i18n.baseText('dataStore.rename.error'),
+			);
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.rename.error'));
+	}
+};
+
 onMounted(() => {
-	documentTitle.set(i18n.baseText('dataStore.tab.label'));
+	documentTitle.set(i18n.baseText('dataStore.dataStores'));
 });
 </script>
 <template>
@@ -241,9 +189,8 @@ onMounted(() => {
 				class="mb-2xs"
 				:data-store="data as DataStoreResource"
 				:show-ownership-badge="projectPages.isOverviewSubPage"
-				:actions="cardActions"
 				:read-only="readOnlyEnv"
-				@action="onCardAction"
+				@rename="onCardRename"
 			/>
 		</template>
 	</ResourcesListLayout>
