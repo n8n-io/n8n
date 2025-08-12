@@ -709,4 +709,58 @@ describe('AI Builder store', () => {
 			expect((assistantMessages[0] as ChatUI.TextMessage).content).toBe('[Task aborted]');
 		});
 	});
+
+	describe('Rating logic integration', () => {
+		it('should clear ratings from existing messages when preparing for streaming', () => {
+			const builderStore = useBuilderStore();
+
+			// Setup initial messages with ratings
+			builderStore.chatMessages = [
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Previous message',
+					showRating: true,
+					ratingStyle: 'regular',
+					read: false,
+				} satisfies ChatUI.AssistantMessage,
+				{
+					id: 'msg-2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Another message',
+					showRating: true,
+					ratingStyle: 'minimal',
+					read: false,
+				} satisfies ChatUI.AssistantMessage,
+			];
+
+			// Mock API to prevent actual network calls
+			apiSpy.mockImplementationOnce(() => {});
+
+			// Send new message which calls prepareForStreaming
+			builderStore.sendChatMessage({ text: 'New message' });
+
+			// Verify that existing messages no longer have rating properties
+			expect(builderStore.chatMessages).toHaveLength(3); // 2 existing + 1 new user message
+
+			const firstMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
+			expect(firstMessage).not.toHaveProperty('showRating');
+			expect(firstMessage).not.toHaveProperty('ratingStyle');
+			expect(firstMessage.content).toBe('Previous message');
+
+			const secondMessage = builderStore.chatMessages[1] as ChatUI.TextMessage;
+			expect(secondMessage).not.toHaveProperty('showRating');
+			expect(secondMessage).not.toHaveProperty('ratingStyle');
+			expect(secondMessage.content).toBe('Another message');
+
+			// New user message should not have rating properties
+			const userMessage = builderStore.chatMessages[2] as ChatUI.TextMessage;
+			expect(userMessage.role).toBe('user');
+			expect(userMessage.content).toBe('New message');
+			expect(userMessage).not.toHaveProperty('showRating');
+			expect(userMessage).not.toHaveProperty('ratingStyle');
+		});
+	});
 });
