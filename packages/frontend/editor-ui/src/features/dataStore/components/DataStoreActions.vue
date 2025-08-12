@@ -70,25 +70,25 @@ const onAction = async (action: string) => {
 				},
 			);
 			if (promptResponse === MODAL_CONFIRM) {
-				try {
-					const deleted = await dataStoreStore.deleteDataStore(
-						props.dataStore.id,
-						props.dataStore.projectId,
-					);
-					if (!deleted) {
-						toast.showError(
-							new Error(i18n.baseText('generic.unknownError')),
-							i18n.baseText('dataStore.delete.error'),
-						);
-					} else {
-						emit('onDeleted');
-					}
-				} catch (error) {
-					toast.showError(error, i18n.baseText('dataStore.delete.error'));
-				}
+				await deleteDataStore();
 			}
 			break;
 		}
+	}
+};
+
+const deleteDataStore = async () => {
+	try {
+		const deleted = await dataStoreStore.deleteDataStore(
+			props.dataStore.id,
+			props.dataStore.projectId,
+		);
+		if (!deleted) {
+			throw new Error(i18n.baseText('generic.unknownError'));
+		}
+		emit('onDeleted');
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.delete.error'));
 	}
 };
 </script>

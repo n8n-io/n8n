@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
+import { computed, nextTick, useTemplateRef } from 'vue';
 import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
 import { useI18n } from '@n8n/i18n';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -52,13 +52,12 @@ const onDelete = async () => {
 	await router.push({ name: DATA_STORE_VIEW, params: { projectId: props.dataStore.projectId } });
 };
 
-const onRename = () => {
+const onRename = async () => {
 	// Focus rename input if the action is rename
 	// We need this timeout to ensure action toggle is closed before focusing
+	await nextTick();
 	if (renameInput.value?.forceFocus) {
-		setTimeout(() => {
-			renameInput.value?.forceFocus();
-		}, 100);
+		renameInput.value.forceFocus();
 	}
 };
 
@@ -89,7 +88,7 @@ const onNameSubmit = async (name: string) => {
 			@item-selected="onItemClicked"
 		>
 			<template #prepend>
-				<project-breadcrumb v-if="project" :current-project="project" />
+				<ProjectBreadcrumb v-if="project" :current-project="project" />
 			</template>
 			<template #append>
 				<span :class="$style.separator">{{ BREADCRUMBS_SEPARATOR }}</span>
