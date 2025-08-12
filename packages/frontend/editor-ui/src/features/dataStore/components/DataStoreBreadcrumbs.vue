@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
 import { useI18n } from '@n8n/i18n';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -24,6 +24,8 @@ const dataStoreStore = useDataStoreStore();
 const i18n = useI18n();
 const router = useRouter();
 const toast = useToast();
+
+const editableName = ref(props.dataStore.name);
 
 const project = computed(() => {
 	return props.dataStore.project ?? null;
@@ -69,15 +71,22 @@ const onNameSubmit = async (name: string) => {
 			props.dataStore.projectId,
 		);
 		if (!updated) {
-			toast.showError(
-				new Error(i18n.baseText('generic.unknownError')),
-				i18n.baseText('dataStore.rename.error'),
-			);
+			throw new Error(i18n.baseText('generic.unknownError'));
 		}
+		editableName.value = name;
 	} catch (error) {
+		// Revert to original name if rename fails
+		editableName.value = props.dataStore.name;
 		toast.showError(error, i18n.baseText('dataStore.rename.error'));
 	}
 };
+
+watch(
+	() => props.dataStore.name,
+	(newName) => {
+		editableName.value = newName;
+	},
+);
 </script>
 
 <template>
@@ -94,10 +103,10 @@ const onNameSubmit = async (name: string) => {
 				<span :class="$style.separator">{{ BREADCRUMBS_SEPARATOR }}</span>
 				<N8nInlineTextEdit
 					ref="renameInput"
+					v-model="editableName"
 					data-test-id="datastore-header-name-input"
 					:placeholder="i18n.baseText('dataStore.add.input.name.label')"
 					:class="$style['breadcrumb-current']"
-					:model-value="props.dataStore.name"
 					:max-length="30"
 					:read-only="false"
 					:disabled="false"
