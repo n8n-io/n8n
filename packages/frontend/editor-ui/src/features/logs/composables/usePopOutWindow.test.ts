@@ -7,81 +7,20 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 
 describe(usePopOutWindow, () => {
-	const documentPictureInPicture: NonNullable<Window['documentPictureInPicture']> = {
-		window: null,
-		requestWindow: async () =>
-			({
-				document: { body: { append: vi.fn(), removeChild: vi.fn() } },
-				addEventListener: vi.fn(),
-				close: vi.fn(),
-			}) as unknown as Window,
-	};
-
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 	});
 
-	describe('canPopOut', () => {
-		it('should return false if window.documentPictureInPicture is not available', () => {
-			const MyComponent = defineComponent({
-				setup() {
-					const container = ref<HTMLDivElement | null>(null);
-					const content = ref<HTMLDivElement | null>(null);
-					const popOutWindow = usePopOutWindow({
-						title: computed(() => ''),
-						container,
-						content,
-						shouldPopOut: computed(() => true),
-						onRequestClose: vi.fn(),
-					});
-
-					return () =>
-						h(
-							'div',
-							{ ref: container },
-							h('div', { ref: content }, String(popOutWindow.canPopOut.value)),
-						);
-				},
-			});
-
-			const { queryByText } = renderComponent(MyComponent);
-
-			expect(queryByText('false')).toBeInTheDocument();
-		});
-
-		it('should return true if window.documentPictureInPicture is available', () => {
-			Object.assign(window, { documentPictureInPicture });
-
-			const MyComponent = defineComponent({
-				setup() {
-					const container = ref<HTMLDivElement | null>(null);
-					const content = ref<HTMLDivElement | null>(null);
-					const popOutWindow = usePopOutWindow({
-						title: computed(() => ''),
-						container,
-						content,
-						shouldPopOut: computed(() => true),
-						onRequestClose: vi.fn(),
-					});
-
-					return () =>
-						h(
-							'div',
-							{ ref: container },
-							h('div', { ref: content }, String(popOutWindow.canPopOut.value)),
-						);
-				},
-			});
-
-			const { queryByText } = renderComponent(MyComponent);
-
-			expect(queryByText('true')).toBeInTheDocument();
-		});
-	});
-
 	describe('isPoppedOut', () => {
 		beforeEach(() => {
-			Object.assign(window, { documentPictureInPicture });
+			Object.assign(window, {
+				open: () =>
+					({
+						document: { body: { append: vi.fn() } },
+						addEventListener: vi.fn(),
+						close: vi.fn(),
+					}) as unknown as Window,
+			});
 		});
 
 		it('should be set to true when popped out', async () => {
