@@ -484,9 +484,7 @@ describe('dataStore', () => {
 			});
 
 			// ACT
-			const result = await dataStoreService.deleteColumn(dataStoreId, {
-				columnId: c1.id,
-			});
+			const result = await dataStoreService.deleteColumn(dataStoreId, c1.id);
 
 			// ASSERT
 			expect(result).toEqual(true);
@@ -520,9 +518,7 @@ describe('dataStore', () => {
 			const { id: dataStoreId } = dataStore!;
 
 			// ACT
-			const result = dataStoreService.deleteColumn(dataStoreId, {
-				columnId: 'thisIsNotAnId',
-			});
+			const result = dataStoreService.deleteColumn(dataStoreId, 'thisIsNotAnId');
 
 			// ASSERT
 			await expect(result).rejects.toThrow(
@@ -542,9 +538,7 @@ describe('dataStore', () => {
 			});
 
 			// ACT
-			const result = dataStoreService.deleteColumn('this is not an id', {
-				columnId: c1.id,
-			});
+			const result = dataStoreService.deleteColumn('this is not an id', c1.id);
 
 			// ASSERT
 			await expect(result).rejects.toThrow(

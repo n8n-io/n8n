@@ -1,7 +1,6 @@
 import type {
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
-	DeleteDataStoreColumnDto,
 	ListDataStoreContentQueryDto,
 	MoveDataStoreColumnDto,
 	DataStoreListOptions,
@@ -113,14 +112,14 @@ export class DataStoreService {
 		return true;
 	}
 
-	async deleteColumn(dataStoreId: string, dto: DeleteDataStoreColumnDto) {
+	async deleteColumn(dataStoreId: string, columnId: string) {
 		await this.validateDataStoreExists(
 			dataStoreId,
 			`Tried to delete column from non-existent data store '${dataStoreId}'`,
 		);
 
 		const existingColumnMatch = await this.dataStoreColumnRepository.findOneBy({
-			id: dto.columnId,
+			id: columnId,
 			dataStoreId,
 		});
 

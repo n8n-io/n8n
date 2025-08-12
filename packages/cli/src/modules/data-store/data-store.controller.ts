@@ -2,7 +2,6 @@ import {
 	AddDataStoreRowsDto,
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
-	DeleteDataStoreColumnDto,
 	ListDataStoreContentQueryDto,
 	ListDataStoreQueryDto,
 	MoveDataStoreColumnDto,
@@ -94,15 +93,15 @@ export class DataStoreController {
 		return await this.dataStoreService.addColumn(dataStoreId, dto);
 	}
 
-	@Delete('/:dataStoreId/columns')
+	@Delete('/:dataStoreId/columns/:columnId')
 	@ProjectScope('dataStore:update')
 	async deleteColumn(
 		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: DeleteDataStoreColumnDto,
+		@Param('columnId') columnId: string,
 	) {
-		return await this.dataStoreService.deleteColumn(dataStoreId, dto);
+		return await this.dataStoreService.deleteColumn(dataStoreId, columnId);
 	}
 
 	@Patch('/:dataStoreId/columns/:columnId/move')
