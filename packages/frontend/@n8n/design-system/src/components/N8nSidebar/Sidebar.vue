@@ -10,7 +10,8 @@ import N8nResizeWrapper from '../N8nResizeWrapper';
 import { N8nButton, N8nIconButton, N8nRoute, N8nTooltip } from '..';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 import { useSidebarLayout } from './useSidebarLayout';
-import { IMenuItem } from '@n8n/design-system/types';
+import { ICustomMenuItem, IMenuItem } from '@n8n/design-system/types';
+import SidebarSubMenu from './SidebarSubMenu.vue';
 
 const props = defineProps<{
 	personal: { id: string; items: TreeItemType[] };
@@ -18,7 +19,8 @@ const props = defineProps<{
 	projects: { title: string; id: string; icon: IconName; items: TreeItemType[] }[];
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
 	menuItems: IMenuItem[];
-	handleSelect?: (item: IMenuItem) => void;
+	helpMenuItems: IMenuItem[];
+	handleSelect?: (key: string) => void;
 }>();
 
 defineEmits<{
@@ -168,13 +170,14 @@ function getMenuItemRoute(item: IMenuItem) {
 				<SidebarItem
 					v-for="item in menuItems"
 					type="other"
+					:icon="item.icon as IconName"
+					@click="handleSelect ? handleSelect(item.id) : undefined"
 					:title="item.label"
 					:id="item.id"
 					:key="item.id"
 					:link="item.link ? item.link.href : undefined"
 					:route="getMenuItemRoute(item)"
 					:ariaLabel="`Go to ${item.label}`"
-					:icon="item.icon as IconName"
 				/>
 			</footer>
 		</nav>
@@ -213,19 +216,42 @@ function getMenuItemRoute(item: IMenuItem) {
 					/>
 				</N8nRoute>
 			</N8nTooltip>
-			<N8nTooltip placement="top">
-				<template #content>
-					<N8nText size="small">Help</N8nText>
+
+			<SidebarSubMenu>
+				<template #trigger>
+					<N8nIconButton
+						icon-size="large"
+						size="mini"
+						icon="circle-help"
+						type="secondary"
+						text
+						square
+					/>
 				</template>
-				<N8nIconButton
-					icon-size="large"
-					size="mini"
-					icon="circle-help"
-					type="secondary"
-					text
-					square
-				/>
-			</N8nTooltip>
+				<template #content>
+					<div v-for="item in helpMenuItems" :key="item.id" class="sidebarSubMenuSection">
+						<N8nText size="small" bold color="text-light">{{ item.label }}</N8nText>
+						<div v-for="subItem in item.children" :key="subItem.id">
+							<component
+								v-if="subItem.component"
+								:is="subItem.component"
+								v-bind="subItem.props || {}"
+							/>
+							<SidebarItem
+								v-else
+								:title="subItem.label"
+								:id="subItem.id"
+								:icon="subItem.icon as IconName"
+								@click="handleSelect ? handleSelect(subItem.id) : undefined"
+								:link="subItem.link ? subItem.link.href : undefined"
+								:route="getMenuItemRoute(subItem)"
+								:ariaLabel="`Go to ${subItem.label}`"
+								type="other"
+							/>
+						</div>
+					</div>
+				</template>
+			</SidebarSubMenu>
 		</div>
 	</N8nResizeWrapper>
 	<div
@@ -348,5 +374,9 @@ function getMenuItemRoute(item: IMenuItem) {
 	flex-direction: column;
 	align-items: center;
 	gap: var(--spacing-2xs);
+}
+
+.sidebarSubMenuSection:first-of-type {
+	margin-bottom: var(--spacing-xs);
 }
 </style>

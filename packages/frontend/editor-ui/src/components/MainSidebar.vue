@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useI18n } from '@n8n/i18n';
 import {
 	N8nTooltip,
-	N8nLink,
 	N8nIconButton,
 	N8nSidebar,
 	N8nNavigationDropdown,
@@ -24,7 +23,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useUserHelpers } from '@/composables/useUserHelpers';
@@ -33,7 +31,6 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
-import { I18nT } from 'vue-i18n';
 import { useSidebarData } from '@/composables/useSidebarData';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
@@ -147,6 +144,85 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			settingsStore.isModuleActive('insights') &&
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
 	},
+]);
+const visibleMenuItems = computed(() => {
+	return mainMenuItems.value.filter((item) => item.available !== false);
+});
+
+const showUserArea = computed(() => hasPermission(['authenticated']));
+const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
+
+onMounted(async () => {
+	basePath.value = rootStore.baseUrl;
+	if (user.value) {
+		void externalHooks.run('mainSidebar.mounted', {
+			userRef: user.value,
+		});
+	}
+
+	becomeTemplateCreatorStore.startMonitoringCta();
+});
+
+onBeforeUnmount(() => {
+	becomeTemplateCreatorStore.stopMonitoringCta();
+});
+
+const trackHelpItemClick = (itemType: string) => {
+	telemetry.track('User clicked help resource', {
+		type: itemType,
+		workflow_id: workflowsStore.workflowId,
+	});
+};
+
+const onLogout = () => {
+	void router.push({ name: VIEWS.SIGNOUT });
+};
+
+const handleSelect = (key: string) => {
+	switch (key) {
+		case 'templates':
+			if (settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost) {
+				trackTemplatesClick(TemplateClickSource.sidebarButton);
+			}
+			break;
+		case 'about': {
+			trackHelpItemClick('about');
+			uiStore.openModal(ABOUT_MODAL_KEY);
+			break;
+		}
+		case 'cloud-admin': {
+			void pageRedirectionHelper.goToDashboard();
+			break;
+		}
+		case 'quickstart':
+		case 'docs':
+		case 'forum':
+		case 'examples': {
+			trackHelpItemClick(key);
+			break;
+		}
+		case 'insights':
+			telemetry.track('User clicked insights link from side menu');
+		default:
+			if (key.startsWith('whats-new-article-')) {
+				const articleId = Number(key.replace('whats-new-article-', ''));
+
+				telemetry.track("User clicked on what's new section", {
+					article_id: articleId,
+				});
+				uiStore.openModalWithData({
+					name: WHATS_NEW_MODAL_KEY,
+					data: {
+						articleId,
+					},
+				});
+			}
+
+			break;
+	}
+};
+
+const helpMenuItems = ref([
 	{
 		id: 'help',
 		icon: 'circle-help',
@@ -221,11 +297,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 						label: article.title,
 						size: 'small',
 						customIconSize: 'small',
-						icon: {
-							type: 'emoji',
-							value: '•',
-							color: !versionsStore.isWhatsNewArticleRead(article.id) ? 'primary' : 'text-light',
-						},
+						icon: '•',
 					}) satisfies IMenuItem,
 			),
 			{
@@ -248,95 +320,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		],
 	},
 ]);
-const visibleMenuItems = computed(() => {
-	return mainMenuItems.value.filter((item) => item.available !== false);
-});
-
-const showUserArea = computed(() => hasPermission(['authenticated']));
-const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
-
-onMounted(async () => {
-	basePath.value = rootStore.baseUrl;
-	if (user.value) {
-		void externalHooks.run('mainSidebar.mounted', {
-			userRef: user.value,
-		});
-	}
-
-	becomeTemplateCreatorStore.startMonitoringCta();
-});
-
-onBeforeUnmount(() => {
-	becomeTemplateCreatorStore.stopMonitoringCta();
-});
-
-const trackHelpItemClick = (itemType: string) => {
-	telemetry.track('User clicked help resource', {
-		type: itemType,
-		workflow_id: workflowsStore.workflowId,
-	});
-};
-
-const onUserActionToggle = (action: string) => {
-	switch (action) {
-		case 'logout':
-			onLogout();
-			break;
-		case 'settings':
-			void router.push({ name: VIEWS.SETTINGS });
-			break;
-		default:
-			break;
-	}
-};
-
-const onLogout = () => {
-	void router.push({ name: VIEWS.SIGNOUT });
-};
-
-const handleSelect = (key: string) => {
-	switch (key) {
-		case 'templates':
-			if (settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost) {
-				trackTemplatesClick(TemplateClickSource.sidebarButton);
-			}
-			break;
-		case 'about': {
-			trackHelpItemClick('about');
-			uiStore.openModal(ABOUT_MODAL_KEY);
-			break;
-		}
-		case 'cloud-admin': {
-			void pageRedirectionHelper.goToDashboard();
-			break;
-		}
-		case 'quickstart':
-		case 'docs':
-		case 'forum':
-		case 'examples': {
-			trackHelpItemClick(key);
-			break;
-		}
-		case 'insights':
-			telemetry.track('User clicked insights link from side menu');
-		default:
-			if (key.startsWith('whats-new-article-')) {
-				const articleId = Number(key.replace('whats-new-article-', ''));
-
-				telemetry.track("User clicked on what's new section", {
-					article_id: articleId,
-				});
-				uiStore.openModalWithData({
-					name: WHATS_NEW_MODAL_KEY,
-					data: {
-						articleId,
-					},
-				});
-			}
-
-			break;
-	}
-};
 </script>
 
 <template>
@@ -346,6 +329,7 @@ const handleSelect = (key: string) => {
 		:projects="projects"
 		:release-channel="settingsStore.settings.releaseChannel"
 		:menu-items="visibleMenuItems"
+		:help-menu-items="helpMenuItems"
 		:handle-select="handleSelect"
 		@logout="onLogout"
 		@createProject="handleMenuSelect('create-project')"
