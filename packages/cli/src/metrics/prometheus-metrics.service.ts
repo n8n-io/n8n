@@ -384,34 +384,83 @@ export class PrometheusMetricsService {
 	}
 
 	/**
+	 * Shared cache for workflow statistics to avoid multiple DB calls per scrape
+	 */
+	private workflowStatisticsCache: {
+		data: any;
+		timestamp: number;
+		ttl: number;
+	} | null = null;
+
+	/**
+	 * Get workflow statistics with shared caching to avoid multiple DB calls per scrape
+	 */
+	private async getWorkflowStatistics(
+		cacheService: CacheService,
+		licenseMetricsRepository: LicenseMetricsRepository,
+		cacheTtl: number,
+	): Promise<any> {
+		const now = Date.now();
+
+		// Check if we have valid in-memory cache for this scrape window
+		if (
+			this.workflowStatisticsCache &&
+			now - this.workflowStatisticsCache.timestamp < this.workflowStatisticsCache.ttl
+		) {
+			return this.workflowStatisticsCache.data;
+		}
+
+		// Try to get from persistent cache
+		const fullCacheKey = 'metrics:workflow-statistics:shared';
+		const cachedValue = await cacheService.get(fullCacheKey);
+
+		if (cachedValue !== undefined) {
+			const parsedValue = JSON.parse(String(cachedValue));
+			// Update in-memory cache
+			this.workflowStatisticsCache = {
+				data: parsedValue,
+				timestamp: now,
+				ttl: cacheTtl,
+			};
+			return parsedValue;
+		}
+
+		// Fetch from database and cache both in-memory and persistently
+		const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();
+		await cacheService.set(fullCacheKey, JSON.stringify(metrics), cacheTtl);
+
+		this.workflowStatisticsCache = {
+			data: metrics,
+			timestamp: now,
+			ttl: cacheTtl,
+		};
+
+		return metrics;
+	}
+
+	/**
 	 * Helper function to create a cached workflow statistics gauge
 	 */
 	private createWorkflowStatisticsGauge(
 		metricName: string,
 		help: string,
-		cacheKey: string,
 		getMetricValue: (metrics: any) => number,
 		cacheService: CacheService,
 		licenseMetricsRepository: LicenseMetricsRepository,
 		cacheTtl: number,
 	) {
+		const self = this;
 		return new promClient.Gauge({
 			name: this.prefix + metricName,
 			help,
 			async collect() {
-				const fullCacheKey = `metrics:workflow-statistics:${cacheKey}`;
-				const cachedValue = await cacheService.get(fullCacheKey);
-				const numericValue =
-					cachedValue !== undefined ? parseInt(String(cachedValue), 10) : undefined;
-
-				if (numericValue !== undefined && Number.isFinite(numericValue)) {
-					this.set(numericValue);
-				} else {
-					const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();
-					const value = getMetricValue(metrics);
-					await cacheService.set(fullCacheKey, value.toString(), cacheTtl);
-					this.set(value);
-				}
+				const metrics = await self.getWorkflowStatistics(
+					cacheService,
+					licenseMetricsRepository,
+					cacheTtl,
+				);
+				const value = getMetricValue(metrics);
+				this.set(value);
 			},
 		});
 	}
@@ -434,45 +483,38 @@ export class PrometheusMetricsService {
 		// Define all metrics with their configuration
 		const metricsConfig = [
 			{
-				name: 'production_executions_total',
+				name: 'production_executions',
 				help: 'Total number of production workflow executions (success + error).',
-				cacheKey: 'production',
 				getValue: (metrics: any) => Number(metrics.productionExecutions) || 0,
 			},
 			{
-				name: 'production_root_executions_total',
+				name: 'production_root_executions',
 				help: 'Total number of production root workflow executions (excludes sub-workflows).',
-				cacheKey: 'production_root',
 				getValue: (metrics: any) => Number(metrics.productionRootExecutions) || 0,
 			},
 			{
-				name: 'manual_executions_total',
+				name: 'manual_executions',
 				help: 'Total number of manual workflow executions (success + error).',
-				cacheKey: 'manual',
 				getValue: (metrics: any) => Number(metrics.manualExecutions) || 0,
 			},
 			{
-				name: 'enabled_users_total',
+				name: 'enabled_users',
 				help: 'Total number of enabled users.',
-				cacheKey: 'enabled_users',
 				getValue: (metrics: any) => Number(metrics.enabledUsers) || 0,
 			},
 			{
-				name: 'total_users_total',
+				name: 'users',
 				help: 'Total number of users.',
-				cacheKey: 'total_users',
 				getValue: (metrics: any) => Number(metrics.totalUsers) || 0,
 			},
 			{
-				name: 'total_workflows_total',
+				name: 'workflows',
 				help: 'Total number of workflows.',
-				cacheKey: 'total_workflows',
 				getValue: (metrics: any) => Number(metrics.totalWorkflows) || 0,
 			},
 			{
-				name: 'total_credentials_total',
+				name: 'credentials',
 				help: 'Total number of credentials.',
-				cacheKey: 'total_credentials',
 				getValue: (metrics: any) => Number(metrics.totalCredentials) || 0,
 			},
 		];
@@ -482,7 +524,6 @@ export class PrometheusMetricsService {
 			this.createWorkflowStatisticsGauge(
 				config.name,
 				config.help,
-				config.cacheKey,
 				config.getValue,
 				cacheService,
 				licenseMetricsRepository,

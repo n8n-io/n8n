@@ -406,15 +406,13 @@ describe('PrometheusMetricsService', () => {
 
 		const lines = toLines(response);
 
-		expect(lines).toContainEqual(expect.stringContaining('n8n_test_production_executions_total'));
-		expect(lines).toContainEqual(
-			expect.stringContaining('n8n_test_production_root_executions_total'),
-		);
-		expect(lines).toContainEqual(expect.stringContaining('n8n_test_manual_executions_total'));
-		expect(lines).toContainEqual(expect.stringContaining('n8n_test_enabled_users_total'));
-		expect(lines).toContainEqual(expect.stringContaining('n8n_test_total_users_total'));
-		expect(lines).toContainEqual(expect.stringContaining('n8n_test_total_workflows_total'));
-		expect(lines).toContainEqual(expect.stringContaining('n8n_test_total_credentials_total'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_production_executions'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_production_root_executions'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_manual_executions'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_enabled_users'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_users'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_workflows'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_credentials'));
 	});
 
 	it('should not return workflow statistics metrics if disabled', async () => {
@@ -437,16 +435,14 @@ describe('PrometheusMetricsService', () => {
 
 		const lines = toLines(response);
 
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_production_executions'));
 		expect(lines).not.toContainEqual(
-			expect.stringContaining('n8n_test_production_executions_total'),
+			expect.stringContaining('n8n_test_production_root_executions'),
 		);
-		expect(lines).not.toContainEqual(
-			expect.stringContaining('n8n_test_production_root_executions_total'),
-		);
-		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_manual_executions_total'));
-		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_enabled_users_total'));
-		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_total_users_total'));
-		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_total_workflows_total'));
-		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_total_credentials_total'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_manual_executions'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_enabled_users'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_users'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_workflows'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_credentials'));
 	});
 });
