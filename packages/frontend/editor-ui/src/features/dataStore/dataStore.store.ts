@@ -7,13 +7,15 @@ import {
 	createDataStoreApi,
 	deleteDataStoreApi,
 	updateDataStoreApi,
-} from '@/features/dataStore/datastore.api';
-import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
+} from '@/features/dataStore/dataStore.api';
+import type { DataStore } from '@/features/dataStore/datastore.types';
+import { useProjectsStore } from '@/stores/projects.store';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const rootStore = useRootStore();
+	const projectStore = useProjectsStore();
 
-	const dataStores = ref<DataStoreEntity[]>([]);
+	const dataStores = ref<DataStore[]>([]);
 	const totalCount = ref(0);
 
 	const fetchDataStores = async (projectId: string, page: number, pageSize: number) => {
@@ -21,14 +23,18 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
 		});
-		console.log('Data stores fetched:', response);
-
 		dataStores.value = response.data;
 		totalCount.value = response.count;
 	};
 
 	const createDataStore = async (name: string, projectId?: string) => {
 		const newStore = await createDataStoreApi(rootStore.restApiContext, name, projectId);
+		if (!newStore.project && projectId) {
+			const project = await projectStore.fetchProject(projectId);
+			if (project) {
+				newStore.project = project;
+			}
+		}
 		dataStores.value.push(newStore);
 		totalCount.value += 1;
 		return newStore;
@@ -59,6 +65,24 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return updated;
 	};
 
+	const fetchDataStoreDetails = async (datastoreId: string, projectId: string) => {
+		const response = await fetchDataStoresApi(rootStore.restApiContext, projectId, undefined, {
+			id: datastoreId,
+		});
+		if (response.data.length > 0) {
+			return response.data[0];
+		}
+		return null;
+	};
+
+	const fetchOrFindDataStore = async (datastoreId: string, projectId: string) => {
+		const existingStore = dataStores.value.find((store) => store.id === datastoreId);
+		if (existingStore) {
+			return existingStore;
+		}
+		return await fetchDataStoreDetails(datastoreId, projectId);
+	};
+
 	return {
 		dataStores,
 		totalCount,
@@ -66,5 +90,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		createDataStore,
 		deleteDataStore,
 		updateDataStore,
+		fetchDataStoreDetails,
+		fetchOrFindDataStore,
 	};
 });

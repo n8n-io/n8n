@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.106.0",
+  "version": "1.107.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -37,7 +37,7 @@
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
     "start": "run-script-os",
-    "start:default": "cd packages/cli/bin && ./n8n",
+    "start:default": "cd packages/cli/bin && node --inspect ./n8n",
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "JEST_JUNIT_CLASSNAME={filepath} turbo run test",
@@ -105,7 +105,8 @@
       "brace-expansion@2": "2.0.2",
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
-      "form-data": "4.0.4"
+      "form-data": "4.0.4",
+      "tmp": "0.2.4"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

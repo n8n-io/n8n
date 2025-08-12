@@ -8,10 +8,22 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { createTestWorkflow } from '@/__tests__/mocks';
 
 const eventBus = createEventBus();
+
+const mockRoute = reactive({
+	name: '',
+	params: {},
+	fullPath: '',
+});
+
+vi.mock('vue-router', () => ({
+	useRoute: () => mockRoute,
+	RouterLink: vi.fn(),
+	useRouter: vi.fn(),
+}));
 
 vi.mock('@/features/workflow-diff/useViewportSync', () => ({
 	useProvideViewportSync: () => ({
@@ -388,6 +400,87 @@ describe('WorkflowDiffModal', () => {
 		// Should show "No changes" when there are no settings changes
 		await waitFor(() => {
 			expect(getByText('No changes')).toBeInTheDocument();
+		});
+	});
+
+	describe('missing workflow scenarios', () => {
+		it('should handle missing source workflow without crashing', async () => {
+			sourceControlStore.getRemoteWorkflow.mockResolvedValue({
+				content: mockWorkflow,
+				type: 'workflow',
+			});
+			workflowsStore.fetchWorkflow.mockRejectedValue(new Error('Workflow not found'));
+
+			const { getByText } = renderModal({
+				pinia: createTestingPinia(),
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'new-workflow-id',
+						direction: 'pull',
+					},
+				},
+			});
+
+			// Component should render successfully even with missing workflow
+			await waitFor(() => {
+				expect(getByText('Changes')).toBeInTheDocument();
+			});
+		});
+
+		it('should handle missing target workflow without crashing', async () => {
+			sourceControlStore.getRemoteWorkflow.mockRejectedValue(new Error('Workflow not found'));
+			workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+
+			const { getByText } = renderModal({
+				pinia: createTestingPinia(),
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'missing-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			// Component should render successfully even with missing workflow
+			await waitFor(() => {
+				expect(getByText('Changes')).toBeInTheDocument();
+			});
+		});
+
+		it('should handle push direction without crashing', async () => {
+			const { getByText } = renderModal({
+				pinia: createTestingPinia(),
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Changes')).toBeInTheDocument();
+			});
+		});
+
+		it('should handle pull direction without crashing', async () => {
+			const { getByText } = renderModal({
+				pinia: createTestingPinia(),
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'pull',
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Changes')).toBeInTheDocument();
+			});
 		});
 	});
 });

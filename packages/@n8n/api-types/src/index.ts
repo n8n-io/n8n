@@ -45,3 +45,15 @@ export {
 	type UsersList,
 	usersListSchema,
 } from './schemas/user.schema';
+
+export {
+	DATA_STORE_COLUMN_REGEX,
+	type DataStore,
+	type DataStoreColumn,
+	type DataStoreCreateColumnSchema,
+	type DataStoreColumnJsType,
+	type DataStoreListFilter,
+	type DataStoreRows,
+	type DataStoreListOptions,
+	type DataStoreUserTableName,
+} from './schemas/data-store.schema';

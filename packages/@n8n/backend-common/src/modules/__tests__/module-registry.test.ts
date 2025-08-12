@@ -15,12 +15,23 @@ beforeEach(() => {
 
 describe('eligibleModules', () => {
 	it('should consider all default modules eligible', () => {
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(MODULE_NAMES);
+		// 'data-store' isn't (yet) eligible module by default
+		const expectedModules = MODULE_NAMES.filter((name) => name !== 'data-store');
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(expectedModules);
 	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(['external-secrets']);
+	});
+
+	it('should consider a module eligible if it was enabled via env var', () => {
+		process.env.N8N_ENABLED_MODULES = 'data-store';
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'insights',
+			'external-secrets',
+			'data-store',
+		]);
 	});
 
 	it('should throw `ModuleConfusionError` if a module is both enabled and disabled', () => {
