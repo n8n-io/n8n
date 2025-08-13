@@ -152,6 +152,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const activeWorkflowExecution = ref<ExecutionSummary | null>(null);
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
+	const lastSuccessfulExecution = ref<IExecutionResponse | null>(null);
 	const workflowExecutionStartedData =
 		ref<[executionId: string, data: { [nodeName: string]: ITaskStartedData[] }]>();
 	const workflowExecutionResultDataLastUpdate = ref<number>();
@@ -545,6 +546,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/workflows/from-url', {
 			url,
 		});
+	}
+
+	async function fetchLastSuccessfulExecution(workflowId: string) {
+		try {
+			lastSuccessfulExecution.value = await workflowsApi.getLastSuccessfulExecution(
+				rootStore.restApiContext,
+				workflowId,
+			);
+		} catch (e: unknown) {
+			// no need to do anything if fails
+		}
 	}
 
 	async function getActivationError(id: string): Promise<string | undefined> {
@@ -2069,5 +2081,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getNewWorkflowDataAndMakeShareable,
 		setSelectedTriggerNodeName,
 		totalWorkflowCount,
+		fetchLastSuccessfulExecution,
 	};
 });

@@ -101,6 +101,17 @@ export async function getExecutionData(context: IRestApiContext, executionId: st
 	);
 }
 
+export async function getLastSuccessfulExecution(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<IExecutionResponse | null> {
+	return await makeRestApiRequest<IExecutionResponse | null>(
+		context,
+		'GET',
+		`/workflows/${workflowId}/executions/last-successful`,
+	);
+}
+
 export async function createFolder(
 	context: IRestApiContext,
 	projectId: string,
