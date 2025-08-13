@@ -65,6 +65,7 @@ export function useLogsExecutionData() {
 		execData.value = undefined;
 		workflowsStore.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
+		void workflowsStore.fetchLastSuccessfulExecution(workflowsStore.workflowId);
 	}
 
 	async function loadSubExecution(logEntry: LogEntry) {

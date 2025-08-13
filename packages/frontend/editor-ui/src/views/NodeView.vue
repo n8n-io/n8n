@@ -511,7 +511,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		}
 
 		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
-		await workflowsStore.fetchLastSuccessfulExecution(id);
+		void workflowsStore.fetchLastSuccessfulExecution(id);
 	} catch (error) {
 		if (error.httpStatusCode === 404) {
 			return await router.replace({
