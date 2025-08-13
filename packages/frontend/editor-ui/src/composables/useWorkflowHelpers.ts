@@ -80,21 +80,6 @@ export type ResolveParameterOptions = {
 export async function resolveParameterAsync<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	options: ResolveParameterOptions | ExpressionLocalResolveContext = {},
-	// options: {
-	// 	executionId?: string;
-	// 	workflowId: string;
-	// 	nodeName?: string;
-	// 	nodes: INode[];
-	// 	connectionsBySourceNode: IConnections;
-	// 	envVars: Record<string, string | boolean | number>;
-	// 	pinData?: IPinData;
-	// 	inputNode?: {
-	// 		name: string;
-	// 		runIndex: number;
-	// 		branchIndex: number;
-	// 	};
-	// 	additionalKeys?: IWorkflowDataProxyAdditionalKeys;
-	// },
 ): Promise<T | null> {
 	const workflowsStore = useWorkflowsStore();
 	const environmentsStore = useEnvironmentsStore();
@@ -103,7 +88,6 @@ export async function resolveParameterAsync<T = IDataObject>(
 	try {
 		if ('localResolve' in options && options.localResolve) {
 			const { workflow, execution, ...remainingOptions } = options;
-
 			const executionId = execution?.id === IN_PROGRESS_EXECUTION_ID ? undefined : execution?.id;
 
 			return (await expressionsWorker.resolveLocalParameter(parameter, {
@@ -114,6 +98,7 @@ export async function resolveParameterAsync<T = IDataObject>(
 				connections: JSON.stringify(workflowsStore.connectionsBySourceNode),
 				envVars: JSON.stringify(environmentsStore.variablesAsObject),
 				pinData: JSON.stringify(workflowsStore.pinnedWorkflowData),
+				inputNode: options.inputNode ? JSON.stringify(options.inputNode) : undefined,
 			})) as T | null;
 		}
 
@@ -131,12 +116,11 @@ export async function resolveParameterAsync<T = IDataObject>(
 			connections: JSON.stringify(workflowsStore.connectionsBySourceNode),
 			envVars: JSON.stringify(environmentsStore.variablesAsObject),
 			pinData: JSON.stringify(workflowsStore.pinnedWorkflowData),
-			inputNode: 'inputNode' in options ? JSON.stringify(options.inputNode) : undefined,
 			additionalKeys: JSON.stringify(options.additionalKeys),
 			shouldReplaceInputDataWithPinData: workflowsStore.shouldReplaceInputDataWithPinData,
 		})) as T | null;
 	} catch (error) {
-		console.error('Error resolving parameter:', error);
+		console.warn('Error resolving parameter:', error);
 		return null;
 	}
 }
@@ -146,23 +130,6 @@ export function resolveParameter<T = IDataObject>(
 	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 ): T | null {
 	const workflowsStore = useWorkflowsStore();
-	const environmentsStore = useEnvironmentsStore();
-	const ndvStore = useNDVStore();
-
-	// setTimeout(async () => {
-	// 	const result = await resolveParameterAsync(parameter, {
-	// 		executionId: workflowsStore.workflowExecutionData?.id,
-	// 		workflowId: workflowsStore.workflowId,
-	// 		nodeName: 'nodeName' in opts ? opts.nodeName : ndvStore.activeNode?.name,
-	// 		nodes: workflowsStore.workflow.nodes,
-	// 		connectionsBySourceNode: workflowsStore.connectionsBySourceNode,
-	// 		envVars: environmentsStore.variablesAsObject,
-	// 		pinData: workflowsStore.pinnedWorkflowData,
-	// 		inputNode: 'inputNode' in opts ? opts.inputNode : undefined,
-	// 		additionalKeys: opts.additionalKeys,
-	// 	});
-	// 	console.log('Resolved parameter from worker:', result);
-	// });
 
 	if ('localResolve' in opts && opts.localResolve) {
 		return resolveParameterImpl(
@@ -182,8 +149,6 @@ export function resolveParameter<T = IDataObject>(
 			},
 		);
 	}
-
-	// const workflowsStore = useWorkflowsStore();
 
 	return resolveParameterImpl(
 		parameter,

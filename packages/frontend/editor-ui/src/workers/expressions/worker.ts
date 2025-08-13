@@ -9,7 +9,7 @@ import type {
 	INodeTypes,
 } from 'n8n-workflow';
 import { jsonParse, Workflow } from 'n8n-workflow';
-import type { IExecutionResponse, IWorkflowDb, TargetItem } from '@/Interface';
+import type { IExecutionResponse, IWorkflowDb } from '@/Interface';
 import { useSQLite } from '@/workers/expressions/database/useSQLite';
 import { createNodeTypes, resolveParameterImpl } from '@/workers/expressions/resolveParameter';
 import * as Comlink from 'comlink';
@@ -19,7 +19,6 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import { parse } from 'flatted';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
 import type { ResolveParameterOptions } from '@/composables/useWorkflowHelpers';
-import { useNDVStore } from '@/stores/ndv.store';
 
 export type ExecutionDb = {
 	id: string;
@@ -41,11 +40,11 @@ const state: {
 	restApiContext?: IRestApiContext;
 	nodeTypes?: INodeTypes;
 	executionsMap: Map<string, IExecutionResponse>;
-	isInsertingExecution: Set<string>;
+	executionsPromiseMap: Map<string, Promise<IExecutionResponse>>;
 } = {
 	initialized: false,
 	executionsMap: new Map(),
-	isInsertingExecution: new Set(),
+	executionsPromiseMap: new Map(),
 };
 
 const actions = {
@@ -73,7 +72,6 @@ const actions = {
 		}
 
 		let existingExecution;
-
 		if (state.executionsMap.has(executionId)) {
 			existingExecution = state.executionsMap.get(executionId);
 
@@ -107,25 +105,33 @@ const actions = {
 
 		console.log('Fetching execution from API', executionId);
 
-		const execution = await workflowsApi.getExecutionData(state.restApiContext, executionId);
-		if (!execution) {
-			throw new Error(`Execution with ID ${executionId} not found`);
+		const fetchExecutionPromise = async () => {
+			const execution = await workflowsApi.getExecutionData(state.restApiContext, executionId);
+			if (!execution) {
+				throw new Error(`Execution with ID ${executionId} not found`);
+			}
+
+			await actions.insertExecution(execution);
+
+			execution.data = parse(execution.data as unknown as string) as IExecutionResponse['data'];
+
+			return execution;
+		};
+
+		let executionPromise;
+		if (state.executionsPromiseMap.has(executionId)) {
+			executionPromise = state.executionsPromiseMap.get(executionId);
+		} else {
+			executionPromise = fetchExecutionPromise();
+			state.executionsPromiseMap.set(executionId, executionPromise);
 		}
 
-		void actions.insertExecution(execution);
-
-		execution.data = parse(execution.data as unknown as string) as IExecutionResponse['data'];
+		const execution = await executionPromise;
 		state.executionsMap.set(executionId, execution);
 
 		return execution;
 	},
 	async insertExecution(execution: IExecutionResponse) {
-		if (state.isInsertingExecution.has(execution.id)) {
-			return;
-		}
-
-		state.isInsertingExecution.add(execution.id);
-
 		await actions.executeQuery(
 			'INSERT INTO executions (id, workflow_id, data, workflow) VALUES (?, ?, ?, ?)',
 			[
@@ -135,8 +141,6 @@ const actions = {
 				JSON.stringify(execution.workflowData),
 			],
 		);
-
-		state.isInsertingExecution.delete(execution.id);
 	},
 	async executeQuery(sql: string, params: unknown[] = []) {
 		if (!actions.isInitialized(state)) {
@@ -166,7 +170,10 @@ const actions = {
 	},
 	async resolveLocalParameter<T = IDataObject>(
 		parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-		options: Omit<ExpressionLocalResolveContext, 'executionId' | 'connections' | 'envVars'> & {
+		options: Omit<
+			ExpressionLocalResolveContext,
+			'executionId' | 'connections' | 'envVars' | 'workflow' | 'execution'
+		> & {
 			executionId?: string;
 			workflowId: string;
 			nodes: string;
@@ -220,7 +227,7 @@ const actions = {
 	},
 	async resolveParameter<T = IDataObject>(
 		parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-		options: Omit<ResolveParameterOptions, 'connections' | 'additionalKeys'> & {
+		options: Omit<ResolveParameterOptions, 'workflow' | 'connections' | 'additionalKeys'> & {
 			executionId?: string;
 			workflowId: string;
 			nodes: string;
@@ -229,6 +236,7 @@ const actions = {
 			pinData: string;
 			shouldReplaceInputDataWithPinData?: boolean;
 			envVars: string;
+			additionalKeys: string;
 		},
 	): Promise<T | null> {
 		if (!actions.isInitialized(state)) {
