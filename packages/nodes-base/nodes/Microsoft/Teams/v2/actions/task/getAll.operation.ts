@@ -94,11 +94,12 @@ export async function execute(this: IExecuteFunctions, i: number) {
 				'value',
 				'GET',
 				`/v1.0/planner/plans/${planId}/tasks`,
+				{},
 				{
 					$top: limit,
 				},
 			);
-			return responseData.splice(0, limit);
+			return responseData;
 		}
 	}
 }
