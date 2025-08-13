@@ -32,6 +32,14 @@ withDefaults(defineProps<Props>(), {
 	nodes: () => [],
 	connectionType: undefined,
 });
+
+const emit = defineEmits<{
+	toggle: [expanded: boolean];
+}>();
+
+const toggle = (expanded: boolean) => {
+	emit('toggle', expanded);
+};
 </script>
 
 <template>
@@ -45,6 +53,7 @@ withDefaults(defineProps<Props>(), {
 					},
 				})
 			"
+			@toggle="toggle"
 		>
 			<VirtualSchema
 				class="mt-s"

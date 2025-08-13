@@ -1376,6 +1376,12 @@ function onSearchClear() {
 }
 
 defineExpose({ enterEditMode });
+
+const isLastSuccessfulExecutionExpanded = ref(false);
+
+const onLastSuccessfulExecutionToggle = (expanded: boolean) => {
+	isLastSuccessfulExecutionExpanded.value = expanded;
+};
 </script>
 
 <template>
@@ -1657,6 +1663,7 @@ defineExpose({ enterEditMode });
 				:connection-type="connectionType"
 				:output-index="currentOutputIndex"
 				:compact="compact"
+				@toggle="onLastSuccessfulExecutionToggle"
 			/>
 			<BinaryDataDisplay
 				v-if="binaryDataDisplayData"
@@ -1719,7 +1726,7 @@ defineExpose({ enterEditMode });
 				v-else-if="!hasNodeRun && !(displaysMultipleNodes && (node?.disabled || hasPreviewSchema))"
 				:class="$style.center"
 			>
-				<slot name="node-not-run"></slot>
+				<slot name="node-not-run" :is-sticky="isLastSuccessfulExecutionExpanded"></slot>
 			</div>
 
 			<div
@@ -1954,7 +1961,7 @@ defineExpose({ enterEditMode });
 			/>
 
 			<div v-else-if="!hasNodeRun" :class="$style.center">
-				<slot name="node-not-run"></slot>
+				<slot name="node-not-run" :is-sticky="isLastSuccessfulExecutionExpanded"></slot>
 			</div>
 		</div>
 		<RunDataPaginationBar

@@ -456,10 +456,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				/>
 			</div>
 		</template>
-		<template #node-not-run>
+		<template #node-not-run="{ isSticky }">
 			<div
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
-				:class="$style.noOutputData"
+				:class="{ [$style.noOutputData]: true, [$style.noOutputDataSticky]: isSticky }"
 			>
 				<N8nText v-if="nodeNotRunMessageVariant === 'simple'" color="text-base" size="small">
 					<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
@@ -696,6 +696,11 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	> * {
 		margin-bottom: var(--spacing-2xs);
 	}
+}
+
+.noOutputDataSticky {
+	position: absolute;
+	bottom: 0;
 }
 
 .recoveredOutputData {
