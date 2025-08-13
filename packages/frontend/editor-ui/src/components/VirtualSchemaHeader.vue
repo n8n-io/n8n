@@ -105,7 +105,7 @@ const emit = defineEmits<{
 }
 
 .icon-past-execution {
-	border: 2px dashed var(--color-foreground-light);
+	border: 2px dashed var(--color-foreground-dark);
 }
 
 .title {
