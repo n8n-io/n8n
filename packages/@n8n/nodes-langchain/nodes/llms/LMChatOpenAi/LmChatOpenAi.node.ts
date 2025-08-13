@@ -358,10 +358,33 @@ export class LmChatOpenAi implements INodeType {
 				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
 			};
 		}
-		if (credentials.header) {
-			configuration.defaultHeaders = {
-				[credentials.headerName as string]: credentials.headerValue as string,
-			};
+
+		// Initialize default headers
+		configuration.defaultHeaders = {};
+
+		// Handle custom headers from credentials (JSON format)
+		if (credentials.useCustomHeaders && credentials.customHeaders) {
+			try {
+				let customHeaders: Record<string, string>;
+
+				// Handle if customHeaders is already an object or needs parsing
+				if (typeof credentials.customHeaders === 'string') {
+					customHeaders = JSON.parse(credentials.customHeaders as string);
+				} else {
+					customHeaders = credentials.customHeaders as Record<string, string>;
+				}
+
+				// Add each custom header to the configuration
+				Object.entries(customHeaders).forEach(([name, value]) => {
+					if (name && value) {
+						configuration.defaultHeaders![name] = value;
+						this.logger.debug(`Added custom header: ${name}`);
+					}
+				});
+			} catch (error) {
+				this.logger.error(`Failed to parse custom headers: ${error.message}`);
+				// Continue without custom headers if parsing fails
+			}
 		}
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
