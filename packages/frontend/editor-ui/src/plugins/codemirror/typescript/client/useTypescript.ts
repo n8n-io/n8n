@@ -137,6 +137,13 @@ export function useTypescript(
 		forceParse(editor);
 	});
 
+	watch(toRef(dependencies), async (newDependencies) => {
+		const editor = toValue(view);
+		if (!editor || !worker.value) return;
+		await worker.value.updateDependencies(newDependencies ?? {});
+		forceParse(editor);
+	});
+
 	onBeforeUnmount(() => {
 		if (webWorker.value) webWorker.value.terminate();
 	});

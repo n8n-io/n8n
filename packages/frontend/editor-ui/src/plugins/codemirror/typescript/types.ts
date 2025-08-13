@@ -29,6 +29,7 @@ export type NodeDataFetcher = (nodeName: string) => Promise<NodeData | undefined
 export type LanguageServiceWorker = {
 	updateFile(changes: ChangeSet): void;
 	updateMode(mode: CodeExecutionMode): void;
+	updateDependencies(dependencies: Record<string, string>): void;
 	updateNodeTypes(): void;
 	getCompletionsAtPos(pos: number): Promise<{ result: CompletionResult; isGlobal: boolean } | null>;
 	getDiagnostics(): Diagnostic[];

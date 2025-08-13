@@ -37,7 +37,7 @@ export const worker: LanguageServiceWorkerInit = {
 		const codeFileName = `${options.id}.js`;
 		const mode = ref<CodeExecutionMode>(options.mode);
 		const busyApplyingChangesToCode = ref(false);
-		const dependencies = options.dependencies;
+		const dependencies = ref(options.dependencies);
 
 		const cache = await indexedDbCache('typescript-cache', 'fs-map');
 		const env = await setupTypescriptEnv({
@@ -90,7 +90,7 @@ export const worker: LanguageServiceWorkerInit = {
 		}
 
 		async function loadDependencyTypes() {
-			for (const [packageName, version] of Object.entries(dependencies)) {
+			for (const [packageName, version] of Object.entries(dependencies.value)) {
 				if (cache.getItem(`/node_modules/@types/${packageName}/package.json`)) {
 					console.log('cache hit for', packageName, version);
 					const fileMap = await cache.getAllWithPrefix(`/node_modules/@types/${packageName}`);
@@ -237,6 +237,10 @@ export const worker: LanguageServiceWorkerInit = {
 			},
 			async updateMode(newMode) {
 				mode.value = newMode;
+			},
+			async updateDependencies(newDependencies) {
+				dependencies.value = newDependencies;
+				await loadDependencyTypes();
 			},
 			async updateNodeTypes() {
 				const loadedNodeNames = Array.from(loadedNodeTypesMap.keys());
