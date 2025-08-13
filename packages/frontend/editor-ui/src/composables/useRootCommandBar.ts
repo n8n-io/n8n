@@ -92,7 +92,9 @@ export function useRootCommandBar(): {
 
 	const workflowItemCommands = computed<NinjaKeysCommand[]>(() => {
 		return (workflowResults.value || []).map((w) => {
-			const matchedNode = w.nodes.find((node) => node.type.includes(lastQuery.value));
+			const matchedNode = w.nodes.find(
+				(node) => lastQuery.value && node.type.includes(lastQuery.value),
+			);
 			const nodeType = matchedNode
 				? nodeTypesStore.getNodeType(matchedNode?.type, matchedNode.typeVersion)
 				: null;
