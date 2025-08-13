@@ -191,6 +191,7 @@ export const wrapMigration = (migration: Migration) => {
 				logMigrationStart(migration.name);
 				const context = createContext(queryRunner, migration);
 				if (this.transaction === false) {
+					// console.log('disable FK checks');
 					await runDisablingForeignKeys(this, context, up);
 				} else {
 					await up.call(this, context);

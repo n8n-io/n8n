@@ -25,9 +25,9 @@ export const getBootstrapDBOptions = (dbType: 'postgresdb' | 'mysqldb'): DataSou
 };
 
 describe('AddConstraintToExecutionMetadata1720101653148', () => {
+	jest.retryTimes(0);
 	describe('up', () => {
 		beforeEach(async () => {
-			console.log('beforeEach start block');
 			const globalConfig = Container.get(GlobalConfig);
 			const dbType = globalConfig.database.type;
 			const testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
@@ -48,21 +48,19 @@ describe('AddConstraintToExecutionMetadata1720101653148', () => {
 				globalConfig.database.mysqldb.database = testDbName;
 			}
 
-			const connection = await init(
-				AddConstraintToExecutionMetadata1720101653148 as unknown as MigrationType,
-			);
+			const connection = await init({
+				untilMigration: AddConstraintToExecutionMetadata1720101653148 as unknown as MigrationType,
+				includeAsWell: false,
+			});
 			await migrate(connection);
 			await connection.destroy();
-			console.log('beforeEach end block');
 		});
 
 		let connection: Connection;
 
 		afterEach(async () => {
-			console.log('aftereach start block');
 			await connection.dropDatabase();
 			await connection.destroy();
-			console.log('aftereach end block');
 		});
 
 		test.each([
@@ -76,9 +74,10 @@ describe('AddConstraintToExecutionMetadata1720101653148', () => {
 				[{ id: 2, executionId: 1, key: 'key1', value: 'value2' }],
 			],
 		])('AddConstraintToExecutionMetadata1720101653148', async (before, after) => {
-			connection = await init();
-			console.log('start of test');
-
+			connection = await init({
+				untilMigration: AddConstraintToExecutionMetadata1720101653148,
+				includeAsWell: true,
+			});
 			// 1. insert data
 
 			const workflow = newWorkflow({ id: '1', nodes: [], connections: {} });
@@ -100,23 +99,18 @@ describe('AddConstraintToExecutionMetadata1720101653148', () => {
 			//console.log(JSON.stringify(tableNames, null, 2));
 
 			await insert(connection, 'workflow_entity', workflow);
-			console.log('insert connection #1 log');
 			const execution = newExecution({ id: '1', workflowId: workflow.id });
 			await insert(connection, 'execution_entity', execution);
-			console.log('insert connection #2 log');
 
 			for (const execution_metadata of before) {
 				await insert(connection, 'execution_metadata', execution_metadata);
-				console.log('insert connection log');
 			}
 
 			// 2. run migration
 			await migrate(connection);
-			console.log('after migration block');
 
 			// 3. check data
 			const data = await get(connection, 'execution_metadata');
-			console.log('data check block');
 
 			expect(data).toEqual(after);
 		});
@@ -144,7 +138,10 @@ describe('AddConstraintToExecutionMetadata1720101653148', () => {
 				globalConfig.database.mysqldb.database = testDbName;
 			}
 
-			const connection = await init();
+			const connection = await init({
+				untilMigration: AddConstraintToExecutionMetadata1720101653148,
+				includeAsWell: true,
+			});
 			await migrate(connection);
 			await connection.destroy();
 		});
@@ -170,7 +167,10 @@ describe('AddConstraintToExecutionMetadata1720101653148', () => {
 				],
 			],
 		])('AddConstraintToExecutionMetadata1720101653148', async (before, after) => {
-			connection = await init();
+			connection = await init({
+				untilMigration: AddConstraintToExecutionMetadata1720101653148,
+				includeAsWell: true,
+			});
 
 			// 1. insert data
 			const workflow = newWorkflow({ id: '1' });
@@ -197,7 +197,8 @@ describe('AddConstraintToExecutionMetadata1720101653148', () => {
 	});
 });
 
-async function init(untilMigration?: MigrationType) {
+async function init(options: { untilMigration: MigrationType; includeAsWell: boolean }) {
+	const { untilMigration, includeAsWell } = options;
 	const connectionOptions = Container.get(DbConnectionOptions).getOptions();
 
 	//
@@ -208,7 +209,10 @@ async function init(untilMigration?: MigrationType) {
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		for (const migration of Object.values(connectionOptions.migrations as any as MigrationType[])) {
-			if (migration === untilMigration) {
+			if (migration.name === untilMigration.name) {
+				if (includeAsWell) {
+					migrations.push(migration);
+				}
 				break;
 			}
 			migrations.push(migration);

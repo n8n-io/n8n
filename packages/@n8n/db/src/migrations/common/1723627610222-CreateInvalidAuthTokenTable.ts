@@ -4,6 +4,7 @@ const tableName = 'invalid_auth_token';
 
 export class CreateInvalidAuthTokenTable1723627610222 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
+		console.log('CREATE-INVALID-AUTH-TOKEN-TABLE1723627610222');
 		await createTable(tableName).withColumns(
 			column('token').varchar(512).primary,
 			column('expiresAt').timestamp().notNull,

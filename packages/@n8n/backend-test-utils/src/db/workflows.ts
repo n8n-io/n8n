@@ -18,7 +18,7 @@ export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb 
 
 	const workflowEntity = Container.get(WorkflowRepository).create({
 		active: active ?? false,
-		isArchived: isArchived ?? false,
+		// isArchived: isArchived ?? false,
 		name: name ?? 'test workflow',
 		nodes: nodes ?? [
 			{
