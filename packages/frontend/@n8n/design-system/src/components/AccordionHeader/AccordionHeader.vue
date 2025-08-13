@@ -11,10 +11,15 @@ interface Props {
 defineOptions({ name: 'N8nInfoAccordion' });
 withDefaults(defineProps<Props>(), {});
 
+const emit = defineEmits<{
+	toggle: [expanded: boolean];
+}>();
+
 const expanded = ref(false);
 
 const toggle = () => {
 	expanded.value = !expanded.value;
+	emit('toggle', expanded.value);
 };
 </script>
 
