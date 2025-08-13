@@ -89,6 +89,7 @@ function toggleSection(id: string, callback: () => void) {
 						:project-id="projectId"
 						:tree-items="item.children"
 						:level="level + 1"
+						@open-folder="emits('openFolder', $event)"
 					/>
 				</ul>
 			</SidebarCollapseTransition>

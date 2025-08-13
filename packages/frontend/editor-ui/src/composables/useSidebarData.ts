@@ -70,6 +70,29 @@ export const useSidebarData = () => {
 		}
 	}
 
+	function updateNestedFolder(
+		items: TreeItemType[],
+		folderId: string,
+		newChildren: TreeItemType[],
+	): TreeItemType[] {
+		return items.map((item) => {
+			if (item.id === folderId) {
+				console.log('Updating nested folder', folderId, newChildren);
+				return {
+					...item,
+					children: newChildren,
+				};
+			}
+			if (item.type === 'folder' && item.children) {
+				return {
+					...item,
+					children: updateNestedFolder(item.children, folderId, newChildren),
+				};
+			}
+			return item;
+		});
+	}
+
 	async function openFolder(folderId: string, projectId: string) {
 		const items = await workflowsStore.fetchWorkflowsPage(
 			projectId,
@@ -87,32 +110,17 @@ export const useSidebarData = () => {
 			label: item.name,
 			type: item.resource,
 			icon: item.resource === 'workflow' ? undefined : 'folder',
+			children: item.resource === 'folder' ? [] : undefined,
 		}));
 
 		if (projectId === projectsStore.personalProject?.id) {
-			personalItems.value = personalItems.value.map((item) => {
-				if (item.id === folderId) {
-					return {
-						...item,
-						children: itemsToAdd,
-					};
-				}
-				return item;
-			});
+			personalItems.value = updateNestedFolder(personalItems.value, folderId, itemsToAdd);
 		} else {
 			projects.value = projects.value.map((project) => {
 				if (project.id === projectId) {
 					return {
 						...project,
-						items: project.items.map((item) => {
-							if (item.id === folderId) {
-								return {
-									...item,
-									children: itemsToAdd,
-								};
-							}
-							return item;
-						}),
+						items: updateNestedFolder(project.items, folderId, itemsToAdd),
 					};
 				}
 				return project;
