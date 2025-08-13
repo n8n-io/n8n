@@ -27,6 +27,7 @@ export const getBootstrapDBOptions = (dbType: 'postgresdb' | 'mysqldb'): DataSou
 describe('AddConstraintToExecutionMetadata1720101653148', () => {
 	describe('up', () => {
 		beforeEach(async () => {
+			console.log('beforeEach start block');
 			const globalConfig = Container.get(GlobalConfig);
 			const dbType = globalConfig.database.type;
 			const testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
@@ -52,13 +53,16 @@ describe('AddConstraintToExecutionMetadata1720101653148', () => {
 			);
 			await migrate(connection);
 			await connection.destroy();
+			console.log('beforeEach end block');
 		});
 
 		let connection: Connection;
 
 		afterEach(async () => {
+			console.log('aftereach start block');
 			await connection.dropDatabase();
 			await connection.destroy();
+			console.log('aftereach end block');
 		});
 
 		test.each([
@@ -73,6 +77,7 @@ describe('AddConstraintToExecutionMetadata1720101653148', () => {
 			],
 		])('AddConstraintToExecutionMetadata1720101653148', async (before, after) => {
 			connection = await init();
+			console.log('start of test');
 
 			// 1. insert data
 
@@ -95,18 +100,23 @@ describe('AddConstraintToExecutionMetadata1720101653148', () => {
 			//console.log(JSON.stringify(tableNames, null, 2));
 
 			await insert(connection, 'workflow_entity', workflow);
+			console.log('insert connection #1 log');
 			const execution = newExecution({ id: '1', workflowId: workflow.id });
 			await insert(connection, 'execution_entity', execution);
+			console.log('insert connection #2 log');
 
 			for (const execution_metadata of before) {
 				await insert(connection, 'execution_metadata', execution_metadata);
+				console.log('insert connection log');
 			}
 
 			// 2. run migration
 			await migrate(connection);
+			console.log('after migration block');
 
 			// 3. check data
 			const data = await get(connection, 'execution_metadata');
+			console.log('data check block');
 
 			expect(data).toEqual(after);
 		});
