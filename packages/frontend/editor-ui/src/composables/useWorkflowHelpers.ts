@@ -113,6 +113,7 @@ export async function resolveParameterAsync<T = IDataObject>(
 		// const additionalKeys = JSON.stringify(options.additionalKeys ?? {});
 
 		return (await expressionsWorker.resolveParameter(parameter, {
+			...options,
 			executionId: workflowsStore.workflowExecutionData?.id,
 			workflowId: workflowsStore.workflowId,
 			nodeName: 'nodeName' in options ? options.nodeName : ndvStore.activeNode?.name,
