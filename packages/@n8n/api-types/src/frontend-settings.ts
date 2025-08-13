@@ -209,6 +209,9 @@ export interface FrontendSettings {
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];
 	envFeatureFlags: N8nEnvFeatFlags;
+
+	/** Whether n8n is running in safe mode */
+	safeMode: boolean;
 }
 
 export type FrontendModuleSettings = {

@@ -79,6 +79,9 @@ export class InstanceSettings {
 	 */
 	instanceRole: InstanceRole = 'unset';
 
+	/** Whether this instance is currently running in safe mode */
+	isSafeMode = false;
+
 	/**
 	 * ID of this n8n instance. Hostname-based when in Docker, or nanoID-based
 	 * otherwise (resets on restart). Do not confuse with `instanceId`.
@@ -129,6 +132,10 @@ export class InstanceSettings {
 
 	markAsFollower() {
 		this.instanceRole = 'follower';
+	}
+
+	setSafeMode(enabled: boolean) {
+		this.isSafeMode = enabled;
 	}
 
 	get encryptionKey() {

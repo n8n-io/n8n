@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const bannerNameSchema = z.enum([
+	'SAFE_MODE',
 	'V1',
 	'TRIAL_OVER',
 	'TRIAL',

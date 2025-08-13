@@ -14,6 +14,7 @@ import { pipeline } from 'stream/promises';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
+import { checkForSafeMode, resetCrashCounter, startSafeModeAutoExit } from '@/crash-counter.utils';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
@@ -59,6 +60,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	protected activeWorkflowManager: ActiveWorkflowManager;
 
 	protected server = Container.get(Server);
+
+	private isSafeMode = false;
 
 	override needsCommunityPackages = true;
 
@@ -190,7 +193,16 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async init() {
+		this.isSafeMode = await checkForSafeMode();
+		this.instanceSettings.setSafeMode(this.isSafeMode);
 		await this.initCrashJournal();
+
+		if (this.isSafeMode) {
+			this.logger.warn(
+				'Safe mode activated - queued executions and scheduled workflows will not run',
+			);
+			startSafeModeAutoExit();
+		}
 
 		this.logger.info('Initializing n8n process');
 		if (config.getEnv('executions.mode') === 'queue') {
@@ -338,17 +350,24 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.server.start();
 
+		// Test crash functionality - remove in production
+		if (existsSync(path.join(process.cwd(), 'willcrash'))) {
+			throw new Error('Intentional crash for testing safe mode');
+		}
+
 		Container.get(ExecutionsPruningService).init();
 
-		if (config.getEnv('executions.mode') === 'regular') {
+		if (config.getEnv('executions.mode') === 'regular' && !this.isSafeMode) {
 			await this.runEnqueuedExecutions();
 		}
 
 		// Start to get active workflows and run their triggers
-		await this.activeWorkflowManager.init();
+
+		if (!this.isSafeMode) {
+			await this.activeWorkflowManager.init();
+		}
 
 		const editorUrl = this.getEditorUrl();
-
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
 		// Allow to open n8n editor by pressing "o"
