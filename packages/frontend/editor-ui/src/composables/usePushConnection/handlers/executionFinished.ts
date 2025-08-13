@@ -29,7 +29,6 @@ import { parse } from 'flatted';
 import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
-import { useDatabase } from '@/data/useDatabase';
 
 /**
  * Handles the 'executionFinished' event, which happens when a workflow execution is finished.
@@ -106,8 +105,9 @@ export async function executionFinished(
 		}
 	}
 
-	const db = useDatabase();
-	await db.insertExecution(execution);
+	// const db = useDatabase();
+	// await db.insertExecution(execution);
+	// expressionsWorker.insertExecution();
 
 	const runExecutionData = getRunExecutionData(execution);
 	uiStore.setProcessingExecutionResults(false);

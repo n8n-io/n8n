@@ -1,7 +1,6 @@
 import type { sqlite3Worker1Promiser } from '@sqlite.org/sqlite-wasm';
 import type { SimplifiedExecution } from '@/Interface';
 import { useSQLite } from '@/data/useSQLite';
-import { databaseConfig } from '@/data/schema';
 import { ref } from 'vue';
 
 export function useDatabase() {

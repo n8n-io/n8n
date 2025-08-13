@@ -27,7 +27,7 @@ import {
 	registerModuleResources,
 	registerModuleModals,
 } from '@/moduleInitializer/moduleInitializer';
-import { useDatabase } from '@/data/useDatabase';
+import { expressionsWorker } from '@/workers/instances';
 
 export const state = {
 	initialized: false,
@@ -43,10 +43,7 @@ export async function initializeCore() {
 		return;
 	}
 
-	const { executeQuery } = useDatabase();
-	const result = await executeQuery('SELECT * from executions');
-	console.log({ result });
-
+	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
 	const versionsStore = useVersionsStore();
@@ -107,6 +104,10 @@ export async function initializeCore() {
 			quota: settingsStore.userManagement.quota,
 		});
 	}
+
+	await expressionsWorker.initialize({
+		restApiContext: rootStore.restApiContext,
+	});
 
 	state.initialized = true;
 }

@@ -86,7 +86,6 @@
     "semver": "^7.5.4",
     "stream-browserify": "^3.0.0",
     "timeago.js": "^4.0.2",
-    "typed-worker": "^1.0.4",
     "typescript": "catalog:",
     "uuid": "catalog:",
     "v-code-diff": "^1.13.1",

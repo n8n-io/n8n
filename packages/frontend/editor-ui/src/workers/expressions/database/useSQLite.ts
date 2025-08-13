@@ -1,5 +1,5 @@
 import { sqlite3Worker1Promiser } from '@sqlite.org/sqlite-wasm';
-import { databaseConfig } from '@/data/schema';
+import { databaseConfig } from './schema';
 
 export async function useSQLite() {
 	let promiser: ReturnType<typeof sqlite3Worker1Promiser> | null = null;
@@ -20,7 +20,7 @@ export async function useSQLite() {
 		filename: databaseConfig.filename,
 	});
 
-	console.log('sqlite config', cfg);
+	console.log('sqlite config', cfg, openResponse);
 
 	if (openResponse.type === 'error') {
 		throw new Error(openResponse.result.message);

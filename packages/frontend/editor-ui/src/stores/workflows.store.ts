@@ -104,6 +104,7 @@ import { useExecutingNode } from '@/composables/useExecutingNode';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { isChatNode } from '@/utils/aiUtils';
 import { snapPositionToGrid } from '@/utils/nodeViewUtils';
+import { expressionsWorker } from '@/workers/instances';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -1766,6 +1767,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
+		await expressionsWorker.fetchExecution(executionId);
+
 		return await workflowsApi.getExecutionData(rootStore.restApiContext, executionId);
 	}
 

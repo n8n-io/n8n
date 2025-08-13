@@ -20,6 +20,7 @@ import {
 } from '@/utils/executionUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { expressionsWorker } from '@/workers/instances';
 
 export const useExecutionsStore = defineStore('executions', () => {
 	const rootStore = useRootStore();
@@ -188,6 +189,8 @@ export const useExecutionsStore = defineStore('executions', () => {
 			'GET',
 			`/executions/${id}`,
 		);
+
+		await expressionsWorker.fetchExecution(id);
 
 		return response ? unflattenExecutionData(response) : undefined;
 	}

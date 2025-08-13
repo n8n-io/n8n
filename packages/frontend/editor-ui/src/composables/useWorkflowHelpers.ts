@@ -63,7 +63,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
-import { expressionsWorker } from '@/data/workers/instances';
+import { expressionsWorker } from '@/workers/instances';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -79,21 +79,21 @@ export type ResolveParameterOptions = {
 export async function resolveParameterAsync<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	options: {
-		executionId: string;
+		executionId?: string;
 		workflowId: string;
 		nodeName?: string;
 		nodes: INode[];
 		connectionsBySourceNode: IConnections;
 		envVars: Record<string, string | boolean | number>;
-		pinData: IPinData;
+		pinData?: IPinData;
 		inputNode?: {
 			name: string;
 			runIndex: number;
 			branchIndex: number;
 		};
-		additionalKeys: IWorkflowDataProxyAdditionalKeys;
-	} = {},
-) {
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
+	},
+): Promise<T | null> {
 	try {
 		const nodes = JSON.stringify(options.nodes);
 		const connectionsBySourceNode = JSON.stringify(options.connectionsBySourceNode);
@@ -108,7 +108,7 @@ export async function resolveParameterAsync<T = IDataObject>(
 			: undefined;
 		const additionalKeys = JSON.stringify(options.additionalKeys ?? {});
 
-		return await expressionsWorker.run('resolveParameter', parameter, {
+		return (await expressionsWorker.resolveParameter(parameter, {
 			...options,
 			nodes,
 			connectionsBySourceNode,
@@ -116,7 +116,7 @@ export async function resolveParameterAsync<T = IDataObject>(
 			pinData,
 			inputNode,
 			additionalKeys,
-		});
+		})) as T | null;
 	} catch (error) {
 		return null;
 	}
@@ -131,15 +131,16 @@ export function resolveParameter<T = IDataObject>(
 	const ndvStore = useNDVStore();
 
 	setTimeout(async () => {
+		console.log('here');
 		const result = await resolveParameterAsync(parameter, {
 			executionId: workflowsStore.workflowExecutionData?.id,
 			workflowId: workflowsStore.workflowId,
-			nodeName: opts.nodeName ?? ndvStore.activeNode?.name,
+			nodeName: 'nodeName' in opts ? opts.nodeName : ndvStore.activeNode?.name,
 			nodes: workflowsStore.workflow.nodes,
 			connectionsBySourceNode: workflowsStore.connectionsBySourceNode,
 			envVars: environmentsStore.variablesAsObject,
 			pinData: workflowsStore.pinnedWorkflowData,
-			inputNode: opts.inputNode,
+			inputNode: 'inputNode' in opts ? opts.inputNode : undefined,
 			additionalKeys: opts.additionalKeys,
 		});
 		console.log('Resolved parameter from worker:', result);

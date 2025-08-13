@@ -30,6 +30,7 @@ import { computed, ref } from 'vue';
 import { useActionsGenerator } from '../components/Node/NodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '../components/Node/NodeCreator/utils';
 import { useSettingsStore } from '@/stores/settings.store';
+import { expressionsWorker } from '@/workers/instances';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
@@ -320,6 +321,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 		if (nodeTypes.length) {
 			setNodeTypes(nodeTypes);
+			await expressionsWorker.setNodeTypes(JSON.stringify(nodeTypes));
 		}
 	};
 
