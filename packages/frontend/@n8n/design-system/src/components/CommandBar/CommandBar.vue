@@ -6,10 +6,17 @@ interface Props {
 	hotkeys: INinjaAction[];
 }
 const props = defineProps<Props>();
+const emit = defineEmits<{
+	(e: 'change', event: CustomEvent): void;
+}>();
 </script>
 
 <template>
-	<ninja-keys :data="props.hotkeys" :no-auto-load-md-icons="true"></ninja-keys>
+	<ninja-keys
+		:data="props.hotkeys"
+		:no-auto-load-md-icons="true"
+		@change="(e: CustomEvent) => emit('change', e)"
+	></ninja-keys>
 </template>
 
 <style scoped>

@@ -67,6 +67,7 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
+	N8nCommandBar,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n } from '@n8n/i18n';
@@ -76,6 +77,7 @@ import debounce from 'lodash/debounce';
 import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
+import { useRootCommandBar } from '@/composables/useRootCommandBar';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
@@ -127,6 +129,8 @@ const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
+
+const { hotkeys, onCommandBarChange } = useRootCommandBar();
 
 // We render component in a loading state until initialization is done
 // This will prevent any additional workflow fetches while initializing
@@ -2195,6 +2199,9 @@ const onNameSubmit = async (name: string) => {
 					</template></N8nActionBox
 				>
 			</div>
+			<Teleport to="body">
+				<N8nCommandBar :hotkeys="hotkeys" @change="onCommandBarChange" />
+			</Teleport>
 		</template>
 	</ResourcesListLayout>
 </template>

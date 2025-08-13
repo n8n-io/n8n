@@ -435,6 +435,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyTagsFilter(qb, filter);
 		this.applyProjectFilter(qb, filter);
 		this.applyParentFolderFilter(qb, filter);
+		this.applyNodeTypesFilter(qb, filter);
 	}
 
 	private applyNameFilter(
@@ -517,6 +518,33 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 				projectId: filter.projectId,
 			});
 		}
+	}
+
+	private applyNodeTypesFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: ListQuery.Options['filter'],
+	): void {
+		type FilterWithNodes = {
+			nodeTypes?: unknown;
+			nodeType?: unknown;
+		};
+
+		const f = (filter ?? {}) as FilterWithNodes;
+
+		const nodeTypes = isStringArray(f.nodeTypes)
+			? f.nodeTypes
+			: typeof f.nodeType === 'string'
+				? [f.nodeType]
+				: [];
+
+		if (!nodeTypes.length) return;
+
+		const { whereClause, parameters } = buildWorkflowsByNodesQuery(
+			nodeTypes,
+			this.globalConfig.database.type,
+		);
+
+		qb.andWhere(whereClause, parameters);
 	}
 
 	private applyOwnedByRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
