@@ -70,26 +70,7 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 		return {};
 	}
 
-	const getAllNodesCommands = computed<NinjaKeysCommand[]>(() => {
-		return editableWorkflow.value.nodes.map((node) => {
-			const { id, name } = node;
-			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			const src = getIconSource(nodeType);
-			return {
-				id,
-				title: `Open "${name}" Node`,
-				parent: 'Open node',
-				icon: src?.path
-					? `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`
-					: '',
-				handler: () => {
-					setNodeActive(id);
-				},
-			};
-		});
-	});
-
-	const addNodeCommand = computed<NinjaKeysCommand[]>(() => {
+	const addNodeCommands = computed<NinjaKeysCommand[]>(() => {
 		const httpOnlyCredentials = credentialsStore.httpOnlyCredentialTypes;
 		const nodeTypes = nodeTypesStore.visibleNodeTypes;
 		const { mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
@@ -111,19 +92,80 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 		});
 	});
 
-	const allTemplateCommand = computed<NinjaKeysCommand[]>(() => {
+	const openNodeCommnds = computed<NinjaKeysCommand[]>(() => {
+		return editableWorkflow.value.nodes.map((node) => {
+			const { id, name } = node;
+			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			const src = getIconSource(nodeType);
+			return {
+				id,
+				title: `Open node > ${name}`,
+				parent: 'Open node',
+				icon: src?.path
+					? `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`
+					: '',
+				handler: () => {
+					setNodeActive(id);
+				},
+			};
+		});
+	});
+
+	const nodeCommands = computed<NinjaKeysCommand[]>(() => {
+		return [
+			{
+				id: 'Add node',
+				title: 'Add node',
+				section: 'Nodes',
+				children: addNodeCommands.value.map((cmd) => cmd.id),
+				hotkey: 'tab',
+			},
+			...addNodeCommands.value,
+			{
+				id: 'Add sticky note',
+				title: 'Add sticky note',
+				section: 'Nodes',
+				hotkey: 'shift+s',
+				handler: () => {
+					canvasEventBus.emit('create:sticky');
+				},
+			},
+			{
+				id: 'Open node',
+				title: 'Open node',
+				children: openNodeCommnds.value.map((cmd) => cmd.id),
+				section: 'Nodes',
+				hotkey: 'enter',
+			},
+			...openNodeCommnds.value,
+		];
+	});
+
+	const importTemplateCommands = computed<NinjaKeysCommand[]>(() => {
 		const templateWorkflows = Object.values(templatesStore.workflows);
 		return templateWorkflows.map((template) => {
 			const { id, name } = template;
 			return {
 				id: id.toString(),
-				title: `Import ${name} Template`,
+				title: `Import template > ${name}`,
 				parent: 'Import template',
 				handler: async () => {
 					await openWorkflowTemplate(id.toString());
 				},
 			};
 		});
+	});
+
+	const templateCommands = computed<NinjaKeysCommand[]>(() => {
+		return [
+			{
+				id: 'Import template',
+				title: 'Import template',
+				children: importTemplateCommands.value.map((cmd) => cmd.id),
+				section: 'Templates',
+			},
+			...importTemplateCommands.value,
+		];
 	});
 
 	const subworkflowCommands = computed<NinjaKeysCommand[]>(() => {
@@ -161,40 +203,8 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 		];
 	});
 
-	const hotkeys = computed<NinjaKeysCommand[]>(() => {
-		const allOpenNodeCommands = getAllNodesCommands.value;
-		const allAddNodeCommands = addNodeCommand.value;
-		const allTemplateCommands = allTemplateCommand.value;
-		const rootCommands: NinjaKeysCommand[] = [
-			{
-				id: 'Add node',
-				title: 'Add node',
-				section: 'Nodes',
-				children: allAddNodeCommands.map((cmd) => cmd.id),
-				hotkey: 'tab',
-			},
-			{
-				id: 'Add sticky note',
-				title: 'Add sticky note',
-				section: 'Nodes',
-				hotkey: 'shift+s',
-				handler: () => {
-					canvasEventBus.emit('create:sticky');
-				},
-			},
-			{
-				id: 'Open node',
-				title: 'Open node',
-				children: allOpenNodeCommands.map((cmd) => cmd.id),
-				section: 'Nodes',
-				hotkey: 'enter',
-			},
-			{
-				id: 'Import template',
-				title: 'Import template',
-				children: allTemplateCommands.map((cmd) => cmd.id),
-				section: 'Templates',
-			},
+	const workflowCommands = computed<NinjaKeysCommand[]>(() => {
+		return [
 			{
 				id: 'Test workflow',
 				title: 'Test workflow',
@@ -279,6 +289,10 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 				},
 			},
 		];
+	});
+
+	const hotkeys = computed<NinjaKeysCommand[]>(() => {
+		const rootCommands: NinjaKeysCommand[] = [];
 
 		const credentialCommands = computed<NinjaKeysCommand[]>(() => {
 			const credentials = uniqBy(
@@ -307,11 +321,11 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 		});
 
 		return rootCommands
-			.concat(allOpenNodeCommands)
-			.concat(addNodeCommand.value)
-			.concat(allTemplateCommand.value)
+			.concat(nodeCommands.value)
+			.concat(workflowCommands.value)
 			.concat(subworkflowCommands.value)
-			.concat(credentialCommands.value);
+			.concat(credentialCommands.value)
+			.concat(templateCommands.value);
 	});
 
 	return {
