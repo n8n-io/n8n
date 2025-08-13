@@ -44,6 +44,7 @@ withDefaults(defineProps<Props>(), {
 				:connection-type="connectionType"
 				:compact="compact"
 				:execution="workflowsStore.lastSuccessfulExecution"
+				is-past-execution
 			/>
 		</N8nAccordionHeader>
 	</div>

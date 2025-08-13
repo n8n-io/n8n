@@ -13,6 +13,7 @@ const props = defineProps<{
 	info?: string;
 	nodeType?: INodeTypeDescription;
 	preview?: boolean;
+	pastExecution?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -32,7 +33,7 @@ const emit = defineEmits<{
 			<NodeIcon
 				v-if="nodeType"
 				class="icon"
-				:class="{ ['icon-trigger']: isTrigger }"
+				:class="{ 'icon-trigger': isTrigger, 'icon-past-execution': pastExecution }"
 				:node-type="nodeType"
 				:size="12"
 			/>
@@ -101,6 +102,10 @@ const emit = defineEmits<{
 
 .icon-trigger {
 	border-radius: 16px 4px 4px 16px;
+}
+
+.icon-past-execution {
+	border: 2px dashed var(--color-foreground-light);
 }
 
 .title {
