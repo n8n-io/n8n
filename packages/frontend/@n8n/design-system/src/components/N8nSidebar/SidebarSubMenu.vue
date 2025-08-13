@@ -3,7 +3,7 @@ import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka
 </script>
 
 <template>
-	<PopoverRoot modal>
+	<PopoverRoot>
 		<PopoverTrigger asChild class="sidebarSubMenuTrigger">
 			<slot name="trigger" />
 		</PopoverTrigger>
@@ -17,7 +17,7 @@ import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka
 
 <style lang="scss">
 .sidebarSubMenu {
-	background-color: var(--color-background-xlight);
+	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	border-radius: var(--border-radius-base);
 	padding: var(--spacing-2xs);

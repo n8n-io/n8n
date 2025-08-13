@@ -325,6 +325,7 @@ const helpMenuItems = ref([
 <template>
 	<N8nSidebar
 		:personal="personalItems"
+		:user-name="usersStore.currentUser?.fullName || ''"
 		:shared="sharedItems"
 		:projects="projects"
 		:release-channel="settingsStore.settings.releaseChannel"

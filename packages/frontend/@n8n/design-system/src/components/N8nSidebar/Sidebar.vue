@@ -10,13 +10,14 @@ import N8nResizeWrapper from '../N8nResizeWrapper';
 import { N8nButton, N8nIconButton, N8nRoute, N8nTooltip } from '..';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 import { useSidebarLayout } from './useSidebarLayout';
-import { ICustomMenuItem, IMenuItem } from '@n8n/design-system/types';
+import { IMenuItem } from '@n8n/design-system/types';
 import SidebarSubMenu from './SidebarSubMenu.vue';
 
 const props = defineProps<{
 	personal: { id: string; items: TreeItemType[] };
 	shared: TreeItemType[];
 	projects: { title: string; id: string; icon: IconName; items: TreeItemType[] }[];
+	userName: string;
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
 	menuItems: IMenuItem[];
 	helpMenuItems: IMenuItem[];
@@ -185,7 +186,7 @@ function getMenuItemRoute(item: IMenuItem) {
 		<slot name="creatorCallout" />
 		<slot name="sourceControl" />
 		<div class="sidebarUserArea">
-			<N8nText class="userName" size="small" bold>Rob Squires</N8nText>
+			<N8nText class="userName" size="small" bold>{{ userName }}</N8nText>
 			<N8nTooltip placement="top">
 				<template #content>
 					<N8nText size="small">Sign out</N8nText>
