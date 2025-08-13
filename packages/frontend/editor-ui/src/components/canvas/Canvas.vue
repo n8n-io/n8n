@@ -139,6 +139,7 @@ const props = withDefaults(
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const experimentalNdvStore = useExperimentalNdvStore();
+const collaborationStore = useCollaborationStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -848,6 +849,9 @@ onMounted(() => {
 	props.eventBus.on('nodes:select', onSelectNodes);
 	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
+
+	// Initialize collaboration store
+	collaborationStore.initialize();
 });
 
 onUnmounted(() => {
@@ -855,6 +859,9 @@ onUnmounted(() => {
 	props.eventBus.off('nodes:select', onSelectNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
+
+	// Cleanup collaboration store
+	collaborationStore.terminate();
 });
 
 onPaneReady(async () => {

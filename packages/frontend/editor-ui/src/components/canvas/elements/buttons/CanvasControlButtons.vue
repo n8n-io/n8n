@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
 import { useExperimentalNdvStore } from '../../experimental/experimentalNdv.store';
+import { useCollaborationStore } from '@/stores/collaboration.store';
 import { N8nIconButton } from '@n8n/design-system';
 
 const props = withDefaults(
@@ -31,6 +32,8 @@ const i18n = useI18n();
 
 const experimentalNdvStore = useExperimentalNdvStore();
 
+const collaborationStore = useCollaborationStore();
+
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(props.zoom));
 
 const isToggleZoomVisible = computed(() => experimentalNdvStore.isEnabled);
@@ -55,6 +58,14 @@ function onZoomToFit() {
 
 function onTidyUp() {
 	emit('tidy-up');
+}
+
+function onUndo() {
+	collaborationStore.undo();
+}
+
+function onRedo() {
+	collaborationStore.redo();
 }
 </script>
 <template>
@@ -105,7 +116,7 @@ function onTidyUp() {
 				@click="emit('toggle-zoom-mode')"
 			/>
 		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
+		<!-- <KeyboardShortcutTooltip
 			v-if="isResetZoomVisible"
 			:label="i18n.baseText('nodeView.resetZoom')"
 			:shortcut="{ keys: ['0'] }"
@@ -116,6 +127,24 @@ function onTidyUp() {
 				icon="undo-2"
 				data-test-id="reset-zoom-button"
 				@click="onResetZoom"
+			/>
+		</KeyboardShortcutTooltip> -->
+		<KeyboardShortcutTooltip v-if="!readOnly" label="Undo">
+			<N8nIconButton
+				type="tertiary"
+				size="large"
+				icon="undo-2"
+				:disabled="!collaborationStore.canUndo()"
+				@click="onUndo"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip v-if="!readOnly" label="Redo">
+			<N8nIconButton
+				type="tertiary"
+				size="large"
+				icon="redo-2"
+				:disabled="!collaborationStore.canRedo()"
+				@click="onRedo"
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip

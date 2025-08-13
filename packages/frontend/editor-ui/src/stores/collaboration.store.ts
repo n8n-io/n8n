@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { isProxy, isReactive, isRef, onMounted, ref, toRaw, watch } from 'vue';
+import { isProxy, isReactive, isRef, ref, toRaw, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Collaborator } from '@n8n/api-types';
 import * as Y from 'yjs';
@@ -79,6 +79,10 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const rootStore = useRootStore();
 	const ydoc = ref(new Y.Doc());
 	const provider = ref<WebsocketProvider>();
+	const undoManager = ref<Y.UndoManager>();
+	const undoStackLength = ref(0);
+	const redoStackLength = ref(0);
+
 	const myColor = ref(`hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`);
 
 	const route = useRoute();
@@ -98,6 +102,23 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const collaborators = ref<YjsCollaborator[]>([]);
 
 	const heartbeatTimer = ref<number | null>(null);
+
+	const updateStackLengths = () => {
+		if (undoManager.value) {
+			console.log(
+				'Updating stack lengths - undo stack:',
+				undoManager.value.undoStack.length,
+				'redo stack:',
+				undoManager.value.redoStack.length,
+			);
+			undoStackLength.value = undoManager.value.undoStack.length;
+			redoStackLength.value = undoManager.value.redoStack.length;
+		} else {
+			console.log('No undo manager available, resetting stack lengths');
+			undoStackLength.value = 0;
+			redoStackLength.value = 0;
+		}
+	};
 
 	const startHeartbeat = () => {
 		stopHeartbeat();
@@ -192,18 +213,34 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		});
 
 		const workflows = ydoc.value.getMap<IWorkflowDb>('workflows');
+		// Initialize UndoManager to track changes to the workflows map
+		undoManager.value = new Y.UndoManager(workflows);
 
-		workflows.observeDeep((events, tx) => {
+		// Add listeners to track undo/redo stack changes for reactive buttons
+		undoManager.value.on('stack-cleared', updateStackLengths);
+		undoManager.value.on('stack-item-added', updateStackLengths);
+		undoManager.value.on('stack-item-popped', updateStackLengths);
+
+		// Initial update
+		updateStackLengths();
+
+		workflows.observeDeep((events) => {
 			events.forEach((event) => {
 				if (event.target instanceof Y.Map) {
 					const updatedWorkflows = event.target.toJSON();
 
-					for (const [k, v] of Object.entries(updatedWorkflows)) {
-						if (
-							k === workflowsStore.workflowId &&
-							JSON.stringify(workflowsStore.workflow) !== JSON.stringify(v)
-						) {
-							workflowsStore.setWorkflow(v as IWorkflowDb);
+					for (const [id, value] of Object.entries(updatedWorkflows)) {
+						if (id === workflowsStore.workflowId) {
+							const currentWorkflow = workflowsStore.workflow;
+							const newWorkflow = value as IWorkflowDb;
+							const hasChanges = JSON.stringify(currentWorkflow) !== JSON.stringify(newWorkflow);
+
+							if (hasChanges) {
+								console.log('Updating workflow store from Y.js change for workflow:', id);
+								workflowsStore.setWorkflow(newWorkflow);
+							} else {
+								console.log('No changes detected, skipping workflow update');
+							}
 						}
 					}
 				}
@@ -216,7 +253,21 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		(wf) => {
 			const workflows = ydoc.value.getMap<IWorkflowDb>('workflows');
 
-			workflows.set(workflowsStore.workflow.id, deepToRaw(wf));
+			console.log('Workflow changed, adding to Y.Map for undo tracking:', wf.id);
+			// Perform the update within a transaction to ensure UndoManager tracks it
+			ydoc.value.transact(() => {
+				workflows.set(workflowsStore.workflow.id, deepToRaw(wf));
+			});
+
+			// Check stacks after transaction
+			if (undoManager.value) {
+				console.log(
+					'After workflow update - undo stack:',
+					undoManager.value.undoStack.length,
+					'redo stack:',
+					undoManager.value.redoStack.length,
+				);
+			}
 		},
 		{ immediate: true, deep: true },
 	);
@@ -279,6 +330,48 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		{ immediate: true },
 	);
 
+	const canUndo = () => {
+		return undoStackLength.value > 0;
+	};
+
+	const canRedo = () => {
+		return redoStackLength.value > 0;
+	};
+
+	const undo = () => {
+		const manager = undoManager.value;
+		if (manager && manager.undoStack.length > 0) {
+			console.log('Performing undo - stack length:', manager.undoStack.length);
+			manager.undo();
+			console.log(
+				'After undo - undo stack:',
+				manager.undoStack.length,
+				'redo stack:',
+				manager.redoStack.length,
+			);
+			return true;
+		}
+		console.log('Cannot undo - no manager or empty stack');
+		return false;
+	};
+
+	const redo = () => {
+		const manager = undoManager.value;
+		if (manager && manager.redoStack.length > 0) {
+			console.log('Performing redo - stack length:', manager.redoStack.length);
+			manager.redo();
+			console.log(
+				'After redo - undo stack:',
+				manager.undoStack.length,
+				'redo stack:',
+				manager.redoStack.length,
+			);
+			return true;
+		}
+		console.log('Cannot redo - no manager or empty stack');
+		return false;
+	};
+
 	return {
 		collaborators,
 		initialize,
@@ -287,5 +380,9 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		stopHeartbeat,
 		notifyMuseMove,
 		notifyFocus,
+		undo,
+		redo,
+		canUndo,
+		canRedo,
 	};
 });
