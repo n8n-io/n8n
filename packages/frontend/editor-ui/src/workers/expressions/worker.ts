@@ -49,8 +49,12 @@ const state: {
 	db?: Awaited<ReturnType<typeof useSQLite>>;
 	restApiContext?: IRestApiContext;
 	nodeTypes?: INodeTypes;
+	executionsMap: Map<string, IExecutionResponse>;
+	isInsertingExecution: Set<string>;
 } = {
 	initialized: false,
+	executionsMap: new Map(),
+	isInsertingExecution: new Set(),
 };
 
 const actions = {
@@ -77,24 +81,32 @@ const actions = {
 			throw new Error('Worker not initialized.');
 		}
 
-		const queryResult = await actions.executeQuery(
-			'SELECT * FROM executions WHERE id = ? LIMIT 1',
-			[executionId],
-		);
-
-		console.log('Query result for execution', queryResult);
-
 		let existingExecution;
-		if (queryResult.result.resultRows && queryResult.result.resultRows.length > 0) {
-			const row = queryResult.result.resultRows[0] as unknown as ExecutionDb;
-			const rowParsed = {} as ExecutionDbParsed;
 
-			rowParsed.data = parse(row.data) as IExecutionResponse['data'];
-			rowParsed.id = row.id;
-			rowParsed.workflow_id = row.workflow_id;
-			rowParsed.workflow = jsonParse<IWorkflowDb>(row.workflow);
+		if (state.executionsMap.has(executionId)) {
+			existingExecution = state.executionsMap.get(executionId);
 
-			existingExecution = rowParsed as unknown as IExecutionResponse;
+			console.log('Execution found in local map', existingExecution);
+		} else {
+			const queryResult = await actions.executeQuery(
+				'SELECT * FROM executions WHERE id = ? LIMIT 1',
+				[executionId],
+			);
+
+			if (queryResult.result.resultRows && queryResult.result.resultRows.length > 0) {
+				const row = queryResult.result.resultRows[0] as unknown as ExecutionDb;
+				const rowParsed = {} as ExecutionDbParsed;
+
+				rowParsed.data = parse(row.data) as IExecutionResponse['data'];
+				rowParsed.id = row.id;
+				rowParsed.workflow_id = row.workflow_id;
+				rowParsed.workflow = jsonParse<IWorkflowDb>(row.workflow);
+
+				existingExecution = rowParsed as unknown as IExecutionResponse;
+				state.executionsMap.set(executionId, existingExecution);
+
+				console.log('Execution found in local database', existingExecution);
+			}
 		}
 
 		if (existingExecution) {
@@ -109,6 +121,20 @@ const actions = {
 			throw new Error(`Execution with ID ${executionId} not found`);
 		}
 
+		void actions.insertExecution(execution);
+
+		execution.data = parse(execution.data as unknown as string) as IExecutionResponse['data'];
+		state.executionsMap.set(executionId, execution);
+
+		return execution;
+	},
+	async insertExecution(execution: IExecutionResponse) {
+		if (state.isInsertingExecution.has(execution.id)) {
+			return;
+		}
+
+		state.isInsertingExecution.add(execution.id);
+
 		await actions.executeQuery(
 			'INSERT INTO executions (id, workflow_id, data, workflow) VALUES (?, ?, ?, ?)',
 			[
@@ -119,7 +145,7 @@ const actions = {
 			],
 		);
 
-		return execution;
+		state.isInsertingExecution.delete(execution.id);
 	},
 	async executeQuery(sql: string, params: unknown[] = []) {
 		if (!actions.isInitialized(state)) {
@@ -159,6 +185,7 @@ const actions = {
 			pinData: string;
 			inputNode?: string;
 			additionalKeys: string;
+			isForCredential?: boolean;
 		},
 	): Promise<T | null> {
 		if (!actions.isInitialized(state)) {
@@ -224,6 +251,7 @@ const actions = {
 				inputNodeName: inputNode?.name,
 				inputRunIndex: inputNode?.runIndex,
 				inputBranchIndex: inputNode?.branchIndex,
+				isForCredential: options.isForCredential,
 				additionalKeys,
 			},
 		);
