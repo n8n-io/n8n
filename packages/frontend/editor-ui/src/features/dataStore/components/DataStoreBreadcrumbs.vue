@@ -17,7 +17,7 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const renameInput = useTemplateRef<{ forceFocus?: () => void }>('renameInput');
+const renameInput = useTemplateRef('renameInput');
 
 const dataStoreStore = useDataStoreStore();
 

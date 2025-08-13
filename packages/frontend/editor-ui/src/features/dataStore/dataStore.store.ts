@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { DATA_STORE_STORE } from '@/features/dataStore/constants';
+import { DATA_STORE_STORE, DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
 import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -7,8 +7,9 @@ import {
 	createDataStoreApi,
 	deleteDataStoreApi,
 	updateDataStoreApi,
+	addDataStoreColumnApi,
 } from '@/features/dataStore/dataStore.api';
-import type { DataStore } from '@/features/dataStore/datastore.types';
+import type { DataStore, DataStoreColumnCreatePayload } from '@/features/dataStore/datastore.types';
 import { useProjectsStore } from '@/stores/projects.store';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
@@ -28,7 +29,13 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	};
 
 	const createDataStore = async (name: string, projectId?: string) => {
-		const newStore = await createDataStoreApi(rootStore.restApiContext, name, projectId);
+		const defaultColumn: DataStoreColumnCreatePayload = {
+			name: DEFAULT_ID_COLUMN_NAME,
+			type: 'string',
+		};
+		const newStore = await createDataStoreApi(rootStore.restApiContext, name, projectId, [
+			defaultColumn,
+		]);
 		if (!newStore.project && projectId) {
 			const project = await projectStore.fetchProject(projectId);
 			if (project) {
@@ -83,6 +90,17 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return await fetchDataStoreDetails(datastoreId, projectId);
 	};
 
+	const addDataStoreColumn = async (datastoreId: string, column: DataStoreColumnCreatePayload) => {
+		const newColumn = await addDataStoreColumnApi(rootStore.restApiContext, datastoreId, column);
+		if (newColumn) {
+			const index = dataStores.value.findIndex((store) => store.id === datastoreId);
+			if (index !== -1) {
+				dataStores.value[index].columns.push(newColumn);
+			}
+		}
+		return newColumn;
+	};
+
 	return {
 		dataStores,
 		totalCount,
@@ -92,5 +110,6 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		updateDataStore,
 		fetchDataStoreDetails,
 		fetchOrFindDataStore,
+		addDataStoreColumn,
 	};
 });
