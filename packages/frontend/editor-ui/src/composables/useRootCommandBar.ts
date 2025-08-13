@@ -1,4 +1,4 @@
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, type ComputedRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -13,7 +13,7 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useProjectsStore } from '@/stores/projects.store';
 
 export function useRootCommandBar(): {
-	hotkeys: NinjaKeysCommand[] | ReturnType<typeof computed<NinjaKeysCommand[]>>;
+	hotkeys: ComputedRef<NinjaKeysCommand[]>;
 	onCommandBarChange: (event: CustomEvent) => void;
 } {
 	const router = useRouter();
@@ -283,14 +283,6 @@ export function useRootCommandBar(): {
 		});
 	}
 
-	function onCommandBarChange(event: CustomEvent) {
-		const query = (event as unknown as { detail?: { search?: string } }).detail?.search ?? '';
-		lastQuery.value = query;
-		fetchWorkflows(query);
-		filterCredentials(query);
-		filterExecutions(query);
-	}
-
 	function filterExecutions(query: string) {
 		const trimmed = (query || '').trim().toLowerCase();
 		if (!trimmed) {
@@ -299,10 +291,18 @@ export function useRootCommandBar(): {
 		}
 		executionResults.value = executionsStore.allExecutions.filter((e) => {
 			const idMatch = (e.id || '').toLowerCase().includes(trimmed);
-			const workflowName = (e as unknown as { workflowName?: string }).workflowName || '';
+			const workflowName = (e as unknown as { workflowName?: string }).workflowName ?? '';
 			const nameMatch = workflowName.toLowerCase().includes(trimmed);
 			return idMatch || nameMatch;
 		});
+	}
+
+	function onCommandBarChange(event: CustomEvent) {
+		const query = (event as unknown as { detail?: { search?: string } }).detail?.search ?? '';
+		lastQuery.value = query;
+		void fetchWorkflows(query);
+		void filterCredentials(query);
+		void filterExecutions(query);
 	}
 
 	onMounted(async () => {

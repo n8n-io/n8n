@@ -22,6 +22,7 @@ import { saveAs } from 'file-saver';
 import uniqBy from 'lodash/uniqBy';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowActivate } from './useWorkflowActivate';
+import { useRootCommandBar } from './useRootCommandBar';
 
 export type NinjaKeysCommand = {
 	id: string;
@@ -52,6 +53,8 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 	const workflowActivate = useWorkflowActivate();
 	const { runEntireWorkflow } = useRunWorkflow({ router });
 	const { generateMergedNodesAndActions } = useActionsGenerator();
+
+	const rootCommandBar = useRootCommandBar();
 
 	function getIconSource(nodeType: SimplifiedNodeType | null) {
 		if (!nodeType) return {};
@@ -318,8 +321,6 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 	});
 
 	const hotkeys = computed<NinjaKeysCommand[]>(() => {
-		const rootCommands: NinjaKeysCommand[] = [];
-
 		const credentialCommands = computed<NinjaKeysCommand[]>(() => {
 			const credentials = uniqBy(
 				editableWorkflow.value.nodes.map((node) => Object.values(node.credentials ?? {})).flat(),
@@ -346,15 +347,22 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 			];
 		});
 
-		return rootCommands
-			.concat(nodeCommands.value)
-			.concat(workflowCommands.value)
-			.concat(subworkflowCommands.value)
-			.concat(credentialCommands.value)
-			.concat(templateCommands.value);
+		return [
+			...nodeCommands.value,
+			...workflowCommands.value,
+			...subworkflowCommands.value,
+			...credentialCommands.value,
+			...templateCommands.value,
+			...rootCommandBar.hotkeys.value,
+		];
 	});
+
+	function onCommandBarChange(event: CustomEvent) {
+		rootCommandBar.onCommandBarChange(event);
+	}
 
 	return {
 		hotkeys,
+		onCommandBarChange,
 	};
 }

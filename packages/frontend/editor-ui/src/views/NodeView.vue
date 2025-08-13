@@ -2107,7 +2107,7 @@ onBeforeUnmount(() => {
 				/>
 			</Suspense>
 			<Teleport to="body">
-				<N8nCommandBar :hotkeys="hotkeys" />
+				<N8nCommandBar :hotkeys="hotkeys" @change="onCommandBarChange" />
 			</Teleport>
 		</WorkflowCanvas>
 		<FocusPanel
