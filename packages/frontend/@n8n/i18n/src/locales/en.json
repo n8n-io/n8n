@@ -272,6 +272,7 @@
 	"chatEmbed.url": "https://www.npmjs.com/package/{'@'}n8n/chat",
 	"codeEdit.edit": "Edit",
 	"codeNodeEditor.askAi": "✨ Ask AI",
+	"codeNodeEditor.openInVSCode": "Edit in VSCode",
 	"codeNodeEditor.completer.$()": "Output data of the {nodeName} node",
 	"codeNodeEditor.completer.$execution": "Retrieve or set metadata for the current execution",
 	"codeNodeEditor.completer.$execution.id": "The ID of the current workflow execution",

@@ -7,7 +7,7 @@ import { useSettingsStore } from './settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWebSocketClient } from '@/push-connection/useWebSocketClient';
 import { useEventSourceClient } from '@/push-connection/useEventSourceClient';
-import { useVsCodeSyncStore } from './vscodeSync.store';
+// import { useVsCodeSyncStore } from './vscodeSync.store';
 
 export type OnPushMessageHandler = (event: PushMessage) => void;
 
@@ -77,7 +77,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		? useWebSocketClient({ url, onMessage })
 		: useEventSourceClient({ url, onMessage });
 
-	const vsCodeClient = useVsCodeSyncStore();
+	// const vsCodeClient = useVsCodeSyncStore();
 
 	function serializeAndSend(message: unknown) {
 		if (client.isConnected.value) {
@@ -90,13 +90,13 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const pushConnect = () => {
 		isConnectionRequested.value = true;
 		client.connect();
-		vsCodeClient.connect();
+		// vsCodeClient.connect();
 	};
 
 	const pushDisconnect = () => {
 		isConnectionRequested.value = false;
 		client.disconnect();
-		vsCodeClient.disconnect();
+		// vsCodeClient.disconnect();
 	};
 
 	watch(client.isConnected, (didConnect) => {

@@ -35,6 +35,7 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import TextEdit from '@/components/TextEdit.vue';
+import { useVSCodeIntegration } from '@/composables/useVSCodeIntegration';
 
 import {
 	formatAsExpression,
@@ -145,6 +146,7 @@ const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
+const { openWithIntegration } = useVSCodeIntegration();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -202,6 +204,16 @@ const node = computed(() => contextNode ?? ndvStore.activeNode ?? undefined);
 const nodeType = computed(
 	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 );
+
+const onOpenInVSCode = async () => {
+	if (!node.value?.id) throw new Error('Node is missing id');
+
+	await openWithIntegration({
+		language: 'javaScript',
+		code: modelValueString.value,
+		nodeId: node.value.id,
+	});
+};
 
 const shortPath = computed<string>(() => {
 	const short = props.path.split('.');
@@ -1380,33 +1392,38 @@ onClickOutside(wrapper, onBlur);
 					@update:model-value="expressionUpdated"
 				></TextEdit>
 
-				<CodeNodeEditor
-					v-if="editorType === 'codeNodeEditor' && isCodeNode && !codeEditDialogVisible"
-					:id="parameterId"
-					:mode="codeEditorMode"
-					:model-value="modelValueString"
-					:default-value="parameter.default"
-					:language="editorLanguage"
-					:is-read-only="isReadOnly || editorIsReadOnly"
-					:rows="editorRows"
-					:ai-button-enabled="settingsStore.isCloudDeployment"
-					@update:model-value="valueChangedDebounced"
-				>
-					<template #suffix>
-						<span
-							v-if="!editorIsReadOnly"
-							class="textarea-modal-opener"
-							data-test-id="code-editor-fullscreen-button"
-							@click="displayEditDialog()"
-						>
-							<N8nIcon
-								icon="external-link"
-								size="xsmall"
-								:title="i18n.baseText('parameterInput.openEditWindow')"
-							/>
-						</span>
-					</template>
-				</CodeNodeEditor>
+				<div v-if="editorType === 'codeNodeEditor' && isCodeNode && !codeEditDialogVisible">
+					<CodeNodeEditor
+						:id="parameterId"
+						:mode="codeEditorMode"
+						:model-value="modelValueString"
+						:default-value="parameter.default"
+						:language="editorLanguage"
+						:is-read-only="isReadOnly || editorIsReadOnly"
+						:rows="editorRows"
+						:ai-button-enabled="settingsStore.isCloudDeployment"
+						:vscode-enabled="true"
+						@update:model-value="valueChangedDebounced"
+					>
+						<template #suffix>
+							<span
+								v-if="!editorIsReadOnly"
+								class="textarea-modal-opener"
+								data-test-id="code-editor-fullscreen-button"
+								@click="displayEditDialog()"
+							>
+								<N8nIcon
+									icon="external-link"
+									size="xsmall"
+									:title="i18n.baseText('parameterInput.openEditWindow')"
+								/>
+							</span>
+						</template>
+					</CodeNodeEditor>
+					<n8n-button @click="onOpenInVSCode" style="margin-top: 10px; float: right">
+						Edit in VSCode
+					</n8n-button>
+				</div>
 
 				<HtmlEditor
 					v-else-if="editorType === 'htmlEditor' && !codeEditDialogVisible"

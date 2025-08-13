@@ -35,4 +35,5 @@ export const STORES = {
 	PERSONALIZED_TEMPLATES: 'personalizedTemplates',
 	EXPERIMENT_READY_TO_RUN_WORKFLOWS: 'readyToRunWorkflows',
 	EXPERIMENT_TEMPLATE_RECO_V2: 'templateRecoV2',
+	VSCODE_SYNC: 'vscodeSync',
 } as const;
