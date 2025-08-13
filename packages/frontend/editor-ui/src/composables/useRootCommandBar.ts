@@ -39,9 +39,9 @@ export function useRootCommandBar(): {
 	const getWorkflowTitle = (workflow: IWorkflowDb) => {
 		let prefix = '';
 		if (workflow.homeProject && workflow.homeProject.type === 'personal') {
-			prefix = 'Personal > ';
+			prefix = '[Personal] > ';
 		} else {
-			prefix = `${workflow.homeProject?.name} > `;
+			prefix = `[${workflow.homeProject?.name}] > `;
 		}
 		return prefix + workflow.name || '(unnamed workflow)';
 	};
@@ -49,12 +49,12 @@ export function useRootCommandBar(): {
 	const getCredentialTitle = (credential: ICredentialsResponse) => {
 		let prefix = '';
 		if (credential.homeProject && credential.homeProject.type === 'personal') {
-			prefix = 'Personal > ';
+			prefix = '[Personal] > ';
 		} else if (credential.homeProject && credential.homeProject.type === 'team') {
-			prefix = 'Shared > ';
+			prefix = '[Shared] > ';
 		} else {
 			const projectName = credential.homeProject?.name ?? '';
-			prefix = projectName ? `${projectName} > ` : '';
+			prefix = projectName ? `[${projectName}] > ` : '';
 		}
 		return prefix + credential.name || '(unnamed credential)';
 	};
