@@ -13,7 +13,7 @@ export function connectionInputData(
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
-	shouldReplaceInputDataWithPinData: boolean,
+	shouldReplaceInputDataWithPinData: boolean | undefined,
 	pinData: IPinData | undefined,
 	workflowRunData: IRunData | null,
 	nodeConnection: INodeConnection = { sourceIndex: 0, destinationIndex: 0 },

@@ -99,18 +99,15 @@ export async function resolveParameterAsync<T = IDataObject>(
 	const environmentsStore = useEnvironmentsStore();
 	const ndvStore = useNDVStore();
 	try {
-		// const nodes = JSON.stringify(options.nodes);
-		// const connectionsBySourceNode = JSON.stringify(options.connectionsBySourceNode);
-		// const envVars = JSON.stringify(options.envVars);
-		// const pinData = JSON.stringify(options.pinData);
-		// const inputNode = options.inputNode
-		// 	? JSON.stringify({
-		// 			name: options.inputNode.name,
-		// 			runIndex: options.inputNode.runIndex,
-		// 			branchIndex: options.inputNode.branchIndex,
-		// 		})
-		// 	: undefined;
-		// const additionalKeys = JSON.stringify(options.additionalKeys ?? {});
+		if ('localResolve' in options && options.localResolve) {
+			return await expressionsWorker.resolveLocalParameter(parameter, {
+				...options,
+				workflowId: workflowsStore.workflowId,
+				nodes: JSON.stringify(workflowsStore.workflow.nodes),
+				connections: JSON.stringify(workflowsStore.connectionsBySourceNode),
+				envVars: JSON.stringify(environmentsStore.variablesAsObject),
+			});
+		}
 
 		return (await expressionsWorker.resolveParameter(parameter, {
 			...options,
@@ -118,18 +115,12 @@ export async function resolveParameterAsync<T = IDataObject>(
 			workflowId: workflowsStore.workflowId,
 			nodeName: 'nodeName' in options ? options.nodeName : ndvStore.activeNode?.name,
 			nodes: JSON.stringify(workflowsStore.workflow.nodes),
-			connectionsBySourceNode: JSON.stringify(workflowsStore.connectionsBySourceNode),
+			connections: JSON.stringify(workflowsStore.connectionsBySourceNode),
 			envVars: JSON.stringify(environmentsStore.variablesAsObject),
 			pinData: JSON.stringify(workflowsStore.pinnedWorkflowData),
 			inputNode: 'inputNode' in options ? JSON.stringify(options.inputNode) : undefined,
 			additionalKeys: JSON.stringify(options.additionalKeys),
-			// ...options,
-			// nodes,
-			// connectionsBySourceNode,
-			// envVars,
-			// pinData,
-			// inputNode,
-			// additionalKeys,
+			shouldReplaceInputDataWithPinData: workflowsStore.shouldReplaceInputDataWithPinData,
 		})) as T | null;
 	} catch (error) {
 		console.error('Error resolving parameter:', error);

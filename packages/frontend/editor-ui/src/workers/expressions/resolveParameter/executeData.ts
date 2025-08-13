@@ -8,7 +8,7 @@ export function executeDataImpl(
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
-	shouldReplaceInputDataWithPinData: boolean,
+	shouldReplaceInputDataWithPinData: boolean | undefined,
 	pinData: IPinData | undefined,
 	workflowRunData: IRunData | null,
 	parentRunIndex?: number,

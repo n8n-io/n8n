@@ -24,7 +24,7 @@ export function resolveParameterImpl<T = IDataObject>(
 	envVars: Record<string, string | boolean | number>,
 	ndvActiveNode: INodeUi | null,
 	executionData: IExecutionResponse | null,
-	shouldReplaceInputDataWithPinData: boolean,
+	shouldReplaceInputDataWithPinData: boolean | undefined,
 	pinData: IPinData | undefined,
 	opts: ResolveParameterOptions = {},
 ): T | null {

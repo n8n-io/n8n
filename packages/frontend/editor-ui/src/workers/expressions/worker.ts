@@ -5,7 +5,6 @@ import type {
 	INode,
 	INodeParameters,
 	IPinData,
-	IWorkflowDataProxyAdditionalKeys,
 	NodeParameterValue,
 	INodeTypes,
 } from 'n8n-workflow';
@@ -18,17 +17,9 @@ import type { DbId } from '@sqlite.org/sqlite-wasm';
 import * as workflowsApi from '@/api/workflows';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { parse } from 'flatted';
-
-export type ResolveParameterOptions = {
-	targetItem?: TargetItem;
-	inputNodeName?: string;
-	inputRunIndex?: number;
-	inputBranchIndex?: number;
-	additionalKeys?: IWorkflowDataProxyAdditionalKeys;
-	isForCredential?: boolean;
-	contextNodeName?: string;
-	connections?: IConnections;
-};
+import type { ExpressionLocalResolveContext } from '@/types/expressions';
+import type { ResolveParameterOptions } from '@/composables/useWorkflowHelpers';
+import { useNDVStore } from '@/stores/ndv.store';
 
 export type ExecutionDb = {
 	id: string;
@@ -173,19 +164,63 @@ const actions = {
 			throw error;
 		}
 	},
+	async resolveLocalParameter<T = IDataObject>(
+		parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		options: Omit<ExpressionLocalResolveContext, 'connections' | 'envVars'> & {
+			workflowId: string;
+			nodes: string;
+			connections: string;
+			envVars: string;
+		},
+	): Promise<T | null> {
+		if (!actions.isInitialized(state)) {
+			throw new Error('Worker not initialized.');
+		}
+
+		const { nodeTypes } = state;
+
+		const nodes = options.nodes ? jsonParse<INode[]>(options.nodes) : [];
+		const connections = options.connections ? jsonParse<IConnections>(options.connections) : {};
+		const workflowObject = new Workflow({
+			id: options.workflowId,
+			nodes,
+			connections,
+			active: false,
+			nodeTypes,
+		});
+
+		const envVars = options.envVars
+			? jsonParse<Record<string, string | number | boolean>>(options.envVars)
+			: {};
+
+		return await resolveParameterImpl(
+			parameter,
+			workflowObject,
+			connections,
+			envVars,
+			options.workflow.getNode(options.nodeName),
+			options.execution,
+			true,
+			options.workflow.pinData,
+			{
+				inputNodeName: options.inputNode?.name,
+				inputRunIndex: options.inputNode?.runIndex,
+				inputBranchIndex: options.inputNode?.branchIndex,
+				additionalKeys: options.additionalKeys,
+			},
+		);
+	},
 	async resolveParameter<T = IDataObject>(
 		parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-		options: {
+		options: ResolveParameterOptions & {
 			executionId?: string;
 			workflowId: string;
-			nodeName?: string;
 			nodes: string;
-			connectionsBySourceNode: string;
-			envVars: string;
+			nodeName: string;
+			connections: string;
 			pinData: string;
-			inputNode?: string;
-			additionalKeys: string;
-			isForCredential?: boolean;
+			shouldReplaceInputDataWithPinData?: boolean;
+			envVars: string;
 		},
 	): Promise<T | null> {
 		if (!actions.isInitialized(state)) {
@@ -204,24 +239,16 @@ const actions = {
 		const nodeName = options.nodeName ?? null;
 		const nodes = options.nodes ? jsonParse<INode[]>(options.nodes) : [];
 		const node = nodes.find((n) => n.name === nodeName) ?? null;
-		const connectionsBySourceNode = options.connectionsBySourceNode
-			? jsonParse<IConnections>(options.connectionsBySourceNode)
-			: {};
+		const connections = options.connections ? jsonParse<IConnections>(options.connections) : {};
 		const envVars = options.envVars
 			? jsonParse<Record<string, string | boolean | number>>(options.envVars)
 			: {};
 		const pinData = options.pinData ? jsonParse<IPinData>(options.pinData) : {};
-		const inputNode = options.inputNode
-			? jsonParse<{ name: string; runIndex: number; branchIndex: number }>(options.inputNode)
-			: null;
-		const additionalKeys = options.additionalKeys
-			? jsonParse<IDataObject>(options.additionalKeys)
-			: {};
 
 		const workflowObject = new Workflow({
 			id: workflowId,
 			nodes,
-			connections: connectionsBySourceNode,
+			connections,
 			active: false,
 			nodeTypes,
 		});
@@ -230,30 +257,22 @@ const actions = {
 			executionId,
 			nodeName,
 			nodes,
-			connectionsBySourceNode,
+			connections,
 			envVars,
 			pinData,
-			inputNode,
-			additionalKeys,
 			workflowObject,
 		});
 
 		return await resolveParameterImpl(
 			parameter,
 			workflowObject,
-			connectionsBySourceNode,
+			connections,
 			envVars,
 			node,
 			execution,
-			true,
+			options.shouldReplaceInputDataWithPinData,
 			pinData,
-			{
-				inputNodeName: inputNode?.name,
-				inputRunIndex: inputNode?.runIndex,
-				inputBranchIndex: inputNode?.branchIndex,
-				isForCredential: options.isForCredential,
-				additionalKeys,
-			},
+			options,
 		);
 	},
 };
