@@ -37,6 +37,7 @@ withDefaults(defineProps<Props>(), {
 			"
 		>
 			<VirtualSchema
+				class="mt-s"
 				:pane-type="paneType"
 				:nodes="nodes"
 				:mapping-enabled="true"
