@@ -70,9 +70,9 @@ export function useRootCommandBar(): {
 	const getWorkflowTitle = (workflow: IWorkflowDb) => {
 		let prefix = '';
 		if (workflow.homeProject && workflow.homeProject.type === 'personal') {
-			prefix = '[Personal] > ';
+			prefix = 'Open workflow > [Personal] > ';
 		} else {
-			prefix = `[${workflow.homeProject?.name}] > `;
+			prefix = `Open workflow > [${workflow.homeProject?.name}] > `;
 		}
 		return prefix + workflow.name || '(unnamed workflow)';
 	};
@@ -80,12 +80,12 @@ export function useRootCommandBar(): {
 	const getCredentialTitle = (credential: ICredentialsResponse) => {
 		let prefix = '';
 		if (credential.homeProject && credential.homeProject.type === 'personal') {
-			prefix = '[Personal] > ';
+			prefix = 'Open credential > [Personal] > ';
 		} else if (credential.homeProject && credential.homeProject.type === 'team') {
-			prefix = '[Shared] > ';
+			prefix = 'Open credential > [Shared] > ';
 		} else {
 			const projectName = credential.homeProject?.name ?? '';
-			prefix = projectName ? `[${projectName}] > ` : '';
+			prefix = projectName ? `Open credential > [${projectName}] > ` : '';
 		}
 		return prefix + credential.name || '(unnamed credential)';
 	};
@@ -102,7 +102,7 @@ export function useRootCommandBar(): {
 			return {
 				id: w.id,
 				title: getWorkflowTitle(w),
-				parent: 'Workflows',
+				parent: 'Open workflow',
 				section: 'Workflows',
 				// Ensure ninja-keys matches these dynamic results on the current query
 				// even if the workflow title doesn't include it (e.g. node-type search)
@@ -122,7 +122,7 @@ export function useRootCommandBar(): {
 		return (credentialResults.value || []).map((c: ICredentialsResponse) => ({
 			id: c.id,
 			title: getCredentialTitle(c),
-			parent: 'Credentials',
+			parent: 'Open credential',
 			section: 'Credentials',
 			keywords: lastQuery.value,
 			handler: () => {
@@ -190,7 +190,7 @@ export function useRootCommandBar(): {
 				},
 				{
 					id: 'Workflows',
-					title: 'Search workflows',
+					title: 'Open workflow',
 					section: 'Workflows',
 					children: workflowItems.map((i) => i.id),
 					handler: () => {
@@ -200,7 +200,7 @@ export function useRootCommandBar(): {
 				...workflowItems,
 				{
 					id: 'Credentials',
-					title: 'Search credentials',
+					title: 'Open credential',
 					section: 'Credentials',
 					children: credentialItems.map((i) => i.id),
 					handler: () => {
