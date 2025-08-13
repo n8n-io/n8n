@@ -11,6 +11,7 @@ import type { IUpdateInformation } from '@/Interface';
 import { computed, ref } from 'vue';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useRouter } from 'vue-router';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
 
 export type OnPushMessageHandler = (event: PushMessage) => void;
 
@@ -18,10 +19,47 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const { runWorkflow } = useRunWorkflow({ router: useRouter() });
+	const pushConnectionStore = usePushConnectionStore();
 
 	const wsClient = ref<ReturnType<typeof useWebSocketClient> | null>(null);
+	const connectedNodeIds = ref<Set<string>>(new Set());
 
 	const isConnected = computed(() => wsClient.value?.isConnected ?? false);
+
+	function getNodeById(nodeId: string) {
+		const node = workflowsStore.getNodesByIds([nodeId])[0];
+		if (!node) {
+			throw new Error(`Node not found: ${nodeId}`);
+		}
+
+		return node;
+	}
+
+	function getNodeByName(nodeName: string) {
+		const node = workflowsStore.getNodeByName(nodeName);
+
+		return node;
+	}
+
+	pushConnectionStore.addEventListener((msg) => {
+		if (!isConnected.value) {
+			return;
+		}
+
+		if (msg.type === 'nodeExecuteAfter') {
+			const node = getNodeByName(msg.data.nodeName);
+			if (!node) return;
+
+			if (connectedNodeIds.value.has(node.id)) {
+				wsClient.value?.sendMessage(
+					JSON.stringify({
+						type: 'n8n:run-node',
+						result: msg.data.data.data?.main?.[0],
+					}),
+				);
+			}
+		}
+	});
 
 	// Copied from assistant.store.ts, updates the code for the node
 	function updateCode(nodeName: string, code: string) {
@@ -46,19 +84,12 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 		}
 	}
 
-	function getNodeById(nodeId: string) {
-		const node = workflowsStore.getNodesByIds([nodeId])[0];
-		if (!node) {
-			throw new Error(`Node not found: ${nodeId}`);
-		}
-
-		return node;
-	}
-
 	function startSync(opts: {
 		nodeId: string;
 	}) {
 		console.log('Starting sync', opts);
+
+		connectedNodeIds.value.add(opts.nodeId);
 
 		function onMessage(rawData: string) {
 			if (!wsClient.value) {
@@ -83,7 +114,8 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 
 			// @ts-expect-error abc
 			if (msg.type === 'vscode:file-updated') {
-				const node = getNodeById(opts.nodeId);
+				// @ts-expect-error abc
+				const node = getNodeById(msg.nodeId);
 
 				console.log(msg);
 				// @ts-expect-error abc
@@ -94,7 +126,8 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 			// @ts-expect-error abc
 			if (msg.type === 'vscode:run-node') {
 				console.log('Running node', msg);
-				const node = getNodeById(opts.nodeId);
+				// @ts-expect-error abc
+				const node = getNodeById(msg.nodeId);
 
 				void runWorkflow({
 					destinationNode: node.name,
@@ -112,6 +145,7 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 	}
 
 	function stopSync() {
+		connectedNodeIds.value.clear();
 		wsClient.value?.disconnect();
 		wsClient.value = null;
 	}
