@@ -26,7 +26,7 @@ export type NinjaKeysCommand = {
 };
 
 export function useCommandBar(workflowId: Ref<string | undefined>) {
-	const { addNodes, setNodeActive, editableWorkflow } = useCanvasOperations();
+	const { addNodes, setNodeActive, editableWorkflow, openWorkflowTemplate } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const templatesStore = useTemplatesStore();
@@ -87,8 +87,7 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 				title: `Import ${name} Template`,
 				parent: 'Import template',
 				handler: async () => {
-					// TODO: this is defined on NodeView.vue
-					// await openWorkflowTemplate(id.toString());
+					await openWorkflowTemplate(id.toString());
 				},
 			};
 		});

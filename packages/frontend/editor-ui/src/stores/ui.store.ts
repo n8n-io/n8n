@@ -236,6 +236,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const lastSelectedNode = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewInitialized = ref<boolean>(false);
+	const isBlankRedirect = ref<boolean>(false);
 	const addFirstStepOnLoad = ref<boolean>(false);
 	const bannersHeight = ref<number>(0);
 	const bannerStack = ref<BannerName[]>([]);
@@ -653,6 +654,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastCancelledConnectionPosition,
 		nodeViewOffsetPosition,
 		nodeViewInitialized,
+		isBlankRedirect,
 		addFirstStepOnLoad,
 		sidebarMenuCollapsed,
 		sidebarMenuCollapsedPreference,

@@ -18,6 +18,7 @@ import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/
 import { useDataSchema } from '@/composables/useDataSchema';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
+import { useRouter } from 'vue-router';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { type PinDataSource, usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -30,6 +31,7 @@ import {
 	MCP_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
+	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import {
@@ -49,6 +51,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useTemplatesStore } from '@/stores/templates.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -110,9 +113,11 @@ import type { CanvasLayoutEvent } from './useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useLogsStore } from '@/stores/logs.store';
 import { isChatNode } from '@/utils/aiUtils';
+import { tryToParseNumber } from '@/utils/typesUtils';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { canvasEventBus } from '@/event-bus/canvas';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -158,9 +163,11 @@ export function useCanvasOperations() {
 	const projectsStore = useProjectsStore();
 	const logsStore = useLogsStore();
 	const experimentalNdvStore = useExperimentalNdvStore();
+	const templatesStore = useTemplatesStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
+	const router = useRouter();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
 	const telemetry = useTelemetry();
@@ -2244,6 +2251,65 @@ export function useCanvasOperations() {
 		return true;
 	}
 
+	function fitView() {
+		setTimeout(() => canvasEventBus.emit('fitView'));
+	}
+
+	function trackOpenWorkflowTemplate(templateId: string) {
+		telemetry.track('User inserted workflow template', {
+			source: 'workflow',
+			template_id: tryToParseNumber(templateId),
+			wf_template_repo_session_id: templatesStore.previousSessionId,
+		});
+	}
+
+	async function openWorkflowTemplate(templateId: string) {
+		resetWorkspace();
+
+		canvasStore.startLoading();
+		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
+
+		workflowsStore.currentWorkflowExecutions = [];
+		executionsStore.activeExecution = null;
+
+		let data: IWorkflowTemplate | undefined;
+		try {
+			void externalHooks.run('template.requested', { templateId });
+
+			data = await templatesStore.getFixedWorkflowTemplate(templateId);
+			if (!data) {
+				throw new Error(
+					i18n.baseText('nodeView.workflowTemplateWithIdCouldNotBeFound', {
+						interpolate: { templateId },
+					}),
+				);
+			}
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeView.couldntImportWorkflow'));
+			await router.replace({ name: VIEWS.NEW_WORKFLOW });
+			return;
+		}
+
+		trackOpenWorkflowTemplate(templateId);
+
+		uiStore.isBlankRedirect = true;
+		await router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
+
+		await importTemplate({ id: templateId, name: data.name, workflow: data.workflow });
+
+		uiStore.stateIsDirty = true;
+
+		canvasStore.stopLoading();
+
+		void externalHooks.run('template.open', {
+			templateId,
+			templateName: data.name,
+			workflow: data.workflow,
+		});
+
+		fitView();
+	}
+
 	return {
 		lastClickPosition,
 		editableWorkflow,
@@ -2298,5 +2364,6 @@ export function useCanvasOperations() {
 		importTemplate,
 		replaceNodeConnections,
 		tryToOpenSubworkflowInNewTab,
+		openWorkflowTemplate,
 	};
 }

@@ -34,7 +34,6 @@ import type {
 	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
-import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type {
 	Connection,
@@ -113,7 +112,6 @@ import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/butto
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import CanvasThinkingPill from '@n8n/design-system/components/CanvasThinkingPill/CanvasThinkingPill.vue';
 import { nodeViewEventBus } from '@/event-bus';
-import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { N8nCallout } from '@n8n/design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
@@ -253,13 +251,13 @@ const {
 	editableWorkflowObject,
 	lastClickPosition,
 	startChat,
+	openWorkflowTemplate,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
 
 const isLoading = ref(true);
-const isBlankRedirect = ref(false);
 const readOnlyNotification = ref<null | { visible: boolean }>(null);
 
 const isProductionExecutionPreview = ref(false);
@@ -390,8 +388,8 @@ async function initializeRoute(force = false) {
 	// - if the redirect is blank, then do nothing
 	// - if the route is the template import view, then open the template
 	// - if the user is leaving the current view without saving the changes, then show a confirmation modal
-	if (isBlankRedirect.value) {
-		isBlankRedirect.value = false;
+	if (uiStore.isBlankRedirect) {
+		uiStore.isBlankRedirect = false;
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
 		const templateId = route.params.id;
@@ -601,8 +599,8 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 
 	workflowsStore.currentWorkflowExecutions = [];
 	executionsStore.activeExecution = null;
+	uiStore.isBlankRedirect = true;
 
-	isBlankRedirect.value = true;
 	const templateId = workflow.meta.templateId;
 	const parentFolderId = route.query.parentFolderId as string | undefined;
 	await router.replace({
@@ -621,61 +619,6 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 	canvasStore.stopLoading();
 
 	fitView();
-}
-
-async function openWorkflowTemplate(templateId: string) {
-	resetWorkspace();
-
-	canvasStore.startLoading();
-	canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
-
-	workflowsStore.currentWorkflowExecutions = [];
-	executionsStore.activeExecution = null;
-
-	let data: IWorkflowTemplate | undefined;
-	try {
-		void externalHooks.run('template.requested', { templateId });
-
-		data = await templatesStore.getFixedWorkflowTemplate(templateId);
-		if (!data) {
-			throw new Error(
-				i18n.baseText('nodeView.workflowTemplateWithIdCouldNotBeFound', {
-					interpolate: { templateId },
-				}),
-			);
-		}
-	} catch (error) {
-		toast.showError(error, i18n.baseText('nodeView.couldntImportWorkflow'));
-		await router.replace({ name: VIEWS.NEW_WORKFLOW });
-		return;
-	}
-
-	trackOpenWorkflowTemplate(templateId);
-
-	isBlankRedirect.value = true;
-	await router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
-
-	await importTemplate({ id: templateId, name: data.name, workflow: data.workflow });
-
-	uiStore.stateIsDirty = true;
-
-	canvasStore.stopLoading();
-
-	void externalHooks.run('template.open', {
-		templateId,
-		templateName: data.name,
-		workflow: data.workflow,
-	});
-
-	fitView();
-}
-
-function trackOpenWorkflowTemplate(templateId: string) {
-	telemetry.track('User inserted workflow template', {
-		source: 'workflow',
-		template_id: tryToParseNumber(templateId),
-		wf_template_repo_session_id: templatesStore.previousSessionId,
-	});
 }
 
 /**
