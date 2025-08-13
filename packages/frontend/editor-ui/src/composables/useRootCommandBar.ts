@@ -111,7 +111,8 @@ export function useRootCommandBar(): {
 					? `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`
 					: '',
 				handler: () => {
-					void router.push({ name: VIEWS.WORKFLOW, params: { name: w.id } });
+					const targetRoute = router.resolve({ name: VIEWS.WORKFLOW, params: { name: w.id } });
+					window.location.href = targetRoute.fullPath;
 				},
 			};
 		});
