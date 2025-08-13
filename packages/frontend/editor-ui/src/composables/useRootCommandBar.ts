@@ -7,10 +7,12 @@ import debounce from 'lodash/debounce';
 import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import type { IWorkflowDb, ICredentialsResponse } from '@/Interface';
+import type { IWorkflowDb, ICredentialsResponse, SimplifiedNodeType } from '@/Interface';
 import { useExecutionsStore } from '@/stores/executions.store';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useProjectsStore } from '@/stores/projects.store';
+import { getNodeIcon, getNodeIconUrl } from '@/utils/nodeIcon';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 export function useRootCommandBar(): {
 	hotkeys: ComputedRef<NinjaKeysCommand[]>;
@@ -23,6 +25,7 @@ export function useRootCommandBar(): {
 	const credentialsStore = useCredentialsStore();
 	const executionsStore = useExecutionsStore();
 	const projectsStore = useProjectsStore();
+	const rootStore = useRootStore();
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
 	const workflowResults = ref<IWorkflowDb[]>([]);
@@ -32,8 +35,36 @@ export function useRootCommandBar(): {
 	const initialResults = ref<IWorkflowDb[]>([]);
 	const lastQuery = ref('');
 
+	function getIconSource(nodeType: SimplifiedNodeType | null) {
+		if (!nodeType) return {};
+		const baseUrl = rootStore.baseUrl;
+		const iconUrl = getNodeIconUrl(nodeType);
+		if (iconUrl) {
+			return { path: baseUrl + iconUrl };
+		}
+		// Otherwise, extract it from icon prop
+		if (nodeType.icon) {
+			const icon = getNodeIcon(nodeType);
+			if (icon) {
+				const [type, path] = icon.split(':');
+				if (type === 'file') {
+					throw new Error(`Unexpected icon: ${icon}`);
+				}
+				return { icon: path };
+			}
+		}
+		return {};
+	}
+
 	const personalProjectId = computed(() => {
 		return projectsStore.myProjects.find((p) => p.type === 'personal')?.id;
+	});
+
+	const currentProjectName = computed(() => {
+		if (!route.params.projectId || route.params.projectId === personalProjectId.value) {
+			return 'Personal';
+		}
+		return projectsStore.myProjects.find((p) => p.id === (route.params.projectId as string))?.name;
 	});
 
 	const getWorkflowTitle = (workflow: IWorkflowDb) => {
@@ -60,18 +91,28 @@ export function useRootCommandBar(): {
 	};
 
 	const workflowItemCommands = computed<NinjaKeysCommand[]>(() => {
-		return (workflowResults.value || []).map((w) => ({
-			id: w.id,
-			title: getWorkflowTitle(w),
-			parent: 'Workflows',
-			section: 'Workflows',
-			// Ensure ninja-keys matches these dynamic results on the current query
-			// even if the workflow title doesn't include it (e.g. node-type search)
-			keywords: lastQuery.value,
-			handler: () => {
-				void router.push({ name: VIEWS.WORKFLOW, params: { name: w.id } });
-			},
-		}));
+		return (workflowResults.value || []).map((w) => {
+			const matchedNode = w.nodes.find((node) => node.type.includes(lastQuery.value));
+			const nodeType = matchedNode
+				? nodeTypesStore.getNodeType(matchedNode?.type, matchedNode.typeVersion)
+				: null;
+			const src = getIconSource(nodeType);
+			return {
+				id: w.id,
+				title: getWorkflowTitle(w),
+				parent: 'Workflows',
+				section: 'Workflows',
+				// Ensure ninja-keys matches these dynamic results on the current query
+				// even if the workflow title doesn't include it (e.g. node-type search)
+				keywords: lastQuery.value,
+				icon: src?.path
+					? `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`
+					: '',
+				handler: () => {
+					void router.push({ name: VIEWS.WORKFLOW, params: { name: w.id } });
+				},
+			};
+		});
 	});
 
 	const credentialItemCommands = computed<NinjaKeysCommand[]>(() => {
@@ -116,7 +157,7 @@ export function useRootCommandBar(): {
 			return [
 				{
 					id: 'create-workflow',
-					title: 'Create new workflow',
+					title: `Create new workflow in ${currentProjectName.value}`,
 					section: 'Workflows',
 					handler: () => {
 						console.log('create-workflow', route.params);
@@ -131,7 +172,7 @@ export function useRootCommandBar(): {
 				},
 				{
 					id: 'create-credential',
-					title: 'Create new credential',
+					title: `Create new credential in ${currentProjectName.value}`,
 					section: 'Credentials',
 					handler: () => {
 						console.log('create-credential', route.params);
@@ -188,10 +229,10 @@ export function useRootCommandBar(): {
 				workflowResults.value = initialResults.value;
 				return;
 			}
-			if (trimmed.length < 2) {
-				// Keep existing results (e.g., initial list) if query is too short
-				return;
-			}
+			// if (trimmed.length < 2) {
+			// 	// Keep existing results (e.g., initial list) if query is too short
+			// 	return;
+			// }
 
 			// Search by workflow name
 			const nameSearchPromise = workflowsStore.searchWorkflows({
