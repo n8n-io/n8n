@@ -36,6 +36,16 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 		event.detail.originalEvent.preventDefault();
 	}
 }
+
+const emits = defineEmits<{
+	openFolder: [string];
+}>();
+
+function toggleSection(id: string, callback: () => void) {
+	console.log('click');
+	emits('openFolder', id);
+	callback();
+}
 </script>
 
 <template>
@@ -55,7 +65,7 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 				:title="item.label"
 				:id="item.id"
 				:icon="itemIcon(item.type, isExpanded)"
-				:click="handleToggle"
+				:click="() => toggleSection(item.id, handleToggle)"
 				:open="isExpanded"
 				:link="itemLink(item)"
 				:ariaLabel="`Open ${item.label}`"

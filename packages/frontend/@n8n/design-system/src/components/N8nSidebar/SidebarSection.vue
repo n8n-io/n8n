@@ -18,12 +18,19 @@ interface Props {
 const props = defineProps<Props>();
 const open = ref<string[]>([]);
 
+const emits = defineEmits<{
+	openProject: [string];
+	openFolder: [string];
+}>();
+
 function toggleSection(id: string) {
 	if (open.value.includes(id)) {
 		open.value.splice(open.value.indexOf(id), 1);
 	} else {
 		open.value.push(id);
 	}
+
+	emits('openProject', id);
 }
 
 const link = computed(() => {
@@ -53,7 +60,12 @@ const link = computed(() => {
 					>No workflows or folders</N8nText
 				>
 				<TreeRoot v-else :items="props.items" :get-key="(item: TreeItemType) => item.id">
-					<SidebarTree :project-id="props.id" :tree-items="props.items" :level="0" />
+					<SidebarTree
+						@open-folder="emits('openFolder', $event)"
+						:project-id="props.id"
+						:tree-items="props.items"
+						:level="0"
+					/>
 				</TreeRoot>
 			</div>
 		</SidebarCollapseTransition>

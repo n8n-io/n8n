@@ -67,7 +67,8 @@ const basePath = ref('');
 const fullyExpanded = ref(false);
 
 // Use the sidebar data composable
-const { personalItems, sharedItems, projects } = useSidebarData();
+const { personalItems, personalProjectId, sharedItems, projects, openProject, openFolder } =
+	useSidebarData();
 
 // Use global entity creation composable
 const {
@@ -319,7 +320,7 @@ const hasMultipleVerifiedUsers = computed(
 
 <template>
 	<N8nSidebar
-		:personal="personalItems"
+		:personal="{ id: personalProjectId ?? '', items: personalItems }"
 		:user-name="usersStore.currentUser?.fullName || ''"
 		:shared="
 			(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
@@ -334,6 +335,8 @@ const hasMultipleVerifiedUsers = computed(
 		:help-menu-items="helpMenuItems"
 		:handle-select="handleSelect"
 		@logout="onLogout"
+		@openProject="openProject"
+		@openFolder="(event) => openFolder(event.id, event.projectId)"
 		@createProject="handleMenuSelect('create-project')"
 	>
 		<template #createButton>

@@ -26,8 +26,10 @@ const props = defineProps<{
 }>();
 
 defineEmits<{
-	(createProject: void): void;
-	(logout: void): void;
+	createProject: void;
+	logout: void;
+	openProject: [string];
+	openFolder: [{ id: string; projectId: string }];
 }>();
 
 const {
@@ -136,6 +138,8 @@ function getMenuItemRoute(item: IMenuItem) {
 				:items="personal.items"
 				:selectable="false"
 				:collapsible="false"
+				@open-project="$emit('openProject', $event)"
+				@open-folder="$emit('openFolder', { id: $event, projectId: personal.id })"
 			/>
 			<SidebarSection
 				v-if="shared"
