@@ -94,13 +94,14 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 
 	const openNodeCommnds = computed<NinjaKeysCommand[]>(() => {
 		return editableWorkflow.value.nodes.map((node) => {
-			const { id, name } = node;
+			const { id, name, type } = node;
 			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 			const src = getIconSource(nodeType);
 			return {
 				id,
 				title: `Open node > ${name}`,
 				parent: 'Open node',
+				keywords: `${type}`,
 				icon: src?.path
 					? `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`
 					: '',
