@@ -17,6 +17,7 @@ export type CanvasLayoutSource =
 	| 'keyboard-shortcut'
 	| 'canvas-button'
 	| 'context-menu'
+	| 'command-bar'
 	| 'import-workflow-data';
 export type CanvasLayoutTargetData = {
 	nodes: Array<GraphNode<CanvasNodeData>>;

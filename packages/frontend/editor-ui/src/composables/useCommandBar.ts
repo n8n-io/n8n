@@ -24,9 +24,14 @@ import uniqBy from 'lodash/uniqBy';
 export type NinjaKeysCommand = {
 	id: string;
 	title: string;
-	section?: string;
-	children?: string[];
+	hotkey?: string;
 	handler?: () => void;
+	mdIcon?: string;
+	icon?: string;
+	parent?: string;
+	keywords?: string;
+	children?: string[];
+	section?: string;
 };
 
 export function useCommandBar(workflowId: Ref<string | undefined>) {
@@ -93,7 +98,8 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 			const src = getIconSource(node);
 			return {
 				id: name,
-				title: `Add ${displayName} Node`,
+				title: `Add node > ${displayName}`,
+				keywords: 'Insert node',
 				icon: src?.path
 					? `<img src="${src.path}" style="width: 24px;object-fit: contain;height: 24px;" />`
 					: '',
@@ -165,12 +171,23 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 				title: 'Add node',
 				section: 'Nodes',
 				children: allAddNodeCommands.map((cmd) => cmd.id),
+				hotkey: 'tab',
+			},
+			{
+				id: 'Add sticky note',
+				title: 'Add sticky note',
+				section: 'Nodes',
+				hotkey: 'shift+s',
+				handler: () => {
+					canvasEventBus.emit('create:sticky');
+				},
 			},
 			{
 				id: 'Open node',
 				title: 'Open node',
 				children: allOpenNodeCommands.map((cmd) => cmd.id),
 				section: 'Nodes',
+				hotkey: 'enter',
 			},
 			{
 				id: 'Import template',
@@ -182,6 +199,7 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 				id: 'Test workflow',
 				title: 'Test workflow',
 				section: 'Workflow',
+				keywords: 'Execute workflow',
 				handler: () => {
 					void runEntireWorkflow('main');
 				},
@@ -190,11 +208,32 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 				id: 'Save workflow',
 				title: 'Save workflow',
 				section: 'Workflow',
+				hotkey: 'command+s',
 				handler: async () => {
 					const saved = await workflowSaving.saveCurrentWorkflow();
 					if (saved) {
 						canvasEventBus.emit('saved:workflow');
 					}
+				},
+			},
+			{
+				id: 'Select all',
+				title: 'Select all',
+				section: 'Workflow',
+				hotkey: 'command+a',
+				handler: () => {
+					canvasEventBus.emit('nodes:selectAll');
+				},
+			},
+			{
+				id: 'Tidy up workflow',
+				title: 'Tidy up workflow',
+				section: 'Workflow',
+				hotkey: 'shift+option+t',
+				handler: () => {
+					canvasEventBus.emit('tidyUp', {
+						source: 'command-bar',
+					});
 				},
 			},
 			{

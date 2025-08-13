@@ -7,14 +7,16 @@ interface Props {
 }
 const props = defineProps<Props>();
 const emit = defineEmits<{
-	(e: 'change', event: CustomEvent): void;
+	change: (event: CustomEvent) => void;
 }>();
 </script>
 
 <template>
+	<!-- eslint-disable-next-line vue/no-undef-components -->
 	<ninja-keys
 		:data="props.hotkeys"
 		:no-auto-load-md-icons="true"
+		:disable-hotkeys="true"
 		@change="(e: CustomEvent) => emit('change', e)"
 	></ninja-keys>
 </template>

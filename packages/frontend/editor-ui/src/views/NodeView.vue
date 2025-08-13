@@ -1848,6 +1848,16 @@ onBeforeRouteLeave(async (to, from, next) => {
 	});
 });
 
+// Command bar
+
+function addCommandBarEventBindings() {
+	canvasEventBus.on('create:sticky', onCreateSticky);
+}
+
+function removeCommandBarEventBindings() {
+	canvasEventBus.off('create:sticky', onCreateSticky);
+}
+
 /**
  * Lifecycle
  */
@@ -1904,6 +1914,7 @@ onMounted(async () => {
 	addBeforeUnloadEventBindings();
 	addImportEventBindings();
 	addExecutionOpenedEventBindings();
+	addCommandBarEventBindings();
 	registerCustomActions();
 
 	// Preloaded templates to show on the command bar
@@ -1930,6 +1941,7 @@ onBeforeUnmount(() => {
 	removeBeforeUnloadEventBindings();
 	removeImportEventBindings();
 	removeExecutionOpenedEventBindings();
+	removeCommandBarEventBindings();
 	unregisterCustomActions();
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushDisconnect();
