@@ -10,13 +10,14 @@ import type {
 	INodeTypes,
 } from 'n8n-workflow';
 import { jsonParse, Workflow } from 'n8n-workflow';
-import type { IExecutionResponse, TargetItem } from '@/Interface';
+import type { IExecutionResponse, IWorkflowDb, TargetItem } from '@/Interface';
 import { useSQLite } from '@/workers/expressions/database/useSQLite';
 import { createNodeTypes, resolveParameterImpl } from '@/workers/expressions/resolveParameter';
 import * as Comlink from 'comlink';
 import type { DbId } from '@sqlite.org/sqlite-wasm';
 import * as workflowsApi from '@/api/workflows';
 import type { IRestApiContext } from '@n8n/rest-api-client';
+import { parse } from 'flatted';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -29,15 +30,27 @@ export type ResolveParameterOptions = {
 	connections?: IConnections;
 };
 
+export type ExecutionDb = {
+	id: string;
+	workflow_id: string;
+	data: string;
+	workflow: string;
+};
+
+export type ExecutionDbParsed = {
+	id: string;
+	workflow_id: string;
+	data: IExecutionResponse['data'];
+	workflow: IWorkflowDb;
+};
+
 const state: {
 	initialized: boolean;
 	db?: Awaited<ReturnType<typeof useSQLite>>;
 	restApiContext?: IRestApiContext;
 	nodeTypes?: INodeTypes;
-	executionsById: Record<string, IExecutionResponse>;
 } = {
 	initialized: false,
-	executionsById: {},
 };
 
 const actions = {
@@ -64,36 +77,24 @@ const actions = {
 			throw new Error('Worker not initialized.');
 		}
 
+		const queryResult = await actions.executeQuery(
+			'SELECT * FROM executions WHERE id = ? LIMIT 1',
+			[executionId],
+		);
+
+		console.log('Query result for execution', queryResult);
+
 		let existingExecution;
-		if (state.executionsById[executionId]) {
-			existingExecution = state.executionsById[executionId];
-			console.log('Execution found in state', existingExecution);
-		} else {
-			const queryResult = await actions.executeQuery(
-				'SELECT * FROM executions WHERE id = ? LIMIT 1',
-				[executionId],
-			);
+		if (queryResult.result.resultRows && queryResult.result.resultRows.length > 0) {
+			const row = queryResult.result.resultRows[0] as unknown as ExecutionDb;
+			const rowParsed = {} as ExecutionDbParsed;
 
-			if (queryResult.result.resultRows.length > 0) {
-				const row = queryResult.result.resultRows[0];
+			rowParsed.data = parse(jsonParse(row.data)) as IExecutionResponse['data'];
+			rowParsed.id = row.id;
+			rowParsed.workflow_id = row.workflow_id;
+			rowParsed.workflow = jsonParse<IWorkflowDb>(row.workflow);
 
-				console.log(row);
-			}
-
-			// const result = {
-			// 	id: row[0],
-			// 	workflowData: row[1],
-			// 	data: row[2],
-			// }
-			//
-			// return null;
-			//
-			// if (result.length === 0) {
-			// 	return null;
-			// }
-			//
-			// existingExecution = result[0] as IExecutionResponse;
-			// state.executionsById[executionId] = existingExecution;
+			existingExecution = rowParsed as unknown as IExecutionResponse;
 		}
 
 		if (existingExecution) {
@@ -113,12 +114,11 @@ const actions = {
 			[
 				execution.id,
 				execution.workflowData.id,
-				JSON.stringify(execution.data),
+				execution.data,
 				JSON.stringify(execution.workflowData),
 			],
 		);
 
-		state.executionsById[executionId] = execution;
 		return execution;
 	},
 	async executeQuery(sql: string, params: unknown[] = []) {
@@ -133,6 +133,8 @@ const actions = {
 				sql,
 				bind: params,
 				returnValue: 'resultRows',
+				// @ts-expect-error
+				rowMode: 'object',
 			});
 
 			if (result.type === 'error') {

@@ -2,7 +2,20 @@ import type { IExecutionResponse, INodeUi } from '@/Interface';
 import { HTTP_REQUEST_NODE_TYPE, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 import { getSourceItems } from '@/utils/pairedItemUtils';
 import get from 'lodash/get';
-import { ResolveParameterOptions } from '@/workers/expressions/worker';
+import type { ResolveParameterOptions } from '@/workers/expressions/worker';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type {
+	IRunExecutionData,
+	IConnections,
+	IDataObject,
+	IPinData,
+	INodeParameters,
+	NodeParameterValue,
+	Workflow,
+	IWorkflowDataProxyAdditionalKeys,
+} from 'n8n-workflow';
+import { executeDataImpl } from '@/workers/expressions/resolveParameter/executeData';
+import { connectionInputData } from '@/workers/expressions/resolveParameter/connectionInputData';
 
 export function resolveParameterImpl<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],

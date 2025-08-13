@@ -131,7 +131,6 @@ export function resolveParameter<T = IDataObject>(
 	const ndvStore = useNDVStore();
 
 	setTimeout(async () => {
-		console.log('here');
 		const result = await resolveParameterAsync(parameter, {
 			executionId: workflowsStore.workflowExecutionData?.id,
 			workflowId: workflowsStore.workflowId,
