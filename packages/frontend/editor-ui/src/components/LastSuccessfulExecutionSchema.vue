@@ -5,6 +5,8 @@ import { useI18n } from '@n8n/i18n';
 import VirtualSchema from './VirtualSchema.vue';
 import type { NodePanelType } from '@/Interface';
 import type { IConnectedNode, INode, NodeConnectionType } from 'n8n-workflow';
+import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
+import { computed } from 'vue';
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
@@ -16,6 +18,14 @@ interface Props {
 	paneType: NodePanelType;
 	compact?: boolean;
 }
+
+const lastExecutionTime = computed(() => {
+	const execution = workflowsStore.lastSuccessfulExecution;
+	if (!execution?.stoppedAt) {
+		return { time: '', date: '' };
+	}
+	return convertToDisplayDate(execution.stoppedAt);
+});
 
 withDefaults(defineProps<Props>(), {
 	node: null,
@@ -31,7 +41,8 @@ withDefaults(defineProps<Props>(), {
 			:description="
 				i18n.baseText('lastSuccessfulExecutionSchema.lastExecuted', {
 					interpolate: {
-						lastExecutedTimestamp: JSON.stringify(workflowsStore.lastSuccessfulExecution.stoppedAt), // todo format this
+						time: lastExecutionTime.time,
+						date: lastExecutionTime.date,
 					},
 				})
 			"

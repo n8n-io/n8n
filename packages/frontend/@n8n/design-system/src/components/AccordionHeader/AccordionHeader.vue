@@ -28,8 +28,6 @@ withDefaults(defineProps<InfoAccordionProps>(), {
 	initiallyExpanded: false,
 	eventBus: () => createEventBus(),
 });
-// const emit = defineEmits<{
-// }>();
 
 const expanded = ref(false);
 
@@ -47,7 +45,7 @@ const toggle = () => {
 				}}</N8nText>
 				<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" bold />
 			</div>
-			<div>
+			<div v-if="expanded">
 				<N8nText color="text-base" size="small" align="left">
 					{{ description }}
 				</N8nText>
