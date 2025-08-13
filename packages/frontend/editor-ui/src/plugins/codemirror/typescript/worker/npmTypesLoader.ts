@@ -3,6 +3,7 @@ type NPMTreeMeta = {
 	files: Array<{ name: string }>;
 	moduleName: string;
 	version: string;
+	useTypes: boolean;
 };
 
 const jsDelivrApi = {
@@ -23,6 +24,7 @@ function isRequiredTypePackageFile(fileName: string) {
 }
 
 function toLocalFilePath(packageName: string, fileName: string) {
+	// TODO: check if the package is a types package
 	return `/node_modules/@types/${packageName}${fileName}`;
 }
 
@@ -31,13 +33,13 @@ export const loadTypes = async (
 	version: string,
 	onFileReceived: (path: string, content: string) => void,
 ): Promise<void> => {
-	const { files } = await loadTypesFileTree(packageName, version);
+	const { files, useTypes } = await loadTypesFileTree(packageName, version);
 	await Promise.all(
 		files
 			.filter((file) => isRequiredTypePackageFile(file.name))
 			.map(
 				async (file) =>
-					await loadFileContent(packageName, file.name, version).then((content) =>
+					await loadFileContent(packageName, file.name, version, useTypes).then((content) =>
 						onFileReceived(toLocalFilePath(packageName, file.name), content),
 					),
 			),
@@ -48,13 +50,23 @@ export const loadTypesFileTree = async (
 	packageName: string,
 	version: string,
 ): Promise<NPMTreeMeta> => {
-	return await jsDelivrApi.getFileTree(`@types/${packageName}`, version);
+	const response = await jsDelivrApi.getFileTree(`@types/${packageName}`, version);
+	if ('status' in response && response.status === 404) {
+		return { ...(await jsDelivrApi.getFileTree(`${packageName}`, version)), useTypes: false };
+	}
+
+	return { ...response, useTypes: true };
 };
 
 export const loadFileContent = async (
 	packageName: string,
 	fileName: string,
 	version = 'latest',
+	useTypes = true,
 ) => {
-	return await jsDelivrApi.getFileContent(`@types/${packageName}`, fileName, version);
+	return await jsDelivrApi.getFileContent(
+		useTypes ? `@types/${packageName}` : packageName,
+		fileName,
+		version,
+	);
 };

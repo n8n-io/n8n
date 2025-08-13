@@ -29,6 +29,7 @@ export function useTypescript(
 	mode: MaybeRefOrGetter<CodeExecutionMode>,
 	id: MaybeRefOrGetter<string>,
 	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext | undefined>,
+	dependencies?: MaybeRefOrGetter<Record<string, string>>,
 ) {
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
 	const ndvStore = useNDVStore();
@@ -57,6 +58,7 @@ export function useTypescript(
 						)
 					: [],
 				mode: toValue(mode),
+				dependencies: toValue(dependencies) ?? {},
 			},
 			Comlink.proxy(async (nodeName) => {
 				const node = workflowsStore.getNodeByName(nodeName);

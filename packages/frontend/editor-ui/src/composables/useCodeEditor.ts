@@ -58,7 +58,7 @@ import type { TargetNodeParameterContext } from '@/Interface';
 export type CodeEditorLanguageParamsMap = {
 	json: {};
 	html: {};
-	javaScript: { mode: CodeExecutionMode };
+	javaScript: { mode: CodeExecutionMode; dependencies: Record<string, string> };
 	python: { mode: CodeExecutionMode };
 };
 
@@ -109,11 +109,16 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 		const params = toValue(languageParams);
 		return params && 'mode' in params ? params.mode : 'runOnceForAllItems';
 	});
+	const dependencies = computed(() => {
+		const params = toValue(languageParams);
+		return params && 'dependencies' in params ? params.dependencies : {};
+	});
 	const { createWorker: createTsWorker } = useTypescript(
 		editor,
 		mode,
 		id,
 		targetNodeParameterContext,
+		dependencies,
 	);
 
 	function getInitialLanguageExtensions(lang: CodeEditorLanguage): Extension[] {

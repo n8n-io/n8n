@@ -33,6 +33,10 @@ import { useStyles } from '@/composables/useStyles';
 import { useExecutionData } from '@/composables/useExecutionData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
+type DependencyCollectionValue = {
+	dependency?: Array<{ package: { value: string; mode: string }; version: string }>;
+};
+
 defineOptions({ name: 'FocusPanel' });
 
 const props = defineProps<{
@@ -136,6 +140,15 @@ function getTypeOption<T>(optionName: string): T | undefined {
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
 	return resolvedParameter.value?.node.parameters.mode as CodeExecutionMode;
+});
+
+const dependencies = computed<Record<string, string>>(() => {
+	return (
+		(node.value?.parameters.dependencies as DependencyCollectionValue).dependency?.reduce(
+			(acc, dep) => ({ ...acc, [dep.package.value]: dep.version }),
+			{},
+		) ?? ({} as Record<string, string>)
+	);
 });
 
 const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor' | undefined>(() => {
@@ -450,6 +463,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 									:target-node-parameter-context="targetNodeParameterContext"
 									fill-parent
 									:disable-ask-ai="true"
+									:dependencies="dependencies"
 									@update:model-value="onInputChange" />
 								<HtmlEditor
 									v-else-if="editorType === 'htmlEditor'"

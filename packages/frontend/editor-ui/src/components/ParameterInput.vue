@@ -109,6 +109,10 @@ type Props = {
 	canBeOverridden?: boolean;
 };
 
+type DependencyCollectionValue = {
+	dependency?: Array<{ package: { value: string; mode: string }; version: string }>;
+};
+
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	hint: undefined,
@@ -267,6 +271,15 @@ const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
 	return node.value?.parameters.mode as CodeExecutionMode;
+});
+
+const dependencies = computed<Record<string, string>>(() => {
+	return (
+		(node.value?.parameters.dependencies as DependencyCollectionValue).dependency?.reduce(
+			(acc, dep) => ({ ...acc, [dep.package.value]: dep.version }),
+			{},
+		) ?? ({} as Record<string, string>)
+	);
 });
 
 const displayValue = computed(() => {
@@ -1318,6 +1331,7 @@ onClickOutside(wrapper, onBlur);
 							:default-value="parameter.default"
 							:language="editorLanguage"
 							:is-read-only="isReadOnly"
+							:dependencies="dependencies"
 							fill-parent
 							@update:model-value="valueChangedDebounced"
 						/>
@@ -1390,6 +1404,7 @@ onClickOutside(wrapper, onBlur);
 					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
 					:ai-button-enabled="settingsStore.isCloudDeployment"
+					:dependencies="dependencies"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
@@ -1532,6 +1547,7 @@ onClickOutside(wrapper, onBlur);
 						:language="editorLanguage"
 						:is-read-only="true"
 						:rows="editorRows"
+						:dependencies="dependencies"
 					/>
 				</div>
 

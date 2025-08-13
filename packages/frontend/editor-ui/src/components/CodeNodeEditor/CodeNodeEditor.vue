@@ -32,6 +32,7 @@ type Props = {
 	id?: string;
 	targetNodeParameterContext?: TargetNodeParameterContext;
 	disableAskAi?: boolean;
+	dependencies?: Record<string, string>;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -43,6 +44,7 @@ const props = withDefaults(defineProps<Props>(), {
 	id: () => crypto.randomUUID(),
 	targetNodeParameterContext: undefined,
 	disableAskAi: false,
+	dependencies: () => ({}),
 });
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
@@ -75,7 +77,7 @@ const { highlightLine, readEditorValue, editor, focus } = useCodeEditor({
 	id: props.id,
 	editorRef: codeNodeEditorRef,
 	language: () => props.language,
-	languageParams: () => ({ mode: props.mode }),
+	languageParams: () => ({ mode: props.mode, dependencies: props.dependencies }),
 	editorValue: () => props.modelValue,
 	placeholder,
 	extensions,

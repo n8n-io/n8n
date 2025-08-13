@@ -37,6 +37,7 @@ export const worker: LanguageServiceWorkerInit = {
 		const codeFileName = `${options.id}.js`;
 		const mode = ref<CodeExecutionMode>(options.mode);
 		const busyApplyingChangesToCode = ref(false);
+		const dependencies = options.dependencies;
 
 		const cache = await indexedDbCache('typescript-cache', 'fs-map');
 		const env = await setupTypescriptEnv({
@@ -88,6 +89,25 @@ export const worker: LanguageServiceWorkerInit = {
 			}
 		}
 
+		async function loadDependencyTypes() {
+			for (const [packageName, version] of Object.entries(dependencies)) {
+				if (cache.getItem(`/node_modules/@types/${packageName}/package.json`)) {
+					console.log('cache hit for', packageName, version);
+					const fileMap = await cache.getAllWithPrefix(`/node_modules/@types/${packageName}`);
+
+					for (const [path, content] of Object.entries(fileMap)) {
+						updateFile(path, content);
+					}
+				} else {
+					await loadTypes(packageName, version, (path, types) => {
+						console.log('cache miss for', packageName, version, path);
+						cache.setItem(path, types);
+						updateFile(path, types);
+					});
+				}
+			}
+		}
+
 		async function loadLuxonTypes() {
 			if (cache.getItem('/node_modules/@types/luxon/package.json')) {
 				const fileMap = await cache.getAllWithPrefix('/node_modules/@types/luxon');
@@ -123,7 +143,12 @@ export const worker: LanguageServiceWorkerInit = {
 			async (nodeName) => await loadNodeTypes(nodeName),
 		);
 		await Promise.all(
-			loadInputNodes.concat(loadTypesIfNeeded(), loadLuxonTypes(), setVariableTypes()),
+			loadInputNodes.concat(
+				loadTypesIfNeeded(),
+				loadLuxonTypes(),
+				setVariableTypes(),
+				loadDependencyTypes(),
+			),
 		);
 
 		watch(

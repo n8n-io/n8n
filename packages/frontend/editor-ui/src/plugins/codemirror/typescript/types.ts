@@ -20,6 +20,7 @@ export type WorkerInitOptions = {
 	inputNodeNames: string[];
 	variables: string[];
 	mode: CodeExecutionMode;
+	dependencies: Record<string, string>;
 };
 
 export type NodeData = { json: Schema | undefined; binary: string[]; params: Schema };
