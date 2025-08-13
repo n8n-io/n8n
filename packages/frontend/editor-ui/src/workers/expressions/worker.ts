@@ -166,9 +166,11 @@ const actions = {
 	},
 	async resolveLocalParameter<T = IDataObject>(
 		parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-		options: Omit<ExpressionLocalResolveContext, 'connections' | 'envVars'> & {
+		options: Omit<ExpressionLocalResolveContext, 'executionId' | 'connections' | 'envVars'> & {
+			executionId?: string;
 			workflowId: string;
 			nodes: string;
+			pinData: string;
 			connections: string;
 			envVars: string;
 		},
@@ -179,6 +181,12 @@ const actions = {
 
 		const { nodeTypes } = state;
 
+		const executionId = options.executionId ?? null;
+		let execution = null;
+		if (executionId) {
+			execution = await actions.fetchExecution(executionId);
+		}
+
 		const nodes = options.nodes ? jsonParse<INode[]>(options.nodes) : [];
 		const connections = options.connections ? jsonParse<IConnections>(options.connections) : {};
 		const workflowObject = new Workflow({
@@ -188,7 +196,7 @@ const actions = {
 			active: false,
 			nodeTypes,
 		});
-
+		const pinData = options.pinData ? jsonParse<IPinData>(options.pinData) : {};
 		const envVars = options.envVars
 			? jsonParse<Record<string, string | number | boolean>>(options.envVars)
 			: {};
@@ -198,10 +206,10 @@ const actions = {
 			workflowObject,
 			connections,
 			envVars,
-			options.workflow.getNode(options.nodeName),
-			options.execution,
+			workflowObject.getNode(options.nodeName),
+			execution,
 			true,
-			options.workflow.pinData,
+			pinData,
 			{
 				inputNodeName: options.inputNode?.name,
 				inputRunIndex: options.inputNode?.runIndex,
@@ -212,7 +220,7 @@ const actions = {
 	},
 	async resolveParameter<T = IDataObject>(
 		parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-		options: ResolveParameterOptions & {
+		options: Omit<ResolveParameterOptions, 'connections' | 'additionalKeys'> & {
 			executionId?: string;
 			workflowId: string;
 			nodes: string;
@@ -238,8 +246,8 @@ const actions = {
 		const workflowId = options.workflowId;
 		const nodeName = options.nodeName ?? null;
 		const nodes = options.nodes ? jsonParse<INode[]>(options.nodes) : [];
-		const node = nodes.find((n) => n.name === nodeName) ?? null;
 		const connections = options.connections ? jsonParse<IConnections>(options.connections) : {};
+		const node = nodes.find((n) => n.name === nodeName) ?? null;
 		const envVars = options.envVars
 			? jsonParse<Record<string, string | boolean | number>>(options.envVars)
 			: {};

@@ -1,5 +1,6 @@
 import {
 	HTTP_REQUEST_NODE_TYPE,
+	IN_PROGRESS_EXECUTION_ID,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/constants';
@@ -98,22 +99,34 @@ export async function resolveParameterAsync<T = IDataObject>(
 	const workflowsStore = useWorkflowsStore();
 	const environmentsStore = useEnvironmentsStore();
 	const ndvStore = useNDVStore();
+
 	try {
 		if ('localResolve' in options && options.localResolve) {
-			return await expressionsWorker.resolveLocalParameter(parameter, {
-				...options,
+			const { workflow, execution, ...remainingOptions } = options;
+
+			const executionId = execution?.id === IN_PROGRESS_EXECUTION_ID ? undefined : execution?.id;
+
+			return (await expressionsWorker.resolveLocalParameter(parameter, {
+				...remainingOptions,
+				executionId,
 				workflowId: workflowsStore.workflowId,
 				nodes: JSON.stringify(workflowsStore.workflow.nodes),
 				connections: JSON.stringify(workflowsStore.connectionsBySourceNode),
 				envVars: JSON.stringify(environmentsStore.variablesAsObject),
-			});
+				pinData: JSON.stringify(workflowsStore.pinnedWorkflowData),
+			})) as T | null;
 		}
+
+		const executionId =
+			workflowsStore.workflowExecutionData?.id === IN_PROGRESS_EXECUTION_ID
+				? undefined
+				: workflowsStore.workflowExecutionData?.id;
 
 		return (await expressionsWorker.resolveParameter(parameter, {
 			...options,
-			executionId: workflowsStore.workflowExecutionData?.id,
+			executionId,
 			workflowId: workflowsStore.workflowId,
-			nodeName: 'nodeName' in options ? options.nodeName : ndvStore.activeNode?.name,
+			nodeName: 'nodeName' in options ? options.nodeName : (ndvStore.activeNode?.name ?? ''),
 			nodes: JSON.stringify(workflowsStore.workflow.nodes),
 			connections: JSON.stringify(workflowsStore.connectionsBySourceNode),
 			envVars: JSON.stringify(environmentsStore.variablesAsObject),
