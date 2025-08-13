@@ -48,53 +48,51 @@ function toggleSection(id: string, callback: () => void) {
 </script>
 
 <template>
-	<li v-for="item in treeItems" :key="item.id">
-		<TreeItem
-			as-child
-			:key="item.id"
-			v-slot="{ isExpanded, handleToggle }"
-			@toggle="preventDefault"
-			@select="preventDefault"
-			@click="preventDefault"
-			class="item"
-			:level="props.level"
-			:value="item"
-		>
-			<SidebarItem
-				:title="item.label"
-				:id="item.id"
-				:icon="itemIcon(item.type, isExpanded)"
-				:click="
-					() => {
-						toggleSection(item.id, handleToggle);
-					}
-				"
-				:open="isExpanded"
-				:link="itemLink(item)"
-				:ariaLabel="`Open ${item.label}`"
-				:type="item.type"
-			/>
-			<SidebarCollapseTransition>
-				<ul class="children" v-if="isExpanded && item.type !== 'workflow'">
-					<N8nText
-						v-if="!item.children?.length"
-						class="childrenEmpty"
-						size="small"
-						color="text-light"
-					>
-						No workflows or folders
-					</N8nText>
-					<SidebarTree
-						v-else
-						:project-id="projectId"
-						:tree-items="item.children"
-						:level="level + 1"
-						@open-folder="emits('openFolder', $event)"
-					/>
-				</ul>
-			</SidebarCollapseTransition>
-		</TreeItem>
-	</li>
+	<TransitionGroup name="fade-in">
+		<li v-for="item in treeItems" :key="item.id">
+			<TreeItem
+				as-child
+				:key="item.id"
+				v-slot="{ isExpanded, handleToggle }"
+				@toggle="preventDefault"
+				@select="preventDefault"
+				@click="preventDefault"
+				class="item"
+				:level="props.level"
+				:value="item"
+			>
+				<SidebarItem
+					:title="item.label"
+					:id="item.id"
+					:icon="itemIcon(item.type, isExpanded)"
+					:click="() => toggleSection(item.id, handleToggle)"
+					:open="isExpanded"
+					:link="itemLink(item)"
+					:ariaLabel="`Open ${item.label}`"
+					:type="item.type"
+				/>
+				<SidebarCollapseTransition>
+					<ul class="children" v-if="isExpanded && item.type !== 'workflow'">
+						<N8nText
+							v-if="!item.children?.length"
+							class="childrenEmpty"
+							size="small"
+							color="text-light"
+						>
+							No workflows or folders
+						</N8nText>
+						<SidebarTree
+							v-else
+							:project-id="projectId"
+							:tree-items="item.children"
+							:level="level + 1"
+							@open-folder="emits('openFolder', $event)"
+						/>
+					</ul>
+				</SidebarCollapseTransition>
+			</TreeItem>
+		</li>
+	</TransitionGroup>
 </template>
 
 <style lang="scss" scoped>
