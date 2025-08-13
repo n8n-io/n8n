@@ -1,12 +1,11 @@
-import { DataSource as Connection } from '@n8n/typeorm';
-import { GlobalConfig } from '@n8n/config';
-import type { DataSourceOptions } from '@n8n/typeorm';
-
-import { randomString } from 'n8n-workflow';
-import { Container } from 'typedi';
 import { newWorkflow, newExecution } from '@n8n/backend-test-utils';
-import { AddConstraintToExecutionMetadata1720101653148 } from '@n8n/db/src/migrations/common/1720101653148-AddConstraintToExecutionMetadata';
+import { GlobalConfig } from '@n8n/config';
 import { DbConnectionOptions, wrapMigration, type Migration as MigrationType } from '@n8n/db';
+import { AddConstraintToExecutionMetadata1720101653148 } from '@n8n/db/src/migrations/common/1720101653148-AddConstraintToExecutionMetadata';
+import { Container } from '@n8n/di';
+import { DataSource as Connection } from '@n8n/typeorm';
+import type { DataSourceOptions } from '@n8n/typeorm';
+import { randomString } from 'n8n-workflow';
 
 export const testDbPrefix = 'n8n_test_';
 
@@ -18,7 +17,6 @@ export const getBootstrapDBOptions = (dbType: 'postgresdb' | 'mysqldb'): DataSou
 	const type = dbType === 'postgresdb' ? 'postgres' : 'mysql';
 	return {
 		type,
-
 		...Container.get(DbConnectionOptions).getOverrides(dbType),
 		database: type,
 		entityPrefix: globalConfig.database.tablePrefix,

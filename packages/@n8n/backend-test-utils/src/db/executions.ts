@@ -1,5 +1,6 @@
-import Container from 'typedi';
-import { ExecutionEntity, ExecutionRepository } from '@n8n/db';
+import type { ExecutionEntity } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 
 export function newExecution(attributes: Partial<ExecutionEntity> = {}): ExecutionEntity {
 	const { finished, mode, startedAt, stoppedAt, waitTill, status, deletedAt } = attributes;
