@@ -14,6 +14,12 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { getNodeIcon, getNodeIconUrl } from '@/utils/nodeIcon';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+// TODO: Getting rid of this / combining this with useCommandBar, ensuring that
+// only commands that can happen at current context are returned. Having just a single
+// CommandBar mounted to the root of the app from somewhere with context aware
+// set of commands on it would be super cool to have, but we need to be careful
+// not to provide commands / access stores that aren't available at the current context.
+
 export function useRootCommandBar(): {
 	hotkeys: ComputedRef<NinjaKeysCommand[]>;
 	onCommandBarChange: (event: CustomEvent) => void;
@@ -344,6 +350,8 @@ export function useRootCommandBar(): {
 	function onCommandBarChange(event: CustomEvent) {
 		const query = (event as unknown as { detail?: { search?: string } }).detail?.search ?? '';
 		lastQuery.value = query;
+		// TODO: These aren't awaited and there's no debouncing, I think this is why
+		// the bar sometimes shows inconsistent results
 		void fetchWorkflows(query);
 		void filterCredentials(query);
 		void filterExecutions(query);
