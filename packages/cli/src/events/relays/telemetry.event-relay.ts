@@ -24,6 +24,9 @@ import { NodeTypes } from '@/node-types';
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
+import { UrlService } from '@/services/url.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { UserService } from '@/services/user.service';
 
 @Service()
 export class TelemetryEventRelay extends EventRelay {
@@ -39,6 +42,9 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly credentialsRepository: CredentialsRepository,
+		private readonly urlService: UrlService,
+		private readonly ownershipService: OwnershipService,
+		private readonly userService: UserService,
 	) {
 		super(eventService);
 	}
@@ -662,6 +668,9 @@ export class TelemetryEventRelay extends EventRelay {
 			let nodeGraphResult: INodesGraphResult | null = null;
 
 			if (!telemetryProperties.success && runData?.data.resultData.error) {
+				// Track first production workflow failure without error handling
+				await this.trackFirstProductionFailure(workflow, runData, telemetryProperties);
+
 				if (TelemetryHelpers.userInInstanceRanOutOfFreeAiCredits(runData)) {
 					this.telemetry.track('User ran out of free AI credits');
 				}
@@ -794,6 +803,54 @@ export class TelemetryEventRelay extends EventRelay {
 		}
 
 		this.telemetry.trackWorkflowExecution(telemetryProperties);
+	}
+
+	private async trackFirstProductionFailure(
+		workflow: RelayEventMap['workflow-post-execute']['workflow'],
+		runData: RelayEventMap['workflow-post-execute']['runData'],
+		telemetryProperties: IExecutionTrackProperties,
+	): Promise<void> {
+		// Skip if manual execution, error workflow execution, or no workflow ID
+		if (telemetryProperties.is_manual || runData?.mode === 'error' || !workflow.id) {
+			return;
+		}
+
+		// Check if workflow has error handling configured
+		const hasErrorWorkflow = workflow.settings?.errorWorkflow;
+		const { errorTriggerType } = this.globalConfig.nodes;
+		const hasErrorTriggerNode = workflow.nodes?.some((node) => node.type === errorTriggerType);
+
+		// Skip if error handling is configured
+		if (hasErrorWorkflow || hasErrorTriggerNode) {
+			return;
+		}
+
+		try {
+			const instanceOwner = await this.ownershipService.getInstanceOwner();
+
+			// Skip if no instance owner or already tracked
+			if (!instanceOwner || instanceOwner.settings?.firstProdExecutionFailureDetected) {
+				return;
+			}
+
+			// Track the first production failure
+			const workflowUrl = `${this.urlService.getWebhookBaseUrl()}workflow/${workflow.id}`;
+
+			this.telemetry.track('Prod execution failed first time', {
+				instanceId: this.instanceSettings.instanceId,
+				workflowId: workflow.id,
+				workflowURL: workflowUrl,
+				workflowName: workflow.name,
+			});
+
+			// Update instance owner settings to mark that we've tracked the first failure
+			await this.userService.updateSettings(instanceOwner.id, {
+				firstProdExecutionFailureDetected: true,
+				firstFailedWorkflowId: workflow.id,
+			});
+		} catch (error) {
+			// Silently fail to ensure the main execution flow isn't affected
+		}
 	}
 
 	// #endregion

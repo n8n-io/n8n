@@ -2981,6 +2981,8 @@ export interface IUserSettings {
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
 	dismissedCallouts?: Record<string, boolean>;
+	firstProdExecutionFailureDetected?: boolean;
+	firstFailedWorkflowId?: string;
 }
 
 export interface IProcessedDataConfig {
