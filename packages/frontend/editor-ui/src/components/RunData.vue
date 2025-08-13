@@ -226,6 +226,7 @@ const outputIndex = ref(0);
 const binaryDataDisplayData = ref<IBinaryData | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(10);
+const previousExecutionDataUsedInEditMode = ref<boolean>(false);
 
 const pinDataDiscoveryTooltipVisible = ref(false);
 const isControlledPinDataTooltip = ref(false);
@@ -903,6 +904,7 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		workflowsStore.lastSuccessfulExecution,
 		node.value,
 	);
+	previousExecutionDataUsedInEditMode.value = Boolean(lastSuccessfulExecutionItems.length);
 	const mockData = lastSuccessfulExecutionItems.length
 		? executionDataToJson(lastSuccessfulExecutionItems)
 		: DUMMY_PIN_DATA;
@@ -1675,6 +1677,9 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
+				<N8nText v-if="previousExecutionDataUsedInEditMode" class="mb-2xs" size="small">{{
+					i18n.baseText('runData.pinData.insertedExecutionData')
+				}}</N8nText>
 				<div :class="[$style.editModeBody, 'ignore-key-press-canvas']">
 					<JsonEditor
 						:model-value="editMode.value"

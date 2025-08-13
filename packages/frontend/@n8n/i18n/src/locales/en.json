@@ -1853,6 +1853,7 @@
 	"resourceMapper.attemptToConvertTypes.description": "Attempt to convert types when mapping fields",
 	"lastSuccessfulExecutionSchema.viewSchemaAction": "View schema from latest execution",
 	"lastSuccessfulExecutionSchema.lastExecuted": "Last executed: {lastExecutedTimestamp}",
+	"runData.pinData.insertedExecutionData": "💡 Inserted data from last execution. You can edit as needed.",
 	"runData.openSubExecutionSingle": "View sub-execution",
 	"runData.openSubExecutionWithId": "View sub-execution {id}",
 	"runData.openParentExecution": "View parent execution {id}",
