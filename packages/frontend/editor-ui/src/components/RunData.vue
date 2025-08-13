@@ -1616,6 +1616,15 @@ defineExpose({ enterEditMode });
 			data-test-id="ndv-data-container"
 			@wheel.capture="emit('captureWheelDataContainer', $event)"
 		>
+			<LastSuccessfulExecutionSchema
+				v-if="isPaneTypeInput"
+				:nodes="nodes"
+				:node="node"
+				:pane-type="paneType"
+				:connection-type="connectionType"
+				:output-index="currentOutputIndex"
+				:compact="compact"
+			/>
 			<BinaryDataDisplay
 				v-if="binaryDataDisplayData"
 				:window-visible="binaryDataDisplayVisible"

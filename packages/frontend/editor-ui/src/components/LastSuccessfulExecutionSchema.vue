@@ -1,0 +1,50 @@
+<script setup lang="ts">
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { N8nAccordionHeader } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import VirtualSchema from './VirtualSchema.vue';
+import type { NodePanelType } from '@/Interface';
+import type { IConnectedNode, INode, NodeConnectionType } from 'n8n-workflow';
+
+const i18n = useI18n();
+const workflowsStore = useWorkflowsStore();
+
+interface Props {
+	node?: INode | null;
+	nodes?: IConnectedNode[];
+	connectionType?: NodeConnectionType;
+	paneType: NodePanelType;
+	compact?: boolean;
+}
+
+withDefaults(defineProps<Props>(), {
+	node: null,
+	nodes: () => [],
+	connectionType: undefined,
+});
+</script>
+
+<template>
+	<div v-if="workflowsStore.lastSuccessfulExecution">
+		<N8nAccordionHeader
+			:title="i18n.baseText('lastSuccessfulExecutionSchema.viewSchemaAction')"
+			:description="
+				i18n.baseText('lastSuccessfulExecutionSchema.lastExecuted', {
+					interpolate: {
+						lastExecutedTimestamp: JSON.stringify(workflowsStore.lastSuccessfulExecution.stoppedAt), // todo format this
+					},
+				})
+			"
+		>
+			<VirtualSchema
+				:pane-type="paneType"
+				:nodes="nodes"
+				:mapping-enabled="true"
+				:node="node"
+				:connection-type="connectionType"
+				:compact="compact"
+				:execution="workflowsStore.lastSuccessfulExecution"
+			/>
+		</N8nAccordionHeader>
+	</div>
+</template>

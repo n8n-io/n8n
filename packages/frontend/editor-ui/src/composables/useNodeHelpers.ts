@@ -629,8 +629,9 @@ export function useNodeHelpers() {
 		nodeName: string,
 		outputIndex = 0,
 		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
+		execution?: IRunExecutionData,
 	) {
-		const allTaskData = getAllNodeTaskData(nodeName) ?? [];
+		const allTaskData = getAllNodeTaskData(nodeName, execution) ?? [];
 
 		return allTaskData.findLastIndex(
 			(taskData) =>

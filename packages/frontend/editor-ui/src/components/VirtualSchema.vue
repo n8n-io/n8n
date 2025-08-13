@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { INodeUi } from '@/Interface';
+import type { IExecutionResponse, INodeUi } from '@/Interface';
 import Draggable from '@/components/Draggable.vue';
 import VirtualSchemaHeader from '@/components/VirtualSchemaHeader.vue';
 import VirtualSchemaItem from '@/components/VirtualSchemaItem.vue';
@@ -21,6 +21,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { N8nText } from '@n8n/design-system';
 import {
+	type IRunExecutionData,
 	createResultError,
 	type NodeConnectionType,
 	NodeConnectionTypes,
@@ -57,6 +58,7 @@ type Props = {
 	search?: string;
 	compact?: boolean;
 	outputIndex?: number;
+	execution?: IExecutionResponse;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -105,6 +107,10 @@ const toggleNodeExclusiveAndScrollTop = (id: string) => {
 };
 
 const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) => {
+	const runExecutionData: IRunExecutionData | undefined = props.execution
+		? props.execution.data
+		: undefined;
+
 	const pinData = workflowsStore.pinDataByNodeName(connectedNode.name);
 	const hasPinnedData = pinData ? pinData.length > 0 : false;
 	const isNodeExecuted = hasPinnedData || hasNodeExecuted(connectedNode.name);
@@ -113,7 +119,12 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 	const connectedOutputsWithData = connectedOutputIndexes
 		.map((outputIndex) => ({
 			outputIndex,
-			runIndex: getLastRunIndexWithData(fullNode.name, outputIndex, props.connectionType),
+			runIndex: getLastRunIndexWithData(
+				fullNode.name,
+				outputIndex,
+				props.connectionType,
+				runExecutionData,
+			),
 		}))
 		.filter(({ runIndex }) => runIndex !== -1);
 
@@ -124,9 +135,16 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 			: connectedOutputsWithData;
 
 	const nodeData = filteredOutputsWithData
-		.map(({ outputIndex, runIndex }) =>
-			getNodeInputData(fullNode, runIndex, outputIndex, props.paneType, props.connectionType),
-		)
+		.map(({ outputIndex, runIndex }) => {
+			return getNodeInputData(
+				fullNode,
+				runIndex,
+				outputIndex,
+				props.paneType,
+				props.connectionType,
+				runExecutionData,
+			);
+		})
 		.flat();
 	const hasBinary = nodeData.some((data) => !isEmpty(data.binary));
 	const data = pinData ?? executionDataToJson(nodeData);

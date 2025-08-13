@@ -2082,5 +2082,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setSelectedTriggerNodeName,
 		totalWorkflowCount,
 		fetchLastSuccessfulExecution,
+		lastSuccessfulExecution,
 	};
 });
