@@ -8,6 +8,7 @@ import { useWorkflowsStore } from './workflows.store';
 import { codeNodeEditorEventBus, ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { IUpdateInformation } from '@/Interface';
+import { computed, ref } from 'vue';
 
 export type OnPushMessageHandler = (event: PushMessage) => void;
 
@@ -15,7 +16,9 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 
-	let wsClient: ReturnType<typeof useWebSocketClient>;
+	const wsClient = ref<ReturnType<typeof useWebSocketClient> | null>(null);
+
+	const isConnected = computed(() => wsClient.value?.isConnected ?? false);
 
 	// Copied from assistant.store.ts, updates the code for the node
 	function updateCode(nodeName: string, code: string) {
@@ -46,13 +49,17 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 		console.log('Starting sync', opts);
 
 		function onMessage(rawData: string) {
+			if (!wsClient.value) {
+				return;
+			}
+
 			console.log('Received message', rawData);
 			const msg = jsonParse(rawData);
 
 			// @ts-expect-error abc
 			if (msg.type === 'vscode:sync-start') {
 				console.log('Sending message to vscode');
-				wsClient.sendMessage(
+				wsClient.value.sendMessage(
 					JSON.stringify({
 						type: 'n8n:sync-start',
 						nodeId: opts.nodeId,
@@ -73,15 +80,22 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 			}
 		}
 
-		wsClient = useWebSocketClient({
+		wsClient.value = useWebSocketClient({
 			url: 'ws://localhost:3000/',
 			onMessage,
 		});
 
-		wsClient.connect();
+		wsClient.value!.connect();
+	}
+
+	function stopSync() {
+		wsClient.value?.disconnect();
+		wsClient.value = null;
 	}
 
 	return {
 		startSync,
+		stopSync,
+		isConnected,
 	};
 });

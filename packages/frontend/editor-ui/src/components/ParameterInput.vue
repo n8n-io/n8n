@@ -35,7 +35,6 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import TextEdit from '@/components/TextEdit.vue';
-import { useVSCodeIntegration } from '@/composables/useVSCodeIntegration';
 
 import {
 	formatAsExpression,
@@ -82,6 +81,7 @@ import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/exp
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import { useVsCodeSyncStore } from '@/stores/vscodeSync.store';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -146,7 +146,7 @@ const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
-const { openWithIntegration } = useVSCodeIntegration();
+const vscodeSyncStore = useVsCodeSyncStore();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -166,6 +166,7 @@ const textEditDialogVisible = ref(false);
 const editDialogClosing = ref(false);
 const tempValue = ref('');
 const activeCredentialType = ref('');
+const isConnectingToVSCode = ref(false);
 const dateTimePickerOptions = ref({
 	shortcuts: [
 		{
@@ -208,11 +209,20 @@ const nodeType = computed(
 const onOpenInVSCode = async () => {
 	if (!node.value?.id) throw new Error('Node is missing id');
 
-	await openWithIntegration({
-		language: 'javaScript',
-		code: modelValueString.value,
-		nodeId: node.value.id,
-	});
+	isConnectingToVSCode.value = true;
+
+	try {
+		vscodeSyncStore.startSync({
+			nodeId: node.value.id,
+		});
+		// Add a small delay to show loading state
+		setTimeout(() => {
+			isConnectingToVSCode.value = false;
+		}, 500);
+	} catch (error) {
+		isConnectingToVSCode.value = false;
+		console.error('Failed to connect to VSCode:', error);
+	}
 };
 
 const shortPath = computed<string>(() => {
@@ -1399,7 +1409,7 @@ onClickOutside(wrapper, onBlur);
 						:model-value="modelValueString"
 						:default-value="parameter.default"
 						:language="editorLanguage"
-						:is-read-only="isReadOnly || editorIsReadOnly"
+						:is-read-only="isReadOnly || editorIsReadOnly || vscodeSyncStore.isConnected"
 						:rows="editorRows"
 						:ai-button-enabled="settingsStore.isCloudDeployment"
 						:vscode-enabled="true"
@@ -1420,9 +1430,42 @@ onClickOutside(wrapper, onBlur);
 							</span>
 						</template>
 					</CodeNodeEditor>
-					<n8n-button @click="onOpenInVSCode" style="margin-top: 10px; float: right">
-						Edit in VSCode
-					</n8n-button>
+
+					<!-- Enhanced VSCode Integration Section -->
+					<div :class="$style.vscodeIntegration">
+						<div v-if="isConnectingToVSCode" :class="$style.connectingStatus">
+							<div :class="$style.statusIndicator">
+								<span :class="$style.statusText">Connecting...</span>
+							</div>
+						</div>
+
+						<div v-else-if="vscodeSyncStore.isConnected" :class="$style.connectedStatus">
+							<div :class="$style.statusIndicator">
+								<N8nIcon icon="check-circle" size="small" :class="$style.connectedIcon" />
+								<span :class="$style.statusText">Connected to VSCode</span>
+							</div>
+						</div>
+
+						<n8n-button
+							v-if="!vscodeSyncStore.isConnected && !isConnectingToVSCode"
+							type="secondary"
+							size="small"
+							icon="code"
+							@click="onOpenInVSCode"
+						>
+							Edit in VSCode
+						</n8n-button>
+
+						<n8n-button
+							v-else-if="vscodeSyncStore.isConnected"
+							type="tertiary"
+							size="small"
+							icon="circle-pause"
+							@click="() => vscodeSyncStore.stopSync()"
+						>
+							Disconnect
+						</n8n-button>
+					</div>
 				</div>
 
 				<HtmlEditor
@@ -2012,6 +2055,128 @@ onClickOutside(wrapper, onBlur);
 	> button {
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
+	}
+}
+
+.vscodeIntegration {
+	margin-top: var(--spacing-xs);
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing-2xs);
+}
+
+.connectedStatus,
+.connectingStatus {
+	display: flex;
+	align-items: center;
+	margin-right: var(--spacing-xs);
+}
+
+.statusIndicator {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
+	position: relative;
+	padding: var(--spacing-3xs) var(--spacing-2xs);
+	border-radius: var(--border-radius-base);
+	font-size: var(--font-size-2xs);
+}
+
+.connectedStatus .statusIndicator {
+	background: var(--color-success-tint-2);
+	border: 1px solid var(--color-success);
+}
+
+.connectingStatus .statusIndicator {
+	background: var(--color-warning-tint-2);
+	border: 1px solid var(--color-warning);
+}
+
+.connectingStatus .statusText {
+	color: var(--color-warning-shade-1);
+}
+
+.connectedIcon {
+	color: var(--color-success);
+	animation: fadeIn 0.3s ease-in-out;
+}
+
+.connectingIcon {
+	color: var(--color-warning);
+	animation: spin 1s linear infinite;
+}
+
+.statusText {
+	color: var(--color-success-shade-1);
+	font-weight: var(--font-weight-medium);
+}
+
+.pulse {
+	position: absolute;
+	right: var(--spacing-3xs);
+	top: 50%;
+	transform: translateY(-50%);
+	width: 6px;
+	height: 6px;
+	background: var(--color-success);
+	border-radius: 50%;
+	animation: pulse 2s infinite;
+}
+
+.vscodeButton {
+	transition: all 0.2s ease-in-out;
+
+	&:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	&:active {
+		transform: translateY(0);
+	}
+}
+
+.disconnectButton {
+	--button-color: var(--color-danger);
+	--button-background-color: transparent;
+	--button-border-color: var(--color-danger);
+
+	&:hover {
+		--button-background-color: var(--color-danger-tint-2);
+		--button-border-color: var(--color-danger);
+	}
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+		transform: translateY(-50%) scale(1);
+	}
+	50% {
+		opacity: 0.5;
+		transform: translateY(-50%) scale(1.2);
+	}
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: scale(0.8);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
 	}
 }
 </style>
