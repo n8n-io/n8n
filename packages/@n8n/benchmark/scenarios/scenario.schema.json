@@ -8,6 +8,12 @@
 					"items": {
 						"type": "string"
 					}
+				},
+				"credentialFiles": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
 				}
 			},
 			"required": [],
