@@ -222,17 +222,17 @@ onKeyUp(panningKeyCode.value, switchToSelectionMode);
 
 const renameKeyCode = ' ';
 
-useShortKeyPress(
-	renameKeyCode,
-	() => {
-		if (lastSelectedNode.value && lastSelectedNode.value.id !== CanvasNodeRenderType.AIPrompt) {
-			emit('update:node:name', lastSelectedNode.value.id);
-		}
-	},
-	{
-		disabled: toRef(props, 'readOnly'),
-	},
-);
+// useShortKeyPress(
+// 	renameKeyCode,
+// 	() => {
+// 		if (lastSelectedNode.value && lastSelectedNode.value.id !== CanvasNodeRenderType.AIPrompt) {
+// 			emit('update:node:name', lastSelectedNode.value.id);
+// 		}
+// 	},
+// 	{
+// 		disabled: toRef(props, 'readOnly'),
+// 	},
+// );
 
 /**
  * Key bindings
