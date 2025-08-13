@@ -108,13 +108,23 @@ export class LmChatAzureOpenAi implements INodeType {
 				fetchOptions: {
 					dispatcher: getProxyAgent(),
 				},
-				defaultHeaders: {},
+				defaultHeaders: {} as Record<string, string>,
 			};
-			if (credentials.header) {
-				configuration.defaultHeaders = {
-					[credentials.headerName as string]: credentials.headerValue as string,
-				};
+
+			// Handle multiple custom headers
+			if (credentials.useCustomHeaders) {
+				// Check for all possible header pairs (assuming max 5 headers as per credential definition)
+				for (let i = 1; i <= 5; i++) {
+					const headerName = credentials[`header${i}Name`] as string;
+					const headerValue = credentials[`header${i}Value`] as string;
+
+					if (headerName && headerValue) {
+						configuration.defaultHeaders[headerName] = headerValue;
+						this.logger.debug(`Added custom header: ${headerName}`);
+					}
+				}
 			}
+
 			// Create and return the model
 			const model = new AzureChatOpenAI({
 				azureOpenAIApiDeploymentName: modelName,
