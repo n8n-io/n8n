@@ -266,6 +266,17 @@ const changesCount = computed(
 	() => nodeChanges.value.length + connectionsDiff.value.size + settingsDiff.value.length,
 );
 
+const isSourceWorkflowNew = computed(() => {
+	const sourceExists = !!sourceWorkFlow.value.state.value?.workflow;
+	const targetExists = !!targetWorkFlow.value.state.value?.workflow;
+
+	// Source is "new" only when it doesn't exist but target does AND
+	// we're in a context where the target is being pushed/pulled to create the source
+	// Push: remote (source) doesn't exist, local (target) does -> creating new on remote
+	// Pull: local (source) doesn't exist, remote (target) does -> creating new on local
+	return !sourceExists && targetExists;
+});
+
 onNodeClick((nodeId) => {
 	const node = nodesDiff.value.get(nodeId);
 	if (!node) {
@@ -543,13 +554,19 @@ const modifiers = [
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
 									<N8nHeading size="large">{{
-										i18n.baseText('workflowDiff.deletedWorkflow')
+										isSourceWorkflowNew
+											? i18n.baseText('workflowDiff.newWorkflow')
+											: i18n.baseText('workflowDiff.deletedWorkflow')
 									}}</N8nHeading>
-									<N8nText v-if="targetWorkFlow.state.value?.remote" color="text-base">{{
-										i18n.baseText('workflowDiff.deletedWorkflow.database')
+									<N8nText v-if="sourceWorkFlow.state.value?.remote" color="text-base">{{
+										isSourceWorkflowNew
+											? i18n.baseText('workflowDiff.newWorkflow.remote')
+											: i18n.baseText('workflowDiff.deletedWorkflow.remote')
 									}}</N8nText>
 									<N8nText v-else color="text-base">{{
-										i18n.baseText('workflowDiff.deletedWorkflow.remote')
+										isSourceWorkflowNew
+											? i18n.baseText('workflowDiff.newWorkflow.database')
+											: i18n.baseText('workflowDiff.deletedWorkflow.database')
 									}}</N8nText>
 								</div>
 							</template>
@@ -629,7 +646,6 @@ const modifiers = [
 	}
 	:global(.el-dialog__header) {
 		padding: 11px 16px;
-		border-bottom: 1px solid var(--color-foreground-base);
 	}
 	:global(.el-dialog__headerbtn) {
 		display: none;
@@ -896,6 +912,7 @@ const modifiers = [
 .workflowDiffPanel {
 	flex: 1;
 	position: relative;
+	border-top: 1px solid var(--color-foreground-base);
 }
 
 .emptyWorkflow {

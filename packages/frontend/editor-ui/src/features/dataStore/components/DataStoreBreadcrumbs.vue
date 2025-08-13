@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
-import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
+import type { DataStore } from '@/features/dataStore/datastore.types';
 import { useI18n } from '@n8n/i18n';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useRouter } from 'vue-router';
@@ -12,12 +12,12 @@ import { useToast } from '@/composables/useToast';
 const BREADCRUMBS_SEPARATOR = '›';
 
 type Props = {
-	dataStore: DataStoreEntity;
+	dataStore: DataStore;
 };
 
 const props = defineProps<Props>();
 
-const renameInput = useTemplateRef('renameInput');
+const renameInput = useTemplateRef<{ forceFocus?: () => void }>('renameInput');
 
 const dataStoreStore = useDataStoreStore();
 

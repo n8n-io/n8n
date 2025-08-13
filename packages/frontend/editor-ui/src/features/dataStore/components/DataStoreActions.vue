@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
+import type { DataStore } from '@/features/dataStore/datastore.types';
 import type { IUser, UserAction } from '@n8n/design-system';
 import { DATA_STORE_CARD_ACTIONS } from '@/features/dataStore/constants';
 import { useI18n } from '@n8n/i18n';
@@ -10,7 +10,7 @@ import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 
 type Props = {
-	dataStore: DataStoreEntity;
+	dataStore: DataStore;
 	isReadOnly?: boolean;
 };
 
@@ -21,7 +21,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	rename: [
 		value: {
-			dataStore: DataStoreEntity;
+			dataStore: DataStore;
 			action: string;
 		},
 	];

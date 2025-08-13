@@ -3407,7 +3407,10 @@
 	"workflowDiff.local": "Local",
 	"workflowDiff.remote": "Remote ({branchName})",
 	"workflowDiff.noChanges": "No changes",
-	"workflowDiff.deletedWorkflow": "Deleted workflow",
-	"workflowDiff.deletedWorkflow.database": "The workflow was deleted on the database",
-	"workflowDiff.deletedWorkflow.remote": "The workflow was deleted on remote"
+	"workflowDiff.deletedWorkflow": "Missing workflow",
+	"workflowDiff.deletedWorkflow.database": "The workflow doesn't exist in the database",
+	"workflowDiff.deletedWorkflow.remote": "The workflow doesn't exist on remote",
+	"workflowDiff.newWorkflow": "New workflow",
+	"workflowDiff.newWorkflow.database": "The workflow will be created in the database",
+	"workflowDiff.newWorkflow.remote": "The workflow will be created on remote"
 }

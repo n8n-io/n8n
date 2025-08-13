@@ -1,6 +1,5 @@
-import { PiPWindowSymbol } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
-import { applyThemeToBody } from '@/stores/ui.utils';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { PopOutWindowKey } from '@/constants';
 import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
 import {
 	computed,
@@ -14,7 +13,8 @@ import {
 	watch,
 } from 'vue';
 
-interface UsePiPWindowOptions {
+interface UsePopOutWindowOptions {
+	title: ComputedRef<string>;
 	initialWidth?: number;
 	initialHeight?: number;
 	container: Readonly<ShallowRef<HTMLElement | null>>;
@@ -23,10 +23,10 @@ interface UsePiPWindowOptions {
 	onRequestClose: () => void;
 }
 
-interface UsePiPWindowReturn {
+interface UsePopOutWindowReturn {
 	isPoppedOut: ComputedRef<boolean>;
 	canPopOut: ComputedRef<boolean>;
-	pipWindow?: Ref<Window | undefined>;
+	popOutWindow?: Ref<Window | undefined>;
 }
 
 function isStyle(node: Node): node is HTMLElement {
@@ -58,63 +58,76 @@ function syncStyleMutations(destination: Window, mutations: MutationRecord[]) {
 	}
 }
 
+function copyFavicon(source: Window, target: Window) {
+	const iconUrl = source.document.querySelector('link[rel=icon]')?.getAttribute('href');
+
+	if (iconUrl) {
+		const link = target.document.createElement('link');
+
+		link.setAttribute('rel', 'icon');
+		link.setAttribute('href', iconUrl);
+
+		target.document.head.appendChild(link);
+	}
+}
+
 /**
- * A composable that allows to pop out given content in document PiP (picture-in-picture) window
+ * A composable that allows to pop out given content in child window
  */
-export function usePiPWindow({
+export function usePopOutWindow({
+	title,
 	container,
 	content,
 	initialHeight,
 	initialWidth,
 	shouldPopOut,
 	onRequestClose,
-}: UsePiPWindowOptions): UsePiPWindowReturn {
-	const pipWindow = ref<Window>();
+}: UsePopOutWindowOptions): UsePopOutWindowReturn {
+	const popOutWindow = ref<Window>();
 	const isUnmounting = ref(false);
-	const canPopOut = computed(
-		() =>
-			!!window.documentPictureInPicture /* Browser supports the API */ &&
-			window.parent === window /* Not in iframe */,
-	);
-	const isPoppedOut = computed(() => !!pipWindow.value);
+	const canPopOut = computed(() => window.parent === window /* Not in iframe */);
+	const isPoppedOut = computed(() => !!popOutWindow.value);
 	const tooltipContainer = computed(() =>
 		isPoppedOut.value ? (content.value ?? undefined) : undefined,
 	);
-	const uiStore = useUIStore();
 	const observer = new MutationObserver((mutations) => {
-		if (pipWindow.value) {
-			syncStyleMutations(pipWindow.value, mutations);
+		if (popOutWindow.value) {
+			syncStyleMutations(popOutWindow.value, mutations);
 		}
 	});
+	const documentTitle = useDocumentTitle(popOutWindow);
 
-	// Copy over dynamic styles to PiP window to support lazily imported modules
+	// Copy over dynamic styles to child window to support lazily imported modules
 	observer.observe(document.head, { childList: true, subtree: true });
 
-	provide(PiPWindowSymbol, pipWindow);
+	provide(PopOutWindowKey, popOutWindow);
 	useProvideTooltipAppendTo(tooltipContainer);
 
-	async function showPip() {
+	async function showPopOut() {
 		if (!content.value) {
 			return;
 		}
 
-		pipWindow.value =
-			pipWindow.value ??
-			(await window.documentPictureInPicture?.requestWindow({
-				width: initialWidth,
-				height: initialHeight,
-				disallowReturnToOpener: true,
-			}));
+		if (!popOutWindow.value) {
+			// Chrome ignores these options but effective in Firefox
+			const options = `popup=yes,width=${initialWidth},height=${initialHeight},left=100,top=100,toolbar=no,menubar=no,scrollbars=yes,resizable=yes`;
 
-		// Copy style sheets over from the initial document
-		// so that the content looks the same.
-		[...document.styleSheets].forEach((styleSheet) => {
+			popOutWindow.value = window.open('', '_blank', options) ?? undefined;
+		}
+
+		if (!popOutWindow.value) {
+			return;
+		}
+
+		copyFavicon(window, popOutWindow.value);
+
+		for (const styleSheet of [...document.styleSheets]) {
 			try {
 				const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join('');
 				const style = document.createElement('style');
 
 				style.textContent = cssRules;
-				pipWindow.value?.document.head.appendChild(style);
+				popOutWindow.value.document.head.appendChild(style);
 			} catch (e) {
 				const link = document.createElement('link');
 
@@ -122,18 +135,18 @@ export function usePiPWindow({
 				link.type = styleSheet.type;
 				link.media = styleSheet.media as unknown as string;
 				link.href = styleSheet.href as string;
-				pipWindow.value?.document.head.appendChild(link);
+				popOutWindow.value.document.head.appendChild(link);
 			}
-		});
+		}
 
-		// Move the content to the Picture-in-Picture window.
-		pipWindow.value?.document.body.append(content.value);
-		pipWindow.value?.addEventListener('pagehide', () => !isUnmounting.value && onRequestClose());
+		// Move the content to child window.
+		popOutWindow.value.document.body.append(content.value);
+		popOutWindow.value.addEventListener('pagehide', () => !isUnmounting.value && onRequestClose());
 	}
 
-	function hidePiP() {
-		pipWindow.value?.close();
-		pipWindow.value = undefined;
+	function hidePopOut() {
+		popOutWindow.value?.close();
+		popOutWindow.value = undefined;
 
 		if (content.value) {
 			container.value?.appendChild(content.value);
@@ -141,17 +154,15 @@ export function usePiPWindow({
 	}
 
 	// `requestAnimationFrame()` to make sure the content is already rendered
-	watch(shouldPopOut, (value) => (value ? requestAnimationFrame(showPip) : hidePiP()), {
+	watch(shouldPopOut, (value) => (value ? requestAnimationFrame(showPopOut) : hidePopOut()), {
 		immediate: true,
 	});
 
-	// It seems "prefers-color-scheme: dark" media query matches in PiP window by default
-	// So we're enforcing currently applied theme in the main window by setting data-theme in PiP's body element
 	watch(
-		[() => uiStore.appliedTheme, pipWindow],
-		([theme, pip]) => {
-			if (pip) {
-				applyThemeToBody(theme, pip);
+		[title, popOutWindow],
+		([newTitle, win]) => {
+			if (win) {
+				documentTitle.set(newTitle);
 			}
 		},
 		{ immediate: true },
@@ -163,8 +174,11 @@ export function usePiPWindow({
 
 	onBeforeUnmount(() => {
 		isUnmounting.value = true;
-		pipWindow.value?.close();
+		if (popOutWindow.value) {
+			popOutWindow.value.close();
+			onRequestClose();
+		}
 	});
 
-	return { canPopOut, isPoppedOut, pipWindow };
+	return { canPopOut, isPoppedOut, popOutWindow };
 }
