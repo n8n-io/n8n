@@ -1,19 +1,23 @@
 import { computed, type Ref } from 'vue';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
-import { useTemplatesStore } from '@/stores/templates.store';
-import { DUPLICATE_MODAL_KEY, EXECUTE_WORKFLOW_NODE_TYPE, VIEWS } from '@/constants';
 import { isResourceLocatorValue } from 'n8n-workflow';
 import { useRouter } from 'vue-router';
-import type { IWorkflowToShare, SimplifiedNodeType } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { getNodeIcon, getNodeIconUrl } from '@/utils/nodeIcon';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowHelpers } from './useWorkflowHelpers';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import { useTagsStore } from '@/stores/tags.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useActionsGenerator } from '@/components/Node/NodeCreator/composables/useActionsGeneration';
+import { canvasEventBus } from '@/event-bus/canvas';
+import { DUPLICATE_MODAL_KEY, EXECUTE_WORKFLOW_NODE_TYPE, VIEWS } from '@/constants';
+import type { IWorkflowToShare, SimplifiedNodeType } from '@/Interface';
+import { getNodeIcon, getNodeIconUrl } from '@/utils/nodeIcon';
+
 import { saveAs } from 'file-saver';
 import uniqBy from 'lodash/uniqBy';
 
@@ -36,7 +40,30 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 	const tagsStore = useTagsStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const telemetry = useTelemetry();
+	const workflowSaving = useWorkflowSaving({ router });
+	const { runEntireWorkflow } = useRunWorkflow({ router });
 	const { generateMergedNodesAndActions } = useActionsGenerator();
+
+	function getIconSource(nodeType: SimplifiedNodeType | null) {
+		if (!nodeType) return {};
+		const baseUrl = rootStore.baseUrl;
+		const iconUrl = getNodeIconUrl(nodeType);
+		if (iconUrl) {
+			return { path: baseUrl + iconUrl };
+		}
+		// Otherwise, extract it from icon prop
+		if (nodeType.icon) {
+			const icon = getNodeIcon(nodeType);
+			if (icon) {
+				const [type, path] = icon.split(':');
+				if (type === 'file') {
+					throw new Error(`Unexpected icon: ${icon}`);
+				}
+				return { icon: path };
+			}
+		}
+		return {};
+	}
 
 	const getAllNodesCommands = computed<NinjaKeysCommand[]>(() => {
 		return editableWorkflow.value.nodes.map((node) => {
@@ -128,27 +155,6 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 		];
 	});
 
-	function getIconSource(nodeType: SimplifiedNodeType | null) {
-		if (!nodeType) return {};
-		const baseUrl = rootStore.baseUrl;
-		const iconUrl = getNodeIconUrl(nodeType);
-		if (iconUrl) {
-			return { path: baseUrl + iconUrl };
-		}
-		// Otherwise, extract it from icon prop
-		if (nodeType.icon) {
-			const icon = getNodeIcon(nodeType);
-			if (icon) {
-				const [type, path] = icon.split(':');
-				if (type === 'file') {
-					throw new Error(`Unexpected icon: ${icon}`);
-				}
-				return { icon: path };
-			}
-		}
-		return {};
-	}
-
 	const hotkeys = computed<NinjaKeysCommand[]>(() => {
 		const allOpenNodeCommands = getAllNodesCommands.value;
 		const allAddNodeCommands = addNodeCommand.value;
@@ -177,17 +183,18 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 				title: 'Test workflow',
 				section: 'Workflow',
 				handler: () => {
-					// TODO
-					// void onRunWorkflow();
+					void runEntireWorkflow('main');
 				},
 			},
 			{
 				id: 'Save workflow',
 				title: 'Save workflow',
 				section: 'Workflow',
-				handler: () => {
-					// TODO: This is defined on NodeView.vue
-					// void onSaveWorkflow();
+				handler: async () => {
+					const saved = await workflowSaving.saveCurrentWorkflow();
+					if (saved) {
+						canvasEventBus.emit('saved:workflow');
+					}
 				},
 			},
 			{
