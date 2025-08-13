@@ -604,13 +604,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function searchWorkflows({
 		projectId,
 		name,
+		nodeTypes,
 	}: {
 		projectId?: string;
 		name?: string;
+		nodeTypes?: string[];
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
 			name,
+			nodeTypes,
 		};
 
 		const { data: workflows } = await workflowsApi.getWorkflows(
