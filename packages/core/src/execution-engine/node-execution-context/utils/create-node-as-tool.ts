@@ -124,10 +124,73 @@ export class NodeToolkit extends Toolkit {
 }
 
 /**
+ * Creates multiple tools from a node configured for toolkit mode
+ */
+function createNodeAsToolkit(options: CreateNodeAsToolOptions): NodeToolkit {
+	const { node, nodeType } = options;
+
+	// Get resource and operations from node parameters
+	const resource = node.parameters.resource as string;
+	const operations = Array.isArray(node.parameters.operation)
+		? node.parameters.operation as string[]
+		: [node.parameters.operation as string];
+
+	// Generate tools for each resource/operation combination
+	const tools: DynamicStructuredTool[] = [];
+	
+	for (const operation of operations) {
+		// Create a modified node with specific operation
+		const toolNode: INode = {
+			...node,
+			parameters: {
+				...node.parameters,
+				resource,
+				operation,
+			},
+		};
+
+		// Generate tool name: nodeName_resource_operation
+		const baseName = nodeNameToToolName(node) || nodeType.description.name;
+		const toolName = `${baseName}_${resource}_${operation}`;
+
+		try {
+			const schema = getSchema(toolNode);
+			const description = `${nodeType.description.displayName}: ${operation} ${resource}`;
+
+			const tool = new DynamicStructuredTool({
+				name: toolName,
+				description,
+				schema,
+				func: async (toolArgs: z.infer<typeof schema>) => await options.handleToolInvocation({
+					...toolArgs,
+					resource,
+					operation,
+				}),
+			});
+
+			tools.push(tool);
+		} catch (error) {
+			// Skip invalid tool combinations
+			continue;
+		}
+	}
+
+	return new NodeToolkit(tools, nodeType, node);
+}
+
+/**
  * Converts node into LangChain tool by analyzing node parameters,
  * identifying placeholders using the $fromAI function, and generating a Zod schema. It then creates
  * a DynamicStructuredTool that can be used in LangChain workflows.
  */
 export function createNodeAsTool(options: CreateNodeAsToolOptions) {
+	const { nodeType } = options;
+	
+	// Check if node should be converted to a toolkit
+	if (nodeType.description.usableAsTool === 'toolkit') {
+		return { response: createNodeAsToolkit(options) };
+	}
+
+	// Default single tool behavior
 	return { response: createTool(options) };
 }
