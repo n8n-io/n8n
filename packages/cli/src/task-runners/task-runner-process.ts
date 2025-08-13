@@ -115,7 +115,7 @@ export class TaskRunnerProcess extends TypedEmitter<TaskRunnerProcessEventMap> {
 
 		const flags =
 			this.mode === 'secure'
-				? ['--disallow-code-generation-from-strings', '--disable-proto=delete']
+				? ['--disallow-code-generation-from-strings', '--disable-proto=delete', '--inspect=9999']
 				: [];
 
 		return spawn('node', [...flags, startScript], {

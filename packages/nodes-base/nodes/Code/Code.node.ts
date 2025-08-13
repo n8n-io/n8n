@@ -16,11 +16,17 @@ import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescript
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
+import { getNpmPackages } from './methods/listSearch';
+import { getNpmPackageVersions } from './methods/loadOptions';
 import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { addPostExecutionWarning, standardizeOutput } from './utils';
 
 const { CODE_ENABLE_STDOUT } = process.env;
+
+type DependencyCollectionValue = {
+	dependency?: Array<{ package: { value: string; mode: string }; version: string }>;
+};
 
 class PythonDisabledError extends UserError {
 	constructor() {
@@ -104,6 +110,15 @@ export class Code implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			getNpmPackageVersions,
+		},
+		listSearch: {
+			getNpmPackages,
+		},
+	};
+
 	async execute(this: IExecuteFunctions) {
 		const node = this.getNode();
 		const language: CodeNodeEditorLanguage =
@@ -123,7 +138,22 @@ export class Code implements INodeType {
 
 		if (runnersConfig.enabled && language === 'javaScript') {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
-			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
+			const dependencies = this.getNodeParameter(
+				'dependencies',
+				0,
+				[],
+			) as DependencyCollectionValue;
+			const sandbox = new JsTaskRunnerSandbox(
+				code,
+				nodeMode,
+				workflowMode,
+				this,
+				1000,
+				dependencies.dependency?.reduce(
+					(acc, dep) => ({ ...acc, [dep.package.value]: dep.version }),
+					{},
+				) ?? {},
+			);
 			const numInputItems = this.getInputData().length;
 
 			return nodeMode === 'runOnceForAllItems'

@@ -28,18 +28,6 @@ import type {
 import * as a from 'node:assert';
 import { type Context, createContext, runInContext } from 'node:vm';
 
-import type { MainConfig } from '@/config/main-config';
-import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
-import type {
-	DataRequestResponse,
-	InputDataChunkDefinition,
-	PartialAdditionalData,
-	TaskResultData,
-} from '@/runner-types';
-import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
-import { noOp, TaskRunner } from '@/task-runner';
-import type { TaskParams } from '@/task-runner';
-
 import { BuiltInsParser } from './built-ins-parser/built-ins-parser';
 import { BuiltInsParserState } from './built-ins-parser/built-ins-parser-state';
 import { isErrorLike } from './errors/error-like';
@@ -49,7 +37,20 @@ import { TimeoutError } from './errors/timeout-error';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
+import type { JsRunnerConfig } from '../config/js-runner-config';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
+
+import type { MainConfig } from '@/config/main-config';
+import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
+import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
+import type {
+	DataRequestResponse,
+	InputDataChunkDefinition,
+	PartialAdditionalData,
+	TaskResultData,
+} from '@/runner-types';
+import type { TaskParams } from '@/task-runner';
+import { noOp, TaskRunner } from '@/task-runner';
 
 export interface RpcCallObject {
 	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RpcCallObject;
@@ -58,6 +59,7 @@ export interface RpcCallObject {
 export interface JSExecSettings {
 	code: string;
 	nodeMode: CodeExecutionMode;
+	dependencies?: Record<string, string>;
 	workflowMode: WorkflowExecuteMode;
 	continueOnFail: boolean;
 	// For executing partial input data
@@ -88,8 +90,20 @@ type CustomConsole = {
 	log: (...args: unknown[]) => void;
 };
 
+const parseModuleAllowList = (moduleList: string) =>
+	moduleList === '*'
+		? '*'
+		: new Set(
+				moduleList
+					.split(',')
+					.map((x) => x.trim())
+					.filter((x) => x !== ''),
+			);
+
 export class JsTaskRunner extends TaskRunner {
-	private readonly requireResolver: RequireResolver;
+	private requireResolver!: RequireResolver;
+
+	private readonly jsRunnerConfig: JsRunnerConfig;
 
 	private readonly builtInsParser = new BuiltInsParser();
 
@@ -104,40 +118,22 @@ export class JsTaskRunner extends TaskRunner {
 			...config.baseRunnerConfig,
 		});
 		const { jsRunnerConfig } = config;
-
-		const parseModuleAllowList = (moduleList: string) =>
-			moduleList === '*'
-				? '*'
-				: new Set(
-						moduleList
-							.split(',')
-							.map((x) => x.trim())
-							.filter((x) => x !== ''),
-					);
-
-		const allowedBuiltInModules = parseModuleAllowList(jsRunnerConfig.allowedBuiltInModules ?? '');
-		const allowedExternalModules = parseModuleAllowList(
-			jsRunnerConfig.allowedExternalModules ?? '',
-		);
+		this.jsRunnerConfig = jsRunnerConfig;
 		this.mode = jsRunnerConfig.insecureMode ? 'insecure' : 'secure';
-
-		this.requireResolver = createRequireResolver({
-			allowedBuiltInModules,
-			allowedExternalModules,
-		});
-
-		if (this.mode === 'secure') this.preventPrototypePollution(allowedExternalModules);
 	}
 
-	private preventPrototypePollution(allowedExternalModules: Set<string> | '*') {
+	private preventPrototypePollution(
+		allowedExternalModules: Set<string> | '*',
+		dependencies: Record<string, string>,
+	) {
 		if (allowedExternalModules instanceof Set) {
 			// This is a workaround to enable the allowed external libraries to mutate
 			// prototypes directly. For example momentjs overrides .toString() directly
 			// on the Moment.prototype, which doesn't work if Object.prototype has been
 			// frozen. This works as long as the overrides are done when the library is
 			// imported.
-			for (const module of allowedExternalModules) {
-				require(module);
+			for (const module of [...allowedExternalModules, ...Object.keys(dependencies)]) {
+				this.requireResolver(module);
 			}
 		}
 
@@ -165,19 +161,37 @@ export class JsTaskRunner extends TaskRunner {
 		const { taskId, settings } = taskParams;
 		a.ok(settings, 'JS Code not sent to runner');
 
-		this.validateTaskSettings(settings);
+		const allowedBuiltInModules = parseModuleAllowList(
+			this.jsRunnerConfig.allowedBuiltInModules ?? '',
+		);
+		const allowedExternalModules = parseModuleAllowList(
+			this.jsRunnerConfig.allowedExternalModules ?? '',
+		);
 
 		const neededBuiltInsResult = this.builtInsParser.parseUsedBuiltIns(settings.code);
 		const neededBuiltIns = neededBuiltInsResult.ok
 			? neededBuiltInsResult.result
 			: BuiltInsParserState.newNeedsAllDataState();
-
 		const dataResponse = await this.requestData<DataRequestResponse>(
 			taskId,
 			neededBuiltIns.toDataRequestParams(settings.chunk),
 		);
 
 		const data = this.reconstructTaskData(dataResponse, settings.chunk);
+		this.requireResolver = await createRequireResolver({
+			dependencies: taskParams.settings.dependencies,
+			nodeId: data.node.id,
+			allowedBuiltInModules,
+			allowedExternalModules,
+		});
+
+		if (this.mode === 'secure')
+			this.preventPrototypePollution(
+				allowedExternalModules,
+				taskParams.settings.dependencies ?? {},
+			);
+
+		this.validateTaskSettings(settings);
 
 		await this.requestNodeTypeIfNeeded(neededBuiltIns, data.workflow, taskId);
 

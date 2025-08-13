@@ -19,6 +19,7 @@ export class JsTaskRunnerSandbox {
 		private readonly workflowMode: WorkflowExecuteMode,
 		private readonly executeFunctions: IExecuteFunctions,
 		private readonly chunkSize = 1000,
+		private readonly dependencies: Record<string, string> = {},
 	) {}
 
 	async runCodeAllItems(): Promise<INodeExecutionData[]> {
@@ -31,6 +32,7 @@ export class JsTaskRunnerSandbox {
 				nodeMode: this.nodeMode,
 				workflowMode: this.workflowMode,
 				continueOnFail: this.executeFunctions.continueOnFail(),
+				dependencies: this.dependencies,
 			},
 			itemIndex,
 		);
@@ -54,6 +56,7 @@ export class JsTaskRunnerSandbox {
 					code: this.jsCode,
 					nodeMode: this.nodeMode,
 					workflowMode: this.workflowMode,
+					dependencies: this.dependencies,
 					continueOnFail: this.executeFunctions.continueOnFail(),
 					chunk: {
 						startIndex: chunk.startIdx,
