@@ -122,7 +122,11 @@ export function removeTrailingTrigger(searchFilter: string) {
 	return searchFilter;
 }
 
-export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
+export function searchNodes(
+	searchFilter: string,
+	items: INodeCreateElement[],
+	additionalFactors = {},
+) {
 	const askAiEnabled = useSettingsStore().isAskAiEnabled;
 	if (!askAiEnabled) {
 		items = items.filter((item) => item.key !== AI_TRANSFORM_NODE_TYPE);
@@ -131,12 +135,42 @@ export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 	const trimmedFilter = removeTrailingTrigger(searchFilter).toLowerCase();
 
 	// We have a snapshot of this call in sublimeSearch.test.ts to assert practical order for some cases
-	// Please update the snapshots per the README next to the the snapshots if you modify items significantly.
-	const result = (sublimeSearch<INodeCreateElement>(trimmedFilter, items) || []).map(
-		({ item }) => item,
-	);
+	// Please update the snapshots per the README next to the snapshots if you modify items significantly.
+	const searchResults = sublimeSearch<INodeCreateElement>(trimmedFilter, items) || [];
 
-	return result;
+	const reRankedResults = reRankSearchResults(searchResults, additionalFactors);
+
+	return reRankedResults.map(({ item }) => item);
+}
+
+export function reRankSearchResults(
+	searchResults: Array<{ score: number; item: INodeCreateElement }>,
+	additionalFactors: Record<string, Record<string, number>>,
+) {
+	return searchResults
+		.map(({ score, item }) => {
+			// For each additional factor, we check if it exists for the item and type,
+			// and if so, we add the score to the item's score.
+			const additionalScore = Object.entries(additionalFactors).reduce(
+				(acc, [type, factorScores]) => {
+					const factorScore = factorScores[item.key];
+					if (factorScore) {
+						return acc + factorScore;
+					}
+
+					return acc;
+				},
+				0,
+			);
+
+			return {
+				score: score + additionalScore,
+				item,
+			};
+		})
+		.sort((a, b) => {
+			return b.score - a.score;
+		});
 }
 
 export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateElement[] {
