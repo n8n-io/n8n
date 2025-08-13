@@ -15,8 +15,8 @@ import SidebarSubMenu from './SidebarSubMenu.vue';
 
 const props = defineProps<{
 	personal: { id: string; items: TreeItemType[] };
-	shared: TreeItemType[];
-	projects: { title: string; id: string; icon: IconName; items: TreeItemType[] }[];
+	shared?: TreeItemType[];
+	projects?: { title: string; id: string; icon: IconName; items: TreeItemType[] }[];
 	userName: string;
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
 	menuItems: IMenuItem[];
@@ -136,8 +136,8 @@ function getMenuItemRoute(item: IMenuItem) {
 				:selectable="false"
 				:collapsible="false"
 			/>
-
 			<SidebarSection
+				v-if="shared"
 				title="Shared with me"
 				id="shared"
 				icon="share"
@@ -147,8 +147,8 @@ function getMenuItemRoute(item: IMenuItem) {
 			/>
 			<N8nText size="small" bold color="text-light" class="sidebarSubheader">Projects</N8nText>
 			<SidebarSection
-				v-if="props.projects.length"
-				v-for="project in props.projects"
+				v-if="projects?.length"
+				v-for="project in projects"
 				:title="project.title"
 				:id="project.id"
 				:icon="project.icon"
@@ -231,7 +231,9 @@ function getMenuItemRoute(item: IMenuItem) {
 				</template>
 				<template #content>
 					<div v-for="item in helpMenuItems" :key="item.id" class="sidebarSubMenuSection">
-						<N8nText size="small" bold color="text-light">{{ item.label }}</N8nText>
+						<N8nText class="sidebarSubMenuSectionHeader" size="small" bold color="text-light">{{
+							item.label
+						}}</N8nText>
 						<div v-for="subItem in item.children" :key="subItem.id">
 							<component
 								v-if="subItem.component"
@@ -379,5 +381,10 @@ function getMenuItemRoute(item: IMenuItem) {
 
 .sidebarSubMenuSection:first-of-type {
 	margin-bottom: var(--spacing-xs);
+}
+
+.sidebarSubMenuSectionHeader {
+	margin-bottom: var(--spacing-3xs);
+	display: block;
 }
 </style>

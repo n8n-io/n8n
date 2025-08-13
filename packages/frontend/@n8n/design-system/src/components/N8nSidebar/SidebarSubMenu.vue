@@ -8,7 +8,7 @@ import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka
 			<slot name="trigger" />
 		</PopoverTrigger>
 		<PopoverPortal>
-			<PopoverContent side="top" :side-offset="5" style="z-index: 1000" class="sidebarSubMenu">
+			<PopoverContent side="top" style="z-index: 1000" class="sidebarSubMenu">
 				<slot name="content" />
 			</PopoverContent>
 		</PopoverPortal>
@@ -20,9 +20,9 @@ import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	border-radius: var(--border-radius-base);
-	padding: var(--spacing-2xs);
+	padding: var(--spacing-xs);
 	box-shadow: var(--box-shadow-light);
-	min-width: 200px;
+	min-width: 300px;
 }
 
 .sidebarSubMenuTrigger {
