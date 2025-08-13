@@ -31,7 +31,6 @@ import type {
 	NodeCreatorOpenSource,
 	NodeFilterType,
 	ToggleNodeCreatorOptions,
-	WorkflowDataWithTemplateId,
 	XYPosition,
 } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -230,7 +229,6 @@ const {
 	duplicateNodes,
 	revertDeleteNode,
 	addNodes,
-	importTemplate,
 	revertAddNode,
 	createConnection,
 	revertCreateConnection,
@@ -252,6 +250,7 @@ const {
 	lastClickPosition,
 	startChat,
 	openWorkflowTemplate,
+	openWorkflowTemplateFromJSON,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
@@ -408,7 +407,7 @@ async function initializeRoute(force = false) {
 				return;
 			}
 
-			await openTemplateFromWorkflowJSON(workflow);
+			await openWorkflowTemplateFromJSON(workflow);
 		} else {
 			await openWorkflowTemplate(templateId.toString());
 		}
@@ -577,48 +576,6 @@ function trackOpenWorkflowFromOnboardingTemplate() {
 			workflow_id: workflowId.value,
 		},
 	);
-}
-
-/**
- * Templates
- */
-
-async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId) {
-	if (!workflow.nodes || !workflow.connections) {
-		toast.showError(
-			new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
-			i18n.baseText('nodeView.couldntImportWorkflow'),
-		);
-		await router.replace({ name: VIEWS.NEW_WORKFLOW });
-		return;
-	}
-	resetWorkspace();
-
-	canvasStore.startLoading();
-	canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
-
-	workflowsStore.currentWorkflowExecutions = [];
-	executionsStore.activeExecution = null;
-	uiStore.isBlankRedirect = true;
-
-	const templateId = workflow.meta.templateId;
-	const parentFolderId = route.query.parentFolderId as string | undefined;
-	await router.replace({
-		name: VIEWS.NEW_WORKFLOW,
-		query: { templateId, parentFolderId },
-	});
-
-	await importTemplate({
-		id: templateId,
-		name: workflow.name,
-		workflow,
-	});
-
-	uiStore.stateIsDirty = true;
-
-	canvasStore.stopLoading();
-
-	fitView();
 }
 
 /**
@@ -1903,7 +1860,7 @@ onBeforeMount(() => {
 	addPostMessageEventBindings();
 });
 
-onMounted(() => {
+onMounted(async () => {
 	canvasStore.startLoading();
 
 	documentTitle.reset();
@@ -1948,6 +1905,12 @@ onMounted(() => {
 	addImportEventBindings();
 	addExecutionOpenedEventBindings();
 	registerCustomActions();
+
+	// Preloaded templates to show on the command bar
+	await templatesStore.getWorkflows({
+		categories: ['AI'],
+		search: '',
+	});
 });
 
 onActivated(async () => {

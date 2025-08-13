@@ -18,7 +18,7 @@ import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/
 import { useDataSchema } from '@/composables/useDataSchema';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { type PinDataSource, usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
@@ -168,6 +168,7 @@ export function useCanvasOperations() {
 	const i18n = useI18n();
 	const toast = useToast();
 	const router = useRouter();
+	const route = useRoute();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
 	const telemetry = useTelemetry();
@@ -2310,6 +2311,44 @@ export function useCanvasOperations() {
 		fitView();
 	}
 
+	async function openWorkflowTemplateFromJSON(workflow: WorkflowDataWithTemplateId) {
+		if (!workflow.nodes || !workflow.connections) {
+			toast.showError(
+				new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
+				i18n.baseText('nodeView.couldntImportWorkflow'),
+			);
+			await router.replace({ name: VIEWS.NEW_WORKFLOW });
+			return;
+		}
+		resetWorkspace();
+
+		canvasStore.startLoading();
+		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
+
+		workflowsStore.currentWorkflowExecutions = [];
+		executionsStore.activeExecution = null;
+		uiStore.isBlankRedirect = true;
+
+		const templateId = workflow.meta.templateId;
+		const parentFolderId = route.query.parentFolderId as string | undefined;
+		await router.replace({
+			name: VIEWS.NEW_WORKFLOW,
+			query: { templateId, parentFolderId },
+		});
+
+		await importTemplate({
+			id: templateId,
+			name: workflow.name,
+			workflow,
+		});
+
+		uiStore.stateIsDirty = true;
+
+		canvasStore.stopLoading();
+
+		fitView();
+	}
+
 	return {
 		lastClickPosition,
 		editableWorkflow,
@@ -2365,5 +2404,6 @@ export function useCanvasOperations() {
 		replaceNodeConnections,
 		tryToOpenSubworkflowInNewTab,
 		openWorkflowTemplate,
+		openWorkflowTemplateFromJSON,
 	};
 }
