@@ -13,6 +13,7 @@ import type {
 } from 'n8n-workflow';
 
 import { DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS, MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
+import { createSetNameTool } from '@/tools/set-name.tool';
 
 import { conversationCompactChain } from './chains/conversation-compact';
 import { LLMServiceError, ValidationError } from './errors';
@@ -77,6 +78,7 @@ export class WorkflowBuilderAgent {
 			createConnectNodesTool(this.parsedNodeTypes, this.logger),
 			createRemoveNodeTool(this.logger),
 			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask, this.logger),
+			createSetNameTool(this.logger),
 		];
 
 		// Create a map for quick tool lookup
@@ -162,6 +164,7 @@ export class WorkflowBuilderAgent {
 				workflowJSON: {
 					nodes: [],
 					connections: {},
+					name: '',
 				},
 			};
 

@@ -63,6 +63,16 @@ export function removeNodeFromWorkflow(nodeId: string): Partial<typeof WorkflowS
 }
 
 /**
+ * Set workflow name
+ */
+export function setWorkflowName(name: string): Partial<typeof WorkflowState.State> {
+	// Return an operation to set the workflow name
+	return {
+		workflowOperations: [{ type: 'setName', name }],
+	};
+}
+
+/**
  * Remove multiple nodes from the workflow state
  */
 export function removeNodesFromWorkflow(nodeIds: string[]): Partial<typeof WorkflowState.State> {
