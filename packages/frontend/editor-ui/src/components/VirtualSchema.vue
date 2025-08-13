@@ -362,6 +362,10 @@ const items = computed(() => {
 		return flattenNodeSchema.value;
 	}
 
+	if (props.isPastExecution) {
+		return flattenedNodes.value;
+	}
+
 	return flattenedNodes.value.concat(contextItems.value);
 });
 
