@@ -11,7 +11,7 @@ import {
 	N8nIcon,
 	N8nButton,
 } from '@n8n/design-system';
-import type { IMenuItem } from '@n8n/design-system';
+import type { IMenuItem, IMenuElement } from '@n8n/design-system';
 import { ABOUT_MODAL_KEY, RELEASE_NOTES_URL, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
 import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
@@ -35,6 +35,7 @@ import { useSidebarData } from '@/composables/useSidebarData';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import BecomeTemplateCreatorCta from './BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
+import { useProjectsStore } from '@/stores/projects.store';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -45,6 +46,7 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 
 const externalHooks = useExternalHooks();
@@ -78,17 +80,6 @@ const {
 	projectsLimitReachedMessage,
 	upgradeLabel,
 } = useGlobalEntityCreation();
-
-const userMenuItems = ref([
-	{
-		id: 'settings',
-		label: i18n.baseText('settings'),
-	},
-	{
-		id: 'logout',
-		label: i18n.baseText('auth.signout'),
-	},
-]);
 
 const showWhatsNewNotification = computed(
 	() =>
@@ -149,7 +140,6 @@ const visibleMenuItems = computed(() => {
 	return mainMenuItems.value.filter((item) => item.available !== false);
 });
 
-const showUserArea = computed(() => hasPermission(['authenticated']));
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
 onMounted(async () => {
@@ -222,7 +212,7 @@ const handleSelect = (key: string) => {
 	}
 };
 
-const helpMenuItems = ref([
+const helpMenuItems = ref<IMenuElement[]>([
 	{
 		id: 'help',
 		icon: 'circle-help',
@@ -320,14 +310,24 @@ const helpMenuItems = ref([
 		],
 	},
 ]);
+
+const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
+const hasMultipleVerifiedUsers = computed(
+	() => usersStore.allUsers.filter((user) => user.isPendingUser === false).length > 1,
+);
 </script>
 
 <template>
 	<N8nSidebar
 		:personal="personalItems"
 		:user-name="usersStore.currentUser?.fullName || ''"
-		:shared="sharedItems"
-		:projects="projects"
+		:shared="
+			(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
+			hasMultipleVerifiedUsers
+				? sharedItems
+				: undefined
+		"
+		:projects="projectsStore.isTeamProjectFeatureEnabled ? projects : undefined"
 		:release-channel="settingsStore.settings.releaseChannel"
 		:menu-items="visibleMenuItems"
 		:help-menu-items="helpMenuItems"

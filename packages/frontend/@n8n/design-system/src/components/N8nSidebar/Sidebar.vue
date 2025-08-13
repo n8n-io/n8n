@@ -10,7 +10,7 @@ import N8nResizeWrapper from '../N8nResizeWrapper';
 import { N8nButton, N8nIconButton, N8nRoute, N8nTooltip } from '..';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 import { useSidebarLayout } from './useSidebarLayout';
-import { IMenuItem } from '@n8n/design-system/types';
+import { IMenuItem, IMenuElement, isCustomMenuItem } from '@n8n/design-system/types';
 import SidebarSubMenu from './SidebarSubMenu.vue';
 
 const props = defineProps<{
@@ -20,7 +20,7 @@ const props = defineProps<{
 	userName: string;
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
 	menuItems: IMenuItem[];
-	helpMenuItems: IMenuItem[];
+	helpMenuItems: IMenuElement[];
 	handleSelect?: (key: string) => void;
 }>();
 
@@ -231,23 +231,28 @@ function getMenuItemRoute(item: IMenuItem) {
 				</template>
 				<template #content>
 					<div v-for="item in helpMenuItems" :key="item.id" class="sidebarSubMenuSection">
-						<N8nText class="sidebarSubMenuSectionHeader" size="small" bold color="text-light">{{
-							item.label
-						}}</N8nText>
-						<div v-for="subItem in item.children" :key="subItem.id">
+						<N8nText
+							v-if="!isCustomMenuItem(item)"
+							class="sidebarSubMenuSectionHeader"
+							size="small"
+							bold
+							color="text-light"
+							>{{ item.label }}</N8nText
+						>
+						<div v-if="!isCustomMenuItem(item)" v-for="subItem in item.children" :key="subItem.id">
 							<component
-								v-if="subItem.component"
+								v-if="isCustomMenuItem(subItem)"
 								:is="subItem.component"
 								v-bind="subItem.props || {}"
 							/>
 							<SidebarItem
-								v-else
+								v-else-if="!isCustomMenuItem(subItem)"
 								:title="subItem.label"
 								:id="subItem.id"
-								:icon="subItem.icon"
+								:icon="subItem.icon as IconName"
 								@click="handleSelect ? handleSelect(subItem.id) : undefined"
 								:link="subItem.link ? subItem.link.href : undefined"
-								:route="getMenuItemRoute(subItem)"
+								:route="getMenuItemRoute(subItem as IMenuItem)"
 								:ariaLabel="`Go to ${subItem.label}`"
 								type="other"
 							/>
