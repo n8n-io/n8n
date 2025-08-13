@@ -130,7 +130,6 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		addBeforeUnloadEventBindings();
 		notifyWorkflowOpened();
 		startHeartbeat();
-		initYjs();
 	}
 
 	function terminate() {
@@ -163,14 +162,18 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		// );
 	}
 
-	function initYjs() {
+	function initYjs(workflowId: string) {
 		if (provider.value) {
+			console.log('Disconnecting...');
+			provider.value.disconnect();
 			return;
 		}
 
+		console.log('Creating new connection...');
+
 		provider.value = new WebsocketProvider(
 			`ws://${rootStore.restApiContext.baseUrl.split('//')[1]}`,
-			'/collaboration',
+			`collaboration?workflowId=${workflowId}`,
 			ydoc.value,
 		);
 
@@ -266,7 +269,15 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		} as YjsCollaborator);
 	};
 
-	onMounted(initYjs);
+	watch(
+		() => workflowsStore.workflowId,
+		(id) => {
+			if (id && id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				initYjs(id);
+			}
+		},
+		{ immediate: true },
+	);
 
 	return {
 		collaborators,

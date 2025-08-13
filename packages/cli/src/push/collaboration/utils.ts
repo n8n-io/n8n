@@ -12,6 +12,8 @@ import * as map from 'lib0/map';
 import * as eventloop from 'lib0/eventloop';
 
 import { callbackHandler, isCallbackSet } from './callback';
+import type { WebSocket } from 'ws';
+import type { IncomingMessage } from 'http';
 
 const CALLBACK_DEBOUNCE_WAIT = parseInt(process.env.CALLBACK_DEBOUNCE_WAIT || '2000');
 const CALLBACK_DEBOUNCE_MAXWAIT = parseInt(process.env.CALLBACK_DEBOUNCE_MAXWAIT || '10000');
@@ -68,10 +70,7 @@ const updateHandler = (update, _origin, doc, _tr) => {
 	doc.conns.forEach((_, conn) => send(doc, conn, message));
 };
 
-/**
- * @type {(ydoc: Y.Doc) => Promise<void>}
- */
-let contentInitializor = (_ydoc) => Promise.resolve();
+let contentInitializor = (_ydoc: Y.Doc) => Promise.resolve();
 
 /**
  * This function is called once every time a Yjs document is created. You can
@@ -240,21 +239,20 @@ const send = (doc, conn, m) => {
 
 const pingTimeout = 30000;
 
-/**
- * @param {import('ws').WebSocket} conn
- * @param {import('http').IncomingMessage} req
- * @param {any} opts
- */
-export const setupWSConnection = (
-	conn,
-	req,
-	{ docName = (req.url || '').slice(1).split('?')[0], gc = true } = {},
-) => {
-	console.log('44444', req.url);
+export const setupWSConnection = (conn: WebSocket, req: IncomingMessage) => {
+	const docName = new URLSearchParams(req.url.split('?')[1]).get('workflowId');
+
+	if (!docName) {
+		console.warn(`Workflow ID is missing`);
+		conn.close();
+		return;
+	}
+
+	console.log(`Setting up websocket connection for workflow ${docName}`);
 
 	conn.binaryType = 'arraybuffer';
 	// get doc, initialize if it does not exist yet
-	const doc = getYDoc(docName, gc);
+	const doc = getYDoc(docName, true);
 	doc.conns.set(conn, new Set());
 	// listen and reply to events
 	conn.on(
