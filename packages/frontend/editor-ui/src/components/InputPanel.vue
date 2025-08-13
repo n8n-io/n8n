@@ -456,10 +456,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				/>
 			</div>
 		</template>
-		<template #node-not-run="{ isSticky }">
+		<template #node-not-run="{ isCollapsed }">
 			<div
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
-				:class="{ [$style.noOutputData]: true, [$style.noOutputDataSticky]: isSticky }"
+				:class="{ [$style.noOutputData]: true, [$style.noOutputDataSticky]: isCollapsed }"
 			>
 				<N8nText v-if="nodeNotRunMessageVariant === 'simple'" color="text-base" size="small">
 					<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
@@ -483,7 +483,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
 					>
 						<template #icon>
-							<N8nIcon icon="arrow-right-to-line" size="xlarge" />
+							<N8nIcon v-if="!isCollapsed" icon="arrow-right-to-line" size="xlarge" />
 						</template>
 						<template #description>
 							<I18nT tag="span" keypath="ndv.input.noOutputData.v2.description" scope="global">
@@ -701,6 +701,11 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 .noOutputDataSticky {
 	position: absolute;
 	bottom: 0;
+	border-top: var(--border-base);
+	max-width: 100% !important;
+	width: 100%;
+	padding-top: var(--spacing-s);
+	background-color: var(--color-ndvv2-run-data-background);
 }
 
 .recoveredOutputData {

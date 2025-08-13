@@ -1726,7 +1726,7 @@ const onLastSuccessfulExecutionToggle = (expanded: boolean) => {
 				v-else-if="!hasNodeRun && !(displaysMultipleNodes && (node?.disabled || hasPreviewSchema))"
 				:class="$style.center"
 			>
-				<slot name="node-not-run" :is-sticky="isLastSuccessfulExecutionExpanded"></slot>
+				<slot name="node-not-run" :is-collapsed="isLastSuccessfulExecutionExpanded"></slot>
 			</div>
 
 			<div
@@ -1961,7 +1961,7 @@ const onLastSuccessfulExecutionToggle = (expanded: boolean) => {
 			/>
 
 			<div v-else-if="!hasNodeRun" :class="$style.center">
-				<slot name="node-not-run" :is-sticky="isLastSuccessfulExecutionExpanded"></slot>
+				<slot name="node-not-run" :is-collapsed="isLastSuccessfulExecutionExpanded"></slot>
 			</div>
 		</div>
 		<RunDataPaginationBar
