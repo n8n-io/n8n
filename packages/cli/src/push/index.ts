@@ -22,6 +22,7 @@ import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
 import type { OnPushMessage, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 import { WebSocketPush } from './websocket.push';
+import { setupWSConnection } from './collaboration/utils';
 
 type PushEvents = {
 	editorUiConnected: string;
@@ -71,7 +72,9 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (this.useWebSockets) {
 			const wsServer = new WSServer({ noServer: true });
 			server.on('upgrade', (request: WebSocketPushRequest, socket, upgradeHead) => {
-				if (parseUrl(request.url).pathname === `/${restEndpoint}/push`) {
+				const pathname = parseUrl(request.url).pathname;
+
+				if (pathname === `/${restEndpoint}/push`) {
 					wsServer.handleUpgrade(request, socket, upgradeHead, (ws) => {
 						request.ws = ws;
 
@@ -84,6 +87,10 @@ export class Push extends TypedEmitter<PushEvents> {
 						// @ts-expect-error `handle` isn't documented
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 						app.handle(request, response);
+					});
+				} else if (pathname === `/${restEndpoint}/collaboration`) {
+					wsServer.handleUpgrade(request, socket, upgradeHead, (ws) => {
+						setupWSConnection(ws, request);
 					});
 				}
 			});

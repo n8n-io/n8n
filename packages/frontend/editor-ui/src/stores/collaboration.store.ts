@@ -13,6 +13,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { IWorkflowDb } from '@/Interface';
 import { WebsocketProvider } from 'y-websocket';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 
@@ -75,6 +76,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const workflowsStore = useWorkflowsStore();
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
+	const rootStore = useRootStore();
 	const ydoc = ref(new Y.Doc());
 	const provider = ref<WebsocketProvider>();
 	const myColor = ref(`hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`);
@@ -166,7 +168,11 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			return;
 		}
 
-		provider.value = new WebsocketProvider('ws://localhost:1234', 'collabo!!!', ydoc.value);
+		provider.value = new WebsocketProvider(
+			`ws://${rootStore.restApiContext.baseUrl.split('//')[1]}`,
+			'/collaboration',
+			ydoc.value,
+		);
 
 		provider.value.awareness.on('change', () => {
 			const states = provider.value?.awareness.getStates() ?? new Map();
