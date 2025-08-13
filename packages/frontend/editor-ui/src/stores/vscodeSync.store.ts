@@ -9,12 +9,15 @@ import { codeNodeEditorEventBus, ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { IUpdateInformation } from '@/Interface';
 import { computed, ref } from 'vue';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useRouter } from 'vue-router';
 
 export type OnPushMessageHandler = (event: PushMessage) => void;
 
 export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
+	const { runWorkflow } = useRunWorkflow({ router: useRouter() });
 
 	const wsClient = ref<ReturnType<typeof useWebSocketClient> | null>(null);
 
@@ -41,6 +44,15 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 				true,
 			);
 		}
+	}
+
+	function getNodeById(nodeId: string) {
+		const node = workflowsStore.getNodesByIds([nodeId])[0];
+		if (!node) {
+			throw new Error(`Node not found: ${nodeId}`);
+		}
+
+		return node;
 	}
 
 	function startSync(opts: {
@@ -71,12 +83,23 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 
 			// @ts-expect-error abc
 			if (msg.type === 'vscode:file-updated') {
-				const node = workflowsStore.getNodesByIds([opts.nodeId])[0];
+				const node = getNodeById(opts.nodeId);
 
 				console.log(msg);
 				// @ts-expect-error abc
 				updateCode(node.name, msg.content);
 				codeNodeEditorEventBus.emit('codeDiffApplied');
+			}
+
+			// @ts-expect-error abc
+			if (msg.type === 'vscode:run-node') {
+				console.log('Running node', msg);
+				const node = getNodeById(opts.nodeId);
+
+				void runWorkflow({
+					destinationNode: node.name,
+					source: 'vscode:run-node',
+				});
 			}
 		}
 
