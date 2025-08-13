@@ -16,8 +16,6 @@ import { WebsocketProvider } from 'y-websocket';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 
-alert(1);
-
 function deepToRaw<T>(sourceObj: T): T {
 	const seen = new WeakMap();
 
