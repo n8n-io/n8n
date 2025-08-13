@@ -5,13 +5,40 @@ import { STORES } from '@n8n/stores';
 import { useWebSocketClient } from '@/push-connection/useWebSocketClient';
 import { jsonParse } from 'n8n-workflow';
 import { useWorkflowsStore } from './workflows.store';
+import { codeNodeEditorEventBus, ndvEventBus } from '@/event-bus';
+import { useNDVStore } from '@/stores/ndv.store';
+import type { IUpdateInformation } from '@/Interface';
 
 export type OnPushMessageHandler = (event: PushMessage) => void;
 
 export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
+	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 
 	let wsClient: ReturnType<typeof useWebSocketClient>;
+
+	// Copied from assistant.store.ts, updates the code for the node
+	function updateCode(nodeName: string, code: string) {
+		if (ndvStore.activeNodeName === nodeName) {
+			const update: IUpdateInformation = {
+				node: nodeName,
+				name: 'parameters.jsCode',
+				value: code,
+			};
+
+			ndvEventBus.emit('updateParameterValue', update);
+		} else {
+			workflowsStore.setNodeParameters(
+				{
+					name: nodeName,
+					value: {
+						jsCode: code,
+					},
+				},
+				true,
+			);
+		}
+	}
 
 	function startSync(opts: {
 		nodeId: string;
@@ -40,16 +67,9 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 				const node = workflowsStore.getNodesByIds([opts.nodeId])[0];
 
 				console.log(msg);
-				workflowsStore.setNodeParameters(
-					{
-						name: node.name,
-						value: {
-							// @ts-expect-error abc
-							jsCode: msg.content,
-						},
-					},
-					true,
-				);
+				// @ts-expect-error abc
+				updateCode(node.name, msg.content);
+				codeNodeEditorEventBus.emit('codeDiffApplied');
 			}
 		}
 
