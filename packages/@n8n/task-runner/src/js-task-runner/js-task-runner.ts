@@ -133,7 +133,13 @@ export class JsTaskRunner extends TaskRunner {
 			// frozen. This works as long as the overrides are done when the library is
 			// imported.
 			for (const module of [...allowedExternalModules, ...Object.keys(dependencies)]) {
-				this.requireResolver(module);
+				try {
+					this.requireResolver(module);
+				} catch (error) {
+					throw new ExecutionError({
+						message: `Error requiring module ${module}. Try running the task runners in insecure mode.`,
+					});
+				}
 			}
 		}
 

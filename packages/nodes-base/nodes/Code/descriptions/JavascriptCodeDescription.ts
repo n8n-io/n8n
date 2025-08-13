@@ -107,25 +107,6 @@ export const javascriptCodeDescription: INodeProperties[] = [
 								},
 							},
 							{
-								displayName: 'Link',
-								name: 'url',
-								type: 'string',
-								placeholder: 'e.g. https://www.npmjs.com/package/lodash',
-								extractValue: {
-									type: 'regex',
-									regex: 'https:\\/\\/npmjs.com\\/package\\/([-_0-9a-zA-Z@\\/]+)',
-								},
-								validation: [
-									{
-										type: 'regex',
-										properties: {
-											regex: 'https:\\/\\/npmjs.com\\/package\\/([-_0-9a-zA-Z@\\/]+)(?:.*)',
-											errorMessage: 'Not a valid NPM package URL',
-										},
-									},
-								],
-							},
-							{
 								displayName: 'By Name',
 								name: 'name',
 								type: 'string',
