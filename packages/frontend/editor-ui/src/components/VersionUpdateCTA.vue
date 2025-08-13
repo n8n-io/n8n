@@ -60,7 +60,7 @@ const onUpdateClick = async () => {
 	margin-top: var(--spacing-xs);
 	padding: var(--spacing-xs) var(--spacing-xs);
 	border-radius: var(--border-radius-base);
-	background: var(--color-background-xlight);
+	background: var(--color-background-base);
 	width: 100%;
 }
 
