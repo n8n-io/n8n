@@ -20,6 +20,8 @@ import { getNodeIcon, getNodeIconUrl } from '@/utils/nodeIcon';
 
 import { saveAs } from 'file-saver';
 import uniqBy from 'lodash/uniqBy';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowActivate } from './useWorkflowActivate';
 
 export type NinjaKeysCommand = {
 	id: string;
@@ -43,9 +45,11 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const tagsStore = useTagsStore();
+	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const telemetry = useTelemetry();
 	const workflowSaving = useWorkflowSaving({ router });
+	const workflowActivate = useWorkflowActivate();
 	const { runEntireWorkflow } = useRunWorkflow({ router });
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
@@ -227,6 +231,27 @@ export function useCommandBar(workflowId: Ref<string | undefined>) {
 					}
 				},
 			},
+			...(workflowsStore.isWorkflowActive
+				? [
+						{
+							id: 'Deactivate workflow',
+							title: 'Deactivate workflow',
+							section: 'Workflow',
+							handler: () => {
+								void workflowActivate.updateWorkflowActivation(workflowId.value, false);
+							},
+						},
+					]
+				: [
+						{
+							id: 'Activate workflow',
+							title: 'Activate workflow',
+							section: 'Workflow',
+							handler: () => {
+								void workflowActivate.updateWorkflowActivation(workflowId.value, true);
+							},
+						},
+					]),
 			{
 				id: 'Select all',
 				title: 'Select all',
