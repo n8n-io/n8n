@@ -41,12 +41,73 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 		return node;
 	}
 
-	pushConnectionStore.addEventListener((msg) => {
-		if (!isConnected.value) {
-			return;
+	function connectToVscode(opts: {
+		port: number;
+	}) {
+		function onMessage(rawData: string) {
+			if (!wsClient.value) {
+				return;
+			}
+
+			const nodeId = connectedNodeIds.value.values().next().value;
+			if (!nodeId) {
+				return;
+			}
+
+			console.log('Received message', rawData);
+			const msg = jsonParse(rawData);
+
+			// @ts-expect-error abc
+			if (msg.type === 'vscode:sync-start') {
+				console.log('Sending message to vscode');
+				wsClient.value.sendMessage(
+					JSON.stringify({
+						type: 'n8n:sync-start',
+						nodeId,
+						workflowId: workflowsStore.workflowId,
+					}),
+				);
+				return;
+			}
+
+			// @ts-expect-error abc
+			if (msg.type === 'vscode:file-updated') {
+				// @ts-expect-error abc
+				const node = getNodeById(msg.nodeId);
+
+				console.log(msg);
+				// @ts-expect-error abc
+				updateCode(node.name, msg.content);
+				codeNodeEditorEventBus.emit('codeDiffApplied');
+			}
+
+			// @ts-expect-error abc
+			if (msg.type === 'vscode:run-node') {
+				console.log('Running node', msg);
+				// @ts-expect-error abc
+				const node = getNodeById(msg.nodeId);
+
+				void runWorkflow({
+					destinationNode: node.name,
+					source: 'vscode:run-node',
+				});
+			}
 		}
 
+		wsClient.value = useWebSocketClient({
+			url: `ws://localhost:${opts.port}/`,
+			onMessage,
+		});
+
+		wsClient.value!.connect();
+	}
+
+	pushConnectionStore.addEventListener((msg) => {
 		if (msg.type === 'nodeExecuteAfter') {
+			if (!isConnected.value) {
+				return;
+			}
+
 			const node = getNodeByName(msg.data.nodeName);
 			if (!node) return;
 
@@ -58,6 +119,17 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 					}),
 				);
 			}
+		}
+
+		// @ts-expect-error abc
+		if (msg.type === 'vscode:start') {
+			console.log('vscode:start', msg);
+			// @ts-expect-error abc
+			const port = msg.data.port;
+
+			connectToVscode({
+				port,
+			});
 		}
 	});
 
@@ -90,58 +162,20 @@ export const useVsCodeSyncStore = defineStore(STORES.VSCODE_SYNC, () => {
 		console.log('Starting sync', opts);
 
 		connectedNodeIds.value.add(opts.nodeId);
+		const n8nUri = 'http://localhost:5678';
 
-		function onMessage(rawData: string) {
-			if (!wsClient.value) {
-				return;
-			}
+		const vscodeLink = `vscode://n8n.n8n-vscode-sync/start?n8nUri=${n8nUri}&nodeId=${opts.nodeId}`;
 
-			console.log('Received message', rawData);
-			const msg = jsonParse(rawData);
+		// Create an anchor element
+		const a = document.createElement('a');
+		a.href = vscodeLink;
+		a.target = '_blank'; // ensures current page stays loaded
+		a.rel = 'noopener noreferrer'; // security best practice
 
-			// @ts-expect-error abc
-			if (msg.type === 'vscode:sync-start') {
-				console.log('Sending message to vscode');
-				wsClient.value.sendMessage(
-					JSON.stringify({
-						type: 'n8n:sync-start',
-						nodeId: opts.nodeId,
-						workflowId: workflowsStore.workflowId,
-					}),
-				);
-				return;
-			}
-
-			// @ts-expect-error abc
-			if (msg.type === 'vscode:file-updated') {
-				// @ts-expect-error abc
-				const node = getNodeById(msg.nodeId);
-
-				console.log(msg);
-				// @ts-expect-error abc
-				updateCode(node.name, msg.content);
-				codeNodeEditorEventBus.emit('codeDiffApplied');
-			}
-
-			// @ts-expect-error abc
-			if (msg.type === 'vscode:run-node') {
-				console.log('Running node', msg);
-				// @ts-expect-error abc
-				const node = getNodeById(msg.nodeId);
-
-				void runWorkflow({
-					destinationNode: node.name,
-					source: 'vscode:run-node',
-				});
-			}
-		}
-
-		wsClient.value = useWebSocketClient({
-			url: 'ws://localhost:3000/',
-			onMessage,
-		});
-
-		wsClient.value!.connect();
+		// Append to DOM, click it, then remove
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
 	}
 
 	function stopSync() {
