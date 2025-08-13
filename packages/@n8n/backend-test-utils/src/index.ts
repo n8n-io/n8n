@@ -9,4 +9,5 @@ export * as testDb from './test-db';
 export * as testModules from './test-modules';
 export * from './db/workflows';
 export * from './db/projects';
+export * from './db/executions';
 export * from './mocking';

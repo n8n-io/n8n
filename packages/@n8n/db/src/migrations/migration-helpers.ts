@@ -177,7 +177,13 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 	},
 });
 
+const wrapped = Symbol('wrapped');
 export const wrapMigration = (migration: Migration) => {
+	if ((migration as any)[wrapped]) {
+		return;
+	} else {
+		(migration as any)[wrapped] = true;
+	}
 	const { up, down } = migration.prototype;
 	if (up) {
 		Object.assign(migration.prototype, {
