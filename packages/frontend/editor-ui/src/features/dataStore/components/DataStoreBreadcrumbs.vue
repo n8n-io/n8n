@@ -17,7 +17,7 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const renameInput = useTemplateRef<{ forceFocus?: () => void }>('renameInput');
+const renameInput = useTemplateRef('renameInput');
 
 const dataStoreStore = useDataStoreStore();
 
@@ -58,7 +58,7 @@ const onRename = async () => {
 	// Focus rename input if the action is rename
 	// We need this timeout to ensure action toggle is closed before focusing
 	await nextTick();
-	if (renameInput.value?.forceFocus) {
+	if (renameInput.value && typeof renameInput.value.forceFocus === 'function') {
 		renameInput.value.forceFocus();
 	}
 };
