@@ -49,18 +49,6 @@ const toggle = () => {
 	flex-grow: 1;
 }
 
-.accordionItems {
-	display: flex;
-	flex-direction: column !important;
-	align-items: flex-start !important;
-	width: 100%;
-}
-
-.accordionItem {
-	display: block !important;
-	text-align: left;
-}
-
 .description {
 	display: flex;
 	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
