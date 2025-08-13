@@ -1841,8 +1841,11 @@ export interface INodeTypeBaseDescription {
 	/**
 	 * Whether the node will be wrapped for tool-use by AI Agents,
 	 * optionally replacing provided parts of the description
+	 * - true: Single tool
+	 * - 'toolkit': Multiple tools based on resource/operation combinations
+	 * - UsableAsToolDescription: Single tool with custom replacements
 	 */
-	usableAsTool?: true | UsableAsToolDescription;
+	usableAsTool?: true | 'toolkit' | UsableAsToolDescription;
 }
 
 /**

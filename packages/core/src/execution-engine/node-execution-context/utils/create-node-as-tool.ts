@@ -1,4 +1,5 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
+import { Toolkit } from 'langchain/agents';
 import type { IDataObject, INode, INodeType, FromAIArgument } from 'n8n-workflow';
 import {
 	generateZodSchema,
@@ -107,6 +108,19 @@ function createTool(options: CreateNodeAsToolOptions) {
 		schema,
 		func: async (toolArgs: z.infer<typeof schema>) => await handleToolInvocation(toolArgs),
 	});
+}
+
+/**
+ * NodeToolkit class that extends LangChain's Toolkit
+ */
+export class NodeToolkit extends Toolkit {
+	constructor(
+		public tools: DynamicStructuredTool[],
+		public nodeType: INodeType,
+		public node: INode,
+	) {
+		super();
+	}
 }
 
 /**
