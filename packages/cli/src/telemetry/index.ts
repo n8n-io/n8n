@@ -167,7 +167,6 @@ export class Telemetry {
 
 			if (shouldEmit) {
 				this.track('Production workflow failures summary', {
-					instanceId: this.instanceSettings.instanceId,
 					summaryPeriodHours: 6,
 					totalFailedWorkflows: prodFailureSummaries.length,
 					workflows: prodFailureSummaries,
