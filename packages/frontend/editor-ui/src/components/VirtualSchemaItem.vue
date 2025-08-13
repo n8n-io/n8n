@@ -23,6 +23,7 @@ type Props = {
 	locked?: boolean;
 	lockedTooltip?: string;
 	runIndex?: number;
+	pastExecution?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -55,6 +56,7 @@ const emit = defineEmits<{
 				'pill--highlight': highlight,
 				'pill--preview': preview,
 				'pill--locked': locked,
+				'pill--past-execution': pastExecution,
 			}"
 			data-test-id="run-data-schema-node-name"
 		>
@@ -116,6 +118,10 @@ const emit = defineEmits<{
 		margin-left: var(--spacing-3xs);
 		padding-left: var(--spacing-3xs);
 		border-left: 1px solid var(--color-foreground-light);
+	}
+
+	&.pill--past-execution {
+		border: 2px dashed var(--color-foreground-light);
 	}
 
 	&.pill--preview {
