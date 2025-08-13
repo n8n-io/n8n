@@ -34,7 +34,7 @@ export function useResolvedExpression({
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 
-	const { resolveExpression } = useWorkflowHelpers();
+	const { resolveExpressionAsync } = useWorkflowHelpers();
 
 	const expressionLocalResolveCtx = inject(
 		ExpressionLocalResolveContextSymbol,
@@ -53,7 +53,7 @@ export function useResolvedExpression({
 	);
 	const isExpression = computed(() => isExpressionUtil(toValue(expression)));
 
-	function resolve(ctx?: ExpressionLocalResolveContext): Result<unknown, Error> {
+	async function resolve(ctx?: ExpressionLocalResolveContext): Promise<Result<unknown, Error>> {
 		const expressionString = toValue(expression);
 
 		if (!isExpression.value || typeof expressionString !== 'string') {
@@ -75,12 +75,14 @@ export function useResolvedExpression({
 		};
 
 		try {
-			const resolvedValue = resolveExpression(
+			const resolvedValue = (await resolveExpressionAsync(
 				expressionString,
 				undefined,
 				options,
 				toValue(stringifyObject) ?? true,
-			) as unknown;
+			)) as unknown;
+
+			console.log(resolvedValue);
 
 			return createResultOk(resolvedValue);
 		} catch (error) {
@@ -90,9 +92,10 @@ export function useResolvedExpression({
 
 	const debouncedUpdateExpression = debounce(updateExpression, 200);
 
-	function updateExpression() {
+	async function updateExpression() {
+		console.log('Updating expression:');
 		if (isExpression.value) {
-			const resolved = resolve(expressionLocalResolveCtx.value);
+			const resolved = await resolve(expressionLocalResolveCtx.value);
 			resolvedExpression.value = resolved.ok ? resolved.result : null;
 			resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
 		} else {

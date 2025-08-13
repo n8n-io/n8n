@@ -78,46 +78,60 @@ export type ResolveParameterOptions = {
 
 export async function resolveParameterAsync<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	options: {
-		executionId?: string;
-		workflowId: string;
-		nodeName?: string;
-		nodes: INode[];
-		connectionsBySourceNode: IConnections;
-		envVars: Record<string, string | boolean | number>;
-		pinData?: IPinData;
-		inputNode?: {
-			name: string;
-			runIndex: number;
-			branchIndex: number;
-		};
-		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
-	},
+	options: ResolveParameterOptions | ExpressionLocalResolveContext = {},
+	// options: {
+	// 	executionId?: string;
+	// 	workflowId: string;
+	// 	nodeName?: string;
+	// 	nodes: INode[];
+	// 	connectionsBySourceNode: IConnections;
+	// 	envVars: Record<string, string | boolean | number>;
+	// 	pinData?: IPinData;
+	// 	inputNode?: {
+	// 		name: string;
+	// 		runIndex: number;
+	// 		branchIndex: number;
+	// 	};
+	// 	additionalKeys?: IWorkflowDataProxyAdditionalKeys;
+	// },
 ): Promise<T | null> {
+	const workflowsStore = useWorkflowsStore();
+	const environmentsStore = useEnvironmentsStore();
+	const ndvStore = useNDVStore();
 	try {
-		const nodes = JSON.stringify(options.nodes);
-		const connectionsBySourceNode = JSON.stringify(options.connectionsBySourceNode);
-		const envVars = JSON.stringify(options.envVars);
-		const pinData = JSON.stringify(options.pinData);
-		const inputNode = options.inputNode
-			? JSON.stringify({
-					name: options.inputNode.name,
-					runIndex: options.inputNode.runIndex,
-					branchIndex: options.inputNode.branchIndex,
-				})
-			: undefined;
-		const additionalKeys = JSON.stringify(options.additionalKeys ?? {});
+		// const nodes = JSON.stringify(options.nodes);
+		// const connectionsBySourceNode = JSON.stringify(options.connectionsBySourceNode);
+		// const envVars = JSON.stringify(options.envVars);
+		// const pinData = JSON.stringify(options.pinData);
+		// const inputNode = options.inputNode
+		// 	? JSON.stringify({
+		// 			name: options.inputNode.name,
+		// 			runIndex: options.inputNode.runIndex,
+		// 			branchIndex: options.inputNode.branchIndex,
+		// 		})
+		// 	: undefined;
+		// const additionalKeys = JSON.stringify(options.additionalKeys ?? {});
 
 		return (await expressionsWorker.resolveParameter(parameter, {
-			...options,
-			nodes,
-			connectionsBySourceNode,
-			envVars,
-			pinData,
-			inputNode,
-			additionalKeys,
+			executionId: workflowsStore.workflowExecutionData?.id,
+			workflowId: workflowsStore.workflowId,
+			nodeName: 'nodeName' in options ? options.nodeName : ndvStore.activeNode?.name,
+			nodes: JSON.stringify(workflowsStore.workflow.nodes),
+			connectionsBySourceNode: JSON.stringify(workflowsStore.connectionsBySourceNode),
+			envVars: JSON.stringify(environmentsStore.variablesAsObject),
+			pinData: JSON.stringify(workflowsStore.pinnedWorkflowData),
+			inputNode: 'inputNode' in options ? JSON.stringify(options.inputNode) : undefined,
+			additionalKeys: JSON.stringify(options.additionalKeys),
+			// ...options,
+			// nodes,
+			// connectionsBySourceNode,
+			// envVars,
+			// pinData,
+			// inputNode,
+			// additionalKeys,
 		})) as T | null;
 	} catch (error) {
+		console.error('Error resolving parameter:', error);
 		return null;
 	}
 }
@@ -130,20 +144,20 @@ export function resolveParameter<T = IDataObject>(
 	const environmentsStore = useEnvironmentsStore();
 	const ndvStore = useNDVStore();
 
-	setTimeout(async () => {
-		const result = await resolveParameterAsync(parameter, {
-			executionId: workflowsStore.workflowExecutionData?.id,
-			workflowId: workflowsStore.workflowId,
-			nodeName: 'nodeName' in opts ? opts.nodeName : ndvStore.activeNode?.name,
-			nodes: workflowsStore.workflow.nodes,
-			connectionsBySourceNode: workflowsStore.connectionsBySourceNode,
-			envVars: environmentsStore.variablesAsObject,
-			pinData: workflowsStore.pinnedWorkflowData,
-			inputNode: 'inputNode' in opts ? opts.inputNode : undefined,
-			additionalKeys: opts.additionalKeys,
-		});
-		console.log('Resolved parameter from worker:', result);
-	});
+	// setTimeout(async () => {
+	// 	const result = await resolveParameterAsync(parameter, {
+	// 		executionId: workflowsStore.workflowExecutionData?.id,
+	// 		workflowId: workflowsStore.workflowId,
+	// 		nodeName: 'nodeName' in opts ? opts.nodeName : ndvStore.activeNode?.name,
+	// 		nodes: workflowsStore.workflow.nodes,
+	// 		connectionsBySourceNode: workflowsStore.connectionsBySourceNode,
+	// 		envVars: environmentsStore.variablesAsObject,
+	// 		pinData: workflowsStore.pinnedWorkflowData,
+	// 		inputNode: 'inputNode' in opts ? opts.inputNode : undefined,
+	// 		additionalKeys: opts.additionalKeys,
+	// 	});
+	// 	console.log('Resolved parameter from worker:', result);
+	// });
 
 	if ('localResolve' in opts && opts.localResolve) {
 		return resolveParameterImpl(
@@ -930,6 +944,31 @@ export function useWorkflowHelpers() {
 		return obj;
 	}
 
+	async function resolveExpressionAsync(
+		expression: string,
+		siblingParameters: INodeParameters = {},
+		opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
+		stringifyObject = true,
+	) {
+		const parameters = {
+			__xxxxxxx__: expression,
+			...siblingParameters,
+		};
+		const returnData: IDataObject | null = await resolveParameterAsync(parameters, opts);
+		console.log('Resolved expression async:', returnData);
+		if (!returnData) {
+			return null;
+		}
+
+		const obj = returnData.__xxxxxxx__;
+		if (typeof obj === 'object' && stringifyObject) {
+			const proxy = obj as { isProxy: boolean; toJSON?: () => unknown } | null;
+			if (proxy?.isProxy && proxy.toJSON) return JSON.stringify(proxy.toJSON());
+			return workflowsStore.workflowObject.expression.convertObjectValueToString(obj as object);
+		}
+		return obj;
+	}
+
 	async function updateWorkflow(
 		{ workflowId, active }: { workflowId: string; active?: boolean },
 		partialData = false,
@@ -1133,6 +1172,7 @@ export function useWorkflowHelpers() {
 	return {
 		setDocumentTitle,
 		resolveParameter,
+		resolveParameterAsync,
 		resolveRequiredParameters,
 		getConnectedNodes,
 		getNodeTypes,
@@ -1145,6 +1185,7 @@ export function useWorkflowHelpers() {
 		getWebhookExpressionValue,
 		getWebhookUrl,
 		resolveExpression,
+		resolveExpressionAsync,
 		updateWorkflow,
 		updateNodePositions,
 		removeForeignCredentialsFromWorkflow,

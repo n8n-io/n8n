@@ -89,7 +89,7 @@ const actions = {
 			const row = queryResult.result.resultRows[0] as unknown as ExecutionDb;
 			const rowParsed = {} as ExecutionDbParsed;
 
-			rowParsed.data = parse(jsonParse(row.data)) as IExecutionResponse['data'];
+			rowParsed.data = parse(row.data) as IExecutionResponse['data'];
 			rowParsed.id = row.id;
 			rowParsed.workflow_id = row.workflow_id;
 			rowParsed.workflow = jsonParse<IWorkflowDb>(row.workflow);
