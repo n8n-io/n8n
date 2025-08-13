@@ -1,33 +1,15 @@
 <script lang="ts" setup>
-import { createEventBus } from '@n8n/utils/event-bus';
 import { ref } from 'vue';
 
-import type { IconColor } from '@n8n/design-system/types/icon';
-
 import N8nIcon from '../N8nIcon';
-import { type IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
 
-export interface IAccordionItem {
-	id: string;
-	label: string;
-	icon: IconName;
-	iconColor?: IconColor;
-	tooltip?: string | null;
-}
-
-interface InfoAccordionProps {
-	title?: string;
-	description?: string;
-	items?: IAccordionItem[];
+interface Props {
+	title: string;
 }
 
 defineOptions({ name: 'N8nInfoAccordion' });
-withDefaults(defineProps<InfoAccordionProps>(), {
-	items: () => [],
-	initiallyExpanded: false,
-	eventBus: () => createEventBus(),
-});
+withDefaults(defineProps<Props>(), {});
 
 const expanded = ref(false);
 
@@ -39,17 +21,10 @@ const toggle = () => {
 <template>
 	<div class="n8n-accordion-header">
 		<div :class="[$style.header, $style.container]" @click="toggle">
-			<div :class="$style.title">
-				<N8nText :class="$style.headerText" color="text-base" size="small" align="left" bold>{{
-					title
-				}}</N8nText>
-				<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" bold />
-			</div>
-			<div v-if="expanded">
-				<N8nText color="text-base" size="small" align="left">
-					{{ description }}
-				</N8nText>
-			</div>
+			<N8nText :class="$style.headerText" color="text-base" size="small" align="left" bold>
+				<span v-n8n-html="title"></span
+			></N8nText>
+			<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" bold />
 		</div>
 		<div>
 			<slot v-if="expanded" />
@@ -65,7 +40,6 @@ const toggle = () => {
 .header {
 	cursor: pointer;
 	display: flex;
-	flex-direction: column;
 	padding: var(--spacing-s);
 	justify-content: flex-start;
 	gap: var(--spacing-3xs);
@@ -73,10 +47,6 @@ const toggle = () => {
 
 .headerText {
 	flex-grow: 1;
-}
-
-.title {
-	display: flex;
 }
 
 .accordionItems {

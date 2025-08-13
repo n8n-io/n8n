@@ -37,9 +37,8 @@ withDefaults(defineProps<Props>(), {
 <template>
 	<div v-if="workflowsStore.lastSuccessfulExecution">
 		<N8nAccordionHeader
-			:title="i18n.baseText('lastSuccessfulExecutionSchema.viewSchemaAction')"
-			:description="
-				i18n.baseText('lastSuccessfulExecutionSchema.lastExecuted', {
+			:title="
+				i18n.baseText('lastSuccessfulExecutionSchema.viewSchemaAction', {
 					interpolate: {
 						time: lastExecutionTime.time,
 						date: lastExecutionTime.date,
