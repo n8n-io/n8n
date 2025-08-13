@@ -2983,6 +2983,7 @@ export interface IUserSettings {
 	dismissedCallouts?: Record<string, boolean>;
 	firstProdExecutionFailureDetected?: boolean;
 	firstFailedWorkflowId?: string;
+	enableWorkflowFailureSummary?: boolean;
 }
 
 export interface IProcessedDataConfig {

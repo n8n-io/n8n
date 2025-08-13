@@ -17,6 +17,8 @@ import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
+import { UrlService } from '@/services/url.service';
+import { OwnershipService } from '@/services/ownership.service';
 
 import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
 
@@ -52,6 +54,8 @@ export class Telemetry {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
+		private readonly urlService: UrlService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	async init() {
@@ -84,12 +88,9 @@ export class Telemetry {
 	}
 
 	private startPulse() {
-		this.pulseIntervalReference = setInterval(
-			async () => {
-				void this.pulse();
-			},
-			6 * 60 * 60 * 1000,
-		); // every 6 hours
+		this.pulseIntervalReference = setInterval(async () => {
+			void this.pulse();
+		}, 60 * 1000); // every 6 hours
 	}
 
 	private async pulse() {
@@ -107,12 +108,71 @@ export class Telemetry {
 			return sum > 0;
 		});
 
+		// Collect production failure summaries
+		const prodFailureSummaries: Array<{
+			workflowURL: string;
+			workflowName: string;
+			prodFailureCount: number;
+		}> = [];
+
 		for (const workflowId of workflowIdsToReport) {
+			const data = this.executionCountsBuffer[workflowId];
+
+			// Track the existing workflow execution count event
 			this.track('Workflow execution count', {
 				event_version: '2',
 				workflow_id: workflowId,
-				...this.executionCountsBuffer[workflowId],
+				...data,
 			});
+
+			// Collect production failures for summary
+			if (data.prod_error && data.prod_error.count > 0) {
+				try {
+					// Fetch workflow details to get the name
+					const workflow = await this.workflowRepository.findOne({
+						where: { id: workflowId },
+						select: ['name'],
+					});
+
+					if (workflow) {
+						const workflowUrl = `${this.urlService.getWebhookBaseUrl()}workflow/${workflowId}`;
+						prodFailureSummaries.push({
+							workflowURL: workflowUrl,
+							workflowName: workflow.name,
+							prodFailureCount: data.prod_error.count,
+						});
+					}
+				} catch (error) {
+					// Skip this workflow if we can't fetch details
+					this.logger.debug(`Could not fetch workflow details for ${workflowId}`, { error });
+				}
+			}
+		}
+
+		// Send production failure summary event if there are any failures
+		// Check user settings to see if this telemetry is enabled
+		if (prodFailureSummaries.length > 0) {
+			let shouldEmit = true; // Default to emitting if we can't check settings
+
+			try {
+				const instanceOwner = await this.ownershipService.getInstanceOwner();
+				// Only skip if explicitly set to false
+				if (instanceOwner?.settings?.enableWorkflowFailureSummary === false) {
+					shouldEmit = false;
+				}
+			} catch (error) {
+				// If we can't check settings, default to emitting (shouldEmit remains true)
+				this.logger.debug('Could not check instance owner settings', { error });
+			}
+
+			if (shouldEmit) {
+				this.track('Production workflow failures summary', {
+					instanceId: this.instanceSettings.instanceId,
+					summaryPeriodHours: 6,
+					totalFailedWorkflows: prodFailureSummaries.length,
+					workflows: prodFailureSummaries,
+				});
+			}
 		}
 
 		this.executionCountsBuffer = {};
