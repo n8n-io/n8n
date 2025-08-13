@@ -1,0 +1,97 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": [
+		"config:base",
+		":dependencyDashboard",
+		":semanticCommits",
+		":separateMajorReleases",
+		":enableVulnerabilityAlertsWithLabel(security)"
+	],
+	"schedule": ["after 2am and before 4am"],
+	"timezone": "UTC",
+	"prConcurrentLimit": 3,
+	"prHourlyLimit": 1,
+	"packageRules": [
+		{
+			"description": "Use pnpm catalog for shared dependencies",
+			"matchFileNames": ["pnpm-workspace.yaml"],
+			"matchManagers": ["pnpm"],
+			"enabled": true
+		},
+		{
+			"description": "Group all catalog updates together",
+			"matchFileNames": ["pnpm-workspace.yaml"],
+			"groupName": "pnpm catalog",
+			"commitMessageTopic": "pnpm catalog"
+		},
+		{
+			"description": "Dev dependencies - no auto-merge for now",
+			"matchDepTypes": ["devDependencies"],
+			"matchUpdateTypes": ["patch", "minor"],
+			"automerge": false
+		},
+		{
+			"description": "Patch updates - no auto-merge for now",
+			"matchUpdateTypes": ["patch", "pin", "digest"],
+			"automerge": false
+		},
+		{
+			"description": "TypeScript types - no auto-merge for now",
+			"matchPackagePatterns": ["^@types/"],
+			"automerge": false
+		},
+		{
+			"description": "Require approval for major updates",
+			"matchUpdateTypes": ["major"],
+			"dependencyDashboardApproval": true
+		},
+		{
+			"description": "Security updates get highest priority",
+			"vulnerabilityAlerts": true,
+			"prPriority": 20,
+			"labels": ["security", "dependencies"]
+		},
+		{
+			"description": "Group ESLint related packages",
+			"matchPackagePatterns": ["eslint"],
+			"groupName": "ESLint"
+		},
+		{
+			"description": "Group Vue ecosystem packages",
+			"matchPackagePatterns": ["vue", "@vue/", "@vueuse/"],
+			"groupName": "Vue ecosystem"
+		},
+		{
+			"description": "Group testing packages",
+			"matchPackagePatterns": ["vitest", "playwright", "cypress", "@testing-library/"],
+			"groupName": "testing packages"
+		},
+		{
+			"description": "Group TypeScript packages",
+			"matchPackagePatterns": ["typescript", "tsx", "tsup"],
+			"groupName": "TypeScript"
+		}
+	],
+	"lockFileMaintenance": {
+		"enabled": true,
+		"schedule": ["before 6am on monday"]
+	},
+	"vulnerabilityAlerts": {
+		"enabled": true,
+		"prPriority": 20
+	},
+	"osvVulnerabilityAlerts": true,
+	"vulnerabilityAlertsLabels": ["security", "vulnerability"],
+	"labels": ["dependencies"],
+	"branchPrefix": "renovate/",
+	"commitMessagePrefix": "chore(deps): ",
+	"commitMessageTopic": "{{depName}}",
+	"commitMessageExtra": "to {{newVersion}}",
+	"prTitle": "{{commitMessagePrefix}}update {{#if isSingleManager}}{{#if isGrouped}}{{groupName}}{{else}}{{depName}}{{/if}}{{else}}dependencies{{/if}}{{#if hasReleaseNotes}} ({{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#each newValue}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}{{/if}}){{/if}}",
+	"ignoreDeps": [],
+	"ignorePaths": ["**/node_modules/**", "**/dist/**", "**/build/**"],
+	"enabledManagers": ["npm", "pnpm", "dockerfile", "github-actions"],
+	"npmrc": "auto-detect",
+	"respectShrinkwrap": true,
+	"updateNotScheduled": false
+}
