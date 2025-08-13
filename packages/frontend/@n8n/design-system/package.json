@@ -63,6 +63,7 @@
     "markdown-it-emoji": "^2.0.2",
     "markdown-it-link-attributes": "^4.0.1",
     "markdown-it-task-lists": "^2.1.1",
+    "ninja-keys": "^1.2.2",
     "parse-diff": "^0.11.1",
     "reka-ui": "^2.2.1",
     "sanitize-html": "2.12.1",
