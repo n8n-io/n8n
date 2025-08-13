@@ -18,14 +18,14 @@ const openCommunityNodeDocsPage = () => {
 <template>
 	<N8nLink
 		theme="text"
-		@click="openCommunityNodeDocsPage"
 		:class="$style.container"
 		:title="i18n.baseText('communityNodesDocsLink.link.title')"
+		@click="openCommunityNodeDocsPage"
 	>
 		<N8nText size="small" bold style="margin-right: 5px">
 			{{ i18n.baseText('communityNodesDocsLink.title') }}
 		</N8nText>
-		<FontAwesomeIcon icon="external-link-alt" />
+		<N8nIcon icon="external-link" />
 	</N8nLink>
 </template>
 

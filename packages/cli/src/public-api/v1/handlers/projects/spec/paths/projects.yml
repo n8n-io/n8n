@@ -4,7 +4,7 @@ post:
   tags:
     - Projects
   summary: Create a project
-  description: Create a project in your instance.
+  description: Create a project on your instance.
   requestBody:
     description: Payload for project to create.
     content:

@@ -1,7 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import RunDataTable from '@/components/RunDataTable.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { cleanup } from '@testing-library/vue';
+import { cleanup, fireEvent, waitFor } from '@testing-library/vue';
+import { nextTick } from 'vue';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -106,5 +107,49 @@ describe('RunDataTable.vue', () => {
 		Object.values(inputData.json).forEach((value) => {
 			expect(getAllByText(value)).not.toHaveLength(0);
 		});
+	});
+
+	it('inserts col elements in DOM to specify column widths when collapsing column name is specified', async () => {
+		const inputData = { json: { firstName: 'John', lastName: 'Doe' } };
+		const rendered = renderComponent({
+			props: {
+				inputData: [inputData],
+				collapsingColumnName: null,
+			},
+		});
+
+		await nextTick();
+
+		expect(rendered.container.querySelectorAll('col')).toHaveLength(0);
+
+		await rendered.rerender({
+			inputData: [inputData],
+			collapsingColumnName: 'firstName',
+		});
+
+		await waitFor(() => expect(rendered.container.querySelectorAll('col')).toHaveLength(3)); // two data columns + one right margin column
+
+		await rendered.rerender({
+			inputData: [inputData],
+			collapsingColumnName: null,
+		});
+
+		await waitFor(() => expect(rendered.container.querySelectorAll('col')).toHaveLength(0));
+	});
+
+	it('shows the button for column collapsing in the column header', async () => {
+		const inputData = { json: { firstName: 'John', lastName: 'Doe' } };
+		const rendered = renderComponent({
+			props: {
+				inputData: [inputData],
+				collapsingColumnName: 'firstName',
+			},
+		});
+
+		expect(rendered.getAllByLabelText('Collapse rows')).toHaveLength(2);
+
+		await fireEvent.click(rendered.getAllByLabelText('Collapse rows')[0]);
+		await fireEvent.click(rendered.getAllByLabelText('Collapse rows')[1]);
+		expect(rendered.emitted('collapsingColumnChanged')).toEqual([[null], ['lastName']]);
 	});
 });

@@ -20,7 +20,7 @@ export function createTestLogTreeCreationContext(
 		workflows: {},
 		subWorkflowData: {},
 		executionId: 'test-execution-id',
-		depth: 0,
+		ancestorRunIndexes: [],
 		data: {
 			resultData: {
 				runData,

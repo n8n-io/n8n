@@ -11,7 +11,7 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useExecutionsStore } from '@/stores/executions.store';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import { isComponentPublicInstance } from '@/utils/typeGuards';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/stores/settings.store';
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';

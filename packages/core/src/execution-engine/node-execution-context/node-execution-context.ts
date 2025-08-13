@@ -17,6 +17,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
+	NodeInputConnections,
 	NodeParameterValueType,
 	NodeTypeAndVersion,
 	Workflow,
@@ -24,16 +25,19 @@ import type {
 } from 'n8n-workflow';
 import {
 	ApplicationError,
+	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
 	NodeHelpers,
 	NodeOperationError,
+	UnexpectedError,
 } from 'n8n-workflow';
 
 import {
 	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
+	WAITING_TOKEN_QUERY_PARAM,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
 
@@ -42,6 +46,7 @@ import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
+import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -105,20 +110,41 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return output;
 	}
 
-	getParentNodes(nodeName: string) {
+	getParentNodes(nodeName: string, options?: { includeNodeParameters?: boolean }) {
 		const output: NodeTypeAndVersion[] = [];
 		const nodeNames = this.workflow.getParentNodes(nodeName);
 
 		for (const n of nodeNames) {
 			const node = this.workflow.nodes[n];
-			output.push({
+			const entry: NodeTypeAndVersion = {
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
 				disabled: node.disabled ?? false,
-			});
+			};
+
+			if (options?.includeNodeParameters) {
+				entry.parameters = node.parameters;
+			}
+
+			output.push(entry);
 		}
 		return output;
+	}
+
+	/**
+	 * Gets the chat trigger node
+	 *
+	 * this is needed for sub-nodes where the parent nodes are not available
+	 */
+	getChatTrigger() {
+		for (const node of Object.values(this.workflow.nodes)) {
+			if (this.workflow.nodes[node.name].type === CHAT_TRIGGER_NODE_TYPE) {
+				return this.workflow.nodes[node.name];
+			}
+		}
+
+		return null;
 	}
 
 	@Memoized
@@ -153,6 +179,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			.filter((node) => node.disabled !== true);
 	}
 
+	getConnections(destination: INode, connectionType: NodeConnectionType): NodeInputConnections {
+		return this.workflow.connectionsByDestinationNode[destination.name]?.[connectionType] ?? [];
+	}
+
 	getNodeOutputs(): INodeOutputConfiguration[] {
 		return this.nodeOutputs;
 	}
@@ -171,6 +201,32 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	getInstanceId() {
 		return this.instanceSettings.instanceId;
+	}
+
+	setSignatureValidationRequired() {
+		if (this.runExecutionData) this.runExecutionData.validateSignature = true;
+	}
+
+	getSignedResumeUrl(parameters: Record<string, string> = {}) {
+		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
+
+		if (typeof executionId !== 'string') {
+			throw new UnexpectedError('Execution id is missing');
+		}
+
+		const baseURL = new URL(`${webhookWaitingBaseUrl}/${executionId}/${this.node.id}`);
+
+		for (const [key, value] of Object.entries(parameters)) {
+			baseURL.searchParams.set(key, value);
+		}
+
+		const urlForSigning = prepareUrlForSigning(baseURL);
+
+		const token = generateUrlSignature(urlForSigning, this.instanceSettings.hmacSignatureSecret);
+
+		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+
+		return baseURL.toString();
 	}
 
 	getTimezone() {

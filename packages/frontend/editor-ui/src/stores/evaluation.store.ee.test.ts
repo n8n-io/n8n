@@ -1,7 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee'; // Adjust the import path as necessary
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { usePostHog } from '@/stores/posthog.store';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import type { TestRunRecord } from '@/api/evaluation.ee';
 import { mockedStore } from '@/__tests__/utils';
@@ -40,14 +39,12 @@ const TEST_RUN: TestRunRecord = {
 describe('evaluation.store.ee', () => {
 	let store: ReturnType<typeof useEvaluationStore>;
 	let rootStoreMock: ReturnType<typeof useRootStore>;
-	let posthogStoreMock: ReturnType<typeof usePostHog>;
 
 	beforeEach(() => {
 		vi.restoreAllMocks();
 		setActivePinia(createPinia());
 		store = useEvaluationStore();
 		rootStoreMock = useRootStore();
-		posthogStoreMock = usePostHog();
 
 		mockedStore(useAnnotationTagsStore).fetchAll = vi.fn().mockResolvedValue([]);
 
@@ -60,17 +57,6 @@ describe('evaluation.store.ee', () => {
 	test('Initialization', () => {
 		expect(store.testRunsById).toEqual({});
 		expect(store.isLoading).toBe(false);
-	});
-
-	describe('Computed Properties', () => {
-		test('isFeatureEnabled', () => {
-			posthogStoreMock.isFeatureEnabled = vi.fn().mockReturnValue(false);
-
-			expect(store.isFeatureEnabled).toBe(false);
-			posthogStoreMock.isFeatureEnabled = vi.fn().mockReturnValue(true);
-
-			expect(store.isFeatureEnabled).toBe(true);
-		});
 	});
 
 	describe('Test Runs', () => {

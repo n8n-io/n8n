@@ -6,7 +6,7 @@ import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import type { VNode } from 'vue';
 import { computed, h, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { PermissionsRecord } from '@/permissions';
+import type { PermissionsRecord } from '@n8n/permissions';
 import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
@@ -143,7 +143,7 @@ async function activeChanged(newActiveState: boolean) {
 			uiStore.openModalWithData({
 				name: WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 				data: {
-					triggerName: trigger.name,
+					triggerType: trigger.type,
 					workflowName: conflictingWorkflow.name,
 					...conflict,
 				},
@@ -262,7 +262,7 @@ watch(
 						@click="displayActivationError"
 					></div>
 				</template>
-				<font-awesome-icon icon="exclamation-triangle" @click="displayActivationError" />
+				<n8n-icon icon="triangle-alert" @click="displayActivationError" />
 			</n8n-tooltip>
 		</div>
 	</div>
@@ -270,7 +270,6 @@ watch(
 
 <style lang="scss" module>
 .activeStatusText {
-	width: 64px; // Required to avoid jumping when changing active state
 	padding-right: var(--spacing-2xs);
 	box-sizing: border-box;
 	display: inline-block;

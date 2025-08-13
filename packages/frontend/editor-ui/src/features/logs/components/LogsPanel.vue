@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, computed, useTemplateRef } from 'vue';
+import { nextTick, computed, useTemplateRef, ref } from 'vue';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import { useChatState } from '@/features/logs/composables/useChatState';
 import LogsOverviewPanel from '@/features/logs/components/LogsOverviewPanel.vue';
@@ -14,16 +14,21 @@ import { useLogsTreeExpand } from '@/features/logs/composables/useLogsTreeExpand
 import { type LogEntry } from '@/features/logs/logs.types';
 import { useLogsStore } from '@/stores/logs.store';
 import { useLogsPanelLayout } from '@/features/logs/composables/useLogsPanelLayout';
+import { type KeyMap } from '@/composables/useKeybindings';
+import LogsViewKeyboardEventListener from './LogsViewKeyboardEventListener.vue';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const props = withDefaults(defineProps<{ isReadOnly?: boolean }>(), { isReadOnly: false });
 
 const container = useTemplateRef('container');
 const logsContainer = useTemplateRef('logsContainer');
-const pipContainer = useTemplateRef('pipContainer');
-const pipContent = useTemplateRef('pipContent');
+const popOutContainer = useTemplateRef('popOutContainer');
+const popOutContent = useTemplateRef('popOutContent');
 
 const logsStore = useLogsStore();
 const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
+const workflowName = computed(() => workflowsStore.workflow.name);
 
 const {
 	height,
@@ -34,7 +39,7 @@ const {
 	isPoppedOut,
 	isCollapsingDetailsPanel,
 	isOverviewPanelFullWidth,
-	pipWindow,
+	popOutWindow,
 	onResize,
 	onResizeEnd,
 	onToggleOpen,
@@ -43,7 +48,7 @@ const {
 	onChatPanelResizeEnd,
 	onOverviewPanelResize,
 	onOverviewPanelResizeEnd,
-} = useLogsPanelLayout(pipContainer, pipContent, container, logsContainer);
+} = useLogsPanelLayout(workflowName, popOutContainer, popOutContent, container, logsContainer);
 
 const {
 	currentSessionId,
@@ -56,13 +61,16 @@ const {
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
 	useLogsExecutionData();
-const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries);
+const { flatLogEntries, toggleExpanded } = useLogsTreeExpand(entries, loadSubExecution);
 const { selected, select, selectNext, selectPrev } = useLogsSelection(
 	execution,
 	entries,
 	flatLogEntries,
 	toggleExpanded,
 );
+
+const inputTableColumnCollapsing = ref<{ nodeName: string; columnName: string }>();
+const outputTableColumnCollapsing = ref<{ nodeName: string; columnName: string }>();
 
 const isLogDetailsOpen = computed(() => isOpen.value && selected.value !== undefined);
 const isLogDetailsVisuallyOpen = computed(
@@ -77,6 +85,26 @@ const logsPanelActionsProps = computed<InstanceType<typeof LogsPanelActions>['$p
 	onToggleOpen,
 	onToggleSyncSelection: logsStore.toggleLogSelectionSync,
 }));
+const inputCollapsingColumnName = computed(() =>
+	inputTableColumnCollapsing.value?.nodeName === selected.value?.node.name
+		? (inputTableColumnCollapsing.value?.columnName ?? null)
+		: null,
+);
+const outputCollapsingColumnName = computed(() =>
+	outputTableColumnCollapsing.value?.nodeName === selected.value?.node.name
+		? (outputTableColumnCollapsing.value?.columnName ?? null)
+		: null,
+);
+
+const keyMap = computed<KeyMap>(() => ({
+	j: selectNext,
+	k: selectPrev,
+	Escape: () => select(undefined),
+	ArrowDown: selectNext,
+	ArrowUp: selectPrev,
+	Space: () => selected.value && toggleExpanded(selected.value),
+	Enter: () => selected.value && handleOpenNdv(selected.value),
+}));
 
 function handleResizeOverviewPanelEnd() {
 	if (isOverviewPanelFullWidth.value) {
@@ -86,10 +114,10 @@ function handleResizeOverviewPanelEnd() {
 	onOverviewPanelResizeEnd();
 }
 
-async function handleOpenNdv(treeNode: LogEntry) {
+function handleOpenNdv(treeNode: LogEntry) {
 	ndvStore.setActiveNodeName(treeNode.node.name);
 
-	await nextTick(() => {
+	void nextTick(() => {
 		const source = treeNode.runData?.source[0];
 		const inputBranch = source?.previousNodeOutput ?? 0;
 
@@ -98,32 +126,37 @@ async function handleOpenNdv(treeNode: LogEntry) {
 		ndvStore.setOutputRunIndex(treeNode.runIndex);
 	});
 }
+
+function handleChangeInputTableColumnCollapsing(columnName: string | null) {
+	inputTableColumnCollapsing.value =
+		columnName && selected.value ? { nodeName: selected.value.node.name, columnName } : undefined;
+}
+
+function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
+	outputTableColumnCollapsing.value =
+		columnName && selected.value ? { nodeName: selected.value.node.name, columnName } : undefined;
+}
 </script>
 
 <template>
-	<div ref="pipContainer">
-		<div ref="pipContent" :class="$style.pipContent">
+	<div ref="popOutContainer">
+		<!-- force re-create with key for shortcuts to work in pop-out window -->
+		<LogsViewKeyboardEventListener
+			:key="String(!!popOutWindow)"
+			:key-map="keyMap"
+			:container="container"
+		/>
+		<div ref="popOutContent" :class="[$style.popOutContent, isPoppedOut ? $style.poppedOut : '']">
 			<N8nResizeWrapper
-				:height="height"
+				:height="isPoppedOut ? undefined : height"
 				:supported-directions="['top']"
 				:is-resizing-enabled="!isPoppedOut"
 				:class="$style.resizeWrapper"
-				:style="{ height: isOpen ? `${height}px` : 'auto' }"
+				:style="{ height: isOpen && !isPoppedOut ? `${height}px` : 'auto' }"
 				@resize="onResize"
 				@resizeend="onResizeEnd"
 			>
-				<div
-					ref="container"
-					:class="$style.container"
-					tabindex="-1"
-					@keydown.esc.exact.stop="select(undefined)"
-					@keydown.j.exact.stop="selectNext"
-					@keydown.down.exact.stop.prevent="selectNext"
-					@keydown.k.exact.stop="selectPrev"
-					@keydown.up.exact.stop.prevent="selectPrev"
-					@keydown.space.exact.stop="selected && toggleExpanded(selected)"
-					@keydown.enter.exact.stop="selected && handleOpenNdv(selected)"
-				>
+				<div ref="container" :class="$style.container" tabindex="-1">
 					<N8nResizeWrapper
 						v-if="hasChat && (!props.isReadOnly || messages.length > 0)"
 						:supported-directions="['right']"
@@ -131,11 +164,12 @@ async function handleOpenNdv(treeNode: LogEntry) {
 						:width="chatPanelWidth"
 						:style="{ width: `${chatPanelWidth}px` }"
 						:class="$style.chat"
-						:window="pipWindow"
+						:window="popOutWindow"
 						@resize="onChatPanelResize"
 						@resizeend="onChatPanelResizeEnd"
 					>
 						<ChatMessagesPanel
+							:key="`canvas-chat-${currentSessionId}${isPoppedOut ? '-pop-out' : ''}`"
 							data-test-id="canvas-chat"
 							:is-open="isOpen"
 							:is-read-only="isReadOnly"
@@ -158,12 +192,11 @@ async function handleOpenNdv(treeNode: LogEntry) {
 							:style="{ width: isLogDetailsVisuallyOpen ? `${overviewPanelWidth}px` : '' }"
 							:supported-directions="['right']"
 							:is-resizing-enabled="isLogDetailsOpen"
-							:window="pipWindow"
+							:window="popOutWindow"
 							@resize="onOverviewPanelResize"
 							@resizeend="handleResizeOverviewPanelEnd"
 						>
 							<LogsOverviewPanel
-								:key="execution?.id ?? ''"
 								:class="$style.logsOverview"
 								:is-open="isOpen"
 								:is-read-only="isReadOnly"
@@ -178,7 +211,6 @@ async function handleOpenNdv(treeNode: LogEntry) {
 								@clear-execution-data="resetExecutionData"
 								@toggle-expanded="toggleExpanded"
 								@open-ndv="handleOpenNdv"
-								@load-sub-execution="loadSubExecution"
 							>
 								<template #actions>
 									<LogsPanelActions
@@ -193,12 +225,16 @@ async function handleOpenNdv(treeNode: LogEntry) {
 							:class="$style.logDetails"
 							:is-open="isOpen"
 							:log-entry="selected"
-							:window="pipWindow"
-							:latest-info="latestNodeNameById[selected.id]"
+							:window="popOutWindow"
+							:latest-info="latestNodeNameById[selected.node.id]"
 							:panels="logsStore.detailsState"
+							:collapsing-input-table-column-name="inputCollapsingColumnName"
+							:collapsing-output-table-column-name="outputCollapsingColumnName"
 							@click-header="onToggleOpen(true)"
 							@toggle-input-open="logsStore.toggleInputOpen"
 							@toggle-output-open="logsStore.toggleOutputOpen"
+							@collapsing-input-table-column-changed="handleChangeInputTableColumnCollapsing"
+							@collapsing-output-table-column-changed="handleChangeOutputTableColumnCollapsing"
 						>
 							<template #actions>
 								<LogsPanelActions v-if="isLogDetailsVisuallyOpen" v-bind="logsPanelActionsProps" />
@@ -212,14 +248,7 @@ async function handleOpenNdv(treeNode: LogEntry) {
 </template>
 
 <style lang="scss" module>
-@media all and (display-mode: picture-in-picture) {
-	.resizeWrapper {
-		height: 100% !important;
-		max-height: 100vh !important;
-	}
-}
-
-.pipContent {
+.popOutContent {
 	height: 100%;
 	position: relative;
 	overflow: hidden;
@@ -231,6 +260,10 @@ async function handleOpenNdv(treeNode: LogEntry) {
 	flex-basis: 0;
 	border-top: var(--border-base);
 	background-color: var(--color-background-light);
+
+	.poppedOut & {
+		border-top: none;
+	}
 }
 
 .container {

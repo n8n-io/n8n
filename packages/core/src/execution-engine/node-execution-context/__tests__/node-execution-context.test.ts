@@ -10,7 +10,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 
 import { InstanceSettings } from '@/instance-settings';
 
@@ -19,7 +19,11 @@ import { NodeExecutionContext } from '../node-execution-context';
 class TestContext extends NodeExecutionContext {}
 
 describe('NodeExecutionContext', () => {
-	const instanceSettings = mock<InstanceSettings>({ instanceId: 'abc123' });
+	const instanceSettings = mock<InstanceSettings>({
+		instanceId: 'abc123',
+		encryptionKey: 'testEncryptionKey',
+		hmacSignatureSecret: 'testHmacSignatureSecret',
+	});
 	Container.set(InstanceSettings, instanceSettings);
 
 	const node = mock<INode>();
@@ -34,7 +38,7 @@ describe('NodeExecutionContext', () => {
 		timezone: 'UTC',
 		expression,
 	});
-	let additionalData = mock<IWorkflowExecuteAdditionalData>({
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		credentialsHelper: mock(),
 	});
 
@@ -112,6 +116,31 @@ describe('NodeExecutionContext', () => {
 				{ name: 'Parent Node 1', type: 'testType1', typeVersion: 1 },
 				{ name: 'Parent Node 2', type: 'testType2', typeVersion: 2 },
 			]);
+		});
+	});
+
+	describe('getChatTrigger', () => {
+		it('should return a chat trigger node if it exists in the workflow', () => {
+			const chatNode = mock<INode>({ name: 'Chat', type: CHAT_TRIGGER_NODE_TYPE });
+
+			workflow.nodes = {
+				Chat: chatNode,
+			};
+
+			const result = testContext.getChatTrigger();
+
+			expect(result).toEqual(chatNode);
+		});
+		it('should return a null if there is no chat trigger node in the workflow', () => {
+			const someNode = mock<INode>({ name: 'Some Node', type: 'someType' });
+
+			workflow.nodes = {
+				'Some Node': someNode,
+			};
+
+			const result = testContext.getChatTrigger();
+
+			expect(result).toBeNull();
 		});
 	});
 
@@ -336,6 +365,43 @@ describe('NodeExecutionContext', () => {
 			const result = testContext.getConnectedNodes(NodeConnectionTypes.Main);
 
 			expect(result).toEqual([node1]);
+		});
+	});
+
+	describe('getSignedResumeUrl', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			testContext = new TestContext(
+				workflow,
+				mock<INode>({
+					id: 'node456',
+				}),
+				mock<IWorkflowExecuteAdditionalData>({
+					executionId: '123',
+					webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+				}),
+				mode,
+				{
+					validateSignature: true,
+					resultData: { runData: {} },
+				},
+			);
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+		});
+		it('should return a signed resume URL with no query parameters', () => {
+			const result = testContext.getSignedResumeUrl();
+
+			expect(result).toBe(
+				'http://localhost/waiting-webhook/123/node456?signature=8e48dfd1107c1a736f70e7399493ffc50a2e8edd44f389c5f9c058da961682e7',
+			);
+		});
+
+		it('should return a signed resume URL with query parameters', () => {
+			const result = testContext.getSignedResumeUrl({ approved: 'true' });
+
+			expect(result).toBe(
+				'http://localhost/waiting-webhook/123/node456?approved=true&signature=11c5efc97a0d6f2ea9045dba6e397596cba29dc24adb44a9ebd3d1272c991e9b',
+			);
 		});
 	});
 });

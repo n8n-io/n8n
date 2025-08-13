@@ -71,14 +71,14 @@ export class ProjectService {
 	) {}
 
 	private get workflowService() {
-		// eslint-disable-next-line import/no-cycle
+		// eslint-disable-next-line import-x/no-cycle
 		return import('@/workflows/workflow.service').then(({ WorkflowService }) =>
 			Container.get(WorkflowService),
 		);
 	}
 
 	private get credentialsService() {
-		// eslint-disable-next-line import/no-cycle
+		// eslint-disable-next-line import-x/no-cycle
 		return import('@/credentials/credentials.service').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
 		);
@@ -269,7 +269,7 @@ export class ProjectService {
 	async syncProjectRelations(
 		projectId: string,
 		relations: Required<UpdateProjectDto>['relations'],
-	) {
+	): Promise<{ project: Project; newRelations: Required<UpdateProjectDto>['relations'] }> {
 		const project = await this.getTeamProjectWithRelations(projectId);
 		this.checkRolesLicensed(project, relations);
 
@@ -277,7 +277,13 @@ export class ProjectService {
 			await this.pruneRelations(em, project);
 			await this.addManyRelations(em, project, relations);
 		});
+
+		const newRelations = relations.filter(
+			(relation) => !project.projectRelations.some((r) => r.userId === relation.userId),
+		);
 		await this.clearCredentialCanUseExternalSecretsCache(projectId);
+
+		return { project, newRelations };
 	}
 
 	/**
@@ -383,6 +389,7 @@ export class ProjectService {
 	) {
 		await em.insert(
 			ProjectRelation,
+			// @ts-ignore CAT-957
 			relations.map((v) =>
 				this.projectRelationRepository.create({
 					projectId: project.id,

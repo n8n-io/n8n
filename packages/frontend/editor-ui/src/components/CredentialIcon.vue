@@ -46,7 +46,7 @@ const iconType = computed(() => {
 
 const iconName = computed(() => {
 	const icon = getThemedValue(credentialWithIcon.value?.icon, uiStore.appliedTheme);
-	if (!icon || !icon?.startsWith('fa:')) return undefined;
+	if (!icon?.startsWith('fa:')) return undefined;
 	return icon.replace('fa:', '');
 });
 

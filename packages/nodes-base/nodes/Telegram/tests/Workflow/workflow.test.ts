@@ -13,6 +13,7 @@ import {
 	sendAnimationMessageResponse,
 	sendAudioResponse,
 	getMemberResponse,
+	sendMessageWithBinaryDataAndReplyMarkupResponse,
 } from './apiResponses';
 
 describe('Telegram', () => {
@@ -47,6 +48,17 @@ describe('Telegram', () => {
 			mock.post('/bottestToken/getChatMember').reply(200, getMemberResponse);
 		});
 
-		new NodeTestHarness().setupTests({ credentials });
+		new NodeTestHarness().setupTests({ credentials, workflowFiles: ['workflow.json'] });
+	});
+
+	describe('Binary Data and Reply Markup', () => {
+		beforeAll(() => {
+			const mock = nock(credentials.telegramApi.baseUrl);
+			mock
+				.post('/bottestToken/sendDocument')
+				.reply(200, sendMessageWithBinaryDataAndReplyMarkupResponse);
+		});
+
+		new NodeTestHarness().setupTests({ credentials, workflowFiles: ['binaryData.workflow.json'] });
 	});
 });

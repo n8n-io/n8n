@@ -44,7 +44,7 @@ const onSearchChange = (search: string) => {
 				@update:model-value="onSearchChange"
 			>
 				<template #prefix>
-					<font-awesome-icon icon="search" />
+					<n8n-icon icon="search" />
 				</template>
 			</n8n-input>
 		</el-col>

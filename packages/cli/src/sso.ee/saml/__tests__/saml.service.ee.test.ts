@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { SettingsRepository } from '@n8n/db';
 import type { Settings } from '@n8n/db';
 import axios from 'axios';
@@ -8,7 +9,6 @@ import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify'
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import * as samlHelpers from '@/sso.ee/saml/saml-helpers';
 import { SamlService } from '@/sso.ee/saml/saml.service.ee';
-import { mockInstance } from '@test/mocking';
 
 import { SAML_PREFERENCES_DB_KEY } from '../constants';
 import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error';

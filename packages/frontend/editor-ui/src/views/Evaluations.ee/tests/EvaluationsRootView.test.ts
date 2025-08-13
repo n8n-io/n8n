@@ -7,6 +7,7 @@ import EvaluationRootView from '../EvaluationsRootView.vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useUsageStore } from '@/stores/usage.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
@@ -15,6 +16,7 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
+import type { SourceControlPreferences } from '@/types/sourceControl.types';
 
 vi.mock('@/composables/useTelemetry', () => {
 	const track = vi.fn();
@@ -31,6 +33,15 @@ vi.mock('@/stores/nodeTypes.store', () => ({
 		getNodeType,
 	})),
 }));
+
+vi.mock('@n8n/i18n', async (importOriginal) => {
+	return {
+		...(await importOriginal()),
+		useI18n: () => ({
+			baseText: vi.fn((key: string) => `mocked-${key}`),
+		}),
+	};
+});
 
 describe('EvaluationsRootView', () => {
 	const renderComponent = createComponentRenderer(EvaluationRootView);
@@ -127,6 +138,21 @@ describe('EvaluationsRootView', () => {
 		await waitFor(() => expect(container.querySelector('.setupContent')).toBeTruthy());
 	});
 
+	it('should render read-only callout when in protected environment', async () => {
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		const sourceControlStore = mockedStore(useSourceControlStore);
+		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		sourceControlStore.preferences = mock<SourceControlPreferences>({ branchReadOnly: true });
+
+		const { container } = renderComponent({ props: { name: mockWorkflow.id } });
+
+		await waitFor(() => {
+			const callout = container.querySelector('[role="alert"]');
+			expect(callout).toBeTruthy();
+			expect(callout?.textContent).toContain('mocked-evaluations.readOnlyNotice');
+		});
+	});
+
 	describe('telemetry', () => {
 		it('should send telemetry event on mount with setup view when no test runs exist', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
@@ -144,19 +170,15 @@ describe('EvaluationsRootView', () => {
 			renderComponent({ props: { name: mockWorkflow.id } });
 
 			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith(
-					'User viewed tests tab',
-					{
-						workflow_id: mockWorkflow.id,
-						test_type: 'evaluation',
-						view: 'setup',
-						trigger_set_up: false,
-						output_set_up: false,
-						metrics_set_up: false,
-						quota_reached: false,
-					},
-					{ withPostHog: true },
-				);
+				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
+					workflow_id: mockWorkflow.id,
+					test_type: 'evaluation',
+					view: 'setup',
+					trigger_set_up: false,
+					output_set_up: false,
+					metrics_set_up: false,
+					quota_reached: false,
+				});
 			});
 		});
 
@@ -176,16 +198,12 @@ describe('EvaluationsRootView', () => {
 			renderComponent({ props: { name: mockWorkflow.id } });
 
 			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith(
-					'User viewed tests tab',
-					{
-						workflow_id: mockWorkflow.id,
-						test_type: 'evaluation',
-						view: 'overview',
-						run_count: 2,
-					},
-					{ withPostHog: true },
-				);
+				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
+					workflow_id: mockWorkflow.id,
+					test_type: 'evaluation',
+					view: 'overview',
+					run_count: 2,
+				});
 			});
 		});
 
@@ -223,19 +241,15 @@ describe('EvaluationsRootView', () => {
 			renderComponent({ props: { name: mockWorkflow.id } });
 
 			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith(
-					'User viewed tests tab',
-					{
-						workflow_id: mockWorkflow.id,
-						test_type: 'evaluation',
-						view: 'setup',
-						trigger_set_up: true,
-						output_set_up: false,
-						metrics_set_up: false,
-						quota_reached: false,
-					},
-					{ withPostHog: true },
-				);
+				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
+					workflow_id: mockWorkflow.id,
+					test_type: 'evaluation',
+					view: 'setup',
+					trigger_set_up: true,
+					output_set_up: false,
+					metrics_set_up: false,
+					quota_reached: false,
+				});
 			});
 		});
 
@@ -279,19 +293,15 @@ describe('EvaluationsRootView', () => {
 			renderComponent({ props: { name: mockWorkflow.id } });
 
 			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith(
-					'User viewed tests tab',
-					{
-						workflow_id: mockWorkflow.id,
-						test_type: 'evaluation',
-						view: 'setup',
-						trigger_set_up: false,
-						output_set_up: true,
-						metrics_set_up: false,
-						quota_reached: false,
-					},
-					{ withPostHog: true },
-				);
+				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
+					workflow_id: mockWorkflow.id,
+					test_type: 'evaluation',
+					view: 'setup',
+					trigger_set_up: false,
+					output_set_up: true,
+					metrics_set_up: false,
+					quota_reached: false,
+				});
 			});
 		});
 
@@ -335,19 +345,15 @@ describe('EvaluationsRootView', () => {
 			renderComponent({ props: { name: mockWorkflow.id } });
 
 			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith(
-					'User viewed tests tab',
-					{
-						workflow_id: mockWorkflow.id,
-						test_type: 'evaluation',
-						view: 'setup',
-						trigger_set_up: false,
-						output_set_up: false,
-						metrics_set_up: true,
-						quota_reached: false,
-					},
-					{ withPostHog: true },
-				);
+				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
+					workflow_id: mockWorkflow.id,
+					test_type: 'evaluation',
+					view: 'setup',
+					trigger_set_up: false,
+					output_set_up: false,
+					metrics_set_up: true,
+					quota_reached: false,
+				});
 			});
 		});
 
@@ -367,19 +373,15 @@ describe('EvaluationsRootView', () => {
 			renderComponent({ props: { name: mockWorkflow.id } });
 
 			await waitFor(() => {
-				expect(useTelemetry().track).toHaveBeenCalledWith(
-					'User viewed tests tab',
-					{
-						workflow_id: mockWorkflow.id,
-						test_type: 'evaluation',
-						view: 'setup',
-						trigger_set_up: false,
-						output_set_up: false,
-						metrics_set_up: false,
-						quota_reached: true,
-					},
-					{ withPostHog: true },
-				);
+				expect(useTelemetry().track).toHaveBeenCalledWith('User viewed tests tab', {
+					workflow_id: mockWorkflow.id,
+					test_type: 'evaluation',
+					view: 'setup',
+					trigger_set_up: false,
+					output_set_up: false,
+					metrics_set_up: false,
+					quota_reached: true,
+				});
 			});
 		});
 	});

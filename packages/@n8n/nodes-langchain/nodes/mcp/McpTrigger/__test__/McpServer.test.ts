@@ -445,4 +445,88 @@ describe('McpServer', () => {
 			expect(result2).toBe(mockTransport2);
 		});
 	});
+
+	describe('handleDeleteRequest', () => {
+		beforeEach(() => {
+			// Clear transports and servers before each test
+			mcpServerManager.transports = {};
+			mcpServerManager.servers = {};
+		});
+
+		it('should handle DELETE request for StreamableHTTP transport', async () => {
+			const deleteSessionId = 'delete-session-id';
+			const mockDeleteRequest = mock<Request>({
+				headers: { 'mcp-session-id': deleteSessionId },
+			});
+			const mockDeleteResponse = mock<CompressionResponse>();
+			mockDeleteResponse.status.mockReturnThis();
+
+			// Create a mock transport that passes instanceof check
+			const mockHttpTransport = Object.create(FlushingStreamableHTTPTransport.prototype);
+			mockHttpTransport.handleRequest = jest.fn();
+
+			// Set up the transport
+			mcpServerManager.transports[deleteSessionId] = mockHttpTransport;
+
+			// Call handleDeleteRequest
+			await mcpServerManager.handleDeleteRequest(mockDeleteRequest, mockDeleteResponse);
+
+			// Verify transport.handleRequest was called
+			expect(mockHttpTransport.handleRequest).toHaveBeenCalledWith(
+				mockDeleteRequest,
+				mockDeleteResponse,
+			);
+		});
+
+		it('should return 400 when no sessionId provided', async () => {
+			const mockDeleteRequest = mock<Request>({
+				query: {},
+				headers: {},
+			});
+			const mockDeleteResponse = mock<CompressionResponse>();
+			mockDeleteResponse.status.mockReturnThis();
+
+			// Mock getSessionId to return undefined
+			jest.spyOn(mcpServerManager, 'getSessionId').mockReturnValueOnce(undefined);
+
+			// Call handleDeleteRequest without sessionId
+			await mcpServerManager.handleDeleteRequest(mockDeleteRequest, mockDeleteResponse);
+
+			// Verify 400 response
+			expect(mockDeleteResponse.status).toHaveBeenCalledWith(400);
+		});
+
+		it('should return 404 for non-existent session', async () => {
+			const mockDeleteRequest = mock<Request>({
+				headers: { 'mcp-session-id': 'non-existent-session' },
+			});
+			const mockDeleteResponse = mock<CompressionResponse>();
+			mockDeleteResponse.status.mockReturnThis();
+
+			// Call handleDeleteRequest with non-existent sessionId
+			await mcpServerManager.handleDeleteRequest(mockDeleteRequest, mockDeleteResponse);
+
+			// Verify 404 response (session not found)
+			expect(mockDeleteResponse.status).toHaveBeenCalledWith(404);
+		});
+
+		it('should return 405 for SSE transport session', async () => {
+			const sseSessionId = 'sse-session-id';
+			const mockDeleteRequest = mock<Request>({
+				query: { sessionId: sseSessionId },
+			});
+			const mockDeleteResponse = mock<CompressionResponse>();
+			mockDeleteResponse.status.mockReturnThis();
+			const mockSSETransport = mock<FlushingSSEServerTransport>();
+
+			// Set up SSE transport
+			mcpServerManager.transports[sseSessionId] = mockSSETransport;
+
+			// Call handleDeleteRequest
+			await mcpServerManager.handleDeleteRequest(mockDeleteRequest, mockDeleteResponse);
+
+			// Verify 405 response (DELETE not supported for SSE)
+			expect(mockDeleteResponse.status).toHaveBeenCalledWith(405);
+		});
+	});
 });

@@ -27,13 +27,15 @@ jobs:
     steps:
       - name: Check Version Format
         id: check_version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          input_version="${{ github.event.inputs.version }}"
+          input_version="${{ env.INPUT_VERSION }}"
           version_regex='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'
 
           if [[ "$input_version" =~ $version_regex ]]; then
             echo "Version format is valid: $input_version"
-            echo "version=$input_version" >> $GITHUB_OUTPUT
+            echo "version=$input_version" >> "$GITHUB_OUTPUT"
           else
             echo "::error::Invalid version format provided: '$input_version'. Must match regex '$version_regex'."
             exit 1

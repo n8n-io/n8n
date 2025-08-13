@@ -6,6 +6,8 @@ import { NodeConnectionTypes, jsonParse, NodeOperationError } from 'n8n-workflow
 import type { ZodTypeAny } from 'zod';
 import { ZodBoolean, ZodNullable, ZodNumber, ZodObject, ZodOptional } from 'zod';
 
+import type { ZodObjectAny } from '../types/types';
+
 const getSimplifiedType = (schema: ZodTypeAny) => {
 	if (schema instanceof ZodObject) {
 		return 'object';
@@ -44,10 +46,10 @@ ALL parameters marked as required must be provided`;
 	return description;
 };
 
-export class N8nTool extends DynamicStructuredTool {
+export class N8nTool extends DynamicStructuredTool<ZodObjectAny> {
 	constructor(
 		private context: ISupplyDataFunctions,
-		fields: DynamicStructuredToolInput,
+		fields: DynamicStructuredToolInput<ZodObjectAny>,
 	) {
 		super(fields);
 	}

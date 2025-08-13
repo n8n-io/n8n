@@ -1,5 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { WorkflowRepository } from '@n8n/db';
+import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
@@ -10,7 +12,7 @@ import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
 import config from '@/config';
-import { N8N_VERSION, Time } from '@/constants';
+import { N8N_VERSION } from '@/constants';
 import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -50,6 +52,7 @@ export class PrometheusMetricsService {
 			apiPath: this.globalConfig.endpoints.metrics.includeApiPathLabel,
 			apiMethod: this.globalConfig.endpoints.metrics.includeApiMethodLabel,
 			apiStatusCode: this.globalConfig.endpoints.metrics.includeApiStatusCodeLabel,
+			workflowName: this.globalConfig.endpoints.metrics.includeWorkflowNameLabel,
 		},
 	};
 
@@ -57,6 +60,7 @@ export class PrometheusMetricsService {
 		promClient.register.clear(); // clear all metrics in case we call this a second time
 		this.initDefaultMetrics();
 		this.initN8nVersionMetric();
+		if (this.instanceSettings.instanceType === 'main') this.initInstanceRoleMetric();
 		this.initCacheMetrics();
 		this.initEventBusMetrics();
 		this.initRouteMetrics(app);
@@ -108,6 +112,25 @@ export class PrometheusMetricsService {
 		const { version, major, minor, patch } = n8nVersion;
 
 		versionGauge.set({ version: 'v' + version, major, minor, patch }, 1);
+	}
+
+	private initInstanceRoleMetric() {
+		this.gauges.instanceRoleLeader = new promClient.Gauge({
+			name: this.prefix + 'instance_role_leader',
+			help: 'Whether this main instance is the leader (1) or not (0).',
+		});
+
+		this.gauges.instanceRoleLeader.set(this.instanceSettings.isLeader ? 1 : 0);
+	}
+
+	@OnLeaderTakeover()
+	updateOnLeaderTakeover() {
+		this.gauges.instanceRoleLeader?.set(1);
+	}
+
+	@OnLeaderStepdown()
+	updateOnLeaderStepdown() {
+		this.gauges.instanceRoleLeader?.set(0);
 	}
 
 	/**
@@ -316,32 +339,45 @@ export class PrometheusMetricsService {
 			case EventMessageTypeNames.audit:
 				if (eventName.startsWith('n8n.audit.user.credentials')) {
 					return this.includes.labels.credentialsType
-						? { credential_type: (event.payload.credentialType ?? 'unknown').replace(/\./g, '_') }
+						? {
+								credential_type: String(
+									(event.payload.credentialType ?? 'unknown').replace(/\./g, '_'),
+								),
+							}
 						: {};
 				}
 
 				if (eventName.startsWith('n8n.audit.workflow')) {
-					return this.includes.labels.workflowId
-						? { workflow_id: payload.workflowId ?? 'unknown' }
-						: {};
+					return this.buildWorkflowLabels(payload);
 				}
 				break;
 
 			case EventMessageTypeNames.node:
-				return this.includes.labels.nodeType
-					? {
-							node_type: (payload.nodeType ?? 'unknown')
-								.replace('n8n-nodes-', '')
-								.replace(/\./g, '_'),
-						}
-					: {};
+				const nodeLabels: Record<string, string> = this.buildWorkflowLabels(payload);
+
+				if (this.includes.labels.nodeType) {
+					nodeLabels.node_type = String(
+						(payload.nodeType ?? 'unknown').replace('n8n-nodes-', '').replace(/\./g, '_'),
+					);
+				}
+
+				return nodeLabels;
 
 			case EventMessageTypeNames.workflow:
-				return this.includes.labels.workflowId
-					? { workflow_id: payload.workflowId ?? 'unknown' }
-					: {};
+				return this.buildWorkflowLabels(payload);
 		}
 
 		return {};
+	}
+
+	private buildWorkflowLabels(payload: any): Record<string, string> {
+		const labels: Record<string, string> = {};
+		if (this.includes.labels.workflowId) {
+			labels.workflow_id = String(payload.workflowId ?? 'unknown');
+		}
+		if (this.includes.labels.workflowName) {
+			labels.workflow_name = String(payload.workflowName ?? 'unknown');
+		}
+		return labels;
 	}
 }

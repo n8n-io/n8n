@@ -1,3 +1,4 @@
+import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
 import type { WebhookEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -25,10 +26,7 @@ import * as AdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createOwner } from './shared/db/users';
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
-import { mockInstance } from '../shared/mocking';
 
 mockInstance(ActiveExecutions);
 mockInstance(Push);

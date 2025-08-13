@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { onMounted, ref, watch } from 'vue';
+import { isProxy, isReactive, isRef, onMounted, ref, toRaw, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import type { Collaborator } from '@n8n/api-types';
 import * as Y from 'yjs';
@@ -13,9 +13,48 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
 import type { IWorkflowDb } from '@/Interface';
 import { WebsocketProvider } from 'y-websocket';
-import { deepToRaw } from '@/features/logs/logs.utils';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
+
+alert(1);
+
+function deepToRaw<T>(sourceObj: T): T {
+	const seen = new WeakMap();
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const objectIterator = (input: any): any => {
+		if (seen.has(input)) {
+			return input;
+		}
+
+		if (input !== null && typeof input === 'object') {
+			seen.set(input, true);
+		}
+
+		if (Array.isArray(input)) {
+			return input.map((item) => objectIterator(item));
+		}
+
+		if (isRef(input) || isReactive(input) || isProxy(input)) {
+			return objectIterator(toRaw(input));
+		}
+
+		if (
+			input !== null &&
+			typeof input === 'object' &&
+			Object.getPrototypeOf(input) === Object.prototype
+		) {
+			return Object.keys(input).reduce((acc, key) => {
+				acc[key as keyof typeof acc] = objectIterator(input[key]);
+				return acc;
+			}, {} as T);
+		}
+
+		return input;
+	};
+
+	return objectIterator(sourceObj);
+}
 
 export interface YjsCollaborator extends Collaborator {
 	id: number;

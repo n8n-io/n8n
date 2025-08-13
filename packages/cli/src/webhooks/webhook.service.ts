@@ -139,6 +139,17 @@ export class WebhookService {
 			.then((rows) => rows.map((r) => r.method));
 	}
 
+	private isDynamicPath(rawPath: string) {
+		const firstSlashIndex = rawPath.indexOf('/');
+		const path = firstSlashIndex !== -1 ? rawPath.substring(firstSlashIndex + 1) : rawPath;
+
+		// if dynamic, first segment is webhook ID so disregard it
+
+		if (path === '' || path === ':' || path === '/:') return false;
+
+		return path.startsWith(':') || path.includes('/:');
+	}
+
 	/**
 	 * Returns all the webhooks which should be created for the give node
 	 */
@@ -232,7 +243,8 @@ export class WebhookService {
 			}
 
 			let webhookId: string | undefined;
-			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+
+			if (this.isDynamicPath(path) && node.webhookId) {
 				webhookId = node.webhookId;
 			}
 

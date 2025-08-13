@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { OpenAIEmbeddings } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
@@ -11,6 +10,8 @@ import {
 import type { ClientOptions } from 'openai';
 
 import { logWrapper } from '@utils/logWrapper';
+
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 const modelParameter: INodeProperties = {
@@ -37,7 +38,12 @@ const modelParameter: INodeProperties = {
 						{
 							type: 'filter',
 							properties: {
-								pass: "={{ $responseItem.id.includes('embed') }}",
+								// If the baseURL is not set or is set to api.openai.com, include only embedding models
+								pass: `={{
+									($parameter.options?.baseURL && !$parameter.options?.baseURL?.startsWith('https://api.openai.com/')) ||
+									($credentials?.url && !$credentials.url.startsWith('https://api.openai.com/')) ||
+									$responseItem.id.includes('embed')
+								}}`,
 							},
 						},
 						{
@@ -98,9 +104,9 @@ export class EmbeddingsOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		requestDefaults: {
@@ -228,9 +234,15 @@ export class EmbeddingsOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
+		if (configuration.baseURL) {
+			configuration.fetchOptions = {
+				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
+			};
+		}
+
 		const embeddings = new OpenAIEmbeddings({
-			modelName: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
-			openAIApiKey: credentials.apiKey as string,
+			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
+			apiKey: credentials.apiKey as string,
 			...options,
 			configuration,
 		});

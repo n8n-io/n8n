@@ -106,7 +106,7 @@ const cellClassStyle = ({ row, column }: CellClassStyleMethodParams<TableRow>): 
 	return {};
 };
 
-const onInput = (input: { name: string; value: string | number | boolean }) => {
+const onInput = (input: { name: string; value: string | number | boolean | null | undefined }) => {
 	if (input.name === 'loginEnabled' && typeof input.value === 'boolean') {
 		loginEnabled.value = input.value;
 	}
@@ -747,15 +747,13 @@ onMounted(async () => {
 
 .enableFeatureContainer {
 	margin-bottom: var(--spacing-1xl);
-}
 
-.enableFeatureContainer > span {
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
-	padding: 0;
-}
+	> span {
+		font-size: var(--font-size-s);
+		font-weight: var(--font-weight-bold);
+		padding: 0;
+	}
 
-.enableFeatureContainer {
 	> * {
 		padding: 0.5em;
 	}

@@ -257,6 +257,7 @@ const trackWorkflowInputFieldAdded = () => {
 			/>
 			<div v-if="multipleValues">
 				<Draggable
+					:item-key="property.name"
 					v-model="mutableValues[property.name]"
 					handle=".drag-handle"
 					drag-class="dragging"
@@ -276,22 +277,22 @@ const trackWorkflowInputFieldAdded = () => {
 										v-if="sortable"
 										type="tertiary"
 										text
-										size="mini"
+										size="small"
 										icon="grip-vertical"
 										:title="locale.baseText('fixedCollectionParameter.dragItem')"
 										class="drag-handle"
-									></N8nIconButton>
+									/>
 								</div>
 								<div v-if="!isReadOnly" class="icon-button extra-top-padding">
 									<N8nIconButton
 										type="tertiary"
 										text
-										size="mini"
-										icon="trash"
+										size="small"
+										icon="trash-2"
 										data-test-id="fixed-collection-delete"
 										:title="locale.baseText('fixedCollectionParameter.deleteItem')"
 										@click="deleteOption(property.name, index)"
-									></N8nIconButton>
+									/>
 								</div>
 								<Suspense>
 									<ParameterInputList
@@ -314,8 +315,8 @@ const trackWorkflowInputFieldAdded = () => {
 						<N8nIconButton
 							type="tertiary"
 							text
-							size="mini"
-							icon="trash"
+							size="small"
+							icon="trash-2"
 							data-test-id="fixed-collection-delete"
 							:title="locale.baseText('fixedCollectionParameter.deleteItem')"
 							@click="deleteOption(property.name)"

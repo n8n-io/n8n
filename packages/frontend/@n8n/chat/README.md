@@ -14,6 +14,9 @@ Open the **Chat Trigger** node and add your domain to the **Allowed Origins (COR
 
 [See example workflow](https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/chat/resources/workflow.json)
 
+To use streaming responses, you need to enable the **Streaming response** response mode in the **Chat Trigger** node.
+[See example workflow with streaming](https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/chat/resources/workflow-streaming.json)
+
 > Make sure the workflow is **Active.**
 
 ### How it works
@@ -129,6 +132,7 @@ createChat({
 			inputPlaceholder: 'Type your question..',
 		},
 	},
+	enableStreaming: false,
 });
 ```
 
@@ -175,7 +179,7 @@ createChat({
 ### `loadPreviousSession`
 - **Type**: `boolean`
 - **Default**: `true`
-- **Description**: Whether to load previous messages (chat context). 
+- **Description**: Whether to load previous messages (chat context).
 
 ### `defaultLanguage`
 - **Type**: `string`
@@ -199,6 +203,11 @@ createChat({
 - **Type**: `Ref<string> | string`
 - **Default**: `''`
 - **Description**: A comma-separated list of allowed MIME types for file uploads. Only applicable if `allowFileUploads` is set to `true`. If left empty, all file types are allowed. For example: `'image/*,application/pdf'`.
+
+### enableStreaming
+- Type: boolean
+- Default: false
+- Description: Whether to enable streaming responses from the n8n workflow. If set to `true`, the chat will display responses as they are being generated, providing a more interactive experience. For this to work the workflow must be configured as well to return streaming responses.
 
 ## Customization
 The Chat window is entirely customizable using CSS variables.

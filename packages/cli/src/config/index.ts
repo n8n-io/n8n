@@ -23,7 +23,7 @@ if (inE2ETests) {
 	globalConfig.publicApi.disabled = true;
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 	globalConfig.auth.cookie.secure = false;
-	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
+	process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'false';
 }
 
 // Load schema after process.env has been overwritten
@@ -93,25 +93,11 @@ if (!inE2ETests && !inTest) {
 	});
 }
 
-// Validate Configuration
-config.validate({
-	allowed: 'strict',
-});
-const userManagement = config.get('userManagement');
-if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHours) {
-	if (!inTest)
-		logger.warn(
-			'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0 for now.',
-		);
-
-	config.set('userManagement.jwtRefreshTimeoutHours', 0);
-}
-
 setGlobalState({
 	defaultTimezone: globalConfig.generic.timezone,
 });
 
-// eslint-disable-next-line import/no-default-export
+// eslint-disable-next-line import-x/no-default-export
 export default config;
 
 export type Config = typeof config;

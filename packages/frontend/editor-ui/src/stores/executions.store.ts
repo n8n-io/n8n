@@ -13,8 +13,11 @@ import type {
 } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
-import { unflattenExecutionData } from '@/utils/executionUtils';
-import { executionFilterToQueryFilter, getDefaultExecutionFilters } from '@/utils/executionUtils';
+import {
+	unflattenExecutionData,
+	executionFilterToQueryFilter,
+	getDefaultExecutionFilters,
+} from '@/utils/executionUtils';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 

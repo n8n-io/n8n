@@ -1,3 +1,4 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -13,7 +14,6 @@ import config from '@/config';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import type { EventService } from '@/events/event.service';
 import type { Telemetry } from '@/telemetry';
-import { mockLogger } from '@test/mocking';
 
 import { ConcurrencyQueue } from '../concurrency-queue';
 

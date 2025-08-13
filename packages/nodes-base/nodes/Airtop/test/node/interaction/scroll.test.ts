@@ -71,7 +71,6 @@ describe('Test Airtop, scroll operation', () => {
 			'/sessions/test-session-123/windows/win-123/scroll',
 			{
 				scrollToElement: 'the bottom of the page',
-				scrollWithin: '',
 				configuration: {},
 			},
 		);

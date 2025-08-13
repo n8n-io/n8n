@@ -116,13 +116,13 @@ watch(
 		@blur="onBlur"
 	>
 		<template #prefix>
-			<n8n-icon :class="$style.ioSearchIcon" icon="search" />
+			<n8n-icon :class="$style.ioSearchIcon" icon="search" size="large" />
 		</template>
 	</n8n-input>
 </template>
 
 <style lang="scss" module>
-@import '@/styles/variables';
+@use '@/styles/variables' as *;
 
 .ioSearch {
 	transition: max-width 0.3s $ease-out-expo;
@@ -130,6 +130,7 @@ watch(
 	.ioSearchIcon {
 		color: var(--color-foreground-xdark);
 		cursor: pointer;
+		vertical-align: middle;
 	}
 
 	:global(.el-input__prefix) {

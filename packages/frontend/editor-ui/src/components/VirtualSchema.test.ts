@@ -208,7 +208,7 @@ describe('VirtualSchema.vue', () => {
 				stubs: {
 					DynamicScroller: DynamicScrollerStub,
 					DynamicScrollerItem: DynamicScrollerItemStub,
-					FontAwesomeIcon: true,
+					N8nIcon: true,
 					Notice: NoticeStub,
 				},
 			},
@@ -526,8 +526,8 @@ describe('VirtualSchema.vue', () => {
 		function dragDropPill(pill: HTMLElement) {
 			const ndvStore = useNDVStore();
 			const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
-			fireEvent(pill, new MouseEvent('mousedown', { bubbles: true }));
-			fireEvent(window, new MouseEvent('mousemove', { bubbles: true }));
+			fireEvent(pill, new MouseEvent('mousedown', { bubbles: true, button: 0, buttons: 1 }));
+			fireEvent(window, new MouseEvent('mousemove', { bubbles: true, button: 0, buttons: 1 }));
 			expect(reset).toHaveBeenCalled();
 
 			vi.useRealTimers();
@@ -569,7 +569,6 @@ describe('VirtualSchema.vue', () => {
 						src_nodes_back: '1',
 						src_has_credential: false,
 					}),
-					{ withPostHog: true },
 				),
 			);
 		});
@@ -616,7 +615,6 @@ describe('VirtualSchema.vue', () => {
 						src_view: 'schema_preview',
 						src_has_credential: true,
 					}),
-					{ withPostHog: true },
 				),
 			);
 		});

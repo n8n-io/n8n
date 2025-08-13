@@ -2,6 +2,7 @@ import {
 	AI_MCP_TOOL_NODE_TYPE,
 	LIST_LIKE_NODE_OPERATIONS,
 	MAIN_HEADER_TABS,
+	NODE_MIN_INPUT_ITEMS_COUNT,
 	NODE_POSITION_CONFLICT_ALLOWLIST,
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
@@ -10,11 +11,12 @@ import {
 import type { INodeUi, XYPosition } from '@/Interface';
 import type {
 	AssignmentCollectionValue,
+	IConnections,
 	INode,
 	INodeExecutionData,
+	INodes,
 	INodeTypeDescription,
 	NodeHint,
-	Workflow,
 } from 'n8n-workflow';
 import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
@@ -26,22 +28,25 @@ import {
 	type Rect,
 	type ViewportTransform,
 } from '@vue-flow/core';
+import * as workflowUtils from 'n8n-workflow/common';
 
 /*
  * Canvas constants and functions
  */
 
-export const GRID_SIZE = 20;
+export const GRID_SIZE = 16;
 
-export const NODE_SIZE = 100;
-export const DEFAULT_NODE_SIZE: [number, number] = [100, 100];
-export const CONFIGURATION_NODE_SIZE: [number, number] = [80, 80];
-export const CONFIGURABLE_NODE_SIZE: [number, number] = [256, 100];
-export const DEFAULT_START_POSITION_X = 180;
-export const DEFAULT_START_POSITION_Y = 240;
+export const DEFAULT_NODE_SIZE: [number, number] = [GRID_SIZE * 6, GRID_SIZE * 6];
+export const CONFIGURATION_NODE_RADIUS = (GRID_SIZE * 5) / 2;
+export const CONFIGURATION_NODE_SIZE: [number, number] = [
+	CONFIGURATION_NODE_RADIUS * 2,
+	CONFIGURATION_NODE_RADIUS * 2,
+]; // the node has circle shape
+export const CONFIGURABLE_NODE_SIZE: [number, number] = [GRID_SIZE * 16, GRID_SIZE * 6];
+export const DEFAULT_START_POSITION_X = GRID_SIZE * 11;
+export const DEFAULT_START_POSITION_Y = GRID_SIZE * 15;
 export const HEADER_HEIGHT = 65;
-export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
-export const PUSH_NODES_OFFSET = NODE_SIZE * 2 + GRID_SIZE;
+export const PUSH_NODES_OFFSET = DEFAULT_NODE_SIZE[0] * 2 + GRID_SIZE;
 export const DEFAULT_VIEWPORT_BOUNDARIES: ViewportBoundaries = {
 	xMin: -Infinity,
 	yMin: -Infinity,
@@ -109,8 +114,10 @@ export const getNodesGroupSize = (nodes: INodeUi[]): [number, number] => {
 	const rightMostNode = getRightMostNode(nodes);
 	const bottomMostNode = getBottomMostNode(nodes);
 
-	const width = Math.abs(rightMostNode.position[0] - leftMostNode.position[0]) + NODE_SIZE;
-	const height = Math.abs(bottomMostNode.position[1] - topMostNode.position[1]) + NODE_SIZE;
+	const width =
+		Math.abs(rightMostNode.position[0] - leftMostNode.position[0]) + DEFAULT_NODE_SIZE[0];
+	const height =
+		Math.abs(bottomMostNode.position[1] - topMostNode.position[1]) + DEFAULT_NODE_SIZE[1];
 
 	return [width, height];
 };
@@ -154,6 +161,13 @@ const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: number): num
 	return inputNumber2;
 };
 
+export function snapPositionToGrid(position: XYPosition): XYPosition {
+	return [
+		closestNumberDivisibleBy(position[0], GRID_SIZE),
+		closestNumberDivisibleBy(position[1], GRID_SIZE),
+	];
+}
+
 /**
  * Returns the new position for a node based on the given position and the nodes in the workflow
  */
@@ -172,13 +186,8 @@ export const getNewNodePosition = (
 		normalize?: boolean;
 	} = {},
 ): XYPosition => {
-	const resolvedOffset = [...offset];
-	resolvedOffset[0] = closestNumberDivisibleBy(resolvedOffset[0], GRID_SIZE);
-	resolvedOffset[1] = closestNumberDivisibleBy(resolvedOffset[1], GRID_SIZE);
-
-	const resolvedPosition: XYPosition = [...initialPosition];
-	resolvedPosition[0] = closestNumberDivisibleBy(resolvedPosition[0], GRID_SIZE);
-	resolvedPosition[1] = closestNumberDivisibleBy(resolvedPosition[1], GRID_SIZE);
+	const resolvedOffset = snapPositionToGrid(offset);
+	const resolvedPosition: XYPosition = snapPositionToGrid(initialPosition);
 
 	if (normalize) {
 		let conflictFound = false;
@@ -289,7 +298,7 @@ export const getNodesWithNormalizedPosition = <T extends { position: XYPosition 
 		const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
 
 		nodes.forEach((node) => {
-			node.position[0] += diffX + NODE_SIZE * 2;
+			node.position[0] += diffX + DEFAULT_NODE_SIZE[0] * 2;
 			node.position[1] += diffY;
 		});
 	}
@@ -364,7 +373,8 @@ export function getGenericHints({
 	nodeType,
 	nodeOutputData,
 	hasMultipleInputItems,
-	workflow,
+	nodes,
+	connections,
 	hasNodeRun,
 }: {
 	workflowNode: INode;
@@ -372,7 +382,8 @@ export function getGenericHints({
 	nodeType: INodeTypeDescription;
 	nodeOutputData: INodeExecutionData[];
 	hasMultipleInputItems: boolean;
-	workflow: Workflow;
+	nodes: INodes;
+	connections: IConnections;
 	hasNodeRun: boolean;
 }) {
 	const nodeHints: NodeHint[] = [];
@@ -410,7 +421,7 @@ export function getGenericHints({
 		hasMultipleInputItems &&
 		LIST_LIKE_NODE_OPERATIONS.includes((workflowNode.parameters.operation as string) || '')
 	) {
-		const executeOnce = workflow.getNode(node.name)?.executeOnce;
+		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message:
@@ -422,7 +433,7 @@ export function getGenericHints({
 
 	// add sendAndWait hint
 	if (hasMultipleInputItems && workflowNode.parameters.operation === SEND_AND_WAIT_OPERATION) {
-		const executeOnce = workflow.getNode(node.name)?.executeOnce;
+		const executeOnce = workflowUtils.getNodeByName(nodes, node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
 				message: 'This action will run only once, for the first input item',
@@ -463,9 +474,8 @@ export function getGenericHints({
 
 	// Split In Batches setup hints
 	if (node.type === SPLIT_IN_BATCHES_NODE_TYPE) {
-		const { connectionsBySourceNode } = workflow;
-
-		const firstNodesInLoop = connectionsBySourceNode[node.name]?.main[1] || [];
+		const firstNodesInLoop =
+			workflowUtils.mapConnectionsByDestination(connections)[node.name]?.main[1] || [];
 
 		if (!firstNodesInLoop.length) {
 			nodeHints.push({
@@ -475,7 +485,7 @@ export function getGenericHints({
 			});
 		} else {
 			for (const nodeInConnection of firstNodesInLoop || []) {
-				const nodeChilds = workflow.getChildNodes(nodeInConnection.node) || [];
+				const nodeChilds = workflowUtils.getChildNodes(connections, nodeInConnection.node) || [];
 				if (!nodeChilds.includes(node.name)) {
 					nodeHints.push({
 						message:
@@ -599,4 +609,36 @@ export function updateViewportToContainNodes(
 		y: viewport.y + dy * zoom,
 		zoom,
 	};
+}
+
+export function calculateNodeSize(
+	isConfiguration: boolean,
+	isConfigurable: boolean,
+	mainInputCount: number,
+	mainOutputCount: number,
+	nonMainInputCount: number,
+	isExperimentalNdvActive: boolean,
+): { width: number; height: number } {
+	const maxVerticalHandles = Math.max(mainInputCount, mainOutputCount, 1);
+	const height = DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
+	const widthScale = isExperimentalNdvActive ? 1.5 : 1;
+
+	if (isConfigurable) {
+		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount);
+
+		return {
+			// Configuration node has extra width so that its centered port aligns to the grid
+			width:
+				(CONFIGURATION_NODE_RADIUS * 2 +
+					GRID_SIZE * ((isConfiguration ? 1 : 0) + (portCount - 1) * 3)) *
+				widthScale,
+			height: isConfiguration ? CONFIGURATION_NODE_SIZE[1] : height,
+		};
+	}
+
+	if (isConfiguration) {
+		return { width: CONFIGURATION_NODE_SIZE[0] * widthScale, height: CONFIGURATION_NODE_SIZE[1] };
+	}
+
+	return { width: DEFAULT_NODE_SIZE[0] * widthScale, height };
 }

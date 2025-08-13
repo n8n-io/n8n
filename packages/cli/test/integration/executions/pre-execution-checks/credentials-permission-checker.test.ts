@@ -1,9 +1,16 @@
-import type { Project } from '@n8n/db';
-import type { User } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
-import { SharedWorkflowRepository } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import {
+	getPersonalProject,
+	randomCredentialPayload as randomCred,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { Project, User } from '@n8n/db';
+import {
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { randomInt } from 'n8n-workflow';
@@ -13,12 +20,8 @@ import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks'
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
-import { mockInstance } from '@test/mocking';
 import { affixRoleToSaveCredential } from '@test-integration/db/credentials';
-import { getPersonalProject } from '@test-integration/db/projects';
 import { createOwner, createUser } from '@test-integration/db/users';
-import { randomCredentialPayload as randomCred } from '@test-integration/random';
-import * as testDb from '@test-integration/test-db';
 import type { SaveCredentialFunction } from '@test-integration/types';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 

@@ -28,7 +28,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 	const currentUserId = ref<string | undefined>();
 	const promptsData = ref<N8nPrompts | undefined>();
 
-	function setupNpsSurveyOnLogin(userId: string, settings?: IUserSettings): void {
+	function setupNpsSurveyOnLogin(userId: string, settings?: IUserSettings | null): void {
 		currentUserId.value = userId;
 
 		if (settings) {

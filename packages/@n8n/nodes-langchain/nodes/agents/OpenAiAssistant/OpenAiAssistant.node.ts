@@ -198,7 +198,7 @@ export class OpenAiAssistant implements INodeType {
 										properties: {
 											name: '={{$responseItem.name}}',
 											value: '={{$responseItem.id}}',
-											// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+
 											description: '={{$responseItem.model}}',
 										},
 									},

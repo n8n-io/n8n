@@ -1,0 +1,170 @@
+{
+	"name": "Telegram Binary Data and Reply Markup",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-700, 160],
+			"id": "6acb0d3b-6f5e-43dd-adeb-152ab4e9cc90",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "sendDocument",
+				"chatId": "123456789",
+				"binaryData": true,
+				"replyMarkup": "inlineKeyboard",
+				"inlineKeyboard": {
+					"rows": [
+						{
+							"row": {
+								"buttons": [
+									{
+										"text": "Test Button",
+										"additionalFields": {
+											"callback_data": "123"
+										}
+									}
+								]
+							}
+						}
+					]
+				},
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [-40, 160],
+			"id": "71580477-ff66-487d-9762-4bdf5cc0b5a9",
+			"name": "Send a document",
+			"webhookId": "bea3ccc9-bda6-4353-904e-bff92d608457",
+			"credentials": {
+				"telegramApi": {
+					"id": "HcIHBfGmAEOgtHgq",
+					"name": "Telegram account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "toJson",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [-260, 160],
+			"id": "deeef2c2-dd75-4719-9288-e8612d67c09f",
+			"name": "Convert to File"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "2c5d3b18-1876-49a8-bf71-02cfebf2e5f3",
+							"name": "data",
+							"value": "lorem ipsum",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-480, 160],
+			"id": "79bf86ea-d10d-4e00-b251-b4126554d993",
+			"name": "Edit Fields"
+		}
+	],
+	"pinData": {
+		"Send a document": [
+			{
+				"json": {
+					"ok": true,
+					"result": {
+						"message_id": 123,
+						"from": {
+							"id": 1234578901,
+							"is_bot": true,
+							"first_name": "TestBot",
+							"username": "TestBot"
+						},
+						"chat": {
+							"id": 987654321,
+							"first_name": "Some",
+							"last_name": "Guy",
+							"username": "SomeGuy",
+							"type": "private"
+						},
+						"date": 1750195377,
+						"document": {
+							"file_name": "file.json",
+							"mime_type": "application/json",
+							"file_id": "BQACAgIAAxkDAANFaFHcsX7_6XEYxKTw3Y93hBKxdPEAAm1_AAJ3NpBKL3xbHXAyvIU2BA",
+							"file_unique_id": "AgADbX8AAnc2kEo",
+							"file_size": 24
+						},
+						"reply_markup": {
+							"inline_keyboard": [
+								[
+									{
+										"text": "Test Button",
+										"callback_data": "123"
+									}
+								]
+							]
+						}
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert to File": {
+			"main": [
+				[
+					{
+						"node": "Send a document",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "007f0573-7089-4353-9d41-30d705b432ed",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
+	},
+	"id": "6axpOZWb9wBsnrBS",
+	"tags": []
+}

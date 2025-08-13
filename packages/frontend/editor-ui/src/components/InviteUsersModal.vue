@@ -2,7 +2,13 @@
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/composables/useToast';
 import Modal from './Modal.vue';
-import type { IFormInputs, IInviteResponse, IUser, InvitableRoleName } from '@/Interface';
+import type {
+	FormFieldValueUpdate,
+	IFormInputs,
+	IInviteResponse,
+	InvitableRoleName,
+} from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import { EnterpriseEditionFeature, VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { ROLE } from '@n8n/api-types';
 import { useUsersStore } from '@/stores/users.store';
@@ -12,6 +18,14 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { I18nT } from 'vue-i18n';
+
+const props = defineProps<{
+	modalName: string;
+	data: {
+		afterInvite?: () => Promise<void>;
+	};
+}>();
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
@@ -127,11 +141,15 @@ const validateEmails = (value: string | number | boolean | null | undefined) => 
 	return false;
 };
 
-function onInput(e: { name: string; value: InvitableRoleName }) {
-	if (e.name === 'emails') {
+function isInvitableRoleName(val: unknown): val is InvitableRoleName {
+	return typeof val === 'string' && [ROLE.Member, ROLE.Admin].includes(val as InvitableRoleName);
+}
+
+function onInput(e: FormFieldValueUpdate) {
+	if (e.name === 'emails' && typeof e.value === 'string') {
 		emails.value = e.value;
 	}
-	if (e.name === 'role') {
+	if (e.name === 'role' && isInvitableRoleName(e.value)) {
 		role.value = e.value;
 	}
 }
@@ -216,6 +234,8 @@ async function onSubmit() {
 		} else {
 			modalBus.emit('close');
 		}
+
+		await props.data.afterInvite?.();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.users.usersInvitedError'));
 	}
@@ -285,13 +305,13 @@ function getEmail(email: string): string {
 	>
 		<template #content>
 			<n8n-notice v-if="!isAdvancedPermissionsEnabled">
-				<i18n-t keypath="settings.users.advancedPermissions.warning">
+				<I18nT keypath="settings.users.advancedPermissions.warning" scope="global">
 					<template #link>
 						<n8n-link size="small" @click="goToUpgradeAdvancedPermissions">
-							{{ i18n.baseText('settings.users.advancedPermissions.warning.link') }}
+							{{ i18n.baseText('generic.upgrade') }}
 						</n8n-link>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</n8n-notice>
 			<div v-if="showInviteUrls">
 				<n8n-users-list :users="invitedUsers">
@@ -312,7 +332,7 @@ function getEmail(email: string): string {
 				</n8n-users-list>
 			</div>
 			<n8n-form-inputs
-				v-else
+				v-else-if="config"
 				:inputs="config"
 				:event-bus="formBus"
 				:column-view="true"

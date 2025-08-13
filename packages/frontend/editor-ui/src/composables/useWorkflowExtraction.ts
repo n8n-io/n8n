@@ -2,13 +2,16 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
-	type ExtractableSubgraphData,
-	type ExtractableErrorResult,
 	extractReferencesInNodeExpressions,
-	type IConnections,
-	type INode,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	NodeHelpers,
+} from 'n8n-workflow';
+import type {
+	ExtractableSubgraphData,
+	ExtractableErrorResult,
+	IConnections,
+	INode,
+	Workflow,
 } from 'n8n-workflow';
 import { computed } from 'vue';
 import { useToast } from './useToast';
@@ -17,7 +20,8 @@ import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/constants';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasOperations } from './useCanvasOperations';
 
-import type { AddedNode, INodeUi, IWorkflowDataCreate, IWorkflowDb } from '@/Interface';
+import type { AddedNode, INodeUi, IWorkflowDb } from '@/Interface';
+import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
 import { useUIStore } from '@/stores/ui.store';
@@ -42,6 +46,8 @@ export function useWorkflowExtraction() {
 	const telemetry = useTelemetry();
 
 	const adjacencyList = computed(() => buildAdjacencyList(workflowsStore.workflow.connections));
+
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function showError(message: string) {
 		toast.showMessage({
@@ -128,7 +134,7 @@ export function useWorkflowExtraction() {
 		selectionChildrenVariables: Map<string, string>,
 		startNodeName: string,
 		returnNodeName: string,
-	): IWorkflowDataCreate {
+	): WorkflowDataCreate {
 		const newConnections = Object.fromEntries(
 			Object.entries(connections).filter(([k]) => nodes.some((x) => x.name === k)),
 		);
@@ -253,7 +259,7 @@ export function useWorkflowExtraction() {
 		return [summedUp[0] / summedUp[2], summedUp[1] / summedUp[2]];
 	}
 
-	async function tryCreateWorkflow(workflowData: IWorkflowDataCreate): Promise<IWorkflowDb | null> {
+	async function tryCreateWorkflow(workflowData: WorkflowDataCreate): Promise<IWorkflowDb | null> {
 		try {
 			const createdWorkflow = await workflowsStore.createNewWorkflow(workflowData);
 
@@ -308,7 +314,7 @@ export function useWorkflowExtraction() {
 			const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
 			if (!nodeType) return true; // invariant broken -> abort onto error path
 
-			const ios = getIOs(workflowsStore.getCurrentWorkflow(), node, nodeType);
+			const ios = getIOs(workflowObject.value, node, nodeType);
 			return (
 				ios.filter((x) => (typeof x === 'string' ? x === 'main' : x.type === 'main')).length <= 1
 			);
@@ -426,7 +432,6 @@ export function useWorkflowExtraction() {
 	) {
 		const { start, end } = selection;
 
-		const currentWorkflow = workflowsStore.getCurrentWorkflow();
 		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
 
 		let startNodeName = 'Start';
@@ -437,16 +442,16 @@ export function useWorkflowExtraction() {
 		while (subGraphNames.includes(returnNodeName)) returnNodeName += '_1';
 
 		const directAfterEndNodeNames = end
-			? currentWorkflow
+			? workflowObject.value
 					.getChildNodes(end, 'main', 1)
-					.map((x) => currentWorkflow.getNode(x)?.name)
+					.map((x) => workflowObject.value.getNode(x)?.name)
 					.filter((x) => x !== undefined)
 			: [];
 
 		const allAfterEndNodes = end
-			? currentWorkflow
+			? workflowObject.value
 					.getChildNodes(end, 'ALL')
-					.map((x) => currentWorkflow.getNode(x))
+					.map((x) => workflowObject.value.getNode(x))
 					.filter((x) => x !== null)
 			: [];
 

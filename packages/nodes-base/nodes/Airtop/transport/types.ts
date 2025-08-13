@@ -33,6 +33,7 @@ export interface IAirtopResponseWithFiles extends IAirtopResponse {
 		pagination: {
 			hasMore: boolean;
 		};
+		sessionIds?: string[];
 	};
 }
 
@@ -61,6 +62,14 @@ export interface IAirtopInteractionRequest extends IDataObject {
 			waitUntil: string;
 		};
 	};
+}
+
+export interface IAirtopFileInputRequest extends IDataObject {
+	fileId: string;
+	windowId: string;
+	sessionId: string;
+	elementDescription?: string;
+	includeHiddenElements?: boolean;
 }
 
 export interface IAirtopNodeExecutionData extends INodeExecutionData {

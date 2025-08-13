@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-use-before-define */
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
@@ -36,7 +36,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import {
@@ -234,6 +234,11 @@ async function startExecution(
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+		if (additionalData.httpResponse) {
+			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
+		}
+		// Propagate streaming state to subworkflows
+		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
 
 		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
 		const workflowSettings = workflowData.settings;
@@ -387,6 +392,15 @@ export async function getBase(
 		userId,
 		setExecutionStatus,
 		variables,
+		async getRunExecutionData(executionId) {
+			const executionRepository = Container.get(ExecutionRepository);
+			const executionData = await executionRepository.findSingleExecution(executionId, {
+				unflattenData: true,
+				includeData: true,
+			});
+
+			return executionData?.data;
+		},
 		externalSecretsProxy: Container.get(ExternalSecretsProxy),
 		async startRunnerTask(
 			additionalData: IWorkflowExecuteAdditionalData,

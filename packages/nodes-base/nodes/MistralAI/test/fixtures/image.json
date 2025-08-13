@@ -1,0 +1,20 @@
+{
+	"pages": [
+		{
+			"index": 0,
+			"markdown": "# EXAMPLE",
+			"images": [],
+			"dimensions": {
+				"dpi": 200,
+				"height": 408,
+				"width": 612
+			}
+		}
+	],
+	"model": "mistral-ocr-2505-completion",
+	"document_annotation": null,
+	"usage_info": {
+		"pages_processed": 1,
+		"doc_size_bytes": 76734
+	}
+}

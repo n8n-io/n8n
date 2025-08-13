@@ -1,27 +1,20 @@
 <script lang="ts" setup>
-import { computed, ref, onMounted } from 'vue';
-import { useSSOStore } from '@/stores/sso.store';
 import CopyInput from '@/components/CopyInput.vue';
-import { useI18n } from '@n8n/i18n';
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM } from '@/constants';
-
-type SupportedProtocolType = (typeof SupportedProtocols)[keyof typeof SupportedProtocols];
+import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '@/stores/sso.store';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, onMounted, ref } from 'vue';
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
 	XML: 'xml',
 };
-
-const SupportedProtocols = {
-	SAML: 'saml',
-	OIDC: 'oidc',
-} as const;
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -43,6 +36,21 @@ const oidcActivatedLabel = computed(() =>
 		? i18n.baseText('settings.sso.activated')
 		: i18n.baseText('settings.sso.deactivated'),
 );
+
+const options = computed(() => {
+	return [
+		{
+			label: SupportedProtocols.SAML.toUpperCase(),
+			value: SupportedProtocols.SAML,
+		},
+		{
+			label: ssoStore.isEnterpriseOidcEnabled
+				? SupportedProtocols.OIDC.toUpperCase()
+				: `${SupportedProtocols.OIDC.toUpperCase()} (${i18n.baseText('generic.upgradeToEnterprise')})`,
+			value: SupportedProtocols.OIDC,
+		},
+	];
+});
 
 const ssoSettingsSaved = ref(false);
 
@@ -149,6 +157,9 @@ const onSave = async () => {
 				: { metadata: metadata.value };
 		await ssoStore.saveSamlConfig(config);
 
+		// Update store with saved protocol selection
+		ssoStore.selectedAuthProtocol = authProtocol.value;
+
 		if (!ssoStore.isSamlLoginEnabled) {
 			const answer = await message.confirm(
 				i18n.baseText('settings.sso.settings.save.activate.message'),
@@ -220,12 +231,8 @@ const isToggleSsoDisabled = computed(() => {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.sso.title'));
 	await Promise.all([loadSamlConfig(), loadOidcConfig()]);
-
-	if (ssoStore.isDefaultAuthenticationSaml) {
-		authProtocol.value = SupportedProtocols.SAML;
-	} else if (ssoStore.isDefaultAuthenticationOidc) {
-		authProtocol.value = SupportedProtocols.OIDC;
-	}
+	ssoStore.initializeSelectedProtocol();
+	authProtocol.value = ssoStore.selectedAuthProtocol || SupportedProtocols.SAML;
 });
 
 const getOidcConfig = async () => {
@@ -284,6 +291,9 @@ async function onOidcSettingsSave() {
 		loginEnabled: ssoStore.isOidcLoginEnabled,
 	});
 
+	// Update store with saved protocol selection
+	ssoStore.selectedAuthProtocol = authProtocol.value;
+
 	clientSecret.value = newConfig.clientSecret;
 	trackUpdateSettings();
 }
@@ -300,33 +310,29 @@ async function onOidcSettingsSave() {
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
 		</n8n-info-tip>
-		<div
-			v-if="ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled"
-			data-test-id="sso-content-licensed"
-		>
-			<div :class="$style.group">
-				<label>Select Authentication Protocol</label>
-				<div>
-					<N8nSelect
-						filterable
-						:model-value="authProtocol"
-						data-test-id="sso-auth-protocol-select"
-						:placeholder="i18n.baseText('parameterInput.select')"
-						@update:model-value="onAuthProtocolUpdated"
-						@keydown.stop
+		<div :class="$style.group">
+			<label>Select Authentication Protocol</label>
+			<div>
+				<N8nSelect
+					filterable
+					:model-value="authProtocol"
+					:placeholder="i18n.baseText('parameterInput.select')"
+					@update:model-value="onAuthProtocolUpdated"
+					@keydown.stop
+				>
+					<N8nOption
+						v-for="{ label, value } in options"
+						:key="value"
+						:value="value"
+						:label="label"
+						data-test-id="credential-select-option"
 					>
-						<N8nOption
-							v-for="protocol in Object.values(SupportedProtocols)"
-							:key="protocol"
-							:value="protocol"
-							:label="protocol.toUpperCase()"
-							data-test-id="credential-select-option"
-						>
-						</N8nOption>
-					</N8nSelect>
-				</div>
+					</N8nOption>
+				</N8nSelect>
 			</div>
-			<div v-if="authProtocol === SupportedProtocols.SAML">
+		</div>
+		<div v-if="authProtocol === SupportedProtocols.SAML">
+			<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
 				<div :class="$style.group">
 					<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
 					<CopyInput
@@ -350,7 +356,7 @@ async function onOidcSettingsSave() {
 					<div class="mt-2xs mb-s">
 						<n8n-radio-buttons v-model="ipsType" :options="ipsOptions" />
 					</div>
-					<div v-show="ipsType === IdentityProviderSettingsType.URL">
+					<div v-if="ipsType === IdentityProviderSettingsType.URL">
 						<n8n-input
 							v-model="metadataUrl"
 							type="text"
@@ -361,7 +367,7 @@ async function onOidcSettingsSave() {
 						/>
 						<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
 					</div>
-					<div v-show="ipsType === IdentityProviderSettingsType.XML">
+					<div v-if="ipsType === IdentityProviderSettingsType.XML">
 						<n8n-input
 							v-model="metadata"
 							type="textarea"
@@ -415,7 +421,21 @@ async function onOidcSettingsSave() {
 					{{ i18n.baseText('settings.sso.settings.footer.hint') }}
 				</footer>
 			</div>
-			<div v-if="authProtocol === SupportedProtocols.OIDC">
+			<n8n-action-box
+				v-else
+				data-test-id="sso-content-unlicensed"
+				:class="$style.actionBox"
+				:description="i18n.baseText('settings.sso.actionBox.description')"
+				:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
+				@click:button="goToUpgrade"
+			>
+				<template #heading>
+					<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
+				</template>
+			</n8n-action-box>
+		</div>
+		<div v-if="authProtocol === SupportedProtocols.OIDC">
+			<div v-if="ssoStore.isEnterpriseOidcEnabled">
 				<div :class="$style.group">
 					<label>Redirect URL</label>
 					<CopyInput
@@ -481,19 +501,18 @@ async function onOidcSettingsSave() {
 					</n8n-button>
 				</div>
 			</div>
+			<n8n-action-box
+				v-else
+				data-test-id="sso-content-unlicensed"
+				:class="$style.actionBox"
+				:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
+				@click:button="goToUpgrade"
+			>
+				<template #heading>
+					<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
+				</template>
+			</n8n-action-box>
 		</div>
-		<n8n-action-box
-			v-else
-			data-test-id="sso-content-unlicensed"
-			:class="$style.actionBox"
-			:description="i18n.baseText('settings.sso.actionBox.description')"
-			:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
-			@click:button="goToUpgrade"
-		>
-			<template #heading>
-				<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
-			</template>
-		</n8n-action-box>
 	</div>
 </template>
 

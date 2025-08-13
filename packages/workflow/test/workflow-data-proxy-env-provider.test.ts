@@ -1,5 +1,5 @@
-import { ExpressionError } from '@/errors/expression.error';
-import { createEnvProvider, createEnvProviderState } from '@/workflow-data-proxy-env-provider';
+import { ExpressionError } from '../src/errors/expression.error';
+import { createEnvProvider, createEnvProviderState } from '../src/workflow-data-proxy-env-provider';
 
 describe('createEnvProviderState', () => {
 	afterEach(() => {
@@ -54,6 +54,8 @@ describe('createEnvProvider', () => {
 	});
 
 	it('should throw ExpressionError when process is unavailable', () => {
+		vi.useFakeTimers({ now: new Date() });
+
 		const originalProcess = global.process;
 		// @ts-expect-error process is read-only
 		global.process = undefined;
@@ -69,6 +71,8 @@ describe('createEnvProvider', () => {
 		} finally {
 			global.process = originalProcess;
 		}
+
+		vi.useRealTimers();
 	});
 
 	it('should throw ExpressionError when env access is blocked', () => {

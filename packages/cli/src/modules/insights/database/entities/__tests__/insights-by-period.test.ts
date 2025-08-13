@@ -1,4 +1,4 @@
-import * as testDb from '@test-integration/test-db';
+import { testDb } from '@n8n/backend-test-utils';
 
 import { InsightsByPeriod } from '../insights-by-period';
 import type { PeriodUnit, TypeUnit } from '../insights-shared';

@@ -223,6 +223,12 @@ export abstract class ICredentialsHelper {
 		data: ICredentialDataDecryptedObject,
 	): Promise<void>;
 
+	abstract updateCredentialsOauthTokenData(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+		data: ICredentialDataDecryptedObject,
+	): Promise<void>;
+
 	abstract getCredentialsProperties(type: string): INodeProperties[];
 }
 
@@ -837,8 +843,27 @@ type CronUnit = number | '*' | `*/${number}`;
 export type CronExpression =
 	`${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit}`;
 
+type CronRecurrenceRule =
+	| { activated: false }
+	| {
+			activated: true;
+			index: number;
+			intervalSize: number;
+			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
+	  };
+
+export type CronContext = {
+	nodeId: string;
+	workflowId: string;
+	timezone: string;
+	expression: CronExpression;
+	recurrence?: CronRecurrenceRule;
+};
+
+export type Cron = { expression: CronExpression; recurrence?: CronRecurrenceRule };
+
 export interface SchedulingFunctions {
-	registerCron(cronExpression: CronExpression, onTick: () => void): void;
+	registerCron(cron: Cron, onTick: () => void): void;
 }
 
 export type NodeTypeAndVersion = {
@@ -864,14 +889,22 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
+	/** Get the waiting resume url signed with the signature token */
+	getSignedResumeUrl(parameters?: Record<string, string>): string;
+	/** Set requirement in the execution for signature token validation */
+	setSignatureValidationRequired(): void;
 	getChildNodes(
 		nodeName: string,
 		options?: { includeNodeParameters?: boolean },
 	): NodeTypeAndVersion[];
-	getParentNodes(nodeName: string): NodeTypeAndVersion[];
+	getParentNodes(
+		nodeName: string,
+		options?: { includeNodeParameters?: boolean },
+	): NodeTypeAndVersion[];
 	getKnownNodeTypes(): IDataObject;
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
+	getChatTrigger: () => INode | null;
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
@@ -893,7 +926,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, connectionType?: NodeConnectionType): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
-	logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
+	logAiEvent(eventName: AiEvent, msg?: string): void;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -908,6 +941,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				parentExecution?: RelatedExecution;
 			},
 		): Promise<ExecuteWorkflowData>;
+		getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined>;
 		getInputConnectionData(
 			connectionType: AINodeConnectionType,
 			itemIndex: number,
@@ -919,6 +953,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
+		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
+		isStreaming(): boolean;
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
@@ -931,6 +967,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 			metadata?: ITaskMetadata,
+			sourceNodeRunIndex?: number,
 		): void;
 
 		addExecutionHints(...hints: NodeExecutionHint[]): void;
@@ -999,7 +1036,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
-		logAiEvent(eventName: AiEvent, msg?: string | undefined): void;
+		logAiEvent(eventName: AiEvent, msg?: string): void;
 		cloneWith(replacements: {
 			runIndex: number;
 			inputData: INodeExecutionData[][];
@@ -1191,6 +1228,7 @@ export interface INodeExecutionData {
 		| NodeApiError
 		| NodeOperationError
 		| number
+		| string
 		| undefined;
 	json: IDataObject;
 	binary?: IBinaryKeyData;
@@ -1199,6 +1237,17 @@ export interface INodeExecutionData {
 	metadata?: {
 		subExecution: RelatedExecution;
 	};
+	evaluationData?: Record<string, GenericValue>;
+	/**
+	 * Use this key to send a message to the chat.
+	 *
+	 * - Workflow has to be started by a chat node.
+	 * - Put execution to wait after sending.
+	 *
+	 * See example in
+	 * packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/Chat.node.ts
+	 */
+	sendMessage?: string;
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it
@@ -1219,7 +1268,7 @@ export interface IResourceLocatorResult {
 export interface INodeParameterResourceLocator {
 	__rl: true;
 	mode: ResourceLocatorModes;
-	value: NodeParameterValue;
+	value: Exclude<NodeParameterValue, boolean>;
 	cachedResultName?: string;
 	cachedResultUrl?: string;
 	__regex?: string;
@@ -1295,11 +1344,24 @@ export type NodePropertyAction = {
 	target?: string;
 };
 
-export type CalloutActionType = 'openRagStarterTemplate';
-export interface CalloutAction {
-	type: CalloutActionType;
+export interface CalloutActionBase {
+	type: string;
 	label: string;
+	icon?: string;
 }
+
+export interface CalloutActionOpenPreBuiltAgentsCollection extends CalloutActionBase {
+	type: 'openPreBuiltAgentsCollection';
+}
+
+export interface CalloutActionOpenSampleWorkflowTemplate extends CalloutActionBase {
+	type: 'openSampleWorkflowTemplate';
+	templateId: string;
+}
+
+export type CalloutAction =
+	| CalloutActionOpenPreBuiltAgentsCollection
+	| CalloutActionOpenSampleWorkflowTemplate;
 
 export interface INodePropertyTypeOptions {
 	// Supported by: button
@@ -1354,6 +1416,7 @@ export interface ResourceMapperTypeOptionsBase {
 		hint?: string;
 	};
 	showTypeConversionOptions?: boolean;
+	allowEmptyValues?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
@@ -1456,12 +1519,18 @@ export interface INodeProperties {
 	// allows to skip validation during execution or set custom validation/casting logic inside node
 	// inline error messages would still be shown in UI
 	ignoreValidationDuringExecution?: boolean;
+	// for type: options | multiOptions – skip validation of the value (e.g. when value is not in the list and specified via expression)
+	allowArbitraryValues?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {
 	searchListMethod?: string; // Supported by: options
 	searchFilterRequired?: boolean;
 	searchable?: boolean;
+	/**
+	 * If true, the resource locator will not show an error if the credentials are not selected
+	 */
+	skipCredentialsCheckInRLC?: boolean;
 	allowNewResource?: {
 		label: string;
 		defaultName: string;
@@ -1548,7 +1617,7 @@ export interface INodePropertyValueExtractorFunction {
 	(
 		this: IExecuteSingleFunctions,
 		value: string | NodeParameterValue,
-	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
+	): Promise<string | NodeParameterValue> | string;
 }
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
 
@@ -1608,6 +1677,11 @@ export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(this: IExecuteFunctions): Promise<NodeOutput>;
+	/**
+	 * A function called when a node receives a chat message. Allows it to react
+	 * to the message before it gets executed.
+	 */
+	onMessage?(context: IExecuteFunctions, data: INodeExecutionData): Promise<NodeOutput>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
@@ -1906,7 +1980,8 @@ export interface INodeInputFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
 	//       regex, allow to exclude certain nodes, ... ?
 	//       Potentially change totally after alpha/beta. Is not a breaking change after all.
-	nodes: string[]; // Allowed nodes
+	nodes?: string[]; // Allowed nodes
+	excludedNodes?: string[];
 }
 
 export interface INodeInputConfiguration {
@@ -2093,7 +2168,29 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
-export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode' | 'formPage';
+
+/**
+ * Defines how and when response should be sent:
+ *
+ * onReceived: Response is sent immidiatly after node done executing
+ *
+ * lastNode: Response is sent after the last node finishes executing
+ *
+ * responseNode: Response is sent from the Responde to Webhook node
+ *
+ * formPage: Special response with executionId sent to the form trigger node
+ *
+ * hostedChat: Special response with executionId sent to the hosted chat trigger node
+ *
+ * streaming: Response added to runData to httpResponse and streamingEnabled set to true
+ */
+export type WebhookResponseMode =
+	| 'onReceived'
+	| 'lastNode'
+	| 'responseNode'
+	| 'formPage'
+	| 'hostedChat'
+	| 'streaming';
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;
@@ -2143,6 +2240,9 @@ export interface IRun {
 	startedAt: Date;
 	stoppedAt?: Date;
 	status: ExecutionStatus;
+
+	/** ID of the job this execution belongs to. Only in scaling mode. */
+	jobId?: string;
 }
 
 // Contains all the data which is needed to execute a workflow and so also to
@@ -2173,6 +2273,11 @@ export interface IRunExecutionData {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/**
+	 * This is used to prevent breaking change
+	 * for waiting executions started before signature validation was added
+	 */
+	validateSignature?: boolean;
 	waitTill?: Date;
 	pushRef?: string;
 
@@ -2181,6 +2286,24 @@ export interface IRunExecutionData {
 		IWorkflowExecutionDataProcess,
 		'partialExecutionVersion' | 'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
 	>;
+}
+export type SchemaType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'bigint'
+	| 'symbol'
+	| 'array'
+	| 'object'
+	| 'function'
+	| 'null'
+	| 'undefined';
+
+export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
+
+export interface NodeExecutionSchema {
+	nodeName: string;
+	schema: Schema;
 }
 
 export interface IRunData {
@@ -2321,6 +2444,9 @@ export interface IWorkflowExecutionDataProcess {
 		data?: ITaskData;
 	};
 	agentRequest?: AiAgentRequest;
+	httpResponse?: express.Response; // Used for streaming responses
+	streamingEnabled?: boolean;
+	startedAt?: Date;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2376,11 +2502,13 @@ export interface IWorkflowExecuteAdditionalData {
 		additionalData: IWorkflowExecuteAdditionalData,
 		options: ExecuteWorkflowOptions,
 	) => Promise<ExecuteWorkflowData>;
+	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
 	executionId?: string;
 	restartExecutionId?: string;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
+	streamingEnabled?: boolean;
 	restApiUrl: string;
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
@@ -2593,13 +2721,17 @@ export interface INodeGraphItem {
 	src_node_id?: string;
 	src_instance_id?: string;
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
+	is_streaming?: boolean; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
+	response_mode?: string; // @n8n/n8n-nodes-langchain.chatTrigger, n8n-nodes-base.webhook selected response mode
+	public_chat?: boolean; // @n8n/n8n-nodes-langchain.chatTrigger
 	runs?: number;
 	items_total?: number;
 	metric_names?: string[];
+	language?: string; // only for Code node: 'javascript' or 'python'
 }
 
 export interface INodeNameIndex {
@@ -2725,6 +2857,10 @@ export type FormFieldsParameter = Array<{
 	placeholder?: string;
 	fieldName?: string;
 	fieldValue?: string;
+	limitSelection?: 'exact' | 'range' | 'unlimited';
+	numberOfSelections?: number;
+	minSelections?: number;
+	maxSelections?: number;
 }>;
 
 export type FieldTypeMap = {
@@ -2912,3 +3048,16 @@ export type IPersonalizationSurveyAnswersV4 = {
 	reportedSource?: string | null;
 	reportedSourceOther?: string | null;
 };
+
+export type ChunkType = 'begin' | 'item' | 'end' | 'error';
+export interface StructuredChunk {
+	type: ChunkType;
+	content?: string;
+	metadata: {
+		nodeId: string;
+		nodeName: string;
+		runIndex: number;
+		itemIndex: number;
+		timestamp: number;
+	};
+}

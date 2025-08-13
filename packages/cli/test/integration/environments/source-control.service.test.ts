@@ -1,4 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
 	type Folder,
@@ -26,22 +27,19 @@ import { SourceControlExportService } from '@/environments.ee/source-control/sou
 import type { SourceControlGitService } from '@/environments.ee/source-control/source-control-git.service.ee';
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
+import { SourceControlScopedService } from '@/environments.ee/source-control/source-control-scoped.service';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
 import type { ExportableFolder } from '@/environments.ee/source-control/types/exportable-folders';
 import type { ExportableWorkflow } from '@/environments.ee/source-control/types/exportable-workflow';
-import type { ResourceOwner } from '@/environments.ee/source-control/types/resource-owner';
+import type { RemoteResourceOwner } from '@/environments.ee/source-control/types/resource-owner';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
-import { createTeamProject } from '@test-integration/db/projects';
 import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
 import { createUser } from '@test-integration/db/users';
-import { createWorkflow } from '@test-integration/db/workflows';
-
-import * as testDb from '../shared/test-db';
 
 jest.mock('fast-glob');
 
@@ -68,7 +66,7 @@ function toExportableCredential(
 	cred: CredentialsEntity,
 	owner: Project | User,
 ): ExportableCredential {
-	let resourceOwner: ResourceOwner;
+	let resourceOwner: RemoteResourceOwner;
 
 	if (owner instanceof Project) {
 		resourceOwner = {
@@ -97,7 +95,7 @@ function toExportableWorkflow(
 	owner: Project | User,
 	versionId?: string,
 ): ExportableWorkflow {
-	let resourceOwner: ResourceOwner;
+	let resourceOwner: RemoteResourceOwner;
 
 	if (owner instanceof Project) {
 		resourceOwner = {
@@ -230,7 +228,7 @@ describe('SourceControlService', () => {
 			createTeamProject('ProjectB'),
 		]);
 
-		let [
+		const [
 			globalAdminWorkflows,
 			globalOwnerWorkflows,
 			globalMemberWorkflows,
@@ -325,7 +323,7 @@ describe('SourceControlService', () => {
 			),
 		]);
 
-		let [projectACredentials, projectBCredentials] = await Promise.all(
+		const [projectACredentials, projectBCredentials] = await Promise.all(
 			[projectA, projectB].map(async (project) => [
 				await createCredentials(
 					{
@@ -368,7 +366,7 @@ describe('SourceControlService', () => {
 			}),
 		);
 
-		let [projectAFolders, projectBFolders] = await Promise.all(
+		const [projectAFolders, projectBFolders] = await Promise.all(
 			[projectA, projectB].map(async (project) => {
 				const parent = await createFolder(project, {
 					name: `${project.name}-FolderA`,
@@ -431,6 +429,7 @@ describe('SourceControlService', () => {
 			sourceControlPreferencesService,
 			Container.get(SourceControlExportService),
 			Container.get(SourceControlImportService),
+			Container.get(SourceControlScopedService),
 			Container.get(TagRepository),
 			Container.get(FolderRepository),
 			Container.get(EventService),
@@ -537,7 +536,7 @@ describe('SourceControlService', () => {
 		describe('direction: push', () => {
 			describe('global:admin user', () => {
 				it('should see all workflows', async () => {
-					let result = await service.getStatus(globalAdmin, {
+					const result = await service.getStatus(globalAdmin, {
 						direction: 'push',
 						preferLocalVersion: true,
 						verbose: false,
@@ -601,7 +600,7 @@ describe('SourceControlService', () => {
 				});
 
 				it('should see all credentials', async () => {
-					let result = await service.getStatus(globalAdmin, {
+					const result = await service.getStatus(globalAdmin, {
 						direction: 'push',
 						preferLocalVersion: true,
 						verbose: false,
@@ -638,7 +637,7 @@ describe('SourceControlService', () => {
 				});
 
 				it('should see all folder', async () => {
-					let result = await service.getStatus(globalAdmin, {
+					const result = await service.getStatus(globalAdmin, {
 						direction: 'push',
 						preferLocalVersion: true,
 						verbose: false,
@@ -665,7 +664,7 @@ describe('SourceControlService', () => {
 
 			describe('global:member user', () => {
 				it('should see nothing', async () => {
-					let result = await service.getStatus(globalMember, {
+					const result = await service.getStatus(globalMember, {
 						direction: 'push',
 						preferLocalVersion: true,
 						verbose: false,
@@ -677,7 +676,7 @@ describe('SourceControlService', () => {
 
 			describe('project:Admin user', () => {
 				it('should see only workflows in correct scope', async () => {
-					let result = await service.getStatus(projectAdmin, {
+					const result = await service.getStatus(projectAdmin, {
 						direction: 'push',
 						preferLocalVersion: true,
 						verbose: false,
@@ -737,7 +736,7 @@ describe('SourceControlService', () => {
 				});
 
 				it('should see only credentials in correct scope', async () => {
-					let result = await service.getStatus(projectAdmin, {
+					const result = await service.getStatus(projectAdmin, {
 						direction: 'push',
 						preferLocalVersion: true,
 						verbose: false,
@@ -774,7 +773,7 @@ describe('SourceControlService', () => {
 				});
 
 				it('should see only folders in correct scope', async () => {
-					let result = await service.getStatus(projectAdmin, {
+					const result = await service.getStatus(projectAdmin, {
 						direction: 'push',
 						preferLocalVersion: true,
 						verbose: false,
@@ -837,7 +836,7 @@ describe('SourceControlService', () => {
 			});
 
 			it('should fail with BadRequest', async () => {
-				let allChanges = (await service.getStatus(globalAdmin, {
+				const allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
@@ -854,7 +853,7 @@ describe('SourceControlService', () => {
 
 		describe('global:admin user', () => {
 			it('should update all workflows, credentials, tags and folder', async () => {
-				let allChanges = (await service.getStatus(globalAdmin, {
+				const allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
@@ -888,7 +887,7 @@ describe('SourceControlService', () => {
 			});
 
 			it('should update all workflows and credentials without arguments', async () => {
-				let allChanges = (await service.getStatus(globalAdmin, {
+				const allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
@@ -941,7 +940,7 @@ describe('SourceControlService', () => {
 
 		describe('project:admin', () => {
 			it('should update selected workflows, credentials, tags and folders', async () => {
-				let allChanges = (await service.getStatus(projectAdmin, {
+				const allChanges = (await service.getStatus(projectAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
@@ -975,7 +974,7 @@ describe('SourceControlService', () => {
 			});
 
 			it('should throw ForbiddenError when trying to push workflows out of scope', async () => {
-				let allChanges = (await service.getStatus(globalAdmin, {
+				const allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
@@ -996,7 +995,7 @@ describe('SourceControlService', () => {
 			});
 
 			it('should throw ForbiddenError when trying to push credentials out of scope', async () => {
-				let allChanges = (await service.getStatus(globalAdmin, {
+				const allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
@@ -1036,7 +1035,7 @@ describe('SourceControlService', () => {
 				// Add a new tag to newly assigned workflow
 				await assignTagToWorkflow(tags[1], movedIntoScopeWorkflow);
 
-				let allChanges = (await service.getStatus(projectAdmin, {
+				const allChanges = (await service.getStatus(projectAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
@@ -1066,7 +1065,7 @@ describe('SourceControlService', () => {
 			});
 
 			it('should update folders in scope and keep out of scope ones', async () => {
-				let allChanges = (await service.getStatus(projectAdmin, {
+				const allChanges = (await service.getStatus(projectAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
@@ -1104,7 +1103,7 @@ describe('SourceControlService', () => {
 
 		describe('global:member', () => {
 			it('should deny all changes', async () => {
-				let allChanges = (await service.getStatus(globalAdmin, {
+				const allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
@@ -1119,7 +1118,7 @@ describe('SourceControlService', () => {
 			});
 
 			it('should deny any changes', async () => {
-				let allChanges = (await service.getStatus(globalAdmin, {
+				const allChanges = (await service.getStatus(globalAdmin, {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,

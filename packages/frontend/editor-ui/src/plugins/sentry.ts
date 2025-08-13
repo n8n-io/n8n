@@ -54,6 +54,9 @@ export const SentryPlugin: Plugin = {
 			release,
 			environment,
 			integrations: [
+				Sentry.captureConsoleIntegration({
+					levels: ['error'],
+				}),
 				Sentry.rewriteFramesIntegration({
 					prefix: '',
 					root: window.location.origin + '/',

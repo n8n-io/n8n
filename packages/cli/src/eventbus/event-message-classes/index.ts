@@ -3,6 +3,7 @@ import type { EventMessageAudit } from './event-message-audit';
 import type { EventMessageExecution } from './event-message-execution';
 import type { EventMessageGeneric } from './event-message-generic';
 import type { EventMessageNode } from './event-message-node';
+import type { EventMessageQueue } from './event-message-queue';
 import type { EventMessageRunner } from './event-message-runner';
 import type { EventMessageWorkflow } from './event-message-workflow';
 
@@ -31,6 +32,16 @@ export const eventNamesRunner = [
 ] as const;
 
 export type EventNamesRunnerType = (typeof eventNamesRunner)[number];
+
+export const eventNamesQueue = [
+	'n8n.queue.job.enqueued',
+	'n8n.queue.job.dequeued',
+	'n8n.queue.job.completed',
+	'n8n.queue.job.failed',
+	'n8n.queue.job.stalled',
+] as const;
+
+export type EventNamesQueueType = (typeof eventNamesQueue)[number];
 
 export const eventNamesWorkflow = [
 	'n8n.workflow.started',
@@ -85,6 +96,7 @@ export type EventNamesTypes =
 	| EventNamesGenericType
 	| EventNamesAiNodesType
 	| EventNamesRunnerType
+	| EventNamesQueueType
 	| 'n8n.destination.test';
 
 export const eventNamesAll = [
@@ -94,6 +106,7 @@ export const eventNamesAll = [
 	...eventNamesGeneric,
 	...eventNamesAiNodes,
 	...eventNamesRunner,
+	...eventNamesQueue,
 ];
 
 export type EventMessageTypes =
@@ -103,4 +116,5 @@ export type EventMessageTypes =
 	| EventMessageNode
 	| EventMessageExecution
 	| EventMessageAiNode
+	| EventMessageQueue
 	| EventMessageRunner;

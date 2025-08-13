@@ -49,7 +49,7 @@ export function useWorkflowResourceLocatorModes(
 		};
 	}
 
-	function getModeLabel(mode: INodePropertyMode): string | null {
+	function getModeLabel(mode: INodePropertyMode): string | undefined {
 		if (mode.name === 'id' || mode.name === 'list') {
 			return i18n.baseText(`resourceLocator.mode.${mode.name}`);
 		}

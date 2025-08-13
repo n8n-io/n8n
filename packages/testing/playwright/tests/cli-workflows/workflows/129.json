@@ -1,0 +1,749 @@
+{
+	"createdAt": "2021-03-12T09:33:57.650Z",
+	"updatedAt": "2021-05-25T14:06:03.846Z",
+	"id": "129",
+	"name": "NextCloud:NextCloud:Folder:create move copy delete list:File:upload move copy download delete",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [1120, 250],
+			"id": "4cbe8941-9b8e-4432-8592-24de1753c8aa"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "folder",
+				"path": "={{$node[\"Set\"].json[\"name\"]}}"
+			},
+			"name": "Nextcloud",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [1470, 250],
+			"alwaysOutputData": true,
+			"credentials": {
+				"nextCloudOAuth2Api": {
+					"id": "96",
+					"name": "NextCloud OAuth2 API creds"
+				}
+			},
+			"id": "467f1321-8b33-4fc0-9e0c-e788d3659ea0"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "folder",
+				"operation": "move",
+				"path": "=/{{$node[\"Set\"].json[\"name\"]}}",
+				"toPath": "=/Updated{{$node[\"Set\"].json[\"name\"]}}"
+			},
+			"name": "Nextcloud1",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [1770, 250],
+			"credentials": {
+				"nextCloudOAuth2Api": {
+					"id": "96",
+					"name": "NextCloud OAuth2 API creds"
+				}
+			},
+			"id": "2e715385-abea-4304-9e39-0e00443eddb0"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "name",
+							"value": "=Folder{{Date.now()}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1270, 250],
+			"id": "79dabfd8-10a5-47c6-90aa-fa957f99db71"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "folder",
+				"operation": "copy",
+				"path": "=/Updated{{$node[\"Set\"].json[\"name\"]}}",
+				"toPath": "=/Copied{{$node[\"Set\"].json[\"name\"]}}"
+			},
+			"name": "Nextcloud2",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [2070, 250],
+			"credentials": {
+				"nextCloudOAuth2Api": {
+					"id": "96",
+					"name": "NextCloud OAuth2 API creds"
+				}
+			},
+			"id": "7a111975-d958-40d8-9f7c-11b7d36650ba"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "folder",
+				"operation": "delete",
+				"path": "=/Copied{{$node[\"Set\"].json[\"name\"]}}"
+			},
+			"name": "Nextcloud3",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [2220, 250],
+			"credentials": {
+				"nextCloudOAuth2Api": {
+					"id": "96",
+					"name": "NextCloud OAuth2 API creds"
+				}
+			},
+			"id": "b3356660-2aa2-4041-9756-629a45268e1d"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "folder",
+				"operation": "list",
+				"path": "=/Updated{{$node[\"Set\"].json[\"name\"]}}"
+			},
+			"name": "Nextcloud4",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [4000, 240],
+			"credentials": {
+				"nextCloudOAuth2Api": {
+					"id": "96",
+					"name": "NextCloud OAuth2 API creds"
+				}
+			},
+			"id": "87118dec-fdd8-494b-926d-5870193e456f"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "folder",
+				"operation": "delete",
+				"path": "=/Updated{{$node[\"Set\"].json[\"name\"]}}"
+			},
+			"name": "Nextcloud5",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [4000, 400],
+			"credentials": {
+				"nextCloudOAuth2Api": {
+					"id": "96",
+					"name": "NextCloud OAuth2 API creds"
+				}
+			},
+			"id": "83d025a2-bc96-4c24-93ab-bcf6acd1d63d"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"path": "=/Updated{{$node[\"Set\"].json[\"name\"]}}/{{$node[\"Set1\"].json[\"name\"]}}",
+				"binaryDataUpload": true
+			},
+			"name": "Nextcloud6",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [2820, 300],
+			"credentials": {
+				"nextCloudOAuth2Api": {
+					"id": "96",
+					"name": "NextCloud OAuth2 API creds"
+				}
+			},
+			"id": "4142443d-f9d7-4efd-a43b-66d7dfc5df4e"
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "name",
+							"value": "=File{{Date.now()}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [2520, 300],
+			"id": "9ca67953-2298-4400-9439-93e09a64bffe"
+		},
+		{
+			"parameters": {
+				"filePath": "/tmp/n8n-logo.png"
+			},
+			"name": "Read Binary File",
+			"type": "n8n-nodes-base.readBinaryFile",
+			"typeVersion": 1,
+			"position": [2670, 300],
+			"id": "008eb1cf-a715-4764-8dee-ac713bd23387"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "move",
+				"path": "=/Updated{{$node[\"Set\"].json[\"name\"]}}/{{$node[\"Set1\"].json[\"name\"]}}",
+				"toPath": "=/Updated{{$node[\"Set\"].json[\"name\"]}}/Moved{{$node[\"Set1\"].json[\"name\"]}}"
+			},
+			"name": "Nextcloud7",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [3120, 300],
+			"credentials": {
+				"nextCloudOAuth2Api": {
+					"id": "96",
+					"name": "NextCloud OAuth2 API creds"
+				}
+			},
+			"id": "8f2b1106-2e0c-4da7-915d-27356091ec81"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "copy",
+				"path": "=/Updated{{$node[\"Set\"].json[\"name\"]}}/Moved{{$node[\"Set1\"].json[\"name\"]}}",
+				"toPath": "=/Updated{{$node[\"Set\"].json[\"name\"]}}/Copied{{$node[\"Set1\"].json[\"name\"]}}"
+			},
+			"name": "Nextcloud8",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [3270, 300],
+			"credentials": {
+				"nextCloudOAuth2Api": {
+					"id": "96",
+					"name": "NextCloud OAuth2 API creds"
+				}
+			},
+			"id": "4f8a6919-c58f-4b54-ba83-9ad4f50bc348"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "download",
+				"path": "=/Updated{{$node[\"Set\"].json[\"name\"]}}/Moved{{$node[\"Set1\"].json[\"name\"]}}"
+			},
+			"name": "Nextcloud9",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [3570, 300],
+			"credentials": {
+				"nextCloudOAuth2Api": {
+					"id": "96",
+					"name": "NextCloud OAuth2 API creds"
+				}
+			},
+			"id": "d6c5dfb2-4bd9-4b40-98b5-adee1e9371c8"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "delete",
+				"path": "=/Updated{{$node[\"Set\"].json[\"name\"]}}/Moved{{$node[\"Set1\"].json[\"name\"]}}"
+			},
+			"name": "Nextcloud10",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [3720, 300],
+			"credentials": {
+				"nextCloudOAuth2Api": {
+					"id": "96",
+					"name": "NextCloud OAuth2 API creds"
+				}
+			},
+			"id": "804800a7-6329-4a4d-99cf-da2dc38a9096"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"userId": "=Username{{Date.now()}}",
+				"email": "=email{{Date.now()}}@fakeemail.com",
+				"additionalFields": {
+					"displayName": "=Username{{Date.now()}}"
+				}
+			},
+			"name": "Nextcloud11",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [1270, 450],
+			"credentials": {
+				"nextCloudApi": {
+					"id": "133",
+					"name": "NextCloud API creds"
+				}
+			},
+			"id": "605413ab-2e1b-4ac2-801e-4a51d5d8287e"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"userId": "={{$node[\"Nextcloud11\"].json[\"id\"]}}"
+			},
+			"name": "Nextcloud12",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [1570, 450],
+			"credentials": {
+				"nextCloudApi": {
+					"id": "133",
+					"name": "NextCloud API creds"
+				}
+			},
+			"id": "c0134c0b-74b2-4f67-9ecf-570f052f5aa6"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"limit": 1,
+				"options": {}
+			},
+			"name": "Nextcloud13",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [1720, 450],
+			"credentials": {
+				"nextCloudApi": {
+					"id": "133",
+					"name": "NextCloud API creds"
+				}
+			},
+			"id": "da45a102-91e0-41d7-858e-1680e7af104e"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "update",
+				"userId": "={{$node[\"Nextcloud11\"].json[\"id\"]}}",
+				"updateFields": {
+					"field": {
+						"key": "website",
+						"value": "http://community.n8n.io"
+					}
+				}
+			},
+			"name": "Nextcloud14",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [2020, 450],
+			"credentials": {
+				"nextCloudApi": {
+					"id": "133",
+					"name": "NextCloud API creds"
+				}
+			},
+			"id": "35b61a88-a9d7-4902-9f5e-b9db05ee6f1b"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "delete",
+				"userId": "={{$node[\"Nextcloud11\"].json[\"id\"]}}"
+			},
+			"name": "Nextcloud15",
+			"type": "n8n-nodes-base.nextCloud",
+			"typeVersion": 1,
+			"position": [2170, 450],
+			"credentials": {
+				"nextCloudApi": {
+					"id": "133",
+					"name": "NextCloud API creds"
+				}
+			},
+			"id": "c983c376-d307-406d-8134-3469a35b7991"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 8 Seconds",
+			"type": "n8n-nodes-base.function",
+			"position": [1420, 450],
+			"typeVersion": 1,
+			"id": "7024a28f-fb45-45ac-8fd4-af00b229fc25"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+			},
+			"name": "Sleep 8 Seconds1",
+			"type": "n8n-nodes-base.function",
+			"position": [1870, 450],
+			"typeVersion": 1,
+			"id": "42756f4c-e881-4738-b350-58c1630e5975"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn [{json:{}}];"
+			},
+			"name": "Sleep 8 Seconds2",
+			"type": "n8n-nodes-base.function",
+			"position": [3860, 240],
+			"typeVersion": 1,
+			"id": "8b8ad7de-70c6-4098-bdf0-487d66827f86"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn [{json:{}}];"
+			},
+			"name": "Sleep 8 Seconds3",
+			"type": "n8n-nodes-base.function",
+			"position": [3420, 300],
+			"typeVersion": 1,
+			"id": "5398a6ef-f8ce-4e74-9f2e-6c445875f109"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn [{json:{}}];"
+			},
+			"name": "Sleep 8 Seconds4",
+			"type": "n8n-nodes-base.function",
+			"position": [2960, 300],
+			"typeVersion": 1,
+			"id": "f31b62e7-9c78-427a-b3b1-b3373cb86bb8"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn [{json:{}}];"
+			},
+			"name": "Sleep 8 Seconds5",
+			"type": "n8n-nodes-base.function",
+			"position": [2370, 300],
+			"typeVersion": 1,
+			"id": "add90777-a9c7-4c56-83b7-44b10f71bb3f"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn [{json:{}}];"
+			},
+			"name": "Sleep 8 Seconds6",
+			"type": "n8n-nodes-base.function",
+			"position": [1920, 250],
+			"typeVersion": 1,
+			"id": "3e008e1f-e966-4389-8318-91a81fb9d8a7"
+		},
+		{
+			"parameters": {
+				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn [{json:{}}];"
+			},
+			"name": "Sleep 8 Seconds7",
+			"type": "n8n-nodes-base.function",
+			"position": [1620, 250],
+			"typeVersion": 1,
+			"id": "f7461433-5a21-459c-bfbb-e57bfaae6eed"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Nextcloud11",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud1": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud2": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud3": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud4": {
+			"main": [[]]
+		},
+		"Set1": {
+			"main": [
+				[
+					{
+						"node": "Read Binary File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud6": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Binary File": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud7": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud8": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud9": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud10": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud11": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud12": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud13",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud13": {
+			"main": [
+				[
+					{
+						"node": "Sleep 8 Seconds1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Nextcloud14": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud15",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud12",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds1": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud14",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds2": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Nextcloud5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds3": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds4": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds5": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds6": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sleep 8 Seconds7": {
+			"main": [
+				[
+					{
+						"node": "Nextcloud1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

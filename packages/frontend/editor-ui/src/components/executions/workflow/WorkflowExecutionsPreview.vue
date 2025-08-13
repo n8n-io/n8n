@@ -9,7 +9,7 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
@@ -21,7 +21,7 @@ import { useExecutionsStore } from '@/stores/executions.store';
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
 const props = defineProps<{
-	execution: ExecutionSummary;
+	execution?: ExecutionSummary;
 }>();
 
 const emit = defineEmits<{
@@ -45,6 +45,7 @@ const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
 const executionId = computed(() => route.params.executionId as string);
+const nodeId = computed(() => route.params.nodeId as string);
 const executionUIDetails = computed<IExecutionUIData | null>(() =>
 	props.execution ? executionHelpers.getUIDetails(props.execution) : null,
 );
@@ -108,7 +109,9 @@ async function onDeleteExecution(): Promise<void> {
 }
 
 function handleRetryClick(command: string) {
-	emit('retryExecution', { execution: props.execution, command });
+	if (props.execution) {
+		emit('retryExecution', { execution: props.execution, command });
+	}
 }
 
 function handleStopClick() {
@@ -229,7 +232,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						| ID#{{ execution.id }}
 					</N8nText>
 				</div>
-				<div :class="$style.executionDetailsRetry" v-if="execution.mode === 'retry'">
+				<div v-if="execution.mode === 'retry'" :class="$style.executionDetailsRetry">
 					<N8nText color="text-base" size="small">
 						{{ locale.baseText('executionDetails.retry') }}
 						<RouterLink
@@ -288,7 +291,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 							type="tertiary"
 							:title="locale.baseText('executionsList.retryExecution')"
 							:disabled="!workflowPermissions.update"
-							icon="redo"
+							icon="redo-2"
 							data-test-id="execution-preview-retry-button"
 							@blur="onRetryButtonBlur"
 						/>
@@ -306,14 +309,14 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				</ElDropdown>
 
 				<WorkflowExecutionAnnotationPanel
-					:execution="activeExecution"
 					v-if="isAnnotationEnabled && activeExecution"
+					:execution="activeExecution"
 				/>
 
 				<N8nIconButton
 					:title="locale.baseText('executionDetails.deleteExecution')"
 					:disabled="!workflowPermissions.update"
-					icon="trash"
+					icon="trash-2"
 					size="medium"
 					type="tertiary"
 					data-test-id="execution-preview-delete-button"
@@ -327,6 +330,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			loader-type="spinner"
 			:execution-id="executionId"
 			:execution-mode="execution?.mode || ''"
+			:node-id="nodeId"
 		/>
 	</div>
 </template>

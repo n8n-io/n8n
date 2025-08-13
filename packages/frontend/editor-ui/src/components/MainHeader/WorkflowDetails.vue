@@ -21,6 +21,7 @@ import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
+import WorkflowProductionChecklist from '@/components/WorkflowProductionChecklist.vue';
 import { ResourceType } from '@/utils/projects.utils';
 
 import { useProjectsStore } from '@/stores/projects.store';
@@ -36,7 +37,7 @@ import { saveAs } from 'file-saver';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { nodeViewEventBus } from '@/event-bus';
 import { hasPermission } from '@/utils/rbac/permissions';
@@ -47,10 +48,10 @@ import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import type {
 	ActionDropdownItem,
 	FolderShortInfo,
-	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowToShare,
 } from '@/Interface';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -60,6 +61,11 @@ import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { sanitizeFilename } from '@/utils/fileUtils';
+import { I18nT } from 'vue-i18n';
+
+const WORKFLOW_NAME_MAX_WIDTH_SMALL_SCREENS = 150;
+const WORKFLOW_NAME_MAX_WIDTH_WIDE_SCREENS = 200;
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -406,7 +412,7 @@ async function handleFileImport(): Promise<void> {
 	if (inputRef?.files && inputRef.files.length !== 0) {
 		const reader = new FileReader();
 		reader.onload = () => {
-			let workflowData: IWorkflowDataUpdate;
+			let workflowData: WorkflowDataUpdate;
 			try {
 				workflowData = JSON.parse(reader.result as string);
 			} catch (error) {
@@ -427,7 +433,8 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
-async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
+async function onWorkflowMenuSelect(value: string): Promise<void> {
+	const action = value as WORKFLOW_MENU_ACTIONS;
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
 			uiStore.openModalWithData({
@@ -466,7 +473,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			});
 
 			let name = props.name || 'unsaved_workflow';
-			name = name.replace(/[^a-z0-9]/gi, '_');
+			name = sanitizeFilename(name);
 
 			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
 			saveAs(blob, name + '.json');
@@ -690,7 +697,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 			class="name-container"
 			data-test-id="canvas-breadcrumbs"
 		>
-			<template #default>
+			<template #default="{ bp }">
 				<FolderBreadcrumbs
 					:current-folder="currentFolderForBreadcrumbs"
 					:current-folder-as-link="true"
@@ -710,6 +717,11 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 							class="name"
 							:model-value="name"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
+							:max-width="
+								['XS', 'SM'].includes(bp)
+									? WORKFLOW_NAME_MAX_WIDTH_SMALL_SCREENS
+									: WORKFLOW_NAME_MAX_WIDTH_WIDE_SCREENS
+							"
 							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							@update:model-value="onNameSubmit"
@@ -771,6 +783,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 		</span>
 
 		<PushConnectionTracker class="actions">
+			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<span :class="`activator ${$style.group}`">
 				<WorkflowActivator
 					:is-archived="isArchived"
@@ -907,6 +920,26 @@ $--header-spacing: 20px;
 		:deep(input) {
 			min-width: 180px;
 		}
+	}
+}
+
+@media (max-width: 1390px) {
+	.name-container {
+		margin-right: var(--spacing-xs);
+	}
+
+	.actions {
+		gap: var(--spacing-xs);
+	}
+}
+
+@media (max-width: 1350px) {
+	.name-container {
+		margin-right: var(--spacing-2xs);
+	}
+
+	.actions {
+		gap: var(--spacing-2xs);
 	}
 }
 </style>

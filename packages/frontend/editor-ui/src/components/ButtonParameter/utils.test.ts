@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { generateCodeForAiTransform, reducePayloadSizeOrThrow } from './utils';
 import { createPinia, setActivePinia } from 'pinia';

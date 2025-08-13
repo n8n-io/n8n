@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import { Ollama } from '@langchain/community/llms/ollama';
 import {
 	NodeConnectionTypes,
@@ -18,7 +16,7 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 export class LmOllama implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Ollama Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmOllama',
 		icon: 'file:ollama.svg',
 		group: ['transform'],
@@ -41,9 +39,9 @@ export class LmOllama implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		...ollamaDescription,
@@ -59,6 +57,11 @@ export class LmOllama implements INodeType {
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as object;
+		const headers = credentials.apiKey
+			? {
+					Authorization: `Bearer ${credentials.apiKey as string}`,
+				}
+			: undefined;
 
 		const model = new Ollama({
 			baseUrl: credentials.baseUrl as string,
@@ -66,6 +69,7 @@ export class LmOllama implements INodeType {
 			...options,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			headers,
 		});
 
 		return {

@@ -91,3 +91,26 @@ export const milvusCollectionRLC: INodeProperties = {
 		},
 	],
 };
+
+export const weaviateCollectionRLC: INodeProperties = {
+	displayName: 'Weaviate Collection',
+	name: 'weaviateCollection',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'weaviateCollectionsSearch',
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+		},
+	],
+};

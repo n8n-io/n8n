@@ -1,10 +1,8 @@
-import { ProjectRelationRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { randomEmail, testDb } from '@n8n/backend-test-utils';
+import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { createAdmin, createMember, createOwner } from './shared/db/users';
-import { randomEmail } from './shared/random';
-import * as testDb from './shared/test-db';
 
 describe('UserRepository', () => {
 	let userRepository: UserRepository;
