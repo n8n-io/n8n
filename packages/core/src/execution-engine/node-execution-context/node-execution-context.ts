@@ -400,6 +400,13 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const value = get(node.parameters, parameterName, fallbackValue);
+		
+		// Debug logging for toolkit parameters
+		if (parameterName === 'resource' || parameterName === 'operation') {
+			console.log(`[getNodeParameter] ${node.name}.${parameterName} = ${value}`, {
+				nodeParameters: node.parameters,
+			});
+		}
 
 		if (value === undefined) {
 			throw new ApplicationError('Could not get parameter', { extra: { parameterName } });

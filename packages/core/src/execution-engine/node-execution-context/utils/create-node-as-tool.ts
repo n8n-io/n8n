@@ -28,7 +28,7 @@ export type CreateNodeAsToolOptions = {
  * @throws {NodeOperationError} When parameter keys are invalid or when duplicate keys have inconsistent definitions
  * @returns {z.ZodObject} A Zod schema object representing the structure and validation rules for the node parameters
  */
-function getSchema(node: INode) {
+function getSchema(node: INode, excludeKeys?: string[]) {
 	const collectedArguments: FromAIArgument[] = [];
 	try {
 		traverseNodeParameters(node.parameters, collectedArguments);
@@ -79,7 +79,12 @@ function getSchema(node: INode) {
 		return map;
 	}, new Map<string, FromAIArgument>());
 
-	const uniqueArguments = Array.from(uniqueArgsMap.values());
+	let uniqueArguments = Array.from(uniqueArgsMap.values());
+
+	// Filter out excluded keys if specified
+	if (excludeKeys && excludeKeys.length > 0) {
+		uniqueArguments = uniqueArguments.filter(arg => !excludeKeys.includes(arg.key));
+	}
 
 	// Generate Zod schema from unique arguments
 	const schemaObj = uniqueArguments.reduce((acc: Record<string, z.ZodTypeAny>, placeholder) => {
@@ -121,6 +126,10 @@ export class NodeToolkit extends Toolkit {
 	) {
 		super();
 	}
+
+	getTools(): DynamicStructuredTool[] {
+		return this.tools;
+	}
 }
 
 /**
@@ -133,13 +142,20 @@ function createNodeAsToolkit(options: CreateNodeAsToolOptions): NodeToolkit {
 	const resource = node.parameters.resource as string;
 	const operations = Array.isArray(node.parameters.operation)
 		? node.parameters.operation as string[]
-		: [node.parameters.operation as string];
+		: node.parameters.operation 
+			? [node.parameters.operation as string]
+			: [];
 
 	// Generate tools for each resource/operation combination
 	const tools: DynamicStructuredTool[] = [];
 	
+	// If no operations are specified, return empty toolkit
+	if (operations.length === 0) {
+		return new NodeToolkit([], nodeType, node);
+	}
+	
 	for (const operation of operations) {
-		// Create a modified node with specific operation
+		// Create a modified node with specific operation for schema generation
 		const toolNode: INode = {
 			...node,
 			parameters: {
@@ -150,22 +166,29 @@ function createNodeAsToolkit(options: CreateNodeAsToolOptions): NodeToolkit {
 		};
 
 		// Generate tool name: nodeName_resource_operation
-		const baseName = nodeNameToToolName(node) || nodeType.description.name;
+		const baseName = nodeNameToToolName(node) || nodeType.description.name.replace('Tool', '');
 		const toolName = `${baseName}_${resource}_${operation}`;
 
 		try {
-			const schema = getSchema(toolNode);
-			const description = `${nodeType.description.displayName}: ${operation} ${resource}`;
+			// Exclude resource and operation from schema since they're automatically provided
+			const schema = getSchema(toolNode, ['resource', 'operation']);
+			const description = `${nodeType.description.displayName.replace(' Tool', '')}: ${operation} ${resource}`;
 
 			const tool = new DynamicStructuredTool({
 				name: toolName,
 				description,
 				schema,
-				func: async (toolArgs: z.infer<typeof schema>) => await options.handleToolInvocation({
-					...toolArgs,
-					resource,
-					operation,
-				}),
+				func: async (toolArgs: z.infer<typeof schema>) => {
+					// Ensure toolArgs is an object, default to empty object if null/undefined
+					const safeToolArgs = toolArgs || {};
+					
+					// Add resource and operation to toolArgs so makeHandleToolInvocation can access them
+					return await options.handleToolInvocation({
+						...safeToolArgs,
+						resource,
+						operation,
+					});
+				},
 			});
 
 			tools.push(tool);
@@ -184,10 +207,14 @@ function createNodeAsToolkit(options: CreateNodeAsToolOptions): NodeToolkit {
  * a DynamicStructuredTool that can be used in LangChain workflows.
  */
 export function createNodeAsTool(options: CreateNodeAsToolOptions) {
-	const { nodeType } = options;
+	const { nodeType, node } = options;
 	
 	// Check if node should be converted to a toolkit
-	if (nodeType.description.usableAsTool === 'toolkit') {
+	const isToolkit = nodeType.description.usableAsTool === 'toolkit' || 
+		(nodeType.description as any)._isToolkit ||
+		(node.parameters.operation && node.parameters.resource);
+	
+	if (isToolkit) {
 		return { response: createNodeAsToolkit(options) };
 	}
 

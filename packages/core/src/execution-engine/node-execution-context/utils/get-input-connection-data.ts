@@ -4,6 +4,7 @@ import type {
 	IExecuteData,
 	IExecuteFunctions,
 	INodeExecutionData,
+	INodeParameters,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
@@ -51,6 +52,31 @@ export function makeHandleToolInvocation(
 	let runIndex = getNextRunIndex(runExecutionData, node.name);
 
 	return async (toolArgs: IDataObject) => {
+		// Handle toolkit node parameters - if toolArgs contains resource/operation,
+		// we need to temporarily set them in the node parameters (overriding any UI configuration)
+		const isToolkitCall = toolArgs.resource && toolArgs.operation;
+		
+		console.log(`[makeHandleToolInvocation] Node: ${node.name}, isToolkitCall: ${isToolkitCall}`, {
+			toolArgsResource: toolArgs.resource,
+			toolArgsOperation: toolArgs.operation,
+			nodeParamsResource: node.parameters.resource,
+			nodeParamsOperation: node.parameters.operation,
+		});
+		
+		let originalParameters: INodeParameters | undefined;
+		if (isToolkitCall) {
+			// Temporarily modify node parameters for toolkit execution
+			originalParameters = { ...node.parameters };
+			node.parameters.resource = toolArgs.resource as string;
+			node.parameters.operation = toolArgs.operation as string;
+			console.log(`[makeHandleToolInvocation] Modified node parameters:`, {
+				resource: node.parameters.resource,
+				operation: node.parameters.operation,
+			});
+			// Remove resource/operation from toolArgs since they're now in node parameters
+			const { resource, operation, ...cleanToolArgs } = toolArgs;
+			toolArgs = cleanToolArgs;
+		}
 		let maxTries = 1;
 		if (node.retryOnFail === true) {
 			maxTries = Math.min(5, Math.max(2, node.maxTries ?? 3));
@@ -63,7 +89,8 @@ export function makeHandleToolInvocation(
 
 		let lastError: NodeOperationError | undefined;
 
-		for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
+		try {
+			for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 			// Increment the runIndex for the next invocation
 			const localRunIndex = runIndex++;
 			const context = contextFactory(localRunIndex);
@@ -133,9 +160,15 @@ export function makeHandleToolInvocation(
 					return 'Error during node execution: ' + (nodeError.description ?? nodeError.message);
 				}
 			}
-		}
+			}
 
-		return 'Error during node execution : ' + (lastError?.description ?? lastError?.message);
+			return 'Error during node execution : ' + (lastError?.description ?? lastError?.message);
+		} finally {
+			// Restore original parameters if they were modified for toolkit execution
+			if (originalParameters) {
+				node.parameters = originalParameters;
+			}
+		}
 	};
 }
 

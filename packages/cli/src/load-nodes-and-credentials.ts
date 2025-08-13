@@ -33,6 +33,7 @@ import picocolors from 'picocolors';
 import { CommunityPackagesConfig } from './community-packages/community-packages.config';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
+import omit from 'lodash/omit';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -454,61 +455,98 @@ export class LoadNodesAndCredentials {
 		}
 
 		if (isFullDescription(item.description)) {
+			const isToolkit = item.description.usableAsTool === 'toolkit';
+
 			item.description.name += 'Tool';
 			item.description.inputs = [];
 			item.description.outputs = [NodeConnectionTypes.AiTool];
 			item.description.displayName += ' Tool';
+
+			// Store toolkit info for runtime detection before deleting usableAsTool
+			if (isToolkit) {
+				(item.description as any)._isToolkit = true;
+			}
+
 			delete item.description.usableAsTool;
 
 			const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
 			const hasOperation = item.description.properties.some((prop) => prop.name === 'operation');
 
 			if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
-				const descriptionType: INodeProperties = {
-					displayName: 'Tool Description',
-					name: 'descriptionType',
-					type: 'options',
-					noDataExpression: true,
-					options: [
-						{
-							name: 'Set Automatically',
-							value: 'auto',
-							description: 'Automatically set based on resource and operation',
-						},
-						{
-							name: 'Set Manually',
-							value: 'manual',
-							description: 'Manually set the description',
-						},
-					],
-					default: 'auto',
-				};
+				if (isToolkit && hasResource && hasOperation) {
+					// For toolkit nodes, generate specialized properties
+					const lastCallout = this.findLastCalloutIndex(item.description.properties);
 
-				const descProp: INodeProperties = {
-					displayName: 'Description',
-					name: 'toolDescription',
-					type: 'string',
-					default: item.description.description,
-					required: true,
-					typeOptions: { rows: 2 },
-					description:
-						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-				};
-
-				const lastCallout = this.findLastCalloutIndex(item.description.properties);
-
-				item.description.properties.splice(lastCallout + 1, 0, descProp);
-
-				// If node has resource or operation we can determine pre-populate tool description based on it
-				// so we add the descriptionType property as the first property after possible callout param(s).
-				if (hasResource || hasOperation) {
-					item.description.properties.splice(lastCallout + 1, 0, descriptionType);
-
-					descProp.displayOptions = {
-						show: {
-							descriptionType: ['manual'],
-						},
+					// Add toolkit description
+					const toolkitDescProp: INodeProperties = {
+						displayName: 'Toolkit Description',
+						name: 'toolDescription',
+						type: 'string',
+						default: `${item.description.displayName} toolkit with multiple operations`,
+						required: true,
+						typeOptions: { rows: 2 },
+						description: 'Describe what this toolkit does for the LLM',
 					};
+
+					// Modify the operation property to allow multiple selections
+					item.description.properties.forEach((prop, operationIndex) => {
+						if (prop.name === 'operation' && prop.type === 'options') {
+							// Convert existing operation property to multiOptions for toolkit
+							prop.type = 'multiOptions';
+							prop.description = 'Select the operations to include in this toolkit';
+							prop.default = prop.default ? [prop.default as string] : [];
+						}
+					});
+
+					item.description.properties.push(toolkitDescProp);
+				} else {
+					// Standard tool properties
+					const descriptionType: INodeProperties = {
+						displayName: 'Tool Description',
+						name: 'descriptionType',
+						type: 'options',
+						noDataExpression: true,
+						options: [
+							{
+								name: 'Set Automatically',
+								value: 'auto',
+								description: 'Automatically set based on resource and operation',
+							},
+							{
+								name: 'Set Manually',
+								value: 'manual',
+								description: 'Manually set the description',
+							},
+						],
+						default: 'auto',
+					};
+
+					const descProp: INodeProperties = {
+						displayName: 'Description',
+						name: 'toolDescription',
+						type: 'string',
+						default: item.description.description,
+						required: true,
+						typeOptions: { rows: 2 },
+						description:
+							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+					};
+
+					const lastCallout = this.findLastCalloutIndex(item.description.properties);
+
+					item.description.properties.splice(lastCallout + 1, 0, descProp);
+
+					// If node has resource or operation we can determine pre-populate tool description based on it
+					// so we add the descriptionType property as the first property after possible callout param(s).
+					if (hasResource || hasOperation) {
+						item.description.properties.splice(lastCallout + 1, 0, descriptionType);
+
+						descProp.displayOptions = {
+							show: {
+								descriptionType: ['manual'],
+							},
+						};
+					}
 				}
 			}
 		}
