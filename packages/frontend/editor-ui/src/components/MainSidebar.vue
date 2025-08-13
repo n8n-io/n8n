@@ -327,7 +327,8 @@ const hasMultipleVerifiedUsers = computed(
 				? sharedItems
 				: undefined
 		"
-		:projects="projectsStore.isTeamProjectFeatureEnabled ? projects : undefined"
+		:projects="projects"
+		:projects-enabled="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
 		:release-channel="settingsStore.settings.releaseChannel"
 		:menu-items="visibleMenuItems"
 		:help-menu-items="helpMenuItems"

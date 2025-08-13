@@ -17,6 +17,7 @@ const props = defineProps<{
 	personal: { id: string; items: TreeItemType[] };
 	shared?: TreeItemType[];
 	projects?: { title: string; id: string; icon: IconName; items: TreeItemType[] }[];
+	projectsEnabled: boolean;
 	userName: string;
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
 	menuItems: IMenuItem[];
@@ -145,9 +146,11 @@ function getMenuItemRoute(item: IMenuItem) {
 				:selectable="false"
 				:collapsible="false"
 			/>
-			<N8nText size="small" bold color="text-light" class="sidebarSubheader">Projects</N8nText>
+			<N8nText v-if="projectsEnabled" size="small" bold color="text-light" class="sidebarSubheader"
+				>Projects</N8nText
+			>
 			<SidebarSection
-				v-if="projects?.length"
+				v-if="projectsEnabled && projects?.length"
 				v-for="project in projects"
 				:title="project.title"
 				:id="project.id"
@@ -157,7 +160,7 @@ function getMenuItemRoute(item: IMenuItem) {
 				:selectable="false"
 				:collapsible="false"
 			/>
-			<div class="sidebarProjectsEmpty" v-else>
+			<div class="sidebarProjectsEmpty" v-else-if="projectsEnabled">
 				<N8nButton
 					text
 					size="small"
