@@ -42,7 +42,6 @@ const emits = defineEmits<{
 }>();
 
 function toggleSection(id: string, callback: () => void) {
-	console.log('click');
 	emits('openFolder', id);
 	callback();
 }
@@ -65,7 +64,11 @@ function toggleSection(id: string, callback: () => void) {
 				:title="item.label"
 				:id="item.id"
 				:icon="itemIcon(item.type, isExpanded)"
-				:click="() => toggleSection(item.id, handleToggle)"
+				:click="
+					() => {
+						toggleSection(item.id, handleToggle);
+					}
+				"
 				:open="isExpanded"
 				:link="itemLink(item)"
 				:ariaLabel="`Open ${item.label}`"

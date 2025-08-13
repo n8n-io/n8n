@@ -25,7 +25,6 @@ export const useSidebarData = () => {
 		personalProjectId.value = projectsStore.personalProject?.id;
 
 		await projectsStore.getMyProjects();
-		console.log(projectsStore.teamProjects);
 
 		projects.value = projectsStore.teamProjects.map((project: ProjectListItem) => ({
 			id: project.id,
@@ -53,6 +52,7 @@ export const useSidebarData = () => {
 			label: item.name,
 			type: item.resource,
 			icon: item.resource === 'workflow' ? undefined : 'folder',
+			children: item.resource === 'folder' ? [] : undefined,
 		}));
 
 		if (projectId === projectsStore.personalProject?.id) {
@@ -81,6 +81,7 @@ export const useSidebarData = () => {
 			},
 			true,
 		);
+
 		const itemsToAdd: TreeItemType[] = items.map((item) => ({
 			id: item.id,
 			label: item.name,
@@ -88,14 +89,12 @@ export const useSidebarData = () => {
 			icon: item.resource === 'workflow' ? undefined : 'folder',
 		}));
 
-		console.log('openFolder', folderId, projectId, itemsToAdd);
-
 		if (projectId === projectsStore.personalProject?.id) {
 			personalItems.value = personalItems.value.map((item) => {
 				if (item.id === folderId) {
 					return {
 						...item,
-						items: itemsToAdd,
+						children: itemsToAdd,
 					};
 				}
 				return item;
@@ -109,7 +108,7 @@ export const useSidebarData = () => {
 							if (item.id === folderId) {
 								return {
 									...item,
-									items: itemsToAdd,
+									children: itemsToAdd,
 								};
 							}
 							return item;
