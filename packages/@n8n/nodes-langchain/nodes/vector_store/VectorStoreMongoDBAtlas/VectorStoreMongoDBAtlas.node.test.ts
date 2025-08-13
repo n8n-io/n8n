@@ -101,6 +101,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 		beforeEach(() => {
 			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === MONGODB_COLLECTION_NAME) return 'testCollection';
+				return '';
 			});
 		});
 
@@ -113,6 +114,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 		beforeEach(() => {
 			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === VECTOR_INDEX_NAME) return 'testIndex';
+				return '';
 			});
 		});
 
@@ -125,6 +127,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 		beforeEach(() => {
 			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === EMBEDDING_NAME) return 'testEmbedding';
+				return '';
 			});
 		});
 
@@ -137,6 +140,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 		beforeEach(() => {
 			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === METADATA_FIELD_NAME) return 'testMetadata';
+				return '';
 			});
 		});
 
