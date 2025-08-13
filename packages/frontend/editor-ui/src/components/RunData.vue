@@ -24,7 +24,13 @@ import {
 } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
-import type { INodeUi, IRunDataDisplayMode, ITab, NodePanelType } from '@/Interface';
+import type {
+	IExecutionResponse,
+	INodeUi,
+	IRunDataDisplayMode,
+	ITab,
+	NodePanelType,
+} from '@/Interface';
 
 import {
 	CORE_NODES_CATEGORY,
@@ -38,7 +44,7 @@ import {
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
 	RUN_DATA_DEFAULT_PAGE_SIZE,
-	TEST_PIN_DATA,
+	DUMMY_PIN_DATA,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -893,7 +899,14 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		? inputData.length
 		: Object.keys(inputData ?? {}).length;
 
-	const data = inputDataLength > 0 ? inputData : TEST_PIN_DATA;
+	const lastSuccessfulExecutionItems = getOutputtedNodeItems(
+		workflowsStore.lastSuccessfulExecution,
+		node.value,
+	);
+	const mockData = lastSuccessfulExecutionItems.length
+		? executionDataToJson(lastSuccessfulExecutionItems)
+		: DUMMY_PIN_DATA;
+	const data = inputDataLength > 0 ? inputData : mockData;
 
 	ndvStore.setOutputPanelEditModeEnabled(true);
 	ndvStore.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
@@ -907,6 +920,24 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		view: !hasNodeRun.value && !pinnedData.hasData.value ? 'undefined' : props.displayMode,
 		is_data_pinned: pinnedData.hasData.value,
 	});
+}
+
+function getOutputtedNodeItems(
+	execution?: IExecutionResponse | null,
+	node?: INodeUi | null,
+	runIndex = 0,
+	outputIndex = 0,
+	connectionType = 'main',
+): INodeExecutionData[] {
+	if (!node) {
+		return [];
+	}
+
+	return (
+		execution?.data?.resultData.runData?.[node?.name]?.[runIndex]?.data?.[connectionType]?.[
+			outputIndex
+		] ?? []
+	);
 }
 
 function onClickCancelEdit() {

@@ -601,7 +601,7 @@ export const enum VIEWS {
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
 export const VISIBLE_LOGS_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 
-export const TEST_PIN_DATA = [
+export const DUMMY_PIN_DATA = [
 	{
 		name: 'First item',
 		code: 1,
