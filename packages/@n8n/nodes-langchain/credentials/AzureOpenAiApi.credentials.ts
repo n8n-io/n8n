@@ -40,9 +40,21 @@ export class AzureOpenAiApi implements ICredentialType {
 			placeholder: 'https://westeurope.api.cognitive.microsoft.com',
 		},
 		{
+			displayName: 'Add Custom Headers',
+			name: 'useCustomHeaders',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to add custom headers to the requests',
+		},
+		{
 			displayName: 'Custom Headers (JSON)',
 			name: 'customHeaders',
 			type: 'json',
+			displayOptions: {
+				show: {
+					useCustomHeaders: [true],
+				},
+			},
 			default: '{}',
 			description:
 				'Custom headers to add to requests. Format: {"Header-Name": "value", "Another-Header": "value2"}',
@@ -57,8 +69,8 @@ export class AzureOpenAiApi implements ICredentialType {
 		// Initialize headers with the API key
 		requestOptions.headers = { 'api-key': credentials.apiKey };
 
-		// Add custom headers if they exist
-		if (credentials.customHeaders) {
+		// Only add custom headers if the toggle is enabled
+		if (credentials.useCustomHeaders && credentials.customHeaders) {
 			try {
 				let customHeaders: Record<string, string>;
 
