@@ -1,10 +1,10 @@
 # This workflow is used to build and push the Docker image for n8n
 # - determine-build-context: Determines what needs to be built based on the trigger
-# - build-and-push-docker: This builds on both an ARM64 and AMD64 runner so the builds are native to the platform. Uses blacksmith native runners and build-push-action
+# - build-and-push-docker: This builds on both an ARM64 and AMD64 runner so the builds are native to the platform.
 # - create_multi_arch_manifest: This creates the multi-arch manifest for the Docker image. Needed to recombine the images from the build-and-push-docker job since they are separate runners.
 # - security-scan: This scans the Docker image for security vulnerabilities using Trivy.
 
-name: 'Docker: Build and Push'
+name: 'Original Docker: Build and Push'
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
@@ -279,7 +279,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push Docker image
-        uses: useblacksmith/build-push-action@6fe3b1c3665ca911656e8249f6195103b7dc9782 # v1.2
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/images/n8n/Dockerfile

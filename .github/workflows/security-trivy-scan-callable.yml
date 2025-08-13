@@ -22,7 +22,7 @@ permissions:
 
 env:
   QBOT_SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
-  SLACK_CHANNEL_ID: C042WDXPTEZ #mission-security
+  SLACK_CHANNEL_ID: C09ARQLJ07J #mission-security
 
 jobs:
   security_scan:

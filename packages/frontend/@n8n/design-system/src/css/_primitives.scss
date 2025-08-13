@@ -39,33 +39,33 @@
 	--p-white-a-010: hsla(var(--h-gray), 50%, 100%, 0.1);
 
 	// Primary color
-	--h-primary: 7;
-	--s-primary: 100%;
-	--l-primary: 68%;
+	--h-primary: 238;
+	--s-primary: 84%;
+	--l-primary: 62%;
 
-	--p-color-primary-420: hsl(7, 85%, 58%);
-	--p-color-primary-320: hsl(7, 100%, 68%); // Base
-	--p-color-primary-220: hsl(7, 100%, 78%);
-	--p-color-primary-120: hsl(7, 100%, 88%);
-	--p-color-primary-070: hsl(7, 100%, 93%);
-	--p-color-primary-050: hsl(7, 100%, 95%);
-	--p-color-primary-030: hsl(7, 100%, 98%);
+	--p-color-primary-420: hsl(238, 84%, 52%);
+	--p-color-primary-320: hsl(238, 84%, 62%); // Base
+	--p-color-primary-220: hsl(238, 84%, 72%);
+	--p-color-primary-120: hsl(238, 84%, 82%);
+	--p-color-primary-070: hsl(238, 84%, 87%);
+	--p-color-primary-050: hsl(238, 84%, 89%);
+	--p-color-primary-030: hsl(238, 84%, 92%);
 
-	--p-color-primary-320-a-010: hsla(7, 100%, 68%, 0.1);
-	--p-color-primary-320-a-035: hsla(7, 100%, 68%, 0.35);
-	--p-color-primary-320-a-050: hsla(7, 100%, 68%, 0.5);
+	--p-color-primary-320-a-010: hsla(238, 84%, 62%, 0.1);
+	--p-color-primary-320-a-035: hsla(238, 84%, 62%, 0.35);
+	--p-color-primary-320-a-050: hsla(238, 84%, 62%, 0.5);
 
 	// Secondary color
-	--p-color-secondary-720: hsl(247, 24%, 28%);
-	--p-color-secondary-570: hsl(247, 49%, 43%);
-	--p-color-secondary-470: hsl(247, 49%, 53%); // Base
-	--p-color-secondary-370: hsl(247, 49%, 63%);
-	--p-color-secondary-270: hsl(247, 49%, 73%);
-	--p-color-secondary-170: hsl(247, 49%, 83%);
-	--p-color-secondary-070: hsl(247, 49%, 93%);
+	--p-color-secondary-720: hsl(305, 84%, 28%);
+	--p-color-secondary-570: hsl(305, 84%, 33%);
+	--p-color-secondary-470: hsl(305, 84%, 38%); // Base
+	--p-color-secondary-370: hsl(305, 84%, 48%);
+	--p-color-secondary-270: hsl(305, 84%, 58%);
+	--p-color-secondary-170: hsl(305, 84%, 68%);
+	--p-color-secondary-070: hsl(305, 84%, 78%);
 
-	--p-color-secondary-470-a-010: hsla(247, 49%, 53%, 0.1);
-	--p-color-secondary-470-a-025: hsla(247, 49%, 53%, 0.25);
+	--p-color-secondary-470-a-010: hsla(305, 84%, 38%, 0.1);
+	--p-color-secondary-470-a-025: hsla(305, 84%, 38%, 0.25);
 
 	// Color Alternate A
 	--p-color-alt-a-800: hsl(150, 45%, 20%);
