@@ -566,7 +566,8 @@ export class WorkflowsController {
 	@Get('/:workflowId/executions/last-successful')
 	@ProjectScope('workflow:read')
 	async getLastSuccessfulExecution(
-		req: AuthenticatedRequest,
+		_req: AuthenticatedRequest,
+		_res: unknown,
 		@Param('workflowId') workflowId: string,
 	) {
 		const lastExecution = await this.executionService.getLastSuccessfulExecution(workflowId);

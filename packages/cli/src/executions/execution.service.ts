@@ -141,7 +141,6 @@ export class ExecutionService {
 				},
 				order: { id: 'DESC' },
 				take: 1,
-				relations: ['executionData'],
 			},
 			{
 				includeData: true,
