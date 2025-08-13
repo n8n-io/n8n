@@ -1650,7 +1650,7 @@ defineExpose({ enterEditMode });
 			@wheel.capture="emit('captureWheelDataContainer', $event)"
 		>
 			<LastSuccessfulExecutionSchema
-				v-if="isPaneTypeInput && !hasNodeRun"
+				v-if="isPaneTypeInput && !hasNodeRun && !readOnlyEnv"
 				:nodes="nodes"
 				:node="node"
 				:pane-type="paneType"
