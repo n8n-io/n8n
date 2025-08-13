@@ -71,8 +71,11 @@ export async function execute(this: IExecuteFunctions, i: number) {
 				'GET',
 				`/v1.0/users/${memberId}/planner/tasks`,
 				{},
+				{
+					$top: limit,
+				},
 			);
-			return responseData.splice(0, limit);
+			return responseData;
 		}
 	} else {
 		//https://docs.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0&tabs=http
@@ -91,7 +94,9 @@ export async function execute(this: IExecuteFunctions, i: number) {
 				'value',
 				'GET',
 				`/v1.0/planner/plans/${planId}/tasks`,
-				{},
+				{
+					$top: limit,
+				},
 			);
 			return responseData.splice(0, limit);
 		}
