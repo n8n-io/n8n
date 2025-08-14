@@ -26,7 +26,8 @@
     "dist",
     "bin"
   ],
-  "devDependencies": {
+  "devDependencies": { 
+    "@n8n/api-types": "workspace:*",
     "@n8n/errors": "workspace:^",
     "@n8n/typescript-config": "workspace:*",
     "@types/express": "catalog:",
