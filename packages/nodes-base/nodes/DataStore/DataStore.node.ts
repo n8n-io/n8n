@@ -123,7 +123,7 @@ export class DataStore implements INodeType {
 
 							data = fields;
 						}
-						const response = await dataStoreProxy.appendRows([data as never]);
+						const response = await dataStoreProxy.insertRows([data as never]);
 						if (response)
 							returnData.push({
 								json: data,
