@@ -12,8 +12,8 @@ import type {
 	NodeExecutionSchema,
 } from 'n8n-workflow';
 
+import { workflowNameChain } from '@/chains/workflow-name';
 import { DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS, MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
-import { createSetNameTool } from '@/tools/set-name.tool';
 
 import { conversationCompactChain } from './chains/conversation-compact';
 import { LLMServiceError, ValidationError } from './errors';
@@ -78,7 +78,6 @@ export class WorkflowBuilderAgent {
 			createConnectNodesTool(this.parsedNodeTypes, this.logger),
 			createRemoveNodeTool(this.logger),
 			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask, this.logger),
-			createSetNameTool(this.logger),
 		];
 
 		// Create a map for quick tool lookup
@@ -124,7 +123,7 @@ export class WorkflowBuilderAgent {
 		};
 
 		const shouldModifyState = (state: typeof WorkflowState.State) => {
-			const { messages } = state;
+			const { messages, workflowContext } = state;
 			const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!; // There always should be at least one human message in the array
 
 			if (lastHumanMessage.content === '/compact') {
@@ -133,6 +132,12 @@ export class WorkflowBuilderAgent {
 
 			if (lastHumanMessage.content === '/clear') {
 				return 'delete_messages';
+			}
+
+			// If the workflow is empty (no nodes),
+			// we consider it initial generation request and auto-generate a name for the workflow.
+			if (workflowContext?.currentWorkflow?.nodes?.length === 0 && messages.length === 1) {
+				return 'create_workflow_name';
 			}
 
 			if (shouldAutoCompact(state)) {
@@ -183,7 +188,7 @@ export class WorkflowBuilderAgent {
 			}
 
 			const { messages, previousSummary } = state;
-			const lastHumanMessage = messages[messages.length - 1] as HumanMessage;
+			const lastHumanMessage = messages[messages.length - 1] satisfies HumanMessage;
 			const isAutoCompact = lastHumanMessage.content !== '/compact';
 
 			this.logger?.debug('Compacting conversation history', {
@@ -212,6 +217,34 @@ export class WorkflowBuilderAgent {
 			};
 		};
 
+		const createWorkflowName = async (state: typeof WorkflowState.State) => {
+			if (!this.llmSimpleTask) {
+				throw new LLMServiceError('LLM not setup');
+			}
+
+			const { workflowJSON, messages } = state;
+
+			if (messages.length === 1 && messages[0] instanceof HumanMessage) {
+				const initialMessage = messages[0] satisfies HumanMessage;
+
+				this.logger?.debug('Generating workflow name');
+				const { name } = await workflowNameChain(
+					this.llmSimpleTask,
+					initialMessage.content as string,
+				);
+
+				return {
+					workflowJSON: {
+						...workflowJSON,
+						name,
+					},
+				};
+			}
+
+			this.logger?.debug('Workflow already has a name, skipping generation');
+			return {};
+		};
+
 		const workflow = new StateGraph(WorkflowState)
 			.addNode('agent', callModel)
 			.addNode('tools', customToolExecutor)
@@ -219,10 +252,12 @@ export class WorkflowBuilderAgent {
 			.addNode('delete_messages', deleteMessages)
 			.addNode('compact_messages', compactSession)
 			.addNode('auto_compact_messages', compactSession)
+			.addNode('create_workflow_name', createWorkflowName)
 			.addConditionalEdges('__start__', shouldModifyState)
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent')
 			.addEdge('auto_compact_messages', 'agent')
+			.addEdge('create_workflow_name', 'agent')
 			.addEdge('delete_messages', END)
 			.addEdge('compact_messages', END)
 			.addConditionalEdges('agent', shouldContinue);

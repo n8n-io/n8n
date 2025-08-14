@@ -1,4 +1,4 @@
-import type { VIEWS } from '@/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME, VIEWS } from '@/constants';
 import {
 	ASK_AI_SLIDE_OUT_DURATION_MS,
 	EDITABLE_CANVAS_VIEWS,
@@ -383,6 +383,16 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Clear existing workflow
 		workflowsStore.removeAllConnections({ setStateDirty: false });
 		workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
+
+		// For the initial generation, we want to apply auto-generated workflow name
+		// but only if the workflow has default name
+		if (
+			workflowData.name &&
+			initialGeneration.value &&
+			workflowsStore.workflow.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
+		) {
+			workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+		}
 
 		// Restore positions for nodes that still exist and identify new nodes
 		const nodesIdsToTidyUp: string[] = [];
