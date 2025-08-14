@@ -134,11 +134,6 @@ export function applyOperations(
 				}
 				break;
 			}
-			case 'setName': {
-				// Set the workflow name
-				result.name = operation.name;
-				break;
-			}
 		}
 	}
 
