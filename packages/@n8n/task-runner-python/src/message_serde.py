@@ -15,27 +15,27 @@ from .message_types import (
 class MessageSerde:
     @staticmethod
     def deserialize_broker_message(data: str) -> BrokerMessage:
-        msg_dict = json.loads(data)
-        msg_type = msg_dict.get("type")
+        message_dict = json.loads(data)
+        message_type = message_dict.get("type")
 
-        if msg_type == "broker:inforequest":
+        if message_type == "broker:inforequest":
             return BrokerInfoRequest()
-        elif msg_type == "broker:runnerregistered":
+        elif message_type == "broker:runnerregistered":
             return BrokerRunnerRegistered()
-        elif msg_type == "broker:taskofferaccept":
+        elif message_type == "broker:taskofferaccept":
             return BrokerTaskOfferAccept(
-                task_id=msg_dict["taskId"], offer_id=msg_dict["offerId"]
+                task_id=message_dict["taskId"], offer_id=message_dict["offerId"]
             )
-        elif msg_type == "broker:taskcancel":
+        elif message_type == "broker:taskcancel":
             return BrokerTaskCancel(
-                task_id=msg_dict["taskId"], reason=msg_dict["reason"]
+                task_id=message_dict["taskId"], reason=message_dict["reason"]
             )
-        elif msg_type == "broker:tasksettings":
+        elif message_type == "broker:tasksettings":
             return BrokerTaskSettings(
-                task_id=msg_dict["taskId"], settings=msg_dict["settings"]
+                task_id=message_dict["taskId"], settings=message_dict["settings"]
             )
         else:
-            raise ValueError(f"Unknown message type: {msg_type}")
+            raise ValueError(f"Unknown message type: {message_type}")
 
     @staticmethod
     def serialize_runner_message(message: RunnerMessage) -> str:
