@@ -1916,37 +1916,41 @@ export function useCanvasOperations() {
 
 			removeUnknownCredentials(workflowData);
 
-			const nodeGraph = JSON.stringify(
-				TelemetryHelpers.generateNodesGraph(
-					workflowData as IWorkflowBase,
-					workflowHelpers.getNodeTypes(),
-					{
-						nodeIdMap,
-						sourceInstanceId:
-							workflowData.meta && workflowData.meta.instanceId !== rootStore.instanceId
-								? workflowData.meta.instanceId
-								: '',
-						isCloudDeployment: settingsStore.isCloudDeployment,
-					},
-				).nodeGraph,
-			);
+			try {
+				const nodeGraph = JSON.stringify(
+					TelemetryHelpers.generateNodesGraph(
+						workflowData as IWorkflowBase,
+						workflowHelpers.getNodeTypes(),
+						{
+							nodeIdMap,
+							sourceInstanceId:
+								workflowData.meta && workflowData.meta.instanceId !== rootStore.instanceId
+									? workflowData.meta.instanceId
+									: '',
+							isCloudDeployment: settingsStore.isCloudDeployment,
+						},
+					).nodeGraph,
+				);
 
-			if (source === 'paste') {
-				telemetry.track('User pasted nodes', {
-					workflow_id: workflowsStore.workflowId,
-					node_graph_string: nodeGraph,
-				});
-			} else if (source === 'duplicate') {
-				telemetry.track('User duplicated nodes', {
-					workflow_id: workflowsStore.workflowId,
-					node_graph_string: nodeGraph,
-				});
-			} else {
-				telemetry.track('User imported workflow', {
-					source,
-					workflow_id: workflowsStore.workflowId,
-					node_graph_string: nodeGraph,
-				});
+				if (source === 'paste') {
+					telemetry.track('User pasted nodes', {
+						workflow_id: workflowsStore.workflowId,
+						node_graph_string: nodeGraph,
+					});
+				} else if (source === 'duplicate') {
+					telemetry.track('User duplicated nodes', {
+						workflow_id: workflowsStore.workflowId,
+						node_graph_string: nodeGraph,
+					});
+				} else {
+					telemetry.track('User imported workflow', {
+						source,
+						workflow_id: workflowsStore.workflowId,
+						node_graph_string: nodeGraph,
+					});
+				}
+			} catch {
+				// If telemetry fails, don't throw an error
 			}
 
 			// Fix the node position as it could be totally offscreen
