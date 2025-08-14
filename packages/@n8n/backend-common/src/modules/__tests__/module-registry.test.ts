@@ -218,3 +218,22 @@ describe('initModules', () => {
 		expect(moduleRegistry.getActiveModules()).toEqual([moduleName]);
 	});
 });
+
+describe('loadDir', () => {
+	it('should load dirs defined by modules', async () => {
+		const TEST_LOAD_DIR = '/path/to/module/load/dir';
+		const ModuleClass = {
+			entities: jest.fn().mockReturnValue([]),
+			loadDir: jest.fn().mockReturnValue(TEST_LOAD_DIR),
+		};
+		const moduleMetadata = mock<ModuleMetadata>({
+			getClasses: jest.fn().mockReturnValue([ModuleClass]),
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+
+		await moduleRegistry.loadModules([]); // empty to skip dynamic imports
+
+		expect(moduleRegistry.loadDirs).toEqual([TEST_LOAD_DIR]);
+	});
+});
