@@ -382,12 +382,13 @@ export class WorkflowRunner {
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
 			// Determine numeric Bull priority. Lower numbers are higher priority.
-			const qp = data.workflowData?.settings?.queuePriority as
-				| 'low'
-				| 'medium'
-				| 'high'
-				| undefined;
-			const priorityMap: Record<'low' | 'medium' | 'high', number> = {
+			type Priority = 'low' | 'medium' | 'high';
+			const rawPriority = data.workflowData?.settings?.queuePriority;
+			const qp: Priority | undefined =
+				rawPriority === 'low' || rawPriority === 'medium' || rawPriority === 'high'
+					? rawPriority
+					: undefined;
+			const priorityMap: Record<Priority, number> = {
 				high: 1,
 				medium: 50,
 				low: 100,
