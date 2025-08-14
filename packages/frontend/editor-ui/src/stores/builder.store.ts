@@ -56,6 +56,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		createErrorMessage,
 		clearMessages,
 		mapAssistantMessageToUI,
+		clearRatingLogic,
 	} = useBuilderMessages();
 
 	// Computed properties
@@ -203,7 +204,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function prepareForStreaming(userMessage: string, messageId: string) {
 		const userMsg = createUserMessage(userMessage, messageId);
-		chatMessages.value = [...chatMessages.value, userMsg];
+		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
 	}
