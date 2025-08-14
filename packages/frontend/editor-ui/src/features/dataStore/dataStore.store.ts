@@ -8,6 +8,7 @@ import {
 	deleteDataStoreApi,
 	updateDataStoreApi,
 	addDataStoreColumnApi,
+	deleteDataStoreColumnApi,
 } from '@/features/dataStore/dataStore.api';
 import type { DataStore, DataStoreColumnCreatePayload } from '@/features/dataStore/datastore.types';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -52,6 +53,19 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		if (deleted) {
 			dataStores.value = dataStores.value.filter((store) => store.id !== datastoreId);
 			totalCount.value -= 1;
+		}
+		return deleted;
+	};
+
+	const deleteDataStoreColumn = async (datastoreId: string, columnId: string) => {
+		const deleted = await deleteDataStoreColumnApi(rootStore.restApiContext, datastoreId, columnId);
+		if (deleted) {
+			const index = dataStores.value.findIndex((store) => store.id === datastoreId);
+			if (index !== -1) {
+				dataStores.value[index].columns = dataStores.value[index].columns.filter(
+					(col) => col.id !== columnId,
+				);
+			}
 		}
 		return deleted;
 	};
@@ -111,5 +125,6 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		fetchDataStoreDetails,
 		fetchOrFindDataStore,
 		addDataStoreColumn,
+		deleteDataStoreColumn,
 	};
 });

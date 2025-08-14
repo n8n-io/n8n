@@ -14,6 +14,7 @@ import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumn
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
+import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
 import { mapToAGCellType } from '@/features/dataStore/composables/useDataStoreTypes';
 
@@ -58,10 +59,26 @@ const setCurrentPage = async (page: number) => {
 	// await fetchData();
 };
 
-const setPageSize = async (size: number) => {
+const setPageSize = (size: number) => {
 	pageSize.value = size;
 	currentPage.value = 1; // Reset to first page on page size change
 	// await fetchData();
+};
+
+const onDeleteColumn = async (columnId: string) => {
+	// TODO: how can we skip doing this in all handlers?
+	if (!gridApi.value) return;
+
+	const columnToDeleteIndex = colDefs.value.findIndex((col) => col.colId === columnId);
+	const columnToDelete = colDefs.value[columnToDeleteIndex];
+	colDefs.value = colDefs.value.filter((def) => def.colId !== columnId);
+	gridApi.value.refreshHeader();
+	try {
+		await dataStoreStore.deleteDataStoreColumn(props.dataStore.id, columnId);
+	} catch (error: unknown) {
+		toast.showError(error as Error, i18n.baseText('error'));
+		colDefs.value.splice(columnToDeleteIndex, 0, columnToDelete);
+	}
 };
 
 const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload }) => {
@@ -86,6 +103,8 @@ const createColumnDef = (col: DataStoreColumn) => {
 		// TODO: Avoid hard-coding this
 		editable: col.name !== DEFAULT_ID_COLUMN_NAME,
 		cellDataType: mapToAGCellType(col.type),
+		headerComponent: ColumnHeader,
+		headerComponentParams: { onDelete: onDeleteColumn },
 	};
 	// Enable large text editor for text columns
 	if (col.type === 'string') {

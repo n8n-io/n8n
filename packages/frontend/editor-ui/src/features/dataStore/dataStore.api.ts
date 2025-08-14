@@ -96,3 +96,16 @@ export const addDataStoreColumnApi = async (
 		},
 	);
 };
+
+export const deleteDataStoreColumnApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	columnId: string,
+	projectId?: string,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/data-stores/${dataStoreId}/columns/${columnId}`,
+	);
+};
