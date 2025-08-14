@@ -109,3 +109,20 @@ export const deleteDataStoreColumnApi = async (
 		`/projects/${projectId}/data-stores/${dataStoreId}/columns/${columnId}`,
 	);
 };
+
+export const moveDataStoreColumnApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	columnId: string,
+	targetIndex: number,
+	projectId?: string,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-stores/${dataStoreId}/columns/${columnId}/move`,
+		{
+			targetIndex,
+		},
+	);
+};

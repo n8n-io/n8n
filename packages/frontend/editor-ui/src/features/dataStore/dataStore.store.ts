@@ -9,6 +9,7 @@ import {
 	updateDataStoreApi,
 	addDataStoreColumnApi,
 	deleteDataStoreColumnApi,
+	moveDataStoreColumnApi,
 } from '@/features/dataStore/dataStore.api';
 import type { DataStore, DataStoreColumnCreatePayload } from '@/features/dataStore/datastore.types';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -115,6 +116,32 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return newColumn;
 	};
 
+	const moveDataStoreColumn = async (
+		datastoreId: string,
+		columnId: string,
+		targetIndex: number,
+	) => {
+		const moved = await moveDataStoreColumnApi(
+			rootStore.restApiContext,
+			datastoreId,
+			columnId,
+			targetIndex,
+		);
+		if (moved) {
+			const index = dataStores.value.findIndex((store) => store.id === datastoreId);
+			if (index !== -1) {
+				const column = dataStores.value[index].columns.find((col) => col.id === columnId);
+				if (column) {
+					const newColumns = [...dataStores.value[index].columns];
+					newColumns.splice(targetIndex, 0, column);
+					newColumns.splice(column.index, 1);
+					dataStores.value[index].columns = newColumns;
+				}
+			}
+		}
+		return moved;
+	};
+
 	return {
 		dataStores,
 		totalCount,
@@ -126,5 +153,6 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		fetchOrFindDataStore,
 		addDataStoreColumn,
 		deleteDataStoreColumn,
+		moveDataStoreColumn,
 	};
 });

@@ -2863,6 +2863,8 @@
 	"dataStore.addColumn.nameInput.placeholder": "Enter column name",
 	"dataStore.addColumn.typeInput.label": "@:_reusableBaseText.type",
 	"dataStore.addColumn.error": "Error adding column",
+	"dataStore.moveColumn.error": "Error moving column",
+	"dataStore.deleteColumn.error": "Error deleting column",
 	"settings.ldap": "LDAP",
 	"settings.ldap.note": "LDAP allows users to authenticate with their centralized account. It's compatible with services that provide an LDAP interface like Active Directory, Okta and Jumpcloud.",
 	"settings.ldap.infoTip": "Learn more about <a href='https://docs.n8n.io/user-management/ldap/' target='_blank'>LDAP in the Docs</a>",

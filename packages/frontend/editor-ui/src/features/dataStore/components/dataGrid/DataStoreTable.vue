@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import orderBy from 'lodash/orderBy';
 import type {
 	DataStore,
 	DataStoreColumn,
@@ -8,7 +9,7 @@ import type {
 } from '@/features/dataStore/datastore.types';
 import { AgGridVue } from 'ag-grid-vue3';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
-import type { GridApi, GridReadyEvent, ColDef } from 'ag-grid-community';
+import type { GridApi, GridReadyEvent, ColDef, ColumnMovedEvent } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumnPopover.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
@@ -76,7 +77,7 @@ const onDeleteColumn = async (columnId: string) => {
 	try {
 		await dataStoreStore.deleteDataStoreColumn(props.dataStore.id, columnId);
 	} catch (error: unknown) {
-		toast.showError(error as Error, i18n.baseText('error'));
+		toast.showError(error as Error, i18n.baseText('dataStore.deleteColumn.error'));
 		colDefs.value.splice(columnToDeleteIndex, 0, columnToDelete);
 	}
 };
@@ -114,8 +115,26 @@ const createColumnDef = (col: DataStoreColumn) => {
 	return columnDef;
 };
 
+const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
+	console.log(moveEvent);
+	if (!moveEvent.finished || moveEvent.source !== 'uiColumnMoved') {
+		return;
+	}
+
+	try {
+		await dataStoreStore.moveDataStoreColumn(
+			props.dataStore.id,
+			moveEvent.column?.getColId() ?? '',
+			moveEvent.toIndex ?? 0,
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.moveColumn.error'));
+		// TODO: revert the move
+	}
+};
+
 onMounted(() => {
-	colDefs.value = props.dataStore.columns.map((col) => ({
+	colDefs.value = orderBy(props.dataStore.columns, 'index').map((col) => ({
 		...createColumnDef(col),
 	}));
 	if (gridApi.value) {
@@ -136,6 +155,7 @@ onMounted(() => {
 				:animate-rows="false"
 				:theme="n8nTheme"
 				@grid-ready="onGridReady"
+				@column-moved="onColumnMoved"
 			/>
 			<AddColumnPopover
 				:data-store="props.dataStore"
