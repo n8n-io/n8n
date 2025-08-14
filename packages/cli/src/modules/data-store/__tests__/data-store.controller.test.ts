@@ -194,7 +194,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			}),
 		);
 
-		const dataStoreInDb = await dataStoreRepository.findOneBy({ id: response.body.id });
+		const dataStoreInDb = await dataStoreRepository.findOneBy({ id: response.body.data.id });
 		expect(dataStoreInDb).toBeDefined();
 		expect(dataStoreInDb?.name).toBe(payload.name);
 	});
