@@ -37,6 +37,7 @@ import {
 	resolveEntryBinaryAttributes,
 	saveLdapSynchronization,
 	validateLdapConfigurationSchema,
+	getUserByLdapId,
 } from '@/ldap.ee/helpers.ee';
 import {
 	getCurrentAuthenticationMethod,
@@ -487,6 +488,6 @@ export class LdapService {
 		}
 
 		// Retrieve the user again as user's data might have been updated
-		return (await getAuthIdentityByLdapId(ldapId))?.user;
+		return (await getUserByLdapId(ldapId)) ?? undefined;
 	}
 }

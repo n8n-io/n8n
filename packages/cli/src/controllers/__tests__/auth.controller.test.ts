@@ -47,7 +47,7 @@ describe('AuthController', () => {
 
 			const member = mock<User>({
 				id: '123',
-				role: 'global:member',
+				role: { slug: 'global:member' },
 				mfaEnabled: false,
 			});
 

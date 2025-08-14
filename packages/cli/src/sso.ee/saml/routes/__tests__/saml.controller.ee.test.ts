@@ -16,7 +16,7 @@ const user = mock<User>({
 	id: '123',
 	password: 'password',
 	authIdentities: [],
-	role: 'global:owner',
+	role: { slug: 'global:owner' },
 });
 
 const attributes: SamlUserAttributes = {

@@ -1,5 +1,4 @@
 import type { AuthPrincipal } from '@n8n/permissions';
-import { GlobalRole } from '@n8n/permissions';
 import {
 	AfterLoad,
 	AfterUpdate,
@@ -10,6 +9,8 @@ import {
 	OneToMany,
 	PrimaryGeneratedColumn,
 	BeforeInsert,
+	OneToOne,
+	JoinColumn,
 } from '@n8n/typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
@@ -18,6 +19,7 @@ import { JsonColumn, WithTimestamps } from './abstract-entity';
 import type { ApiKey } from './api-key';
 import type { AuthIdentity } from './auth-identity';
 import type { ProjectRelation } from './project-relation';
+import { Role } from './role';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 import type { IPersonalizationSurveyAnswers } from './types-db';
@@ -66,8 +68,9 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@JsonColumn({ nullable: true })
 	settings: IUserSettings | null;
 
-	@Column({ type: String })
-	role: GlobalRole;
+	@OneToOne(() => Role, { eager: true })
+	@JoinColumn({ name: 'roleSlug', referencedColumnName: 'slug' })
+	role: Role;
 
 	@OneToMany('AuthIdentity', 'user')
 	authIdentities: AuthIdentity[];
@@ -113,7 +116,7 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@AfterLoad()
 	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending = this.password === null && this.role !== 'global:owner';
+		this.isPending = this.password === null && this.role?.slug !== 'global:owner';
 	}
 
 	toJSON() {

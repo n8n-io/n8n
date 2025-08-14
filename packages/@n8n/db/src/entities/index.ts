@@ -17,6 +17,8 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { Role } from './role';
+import { Scope } from './scope';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
@@ -46,6 +48,8 @@ export {
 	Folder,
 	Project,
 	ProjectRelation,
+	Role,
+	Scope,
 	SharedCredentials,
 	SharedWorkflow,
 	TagEntity,
@@ -81,6 +85,7 @@ export const entities = {
 	Folder,
 	Project,
 	ProjectRelation,
+	Scope,
 	SharedCredentials,
 	SharedWorkflow,
 	TagEntity,
@@ -99,4 +104,5 @@ export const entities = {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	Role,
 };

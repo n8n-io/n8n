@@ -5,6 +5,8 @@ import {
 	type ProjectRepository,
 	User,
 	WorkflowEntity,
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
@@ -20,13 +22,13 @@ jest.mock('fast-glob');
 
 const globalAdminContext = new SourceControlContext(
 	Object.assign(new User(), {
-		role: 'global:admin',
+		role: GLOBAL_ADMIN_ROLE,
 	}),
 );
 
 const globalMemberContext = new SourceControlContext(
 	Object.assign(new User(), {
-		role: 'global:member',
+		role: GLOBAL_MEMBER_ROLE,
 	}),
 );
 

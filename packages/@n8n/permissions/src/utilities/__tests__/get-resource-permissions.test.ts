@@ -15,6 +15,7 @@ describe('permissions', () => {
 			externalSecretsProvider: {},
 			externalSecret: {},
 			eventBusDestination: {},
+			execution: {},
 			ldap: {},
 			license: {},
 			logStreaming: {},
@@ -29,6 +30,7 @@ describe('permissions', () => {
 			variable: {},
 			workersView: {},
 			workflow: {},
+			workflowTags: {},
 			folder: {},
 			insights: {},
 			dataStore: {},
@@ -130,6 +132,8 @@ describe('permissions', () => {
 				list: true,
 			},
 			dataStore: {},
+			execution: {},
+			workflowTags: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

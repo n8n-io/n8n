@@ -60,7 +60,7 @@ export class AuthController {
 			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
 			// if the user is an owner, continue with the login
 			if (
-				preliminaryUser?.role === 'global:owner' ||
+				preliminaryUser?.role.slug === 'global:owner' ||
 				preliminaryUser?.settings?.allowSSOManualLogin
 			) {
 				user = preliminaryUser;
@@ -70,7 +70,7 @@ export class AuthController {
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
 			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
-			if (preliminaryUser?.role === 'global:owner') {
+			if (preliminaryUser?.role.slug === 'global:owner') {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {

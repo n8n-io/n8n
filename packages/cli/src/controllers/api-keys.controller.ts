@@ -33,7 +33,7 @@ export class ApiKeysController {
 		_res: Response,
 		@Body body: CreateApiKeyRequestDto,
 	) {
-		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user.role, body.scopes)) {
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, body.scopes)) {
 			throw new BadRequestError('Invalid scopes for user role');
 		}
 
@@ -80,7 +80,7 @@ export class ApiKeysController {
 		@Param('id') apiKeyId: string,
 		@Body body: UpdateApiKeyRequestDto,
 	) {
-		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user.role, body.scopes)) {
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, body.scopes)) {
 			throw new BadRequestError('Invalid scopes for user role');
 		}
 
@@ -91,8 +91,7 @@ export class ApiKeysController {
 
 	@Get('/scopes', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
-		const { role } = req.user;
-		const scopes = getApiKeyScopesForRole(role);
+		const scopes = getApiKeyScopesForRole(req.user);
 		return scopes;
 	}
 }
