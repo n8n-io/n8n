@@ -25,7 +25,7 @@ export async function apiRequest(
 	let url = `https://generativelanguage.googleapis.com${endpoint}`;
 
 	if (credentials.host) {
-		url = `${credentials?.host as string}${endpoint}`;
+		url = `${(credentials?.host as string).replace(/\/+$/, '')}${endpoint}`;
 	}
 
 	const options = {
