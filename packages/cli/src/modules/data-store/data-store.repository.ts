@@ -65,7 +65,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 			throw new UnexpectedError('Data store creation failed');
 		}
 
-		return await this.findOne({
+		return await this.findOneOrFail({
 			where: { id: dataStoreId },
 			relations: ['project', 'columns'],
 		});
@@ -163,10 +163,13 @@ export class DataStoreRepository extends Repository<DataStore> {
 			});
 		}
 
-		if (filter?.name && typeof filter.name === 'string') {
-			query.andWhere('LOWER(dataStore.name) LIKE LOWER(:name)', {
-				name: `%${filter.name}%`,
-			});
+		if (filter?.name) {
+			const nameFilters = typeof filter.name === 'string' ? [filter.name] : filter.name;
+			for (const name of nameFilters) {
+				query.andWhere('LOWER(dataStore.name) LIKE LOWER(:name)', {
+					name: `%${name}%`,
+				});
+			}
 		}
 	}
 
@@ -191,7 +194,9 @@ export class DataStoreRepository extends Repository<DataStore> {
 		direction: 'DESC' | 'ASC',
 	): void {
 		if (field === 'name') {
-			query.orderBy('LOWER(dataStore.name)', direction);
+			query
+				.addSelect('LOWER(dataStore.name)', 'datastore_name_lower')
+				.orderBy('datastore_name_lower', direction);
 		} else if (['createdAt', 'updatedAt'].includes(field)) {
 			query.orderBy(`dataStore.${field}`, direction);
 		}
