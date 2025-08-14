@@ -2,16 +2,23 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { createResultOk } from 'n8n-workflow';
 
-import { JsTaskRunnerSandbox } from '../JsTaskRunnerSandbox';
+import { TaskRunnerSandbox } from '../TaskRunnerSandbox';
 
-describe('JsTaskRunnerSandbox', () => {
+describe('TaskRunnerSandbox', () => {
 	describe('runCodeForEachItem', () => {
 		it('should chunk the input items and execute the code for each chunk', async () => {
 			const jsCode = 'console.log($item);';
 			const nodeMode = 'runOnceForEachItem';
 			const workflowMode = 'manual';
 			const executeFunctions = mock<IExecuteFunctions>();
-			const sandbox = new JsTaskRunnerSandbox(jsCode, nodeMode, workflowMode, executeFunctions, 2);
+			const sandbox = new TaskRunnerSandbox(
+				'javascript',
+				jsCode,
+				nodeMode,
+				workflowMode,
+				executeFunctions,
+				2,
+			);
 			let i = 1;
 			executeFunctions.startJob.mockResolvedValue(createResultOk([{ json: { item: i++ } }]));
 

@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
 import { NodesConfig, TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import set from 'lodash/set';
@@ -15,18 +16,24 @@ import {
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
-import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
 import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
+import { TaskRunnerSandbox } from './TaskRunnerSandbox';
 import { addPostExecutionWarning, standardizeOutput } from './utils';
 
-const { CODE_ENABLE_STDOUT } = process.env;
+const { CODE_ENABLE_STDOUT, N8N_NATIVE_PYTHON_RUNNER } = process.env;
 
 class PythonDisabledError extends UserError {
 	constructor() {
 		super(
 			'This instance disallows Python execution because it has the environment variable `N8N_PYTHON_ENABLED` set to `false`. To restore Python execution, remove this environment variable or set it to `true` and restart the instance.',
 		);
+	}
+}
+
+class NativePythonWithoutRunnerError extends UserError {
+	constructor() {
+		super('To use native Python, please use runners by setting `N8N_RUNNERS_ENABLED=true`.');
 	}
 }
 
@@ -65,6 +72,13 @@ export class Code implements INodeType {
 				],
 				default: 'runOnceForAllItems',
 			},
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+			{
+				displayName: 'Native Python Available',
+				name: 'nativePythonAvailable',
+				type: 'hidden',
+				default: N8N_NATIVE_PYTHON_RUNNER === 'true',
+			},
 			{
 				displayName: 'Language',
 				name: 'language',
@@ -72,6 +86,7 @@ export class Code implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
+						nativePythonAvailable: [false],
 						'@version': [2],
 					},
 				},
@@ -83,6 +98,34 @@ export class Code implements INodeType {
 					{
 						name: 'Python (Beta)',
 						value: 'python',
+					},
+				],
+				default: 'javaScript',
+			},
+
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						nativePythonAvailable: [true],
+						'@version': [2],
+					},
+				},
+				options: [
+					{
+						name: 'JavaScript',
+						value: 'javaScript',
+					},
+					{
+						name: 'Python (Beta)',
+						value: 'python',
+					},
+					{
+						name: 'Python (Native) (Beta)',
+						value: 'pythonNative',
 					},
 				],
 				default: 'javaScript',
@@ -106,29 +149,39 @@ export class Code implements INodeType {
 
 	async execute(this: IExecuteFunctions) {
 		const node = this.getNode();
-		const language: CodeNodeEditorLanguage =
+		const language: CodeNodeEditorLanguage | 'pythonNative' =
 			node.typeVersion === 2
-				? (this.getNodeParameter('language', 0) as CodeNodeEditorLanguage)
+				? (this.getNodeParameter('language', 0) as CodeNodeEditorLanguage | 'pythonNative')
 				: 'javaScript';
 
 		if (language === 'python' && !Container.get(NodesConfig).pythonEnabled) {
-			// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 			throw new PythonDisabledError();
 		}
 
 		const runnersConfig = Container.get(TaskRunnersConfig);
+		const isRunnerEnabled = runnersConfig.enabled;
+
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
 		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
 
-		if (runnersConfig.enabled && language === 'javaScript') {
+		if (isRunnerEnabled && language === 'javaScript') {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
-			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
+			const sandbox = new TaskRunnerSandbox('javascript', code, nodeMode, workflowMode, this);
 			const numInputItems = this.getInputData().length;
 
 			return nodeMode === 'runOnceForAllItems'
 				? [await sandbox.runCodeAllItems()]
 				: [await sandbox.runCodeForEachItem(numInputItems)];
+		}
+
+		if (language === 'pythonNative' && !isRunnerEnabled) throw new NativePythonWithoutRunnerError();
+
+		if (language === 'pythonNative') {
+			const code = this.getNodeParameter(codeParameterName, 0) as string;
+			const sandbox = new TaskRunnerSandbox('python', code, nodeMode, workflowMode, this);
+
+			return [await sandbox.runUsingIncomingItems()];
 		}
 
 		const getSandbox = (index = 0) => {

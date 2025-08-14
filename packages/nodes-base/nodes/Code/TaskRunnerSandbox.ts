@@ -10,28 +10,44 @@ import { isWrappableError, WrappedExecutionError } from './errors/WrappedExecuti
 import { validateNoDisallowedMethodsInRunForEach } from './JsCodeValidator';
 
 /**
- * JS Code execution sandbox that executes the JS code using task runner.
+ * Code execution sandbox that executes the JS code using task runner.
  */
-export class JsTaskRunnerSandbox {
+export class TaskRunnerSandbox {
 	constructor(
-		private readonly jsCode: string,
+		private readonly language: 'javascript' | 'python',
+		private readonly code: string,
 		private readonly nodeMode: CodeExecutionMode,
 		private readonly workflowMode: WorkflowExecuteMode,
 		private readonly executeFunctions: IExecuteFunctions,
 		private readonly chunkSize = 1000,
 	) {}
 
-	async runCodeAllItems(): Promise<INodeExecutionData[]> {
+	/**
+	 * Run a script by forwarding it to a task runner, together with input items.
+	 *
+	 * The Python runner receives input items together with the task, whereas the
+	 * JavaScript runner does _not_ receive input items together with the task and
+	 * instead retrieves them later, only if needed, via an RPC request.
+	 */
+	async runUsingIncomingItems() {
+		return await this.runCodeAllItems({ items: this.executeFunctions.getInputData() });
+	}
+
+	async runCodeAllItems(opts?: { items: INodeExecutionData[] }): Promise<INodeExecutionData[]> {
 		const itemIndex = 0;
 
+		const taskSettings: Record<string, unknown> = {
+			code: this.code,
+			nodeMode: this.nodeMode,
+			workflowMode: this.workflowMode,
+			continueOnFail: this.executeFunctions.continueOnFail(),
+		};
+
+		if (opts?.items) taskSettings.items = opts.items;
+
 		const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
-			'javascript',
-			{
-				code: this.jsCode,
-				nodeMode: this.nodeMode,
-				workflowMode: this.workflowMode,
-				continueOnFail: this.executeFunctions.continueOnFail(),
-			},
+			this.language,
+			taskSettings,
 			itemIndex,
 		);
 
@@ -41,7 +57,7 @@ export class JsTaskRunnerSandbox {
 	}
 
 	async runCodeForEachItem(numInputItems: number): Promise<INodeExecutionData[]> {
-		validateNoDisallowedMethodsInRunForEach(this.jsCode, 0);
+		validateNoDisallowedMethodsInRunForEach(this.code, 0);
 
 		const itemIndex = 0;
 		const chunks = this.chunkInputItems(numInputItems);
@@ -49,9 +65,9 @@ export class JsTaskRunnerSandbox {
 
 		for (const chunk of chunks) {
 			const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
-				'javascript',
+				this.language,
 				{
-					code: this.jsCode,
+					code: this.code,
 					nodeMode: this.nodeMode,
 					workflowMode: this.workflowMode,
 					continueOnFail: this.executeFunctions.continueOnFail(),
