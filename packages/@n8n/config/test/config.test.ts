@@ -310,6 +310,10 @@ describe('GlobalConfig', () => {
 				hardDelete: 15,
 				softDelete: 60,
 			},
+			concurrency: {
+				productionLimit: -1,
+				evaluationLimit: -1,
+			},
 		},
 		diagnostics: {
 			enabled: true,
