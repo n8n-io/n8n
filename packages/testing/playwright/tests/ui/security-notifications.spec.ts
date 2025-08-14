@@ -221,7 +221,7 @@ test.describe('Security Notifications', () => {
 			await expect(notification).toBeHidden();
 
 			// Verify the app still functions normally
-			await expect(page.locator('[data-test-id="new-workflow-card"]')).toBeVisible();
+			await expect(page.locator('[data-test-id="project-name"]')).toBeVisible();
 		});
 	});
 });
