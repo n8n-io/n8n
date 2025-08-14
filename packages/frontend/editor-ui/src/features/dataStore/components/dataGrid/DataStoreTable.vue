@@ -98,6 +98,10 @@ const onDeleteColumn = async (columnId: string) => {
 	const columnToDeleteIndex = colDefs.value.findIndex((col) => col.colId === columnId);
 	const columnToDelete = colDefs.value[columnToDeleteIndex];
 	colDefs.value = colDefs.value.filter((def) => def.colId !== columnId);
+	rowData.value = rowData.value.map((row) => {
+		const { [columnId]: _, ...rest } = row;
+		return rest;
+	});
 	gridApi.value.refreshHeader();
 	try {
 		await dataStoreStore.deleteDataStoreColumn(props.dataStore.id, columnId);
@@ -115,6 +119,9 @@ const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload })
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
 		colDefs.value.push(createColumnDef(newColumn));
+		rowData.value = rowData.value.map((row) => {
+			return { ...row, [newColumn.id]: getDefaultValueForType(newColumn.type) };
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
 	} finally {
