@@ -31,6 +31,12 @@ export interface ModuleInterface {
 	shutdown?(): Promise<void>;
 	entities?(): Promise<EntityClass[]>;
 	settings?(): Promise<ModuleSettings>;
+
+	/**
+	 * @returns Path to a dir to load nodes and credentials from.
+	 * @example '/Users/nathan/.n8n/nodes/node_modules'
+	 */
+	loadDir?(): string;
 }
 
 export type ModuleClass = Constructable<ModuleInterface>;
