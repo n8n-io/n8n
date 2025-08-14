@@ -5,6 +5,7 @@ import type {
 	DataStoreColumnCreatePayload,
 	DataStore,
 	DataStoreColumn,
+	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
 
 export const fetchDataStoresApi = async (
@@ -93,6 +94,33 @@ export const addDataStoreColumnApi = async (
 		`/projects/${projectId}/data-stores/${dataStoreId}/columns`,
 		{
 			...column,
+		},
+	);
+};
+
+export const getDataStoreRowsApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	projectId?: string,
+) => {
+	return await makeRestApiRequest<{
+		count: number;
+		data: DataStoreRow[];
+	}>(context, 'GET', `/projects/${projectId}/data-stores/${dataStoreId}/rows`);
+};
+
+export const insertDataStoreRowApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	row: DataStoreRow,
+	projectId?: string,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'POST',
+		`/projects/${projectId}/data-stores/${dataStoreId}/insert`,
+		{
+			data: [row],
 		},
 	);
 };

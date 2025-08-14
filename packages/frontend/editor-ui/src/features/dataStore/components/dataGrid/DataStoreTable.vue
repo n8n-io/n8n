@@ -8,14 +8,17 @@ import type {
 } from '@/features/dataStore/datastore.types';
 import { AgGridVue } from 'ag-grid-vue3';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
-import type { GridApi, GridReadyEvent, ColDef } from 'ag-grid-community';
+import type { GridApi, GridReadyEvent, ColDef, ValueGetterParams } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumnPopover.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
-import { mapToAGCellType } from '@/features/dataStore/composables/useDataStoreTypes';
+import {
+	getDefaultValueForType,
+	mapToAGCellType,
+} from '@/features/dataStore/composables/useDataStoreTypes';
 
 // Register all Community features
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -36,6 +39,8 @@ const gridApi = ref<GridApi | null>(null);
 const colDefs = ref<ColDef[]>([]);
 const rowData = ref<DataStoreRow[]>([]);
 
+const contentLoading = ref(false);
+
 // Shared config for all columns
 const defaultColumnDef = {
 	flex: 1,
@@ -48,6 +53,10 @@ const currentPage = ref(1);
 const pageSize = ref(20);
 const pageSizeOptions = ref([10, 20, 50]);
 const totalItems = ref(0);
+
+// Data store content
+const rows = ref<DataStoreRow[]>([]);
+const totalRowCount = ref(0);
 
 const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
@@ -86,6 +95,12 @@ const createColumnDef = (col: DataStoreColumn) => {
 		// TODO: Avoid hard-coding this
 		editable: col.name !== DEFAULT_ID_COLUMN_NAME,
 		cellDataType: mapToAGCellType(col.type),
+		valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
+			// If the value is null, return the default value for the column type
+			return params.data?.[col.name] === null
+				? getDefaultValueForType(col.type)
+				: params.data?.[col.name];
+		},
 	};
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
@@ -95,13 +110,60 @@ const createColumnDef = (col: DataStoreColumn) => {
 	return columnDef;
 };
 
-onMounted(() => {
-	colDefs.value = props.dataStore.columns.map((col) => ({
-		...createColumnDef(col),
-	}));
-	if (gridApi.value) {
-		gridApi.value.refreshHeader();
+const onAddRowClick = async () => {
+	try {
+		const inserted = await dataStoreStore.insertEmptyRow(props.dataStore);
+		if (!inserted) {
+			throw new Error(i18n.baseText('generic.unknownError'));
+		}
+		await fetchDataStoreContent();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 	}
+};
+
+const initColumnDefinitions = () => {
+	colDefs.value = [
+		// Always add the ID column, it's not returned by the back-end but all data stores have it
+		// We use it as a placeholder for new datastores
+		createColumnDef({
+			index: 0,
+			id: DEFAULT_ID_COLUMN_NAME,
+			name: DEFAULT_ID_COLUMN_NAME,
+			type: 'string',
+		}),
+		// Append other columns
+		...props.dataStore.columns.map(createColumnDef),
+	];
+};
+
+const fetchDataStoreContent = async () => {
+	try {
+		contentLoading.value = true;
+		const fetchedRows = await dataStoreStore.fetchDataStoreContent(
+			props.dataStore.id,
+			props.dataStore.projectId ?? '',
+		);
+		rows.value = fetchedRows.data;
+		totalRowCount.value = fetchedRows.count;
+		rowData.value = rows.value;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));
+	} finally {
+		contentLoading.value = false;
+		if (gridApi.value) {
+			gridApi.value.refreshHeader();
+		}
+	}
+};
+
+const initialize = async () => {
+	initColumnDefinitions();
+	await fetchDataStoreContent();
+};
+
+onMounted(async () => {
+	await initialize();
 });
 </script>
 
@@ -116,6 +178,7 @@ onMounted(() => {
 				:dom-layout="'autoHeight'"
 				:animate-rows="false"
 				:theme="n8nTheme"
+				:loading="contentLoading"
 				@grid-ready="onGridReady"
 			/>
 			<AddColumnPopover
@@ -125,7 +188,7 @@ onMounted(() => {
 			/>
 		</div>
 		<div :class="$style.footer">
-			<n8n-icon-button icon="plus" class="mb-xl" type="secondary" />
+			<n8n-icon-button icon="plus" class="mb-xl" type="secondary" @click="onAddRowClick" />
 			<el-pagination
 				v-model:current-page="currentPage"
 				v-model:page-size="pageSize"
@@ -177,6 +240,9 @@ onMounted(() => {
 
 	:global(.ag-header-cell-resize) {
 		width: var(--spacing-4xs);
+	}
+	:global(.ag-row.ag-row-last) {
+		border-bottom-color: var(--border-color-base);
 	}
 }
 

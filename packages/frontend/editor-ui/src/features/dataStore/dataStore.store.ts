@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { DATA_STORE_STORE, DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
+import { DATA_STORE_STORE } from '@/features/dataStore/constants';
 import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -8,13 +8,25 @@ import {
 	deleteDataStoreApi,
 	updateDataStoreApi,
 	addDataStoreColumnApi,
+	getDataStoreRowsApi,
+	insertDataStoreRowApi,
 } from '@/features/dataStore/dataStore.api';
-import type { DataStore, DataStoreColumnCreatePayload } from '@/features/dataStore/datastore.types';
+import type {
+	DataStore,
+	DataStoreColumnCreatePayload,
+	DataStoreRow,
+} from '@/features/dataStore/datastore.types';
 import { useProjectsStore } from '@/stores/projects.store';
+import {
+	getDefaultValueForType,
+	useDataStoreTypes,
+} from '@/features/dataStore/composables/useDataStoreTypes';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const rootStore = useRootStore();
 	const projectStore = useProjectsStore();
+
+	const dataStoreTypes = useDataStoreTypes();
 
 	const dataStores = ref<DataStore[]>([]);
 	const totalCount = ref(0);
@@ -29,13 +41,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	};
 
 	const createDataStore = async (name: string, projectId?: string) => {
-		const defaultColumn: DataStoreColumnCreatePayload = {
-			name: DEFAULT_ID_COLUMN_NAME,
-			type: 'string',
-		};
-		const newStore = await createDataStoreApi(rootStore.restApiContext, name, projectId, [
-			defaultColumn,
-		]);
+		const newStore = await createDataStoreApi(rootStore.restApiContext, name, projectId);
 		if (!newStore.project && projectId) {
 			const project = await projectStore.fetchProject(projectId);
 			if (project) {
@@ -101,6 +107,28 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return newColumn;
 	};
 
+	const fetchDataStoreContent = async (datastoreId: string, projectId: string) => {
+		const response = await getDataStoreRowsApi(rootStore.restApiContext, datastoreId, projectId);
+		if (response.data.length > 0) {
+			return response;
+		}
+		return { data: [], count: 0 };
+	};
+
+	const insertEmptyRow = async (dataStore: DataStore) => {
+		const emptyRow: DataStoreRow = {};
+		dataStore.columns.forEach((column) => {
+			// Set default values based on column type
+			emptyRow[column.name] = getDefaultValueForType(column.type);
+		});
+		return await insertDataStoreRowApi(
+			rootStore.restApiContext,
+			dataStore.id,
+			emptyRow,
+			dataStore.projectId,
+		);
+	};
+
 	return {
 		dataStores,
 		totalCount,
@@ -111,5 +139,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		fetchDataStoreDetails,
 		fetchOrFindDataStore,
 		addDataStoreColumn,
+		fetchDataStoreContent,
+		insertEmptyRow,
 	};
 });

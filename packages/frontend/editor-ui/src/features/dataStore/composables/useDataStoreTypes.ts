@@ -1,5 +1,9 @@
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import type { AGGridCellType, DataStoreColumnType } from '@/features/dataStore/datastore.types';
+import type {
+	AGGridCellType,
+	DataStoreColumnType,
+	DataStoreValue,
+} from '@/features/dataStore/datastore.types';
 
 /* eslint-disable id-denylist */
 const COLUMN_TYPE_ICONS: Record<DataStoreColumnType, IconName> = {
@@ -30,4 +34,19 @@ export const mapToAGCellType = (colType: DataStoreColumnType): AGGridCellType =>
 		return 'text';
 	}
 	return colType;
+};
+
+export const getDefaultValueForType = (colType: DataStoreColumnType): DataStoreValue => {
+	switch (colType) {
+		case 'string':
+			return '';
+		case 'number':
+			return 0;
+		case 'boolean':
+			return false;
+		case 'date':
+			return null;
+		default:
+			return null;
+	}
 };

@@ -38,6 +38,9 @@ export class DataStoreRepository extends Repository<DataStore> {
 				throw new UnexpectedError('QueryRunner is not available');
 			}
 
+			// create user table
+			await this.dataStoreRowsRepository.createTableWithColumns(tableName, [], queryRunner);
+
 			if (columns.length === 0) {
 				return;
 			}
@@ -52,13 +55,6 @@ export class DataStoreRepository extends Repository<DataStore> {
 				}),
 			);
 			await em.insert(DataStoreColumn, columnEntities);
-
-			// create user table
-			await this.dataStoreRowsRepository.createTableWithColumns(
-				tableName,
-				columnEntities,
-				queryRunner,
-			);
 		});
 
 		if (!dataStoreId) {
