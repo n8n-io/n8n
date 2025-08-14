@@ -77,10 +77,13 @@ const onDeleteColumn = async (columnId: string) => {
 	const columnToDelete = colDefs.value[columnToDeleteIndex];
 	colDefs.value = colDefs.value.filter((def) => def.colId !== columnId);
 	rowData.value = rowData.value.map((row) => {
-		const { [columnId]: _, ...rest } = row;
+		const { [columnToDelete.field!]: _, ...rest } = row;
 		return rest;
 	});
-	gridApi.value.refreshHeader();
+	if (gridApi.value) {
+		gridApi.value.setGridOption('columnDefs', colDefs.value);
+		gridApi.value.setGridOption('rowData', rowData.value);
+	}
 	try {
 		await dataStoreStore.deleteDataStoreColumn(props.dataStore.id, columnId);
 	} catch (error: unknown) {
@@ -99,8 +102,12 @@ const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload })
 		}
 		colDefs.value.push(createColumnDef(newColumn));
 		rowData.value = rowData.value.map((row) => {
-			return { ...row, [newColumn.id]: getDefaultValueForType(newColumn.type) };
+			return { ...row, [newColumn.name]: getDefaultValueForType(newColumn.type) };
 		});
+		if (gridApi.value) {
+			gridApi.value.setGridOption('columnDefs', colDefs.value);
+			gridApi.value.setGridOption('rowData', rowData.value);
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
 	}
