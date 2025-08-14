@@ -568,6 +568,8 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
+	/** Optional queue execution priority for queued workflow runs */
+	queuePriority?: 'low' | 'medium' | 'high';
 }
 
 export interface ITimeoutHMS {

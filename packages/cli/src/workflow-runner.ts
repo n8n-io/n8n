@@ -381,7 +381,20 @@ export class WorkflowRunner {
 		let job: Job;
 		let lifecycleHooks: ExecutionLifecycleHooks;
 		try {
-			job = await this.scalingService.addJob(jobData, { priority: realtime ? 50 : 100 });
+			// Determine numeric Bull priority. Lower numbers are higher priority.
+			const qp = data.workflowData?.settings?.queuePriority as
+				| 'low'
+				| 'medium'
+				| 'high'
+				| undefined;
+			const priorityMap: Record<'low' | 'medium' | 'high', number> = {
+				high: 1,
+				medium: 50,
+				low: 100,
+			};
+			const computedPriority = qp ? priorityMap[qp] : realtime ? 50 : 100;
+
+			job = await this.scalingService.addJob(jobData, { priority: computedPriority });
 
 			lifecycleHooks = getLifecycleHooksForScalingMain(data, executionId);
 
