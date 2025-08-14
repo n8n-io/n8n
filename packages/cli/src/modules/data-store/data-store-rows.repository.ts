@@ -37,7 +37,7 @@ function getConditionAndParams(
 	dbType: DataSourceOptions['type'],
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
-	const column = `dataStore.${quoteIdentifier(filter.columnName, dbType)}`;
+	const column = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(filter.columnName, dbType)}`;
 
 	switch (filter.condition) {
 		case 'eq':
@@ -185,7 +185,6 @@ export class DataStoreRowsRepository {
 
 	private applySorting(query: QueryBuilder, dto: ListDataStoreContentQueryDto): void {
 		if (!dto.sortBy) {
-			// query.orderBy('dataStore.', 'DESC');
 			return;
 		}
 
@@ -195,7 +194,7 @@ export class DataStoreRowsRepository {
 
 	private applySortingByField(query: QueryBuilder, field: string, direction: 'DESC' | 'ASC'): void {
 		const dbType = this.dataSource.options.type;
-		const quotedField = `dataStore.${quoteIdentifier(field, dbType)}`;
+		const quotedField = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(field, dbType)}`;
 		query.orderBy(quotedField, direction);
 	}
 
