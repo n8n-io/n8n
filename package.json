@@ -89,7 +89,7 @@
       "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",
       "chokidar": "4.0.3",
-      "esbuild": "^0.24.0",
+      "esbuild": "^0.25.0",
       "multer": "^2.0.2",
       "prebuild-install": "7.1.3",
       "pug": "^3.0.3",
