@@ -9,7 +9,15 @@ import type {
 } from '@/features/dataStore/datastore.types';
 import { AgGridVue } from 'ag-grid-vue3';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
-import type { GridApi, GridReadyEvent, ColDef, ColumnMovedEvent, ValueGetterParams } from 'ag-grid-community';
+import type {
+	GridApi,
+	GridReadyEvent,
+	ColDef,
+	ColumnMovedEvent,
+	ValueGetterParams,
+	CellValueChangedEvent,
+	RowSelectionOptions,
+} from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumnPopover.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
@@ -21,8 +29,6 @@ import {
 	getDefaultValueForType,
 	mapToAGCellType,
 } from '@/features/dataStore/composables/useDataStoreTypes';
-import type { CellValueChangedEvent } from 'ag-grid-community';
-import type { RowSelectionOptions } from 'ag-grid-community';
 
 // Register all Community features
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -79,7 +85,7 @@ const setCurrentPage = async (page: number) => {
 	await fetchDataStoreContent();
 };
 
-const setPageSize = (size: number) => {
+const setPageSize = async (size: number) => {
 	pageSize.value = size;
 	currentPage.value = 1; // Reset to first page on page size change
 	await fetchDataStoreContent();
@@ -194,7 +200,7 @@ onMounted(() => {
 	if (gridApi.value) {
 		gridApi.value.refreshHeader();
 	}
-};
+});
 
 const initColumnDefinitions = () => {
 	colDefs.value = [
