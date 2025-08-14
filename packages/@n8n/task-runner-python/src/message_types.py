@@ -16,23 +16,23 @@ class BrokerRunnerRegistered:
 
 @dataclass
 class BrokerTaskOfferAccept:
-    type: Literal["broker:taskofferaccept"] = "broker:taskofferaccept"
     task_id: str
     offer_id: str
+    type: Literal["broker:taskofferaccept"] = "broker:taskofferaccept"
 
 
 @dataclass
 class BrokerTaskCancel:
-    type: Literal["broker:taskcancel"] = "broker:taskcancel"
     task_id: str
     reason: str
+    type: Literal["broker:taskcancel"] = "broker:taskcancel"
 
 
 @dataclass
 class BrokerTaskSettings:
-    type: Literal["broker:tasksettings"] = "broker:tasksettings"
     task_id: str
     settings: Any
+    type: Literal["broker:tasksettings"] = "broker:tasksettings"
 
 
 BrokerMessage = Union[
@@ -48,44 +48,44 @@ BrokerMessage = Union[
 
 @dataclass
 class RunnerInfo:
-    type: Literal["runner:info"] = "runner:info"
     name: str
     types: List[str]
+    type: Literal["runner:info"] = "runner:info"
 
 
 @dataclass
 class RunnerTaskOffer:
-    type: Literal["runner:taskoffer"] = "runner:taskoffer"
     offer_id: str
     task_type: str
     valid_for: int
+    type: Literal["runner:taskoffer"] = "runner:taskoffer"
 
 
 @dataclass
 class RunnerTaskAccepted:
-    type: Literal["runner:taskaccepted"] = "runner:taskaccepted"
     task_id: str
+    type: Literal["runner:taskaccepted"] = "runner:taskaccepted"
 
 
 @dataclass
 class RunnerTaskRejected:
-    type: Literal["runner:taskrejected"] = "runner:taskrejected"
     task_id: str
     reason: str
+    type: Literal["runner:taskrejected"] = "runner:taskrejected"
 
 
 @dataclass
 class RunnerTaskDone:
-    type: Literal["runner:taskdone"] = "runner:taskdone"
     task_id: str
     data: Dict[str, Any]
+    type: Literal["runner:taskdone"] = "runner:taskdone"
 
 
 @dataclass
 class RunnerTaskError:
-    type: Literal["runner:taskerror"] = "runner:taskerror"
     task_id: str
     error: Any
+    type: Literal["runner:taskerror"] = "runner:taskerror"
 
 
 RunnerMessage = Union[
