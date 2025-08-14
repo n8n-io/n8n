@@ -54,7 +54,7 @@ describe('dataStore', () => {
 				name,
 				columns: [],
 			});
-			const { id: dataStoreId } = result!;
+			const { id: dataStoreId } = result;
 
 			// ASSERT
 			expect(result).toEqual({
@@ -104,7 +104,7 @@ describe('dataStore', () => {
 				name,
 				columns: [],
 			});
-			const { id: dataStoreId } = result!;
+			const { id: dataStoreId } = result;
 
 			const created = await dataStoreRepository.findOneBy({ name, projectId: project1.id });
 			expect(created?.id).toBe(dataStoreId);
@@ -115,7 +115,7 @@ describe('dataStore', () => {
 				name: 'dataStoreWithColumns',
 				columns: [{ name: 'foo', type: 'string' }],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			await expect(dataStoreService.getColumns(dataStoreId)).resolves.toEqual([
 				{
@@ -154,7 +154,7 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			const { project } = result!;
+			const { project } = result;
 			expect(project.id).toBe(project1.id);
 			expect(project.name).toBe(project1.name);
 		});
@@ -188,7 +188,7 @@ describe('dataStore', () => {
 				name: 'myDataStore1',
 				columns: [],
 			});
-			const { id: dataStoreId, updatedAt } = dataStore!;
+			const { id: dataStoreId, updatedAt } = dataStore;
 
 			// ACT
 			// Wait to get second difference
@@ -222,7 +222,7 @@ describe('dataStore', () => {
 				name: 'myDataStore',
 				columns: [],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// ACT
 			const result = dataStoreService.updateDataStore(dataStoreId, { name: '' });
@@ -237,7 +237,7 @@ describe('dataStore', () => {
 				name: 'myDataStore1',
 				columns: [],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// ACT
 			const result = dataStoreService.updateDataStore(dataStoreId, { name: '   aNewName  ' });
@@ -261,7 +261,7 @@ describe('dataStore', () => {
 				name: 'myDataStoreNew',
 				columns: [],
 			});
-			const { id: dataStoreNewId } = dataStoreNew!;
+			const { id: dataStoreNewId } = dataStoreNew;
 
 			// ACT
 			const result = dataStoreService.updateDataStore(dataStoreNewId, { name });
@@ -280,7 +280,7 @@ describe('dataStore', () => {
 				name: 'myDataStore1',
 				columns: [],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// ACT
 			const result = await dataStoreService.deleteDataStore(dataStoreId);
@@ -319,7 +319,7 @@ describe('dataStore', () => {
 				name: 'dataStoreWithColumns',
 				columns: existingColumns,
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			const columns: AddDataStoreColumnDto[] = [
 				{ name: 'myColumn1', type: 'string' },
@@ -404,7 +404,7 @@ describe('dataStore', () => {
 				name: 'dataStore',
 				columns: [],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// ACT
 			const result = await dataStoreService.addColumn(dataStoreId, {
@@ -437,7 +437,7 @@ describe('dataStore', () => {
 					},
 				],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// ACT
 			const result = dataStoreService.addColumn(dataStoreId, {
@@ -472,7 +472,7 @@ describe('dataStore', () => {
 				name: 'dataStore',
 				columns: [],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			const c1 = await dataStoreService.addColumn(dataStoreId, {
 				name: 'myColumn1',
@@ -515,7 +515,7 @@ describe('dataStore', () => {
 					},
 				],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// ACT
 			const result = dataStoreService.deleteColumn(dataStoreId, 'thisIsNotAnId');
@@ -532,7 +532,7 @@ describe('dataStore', () => {
 				name: 'dataStore',
 				columns: [],
 			});
-			const c1 = await dataStoreService.addColumn(dataStore!.id, {
+			const c1 = await dataStoreService.addColumn(dataStore.id, {
 				name: 'myColumn1',
 				type: 'string',
 			});
@@ -554,7 +554,7 @@ describe('dataStore', () => {
 				name: 'dataStore',
 				columns: [],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			const c1 = await dataStoreService.addColumn(dataStoreId, {
 				name: 'myColumn1',
@@ -600,7 +600,7 @@ describe('dataStore', () => {
 				name: 'dataStore',
 				columns: [],
 			});
-			const { name } = dataStore!;
+			const { name } = dataStore;
 
 			// ACT
 			const result = await dataStoreService.getManyAndCount({
@@ -629,13 +629,13 @@ describe('dataStore', () => {
 				name: 'myDataStore1',
 				columns: [],
 			});
-			const { id: dataStoreId1 } = dataStore1!;
+			const { id: dataStoreId1 } = dataStore1;
 
 			const dataStore2 = await dataStoreService.createDataStore(project1.id, {
 				name: 'myDataStore2',
 				columns: [],
 			});
-			const { id: dataStoreId2 } = dataStore2!;
+			const { id: dataStoreId2 } = dataStore2;
 
 			// ACT
 			const result = await dataStoreService.getManyAndCount({
@@ -663,14 +663,14 @@ describe('dataStore', () => {
 				name: 'myDataStore',
 				columns: [],
 			});
-			const { name } = dataStore!;
+			const { name } = dataStore;
 			const names = [name];
 			for (let i = 0; i < 10; ++i) {
 				const ds = await dataStoreService.createDataStore(project1.id, {
 					name: `anotherDataStore${i}`,
 					columns: [],
 				});
-				names.push(ds!.name);
+				names.push(ds.name);
 			}
 
 			// ACT
@@ -689,7 +689,7 @@ describe('dataStore', () => {
 				name: 'myDataStore',
 				columns: [],
 			});
-			const { name } = dataStore!;
+			const { name } = dataStore;
 			const names = [name];
 
 			for (let i = 0; i < 10; ++i) {
@@ -697,7 +697,7 @@ describe('dataStore', () => {
 					name: `anotherDataStore${i}`,
 					columns: [],
 				});
-				names.push(ds!.name);
+				names.push(ds.name);
 			}
 
 			// ACT
@@ -748,7 +748,7 @@ describe('dataStore', () => {
 				name: 'myDataStore',
 				columns,
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// ACT
 			const result = await dataStoreService.getManyAndCount({
@@ -887,7 +887,7 @@ describe('dataStore', () => {
 					name: 'ds1',
 					columns: [],
 				});
-				const { id: ds1Id } = ds1!;
+				const { id: ds1Id } = ds1;
 
 				// Wait to get seconds difference
 				await new Promise((resolve) => setTimeout(resolve, 1001));
@@ -930,7 +930,7 @@ describe('dataStore', () => {
 					{ name: 'c4', type: 'string' },
 				],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// ACT
 			const rows = [
@@ -966,7 +966,7 @@ describe('dataStore', () => {
 					{ name: 'c2', type: 'string' },
 				],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// Insert initial row
 			await dataStoreService.insertRows(dataStoreId, [{ c1: 1, c2: 'foo' }]);
@@ -1000,7 +1000,7 @@ describe('dataStore', () => {
 					{ name: 'c4', type: 'string' },
 				],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// ACT
 			const result = dataStoreService.insertRows(dataStoreId, [
@@ -1023,7 +1023,7 @@ describe('dataStore', () => {
 					{ name: 'c4', type: 'string' },
 				],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// ACT
 			const result = dataStoreService.insertRows(dataStoreId, [
@@ -1046,7 +1046,7 @@ describe('dataStore', () => {
 					{ name: 'c4', type: 'string' },
 				],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// ACT
 			const result = dataStoreService.insertRows(dataStoreId, [
@@ -1098,7 +1098,7 @@ describe('dataStore', () => {
 				name: 'dataStore',
 				columns: [{ name: 'c1', type: 'number' }],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// ACT
 			const result = dataStoreService.insertRows(dataStoreId, [{ c1: 3 }, { c1: true }]);
@@ -1119,7 +1119,7 @@ describe('dataStore', () => {
 					{ name: 'age', type: 'number' },
 				],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// Insert initial row
 			await dataStoreService.insertRows(dataStoreId, [
@@ -1154,7 +1154,7 @@ describe('dataStore', () => {
 					{ name: 'age', type: 'number' },
 				],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			// Insert initial row
 			await dataStoreService.insertRows(dataStoreId, [
@@ -1195,7 +1195,7 @@ describe('dataStore', () => {
 					{ name: 'c4', type: 'string' },
 				],
 			});
-			const { id: dataStoreId } = dataStore!;
+			const { id: dataStoreId } = dataStore;
 
 			const rows = [
 				{ c1: 3, c2: true, c3: new Date(0), c4: 'hello?' },

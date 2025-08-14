@@ -99,8 +99,8 @@ describe('dataStoreAggregate', () => {
 			// ASSERT
 			expect(result.data).toEqual(
 				expect.arrayContaining([
-					expect.objectContaining({ id: ds1!.id, name: ds1!.name }),
-					expect.objectContaining({ id: ds2!.id, name: ds2!.name }),
+					expect.objectContaining({ id: ds1.id, name: ds1.name }),
+					expect.objectContaining({ id: ds2.id, name: ds2.name }),
 				]),
 			);
 			expect(result.count).toBe(2);
@@ -162,13 +162,13 @@ describe('dataStoreAggregate', () => {
 
 			// ACT
 			const result = await dataStoreAggregateService.getManyAndCount(user, {
-				filter: { id: ds2!.id },
+				filter: { id: ds2.id },
 				skip: 0,
 				take: 10,
 			});
 
 			// ASSERT
-			expect(result.data).toEqual([expect.objectContaining({ id: ds2!.id, name: ds2!.name })]);
+			expect(result.data).toEqual([expect.objectContaining({ id: ds2.id, name: ds2.name })]);
 			expect(result.count).toBe(1);
 		});
 
@@ -208,7 +208,7 @@ describe('dataStoreAggregate', () => {
 
 			// ASSERT
 			expect(result.data.length).toBe(1);
-			expect([ds1!.id, ds2!.id, ds3!.id]).toContain(result.data[0].id);
+			expect([ds1.id, ds2.id, ds3.id]).toContain(result.data[0].id);
 			expect(result.count).toBe(3);
 		});
 	});

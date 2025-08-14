@@ -65,10 +65,12 @@ export class DataStoreRepository extends Repository<DataStore> {
 			throw new UnexpectedError('Data store creation failed');
 		}
 
-		return await this.findOne({
+		const createdDataStore = await this.findOneOrFail({
 			where: { id: dataStoreId },
 			relations: ['project', 'columns'],
 		});
+
+		return createdDataStore;
 	}
 
 	async deleteDataStore(dataStoreId: string, entityManager?: EntityManager) {
