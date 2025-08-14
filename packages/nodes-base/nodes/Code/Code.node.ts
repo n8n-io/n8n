@@ -141,7 +141,8 @@ export class Code implements INodeType {
 
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
-		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
+		const codeParameterName =
+			language === 'python' || language === 'pythonNative' ? 'pythonCode' : 'jsCode';
 
 		if (isRunnerEnabled && language === 'javaScript') {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
