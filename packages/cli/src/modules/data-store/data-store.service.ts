@@ -157,8 +157,22 @@ export class DataStoreService {
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
 	}
 
+	async insertRows(dataStoreId: string, rows: DataStoreRows) {
+		await this.validateRows(dataStoreId, rows);
+		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+
+		return await this.dataStoreRowsRepository.insertRows(toTableName(dataStoreId), rows, columns);
+	}
+
+	async upsertRows(dataStoreId: string, dto: UpsertDataStoreRowsDto) {
+		await this.validateRows(dataStoreId, dto.rows);
+		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+
+		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto, columns);
+	}
+
 	// TODO: move to utils and test
-	private normalizeRows(rows: Array<Record<string, unknown>>, columns: DataStoreColumn[]) {
+	private normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]): DataStoreRows {
 		const typeMap = new Map(columns.map((col) => [col.name, col.type]));
 		return rows.map((row) => {
 			const normalized = { ...row };
@@ -237,20 +251,6 @@ export class DataStoreService {
 				}
 			}
 		}
-	}
-
-	async insertRows(dataStoreId: string, rows: DataStoreRows) {
-		await this.validateRows(dataStoreId, rows);
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-
-		return await this.dataStoreRowsRepository.insertRows(toTableName(dataStoreId), rows, columns);
-	}
-
-	async upsertRows(dataStoreId: string, dto: UpsertDataStoreRowsDto) {
-		await this.validateRows(dataStoreId, dto.rows);
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-
-		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto, columns);
 	}
 
 	private async validateDataStoreExists(dataStoreId: string, msg?: string) {
