@@ -2,7 +2,24 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import { optimizeResponseProperties } from '../shared/optimizeResponse';
 
+const preBuiltAgentsCallout: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	displayName: 'Try the HTTP request tool with our pre-built',
+	name: 'preBuiltAgentsCalloutHttpRequest',
+	type: 'callout',
+	typeOptions: {
+		calloutAction: {
+			label: 'Joke agent',
+			icon: 'bot',
+			type: 'openSampleWorkflowTemplate',
+			templateId: 'joke_agent_with_http_tool',
+		},
+	},
+	default: '',
+};
+
 export const mainProperties: INodeProperties[] = [
+	preBuiltAgentsCallout,
 	{
 		displayName: '',
 		name: 'curlImport',

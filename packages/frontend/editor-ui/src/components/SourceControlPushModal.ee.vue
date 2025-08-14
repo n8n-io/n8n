@@ -844,29 +844,8 @@ onMounted(async () => {
 											@update:model-value="toggleSelected(file.id)"
 										>
 											<span>
-												<N8nText
-													v-if="file.status === SOURCE_CONTROL_FILE_STATUS.deleted"
-													color="text-light"
-												>
-													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow">
-														Deleted Workflow:
-													</span>
-													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential">
-														Deleted Credential:
-													</span>
-													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.folders">
-														Deleted Folders:
-													</span>
-													<strong>{{ file.name || file.id }}</strong>
-												</N8nText>
-												<N8nText
-													v-else
-													tag="div"
-													bold
-													color="text-dark"
-													:class="[$style.listItemName]"
-												>
-													{{ file.name }}
+												<N8nText tag="div" bold color="text-dark" :class="[$style.listItemName]">
+													{{ file.name || file.id }}
 												</N8nText>
 												<N8nText
 													v-if="file.updatedAt"
@@ -903,7 +882,7 @@ onMounted(async () => {
 														:show-badge-border="false"
 													/>
 												</template>
-												<N8nBadge :theme="getStatusTheme(file.status)">
+												<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
 													{{ getStatusText(file.status) }}
 												</N8nBadge>
 												<EnvFeatureFlag name="SOURCE_CONTROL_WORKFLOW_DIFF">
@@ -1034,6 +1013,7 @@ onMounted(async () => {
 .badges {
 	display: flex;
 	gap: 10px;
+	align-items: center;
 }
 
 .footer {

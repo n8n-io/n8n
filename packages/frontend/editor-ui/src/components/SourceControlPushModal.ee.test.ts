@@ -15,13 +15,11 @@ import { reactive } from 'vue';
 
 const eventBus = createEventBus();
 
-// Mock Vue Router to eliminate injection warnings
+// Create a reactive route mock to avoid Vue warnings
 const mockRoute = reactive({
+	name: '',
 	params: {},
-	query: {},
-	path: '/',
-	name: 'TestRoute',
-	fullPath: '/',
+	fullPath: '',
 });
 
 vi.mock('vue-router', () => ({

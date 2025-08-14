@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
@@ -23,6 +23,7 @@ import { ProjectTypes } from '@/types/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useDebounce } from '@/composables/useDebounce';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -262,12 +263,6 @@ const loadTimezones = async () => {
 };
 
 const loadWorkflows = async (searchTerm?: string) => {
-	// Do not call the API if the search term is empty
-	// Call it if searchTerm is undefined for initial load
-	if (searchTerm === '') {
-		return;
-	}
-
 	const workflowsData = (await workflowsStore.searchWorkflows({
 		name: searchTerm,
 	})) as IWorkflowShortResponse[];
@@ -288,6 +283,9 @@ const loadWorkflows = async (searchTerm?: string) => {
 
 	workflows.value = workflowsData;
 };
+
+const { debounce } = useDebounce();
+const debouncedLoadWorkflows = debounce(loadWorkflows, { debounceTime: 300, trailing: true });
 
 const convertToHMS = (num: number): ITimeoutHMS => {
 	if (num > 0) {
@@ -478,6 +476,10 @@ onMounted(async () => {
 		workflow_id: workflowsStore.workflowId,
 	});
 });
+
+onBeforeUnmount(() => {
+	debouncedLoadWorkflows.cancel?.();
+});
 </script>
 
 <template>
@@ -536,7 +538,7 @@ onMounted(async () => {
 							placeholder="Select Workflow"
 							filterable
 							remote
-							remote-method="loadWorkflows"
+							:remote-method="debouncedLoadWorkflows"
 							remote-show-suffix
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
