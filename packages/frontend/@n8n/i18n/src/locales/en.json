@@ -2577,6 +2577,7 @@
 	"workflowSettings.helpTexts.workflowCallerPolicy": "Workflows that are allowed to call this workflow using the Execute Workflow node",
 	"workflowSettings.hours": "hours",
 	"workflowSettings.minutes": "minutes",
+	"workflowSettings.name": "Workflow name",
 	"workflowSettings.noWorkflow": "- No Workflow -",
 	"workflowSettings.save": "@:_reusableBaseText.save",
 	"workflowSettings.saveDataErrorExecution": "Save failed production executions",
