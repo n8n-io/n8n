@@ -68,6 +68,16 @@ const copyDebugInfoToClipboard = async () => {
 				</el-row>
 				<el-row>
 					<el-col :span="8" class="info-name">
+						<n8n-text>{{ i18n.baseText('about.thirdPartyLicenses') }}</n8n-text>
+					</el-col>
+					<el-col :span="16">
+						<n8n-link to="https://github.com/n8n-io/n8n/blob/master/THIRD_PARTY_LICENSES.md">
+							{{ i18n.baseText('about.thirdPartyLicensesLink') }}
+						</n8n-link>
+					</el-col>
+				</el-row>
+				<el-row>
+					<el-col :span="8" class="info-name">
 						<n8n-text>{{ i18n.baseText('about.instanceID') }}</n8n-text>
 					</el-col>
 					<el-col :span="16">
