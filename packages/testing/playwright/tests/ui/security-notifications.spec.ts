@@ -3,25 +3,6 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures/base';
 
 test.describe('Security Notifications', () => {
-	async function setupVersionNotificationSettings(
-		page: Page,
-		{ enabled }: { enabled: boolean } = { enabled: true },
-	) {
-		await page.route('**/rest/settings', async (route) => {
-			const response = await route.fetch();
-			const settings = await response.json();
-			settings.data.versionNotifications = {
-				enabled,
-				endpoint: 'https://test.api.n8n.io/api/versions/',
-				whatsNewEnabled: enabled,
-				whatsNewEndpoint: 'https://test.api.n8n.io/api/whats-new',
-				infoUrl: 'https://test.docs.n8n.io/hosting/installation/updating/',
-			};
-			await route.fulfill({ json: settings });
-		});
-	}
-
-	// Helper function to setup versions API mock
 	async function setupVersionsApiMock(
 		page: Page,
 		options: {
@@ -74,7 +55,6 @@ test.describe('Security Notifications', () => {
 		});
 	}
 
-	// Helper function to setup API failure mock
 	async function setupApiFailure(page: Page) {
 		await page.route('**/api/versions/**', async (route) => {
 			await route.fulfill({
@@ -86,9 +66,20 @@ test.describe('Security Notifications', () => {
 	}
 
 	test.describe('Notifications disabled', () => {
-		test.beforeEach(async ({ page }) => {
-			// Test notifications disabled
-			await setupVersionNotificationSettings(page, { enabled: false });
+		test.beforeEach(async ({ setupRequirements }) => {
+			await setupRequirements({
+				config: {
+					settings: {
+						versionNotifications: {
+							enabled: false,
+							endpoint: 'https://test.api.n8n.io/api/versions/',
+							whatsNewEnabled: false,
+							whatsNewEndpoint: 'https://test.api.n8n.io/api/whats-new',
+							infoUrl: 'https://test.docs.n8n.io/hosting/installation/updating/',
+						},
+					},
+				},
+			});
 		});
 
 		test('should not check for versions if feature is disabled', async ({ page, n8n }) => {
@@ -111,8 +102,20 @@ test.describe('Security Notifications', () => {
 	});
 
 	test.describe('Notifications enabled', () => {
-		test.beforeEach(async ({ page }) => {
-			await setupVersionNotificationSettings(page, { enabled: true });
+		test.beforeEach(async ({ setupRequirements }) => {
+			await setupRequirements({
+				config: {
+					settings: {
+						versionNotifications: {
+							enabled: true,
+							endpoint: 'https://test.api.n8n.io/api/versions/',
+							whatsNewEnabled: true,
+							whatsNewEndpoint: 'https://test.api.n8n.io/api/whats-new',
+							infoUrl: 'https://test.docs.n8n.io/hosting/installation/updating/',
+						},
+					},
+				},
+			});
 		});
 
 		test('should display security notification with correct messaging and styling', async ({
@@ -178,7 +181,7 @@ test.describe('Security Notifications', () => {
 			await notification.click();
 
 			// Verify versions modal opens
-			const versionsModal = page.locator('[data-test-id="version-updates-panel"]');
+			const versionsModal = n8n.versions.getVersionUpdatesPanel();
 			await expect(versionsModal).toBeVisible();
 
 			// Verify security update badge exists for the new version
