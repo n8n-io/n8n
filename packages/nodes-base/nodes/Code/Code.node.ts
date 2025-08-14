@@ -3,6 +3,7 @@ import { NodesConfig, TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import set from 'lodash/set';
 import {
+	type INodeProperties,
 	NodeConnectionTypes,
 	UserError,
 	type CodeExecutionMode,
@@ -36,6 +37,40 @@ class NativePythonWithoutRunnerError extends UserError {
 		super('To use native Python, please use runners by setting `N8N_RUNNERS_ENABLED=true`.');
 	}
 }
+
+const getV2LanguageProperty = (): INodeProperties => {
+	const options = [
+		{
+			name: 'JavaScript',
+			value: 'javaScript',
+		},
+		{
+			name: 'Python (Beta)',
+			value: 'python',
+		},
+	];
+
+	if (N8N_NATIVE_PYTHON_RUNNER === 'true') {
+		options.push({
+			name: 'Python (Native) (Beta)',
+			value: 'pythonNative',
+		});
+	}
+
+	return {
+		displayName: 'Language',
+		name: 'language',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				'@version': [2],
+			},
+		},
+		options,
+		default: 'javaScript',
+	};
+};
 
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
@@ -72,64 +107,7 @@ export class Code implements INodeType {
 				],
 				default: 'runOnceForAllItems',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
-			{
-				displayName: 'Native Python Available',
-				name: 'nativePythonAvailable',
-				type: 'hidden',
-				default: N8N_NATIVE_PYTHON_RUNNER === 'true',
-			},
-			{
-				displayName: 'Language',
-				name: 'language',
-				type: 'options',
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						nativePythonAvailable: [false],
-						'@version': [2],
-					},
-				},
-				options: [
-					{
-						name: 'JavaScript',
-						value: 'javaScript',
-					},
-					{
-						name: 'Python (Beta)',
-						value: 'python',
-					},
-				],
-				default: 'javaScript',
-			},
-
-			{
-				displayName: 'Language',
-				name: 'language',
-				type: 'options',
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						nativePythonAvailable: [true],
-						'@version': [2],
-					},
-				},
-				options: [
-					{
-						name: 'JavaScript',
-						value: 'javaScript',
-					},
-					{
-						name: 'Python (Beta)',
-						value: 'python',
-					},
-					{
-						name: 'Python (Native) (Beta)',
-						value: 'pythonNative',
-					},
-				],
-				default: 'javaScript',
-			},
+			getV2LanguageProperty(),
 			{
 				displayName: 'Language',
 				name: 'language',
