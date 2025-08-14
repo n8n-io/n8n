@@ -11,6 +11,8 @@ import {
 	getDataStoreRowsApi,
 	insertDataStoreRowApi,
 	upsertDataStoreRowsApi,
+	deleteDataStoreColumnApi,
+	moveDataStoreColumnApi,
 } from '@/features/dataStore/dataStore.api';
 import type {
 	DataStore,
@@ -57,6 +59,19 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		if (deleted) {
 			dataStores.value = dataStores.value.filter((store) => store.id !== datastoreId);
 			totalCount.value -= 1;
+		}
+		return deleted;
+	};
+
+	const deleteDataStoreColumn = async (datastoreId: string, columnId: string) => {
+		const deleted = await deleteDataStoreColumnApi(rootStore.restApiContext, datastoreId, columnId);
+		if (deleted) {
+			const index = dataStores.value.findIndex((store) => store.id === datastoreId);
+			if (index !== -1) {
+				dataStores.value[index].columns = dataStores.value[index].columns.filter(
+					(col) => col.id !== columnId,
+				);
+			}
 		}
 		return deleted;
 	};
@@ -140,6 +155,32 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return await upsertDataStoreRowsApi(rootStore.restApiContext, dataStoreId, [row], projectId);
 	};
 
+	const moveDataStoreColumn = async (
+		datastoreId: string,
+		columnId: string,
+		targetIndex: number,
+	) => {
+		const moved = await moveDataStoreColumnApi(
+			rootStore.restApiContext,
+			datastoreId,
+			columnId,
+			targetIndex,
+		);
+		if (moved) {
+			const index = dataStores.value.findIndex((store) => store.id === datastoreId);
+			if (index !== -1) {
+				const column = dataStores.value[index].columns.find((col) => col.id === columnId);
+				if (column) {
+					const newColumns = [...dataStores.value[index].columns];
+					newColumns.splice(targetIndex, 0, column);
+					newColumns.splice(column.index, 1);
+					dataStores.value[index].columns = newColumns;
+				}
+			}
+		}
+		return moved;
+	};
+
 	return {
 		dataStores,
 		totalCount,
@@ -153,5 +194,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		fetchDataStoreContent,
 		insertEmptyRow,
 		upsertRow,
+		deleteDataStoreColumn,
+		moveDataStoreColumn,
 	};
 });

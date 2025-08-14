@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import orderBy from 'lodash/orderBy';
 import type {
 	DataStore,
 	DataStoreColumn,
@@ -8,12 +9,13 @@ import type {
 } from '@/features/dataStore/datastore.types';
 import { AgGridVue } from 'ag-grid-vue3';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
-import type { GridApi, GridReadyEvent, ColDef, ValueGetterParams } from 'ag-grid-community';
+import type { GridApi, GridReadyEvent, ColDef, ColumnMovedEvent, ValueGetterParams } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumnPopover.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
+import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
 import {
 	getDefaultValueForType,
@@ -77,10 +79,26 @@ const setCurrentPage = async (page: number) => {
 	await fetchDataStoreContent();
 };
 
-const setPageSize = async (size: number) => {
+const setPageSize = (size: number) => {
 	pageSize.value = size;
 	currentPage.value = 1; // Reset to first page on page size change
 	await fetchDataStoreContent();
+};
+
+const onDeleteColumn = async (columnId: string) => {
+	// TODO: how can we skip doing this in all handlers?
+	if (!gridApi.value) return;
+
+	const columnToDeleteIndex = colDefs.value.findIndex((col) => col.colId === columnId);
+	const columnToDelete = colDefs.value[columnToDeleteIndex];
+	colDefs.value = colDefs.value.filter((def) => def.colId !== columnId);
+	gridApi.value.refreshHeader();
+	try {
+		await dataStoreStore.deleteDataStoreColumn(props.dataStore.id, columnId);
+	} catch (error: unknown) {
+		toast.showError(error as Error, i18n.baseText('dataStore.deleteColumn.error'));
+		colDefs.value.splice(columnToDeleteIndex, 0, columnToDelete);
+	}
 };
 
 const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload }) => {
@@ -117,6 +135,8 @@ const createColumnDef = (col: DataStoreColumn) => {
 			}
 			return params.data?.[col.name];
 		},
+		headerComponent: ColumnHeader,
+		headerComponentParams: { onDelete: onDeleteColumn },
 	};
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
@@ -146,6 +166,33 @@ const onAddRowClick = async () => {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 	} finally {
 		emit('toggleSave', false);
+	}
+};
+
+const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
+	console.log(moveEvent);
+	if (!moveEvent.finished || moveEvent.source !== 'uiColumnMoved') {
+		return;
+	}
+
+	try {
+		await dataStoreStore.moveDataStoreColumn(
+			props.dataStore.id,
+			moveEvent.column?.getColId() ?? '',
+			moveEvent.toIndex ?? 0,
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.moveColumn.error'));
+		// TODO: revert the move
+	}
+};
+
+onMounted(() => {
+	colDefs.value = orderBy(props.dataStore.columns, 'index').map((col) => ({
+		...createColumnDef(col),
+	}));
+	if (gridApi.value) {
+		gridApi.value.refreshHeader();
 	}
 };
 
@@ -224,6 +271,7 @@ onMounted(async () => {
 				:row-selection="rowSelection"
 				@grid-ready="onGridReady"
 				@cell-value-changed="onCellValueChanged"
+				@column-moved="onColumnMoved"
 			/>
 			<AddColumnPopover
 				:data-store="props.dataStore"

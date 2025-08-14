@@ -36,6 +36,13 @@ export const mapToAGCellType = (colType: DataStoreColumnType): AGGridCellType =>
 	return colType;
 };
 
+export const mapToDataStoreColumnType = (colType: AGGridCellType): DataStoreColumnType => {
+	if (colType === 'text') {
+		return 'string';
+	}
+	return colType as DataStoreColumnType;
+};
+
 export const getDefaultValueForType = (colType: DataStoreColumnType): DataStoreValue => {
 	switch (colType) {
 		case 'string':
