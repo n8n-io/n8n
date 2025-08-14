@@ -9,6 +9,8 @@ import { randomString } from 'n8n-workflow';
 
 export const testDbPrefix = 'n8n_test_';
 
+jest.retryTimes(0);
+
 /**
  * Generate options for a bootstrap DB connection, to create and drop test databases.
  */
@@ -25,7 +27,6 @@ export const getBootstrapDBOptions = (dbType: 'postgresdb' | 'mysqldb'): DataSou
 };
 
 describe('AddConstraintToExecutionMetadata1720101653148', () => {
-	jest.retryTimes(0);
 	describe('up', () => {
 		beforeEach(async () => {
 			const globalConfig = Container.get(GlobalConfig);
@@ -74,29 +75,13 @@ describe('AddConstraintToExecutionMetadata1720101653148', () => {
 				[{ id: 2, executionId: 1, key: 'key1', value: 'value2' }],
 			],
 		])('AddConstraintToExecutionMetadata1720101653148', async (before, after) => {
+			// ARRANGE
 			connection = await init({
 				untilMigration: AddConstraintToExecutionMetadata1720101653148,
 				includeAsWell: true,
 			});
-			// 1. insert data
 
 			const workflow = newWorkflow({ id: '1', nodes: [], connections: {} });
-			//const workflow = {
-			//	id: '1',
-			//	name: 'test workflow',
-			//	active: false,
-			//	nodes: '[]',
-			//	connections: '{}',
-			//	versionId: 1,
-			//};
-			//console.log(workflow);
-
-			// get all table names in MYSQL
-			//const tableNames = await connection.driver.createQueryRunner('master').query(`
-			//		SELECT table_name FROM information_schema.tables
-			//	`);
-
-			//console.log(JSON.stringify(tableNames, null, 2));
 
 			await insert(connection, 'workflow_entity', workflow);
 			const execution = newExecution({ id: '1', workflowId: workflow.id });
@@ -106,10 +91,10 @@ describe('AddConstraintToExecutionMetadata1720101653148', () => {
 				await insert(connection, 'execution_metadata', execution_metadata);
 			}
 
-			// 2. run migration
+			// ACT
 			await migrate(connection);
 
-			// 3. check data
+			// ASSERT
 			const data = await get(connection, 'execution_metadata');
 
 			expect(data).toEqual(after);
