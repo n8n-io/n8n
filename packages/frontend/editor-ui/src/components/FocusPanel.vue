@@ -2,7 +2,7 @@
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nText, N8nInput, N8nResizeWrapper, N8nInfoTip } from '@n8n/design-system';
-import { computed, nextTick, ref, watch, toRef } from 'vue';
+import { computed, nextTick, ref, watch, toRef, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	formatAsExpression,
@@ -35,6 +35,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import ExperimentalNodeDetailsDrawer from '@/components/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useUIStore } from '@/stores/ui.store';
+import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -63,6 +65,8 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
 const deviceSupport = useDeviceSupport();
 const styles = useStyles();
+
+const contentRef = useTemplateRef('contentRef');
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
 const resolvedParameter = computed(() =>
@@ -122,6 +126,8 @@ const isExecutable = computed(() => {
 const node = computed(() => resolvedParameter.value?.node);
 
 const { workflowRunData } = useExecutionData({ node });
+
+const expressionLocalResolveCtx = useExpressionResolveCtx(node);
 
 const hasNodeRun = computed(() => {
 	if (!node.value) return true;
@@ -385,7 +391,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 				"
 			/>
 			<div v-else :class="$style.container">
-				<div v-if="resolvedParameter" :class="$style.content">
+				<div v-if="resolvedParameter" ref="contentRef" :class="$style.content">
 					<div :class="$style.tabHeader">
 						<div :class="$style.tabHeaderText">
 							<N8nText color="text-dark" size="small">
@@ -529,6 +535,21 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 							></template>
 						</div>
 					</div>
+
+					<ExperimentalEmbeddedNdvMapper
+						v-if="
+							experimentalNdvStore.isNdvInFocusPanelEnabled &&
+							node &&
+							expressionLocalResolveCtx?.inputNode
+						"
+						ref="mapperRef"
+						:workflow="expressionLocalResolveCtx?.workflow"
+						:node="node"
+						:input-node-name="expressionLocalResolveCtx?.inputNode?.name"
+						:visible="true"
+						:virtual-ref="contentRef ?? undefined"
+						:container-height="contentRef?.offsetHeight ?? 0"
+					/>
 				</div>
 				<div v-else :class="[$style.content, $style.emptyContent]">
 					<div :class="$style.emptyText">

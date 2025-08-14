@@ -5,7 +5,7 @@ import type { ExpressionLocalResolveContext } from '@/types/expressions';
 import type { Workflow } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 
-export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null>) {
+export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undefined>) {
 	const environmentsStore = useEnvironmentsStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);

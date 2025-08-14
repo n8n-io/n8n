@@ -81,6 +81,7 @@ import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/exp
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import { useVueFlow } from '@vue-flow/core';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -605,6 +606,9 @@ const shouldShowMapper = computed(
 		isFocused.value &&
 		(isModelValueExpression.value || props.forceShowExpression || props.modelValue === ''),
 );
+
+const vueFlow = useVueFlow();
+const mapperContainerHeight = computed(() => vueFlow.viewportRef.value?.offsetHeight ?? 0);
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -1221,6 +1225,7 @@ onClickOutside(wrapper, onBlur);
 			:input-node-name="expressionLocalResolveCtx?.inputNode?.name"
 			:visible="shouldShowMapper"
 			:virtual-ref="wrapper"
+			:container-height="mapperContainerHeight"
 		/>
 
 		<div
