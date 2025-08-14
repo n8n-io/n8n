@@ -14,6 +14,8 @@ export type DataStore = {
 
 export type DataStoreColumnType = 'string' | 'number' | 'boolean' | 'date';
 
+export type AGGridCellType = 'text' | 'number' | 'boolean' | 'date' | 'dateString' | 'object';
+
 export type DataStoreColumn = {
 	id: string;
 	name: string;

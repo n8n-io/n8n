@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import type {
 	DataStore,
+	DataStoreColumn,
 	DataStoreColumnCreatePayload,
 	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
@@ -14,6 +15,7 @@ import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
+import { mapToAGCellType } from '@/features/dataStore/composables/useDataStoreTypes';
 
 // Register all Community features
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -34,6 +36,13 @@ const gridApi = ref<GridApi | null>(null);
 const colDefs = ref<ColDef[]>([]);
 const rowData = ref<DataStoreRow[]>([]);
 
+// Shared config for all columns
+const defaultColumnDef = {
+	flex: 1,
+	sortable: false,
+	filter: false,
+};
+
 // Pagination
 const currentPage = ref(1);
 const pageSize = ref(20);
@@ -42,13 +51,6 @@ const totalItems = ref(0);
 
 const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
-};
-
-const onColumnMoved = () => {
-	// Refresh headers to update the button visibility
-	if (gridApi.value) {
-		gridApi.value.refreshHeader();
-	}
 };
 
 const setCurrentPage = async (page: number) => {
@@ -70,29 +72,32 @@ const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload })
 		if (!newColumn) {
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
-		colDefs.value.push({
-			field: newColumn.name,
-			headerName: newColumn.name,
-			type: newColumn.type,
-			sortable: false,
-			filter: false,
-			flex: 1,
-		});
+		colDefs.value.push(createColumnDef(newColumn));
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
 	}
 };
 
-onMounted(() => {
-	colDefs.value = props.dataStore.columns.map((col) => ({
+const createColumnDef = (col: DataStoreColumn) => {
+	const columnDef: ColDef = {
+		colId: col.id,
 		field: col.name,
 		headerName: col.name,
 		// TODO: Avoid hard-coding this
 		editable: col.name !== DEFAULT_ID_COLUMN_NAME,
-		type: col.type,
-		sortable: false,
-		filter: false,
-		flex: 1,
+		cellDataType: mapToAGCellType(col.type),
+	};
+	// Enable large text editor for text columns
+	if (col.type === 'string') {
+		columnDef.cellEditor = 'agLargeTextCellEditor';
+		columnDef.cellEditorPopup = true;
+	}
+	return columnDef;
+};
+
+onMounted(() => {
+	colDefs.value = props.dataStore.columns.map((col) => ({
+		...createColumnDef(col),
 	}));
 	if (gridApi.value) {
 		gridApi.value.refreshHeader();
@@ -107,12 +112,11 @@ onMounted(() => {
 				style="width: 100%"
 				:row-data="rowData"
 				:column-defs="colDefs"
+				:default-col-def="defaultColumnDef"
 				:dom-layout="'autoHeight'"
-				:auto-size-strategy="{ type: 'fitGridWidth', defaultMinWidth: 100 }"
 				:animate-rows="false"
 				:theme="n8nTheme"
 				@grid-ready="onGridReady"
-				@column-moved="onColumnMoved"
 			/>
 			<AddColumnPopover
 				:data-store="props.dataStore"
