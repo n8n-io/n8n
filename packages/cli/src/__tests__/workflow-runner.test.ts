@@ -300,12 +300,16 @@ describe('enqueueExecution', () => {
 		expect(setupQueue).toHaveBeenCalledTimes(1);
 	});
 
-	it('should map queuePriority high -> priority 1', async () => {
+	it.each([
+		['high', 1],
+		['medium', 50],
+		['low', 100],
+	] as const)('should map queuePriority %s -> priority %d', async (priority, expected) => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		jest.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: { nodes: [], settings: { queuePriority: 'high' } },
+			workflowData: { nodes: [], settings: { queuePriority: priority } },
 			executionData: undefined,
 		});
 		const error = new Error('stop for test purposes');
@@ -314,43 +318,29 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 		expect(addJob).toHaveBeenCalledWith(
 			expect.any(Object),
-			expect.objectContaining({ priority: 1 }),
+			expect.objectContaining({ priority: expected }),
 		);
 	});
 
-	it('should map queuePriority medium -> priority 50', async () => {
+	it('should fallback to realtime mapping when queuePriority has an unknown value', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		jest.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: { nodes: [], settings: { queuePriority: 'medium' } },
+			// @ts-expect-error simulate invalid string coming from an external client
+			workflowData: { nodes: [], settings: { queuePriority: 'High' } },
 			executionData: undefined,
 		});
 		const error = new Error('stop for test purposes');
 		addJob.mockRejectedValueOnce(error);
+		// When realtime is truthy, fallback should be 50
 		// @ts-expect-error Private method
-		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+		await expect(
+			runner.enqueueExecution('1', 'workflow-xyz', data, undefined, true),
+		).rejects.toThrowError(error);
 		expect(addJob).toHaveBeenCalledWith(
 			expect.any(Object),
 			expect.objectContaining({ priority: 50 }),
-		);
-	});
-
-	it('should map queuePriority low -> priority 100', async () => {
-		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
-		jest.spyOn(runner, 'processError').mockResolvedValue();
-		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: { nodes: [], settings: { queuePriority: 'low' } },
-			executionData: undefined,
-		});
-		const error = new Error('stop for test purposes');
-		addJob.mockRejectedValueOnce(error);
-		// @ts-expect-error Private method
-		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
-		expect(addJob).toHaveBeenCalledWith(
-			expect.any(Object),
-			expect.objectContaining({ priority: 100 }),
 		);
 	});
 
