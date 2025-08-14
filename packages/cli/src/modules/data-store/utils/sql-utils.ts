@@ -205,7 +205,7 @@ export function toTableName(dataStoreId: string): DataStoreUserTableName {
 	return `data_store_user_${dataStoreId}`;
 }
 
-export function normalizeRows(rows: Array<Record<string, unknown>>, columns: DataStoreColumn[]) {
+export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 	const typeMap = new Map(columns.map((col) => [col.name, col.type]));
 	return rows.map((row) => {
 		const normalized = { ...row };
