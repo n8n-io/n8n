@@ -1,20 +1,20 @@
-import { test, expect } from '../../fixtures/base';
 import type { Page } from '@playwright/test';
 
+import { test, expect } from '../../fixtures/base';
+import type { ApiHelpers } from '../../services/api-helper';
+
 test.describe('Security Notifications', () => {
-	// Helper function to setup version notification settings
-	async function setupVersionNotificationSettings(page: Page, enabled = true) {
-		await page.route('**/rest/settings', async (route) => {
-			const response = await route.fetch();
-			const settings = await response.json();
-			settings.versionNotifications = {
-				enabled,
-				endpoint: 'https://test.api.n8n.io/api/versions/',
-				whatsNewEnabled: enabled,
-				whatsNewEndpoint: 'https://test.api.n8n.io/api/whats-new',
-				infoUrl: 'https://test.docs.n8n.io/hosting/installation/updating/',
-			};
-			await route.fulfill({ json: settings });
+	// Helper function to setup version notification settings via environment variables
+	async function setupVersionNotificationSettings(
+		api: ApiHelpers,
+		{ enabled }: { enabled: boolean } = { enabled: true },
+	) {
+		await api.setEnvFeatureFlags({
+			N8N_VERSION_NOTIFICATIONS_ENABLED: enabled.toString(),
+			N8N_VERSION_NOTIFICATIONS_ENDPOINT: 'https://test.api.n8n.io/api/versions/',
+			N8N_VERSION_NOTIFICATIONS_WHATS_NEW_ENABLED: enabled.toString(),
+			N8N_VERSION_NOTIFICATIONS_WHATS_NEW_ENDPOINT: 'https://test.api.n8n.io/api/whats-new',
+			N8N_VERSION_NOTIFICATIONS_INFO_URL: 'https://test.docs.n8n.io/hosting/installation/updating/',
 		});
 	}
 
@@ -82,141 +82,145 @@ test.describe('Security Notifications', () => {
 		});
 	}
 
-	test.beforeEach(async ({ n8n }) => {
-		await n8n.goHome();
-	});
-
-	test('should display security notification with correct messaging and styling', async ({
-		page,
-		n8n,
-	}) => {
-		// Setup enabled notifications and security issue without specific fix version
-		await setupVersionNotificationSettings(page, true);
-		await setupVersionsApiMock(page, { hasSecurityIssue: true, hasSecurityFix: true });
-
-		// Reload to trigger version check
-		await page.reload();
-		await page.waitForLoadState('networkidle');
-
-		// Verify security notification appears with default message
-		const notification = n8n.notifications.notificationContainerByText('Critical update available');
-		await expect(notification).toBeVisible();
-		await expect(notification).toContainText('Please update to latest version.');
-		await expect(notification).toContainText('More info');
-
-		// Verify warning styling
-		await expect(notification.locator('.el-notification--warning')).toBeVisible();
-
-		// Close the notification
-		await n8n.notifications.closeNotificationByText('Critical update available');
-
-		// Now test with specific fix version
-		await setupVersionsApiMock(page, {
-			hasSecurityIssue: true,
-			hasSecurityFix: true,
-			securityIssueFixVersion: 'useNextPatch',
+	test.describe('Notifications disabled', () => {
+		test.beforeEach(async ({ api }) => {
+			// Test notifications disabled
+			await setupVersionNotificationSettings(api, { enabled: false });
 		});
 
-		// Reload to trigger new version check with fix version
-		await page.reload();
-		await page.waitForLoadState('networkidle');
+		test('should not display security notification when disabled', async ({ page, n8n, api }) => {
+			// Even with security issue in API, notification shouldn't show when disabled
+			await setupVersionsApiMock(page, { hasSecurityIssue: true });
 
-		// Verify notification shows specific fix version (dynamically generated)
-		const notificationWithFixVersion = n8n.notifications.notificationContainerByText(
-			'Critical update available',
-		);
-		await expect(notificationWithFixVersion).toBeVisible();
-		await expect(notificationWithFixVersion).toContainText('Please update to version');
-		await expect(notificationWithFixVersion).toContainText('or higher.');
+			await n8n.goHome();
 
-		// Verify notification persists (doesn't auto-close)
-		await page.waitForTimeout(3000);
-		await expect(notificationWithFixVersion).toBeVisible();
+			// Wait a moment for any potential notifications to appear
+			await page.waitForTimeout(1000);
+
+			// Verify no security notification appears when disabled
+			const notification = n8n.notifications.notificationContainerByText(
+				'Critical update available',
+			);
+			await expect(notification).not.toBeVisible();
+		});
 	});
 
-	test('should open versions modal when clicking security notification', async ({ page, n8n }) => {
-		// Setup enabled notifications and security issue with fix version
-		await setupVersionNotificationSettings(page, true);
-		await setupVersionsApiMock(page, {
-			hasSecurityIssue: true,
-			hasSecurityFix: true,
-			securityIssueFixVersion: 'useNextPatch',
+	test.describe('Notifications enabled', () => {
+		test.beforeEach(async ({ api }) => {
+			await setupVersionNotificationSettings(api, { enabled: true });
 		});
 
-		await page.reload();
-		await page.waitForLoadState('networkidle');
+		test('should display security notification with correct messaging and styling', async ({
+			page,
+			n8n,
+		}) => {
+			await setupVersionsApiMock(page, { hasSecurityIssue: true, hasSecurityFix: true });
 
-		// Wait for and click the security notification
-		const notification = n8n.notifications.notificationContainerByText('Critical update available');
-		await expect(notification).toBeVisible();
-		await notification.click();
+			// Reload to trigger version check
+			await n8n.goHome();
 
-		// Verify versions modal opens
-		const versionsModal = page.locator('[data-test-id="version-updates-panel"]');
-		await expect(versionsModal).toBeVisible();
+			// Verify security notification appears with default message
+			const notification = n8n.notifications.notificationContainerByText(
+				'Critical update available',
+			);
+			await expect(notification).toBeVisible();
+			await expect(notification).toContainText('Please update to latest version.');
+			await expect(notification).toContainText('More info');
 
-		// Verify security update badge exists for the new version
-		const versionCard = versionsModal.locator('[data-test-id="version-card"]').first();
-		const securityBadge = versionCard.locator('.el-tag--danger').getByText('Security update');
-		await expect(securityBadge).toBeVisible();
-	});
+			// Verify warning styling
+			await expect(notification.locator('.el-notification--warning')).toBeVisible();
 
-	test('should not display security notification when disabled or no security issue', async ({
-		page,
-		n8n,
-		api,
-	}) => {
-		// N8N_VERSION_NOTIFICATIONS_ENABLED
-		await api.setEnvFeatureFlags({
-			N8N_VERSION_NOTIFICATIONS_ENABLED: 'true',
+			// Close the notification
+			await n8n.notifications.closeNotificationByText('Critical update available');
+
+			// Now test with specific fix version
+			await setupVersionsApiMock(page, {
+				hasSecurityIssue: true,
+				hasSecurityFix: true,
+				securityIssueFixVersion: 'useNextPatch',
+			});
+
+			// Reload to trigger new version check with fix version
+			await n8n.goHome();
+
+			// Verify notification shows specific fix version (dynamically generated)
+			const notificationWithFixVersion = n8n.notifications.notificationContainerByText(
+				'Critical update available',
+			);
+			await expect(notificationWithFixVersion).toBeVisible();
+			await expect(notificationWithFixVersion).toContainText('Please update to version');
+			await expect(notificationWithFixVersion).toContainText('or higher.');
+
+			// Verify notification persists (doesn't auto-close)
+			await page.waitForTimeout(3000);
+			await expect(notificationWithFixVersion).toBeVisible();
 		});
 
-		await page.reload();
-		await page.waitForLoadState('networkidle');
+		test('should open versions modal when clicking security notification', async ({
+			page,
+			n8n,
+			api,
+		}) => {
+			await setupVersionsApiMock(page, {
+				hasSecurityIssue: true,
+				hasSecurityFix: true,
+				securityIssueFixVersion: 'useNextPatch',
+			});
 
-		// Wait a moment for any potential notifications to appear
-		await page.waitForTimeout(1000);
+			await n8n.goHome();
 
-		// Verify no security notification appears when disabled
-		const notification = n8n.notifications.notificationContainerByText('Critical update available');
-		await expect(notification).not.toBeVisible();
-	});
+			// Wait for and click the security notification
+			const notification = n8n.notifications.notificationContainerByText(
+				'Critical update available',
+			);
+			await expect(notification).toBeVisible();
+			await notification.click();
 
-	test('should not display security notification when theres no security issue', async ({
-		page,
-		n8n,
-		api,
-	}) => {
-		await setupVersionNotificationSettings(page, true);
-		await setupVersionsApiMock(page, { hasSecurityIssue: false });
+			// Verify versions modal opens
+			const versionsModal = page.locator('[data-test-id="version-updates-panel"]');
+			await expect(versionsModal).toBeVisible();
 
-		await page.reload();
-		await page.waitForLoadState('networkidle');
+			// Verify security update badge exists for the new version
+			const versionCard = versionsModal.locator('[data-test-id="version-card"]').first();
+			const securityBadge = versionCard.locator('.el-tag--danger').getByText('Security update');
+			await expect(securityBadge).toBeVisible();
+		});
 
-		// Wait a moment for any potential notifications to appear
-		await page.waitForTimeout(1000);
+		test('should not display security notification when theres no security issue', async ({
+			page,
+			n8n,
+		}) => {
+			await setupVersionsApiMock(page, { hasSecurityIssue: false });
 
-		// Verify no security notification appears when no security issue (create fresh locator)
-		const notification = n8n.notifications.notificationContainerByText('Critical update available');
-		await expect(notification).not.toBeVisible();
-	});
+			await n8n.goHome();
 
-	test('should handle API failure gracefully', async ({ page, n8n }) => {
-		// Enable notifications but mock API failure
-		await setupVersionNotificationSettings(page, true);
-		await setupApiFailure(page);
+			// Wait a moment for any potential notifications to appear
+			await page.waitForTimeout(1000);
 
-		await page.reload();
-		await page.waitForLoadState('networkidle');
+			// Verify no security notification appears when no security issue
+			const notification = n8n.notifications.notificationContainerByText(
+				'Critical update available',
+			);
+			await expect(notification).not.toBeVisible();
+		});
 
-		// Wait a bit for any potential notifications
-		await page.waitForTimeout(2000);
+		test('should handle API failure gracefully', async ({ page, n8n }) => {
+			// Enable notifications but mock API failure
+			await setupApiFailure(page);
 
-		// Verify no security notification appears on API failure
-		const notification = n8n.notifications.notificationContainerByText('Critical update available');
-		await expect(notification).not.toBeVisible();
+			await n8n.goHome();
 
-		// Verify the app still functions normally
-		await expect(page.locator('[data-test-id="new-workflow-card"]')).toBeVisible();
+			// Wait a bit for any potential notifications
+			await page.waitForTimeout(2000);
+
+			// Verify no security notification appears on API failure
+			const notification = n8n.notifications.notificationContainerByText(
+				'Critical update available',
+			);
+			await expect(notification).not.toBeVisible();
+
+			// Verify the app still functions normally
+			await expect(page.locator('[data-test-id="new-workflow-card"]')).toBeVisible();
+		});
 	});
 });
