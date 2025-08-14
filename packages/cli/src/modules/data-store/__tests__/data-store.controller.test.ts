@@ -118,7 +118,6 @@ describe('POST /projects/:projectId/data-stores', () => {
 	});
 
 	test("should not create data store in another user's personal project", async () => {
-		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const payload = {
 			name: 'Test Data Store',
 			columns: [
@@ -130,7 +129,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 		};
 
 		await authMemberAgent
-			.post(`/projects/${ownerPersonalProject.id}/data-stores`)
+			.post(`/projects/${ownerProject.id}/data-stores`)
 			.send(payload)
 			.expect(403);
 	});
@@ -156,6 +155,26 @@ describe('POST /projects/:projectId/data-stores', () => {
 	});
 
 	test('should create data store if user has project:admin role in team project', async () => {
+		const project = await createTeamProject(undefined, owner);
+		await linkUserToProject(admin, project, 'project:admin');
+
+		const payload = {
+			name: 'Test Data Store',
+			columns: [
+				{
+					name: 'test-ccolumn',
+					type: 'string',
+				},
+			],
+		};
+
+		await authAdminAgent.post(`/projects/${project.id}/data-stores`).send(payload).expect(200);
+
+		const dataStoresInDb = await dataStoreRepository.find();
+		expect(dataStoresInDb).toHaveLength(1);
+	});
+
+	test('should create data store if user is owner in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 
 		const payload = {
@@ -552,15 +571,14 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId', () => {
 	});
 
 	test("should not update data store in another user's personal project", async () => {
-		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
-		const dataStore = await createDataStore(ownerPersonalProject, { name: 'Original Name' });
+		const dataStore = await createDataStore(ownerProject, { name: 'Original Name' });
 
 		const payload = {
 			name: 'Updated Data Store Name',
 		};
 
 		await authMemberAgent
-			.patch(`/projects/${ownerPersonalProject.id}/data-stores/${dataStore.id}`)
+			.patch(`/projects/${ownerProject.id}/data-stores/${dataStore.id}`)
 			.send(payload)
 			.expect(403);
 
@@ -587,6 +605,24 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId', () => {
 	});
 
 	test('should update data store if user has project:admin role in team project', async () => {
+		const project = await createTeamProject(undefined, owner);
+		const dataStore = await createDataStore(project, { name: 'Original Name' });
+		await linkUserToProject(admin, project, 'project:admin');
+
+		const payload = {
+			name: 'Updated Data Store Name',
+		};
+
+		await authAdminAgent
+			.patch(`/projects/${project.id}/data-stores/${dataStore.id}`)
+			.send(payload)
+			.expect(200);
+
+		const dataStoreInDb = await dataStoreRepository.findOneBy({ id: dataStore.id });
+		expect(dataStoreInDb?.name).toBe('Updated Data Store Name');
+	});
+
+	test('should update data store if user is owner in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const dataStore = await createDataStore(project, { name: 'Original Name' });
 
@@ -653,11 +689,10 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 	});
 
 	test("should not delete data store in another user's personal project", async () => {
-		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
-		const dataStore = await createDataStore(ownerPersonalProject);
+		const dataStore = await createDataStore(ownerProject);
 
 		await authMemberAgent
-			.delete(`/projects/${ownerPersonalProject.id}/data-stores/${dataStore.id}`)
+			.delete(`/projects/${ownerProject.id}/data-stores/${dataStore.id}`)
 			.send({})
 			.expect(403);
 
@@ -680,6 +715,20 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 	});
 
 	test('should delete data store if user has project:admin role in team project', async () => {
+		const project = await createTeamProject(undefined, owner);
+		const dataStore = await createDataStore(project);
+		await linkUserToProject(admin, project, 'project:admin');
+
+		await authAdminAgent
+			.delete(`/projects/${project.id}/data-stores/${dataStore.id}`)
+			.send({})
+			.expect(200);
+
+		const dataStoreInDb = await dataStoreRepository.findOneBy({ id: dataStore.id });
+		expect(dataStoreInDb).toBeNull();
+	});
+
+	test('should delete data store if user is owner in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const dataStore = await createDataStore(project);
 
@@ -894,8 +943,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 	});
 
 	test("should not create column in another user's personal project data store", async () => {
-		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
-		const dataStore = await createDataStore(ownerPersonalProject, {
+		const dataStore = await createDataStore(ownerProject, {
 			columns: [
 				{
 					name: 'test-column',
@@ -905,7 +953,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		});
 
 		await authMemberAgent
-			.post(`/projects/${ownerPersonalProject.id}/data-stores/${dataStore.id}/columns`)
+			.post(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns`)
 			.send({
 				name: 'new-column',
 				type: 'string',
@@ -919,8 +967,8 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 
 	test('should not create column if user has project:viewer role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
-		const dataStore = await createDataStore(project);
 		await linkUserToProject(member, project, 'project:viewer');
+		const dataStore = await createDataStore(project);
 
 		const payload = {
 			name: 'test-column',
@@ -938,6 +986,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 
 	test('should create column if user has project:editor role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
+		await linkUserToProject(member, project, 'project:editor');
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
@@ -946,7 +995,6 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 				},
 			],
 		});
-		await linkUserToProject(member, project, 'project:editor');
 
 		const payload = {
 			name: 'new-column',
@@ -966,6 +1014,37 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 	});
 
 	test('should create column if user has project:admin role in team project', async () => {
+		const project = await createTeamProject(undefined, owner);
+		await linkUserToProject(admin, project, 'project:admin');
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'test-column',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			name: 'new-column',
+			type: 'boolean',
+			index: 0,
+		};
+
+		await authAdminAgent
+			.post(`/projects/${project.id}/data-stores/${dataStore.id}/columns`)
+			.send(payload)
+			.expect(200);
+
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		expect(columnsInDb).toHaveLength(2);
+		expect(columnsInDb[0].name).toBe('new-column');
+		expect(columnsInDb[0].type).toBe('boolean');
+		expect(columnsInDb[1].name).toBe('test-column');
+		expect(columnsInDb[1].type).toBe('string');
+	});
+
+	test('should create column if user has is owner in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
 		const dataStore = await createDataStore(project, {
 			columns: [
@@ -1065,8 +1144,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 	});
 
 	test("should not delete column in another user's personal project data store", async () => {
-		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
-		const dataStore = await createDataStore(ownerPersonalProject, {
+		const dataStore = await createDataStore(ownerProject, {
 			columns: [
 				{
 					name: 'test-column',
@@ -1076,9 +1154,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		});
 
 		await authMemberAgent
-			.delete(
-				`/projects/${ownerPersonalProject.id}/data-stores/${dataStore.id}/columns/test-column`,
-			)
+			.delete(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns/test-column`)
 			.send()
 			.expect(403);
 
@@ -1142,6 +1218,32 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 
 	test('should delete column if user has project:admin role in team project', async () => {
 		const project = await createTeamProject(undefined, owner);
+		await linkUserToProject(admin, project, 'project:admin');
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'test-column',
+					type: 'string',
+				},
+			],
+		});
+
+		await authAdminAgent
+			.delete(
+				`/projects/${project.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}`,
+			)
+			.send()
+			.expect(200);
+
+		const columnInDb = await dataStoreColumnRepository.findOneBy({
+			dataStoreId: dataStore.id,
+			name: 'test-column',
+		});
+		expect(columnInDb).toBeNull();
+	});
+
+	test('should delete column if user is owner in team project', async () => {
+		const project = await createTeamProject(undefined, owner);
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
@@ -1190,10 +1292,942 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 	});
 });
 
-describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/move', () => {});
+describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/move', () => {
+	test('should not move column when project does not exist', async () => {
+		const payload = {
+			index: 1,
+		};
 
-describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {});
+		await authOwnerAgent
+			.patch('/projects/non-existing-id/data-stores/some-data-store-id/columns/some-column-id/move')
+			.send(payload)
+			.expect(403);
+	});
 
-describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {});
+	test('should not move column when data store does not exist', async () => {
+		const project = await createTeamProject('test project', owner);
+		const payload = {
+			targetIndex: 1,
+		};
 
-describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {});
+		await authOwnerAgent
+			.patch(
+				`/projects/${project.id}/data-stores/non-existing-data-store/columns/some-column-id/move`,
+			)
+			.send(payload)
+			.expect(404);
+	});
+
+	test('should not move column when column does not exist', async () => {
+		const project = await createTeamProject('test project', owner);
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'test-column',
+					type: 'string',
+				},
+			],
+		});
+		const payload = {
+			targetIndex: 1,
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${project.id}/data-stores/${dataStore.id}/columns/some-column-id/move`)
+			.send(payload)
+			.expect(404);
+	});
+
+	test("should not move column in another user's personal project data store", async () => {
+		const dataStore = await createDataStore(ownerProject, {
+			columns: [
+				{
+					name: 'test-column',
+					type: 'string',
+				},
+				{
+					name: 'another-column',
+					type: 'string',
+				},
+			],
+		});
+
+		await authMemberAgent
+			.patch(
+				`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
+			)
+			.send({ targetIndex: 1 })
+			.expect(403);
+
+		const columnInDb = await dataStoreColumnRepository.findOneBy({
+			dataStoreId: dataStore.id,
+			name: 'test-column',
+			index: 0,
+		});
+		expect(columnInDb).toBeDefined();
+	});
+
+	test('should not move column if user has project:viewer role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'test-column',
+					type: 'string',
+				},
+				{
+					name: 'another-column',
+					type: 'string',
+				},
+			],
+		});
+
+		await authMemberAgent
+			.patch(
+				`/projects/${project.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
+			)
+			.send({ targetIndex: 1 })
+			.expect(403);
+
+		const columnInDb = await dataStoreColumnRepository.findOneBy({
+			dataStoreId: dataStore.id,
+			name: 'test-column',
+			index: 0,
+		});
+		expect(columnInDb).toBeDefined();
+	});
+
+	test('should move column if user has project:editor role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:editor');
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'test-column',
+					type: 'string',
+				},
+				{
+					name: 'another-column',
+					type: 'string',
+				},
+			],
+		});
+
+		await authMemberAgent
+			.patch(
+				`/projects/${project.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
+			)
+			.send({ targetIndex: 1 })
+			.expect(200);
+
+		const columnInDb = await dataStoreColumnRepository.findOneBy({
+			dataStoreId: dataStore.id,
+			name: 'test-column',
+			index: 1,
+		});
+		expect(columnInDb).toBeDefined();
+	});
+
+	test('should move column if user has project:admin role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(admin, project, 'project:admin');
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'test-column',
+					type: 'string',
+				},
+				{
+					name: 'another-column',
+					type: 'string',
+				},
+			],
+		});
+
+		await authAdminAgent
+			.patch(
+				`/projects/${project.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
+			)
+			.send({ targetIndex: 1 })
+			.expect(200);
+
+		const columnInDb = await dataStoreColumnRepository.findOneBy({
+			dataStoreId: dataStore.id,
+			name: 'test-column',
+			index: 1,
+		});
+		expect(columnInDb).toBeDefined();
+	});
+
+	test('should move column if user is owner in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'test-column',
+					type: 'string',
+				},
+				{
+					name: 'another-column',
+					type: 'string',
+				},
+			],
+		});
+
+		await authOwnerAgent
+			.patch(
+				`/projects/${project.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
+			)
+			.send({ targetIndex: 1 })
+			.expect(200);
+
+		const columnInDb = await dataStoreColumnRepository.findOneBy({
+			dataStoreId: dataStore.id,
+			name: 'test-column',
+			index: 1,
+		});
+		expect(columnInDb).toBeDefined();
+	});
+
+	test('should move column in personal project', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'test-column',
+					type: 'string',
+				},
+				{
+					name: 'another-column',
+					type: 'string',
+				},
+			],
+		});
+
+		await authMemberAgent
+			.patch(
+				`/projects/${memberProject.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
+			)
+			.send({ targetIndex: 1 })
+			.expect(200);
+
+		const columnInDb = await dataStoreColumnRepository.findOneBy({
+			dataStoreId: dataStore.id,
+			name: 'test-column',
+			index: 1,
+		});
+		expect(columnInDb).toBeDefined();
+	});
+});
+
+describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
+	test('should not list rows when project does not exist', async () => {
+		await authOwnerAgent
+			.get('/projects/non-existing-id/data-stores/some-data-store-id/rows')
+			.expect(403);
+	});
+
+	test('should not list rows when data store does not exist', async () => {
+		const project = await createTeamProject('test project', owner);
+		await authOwnerAgent
+			.get(`/projects/${project.id}/data-stores/non-existing-id/rows`)
+			.expect(404);
+	});
+
+	test("should not list rows in another user's personal project data store", async () => {
+		const dataStore = await createDataStore(ownerProject, {
+			columns: [
+				{
+					name: 'test-column',
+					type: 'string',
+				},
+				{
+					name: 'another-column',
+					type: 'string',
+				},
+			],
+		});
+
+		await authMemberAgent
+			.get(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(403);
+	});
+
+	test('should list rows if user has project:viewer role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		});
+
+		const response = await authMemberAgent
+			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			count: 1,
+			data: [
+				{
+					id: 1,
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		});
+	});
+
+	test('should list rows if user has project:editor role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:editor');
+
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		});
+
+		const response = await authMemberAgent
+			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			count: 1,
+			data: [
+				{
+					id: 1,
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		});
+	});
+
+	test('should list rows if user has project:admin role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(admin, project, 'project:admin');
+
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		});
+
+		const response = await authAdminAgent
+			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			count: 1,
+			data: [
+				{
+					id: 1,
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		});
+	});
+
+	test('should list rows in personal project', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		});
+
+		const response = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			count: 1,
+			data: [
+				{
+					id: 1,
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		});
+	});
+});
+
+describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
+	test('should not insert rows when project does not exist', async () => {
+		const payload = {
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		};
+
+		await authOwnerAgent
+			.post('/projects/non-existing-id/data-stores/some-data-store-id/insert')
+			.send(payload)
+			.expect(403);
+	});
+
+	test('should not insert rows when data store does not exist', async () => {
+		const project = await createTeamProject('test project', owner);
+		const payload = {
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		};
+
+		await authOwnerAgent
+			.post(`/projects/${project.id}/data-stores/non-existing-id/insert`)
+			.send(payload)
+			.expect(404);
+	});
+
+	test("should not insert rows in another user's personal project data store", async () => {
+		const dataStore = await createDataStore(ownerProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(403);
+	});
+
+	test('should not insert rows if user has project:viewer role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${project.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(403);
+	});
+
+	test('should insert rows if user has project:editor role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:editor');
+
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${project.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
+	});
+
+	test('should insert rows if user has project:admin role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(admin, project, 'project:admin');
+
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		};
+
+		await authAdminAgent
+			.post(`/projects/${project.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
+	});
+
+	test('should insert rows in personal project', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
+	});
+
+	test('should not insert rows when column does not exist', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					first: 'test value',
+					nonexisting: 'this does not exist',
+				},
+			],
+		};
+
+		const response = await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(500);
+
+		expect(response.body.message).toContain('unknown column');
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(0);
+	});
+});
+
+describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
+	test('should not upsert rows when project does not exist', async () => {
+		const payload = {
+			rows: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+			matchFields: ['first', 'second'],
+		};
+
+		await authOwnerAgent
+			.post('/projects/non-existing-id/data-stores/some-data-store-id/upsert')
+			.send(payload)
+			.expect(403);
+	});
+
+	test('should not upsert rows when data store does not exist', async () => {
+		const project = await createTeamProject('test project', owner);
+		const payload = {
+			rows: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+			matchFields: ['first', 'second'],
+		};
+
+		await authOwnerAgent
+			.post(`/projects/${project.id}/data-stores/non-existing-id/upsert`)
+			.send(payload)
+			.expect(404);
+	});
+
+	test("should not upsert rows in another user's personal project data store", async () => {
+		const dataStore = await createDataStore(ownerProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			rows: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+			matchFields: ['first', 'second'],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/upsert`)
+			.send(payload)
+			.expect(403);
+	});
+
+	test('should not upsert rows if user has project:viewer role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			rows: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+			matchFields: ['first', 'second'],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${project.id}/data-stores/${dataStore.id}/upsert`)
+			.send(payload)
+			.expect(403);
+	});
+
+	test('should upsert rows if user has project:editor role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:editor');
+
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			rows: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+			matchFields: ['first', 'second'],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${project.id}/data-stores/${dataStore.id}/upsert`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
+	});
+
+	test('should upsert rows if user has project:admin role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(admin, project, 'project:admin');
+
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			rows: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+			matchFields: ['first', 'second'],
+		};
+
+		await authAdminAgent
+			.post(`/projects/${project.id}/data-stores/${dataStore.id}/upsert`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
+	});
+
+	test('should upsert rows in personal project', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			rows: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+			matchFields: ['first', 'second'],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
+	});
+
+	test('should not upsert rows when column does not exist', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			rows: [
+				{
+					first: 'test value',
+					nonexisting: 'this does not exist',
+				},
+			],
+			matchFields: ['first', 'second'],
+		};
+
+		const response = await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
+			.send(payload)
+			.expect(500);
+
+		expect(response.body.message).toContain('unknown column');
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(0);
+	});
+
+	test('should update existing matched fields and insert new ones', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test row',
+					second: 'test value',
+				},
+				{
+					first: 'test row',
+					second: 'another row with same first column',
+				},
+			],
+		});
+
+		const payload = {
+			rows: [
+				{
+					first: 'test row',
+					second: 'updated value',
+				},
+				{
+					first: 'new row',
+					second: 'new value',
+				},
+			],
+			matchFields: ['first'],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(3);
+		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
+		expect(rowsInDb.data[1]).toMatchObject(payload.rows[0]);
+		expect(rowsInDb.data[2]).toMatchObject(payload.rows[1]);
+	});
+});
