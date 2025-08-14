@@ -97,6 +97,7 @@ watchOnce(isVisible, (visible) => {
 			:is-read-only="isReadOnly"
 			:sub-title="subTitle"
 			:input-node-name="expressionResolveCtx?.inputNode?.name"
+			is-embedded-in-canvas
 		>
 			<template #actions>
 				<ExperimentalEmbeddedNdvActions

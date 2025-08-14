@@ -32,6 +32,9 @@ import { useThrottleFn } from '@vueuse/core';
 import { useStyles } from '@/composables/useStyles';
 import { useExecutionData } from '@/composables/useExecutionData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import ExperimentalNodeDetailsDrawer from '@/components/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useUIStore } from '@/stores/ui.store';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -56,6 +59,8 @@ const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
+const experimentalNdvStore = useExperimentalNdvStore();
+const uiStore = useUIStore();
 const deviceSupport = useDeviceSupport();
 const styles = useStyles();
 
@@ -275,6 +280,11 @@ function optionSelected(command: string) {
 }
 
 function closeFocusPanel() {
+	if (experimentalNdvStore.isNdvInFocusPanelEnabled && resolvedParameter.value) {
+		focusPanelStore.unsetParameters();
+		return;
+	}
+
 	telemetry.track('User closed focus panel', {
 		source: 'closeIcon',
 		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
@@ -367,7 +377,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			:style="{ width: `${focusPanelWidth}px`, zIndex: styles.APP_Z_INDEXES.FOCUS_PANEL }"
 			@resize="onResizeThrottle"
 		>
-			<div :class="$style.container">
+			<ExperimentalNodeDetailsDrawer
+				v-if="
+					experimentalNdvStore.isNdvInFocusPanelEnabled &&
+					!resolvedParameter &&
+					uiStore.lastSelectedNode
+				"
+			/>
+			<div v-else :class="$style.container">
 				<div v-if="resolvedParameter" :class="$style.content">
 					<div :class="$style.tabHeader">
 						<div :class="$style.tabHeaderText">
