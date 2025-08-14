@@ -185,7 +185,7 @@ test.describe('Security Notifications', () => {
 			await expect(versionsModal).toBeVisible();
 
 			// Verify security update badge exists for the new version
-			const versionCard = versionsModal.locator('[data-test-id="version-card"]').first();
+			const versionCard = n8n.versions.getVersionCard().first();
 			const securityBadge = versionCard.locator('.el-tag--danger').getByText('Security update');
 			await expect(securityBadge).toBeVisible();
 		});
@@ -197,9 +197,6 @@ test.describe('Security Notifications', () => {
 			await setupVersionsApiMock(page, { hasSecurityIssue: false });
 
 			await n8n.goHome();
-
-			// Wait a moment for any potential notifications to appear
-			await page.waitForTimeout(1000);
 
 			// Verify no security notification appears when no security issue
 			const notification = n8n.notifications.notificationContainerByText(
@@ -214,9 +211,6 @@ test.describe('Security Notifications', () => {
 
 			await n8n.goHome();
 
-			// Wait a bit for any potential notifications
-			await page.waitForTimeout(1000);
-
 			// Verify no security notification appears on API failure
 			const notification = n8n.notifications.notificationContainerByText(
 				'Critical update available',
@@ -224,7 +218,7 @@ test.describe('Security Notifications', () => {
 			await expect(notification).toBeHidden();
 
 			// Verify the app still functions normally
-			await expect(page.locator('[data-test-id="project-name"]')).toBeVisible();
+			await expect(n8n.workflows.getProjectName()).toBeVisible();
 		});
 	});
 });
