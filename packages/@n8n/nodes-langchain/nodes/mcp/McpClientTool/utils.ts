@@ -77,7 +77,8 @@ export const getErrorDescriptionFromToolCall = (result: unknown): string | undef
 };
 
 export const createCallTool =
-	(name: string, client: Client, timeout: number, onError: (error: string) => void) => async (args: IDataObject) => {
+	(name: string, client: Client, timeout: number, onError: (error: string) => void) => 
+	async (args: IDataObject) => {
 		let result: Awaited<ReturnType<Client['callTool']>>;
 
 		function handleError(error: unknown) {
