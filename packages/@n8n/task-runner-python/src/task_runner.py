@@ -80,8 +80,6 @@ class TaskRunner:
 
             logger.info(f"Connected to task broker at {self.ws_url}")
 
-            self.cleanup_coroutine = asyncio.create_task(self._cleanup_expired_offers())
-
             await self._listen_for_messages()
 
         except Exception as e:
@@ -93,13 +91,11 @@ class TaskRunner:
 
         if self.offers_coroutine:
             self.offers_coroutine.cancel()
-        if self.cleanup_coroutine:
-            self.cleanup_coroutine.cancel()
 
         if self.websocket:
             await self.websocket.close()
 
-    # ========== Loops ==========
+    # ========== Offers ==========
 
     async def _send_offers_loop(self) -> None:
         while self.can_send_offers:
@@ -115,6 +111,13 @@ class TaskRunner:
     async def _send_offers(self) -> None:
         if not self.can_send_offers:
             return
+
+        expired_offer_ids = [
+            offer_id for offer_id, offer in self.open_offers.items() if offer.is_expired
+        ]
+
+        for offer_id in expired_offer_ids:
+            del self.open_offers[offer_id]
 
         total_capacity = len(self.open_offers) + len(self.running_tasks)
         offers_to_send = self.max_concurrency - total_capacity
@@ -134,29 +137,6 @@ class TaskRunner:
             )
 
             await self._send_message(message)
-
-    async def _cleanup_expired_offers(self) -> None:
-        while True:
-            try:
-                expired_offer_ids = [
-                    offer_id
-                    for offer_id, offer in self.open_offers.items()
-                    if offer.is_expired
-                ]
-
-                for offer_id in expired_offer_ids:
-                    del self.open_offers[offer_id]
-
-                if expired_offer_ids:
-                    logger.debug(f"Cleaned up {len(expired_offer_ids)} expired offers")
-
-                await asyncio.sleep(1)
-
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f"Error cleaning up expired offers: {e}")
-                await asyncio.sleep(1)
 
     # ========== Messages ==========
 
