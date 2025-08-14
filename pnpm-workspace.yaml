@@ -24,6 +24,7 @@ catalog:
   axios: 1.8.3
   basic-auth: 2.0.1
   callsites: 3.1.0
+  chokidar: 4.0.3
   fast-glob: 3.2.12
   flatted: 3.2.7
   form-data: 4.0.0
