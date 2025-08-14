@@ -18,7 +18,6 @@ import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-ty
 import { N8nBadge, N8nButton, N8nHeading, N8nInfoTip, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { createEventBus } from '@n8n/utils/event-bus';
 import dateformat from 'dateformat';
 import orderBy from 'lodash/orderBy';
 import { computed, onBeforeMount, onMounted, ref } from 'vue';
@@ -48,6 +47,7 @@ const isLoading = ref(false);
 // Load fresh source control status when modal opens
 async function loadSourceControlStatus() {
 	if (isLoading.value) return;
+
 	isLoading.value = true;
 	loadingService.startLoading();
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
@@ -82,18 +82,10 @@ const activeTab = ref<
 	typeof SOURCE_CONTROL_FILE_TYPE.workflow | typeof SOURCE_CONTROL_FILE_TYPE.credential
 >(SOURCE_CONTROL_FILE_TYPE.workflow);
 
-// Group files by type with project information
-const filesWithProjects = computed(() =>
-	(props.data.status ?? []).map((file) => {
-		const project = projectsStore.availableProjects.find(({ id }) => id === file.owner?.projectId);
-		return { ...file, project };
-	}),
-);
-
 const groupedFilesByType = computed(() => {
 	const grouped: Partial<Record<SourceControlledFileType, SourceControlledFileWithProject[]>> = {};
 
-	filesWithProjects.value.forEach((file) => {
+	status.value.forEach((file) => {
 		if (!grouped[file.type]) {
 			grouped[file.type] = [];
 		}
@@ -196,9 +188,9 @@ async function pullWorkfolder() {
 	close();
 
 	try {
-		const status = await sourceControlStore.pullWorkfolder(true);
+		const pullStatus = await sourceControlStore.pullWorkfolder(true);
 
-		await notifyUserAboutPullWorkFolderOutcome(status, toast);
+		await notifyUserAboutPullWorkFolderOutcome(pullStatus, toast);
 
 		sourceControlEventBus.emit('pull');
 	} catch (error) {
@@ -221,8 +213,6 @@ function renderUpdatedAt(file: SourceControlledFile) {
 		},
 	});
 }
-
-const workflowDiffEventBus = createEventBus();
 
 function openDiffModal(id: string) {
 	telemetry.track('User clicks compare workflows', {
@@ -258,11 +248,13 @@ onMounted(() => {
 
 <template>
 	<Modal
+		v-if="!isLoading"
 		width="812px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
 		:height="modalHeight"
 		:custom-class="$style.sourceControlPull"
+		:before-close="close"
 	>
 		<template #header>
 			<N8nHeading tag="h1" size="xlarge">
@@ -272,7 +264,6 @@ onMounted(() => {
 			<div :class="[$style.filtersRow]" class="mt-l">
 				<N8nText tag="div" class="mb-xs">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.description') }}
-					<br />
 					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
 						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
 					</N8nLink>
@@ -280,16 +271,7 @@ onMounted(() => {
 			</div>
 		</template>
 		<template #content>
-			<div v-if="!tabs.some((tab) => tab.total > 0)">
-				<N8nText tag="div" class="mb-xs">
-					{{ i18n.baseText('settings.sourceControl.modals.pull.description') }}
-					<br />
-					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
-						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
-					</N8nLink>
-				</N8nText>
-			</div>
-			<div v-else style="display: flex; height: 100%">
+			<div style="display: flex; height: 100%">
 				<div :class="$style.tabs">
 					<template v-for="tab in tabs" :key="tab.value">
 						<button
