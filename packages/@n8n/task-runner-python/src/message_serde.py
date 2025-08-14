@@ -13,8 +13,8 @@ from .message_types import (
 
 class MessageSerde:
     MESSAGE_TYPE_MAP = {
-        "broker:inforequest": lambda d: BrokerInfoRequest(),
-        "broker:runnerregistered": lambda d: BrokerRunnerRegistered(),
+        "broker:inforequest": lambda _: BrokerInfoRequest(),
+        "broker:runnerregistered": lambda _: BrokerRunnerRegistered(),
         "broker:taskofferaccept": lambda d: BrokerTaskOfferAccept(
             task_id=d["taskId"], offer_id=d["offerId"]
         ),
@@ -39,7 +39,9 @@ class MessageSerde:
     @staticmethod
     def serialize_runner_message(message: RunnerMessage) -> str:
         data = asdict(message)
-        camel_case_data = {MessageSerde._snake_to_camel_case(k): v for k, v in data.items()}
+        camel_case_data = {
+            MessageSerde._snake_to_camel_case(k): v for k, v in data.items()
+        }
         return json.dumps(camel_case_data)
 
     @staticmethod
