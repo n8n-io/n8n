@@ -155,8 +155,9 @@ const createColumnDef = (col: DataStoreColumn) => {
 			}
 			return params.data?.[col.name];
 		},
-		headerComponent: ColumnHeader,
+		headerComponent: col.name !== DEFAULT_ID_COLUMN_NAME ? ColumnHeader : undefined,
 		headerComponentParams: { onDelete: onDeleteColumn },
+		suppressMovable: col.name === DEFAULT_ID_COLUMN_NAME,
 	};
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
@@ -199,7 +200,7 @@ const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 		await dataStoreStore.moveDataStoreColumn(
 			props.dataStore.id,
 			moveEvent.column?.getColId() ?? '',
-			moveEvent.toIndex ?? 0,
+			(moveEvent.toIndex ?? 0) - 1,
 		);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.moveColumn.error'));
@@ -207,13 +208,63 @@ const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 	}
 };
 
-onMounted(() => {
-	colDefs.value = orderBy(props.dataStore.columns, 'index').map((col) => ({
-		...createColumnDef(col),
-	}));
-	if (gridApi.value) {
-		gridApi.value.refreshHeader();
+const initColumnDefinitions = () => {
+	colDefs.value = [
+		// Always add the ID column, it's not returned by the back-end but all data stores have it
+		// We use it as a placeholder for new datastores
+		createColumnDef({
+			index: 0,
+			id: DEFAULT_ID_COLUMN_NAME,
+			name: DEFAULT_ID_COLUMN_NAME,
+			type: 'string',
+		}),
+		// Append other columns
+		...orderBy(props.dataStore.columns, 'index').map(createColumnDef),
+	];
+};
+
+const fetchDataStoreContent = async () => {
+	try {
+		contentLoading.value = true;
+		const fetchedRows = await dataStoreStore.fetchDataStoreContent(
+			props.dataStore.id,
+			props.dataStore.projectId ?? '',
+			currentPage.value,
+			pageSize.value,
+		);
+		rows.value = fetchedRows.data;
+		totalItems.value = fetchedRows.count;
+		rowData.value = rows.value;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));
+	} finally {
+		contentLoading.value = false;
+		if (gridApi.value) {
+			gridApi.value.refreshHeader();
+		}
 	}
+};
+
+const initialize = async () => {
+	initColumnDefinitions();
+	await fetchDataStoreContent();
+};
+
+const onCellValueChanged = async (params: CellValueChangedEvent) => {
+	const { data } = params;
+	try {
+		emit('toggleSave', true);
+		await dataStoreStore.upsertRow(props.dataStore.id, props.dataStore.projectId ?? '', data);
+	} catch (error) {
+		// TODO: Revert to old value if failed
+		toast.showError(error, i18n.baseText('dataStore.updateRow.error'));
+	} finally {
+		emit('toggleSave', false);
+	}
+};
+
+onMounted(async () => {
+	await initialize();
 });
 
 const initColumnDefinitions = () => {
