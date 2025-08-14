@@ -1949,7 +1949,7 @@ export function useCanvasOperations() {
 						node_graph_string: nodeGraph,
 					});
 				}
-			} catch (_error) {
+			} catch {
 				// If telemetry fails, don't throw an error
 			}
 

@@ -54,6 +54,7 @@ import * as nodeHelpers from '@/composables/useNodeHelpers';
 import { TelemetryHelpers } from 'n8n-workflow';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('n8n-workflow')>();
 	return {
 		...actual,
