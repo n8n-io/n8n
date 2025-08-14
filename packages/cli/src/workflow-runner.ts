@@ -393,7 +393,11 @@ export class WorkflowRunner {
 				medium: 50,
 				low: 100,
 			};
-			const computedPriority = qp ? priorityMap[qp] : realtime ? 50 : 100;
+			const computedPriority = qp
+				? (priorityMap[qp] ?? (realtime ? 50 : 100))
+				: realtime
+					? 50
+					: 100;
 
 			job = await this.scalingService.addJob(jobData, { priority: computedPriority });
 
