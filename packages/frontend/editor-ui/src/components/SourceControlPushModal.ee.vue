@@ -4,9 +4,9 @@ import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
-import EnvFeatureFlag from '@/features/env-feature-flag/EnvFeatureFlag.vue';
 import type { WorkflowResource } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
@@ -58,6 +58,9 @@ const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+
+const isWorkflowDiffsEnabled = computed(() => settingsStore.settings.enterprise.workflowDiffs);
 
 // Reactive status state - starts with props data or empty, then loads fresh data
 const status = ref<SourceControlledFile[]>(props.data.status ?? []);
@@ -885,14 +888,14 @@ onMounted(async () => {
 												<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
 													{{ getStatusText(file.status) }}
 												</N8nBadge>
-												<EnvFeatureFlag name="SOURCE_CONTROL_WORKFLOW_DIFF">
+												<template v-if="isWorkflowDiffsEnabled">
 													<N8nIconButton
 														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
 														icon="file-diff"
 														type="secondary"
 														@click="openDiffModal(file.id)"
 													/>
-												</EnvFeatureFlag>
+												</template>
 											</span>
 										</N8nCheckbox>
 									</DynamicScrollerItem>
