@@ -5,6 +5,7 @@ from typing import Dict, Optional
 from urllib.parse import urlparse
 from typing import Any
 import websockets
+import random
 
 
 from nanoid import generate
@@ -120,7 +121,7 @@ class TaskRunner:
 
         for _ in range(offers_to_send):
             offer_id = generate()
-            valid_for_ms = 5000
+            valid_for_ms = 5000 + random.randint(0, 500)
             valid_until = (
                 time.time() + (valid_for_ms / 1000) + 0.1
             )  # 100ms buffer for latency
