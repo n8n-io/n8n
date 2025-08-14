@@ -61,7 +61,6 @@ class TaskRunner:
         self.running_tasks: Dict[str, str] = {}  # task_id -> offer_id
 
         self.offers_coroutine: Optional[asyncio.Task] = None
-        self.cleanup_coroutine: Optional[asyncio.Task] = None
 
         ws_host = urlparse(task_broker_uri).netloc
         self.ws_url = f"ws://{ws_host}/runners/_ws?id={self.runner_id}"
@@ -95,49 +94,6 @@ class TaskRunner:
         if self.websocket:
             await self.websocket.close()
 
-    # ========== Offers ==========
-
-    async def _send_offers_loop(self) -> None:
-        while self.can_send_offers:
-            try:
-                await self._send_offers()
-                await asyncio.sleep(0.25)  # 250ms
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f"Error sending offers: {e}")
-                await asyncio.sleep(1)
-
-    async def _send_offers(self) -> None:
-        if not self.can_send_offers:
-            return
-
-        expired_offer_ids = [
-            offer_id for offer_id, offer in self.open_offers.items() if offer.is_expired
-        ]
-
-        for offer_id in expired_offer_ids:
-            del self.open_offers[offer_id]
-
-        total_capacity = len(self.open_offers) + len(self.running_tasks)
-        offers_to_send = self.max_concurrency - total_capacity
-
-        for _ in range(offers_to_send):
-            offer_id = generate()
-            valid_for_ms = 5000 + random.randint(0, 500)
-            valid_until = (
-                time.time() + (valid_for_ms / 1000) + 0.1
-            )  # 100ms buffer for latency
-
-            offer = TaskOffer(offer_id, valid_until)
-            self.open_offers[offer_id] = offer
-
-            message = RunnerTaskOffer(
-                offer_id=offer_id, task_type="python", valid_for=valid_for_ms
-            )
-
-            await self._send_message(message)
-
     # ========== Messages ==========
 
     async def _listen_for_messages(self) -> None:
@@ -161,12 +117,10 @@ class TaskRunner:
     async def _handle_info_request(self) -> None:
         response = RunnerInfo(name=self.name, types=["python"])
         await self._send_message(response)
-        logger.debug("Sent runner info to broker")
 
     async def _handle_runner_registered(self) -> None:
         self.can_send_offers = True
         self.offers_coroutine = asyncio.create_task(self._send_offers_loop())
-        logger.info("Runner registered with broker")
 
     async def _handle_task_offer_accept(self, message: BrokerTaskOfferAccept) -> None:
         offer = self.open_offers.get(message.offer_id)
@@ -193,11 +147,55 @@ class TaskRunner:
         response = RunnerTaskAccepted(task_id=message.task_id)
         await self._send_message(response)
 
-        logger.info(f"Accepted task {message.task_id}")
-
     async def _send_message(self, message: RunnerMessage) -> None:
         if not self.websocket:
             raise RuntimeError("WebSocket not connected")
 
         serialized = MessageSerde.serialize_runner_message(message)
         await self.websocket.send(serialized)
+
+    # ========== Offers ==========
+
+    async def _send_offers_loop(self) -> None:
+        while self.can_send_offers:
+            try:
+                await self._send_offers()
+                await asyncio.sleep(0.25)  # 250ms
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error sending offers: {e}")
+                await asyncio.sleep(1)
+
+    async def _send_offers(self) -> None:
+        if not self.can_send_offers:
+            return
+
+        expired_offer_ids = [
+            offer_id for offer_id, offer in self.open_offers.items() if offer.is_expired
+        ]
+
+        for offer_id in expired_offer_ids:
+            del self.open_offers[offer_id]
+
+        offers_to_send = self.max_concurrency - (
+            len(self.open_offers) + len(self.running_tasks)
+        )
+
+        for _ in range(offers_to_send):
+            offer_id = generate()
+
+            # randomness to prevent all offers expiring simultaneously
+            valid_for_ms = 5000 + random.randint(0, 500)
+
+            # 100ms buffer for latency
+            valid_until = time.time() + (valid_for_ms / 1000) + 0.1
+
+            offer = TaskOffer(offer_id, valid_until)
+            self.open_offers[offer_id] = offer
+
+            message = RunnerTaskOffer(
+                offer_id=offer_id, task_type="python", valid_for=valid_for_ms
+            )
+
+            await self._send_message(message)
