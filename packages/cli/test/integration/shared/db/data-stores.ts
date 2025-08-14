@@ -24,6 +24,7 @@ export const createDataStore = async (
 		await dataStoreRepository.update(dataStore.id, {
 			updatedAt: options.updatedAt,
 		});
+		dataStore.updatedAt = options.updatedAt;
 	}
 
 	return dataStore;
