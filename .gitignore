@@ -37,3 +37,5 @@ compiled
 packages/cli/src/modules/my-feature
 .secrets
 packages/testing/**/.cursor/rules/
+.venv
+.ruff_cache
