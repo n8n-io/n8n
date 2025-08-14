@@ -61,7 +61,7 @@ class TaskRunner:
         self.cleanup_coroutine: Optional[asyncio.Task] = None
 
         ws_host = urlparse(task_broker_uri).netloc
-        self.ws_url = f"ws://{ws_host}/runners/_ws?id={self.runner_id}"
+        self.ws_url = f"ws://{ws_host}/runners/_ws"
 
     async def start(self) -> None:
         logger.info("Starting Python task runner...")
