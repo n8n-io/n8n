@@ -39,8 +39,8 @@ class MessageSerde:
     @staticmethod
     def serialize_runner_message(message: RunnerMessage) -> str:
         data = asdict(message)
-        camel_data = {MessageSerde._snake_to_camel_case(k): v for k, v in data.items()}
-        return json.dumps(camel_data)
+        camel_case_data = {MessageSerde._snake_to_camel_case(k): v for k, v in data.items()}
+        return json.dumps(camel_case_data)
 
     @staticmethod
     def _snake_to_camel_case(snake_case_str: str) -> str:
