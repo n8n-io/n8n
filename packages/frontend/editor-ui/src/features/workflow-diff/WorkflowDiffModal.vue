@@ -20,8 +20,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { computed, ref, useCssModule, onMounted, onUnmounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { computed, onMounted, onUnmounted, ref, useCssModule } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import HighlightedEdge from './HighlightedEdge.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
 
@@ -120,6 +120,17 @@ const settingsDiff = computed(() => {
 		}
 		return acc;
 	}, []);
+
+	const sourceName = sourceWorkFlow.value.state.value?.workflow?.name ?? '';
+	const targetName = targetWorkFlow.value.state.value?.workflow?.name ?? '';
+
+	if (sourceName !== targetName) {
+		settings.unshift({
+			name: 'name',
+			before: sourceName,
+			after: targetName,
+		});
+	}
 
 	const sourceTags = (sourceWorkFlow.value.state.value?.workflow?.tags ?? []).map((tag) =>
 		typeof tag === 'string' ? tag : tag.name,
@@ -395,7 +406,7 @@ const modifiers = [
 					</N8nHeading>
 				</div>
 
-				<div>
+				<div :class="$style.headerRight">
 					<ElDropdown
 						trigger="click"
 						:popper-options="{
@@ -908,8 +919,8 @@ const modifiers = [
 }
 
 .dropdownContent {
-	width: 320px;
-	padding: 2px 0 2px 12px;
+	min-width: 320px;
+	padding: 0 12px;
 
 	ul {
 		list-style: none;
@@ -971,7 +982,8 @@ const modifiers = [
 	}
 }
 
-.headerLeft {
+.headerLeft,
+.headerRight {
 	display: flex;
 	align-items: center;
 }
