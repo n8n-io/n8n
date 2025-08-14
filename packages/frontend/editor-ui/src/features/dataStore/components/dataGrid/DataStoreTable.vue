@@ -20,6 +20,7 @@ import {
 	mapToAGCellType,
 } from '@/features/dataStore/composables/useDataStoreTypes';
 import type { CellValueChangedEvent } from 'ag-grid-community';
+import type { RowSelectionOptions } from 'ag-grid-community';
 
 // Register all Community features
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -43,6 +44,11 @@ const dataStoreStore = useDataStoreStore();
 const gridApi = ref<GridApi | null>(null);
 const colDefs = ref<ColDef[]>([]);
 const rowData = ref<DataStoreRow[]>([]);
+const rowSelection = ref<RowSelectionOptions | 'single' | 'multiple'>({
+	mode: 'singleRow',
+	enableClickSelection: true,
+	checkboxes: false,
+});
 
 const contentLoading = ref(false);
 
@@ -61,7 +67,6 @@ const totalItems = ref(0);
 
 // Data store content
 const rows = ref<DataStoreRow[]>([]);
-const totalRowCount = ref(0);
 
 const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
@@ -69,13 +74,13 @@ const onGridReady = (params: GridReadyEvent) => {
 
 const setCurrentPage = async (page: number) => {
 	currentPage.value = page;
-	// await fetchData();
+	await fetchDataStoreContent();
 };
 
 const setPageSize = async (size: number) => {
 	pageSize.value = size;
 	currentPage.value = 1; // Reset to first page on page size change
-	// await fetchData();
+	await fetchDataStoreContent();
 };
 
 const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload }) => {
@@ -127,6 +132,10 @@ const createColumnDef = (col: DataStoreColumn) => {
 
 const onAddRowClick = async () => {
 	try {
+		// Go to last page if we are not there already
+		if (currentPage.value * pageSize.value < totalItems.value) {
+			await setCurrentPage(Math.floor(totalItems.value / pageSize.value));
+		}
 		const inserted = await dataStoreStore.insertEmptyRow(props.dataStore);
 		if (!inserted) {
 			throw new Error(i18n.baseText('generic.unknownError'));
@@ -161,9 +170,11 @@ const fetchDataStoreContent = async () => {
 		const fetchedRows = await dataStoreStore.fetchDataStoreContent(
 			props.dataStore.id,
 			props.dataStore.projectId ?? '',
+			currentPage.value,
+			pageSize.value,
 		);
 		rows.value = fetchedRows.data;
-		totalRowCount.value = fetchedRows.count;
+		totalItems.value = fetchedRows.count;
 		rowData.value = rows.value;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));
@@ -210,6 +221,7 @@ onMounted(async () => {
 				:animate-rows="false"
 				:theme="n8nTheme"
 				:loading="contentLoading"
+				:row-selection="rowSelection"
 				@grid-ready="onGridReady"
 				@cell-value-changed="onCellValueChanged"
 			/>

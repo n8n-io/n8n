@@ -195,18 +195,23 @@ export class DataStoreService {
 		});
 	}
 
-	private async validateRows(dataStoreId: string, rows: DataStoreRows): Promise<void> {
+	private async validateRows(
+		dataStoreId: string,
+		rows: DataStoreRows,
+		includeId = false,
+	): Promise<void> {
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 		if (columns.length === 0) {
 			throw new UserError('No columns found for this data store or data store not found');
 		}
 
 		const columnNames = new Set(columns.map((x) => x.name));
-		columnNames.add('id');
+		if (includeId) columnNames.add('id');
 		const columnTypeMap = new Map(columns.map((x) => [x.name, x.type]));
 		for (const row of rows) {
 			const keys = Object.keys(row);
-			if (columns.length + 1 !== keys.length) {
+			const expectedCount = includeId ? columns.length + 1 : columns.length;
+			if (expectedCount !== keys.length) {
 				throw new UserError('mismatched key count');
 			}
 			for (const key of keys) {
@@ -257,7 +262,7 @@ export class DataStoreService {
 	}
 
 	async upsertRows(dataStoreId: string, dto: UpsertDataStoreRowsDto) {
-		await this.validateRows(dataStoreId, dto.rows);
+		await this.validateRows(dataStoreId, dto.rows, true);
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 
 		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto, columns);

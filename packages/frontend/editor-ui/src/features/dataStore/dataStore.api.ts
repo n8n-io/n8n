@@ -102,11 +102,17 @@ export const getDataStoreRowsApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
 	projectId?: string,
+	options?: {
+		skip?: number;
+		take?: number;
+	},
 ) => {
 	return await makeRestApiRequest<{
 		count: number;
 		data: DataStoreRow[];
-	}>(context, 'GET', `/projects/${projectId}/data-stores/${dataStoreId}/rows`);
+	}>(context, 'GET', `/projects/${projectId}/data-stores/${dataStoreId}/rows`, {
+		...options,
+	});
 };
 
 export const insertDataStoreRowApi = async (

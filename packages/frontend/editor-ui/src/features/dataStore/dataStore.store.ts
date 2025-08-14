@@ -27,8 +27,6 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const rootStore = useRootStore();
 	const projectStore = useProjectsStore();
 
-	const dataStoreTypes = useDataStoreTypes();
-
 	const dataStores = ref<DataStore[]>([]);
 	const totalCount = ref(0);
 
@@ -108,8 +106,16 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return newColumn;
 	};
 
-	const fetchDataStoreContent = async (datastoreId: string, projectId: string) => {
-		const response = await getDataStoreRowsApi(rootStore.restApiContext, datastoreId, projectId);
+	const fetchDataStoreContent = async (
+		datastoreId: string,
+		projectId: string,
+		page: number,
+		pageSize: number,
+	) => {
+		const response = await getDataStoreRowsApi(rootStore.restApiContext, datastoreId, projectId, {
+			skip: (page - 1) * pageSize,
+			take: pageSize,
+		});
 		if (response.data.length > 0) {
 			return response;
 		}
