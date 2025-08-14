@@ -8,8 +8,6 @@ import { computed } from 'vue';
 
 const router = useRouter();
 
-// TODO RECONCILE WITH MENU ITEM TYPE
-
 const props = defineProps<{
 	title: string;
 	id: string;

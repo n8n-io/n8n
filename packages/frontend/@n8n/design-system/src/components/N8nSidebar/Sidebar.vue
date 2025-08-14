@@ -25,6 +25,8 @@ const props = defineProps<{
 	handleSelect?: (key: string) => void;
 }>();
 
+console.log('Sidebar props:', props);
+
 defineEmits<{
 	createProject: void;
 	logout: void;
@@ -136,6 +138,8 @@ function getMenuItemRoute(item: IMenuItem) {
 				:id="personal.id"
 				icon="user"
 				:items="personal.items"
+				:selectable="false"
+				:collapsible="false"
 				@open-project="$emit('openProject', $event)"
 				@open-folder="$emit('openFolder', { id: $event, projectId: personal.id })"
 			/>
@@ -145,6 +149,8 @@ function getMenuItemRoute(item: IMenuItem) {
 				id="shared"
 				icon="share"
 				:items="shared"
+				:selectable="false"
+				:collapsible="false"
 			/>
 			<N8nText v-if="projectsEnabled" size="small" bold color="text-light" class="sidebarSubheader"
 				>Projects</N8nText
@@ -157,6 +163,8 @@ function getMenuItemRoute(item: IMenuItem) {
 				:icon="project.icon"
 				:key="project.id"
 				:items="project.items"
+				:selectable="false"
+				:collapsible="false"
 			/>
 			<div class="sidebarProjectsEmpty" v-else-if="projectsEnabled">
 				<N8nButton

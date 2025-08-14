@@ -1,10 +1,9 @@
 <script lang="ts" setup>
-import { TreeRoot } from 'reka-ui';
+import { TreeItem, TreeItemToggleEvent, TreeRoot, TreeVirtualizer } from 'reka-ui';
 import type { TreeItemType } from '.';
 import { computed, ref } from 'vue';
 import { IconName } from '../N8nIcon/icons';
 import SidebarItem from './SidebarItem.vue';
-import SidebarTree from './SidebarTree.vue';
 import SidebarCollapseTransition from './SidebarCollapseTransition.vue';
 import N8nText from '../N8nText';
 
@@ -39,6 +38,37 @@ const link = computed(() => {
 	}
 	return `/projects/${props.id}/workflows`;
 });
+
+const itemLink = (item: TreeItemType) => {
+	const { id, type } = item;
+
+	console.log('itemLink', item);
+	if (type === 'workflow') {
+		return `/workflow/${id}`;
+	}
+	return `/projects/${props.id}/folders/${id}/workflows`;
+};
+
+const itemIcon = (type: string, open: boolean) => {
+	if (type === 'workflow') {
+		return undefined;
+	}
+	if (open) {
+		return 'folder-open';
+	}
+	return 'folder';
+};
+
+function preventDefault<T>(event: TreeItemToggleEvent<T>) {
+	if (event.detail.originalEvent.type === 'click') {
+		event.detail.originalEvent.preventDefault();
+	}
+}
+
+function toggleFolder(id: string, callback: () => void) {
+	emits('openFolder', id);
+	callback();
+}
 </script>
 
 <template>
@@ -59,13 +89,30 @@ const link = computed(() => {
 				<N8nText class="itemsEmpty" v-if="!props.items.length" size="small" color="text-light"
 					>No workflows or folders</N8nText
 				>
-				<TreeRoot v-else :items="props.items" :get-key="(item: TreeItemType) => item.id">
-					<SidebarTree
-						@open-folder="emits('openFolder', $event)"
-						:project-id="props.id"
-						:tree-items="props.items"
-						:level="0"
-					/>
+				<TreeRoot v-else :items :get-key="(item: TreeItemType) => item.id">
+					<TreeVirtualizer v-slot="{ item }" :text-content="(opt) => opt.name">
+						<TreeItem
+							as-child
+							:key="item.value.id"
+							v-slot="{ isExpanded, handleToggle }"
+							@toggle="preventDefault"
+							@select="preventDefault"
+							@click="preventDefault"
+							class="item"
+							v-bind="item.bind"
+						>
+							<SidebarItem
+								:title="item.value.label"
+								:id="item.value.id"
+								:icon="itemIcon(item.value.type, isExpanded)"
+								:click="() => toggleFolder(item.value.id, handleToggle)"
+								:open="isExpanded"
+								:link="itemLink(item.value as TreeItemType)"
+								:ariaLabel="`Open ${item.value.label}`"
+								:type="item.value.type"
+							/>
+						</TreeItem>
+					</TreeVirtualizer>
 				</TreeRoot>
 			</div>
 		</SidebarCollapseTransition>
@@ -85,5 +132,15 @@ const link = computed(() => {
 .itemsEmpty {
 	display: block;
 	padding: var(--spacing-3xs) var(--spacing-4xs);
+}
+
+.item {
+	position: relative;
+	display: flex;
+	align-items: center;
+	cursor: pointer;
+	max-width: 100%;
+	overflow: hidden;
+	transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 }
 </style>

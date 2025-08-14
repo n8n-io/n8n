@@ -4,7 +4,6 @@ import { useProjectsStore } from '@/stores/projects.store';
 
 import type { TreeItemType } from '@n8n/design-system/components/N8nSidebar';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import type { ProjectListItem } from '@/types/projects.types';
 
 export const useSidebarData = () => {
 	const workflowsStore = useWorkflowsStore();
@@ -16,7 +15,6 @@ export const useSidebarData = () => {
 	const sharedItems = ref<TreeItemType[]>([]);
 	const projects = ref<{ title: string; id: string; icon: IconName; items: TreeItemType[] }[]>([]);
 
-	// Ensure data is loaded
 	onMounted(async () => {
 		await initialLoad();
 	});
@@ -26,13 +24,27 @@ export const useSidebarData = () => {
 
 		await projectsStore.getMyProjects();
 
-		projects.value = projectsStore.teamProjects.map((project: ProjectListItem) => ({
+		projects.value = projectsStore.teamProjects.map((project) => ({
 			id: project.id,
 			title: project.name || 'Untitled Project',
 			icon: (project.icon?.value || 'layers') as IconName,
 			type: 'project',
 			items: [],
 		}));
+	}
+
+	async function openShared() {
+		const items = await workflowsStore.fetchWorkflowsPage(
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			false,
+			undefined,
+		);
+
+		console.log('Shared items', items);
 	}
 
 	async function openProject(projectId: string) {
@@ -55,6 +67,10 @@ export const useSidebarData = () => {
 			children: item.resource === 'folder' ? [] : undefined,
 		}));
 
+		if (projectId === 'shared') {
+			sharedItems.value = itemsToAdd;
+			return;
+		}
 		if (projectId === projectsStore.personalProject?.id) {
 			personalItems.value = itemsToAdd;
 		} else {
@@ -77,7 +93,6 @@ export const useSidebarData = () => {
 	): TreeItemType[] {
 		return items.map((item) => {
 			if (item.id === folderId) {
-				console.log('Updating nested folder', folderId, newChildren);
 				return {
 					...item,
 					children: newChildren,
@@ -134,6 +149,7 @@ export const useSidebarData = () => {
 		sharedItems,
 		openProject,
 		openFolder,
+		openShared,
 		projects,
 	};
 };

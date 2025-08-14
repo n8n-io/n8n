@@ -1,202 +1,20 @@
 import type { StoryFn } from '@storybook/vue3';
 
-import Sidebar from './Sidebar.vue';
+import N8nSidebar from '.';
 import { type TreeItemType } from '.';
 
 export default {
 	title: 'Sidebar/Sidebar',
-	component: Sidebar,
+	component: N8nSidebar,
 };
 
-const mockPersonalItems: TreeItemType[] = [
-	{
-		id: 'personal-folder-1',
-		label: 'Customer Management',
-		type: 'folder',
-		children: [
-			{
-				id: 'personal-subfolder-1',
-				label: 'Onboarding Processes',
-				type: 'folder',
-				children: [
-					{
-						id: 'personal-subfolder-1-1',
-						label: 'New Customer Flows',
-						type: 'folder',
-						children: [
-							{
-								id: 'personal-subfolder-1-1-1',
-								label: 'Enterprise Customers',
-								type: 'folder',
-								children: [
-									{ id: 'workflow-1', label: 'Enterprise Customer Onboarding', type: 'workflow' },
-									{ id: 'workflow-2', label: 'Enterprise Account Setup', type: 'workflow' },
-									{ id: 'workflow-3', label: 'Enterprise Training Schedule', type: 'workflow' },
-								],
-							},
-							{
-								id: 'personal-subfolder-1-1-2',
-								label: 'Small Business Customers',
-								type: 'folder',
-								children: [
-									{ id: 'workflow-4', label: 'SMB Quick Onboarding', type: 'workflow' },
-									{ id: 'workflow-5', label: 'SMB Account Verification', type: 'workflow' },
-								],
-							},
-						],
-					},
-					{
-						id: 'personal-subfolder-1-2',
-						label: 'Returning Customer Flows',
-						type: 'folder',
-						children: [
-							{ id: 'workflow-6', label: 'Account Reactivation', type: 'workflow' },
-							{ id: 'workflow-7', label: 'Update Customer Info', type: 'workflow' },
-						],
-					},
-				],
-			},
-			{
-				id: 'personal-subfolder-2',
-				label: 'Support Operations',
-				type: 'folder',
-				children: [
-					{
-						id: 'personal-subfolder-2-1',
-						label: 'Ticket Management',
-						type: 'folder',
-						children: [
-							{
-								id: 'personal-subfolder-2-1-1',
-								label: 'Priority Handling',
-								type: 'folder',
-								children: [
-									{ id: 'workflow-8', label: 'Critical Issue Handler', type: 'workflow' },
-									{ id: 'workflow-9', label: 'Urgent Escalation', type: 'workflow' },
-								],
-							},
-							{ id: 'workflow-10', label: 'General Support Tickets', type: 'workflow' },
-						],
-					},
-					{ id: 'workflow-11', label: 'Customer Satisfaction Survey', type: 'workflow' },
-				],
-			},
-		],
-	},
-	{
-		id: 'personal-folder-2',
-		label: 'Analytics & Reporting',
-		type: 'folder',
-		children: [
-			{
-				id: 'personal-analytics-1',
-				label: 'Sales Analytics',
-				type: 'folder',
-				children: [
-					{
-						id: 'personal-analytics-1-1',
-						label: 'Daily Reports',
-						type: 'folder',
-						children: [
-							{
-								id: 'personal-analytics-1-1-1',
-								label: 'Revenue Tracking',
-								type: 'folder',
-								children: [
-									{
-										id: 'personal-analytics-1-1-1-1',
-										label: 'Product Line Analysis',
-										type: 'folder',
-										children: [
-											{ id: 'workflow-12', label: 'Software Revenue', type: 'workflow' },
-											{ id: 'workflow-13', label: 'Service Revenue', type: 'workflow' },
-											{ id: 'workflow-14', label: 'Subscription Revenue', type: 'workflow' },
-										],
-									},
-									{ id: 'workflow-15', label: 'Daily Revenue Report', type: 'workflow' },
-								],
-							},
-							{ id: 'workflow-16', label: 'Sales Performance', type: 'workflow' },
-						],
-					},
-					{
-						id: 'personal-analytics-1-2',
-						label: 'Weekly Reports',
-						type: 'folder',
-						children: [
-							{ id: 'workflow-17', label: 'Weekly Sales Summary', type: 'workflow' },
-							{ id: 'workflow-18', label: 'Team Performance Review', type: 'workflow' },
-						],
-					},
-				],
-			},
-			{
-				id: 'personal-analytics-2',
-				label: 'User Analytics',
-				type: 'folder',
-				children: [
-					{
-						id: 'personal-analytics-2-1',
-						label: 'Behavior Analysis',
-						type: 'folder',
-						children: [
-							{ id: 'workflow-19', label: 'User Activity Analysis', type: 'workflow' },
-							{ id: 'workflow-20', label: 'Feature Usage Tracking', type: 'workflow' },
-						],
-					},
-				],
-			},
-		],
-	},
-	{
-		id: 'personal-folder-3',
-		label: 'Development & Testing',
-		type: 'folder',
-		children: [
-			{
-				id: 'personal-dev-1',
-				label: 'Automated Testing',
-				type: 'folder',
-				children: [
-					{
-						id: 'personal-dev-1-1',
-						label: 'Unit Tests',
-						type: 'folder',
-						children: [
-							{
-								id: 'personal-dev-1-1-1',
-								label: 'Frontend Tests',
-								type: 'folder',
-								children: [
-									{
-										id: 'personal-dev-1-1-1-1',
-										label: 'Component Tests',
-										type: 'folder',
-										children: [
-											{ id: 'workflow-21', label: 'Button Component Test', type: 'workflow' },
-											{ id: 'workflow-22', label: 'Form Component Test', type: 'workflow' },
-											{ id: 'workflow-23', label: 'Modal Component Test', type: 'workflow' },
-										],
-									},
-									{ id: 'workflow-24', label: 'Service Tests', type: 'workflow' },
-								],
-							},
-							{ id: 'workflow-25', label: 'Backend API Tests', type: 'workflow' },
-						],
-					},
-					{ id: 'workflow-26', label: 'Integration Tests', type: 'workflow' },
-				],
-			},
-			{
-				id: 'personal-dev-2',
-				label: 'Empty Folder Test',
-				type: 'folder',
-				children: [],
-			},
-		],
-	},
-	{ id: 'workflow-27', label: 'Quick Data Sync', type: 'workflow' },
-];
+const mockPersonalItems: TreeItemType[] = Array(10000)
+	.fill(null)
+	.map((_, index) => ({
+		id: `workflow-${index}`,
+		label: `Workflow ${index}`,
+		type: 'workflow' as const,
+	}));
 
 const mockSharedItems: TreeItemType[] = [
 	{
@@ -648,11 +466,11 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
-		Sidebar,
+		N8nSidebar,
 	},
 	template: `
 		<div class="story">
-			<Sidebar v-bind="args" />
+			<N8nSidebar v-bind="args" />
 		</div>
 	`,
 });
@@ -662,6 +480,8 @@ primary.args = {
 	personal: mockPersonalItems,
 	shared: mockSharedItems,
 	projects: mockProjects,
+	projectsEnabled: true,
+	menuItems: [],
 	collapsed: false,
 	releaseChannel: 'stable' as const,
 };
