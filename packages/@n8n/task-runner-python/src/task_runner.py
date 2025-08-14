@@ -23,7 +23,9 @@ from .message_types import (
 )
 from .message_serde import MessageSerde
 
-
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -61,7 +63,7 @@ class TaskRunner:
         self.cleanup_coroutine: Optional[asyncio.Task] = None
 
         ws_host = urlparse(task_broker_uri).netloc
-        self.ws_url = f"ws://{ws_host}/runners/_ws"
+        self.ws_url = f"ws://{ws_host}/runners/_ws?id={self.runner_id}"
 
     async def start(self) -> None:
         logger.info("Starting Python task runner...")
