@@ -2,16 +2,17 @@
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, EVALUATIONS_DOCS_URL } from '@/constants';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 import { computed, watch } from 'vue';
-import { N8nLink, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 import EvaluationsPaywall from '@/components/Evaluations.ee/Paywall/EvaluationsPaywall.vue';
 import SetupWizard from '@/components/Evaluations.ee/SetupWizard/SetupWizard.vue';
 
@@ -26,11 +27,16 @@ const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
+const sourceControlStore = useSourceControlStore();
 
 const { initializeWorkspace } = useCanvasOperations();
 
 const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;
+});
+
+const isProtectedEnvironment = computed(() => {
+	return sourceControlStore.preferences.branchReadOnly;
 });
 
 const runs = computed(() => {
@@ -136,13 +142,16 @@ watch(
 					</N8nText>
 					<N8nText tag="p" size="small" color="text-base" :class="$style.description">
 						{{ locale.baseText('evaluations.setupWizard.description') }}
-						<N8nLink size="small" href="https://docs.n8n.io/advanced-ai/evaluations/overview">{{
+						<N8nLink size="small" :href="EVALUATIONS_DOCS_URL">{{
 							locale.baseText('evaluations.setupWizard.moreInfo')
 						}}</N8nLink>
 					</N8nText>
 				</div>
 
-				<div :class="$style.config">
+				<N8nCallout v-if="isProtectedEnvironment" theme="info" icon="info">
+					{{ locale.baseText('evaluations.readOnlyNotice') }}
+				</N8nCallout>
+				<div v-else :class="$style.config">
 					<iframe
 						style="min-width: 500px"
 						width="500"

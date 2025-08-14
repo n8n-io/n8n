@@ -1,8 +1,19 @@
 import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
+import Continue from './custom/continue.svg';
+import EmptyOutput from './custom/empty-output.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
-import Json from './custom/json.svg';
+import NodeDirty from './custom/node-dirty.svg';
+import NodeEllipsis from './custom/node-ellipsis.svg';
+import NodeError from './custom/node-error.svg';
+import NodePin from './custom/node-pin.svg';
+import NodePlay from './custom/node-play.svg';
+import NodePower from './custom/node-power.svg';
+import NodeSuccess from './custom/node-success.svg';
+import NodeTrash from './custom/node-trash.svg';
 import PopOut from './custom/pop-out.svg';
+import Retry from './custom/retry.svg';
+import RunOnce from './custom/run-once.svg';
 import Schema from './custom/schema.svg';
 import Spinner from './custom/spinner.svg';
 import StatusCanceled from './custom/status-canceled.svg';
@@ -30,8 +41,10 @@ import IconLucideAtSign from '~icons/lucide/at-sign';
 import IconLucideBan from '~icons/lucide/ban';
 import IconLucideBell from '~icons/lucide/bell';
 import IconLucideBook from '~icons/lucide/book';
+import IconLucideBookOpen from '~icons/lucide/book-open';
 import IconLucideBot from '~icons/lucide/bot';
 import IconLucideBox from '~icons/lucide/box';
+import IconLucideBraces from '~icons/lucide/braces';
 import IconLucideBrain from '~icons/lucide/brain';
 import IconLucideBug from '~icons/lucide/bug';
 import IconLucideCalculator from '~icons/lucide/calculator';
@@ -151,6 +164,7 @@ import IconLucideScissors from '~icons/lucide/scissors';
 import IconLucideSearch from '~icons/lucide/search';
 import IconLucideSend from '~icons/lucide/send';
 import IconLucideServer from '~icons/lucide/server';
+import IconLucideSettings from '~icons/lucide/settings';
 import IconLucideShare from '~icons/lucide/share';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
@@ -204,7 +218,7 @@ export const deprecatedIconSet = {
 	'status-warning': StatusWarning,
 	'vector-square': VectorSquare,
 	schema: Schema,
-	json: Json,
+	json: IconLucideBraces,
 	binary: Binary,
 	text: Text,
 	toolbox: Toolbox,
@@ -406,12 +420,24 @@ export const updatedIconSet = {
 	'status-unknown': StatusUnknown,
 	'status-warning': StatusWarning,
 	'vector-square': VectorSquare,
+	'continue-on-error': Continue,
+	'always-output-data': EmptyOutput,
+	'retry-on-fail': Retry,
+	'execute-once': RunOnce,
 	schema: Schema,
-	json: Json,
+	json: IconLucideBraces,
 	binary: Binary,
 	text: Text,
 	toolbox: Toolbox,
 	spinner: Spinner,
+	'node-dirty': NodeDirty,
+	'node-ellipsis': NodeEllipsis,
+	'node-error': NodeError,
+	'node-pin': NodePin,
+	'node-play': NodePlay,
+	'node-power': NodePower,
+	'node-success': NodeSuccess,
+	'node-trash': NodeTrash,
 
 	// lucide
 	'align-right': IconLucideAlignRight,
@@ -427,6 +453,7 @@ export const updatedIconSet = {
 	ban: IconLucideBan,
 	bell: IconLucideBell,
 	book: IconLucideBook,
+	'book-open': IconLucideBookOpen,
 	bot: IconLucideBot,
 	box: IconLucideBox,
 	brain: IconLucideBrain,
@@ -546,6 +573,7 @@ export const updatedIconSet = {
 	scale: IconLucideScale,
 	scissors: IconLucideScissors,
 	search: IconLucideSearch,
+	settings: IconLucideSettings,
 	send: IconLucideSend,
 	server: IconLucideServer,
 	share: IconLucideShare,

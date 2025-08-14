@@ -42,6 +42,7 @@ export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 export const FORM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.formTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
+export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
 export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
 export const MAILGUN_NODE_TYPE = 'n8n-nodes-base.mailgun';
 export const POSTGRES_NODE_TYPE = 'n8n-nodes-base.postgres';
@@ -118,3 +119,5 @@ export const FROM_AI_AUTO_GENERATED_MARKER = '/*n8n-auto-generated-fromAI-overri
 export const PROJECT_ROOT = '0';
 
 export const WAITING_FORMS_EXECUTION_STATUS = 'n8n-execution-status';
+
+export const CHAT_WAIT_USER_REPLY = 'waitUserReply';

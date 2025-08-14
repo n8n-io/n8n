@@ -33,9 +33,15 @@ const emit = defineEmits<{
 	finishedLoading: [];
 }>();
 
-const props = defineProps<{
-	hasChanges: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		hasChanges: boolean;
+		isReadOnly?: boolean;
+	}>(),
+	{
+		isReadOnly: false,
+	},
+);
 
 const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 const i18n = useI18n();
@@ -85,12 +91,11 @@ function getErrorMessageByStatusCode(statusCode: number, message: string | undef
 
 function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
-	const { getCurrentWorkflow, getNodeByName } = useWorkflowsStore();
-	const workflow = getCurrentWorkflow();
+	const { workflowObject, getNodeByName } = useWorkflowsStore();
 
-	if (!activeNode || !workflow) return [];
+	if (!activeNode || !workflowObject) return [];
 
-	return workflow
+	return workflowObject
 		.getParentNodesByDepth(activeNode?.name)
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
@@ -278,6 +283,7 @@ onMounted(() => {
 				:maxlength="ASK_AI_MAX_PROMPT_LENGTH"
 				:placeholder="i18n.baseText('codeNodeEditor.askAi.placeholder')"
 				data-test-id="ask-ai-prompt-input"
+				:readonly="props.isReadOnly"
 				@input="onPromptInput"
 			/>
 		</div>

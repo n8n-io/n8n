@@ -1,7 +1,7 @@
 <script lang="ts" setup="">
 import type { UsersList } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
-import type { IUser } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 
 const props = defineProps<{
 	data: UsersList['items'][number];
@@ -31,5 +31,3 @@ const onUserAction = (action: string) => {
 		/>
 	</div>
 </template>
-
-<style lang="scss" module></style>

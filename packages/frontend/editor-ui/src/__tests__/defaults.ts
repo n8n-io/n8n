@@ -40,6 +40,7 @@ export const defaultSettings: FrontendSettings = {
 		workerView: false,
 		advancedPermissions: false,
 		apiKeyScopes: false,
+		workflowDiffs: false,
 		projects: {
 			team: {
 				limit: 1,

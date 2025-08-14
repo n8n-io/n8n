@@ -13,11 +13,9 @@ on:
         required: false
         type: string
         default: 22.x
-      cacheKey:
-        description: Cache key for modules and build artifacts.
-        required: false
-        type: string
-        default: ''
+
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
 
 jobs:
   lint:
@@ -28,21 +26,8 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Setup Environment
-        uses: n8n-io/n8n/.github/actions/setup-and-build@7e870b8f7f5a39bb8bf82d1f42b6d44febc0082c # v1.100.1
+      - name: Build and Test
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
         with:
+          build-command: pnpm lint
           node-version: ${{ inputs.nodeVersion }}
-          enable-caching: true
-          skip-build: ${{ inputs.cacheKey != '' }}
-
-      - name: Lint Backend
-        run: pnpm lint:backend
-
-      - name: Lint Nodes
-        run: pnpm lint:nodes
-
-      - name: Lint Frontend
-        run: pnpm lint:frontend
-
-      - name: Lint Testing
-        run: pnpm lint:testing

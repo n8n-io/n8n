@@ -137,8 +137,11 @@ const props = withDefaults(
 );
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
+const experimentalNdvStore = useExperimentalNdvStore();
 
-const vueFlow = useVueFlow({ id: props.id, deleteKeyCode: null });
+const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
+
+const vueFlow = useVueFlow(props.id);
 const {
 	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
@@ -174,13 +177,9 @@ const {
 	getDownstreamNodes,
 	getUpstreamNodes,
 } = useCanvasTraversal(vueFlow);
-const { layout } = useCanvasLayout({ id: props.id });
-
-const experimentalNdvStore = useExperimentalNdvStore();
+const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive);
 
 const isPaneReady = ref(false);
-
-const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -196,15 +195,18 @@ const classes = computed(() => ({
 const panningKeyCode = ref<string[] | true>(isMobileDevice ? true : [' ', controlKeyCode]);
 const panningMouseButton = ref<number[] | true>(isMobileDevice ? true : [1]);
 const selectionKeyCode = ref<string | true | null>(isMobileDevice ? 'Shift' : true);
+const isInPanningMode = ref(false);
 
 function switchToPanningMode() {
 	selectionKeyCode.value = null;
 	panningMouseButton.value = [0, 1];
+	isInPanningMode.value = true;
 }
 
 function switchToSelectionMode() {
 	selectionKeyCode.value = true;
 	panningMouseButton.value = [1];
+	isInPanningMode.value = false;
 }
 
 onKeyDown(panningKeyCode.value, switchToPanningMode, {
@@ -445,7 +447,11 @@ function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select'
 
 		const newViewport = updateViewportToContainNodes(viewport.value, dimensions.value, nodes, 100);
 
-		void setViewport(newViewport, { duration: 200, interpolate: 'linear' });
+		void setViewport(newViewport, {
+			duration: 200,
+			// TODO: restore when re-upgrading vue-flow to >= 1.45
+			// interpolate: 'linear',
+		});
 	}
 }
 
@@ -651,8 +657,13 @@ function setReadonly(value: boolean) {
 	elementsSelectable.value = true;
 }
 
-function onPaneMoveStart() {
-	isPaneMoving.value = true;
+function onPaneMove({ event }: { event: unknown }) {
+	// The event object is either D3ZoomEvent or WheelEvent.
+	// Here I'm ignoring D3ZoomEvent because it's not necessarily followed by a moveEnd event.
+	// This can be simplified once https://github.com/bcakmakoglu/vue-flow/issues/1908 is resolved
+	if (isInPanningMode.value || event instanceof WheelEvent) {
+		isPaneMoving.value = true;
+	}
 }
 
 function onPaneMoveEnd() {
@@ -862,6 +873,25 @@ watch([nodesSelectionActive, userSelectionRect], ([isActive, rect]) =>
 	emit('update:has-range-selection', isActive || (rect?.width ?? 0) > 0 || (rect?.height ?? 0) > 0),
 );
 
+watch([vueFlow.nodes, () => experimentalNdvStore.nodeNameToBeFocused], ([nodes, toFocusName]) => {
+	const toFocusNode =
+		toFocusName &&
+		(nodes as Array<GraphNode<CanvasNodeData>>).find((n) => n.data.name === toFocusName);
+
+	if (!toFocusNode) {
+		return;
+	}
+
+	// setTimeout() so that this happens after layout recalculation with the node to be focused
+	setTimeout(() => {
+		experimentalNdvStore.focusNode(toFocusNode, {
+			canvasViewport: viewport.value,
+			canvasDimensions: dimensions.value,
+			setCenter,
+		});
+	});
+});
+
 /**
  * Provide
  */
@@ -874,6 +904,7 @@ provide(CanvasKey, {
 	initialized,
 	viewport,
 	isExperimentalNdvActive,
+	isPaneMoving,
 });
 </script>
 
@@ -896,13 +927,14 @@ provide(CanvasKey, {
 		:zoom-activation-key-code="panningKeyCode"
 		:pan-activation-key-code="panningKeyCode"
 		:disable-keyboard-a11y="true"
+		:delete-key-code="null"
 		data-test-id="canvas"
 		@connect-start="onConnectStart"
 		@connect="onConnect"
 		@connect-end="onConnectEnd"
 		@pane-click="onClickPane"
 		@pane-context-menu="onOpenContextMenu"
-		@move-start="onPaneMoveStart"
+		@move="onPaneMove"
 		@move-end="onPaneMoveEnd"
 		@node-drag-stop="onNodeDragStop"
 		@node-click="onNodeClick"

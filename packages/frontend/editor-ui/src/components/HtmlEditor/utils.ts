@@ -1,5 +1,7 @@
 import type { Range } from './types';
 
+import type { EditorView } from '@codemirror/view';
+
 /**
  * Return the ranges of a full range that are _not_ within the taken ranges,
  * assuming sorted taken ranges. e.g. `[0, 10]` and `[[2, 3], [7, 8]]`
@@ -37,4 +39,26 @@ export function nonTakenRanges(fullRange: Range, takenRanges: Range[]) {
 	}
 
 	return found;
+}
+
+export function pasteHandler(event: ClipboardEvent, view: EditorView) {
+	const htmlData = event.clipboardData?.getData('text/html') ?? '';
+	const textData = event.clipboardData?.getData('text/plain') ?? '';
+
+	const content = htmlData || textData;
+	if (!content) return false;
+
+	// Replace onclick="" with onclick=" " as empty onclick breaks range parser
+	if (/onclick=""/.test(content)) {
+		event.preventDefault();
+		const sanitized = content.replace(/onclick=""/g, 'onclick=" "');
+		const { from, to } = view.state.selection.main;
+		view.dispatch({
+			changes: { from, to, insert: sanitized },
+			scrollIntoView: true,
+		});
+		return true;
+	}
+
+	return false;
 }

@@ -1,0 +1,35 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nPopoverReka > should render correctly with default props 1`] = `
+"<mock-popover-root>
+  <mock-popover-trigger><button></button></mock-popover-trigger>
+  <mock-popover-portal>
+    <mock-popover-content>
+      <div dir="ltr" style="position: relative; --reka-scroll-area-corner-width: 0px; --reka-scroll-area-corner-height: 0px;" class="scrollAreaRoot">
+        <div data-reka-scroll-area-viewport="" style="overflow-x: hidden; overflow-y: hidden;" class="viewport" tabindex="0">
+          <div>
+            <div>
+              <content></content>
+            </div>
+          </div>
+        </div>
+        <style>
+          /* Hide scrollbars cross-browser and enable momentum scroll for touch devices */
+          [data-reka-scroll-area-viewport] {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          [data-reka-scroll-area-viewport]::-webkit-scrollbar {
+            display: none;
+          }
+        </style>
+        <!---->
+        <!--v-if-->
+        <!--v-if-->
+      </div>
+    </mock-popover-content>
+  </mock-popover-portal>
+</mock-popover-root>"
+`;

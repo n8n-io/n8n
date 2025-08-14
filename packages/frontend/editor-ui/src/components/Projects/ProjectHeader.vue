@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
-import type { UserAction } from '@n8n/design-system';
+import type { TabOptions, UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
@@ -19,6 +19,13 @@ import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { useUIStore } from '@/stores/ui.store';
+
+export type CustomAction = {
+	id: string;
+	label: string;
+	disabled?: boolean;
+};
 
 const route = useRoute();
 const router = useRouter();
@@ -26,10 +33,21 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
+
 const projectPages = useProjectPages();
+
+type Props = {
+	customActions?: CustomAction[];
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	customActions: () => [],
+});
 
 const emit = defineEmits<{
 	createFolder: [];
+	customActionSelected: [actionId: string, projectId: string];
 }>();
 
 const headerIcon = computed((): IconOrEmoji => {
@@ -83,6 +101,23 @@ const showFolders = computed(() => {
 	);
 });
 
+const customProjectTabs = computed((): Array<TabOptions<string>> => {
+	// Determine the type of tab based on the current project page
+	let tabType: 'shared' | 'overview' | 'project';
+	if (projectPages.isSharedSubPage) {
+		tabType = 'shared';
+	} else if (projectPages.isOverviewSubPage) {
+		tabType = 'overview';
+	} else {
+		tabType = 'project';
+	}
+	// Only pick up tabs from active modules
+	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter(
+		settingsStore.isModuleActive,
+	);
+	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+});
+
 const ACTION_TYPES = {
 	WORKFLOW: 'workflow',
 	CREDENTIAL: 'credential',
@@ -117,6 +152,17 @@ const menu = computed(() => {
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes).folder.create,
+		});
+	}
+
+	// Append custom actions
+	if (props.customActions?.length) {
+		props.customActions.forEach((customAction) => {
+			items.push({
+				value: customAction.id,
+				label: customAction.label,
+				disabled: customAction.disabled ?? false,
+			});
 		});
 	}
 	return items;
@@ -220,6 +266,13 @@ const onSelect = (action: string) => {
 	if (!homeProject.value) {
 		return;
 	}
+
+	// Check if this is a custom action
+	if (!executableAction) {
+		emit('customActionSelected', action, homeProject.value.id);
+		return;
+	}
+
 	executableAction(homeProject.value.id);
 };
 </script>
@@ -278,6 +331,7 @@ const onSelect = (action: string) => {
 				:page-type="pageType"
 				:show-executions="!projectPages.isSharedSubPage"
 				:show-settings="showSettings"
+				:additional-tabs="customProjectTabs"
 			/>
 		</div>
 	</div>

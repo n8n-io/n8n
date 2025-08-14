@@ -8,6 +8,7 @@ import type {
 
 import {
 	setCheckIfEvaluatingProperties,
+	setInputsProperties,
 	setMetricsProperties,
 	setOutputProperties,
 } from './Description.node';
@@ -16,10 +17,12 @@ import { listSearch, loadOptions, credentialTest } from '../methods';
 import {
 	checkIfEvaluating,
 	setMetrics,
-	setInputs,
+	getInputConnectionTypes,
+	getOutputConnectionTypes,
 	setOutputs,
-	setOutput,
+	setInputs,
 } from '../utils/evaluationUtils';
+import { metricRequiresModelConnection } from 'n8n-workflow'; // See packages/workflow/src/evaluation-helpers.ts
 
 export class Evaluation implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,8 +38,9 @@ export class Evaluation implements INodeType {
 			name: 'Evaluation',
 			color: '#c3c9d5',
 		},
-		inputs: `={{(${setInputs})($parameter)}}`,
-		outputs: `={{(${setOutputs})($parameter)}}`,
+		// Pass function explicitly since expression context doesn't allow imports in getInputConnectionTypes
+		inputs: `={{(${getInputConnectionTypes})($parameter, ${metricRequiresModelConnection})}}`,
+		outputs: `={{(${getOutputConnectionTypes})($parameter)}}`,
 		codex: {
 			alias: ['Test', 'Metrics', 'Evals', 'Set Output', 'Set Metrics'],
 		},
@@ -71,6 +75,10 @@ export class Evaluation implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Set Inputs',
+						value: 'setInputs',
+					},
+					{
 						name: 'Set Outputs',
 						value: 'setOutputs',
 					},
@@ -86,6 +94,7 @@ export class Evaluation implements INodeType {
 				default: 'setOutputs',
 			},
 			authentication,
+			...setInputsProperties,
 			...setOutputProperties,
 			...setMetricsProperties,
 			...setCheckIfEvaluatingProperties,
@@ -98,12 +107,15 @@ export class Evaluation implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'setOutputs') {
-			return await setOutput.call(this);
+			return await setOutputs.call(this);
+		} else if (operation === 'setInputs') {
+			return setInputs.call(this);
 		} else if (operation === 'setMetrics') {
 			return await setMetrics.call(this);
-		} else {
-			// operation === 'checkIfEvaluating'
+		} else if (operation === 'checkIfEvaluating') {
 			return await checkIfEvaluating.call(this);
 		}
+
+		throw new Error('Unsupported Operation');
 	}
 }

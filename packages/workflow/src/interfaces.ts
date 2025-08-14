@@ -843,8 +843,27 @@ type CronUnit = number | '*' | `*/${number}`;
 export type CronExpression =
 	`${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit}`;
 
+type CronRecurrenceRule =
+	| { activated: false }
+	| {
+			activated: true;
+			index: number;
+			intervalSize: number;
+			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
+	  };
+
+export type CronContext = {
+	nodeId: string;
+	workflowId: string;
+	timezone: string;
+	expression: CronExpression;
+	recurrence?: CronRecurrenceRule;
+};
+
+export type Cron = { expression: CronExpression; recurrence?: CronRecurrenceRule };
+
 export interface SchedulingFunctions {
-	registerCron(cronExpression: CronExpression, onTick: () => void): void;
+	registerCron(cron: Cron, onTick: () => void): void;
 }
 
 export type NodeTypeAndVersion = {
@@ -870,14 +889,22 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
+	/** Get the waiting resume url signed with the signature token */
+	getSignedResumeUrl(parameters?: Record<string, string>): string;
+	/** Set requirement in the execution for signature token validation */
+	setSignatureValidationRequired(): void;
 	getChildNodes(
 		nodeName: string,
 		options?: { includeNodeParameters?: boolean },
 	): NodeTypeAndVersion[];
-	getParentNodes(nodeName: string): NodeTypeAndVersion[];
+	getParentNodes(
+		nodeName: string,
+		options?: { includeNodeParameters?: boolean },
+	): NodeTypeAndVersion[];
 	getKnownNodeTypes(): IDataObject;
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
+	getChatTrigger: () => INode | null;
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
@@ -1201,6 +1228,7 @@ export interface INodeExecutionData {
 		| NodeApiError
 		| NodeOperationError
 		| number
+		| string
 		| undefined;
 	json: IDataObject;
 	binary?: IBinaryKeyData;
@@ -1209,6 +1237,17 @@ export interface INodeExecutionData {
 	metadata?: {
 		subExecution: RelatedExecution;
 	};
+	evaluationData?: Record<string, GenericValue>;
+	/**
+	 * Use this key to send a message to the chat.
+	 *
+	 * - Workflow has to be started by a chat node.
+	 * - Put execution to wait after sending.
+	 *
+	 * See example in
+	 * packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/Chat.node.ts
+	 */
+	sendMessage?: string;
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it
@@ -1305,11 +1344,24 @@ export type NodePropertyAction = {
 	target?: string;
 };
 
-export type CalloutActionType = 'openRagStarterTemplate';
-export interface CalloutAction {
-	type: CalloutActionType;
+export interface CalloutActionBase {
+	type: string;
 	label: string;
+	icon?: string;
 }
+
+export interface CalloutActionOpenPreBuiltAgentsCollection extends CalloutActionBase {
+	type: 'openPreBuiltAgentsCollection';
+}
+
+export interface CalloutActionOpenSampleWorkflowTemplate extends CalloutActionBase {
+	type: 'openSampleWorkflowTemplate';
+	templateId: string;
+}
+
+export type CalloutAction =
+	| CalloutActionOpenPreBuiltAgentsCollection
+	| CalloutActionOpenSampleWorkflowTemplate;
 
 export interface INodePropertyTypeOptions {
 	// Supported by: button
@@ -1364,6 +1416,7 @@ export interface ResourceMapperTypeOptionsBase {
 		hint?: string;
 	};
 	showTypeConversionOptions?: boolean;
+	allowEmptyValues?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
@@ -1624,6 +1677,11 @@ export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(this: IExecuteFunctions): Promise<NodeOutput>;
+	/**
+	 * A function called when a node receives a chat message. Allows it to react
+	 * to the message before it gets executed.
+	 */
+	onMessage?(context: IExecuteFunctions, data: INodeExecutionData): Promise<NodeOutput>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
@@ -2110,11 +2168,28 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
+
+/**
+ * Defines how and when response should be sent:
+ *
+ * onReceived: Response is sent immidiatly after node done executing
+ *
+ * lastNode: Response is sent after the last node finishes executing
+ *
+ * responseNode: Response is sent from the Responde to Webhook node
+ *
+ * formPage: Special response with executionId sent to the form trigger node
+ *
+ * hostedChat: Special response with executionId sent to the hosted chat trigger node
+ *
+ * streaming: Response added to runData to httpResponse and streamingEnabled set to true
+ */
 export type WebhookResponseMode =
 	| 'onReceived'
 	| 'lastNode'
 	| 'responseNode'
 	| 'formPage'
+	| 'hostedChat'
 	| 'streaming';
 
 export interface INodeTypes {
@@ -2198,6 +2273,11 @@ export interface IRunExecutionData {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/**
+	 * This is used to prevent breaking change
+	 * for waiting executions started before signature validation was added
+	 */
+	validateSignature?: boolean;
 	waitTill?: Date;
 	pushRef?: string;
 
@@ -2777,6 +2857,10 @@ export type FormFieldsParameter = Array<{
 	placeholder?: string;
 	fieldName?: string;
 	fieldValue?: string;
+	limitSelection?: 'exact' | 'range' | 'unlimited';
+	numberOfSelections?: number;
+	minSelections?: number;
+	maxSelections?: number;
 }>;
 
 export type FieldTypeMap = {

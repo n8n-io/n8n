@@ -15,12 +15,23 @@ beforeEach(() => {
 
 describe('eligibleModules', () => {
 	it('should consider all default modules eligible', () => {
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(MODULE_NAMES);
+		// 'data-store' isn't (yet) eligible module by default
+		const expectedModules = MODULE_NAMES.filter((name) => name !== 'data-store');
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(expectedModules);
 	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(['external-secrets']);
+	});
+
+	it('should consider a module eligible if it was enabled via env var', () => {
+		process.env.N8N_ENABLED_MODULES = 'data-store';
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'insights',
+			'external-secrets',
+			'data-store',
+		]);
 	});
 
 	it('should throw `ModuleConfusionError` if a module is both enabled and disabled', () => {
@@ -161,7 +172,7 @@ describe('initModules', () => {
 		expect(moduleRegistry.settings.get(moduleName)).toBe(moduleSettings);
 	});
 
-	it('activates the module', async () => {
+	it('activates module with settings', async () => {
 		// ARRANGE
 		const moduleName = 'test-module';
 		const moduleSettings = { foo: 1 };
@@ -183,5 +194,46 @@ describe('initModules', () => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		expect(moduleRegistry.isActive(moduleName as any)).toBe(true);
 		expect(moduleRegistry.getActiveModules()).toEqual([moduleName]);
+	});
+
+	it('activates module without settings', async () => {
+		// ARRANGE
+		const moduleName = 'test-module';
+		const ModuleClass: ModuleInterface = {
+			init: jest.fn(),
+		};
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+
+		// ACT
+		await moduleRegistry.initModules();
+
+		// ASSERT
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect(moduleRegistry.isActive(moduleName as any)).toBe(true);
+		expect(moduleRegistry.getActiveModules()).toEqual([moduleName]);
+	});
+});
+
+describe('loadDir', () => {
+	it('should load dirs defined by modules', async () => {
+		const TEST_LOAD_DIR = '/path/to/module/load/dir';
+		const ModuleClass = {
+			entities: jest.fn().mockReturnValue([]),
+			loadDir: jest.fn().mockReturnValue(TEST_LOAD_DIR),
+		};
+		const moduleMetadata = mock<ModuleMetadata>({
+			getClasses: jest.fn().mockReturnValue([ModuleClass]),
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+
+		await moduleRegistry.loadModules([]); // empty to skip dynamic imports
+
+		expect(moduleRegistry.loadDirs).toEqual([TEST_LOAD_DIR]);
 	});
 });

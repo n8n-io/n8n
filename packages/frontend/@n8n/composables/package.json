@@ -1,7 +1,7 @@
 {
   "name": "@n8n/composables",
   "type": "module",
-  "version": "1.7.0",
+  "version": "1.9.0",
   "files": [
     "dist"
   ],
@@ -14,13 +14,13 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "pnpm run typecheck && tsup",
+    "build": "tsup",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:dev": "vitest --silent=false",
     "lint": "eslint src --quiet",
-    "lintfix": "eslint src --fix",
+    "lint:fix": "eslint src --fix",
     "format": "biome format --write . && prettier --write . --ignore-path ../../../../.prettierignore",
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },

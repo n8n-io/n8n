@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { DEFAULT_EVALUATION_METRIC } from 'n8n-workflow';
 
 import {
 	CORRECTNESS_PROMPT,
@@ -7,6 +8,58 @@ import {
 	HELPFULNESS_INPUT_PROMPT,
 } from './CannedMetricPrompts.ee';
 import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
+
+export const setInputsProperties: INodeProperties[] = [
+	{
+		displayName:
+			'For adding columns from your dataset to the evaluation results. Anything you add here will be displayed in the ‘evaluations’ tab, not the Google Sheet.',
+		name: 'setInputsNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['setInputs'],
+			},
+		},
+	},
+	{
+		displayName: 'Inputs',
+		name: 'inputs',
+		placeholder: 'Add Input',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValueButtonText: 'Add Input',
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Filter',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'inputName',
+						type: 'string',
+						default: '',
+						requiresDataPath: 'single',
+					},
+					{
+						displayName: 'Value',
+						name: 'inputValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['setInputs'],
+			},
+		},
+	},
+];
 
 export const setOutputProperties: INodeProperties[] = [
 	{
@@ -53,6 +106,7 @@ export const setOutputProperties: INodeProperties[] = [
 						name: 'outputName',
 						type: 'string',
 						default: '',
+						requiresDataPath: 'single',
 					},
 					{
 						displayName: 'Value',
@@ -333,7 +387,7 @@ export const setMetricsProperties: INodeProperties[] = [
 				description: 'Define your own metric(s)',
 			},
 		],
-		default: 'correctness',
+		default: DEFAULT_EVALUATION_METRIC,
 		displayOptions: {
 			show: {
 				operation: ['setMetrics'],

@@ -7,7 +7,7 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
-import { ApplicationError } from './errors/application.error';
+import { ApplicationError } from '@n8n/errors';
 import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
@@ -835,6 +835,10 @@ export function getNodeParameters(
 					// Multiple can be set so will be an array
 
 					const tempArrayValue: INodeParameters[] = [];
+					// Collection values should always be an object
+					if (typeof propertyValues !== 'object' || Array.isArray(propertyValues)) {
+						continue;
+					}
 					// Iterate over all items as it contains multiple ones
 					for (const nodeValue of (propertyValues as INodeParameters)[
 						itemName
@@ -1698,13 +1702,9 @@ export function isDefaultNodeName(
 	nodeType: INodeTypeDescription,
 	parameters: INodeParameters,
 ): boolean {
-	const legacyDefaultName = nodeType.defaults.name ?? nodeType.displayName;
 	const currentDefaultName = makeNodeName(parameters, nodeType);
-	for (const defaultName of [legacyDefaultName, currentDefaultName]) {
-		if (name.startsWith(defaultName) && /^\d*$/.test(name.slice(defaultName.length))) return true;
-	}
 
-	return false;
+	return name.startsWith(currentDefaultName) && /^\d*$/.test(name.slice(currentDefaultName.length));
 }
 
 /**

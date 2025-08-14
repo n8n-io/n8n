@@ -1,6 +1,7 @@
 import { ModuleMetadata } from '@n8n/decorators';
 import type { EntityClass, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { existsSync } from 'fs';
 import path from 'path';
 
 import { MissingModuleError } from './errors/missing-module.error';
@@ -13,6 +14,8 @@ import { Logger } from '../logging/logger';
 @Service()
 export class ModuleRegistry {
 	readonly entities: EntityClass[] = [];
+
+	readonly loadDirs: string[] = [];
 
 	readonly settings: Map<string, ModuleSettings> = new Map();
 
@@ -54,7 +57,8 @@ export class ModuleRegistry {
 			// docker + tests
 			const n8nPackagePath = require.resolve('n8n/package.json');
 			const n8nRoot = path.dirname(n8nPackagePath);
-			const dir = process.env.NODE_ENV === 'test' ? 'src' : 'dist';
+			const srcDirExists = existsSync(path.join(n8nRoot, 'src'));
+			const dir = process.env.NODE_ENV === 'test' && srcDirExists ? 'src' : 'dist';
 			modulesDir = path.join(n8nRoot, dir, 'modules');
 		} catch {
 			// local dev
@@ -77,9 +81,11 @@ export class ModuleRegistry {
 		for (const ModuleClass of this.moduleMetadata.getClasses()) {
 			const entities = await Container.get(ModuleClass).entities?.();
 
-			if (!entities || entities.length === 0) continue;
+			if (entities?.length) this.entities.push(...entities);
 
-			this.entities.push(...entities);
+			const loadDir = Container.get(ModuleClass).loadDir?.();
+
+			if (loadDir) this.loadDirs.push(loadDir);
 		}
 	}
 
@@ -104,9 +110,7 @@ export class ModuleRegistry {
 
 			const moduleSettings = await Container.get(ModuleClass).settings?.();
 
-			if (!moduleSettings) continue;
-
-			this.settings.set(moduleName, moduleSettings);
+			if (moduleSettings) this.settings.set(moduleName, moduleSettings);
 
 			this.logger.debug(`Initialized module "${moduleName}"`);
 
