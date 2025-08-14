@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import type {
 	DataStoreColumnCreatePayload,
 	DataStoreColumnType,
@@ -17,6 +17,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const { getIconForType } = useDataStoreTypes();
+
+const nameInputRef = ref<HTMLInputElement | null>(null);
 
 const columnName = ref('');
 const columnType = ref<DataStoreColumnType>('string');
@@ -43,12 +45,18 @@ const onAddButtonClicked = () => {
 	popoverOpen.value = false;
 };
 
-const handlePopoverOpenChange = (open: boolean) => {
+const handlePopoverOpenChange = async (open: boolean) => {
 	// Don't close the popover if the select is open
 	if (!open && isSelectOpen.value) {
 		return;
 	}
 	popoverOpen.value = open;
+	// Focus name input when opening popover
+	if (open) {
+		await nextTick(() => {
+			nameInputRef.value?.focus();
+		});
+	}
 };
 </script>
 
@@ -74,6 +82,7 @@ const handlePopoverOpenChange = (open: boolean) => {
 								:required="true"
 							>
 								<N8nInput
+									ref="nameInputRef"
 									v-model="columnName"
 									:placeholder="i18n.baseText('dataStore.addColumn.nameInput.placeholder')"
 									@keyup.enter="onAddButtonClicked"
