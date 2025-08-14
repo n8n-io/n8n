@@ -166,13 +166,22 @@ export const fileFields: INodeProperties[] = [
 				default: '',
 				description:
 					"Provide another message's Timestamp value to upload this file as a reply. Never use a reply's Timestamp value; use its parent instead.",
-				validation: [
+
+				modes: [
 					{
-						type: 'regex',
-						properties: {
-							regex: '^[0-9]+(.[0-9]+)?$',
-							errorMessage: 'Not a valid timestamp',
-						},
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '^[0-9]+(\\.[0-9]+)?$',
+									errorMessage: 'Not a valid timestamp',
+								},
+							},
+						],
+						placeholder: '1663233118.856619',
 					},
 				],
 			},
