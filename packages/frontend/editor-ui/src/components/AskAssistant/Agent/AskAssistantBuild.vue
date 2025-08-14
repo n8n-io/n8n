@@ -120,11 +120,6 @@ watch(
 
 			// Only save if generation completed successfully
 			if (successful) {
-				// Find last workflow updated message
-				const lastUpdate = builderStore.workflowMessages.findLast((msg) =>
-					isWorkflowUpdatedMessage(msg),
-				);
-
 				await workflowSaver.saveCurrentWorkflow();
 			}
 		}
