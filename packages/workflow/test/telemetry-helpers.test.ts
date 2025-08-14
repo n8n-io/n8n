@@ -28,7 +28,7 @@ import {
 	userInInstanceRanOutOfFreeAiCredits,
 } from '../src/telemetry-helpers';
 import { randomInt } from '../src/utils';
-import { DEFAULT_EVALUATION_METRIC } from '../src';
+import { DEFAULT_EVALUATION_METRIC } from '../src/evaluation-helpers';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
