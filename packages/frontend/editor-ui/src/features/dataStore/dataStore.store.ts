@@ -10,6 +10,7 @@ import {
 	addDataStoreColumnApi,
 	getDataStoreRowsApi,
 	insertDataStoreRowApi,
+	upsertDataStoreRowsApi,
 } from '@/features/dataStore/dataStore.api';
 import type {
 	DataStore,
@@ -129,6 +130,10 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		);
 	};
 
+	const upsertRow = async (dataStoreId: string, projectId: string, row: DataStoreRow) => {
+		return await upsertDataStoreRowsApi(rootStore.restApiContext, dataStoreId, [row], projectId);
+	};
+
 	return {
 		dataStores,
 		totalCount,
@@ -141,5 +146,6 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		addDataStoreColumn,
 		fetchDataStoreContent,
 		insertEmptyRow,
+		upsertRow,
 	};
 });

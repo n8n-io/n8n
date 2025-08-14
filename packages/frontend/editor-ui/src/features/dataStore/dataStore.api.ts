@@ -124,3 +124,21 @@ export const insertDataStoreRowApi = async (
 		},
 	);
 };
+
+export const upsertDataStoreRowsApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	rows: DataStoreRow[],
+	projectId?: string,
+	matchFields: string[] = ['id'],
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'POST',
+		`/projects/${projectId}/data-stores/${dataStoreId}/upsert`,
+		{
+			rows,
+			matchFields,
+		},
+	);
+};

@@ -19,6 +19,7 @@ import {
 	getDefaultValueForType,
 	mapToAGCellType,
 } from '@/features/dataStore/composables/useDataStoreTypes';
+import { CellValueChangedEvent } from 'ag-grid-community';
 
 // Register all Community features
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -97,15 +98,24 @@ const createColumnDef = (col: DataStoreColumn) => {
 		cellDataType: mapToAGCellType(col.type),
 		valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
 			// If the value is null, return the default value for the column type
-			return params.data?.[col.name] === null
-				? getDefaultValueForType(col.type)
-				: params.data?.[col.name];
+			if (params.data?.[col.name] === null) {
+				return getDefaultValueForType(col.type);
+			}
+			// Parse dates
+			if (col.type === 'date') {
+				return new Date(params.data?.[col.name] as string);
+			}
+			return params.data?.[col.name];
 		},
 	};
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
 		columnDef.cellEditor = 'agLargeTextCellEditor';
 		columnDef.cellEditorPopup = true;
+	}
+	// Setup date editor
+	if (col.type === 'date') {
+		columnDef.cellEditor = 'agDateCellEditor';
 	}
 	return columnDef;
 };
@@ -162,6 +172,18 @@ const initialize = async () => {
 	await fetchDataStoreContent();
 };
 
+const onCellValueChanged = async (params: CellValueChangedEvent) => {
+	const { data } = params;
+
+	// TODO: Add loading state
+	try {
+		await dataStoreStore.upsertRow(props.dataStore.id, props.dataStore.projectId ?? '', data);
+	} catch (error) {
+		// TODO: Revert to old value if failed
+		toast.showError(error, i18n.baseText('dataStore.updateRow.error'));
+	}
+};
+
 onMounted(async () => {
 	await initialize();
 });
@@ -180,6 +202,7 @@ onMounted(async () => {
 				:theme="n8nTheme"
 				:loading="contentLoading"
 				@grid-ready="onGridReady"
+				@cell-value-changed="onCellValueChanged"
 			/>
 			<AddColumnPopover
 				:data-store="props.dataStore"

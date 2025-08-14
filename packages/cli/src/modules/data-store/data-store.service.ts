@@ -202,10 +202,11 @@ export class DataStoreService {
 		}
 
 		const columnNames = new Set(columns.map((x) => x.name));
+		columnNames.add('id');
 		const columnTypeMap = new Map(columns.map((x) => [x.name, x.type]));
 		for (const row of rows) {
 			const keys = Object.keys(row);
-			if (columns.length !== keys.length) {
+			if (columns.length + 1 !== keys.length) {
 				throw new UserError('mismatched key count');
 			}
 			for (const key of keys) {
@@ -222,9 +223,18 @@ export class DataStoreService {
 							);
 						break;
 					case 'date':
-						if (!(cell instanceof Date))
+						// Accept both Date objects and valid date strings
+						if (typeof cell === 'string') {
+							const dateValue = new Date(cell);
+							if (isNaN(dateValue.getTime())) {
+								throw new UserError(`value '${cell}' does not match column type 'date'`);
+							}
+							row[key] = dateValue.toISOString();
+						} else if (cell instanceof Date) {
+							row[key] = cell.toISOString();
+						} else {
 							throw new UserError(`value '${cell}' does not match column type 'date'`);
-						row[key] = cell.toISOString();
+						}
 						break;
 					case 'string':
 						if (typeof cell !== 'string')
