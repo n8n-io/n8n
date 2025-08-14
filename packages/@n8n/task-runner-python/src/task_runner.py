@@ -71,7 +71,7 @@ class TaskRunner:
         try:
             self.websocket = await websockets.connect(
                 self.ws_url,
-                extra_headers=headers,
+                additional_headers=headers,
                 max_size=self.max_payload_size,
             )
 
