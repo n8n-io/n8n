@@ -50,6 +50,7 @@ export function createUpdateNodeParametersTool(
 	nodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
 	logger?: Logger,
+	instanceUrl?: string,
 ) {
 	return tool(
 		async (input, config) => {
@@ -106,6 +107,7 @@ export function createUpdateNodeParametersTool(
 							nodeType: node.type,
 							nodeDefinition: nodeType,
 							requestedChanges: changes,
+							instanceUrl,
 						},
 						logger,
 					);
@@ -120,6 +122,7 @@ export function createUpdateNodeParametersTool(
 						current_parameters: JSON.stringify(currentParameters, null, 2),
 						node_definition: nodePropertiesJson,
 						changes: formattedChanges,
+						instanceUrl: instanceUrl || '',
 					})) as INodeParameters;
 
 					// Ensure newParameters is a valid object

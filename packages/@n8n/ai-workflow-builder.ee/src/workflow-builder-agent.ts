@@ -81,7 +81,7 @@ export class WorkflowBuilderAgent {
 			createAddNodeTool(this.parsedNodeTypes),
 			createConnectNodesTool(this.parsedNodeTypes, this.logger),
 			createRemoveNodeTool(this.logger),
-			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask, this.logger),
+			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask, this.logger, this.instanceUrl),
 		];
 
 		// Create a map for quick tool lookup
