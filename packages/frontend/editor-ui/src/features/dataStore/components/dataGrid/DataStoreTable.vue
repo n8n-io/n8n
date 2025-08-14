@@ -19,7 +19,7 @@ import {
 	getDefaultValueForType,
 	mapToAGCellType,
 } from '@/features/dataStore/composables/useDataStoreTypes';
-import { CellValueChangedEvent } from 'ag-grid-community';
+import type { CellValueChangedEvent } from 'ag-grid-community';
 
 // Register all Community features
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -29,6 +29,10 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+
+const emit = defineEmits<{
+	toggleSave: [value: boolean];
+}>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -75,8 +79,7 @@ const setPageSize = async (size: number) => {
 };
 
 const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload }) => {
-	// TODO:
-	// - Add loading
+	emit('toggleSave', true);
 	try {
 		const newColumn = await dataStoreStore.addDataStoreColumn(props.dataStore.id, column);
 		if (!newColumn) {
@@ -85,6 +88,8 @@ const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload })
 		colDefs.value.push(createColumnDef(newColumn));
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
+	} finally {
+		emit('toggleSave', false);
 	}
 };
 
@@ -127,8 +132,11 @@ const onAddRowClick = async () => {
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
 		await fetchDataStoreContent();
+		emit('toggleSave', true);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
+	} finally {
+		emit('toggleSave', false);
 	}
 };
 
@@ -174,13 +182,14 @@ const initialize = async () => {
 
 const onCellValueChanged = async (params: CellValueChangedEvent) => {
 	const { data } = params;
-
-	// TODO: Add loading state
 	try {
+		emit('toggleSave', true);
 		await dataStoreStore.upsertRow(props.dataStore.id, props.dataStore.projectId ?? '', data);
 	} catch (error) {
 		// TODO: Revert to old value if failed
 		toast.showError(error, i18n.baseText('dataStore.updateRow.error'));
+	} finally {
+		emit('toggleSave', false);
 	}
 };
 
