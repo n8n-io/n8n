@@ -243,8 +243,11 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Message Timestamp',
 		name: 'timestamp',
 		required: true,
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: {
+			mode: 'id',
+			value: '',
+		},
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -252,7 +255,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description: 'Timestamp of the message to message',
-		placeholder: '1663233118.856619',
 		modes: [
 			{
 				displayName: 'By ID',
@@ -530,10 +532,12 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Message Timestamp',
 				name: 'ts',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: {
+					mode: 'id',
+					value: '',
+				},
 				description: 'Timestamp of the message to post',
-				placeholder: '1663233118.856619',
 				modes: [
 					{
 						displayName: 'By ID',
@@ -700,9 +704,11 @@ export const messageFields: INodeProperties[] = [
 							{
 								displayName: 'Message Timestamp to Reply To',
 								name: 'thread_ts',
-								type: 'string',
-								default: '',
-								placeholder: '1663233118.856619',
+								type: 'resourceLocator',
+								default: {
+									mode: 'id',
+									value: '',
+								},
 								description:
 									'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
 								modes: [
@@ -914,8 +920,11 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Message Timestamp',
 		name: 'ts',
 		required: true,
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: {
+			mode: 'id',
+			value: '',
+		},
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -923,7 +932,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description: 'Timestamp of the message to update',
-		placeholder: '1663233118.856619',
 		modes: [
 			{
 				displayName: 'By ID',
@@ -1224,8 +1232,11 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Message Timestamp',
 		name: 'timestamp',
 		required: true,
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: {
+			mode: 'id',
+			value: '',
+		},
 		displayOptions: {
 			show: {
 				resource: ['message'],

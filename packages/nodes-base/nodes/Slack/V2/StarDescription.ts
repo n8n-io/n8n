@@ -142,8 +142,11 @@ export const starFields: INodeProperties[] = [
 	{
 		displayName: 'Message Timestamp',
 		name: 'timestamp',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: {
+			mode: 'id',
+			value: '',
+		},
 		displayOptions: {
 			show: {
 				resource: ['star'],
@@ -152,7 +155,6 @@ export const starFields: INodeProperties[] = [
 			},
 		},
 		description: 'Timestamp of the message to add',
-		placeholder: '1663233118.856619',
 		modes: [
 			{
 				displayName: 'By ID',
@@ -240,10 +242,12 @@ export const starFields: INodeProperties[] = [
 			{
 				displayName: 'Message Timestamp',
 				name: 'timestamp',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: {
+					mode: 'id',
+					value: '',
+				},
 				description: 'Timestamp of the message to delete',
-				placeholder: '1663233118.856619',
 				modes: [
 					{
 						displayName: 'By ID',

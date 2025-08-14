@@ -162,11 +162,13 @@ export const fileFields: INodeProperties[] = [
 			{
 				displayName: 'Thread Timestamp',
 				name: 'threadTs',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: {
+					mode: 'id',
+					value: '',
+				},
 				description:
 					"Provide another message's Timestamp value to upload this file as a reply. Never use a reply's Timestamp value; use its parent instead.",
-
 				modes: [
 					{
 						displayName: 'By ID',

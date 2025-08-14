@@ -1190,8 +1190,11 @@ export const channelFields: INodeProperties[] = [
 	{
 		displayName: 'Message Timestamp',
 		name: 'ts',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: {
+			mode: 'id',
+			value: '',
+		},
 		displayOptions: {
 			show: {
 				operation: ['replies'],

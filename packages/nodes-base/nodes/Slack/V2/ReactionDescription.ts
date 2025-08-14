@@ -101,8 +101,11 @@ export const reactionFields: INodeProperties[] = [
 		displayName: 'Message Timestamp',
 		name: 'timestamp',
 		required: true,
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: {
+			mode: 'id',
+			value: '',
+		},
 		displayOptions: {
 			show: {
 				resource: ['reaction'],
@@ -110,7 +113,6 @@ export const reactionFields: INodeProperties[] = [
 			},
 		},
 		description: 'Timestamp of the message to add, get or remove',
-		placeholder: '1663233118.856619',
 		modes: [
 			{
 				displayName: 'By ID',
