@@ -193,6 +193,11 @@ test.describe('Security Notifications', () => {
 		// Verify versions modal opens
 		const versionsModal = page.locator('[data-test-id="version-updates-panel"]');
 		await expect(versionsModal).toBeVisible();
+
+		// Verify security update badge exists for the new version
+		const versionCard = versionsModal.locator('[data-test-id="version-card"]').first();
+		const securityBadge = versionCard.locator('.el-tag--danger').getByText('Security update');
+		await expect(securityBadge).toBeVisible();
 	});
 
 	test('should not display security notification when disabled or no security issue', async ({
