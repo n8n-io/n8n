@@ -86,6 +86,7 @@ export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
 export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
 export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
+export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -787,6 +788,12 @@ export const PRE_BUILT_AGENTS_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const TEMPLATE_RECO_V2 = {
+	name: '039_template_onboarding_v2',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_BUILDER_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -957,10 +964,10 @@ export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
-export const PiPWindowSymbol = 'PiPWindow' as unknown as InjectionKey<Ref<Window | undefined>>;
-export const ExpressionLocalResolveContextSymbol = Symbol(
-	'ExpressionLocalResolveContext',
-) as InjectionKey<ComputedRef<ExpressionLocalResolveContext | undefined>>;
+export const PopOutWindowKey: InjectionKey<Ref<Window | undefined>> = Symbol('PopOutWindow');
+export const ExpressionLocalResolveContextSymbol: InjectionKey<
+	ComputedRef<ExpressionLocalResolveContext | undefined>
+> = Symbol('ExpressionLocalResolveContext');
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 export const CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID = 'cm-tooltip-container';

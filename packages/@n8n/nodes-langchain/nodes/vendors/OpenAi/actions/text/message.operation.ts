@@ -212,7 +212,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const abortSignal = this.getExecutionCancelSignal();
 
 	if (options.maxTokens !== undefined) {
-		options.max_tokens = options.maxTokens;
+		options.max_completion_tokens = options.maxTokens;
 		delete options.maxTokens;
 	}
 
