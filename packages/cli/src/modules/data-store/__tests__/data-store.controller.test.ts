@@ -1,36 +1,20 @@
-import { faker } from '@faker-js/faker';
 import {
-	createWorkflow,
-	getWorkflowSharing,
-	randomCredentialPayload,
 	createTeamProject,
 	getPersonalProject,
 	linkUserToProject,
 	testDb,
-	testModules,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { Project, ProjectRole, User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DateTime } from 'luxon';
-import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import {
-	createCredentials,
-	getCredentialSharings,
-	saveCredential,
-	shareCredentialWithProjects,
-	shareCredentialWithUsers,
-} from '@test-integration/db/credentials';
-import { createFolder } from '@test-integration/db/folders';
-import { createTag } from '@test-integration/db/tags';
 
 // import * as utils from '../shared/utils/';
 
-import { createOwner, createMember, createUser, createAdmin } from '@test-integration/db/users';
-import type { SuperAgentTest, TestServer } from '@test-integration/types';
+import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
+import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 import { DataStoreRepository } from '../data-store.repository';
 
@@ -89,16 +73,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			],
 		};
 
-		// await authOwnerAgent
-		// 	.post('/projects/non-existing-id/data-stores')
-		// 	.send(payload)
-		// 	.expect(403);
-
-		const response = await authOwnerAgent
-			.post('/projects/non-existing-id/data-stores')
-			.send(payload);
-
-		console.log(response.body);
+		await authMemberAgent.post('/projects/non-existing-id/data-stores').send(payload).expect(403);
 	});
 
 	test('should not create data store when name is empty', async () => {
@@ -122,6 +97,12 @@ describe('POST /projects/:projectId/data-stores', () => {
 
 		const payload = {
 			name: 'Test Data Store',
+			columns: [
+				{
+					name: 'test-ccolumn',
+					type: 'string',
+				},
+			],
 		};
 
 		await authMemberAgent.post(`/projects/${project.id}/data-stores`).send(payload).expect(403);
@@ -134,6 +115,12 @@ describe('POST /projects/:projectId/data-stores', () => {
 		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const payload = {
 			name: 'Test Data Store',
+			columns: [
+				{
+					name: 'test-ccolumn',
+					type: 'string',
+				},
+			],
 		};
 
 		await authMemberAgent
@@ -148,6 +135,12 @@ describe('POST /projects/:projectId/data-stores', () => {
 
 		const payload = {
 			name: 'Test Data Store',
+			columns: [
+				{
+					name: 'test-ccolumn',
+					type: 'string',
+				},
+			],
 		};
 
 		await authMemberAgent.post(`/projects/${project.id}/data-stores`).send(payload).expect(200);
@@ -161,6 +154,12 @@ describe('POST /projects/:projectId/data-stores', () => {
 
 		const payload = {
 			name: 'Test Data Store',
+			columns: [
+				{
+					name: 'test-ccolumn',
+					type: 'string',
+				},
+			],
 		};
 
 		await authOwnerAgent.post(`/projects/${project.id}/data-stores`).send(payload).expect(200);
@@ -172,7 +171,13 @@ describe('POST /projects/:projectId/data-stores', () => {
 	test('should create data store in personal project', async () => {
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const payload = {
-			name: 'Personal Data Store',
+			name: 'Test Data Store',
+			columns: [
+				{
+					name: 'test-ccolumn',
+					type: 'string',
+				},
+			],
 		};
 
 		const response = await authOwnerAgent
