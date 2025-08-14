@@ -28,7 +28,7 @@ const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
 
 // #region ===== Configuration =====
 const config = {
-	compiledAppDir: process.env.BUILD_OUTPUT_DIR || path.join(rootDir, 'compiled'),
+	compiledAppDir: path.join(rootDir, 'compiled'),
 	rootDir: rootDir,
 };
 

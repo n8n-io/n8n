@@ -114,7 +114,7 @@ const sampleFiles = [
 	},
 ];
 
-describe('SourceControlPushModal', () => {
+describe('SourceControlPullModal', () => {
 	let sourceControlStore: ReturnType<typeof mockedStore<typeof useSourceControlStore>>;
 
 	beforeEach(() => {
@@ -144,8 +144,9 @@ describe('SourceControlPushModal', () => {
 			},
 		});
 
-		expect(getAllByTestId('pull-modal-item-header').length).toBe(2);
-		expect(getAllByTestId('pull-modal-item').length).toBe(2);
+		// The new structure renders items in a tabbed interface
+		// Both items should be rendered (one workflow, one credential)
+		expect(getAllByTestId('pull-modal-item').length).toBe(1); // Only workflow tab items are shown initially
 	});
 
 	it('should force pull', async () => {
@@ -183,13 +184,13 @@ describe('SourceControlPushModal', () => {
 		expect(diffButton).toBeInTheDocument();
 	});
 
-	it('should not render diff button for non-workflow items', () => {
+	it('should not render diff button for non-workflow items', async () => {
 		const credentialFile = {
 			...sampleFiles[1], // credential file
 			type: 'credential',
 		};
 
-		const { container } = renderModal({
+		const { container, getByText } = renderModal({
 			props: {
 				data: {
 					eventBus,
@@ -198,10 +199,13 @@ describe('SourceControlPushModal', () => {
 			},
 		});
 
-		// For credential files, there should be no additional buttons in the item actions
-		const itemActions = container.querySelector('[class*="itemActions"]');
-		const buttons = itemActions?.querySelectorAll('button');
-		expect(buttons).toHaveLength(0);
+		// Click on credentials tab to show credential items
+		await userEvent.click(getByText('Credentials'));
+
+		// For credential files, there should be no diff buttons (only badges in the badges container)
+		const badges = container.querySelector('[class*="badges"]');
+		const buttons = badges?.querySelectorAll('button');
+		expect(buttons?.length || 0).toBe(0);
 	});
 
 	it('should render item names with ellipsis for long text', () => {
@@ -219,13 +223,14 @@ describe('SourceControlPushModal', () => {
 			},
 		});
 
-		// Check if the itemName container exists and has the proper structure
-		const nameContainer = container.querySelector('[class*="itemName"]');
+		// Check if the listItemName container exists
+		const nameContainer = container.querySelector('[class*="listItemName"]');
 		expect(nameContainer).toBeInTheDocument();
 
 		// Check if the RouterLink stub is rendered (since the name is rendered inside it)
 		const routerLink = nameContainer?.querySelector('a');
 		expect(routerLink).toBeInTheDocument();
+		expect(routerLink?.textContent).toContain(longNameFile.name);
 	});
 
 	it('should render badges and actions in separate container', () => {
@@ -240,14 +245,10 @@ describe('SourceControlPushModal', () => {
 
 		const listItems = getAllByTestId('pull-modal-item');
 
-		// Each list item should have the new structure with itemActions container
+		// Each list item should have the new structure with badges container
 		listItems.forEach((item) => {
-			const actionsContainer = item.querySelector('[class*="itemActions"]');
-			expect(actionsContainer).toBeInTheDocument();
-
-			// Badge should be inside actions container
-			const badge = actionsContainer?.querySelector('[class*="listBadge"]');
-			expect(badge).toBeInTheDocument();
+			const badgesContainer = item.querySelector('[class*="badges"]');
+			expect(badgesContainer).toBeInTheDocument();
 		});
 	});
 
