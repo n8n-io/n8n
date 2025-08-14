@@ -1,3 +1,15 @@
+## [1.107.1](https://github.com/n8n-io/n8n/compare/n8n@1.107.0...n8n@1.107.1) (2025-08-14)
+
+
+### Bug Fixes
+
+* **core:** Support MCP server when offloading is enabled ([#18214](https://github.com/n8n-io/n8n/issues/18214)) ([308fd46](https://github.com/n8n-io/n8n/commit/308fd46171cf0e54c594b5e6546a0eead861315e))
+* **Local File Trigger Node:** Add chokidar dependency back ([#18260](https://github.com/n8n-io/n8n/issues/18260)) ([46ed969](https://github.com/n8n-io/n8n/commit/46ed96977c98bded04c0a4d1b3e236bf751d66a3))
+* pnpm-lock ([f58cc64](https://github.com/n8n-io/n8n/commit/f58cc64c42239ceae3c6f15456dc23a329f7f8a6))
+* Update dependencies to close cves ([#18215](https://github.com/n8n-io/n8n/issues/18215)) ([0ae9998](https://github.com/n8n-io/n8n/commit/0ae9998a385dd03d68331ded09200f2469f842e9))
+
+
+
 # [1.107.0](https://github.com/n8n-io/n8n/compare/n8n@1.106.0...n8n@1.107.0) (2025-08-11)
 
 
