@@ -11,7 +11,6 @@ import random
 from nanoid import generate as nanoid
 
 
-
 from .message_types import (
     BrokerMessage,
     RunnerMessage,
@@ -105,6 +104,9 @@ class TaskRunner:
     # ========== Messages ==========
 
     async def _listen_for_messages(self) -> None:
+        if self.websocket is None:
+            raise RuntimeError("WebSocket not connected")
+
         async for raw_message in self.websocket:
             try:
                 message = MessageSerde.deserialize_broker_message(raw_message)
