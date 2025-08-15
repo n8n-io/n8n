@@ -153,19 +153,25 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 };
 
 const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
-	if (!moveEvent.finished || moveEvent.source !== 'uiColumnMoved') {
+	if (
+		!moveEvent.finished ||
+		moveEvent.source !== 'uiColumnMoved' ||
+		!moveEvent.toIndex ||
+		!moveEvent.column
+	) {
 		return;
 	}
 
+	const oldIndex = colDefs.value.findIndex((col) => col.colId === moveEvent.column!.getColId());
 	try {
 		await dataStoreStore.moveDataStoreColumn(
 			props.dataStore.id,
-			moveEvent.column?.getColId() ?? '',
-			(moveEvent.toIndex ?? 0) - 1,
+			moveEvent.column.getColId(),
+			moveEvent.toIndex - 1,
 		);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.moveColumn.error'));
-		// TODO: revert the move
+		gridApi.value?.moveColumnByIndex(moveEvent.toIndex, oldIndex);
 	}
 };
 
@@ -194,19 +200,6 @@ const initColumnDefinitions = () => {
 
 const initialize = async () => {
 	initColumnDefinitions();
-};
-
-const onCellValueChanged = async (params: CellValueChangedEvent) => {
-	const { data } = params;
-	try {
-		emit('toggleSave', true);
-		await dataStoreStore.upsertRow(props.dataStore.id, props.dataStore.projectId ?? '', data);
-	} catch (error) {
-		// TODO: Revert to old value if failed
-		toast.showError(error, i18n.baseText('dataStore.updateRow.error'));
-	} finally {
-		emit('toggleSave', false);
-	}
 };
 
 onMounted(async () => {
