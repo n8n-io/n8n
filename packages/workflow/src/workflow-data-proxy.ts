@@ -1080,13 +1080,7 @@ export class WorkflowDataProxy {
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
-						// Always show helpful "Execute node for preview" message
-						throw new ExpressionError(EXPRESSION_ERROR_MESSAGES.NO_EXECUTION_DATA, {
-							messageTemplate: `Execute node "${nodeName}" for preview`,
-							nodeCause: nodeName,
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-						});
+						throw createNodeReferenceError(nodeName);
 					}
 				};
 
@@ -1104,10 +1098,7 @@ export class WorkflowDataProxy {
 						contextNode = parentMainInputNode?.name ?? contextNode;
 					}
 
-					// For .first(), .last(), .all() methods, use unidirectional path checking
-					// (forward only) to maintain traditional paired item behavior
-					const hasForwardPath = that.workflow.getChildNodes(nodeName).includes(contextNode);
-					if (!hasForwardPath) {
+					if (!that.workflow.hasPath(nodeName, contextNode)) {
 						throw createNodeReferenceError(nodeName);
 					}
 				};
