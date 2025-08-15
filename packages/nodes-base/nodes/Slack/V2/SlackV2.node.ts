@@ -41,6 +41,7 @@ import { reactionFields, reactionOperations } from './ReactionDescription';
 import { starFields, starOperations } from './StarDescription';
 import { userFields, userOperations } from './UserDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
+import { formatTs } from './utils';
 import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
 import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
@@ -701,7 +702,16 @@ export class SlackV2 implements INodeType {
 							{},
 							{ extractValue: true },
 						) as string;
-						const ts = this.getNodeParameter('ts', i)?.toString() as string;
+						const ts = formatTs(
+							this.getNodeParameter(
+								'ts',
+								i,
+								{},
+								{
+									extractValue: true,
+								},
+							) as string,
+						);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i);
 						qs.channel = channel;
@@ -836,7 +846,29 @@ export class SlackV2 implements INodeType {
 						}
 
 						const replyValues = (otherOptions.thread_ts as IDataObject)?.replyValues as IDataObject;
-						Object.assign(body, replyValues);
+						if (replyValues) {
+							if (replyValues.thread_ts === undefined) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Thread timestamp is required when replying to a message.',
+								);
+							}
+							const threadTs = formatTs(
+								this.getNodeParameter(
+									'otherOptions.thread_ts.replyValues.thread_ts',
+									i,
+									{},
+									{
+										extractValue: true,
+									},
+								) as string,
+							);
+							body.thread_ts = formatTs(threadTs);
+							if (replyValues.reply_broadcast) {
+								body.reply_broadcast = replyValues.reply_broadcast as boolean;
+							}
+						}
+
 						delete otherOptions.thread_ts;
 						delete otherOptions.ephemeral;
 						if (otherOptions.botProfile) {
@@ -851,6 +883,10 @@ export class SlackV2 implements INodeType {
 						}
 						delete otherOptions.botProfile;
 						Object.assign(body, otherOptions);
+
+						// TODO: Remove this
+						console.log('SlackV2: body', body);
+
 						if (
 							select === 'user' &&
 							action === 'postEphemeral' &&
@@ -873,7 +909,16 @@ export class SlackV2 implements INodeType {
 							{},
 							{ extractValue: true },
 						) as string;
-						const ts = this.getNodeParameter('ts', i)?.toString() as string;
+						const ts = formatTs(
+							this.getNodeParameter(
+								'ts',
+								i,
+								{},
+								{
+									extractValue: true,
+								},
+							) as string,
+						);
 						const content = getMessageContent.call(this, i, nodeVersion, instanceId);
 
 						const body: IDataObject = {
@@ -905,7 +950,16 @@ export class SlackV2 implements INodeType {
 						) {
 							target = target.slice(0, 1) === '@' ? target : `@${target}`;
 						}
-						const timestamp = this.getNodeParameter('timestamp', i)?.toString() as string;
+						const timestamp = formatTs(
+							this.getNodeParameter(
+								'timestamp',
+								i,
+								{},
+								{
+									extractValue: true,
+								},
+							) as string,
+						);
 						const body: IDataObject = {
 							channel: target,
 							ts: timestamp,
@@ -921,7 +975,16 @@ export class SlackV2 implements INodeType {
 							{},
 							{ extractValue: true },
 						) as string;
-						const timestamp = this.getNodeParameter('timestamp', i)?.toString() as string;
+						const timestamp = formatTs(
+							this.getNodeParameter(
+								'timestamp',
+								i,
+								{},
+								{
+									extractValue: true,
+								},
+							) as string,
+						);
 						qs = {
 							channel,
 							message_ts: timestamp,
@@ -968,7 +1031,16 @@ export class SlackV2 implements INodeType {
 						{},
 						{ extractValue: true },
 					) as string;
-					const timestamp = this.getNodeParameter('timestamp', i)?.toString() as string;
+					const timestamp = formatTs(
+						this.getNodeParameter(
+							'timestamp',
+							i,
+							{},
+							{
+								extractValue: true,
+							},
+						) as string,
+					);
 					//https://api.slack.com/methods/reactions.add
 					if (operation === 'add') {
 						const name = this.getNodeParameter('name', i) as string;
@@ -977,6 +1049,10 @@ export class SlackV2 implements INodeType {
 							name,
 							timestamp,
 						};
+
+						// TODO: Remove this
+						console.log('SlackV2: body', body);
+
 						responseData = await slackApiRequest.call(this, 'POST', '/reactions.add', body, qs);
 					}
 					//https://api.slack.com/methods/reactions.remove
@@ -987,6 +1063,10 @@ export class SlackV2 implements INodeType {
 							name,
 							timestamp,
 						};
+
+						// TODO: Remove this
+						console.log('SlackV2: body', body);
+
 						responseData = await slackApiRequest.call(this, 'POST', '/reactions.remove', body, qs);
 					}
 					//https://api.slack.com/methods/reactions.get
@@ -1011,7 +1091,16 @@ export class SlackV2 implements INodeType {
 						body.channel = channel;
 
 						if (target === 'message') {
-							const timestamp = this.getNodeParameter('timestamp', i)?.toString() as string;
+							const timestamp = formatTs(
+								this.getNodeParameter(
+									'timestamp',
+									i,
+									{},
+									{
+										extractValue: true,
+									},
+								) as string,
+							);
 							body.timestamp = timestamp;
 						}
 						if (target === 'file') {

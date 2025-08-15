@@ -43,6 +43,9 @@ export async function slackApiRequest(
 		delete options.qs;
 	}
 
+	// TODO: Remove this
+	console.log('SlackV2: slackApiRequest', method, body);
+
 	const oAuth2Options: IOAuth2Options = {
 		tokenType: 'Bearer',
 		property: 'authed_user.access_token',

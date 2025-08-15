@@ -1219,6 +1219,25 @@ export const channelFields: INodeProperties[] = [
 				],
 				placeholder: '1663233118.856619',
 			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://example.slack.com/archives/CH1234567/p1663233118856619',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?://.*/archives/.*/p([0-9]{16,})',
+							errorMessage: 'Not a valid Slack Thread URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'http(s)?://.*/archives/.*/p([0-9]{16,})',
+				},
+			},
 		],
 	},
 	{
