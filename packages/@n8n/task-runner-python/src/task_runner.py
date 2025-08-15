@@ -36,7 +36,7 @@ class TaskOffer:
         self.valid_until = valid_until
 
     @property
-    def is_expired(self) -> bool:
+    def has_expired(self) -> bool:
         return time.time() > self.valid_until
 
 
@@ -135,7 +135,7 @@ class TaskRunner:
     async def _handle_task_offer_accept(self, message: BrokerTaskOfferAccept) -> None:
         offer = self.open_offers.get(message.offer_id)
 
-        if not offer or offer.is_expired:
+        if not offer or offer.has_expired:
             response = RunnerTaskRejected(
                 task_id=message.task_id,
                 reason="Offer expired - not accepted within validity window",
@@ -181,7 +181,9 @@ class TaskRunner:
             return
 
         expired_offer_ids = [
-            offer_id for offer_id, offer in self.open_offers.items() if offer.is_expired
+            offer_id
+            for offer_id, offer in self.open_offers.items()
+            if offer.has_expired
         ]
 
         for offer_id in expired_offer_ids:
