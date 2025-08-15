@@ -6,6 +6,10 @@ import type {
 } from '@/features/dataStore/datastore.types';
 import { useI18n } from '@n8n/i18n';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
+import { COLUMN_NAME_REGEX, MAX_COLUMN_NAME_LENGTH } from '@/features/dataStore/constants';
+import Tooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
+import { useDebounce } from '@/composables/useDebounce';
+import { debounce } from 'lodash';
 
 const emit = defineEmits<{
 	addColumn: [
@@ -17,6 +21,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const { getIconForType } = useDataStoreTypes();
+const { debounce } = useDebounce();
 
 const nameInputRef = ref<HTMLInputElement | null>(null);
 
@@ -24,13 +29,13 @@ const columnName = ref('');
 const columnType = ref<DataStoreColumnType>('string');
 const columnTypes = ref<DataStoreColumnType[]>(['string', 'number', 'boolean', 'date']);
 
+const error = ref<string | null>(null);
+
 // Handling popover state manually to prevent it closing when interacting with dropdown
 const popoverOpen = ref(false);
 const isSelectOpen = ref(false);
 
 const onAddButtonClicked = () => {
-	// TODO:
-	// - Validate name before emitting event
 	if (!columnName.value || !columnType.value) {
 		return;
 	}
@@ -58,6 +63,17 @@ const handlePopoverOpenChange = async (open: boolean) => {
 		});
 	}
 };
+
+const validateName = () => {
+	if (error.value) {
+		error.value = null;
+	}
+	if (columnName.value && !COLUMN_NAME_REGEX.test(columnName.value)) {
+		error.value = i18n.baseText('dataStore.addColumn.invalidName.error');
+	}
+};
+
+const onInput = debounce(validateName, { debounceTime: 300 });
 </script>
 
 <template>
@@ -80,13 +96,29 @@ const handlePopoverOpenChange = async (open: boolean) => {
 							<N8nInputLabel
 								:label="i18n.baseText('dataStore.addColumn.nameInput.label')"
 								:required="true"
+								:class="error ? '' : 'mb-s'"
 							>
 								<N8nInput
 									ref="nameInputRef"
 									v-model="columnName"
 									:placeholder="i18n.baseText('dataStore.addColumn.nameInput.placeholder')"
+									:maxlength="MAX_COLUMN_NAME_LENGTH"
 									@keyup.enter="onAddButtonClicked"
+									@input="onInput"
 								/>
+								<div v-if="error" :class="$style['error-message']">
+									<n8n-text size="small" color="danger" tag="span">
+										{{ error }}
+									</n8n-text>
+									<Tooltip :content="i18n.baseText('dataStore.addColumn.invalidName.description')">
+										<N8nIcon
+											icon="circle-help"
+											size="small"
+											class="$style['error-tooltip']"
+											color="text-base"
+										/>
+									</Tooltip>
+								</div>
 							</N8nInputLabel>
 							<N8nInputLabel
 								:label="i18n.baseText('dataStore.addColumn.typeInput.label')"
@@ -108,7 +140,9 @@ const handlePopoverOpenChange = async (open: boolean) => {
 							</N8nInputLabel>
 							<N8nButton
 								type="primary"
-								:disabled="!columnName || !columnType"
+								class="mt-m"
+								size="large"
+								:disabled="!columnName || !columnType || !!error"
 								@click="onAddButtonClicked"
 							>
 								{{ i18n.baseText('dataStore.addColumn.label') }}
@@ -135,7 +169,7 @@ const handlePopoverOpenChange = async (open: boolean) => {
 .popover-content {
 	display: flex;
 	flex-direction: column;
-	min-width: 300px;
+	width: 300px;
 }
 
 .popover-header {
@@ -154,5 +188,16 @@ const handlePopoverOpenChange = async (open: boolean) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-xs);
+}
+
+.error-message {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
+	color: var(--color-text-danger);
+}
+
+.error-tooltip {
+	cursor: pointer;
 }
 </style>
