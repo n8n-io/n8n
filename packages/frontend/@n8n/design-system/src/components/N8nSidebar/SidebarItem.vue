@@ -1,23 +1,17 @@
 <script lang="ts" setup>
-import { useRouter } from 'vue-router';
 import N8nIcon from '../N8nIcon';
 import { IconName, isSupportedIconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
 import N8nText from '../N8nText';
-import { computed } from 'vue';
 
-const router = useRouter();
+import { IMenuItem } from '@n8n/design-system/types';
 
 const props = defineProps<{
-	title: string;
-	id: string;
-	icon?: IconName | string;
+	item: IMenuItem;
+	empty?: boolean;
 	click?: () => void;
 	open?: boolean;
-	link?: string;
-	route?: { name: string };
 	ariaLabel: string;
-	type: 'folder' | 'workflow' | 'project' | 'other';
 }>();
 
 function click(event: MouseEvent) {
@@ -29,20 +23,39 @@ function click(event: MouseEvent) {
 	}
 }
 
-const active = computed(() => {
-	return router.currentRoute.value.path === props.link;
-});
+function getMenuItemRoute(item: IMenuItem) {
+	if (!item.route) {
+		return undefined;
+	}
+
+	const routeTo = item.route.to as any;
+	if (routeTo && typeof routeTo.name === 'string') {
+		return routeTo;
+	}
+
+	return undefined;
+}
 </script>
 
 <template>
-	<N8nRoute :to="route ? route : link" :class="{ sidebarItem: true, active }">
-		<div v-if="type !== 'workflow'" :class="{ sidebarItemDropdown: true, other: type === 'other' }">
+	<N8nRoute
+		:to="item.route ? getMenuItemRoute(item) : item.link?.href"
+		:class="{ sidebarItem: true }"
+	>
+		<div
+			v-if="item.type !== 'workflow'"
+			:class="{ sidebarItemDropdown: true, other: item.type === 'other' }"
+		>
 			<div class="sidebarItemDropdownIcon">
-				<span v-if="icon && !isSupportedIconName(icon)" class="sidebarItemEmoji">{{ icon }}</span>
-				<N8nIcon v-else :icon="isSupportedIconName(icon) ? icon : 'layers'" />
+				<span
+					v-if="item.icon && !isSupportedIconName(item.icon as string)"
+					class="sidebarItemEmoji"
+					>{{ item.icon }}</span
+				>
+				<N8nIcon v-else-if="item.icon" :icon="item.icon as IconName" />
 			</div>
 			<button
-				v-if="type !== 'other'"
+				v-if="item.type !== 'other'"
 				class="sidebarItemDropdownButton"
 				@click="click"
 				:aria-label="ariaLabel"
@@ -50,7 +63,7 @@ const active = computed(() => {
 				<N8nIcon :icon="open ? 'chevron-down' : 'chevron-right'" />
 			</button>
 		</div>
-		<N8nText size="small" class="sidebarItemText">{{ title }}</N8nText>
+		<N8nText size="small" class="sidebarItemText">{{ item.label }}</N8nText>
 	</N8nRoute>
 </template>
 

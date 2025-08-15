@@ -67,8 +67,7 @@ const basePath = ref('');
 const fullyExpanded = ref(false);
 
 // Use the sidebar data composable
-const { personalItems, personalProjectId, sharedItems, projects, openProject, openFolder } =
-	useSidebarData();
+const { items } = useSidebarData();
 
 // Use global entity creation composable
 const {
@@ -311,32 +310,16 @@ const helpMenuItems = ref<IMenuElement[]>([
 		],
 	},
 ]);
-
-const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
-const hasMultipleVerifiedUsers = computed(
-	() => usersStore.allUsers.filter((user) => user.isPendingUser === false).length > 1,
-);
 </script>
 
 <template>
 	<N8nSidebar
-		:personal="{ id: personalProjectId ?? '', items: personalItems }"
+		:items="items"
 		:user-name="usersStore.currentUser?.fullName || ''"
-		:shared="
-			(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
-			hasMultipleVerifiedUsers
-				? sharedItems
-				: undefined
-		"
-		:projects="projects"
-		:projects-enabled="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
 		:release-channel="settingsStore.settings.releaseChannel"
-		:menu-items="visibleMenuItems"
-		:help-menu-items="helpMenuItems"
+		:help-items="helpMenuItems"
 		:handle-select="handleSelect"
 		@logout="onLogout"
-		@openProject="openProject"
-		@openFolder="(event) => openFolder(event.id, event.projectId)"
 		@createProject="handleMenuSelect('create-project')"
 	>
 		<template #createButton>

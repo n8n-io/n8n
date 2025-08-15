@@ -1,155 +1,157 @@
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/stores/projects.store';
-
-import type { TreeItemType } from '@n8n/design-system/components/N8nSidebar';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { IMenuElement, isCustomMenuItem, N8nText } from '@n8n/design-system';
+import { WorkflowListResource } from '@/Interface';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export const useSidebarData = () => {
 	const workflowsStore = useWorkflowsStore();
 	const projectsStore = useProjectsStore();
+	const usersStore = useUsersStore();
+	const settingsStore = useSettingsStore();
 
-	const personalItems = ref<TreeItemType[]>([]);
-	const personalProjectId = ref<string | undefined>();
+	const hasMultipleVerifiedUsers = computed(
+		() => usersStore.allUsers.filter((user) => user.isPendingUser === false).length > 1,
+	);
 
-	const sharedItems = ref<TreeItemType[]>([]);
-	const projects = ref<{ title: string; id: string; icon: IconName; items: TreeItemType[] }[]>([]);
+	const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
+
+	const items = ref<IMenuElement[]>([
+		{
+			id: 'overview',
+			label: 'Overview',
+			icon: 'house',
+			route: { to: '/home/workflows' },
+			type: 'other',
+		},
+		{
+			id: projectsStore.personalProject?.id || 'personal-project',
+			label: 'Personal',
+			icon: 'user',
+			route: { to: `/projects/${projectsStore.personalProject?.id}/workflows` },
+			children: [],
+			type: 'project',
+		},
+	]);
 
 	onMounted(async () => {
 		await initialLoad();
 	});
 
+	function buildNestedHierarchy(flatList: WorkflowListResource[]): IMenuElement[] {
+		const itemMap = new Map<string, IMenuElement>();
+		const rootItems: IMenuElement[] = [];
+
+		// First pass: create all items
+		for (const item of flatList) {
+			const menuElement: IMenuElement = {
+				id: item.id,
+				label: item.name,
+				icon: item.resource === 'folder' ? 'folder' : undefined,
+				route: item.resource === 'workflow' ? { to: `/workflows/${item.id}` } : undefined,
+				children: item.resource === 'folder' ? [] : undefined,
+				type: item.resource,
+			};
+			itemMap.set(item.id, menuElement);
+		}
+
+		for (const item of flatList) {
+			const menuElement = itemMap.get(item.id);
+			if (!menuElement) continue;
+
+			if (item.parentFolder) {
+				const parentElement = itemMap.get(item.parentFolder.id);
+				if (parentElement && !isCustomMenuItem(parentElement) && parentElement.children) {
+					parentElement.children.push(menuElement);
+				} else {
+					rootItems.push(menuElement);
+				}
+			} else {
+				rootItems.push(menuElement);
+			}
+		}
+
+		return rootItems;
+	}
+
 	async function initialLoad() {
-		personalProjectId.value = projectsStore.personalProject?.id;
+		if (projectsStore.personalProject) {
+			const workflows = await workflowsStore.fetchWorkflowsPage(
+				projectsStore.personalProject.id,
+				undefined,
+				undefined,
+				undefined,
+				{},
+				true,
+			);
 
-		await projectsStore.getMyProjects();
-
-		projects.value = projectsStore.teamProjects.map((project) => ({
-			id: project.id,
-			title: project.name || 'Untitled Project',
-			icon: (project.icon?.value || 'layers') as IconName,
-			type: 'project',
-			items: [],
-		}));
-	}
-
-	async function openShared() {
-		const items = await workflowsStore.fetchWorkflowsPage(
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			false,
-			undefined,
-		);
-
-		console.log('Shared items', items);
-	}
-
-	async function openProject(projectId: string) {
-		const items = await workflowsStore.fetchWorkflowsPage(
-			projectId,
-			undefined,
-			undefined,
-			undefined,
-			{
-				parentFolderId: '0',
-			},
-			true,
-		);
-
-		const itemsToAdd: TreeItemType[] = items.map((item) => ({
-			id: item.id,
-			label: item.name,
-			type: item.resource,
-			icon: item.resource === 'workflow' ? undefined : 'folder',
-			children: item.resource === 'folder' ? [] : undefined,
-		}));
-
-		if (projectId === 'shared') {
-			sharedItems.value = itemsToAdd;
-			return;
+			items.value[1].children = buildNestedHierarchy(workflows);
 		}
-		if (projectId === projectsStore.personalProject?.id) {
-			personalItems.value = itemsToAdd;
-		} else {
-			projects.value = projects.value.map((project) => {
-				if (project.id === projectId) {
-					return {
-						...project,
-						items: itemsToAdd,
-					};
-				}
-				return project;
+
+		// check if user has shared access, push to it
+		if (hasMultipleVerifiedUsers.value) {
+			const workflows = await workflowsStore.fetchWorkflowsPage(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{},
+				undefined,
+				true,
+			);
+
+			const sharedItem: IMenuElement = {
+				id: 'shared',
+				label: 'Shared with me',
+				icon: 'share',
+				route: { to: '/shared/workflows' },
+				children: buildNestedHierarchy(workflows),
+				type: 'project',
+			};
+
+			items.value.push(sharedItem);
+		}
+
+		// check if user has access to projects, push workflows
+		// push seperator first
+		if (isFoldersFeatureEnabled.value) {
+			items.value.push({
+				id: 'projects-separator',
+				label: 'Projects',
+				type: 'subtitle',
 			});
-		}
-	}
 
-	function updateNestedFolder(
-		items: TreeItemType[],
-		folderId: string,
-		newChildren: TreeItemType[],
-	): TreeItemType[] {
-		return items.map((item) => {
-			if (item.id === folderId) {
-				return {
-					...item,
-					children: newChildren,
+			await projectsStore.getMyProjects();
+
+			for (const project of projectsStore.teamProjects) {
+				const workflows = await workflowsStore.fetchWorkflowsPage(
+					project.id,
+					undefined,
+					undefined,
+					undefined,
+					{},
+					true,
+				);
+
+				const projectItem: IMenuElement = {
+					id: project.id,
+					label: project.name,
+					icon: project.icon?.value || 'layers',
+					route: { to: `/projects/${project.id}/workflows` },
+					children: buildNestedHierarchy(workflows),
+					type: 'project',
 				};
+
+				items.value.push(projectItem);
 			}
-			if (item.type === 'folder' && item.children) {
-				return {
-					...item,
-					children: updateNestedFolder(item.children, folderId, newChildren),
-				};
-			}
-			return item;
-		});
-	}
-
-	async function openFolder(folderId: string, projectId: string) {
-		const items = await workflowsStore.fetchWorkflowsPage(
-			projectId,
-			undefined,
-			undefined,
-			undefined,
-			{
-				parentFolderId: folderId,
-			},
-			true,
-		);
-
-		const itemsToAdd: TreeItemType[] = items.map((item) => ({
-			id: item.id,
-			label: item.name,
-			type: item.resource,
-			icon: item.resource === 'workflow' ? undefined : 'folder',
-			children: item.resource === 'folder' ? [] : undefined,
-		}));
-
-		if (projectId === projectsStore.personalProject?.id) {
-			personalItems.value = updateNestedFolder(personalItems.value, folderId, itemsToAdd);
-		} else {
-			projects.value = projects.value.map((project) => {
-				if (project.id === projectId) {
-					return {
-						...project,
-						items: updateNestedFolder(project.items, folderId, itemsToAdd),
-					};
-				}
-				return project;
-			});
 		}
+
+		// push menu items
 	}
 
 	return {
-		personalItems,
-		personalProjectId,
-		sharedItems,
-		openProject,
-		openFolder,
-		openShared,
-		projects,
+		items,
 	};
 };

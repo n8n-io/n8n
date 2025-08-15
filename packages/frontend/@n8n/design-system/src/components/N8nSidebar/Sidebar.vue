@@ -1,37 +1,27 @@
 <script lang="ts" setup>
 import { onMounted, onUnmounted } from 'vue';
-import { TreeItemType } from '.';
-import { IconName } from '../N8nIcon/icons';
 import N8nLogo from '../N8nLogo';
 import N8nText from '../N8nText';
 import SidebarItem from './SidebarItem.vue';
-import SidebarSection from './SidebarSection.vue';
 import N8nResizeWrapper from '../N8nResizeWrapper';
-import { N8nButton, N8nIconButton, N8nRoute, N8nTooltip } from '..';
+import { N8nIconButton, N8nRoute, N8nTooltip } from '..';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 import { useSidebarLayout } from './useSidebarLayout';
 import { IMenuItem, IMenuElement, isCustomMenuItem } from '@n8n/design-system/types';
 import SidebarSubMenu from './SidebarSubMenu.vue';
+import { TreeItem, TreeItemToggleEvent, TreeRoot, TreeVirtualizer } from 'reka-ui';
 
 const props = defineProps<{
-	personal: { id: string; items: TreeItemType[] };
-	shared?: TreeItemType[];
-	projects?: { title: string; id: string; icon: IconName; items: TreeItemType[] }[];
-	projectsEnabled: boolean;
+	items: IMenuElement[];
 	userName: string;
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
-	menuItems: IMenuItem[];
-	helpMenuItems: IMenuElement[];
+	helpItems: IMenuElement[];
 	handleSelect?: (key: string) => void;
 }>();
-
-console.log('Sidebar props:', props);
 
 defineEmits<{
 	createProject: void;
 	logout: void;
-	openProject: [string];
-	openFolder: [{ id: string; projectId: string }];
 }>();
 
 const {
@@ -62,17 +52,10 @@ onUnmounted(() => {
 	window.removeEventListener('keydown', toggleSidebar);
 });
 
-function getMenuItemRoute(item: IMenuItem) {
-	if (!item.route) {
-		return undefined;
+function preventDefault<T>(event: TreeItemToggleEvent<T>) {
+	if (event.detail.originalEvent.type === 'click') {
+		event.detail.originalEvent.preventDefault();
 	}
-
-	const routeTo = item.route.to as any;
-	if (routeTo && typeof routeTo.name === 'string') {
-		return routeTo;
-	}
-
-	return undefined;
 }
 </script>
 
@@ -125,73 +108,43 @@ function getMenuItemRoute(item: IMenuItem) {
 					/>
 				</N8nTooltip>
 			</header>
-			<SidebarItem
-				title="Overview"
-				id="home"
-				icon="house"
-				link="/home/workflows"
-				ariaLabel="Go to Home"
-				type="other"
-			/>
-			<SidebarSection
-				title="Personal"
-				:id="personal.id"
-				icon="user"
-				:items="personal.items"
-				:selectable="false"
-				:collapsible="false"
-				@open-project="$emit('openProject', $event)"
-				@open-folder="$emit('openFolder', { id: $event, projectId: personal.id })"
-			/>
-			<SidebarSection
-				v-if="shared"
-				title="Shared with me"
-				id="shared"
-				icon="share"
-				:items="shared"
-				:selectable="false"
-				:collapsible="false"
-			/>
-			<N8nText v-if="projectsEnabled" size="small" bold color="text-light" class="sidebarSubheader"
-				>Projects</N8nText
-			>
-			<SidebarSection
-				v-if="projectsEnabled && projects?.length"
-				v-for="project in projects"
-				:title="project.title"
-				:id="project.id"
-				:icon="project.icon"
-				:key="project.id"
-				:items="project.items"
-				:selectable="false"
-				:collapsible="false"
-			/>
-			<div class="sidebarProjectsEmpty" v-else-if="projectsEnabled">
-				<N8nButton
-					text
-					size="small"
-					icon="plus"
-					type="secondary"
-					label="Create project"
-					@click="$emit('createProject')"
-				/>
-			</div>
-			<footer class="sidebarFooter">
-				<SidebarItem
-					v-for="item in menuItems"
-					type="other"
-					:icon="item.icon as IconName"
-					@click="handleSelect ? handleSelect(item.id) : undefined"
-					:title="item.label"
-					:id="item.id"
-					:key="item.id"
-					:link="item.link ? item.link.href : undefined"
-					:route="getMenuItemRoute(item)"
-					:ariaLabel="`Go to ${item.label}`"
-				/>
-			</footer>
+			<TreeRoot :items :get-key="(item: IMenuElement) => item.id">
+				<TreeVirtualizer v-slot="{ item }" :text-content="(opt) => opt.name">
+					<TreeItem
+						as-child
+						:key="item.value.id"
+						v-slot="{ isExpanded, handleToggle }"
+						@toggle="preventDefault"
+						@select="preventDefault"
+						@click="preventDefault"
+						class="item"
+						v-bind="item.bind"
+					>
+						<N8nText
+							v-if="item.value.type === 'subtitle'"
+							class="sidebarSubheader"
+							size="small"
+							color="text-light"
+							bold
+						>
+							{{ item.value.label }}
+						</N8nText>
+						<component
+							v-else-if="isCustomMenuItem(item.value as IMenuElement)"
+							:is="item.value.component"
+							v-bind="item.value.props || {}"
+						/>
+						<SidebarItem
+							v-else
+							:click="handleToggle"
+							:open="isExpanded"
+							:ariaLabel="`Open ${item.value.label}`"
+							:item="item.value as IMenuItem"
+						/>
+					</TreeItem>
+				</TreeVirtualizer>
+			</TreeRoot>
 		</nav>
-
 		<slot name="creatorCallout" />
 		<slot name="sourceControl" />
 		<div class="sidebarUserArea">
@@ -226,7 +179,6 @@ function getMenuItemRoute(item: IMenuItem) {
 					/>
 				</N8nRoute>
 			</N8nTooltip>
-
 			<SidebarSubMenu>
 				<template #trigger>
 					<N8nIconButton
@@ -239,7 +191,7 @@ function getMenuItemRoute(item: IMenuItem) {
 					/>
 				</template>
 				<template #content>
-					<div v-for="item in helpMenuItems" :key="item.id" class="sidebarSubMenuSection">
+					<div v-for="item in helpItems" :key="item.id" class="sidebarSubMenuSection">
 						<N8nText
 							v-if="!isCustomMenuItem(item)"
 							class="sidebarSubMenuSectionHeader"
@@ -255,15 +207,10 @@ function getMenuItemRoute(item: IMenuItem) {
 								v-bind="subItem.props || {}"
 							/>
 							<SidebarItem
-								v-else-if="!isCustomMenuItem(subItem)"
-								:title="subItem.label"
-								:id="subItem.id"
-								:icon="subItem.icon as IconName"
+								v-else
+								:item="subItem"
 								@click="handleSelect ? handleSelect(subItem.id) : undefined"
-								:link="subItem.link ? subItem.link.href : undefined"
-								:route="getMenuItemRoute(subItem as IMenuItem)"
 								:ariaLabel="`Go to ${subItem.label}`"
-								type="other"
 							/>
 						</div>
 					</div>
@@ -342,7 +289,7 @@ function getMenuItemRoute(item: IMenuItem) {
 }
 
 .sidebarSubheader {
-	margin: var(--spacing-s) 0 var(--spacing-2xs);
+	padding: var(--spacing-s) 0 var(--spacing-xs);
 	display: block;
 }
 
@@ -400,5 +347,13 @@ function getMenuItemRoute(item: IMenuItem) {
 .sidebarSubMenuSectionHeader {
 	margin-bottom: var(--spacing-3xs);
 	display: block;
+}
+
+.item {
+	position: relative;
+	display: flex;
+	align-items: center;
+	max-width: 100%;
+	overflow: hidden;
 }
 </style>

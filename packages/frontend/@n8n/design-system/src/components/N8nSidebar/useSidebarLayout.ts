@@ -28,7 +28,7 @@ export function useSidebarLayout({ defaultWidth = 300 }: UseSidebarLayoutOptions
 
 	function toggleSidebar() {
 		if (state.value === 'open') {
-			state.value = 'hidden';
+			state.value = 'peak';
 		} else {
 			state.value = 'open';
 		}
