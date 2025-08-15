@@ -135,7 +135,7 @@ class TaskRunner:
     async def _handle_task_offer_accept(self, message: BrokerTaskOfferAccept) -> None:
         offer = self.open_offers.get(message.offer_id)
 
-        if not offer:
+        if not offer or offer.is_expired:
             response = RunnerTaskRejected(
                 task_id=message.task_id,
                 reason="Offer expired - not accepted within validity window",
