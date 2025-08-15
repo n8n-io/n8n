@@ -2616,9 +2616,6 @@ importers:
       xss:
         specifier: 'catalog:'
         version: 1.0.15
-      z-vue-scan:
-        specifier: ^0.0.35
-        version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.13(typescript@5.9.2))
     devDependencies:
       '@faker-js/faker':
         specifier: ^8.0.2
@@ -2710,6 +2707,9 @@ importers:
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)
+      z-vue-scan:
+        specifier: ^0.0.35
+        version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.13(typescript@5.9.2))
 
   packages/node-dev:
     dependencies:
