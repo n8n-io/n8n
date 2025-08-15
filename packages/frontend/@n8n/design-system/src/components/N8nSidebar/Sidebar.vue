@@ -139,6 +139,7 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 							:key="item.value.id"
 							:click="handleToggle"
 							:open="isExpanded"
+							:level="item.level"
 							:ariaLabel="`Open ${item.value.label}`"
 							:item="item.value as IMenuItem"
 						/>

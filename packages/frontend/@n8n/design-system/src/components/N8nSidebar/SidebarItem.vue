@@ -10,6 +10,7 @@ import { IMenuItem } from '@n8n/design-system/types';
 const props = defineProps<{
 	item: IMenuItem;
 	empty?: boolean;
+	level?: number;
 	click?: () => void;
 	open?: boolean;
 	ariaLabel: string;
@@ -36,33 +37,47 @@ const to = computed(() => {
 </script>
 
 <template>
-	<N8nRoute :to="to" :class="{ sidebarItem: true }">
-		<div
-			v-if="item.type !== 'workflow'"
-			:class="{ sidebarItemDropdown: true, other: item.type === 'other' }"
-		>
-			<div class="sidebarItemDropdownIcon">
-				<span
-					v-if="item.icon && !isSupportedIconName(item.icon as string)"
-					class="sidebarItemEmoji"
-					>{{ item.icon }}</span
-				>
-				<N8nIcon v-else-if="item.icon" :icon="item.icon as IconName" />
-			</div>
-			<button
-				v-if="item.type !== 'other'"
-				class="sidebarItemDropdownButton"
-				@click="click"
-				:aria-label="ariaLabel"
+	<div class="itemWrapper">
+		<span
+			class="itemIdent"
+			v-if="level && level > 1"
+			v-for="level in new Array(level - 1)"
+			:key="level"
+		/>
+		<N8nRoute :to="to" :class="{ sidebarItem: true }">
+			<div
+				v-if="item.type !== 'workflow'"
+				:class="{ sidebarItemDropdown: true, other: item.type === 'other' }"
 			>
-				<N8nIcon :icon="open ? 'chevron-down' : 'chevron-right'" />
-			</button>
-		</div>
-		<N8nText size="small" class="sidebarItemText">{{ item.label }}</N8nText>
-	</N8nRoute>
+				<div class="sidebarItemDropdownIcon">
+					<span
+						v-if="item.icon && !isSupportedIconName(item.icon as string)"
+						class="sidebarItemEmoji"
+						>{{ item.icon }}</span
+					>
+					<N8nIcon v-else-if="item.icon" :icon="item.icon as IconName" />
+				</div>
+				<button
+					v-if="item.type !== 'other'"
+					class="sidebarItemDropdownButton"
+					@click="click"
+					:aria-label="ariaLabel"
+				>
+					<N8nIcon :icon="open ? 'chevron-down' : 'chevron-right'" />
+				</button>
+			</div>
+			<N8nText size="small" class="sidebarItemText">{{ item.label }}</N8nText>
+		</N8nRoute>
+	</div>
 </template>
 
 <style lang="scss" scoped>
+.itemWrapper {
+	position: relative;
+	width: 100%;
+	max-width: 100%;
+}
+
 .sidebarItem {
 	display: flex;
 	align-items: center;
@@ -70,6 +85,7 @@ const to = computed(() => {
 	gap: var(--spacing-4xs);
 	cursor: pointer;
 	width: 100%;
+	max-width: 100%;
 	color: var(--color-text-base);
 	border-radius: var(--spacing-4xs);
 	margin-top: 1px;
@@ -92,6 +108,7 @@ const to = computed(() => {
 }
 
 .sidebarItemText {
+	max-width: 100%;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
@@ -164,5 +181,25 @@ const to = computed(() => {
 	.sidebarItemDropdownIcon {
 		color: var(--color-foreground-xdark);
 	}
+}
+
+.itemIdent {
+	display: block;
+	position: relative;
+	width: 0.5rem;
+	min-width: 0.5rem;
+	align-self: stretch;
+	margin-left: 0.75rem;
+	border-left: 1px solid var(--color-foreground-light);
+}
+
+.itemIdent::before {
+	content: '';
+	position: absolute;
+	bottom: -1px;
+	left: -1px;
+	width: 1px;
+	height: 1px;
+	background-color: var(--color-foreground-light);
 }
 </style>

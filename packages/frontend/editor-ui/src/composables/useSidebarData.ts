@@ -55,8 +55,8 @@ export const useSidebarData = () => {
 				icon: item.resource === 'folder' ? 'folder' : undefined,
 				route:
 					item.resource === 'workflow'
-						? { to: `/workflows/${item.id}` }
-						: { to: `/projects/${projectId}/folders/${item.id}` },
+						? { to: `/workflow/${item.id}` }
+						: { to: `/projects/${projectId}/folders/${item.id}/workflows` },
 				children: item.resource === 'folder' ? [] : undefined,
 				type: item.resource,
 			};
@@ -93,7 +93,9 @@ export const useSidebarData = () => {
 				true,
 			);
 
-			items.value[1].children = buildNestedHierarchy(workflows, projectsStore.personalProject.id);
+			if (!isCustomMenuItem(items.value[1])) {
+				items.value[1].children = buildNestedHierarchy(workflows, projectsStore.personalProject.id);
+			}
 		}
 
 		// check if user has shared access, push to it
