@@ -9,7 +9,7 @@ import { DATA_STORE_VIEW } from '@/features/dataStore/constants';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 
-const BREADCRUMBS_SEPARATOR = '›';
+const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {
 	dataStore: DataStore;
