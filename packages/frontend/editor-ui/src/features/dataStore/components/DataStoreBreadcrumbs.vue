@@ -51,8 +51,6 @@ const onItemClicked = async (item: PathItem) => {
 };
 
 const onDelete = async () => {
-	console.log(props.dataStore);
-
 	await router.push({
 		name: PROJECT_DATA_STORES,
 		params: { projectId: props.dataStore.projectId },
