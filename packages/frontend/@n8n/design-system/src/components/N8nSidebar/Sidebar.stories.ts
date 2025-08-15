@@ -1,14 +1,14 @@
 import type { StoryFn } from '@storybook/vue3';
 
 import N8nSidebar from '.';
-import { type TreeItemType } from '.';
+import type { IMenuItem, IMenuElement } from '@n8n/design-system/types';
 
 export default {
 	title: 'Sidebar/Sidebar',
 	component: N8nSidebar,
 };
 
-const mockPersonalItems: TreeItemType[] = Array(10000)
+const mockPersonalItems: IMenuItem[] = Array(10000)
 	.fill(null)
 	.map((_, index) => ({
 		id: `workflow-${index}`,
@@ -16,7 +16,7 @@ const mockPersonalItems: TreeItemType[] = Array(10000)
 		type: 'workflow' as const,
 	}));
 
-const mockSharedItems: TreeItemType[] = [
+const mockSharedItems: IMenuItem[] = [
 	{
 		id: 'shared-folder-1',
 		label: 'Team Workflows',
@@ -171,12 +171,12 @@ const mockSharedItems: TreeItemType[] = [
 	{ id: 'workflow-49', label: 'Shared Dashboard Update', type: 'workflow' },
 ];
 
-const mockProjects = [
+const mockProjects: IMenuElement[] = [
 	{
 		id: 'project-1',
-		title: 'E-commerce Platform',
-		icon: 'folder' as const,
-		items: [
+		label: 'E-commerce Platform',
+		type: 'project',
+		children: [
 			{
 				id: 'ecommerce-folder-1',
 				label: 'Order Processing',
@@ -196,29 +196,26 @@ const mockProjects = [
 						id: 'workflow-12',
 						label: 'Welcome Email Sequence',
 						type: 'workflow',
-						icon: 'workflow',
 					},
 					{
 						id: 'workflow-13',
 						label: 'Abandoned Cart Recovery',
 						type: 'workflow',
-						icon: 'workflow',
 					},
 				],
 			},
-		] as TreeItemType[],
+		],
 	},
 	{
 		id: 'project-2',
-		title: 'Marketing Automation',
-		icon: 'folder' as const,
-		items: [
+		label: 'Marketing Automation',
+		type: 'project',
+		children: [
 			{ id: 'workflow-14', label: 'Lead Scoring', type: 'workflow' },
 			{
 				id: 'workflow-15',
 				label: 'Campaign Performance Tracker',
 				type: 'workflow',
-				icon: 'workflow',
 			},
 			{
 				id: 'marketing-folder-1',
@@ -229,13 +226,13 @@ const mockProjects = [
 					{ id: 'workflow-17', label: 'Engagement Tracker', type: 'workflow' },
 				],
 			},
-		] as TreeItemType[],
+		],
 	},
 	{
 		id: 'project-3',
-		title: 'Stress Test - Deep Nesting',
-		icon: 'folder' as const,
-		items: [
+		label: 'Stress Test - Deep Nesting',
+		type: 'project',
+		children: [
 			{
 				id: 'stress-test-folder',
 				label: 'Level 1 - Root Organization',
@@ -458,9 +455,100 @@ const mockProjects = [
 					},
 				],
 			},
-		] as TreeItemType[],
+		],
 	},
 ];
+
+function generateRandomItems(
+	depth: number = 0,
+	maxDepth: number = 5,
+	parentId: string = '',
+): IMenuItem[] {
+	const items: IMenuItem[] = [];
+
+	if (depth >= maxDepth) {
+		// At max depth, only create workflows
+		const workflowCount = Math.floor(Math.random() * 5) + 1;
+		for (let i = 0; i < workflowCount; i++) {
+			items.push({
+				id: `${parentId}-workflow-${i}-${Date.now()}-${Math.random()}`,
+				label: `Workflow ${i + 1}`,
+				type: 'workflow',
+			});
+		}
+		return items;
+	}
+
+	// Randomly decide how many items at this level
+	const itemCount = Math.floor(Math.random() * 8) + 2;
+
+	for (let i = 0; i < itemCount; i++) {
+		const isFolder = Math.random() > 0.3 && depth < maxDepth - 1;
+		const itemId = `${parentId}-item-${i}-${Date.now()}-${Math.random()}`;
+
+		if (isFolder) {
+			// Create a folder with children
+			const children = generateRandomItems(depth + 1, maxDepth, itemId);
+			items.push({
+				id: itemId,
+				label: `Folder ${i + 1}`,
+				type: 'folder',
+				icon: 'folder',
+				children: children.length > 0 ? children : undefined,
+			});
+		} else {
+			// Create a workflow
+			items.push({
+				id: itemId,
+				label: `Workflow ${i + 1}`,
+				type: 'workflow',
+			});
+		}
+	}
+
+	return items;
+}
+
+function generateMockData(totalItems: number = 10000): IMenuItem[] {
+	const items: IMenuElement[] = [];
+	let currentItems = 0;
+
+	// Add some subtitle and empty state items
+
+	// Generate random nested structure
+	while (currentItems < totalItems) {
+		const batchItems = generateRandomItems(0, Math.floor(Math.random() * 4) + 2);
+		items.push(...batchItems);
+		currentItems += countTotalItems(batchItems);
+	}
+
+	// Add some empty folders for testing
+	items.push({
+		id: 'empty-folder-test',
+		label: 'Empty Folder',
+		type: 'folder',
+		children: [],
+	});
+
+	return [
+		{
+			id: 'personal',
+			label: 'Personal',
+			icon: 'user',
+			children: items,
+		},
+	];
+}
+
+function countTotalItems(items: IMenuItem[]): number {
+	let count = items.length;
+	for (const item of items) {
+		if (item.children) {
+			count += countTotalItems(item.children as IMenuItem[]);
+		}
+	}
+	return count;
+}
 
 const Template: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
@@ -469,7 +557,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		N8nSidebar,
 	},
 	template: `
-		<div class="story">
+		<div class="story" style="height: 100vh; display: flex;">
 			<N8nSidebar v-bind="args" />
 		</div>
 	`,
@@ -477,20 +565,63 @@ const Template: StoryFn = (args, { argTypes }) => ({
 
 export const primary = Template.bind({});
 primary.args = {
-	personal: mockPersonalItems,
-	shared: mockSharedItems,
-	projects: mockProjects,
-	projectsEnabled: true,
-	menuItems: [],
-	collapsed: false,
-	releaseChannel: 'stable' as const,
+	items: [mockSharedItems],
+	bottomItems: [
+		{ id: 'settings', label: 'Settings', icon: 'cog', type: 'other' as const },
+		{ id: 'help', label: 'Help', icon: 'question-circle', type: 'other' as const },
+	],
+	userName: 'John Doe',
+	releaseChannel: 'stable',
+	helpItems: [
+		{
+			id: 'docs',
+			label: 'Documentation',
+			children: [
+				{ id: 'docs-1', label: 'Getting Started', link: { href: '#' } },
+				{ id: 'docs-2', label: 'API Reference', link: { href: '#' } },
+			],
+		},
+	],
 };
 
-export const collapsed = Template.bind({});
-collapsed.args = {
-	personal: mockPersonalItems,
-	shared: mockSharedItems,
-	projects: mockProjects,
-	collapsed: true,
-	releaseChannel: 'stable' as const,
+export const withVirtualization = Template.bind({});
+withVirtualization.args = {
+	items: generateMockData(10000),
+	bottomItems: [
+		{ id: 'settings', label: 'Settings', icon: 'cog', type: 'other' as const },
+		{ id: 'help', label: 'Help', icon: 'question-circle', type: 'other' as const },
+	],
+	userName: 'Test User',
+	releaseChannel: 'stable',
+	helpItems: [
+		{
+			id: 'docs',
+			label: 'Documentation',
+			children: [
+				{ id: 'docs-1', label: 'Getting Started', link: { href: '#' } },
+				{ id: 'docs-2', label: 'API Reference', link: { href: '#' } },
+			],
+		},
+	],
+};
+
+export const withProjects = Template.bind({});
+withProjects.args = {
+	items: mockProjects,
+	bottomItems: [
+		{ id: 'settings', label: 'Settings', icon: 'cog', type: 'other' as const },
+		{ id: 'help', label: 'Help', icon: 'question-circle', type: 'other' as const },
+	],
+	userName: 'Project Manager',
+	releaseChannel: 'stable',
+	helpItems: [
+		{
+			id: 'docs',
+			label: 'Documentation',
+			children: [
+				{ id: 'docs-1', label: 'Getting Started', link: { href: '#' } },
+				{ id: 'docs-2', label: 'API Reference', link: { href: '#' } },
+			],
+		},
+	],
 };
