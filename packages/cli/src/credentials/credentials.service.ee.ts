@@ -30,6 +30,10 @@ export class EnterpriseCredentialsService {
 		shareWithIds: string[],
 		entityManager?: EntityManager,
 	) {
+		if (process.env.N8N_DISABLE_CREDENTIAL_SHARING === 'true') {
+			throw new Error('Credential sharing is disabled on this instance.');
+		}
+
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
 
 		let projects = await em.find(Project, {
@@ -125,6 +129,10 @@ export class EnterpriseCredentialsService {
 	}
 
 	async transferOne(user: User, credentialId: string, destinationProjectId: string) {
+		if (process.env.N8N_DISABLE_CREDENTIAL_SHARING === 'true') {
+			throw new Error('Credential transfer is disabled on this instance.');
+		}
+
 		// 1. get credential
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
