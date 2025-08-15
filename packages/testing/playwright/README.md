@@ -48,7 +48,7 @@ test('chaos test @mode:multi-main @chaostest', ...) // Isolated per worker
 - **config**: Test setup and configuration (constants, test users, etc.)
 - **fixtures**: Custom test fixtures extending Playwright's base test
 - **pages**: Page Object Models for UI interactions
-- **services**: API helpers for E2E controller, REST calls, etc.
+- **services**: API helpers for E2E controller, REST calls, workflow management, etc.
 - **utils**: Utility functions (string manipulation, helpers, etc.)
 - **workflows**: Test workflow JSON files for import/reuse
 
