@@ -12,6 +12,21 @@ class PruningIntervalsConfig {
 }
 
 @Config
+class ConcurrencyConfig {
+	/**
+	 * Max production executions allowed to run concurrently. `-1` means unlimited.
+	 *
+	 * Default for scaling mode is taken from the worker's `--concurrency` flag.
+	 */
+	@Env('N8N_CONCURRENCY_PRODUCTION_LIMIT')
+	productionLimit: number = -1;
+
+	/** Max evaluation executions allowed to run concurrently. `-1` means unlimited. */
+	@Env('N8N_CONCURRENCY_EVALUATION_LIMIT')
+	evaluationLimit: number = -1;
+}
+
+@Config
 export class ExecutionsConfig {
 	/** Whether to delete past executions on a rolling basis. */
 	@Env('EXECUTIONS_DATA_PRUNE')
@@ -38,4 +53,7 @@ export class ExecutionsConfig {
 
 	@Nested
 	pruneDataIntervals: PruningIntervalsConfig;
+
+	@Nested
+	concurrency: ConcurrencyConfig;
 }
