@@ -41,6 +41,7 @@ class TaskOffer:
 
 
 class TaskRunner:
+    TASK_TYPE = "python"
     DEFAULT_MAX_CONCURRENCY = 5
     DEFAULT_MAX_PAYLOAD_SIZE = 1024 * 1024 * 1024  # 1 GiB
     OFFER_INTERVAL = 0.25  # 250ms
@@ -125,7 +126,7 @@ class TaskRunner:
             logger.warning(f"Unhandled message type: {type(message)}")
 
     async def _handle_info_request(self) -> None:
-        response = RunnerInfo(name=self.name, types=["python"])
+        response = RunnerInfo(name=self.name, types=[self.TASK_TYPE])
         await self._send_message(response)
 
     async def _handle_runner_registered(self) -> None:
