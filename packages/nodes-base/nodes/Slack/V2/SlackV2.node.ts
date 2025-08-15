@@ -41,7 +41,7 @@ import { reactionFields, reactionOperations } from './ReactionDescription';
 import { starFields, starOperations } from './StarDescription';
 import { userFields, userOperations } from './UserDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
-import { formatTs } from './utils';
+import { formatSlackTs } from './utils';
 import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
 import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
@@ -702,7 +702,7 @@ export class SlackV2 implements INodeType {
 							{},
 							{ extractValue: true },
 						) as string;
-						const ts = formatTs(
+						const ts = formatSlackTs(
 							this.getNodeParameter(
 								'ts',
 								i,
@@ -853,7 +853,7 @@ export class SlackV2 implements INodeType {
 									'Thread timestamp is required when replying to a message.',
 								);
 							}
-							const threadTs = formatTs(
+							const threadTs = formatSlackTs(
 								this.getNodeParameter(
 									'otherOptions.thread_ts.replyValues.thread_ts',
 									i,
@@ -863,7 +863,7 @@ export class SlackV2 implements INodeType {
 									},
 								) as string,
 							);
-							body.thread_ts = formatTs(threadTs);
+							body.thread_ts = formatSlackTs(threadTs);
 							if (replyValues.reply_broadcast) {
 								body.reply_broadcast = replyValues.reply_broadcast as boolean;
 							}
@@ -883,9 +883,6 @@ export class SlackV2 implements INodeType {
 						}
 						delete otherOptions.botProfile;
 						Object.assign(body, otherOptions);
-
-						// TODO: Remove this
-						console.log('SlackV2: body', body);
 
 						if (
 							select === 'user' &&
@@ -909,7 +906,7 @@ export class SlackV2 implements INodeType {
 							{},
 							{ extractValue: true },
 						) as string;
-						const ts = formatTs(
+						const ts = formatSlackTs(
 							this.getNodeParameter(
 								'ts',
 								i,
@@ -950,7 +947,7 @@ export class SlackV2 implements INodeType {
 						) {
 							target = target.slice(0, 1) === '@' ? target : `@${target}`;
 						}
-						const timestamp = formatTs(
+						const timestamp = formatSlackTs(
 							this.getNodeParameter(
 								'timestamp',
 								i,
@@ -975,7 +972,7 @@ export class SlackV2 implements INodeType {
 							{},
 							{ extractValue: true },
 						) as string;
-						const timestamp = formatTs(
+						const timestamp = formatSlackTs(
 							this.getNodeParameter(
 								'timestamp',
 								i,
@@ -1031,7 +1028,7 @@ export class SlackV2 implements INodeType {
 						{},
 						{ extractValue: true },
 					) as string;
-					const timestamp = formatTs(
+					const timestamp = formatSlackTs(
 						this.getNodeParameter(
 							'timestamp',
 							i,
@@ -1049,10 +1046,6 @@ export class SlackV2 implements INodeType {
 							name,
 							timestamp,
 						};
-
-						// TODO: Remove this
-						console.log('SlackV2: body', body);
-
 						responseData = await slackApiRequest.call(this, 'POST', '/reactions.add', body, qs);
 					}
 					//https://api.slack.com/methods/reactions.remove
@@ -1063,10 +1056,6 @@ export class SlackV2 implements INodeType {
 							name,
 							timestamp,
 						};
-
-						// TODO: Remove this
-						console.log('SlackV2: body', body);
-
 						responseData = await slackApiRequest.call(this, 'POST', '/reactions.remove', body, qs);
 					}
 					//https://api.slack.com/methods/reactions.get
@@ -1091,7 +1080,7 @@ export class SlackV2 implements INodeType {
 						body.channel = channel;
 
 						if (target === 'message') {
-							const timestamp = formatTs(
+							const timestamp = formatSlackTs(
 								this.getNodeParameter(
 									'timestamp',
 									i,

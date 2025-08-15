@@ -194,14 +194,14 @@ export const fileFields: INodeProperties[] = [
 							{
 								type: 'regex',
 								properties: {
-									regex: 'http(s)?://.*/archives/.*/p([0-9]{16,})',
+									regex: 'https?://.*/archives/.*/p([0-9]{16,})',
 									errorMessage: 'Not a valid Slack Thread URL',
 								},
 							},
 						],
 						extractValue: {
 							type: 'regex',
-							regex: 'http(s)?://.*/archives/.*/p([0-9]{16,})',
+							regex: 'https?://.*/archives/.*/p([0-9]{16,})',
 						},
 					},
 				],
