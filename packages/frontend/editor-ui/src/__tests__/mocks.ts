@@ -30,6 +30,7 @@ import {
 import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
 import type { FrontendSettings } from '@n8n/api-types';
+import { nameIsParameter } from '../utils/nodeSettingsUtils';
 
 export const mockNode = ({
 	id = uuid(),
@@ -56,6 +57,7 @@ export const mockNode = ({
 
 export const mockNodeTypeDescription = ({
 	name = SET_NODE_TYPE,
+	displayName = name,
 	icon = 'fa:pen',
 	version = 1,
 	credentials = [],
@@ -66,8 +68,10 @@ export const mockNodeTypeDescription = ({
 	group,
 	hidden,
 	description,
+	webhooks,
 }: {
 	name?: INodeTypeDescription['name'];
+	displayName?: INodeTypeDescription['displayName'];
 	icon?: INodeTypeDescription['icon'];
 	version?: INodeTypeDescription['version'];
 	credentials?: INodeTypeDescription['credentials'];
@@ -78,11 +82,12 @@ export const mockNodeTypeDescription = ({
 	group?: INodeTypeDescription['group'];
 	hidden?: INodeTypeDescription['hidden'];
 	description?: INodeTypeDescription['description'];
+	webhooks?: INodeTypeDescription['webhooks'];
 } = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		icon,
-		displayName: name,
+		displayName,
 		description: description ?? '',
 		version,
 		defaults: {
@@ -98,7 +103,7 @@ export const mockNodeTypeDescription = ({
 		credentials,
 		documentationUrl: 'https://docs',
 		iconUrl: 'nodes/test-node/icon.svg',
-		webhooks: undefined,
+		webhooks,
 		parameterPane: undefined,
 		hidden,
 	});
