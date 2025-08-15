@@ -2,7 +2,8 @@ version: '3.8'
 
 services:
   n8n:
-    image: ghcr.io/erol-guney/n8n:latest
+    # image: ghcr.io/erol-guney/n8n:latest
+    image: n8nio/n8n:local
     container_name: n8n
     restart: unless-stopped
     ports:
