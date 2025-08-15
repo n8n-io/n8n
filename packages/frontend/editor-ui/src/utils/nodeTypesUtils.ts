@@ -401,102 +401,64 @@ export const isNodeParameterRequired = (
 	// If parameter itself contains 'none'?
 	// Walk through dependencies and check if all their values are used in displayOptions
 	Object.keys(parameter.displayOptions.show).forEach((name) => {
-		const relatedField = nodeType.properties.find((prop) => {
-			prop.name === name;
-		});
+		const relatedField = nodeType.properties.find((prop) => prop.name === name);
 		if (relatedField && !isNodeParameterRequired(nodeType, relatedField)) {
 			return false;
-		} else {
-			return true;
 		}
+		return true;
 	});
 	return true;
 };
 
-/**
- * Safely encodes field names to base64 (works in both browser and Node.js)
- */
 const safeBase64Encode = (str: string): string => {
-	// Use browser's btoa if available, otherwise fallback to Buffer (Node.js)
-	if (typeof btoa !== 'undefined') {
-		// Convert Unicode string to binary string for btoa
-		const utf8Bytes = new TextEncoder().encode(str);
-		const binaryString = Array.from(utf8Bytes, (byte) => String.fromCharCode(byte)).join('');
-		return btoa(binaryString);
-	} else if (typeof Buffer !== 'undefined') {
-		return Buffer.from(str, 'utf8').toString('base64');
-	}
-	// Fallback: use URI encoding (not ideal but works)
-	return encodeURIComponent(str);
+	const utf8Bytes = new TextEncoder().encode(str);
+	const binaryString = Array.from(utf8Bytes, (byte) => String.fromCharCode(byte)).join('');
+	return btoa(binaryString);
 };
 
-/**
- * Safely decodes base64 field names (works in both browser and Node.js)
- */
 const safeBase64Decode = (str: string): string => {
-	// Use browser's atob if available, otherwise fallback to Buffer (Node.js)
-	if (typeof atob !== 'undefined') {
-		try {
-			// Convert binary string back to Unicode string
-			const binaryString = atob(str);
-			const utf8Bytes = new Uint8Array(Array.from(binaryString, (char) => char.charCodeAt(0)));
-			return new TextDecoder().decode(utf8Bytes);
-		} catch (error) {
-			// Fallback if atob fails
-			return decodeURIComponent(str);
-		}
-	} else if (typeof Buffer !== 'undefined') {
-		return Buffer.from(str, 'base64').toString('utf8');
-	}
-	// Fallback: use URI decoding (not ideal but works)
-	return decodeURIComponent(str);
+	const binaryString = atob(str);
+	const utf8Bytes = new Uint8Array(Array.from(binaryString, (char) => char.charCodeAt(0)));
+	return new TextDecoder().decode(utf8Bytes);
 };
 
-/**
- * Escapes special characters in field names by encoding them safely
- * This prevents issues with newlines, quotes, and other special characters
- */
 export const escapeResourceMapperFieldName = (fieldName: string): string => {
-	// Use base64 encoding to safely encode any special characters
-	// Prefix with "__enc_" to identify encoded field names
 	return '__enc_' + safeBase64Encode(fieldName);
 };
 
-/**
- * Unescapes field names that were encoded
- */
 export const unescapeResourceMapperFieldName = (fieldName: string): string => {
-	// Check if this is an encoded field name
 	if (fieldName.startsWith('__enc_')) {
 		try {
-			const encodedPart = fieldName.substring(6); // Remove "__enc_" prefix
+			const encodedPart = fieldName.substring(6);
 			return safeBase64Decode(encodedPart);
-		} catch (error) {
-			// If decoding fails, return the original field name
-			console.warn('Failed to decode field name:', fieldName, error);
+		} catch {
 			return fieldName;
 		}
 	}
-
-	// For backward compatibility, handle old-style escaped field names
-	return fieldName
-		.replace(/\\n/g, '\n') // Unescape newlines
-		.replace(/\\r/g, '\r') // Unescape carriage returns
-		.replace(/\\t/g, '\t') // Unescape tabs
-		.replace(/\\"/g, '"') // Unescape quotes
-		.replace(/\\\\/g, '\\'); // Unescape backslashes last
+	return fieldName;
 };
 
 export const parseResourceMapperFieldName = (fullName: string) => {
 	const match = fullName.match(RESOURCE_MAPPER_FIELD_NAME_REGEX);
 	const fieldName = match ? match.pop() : fullName;
 
-	// Unescape special characters that were escaped when creating the parameter name
 	if (fieldName) {
 		return unescapeResourceMapperFieldName(fieldName);
 	}
 
 	return fieldName;
+};
+
+export const isMatchingField = (
+	field: string,
+	matchingFields: string[],
+	showMatchingColumnsSelector: boolean,
+): boolean => {
+	const fieldName = parseResourceMapperFieldName(field);
+	if (fieldName) {
+		return showMatchingColumnsSelector && (matchingFields || []).includes(fieldName);
+	}
+	return false;
 };
 
 export const fieldCannotBeDeleted = (
@@ -545,18 +507,6 @@ export const isResourceMapperFieldListStale = (
 		}
 	}
 
-	return false;
-};
-
-export const isMatchingField = (
-	field: string,
-	matchingFields: string[],
-	showMatchingColumnsSelector: boolean,
-): boolean => {
-	const fieldName = parseResourceMapperFieldName(field);
-	if (fieldName) {
-		return showMatchingColumnsSelector && (matchingFields || []).includes(fieldName);
-	}
 	return false;
 };
 

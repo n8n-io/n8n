@@ -60,11 +60,11 @@ describe('Resource Mapper Field Name Handling', () => {
 			expect(decoded).toBe(original);
 		});
 
-		it('should handle non-encoded field names for backward compatibility', () => {
-			// Test old-style escaped field names
-			expect(unescapeResourceMapperFieldName('Column\\nName')).toBe('Column\nName');
-			expect(unescapeResourceMapperFieldName('Column\\"Name')).toBe('Column"Name');
-			expect(unescapeResourceMapperFieldName('Column\\\\Name')).toBe('Column\\Name');
+		it('should return non-encoded field names unchanged', () => {
+			// Non-encoded field names are returned as-is
+			expect(unescapeResourceMapperFieldName('Column\\nName')).toBe('Column\\nName');
+			expect(unescapeResourceMapperFieldName('Column Name')).toBe('Column Name');
+			expect(unescapeResourceMapperFieldName('NormalField')).toBe('NormalField');
 		});
 
 		it('should return original value if decoding fails', () => {
