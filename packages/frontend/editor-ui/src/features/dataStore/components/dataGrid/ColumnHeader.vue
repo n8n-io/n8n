@@ -49,6 +49,7 @@ const isDropdownVisible = computed(() => {
 <template>
 	<div
 		class="ag-header-cell-label data-store-column-header-wrapper"
+		data-test-id="data-store-column-header"
 		@mouseenter="onMouseEnter"
 		@mouseleave="onMouseLeave"
 	>
@@ -62,10 +63,13 @@ const isDropdownVisible = computed(() => {
 					)
 				"
 			/>
-			<span class="ag-header-cell-text">{{ props.params.displayName }}</span>
+			<span class="ag-header-cell-text" data-test-id="data-store-column-header-text">{{
+				props.params.displayName
+			}}</span>
 		</div>
 		<N8nActionDropdown
 			v-show="isDropdownVisible"
+			data-test-id="data-store-column-header-actions"
 			:items="[
 				{
 					id: ItemAction.Delete,

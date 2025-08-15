@@ -1,4 +1,5 @@
 import userEvent from '@testing-library/user-event';
+import { fireEvent } from '@testing-library/vue';
 import { vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
@@ -35,7 +36,7 @@ const renderComponent = createComponentRenderer(ColumnHeader, {
 	props: {
 		params: {
 			displayName: 'My Column',
-			column: { getColId: () => 'col-1' },
+			column: { getColId: () => 'col-1', getColDef: () => ({ cellDataType: 'string' }) },
 			onDelete: onDeleteMock,
 		},
 	},
@@ -44,7 +45,22 @@ const renderComponent = createComponentRenderer(ColumnHeader, {
 describe('ColumnHeader', () => {
 	it('renders the column display name', () => {
 		const { getByTestId } = renderComponent();
-		expect(getByTestId('action-delete')).toBeInTheDocument();
+		expect(getByTestId('data-store-column-header-text')).toHaveTextContent('My Column');
+	});
+
+	it('shows actions dropdown only on hover', async () => {
+		const { getByTestId } = renderComponent();
+		const wrapper = getByTestId('data-store-column-header');
+		expect(wrapper).not.toBeNull();
+
+		const deleteButton = getByTestId('action-delete');
+		expect(deleteButton).not.toBeVisible();
+
+		await fireEvent.mouseEnter(wrapper as Element);
+		expect(deleteButton).toBeVisible();
+
+		await fireEvent.mouseLeave(wrapper as Element);
+		expect(deleteButton).not.toBeVisible();
 	});
 
 	it('calls onDelete with the column id when delete is selected', async () => {
