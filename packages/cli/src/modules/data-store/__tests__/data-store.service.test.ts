@@ -1131,6 +1131,84 @@ describe('dataStore', () => {
 		});
 	});
 
+	describe('deleteRows', () => {
+		it('deletes rows by IDs', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			// Insert test rows
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30 },
+				{ name: 'Bob', age: 25 },
+				{ name: 'Charlie', age: 35 },
+			]);
+
+			// Get initial data to find row IDs
+			const initialData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(initialData.count).toBe(3);
+
+			// ACT - Delete first and third rows
+			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, [1, 3]);
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const rows = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(rows.count).toBe(1);
+			expect(rows.data).toEqual([{ name: 'Bob', age: 25, id: 2 }]);
+		});
+
+		it('returns true when deleting empty list of IDs', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			// ACT
+			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, []);
+
+			// ASSERT
+			expect(result).toBe(true);
+		});
+
+		it('fails when trying to delete from non-existent data store', async () => {
+			// ACT & ASSERT
+			const result = dataStoreService.deleteRows('non-existent-id', project1.id, [1, 2]);
+
+			await expect(result).rejects.toThrow(DataStoreNotFoundError);
+		});
+
+		it('succeeds even if some IDs do not exist', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			// Insert one row
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }]);
+
+			// ACT - Try to delete existing and non-existing IDs
+			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, [1, 999, 1000]);
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const { count } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(count).toBe(0);
+		});
+	});
+
 	describe('getManyRowsAndCount', () => {
 		it('retrieves rows correctly', async () => {
 			// ARRANGE
