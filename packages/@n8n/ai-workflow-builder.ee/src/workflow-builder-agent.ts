@@ -276,7 +276,7 @@ export class WorkflowBuilderAgent {
 		const streamConfig = {
 			...threadConfig,
 			streamMode: ['updates', 'custom'],
-			recursionLimit: 30,
+			recursionLimit: 50,
 			signal: abortSignal,
 			callbacks: this.tracer ? [this.tracer] : undefined,
 		} as RunnableConfig;
