@@ -135,7 +135,7 @@ export class DataStoreRowsRepository {
 
 	async getManyAndCount(dataStoreId: DataStoreUserTableName, dto: ListDataStoreContentQueryDto) {
 		const [countQuery, query] = this.getManyQuery(dataStoreId, dto);
-		const data: Array<Record<string, unknown>> = await query.select('*').getRawMany();
+		const data: DataStoreRows = await query.select('*').getRawMany();
 		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 			count: number | string | null;
 		}>();

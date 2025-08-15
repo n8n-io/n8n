@@ -57,7 +57,13 @@
 		},
 		{
 			"description": "Group testing packages",
-			"matchPackageNames": ["*vitest*", "*playwright*", "*cypress*", "@testing-library/**"],
+			"matchPackageNames": [
+				"*vitest*",
+				"*playwright*",
+				"*cypress*",
+				"@testing-library/**",
+				"*jest*"
+			],
 			"groupName": "testing packages"
 		},
 		{
@@ -77,10 +83,10 @@
 	"osvVulnerabilityAlerts": true,
 	"labels": ["dependencies"],
 	"branchPrefix": "renovate/",
-	"commitMessagePrefix": "chore(deps): ",
+	"commitMessagePrefix": "chore: ",
 	"commitMessageTopic": "{{depName}}",
 	"commitMessageExtra": "to {{newVersion}}",
-	"commitMessageAction": "update",
+	"commitMessageAction": "Update",
 	"ignoreDeps": [],
 	"ignorePaths": ["**/node_modules/**", "**/dist/**", "**/build/**"],
 	"enabledManagers": ["npm", "dockerfile", "github-actions"],

@@ -12,11 +12,13 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { DataStoreColumn } from './data-store-column.entity';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
-import { toTableName } from './utils/sql-utils';
+import { toTableName, normalizeRows } from './utils/sql-utils';
 
 @Service()
 export class DataStoreService {
@@ -33,42 +35,17 @@ export class DataStoreService {
 	async shutdown() {}
 
 	async createDataStore(projectId: string, dto: CreateDataStoreDto) {
-		const existingTable = await this.dataStoreRepository.findOneBy({
-			name: dto.name,
-			projectId,
-		});
-		if (existingTable !== null) {
-			throw new UserError(`Data store with name '${dto.name}' already exists in this project`);
-		}
+		await this.validateUniqueName(dto.name, projectId);
+
 		return await this.dataStoreRepository.createDataStore(projectId, dto.name, dto.columns);
 	}
 
 	// Currently only renames data stores
-	async updateDataStore(dataStoreId: string, dto: UpdateDataStoreDto) {
-		const name = dto.name.trim();
+	async updateDataStore(dataStoreId: string, projectId: string, dto: UpdateDataStoreDto) {
+		await this.validateDataStoreExists(dataStoreId, projectId);
+		await this.validateUniqueName(dto.name, projectId);
 
-		if (!name) {
-			throw new UserError('Data store name must not be empty');
-		}
-
-		const existingTable = await this.dataStoreRepository.findOneBy({
-			id: dataStoreId,
-		});
-
-		if (existingTable === null) {
-			throw new UserError(`Tried to rename non-existent data store '${dataStoreId}'`);
-		}
-
-		const hasNameClash = await this.dataStoreRepository.existsBy({
-			name,
-			projectId: existingTable.projectId,
-		});
-
-		if (hasNameClash) {
-			throw new UserError(`The name '${name}' is already taken within this project`);
-		}
-
-		await this.dataStoreRepository.update({ id: dataStoreId }, { name });
+		await this.dataStoreRepository.update({ id: dataStoreId }, { name: dto.name });
 
 		return true;
 	}
@@ -81,9 +58,10 @@ export class DataStoreService {
 		return await this.dataStoreRepository.deleteDataStoreAll();
 	}
 
-	async deleteDataStore(dataStoreId: string) {
+	async deleteDataStore(dataStoreId: string, projectId: string) {
 		await this.validateDataStoreExists(
 			dataStoreId,
+			projectId,
 			`Tried to delete non-existent data store '${dataStoreId}'`,
 		);
 
@@ -92,18 +70,25 @@ export class DataStoreService {
 		return true;
 	}
 
-	async addColumn(dataStoreId: string, dto: AddDataStoreColumnDto) {
+	async addColumn(dataStoreId: string, projectId: string, dto: AddDataStoreColumnDto) {
 		await this.validateDataStoreExists(
 			dataStoreId,
+			projectId,
 			`Tried to add column to non-existent data store '${dataStoreId}'`,
 		);
 
 		return await this.dataStoreColumnRepository.addColumn(dataStoreId, dto);
 	}
 
-	async moveColumn(dataStoreId: string, columnId: string, dto: MoveDataStoreColumnDto) {
+	async moveColumn(
+		dataStoreId: string,
+		projectId: string,
+		columnId: string,
+		dto: MoveDataStoreColumnDto,
+	) {
 		await this.validateDataStoreExists(
 			dataStoreId,
+			projectId,
 			`Tried to move column from non-existent data store '${dataStoreId}'`,
 		);
 
@@ -112,9 +97,10 @@ export class DataStoreService {
 		return true;
 	}
 
-	async deleteColumn(dataStoreId: string, columnId: string) {
+	async deleteColumn(dataStoreId: string, projectId: string, columnId: string) {
 		await this.validateDataStoreExists(
 			dataStoreId,
+			projectId,
 			`Tried to delete column from non-existent data store '${dataStoreId}'`,
 		);
 
@@ -138,7 +124,13 @@ export class DataStoreService {
 		return await this.dataStoreRepository.getManyAndCount(options);
 	}
 
-	async getManyRowsAndCount(dataStoreId: string, dto: ListDataStoreContentQueryDto) {
+	async getManyRowsAndCount(
+		dataStoreId: string,
+		projectId: string,
+		dto: ListDataStoreContentQueryDto,
+	) {
+		await this.validateDataStoreExists(dataStoreId, projectId);
+
 		// unclear if we should validate here, only use case would be to reduce the chance of
 		// a renamed/removed column appearing here (or added column missing) if the store was
 		// modified between when the frontend sent the request and we received it
@@ -149,50 +141,32 @@ export class DataStoreService {
 		);
 		return {
 			count: result.count,
-			data: this.normalizeRows(result.data, columns),
+			data: normalizeRows(result.data, columns),
 		};
 	}
 
-	async getColumns(dataStoreId: string) {
+	async getColumns(dataStoreId: string, projectId: string) {
+		await this.validateDataStoreExists(dataStoreId, projectId);
+
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
 	}
 
-	// TODO: move to utils and test
-	private normalizeRows(rows: Array<Record<string, unknown>>, columns: DataStoreColumn[]) {
-		const typeMap = new Map(columns.map((col) => [col.name, col.type]));
-		return rows.map((row) => {
-			const normalized = { ...row };
-			for (const [key, value] of Object.entries(row)) {
-				const type = typeMap.get(key);
+	async insertRows(dataStoreId: string, projectId: string, rows: DataStoreRows) {
+		await this.validateDataStoreExists(dataStoreId, projectId);
+		await this.validateRows(dataStoreId, rows);
 
-				if (type === 'boolean') {
-					// Convert boolean values to true/false
-					if (typeof value === 'boolean') {
-						normalized[key] = value;
-					} else if (value === 1 || value === '1') {
-						normalized[key] = true;
-					} else if (value === 0 || value === '0') {
-						normalized[key] = false;
-					}
-				}
-				if (type === 'date' && value !== null && value !== undefined) {
-					// Convert date objects or strings to ISO string
-					let dateObj: Date | null = null;
+		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 
-					if (value instanceof Date) {
-						dateObj = value;
-					} else if (typeof value === 'string' || typeof value === 'number') {
-						const parsed = new Date(value);
-						if (!isNaN(parsed.getTime())) {
-							dateObj = parsed;
-						}
-					}
+		return await this.dataStoreRowsRepository.insertRows(toTableName(dataStoreId), rows, columns);
+	}
 
-					normalized[key] = dateObj ? dateObj.toISOString() : value;
-				}
-			}
-			return normalized;
-		});
+	async upsertRows(dataStoreId: string, projectId: string, dto: UpsertDataStoreRowsDto) {
+		await this.validateDataStoreExists(dataStoreId, projectId);
+		await this.validateRows(dataStoreId, dto.rows);
+
+		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+
+		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto, columns);
 	}
 
 	private async validateRows(dataStoreId: string, rows: DataStoreRows): Promise<void> {
@@ -239,27 +213,31 @@ export class DataStoreService {
 		}
 	}
 
-	async insertRows(dataStoreId: string, rows: DataStoreRows) {
-		await this.validateRows(dataStoreId, rows);
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-
-		return await this.dataStoreRowsRepository.insertRows(toTableName(dataStoreId), rows, columns);
-	}
-
-	async upsertRows(dataStoreId: string, dto: UpsertDataStoreRowsDto) {
-		await this.validateRows(dataStoreId, dto.rows);
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-
-		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto, columns);
-	}
-
-	private async validateDataStoreExists(dataStoreId: string, msg?: string) {
+	private async validateDataStoreExists(dataStoreId: string, projectId: string, msg?: string) {
 		const existingTable = await this.dataStoreRepository.findOneBy({
 			id: dataStoreId,
+			project: {
+				id: projectId,
+			},
 		});
 
 		if (!existingTable) {
-			throw new UserError(msg ?? `Data Store '${dataStoreId}' does not exist.`);
+			throw new NotFoundError(msg ?? `Data Store '${dataStoreId}' does not exist.`);
+		}
+
+		return existingTable;
+	}
+
+	private async validateUniqueName(name: string, projectId: string, msg?: string) {
+		const hasNameClash = await this.dataStoreRepository.existsBy({
+			name,
+			projectId,
+		});
+
+		if (hasNameClash) {
+			throw new ConflictError(
+				msg ?? `Data store with name '${name}' already exists in this project`,
+			);
 		}
 	}
 }
