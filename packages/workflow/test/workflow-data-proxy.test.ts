@@ -235,7 +235,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Error finding the referenced node');
+				expect(exprError.message).toEqual("Referenced node doesn't exist");
 			}
 		});
 
@@ -246,7 +246,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Error finding the referenced node');
+				expect(exprError.message).toEqual('Invalid expression');
 				expect(exprError.context.type).toEqual('paired_item_no_connection');
 			}
 		});
@@ -262,8 +262,8 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Error finding the referenced node');
-				expect(exprError.context.type).toEqual('paired_item_no_connection');
+				expect(exprError.message).toEqual('Referenced node is unexecuted');
+				expect(exprError.context.type).toEqual('no_node_execution_data');
 			}
 		});
 
@@ -286,8 +286,8 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Error finding the referenced node');
-				expect(exprError.context.type).toEqual('paired_item_no_connection');
+				expect(exprError.message).toEqual('Referenced node is unexecuted');
+				expect(exprError.context.type).toEqual('no_node_execution_data');
 			}
 		});
 
