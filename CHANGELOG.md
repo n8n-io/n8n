@@ -1,3 +1,13 @@
+## [1.107.2](https://github.com/n8n-io/n8n/compare/n8n@1.107.1...n8n@1.107.2) (2025-08-15)
+
+
+### Bug Fixes
+
+* **editor:** Fix node graph generation for evaluation node in set metrics mode ([#18344](https://github.com/n8n-io/n8n/issues/18344)) ([6bf294b](https://github.com/n8n-io/n8n/commit/6bf294b1f86ec4ce2592e2fbc379f913d7ecf414))
+* **editor:** Revert changes from PRs [#16059](https://github.com/n8n-io/n8n/issues/16059), [#17959](https://github.com/n8n-io/n8n/issues/17959), [#17759](https://github.com/n8n-io/n8n/issues/17759), and [#17585](https://github.com/n8n-io/n8n/issues/17585) ([#18382](https://github.com/n8n-io/n8n/issues/18382)) ([27bda02](https://github.com/n8n-io/n8n/commit/27bda02a065ee10dfd4bbc89166a2760dfec6b58))
+
+
+
 ## [1.107.1](https://github.com/n8n-io/n8n/compare/n8n@1.107.0...n8n@1.107.1) (2025-08-14)
 
 
