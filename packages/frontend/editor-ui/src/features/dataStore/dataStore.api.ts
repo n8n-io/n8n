@@ -84,8 +84,8 @@ export const updateDataStoreApi = async (
 export const addDataStoreColumnApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
+	projectId: string,
 	column: DataStoreColumnCreatePayload,
-	projectId?: string,
 ) => {
 	return await makeRestApiRequest<DataStoreColumn>(
 		context,

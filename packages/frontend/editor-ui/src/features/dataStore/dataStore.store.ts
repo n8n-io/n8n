@@ -90,8 +90,17 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return await fetchDataStoreDetails(datastoreId, projectId);
 	};
 
-	const addDataStoreColumn = async (datastoreId: string, column: DataStoreColumnCreatePayload) => {
-		const newColumn = await addDataStoreColumnApi(rootStore.restApiContext, datastoreId, column);
+	const addDataStoreColumn = async (
+		datastoreId: string,
+		projectId: string,
+		column: DataStoreColumnCreatePayload,
+	) => {
+		const newColumn = await addDataStoreColumnApi(
+			rootStore.restApiContext,
+			datastoreId,
+			projectId,
+			column,
+		);
 		if (newColumn) {
 			const index = dataStores.value.findIndex((store) => store.id === datastoreId);
 			if (index !== -1) {

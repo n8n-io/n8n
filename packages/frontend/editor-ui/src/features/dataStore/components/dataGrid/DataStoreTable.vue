@@ -53,22 +53,22 @@ const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
 };
 
-const setCurrentPage = async (page: number) => {
+const setCurrentPage = (page: number) => {
 	currentPage.value = page;
-	// await fetchData();
 };
 
-const setPageSize = async (size: number) => {
+const setPageSize = (size: number) => {
 	pageSize.value = size;
 	currentPage.value = 1; // Reset to first page on page size change
-	// await fetchData();
 };
 
 const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload }) => {
-	// TODO:
-	// - Add loading
 	try {
-		const newColumn = await dataStoreStore.addDataStoreColumn(props.dataStore.id, column);
+		const newColumn = await dataStoreStore.addDataStoreColumn(
+			props.dataStore.id,
+			props.dataStore.projectId ?? '',
+			column,
+		);
 		if (!newColumn) {
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
