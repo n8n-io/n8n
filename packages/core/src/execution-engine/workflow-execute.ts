@@ -1448,9 +1448,13 @@ export class WorkflowExecute {
 				executionData,
 				abortSignal,
 			);
-		} else if (nodeType.poll) {
+		}
+
+		if (nodeType.poll) {
 			return await this.executePollNode(workflow, node, nodeType, additionalData, mode, inputData);
-		} else if (nodeType.trigger) {
+		}
+
+		if (nodeType.trigger) {
 			return await this.executeTriggerNode(
 				workflow,
 				node,
@@ -1459,25 +1463,27 @@ export class WorkflowExecute {
 				inputData,
 				abortSignal,
 			);
-		} else if (nodeType.webhook && !isDeclarativeNode) {
+		}
+
+		if (nodeType.webhook && !isDeclarativeNode) {
 			// Check if the node have requestDefaults(Declarative Node),
 			// else for webhook nodes always simply pass the data through
 			// as webhook method would be called by WebhookService
 			return { data: inputData.main as INodeExecutionData[][] };
-		} else {
-			return await this.executeDeclarativeNodeInTest(
-				workflow,
-				node,
-				nodeType,
-				additionalData,
-				mode,
-				runExecutionData,
-				runIndex,
-				connectionInputData,
-				inputData,
-				executionData,
-			);
 		}
+
+		return await this.executeDeclarativeNodeInTest(
+			workflow,
+			node,
+			nodeType,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executionData,
+		);
 	}
 
 	/**
