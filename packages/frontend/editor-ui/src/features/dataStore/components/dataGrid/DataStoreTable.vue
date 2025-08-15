@@ -7,7 +7,15 @@ import type {
 	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
 import { AgGridVue } from 'ag-grid-vue3';
-import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
+import {
+	ModuleRegistry,
+	ClientSideRowModelModule,
+	TextEditorModule,
+	LargeTextEditorModule,
+	ColumnAutoSizeModule,
+	CheckboxEditorModule,
+	NumberEditorModule,
+} from 'ag-grid-community';
 import type { GridApi, GridReadyEvent, ColDef } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumnPopover.vue';
@@ -17,8 +25,15 @@ import { useToast } from '@/composables/useToast';
 import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 
-// Register all Community features
-ModuleRegistry.registerModules([AllCommunityModule]);
+// Register only the modules we actually use
+ModuleRegistry.registerModules([
+	ClientSideRowModelModule,
+	TextEditorModule,
+	LargeTextEditorModule,
+	ColumnAutoSizeModule,
+	CheckboxEditorModule,
+	NumberEditorModule,
+]);
 
 type Props = {
 	dataStore: DataStore;
