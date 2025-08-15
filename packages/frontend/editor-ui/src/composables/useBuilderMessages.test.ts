@@ -1453,6 +1453,244 @@ describe('useBuilderMessages', () => {
 		});
 	});
 
+	describe('error message handling with retry', () => {
+		it('should pass retry function to error messages from processAssistantMessages', () => {
+			const retryFn = vi.fn(async () => {});
+			const currentMessages: ChatUI.AssistantMessage[] = [];
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'Something went wrong',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				retryFn,
+			);
+
+			expect(result.messages).toHaveLength(1);
+			const errorMessage = result.messages[0] as ChatUI.ErrorMessage;
+			expect(errorMessage).toMatchObject({
+				id: 'test-id-0',
+				role: 'assistant',
+				type: 'error',
+				content: 'Something went wrong',
+				read: false,
+			});
+			expect(errorMessage.retry).toBe(retryFn);
+		});
+
+		it('should not pass retry function to non-error messages', () => {
+			const retryFn = vi.fn(async () => {});
+			const currentMessages: ChatUI.AssistantMessage[] = [];
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'message',
+					role: 'assistant',
+					text: 'This is a normal text message',
+				},
+				{
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'add_nodes',
+					toolCallId: 'call-1',
+					status: 'running',
+					updates: [],
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				retryFn,
+			);
+
+			expect(result.messages).toHaveLength(2);
+
+			const textMessage = result.messages[0] as ChatUI.TextMessage;
+			expect(textMessage.type).toBe('text');
+			expect('retry' in textMessage).toBe(false);
+
+			const toolMessage = result.messages[1] as ChatUI.ToolMessage;
+			expect(toolMessage.type).toBe('tool');
+			expect('retry' in toolMessage).toBe(false);
+		});
+
+		it('should clear retry from previous error messages when processing new messages', () => {
+			const oldRetryFn = vi.fn(async () => {});
+			const newRetryFn = vi.fn(async () => {});
+
+			const currentMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'error-1',
+					role: 'assistant',
+					type: 'error',
+					content: 'First error',
+					retry: oldRetryFn,
+					read: false,
+				} as ChatUI.ErrorMessage,
+				{
+					id: 'error-2',
+					role: 'assistant',
+					type: 'error',
+					content: 'Second error',
+					retry: oldRetryFn,
+					read: false,
+				} as ChatUI.ErrorMessage,
+			];
+
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'New error',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				newRetryFn,
+			);
+
+			expect(result.messages).toHaveLength(3);
+
+			// First error should have retry removed
+			const firstError = result.messages[0] as ChatUI.ErrorMessage;
+			expect(firstError.content).toBe('First error');
+			expect('retry' in firstError).toBe(false);
+
+			// Second error should have retry removed
+			const secondError = result.messages[1] as ChatUI.ErrorMessage;
+			expect(secondError.content).toBe('Second error');
+			expect('retry' in secondError).toBe(false);
+
+			// New error should have the new retry function
+			const newError = result.messages[2] as ChatUI.ErrorMessage;
+			expect(newError.content).toBe('New error');
+			expect(newError.retry).toBe(newRetryFn);
+		});
+
+		it('should only keep retry on the last error message when multiple errors exist', () => {
+			const retryFn = vi.fn(async () => {});
+			const currentMessages: ChatUI.AssistantMessage[] = [];
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'First error in batch',
+				},
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'Second error in batch',
+				},
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'Third error in batch',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				retryFn,
+			);
+
+			expect(result.messages).toHaveLength(3);
+
+			// First error should not have retry
+			const firstError = result.messages[0] as ChatUI.ErrorMessage;
+			expect(firstError.content).toBe('First error in batch');
+			expect('retry' in firstError).toBe(false);
+
+			// Second error should not have retry
+			const secondError = result.messages[1] as ChatUI.ErrorMessage;
+			expect(secondError.content).toBe('Second error in batch');
+			expect('retry' in secondError).toBe(false);
+
+			// Only the last error should have retry
+			const lastError = result.messages[2] as ChatUI.ErrorMessage;
+			expect(lastError.content).toBe('Third error in batch');
+			expect(lastError.retry).toBe(retryFn);
+		});
+
+		it('should handle mixed message types and only affect error messages with retry logic', () => {
+			const retryFn = vi.fn(async () => {});
+			const currentMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Normal message',
+					read: false,
+				},
+				{
+					id: 'error-1',
+					role: 'assistant',
+					type: 'error',
+					content: 'Old error',
+					retry: retryFn,
+					read: false,
+				} as ChatUI.ErrorMessage,
+			];
+
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'message',
+					role: 'assistant',
+					text: 'New text message',
+				},
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'New error message',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				retryFn,
+			);
+
+			expect(result.messages).toHaveLength(4);
+
+			// Normal text message should be unchanged
+			expect(result.messages[0]).toMatchObject({
+				type: 'text',
+				content: 'Normal message',
+			});
+			expect('retry' in result.messages[0]).toBe(false);
+
+			// Old error should have retry removed
+			const oldError = result.messages[1] as ChatUI.ErrorMessage;
+			expect(oldError.content).toBe('Old error');
+			expect('retry' in oldError).toBe(false);
+
+			// New text message should not have retry
+			expect(result.messages[2]).toMatchObject({
+				type: 'text',
+				content: 'New text message',
+			});
+			expect('retry' in result.messages[2]).toBe(false);
+
+			// Only the new error should have retry
+			const newError = result.messages[3] as ChatUI.ErrorMessage;
+			expect(newError.content).toBe('New error message');
+			expect(newError.retry).toBe(retryFn);
+		});
+	});
+
 	describe('applyRatingLogic', () => {
 		it('should apply rating to the last assistant text message after workflow-updated when no tools are running', () => {
 			const messages: ChatUI.AssistantMessage[] = [
