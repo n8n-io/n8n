@@ -360,9 +360,9 @@ export class LoadNodesAndCredentials {
 			const processedCredentials = types.credentials.map((credential) => {
 				if (this.shouldAddDomainRestrictions(credential)) {
 					const clonedCredential = { ...credential };
-					clonedCredential.properties = this.injectDomainRestrictionFields(
-						clonedCredential.properties ? [...clonedCredential.properties] : [],
-					);
+					clonedCredential.properties = this.injectDomainRestrictionFields([
+						...(clonedCredential.properties ?? []),
+					]);
 					return {
 						...clonedCredential,
 						supportedNodes:

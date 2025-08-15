@@ -192,6 +192,13 @@ export class HttpRequestV3 implements INodeType {
 					if (credentialData.allowedHttpRequestDomains === 'domains') {
 						const allowedDomains = credentialData.allowedDomains as string;
 
+						if (!allowedDomains || allowedDomains.trim() === '') {
+							throw new NodeOperationError(
+								this.getNode(),
+								'No allowed domains specified. Configure allowed domains or change restriction setting.',
+							);
+						}
+
 						if (!isDomainAllowed(url, { allowedDomains })) {
 							const credentialInfo = credentialType ? ` (${credentialType})` : '';
 							throw new NodeOperationError(
