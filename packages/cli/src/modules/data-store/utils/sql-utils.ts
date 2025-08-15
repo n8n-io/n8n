@@ -2,14 +2,15 @@ import {
 	DATA_STORE_COLUMN_REGEX,
 	type DataStoreRows,
 	type DataStoreCreateColumnSchema,
+	type DataStoreColumn,
 } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { DataStoreUserTableName } from '../data-store.types';
-
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import type { DataStoreUserTableName } from '../data-store.types';
 
 export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -202,6 +203,43 @@ export function quoteIdentifier(name: string, dbType: DataSourceOptions['type'])
 
 export function toTableName(dataStoreId: string): DataStoreUserTableName {
 	return `data_store_user_${dataStoreId}`;
+}
+
+export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
+	const typeMap = new Map(columns.map((col) => [col.name, col.type]));
+	return rows.map((row) => {
+		const normalized = { ...row };
+		for (const [key, value] of Object.entries(row)) {
+			const type = typeMap.get(key);
+
+			if (type === 'boolean') {
+				// Convert boolean values to true/false
+				if (typeof value === 'boolean') {
+					normalized[key] = value;
+				} else if (value === 1 || value === '1') {
+					normalized[key] = true;
+				} else if (value === 0 || value === '0') {
+					normalized[key] = false;
+				}
+			}
+			if (type === 'date' && value !== null && value !== undefined) {
+				// Convert date objects or strings to ISO string
+				let dateObj: Date | null = null;
+
+				if (value instanceof Date) {
+					dateObj = value;
+				} else if (typeof value === 'string' || typeof value === 'number') {
+					const parsed = new Date(value);
+					if (!isNaN(parsed.getTime())) {
+						dateObj = parsed;
+					}
+				}
+
+				normalized[key] = dateObj ? dateObj.toISOString() : value;
+			}
+		}
+		return normalized;
+	});
 }
 
 function normalizeValue(
