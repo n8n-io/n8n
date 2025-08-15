@@ -1103,9 +1103,6 @@ export class WorkflowExecute {
 		return { data: undefined };
 	}
 
-	/**
-	 * Prepares input data for node execution based on node type and workflow settings
-	 */
 	private prepareConnectionInputData(
 		workflow: Workflow,
 		nodeType: INodeType,
