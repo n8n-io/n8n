@@ -1110,38 +1110,38 @@ export class WorkflowExecute {
 		inputData: ITaskDataConnections,
 	): INodeExecutionData[] | null {
 		if (
-			!nodeType.execute &&
-			!customOperation &&
-			(nodeType.poll || nodeType.trigger || nodeType.webhook)
+			nodeType.execute ||
+			customOperation ||
+			(!nodeType.poll && !nodeType.trigger && !nodeType.webhook)
 		) {
-			// For poll, trigger, and webhook nodes, we don't need to process input data
-			return [];
-		}
+			if (!inputData.main?.length) {
+				return null;
+			}
 
-		if (!inputData.main?.length) {
-			return null;
-		}
+			// We always use the data of main input and the first input for execute
+			let connectionInputData = inputData.main[0] as INodeExecutionData[];
 
-		// We always use the data of main input and the first input for execute
-		let connectionInputData = inputData.main[0] as INodeExecutionData[];
-
-		const forceInputNodeExecution = workflow.settings.executionOrder !== 'v1';
-		if (!forceInputNodeExecution) {
-			// If the nodes do not get force executed data of some inputs may be missing
-			// for that reason do we use the data of the first one that contains any
-			for (const mainData of inputData.main) {
-				if (mainData?.length) {
-					connectionInputData = mainData;
-					break;
+			const forceInputNodeExecution = workflow.settings.executionOrder !== 'v1';
+			if (!forceInputNodeExecution) {
+				// If the nodes do not get force executed data of some inputs may be missing
+				// for that reason do we use the data of the first one that contains any
+				for (const mainData of inputData.main) {
+					if (mainData?.length) {
+						connectionInputData = mainData;
+						break;
+					}
 				}
 			}
+
+			if (connectionInputData.length === 0) {
+				return null;
+			}
+
+			return connectionInputData;
 		}
 
-		if (connectionInputData.length === 0) {
-			return null;
-		}
-
-		return connectionInputData;
+		// For poll, trigger, and webhook nodes, we don't need to process input data
+		return [];
 	}
 
 	/**
