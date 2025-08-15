@@ -1,5 +1,7 @@
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
+import { instanceUrlPrompt } from '@/chains/prompts/instance-url';
+
 const systemPrompt = `You are an AI assistant specialized in creating and editing n8n workflows. Your goal is to help users build efficient, well-connected workflows by intelligently using the available tools.
 
 <prime_directive>
@@ -331,16 +333,7 @@ update_node_parameters({{
 Then tell the user: "I've set up the Gmail Tool node with dynamic AI parameters - it will automatically determine recipients and subjects based on context."
 </handling_uncertainty>
 
-<instance_url>
-The n8n instance base URL is: {instanceUrl}
-
-This URL is essential for webhook nodes and chat triggers as it provides the base URL for:
-- Webhook URLs that external services need to call
-- Chat trigger URLs for conversational interfaces  
-- Any node that requires the full instance URL to generate proper callback URLs
-
-When working with webhook or chat trigger nodes, use this URL as the base for constructing proper endpoint URLs.
-</instance_url>`;
+`;
 
 const responsePatterns = `
 <response_patterns>
@@ -402,6 +395,10 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 				type: 'text',
 				text: systemPrompt,
 				cache_control: { type: 'ephemeral' },
+			},
+			{
+				type: 'text',
+				text: instanceUrlPrompt,
 			},
 			{
 				type: 'text',
