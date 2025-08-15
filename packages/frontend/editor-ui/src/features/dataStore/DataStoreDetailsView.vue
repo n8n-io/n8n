@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
+import type { DataStore } from '@/features/dataStore/datastore.types';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -24,7 +24,7 @@ const documentTitle = useDocumentTitle();
 const dataStoreStore = useDataStoreStore();
 
 const loading = ref(false);
-const dataStore = ref<DataStoreEntity | null>(null);
+const dataStore = ref<DataStore | null>(null);
 
 const showErrorAndGoBackToList = async (error: unknown) => {
 	if (!(error instanceof Error)) {

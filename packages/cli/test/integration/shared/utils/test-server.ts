@@ -1,5 +1,6 @@
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { APIRequest, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
@@ -21,7 +22,6 @@ import { LicenseMocker } from '@test-integration/license';
 
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
-import { GlobalConfig } from '@n8n/config';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -186,12 +186,13 @@ export const setupTestServer = ({
 						await import('@/license/license.controller');
 						break;
 
-					case 'metrics':
+					case 'metrics': {
 						const { PrometheusMetricsService } = await import(
 							'@/metrics/prometheus-metrics.service'
 						);
 						await Container.get(PrometheusMetricsService).init(app);
 						break;
+					}
 
 					case 'eventBus':
 						await import('@/eventbus/event-bus.controller');
@@ -209,20 +210,22 @@ export const setupTestServer = ({
 						await import('@/controllers/mfa.controller');
 						break;
 
-					case 'ldap':
+					case 'ldap': {
 						const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
 						await import('@/ldap.ee/ldap.controller.ee');
 						testServer.license.enable('feat:ldap');
 						await Container.get(LdapService).init();
 						break;
+					}
 
-					case 'saml':
+					case 'saml': {
 						const { SamlService } = await import('@/sso.ee/saml/saml.service.ee');
 						await Container.get(SamlService).init();
 						await import('@/sso.ee/saml/routes/saml.controller.ee');
 						const { setSamlLoginEnabled } = await import('@/sso.ee/saml/saml-helpers');
 						await setSamlLoginEnabled(true);
 						break;
+					}
 
 					case 'sourceControl':
 						await import('@/environments.ee/source-control/source-control.controller.ee');
@@ -290,15 +293,22 @@ export const setupTestServer = ({
 
 					case 'ai':
 						await import('@/controllers/ai.controller');
-
+						break;
 					case 'folder':
 						await import('@/controllers/folder.controller');
+						break;
 
 					case 'externalSecrets':
 						await import('@/modules/external-secrets.ee/external-secrets.module');
+						break;
 
 					case 'insights':
 						await import('@/modules/insights/insights.module');
+						break;
+
+					case 'data-store':
+						await import('@/modules/data-store/data-store.module');
+						break;
 				}
 			}
 

@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
 import { DATA_STORE_CARD_ACTIONS } from '@/features/dataStore/constants';
 import { MODAL_CONFIRM } from '@/constants';
-import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
+import type { DataStore } from '@/features/dataStore/datastore.types';
 
 const mockMessage = {
 	confirm: vi.fn(),
@@ -49,7 +49,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
-const mockDataStore: DataStoreEntity = {
+const mockDataStore: DataStore = {
 	id: '1',
 	name: 'Test DataStore',
 	sizeBytes: 1024,
