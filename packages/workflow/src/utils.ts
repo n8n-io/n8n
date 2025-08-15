@@ -1,12 +1,13 @@
+import { ApplicationError } from '@n8n/errors';
 import { parse as esprimaParse, Syntax } from 'esprima-next';
 import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
 import merge from 'lodash/merge';
 
 import { ALPHABET } from './constants';
-import { ApplicationError } from '@n8n/errors';
 import { ExecutionCancelledError } from './errors/execution-cancelled.error';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
+import * as LoggerProxy from './logger-proxy';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
@@ -181,7 +182,16 @@ export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSe
 	knownObjects.add(value);
 	const copy = (Array.isArray(value) ? [] : {}) as T;
 	for (const key in value) {
-		copy[key] = replaceCircularReferences(value[key], knownObjects);
+		try {
+			copy[key] = replaceCircularReferences(value[key], knownObjects);
+		} catch (error: unknown) {
+			// Skip properties that cannot be assigned to (readonly, non-configurable, etc.)
+			LoggerProxy.error(
+				'Error while replacing circular references: ' +
+					(error instanceof Error ? error.message : 'unknown'),
+				{ error },
+			);
+		}
 	}
 	knownObjects.delete(value);
 	return copy;
