@@ -11,7 +11,7 @@ export class Example implements INodeType {
 		displayName: 'Example',
 		name: 'example',
 		icon: { light: 'file:example.svg', dark: 'file:example.dark.svg' },
-		group: ['transform'],
+		group: ['input'],
 		version: 1,
 		description: 'Basic Example Node',
 		defaults: {

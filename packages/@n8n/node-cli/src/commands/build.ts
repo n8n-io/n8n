@@ -5,6 +5,7 @@ import glob from 'fast-glob';
 import { cp, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import picocolors from 'picocolors';
+import { rimraf } from 'rimraf';
 
 import { ensureN8nPackage } from '../utils/prompts';
 
@@ -23,6 +24,7 @@ export default class Build extends Command {
 
 		const buildSpinner = spinner();
 		buildSpinner.start('Building TypeScript files');
+		await rimraf('dist');
 
 		try {
 			await runTscBuild();

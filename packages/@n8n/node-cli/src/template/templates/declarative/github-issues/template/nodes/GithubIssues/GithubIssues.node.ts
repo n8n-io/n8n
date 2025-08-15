@@ -10,7 +10,7 @@ export class GithubIssues implements INodeType {
 		displayName: 'GitHub Issues',
 		name: 'githubIssues',
 		icon: { light: 'file:../../icons/github.svg', dark: 'file:../../icons/github.dark.svg' },
-		group: ['transform'],
+		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume issues from the GitHub API',
