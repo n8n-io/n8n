@@ -147,7 +147,7 @@ export function addCredentialToNode({
 		const credentialObject = ts.factory.createObjectLiteralExpression([
 			ts.factory.createPropertyAssignment(
 				ts.factory.createIdentifier('name'),
-				ts.factory.createStringLiteral(credentialName),
+				ts.factory.createStringLiteral(credentialName, true),
 			),
 			ts.factory.createPropertyAssignment(
 				ts.factory.createIdentifier('required'),

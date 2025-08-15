@@ -1,7 +1,7 @@
 {
     "name": "{{nodePackageName}}",
     "version": "0.1.0",
-    "description": "n8n community node to work with the Github Issues API",
+    "description": "n8n community node to work with the GitHub Issues API",
     "license": "MIT",
     "homepage": "https://example.com",
     "keywords": [

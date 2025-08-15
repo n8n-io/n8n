@@ -32,7 +32,7 @@ export const repoOwnerSelect: INodeProperties = {
 					type: 'regex',
 					properties: {
 						regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)(?:.*)',
-						errorMessage: 'Not a valid Github URL',
+						errorMessage: 'Not a valid GitHub URL',
 					},
 				},
 			],
@@ -47,7 +47,7 @@ export const repoOwnerSelect: INodeProperties = {
 					type: 'regex',
 					properties: {
 						regex: '[-_a-zA-Z0-9]+',
-						errorMessage: 'Not a valid Github Owner Name',
+						errorMessage: 'Not a valid GitHub Owner Name',
 					},
 				},
 			],
@@ -90,7 +90,7 @@ export const repoNameSelect: INodeProperties = {
 					type: 'regex',
 					properties: {
 						regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)(?:.*)',
-						errorMessage: 'Not a valid Github Repository URL',
+						errorMessage: 'Not a valid GitHub Repository URL',
 					},
 				},
 			],
@@ -105,7 +105,7 @@ export const repoNameSelect: INodeProperties = {
 					type: 'regex',
 					properties: {
 						regex: '[-_.0-9a-zA-Z]+',
-						errorMessage: 'Not a valid Github Repository Name',
+						errorMessage: 'Not a valid GitHub Repository Name',
 					},
 				},
 			],

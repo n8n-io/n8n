@@ -7,7 +7,8 @@ import { ensureFolder } from '../../utils/filesystem';
 import { detectPackageManager } from '../../utils/package-manager';
 import { copyStaticFiles } from '../build';
 import { commands, readPackageName } from './utils';
-import { ensureN8nPackage } from '../../utils/prompts';
+import { ensureN8nPackage, onCancel } from '../../utils/prompts';
+import { validateNodeName } from '../../utils/validation';
 
 export default class Dev extends Command {
 	static override description = 'Run n8n with the node and rebuild on changes for live preview';
@@ -53,7 +54,12 @@ export default class Dev extends Command {
 
 		await ensureFolder(customPath);
 
-		await runCommand(packageManager, ['link', await readPackageName()], { cwd: customPath });
+		const packageName = await readPackageName();
+		const invalidNodeNameError = validateNodeName(packageName);
+
+		if (invalidNodeNameError) return onCancel(invalidNodeNameError);
+
+		await runCommand(packageManager, ['link', packageName], { cwd: customPath });
 
 		if (!flags['external-n8n']) {
 			// Run n8n with hot reload enabled

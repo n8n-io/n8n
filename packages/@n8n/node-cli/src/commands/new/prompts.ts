@@ -1,8 +1,8 @@
 import { select, text } from '@clack/prompts';
 
-import { validateNodeName } from './validation';
 import { templates } from '../../template/templates';
 import { withCancelHandler } from '../../utils/prompts';
+import { validateNodeName } from '../../utils/validation';
 
 export const nodeNamePrompt = async () =>
 	await withCancelHandler(
