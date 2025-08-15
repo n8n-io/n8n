@@ -23,6 +23,16 @@ import {
 } from '@n8n/decorators';
 
 import { DataStoreService } from './data-store.service';
+import { DataStoreColumnNameConflictError } from './errors/data-store-column-name-conflict.error';
+import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-found.error';
+import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
+import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
+import { DataStoreValidationError } from './errors/data-store-validation.error';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @RestController('/projects/:projectId/data-stores')
 export class DataStoreController {
@@ -35,12 +45,22 @@ export class DataStoreController {
 		_res: Response,
 		@Body dto: CreateDataStoreDto,
 	) {
-		return await this.dataStoreService.createDataStore(req.params.projectId, dto);
+		try {
+			return await this.dataStoreService.createDataStore(req.params.projectId, dto);
+		} catch (e: unknown) {
+			if (!(e instanceof Error)) {
+				throw e;
+			} else if (e instanceof DataStoreNameConflictError) {
+				throw new ConflictError(e.message);
+			} else {
+				throw new InternalServerError(e.message, e);
+			}
+		}
 	}
 
 	@Get('/')
-	@ProjectScope('dataStore:list')
-	async listDataStores(
+	@ProjectScope('dataStore:listProject')
+	async listProjectDataStores(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Query payload: ListDataStoreQueryDto,
@@ -60,7 +80,19 @@ export class DataStoreController {
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: UpdateDataStoreDto,
 	) {
-		return await this.dataStoreService.updateDataStore(dataStoreId, req.params.projectId, dto);
+		try {
+			return await this.dataStoreService.updateDataStore(dataStoreId, req.params.projectId, dto);
+		} catch (e: unknown) {
+			if (e instanceof DataStoreNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof DataStoreNameConflictError) {
+				throw new ConflictError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
 	}
 
 	@Delete('/:dataStoreId')
@@ -70,7 +102,17 @@ export class DataStoreController {
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 	) {
-		return await this.dataStoreService.deleteDataStore(dataStoreId, req.params.projectId);
+		try {
+			return await this.dataStoreService.deleteDataStore(dataStoreId, req.params.projectId);
+		} catch (e: unknown) {
+			if (e instanceof DataStoreNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
 	}
 
 	@Get('/:dataStoreId/columns')
@@ -80,7 +122,17 @@ export class DataStoreController {
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 	) {
-		return await this.dataStoreService.getColumns(dataStoreId, req.params.projectId);
+		try {
+			return await this.dataStoreService.getColumns(dataStoreId, req.params.projectId);
+		} catch (e: unknown) {
+			if (e instanceof DataStoreNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
 	}
 
 	@Post('/:dataStoreId/columns')
@@ -91,7 +143,19 @@ export class DataStoreController {
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: AddDataStoreColumnDto,
 	) {
-		return await this.dataStoreService.addColumn(dataStoreId, req.params.projectId, dto);
+		try {
+			return await this.dataStoreService.addColumn(dataStoreId, req.params.projectId, dto);
+		} catch (e: unknown) {
+			if (e instanceof DataStoreNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof DataStoreColumnNameConflictError) {
+				throw new ConflictError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
 	}
 
 	@Delete('/:dataStoreId/columns/:columnId')
@@ -102,7 +166,17 @@ export class DataStoreController {
 		@Param('dataStoreId') dataStoreId: string,
 		@Param('columnId') columnId: string,
 	) {
-		return await this.dataStoreService.deleteColumn(dataStoreId, req.params.projectId, columnId);
+		try {
+			return await this.dataStoreService.deleteColumn(dataStoreId, req.params.projectId, columnId);
+		} catch (e: unknown) {
+			if (e instanceof DataStoreNotFoundError || e instanceof DataStoreColumnNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
 	}
 
 	@Patch('/:dataStoreId/columns/:columnId/move')
@@ -114,7 +188,24 @@ export class DataStoreController {
 		@Param('columnId') columnId: string,
 		@Body dto: MoveDataStoreColumnDto,
 	) {
-		return await this.dataStoreService.moveColumn(dataStoreId, req.params.projectId, columnId, dto);
+		try {
+			return await this.dataStoreService.moveColumn(
+				dataStoreId,
+				req.params.projectId,
+				columnId,
+				dto,
+			);
+		} catch (e: unknown) {
+			if (e instanceof DataStoreNotFoundError || e instanceof DataStoreColumnNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof DataStoreValidationError) {
+				throw new BadRequestError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
 	}
 
 	@Get('/:dataStoreId/rows')
@@ -125,7 +216,21 @@ export class DataStoreController {
 		@Param('dataStoreId') dataStoreId: string,
 		@Query dto: ListDataStoreContentQueryDto,
 	) {
-		return await this.dataStoreService.getManyRowsAndCount(dataStoreId, req.params.projectId, dto);
+		try {
+			return await this.dataStoreService.getManyRowsAndCount(
+				dataStoreId,
+				req.params.projectId,
+				dto,
+			);
+		} catch (e: unknown) {
+			if (e instanceof DataStoreNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
 	}
 
 	@Post('/:dataStoreId/insert')
@@ -136,7 +241,19 @@ export class DataStoreController {
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: AddDataStoreRowsDto,
 	) {
-		return await this.dataStoreService.insertRows(dataStoreId, req.params.projectId, dto.data);
+		try {
+			return await this.dataStoreService.insertRows(dataStoreId, req.params.projectId, dto.data);
+		} catch (e: unknown) {
+			if (e instanceof DataStoreNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof DataStoreValidationError) {
+				throw new BadRequestError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
 	}
 
 	@Post('/:dataStoreId/upsert')
@@ -147,7 +264,19 @@ export class DataStoreController {
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: UpsertDataStoreRowsDto,
 	) {
-		return await this.dataStoreService.upsertRows(dataStoreId, req.params.projectId, dto);
+		try {
+			return await this.dataStoreService.upsertRows(dataStoreId, req.params.projectId, dto);
+		} catch (e: unknown) {
+			if (e instanceof DataStoreNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof DataStoreValidationError) {
+				throw new BadRequestError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
 	}
 
 	@Delete('/:dataStoreId/rows')

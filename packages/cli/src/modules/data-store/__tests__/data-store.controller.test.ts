@@ -331,7 +331,8 @@ describe('GET /projects/:projectId/data-stores', () => {
 		await createDataStore(ownerProject, { name: 'Another Store' });
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores?filter={ "name": ["Store", "Test"]}`)
+			.get(`/projects/${ownerProject.id}/data-stores`)
+			.query({ filter: JSON.stringify({ name: ['Store', 'Test'] }) })
 			.expect(200);
 
 		expect(response.body.data.count).toBe(1);
@@ -1933,7 +1934,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		const response = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
 			.send(payload)
-			.expect(500);
+			.expect(400);
 
 		expect(response.body.message).toContain('unknown column');
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
@@ -2486,7 +2487,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		const response = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
 			.send(payload)
-			.expect(500);
+			.expect(400);
 
 		expect(response.body.message).toContain('unknown column');
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
