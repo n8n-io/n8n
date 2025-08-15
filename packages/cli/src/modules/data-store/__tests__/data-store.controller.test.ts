@@ -331,7 +331,8 @@ describe('GET /projects/:projectId/data-stores', () => {
 		await createDataStore(ownerProject, { name: 'Another Store' });
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores?filter={ "name": ["Store", "Test"]}`)
+			.get(`/projects/${ownerProject.id}/data-stores`)
+			.query({ filter: JSON.stringify({ name: ['Store', 'Test'] }) })
 			.expect(200);
 
 		expect(response.body.data.count).toBe(1);
