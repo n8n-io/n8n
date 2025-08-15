@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
@@ -330,28 +329,37 @@ export class WorkflowBuilderAgent {
 				throw error;
 			}
 		} catch (error: unknown) {
-			if (
-				error instanceof Error &&
-				'error' in error &&
-				typeof error.error === 'object' &&
-				error.error
-			) {
-				const innerError = error.error;
-				if ('error' in innerError && typeof innerError.error === 'object' && innerError.error) {
-					const errorDetails = innerError.error;
-					if (
-						'type' in errorDetails &&
-						errorDetails.type === 'invalid_request_error' &&
-						'message' in errorDetails &&
-						typeof errorDetails.message === 'string'
-					) {
-						throw new ApplicationError(`Error from AI Provider: ${errorDetails.message}`);
-					}
-				}
+			const invalidRequestErrorMessage = this.getInvalidRequestError(error);
+			if (invalidRequestErrorMessage) {
+				throw new ApplicationError(invalidRequestErrorMessage);
 			}
 
 			throw error;
 		}
+	}
+
+	private getInvalidRequestError(error: unknown): string | undefined {
+		if (
+			error instanceof Error &&
+			'error' in error &&
+			typeof error.error === 'object' &&
+			error.error
+		) {
+			const innerError = error.error;
+			if ('error' in innerError && typeof innerError.error === 'object' && innerError.error) {
+				const errorDetails = innerError.error;
+				if (
+					'type' in errorDetails &&
+					errorDetails.type === 'invalid_request_error' &&
+					'message' in errorDetails &&
+					typeof errorDetails.message === 'string'
+				) {
+					return errorDetails.message;
+				}
+			}
+		}
+
+		return undefined;
 	}
 
 	async getSessions(workflowId: string | undefined, userId?: string) {
