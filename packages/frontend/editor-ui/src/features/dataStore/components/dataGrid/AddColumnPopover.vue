@@ -137,6 +137,7 @@ const onInput = debounce(validateName, { debounceTime: 300 });
 								</N8nSelect>
 							</N8nInputLabel>
 							<N8nButton
+								data-test-id="data-store-add-column-button"
 								type="primary"
 								class="mt-m"
 								size="large"

@@ -136,7 +136,7 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.wrapper">
-		<div :class="$style['grid-container']">
+		<div :class="$style['grid-container']" data-test-id="data-store-grid">
 			<AgGridVue
 				style="width: 100%"
 				:row-data="rowData"
@@ -154,7 +154,12 @@ onMounted(() => {
 			/>
 		</div>
 		<div :class="$style.footer">
-			<n8n-icon-button icon="plus" class="mb-xl" type="secondary" />
+			<n8n-icon-button
+				icon="plus"
+				class="mb-xl"
+				type="secondary"
+				data-test-id="data-store-add-row-button"
+			/>
 			<el-pagination
 				v-model:current-page="currentPage"
 				v-model:page-size="pageSize"
