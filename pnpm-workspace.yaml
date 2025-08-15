@@ -38,7 +38,7 @@ catalog:
   nanoid: 3.3.8
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
-  rimraf: ^6.0.1
+  rimraf: 6.0.1
   tsup: ^8.5.0
   tsx: ^4.19.3
   uuid: 10.0.0

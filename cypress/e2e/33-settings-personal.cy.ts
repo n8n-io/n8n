@@ -35,7 +35,7 @@ describe('Personal Settings', () => {
 			successToast().find('.el-notification__closeBtn').click();
 		});
 	});
-
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	it('not allow malicious values for personal data', () => {
 		cy.visit('/settings/personal');
 		INVALID_NAMES.forEach((name) => {

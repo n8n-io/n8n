@@ -10,14 +10,14 @@ import type {
 import { UpdateDataStoreDto } from '@n8n/api-types/src/dto/data-store/update-data-store.dto';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
-
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
+import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-found.error';
+import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
+import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
+import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { toTableName, normalizeRows } from './utils/sql-utils';
 
 @Service()
@@ -59,11 +59,7 @@ export class DataStoreService {
 	}
 
 	async deleteDataStore(dataStoreId: string, projectId: string) {
-		await this.validateDataStoreExists(
-			dataStoreId,
-			projectId,
-			`Tried to delete non-existent data store '${dataStoreId}'`,
-		);
+		await this.validateDataStoreExists(dataStoreId, projectId);
 
 		await this.dataStoreRepository.deleteDataStore(dataStoreId);
 
@@ -71,11 +67,7 @@ export class DataStoreService {
 	}
 
 	async addColumn(dataStoreId: string, projectId: string, dto: AddDataStoreColumnDto) {
-		await this.validateDataStoreExists(
-			dataStoreId,
-			projectId,
-			`Tried to add column to non-existent data store '${dataStoreId}'`,
-		);
+		await this.validateDataStoreExists(dataStoreId, projectId);
 
 		return await this.dataStoreColumnRepository.addColumn(dataStoreId, dto);
 	}
@@ -86,36 +78,19 @@ export class DataStoreService {
 		columnId: string,
 		dto: MoveDataStoreColumnDto,
 	) {
-		await this.validateDataStoreExists(
-			dataStoreId,
-			projectId,
-			`Tried to move column from non-existent data store '${dataStoreId}'`,
-		);
+		await this.validateDataStoreExists(dataStoreId, projectId);
+		const existingColumn = await this.validateColumnExists(dataStoreId, columnId);
 
-		await this.dataStoreColumnRepository.moveColumn(dataStoreId, columnId, dto.targetIndex);
+		await this.dataStoreColumnRepository.moveColumn(dataStoreId, existingColumn, dto.targetIndex);
 
 		return true;
 	}
 
 	async deleteColumn(dataStoreId: string, projectId: string, columnId: string) {
-		await this.validateDataStoreExists(
-			dataStoreId,
-			projectId,
-			`Tried to delete column from non-existent data store '${dataStoreId}'`,
-		);
+		await this.validateDataStoreExists(dataStoreId, projectId);
+		const existingColumn = await this.validateColumnExists(dataStoreId, columnId);
 
-		const existingColumnMatch = await this.dataStoreColumnRepository.findOneBy({
-			id: columnId,
-			dataStoreId,
-		});
-
-		if (existingColumnMatch === null) {
-			throw new UserError(
-				`Tried to delete column with name not present in data store '${dataStoreId}'`,
-			);
-		}
-
-		await this.dataStoreColumnRepository.deleteColumn(dataStoreId, existingColumnMatch);
+		await this.dataStoreColumnRepository.deleteColumn(dataStoreId, existingColumn);
 
 		return true;
 	}
@@ -156,7 +131,6 @@ export class DataStoreService {
 		await this.validateRows(dataStoreId, rows);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-
 		return await this.dataStoreRowsRepository.insertRows(toTableName(dataStoreId), rows, columns);
 	}
 
@@ -169,10 +143,18 @@ export class DataStoreService {
 		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto, columns);
 	}
 
+	async deleteRows(dataStoreId: string, projectId: string, ids: number[]) {
+		await this.validateDataStoreExists(dataStoreId, projectId);
+
+		return await this.dataStoreRowsRepository.deleteRows(toTableName(dataStoreId), ids);
+	}
+
 	private async validateRows(dataStoreId: string, rows: DataStoreRows): Promise<void> {
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 		if (columns.length === 0) {
-			throw new UserError('No columns found for this data store or data store not found');
+			throw new DataStoreValidationError(
+				'No columns found for this data store or data store not found',
+			);
 		}
 
 		const columnNames = new Set(columns.map((x) => x.name));
@@ -180,40 +162,46 @@ export class DataStoreService {
 		for (const row of rows) {
 			const keys = Object.keys(row);
 			if (columns.length !== keys.length) {
-				throw new UserError('mismatched key count');
+				throw new DataStoreValidationError('mismatched key count');
 			}
 			for (const key of keys) {
 				if (!columnNames.has(key)) {
-					throw new UserError('unknown column name');
+					throw new DataStoreValidationError('unknown column name');
 				}
 				const cell = row[key];
 				if (cell === null) continue;
 				switch (columnTypeMap.get(key)) {
 					case 'boolean':
 						if (typeof cell !== 'boolean')
-							throw new UserError(
+							throw new DataStoreValidationError(
 								`value '${cell.toString()}' does not match column type 'boolean'`,
 							);
 						break;
 					case 'date':
 						if (!(cell instanceof Date))
-							throw new UserError(`value '${cell}' does not match column type 'date'`);
+							throw new DataStoreValidationError(
+								`value '${cell}' does not match column type 'date'`,
+							);
 						row[key] = cell.toISOString();
 						break;
 					case 'string':
 						if (typeof cell !== 'string')
-							throw new UserError(`value '${cell.toString()}' does not match column type 'string'`);
+							throw new DataStoreValidationError(
+								`value '${cell.toString()}' does not match column type 'string'`,
+							);
 						break;
 					case 'number':
 						if (typeof cell !== 'number')
-							throw new UserError(`value '${cell.toString()}' does not match column type 'number'`);
+							throw new DataStoreValidationError(
+								`value '${cell.toString()}' does not match column type 'number'`,
+							);
 						break;
 				}
 			}
 		}
 	}
 
-	private async validateDataStoreExists(dataStoreId: string, projectId: string, msg?: string) {
+	private async validateDataStoreExists(dataStoreId: string, projectId: string) {
 		const existingTable = await this.dataStoreRepository.findOneBy({
 			id: dataStoreId,
 			project: {
@@ -222,22 +210,33 @@ export class DataStoreService {
 		});
 
 		if (!existingTable) {
-			throw new NotFoundError(msg ?? `Data Store '${dataStoreId}' does not exist.`);
+			throw new DataStoreNotFoundError(dataStoreId);
 		}
 
 		return existingTable;
 	}
 
-	private async validateUniqueName(name: string, projectId: string, msg?: string) {
+	private async validateColumnExists(dataStoreId: string, columnId: string) {
+		const existingColumn = await this.dataStoreColumnRepository.findOneBy({
+			id: columnId,
+			dataStoreId,
+		});
+
+		if (existingColumn === null) {
+			throw new DataStoreColumnNotFoundError(dataStoreId, columnId);
+		}
+
+		return existingColumn;
+	}
+
+	private async validateUniqueName(name: string, projectId: string) {
 		const hasNameClash = await this.dataStoreRepository.existsBy({
 			name,
 			projectId,
 		});
 
 		if (hasNameClash) {
-			throw new ConflictError(
-				msg ?? `Data store with name '${name}' already exists in this project`,
-			);
+			throw new DataStoreNameConflictError(name);
 		}
 	}
 }

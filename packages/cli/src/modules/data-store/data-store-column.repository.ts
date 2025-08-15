@@ -1,10 +1,12 @@
 import { DataStoreCreateColumnSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
+import { DataStoreColumnNameConflictError } from './errors/data-store-column-name-conflict.error';
+import { DataStoreValidationError } from './errors/data-store-validation.error';
 
 @Service()
 export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
@@ -38,9 +40,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 			});
 
 			if (existingColumnMatch) {
-				throw new UserError(
-					`column name '${schema.name}' already taken in data store '${dataStoreId}'`,
-				);
+				throw new DataStoreColumnNameConflictError(schema.name, dataStoreId);
 			}
 
 			if (schema.index === undefined) {
@@ -59,7 +59,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 
 			const queryRunner = em.queryRunner;
 			if (!queryRunner) {
-				throw new Error('QueryRunner is not available');
+				throw new UnexpectedError('QueryRunner is not available');
 			}
 
 			await this.dataStoreRowsRepository.ensureTableAndAddColumn(
@@ -86,30 +86,23 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 		});
 	}
 
-	async moveColumn(rawDataStoreId: string, columnId: string, targetIndex: number) {
+	async moveColumn(dataStoreId: string, column: DataStoreColumn, targetIndex: number) {
 		await this.manager.transaction(async (em) => {
-			const columnCount = await em.countBy(DataStoreColumn, { dataStoreId: rawDataStoreId });
-
-			if (targetIndex >= columnCount) {
-				throw new UserError('tried to move column to index larger than column count');
-			}
+			const columnCount = await em.countBy(DataStoreColumn, { dataStoreId });
 
 			if (targetIndex < 0) {
-				throw new UserError('tried to move column to negative index');
+				throw new DataStoreValidationError('tried to move column to negative index');
 			}
 
-			const existingColumn = await em.findOneBy(DataStoreColumn, {
-				id: columnId,
-				dataStoreId: rawDataStoreId,
-			});
-
-			if (existingColumn === null) {
-				throw new UserError(`tried to move column not present in data store '${rawDataStoreId}'`);
+			if (targetIndex >= columnCount) {
+				throw new DataStoreValidationError(
+					'tried to move column to an index larger than column count',
+				);
 			}
 
-			await this.shiftColumns(rawDataStoreId, existingColumn.index, -1, em);
-			await this.shiftColumns(rawDataStoreId, targetIndex, 1, em);
-			await em.update(DataStoreColumn, { id: existingColumn.id }, { index: targetIndex });
+			await this.shiftColumns(dataStoreId, column.index, -1, em);
+			await this.shiftColumns(dataStoreId, targetIndex, 1, em);
+			await em.update(DataStoreColumn, { id: column.id }, { index: targetIndex });
 		});
 	}
 
