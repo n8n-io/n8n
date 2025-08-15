@@ -21,6 +21,8 @@ import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumn
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
+import { MODAL_CONFIRM } from '@/constants';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
 import {
@@ -39,6 +41,7 @@ const props = defineProps<Props>();
 
 const i18n = useI18n();
 const toast = useToast();
+const message = useMessage();
 
 const dataStoreStore = useDataStoreStore();
 
@@ -81,8 +84,25 @@ const onDeleteColumn = async (columnId: string) => {
 	// TODO: how can we skip doing this in all handlers?
 	if (!gridApi.value) return;
 
+	const columnToDelete = colDefs.value.find((col) => col.colId === columnId);
+	if (!columnToDelete) return;
+
+	const promptResponse = await message.confirm(
+		i18n.baseText('dataStore.deleteColumn.confirm.message', {
+			interpolate: { name: columnToDelete.headerName ?? '' },
+		}),
+		i18n.baseText('dataStore.deleteColumn.confirm.title'),
+		{
+			confirmButtonText: i18n.baseText('generic.delete'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+
+	if (promptResponse !== MODAL_CONFIRM) {
+		return;
+	}
+
 	const columnToDeleteIndex = colDefs.value.findIndex((col) => col.colId === columnId);
-	const columnToDelete = colDefs.value[columnToDeleteIndex];
 	colDefs.value = colDefs.value.filter((def) => def.colId !== columnId);
 	rowData.value = rowData.value.map((row) => {
 		const { [columnToDelete.field!]: _, ...rest } = row;
