@@ -81,18 +81,10 @@ class RunnerTaskDone:
     type: Literal["runner:taskdone"] = "runner:taskdone"
 
 
-@dataclass
-class RunnerTaskError:
-    task_id: str
-    error: Any
-    type: Literal["runner:taskerror"] = "runner:taskerror"
-
-
 RunnerMessage = Union[
     RunnerInfo,
     RunnerTaskOffer,
     RunnerTaskAccepted,
     RunnerTaskRejected,
     RunnerTaskDone,
-    RunnerTaskError,
 ]
