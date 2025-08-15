@@ -48,10 +48,17 @@ const BASE_ENV: Record<string, string> = {
 	N8N_LICENSE_ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY ?? '',
 };
 
-// Wait strategy for n8n containers
-const N8N_WAIT_STRATEGY = Wait.forAll([
+// Wait strategy for n8n main containers
+const N8N_MAIN_WAIT_STRATEGY = Wait.forAll([
 	Wait.forListeningPorts(),
-	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(90000),
+	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(30000),
+	Wait.forLogMessage('Editor is now accessible via').withStartupTimeout(30000),
+]);
+
+// Wait strategy for n8n worker containers
+const N8N_WORKER_WAIT_STRATEGY = Wait.forAll([
+	Wait.forListeningPorts(),
+	Wait.forLogMessage('n8n worker is now ready').withStartupTimeout(30000),
 ]);
 
 // --- Interfaces ---
@@ -309,7 +316,7 @@ async function createN8NInstances({
 }: CreateInstancesOptions): Promise<StartedTestContainer[]> {
 	const instances: StartedTestContainer[] = [];
 
-	// Create main instances
+	// Create main instances sequentially to avoid database migration conflicts
 	for (let i = 1; i <= mainCount; i++) {
 		const name = mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
 		const networkAlias = mainCount > 1 ? name : `${uniqueProjectName}-n8n-main-1`;
@@ -388,9 +395,6 @@ async function createN8NContainer({
 		.withReuse();
 
 	if (resourceQuota) {
-		console.log(
-			`📊 Applying resource limits to ${name}: ${resourceQuota.memory}GB memory, ${resourceQuota.cpu} CPU cores`,
-		);
 		container = container.withResourcesQuota({
 			memory: resourceQuota.memory,
 			cpu: resourceQuota.cpu,
@@ -405,12 +409,14 @@ async function createN8NContainer({
 	}
 
 	if (isWorker) {
-		container = container.withCommand(['worker']);
+		container = container.withCommand(['worker']).withWaitStrategy(N8N_WORKER_WAIT_STRATEGY);
 	} else {
-		container = container.withExposedPorts(5678).withWaitStrategy(N8N_WAIT_STRATEGY);
+		container = container.withExposedPorts(5678).withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
 
 		if (directPort) {
-			container = container.withExposedPorts({ container: 5678, host: directPort });
+			container = container
+				.withExposedPorts({ container: 5678, host: directPort })
+				.withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
 		}
 	}
 

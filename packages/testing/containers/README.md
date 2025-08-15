@@ -37,11 +37,11 @@ pnpm run stack:starter      # Starter performance plan
 ### Performance Plan Presets
 ```bash
 # Use predefined performance plans (simulates cloud constraints, differs from cloud CPU wise due to non burstable docker)
-pnpm stack --plan trial        # Trial: 0.375GB RAM, 0.2 CPU (SQLite only)
-pnpm stack --plan starter      # Starter: 0.375GB RAM, 0.2 CPU (SQLite only)
-pnpm stack --plan pro-1       # Pro-1: 0.625GB RAM, 0.5 CPU (SQLite only)
-pnpm stack --plan pro-2       # Pro-2: 1.25GB RAM, 0.75 CPU (SQLite only)
-pnpm stack --plan enterprise  # Enterprise: 4GB RAM, 1.0 CPU (SQLite only)
+pnpm stack --plan trial        # Trial: 0.75GB RAM, 0.2 CPU (SQLite only)
+pnpm stack --plan starter      # Starter: 0.75GB RAM, 0.2 CPU (SQLite only)
+pnpm stack --plan pro-1       # Pro-1: 1.25GB RAM, 0.5 CPU (SQLite only)
+pnpm stack --plan pro-2       # Pro-2: 2.5GB RAM, 0.75 CPU (SQLite only)
+pnpm stack --plan enterprise  # Enterprise: 8GB RAM, 1.0 CPU (SQLite only)
 ```
 
 ### Queue Mode with Scaling
