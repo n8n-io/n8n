@@ -74,17 +74,9 @@ class RunnerTaskRejected:
     type: Literal["runner:taskrejected"] = "runner:taskrejected"
 
 
-@dataclass
-class RunnerTaskDone:
-    task_id: str
-    data: Dict[str, Any]
-    type: Literal["runner:taskdone"] = "runner:taskdone"
-
-
 RunnerMessage = Union[
     RunnerInfo,
     RunnerTaskOffer,
     RunnerTaskAccepted,
     RunnerTaskRejected,
-    RunnerTaskDone,
 ]
