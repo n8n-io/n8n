@@ -1188,7 +1188,7 @@ export class WorkflowExecute {
 	/**
 	 * Validates execution data for JSON compatibility and reports issues to Sentry
 	 */
-	private validateExecutionData(
+	private reportJsonIncompatibleOutput(
 		data: INodeExecutionData[][] | null,
 		workflow: Workflow,
 		node: INode,
@@ -1255,7 +1255,7 @@ export class WorkflowExecute {
 					: await nodeType.execute.call(context);
 		}
 
-		this.validateExecutionData(data, workflow, node);
+		this.reportJsonIncompatibleOutput(data, workflow, node);
 
 		const closeFunctionsResults = await Promise.allSettled(
 			closeFunctions.map(async (fn) => await fn()),
