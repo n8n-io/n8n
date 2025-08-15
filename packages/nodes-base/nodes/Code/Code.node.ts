@@ -14,6 +14,8 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
+type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
+
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
@@ -123,9 +125,9 @@ export class Code implements INodeType {
 
 	async execute(this: IExecuteFunctions) {
 		const node = this.getNode();
-		const language: CodeNodeEditorLanguage | 'pythonNative' =
+		const language: CodeNodeLanguageOption =
 			node.typeVersion === 2
-				? (this.getNodeParameter('language', 0) as CodeNodeEditorLanguage | 'pythonNative')
+				? (this.getNodeParameter('language', 0) as CodeNodeLanguageOption)
 				: 'javaScript';
 
 		if (language === 'python' && !Container.get(NodesConfig).pythonEnabled) {
