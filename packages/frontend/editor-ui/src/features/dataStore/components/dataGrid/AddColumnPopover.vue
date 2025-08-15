@@ -9,7 +9,6 @@ import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStore
 import { COLUMN_NAME_REGEX, MAX_COLUMN_NAME_LENGTH } from '@/features/dataStore/constants';
 import Tooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
 import { useDebounce } from '@/composables/useDebounce';
-import { debounce } from 'lodash';
 
 const emit = defineEmits<{
 	addColumn: [
@@ -81,7 +80,6 @@ const onInput = debounce(validateName, { debounceTime: 300 });
 		<div :class="$style.wrapper">
 			<N8nPopoverReka
 				id="add-column-popover"
-				ref="popoverRef"
 				:open="popoverOpen"
 				:popper-options="{ strategy: 'fixed' }"
 				:show-arrow="false"
