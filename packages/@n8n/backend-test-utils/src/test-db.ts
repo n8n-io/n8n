@@ -66,7 +66,13 @@ export async function terminate() {
 	dbConnection.connectionState.connected = false;
 }
 
-type EntityName = keyof typeof entities | 'InsightsRaw' | 'InsightsByPeriod' | 'InsightsMetadata';
+type EntityName =
+	| keyof typeof entities
+	| 'InsightsRaw'
+	| 'InsightsByPeriod'
+	| 'InsightsMetadata'
+	| 'DataStore'
+	| 'DataStoreColumn';
 
 /**
  * Truncate specific DB tables in a test DB.

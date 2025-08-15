@@ -565,6 +565,7 @@ const tags = computed(
 
 .cardActions {
 	display: flex;
+	gap: var(--spacing-2xs);
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
