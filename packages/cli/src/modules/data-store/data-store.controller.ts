@@ -58,8 +58,8 @@ export class DataStoreController {
 	}
 
 	@Get('/')
-	@ProjectScope('dataStore:list')
-	async listDataStores(
+	@ProjectScope('dataStore:listProject')
+	async listProjectDataStores(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Query payload: ListDataStoreQueryDto,
