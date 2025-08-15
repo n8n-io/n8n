@@ -9,7 +9,13 @@ import type {
 } from '@/features/dataStore/datastore.types';
 import { AgGridVue } from 'ag-grid-vue3';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
-import type { GridApi, GridReadyEvent, ColDef, ColumnMovedEvent } from 'ag-grid-community';
+import type {
+	GridApi,
+	GridReadyEvent,
+	ColDef,
+	ColumnMovedEvent,
+	ValueGetterParams,
+} from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumnPopover.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
@@ -40,6 +46,8 @@ const dataStoreStore = useDataStoreStore();
 const gridApi = ref<GridApi | null>(null);
 const colDefs = ref<ColDef[]>([]);
 const rowData = ref<DataStoreRow[]>([]);
+
+const contentLoading = ref(false);
 
 // Shared config for all columns
 const defaultColumnDef = {
@@ -113,13 +121,13 @@ const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload })
 	}
 };
 
-const createColumnDef = (col: DataStoreColumn) => {
+const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {}) => {
 	const columnDef: ColDef = {
 		colId: col.id,
 		field: col.name,
 		headerName: col.name,
-		// TODO: Avoid hard-coding this
-		editable: col.name !== DEFAULT_ID_COLUMN_NAME,
+		editable: true,
+		resizable: col.index < props.dataStore.columns.length - 1,
 		cellDataType: mapToAGCellType(col.type),
 		valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
 			// If the value is null, return the default value for the column type
@@ -132,9 +140,9 @@ const createColumnDef = (col: DataStoreColumn) => {
 			}
 			return params.data?.[col.name];
 		},
-		headerComponent: col.name !== DEFAULT_ID_COLUMN_NAME ? ColumnHeader : undefined,
+		headerComponent: ColumnHeader,
 		headerComponentParams: { onDelete: onDeleteColumn },
-		suppressMovable: col.name === DEFAULT_ID_COLUMN_NAME,
+		...extraProps,
 	};
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
@@ -145,7 +153,6 @@ const createColumnDef = (col: DataStoreColumn) => {
 };
 
 const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
-	console.log(moveEvent);
 	if (!moveEvent.finished || moveEvent.source !== 'uiColumnMoved') {
 		return;
 	}
@@ -166,42 +173,27 @@ const initColumnDefinitions = () => {
 	colDefs.value = [
 		// Always add the ID column, it's not returned by the back-end but all data stores have it
 		// We use it as a placeholder for new datastores
-		createColumnDef({
-			index: 0,
-			id: DEFAULT_ID_COLUMN_NAME,
-			name: DEFAULT_ID_COLUMN_NAME,
-			type: 'string',
-		}),
+		createColumnDef(
+			{
+				index: 0,
+				id: DEFAULT_ID_COLUMN_NAME,
+				name: DEFAULT_ID_COLUMN_NAME,
+				type: 'string',
+			},
+			{
+				editable: false,
+				suppressMovable: true,
+				headerComponent: null,
+				lockPosition: true,
+			},
+		),
 		// Append other columns
-		...orderBy(props.dataStore.columns, 'index').map(createColumnDef),
+		...orderBy(props.dataStore.columns, 'index').map((col) => createColumnDef(col)),
 	];
-};
-
-const fetchDataStoreContent = async () => {
-	try {
-		contentLoading.value = true;
-		const fetchedRows = await dataStoreStore.fetchDataStoreContent(
-			props.dataStore.id,
-			props.dataStore.projectId ?? '',
-			currentPage.value,
-			pageSize.value,
-		);
-		rows.value = fetchedRows.data;
-		totalItems.value = fetchedRows.count;
-		rowData.value = rows.value;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));
-	} finally {
-		contentLoading.value = false;
-		if (gridApi.value) {
-			gridApi.value.refreshHeader();
-		}
-	}
 };
 
 const initialize = async () => {
 	initColumnDefinitions();
-	await fetchDataStoreContent();
 };
 
 const onCellValueChanged = async (params: CellValueChangedEvent) => {
@@ -231,8 +223,12 @@ onMounted(async () => {
 				:column-defs="colDefs"
 				:default-col-def="defaultColumnDef"
 				:dom-layout="'autoHeight'"
+				:row-height="36"
+				:header-height="36"
 				:animate-rows="false"
 				:theme="n8nTheme"
+				:loading="contentLoading"
+				:suppress-drag-leave-hides-columns="true"
 				@grid-ready="onGridReady"
 				@column-moved="onColumnMoved"
 			/>
@@ -288,7 +284,7 @@ onMounted(async () => {
 	--ag-header-font-size: var(--font-size-xs);
 	--ag-header-font-weight: var(--font-weight-bold);
 	--ag-header-foreground-color: var(--color-text-dark);
-	--ag-cell-horizontal-padding: calc(var(--ag-grid-size) * 0.7);
+	--ag-cell-horizontal-padding: var(--spacing-2xs);
 	--ag-header-column-resize-handle-color: var(--border-color-base);
 	--ag-header-column-resize-handle-height: 100%;
 	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);

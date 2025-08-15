@@ -5,6 +5,7 @@ import {
 	useDataStoreTypes,
 } from '@/features/dataStore/composables/useDataStoreTypes';
 import type { AGGridCellType } from '@/features/dataStore/datastore.types';
+import { ref, computed } from 'vue';
 
 type HeaderParamsWithDelete = IHeaderParams & {
 	onDelete: (columnId: string) => void;
@@ -16,18 +17,41 @@ const props = defineProps<{
 
 const { getIconForType } = useDataStoreTypes();
 
+const isHovered = ref(false);
+const isDropdownOpen = ref(false);
+
 const enum ItemAction {
 	Delete = 'delete',
 }
 
 const onItemClick = (action: string) => {
-	if (action === ItemAction.Delete) {
+	if (action === (ItemAction.Delete as string)) {
 		props.params.onDelete(props.params.column.getColId());
 	}
 };
+
+const onMouseEnter = () => {
+	isHovered.value = true;
+};
+
+const onMouseLeave = () => {
+	isHovered.value = false;
+};
+
+const onDropdownVisibleChange = (visible: boolean) => {
+	isDropdownOpen.value = visible;
+};
+
+const isDropdownVisible = computed(() => {
+	return isHovered.value || isDropdownOpen.value;
+});
 </script>
 <template>
-	<div class="ag-header-cell-label data-store-column-header-wrapper">
+	<div
+		class="ag-header-cell-label data-store-column-header-wrapper"
+		@mouseenter="onMouseEnter"
+		@mouseleave="onMouseLeave"
+	>
 		<div class="data-store-column-header-icon-wrapper">
 			<N8nIcon
 				:icon="
@@ -41,6 +65,7 @@ const onItemClick = (action: string) => {
 			<span class="ag-header-cell-text">{{ props.params.displayName }}</span>
 		</div>
 		<N8nActionDropdown
+			v-show="isDropdownVisible"
 			:items="[
 				{
 					id: ItemAction.Delete,
@@ -52,6 +77,7 @@ const onItemClick = (action: string) => {
 			:placement="'bottom-start'"
 			:activator-icon="'ellipsis'"
 			@select="onItemClick"
+			@visible-change="onDropdownVisibleChange"
 		/>
 	</div>
 </template>
