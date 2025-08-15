@@ -1,15 +1,17 @@
+/* eslint-disable complexity */
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import { StateGraph, MemorySaver, END } from '@langchain/langgraph';
+import { StateGraph, MemorySaver, END, GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
-import type {
-	INodeTypeDescription,
-	IRunExecutionData,
-	IWorkflowBase,
-	NodeExecutionSchema,
+import {
+	ApplicationError,
+	type INodeTypeDescription,
+	type IRunExecutionData,
+	type IWorkflowBase,
+	type NodeExecutionSchema,
 } from 'n8n-workflow';
 
 import { DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS, MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
@@ -318,7 +320,25 @@ export class WorkflowBuilderAgent {
 				// TODO: Should we clear tool calls that are in progress?
 				await agent.updateState(threadConfig, { messages: [...messages, abortedAiMessage] });
 				return;
+			} else if (error instanceof GraphRecursionError) {
+				throw new ApplicationError(
+					'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.',
+				);
+			} else if (
+				error instanceof Error &&
+				'error' in error &&
+				typeof error.error === 'object' &&
+				error.error
+			) {
+				const innerError = error.error;
+				if ('error' in innerError && typeof innerError.error === 'object' && innerError.error) {
+					const errorDetails = error.error;
+					if ('message' in errorDetails && typeof errorDetails.message === 'string') {
+						throw new ApplicationError(`Error from AI Provider: ${errorDetails.message}`);
+					}
+				}
 			}
+
 			throw error;
 		}
 	}
