@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - packages/@n8n/task-runner-python/**
 
 jobs:
   unit-test:
