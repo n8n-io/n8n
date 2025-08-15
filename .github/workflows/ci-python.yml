@@ -6,8 +6,6 @@ on:
       - packages/@n8n/task-runner-python/**
       - .github/workflows/ci-python.yml
   push:
-    branches:
-      - master
     paths:
       - packages/@n8n/task-runner-python/**
 
