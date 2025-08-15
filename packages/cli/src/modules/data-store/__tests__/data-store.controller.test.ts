@@ -1933,7 +1933,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		const response = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
 			.send(payload)
-			.expect(500);
+			.expect(400);
 
 		expect(response.body.message).toContain('unknown column');
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
@@ -2174,7 +2174,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		const response = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
 			.send(payload)
-			.expect(500);
+			.expect(400);
 
 		expect(response.body.message).toContain('unknown column');
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
