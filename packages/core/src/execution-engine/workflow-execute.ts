@@ -1147,7 +1147,7 @@ export class WorkflowExecute {
 	/**
 	 * Handles re-throwing errors from previous node execution attempts
 	 */
-	private handlePreviousExecutionError(runExecutionData: IRunExecutionData, node: INode): void {
+	private rethrowLastNodeError(runExecutionData: IRunExecutionData, node: INode): void {
 		if (
 			runExecutionData.resultData.lastNodeExecuted === node.name &&
 			runExecutionData.resultData.error !== undefined
@@ -1431,7 +1431,7 @@ export class WorkflowExecute {
 			return { data: undefined };
 		}
 
-		this.handlePreviousExecutionError(runExecutionData, node);
+		this.rethrowLastNodeError(runExecutionData, node);
 
 		inputData = this.handleExecuteOnce(node, inputData);
 
