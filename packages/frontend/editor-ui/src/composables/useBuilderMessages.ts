@@ -97,6 +97,7 @@ export function useBuilderMessages() {
 		messages: ChatUI.AssistantMessage[],
 		msg: ChatRequest.MessageResponse,
 		messageId: string,
+		retry?: () => Promise<void>,
 	): boolean {
 		let shouldClearThinking = false;
 
@@ -121,12 +122,25 @@ export function useBuilderMessages() {
 		} else if ('type' in msg && msg.type === 'error' && 'content' in msg) {
 			// Handle error messages from the API
 			// API sends error messages with type: 'error' and content field
+
+			const removeMessageAndRetry = retry
+				? async (): Promise<void> => {
+						// Remove the current error message from the array
+						const messageIndex = messages.findIndex((m) => m.id === messageId);
+						if (messageIndex !== -1) {
+							messages.splice(messageIndex, 1);
+						}
+						await retry?.();
+					}
+				: undefined;
+
 			messages.push({
 				id: messageId,
 				role: 'assistant',
 				type: 'error',
 				content: msg.content,
 				read: false,
+				retry: removeMessageAndRetry,
 			});
 			shouldClearThinking = true;
 		}
@@ -248,6 +262,7 @@ export function useBuilderMessages() {
 		currentMessages: ChatUI.AssistantMessage[],
 		newMessages: ChatRequest.MessageResponse[],
 		baseId: string,
+		retry?: () => Promise<void>,
 	): MessageProcessingResult {
 		const mutableMessages = [...currentMessages];
 		let shouldClearThinking = false;
@@ -255,20 +270,34 @@ export function useBuilderMessages() {
 		newMessages.forEach((msg, index) => {
 			// Generate unique ID for each message in the batch
 			const messageId = `${baseId}-${index}`;
-			const clearThinking = processSingleMessage(mutableMessages, msg, messageId);
+			const clearThinking = processSingleMessage(mutableMessages, msg, messageId, retry);
 			shouldClearThinking = shouldClearThinking || clearThinking;
 		});
 
 		const thinkingMessage = determineThinkingMessage(mutableMessages);
 
 		// Apply rating logic only to messages after workflow-updated
-		const finalMessages = applyRatingLogic(mutableMessages);
+		const messagesWithRatingLogic = applyRatingLogic(mutableMessages);
+
+		// Remove retry from all error messages except the last one
+		const messagesWithRetryLogic = removeRetryFromOldErrorMessages(messagesWithRatingLogic);
 
 		return {
-			messages: finalMessages,
+			messages: messagesWithRetryLogic,
 			thinkingMessage,
 			shouldClearThinking: shouldClearThinking && mutableMessages.length > currentMessages.length,
 		};
+	}
+
+	function removeRetryFromOldErrorMessages(messages: ChatUI.AssistantMessage[]) {
+		// Remove retry from all error messages except the last one
+		return messages.map((message, index) => {
+			if (message.type === 'error' && message.retry && index !== messages.length - 1) {
+				const { retry, ...messageWithoutRetry } = message;
+				return messageWithoutRetry;
+			}
+			return message;
+		});
 	}
 
 	function createUserMessage(content: string, id: string): ChatUI.AssistantMessage {
