@@ -14,12 +14,11 @@ import { Service } from '@n8n/di';
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
+import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-found.error';
+import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
+import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
+import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { toTableName, normalizeRows } from './utils/sql-utils';
-
-import { DataStoreColumnNotFoundError } from '@/errors/data-store-column-not-found.error';
-import { DataStoreNameConflictError } from '@/errors/data-store-name-conflict.error';
-import { DataStoreNotFoundError } from '@/errors/data-store-not-found.error';
-import { DataStoreValidationError } from '@/errors/data-store-validation.error';
 
 @Service()
 export class DataStoreService {

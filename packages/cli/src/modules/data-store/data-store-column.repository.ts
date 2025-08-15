@@ -5,9 +5,8 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
-
-import { DataStoreColumnNameConflictError } from '@/errors/data-store-column-name-conflict.error';
-import { DataStoreValidationError } from '@/errors/data-store-validation.error';
+import { DataStoreColumnNameConflictError } from './errors/data-store-column-name-conflict.error';
+import { DataStoreValidationError } from './errors/data-store-validation.error';
 
 @Service()
 export class DataStoreColumnRepository extends Repository<DataStoreColumn> {

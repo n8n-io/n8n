@@ -22,12 +22,12 @@ import {
 } from '@n8n/decorators';
 
 import { DataStoreService } from './data-store.service';
+import { DataStoreColumnNameConflictError } from './errors/data-store-column-name-conflict.error';
+import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-found.error';
+import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
+import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
+import { DataStoreValidationError } from './errors/data-store-validation.error';
 
-import { DataStoreColumnNameConflictError } from '@/errors/data-store-column-name-conflict.error';
-import { DataStoreColumnNotFoundError } from '@/errors/data-store-column-not-found.error';
-import { DataStoreNameConflictError } from '@/errors/data-store-name-conflict.error';
-import { DataStoreNotFoundError } from '@/errors/data-store-not-found.error';
-import { DataStoreValidationError } from '@/errors/data-store-validation.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

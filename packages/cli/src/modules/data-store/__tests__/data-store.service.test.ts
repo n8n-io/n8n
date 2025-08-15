@@ -6,13 +6,12 @@ import { Container } from '@n8n/di';
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
 import { DataStoreRepository } from '../data-store.repository';
 import { DataStoreService } from '../data-store.service';
+import { DataStoreColumnNameConflictError } from '../errors/data-store-column-name-conflict.error';
+import { DataStoreColumnNotFoundError } from '../errors/data-store-column-not-found.error';
+import { DataStoreNameConflictError } from '../errors/data-store-name-conflict.error';
+import { DataStoreNotFoundError } from '../errors/data-store-not-found.error';
+import { DataStoreValidationError } from '../errors/data-store-validation.error';
 import { toTableName } from '../utils/sql-utils';
-
-import { DataStoreColumnNameConflictError } from '@/errors/data-store-column-name-conflict.error';
-import { DataStoreColumnNotFoundError } from '@/errors/data-store-column-not-found.error';
-import { DataStoreNameConflictError } from '@/errors/data-store-name-conflict.error';
-import { DataStoreNotFoundError } from '@/errors/data-store-not-found.error';
-import { DataStoreValidationError } from '@/errors/data-store-validation.error';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-store']);
