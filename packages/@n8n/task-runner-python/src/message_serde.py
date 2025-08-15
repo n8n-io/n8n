@@ -6,8 +6,6 @@ from .message_types import (
     BrokerInfoRequest,
     BrokerRunnerRegistered,
     BrokerTaskOfferAccept,
-    BrokerTaskCancel,
-    BrokerTaskSettings,
 )
 
 
@@ -17,12 +15,6 @@ class MessageSerde:
         "broker:runnerregistered": lambda _: BrokerRunnerRegistered(),
         "broker:taskofferaccept": lambda d: BrokerTaskOfferAccept(
             task_id=d["taskId"], offer_id=d["offerId"]
-        ),
-        "broker:taskcancel": lambda d: BrokerTaskCancel(
-            task_id=d["taskId"], reason=d["reason"]
-        ),
-        "broker:tasksettings": lambda d: BrokerTaskSettings(
-            task_id=d["taskId"], settings=d["settings"]
         ),
     }
 

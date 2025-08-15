@@ -21,26 +21,10 @@ class BrokerTaskOfferAccept:
     type: Literal["broker:taskofferaccept"] = "broker:taskofferaccept"
 
 
-@dataclass
-class BrokerTaskCancel:
-    task_id: str
-    reason: str
-    type: Literal["broker:taskcancel"] = "broker:taskcancel"
-
-
-@dataclass
-class BrokerTaskSettings:
-    task_id: str
-    settings: Any
-    type: Literal["broker:tasksettings"] = "broker:tasksettings"
-
-
 BrokerMessage = Union[
     BrokerInfoRequest,
     BrokerRunnerRegistered,
     BrokerTaskOfferAccept,
-    BrokerTaskCancel,
-    BrokerTaskSettings,
 ]
 
 # ========== runner ==========
