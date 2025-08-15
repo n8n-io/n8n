@@ -54,98 +54,98 @@ export class DataStoreController {
 	@Patch('/:dataStoreId')
 	@ProjectScope('dataStore:update')
 	async updateDataStore(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: UpdateDataStoreDto,
 	) {
-		return await this.dataStoreService.updateDataStore(dataStoreId, dto);
+		return await this.dataStoreService.updateDataStore(dataStoreId, req.params.projectId, dto);
 	}
 
 	@Delete('/:dataStoreId')
 	@ProjectScope('dataStore:delete')
 	async deleteDataStore(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 	) {
-		return await this.dataStoreService.deleteDataStore(dataStoreId);
+		return await this.dataStoreService.deleteDataStore(dataStoreId, req.params.projectId);
 	}
 
 	@Get('/:dataStoreId/columns')
 	@ProjectScope('dataStore:read')
 	async getColumns(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 	) {
-		return await this.dataStoreService.getColumns(dataStoreId);
+		return await this.dataStoreService.getColumns(dataStoreId, req.params.projectId);
 	}
 
 	@Post('/:dataStoreId/columns')
 	@ProjectScope('dataStore:update')
 	async addColumn(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: AddDataStoreColumnDto,
 	) {
-		return await this.dataStoreService.addColumn(dataStoreId, dto);
+		return await this.dataStoreService.addColumn(dataStoreId, req.params.projectId, dto);
 	}
 
 	@Delete('/:dataStoreId/columns/:columnId')
 	@ProjectScope('dataStore:update')
 	async deleteColumn(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Param('columnId') columnId: string,
 	) {
-		return await this.dataStoreService.deleteColumn(dataStoreId, columnId);
+		return await this.dataStoreService.deleteColumn(dataStoreId, req.params.projectId, columnId);
 	}
 
 	@Patch('/:dataStoreId/columns/:columnId/move')
 	@ProjectScope('dataStore:update')
 	async moveColumn(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Param('columnId') columnId: string,
 		@Body dto: MoveDataStoreColumnDto,
 	) {
-		return await this.dataStoreService.moveColumn(dataStoreId, columnId, dto);
+		return await this.dataStoreService.moveColumn(dataStoreId, req.params.projectId, columnId, dto);
 	}
 
 	@Get('/:dataStoreId/rows')
 	@ProjectScope('dataStore:readRow')
 	async getDataStoreRows(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Query dto: ListDataStoreContentQueryDto,
 	) {
-		return await this.dataStoreService.getManyRowsAndCount(dataStoreId, dto);
+		return await this.dataStoreService.getManyRowsAndCount(dataStoreId, req.params.projectId, dto);
 	}
 
 	@Post('/:dataStoreId/insert')
 	@ProjectScope('dataStore:writeRow')
 	async appendDataStoreRows(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: AddDataStoreRowsDto,
 	) {
-		return await this.dataStoreService.insertRows(dataStoreId, dto.data);
+		return await this.dataStoreService.insertRows(dataStoreId, req.params.projectId, dto.data);
 	}
 
 	@Post('/:dataStoreId/upsert')
 	@ProjectScope('dataStore:writeRow')
 	async upsertDataStoreRows(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
 		@Body dto: UpsertDataStoreRowsDto,
 	) {
-		return await this.dataStoreService.upsertRows(dataStoreId, dto);
+		return await this.dataStoreService.upsertRows(dataStoreId, req.params.projectId, dto);
 	}
 }

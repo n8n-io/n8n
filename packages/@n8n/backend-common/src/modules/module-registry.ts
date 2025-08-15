@@ -15,6 +15,8 @@ import { Logger } from '../logging/logger';
 export class ModuleRegistry {
 	readonly entities: EntityClass[] = [];
 
+	readonly loadDirs: string[] = [];
+
 	readonly settings: Map<string, ModuleSettings> = new Map();
 
 	constructor(
@@ -79,9 +81,11 @@ export class ModuleRegistry {
 		for (const ModuleClass of this.moduleMetadata.getClasses()) {
 			const entities = await Container.get(ModuleClass).entities?.();
 
-			if (!entities || entities.length === 0) continue;
+			if (entities?.length) this.entities.push(...entities);
 
-			this.entities.push(...entities);
+			const loadDir = Container.get(ModuleClass).loadDir?.();
+
+			if (loadDir) this.loadDirs.push(loadDir);
 		}
 	}
 
