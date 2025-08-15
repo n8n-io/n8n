@@ -140,7 +140,7 @@ export class Code implements INodeType {
 		const codeParameterName =
 			language === 'python' || language === 'pythonNative' ? 'pythonCode' : 'jsCode';
 
-		if (isRunnerEnabled && language === 'javaScript') {
+		if (language === 'javaScript' && isRunnerEnabled) {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
 			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
 			const numInputItems = this.getInputData().length;
