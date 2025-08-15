@@ -48,6 +48,11 @@ const isWorkflowDiffsEnabled = computed(() => settingsStore.settings.enterprise.
 // Reactive status state - starts with props data or empty, then loads fresh data
 const status = ref<SourceControlledFile[]>(props.data.status || []);
 const isLoading = ref(false);
+
+const responseStatuses = {
+	CONFLICT: 409,
+};
+
 // Load fresh source control status when modal opens
 async function loadSourceControlStatus() {
 	if (isLoading.value) return;
@@ -55,22 +60,22 @@ async function loadSourceControlStatus() {
 	isLoading.value = true;
 	loadingService.startLoading();
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
+
 	try {
-		const freshStatus = await sourceControlStore.getAggregatedStatus();
-		if (!freshStatus.length) {
-			toast.showMessage({
-				title: 'No changes to pull',
-				message: 'Everything is up to date',
-				type: 'info',
-			});
-			// Close modal since there's nothing to show
-			close();
-			return;
-		}
-		status.value = freshStatus;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('error'));
+		const freshStatus = await sourceControlStore.pullWorkfolder(false);
+		await notifyUserAboutPullWorkFolderOutcome(freshStatus, toast);
+		sourceControlEventBus.emit('pull');
 		close();
+	} catch (error) {
+		// only show the modal when there are conflicts
+		const errorResponse = error.response;
+
+		if (errorResponse?.status === responseStatuses.CONFLICT) {
+			status.value = errorResponse.data.data || [];
+		} else {
+			toast.showError(error, 'Error');
+			close();
+		}
 	} finally {
 		isLoading.value = false;
 		loadingService.stopLoading();
