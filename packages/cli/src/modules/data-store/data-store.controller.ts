@@ -287,7 +287,17 @@ export class DataStoreController {
 		@Param('dataStoreId') dataStoreId: string,
 		@Query dto: DeleteDataStoreRowsQueryDto,
 	) {
-		const { ids } = dto;
-		return await this.dataStoreService.deleteRows(dataStoreId, req.params.projectId, ids);
+		try {
+			const { ids } = dto;
+			return await this.dataStoreService.deleteRows(dataStoreId, req.params.projectId, ids);
+		} catch (e: unknown) {
+			if (e instanceof DataStoreNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
 	}
 }

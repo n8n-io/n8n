@@ -1182,9 +1182,9 @@ describe('dataStore', () => {
 
 		it('fails when trying to delete from non-existent data store', async () => {
 			// ACT & ASSERT
-			await expect(
-				dataStoreService.deleteRows('non-existent-id', project1.id, [1, 2]),
-			).rejects.toThrow("Data Store 'non-existent-id' does not exist.");
+			const result = dataStoreService.deleteRows('non-existent-id', project1.id, [1, 2]);
+
+			await expect(result).rejects.toThrow(DataStoreNotFoundError);
 		});
 
 		it('succeeds even if some IDs do not exist', async () => {
