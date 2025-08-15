@@ -187,24 +187,24 @@ const activeTab = ref<'nodes' | 'connectors' | 'settings'>();
 const tabs = computed(() => [
 	{
 		value: 'nodes' as const,
-		label: 'Nodes',
-		disabled: nodeChanges.value.length === 0,
+		label: i18n.baseText('workflowDiff.nodes'),
+		disabled: false,
 		data: {
 			count: nodeChanges.value.length,
 		},
 	},
 	{
 		value: 'connectors' as const,
-		label: 'Connectors',
-		disabled: connectionsDiff.value.size === 0,
+		label: i18n.baseText('workflowDiff.connectors'),
+		disabled: false,
 		data: {
 			count: connectionsDiff.value.size,
 		},
 	},
 	{
 		value: 'settings' as const,
-		label: 'Settings',
-		disabled: settingsDiff.value.length === 0,
+		label: i18n.baseText('workflowDiff.settings'),
+		disabled: false,
 		data: {
 			count: settingsDiff.value.length,
 		},
@@ -220,8 +220,7 @@ function setActiveTab(active: boolean) {
 	telemetry.track('User clicked workflow diff changes button', {
 		workflow_id: props.data.workflowId,
 	});
-	const value = tabs.value.find((tab) => !tab.disabled)?.value ?? 'nodes';
-	activeTab.value = value;
+	activeTab.value = 'nodes';
 }
 
 function trackTabChange(value: 'nodes' | 'connectors' | 'settings') {
@@ -266,6 +265,17 @@ function handleBeforeClose() {
 const changesCount = computed(
 	() => nodeChanges.value.length + connectionsDiff.value.size + settingsDiff.value.length,
 );
+
+const isSourceWorkflowNew = computed(() => {
+	const sourceExists = !!sourceWorkFlow.value.state.value?.workflow;
+	const targetExists = !!targetWorkFlow.value.state.value?.workflow;
+
+	// Source is "new" only when it doesn't exist but target does AND
+	// we're in a context where the target is being pushed/pulled to create the source
+	// Push: remote (source) doesn't exist, local (target) does -> creating new on remote
+	// Pull: local (source) doesn't exist, remote (target) does -> creating new on local
+	return !sourceExists && targetExists;
+});
 
 onNodeClick((nodeId) => {
 	const node = nodesDiff.value.get(nodeId);
@@ -367,7 +377,7 @@ const modifiers = [
 							<div v-if="changesCount" :class="$style.circleBadge">
 								{{ changesCount }}
 							</div>
-							Changes
+							{{ i18n.baseText('workflowDiff.changes') }}
 						</N8nButton>
 						<template #dropdown>
 							<ElDropdownMenu :hide-on-click="false">
@@ -388,80 +398,101 @@ const modifiers = [
 									</N8nRadioButtons>
 									<div>
 										<ul v-if="activeTab === 'nodes'">
-											<ElDropdownItem
-												v-for="change in nodeChanges"
-												:key="change.node.id"
-												:class="{
-													[$style.clickableChange]: true,
-													[$style.clickableChangeActive]: selectedDetailId === change.node.id,
-												}"
-												@click.prevent="setSelectedDetailId(change.node.id, activeTab)"
-											>
-												<DiffBadge :type="change.status" />
-												<NodeIcon :node-type="change.type" :size="16" class="ml-2xs mr-4xs" />
-												<span :class="$style.nodeName">{{ change.node.name }}</span>
-											</ElDropdownItem>
+											<template v-if="nodeChanges.length > 0">
+												<ElDropdownItem
+													v-for="change in nodeChanges"
+													:key="change.node.id"
+													:class="{
+														[$style.clickableChange]: true,
+														[$style.clickableChangeActive]: selectedDetailId === change.node.id,
+													}"
+													@click.prevent="setSelectedDetailId(change.node.id, activeTab)"
+												>
+													<DiffBadge :type="change.status" />
+													<NodeIcon :node-type="change.type" :size="16" class="ml-2xs mr-4xs" />
+													<span :class="$style.nodeName">{{ change.node.name }}</span>
+												</ElDropdownItem>
+											</template>
+											<li v-else :class="$style.emptyState">
+												<N8nText color="text-base" size="small">{{
+													i18n.baseText('workflowDiff.noChanges')
+												}}</N8nText>
+											</li>
 										</ul>
 										<ul v-if="activeTab === 'connectors'" :class="$style.changes">
-											<li v-for="change in connectionsDiff" :key="change[0]">
-												<div>
-													<DiffBadge :type="change[1].status" />
-												</div>
-												<div style="flex: 1; min-width: 0">
-													<ul :class="$style.changesNested">
-														<ElDropdownItem
-															:class="{
-																[$style.clickableChange]: true,
-																[$style.clickableChangeActive]:
-																	selectedDetailId === change[1].connection.source?.id,
-															}"
-															@click.prevent="
-																setSelectedDetailId(change[1].connection.source?.id, activeTab)
-															"
-														>
-															<NodeIcon
-																:node-type="change[1].connection.sourceType"
-																:size="16"
-																class="ml-2xs mr-4xs"
-															/>
-															<span :class="$style.nodeName">{{
-																change[1].connection.source?.name
-															}}</span>
-														</ElDropdownItem>
-														<div :class="$style.separator"></div>
-														<ElDropdownItem
-															:class="{
-																[$style.clickableChange]: true,
-																[$style.clickableChangeActive]:
-																	selectedDetailId === change[1].connection.target?.id,
-															}"
-															@click.prevent="
-																setSelectedDetailId(change[1].connection.target?.id, activeTab)
-															"
-														>
-															<NodeIcon
-																:node-type="change[1].connection.targetType"
-																:size="16"
-																class="ml-2xs mr-4xs"
-															/>
-															<span :class="$style.nodeName">{{
-																change[1].connection.target?.name
-															}}</span>
-														</ElDropdownItem>
-													</ul>
-												</div>
+											<template v-if="connectionsDiff.size > 0">
+												<li v-for="change in connectionsDiff" :key="change[0]">
+													<div>
+														<DiffBadge :type="change[1].status" />
+													</div>
+													<div style="flex: 1">
+														<ul :class="$style.changesNested">
+															<ElDropdownItem
+																:class="{
+																	[$style.clickableChange]: true,
+																	[$style.clickableChangeActive]:
+																		selectedDetailId === change[1].connection.source?.id,
+																}"
+																@click.prevent="
+																	setSelectedDetailId(change[1].connection.source?.id, activeTab)
+																"
+															>
+																<NodeIcon
+																	:node-type="change[1].connection.sourceType"
+																	:size="16"
+																	class="ml-2xs mr-4xs"
+																/>
+																<span :class="$style.nodeName">{{
+																	change[1].connection.source?.name
+																}}</span>
+															</ElDropdownItem>
+															<div :class="$style.separator"></div>
+															<ElDropdownItem
+																:class="{
+																	[$style.clickableChange]: true,
+																	[$style.clickableChangeActive]:
+																		selectedDetailId === change[1].connection.target?.id,
+																}"
+																@click.prevent="
+																	setSelectedDetailId(change[1].connection.target?.id, activeTab)
+																"
+															>
+																<NodeIcon
+																	:node-type="change[1].connection.targetType"
+																	:size="16"
+																	class="ml-2xs mr-4xs"
+																/>
+																<span :class="$style.nodeName">{{
+																	change[1].connection.target?.name
+																}}</span>
+															</ElDropdownItem>
+														</ul>
+													</div>
+												</li>
+											</template>
+											<li v-else :class="$style.emptyState">
+												<N8nText color="text-base" size="small">{{
+													i18n.baseText('workflowDiff.noChanges')
+												}}</N8nText>
 											</li>
 										</ul>
 										<ul v-if="activeTab === 'settings'">
-											<li v-for="setting in settingsDiff" :key="setting.name">
-												<N8nText color="text-dark" size="medium" tag="div" bold>{{
-													i18n.baseText(`workflowSettings.${setting.name}` as BaseTextKey)
+											<template v-if="settingsDiff.length > 0">
+												<li v-for="setting in settingsDiff" :key="setting.name">
+													<N8nText color="text-dark" size="medium" tag="div" bold>{{
+														i18n.baseText(`workflowSettings.${setting.name}` as BaseTextKey)
+													}}</N8nText>
+													<NodeDiff
+														:old-string="setting.before"
+														:new-string="setting.after"
+														:class="$style.noNumberDiff"
+													/>
+												</li>
+											</template>
+											<li v-else :class="$style.emptyState">
+												<N8nText color="text-base" size="small">{{
+													i18n.baseText('workflowDiff.noChanges')
 												}}</N8nText>
-												<NodeDiff
-													:old-string="setting.before"
-													:new-string="setting.after"
-													:class="$style.noNumberDiff"
-												/>
 											</li>
 										</ul>
 									</div>
@@ -494,8 +525,10 @@ const modifiers = [
 								<N8nIcon v-if="sourceWorkFlow.state.value.remote" icon="git-branch" />
 								{{
 									sourceWorkFlow.state.value.remote
-										? `Remote (${sourceControlStore.preferences.branchName})`
-										: 'Local'
+										? i18n.baseText('workflowDiff.remote', {
+												interpolate: { branchName: sourceControlStore.preferences.branchName },
+											})
+										: i18n.baseText('workflowDiff.local')
 								}}
 							</N8nText>
 							<template v-if="sourceWorkFlow.state.value.workflow">
@@ -520,14 +553,21 @@ const modifiers = [
 							</template>
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
-									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nHeading size="large"> Deleted workflow </N8nHeading>
-										<N8nText color="text-base"> The workflow was deleted on the database </N8nText>
-									</template>
-									<template v-else>
-										<N8nHeading size="large"> Deleted workflow </N8nHeading>
-										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
-									</template>
+									<N8nHeading size="large">{{
+										isSourceWorkflowNew
+											? i18n.baseText('workflowDiff.newWorkflow')
+											: i18n.baseText('workflowDiff.deletedWorkflow')
+									}}</N8nHeading>
+									<N8nText v-if="sourceWorkFlow.state.value?.remote" color="text-base">{{
+										isSourceWorkflowNew
+											? i18n.baseText('workflowDiff.newWorkflow.remote')
+											: i18n.baseText('workflowDiff.deletedWorkflow.remote')
+									}}</N8nText>
+									<N8nText v-else color="text-base">{{
+										isSourceWorkflowNew
+											? i18n.baseText('workflowDiff.newWorkflow.database')
+											: i18n.baseText('workflowDiff.deletedWorkflow.database')
+									}}</N8nText>
 								</div>
 							</template>
 						</template>
@@ -538,8 +578,10 @@ const modifiers = [
 								<N8nIcon v-if="targetWorkFlow.state.value.remote" icon="git-branch" />
 								{{
 									targetWorkFlow.state.value.remote
-										? `Remote (${sourceControlStore.preferences.branchName})`
-										: 'Local'
+										? i18n.baseText('workflowDiff.remote', {
+												interpolate: { branchName: sourceControlStore.preferences.branchName },
+											})
+										: i18n.baseText('workflowDiff.local')
 								}}
 							</N8nText>
 							<template v-if="targetWorkFlow.state.value.workflow">
@@ -564,14 +606,15 @@ const modifiers = [
 							</template>
 							<template v-else>
 								<div :class="$style.emptyWorkflow">
-									<template v-if="targetWorkFlow.state.value?.remote">
-										<N8nHeading size="large"> Deleted workflow </N8nHeading>
-										<N8nText color="text-base"> The workflow was deleted on remote </N8nText>
-									</template>
-									<template v-else>
-										<N8nHeading size="large"> Deleted workflow </N8nHeading>
-										<N8nText color="text-base"> The workflow was deleted on the data base </N8nText>
-									</template>
+									<N8nHeading size="large">{{
+										i18n.baseText('workflowDiff.deletedWorkflow')
+									}}</N8nHeading>
+									<N8nText v-if="targetWorkFlow.state.value?.remote" color="text-base">{{
+										i18n.baseText('workflowDiff.deletedWorkflow.remote')
+									}}</N8nText>
+									<N8nText v-else color="text-base">{{
+										i18n.baseText('workflowDiff.deletedWorkflow.database')
+									}}</N8nText>
 								</div>
 							</template>
 						</template>
@@ -603,7 +646,6 @@ const modifiers = [
 	}
 	:global(.el-dialog__header) {
 		padding: 11px 16px;
-		border-bottom: 1px solid var(--color-foreground-base);
 	}
 	:global(.el-dialog__headerbtn) {
 		display: none;
@@ -651,14 +693,20 @@ const modifiers = [
 		gap: var(--spacing-2xs);
 		padding: 10px 0 var(--spacing-3xs) var(--spacing-2xs);
 
-		ul {
-			margin-top: -3px;
+		> div {
+			min-width: 0;
 		}
 
 		.clickableChange {
 			padding: var(--spacing-3xs) var(--spacing-xs) var(--spacing-3xs) 0;
 			margin-left: -4px;
 		}
+	}
+
+	.changesNested {
+		margin-top: -3px;
+		width: 100%;
+		min-width: 0;
 	}
 }
 
@@ -668,12 +716,18 @@ const modifiers = [
 	gap: var(--spacing-2xs);
 	border-radius: 4px;
 	padding: var(--spacing-xs) var(--spacing-2xs);
+	margin-right: var(--spacing-xs);
 	line-height: unset;
 	min-width: 0;
+	transition: background-color 0.2s ease;
+
+	&:hover {
+		background-color: var(--color-background-xlight);
+	}
 }
 
 .clickableChangeActive {
-	background-color: var(--color-background-medium);
+	background-color: var(--color-background-xlight);
 }
 
 .nodeName {
@@ -806,14 +860,6 @@ const modifiers = [
 	opacity: 0.5;
 }
 
-.noNumberDiff {
-	min-height: 41px;
-	margin-bottom: 10px;
-	:global(.blob-num) {
-		display: none;
-	}
-}
-
 .circleBadge {
 	display: inline-flex;
 	align-items: center;
@@ -829,13 +875,25 @@ const modifiers = [
 }
 
 .dropdownContent {
-	min-width: 300px;
-	padding: 2px 12px;
+	width: 320px;
+	padding: 2px 0 2px 12px;
 
 	ul {
 		list-style: none;
 		margin: 0;
 		padding: 0;
+		max-height: 400px;
+		overflow-x: hidden;
+		overflow-y: auto;
+	}
+
+	.noNumberDiff {
+		min-height: 41px;
+		margin: 0 12px 10px 0;
+		overflow: hidden;
+		:global(.blob-num) {
+			display: none;
+		}
 	}
 }
 
@@ -854,6 +912,7 @@ const modifiers = [
 .workflowDiffPanel {
 	flex: 1;
 	position: relative;
+	border-top: 1px solid var(--color-foreground-base);
 }
 
 .emptyWorkflow {
@@ -882,5 +941,12 @@ const modifiers = [
 .headerLeft {
 	display: flex;
 	align-items: center;
+}
+
+.emptyState {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: var(--spacing-m) var(--spacing-xs);
 }
 </style>

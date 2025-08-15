@@ -54,7 +54,6 @@ describe('Beeminder Node Functions', () => {
 					'/users/me/goals/testgoal/datapoints.json',
 					data,
 					{},
-					true,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -78,7 +77,6 @@ describe('Beeminder Node Functions', () => {
 					'/users/me/goals/testgoal/datapoints.json',
 					data,
 					{},
-					true,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -160,7 +158,6 @@ describe('Beeminder Node Functions', () => {
 					'/users/me/goals/testgoal/datapoints/123.json',
 					data,
 					{},
-					true,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -184,7 +181,6 @@ describe('Beeminder Node Functions', () => {
 					'/users/me/goals/testgoal/datapoints/123.json',
 					data,
 					{},
-					true,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -232,7 +228,6 @@ describe('Beeminder Node Functions', () => {
 					'/users/me/goals/testgoal/datapoints/create_all.json',
 					{ datapoints },
 					{},
-					true,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -387,7 +382,6 @@ describe('Beeminder Node Functions', () => {
 					'/users/me/goals.json',
 					data,
 					{},
-					true,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -419,7 +413,6 @@ describe('Beeminder Node Functions', () => {
 					'/users/me/goals.json',
 					data,
 					{},
-					true,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -442,7 +435,6 @@ describe('Beeminder Node Functions', () => {
 					'/users/me/goals/testgoal.json',
 					data,
 					{},
-					true,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -471,7 +463,6 @@ describe('Beeminder Node Functions', () => {
 					'/users/me/goals/testgoal.json',
 					data,
 					{},
-					true,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -564,7 +555,6 @@ describe('Beeminder Node Functions', () => {
 						amount: 5,
 					},
 					{},
-					true,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -591,7 +581,6 @@ describe('Beeminder Node Functions', () => {
 						dryrun: true,
 					},
 					{},
-					true,
 				);
 				expect(result).toBe(mockResponse);
 			});
@@ -616,7 +605,6 @@ describe('Beeminder Node Functions', () => {
 						amount: 5,
 					},
 					{},
-					true,
 				);
 				expect(result).toBe(mockResponse);
 			});

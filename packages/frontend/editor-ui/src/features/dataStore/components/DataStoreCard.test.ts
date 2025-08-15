@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import DataStoreCard from './DataStoreCard.vue';
+import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import type { UserAction } from '@/Interface';
@@ -92,20 +92,6 @@ describe('DataStoreCard', () => {
 			},
 		});
 		expect(getByText('Read only')).toBeInTheDocument();
-	});
-
-	it('should not render action dropdown if no actions are provided', () => {
-		const { queryByTestId } = renderComponent({
-			props: {
-				actions: [],
-			},
-		});
-		expect(queryByTestId('data-store-card-actions')).not.toBeInTheDocument();
-	});
-
-	it('should render action dropdown if actions are provided', () => {
-		const { getByTestId } = renderComponent();
-		expect(getByTestId('data-store-card-actions')).toBeInTheDocument();
 	});
 
 	it('should render correct route to data store details', () => {

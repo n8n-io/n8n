@@ -144,6 +144,41 @@ export class ApiHelpers {
 		});
 	}
 
+	// ===== FEATURE FLAG METHODS =====
+
+	async setEnvFeatureFlags(flags: Record<string, string>): Promise<{
+		data: {
+			success: boolean;
+			message: string;
+			flags: Record<string, string>;
+		};
+	}> {
+		const response = await this.request.patch('/rest/e2e/env-feature-flags', {
+			data: { flags },
+		});
+		return await response.json();
+	}
+
+	async clearEnvFeatureFlags(): Promise<{
+		data: {
+			success: boolean;
+			message: string;
+			flags: Record<string, string>;
+		};
+	}> {
+		const response = await this.request.patch('/rest/e2e/env-feature-flags', {
+			data: { flags: {} },
+		});
+		return await response.json();
+	}
+
+	async getEnvFeatureFlags(): Promise<{
+		data: Record<string, string>;
+	}> {
+		const response = await this.request.get('/rest/e2e/env-feature-flags');
+		return await response.json();
+	}
+
 	// ===== CONVENIENCE METHODS =====
 
 	async enableFeature(feature: string): Promise<void> {

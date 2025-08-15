@@ -242,7 +242,7 @@ export class EmbeddingsOpenAi implements INodeType {
 
 		const embeddings = new OpenAIEmbeddings({
 			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
-			openAIApiKey: credentials.apiKey as string,
+			apiKey: credentials.apiKey as string,
 			...options,
 			configuration,
 		});

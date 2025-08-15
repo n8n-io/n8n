@@ -4,8 +4,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import type { Resource } from '@/Interface';
 import type router from 'vue-router';
-import type { ProjectSharingData } from 'n8n-workflow';
 import { waitAllPromises } from '@/__tests__/utils';
+import type { ProjectSharingData } from '@/types/projects.types';
 
 const TEST_HOME_PROJECT: ProjectSharingData = vi.hoisted(() => ({
 	id: '1',

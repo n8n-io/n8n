@@ -11,6 +11,8 @@ const i18n = useI18n();
 
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const DataStoreView = async () => await import('@/features/dataStore/DataStoreView.vue');
+const DataStoreDetailsView = async () =>
+	await import('@/features/dataStore/DataStoreDetailsView.vue');
 
 export const DataStoreModule: FrontendModuleDescription = {
 	id: 'data-store',
@@ -54,7 +56,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 			path: 'datastores/:id',
 			props: true,
 			components: {
-				default: DataStoreView,
+				default: DataStoreDetailsView,
 				sidebar: MainSidebar,
 			},
 			meta: {
@@ -66,7 +68,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 	projectTabs: {
 		overview: [
 			{
-				label: i18n.baseText('dataStore.tab.label'),
+				label: i18n.baseText('dataStore.dataStores'),
 				value: DATA_STORE_VIEW,
 				to: {
 					name: DATA_STORE_VIEW,
@@ -75,7 +77,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 		],
 		project: [
 			{
-				label: i18n.baseText('dataStore.tab.label'),
+				label: i18n.baseText('dataStore.dataStores'),
 				value: PROJECT_DATA_STORES,
 				dynamicRoute: {
 					name: PROJECT_DATA_STORES,
