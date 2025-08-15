@@ -127,7 +127,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		field: col.name,
 		headerName: col.name,
 		editable: true,
-		resizable: col.index < props.dataStore.columns.length - 1,
+		resizable: true,
 		cellDataType: mapToAGCellType(col.type),
 		valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
 			// If the value is null, return the default value for the column type

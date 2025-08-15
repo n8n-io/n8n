@@ -72,7 +72,7 @@ const handlePopoverOpenChange = async (open: boolean) => {
 				@update:open="handlePopoverOpenChange"
 			>
 				<template #trigger>
-					<N8nIconButton size="small" icon="plus" type="tertiary" />
+					<N8nIconButton icon="plus" type="tertiary" text />
 				</template>
 				<template #content>
 					<div :class="$style['popover-content']">
