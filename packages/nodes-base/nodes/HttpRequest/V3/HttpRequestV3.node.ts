@@ -210,7 +210,7 @@ export class HttpRequestV3 implements INodeType {
 					} else if (credentialData.allowedHttpRequestDomains === 'none') {
 						throw new NodeOperationError(
 							this.getNode(),
-							'This credential is configured to block all HTTP requests',
+							'This credential is configured to prevent use within an HTTP Request node',
 						);
 					}
 				};
@@ -231,7 +231,8 @@ export class HttpRequestV3 implements INodeType {
 					} catch (error) {
 						if (
 							error.message?.includes('Domain not allowed') ||
-							error.message?.includes('block all HTTP requests')
+							error.message?.includes('configured to prevent') ||
+							error.message?.includes('No allowed domains specified')
 						) {
 							throw error;
 						}
