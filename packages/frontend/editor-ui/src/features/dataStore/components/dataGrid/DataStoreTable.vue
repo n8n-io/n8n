@@ -15,7 +15,7 @@ import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
-import { mapToAGCellType } from '@/features/dataStore/composables/useDataStoreTypes';
+import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 
 // Register all Community features
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -28,6 +28,7 @@ const props = defineProps<Props>();
 
 const i18n = useI18n();
 const toast = useToast();
+const dataStoreTypes = useDataStoreTypes();
 
 const dataStoreStore = useDataStoreStore();
 
@@ -35,8 +36,6 @@ const dataStoreStore = useDataStoreStore();
 const gridApi = ref<GridApi | null>(null);
 const colDefs = ref<ColDef[]>([]);
 const rowData = ref<DataStoreRow[]>([]);
-
-const contentLoading = ref(false);
 
 // Shared config for all columns
 const defaultColumnDef = {
@@ -86,7 +85,7 @@ const createColumnDef = (col: DataStoreColumn) => {
 		field: col.name,
 		headerName: col.name,
 		editable: col.name !== DEFAULT_ID_COLUMN_NAME,
-		cellDataType: mapToAGCellType(col.type),
+		cellDataType: dataStoreTypes.mapToAGCellType(col.type),
 	};
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
