@@ -64,10 +64,10 @@ const headerIcon = computed((): IconOrEmoji => {
 
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
-		if (projectPages.isOverviewSubPage) {
-			return i18n.baseText('projects.menu.overview');
-		} else if (projectPages.isSharedSubPage) {
+		if (projectPages.isSharedSubPage) {
 			return i18n.baseText('projects.header.shared.title');
+		} else if (projectPages.isOverviewSubPage) {
+			return i18n.baseText('projects.menu.overview');
 		}
 		return null;
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
@@ -193,26 +193,26 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			},
 		});
 	},
-	[ACTION_TYPES.FOLDER]: async () => {
+	[ACTION_TYPES.FOLDER]: () => {
 		emit('createFolder');
 	},
 } as const;
 
 const pageType = computed(() => {
-	if (projectPages.isOverviewSubPage) {
-		return 'overview';
-	} else if (projectPages.isSharedSubPage) {
+	if (projectPages.isSharedSubPage) {
 		return 'shared';
+	} else if (projectPages.isOverviewSubPage) {
+		return 'overview';
 	} else {
 		return 'project';
 	}
 });
 
 const sectionDescription = computed(() => {
-	if (projectPages.isOverviewSubPage) {
-		return i18n.baseText('projects.header.overview.subtitle');
-	} else if (projectPages.isSharedSubPage) {
+	if (projectPages.isSharedSubPage) {
 		return i18n.baseText('projects.header.shared.subtitle');
+	} else if (projectPages.isOverviewSubPage) {
+		return i18n.baseText('projects.header.overview.subtitle');
 	} else if (isPersonalProject.value) {
 		return i18n.baseText('projects.header.personal.subtitle');
 	}
