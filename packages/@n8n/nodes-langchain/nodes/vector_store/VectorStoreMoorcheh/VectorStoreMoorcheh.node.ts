@@ -29,6 +29,12 @@ class MoorchehVectorStore extends VectorStore {
 	}
 
 	async addVectors(vectors: number[][], documents: Document[]): Promise<void> {
+		if (vectors.length !== documents.length) {
+			throw new Error(
+				`Vectors and documents arrays must have the same length. Got ${vectors.length} vectors and ${documents.length} documents.`,
+			);
+		}
+
 		const vectorsWithMetadata = vectors.map((vector, i) => ({
 			id: `doc_${Date.now()}_${i}`,
 			vector,
@@ -53,13 +59,17 @@ class MoorchehVectorStore extends VectorStore {
 	static async fromDocuments(
 		documents: Document[],
 		embeddings: Embeddings,
-		dbConfig: Record<string, any>,
+		dbConfig: { client: any; namespace: string; uploadBatchSize?: number },
 	): Promise<MoorchehVectorStore> {
-		const { client, namespace, uploadBatchSize } = dbConfig as {
+		const {
+			client,
+			namespace,
+			uploadBatchSize,
+		}: {
 			client: any;
 			namespace: string;
 			uploadBatchSize?: number;
-		};
+		} = dbConfig;
 		const vectorStore = new MoorchehVectorStore(
 			embeddings,
 			client,
@@ -133,7 +143,7 @@ class MoorchehVectorStore extends VectorStore {
 		query: number[],
 		k: number = 4,
 		_filter?: IDataObject,
-	): Promise<[Document, number][]> {
+	): Promise<Array<[Document, number]>> {
 		const results = await this.client.search(query, [this.namespace], k);
 
 		return results.map((result: any) => {

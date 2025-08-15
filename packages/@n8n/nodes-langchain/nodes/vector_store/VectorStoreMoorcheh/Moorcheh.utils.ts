@@ -72,12 +72,34 @@ export class MoorchehClient {
 	}
 
 	async listNamespaces(): Promise<MoorchehNamespace[]> {
+		function isMoorchehNamespace(value: unknown): value is MoorchehNamespace {
+			if (!value || typeof value !== 'object') return false;
+			const ns = value as Record<string, unknown>;
+			return (
+				typeof ns.name === 'string' &&
+				(ns.type === 'text' || ns.type === 'vector') &&
+				(ns.vector_dimension === undefined || typeof ns.vector_dimension === 'number')
+			);
+		}
+
+		function validateNamespaces(value: unknown): MoorchehNamespace[] {
+			if (Array.isArray(value) && value.every(isMoorchehNamespace)) {
+				return value;
+			}
+			if (value && typeof value === 'object') {
+				const obj = value as Record<string, unknown>;
+				if (Array.isArray(obj.namespaces) && obj.namespaces.every(isMoorchehNamespace)) {
+					return obj.namespaces;
+				}
+				if (Array.isArray(obj.data) && obj.data.every(isMoorchehNamespace)) {
+					return obj.data;
+				}
+			}
+			return [];
+		}
+
 		const res = await this.makeRequest('GET', '/namespaces');
-		if (Array.isArray(res)) return res as MoorchehNamespace[];
-		if (res && Array.isArray((res as any).namespaces))
-			return (res as any).namespaces as MoorchehNamespace[];
-		if (res && Array.isArray((res as any).data)) return (res as any).data as MoorchehNamespace[];
-		return [];
+		return validateNamespaces(res);
 	}
 
 	async deleteNamespace(name: string): Promise<void> {

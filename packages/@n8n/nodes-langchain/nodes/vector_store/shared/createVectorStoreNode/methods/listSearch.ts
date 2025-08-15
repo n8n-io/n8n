@@ -110,9 +110,21 @@ export async function weaviateCollectionsSearch(this: ILoadOptionsFunctions) {
 }
 
 export async function moorchehNamespacesSearch(this: ILoadOptionsFunctions) {
-	const credentials = await this.getCredentials('moorchehApi');
+	function isMoorchehCredential(value: unknown): value is MoorchehCredential {
+		if (!value || typeof value !== 'object') return false;
+		const cred = value as Record<string, unknown>;
+		return (
+			typeof cred.apiKey === 'string' &&
+			(cred.baseUrl === undefined || typeof cred.baseUrl === 'string')
+		);
+	}
 
-	const client = createMoorchehClient(credentials as MoorchehCredential);
+	const credentials = await this.getCredentials('moorchehApi');
+	if (!isMoorchehCredential(credentials)) {
+		throw new ApplicationError('Invalid Moorcheh API credentials format');
+	}
+
+	const client = createMoorchehClient(credentials);
 
 	const namespaces = await client.listNamespaces();
 

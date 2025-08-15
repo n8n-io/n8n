@@ -13,7 +13,7 @@
 			"parameters": {
 				"jsCode": "return [\n  { json: { data: \"Sample document 1 content\" } },\n  { json: { data: \"Sample document 2 content\" } }\n];"
 			},
-			"id": "22c9bd16-4c6e-5f92-c3c4-8d3g9c3f0234",
+			"id": "22c9bd16-4c6e-5f92-c3c4-8d3f9c3f0234",
 			"name": "Generate Test Data",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
@@ -33,12 +33,12 @@
 			},
 			"id": "33d9ce27-5d7f-6g03-d4d5-9e4h0d4g0345",
 			"name": "Moorcheh Vector Store",
-			"type": "@n8n/n8n-nodes-langchain.vectorStoreMoorcheh",
+			"type": "n8n-nodes-langchain.vectorStoreMoorcheh",
 			"typeVersion": 1,
 			"position": [680, 300],
 			"credentials": {
 				"moorchehApi": {
-					"id": "44e9df38-6e8g-7h14-e5e6-0f5i1e5h0456",
+					"id": "44e9df38-6e8a-7b14-e5e6-0f5a1e5b0456",
 					"name": "Test Moorcheh API"
 				}
 			}
