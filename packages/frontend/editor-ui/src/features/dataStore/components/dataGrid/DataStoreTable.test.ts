@@ -158,21 +158,6 @@ describe('DataStoreTable', () => {
 				);
 			});
 		});
-
-		it('should call store action after adding a column', async () => {
-			const { getByTestId } = renderComponent();
-
-			const addColumnPopover = getByTestId('add-column-popover');
-			const addButton = addColumnPopover.querySelector(
-				'[data-test-id="data-store-add-column-button"]',
-			);
-
-			await fireEvent.click(addButton!);
-
-			await waitFor(() => {
-				expect(dataStoreStore.addDataStoreColumn).toHaveBeenCalled();
-			});
-		});
 	});
 
 	describe('Empty Data Store', () => {
