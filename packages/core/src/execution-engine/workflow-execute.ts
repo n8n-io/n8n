@@ -1414,7 +1414,6 @@ export class WorkflowExecute {
 		}
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		const isDeclarativeNode = nodeType.description.requestDefaults !== undefined;
 		const customOperation = this.getCustomOperation(node, nodeType);
 
 		const connectionInputData = this.prepareConnectionInputData(
@@ -1431,6 +1430,8 @@ export class WorkflowExecute {
 		this.rethrowLastNodeError(runExecutionData, node);
 
 		inputData = this.handleExecuteOnce(node, inputData);
+
+		const isDeclarativeNode = nodeType.description.requestDefaults !== undefined;
 
 		if (nodeType.execute || customOperation) {
 			return await this.executeNode(
