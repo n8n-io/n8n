@@ -2206,7 +2206,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		expect(rowsInDb.data.map((r) => r.first).sort()).toEqual(['test value 1', 'test value 3']);
 	});
 
-	test('should return false when deleting empty ids array', async () => {
+	test('should return true when deleting empty ids array', async () => {
 		const dataStore = await createDataStore(memberProject, {
 			columns: [
 				{
@@ -2230,7 +2230,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		expect(response.body.data).toBe(false);
+		expect(response.body.data).toBe(true);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
 		expect(rowsInDb.count).toBe(1);

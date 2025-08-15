@@ -1170,7 +1170,7 @@ describe('dataStore', () => {
 			expect(rows.data).toEqual([{ name: 'Bob', age: 25, id: 2 }]);
 		});
 
-		it('returns false when deleting empty list of IDs', async () => {
+		it('returns true when deleting empty list of IDs', async () => {
 			// ARRANGE
 			const dataStore = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1182,7 +1182,7 @@ describe('dataStore', () => {
 			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, []);
 
 			// ASSERT
-			expect(result).toBe(false);
+			expect(result).toBe(true);
 		});
 
 		it('fails when trying to delete from non-existent data store', async () => {

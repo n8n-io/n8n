@@ -172,10 +172,6 @@ export class DataStoreService {
 	async deleteRows(dataStoreId: string, projectId: string, ids: number[]) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
-		if (ids.length === 0) {
-			return false;
-		}
-
 		return await this.dataStoreRowsRepository.deleteRows(toTableName(dataStoreId), ids);
 	}
 

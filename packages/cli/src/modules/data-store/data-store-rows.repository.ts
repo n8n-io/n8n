@@ -100,7 +100,7 @@ export class DataStoreRowsRepository {
 
 	async deleteRows(tableName: DataStoreUserTableName, ids: number[]) {
 		if (ids.length === 0) {
-			return false;
+			return true;
 		}
 
 		const dbType = this.dataSource.options.type;
