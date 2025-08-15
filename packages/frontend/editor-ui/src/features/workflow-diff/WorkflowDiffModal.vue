@@ -121,10 +121,10 @@ const settingsDiff = computed(() => {
 		return acc;
 	}, []);
 
-	const sourceName = sourceWorkFlow.value.state.value?.workflow?.name ?? '';
-	const targetName = targetWorkFlow.value.state.value?.workflow?.name ?? '';
+	const sourceName = sourceWorkFlow.value.state.value?.workflow?.name;
+	const targetName = targetWorkFlow.value.state.value?.workflow?.name;
 
-	if (sourceName !== targetName) {
+	if (sourceName && targetName && sourceName !== targetName) {
 		settings.unshift({
 			name: 'name',
 			before: sourceName,
