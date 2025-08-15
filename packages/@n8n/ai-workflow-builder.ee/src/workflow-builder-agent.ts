@@ -339,7 +339,12 @@ export class WorkflowBuilderAgent {
 				const innerError = error.error;
 				if ('error' in innerError && typeof innerError.error === 'object' && innerError.error) {
 					const errorDetails = innerError.error;
-					if ('message' in errorDetails && typeof errorDetails.message === 'string') {
+					if (
+						'type' in errorDetails &&
+						errorDetails.type === 'invalid_request_error' &&
+						'message' in errorDetails &&
+						typeof errorDetails.message === 'string'
+					) {
 						throw new ApplicationError(`Error from AI Provider: ${errorDetails.message}`);
 					}
 				}
