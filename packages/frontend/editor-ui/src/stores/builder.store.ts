@@ -1,5 +1,6 @@
 import type { VIEWS } from '@/constants';
 import {
+	DEFAULT_NEW_WORKFLOW_NAME,
 	ASK_AI_SLIDE_OUT_DURATION_MS,
 	EDITABLE_CANVAS_VIEWS,
 	WORKFLOW_BUILDER_EXPERIMENT,
@@ -37,6 +38,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const streaming = ref<boolean>(false);
 	const assistantThinkingMessage = ref<string | undefined>();
 	const streamingAbortController = ref<AbortController | null>(null);
+	const initialGeneration = ref<boolean>(false);
 
 	// Store dependencies
 	const settings = useSettingsStore();
@@ -101,6 +103,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function resetBuilderChat() {
 		chatMessages.value = clearMessages();
 		assistantThinkingMessage.value = undefined;
+		initialGeneration.value = false;
 	}
 
 	/**
@@ -234,12 +237,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		text: string;
 		source?: 'chat' | 'canvas';
 		quickReplyType?: string;
+		initialGeneration?: boolean;
 	}) {
 		if (streaming.value) {
 			return;
 		}
 
 		const { text, source = 'chat', quickReplyType } = options;
+
+		// Set initial generation flag if provided
+		if (options.initialGeneration !== undefined) {
+			initialGeneration.value = options.initialGeneration;
+		}
 		const messageId = generateMessageId();
 
 		const currentWorkflowJson = getWorkflowSnapshot();
@@ -370,11 +379,21 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		// Capture current state before clearing
-		const { nodePositions } = captureCurrentWorkflowState();
+		const { nodePositions, existingNodeIds } = captureCurrentWorkflowState();
 
 		// Clear existing workflow
 		workflowsStore.removeAllConnections({ setStateDirty: false });
 		workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
+
+		// For the initial generation, we want to apply auto-generated workflow name
+		// but only if the workflow has default name
+		if (
+			workflowData.name &&
+			initialGeneration.value &&
+			workflowsStore.workflow.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
+		) {
+			workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+		}
 
 		// Restore positions for nodes that still exist and identify new nodes
 		const nodesIdsToTidyUp: string[] = [];
@@ -391,7 +410,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			});
 		}
 
-		return { success: true, workflowData, newNodeIds: nodesIdsToTidyUp };
+		return {
+			success: true,
+			workflowData,
+			newNodeIds: nodesIdsToTidyUp,
+			oldNodeIds: Array.from(existingNodeIds),
+		};
 	}
 
 	function getWorkflowSnapshot() {
@@ -416,6 +440,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		workflowMessages,
 		trackingSessionId,
 		streamingAbortController,
+		initialGeneration,
 
 		// Methods
 		updateWindowWidth,

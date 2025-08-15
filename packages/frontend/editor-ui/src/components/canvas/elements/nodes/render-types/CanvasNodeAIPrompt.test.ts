@@ -129,6 +129,7 @@ describe('CanvasNodeAIPrompt', () => {
 			await waitFor(() => {
 				expect(openChat).toHaveBeenCalled();
 				expect(sendChatMessage).toHaveBeenCalledWith({
+					initialGeneration: true,
 					text: 'Test prompt',
 					source: 'canvas',
 				});
@@ -174,6 +175,7 @@ describe('CanvasNodeAIPrompt', () => {
 			await waitFor(() => {
 				expect(openChat).toHaveBeenCalled();
 				expect(sendChatMessage).toHaveBeenCalledWith({
+					initialGeneration: true,
 					text: 'Test workflow prompt',
 					source: 'canvas',
 				});
