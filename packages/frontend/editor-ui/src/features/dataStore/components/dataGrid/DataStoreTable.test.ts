@@ -6,14 +6,17 @@ import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import type { DataStore } from '@/features/dataStore/datastore.types';
 
 // Mock ag-grid-vue3
+interface MockComponentInstance {
+	$emit: (event: string, payload: unknown) => void;
+}
+
 vi.mock('ag-grid-vue3', () => ({
 	AgGridVue: {
 		name: 'AgGridVue',
 		template: '<div data-test-id="ag-grid-vue" />',
 		props: ['rowData', 'columnDefs', 'defaultColDef', 'domLayout', 'animateRows', 'theme'],
 		emits: ['gridReady'],
-		mounted() {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		mounted(this: MockComponentInstance) {
 			this.$emit('gridReady', {
 				api: {
 					// Mock API methods
