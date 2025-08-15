@@ -185,12 +185,14 @@ export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSe
 		try {
 			copy[key] = replaceCircularReferences(value[key], knownObjects);
 		} catch (error: unknown) {
-			// Skip properties that cannot be assigned to (readonly, non-configurable, etc.)
-			LoggerProxy.error(
-				'Error while replacing circular references: ' +
-					(error instanceof Error ? error.message : 'unknown'),
-				{ error },
-			);
+			if (
+				error instanceof TypeError &&
+				error.message.includes('Cannot assign to read only property')
+			) {
+				LoggerProxy.error('Error while replacing circular references: ' + error.message, { error });
+				continue; // Skip properties that cannot be assigned to (readonly, non-configurable, etc.)
+			}
+			throw error;
 		}
 	}
 	knownObjects.delete(value);
