@@ -24,6 +24,24 @@ vi.mock('@/composables/useDebounce', () => ({
 	}),
 }));
 
+vi.mock('@n8n/i18n', async (importOriginal) => ({
+	...(await importOriginal()),
+	useI18n: () => ({
+		baseText: (key: string) => {
+			const translations: Record<string, string> = {
+				'dataStore.addColumn.label': 'Add column',
+				'dataStore.addColumn.nameInput.label': 'Column name',
+				'dataStore.addColumn.nameInput.placeholder': 'Enter column name',
+				'dataStore.addColumn.typeInput.label': 'Column type',
+				'dataStore.addColumn.invalidName.error': 'Invalid column name',
+				'dataStore.addColumn.invalidName.description':
+					'Column names must start with a letter and contain only letters, numbers, and hyphens',
+			};
+			return translations[key] || key;
+		},
+	}),
+}));
+
 describe('AddColumnPopover', () => {
 	const renderComponent = createComponentRenderer(AddColumnPopover);
 
@@ -44,21 +62,21 @@ describe('AddColumnPopover', () => {
 		await fireEvent.click(addButton);
 
 		await waitFor(() => {
-			const nameInput = getByPlaceholderText('dataStore.addColumn.nameInput.placeholder');
+			const nameInput = getByPlaceholderText('Enter column name');
 			expect(nameInput).toHaveFocus();
 		});
 	});
 
 	it('should emit addColumn event with correct payload', async () => {
-		const { getByRole, getByPlaceholderText, getByText, emitted } = renderComponent();
+		const { getByRole, getByPlaceholderText, getByTestId, emitted } = renderComponent();
 		const addButton = getByRole('button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('dataStore.addColumn.nameInput.placeholder');
+		const nameInput = getByPlaceholderText('Enter column name');
 		await fireEvent.update(nameInput, 'newColumn');
 
-		const submitButton = getByText('dataStore.addColumn.label');
+		const submitButton = getByTestId('data-store-add-column-button');
 		await fireEvent.click(submitButton);
 
 		expect(emitted().addColumn).toBeTruthy();
@@ -73,47 +91,47 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should disable submit button when name is empty', async () => {
-		const { getByRole, getByText } = renderComponent();
+		const { getByRole, getByTestId } = renderComponent();
 		const addButton = getByRole('button');
 
 		await fireEvent.click(addButton);
 
 		await waitFor(() => {
-			const submitButton = getByText('dataStore.addColumn.label');
+			const submitButton = getByTestId('data-store-add-column-button');
 			expect(submitButton).toBeDisabled();
 		});
 	});
 
 	it('should enable submit button when name is provided', async () => {
-		const { getByRole, getByPlaceholderText, getByText } = renderComponent();
+		const { getByRole, getByPlaceholderText, getByTestId } = renderComponent();
 		const addButton = getByRole('button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('dataStore.addColumn.nameInput.placeholder');
+		const nameInput = getByPlaceholderText('Enter column name');
 		await fireEvent.update(nameInput, 'validName');
 
 		await waitFor(() => {
-			const submitButton = getByText('dataStore.addColumn.label');
+			const submitButton = getByTestId('data-store-add-column-button');
 			expect(submitButton).not.toBeDisabled();
 		});
 	});
 
 	it('should show error for invalid column names', async () => {
-		const { getByRole, getByPlaceholderText, getByText } = renderComponent();
+		const { getByRole, getByPlaceholderText, getByText, getByTestId } = renderComponent();
 		const addButton = getByRole('button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('dataStore.addColumn.nameInput.placeholder');
+		const nameInput = getByPlaceholderText('Enter column name');
 
 		// Test invalid name starting with hyphen
 		await fireEvent.update(nameInput, '-invalid');
 		await fireEvent.blur(nameInput);
 
 		await waitFor(() => {
-			expect(getByText('dataStore.addColumn.invalidName.error')).toBeInTheDocument();
-			const submitButton = getByText('dataStore.addColumn.label');
+			expect(getByText('Invalid column name')).toBeInTheDocument();
+			const submitButton = getByTestId('data-store-add-column-button');
 			expect(submitButton).toBeDisabled();
 		});
 	});
@@ -124,7 +142,7 @@ describe('AddColumnPopover', () => {
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('dataStore.addColumn.nameInput.placeholder');
+		const nameInput = getByPlaceholderText('Enter column name');
 
 		// Test valid names
 		const validNames = ['column1', 'my-column', 'Column123', 'a1b2c3'];
@@ -134,7 +152,7 @@ describe('AddColumnPopover', () => {
 			await fireEvent.blur(nameInput);
 
 			await waitFor(() => {
-				expect(queryByText('dataStore.addColumn.invalidName.error')).not.toBeInTheDocument();
+				expect(queryByText('Invalid column name')).not.toBeInTheDocument();
 			});
 		}
 	});
@@ -145,14 +163,14 @@ describe('AddColumnPopover', () => {
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('dataStore.addColumn.nameInput.placeholder');
+		const nameInput = getByPlaceholderText('Enter column name');
 
 		// Enter invalid name
 		await fireEvent.update(nameInput, '-invalid');
 		await fireEvent.blur(nameInput);
 
 		await waitFor(() => {
-			expect(getByText('dataStore.addColumn.invalidName.error')).toBeInTheDocument();
+			expect(getByText('Invalid column name')).toBeInTheDocument();
 		});
 
 		// Correct the name
@@ -160,7 +178,7 @@ describe('AddColumnPopover', () => {
 		await fireEvent.blur(nameInput);
 
 		await waitFor(() => {
-			expect(queryByText('dataStore.addColumn.invalidName.error')).not.toBeInTheDocument();
+			expect(queryByText('Invalid column name')).not.toBeInTheDocument();
 		});
 	});
 
@@ -170,20 +188,18 @@ describe('AddColumnPopover', () => {
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText(
-			'dataStore.addColumn.nameInput.placeholder',
-		) as HTMLInputElement;
+		const nameInput = getByPlaceholderText('Enter column name') as HTMLInputElement;
 
 		expect(nameInput.maxLength).toBe(MAX_COLUMN_NAME_LENGTH);
 	});
 
 	it('should allow selecting different column types', async () => {
-		const { getByRole, getByPlaceholderText, getByText, emitted } = renderComponent();
+		const { getByRole, getByPlaceholderText, getByText, getByTestId, emitted } = renderComponent();
 		const addButton = getByRole('button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('dataStore.addColumn.nameInput.placeholder');
+		const nameInput = getByPlaceholderText('Enter column name');
 		await fireEvent.update(nameInput, 'numberColumn');
 
 		// Click on the select to open dropdown
@@ -194,7 +210,7 @@ describe('AddColumnPopover', () => {
 		const numberOption = getByText('number');
 		await fireEvent.click(numberOption);
 
-		const submitButton = getByText('dataStore.addColumn.label');
+		const submitButton = getByTestId('data-store-add-column-button');
 		await fireEvent.click(submitButton);
 
 		expect(emitted().addColumn).toBeTruthy();
@@ -209,44 +225,40 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should reset form after successful submission', async () => {
-		const { getByRole, getByPlaceholderText, getByText } = renderComponent();
+		const { getByRole, getByPlaceholderText, getByTestId } = renderComponent();
 		const addButton = getByRole('button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText(
-			'dataStore.addColumn.nameInput.placeholder',
-		) as HTMLInputElement;
+		const nameInput = getByPlaceholderText('Enter column name') as HTMLInputElement;
 		await fireEvent.update(nameInput, 'testColumn');
 
-		const submitButton = getByText('dataStore.addColumn.label');
+		const submitButton = getByTestId('data-store-add-column-button');
 		await fireEvent.click(submitButton);
 
 		// Click button again to open popover
 		await fireEvent.click(addButton);
 
 		await waitFor(() => {
-			const resetNameInput = getByPlaceholderText(
-				'dataStore.addColumn.nameInput.placeholder',
-			) as HTMLInputElement;
+			const resetNameInput = getByPlaceholderText('Enter column name') as HTMLInputElement;
 			expect(resetNameInput.value).toBe('');
 		});
 	});
 
 	it('should close popover after successful submission', async () => {
-		const { getByRole, getByPlaceholderText, getByText, queryByText } = renderComponent();
+		const { getByRole, getByPlaceholderText, getByTestId, queryByText } = renderComponent();
 		const addButton = getByRole('button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('dataStore.addColumn.nameInput.placeholder');
+		const nameInput = getByPlaceholderText('Enter column name');
 		await fireEvent.update(nameInput, 'testColumn');
 
-		const submitButton = getByText('dataStore.addColumn.label');
+		const submitButton = getByTestId('data-store-add-column-button');
 		await fireEvent.click(submitButton);
 
 		await waitFor(() => {
-			expect(queryByText('dataStore.addColumn.nameInput.label')).not.toBeInTheDocument();
+			expect(queryByText('Column name')).not.toBeInTheDocument();
 		});
 	});
 
@@ -256,7 +268,7 @@ describe('AddColumnPopover', () => {
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('dataStore.addColumn.nameInput.placeholder');
+		const nameInput = getByPlaceholderText('Enter column name');
 		await fireEvent.update(nameInput, 'enterColumn');
 		await fireEvent.keyUp(nameInput, { key: 'Enter' });
 
@@ -289,19 +301,19 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should show tooltip with error description', async () => {
-		const { getByRole, getByPlaceholderText, getByText } = renderComponent();
+		const { getByRole, getByPlaceholderText, getByText, getByTestId } = renderComponent();
 		const addButton = getByRole('button');
 
 		await fireEvent.click(addButton);
 
-		const nameInput = getByPlaceholderText('dataStore.addColumn.nameInput.placeholder');
+		const nameInput = getByPlaceholderText('Enter column name');
 		await fireEvent.update(nameInput, '-invalid');
 		await fireEvent.blur(nameInput);
 
 		await waitFor(() => {
-			expect(getByText('dataStore.addColumn.invalidName.error')).toBeInTheDocument();
+			expect(getByText('Invalid column name')).toBeInTheDocument();
 			// Check for help icon that shows tooltip
-			const helpIcon = document.querySelector('[icon="circle-help"]');
+			const helpIcon = getByTestId('add-column-error-help-icon');
 			expect(helpIcon).toBeInTheDocument();
 		});
 	});

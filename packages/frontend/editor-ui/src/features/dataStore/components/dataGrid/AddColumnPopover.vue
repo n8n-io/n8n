@@ -114,6 +114,7 @@ const onInput = debounce(validateName, { debounceTime: 300 });
 											size="small"
 											class="$style['error-tooltip']"
 											color="text-base"
+											data-test-id="add-column-error-help-icon"
 										/>
 									</Tooltip>
 								</div>
