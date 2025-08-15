@@ -272,7 +272,7 @@ export class McpClientTool implements INodeType {
 		const setError = (message: string, description?: string): SupplyData => {
 			const error = new NodeOperationError(node, message, { itemIndex, description });
 			this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
-			// throw error;
+			throw error;
 		};
 
 		if (!client.ok) {
