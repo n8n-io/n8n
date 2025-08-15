@@ -7,6 +7,8 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/dom';
 import { reactive } from 'vue';
+import { useSettingsStore } from '@/stores/settings.store';
+import { defaultSettings } from '@/__tests__/defaults';
 
 const eventBus = createEventBus();
 
@@ -90,9 +92,6 @@ const renderModal = createComponentRenderer(SourceControlPullModalEe, {
 					</div>
 				`,
 			},
-			EnvFeatureFlag: {
-				template: '<div><slot></slot></div>',
-			},
 			N8nIconButton: {
 				template: '<button><slot></slot></button>',
 				props: ['icon', 'type', 'class'],
@@ -130,6 +129,7 @@ const sampleFiles = [
 
 describe('SourceControlPullModal', () => {
 	let sourceControlStore: ReturnType<typeof mockedStore<typeof useSourceControlStore>>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	let pinia: ReturnType<typeof createTestingPinia>;
 
 	beforeEach(() => {
@@ -140,6 +140,9 @@ describe('SourceControlPullModal', () => {
 		sourceControlStore = mockedStore(useSourceControlStore);
 		sourceControlStore.getAggregatedStatus = vi.fn().mockResolvedValue([]);
 		sourceControlStore.pullWorkfolder = vi.fn().mockResolvedValue([]);
+
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings.enterprise = defaultSettings.enterprise;
 	});
 
 	it('mounts', () => {

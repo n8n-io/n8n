@@ -12,6 +12,8 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import { reactive } from 'vue';
+import { useSettingsStore } from '@/stores/settings.store';
+import { defaultSettings } from '@/__tests__/defaults';
 
 const eventBus = createEventBus();
 
@@ -129,6 +131,7 @@ const renderModal = createComponentRenderer(SourceControlPushModal, {
 
 describe('SourceControlPushModal', () => {
 	let sourceControlStore: ReturnType<typeof mockedStore<typeof useSourceControlStore>>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	let pinia: ReturnType<typeof createTestingPinia>;
 
 	beforeEach(() => {
@@ -145,6 +148,9 @@ describe('SourceControlPushModal', () => {
 		sourceControlStore = mockedStore(useSourceControlStore);
 		sourceControlStore.getAggregatedStatus = vi.fn().mockResolvedValue([]);
 		sourceControlStore.pushWorkfolder = vi.fn().mockResolvedValue([]);
+
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings.enterprise = defaultSettings.enterprise;
 	});
 
 	it('mounts', () => {
