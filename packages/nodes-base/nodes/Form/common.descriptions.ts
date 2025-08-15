@@ -71,6 +71,19 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
+					displayName: 'Field Name',
+					name: 'fieldName',
+					description:
+						'The name of the field, used in input attributes and referenced by the workflow',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['hiddenField'],
+						},
+					},
+				},
+				{
 					displayName: 'Element Type',
 					name: 'fieldType',
 					type: 'options',
@@ -150,19 +163,6 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						hide: {
 							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField', 'radio', 'checkbox'],
-						},
-					},
-				},
-				{
-					displayName: 'Field Name',
-					name: 'fieldName',
-					description:
-						'The name of the field, used in input attributes and referenced by the workflow',
-					type: 'string',
-					default: '',
-					displayOptions: {
-						show: {
-							fieldType: ['hiddenField'],
 						},
 					},
 				},
