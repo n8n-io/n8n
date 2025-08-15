@@ -17,6 +17,7 @@ import {
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
+import { NativePythonWithoutRunnerError } from './native-python-without-runner.error';
 import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { TaskRunnerSandbox } from './TaskRunnerSandbox';
@@ -29,12 +30,6 @@ class PythonDisabledError extends UserError {
 		super(
 			'This instance disallows Python execution because it has the environment variable `N8N_PYTHON_ENABLED` set to `false`. To restore Python execution, remove this environment variable or set it to `true` and restart the instance.',
 		);
-	}
-}
-
-class NativePythonWithoutRunnerError extends UserError {
-	constructor() {
-		super('To use native Python, please use runners by setting `N8N_RUNNERS_ENABLED=true`.');
 	}
 }
 
