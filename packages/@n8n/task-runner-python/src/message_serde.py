@@ -1,5 +1,10 @@
 import json
 from dataclasses import asdict
+from .constants import (
+    BROKER_INFO_REQUEST,
+    BROKER_RUNNER_REGISTERED,
+    BROKER_TASK_OFFER_ACCEPT,
+)
 from .message_types import (
     BrokerMessage,
     RunnerMessage,
@@ -13,9 +18,9 @@ class MessageSerde:
     """Handles serialization and deserialization of broker and runner messages."""
 
     MESSAGE_TYPE_MAP = {
-        "broker:inforequest": lambda _: BrokerInfoRequest(),
-        "broker:runnerregistered": lambda _: BrokerRunnerRegistered(),
-        "broker:taskofferaccept": lambda d: BrokerTaskOfferAccept(
+        BROKER_INFO_REQUEST: lambda _: BrokerInfoRequest(),
+        BROKER_RUNNER_REGISTERED: lambda _: BrokerRunnerRegistered(),
+        BROKER_TASK_OFFER_ACCEPT: lambda d: BrokerTaskOfferAccept(
             task_id=d["taskId"], offer_id=d["offerId"]
         ),
     }

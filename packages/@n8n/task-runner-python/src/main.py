@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 
+from .constants import ENV_TASK_BROKER_URI, ENV_GRANT_TOKEN, DEFAULT_TASK_BROKER_URI
 from .task_runner import TaskRunner
 
 logging.basicConfig(
@@ -13,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 async def main():
-    task_broker_uri = os.getenv("N8N_RUNNERS_TASK_BROKER_URI", "http://127.0.0.1:5679")
-    grant_token = os.getenv("N8N_RUNNERS_GRANT_TOKEN", "")
+    task_broker_uri = os.getenv(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI)
+    grant_token = os.getenv(ENV_GRANT_TOKEN, "")
 
     if not grant_token:
-        logger.error("N8N_RUNNERS_GRANT_TOKEN environment variable is required")
+        logger.error(f"{ENV_GRANT_TOKEN} environment variable is required")
         sys.exit(1)
 
     runner = TaskRunner(

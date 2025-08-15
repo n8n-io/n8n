@@ -7,10 +7,18 @@ from typing import Any
 import websockets
 import random
 
-
 from nanoid import generate as nanoid
 
-
+from .constants import (
+    TASK_TYPE_PYTHON,
+    DEFAULT_MAX_CONCURRENCY,
+    DEFAULT_MAX_PAYLOAD_SIZE,
+    OFFER_INTERVAL,
+    OFFER_VALIDITY,
+    OFFER_VALIDITY_MAX_JITTER,
+    OFFER_VALIDITY_LATENCY_BUFFER,
+    WS_RUNNERS_PATH,
+)
 from .message_types import (
     BrokerMessage,
     RunnerMessage,
@@ -41,14 +49,6 @@ class TaskOffer:
 
 
 class TaskRunner:
-    TASK_TYPE = "python"
-    DEFAULT_MAX_CONCURRENCY = 5
-    DEFAULT_MAX_PAYLOAD_SIZE = 1024 * 1024 * 1024  # 1 GiB
-    OFFER_INTERVAL = 0.25  # 250ms
-    OFFER_VALIDITY = 5000  # ms
-    OFFER_VALIDITY_MAX_JITTER = 500  # ms
-    OFFER_VALIDITY_LATENCY_BUFFER = 0.1  # 100ms
-
     def __init__(
         self,
         task_broker_uri: str = "http://127.0.0.1:5679",
@@ -59,8 +59,8 @@ class TaskRunner:
         self.task_broker_uri = task_broker_uri
         self.grant_token = grant_token
         self.name = "Python Task Runner"
-        self.max_concurrency = self.DEFAULT_MAX_CONCURRENCY
-        self.max_payload_size = self.DEFAULT_MAX_PAYLOAD_SIZE
+        self.max_concurrency = DEFAULT_MAX_CONCURRENCY
+        self.max_payload_size = DEFAULT_MAX_PAYLOAD_SIZE
 
         self.websocket: Optional[Any] = None
         self.can_send_offers = False
@@ -71,7 +71,7 @@ class TaskRunner:
         self.offers_coroutine: Optional[asyncio.Task] = None
 
         ws_host = urlparse(task_broker_uri).netloc
-        self.ws_url = f"ws://{ws_host}/runners/_ws?id={self.runner_id}"
+        self.ws_url = f"ws://{ws_host}{WS_RUNNERS_PATH}?id={self.runner_id}"
 
     async def start(self) -> None:
         logger.info("Starting Python task runner...")
@@ -126,7 +126,7 @@ class TaskRunner:
             logger.warning(f"Unhandled message type: {type(message)}")
 
     async def _handle_info_request(self) -> None:
-        response = RunnerInfo(name=self.name, types=[self.TASK_TYPE])
+        response = RunnerInfo(name=self.name, types=[TASK_TYPE_PYTHON])
         await self._send_message(response)
 
     async def _handle_runner_registered(self) -> None:
@@ -171,7 +171,7 @@ class TaskRunner:
         while self.can_send_offers:
             try:
                 await self._send_offers()
-                await asyncio.sleep(self.OFFER_INTERVAL)
+                await asyncio.sleep(OFFER_INTERVAL)
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -197,19 +197,17 @@ class TaskRunner:
         for _ in range(offers_to_send):
             offer_id = nanoid()
 
-            valid_for_ms = self.OFFER_VALIDITY + random.randint(
-                0, self.OFFER_VALIDITY_MAX_JITTER
-            )
+            valid_for_ms = OFFER_VALIDITY + random.randint(0, OFFER_VALIDITY_MAX_JITTER)
 
             valid_until = (
-                time.time() + (valid_for_ms / 1000) + self.OFFER_VALIDITY_LATENCY_BUFFER
+                time.time() + (valid_for_ms / 1000) + OFFER_VALIDITY_LATENCY_BUFFER
             )
 
             offer = TaskOffer(offer_id, valid_until)
             self.open_offers[offer_id] = offer
 
             message = RunnerTaskOffer(
-                offer_id=offer_id, task_type="python", valid_for=valid_for_ms
+                offer_id=offer_id, task_type=TASK_TYPE_PYTHON, valid_for=valid_for_ms
             )
 
             await self._send_message(message)
