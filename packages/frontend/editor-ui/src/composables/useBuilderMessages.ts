@@ -122,7 +122,6 @@ export function useBuilderMessages() {
 		} else if ('type' in msg && msg.type === 'error' && 'content' in msg) {
 			// Handle error messages from the API
 			// API sends error messages with type: 'error' and content field
-
 			const removeMessageAndRetry = retry
 				? async (): Promise<void> => {
 						// Remove the current error message from the array
