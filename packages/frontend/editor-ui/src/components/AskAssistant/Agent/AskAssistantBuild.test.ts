@@ -144,7 +144,10 @@ describe('AskAssistantBuild', () => {
 
 			await flushPromises();
 
-			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({ text: testMessage });
+			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
+				initialGeneration: true,
+				text: testMessage,
+			});
 		});
 	});
 
@@ -320,7 +323,7 @@ describe('AskAssistantBuild', () => {
 
 	describe('workflow saving after generation', () => {
 		it('should save workflow after initial generation when workflow was empty', async () => {
-			// Setup: empty workflow, new workflow
+			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 			workflowsStore.isNewWorkflow = false;
 
@@ -333,8 +336,14 @@ describe('AskAssistantBuild', () => {
 			const sendButton = await findByTestId('send-message-button');
 			await fireEvent.click(sendButton);
 
+			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
+				initialGeneration: true,
+				text: testMessage,
+			});
+
 			// Simulate streaming starts
-			builderStore.$patch({ streaming: true });
+			builderStore.$patch({ streaming: true, initialGeneration: true });
+
 			await flushPromises();
 
 			// Simulate workflow update with nodes
@@ -397,6 +406,11 @@ describe('AskAssistantBuild', () => {
 			await fireEvent.update(chatInput, testMessage);
 			const sendButton = await findByTestId('send-message-button');
 			await fireEvent.click(sendButton);
+
+			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
+				initialGeneration: false,
+				text: testMessage,
+			});
 
 			// Simulate streaming starts
 			builderStore.$patch({ streaming: true });
@@ -584,7 +598,7 @@ describe('AskAssistantBuild', () => {
 			await fireEvent.click(sendButton);
 
 			// Simulate streaming starts
-			builderStore.$patch({ streaming: true });
+			builderStore.$patch({ streaming: true, initialGeneration: true });
 			await flushPromises();
 
 			// Add nodes to workflow
@@ -654,8 +668,13 @@ describe('AskAssistantBuild', () => {
 			const sendButton = await findByTestId('send-message-button');
 			await fireEvent.click(sendButton);
 
+			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
+				initialGeneration: true,
+				text: testMessage,
+			});
+
 			// Simulate streaming starts
-			builderStore.$patch({ streaming: true });
+			builderStore.$patch({ streaming: true, initialGeneration: true });
 			await flushPromises();
 
 			// Add new nodes to workflow
