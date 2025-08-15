@@ -2101,6 +2101,42 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		expect(readResponse.body.data.count).toBe(1);
 		expect(readResponse.body.data.data[0]).toMatchObject(payload.data[0]);
 	});
+
+	test('should insert columns with null values', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'a',
+					type: 'string',
+				},
+				{
+					name: 'b',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					a: 'something',
+					b: null,
+				},
+			],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject(payload.data[0]);
+	});
 });
 
 describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {

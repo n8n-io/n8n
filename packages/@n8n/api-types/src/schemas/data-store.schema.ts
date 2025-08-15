@@ -58,7 +58,7 @@ export const dateTimeSchema = z
 	.pipe(z.date());
 
 // Dates are received as date strings and validated before insertation
-export const dataStoreColumnValueSchema = z.union([z.string(), z.number(), z.boolean()]);
+export const dataStoreColumnValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 
 export type DataStoreColumnJsType = string | number | boolean | Date;
 
