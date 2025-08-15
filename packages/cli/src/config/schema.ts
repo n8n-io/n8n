@@ -10,21 +10,6 @@ export const schema = {
 			env: 'EXECUTIONS_MODE',
 		},
 
-		concurrency: {
-			productionLimit: {
-				doc: "Max production executions allowed to run concurrently, in main process for regular mode and in worker for queue mode. Default for main mode is `-1` (disabled). Default for queue mode is taken from the worker's `--concurrency` flag.",
-				format: Number,
-				default: -1,
-				env: 'N8N_CONCURRENCY_PRODUCTION_LIMIT',
-			},
-			evaluationLimit: {
-				doc: 'Max evaluation executions allowed to run concurrently.',
-				format: Number,
-				default: -1,
-				env: 'N8N_CONCURRENCY_EVALUATION_LIMIT',
-			},
-		},
-
 		// A Workflow times out and gets canceled after this time (seconds).
 		// If the workflow is executed in the main process a soft timeout
 		// is executed (takes effect after the current node finishes).
