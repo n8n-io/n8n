@@ -1354,10 +1354,7 @@ export class WorkflowExecute {
 		return { data: inputData.main as INodeExecutionData[][] };
 	}
 
-	/**
-	 * Executes a declarative node using RoutingNode
-	 */
-	private async executeDeclarativeNode(
+	private async executeDeclarativeNodeInTest(
 		workflow: Workflow,
 		node: INode,
 		nodeType: INodeType,
@@ -1467,7 +1464,7 @@ export class WorkflowExecute {
 			// as webhook method would be called by WebhookService
 			return { data: inputData.main as INodeExecutionData[][] };
 		} else {
-			return await this.executeDeclarativeNode(
+			return await this.executeDeclarativeNodeInTest(
 				workflow,
 				node,
 				nodeType,
