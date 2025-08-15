@@ -29,12 +29,12 @@ import type {
 } from 'n8n-workflow';
 import { VersionedNodeType, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
 
+import { RESPONSE_ERROR_MESSAGES } from '../constants';
+import { CredentialsHelper } from '../credentials-helper';
+
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { CredentialsHelper } from '../credentials-helper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -62,6 +62,45 @@ const mockNodeTypes: INodeTypes = {
 		}
 		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
 	},
+};
+
+// This function recursively get all keys of an object / array
+// Filtered by the provided value filter
+const getAllKeys = (
+	obj: unknown,
+	keys: string[],
+	valueFilter: (value: string) => boolean,
+): string[] => {
+	if (Array.isArray(obj)) {
+		obj.forEach((item) => getAllKeys(item, keys, valueFilter));
+	} else if (obj && typeof obj === 'object') {
+		for (const [key, value] of Object.entries(obj)) {
+			if (typeof value === 'string' && valueFilter(value)) keys.push(key);
+			else getAllKeys(value, keys, valueFilter);
+		}
+	}
+	return keys;
+};
+
+// This function gets all stringified values of an object, filtered by the provided keys subset
+const getAllKeyValuesAsString = (obj: unknown, keys: string[]): string[] => {
+	const result: string[] = [];
+	if (Array.isArray(obj)) {
+		result.push(...obj.flatMap((item) => getAllKeyValuesAsString(item, keys)));
+	} else if (typeof obj === 'object' && obj !== null) {
+		Object.keys(obj).forEach((key) => {
+			// Check if the key is in the list of keys to filter
+			if (keys.includes(key)) {
+				const value = (obj as Record<string, unknown>)[key];
+				if (typeof value !== 'undefined' && value !== null) {
+					result.push(value.toString());
+				}
+			} else {
+				result.push(...getAllKeyValuesAsString((obj as Record<string, unknown>)[key], keys));
+			}
+		});
+	}
+	return result;
 };
 
 @Service()
@@ -164,6 +203,25 @@ export class CredentialsTester {
 		return undefined;
 	}
 
+	private redactSecrets(
+		message: string,
+		credentialsData: ICredentialsDecrypted['data'],
+		secretKeys: string[],
+	): string {
+		if (secretKeys.length === 0) {
+			return message;
+		}
+		const credentialsDataSecretsKeyValue = getAllKeyValuesAsString(credentialsData, secretKeys);
+		Object.values(credentialsDataSecretsKeyValue)
+			// Filter out short values as it's obviously either an error
+			// or a "debug" value that we do not want to redact
+			.filter((value) => value.length > 3)
+			.forEach((value) => {
+				message = message.replaceAll(value, `*****${value.slice(-3)}`);
+			});
+		return message;
+	}
+
 	// eslint-disable-next-line complexity
 	async testCredentials(
 		userId: User['id'],
@@ -178,9 +236,15 @@ export class CredentialsTester {
 			};
 		}
 
+		let credentialsDataSecretKeys: string[] = [];
 		if (credentialsDecrypted.data) {
 			try {
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(userId);
+
+				// Keep all credentials data keys which have a secret value
+				credentialsDataSecretKeys = getAllKeys(credentialsDecrypted.data, [], (value) =>
+					value.includes('$secrets.'),
+				);
 				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
 					additionalData,
 					credentialsDecrypted.data,
@@ -202,7 +266,20 @@ export class CredentialsTester {
 		if (typeof credentialTestFunction === 'function') {
 			// The credentials get tested via a function that is defined on the node
 			const context = new CredentialTestContext();
-			return credentialTestFunction.call(context, credentialsDecrypted);
+			const functionResult = credentialTestFunction.call(context, credentialsDecrypted);
+			if (functionResult instanceof Promise) {
+				const result = await functionResult;
+				if (typeof result?.message === 'string') {
+					// Anonymize secret values in the error message
+					result.message = this.redactSecrets(
+						result.message,
+						credentialsDecrypted.data,
+						credentialsDataSecretKeys,
+					);
+				}
+				return result;
+			}
+			return functionResult;
 		}
 
 		// Credentials get tested via request instructions
