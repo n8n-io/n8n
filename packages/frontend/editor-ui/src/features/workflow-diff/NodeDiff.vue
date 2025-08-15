@@ -14,13 +14,14 @@ const props = withDefaults(
 		hideHeader?: boolean;
 		forceInlineComparison?: boolean;
 		diffStyle?: 'word' | 'char';
-		theme: 'light' | 'dark' | undefined;
+		theme?: 'light' | 'dark';
 	}>(),
 	{
 		outputFormat: 'line-by-line',
 		language: 'json',
 		hideHeader: true,
 		diffStyle: 'word',
+		theme: undefined,
 	},
 );
 </script>
