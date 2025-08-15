@@ -17,10 +17,11 @@ import {
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
+import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
 import { NativePythonWithoutRunnerError } from './native-python-without-runner.error';
 import { PythonSandbox } from './PythonSandbox';
+import { PythonTaskRunnerSandbox } from './PythonTaskRunnerSandbox';
 import { getSandboxContext } from './Sandbox';
-import { TaskRunnerSandbox } from './TaskRunnerSandbox';
 import { addPostExecutionWarning, standardizeOutput } from './utils';
 
 const { CODE_ENABLE_STDOUT, N8N_NATIVE_PYTHON_RUNNER } = process.env;
@@ -141,7 +142,7 @@ export class Code implements INodeType {
 
 		if (isRunnerEnabled && language === 'javaScript') {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
-			const sandbox = new TaskRunnerSandbox('javascript', code, nodeMode, workflowMode, this);
+			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
 			const numInputItems = this.getInputData().length;
 
 			return nodeMode === 'runOnceForAllItems'
@@ -153,7 +154,7 @@ export class Code implements INodeType {
 
 		if (language === 'pythonNative') {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
-			const sandbox = new TaskRunnerSandbox('python', code, nodeMode, workflowMode, this);
+			const sandbox = new PythonTaskRunnerSandbox(code, nodeMode, workflowMode, this);
 
 			return [await sandbox.runUsingIncomingItems()];
 		}
