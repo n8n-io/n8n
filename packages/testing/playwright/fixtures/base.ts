@@ -2,7 +2,6 @@ import { test as base, expect } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
-import { setTimeout as wait } from 'node:timers/promises';
 
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { n8nPage } from '../pages/n8nPage';
@@ -69,9 +68,6 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
 			console.log('Creating container with config:', containerConfig);
 			const container = await createN8NStack(containerConfig);
-
-			// TODO: Remove this once we have a better way to wait for the container to be ready (e.g. healthcheck)
-			await wait(3000);
 
 			console.log(`Container URL: ${container.baseUrl}`);
 

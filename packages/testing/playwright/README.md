@@ -36,6 +36,25 @@ test('basic test', ...)                              // All modes, fully paralle
 test('postgres only @mode:postgres', ...)            // Mode-specific
 test('needs clean db @db:reset', ...)                // Sequential per worker
 test('chaos test @mode:multi-main @chaostest', ...) // Isolated per worker
+test('cloud resource test @cloud:trial', ...)       // Cloud resource constraints
+```
+
+## Fixture Selection
+- **`base.ts`**: Standard testing with worker-scoped containers (default choice)
+- **`cloud-only.ts`**: Cloud resource testing with guaranteed isolation
+  - Use for performance testing under resource constraints
+  - Requires `@cloud:*` tags (`@cloud:trial`, `@cloud:enterprise`, etc.)
+  - Creates only cloud containers, no worker containers
+
+```typescript
+// Standard testing
+import { test, expect } from '../fixtures/base';
+
+// Cloud resource testing
+import { test, expect } from '../fixtures/cloud-only';
+test('Performance under constraints @cloud:trial', async ({ n8n, api }) => {
+  // Test runs with 384MB RAM, 250 millicore CPU
+});
 ```
 
 ## Tips
@@ -47,6 +66,8 @@ test('chaos test @mode:multi-main @chaostest', ...) // Isolated per worker
 - **composables**: Multi-page interactions (e.g., `WorkflowComposer.executeWorkflowAndWaitForNotification()`)
 - **config**: Test setup and configuration (constants, test users, etc.)
 - **fixtures**: Custom test fixtures extending Playwright's base test
+  - `base.ts`: Standard fixtures with worker-scoped containers
+  - `cloud-only.ts`: Cloud resource testing with test-scoped containers only
 - **pages**: Page Object Models for UI interactions
 - **services**: API helpers for E2E controller, REST calls, etc.
 - **utils**: Utility functions (string manipulation, helpers, etc.)
