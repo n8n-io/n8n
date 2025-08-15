@@ -110,7 +110,7 @@ export class DataStoreService {
 		});
 
 		if (existingColumnMatch === null) {
-			throw new UserError(
+			throw new NotFoundError(
 				`Tried to delete column with name not present in data store '${dataStoreId}'`,
 			);
 		}
