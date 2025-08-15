@@ -10,6 +10,8 @@ from .message_types import (
 
 
 class MessageSerde:
+    """Handles serialization and deserialization of broker and runner messages."""
+
     MESSAGE_TYPE_MAP = {
         "broker:inforequest": lambda _: BrokerInfoRequest(),
         "broker:runnerregistered": lambda _: BrokerRunnerRegistered(),
