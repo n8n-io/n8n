@@ -112,10 +112,7 @@ const isDropdownVisible = computed(() => {
 }
 
 .ag-header-cell-text {
-	// TODO: use the mixin from the design system
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+	@include mixins.utils-ellipsis;
 	min-width: 0;
 	flex: 1;
 }
