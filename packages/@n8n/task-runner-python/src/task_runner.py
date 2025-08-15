@@ -64,7 +64,7 @@ class TaskRunner:
         self.websocket: Optional[Any] = None
         self.can_send_offers = False
 
-        self.open_offers: Dict[str, TaskOffer] = {}
+        self.open_offers: Dict[str, TaskOffer] = {}  # offer_id -> TaskOffer
         self.running_tasks: Dict[str, str] = {}  # task_id -> offer_id
 
         self.offers_coroutine: Optional[asyncio.Task] = None
