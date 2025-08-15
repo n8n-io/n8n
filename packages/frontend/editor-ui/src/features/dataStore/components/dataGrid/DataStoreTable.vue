@@ -88,7 +88,7 @@ const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload })
 		if (!newColumn) {
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
-		colDefs.value.push(createColumnDef(newColumn));
+		colDefs.value = [...colDefs.value, createColumnDef(newColumn)];
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
 	}
