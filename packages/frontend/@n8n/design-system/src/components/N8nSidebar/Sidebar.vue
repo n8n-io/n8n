@@ -136,6 +136,7 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 						/>
 						<SidebarItem
 							v-else
+							:key="item.value.id"
 							:click="handleToggle"
 							:open="isExpanded"
 							:ariaLabel="`Open ${item.value.label}`"

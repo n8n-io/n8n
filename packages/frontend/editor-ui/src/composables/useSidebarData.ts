@@ -1,7 +1,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { IMenuElement, isCustomMenuItem, N8nText } from '@n8n/design-system';
+import { IMenuElement, isCustomMenuItem } from '@n8n/design-system';
 import { WorkflowListResource } from '@/Interface';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -40,7 +40,10 @@ export const useSidebarData = () => {
 		await initialLoad();
 	});
 
-	function buildNestedHierarchy(flatList: WorkflowListResource[]): IMenuElement[] {
+	function buildNestedHierarchy(
+		flatList: WorkflowListResource[],
+		projectId?: string,
+	): IMenuElement[] {
 		const itemMap = new Map<string, IMenuElement>();
 		const rootItems: IMenuElement[] = [];
 
@@ -50,7 +53,10 @@ export const useSidebarData = () => {
 				id: item.id,
 				label: item.name,
 				icon: item.resource === 'folder' ? 'folder' : undefined,
-				route: item.resource === 'workflow' ? { to: `/workflows/${item.id}` } : undefined,
+				route:
+					item.resource === 'workflow'
+						? { to: `/workflows/${item.id}` }
+						: { to: `/projects/${projectId}/folders/${item.id}` },
 				children: item.resource === 'folder' ? [] : undefined,
 				type: item.resource,
 			};
@@ -87,7 +93,7 @@ export const useSidebarData = () => {
 				true,
 			);
 
-			items.value[1].children = buildNestedHierarchy(workflows);
+			items.value[1].children = buildNestedHierarchy(workflows, projectsStore.personalProject.id);
 		}
 
 		// check if user has shared access, push to it
@@ -140,15 +146,13 @@ export const useSidebarData = () => {
 					label: project.name,
 					icon: project.icon?.value || 'layers',
 					route: { to: `/projects/${project.id}/workflows` },
-					children: buildNestedHierarchy(workflows),
+					children: buildNestedHierarchy(workflows, project.id),
 					type: 'project',
 				};
 
 				items.value.push(projectItem);
 			}
 		}
-
-		// push menu items
 	}
 
 	return {

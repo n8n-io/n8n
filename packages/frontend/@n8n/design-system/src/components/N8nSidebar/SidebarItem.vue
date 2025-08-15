@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
 import N8nIcon from '../N8nIcon';
 import { IconName, isSupportedIconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
@@ -23,25 +24,19 @@ function click(event: MouseEvent) {
 	}
 }
 
-function getMenuItemRoute(item: IMenuItem) {
-	if (!item.route) {
-		return undefined;
+const to = computed(() => {
+	if (props.item.route) {
+		return props.item.route.to;
 	}
-
-	const routeTo = item.route.to as any;
-	if (routeTo && typeof routeTo.name === 'string') {
-		return routeTo;
+	if (props.item.link) {
+		return props.item.link.href;
 	}
-
 	return undefined;
-}
+});
 </script>
 
 <template>
-	<N8nRoute
-		:to="item.route ? getMenuItemRoute(item) : item.link?.href"
-		:class="{ sidebarItem: true }"
-	>
+	<N8nRoute :to="to" :class="{ sidebarItem: true }">
 		<div
 			v-if="item.type !== 'workflow'"
 			:class="{ sidebarItemDropdown: true, other: item.type === 'other' }"
