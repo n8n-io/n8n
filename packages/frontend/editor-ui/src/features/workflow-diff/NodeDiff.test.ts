@@ -43,10 +43,8 @@ const renderComponent = createComponentRenderer(NodeDiff, {
 });
 
 describe('NodeDiff', () => {
-	let pinia: ReturnType<typeof createTestingPinia>;
-
 	beforeEach(() => {
-		pinia = createTestingPinia();
+		createTestingPinia();
 	});
 
 	it('should render with required props', () => {
