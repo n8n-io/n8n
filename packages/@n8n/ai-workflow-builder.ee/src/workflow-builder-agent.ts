@@ -217,6 +217,9 @@ export class WorkflowBuilderAgent {
 			};
 		};
 
+		/**
+		 * Creates a workflow name based on the initial user message.
+		 */
 		const createWorkflowName = async (state: typeof WorkflowState.State) => {
 			if (!this.llmSimpleTask) {
 				throw new LLMServiceError('LLM not setup');
@@ -227,11 +230,15 @@ export class WorkflowBuilderAgent {
 			if (messages.length === 1 && messages[0] instanceof HumanMessage) {
 				const initialMessage = messages[0] satisfies HumanMessage;
 
+				if (typeof initialMessage.content !== 'string') {
+					this.logger?.debug(
+						'Initial message content is not a string, skipping workflow name generation',
+					);
+					return {};
+				}
+
 				this.logger?.debug('Generating workflow name');
-				const { name } = await workflowNameChain(
-					this.llmSimpleTask,
-					initialMessage.content as string,
-				);
+				const { name } = await workflowNameChain(this.llmSimpleTask, initialMessage.content);
 
 				return {
 					workflowJSON: {
@@ -241,7 +248,6 @@ export class WorkflowBuilderAgent {
 				};
 			}
 
-			this.logger?.debug('Workflow already has a name, skipping generation');
 			return {};
 		};
 

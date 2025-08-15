@@ -25,9 +25,9 @@ export async function workflowNameChain(llm: BaseChatModel, initialPrompt: strin
 		initialPrompt,
 	});
 
-	const structuredOutput = await modelWithStructure.invoke(prompt);
+	const structuredOutput = (await modelWithStructure.invoke(prompt)) as z.infer<typeof nameSchema>;
 
 	return {
-		name: structuredOutput.name as string,
+		name: structuredOutput.name,
 	};
 }
