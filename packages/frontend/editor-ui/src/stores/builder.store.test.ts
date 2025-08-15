@@ -9,7 +9,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '../__tests__/defaults';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from './posthog.test';
-import { WORKFLOW_BUILDER_EXPERIMENT } from '@/constants';
+import { WORKFLOW_BUILDER_EXPERIMENT, DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
 import { reactive } from 'vue';
 import * as chatAPI from '@/api/ai';
 import * as telemetryModule from '@/composables/useTelemetry';
@@ -22,6 +22,36 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => key,
 	}),
+}));
+
+// Mock useToast
+vi.mock('@/composables/useToast', () => ({
+	useToast: () => ({
+		showMessage: vi.fn(),
+	}),
+}));
+
+// Mock the workflows store
+const mockSetWorkflowName = vi.fn();
+const mockRemoveAllConnections = vi.fn();
+const mockRemoveAllNodes = vi.fn();
+const mockWorkflow = {
+	name: DEFAULT_NEW_WORKFLOW_NAME,
+	nodes: [],
+	connections: {},
+};
+
+vi.mock('./workflows.store', () => ({
+	useWorkflowsStore: vi.fn(() => ({
+		workflow: mockWorkflow,
+		workflowId: 'test-workflow-id',
+		allNodes: [],
+		nodesByName: {},
+		workflowExecutionData: null,
+		setWorkflowName: mockSetWorkflowName,
+		removeAllConnections: mockRemoveAllConnections,
+		removeAllNodes: mockRemoveAllNodes,
+	})),
 }));
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -76,6 +106,14 @@ describe('AI Builder store', () => {
 		posthogStore = usePostHog();
 		posthogStore.init();
 		track.mockReset();
+		// Reset workflow store mocks
+		mockSetWorkflowName.mockReset();
+		mockRemoveAllConnections.mockReset();
+		mockRemoveAllNodes.mockReset();
+		// Reset workflow to default state
+		mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+		mockWorkflow.nodes = [];
+		mockWorkflow.connections = {};
 	});
 
 	afterEach(() => {
@@ -776,6 +814,242 @@ describe('AI Builder store', () => {
 			expect(userMessage.content).toBe('New message');
 			expect(userMessage).not.toHaveProperty('showRating');
 			expect(userMessage).not.toHaveProperty('ratingStyle');
+		});
+	});
+
+	describe('applyWorkflowUpdate with workflow naming', () => {
+		it('should apply generated workflow name during initial generation when workflow has default name', () => {
+			const builderStore = useBuilderStore();
+
+			// Set initial generation flag
+			builderStore.initialGeneration = true;
+
+			// Ensure workflow has default name
+			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+
+			// Create workflow JSON with a generated name
+			const workflowJson = JSON.stringify({
+				name: 'Generated Workflow Name for Email Processing',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify setWorkflowName was called with the generated name
+			expect(mockSetWorkflowName).toHaveBeenCalledWith({
+				newName: 'Generated Workflow Name for Email Processing',
+				setStateDirty: false,
+			});
+		});
+
+		it('should NOT apply generated workflow name during initial generation when workflow has custom name', () => {
+			const builderStore = useBuilderStore();
+
+			// Set initial generation flag
+			builderStore.initialGeneration = true;
+
+			// Set a custom workflow name (not the default)
+			mockWorkflow.name = 'My Custom Workflow';
+
+			// Create workflow JSON with a generated name
+			const workflowJson = JSON.stringify({
+				name: 'Generated Workflow Name for Email Processing',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify setWorkflowName was NOT called
+			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+		});
+
+		it('should NOT apply generated workflow name when not initial generation', () => {
+			const builderStore = useBuilderStore();
+
+			// Ensure initial generation flag is false
+			builderStore.initialGeneration = false;
+
+			// Ensure workflow has default name
+			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+
+			// Create workflow JSON with a generated name
+			const workflowJson = JSON.stringify({
+				name: 'Generated Workflow Name for Email Processing',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify setWorkflowName was NOT called
+			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+		});
+
+		it('should handle workflow updates without name property', () => {
+			const builderStore = useBuilderStore();
+
+			// Set initial generation flag
+			builderStore.initialGeneration = true;
+
+			// Ensure workflow has default name
+			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+
+			// Create workflow JSON without a name property
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify setWorkflowName was NOT called
+			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+		});
+
+		it('should handle workflow names that start with but are not exactly the default name', () => {
+			const builderStore = useBuilderStore();
+
+			// Set initial generation flag
+			builderStore.initialGeneration = true;
+
+			// Set workflow name that starts with default but has more text
+			mockWorkflow.name = `${DEFAULT_NEW_WORKFLOW_NAME} - Copy`;
+
+			// Create workflow JSON with a generated name
+			const workflowJson = JSON.stringify({
+				name: 'Generated Workflow Name for Email Processing',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify setWorkflowName WAS called because the name starts with default
+			expect(mockSetWorkflowName).toHaveBeenCalledWith({
+				newName: 'Generated Workflow Name for Email Processing',
+				setStateDirty: false,
+			});
+		});
+
+		it('should handle malformed JSON gracefully', () => {
+			const builderStore = useBuilderStore();
+
+			// Set initial generation flag
+			builderStore.initialGeneration = true;
+
+			// Create malformed JSON
+			const workflowJson = '{ invalid json }';
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update failed
+			expect(result.success).toBe(false);
+			expect(result.error).toBeDefined();
+		});
+
+		it('should maintain initial generation flag state across multiple updates', () => {
+			const builderStore = useBuilderStore();
+
+			// Set initial generation flag
+			builderStore.initialGeneration = true;
+
+			// Ensure workflow has default name
+			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+
+			// First update with name
+			const workflowJson1 = JSON.stringify({
+				name: 'First Generated Name',
+				nodes: [],
+				connections: {},
+			});
+
+			builderStore.applyWorkflowUpdate(workflowJson1);
+			expect(mockSetWorkflowName).toHaveBeenCalledTimes(1);
+
+			// The flag should still be true for subsequent updates in the same generation
+			expect(builderStore.initialGeneration).toBe(true);
+
+			// Second update without name (simulating further tool operations)
+			const workflowJson2 = JSON.stringify({
+				nodes: [
+					{
+						id: 'node2',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						position: [450, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			builderStore.applyWorkflowUpdate(workflowJson2);
+
+			// Should not call setWorkflowName again
+			expect(mockSetWorkflowName).toHaveBeenCalledTimes(1);
 		});
 	});
 });
