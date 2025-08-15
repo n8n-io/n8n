@@ -447,7 +447,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 		});
 		it('should return true for credentials with authenticate property', () => {
 			const credential = {
