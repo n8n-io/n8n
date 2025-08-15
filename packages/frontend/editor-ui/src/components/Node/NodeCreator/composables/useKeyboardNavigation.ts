@@ -25,6 +25,19 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	// Array of objects that contains key code and handler
 	const keysHooks = ref<Record<string, KeyHook>>({});
 
+	function shouldAllowNativeInputBehavior(target: EventTarget | null, key: string): boolean {
+		// Only check for input/textarea elements
+		if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+			return false;
+		}
+
+		// Allow horizontal arrows for cursor movement when input has content
+		const isHorizontalArrow = key === 'ArrowLeft' || key === 'ArrowRight';
+		const hasContent = target.value.length > 0;
+
+		return isHorizontalArrow && hasContent;
+	}
+
 	function getItemType(element?: Element) {
 		return element?.getAttribute('data-keyboard-nav-type');
 	}
@@ -74,6 +87,12 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 
 		const pressedKey = e.key;
 		if (!WATCHED_KEYS.includes(pressedKey)) return;
+
+		// Allow arrow keys for cursor movement in non-empty input fields
+		if (shouldAllowNativeInputBehavior(e.target, pressedKey)) {
+			return;
+		}
+
 		e.preventDefault();
 		e.stopPropagation();
 
