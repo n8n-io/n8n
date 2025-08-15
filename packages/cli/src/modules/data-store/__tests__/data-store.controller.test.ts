@@ -1943,25 +1943,18 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 
 describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 	test('should not delete rows when project does not exist', async () => {
-		const payload = {
-			ids: [1, 2],
-		};
-
 		await authOwnerAgent
 			.delete('/projects/non-existing-id/data-stores/some-data-store-id/rows')
-			.send(payload)
+			.query({ ids: '1,2' })
 			.expect(403);
 	});
 
 	test('should not delete rows when data store does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
-		const payload = {
-			ids: [1, 2],
-		};
 
 		await authOwnerAgent
 			.delete(`/projects/${project.id}/data-stores/non-existing-id/rows`)
-			.send(payload)
+			.query({ ids: '1,2' })
 			.expect(404);
 	});
 
@@ -1985,13 +1978,9 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 
-		const payload = {
-			ids: [1],
-		};
-
 		await authMemberAgent
 			.delete(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/rows`)
-			.send(payload)
+			.query({ ids: '1' })
 			.expect(403);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
@@ -2020,13 +2009,9 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 
-		const payload = {
-			ids: [1],
-		};
-
 		await authMemberAgent
 			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
-			.send(payload)
+			.query({ ids: '1' })
 			.expect(403);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
@@ -2064,13 +2049,9 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 
-		const payload = {
-			ids: [1, 3],
-		};
-
 		await authMemberAgent
 			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
-			.send(payload)
+			.query({ ids: '1,3' })
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
@@ -2108,13 +2089,9 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 
-		const payload = {
-			ids: [2],
-		};
-
 		await authAdminAgent
 			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
-			.send(payload)
+			.query({ ids: '2' })
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
@@ -2151,13 +2128,9 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 
-		const payload = {
-			ids: [1, 2],
-		};
-
 		await authOwnerAgent
 			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
-			.send(payload)
+			.query({ ids: '1,2' })
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
@@ -2192,13 +2165,9 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 
-		const payload = {
-			ids: [2],
-		};
-
 		await authMemberAgent
 			.delete(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
-			.send(payload)
+			.query({ ids: '2' })
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
@@ -2221,13 +2190,9 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 
-		const payload = {
-			ids: [],
-		};
-
 		const response = await authMemberAgent
 			.delete(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
-			.send(payload)
+			.query({ ids: '' })
 			.expect(200);
 
 		expect(response.body.data).toBe(true);
@@ -2251,13 +2216,9 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 
-		const payload = {
-			ids: [999, 1000],
-		};
-
 		await authMemberAgent
 			.delete(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
-			.send(payload)
+			.query({ ids: '999,1000' })
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
@@ -2282,13 +2243,9 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 
-		const payload = {
-			ids: [1, 999, 2, 1000],
-		};
-
 		await authMemberAgent
 			.delete(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
-			.send(payload)
+			.query({ ids: '1,999,2,1000' })
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});

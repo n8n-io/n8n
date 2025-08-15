@@ -2,7 +2,7 @@ import {
 	AddDataStoreRowsDto,
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
-	DeleteDataStoreRowsDto,
+	DeleteDataStoreRowsQueryDto,
 	ListDataStoreContentQueryDto,
 	ListDataStoreQueryDto,
 	MoveDataStoreColumnDto,
@@ -156,7 +156,7 @@ export class DataStoreController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: DeleteDataStoreRowsDto,
+		@Query dto: DeleteDataStoreRowsQueryDto,
 	) {
 		const { ids } = dto;
 		return await this.dataStoreService.deleteRows(dataStoreId, req.params.projectId, ids);
