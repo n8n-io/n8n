@@ -283,48 +283,54 @@ export class WorkflowBuilderAgent {
 			callbacks: this.tracer ? [this.tracer] : undefined,
 		} as RunnableConfig;
 
-		const stream = await agent.stream(
-			{
-				messages: [new HumanMessage({ content: payload.message })],
-				workflowJSON: this.getDefaultWorkflowJSON(payload),
-				workflowOperations: [],
-				workflowContext: payload.workflowContext,
-			},
-			streamConfig,
-		);
-
 		try {
-			const streamProcessor = createStreamProcessor(stream);
-			for await (const output of streamProcessor) {
-				yield output;
-			}
-		} catch (error) {
-			if (
-				error &&
-				typeof error === 'object' &&
-				'message' in error &&
-				typeof error.message === 'string' &&
-				// This is naive, but it's all we get from LangGraph AbortError
-				['Abort', 'Aborted'].includes(error.message)
-			) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const messages = (await agent.getState(threadConfig)).values.messages as Array<
-					AIMessage | HumanMessage | ToolMessage
-				>;
+			const stream = await agent.stream(
+				{
+					messages: [new HumanMessage({ content: payload.message })],
+					workflowJSON: this.getDefaultWorkflowJSON(payload),
+					workflowOperations: [],
+					workflowContext: payload.workflowContext,
+				},
+				streamConfig,
+			);
 
-				// Handle abort errors gracefully
-				const abortedAiMessage = new AIMessage({
-					content: '[Task aborted]',
-					id: crypto.randomUUID(),
-				});
-				// TODO: Should we clear tool calls that are in progress?
-				await agent.updateState(threadConfig, { messages: [...messages, abortedAiMessage] });
-				return;
-			} else if (error instanceof GraphRecursionError) {
-				throw new ApplicationError(
-					'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.',
-				);
-			} else if (
+			try {
+				const streamProcessor = createStreamProcessor(stream);
+				for await (const output of streamProcessor) {
+					yield output;
+				}
+			} catch (error) {
+				if (
+					error &&
+					typeof error === 'object' &&
+					'message' in error &&
+					typeof error.message === 'string' &&
+					// This is naive, but it's all we get from LangGraph AbortError
+					['Abort', 'Aborted'].includes(error.message)
+				) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+					const messages = (await agent.getState(threadConfig)).values.messages as Array<
+						AIMessage | HumanMessage | ToolMessage
+					>;
+
+					// Handle abort errors gracefully
+					const abortedAiMessage = new AIMessage({
+						content: '[Task aborted]',
+						id: crypto.randomUUID(),
+					});
+					// TODO: Should we clear tool calls that are in progress?
+					await agent.updateState(threadConfig, { messages: [...messages, abortedAiMessage] });
+					return;
+				} else if (error instanceof GraphRecursionError) {
+					throw new ApplicationError(
+						'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.',
+					);
+				}
+
+				throw error;
+			}
+		} catch (error: unknown) {
+			if (
 				error instanceof Error &&
 				'error' in error &&
 				typeof error.error === 'object' &&
@@ -332,7 +338,7 @@ export class WorkflowBuilderAgent {
 			) {
 				const innerError = error.error;
 				if ('error' in innerError && typeof innerError.error === 'object' && innerError.error) {
-					const errorDetails = error.error;
+					const errorDetails = innerError.error;
 					if ('message' in errorDetails && typeof errorDetails.message === 'string') {
 						throw new ApplicationError(`Error from AI Provider: ${errorDetails.message}`);
 					}
