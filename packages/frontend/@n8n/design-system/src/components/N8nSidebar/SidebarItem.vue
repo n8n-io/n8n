@@ -13,7 +13,7 @@ const props = defineProps<{
 	level?: number;
 	click?: () => void;
 	open?: boolean;
-	ariaLabel: string;
+	ariaLabel?: string;
 }>();
 
 function click(event: MouseEvent) {

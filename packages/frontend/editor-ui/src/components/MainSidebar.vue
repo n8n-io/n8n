@@ -13,7 +13,6 @@ import {
 } from '@n8n/design-system';
 import type { IMenuItem, IMenuElement } from '@n8n/design-system';
 import { ABOUT_MODAL_KEY, RELEASE_NOTES_URL, VIEWS, WHATS_NEW_MODAL_KEY } from '@/constants';
-import { hasPermission } from '@/utils/rbac/permissions';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -35,7 +34,6 @@ import { useSidebarData } from '@/composables/useSidebarData';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import BecomeTemplateCreatorCta from './BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
-import { useProjectsStore } from '@/stores/projects.store';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -46,7 +44,6 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
-const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 
 const externalHooks = useExternalHooks();
@@ -59,17 +56,12 @@ const { getReportingURL } = useBugReporting();
 
 useUserHelpers(router, route);
 
-// Template refs
 const user = ref<Element | null>(null);
 
-// Component data
 const basePath = ref('');
-const fullyExpanded = ref(false);
 
-// Use the sidebar data composable
-const { items } = useSidebarData();
+const { items, bottomItems } = useSidebarData();
 
-// Use global entity creation composable
 const {
 	menu,
 	handleSelect: handleMenuSelect,
@@ -88,57 +80,6 @@ const showWhatsNewNotification = computed(
 			(article) => !versionsStore.isWhatsNewArticleRead(article.id),
 		),
 );
-
-const mainMenuItems = computed<IMenuItem[]>(() => [
-	{
-		id: 'cloud-admin',
-		position: 'bottom',
-		label: 'Admin Panel',
-		icon: 'cloud',
-		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
-	},
-	{
-		// Link to in-app templates, available if custom templates are enabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('mainSidebar.templates'),
-		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost,
-		route: { to: { name: VIEWS.TEMPLATES } },
-	},
-	{
-		// Link to website templates, available if custom templates are not enabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('mainSidebar.templates'),
-		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost,
-		link: {
-			href: templatesStore.websiteTemplateRepositoryURL,
-			target: '_blank',
-		},
-	},
-	{
-		id: 'variables',
-		icon: 'variable',
-		label: i18n.baseText('mainSidebar.variables'),
-		position: 'bottom',
-		route: { to: { name: VIEWS.VARIABLES } },
-	},
-	{
-		id: 'insights',
-		icon: 'chart-column-decreasing',
-		label: 'Insights',
-		position: 'bottom',
-		route: { to: { name: VIEWS.INSIGHTS } },
-		available:
-			settingsStore.isModuleActive('insights') &&
-			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
-	},
-]);
-const visibleMenuItems = computed(() => {
-	return mainMenuItems.value.filter((item) => item.available !== false);
-});
 
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
@@ -315,6 +256,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 <template>
 	<N8nSidebar
 		:items="items"
+		:bottom-items="bottomItems"
 		:user-name="usersStore.currentUser?.fullName || ''"
 		:release-channel="settingsStore.settings.releaseChannel"
 		:help-items="helpMenuItems"
@@ -381,7 +323,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 			</N8nNavigationDropdown>
 		</template>
 		<template #creatorCallout>
-			<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
+			<BecomeTemplateCreatorCta v-if="!userIsTrialing" />
 		</template>
 		<template #sourceControl>
 			<MainSidebarSourceControl :is-collapsed="false" />

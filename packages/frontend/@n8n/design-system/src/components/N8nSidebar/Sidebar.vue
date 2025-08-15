@@ -13,6 +13,7 @@ import { TreeItem, TreeItemToggleEvent, TreeRoot, TreeVirtualizer } from 'reka-u
 
 const props = defineProps<{
 	items: IMenuElement[];
+	bottomItems?: IMenuElement[];
 	userName: string;
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
 	helpItems: IMenuElement[];
@@ -120,15 +121,17 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 						class="item"
 						v-bind="item.bind"
 					>
-						<N8nText
-							v-if="item.value.type === 'subtitle'"
-							class="sidebarSubheader"
-							size="small"
-							color="text-light"
-							bold
-						>
-							{{ item.value.label }}
-						</N8nText>
+						<div v-if="item.value.type === 'subtitle'">
+							<N8nText class="sidebarSubheader" size="small" color="text-light" bold>
+								{{ item.value.label }}
+							</N8nText>
+						</div>
+						<div v-else-if="item.value.type === 'empty'">
+							<span class="itemIdent" v-for="level in new Array(item.level - 1)" :key="level" />
+							<N8nText size="small" color="text-light" class="sidebarEmptyState">
+								{{ item.value.label }}
+							</N8nText>
+						</div>
 						<component
 							v-else-if="isCustomMenuItem(item.value as IMenuElement)"
 							:is="item.value.component"
@@ -146,6 +149,15 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 					</TreeItem>
 				</TreeVirtualizer>
 			</TreeRoot>
+			<div v-if="bottomItems?.length" class="sidebarBottomItems">
+				<SidebarItem
+					v-for="item in bottomItems"
+					:key="item.id"
+					:item="item as IMenuItem"
+					@click="handleSelect ? handleSelect(item.id) : undefined"
+					:level="1"
+				/>
+			</div>
 		</nav>
 		<slot name="creatorCallout" />
 		<slot name="sourceControl" />
@@ -271,6 +283,8 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 	max-height: 100%;
 	overflow-y: auto;
 	flex-grow: 1;
+	display: flex;
+	flex-direction: column;
 }
 
 .sidebarHidden,
@@ -291,8 +305,9 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 }
 
 .sidebarSubheader {
-	padding: var(--spacing-s) 0 var(--spacing-xs);
 	display: block;
+	padding-top: var(--spacing-xs);
+	padding-bottom: var(--spacing-xs);
 }
 
 .sidebarFooter {
@@ -323,7 +338,6 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 	border-top: var(--border-base);
 	display: flex;
 	gap: var(--spacing-2xs);
-
 	align-items: center;
 }
 
@@ -357,5 +371,34 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 	align-items: center;
 	max-width: 100%;
 	overflow: hidden;
+}
+
+.sidebarEmptyState {
+	padding: var(--spacing-3xs) var(--spacing-3xs);
+	opacity: 0.7;
+}
+
+.itemIdent {
+	display: block;
+	position: relative;
+	width: 0.5rem;
+	min-width: 0.5rem;
+	align-self: stretch;
+	margin-left: 0.75rem;
+	border-left: 1px solid var(--color-foreground-light);
+}
+
+.itemIdent::before {
+	content: '';
+	position: absolute;
+	bottom: -1px;
+	left: -1px;
+	width: 1px;
+	height: 1px;
+	background-color: var(--color-foreground-light);
+}
+
+.sidebarBottomItems {
+	margin-top: auto;
 }
 </style>

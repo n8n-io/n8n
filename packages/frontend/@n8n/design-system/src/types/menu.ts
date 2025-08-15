@@ -37,7 +37,7 @@ export type IMenuItem = {
 	disabled?: boolean;
 	notification?: boolean;
 	size?: 'medium' | 'small';
-	type?: 'folder' | 'workflow' | 'project' | 'other' | 'subtitle';
+	type?: 'folder' | 'workflow' | 'project' | 'other' | 'subtitle' | 'empty';
 };
 
 export interface ICustomMenuItem {
