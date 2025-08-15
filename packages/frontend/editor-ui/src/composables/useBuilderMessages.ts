@@ -122,24 +122,13 @@ export function useBuilderMessages() {
 		} else if ('type' in msg && msg.type === 'error' && 'content' in msg) {
 			// Handle error messages from the API
 			// API sends error messages with type: 'error' and content field
-			const removeMessageAndRetry = retry
-				? async (): Promise<void> => {
-						// Remove the current error message from the array
-						const messageIndex = messages.findIndex((m) => m.id === messageId);
-						if (messageIndex !== -1) {
-							messages.splice(messageIndex, 1);
-						}
-						await retry?.();
-					}
-				: undefined;
-
 			messages.push({
 				id: messageId,
 				role: 'assistant',
 				type: 'error',
 				content: msg.content,
 				read: false,
-				retry: removeMessageAndRetry,
+				retry,
 			});
 			shouldClearThinking = true;
 		}
