@@ -80,13 +80,24 @@ export class AiController {
 				// This prevents "Cannot set headers after they are sent" error
 				assert(streamError instanceof Error);
 
+				let errorMessage = streamError.message;
+				if ('error' in streamError && typeof streamError.error === 'object' && streamError.error) {
+					const error = streamError.error;
+					if ('error' in error && typeof error.error === 'object' && error.error) {
+						const errorDetails = error.error;
+						if ('message' in errorDetails && typeof errorDetails.message === 'string') {
+							errorMessage = errorDetails.message;
+						}
+					}
+				}
+
 				// Send error as proper error type now that frontend supports it
 				const errorChunk = {
 					messages: [
 						{
 							role: 'assistant',
 							type: 'error',
-							content: streamError.message,
+							content: `Error from AI Provider: ${errorMessage}`,
 						},
 					],
 				};
