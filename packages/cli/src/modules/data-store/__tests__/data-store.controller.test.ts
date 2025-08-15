@@ -1941,6 +1941,361 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 	});
 });
 
+describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
+	test('should not delete rows when project does not exist', async () => {
+		const payload = {
+			ids: [1, 2],
+		};
+
+		await authOwnerAgent
+			.delete('/projects/non-existing-id/data-stores/some-data-store-id/rows')
+			.send(payload)
+			.expect(403);
+	});
+
+	test('should not delete rows when data store does not exist', async () => {
+		const project = await createTeamProject('test project', owner);
+		const payload = {
+			ids: [1, 2],
+		};
+
+		await authOwnerAgent
+			.delete(`/projects/${project.id}/data-stores/non-existing-id/rows`)
+			.send(payload)
+			.expect(404);
+	});
+
+	test("should not delete rows in another user's personal project data store", async () => {
+		const dataStore = await createDataStore(ownerProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		});
+
+		const payload = {
+			ids: [1],
+		};
+
+		await authMemberAgent
+			.delete(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(403);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+	});
+
+	test('should not delete rows if user has project:viewer role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value',
+					second: 'another value',
+				},
+			],
+		});
+
+		const payload = {
+			ids: [1],
+		};
+
+		await authMemberAgent
+			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(403);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+	});
+
+	test('should delete rows if user has project:editor role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:editor');
+
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value 1',
+					second: 'another value 1',
+				},
+				{
+					first: 'test value 2',
+					second: 'another value 2',
+				},
+				{
+					first: 'test value 3',
+					second: 'another value 3',
+				},
+			],
+		});
+
+		const payload = {
+			ids: [1, 3],
+		};
+
+		await authMemberAgent
+			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+		expect(rowsInDb.data[0]).toMatchObject({
+			first: 'test value 2',
+			second: 'another value 2',
+		});
+	});
+
+	test('should delete rows if user has project:admin role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(admin, project, 'project:admin');
+
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value 1',
+					second: 'another value 1',
+				},
+				{
+					first: 'test value 2',
+					second: 'another value 2',
+				},
+			],
+		});
+
+		const payload = {
+			ids: [2],
+		};
+
+		await authAdminAgent
+			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+		expect(rowsInDb.data[0]).toMatchObject({
+			first: 'test value 1',
+			second: 'another value 1',
+		});
+	});
+
+	test('should delete rows if user is owner in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value 1',
+					second: 'another value 1',
+				},
+				{
+					first: 'test value 2',
+					second: 'another value 2',
+				},
+			],
+		});
+
+		const payload = {
+			ids: [1, 2],
+		};
+
+		await authOwnerAgent
+			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(0);
+	});
+
+	test('should delete rows in personal project', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value 1',
+					second: 'another value 1',
+				},
+				{
+					first: 'test value 2',
+					second: 'another value 2',
+				},
+				{
+					first: 'test value 3',
+					second: 'another value 3',
+				},
+			],
+		});
+
+		const payload = {
+			ids: [2],
+		};
+
+		await authMemberAgent
+			.delete(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(2);
+		expect(rowsInDb.data.map((r) => r.first).sort()).toEqual(['test value 1', 'test value 3']);
+	});
+
+	test('should return false when deleting empty ids array', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value',
+				},
+			],
+		});
+
+		const payload = {
+			ids: [],
+		};
+
+		const response = await authMemberAgent
+			.delete(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		expect(response.body.data).toBe(false);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+	});
+
+	test('should handle deletion of non-existing row ids gracefully', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value',
+				},
+			],
+		});
+
+		const payload = {
+			ids: [999, 1000],
+		};
+
+		await authMemberAgent
+			.delete(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+	});
+
+	test('should handle mixed existing and non-existing row ids', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test value 1',
+				},
+				{
+					first: 'test value 2',
+				},
+			],
+		});
+
+		const payload = {
+			ids: [1, 999, 2, 1000],
+		};
+
+		await authMemberAgent
+			.delete(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(0);
+	});
+});
+
 describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 	test('should not upsert rows when project does not exist', async () => {
 		const payload = {
