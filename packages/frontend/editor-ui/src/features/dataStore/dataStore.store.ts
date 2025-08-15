@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { DATA_STORE_STORE, DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
+import { DATA_STORE_STORE } from '@/features/dataStore/constants';
 import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
