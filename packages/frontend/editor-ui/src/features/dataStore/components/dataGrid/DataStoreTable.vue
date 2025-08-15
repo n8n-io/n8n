@@ -82,7 +82,7 @@ const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload })
 	try {
 		const newColumn = await dataStoreStore.addDataStoreColumn(
 			props.dataStore.id,
-			props.dataStore.projectId ?? '',
+			props.dataStore.projectId,
 			column,
 		);
 		if (!newColumn) {
