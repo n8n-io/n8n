@@ -1,33 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Literal, Union
-
-# ========== broker ==========
-
-
-@dataclass
-class BrokerInfoRequest:
-    type: Literal["broker:inforequest"] = "broker:inforequest"
-
-
-@dataclass
-class BrokerRunnerRegistered:
-    type: Literal["broker:runnerregistered"] = "broker:runnerregistered"
-
-
-@dataclass
-class BrokerTaskOfferAccept:
-    task_id: str
-    offer_id: str
-    type: Literal["broker:taskofferaccept"] = "broker:taskofferaccept"
-
-
-BrokerMessage = Union[
-    BrokerInfoRequest,
-    BrokerRunnerRegistered,
-    BrokerTaskOfferAccept,
-]
-
-# ========== runner ==========
+from typing import List, Literal, Union
 
 
 @dataclass
