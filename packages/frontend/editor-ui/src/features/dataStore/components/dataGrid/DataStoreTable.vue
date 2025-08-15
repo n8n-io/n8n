@@ -36,6 +36,8 @@ const gridApi = ref<GridApi | null>(null);
 const colDefs = ref<ColDef[]>([]);
 const rowData = ref<DataStoreRow[]>([]);
 
+const contentLoading = ref(false);
+
 // Shared config for all columns
 const defaultColumnDef = {
 	flex: 1,
@@ -83,7 +85,6 @@ const createColumnDef = (col: DataStoreColumn) => {
 		colId: col.id,
 		field: col.name,
 		headerName: col.name,
-		// TODO: Avoid hard-coding this
 		editable: col.name !== DEFAULT_ID_COLUMN_NAME,
 		cellDataType: mapToAGCellType(col.type),
 	};
@@ -95,13 +96,27 @@ const createColumnDef = (col: DataStoreColumn) => {
 	return columnDef;
 };
 
+const initColumnDefinitions = () => {
+	colDefs.value = [
+		// Always add the ID column, it's not returned by the back-end but all data stores have it
+		// We use it as a placeholder for new datastores
+		createColumnDef({
+			index: 0,
+			id: DEFAULT_ID_COLUMN_NAME,
+			name: DEFAULT_ID_COLUMN_NAME,
+			type: 'string',
+		}),
+		// Append other columns
+		...props.dataStore.columns.map(createColumnDef),
+	];
+};
+
+const initialize = () => {
+	initColumnDefinitions();
+};
+
 onMounted(() => {
-	colDefs.value = props.dataStore.columns.map((col) => ({
-		...createColumnDef(col),
-	}));
-	if (gridApi.value) {
-		gridApi.value.refreshHeader();
-	}
+	initialize();
 });
 </script>
 

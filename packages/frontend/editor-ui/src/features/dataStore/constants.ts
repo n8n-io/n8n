@@ -14,7 +14,7 @@ export const DATA_STORE_CARD_ACTIONS = {
 
 export const ADD_DATA_STORE_MODAL_KEY = 'addDataStoreModal';
 
-export const DEFAULT_ID_COLUMN_NAME = 'uid';
+export const DEFAULT_ID_COLUMN_NAME = 'id';
 
 export const MAX_COLUMN_NAME_LENGTH = 128;
 

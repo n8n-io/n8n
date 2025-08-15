@@ -29,13 +29,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	};
 
 	const createDataStore = async (name: string, projectId?: string) => {
-		const defaultColumn: DataStoreColumnCreatePayload = {
-			name: DEFAULT_ID_COLUMN_NAME,
-			type: 'string',
-		};
-		const newStore = await createDataStoreApi(rootStore.restApiContext, name, projectId, [
-			defaultColumn,
-		]);
+		const newStore = await createDataStoreApi(rootStore.restApiContext, name, projectId);
 		if (!newStore.project && projectId) {
 			const project = await projectStore.fetchProject(projectId);
 			if (project) {
