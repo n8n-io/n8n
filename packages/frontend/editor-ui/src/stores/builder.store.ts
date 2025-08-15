@@ -1,5 +1,6 @@
-import { DEFAULT_NEW_WORKFLOW_NAME, VIEWS } from '@/constants';
+import type { VIEWS } from '@/constants';
 import {
+	DEFAULT_NEW_WORKFLOW_NAME,
 	ASK_AI_SLIDE_OUT_DURATION_MS,
 	EDITABLE_CANVAS_VIEWS,
 	WORKFLOW_BUILDER_EXPERIMENT,
