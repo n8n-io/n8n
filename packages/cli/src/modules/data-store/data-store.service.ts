@@ -169,6 +169,16 @@ export class DataStoreService {
 		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto, columns);
 	}
 
+	async deleteRows(dataStoreId: string, projectId: string, ids: number[]) {
+		await this.validateDataStoreExists(dataStoreId, projectId);
+
+		if (ids.length === 0) {
+			return false;
+		}
+
+		return await this.dataStoreRowsRepository.deleteRows(toTableName(dataStoreId), ids);
+	}
+
 	private async validateRows(dataStoreId: string, rows: DataStoreRows): Promise<void> {
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 		if (columns.length === 0) {
