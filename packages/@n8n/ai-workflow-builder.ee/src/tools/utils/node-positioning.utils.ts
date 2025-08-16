@@ -84,7 +84,10 @@ function calculateXPosition(isSubNodeType: boolean, mainNodes: INode[], subNodes
 	if (isSubNodeType) {
 		// For sub-nodes, position them under their related main nodes
 		if (mainNodes.length > 0) {
-			const minMainX = Math.min(...mainNodes.map((n) => n.position[0]));
+			const minMainX = Math.min.apply(
+				Math,
+				mainNodes.map((n) => n.position[0]),
+			);
 			// Position sub-nodes horizontally spread out under main nodes
 			return minMainX + subNodes.length * (HORIZONTAL_GAP * SUB_NODE_HORIZONTAL_OFFSET);
 		}
@@ -93,7 +96,10 @@ function calculateXPosition(isSubNodeType: boolean, mainNodes: INode[], subNodes
 	} else {
 		// For main nodes, position to the right of all existing main nodes
 		if (mainNodes.length > 0) {
-			const maxMainX = Math.max(...mainNodes.map((n) => n.position[0]));
+			const maxMainX = Math.max.apply(
+				Math,
+				mainNodes.map((n) => n.position[0]),
+			);
 			return maxMainX + HORIZONTAL_GAP;
 		}
 		// First main node
