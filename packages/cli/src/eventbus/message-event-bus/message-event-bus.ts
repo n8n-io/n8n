@@ -9,7 +9,11 @@ import type { DeleteResult } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
-import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import type {
+	MessageEventBusDestinationOptions,
+	MessageEventBusDestinationSyslogOptions,
+} from 'n8n-workflow';
+import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
 import config from '@/config';
 import { License } from '@/license';
@@ -39,6 +43,7 @@ import { EventMessageRunner } from '../event-message-classes/event-message-runne
 import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
 import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
 import { messageEventBusDestinationFromDb } from '../message-event-bus-destination/message-event-bus-destination-from-db';
+import { MessageEventBusDestinationSyslog } from '../message-event-bus-destination/message-event-bus-destination-syslog.ee';
 import type { MessageEventBusDestination } from '../message-event-bus-destination/message-event-bus-destination.ee';
 import { MessageEventBusLogWriter } from '../message-event-bus-writer/message-event-bus-log-writer';
 
@@ -111,6 +116,9 @@ export class MessageEventBus extends EventEmitter {
 				}
 			}
 		}
+
+		// Ensure environment-based syslog destination is created/updated if configured
+		await this.ensureEnvSyslogDestination();
 
 		this.logger.debug('Initializing event writer');
 		if (options?.workerId) {
@@ -218,6 +226,122 @@ export class MessageEventBus extends EventEmitter {
 
 		this.logger.debug('MessageEventBus initialized');
 		this.isInitialized = true;
+	}
+
+	/**
+	 * Creates a syslog destination from environment variables if configured.
+	 * Returns the destination options if valid syslog configuration is found, null otherwise.
+	 */
+	private createSyslogDestinationFromEnv(): MessageEventBusDestinationSyslogOptions | null {
+		const syslogConfig = this.globalConfig.eventBus.logWriter.syslog;
+
+		// Check if syslog config exists and is enabled with required configuration
+		if (!syslogConfig || !syslogConfig.enabled || !syslogConfig.host.trim()) {
+			if (syslogConfig && syslogConfig.enabled && !syslogConfig.host.trim()) {
+				this.logger.warn(
+					'Syslog destination is enabled but no host specified. Set N8N_EVENTBUS_LOGWRITER_SYSLOG_HOST environment variable.',
+				);
+			}
+			return null;
+		}
+
+		// Validate host format (basic check)
+		const hostPattern = /^[a-zA-Z0-9]([a-zA-Z0-9\-.]{0,61}[a-zA-Z0-9])?$/;
+		if (!hostPattern.test(syslogConfig.host)) {
+			this.logger.error(
+				`Invalid syslog host format: ${syslogConfig.host}. Must be a valid hostname or IP address.`,
+			);
+			return null;
+		}
+
+		// Validate port range (1-65535)
+		if (syslogConfig.port < 1 || syslogConfig.port > 65535) {
+			this.logger.error(`Invalid syslog port ${syslogConfig.port}. Must be between 1 and 65535.`);
+			return null;
+		}
+
+		// Validate facility range (0-23)
+		if (syslogConfig.facility < 0 || syslogConfig.facility > 23) {
+			this.logger.warn(
+				`Invalid syslog facility ${syslogConfig.facility}. Must be between 0 and 23. Using default 16.`,
+			);
+			syslogConfig.facility = 16;
+		}
+
+		// Validate protocol
+		const validProtocols = ['udp', 'tcp', 'tls'];
+		if (!validProtocols.includes(syslogConfig.protocol)) {
+			this.logger.error(
+				`Invalid syslog protocol ${syslogConfig.protocol}. Must be one of: ${validProtocols.join(', ')}.`,
+			);
+			return null;
+		}
+
+		// Convert TLS to TCP for syslog client compatibility
+		const protocol = syslogConfig.protocol === 'tls' ? 'tcp' : syslogConfig.protocol;
+
+		const destinationId = 'env-syslog-destination';
+		const syslogOptions: MessageEventBusDestinationSyslogOptions = {
+			__type: MessageEventBusDestinationTypeNames.syslog,
+			id: destinationId,
+			label: `Syslog (${syslogConfig.host}:${syslogConfig.port})`,
+			enabled: true,
+			subscribedEvents: ['n8n.workflow.success', 'n8n.workflow.failed', 'n8n.audit.user.signedup'], // Default events
+			host: syslogConfig.host.trim(),
+			port: syslogConfig.port,
+			protocol,
+			facility: syslogConfig.facility,
+			app_name: syslogConfig.appName.trim() || 'n8n',
+		};
+
+		return syslogOptions;
+	}
+
+	/**
+	 * Ensures an environment-based syslog destination exists if configured.
+	 * Creates or updates the destination in the database and adds it to the event bus.
+	 */
+	private async ensureEnvSyslogDestination(): Promise<void> {
+		const envSyslogOptions = this.createSyslogDestinationFromEnv();
+		if (!envSyslogOptions) {
+			return;
+		}
+
+		const destinationId = envSyslogOptions.id!;
+
+		// Check if this destination already exists in the database
+		const existingDestination = await this.eventDestinationsRepository.findOne({
+			where: { id: destinationId },
+		});
+
+		try {
+			if (existingDestination) {
+				// Update existing destination with current environment configuration
+				await this.eventDestinationsRepository.update(destinationId, {
+					destination: envSyslogOptions,
+				});
+				this.logger.debug(`Updated environment syslog destination: ${destinationId}`);
+			} else {
+				// Create new destination in database
+				await this.eventDestinationsRepository.insert({
+					id: destinationId,
+					destination: envSyslogOptions,
+				});
+				this.logger.debug(`Created environment syslog destination: ${destinationId}`);
+			}
+
+			// Create and add the destination to the event bus
+			const syslogDestination = new MessageEventBusDestinationSyslog(this, envSyslogOptions);
+			await this.addDestination(syslogDestination, false);
+
+			this.logger.info(
+				`Environment syslog destination configured: ${envSyslogOptions.host}:${envSyslogOptions.port} (${envSyslogOptions.protocol})`,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Failed to create environment syslog destination: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			);
+		}
 	}
 
 	async addDestination(destination: MessageEventBusDestination, notifyWorkers: boolean = true) {
