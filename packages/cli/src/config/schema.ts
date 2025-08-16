@@ -70,21 +70,6 @@ export const schema = {
 			default: true,
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS',
 		},
-
-		queueRecovery: {
-			interval: {
-				doc: 'How often (minutes) to check for queue recovery',
-				format: Number,
-				default: 180,
-				env: 'N8N_EXECUTIONS_QUEUE_RECOVERY_INTERVAL',
-			},
-			batchSize: {
-				doc: 'Size of batch of executions to check for queue recovery',
-				format: Number,
-				default: 100,
-				env: 'N8N_EXECUTIONS_QUEUE_RECOVERY_BATCH',
-			},
-		},
 	},
 
 	userManagement: {
