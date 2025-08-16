@@ -638,6 +638,12 @@ describe('toolsAgentExecute', () => {
 			expect(step.action.messageLog[0]).toHaveProperty('content');
 			expect(step.action.messageLog[0]).toHaveProperty('tool_calls');
 			expect(step.action.type).toBe('function');
+
+			// Verify toolCallId consistency between action and messageLog
+			const toolCallInMessage = step.action.messageLog[0].tool_calls[0];
+			expect(step.action.toolCallId).toBe(toolCallInMessage.id);
+			expect(toolCallInMessage.name).toBe('TestTool');
+			expect(toolCallInMessage.args).toEqual({ input: 'test data' });
 		});
 
 		it('should use regular execution on version 2.2 when enableStreaming is false', async () => {

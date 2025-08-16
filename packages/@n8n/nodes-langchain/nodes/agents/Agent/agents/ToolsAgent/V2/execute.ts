@@ -184,6 +184,10 @@ function processNonStreamingIntermediateSteps(
 		if (step.action) {
 			processedStep.action = { ...step.action };
 
+			// Generate a consistent toolCallId if missing (only once!)
+			const toolCallId =
+				processedStep.action.toolCallId || `call_${step.action.tool}_${Date.now()}`;
+
 			// Add missing metadata that streaming provides
 			// Note: In non-streaming mode, we don't have access to the full LLM response
 			// with tool_calls, so we construct what we can from available data
@@ -198,8 +202,8 @@ function processNonStreamingIntermediateSteps(
 							{
 								name: step.action.tool,
 								args: step.action.toolInput,
-								// Generate a consistent toolCallId if missing
-								id: step.action.toolCallId || `call_${step.action.tool}_${Date.now()}`,
+								// Use the consistent toolCallId
+								id: toolCallId,
 								type: step.action.type || 'function',
 							},
 						],
@@ -207,10 +211,8 @@ function processNonStreamingIntermediateSteps(
 				];
 			}
 
-			// Ensure toolCallId is present
-			if (!processedStep.action.toolCallId) {
-				processedStep.action.toolCallId = `call_${step.action.tool}_${Date.now()}`;
-			}
+			// Ensure toolCallId is present (use the same generated ID)
+			processedStep.action.toolCallId = toolCallId;
 
 			// Ensure type is present
 			if (!processedStep.action.type) {
