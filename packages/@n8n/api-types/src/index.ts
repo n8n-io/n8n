@@ -56,4 +56,5 @@ export {
 	type DataStoreRows,
 	type DataStoreListOptions,
 	type DataStoreUserTableName,
+	dateTimeSchema,
 } from './schemas/data-store.schema';

@@ -1,3 +1,4 @@
+import { dateTimeSchema } from '@n8n/api-types';
 import type {
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
@@ -172,29 +173,38 @@ export class DataStoreService {
 				if (cell === null) continue;
 				switch (columnTypeMap.get(key)) {
 					case 'boolean':
-						if (typeof cell !== 'boolean')
+						if (typeof cell !== 'boolean') {
 							throw new DataStoreValidationError(
 								`value '${cell.toString()}' does not match column type 'boolean'`,
 							);
+						}
 						break;
 					case 'date':
-						if (!(cell instanceof Date))
-							throw new DataStoreValidationError(
-								`value '${cell}' does not match column type 'date'`,
-							);
-						row[key] = cell.toISOString();
-						break;
+						if (typeof cell === 'string') {
+							const validated = dateTimeSchema.safeParse(cell);
+							if (validated.success) {
+								row[key] = validated.data.toISOString();
+								break;
+							}
+						} else if (cell instanceof Date) {
+							row[key] = cell.toISOString();
+							break;
+						}
+
+						throw new DataStoreValidationError(`value '${cell}' does not match column type 'date'`);
 					case 'string':
-						if (typeof cell !== 'string')
+						if (typeof cell !== 'string') {
 							throw new DataStoreValidationError(
 								`value '${cell.toString()}' does not match column type 'string'`,
 							);
+						}
 						break;
 					case 'number':
-						if (typeof cell !== 'number')
+						if (typeof cell !== 'number') {
 							throw new DataStoreValidationError(
 								`value '${cell.toString()}' does not match column type 'number'`,
 							);
+						}
 						break;
 				}
 			}

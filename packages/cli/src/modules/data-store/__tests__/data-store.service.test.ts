@@ -875,6 +875,12 @@ describe('dataStore', () => {
 				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
 				{ c1: 4, c2: false, c3: new Date(), c4: 'hello!' },
 				{ c1: 5, c2: true, c3: new Date(), c4: 'hello.' },
+				{
+					c1: 1,
+					c2: true,
+					c3: '2025-08-15T09:48:14.259Z',
+					c4: 'iso 8601 date strings are okay too',
+				},
 			];
 			const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows);
 
@@ -886,7 +892,7 @@ describe('dataStore', () => {
 				project1.id,
 				{},
 			);
-			expect(count).toEqual(3);
+			expect(count).toEqual(4);
 			expect(data).toEqual(
 				rows.map((row, i) => ({
 					...row,
@@ -996,6 +1002,26 @@ describe('dataStore', () => {
 
 			// ASSERT
 			await expect(result).rejects.toThrow(new DataStoreValidationError('unknown column name'));
+		});
+
+		it('rejects a invalid date string to date column', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'c1', type: 'date' }],
+			});
+
+			// ACT
+			const result = dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ c1: '2025-99-15T09:48:14.259Z' },
+			]);
+
+			// ASSERT
+			await expect(result).rejects.toThrow(
+				new DataStoreValidationError(
+					"value '2025-99-15T09:48:14.259Z' does not match column type 'date'",
+				),
+			);
 		});
 
 		it('rejects unknown data store id', async () => {
