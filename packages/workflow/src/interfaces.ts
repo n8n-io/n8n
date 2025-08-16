@@ -2579,6 +2579,11 @@ export interface IWorkflowSettings {
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
 	timeSavedPerExecution?: number;
+	/**
+	 * Optional queue execution priority. Controls the relative priority of queued executions.
+	 * Defaults to 'medium' when unspecified.
+	 */
+	queuePriority?: 'low' | 'medium' | 'high';
 }
 
 export interface WorkflowFEMeta {
