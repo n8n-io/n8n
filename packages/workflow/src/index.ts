@@ -43,6 +43,7 @@ export {
 	randomString,
 	isSafeObjectProperty,
 	setSafeObjectProperty,
+	isDomainAllowed,
 } from './utils';
 export {
 	isINodeProperties,

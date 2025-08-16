@@ -358,3 +358,43 @@ export function setSafeObjectProperty(
 		target[property] = value;
 	}
 }
+
+export function isDomainAllowed(
+	urlString: string,
+	options: {
+		allowedDomains: string;
+	},
+): boolean {
+	if (!options.allowedDomains || options.allowedDomains.trim() === '') {
+		return true; // If no restrictions are set, allow all domains
+	}
+
+	try {
+		const url = new URL(urlString);
+		const hostname = url.hostname;
+
+		const allowedDomainsList = options.allowedDomains
+			.split(',')
+			.map((domain) => domain.trim())
+			.filter(Boolean);
+
+		for (const allowedDomain of allowedDomainsList) {
+			// Handle wildcard domains (*.example.com)
+			if (allowedDomain.startsWith('*.')) {
+				const domainSuffix = allowedDomain.substring(2); // Remove the *. part
+				if (hostname.endsWith(domainSuffix)) {
+					return true;
+				}
+			}
+			// Exact match
+			else if (hostname === allowedDomain) {
+				return true;
+			}
+		}
+
+		return false;
+	} catch (error) {
+		// If URL parsing fails, deny access to be safe
+		return false;
+	}
+}
