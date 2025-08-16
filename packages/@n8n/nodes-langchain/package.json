@@ -97,6 +97,7 @@
       "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",
       "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
+      "dist/nodes/memory/MemorySQLiteChat/MemorySQLiteChat.node.js",
       "dist/nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.js",
       "dist/nodes/memory/MemoryMongoDbChat/MemoryMongoDbChat.node.js",
       "dist/nodes/memory/MemoryRedisChat/MemoryRedisChat.node.js",
