@@ -78,9 +78,40 @@ jobs:
       release_type: stable
     secrets: inherit
 
+  generate-licenses:
+    name: Generate Third-Party Licenses
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate third-party licenses
+        run: pnpm generate-licenses
+        continue-on-error: true
+
+      - name: Upload licenses as artifact
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+        with:
+          name: third-party-licenses
+          path: THIRD_PARTY_LICENSES.md
+          if-no-files-found: ignore
+
   create-github-release:
     name: Create a GitHub Release
-    needs: [publish-to-npm, publish-to-docker-hub]
+    needs: [publish-to-npm, publish-to-docker-hub, generate-licenses]
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     timeout-minutes: 5
@@ -90,6 +121,12 @@ jobs:
       id-token: write
 
     steps:
+      - name: Download third-party licenses
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        continue-on-error: true
+        with:
+          name: third-party-licenses
+
       - name: Create a Release on GitHub
         uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174 # v1
         with:
@@ -98,6 +135,7 @@ jobs:
           prerelease: true
           makeLatest: false
           body: ${{github.event.pull_request.body}}
+          artifacts: "THIRD_PARTY_LICENSES.md"
 
   create-sentry-release:
     name: Create a Sentry Release

@@ -114,6 +114,8 @@
 	"about.n8nLicense": "Sustainable Use License + n8n Enterprise License",
 	"about.n8nVersion": "n8n Version",
 	"about.sourceCode": "Source Code",
+	"about.thirdPartyLicenses": "Third-Party Licenses",
+	"about.thirdPartyLicensesLink": "View all third-party licenses",
 	"about.instanceID": "Instance ID",
 	"about.debug.title": "Debug",
 	"about.debug.message": "Copy debug information",
