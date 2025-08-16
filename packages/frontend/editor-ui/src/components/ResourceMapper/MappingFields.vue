@@ -19,6 +19,7 @@ import {
 	fieldCannotBeDeleted,
 	isMatchingField,
 	parseResourceMapperFieldName,
+	escapeResourceMapperFieldName,
 } from '@/utils/nodeTypesUtils';
 import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
 import {
@@ -88,7 +89,8 @@ const fieldsUi = computed<Array<INodeProperties & { readOnly: boolean }>>(() => 
 			return {
 				displayName: getFieldLabel(field),
 				// Set part of the path to each param name so value can be fetched properly by input parameter list component
-				name: `value["${field.id}"]`,
+				// Escape special characters to prevent parameter name parsing issues
+				name: `value["${escapeResourceMapperFieldName(field.id)}"]`,
 				type: getParamType(field),
 				default: field.type === 'boolean' ? false : '',
 				required: field.required,

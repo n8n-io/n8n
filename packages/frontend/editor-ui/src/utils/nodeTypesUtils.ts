@@ -401,23 +401,64 @@ export const isNodeParameterRequired = (
 	// If parameter itself contains 'none'?
 	// Walk through dependencies and check if all their values are used in displayOptions
 	Object.keys(parameter.displayOptions.show).forEach((name) => {
-		const relatedField = nodeType.properties.find((prop) => {
-			prop.name === name;
-		});
+		const relatedField = nodeType.properties.find((prop) => prop.name === name);
 		if (relatedField && !isNodeParameterRequired(nodeType, relatedField)) {
 			return false;
-		} else {
-			return true;
 		}
+		return true;
 	});
 	return true;
+};
+
+const safeBase64Encode = (str: string): string => {
+	const utf8Bytes = new TextEncoder().encode(str);
+	const binaryString = Array.from(utf8Bytes, (byte) => String.fromCharCode(byte)).join('');
+	return btoa(binaryString);
+};
+
+const safeBase64Decode = (str: string): string => {
+	const binaryString = atob(str);
+	const utf8Bytes = new Uint8Array(Array.from(binaryString, (char) => char.charCodeAt(0)));
+	return new TextDecoder().decode(utf8Bytes);
+};
+
+export const escapeResourceMapperFieldName = (fieldName: string): string => {
+	return '__enc_' + safeBase64Encode(fieldName);
+};
+
+export const unescapeResourceMapperFieldName = (fieldName: string): string => {
+	if (fieldName.startsWith('__enc_')) {
+		try {
+			const encodedPart = fieldName.substring(6);
+			return safeBase64Decode(encodedPart);
+		} catch {
+			return fieldName;
+		}
+	}
+	return fieldName;
 };
 
 export const parseResourceMapperFieldName = (fullName: string) => {
 	const match = fullName.match(RESOURCE_MAPPER_FIELD_NAME_REGEX);
 	const fieldName = match ? match.pop() : fullName;
 
+	if (fieldName) {
+		return unescapeResourceMapperFieldName(fieldName);
+	}
+
 	return fieldName;
+};
+
+export const isMatchingField = (
+	field: string,
+	matchingFields: string[],
+	showMatchingColumnsSelector: boolean,
+): boolean => {
+	const fieldName = parseResourceMapperFieldName(field);
+	if (fieldName) {
+		return showMatchingColumnsSelector && (matchingFields || []).includes(fieldName);
+	}
+	return false;
 };
 
 export const fieldCannotBeDeleted = (
@@ -466,18 +507,6 @@ export const isResourceMapperFieldListStale = (
 		}
 	}
 
-	return false;
-};
-
-export const isMatchingField = (
-	field: string,
-	matchingFields: string[],
-	showMatchingColumnsSelector: boolean,
-): boolean => {
-	const fieldName = parseResourceMapperFieldName(field);
-	if (fieldName) {
-		return showMatchingColumnsSelector && (matchingFields || []).includes(fieldName);
-	}
 	return false;
 };
 
