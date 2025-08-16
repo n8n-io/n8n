@@ -3,13 +3,14 @@ import type { ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import { StateGraph, MemorySaver, END } from '@langchain/langgraph';
+import { StateGraph, MemorySaver, END, GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
-import type {
-	INodeTypeDescription,
-	IRunExecutionData,
-	IWorkflowBase,
-	NodeExecutionSchema,
+import {
+	ApplicationError,
+	type INodeTypeDescription,
+	type IRunExecutionData,
+	type IWorkflowBase,
+	type NodeExecutionSchema,
 } from 'n8n-workflow';
 
 import { workflowNameChain } from '@/chains/workflow-name';
@@ -320,51 +321,89 @@ export class WorkflowBuilderAgent {
 		const streamConfig = {
 			...threadConfig,
 			streamMode: ['updates', 'custom'],
-			recursionLimit: 30,
+			recursionLimit: 50,
 			signal: abortSignal,
 			callbacks: this.tracer ? [this.tracer] : undefined,
 		} as RunnableConfig;
 
-		const stream = await agent.stream(
-			{
-				messages: [new HumanMessage({ content: payload.message })],
-				workflowJSON: this.getDefaultWorkflowJSON(payload),
-				workflowOperations: [],
-				workflowContext: payload.workflowContext,
-			},
-			streamConfig,
-		);
-
 		try {
-			const streamProcessor = createStreamProcessor(stream);
-			for await (const output of streamProcessor) {
-				yield output;
-			}
-		} catch (error) {
-			if (
-				error &&
-				typeof error === 'object' &&
-				'message' in error &&
-				typeof error.message === 'string' &&
-				// This is naive, but it's all we get from LangGraph AbortError
-				['Abort', 'Aborted'].includes(error.message)
-			) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const messages = (await agent.getState(threadConfig)).values.messages as Array<
-					AIMessage | HumanMessage | ToolMessage
-				>;
+			const stream = await agent.stream(
+				{
+					messages: [new HumanMessage({ content: payload.message })],
+					workflowJSON: this.getDefaultWorkflowJSON(payload),
+					workflowOperations: [],
+					workflowContext: payload.workflowContext,
+				},
+				streamConfig,
+			);
 
-				// Handle abort errors gracefully
-				const abortedAiMessage = new AIMessage({
-					content: '[Task aborted]',
-					id: crypto.randomUUID(),
-				});
-				// TODO: Should we clear tool calls that are in progress?
-				await agent.updateState(threadConfig, { messages: [...messages, abortedAiMessage] });
-				return;
+			try {
+				const streamProcessor = createStreamProcessor(stream);
+				for await (const output of streamProcessor) {
+					yield output;
+				}
+			} catch (error) {
+				if (
+					error &&
+					typeof error === 'object' &&
+					'message' in error &&
+					typeof error.message === 'string' &&
+					// This is naive, but it's all we get from LangGraph AbortError
+					['Abort', 'Aborted'].includes(error.message)
+				) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+					const messages = (await agent.getState(threadConfig)).values.messages as Array<
+						AIMessage | HumanMessage | ToolMessage
+					>;
+
+					// Handle abort errors gracefully
+					const abortedAiMessage = new AIMessage({
+						content: '[Task aborted]',
+						id: crypto.randomUUID(),
+					});
+					// TODO: Should we clear tool calls that are in progress?
+					await agent.updateState(threadConfig, { messages: [...messages, abortedAiMessage] });
+					return;
+				} else if (error instanceof GraphRecursionError) {
+					throw new ApplicationError(
+						'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.',
+					);
+				}
+
+				throw error;
 			}
+		} catch (error: unknown) {
+			const invalidRequestErrorMessage = this.getInvalidRequestError(error);
+			if (invalidRequestErrorMessage) {
+				throw new ApplicationError(invalidRequestErrorMessage);
+			}
+
 			throw error;
 		}
+	}
+
+	private getInvalidRequestError(error: unknown): string | undefined {
+		if (
+			error instanceof Error &&
+			'error' in error &&
+			typeof error.error === 'object' &&
+			error.error
+		) {
+			const innerError = error.error;
+			if ('error' in innerError && typeof innerError.error === 'object' && innerError.error) {
+				const errorDetails = innerError.error;
+				if (
+					'type' in errorDetails &&
+					errorDetails.type === 'invalid_request_error' &&
+					'message' in errorDetails &&
+					typeof errorDetails.message === 'string'
+				) {
+					return errorDetails.message;
+				}
+			}
+		}
+
+		return undefined;
 	}
 
 	async getSessions(workflowId: string | undefined, userId?: string) {
