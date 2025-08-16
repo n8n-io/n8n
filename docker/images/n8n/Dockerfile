@@ -3,22 +3,30 @@ ARG N8N_VERSION=snapshot
 ARG LAUNCHER_VERSION=1.1.5
 ARG TARGETPLATFORM
 
-# ==============================================================================
 # STAGE 1: System Dependencies & Base Setup
-# ==============================================================================
+
 FROM n8nio/base:${NODE_VERSION} AS system-deps
 
-# ==============================================================================
+
 # STAGE 2: Application Artifact Processor
-# ==============================================================================
+
 FROM alpine:3.22.0 AS app-artifact-processor
 
-COPY ./compiled /app/
 
-# ==============================================================================
+#COPY ./compiled /app/
+
+
+# COPY ./compiled /app/
+bd6d918f7 (fix: resuelto conflicto en Dockerfile)
+
+#COPY ./compiled /app/
+af79e4067 (feat: compilado generado y launcher-bin añadido para build funcional)
+
+
 # STAGE 3: Task Runner Launcher
-# ==============================================================================
+
 FROM alpine:3.22.0 AS launcher-downloader
+COPY docker/images/n8n/launcher-bin /launcher-bin
 ARG TARGETPLATFORM
 ARG LAUNCHER_VERSION
 
@@ -37,9 +45,9 @@ RUN set -e; \
     tar xzf task-runner-launcher-${LAUNCHER_VERSION}-linux-${ARCH_NAME}.tar.gz -C /launcher-bin; \
     cd / && rm -rf /launcher-temp
 
-# ==============================================================================
+
 # STAGE 4: Final Runtime Image
-# ==============================================================================
+
 FROM system-deps AS runtime
 
 ARG N8N_VERSION
@@ -51,7 +59,7 @@ ENV SHELL=/bin/sh
 
 WORKDIR /home/node
 
-COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
+#COPY --from=app-artifact-processor /app /usr/local/lib/node_modules/n8n
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 COPY docker/images/n8n/docker-entrypoint.sh /
 COPY docker/images/n8n/n8n-task-runners.json /etc/n8n-task-runners.json
