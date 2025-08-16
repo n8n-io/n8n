@@ -46,7 +46,8 @@
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XAiApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
-      "dist/credentials/ZepApi.credentials.js"
+      "dist/credentials/ZepApi.credentials.js",
+      "dist/credentials/MoorchehApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
@@ -145,6 +146,7 @@
       "dist/nodes/vector_store/VectorStoreZep/VectorStoreZep.node.js",
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
+      "dist/nodes/vector_store/VectorStoreMoorcheh/VectorStoreMoorcheh.node.js",
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
       "dist/nodes/ModelSelector/ModelSelector.node.js"
     ]

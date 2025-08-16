@@ -6,6 +6,8 @@ import type { QdrantCredential } from '../../../VectorStoreQdrant/Qdrant.utils';
 import { createQdrantClient } from '../../../VectorStoreQdrant/Qdrant.utils';
 import type { WeaviateCredential } from '../../../VectorStoreWeaviate/Weaviate.utils';
 import { createWeaviateClient } from '../../../VectorStoreWeaviate/Weaviate.utils';
+import type { MoorchehCredential } from '../../../VectorStoreMoorcheh/Moorcheh.utils';
+import { createMoorchehClient } from '../../../VectorStoreMoorcheh/Moorcheh.utils';
 
 export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('pineconeApi');
@@ -103,6 +105,58 @@ export async function weaviateCollectionsSearch(this: ILoadOptionsFunctions) {
 		name: collection.name,
 		value: collection.name,
 	}));
+
+	return { results };
+}
+
+export async function moorchehNamespacesSearch(this: ILoadOptionsFunctions) {
+	function isMoorchehCredential(value: unknown): value is MoorchehCredential {
+		if (!value || typeof value !== 'object') return false;
+		const cred = value as Record<string, unknown>;
+		return (
+			typeof cred.apiKey === 'string' &&
+			(cred.baseUrl === undefined || typeof cred.baseUrl === 'string')
+		);
+	}
+
+	const credentials = await this.getCredentials('moorchehApi');
+	if (!isMoorchehCredential(credentials)) {
+		throw new ApplicationError('Invalid Moorcheh API credentials format');
+	}
+
+	const client = createMoorchehClient(credentials);
+
+	const namespaces = await client.listNamespaces();
+
+	// Only list vector namespaces for the vector store node
+	const results = namespaces
+		.filter((ns: any) => {
+			const type = (ns?.type ?? '').toString().toLowerCase();
+			// Some APIs may not return `type`, so try to infer from presence of dimension fields
+			const looksVector =
+				type === 'vector' ||
+				typeof ns?.vector_dimension === 'number' ||
+				typeof ns?.dimension === 'number';
+			// Keep only vector-like namespaces
+			return looksVector;
+		})
+		.map((ns: any) => {
+			const rawName =
+				ns?.name || ns?.namespace_name || ns?.namespace || (ns?.id != null ? String(ns.id) : '');
+			const dimension =
+				typeof ns?.vector_dimension === 'number'
+					? ns.vector_dimension
+					: typeof ns?.dimension === 'number'
+						? ns.dimension
+						: undefined;
+
+			return {
+				name: typeof dimension === 'number' ? `${rawName} (dim ${dimension})` : String(rawName),
+				value: String(rawName),
+			};
+		})
+		// Filter out any entries where value could not be determined
+		.filter((r: { value: string }) => !!r.value);
 
 	return { results };
 }

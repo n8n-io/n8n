@@ -114,3 +114,26 @@ export const weaviateCollectionRLC: INodeProperties = {
 		},
 	],
 };
+
+export const moorchehNamespaceRLC: INodeProperties = {
+	displayName: 'Moorcheh Namespace',
+	name: 'moorchehNamespace',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'moorchehNamespacesSearch',
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+		},
+	],
+};

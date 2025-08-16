@@ -1,0 +1,79 @@
+{
+	"name": "Test Moorcheh Insert Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "11b9ac05-3b5d-4e81-b2b3-7c2f8b2e0123",
+			"name": "Start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [240, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  { json: { data: \"Sample document 1 content\" } },\n  { json: { data: \"Sample document 2 content\" } }\n];"
+			},
+			"id": "22c9bd16-4c6e-5f92-c3c4-8d3f9c3f0234",
+			"name": "Generate Test Data",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [460, 300]
+		},
+		{
+			"parameters": {
+				"mode": "insert",
+				"moorchehNamespace": {
+					"__rl": true,
+					"value": "test-namespace",
+					"mode": "name"
+				},
+				"options": {
+					"vectorDimension": 1536
+				}
+			},
+			"id": "33d9ce27-5d7f-6g03-d4d5-9e4h0d4g0345",
+			"name": "Moorcheh Vector Store",
+			"type": "n8n-nodes-langchain.vectorStoreMoorcheh",
+			"typeVersion": 1,
+			"position": [680, 300],
+			"credentials": {
+				"moorchehApi": {
+					"id": "44e9df38-6e8a-7b14-e5e6-0f5a1e5b0456",
+					"name": "Test Moorcheh API"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Generate Test Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Test Data": {
+			"main": [
+				[
+					{
+						"node": "Moorcheh Vector Store",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "55f9eg49-7f9h-8i25-f6f7-1g6j2f6i0567",
+	"meta": {
+		"instanceId": "66g9fh50-8g0i-9j36-g7g8-2h7k3g7j0678"
+	},
+	"id": "77h9gi61-9h1j-0k47-h8h9-3i8l4h8k0789",
+	"tags": []
+}
