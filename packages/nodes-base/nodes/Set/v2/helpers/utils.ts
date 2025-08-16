@@ -232,10 +232,11 @@ export function resolveRawData(
 		for (const resolvable of resolvables) {
 			const resolvedValue = this.evaluateExpression(`${resolvable}`, i);
 
+			// Use a function replacer to avoid issues with special replacement patterns like $&
 			if (typeof resolvedValue === 'object' && resolvedValue !== null) {
-				returnData = returnData.replace(resolvable, JSON.stringify(resolvedValue));
+				returnData = returnData.replace(resolvable, () => JSON.stringify(resolvedValue));
 			} else {
-				returnData = returnData.replace(resolvable, resolvedValue as string);
+				returnData = returnData.replace(resolvable, () => String(resolvedValue));
 			}
 		}
 	}
