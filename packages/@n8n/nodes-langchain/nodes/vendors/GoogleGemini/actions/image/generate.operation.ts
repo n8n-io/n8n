@@ -43,6 +43,36 @@ const properties: INodeProperties[] = [
 				default: 'data',
 				hint: 'The name of the output field to put the binary file data in',
 			},
+			{
+				displayName: 'Aspect Ratio',
+				name: 'aspectRatio',
+				default: '1:1',
+				description:
+					'Aspect ratio for the generated images. Not supported by Gemini models, supported by Imagen models.',
+				type: 'options',
+				options: [
+					{
+						name: '1:1',
+						value: '1:1',
+					},
+					{
+						name: '9:16',
+						value: '9:16',
+					},
+					{
+						name: '16:9',
+						value: '16:9',
+					},
+					{
+						name: '4:3',
+						value: '4:3',
+					},
+					{
+						name: '3:4',
+						value: '3:4',
+					},
+				],
+			},
 		],
 	},
 ];
@@ -106,6 +136,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	} else if (model.includes('imagen')) {
 		// Imagen models use a different endpoint and request/response structure
 		const sampleCount = this.getNodeParameter('options.sampleCount', i, 1) as number;
+		const aspectRatio = this.getNodeParameter('options.aspectRatio', i, '1:1') as string;
 		const body = {
 			instances: [
 				{
@@ -114,6 +145,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			],
 			parameters: {
 				sampleCount,
+				aspectRatio,
 			},
 		};
 		const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:predict`, {
