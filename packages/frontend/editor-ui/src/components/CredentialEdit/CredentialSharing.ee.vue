@@ -82,11 +82,12 @@ const credentialRoleTranslations = computed<Record<string, string>>(() => {
 });
 
 const credentialRoles = computed<AllRolesMap['credential']>(() => {
-	return rolesStore.processedCredentialRoles.map(({ role, scopes, licensed }) => ({
+	return rolesStore.processedCredentialRoles.map(({ role, scopes, licensed, description }) => ({
 		role,
 		name: credentialRoleTranslations.value[role],
 		scopes,
 		licensed,
+		description,
 	}));
 });
 

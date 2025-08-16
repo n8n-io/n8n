@@ -33,3 +33,5 @@ export { wrapMigration } from './migrations/migration-helpers';
 export * from './migrations/migration-types';
 export { DbConnection } from './connection/db-connection';
 export { DbConnectionOptions } from './connection/db-connection-options';
+
+export { AuthRolesService } from './services/auth.roles.service';

@@ -2,6 +2,7 @@ export type * from './types.ee';
 export * from './constants.ee';
 
 export * from './roles/scopes/global-scopes.ee';
+export * from './scope-information';
 export * from './roles/role-maps.ee';
 export * from './roles/all-roles';
 
