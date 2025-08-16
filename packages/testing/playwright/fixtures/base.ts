@@ -146,8 +146,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		await use(n8nInstance);
 	},
 
-	api: async ({ context }, use) => {
+	api: async ({ context }, use, testInfo) => {
 		const api = new ApiHelpers(context.request);
+		await api.setupFromTags(testInfo.tags);
 		await use(api);
 	},
 

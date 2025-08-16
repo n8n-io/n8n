@@ -69,7 +69,7 @@ test('Performance under constraints @cloud:trial', async ({ n8n, api }) => {
   - `base.ts`: Standard fixtures with worker-scoped containers
   - `cloud-only.ts`: Cloud resource testing with test-scoped containers only
 - **pages**: Page Object Models for UI interactions
-- **services**: API helpers for E2E controller, REST calls, etc.
+- **services**: API helpers for E2E controller, REST calls, workflow management, etc.
 - **utils**: Utility functions (string manipulation, helpers, etc.)
 - **workflows**: Test workflow JSON files for import/reuse
 
