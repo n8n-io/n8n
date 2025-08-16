@@ -7,6 +7,7 @@ export * from './errors';
 export * from './constants';
 export * from './common';
 export * from './cron';
+export * from './data-store.types';
 export * from './deferred-promise';
 export * from './global-state';
 export * from './interfaces';
