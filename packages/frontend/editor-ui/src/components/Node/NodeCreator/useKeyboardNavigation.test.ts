@@ -86,3 +86,117 @@ describe('useKeyboardNavigation', () => {
 		expect(eventHookSpy).toHaveBeenCalledWith('item1', 'Escape');
 	});
 });
+
+describe('shouldAllowNativeInputBehavior', () => {
+	const InputTestComponent = defineComponent({
+		setup() {
+			const { attachKeydownEvent, detachKeydownEvent } = useKeyboardNavigation();
+			return { attachKeydownEvent, detachKeydownEvent };
+		},
+		mounted() {
+			this.attachKeydownEvent();
+		},
+		template: `
+			<div>
+				<input
+					id="search-input"
+					type="text"
+					placeholder="Search..."
+					data-test-id="search-input"
+				/>
+				<textarea
+					id="text-area"
+					placeholder="Enter text..."
+					data-test-id="text-area"
+				></textarea>
+				<div
+					data-keyboard-nav-id="item1"
+					data-keyboard-nav-type="node"
+					data-test-id="nav-item"
+				>
+					Item 1
+				</div>
+			</div>
+		`,
+	});
+
+	const renderInputComponent = createComponentRenderer(InputTestComponent, {
+		pinia: createPinia(),
+	});
+
+	test('allows left/right arrows for cursor movement in non-empty input', async () => {
+		const { container } = renderInputComponent();
+		const input = container.querySelector('#search-input') as HTMLInputElement;
+
+		// Type some text in the input
+		await userEvent.click(input);
+		await userEvent.type(input, 'hello');
+
+		// Position cursor at the beginning
+		input.setSelectionRange(0, 0);
+		expect(input.selectionStart).toBe(0);
+
+		// Right arrow should move cursor (native behavior)
+		await userEvent.keyboard('{arrowright}');
+		expect(input.selectionStart).toBe(1);
+
+		// Left arrow should move cursor (native behavior)
+		await userEvent.keyboard('{arrowleft}');
+		expect(input.selectionStart).toBe(0);
+	});
+
+	test('allows left/right arrows for cursor movement in non-empty textarea', async () => {
+		const { container } = renderInputComponent();
+		const textarea = container.querySelector('#text-area') as HTMLTextAreaElement;
+
+		// Type some text in the textarea
+		await userEvent.click(textarea);
+		await userEvent.type(textarea, 'hello world');
+
+		// Position cursor at the beginning
+		textarea.setSelectionRange(0, 0);
+		expect(textarea.selectionStart).toBe(0);
+
+		// Right arrow should move cursor (native behavior)
+		await userEvent.keyboard('{arrowright}');
+		expect(textarea.selectionStart).toBe(1);
+	});
+
+	test('prevents left/right arrows in empty input (allows navigation)', async () => {
+		const { container } = renderInputComponent();
+		const input = container.querySelector('#search-input') as HTMLInputElement;
+
+		// Focus empty input
+		await userEvent.click(input);
+		expect(input.value).toBe('');
+
+		// Store original cursor position (should be 0)
+		const originalPosition = input.selectionStart;
+		expect(originalPosition).toBe(0);
+
+		// Try to move cursor with right arrow - should NOT move because navigation intercepts
+		await userEvent.keyboard('{arrowright}');
+
+		// Cursor position should remain the same because preventDefault was called
+		expect(input.selectionStart).toBe(originalPosition);
+	});
+
+	test('allows up/down arrows for navigation even in non-empty input', async () => {
+		const { container } = renderInputComponent();
+		const input = container.querySelector('#search-input') as HTMLInputElement;
+
+		// Type some text in the input
+		await userEvent.click(input);
+		await userEvent.type(input, 'hello');
+
+		// Position cursor in the middle
+		input.setSelectionRange(2, 2);
+		const originalPosition = input.selectionStart;
+
+		// Down arrow should trigger navigation (preventDefault), not move cursor
+		await userEvent.keyboard('{arrowdown}');
+
+		// Cursor position should remain the same because navigation took over
+		expect(input.selectionStart).toBe(originalPosition);
+	});
+});
