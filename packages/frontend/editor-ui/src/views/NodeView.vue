@@ -1842,6 +1842,17 @@ watch(
 	},
 );
 
+// Watch for workflow ID changes to handle navigation between different workflows
+watch(
+	() => workflowId.value,
+	async (newWorkflowId, oldWorkflowId) => {
+		// Only reinitialize if we're navigating between different workflows (not initial load)
+		if (newWorkflowId && oldWorkflowId && newWorkflowId !== oldWorkflowId) {
+			await initializeRoute(true);
+		}
+	},
+);
+
 watch(
 	() => {
 		return isLoading.value || isCanvasReadOnly.value || editableWorkflow.value.nodes.length !== 0;
@@ -1908,6 +1919,7 @@ watch(
 	},
 );
 onBeforeRouteLeave(async (to, from, next) => {
+	console.log('onBeforeRouteLeave', to, from);
 	const toNodeViewTab = getNodeViewTab(to);
 
 	if (
@@ -1948,12 +1960,38 @@ onBeforeRouteLeave(async (to, from, next) => {
  * Lifecycle
  */
 
+let routerGuardRemover: (() => void) | null = null;
+
 onBeforeMount(() => {
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushConnect();
 	}
 
 	addPostMessageEventBindings();
+
+	// Add router guard to handle navigation between different workflows
+	routerGuardRemover = router.beforeEach(async (to, from, next) => {
+		// Only handle workflow route changes where the workflow ID is different
+		const isFromWorkflow = from.name === VIEWS.WORKFLOW;
+		const isToWorkflow = to.name === VIEWS.WORKFLOW;
+		const isSameRoute = from.name === to.name;
+		const isDifferentWorkflowId = from.params.name !== to.params.name;
+
+		if (isFromWorkflow && isToWorkflow && isSameRoute && isDifferentWorkflowId) {
+			// Check for unsaved changes
+			const hasUnsavedChanges = uiStore.stateIsDirty && !workflowsStore.isNewWorkflow;
+			if (hasUnsavedChanges) {
+				await useWorkflowSaving({ router }).promptSaveUnsavedWorkflowChanges(next, {
+					async confirm() {
+						return true;
+					},
+				});
+				return;
+			}
+		}
+
+		next();
+	});
 });
 
 onMounted(() => {
@@ -2023,6 +2061,11 @@ onBeforeUnmount(() => {
 	unregisterCustomActions();
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushDisconnect();
+	}
+
+	// Remove router guard
+	if (routerGuardRemover) {
+		routerGuardRemover();
 	}
 });
 </script>

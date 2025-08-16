@@ -81,6 +81,8 @@ import IconLucideContrast from '~icons/lucide/contrast';
 import IconLucideCopy from '~icons/lucide/copy';
 import IconLucideCrosshair from '~icons/lucide/crosshair';
 import IconLucideDatabase from '~icons/lucide/database';
+import IconLucideDoorOpen from '~icons/lucide/door-open';
+import IconLucideDot from '~icons/lucide/dot';
 import IconLucideEarth from '~icons/lucide/earth';
 import IconLucideEllipsis from '~icons/lucide/ellipsis';
 import IconLucideEllipsisVertical from '~icons/lucide/ellipsis-vertical';
@@ -144,6 +146,8 @@ import IconLucideNetwork from '~icons/lucide/network';
 import IconLucidePackageOpen from '~icons/lucide/package-open';
 import IconLucidePalette from '~icons/lucide/palette';
 import IconLucidePanelRight from '~icons/lucide/panel-right';
+import IconLucidePanelLeftOpen from '~icons/lucide/panel-left-open';
+import IconLucidePanelLeftClose from '~icons/lucide/panel-left-close';
 import IconLucidePause from '~icons/lucide/pause';
 import IconLucidePen from '~icons/lucide/pen';
 import IconLucidePencil from '~icons/lucide/pencil';
@@ -492,6 +496,8 @@ export const updatedIconSet = {
 	copy: IconLucideCopy,
 	crosshair: IconLucideCrosshair,
 	database: IconLucideDatabase,
+	'door-open': IconLucideDoorOpen,
+	dot: IconLucideDot,
 	earth: IconLucideEarth,
 	ellipsis: IconLucideEllipsis,
 	'ellipsis-vertical': IconLucideEllipsisVertical,
@@ -555,6 +561,8 @@ export const updatedIconSet = {
 	'package-open': IconLucidePackageOpen,
 	palette: IconLucidePalette,
 	'panel-right': IconLucidePanelRight,
+	'panel-left-open': IconLucidePanelLeftOpen,
+	'panel-left-close': IconLucidePanelLeftClose,
 	pause: IconLucidePause,
 	pen: IconLucidePen,
 	pencil: IconLucidePencil,
