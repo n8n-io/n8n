@@ -161,6 +161,72 @@ async function processEventStream(
 	return agentResult;
 }
 
+/**
+ * Processes intermediate steps from non-streaming execution to match the format
+ * provided by streaming execution, ensuring consistent intermediate step metadata.
+ */
+function processNonStreamingIntermediateSteps(
+	result: any,
+	returnIntermediateSteps: boolean = false,
+): any {
+	if (
+		!returnIntermediateSteps ||
+		!result.intermediateSteps ||
+		!Array.isArray(result.intermediateSteps)
+	) {
+		return result;
+	}
+
+	// Process each intermediate step to match streaming format
+	const processedSteps = result.intermediateSteps.map((step: any) => {
+		const processedStep = { ...step };
+
+		if (step.action) {
+			processedStep.action = { ...step.action };
+
+			// Add missing metadata that streaming provides
+			// Note: In non-streaming mode, we don't have access to the full LLM response
+			// with tool_calls, so we construct what we can from available data
+			if (!processedStep.action.messageLog) {
+				// Create a basic messageLog entry from available information
+				processedStep.action.messageLog = [
+					{
+						content:
+							step.action.log ||
+							`Calling ${step.action.tool} with input: ${JSON.stringify(step.action.toolInput)}`,
+						tool_calls: [
+							{
+								name: step.action.tool,
+								args: step.action.toolInput,
+								// Generate a consistent toolCallId if missing
+								id: step.action.toolCallId || `call_${step.action.tool}_${Date.now()}`,
+								type: step.action.type || 'function',
+							},
+						],
+					},
+				];
+			}
+
+			// Ensure toolCallId is present
+			if (!processedStep.action.toolCallId) {
+				processedStep.action.toolCallId = `call_${step.action.tool}_${Date.now()}`;
+			}
+
+			// Ensure type is present
+			if (!processedStep.action.type) {
+				processedStep.action.type = 'function';
+			}
+		}
+
+		return processedStep;
+	});
+
+	return {
+		...result,
+		intermediateSteps: processedSteps,
+	};
+}
+
 /* -----------------------------------------------------------
    Main Executor Function
 ----------------------------------------------------------- */
@@ -283,7 +349,9 @@ export async function toolsAgentExecute(
 				);
 			} else {
 				// Handle regular execution
-				return await executor.invoke(invokeParams, executeOptions);
+				const result = await executor.invoke(invokeParams, executeOptions);
+				// Process intermediate steps to match streaming format
+				return processNonStreamingIntermediateSteps(result, options.returnIntermediateSteps);
 			}
 		});
 
