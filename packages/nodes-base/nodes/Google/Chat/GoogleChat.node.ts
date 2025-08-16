@@ -397,8 +397,8 @@ export class GoogleChat implements INodeType {
 
 						// get additional fields for threadKey and requestId
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						if (additionalFields.threadKey) {
-							qs.threadKey = additionalFields.threadKey;
+						if (additionalFields.messageReplyOption) {
+							qs.messageReplyOption = additionalFields.messageReplyOption;
 						}
 						if (additionalFields.requestId) {
 							qs.requestId = additionalFields.requestId;
