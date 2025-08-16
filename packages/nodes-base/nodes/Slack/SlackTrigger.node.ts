@@ -352,14 +352,16 @@ export class SlackTrigger implements INodeType {
 		}
 
 		if (eventType !== 'team_join') {
-			eventChannel = req.body.event.channel ?? req.body.event.item.channel;
+			// Extract channel information from various event structure possibilities
+			eventChannel = req.body.event.channel ?? 
+				req.body.event.item?.channel ?? 
+				req.body.event.channel_id ??
+				(req.body.event.files && req.body.event.files.length > 0 ? req.body.event.files[0].channels?.[0] : undefined);
 
-			// Check for single channel
-			if (!watchWorkspace) {
-				if (
-					eventChannel !==
-					(this.getNodeParameter('channelId', {}, { extractValue: true }) as string)
-				) {
+			// Check for single channel - only if we have a valid eventChannel
+			if (!watchWorkspace && eventChannel) {
+				const configuredChannelId = this.getNodeParameter('channelId', {}, { extractValue: true }) as string;
+				if (eventChannel !== configuredChannelId) {
 					return {};
 				}
 			}
@@ -387,9 +389,15 @@ export class SlackTrigger implements INodeType {
 			}
 
 			if (eventChannel) {
-				const channel = await getChannelInfo.call(this, eventChannel);
-				const channelResolved = channel;
-				req.body.event.channel_resolved = channelResolved;
+				try {
+					const channel = await getChannelInfo.call(this, eventChannel);
+					const channelResolved = channel;
+					req.body.event.channel_resolved = channelResolved;
+				} catch (error) {
+					// If channel info cannot be retrieved (e.g., missing permissions, invalid channel),
+					// continue without channel_resolved to prevent workflow failure
+					console.warn(`Failed to resolve channel info for ${eventChannel}:`, error.message);
+				}
 			}
 		}
 
@@ -398,17 +406,28 @@ export class SlackTrigger implements INodeType {
 			(filters.includes('file_share') || filters.includes('any_event'))
 		) {
 			if (this.getNodeParameter('downloadFiles', false) as boolean) {
-				for (let i = 0; i < req.body.event.files.length; i++) {
-					const file = (await downloadFile.call(
-						this,
-						req.body.event.files[i].url_private_download,
-					)) as Buffer;
+				// Ensure files array exists and is valid
+				if (req.body.event.files && Array.isArray(req.body.event.files)) {
+					for (let i = 0; i < req.body.event.files.length; i++) {
+						try {
+							const fileInfo = req.body.event.files[i];
+							if (fileInfo && fileInfo.url_private_download) {
+								const file = (await downloadFile.call(
+									this,
+									fileInfo.url_private_download,
+								)) as Buffer;
 
-					binaryData[`file_${i}`] = await this.helpers.prepareBinaryData(
-						file,
-						req.body.event.files[i].name,
-						req.body.event.files[i].mimetype,
-					);
+								binaryData[`file_${i}`] = await this.helpers.prepareBinaryData(
+									file,
+									fileInfo.name || `file_${i}`,
+									fileInfo.mimetype || 'application/octet-stream',
+								);
+							}
+						} catch (error) {
+							// Log error but continue processing other files
+							console.warn(`Failed to download file ${i}:`, error.message);
+						}
+					}
 				}
 			}
 		}
