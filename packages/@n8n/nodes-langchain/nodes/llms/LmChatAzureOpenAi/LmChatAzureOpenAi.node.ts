@@ -103,6 +103,28 @@ export class LmChatAzureOpenAi implements INodeType {
 
 			this.logger.info(`Instantiating AzureChatOpenAI model with deployment: ${modelName}`);
 
+			const credentials = await this.getCredentials('azureOpenAiApi');
+			const configuration = {
+				fetchOptions: {
+					dispatcher: getProxyAgent(),
+				},
+				defaultHeaders: {} as Record<string, string>,
+			};
+
+			// Handle multiple custom headers
+			if (credentials.useCustomHeaders) {
+				// Check for all possible header pairs (assuming max 5 headers as per credential definition)
+				for (let i = 1; i <= 5; i++) {
+					const headerName = credentials[`header${i}Name`] as string;
+					const headerValue = credentials[`header${i}Value`] as string;
+
+					if (headerName && headerValue) {
+						configuration.defaultHeaders[headerName] = headerValue;
+						this.logger.debug(`Added custom header: ${headerName}`);
+					}
+				}
+			}
+
 			// Create and return the model
 			const model = new AzureChatOpenAI({
 				azureOpenAIApiDeploymentName: modelName,
@@ -111,11 +133,7 @@ export class LmChatAzureOpenAi implements INodeType {
 				timeout: options.timeout ?? 60000,
 				maxRetries: options.maxRetries ?? 2,
 				callbacks: [new N8nLlmTracing(this)],
-				configuration: {
-					fetchOptions: {
-						dispatcher: getProxyAgent(),
-					},
-				},
+				configuration,
 				modelKwargs: options.responseFormat
 					? {
 							response_format: { type: options.responseFormat },
