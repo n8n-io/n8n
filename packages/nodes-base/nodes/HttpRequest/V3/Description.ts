@@ -1184,6 +1184,14 @@ export const mainProperties: INodeProperties[] = [
 				description:
 					'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
 			},
+			{
+				displayName: 'Disable Gzip',
+				name: 'disableGzip',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: 'Disable gzip compression',
+			},
 		],
 	},
 	...optimizeResponseProperties.map((prop) => ({
