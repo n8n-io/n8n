@@ -19,6 +19,7 @@ export interface ParameterUpdaterOptions {
 	nodeType: string;
 	nodeDefinition: INodeTypeDescription;
 	requestedChanges: string[];
+	instanceUrl?: string;
 }
 
 /**

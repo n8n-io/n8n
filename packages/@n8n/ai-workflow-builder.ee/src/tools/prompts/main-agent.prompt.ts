@@ -1,5 +1,7 @@
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
+import { instanceUrlPrompt } from '@/chains/prompts/instance-url';
+
 const systemPrompt = `You are an AI assistant specialized in creating and editing n8n workflows. Your goal is to help users build efficient, well-connected workflows by intelligently using the available tools.
 
 <prime_directive>
@@ -329,7 +331,9 @@ update_node_parameters({{
 }})
 
 Then tell the user: "I've set up the Gmail Tool node with dynamic AI parameters - it will automatically determine recipients and subjects based on context."
-</handling_uncertainty>`;
+</handling_uncertainty>
+
+`;
 
 const responsePatterns = `
 <response_patterns>
@@ -391,6 +395,10 @@ export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
 				type: 'text',
 				text: systemPrompt,
 				cache_control: { type: 'ephemeral' },
+			},
+			{
+				type: 'text',
+				text: instanceUrlPrompt,
 			},
 			{
 				type: 'text',
