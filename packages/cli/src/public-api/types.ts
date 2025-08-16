@@ -131,10 +131,26 @@ export declare namespace UserRequest {
 }
 
 export declare namespace CredentialRequest {
+	type CredentialProperties = Partial<{
+		id: string; // deleted if sent
+		name: string;
+		type: string;
+		data: ICredentialDataDecryptedObject;
+		projectId?: string;
+		isManaged?: boolean;
+	}>;
+
 	type Create = AuthenticatedRequest<
 		{},
 		{},
 		{ type: string; name: string; data: ICredentialDataDecryptedObject },
+		{}
+	>;
+
+	type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		Partial<{ name: string; data: ICredentialDataDecryptedObject }>,
 		{}
 	>;
 

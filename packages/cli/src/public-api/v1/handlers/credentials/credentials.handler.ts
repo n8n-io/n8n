@@ -8,7 +8,11 @@ import { CredentialTypes } from '@/credential-types';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
 
-import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
+import {
+	validCredentialsProperties,
+	validCredentialType,
+	validCredentialUpdate,
+} from './credentials.middleware';
 import {
 	createCredential,
 	encryptCredential,
@@ -18,6 +22,7 @@ import {
 	sanitizeCredentials,
 	saveCredential,
 	toJsonSchema,
+	updateCredential,
 } from './credentials.service';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
 import { apiKeyHasScope, projectScope } from '../../shared/middlewares/global.middleware';
@@ -60,6 +65,33 @@ export = {
 			);
 
 			res.status(204).send();
+		},
+	],
+	updateCredential: [
+		validCredentialUpdate,
+		apiKeyHasScope('credential:update'),
+		projectScope('credential:update', 'credential'),
+		async (
+			req: CredentialRequest.Update,
+			res: express.Response,
+		): Promise<express.Response<Partial<CredentialsEntity>>> => {
+			try {
+				const { id: credentialId } = req.params;
+				const updatedCredential = await updateCredential(req.user, credentialId, req.body);
+
+				return res.json(sanitizeCredentials(updatedCredential));
+			} catch (error) {
+				const message = error instanceof Error ? error.message : 'Unknown error';
+				let httpStatusCode = 500;
+
+				if (message === 'Credential not found') {
+					httpStatusCode = 404;
+				} else if (message === 'Insufficient permissions to update credential') {
+					httpStatusCode = 403;
+				}
+
+				return res.status(httpStatusCode).json({ message });
+			}
 		},
 	],
 	deleteCredential: [
