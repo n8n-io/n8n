@@ -236,7 +236,7 @@ defineExpose({ focus, select });
 			:segments="segments"
 			:is-read-only="isReadOnly"
 			:virtual-ref="container"
-			:append-to="isInExperimentalNdv ? '#canvas' : undefined"
+			:append-to="isInExperimentalNdv ? 'body' : undefined"
 		/>
 	</div>
 </template>

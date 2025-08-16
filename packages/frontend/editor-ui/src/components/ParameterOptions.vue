@@ -6,9 +6,9 @@ import {
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { isValueExpression } from '@/utils/nodeTypesUtils';
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
-import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
+import { AI_TRANSFORM_NODE_TYPE, ExpressionLocalResolveContextSymbol } from '@/constants';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
 
 interface Props {
@@ -51,13 +51,15 @@ const isHtmlEditor = computed(
 const shouldShowExpressionSelector = computed(
 	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
 );
+const localResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const isInEmbeddedNdv = computed(() => localResolveCtx?.value !== undefined);
 
 const canBeOpenedInFocusPanel = computed(
 	() =>
 		!props.parameter.isNodeSetting &&
 		!props.isReadOnly &&
 		!props.isContentOverridden &&
-		activeNode.value && // checking that it's inside ndv
+		(activeNode.value || isInEmbeddedNdv.value) && // checking that it's inside ndv
 		(props.parameter.type === 'string' || props.parameter.type === 'json'),
 );
 

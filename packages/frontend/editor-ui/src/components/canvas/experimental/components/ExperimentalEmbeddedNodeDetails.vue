@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { ExpressionLocalResolveContext } from '@/types/expressions';
 import { N8nText } from '@n8n/design-system';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
@@ -12,11 +10,11 @@ import { computed, provide, ref } from 'vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 import { useI18n } from '@n8n/i18n';
-import type { Workflow } from 'n8n-workflow';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { getNodeSubTitleText } from '@/components/canvas/experimental/experimentalNdv.utils';
 import ExperimentalEmbeddedNdvActions from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvActions.vue';
 import { useCanvas } from '@/composables/useCanvas';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 
 const { nodeId, isReadOnly } = defineProps<{
 	nodeId: string;
@@ -56,54 +54,10 @@ const subTitle = computed(() =>
 		? getNodeSubTitleText(node.value, nodeType.value, !isExpanded.value, i18n)
 		: undefined,
 );
-const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
-	if (!node.value) {
-		return undefined;
-	}
-
-	const runIndex = 0; // not changeable for now
-	const execution = workflowsStore.workflowExecutionData;
-	const nodeName = node.value.name;
-
-	function findInputNode(): ExpressionLocalResolveContext['inputNode'] {
-		const taskData = (execution?.data?.resultData.runData[nodeName] ?? [])[runIndex];
-		const source = taskData?.source[0];
-
-		if (source) {
-			return {
-				name: source.previousNode,
-				branchIndex: source.previousNodeOutput ?? 0,
-				runIndex: source.previousNodeRun ?? 0,
-			};
-		}
-
-		const inputs = workflowObject.value.getParentNodesByDepth(nodeName, 1);
-
-		if (inputs.length > 0) {
-			return {
-				name: inputs[0].name,
-				branchIndex: inputs[0].indicies[0] ?? 0,
-				runIndex: 0,
-			};
-		}
-
-		return undefined;
-	}
-
-	return {
-		localResolve: true,
-		envVars: useEnvironmentsStore().variablesAsObject,
-		workflow: workflowObject.value,
-		execution,
-		nodeName,
-		additionalKeys: {},
-		inputNode: findInputNode(),
-		connections: workflowsStore.connectionsBySourceNode,
-	};
-});
 
 const maxHeightOnFocus = computed(() => vf.dimensions.value.height * 0.8);
-const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+
+const expressionResolveCtx = useExpressionResolveCtx(node);
 
 function handleToggleExpand() {
 	experimentalNdvStore.setNodeExpanded(nodeId);
@@ -143,6 +97,7 @@ watchOnce(isVisible, (visible) => {
 			:is-read-only="isReadOnly"
 			:sub-title="subTitle"
 			:input-node-name="expressionResolveCtx?.inputNode?.name"
+			is-embedded-in-canvas
 		>
 			<template #actions>
 				<ExperimentalEmbeddedNdvActions

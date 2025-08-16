@@ -41,7 +41,7 @@ defineExpose({
 		:popper-class="$style.component"
 		:width="360"
 		:offset="8"
-		append-to="#canvas"
+		append-to="body"
 		:popper-options="{
 			modifiers: [{ name: 'flip', enabled: false }],
 		}"
