@@ -2523,6 +2523,9 @@ importers:
       '@vueuse/core':
         specifier: catalog:frontend
         version: 10.11.0(vue@3.5.13(typescript@5.9.2))
+      ag-grid-vue3:
+        specifier: ^34.1.1
+        version: 34.1.1(vue@3.5.13(typescript@5.9.2))
       array.prototype.tosorted:
         specifier: 1.1.4
         version: 1.1.4
@@ -8139,6 +8142,17 @@ packages:
   adm-zip@0.5.10:
     resolution: {integrity: sha512-x0HvcHqVJNTPk/Bw8JbLWlWoo6Wwnsug0fnYYro1HBrjxZ3G7/AZk7Ahv8JwDe1uIcz8eBqvu86FuF1POiG7vQ==}
     engines: {node: '>=6.0'}
+
+  ag-charts-types@12.1.1:
+    resolution: {integrity: sha512-VbAOfp1E7+Z/TBufJOIjUYdx70kQRDg49WoluiVKVSB0r0el/uvxARp9xjzx4ByBq9+Xq/V23tJVsRj1MS2A/g==}
+
+  ag-grid-community@34.1.1:
+    resolution: {integrity: sha512-ODVvGoMTkyGvMT8b5lzvum5r93bG6CKdJdNrk6u/aYS7oqZ5rUEXJJHC8n8Zq+o76KhFiXMBQrU39xuhz8i+Tg==}
+
+  ag-grid-vue3@34.1.1:
+    resolution: {integrity: sha512-+O3nDlInu4RZJ82zkqVD/DCfps0OsfO1MUi453zEJ+CbJudhq+l4f9hy+l+OYWH10XOEdr6+HL9j6toONWyS8g==}
+    peerDependencies:
+      vue: ^3.5.0
 
   agent-base@5.1.1:
     resolution: {integrity: sha512-TMeqbNl2fMW0nMjTEPOwe3J/PRFP4vqeoNuQMG0HlMrtm5QxKqdvAkZ1pRBQ/ulIyDD5Yq0nJ7YbdD8ey0TO3g==}
@@ -23079,6 +23093,17 @@ snapshots:
 
   adm-zip@0.5.10: {}
 
+  ag-charts-types@12.1.1: {}
+
+  ag-grid-community@34.1.1:
+    dependencies:
+      ag-charts-types: 12.1.1
+
+  ag-grid-vue3@34.1.1(vue@3.5.13(typescript@5.9.2)):
+    dependencies:
+      ag-grid-community: 34.1.1
+      vue: 3.5.13(typescript@5.9.2)
+
   agent-base@5.1.1: {}
 
   agent-base@6.0.2:
@@ -25523,7 +25548,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.16.1
       resolve: 1.22.10
     transitivePeerDependencies:
@@ -25547,7 +25572,7 @@ snapshots:
 
   eslint-module-utils@2.12.1(@typescript-eslint/parser@8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.3)(eslint@9.29.0(jiti@1.21.7)):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 8.35.0(eslint@9.29.0(jiti@1.21.7))(typescript@5.9.2)
       eslint: 9.29.0(jiti@1.21.7)
@@ -25586,7 +25611,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.6
       array.prototype.flat: 1.3.3
       array.prototype.flatmap: 1.3.3
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 9.29.0(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.9
@@ -26545,7 +26570,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -29950,7 +29975,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -30938,7 +30963,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 

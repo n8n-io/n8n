@@ -19,7 +19,8 @@
 		"activate": "Activate",
 		"user": "User",
 		"enabled": "Enabled",
-		"disabled": "Disabled"
+		"disabled": "Disabled",
+		"type": "Type"
 	},
 	"_reusableDynamicText": {
 		"readMore": "Read more",
@@ -2858,6 +2859,13 @@
 	"dataStore.noColumns.heading": "No columns yet",
 	"dataStore.noColumns.description": "Add columns to start storing data in this data store.",
 	"dataStore.noColumns.button.label": "Add first column",
+	"dataStore.addColumn.label": "Add Column",
+	"dataStore.addColumn.nameInput.label": "@:_reusableBaseText.name",
+	"dataStore.addColumn.nameInput.placeholder": "Enter column name",
+	"dataStore.addColumn.typeInput.label": "@:_reusableBaseText.type",
+	"dataStore.addColumn.error": "Error adding column",
+	"dataStore.addColumn.invalidName.error": "Invalid column name",
+	"dataStore.addColumn.invalidName.description": "Only alphanumeric characters and non-leading dashes are allowed for column names",
 	"settings.ldap": "LDAP",
 	"settings.ldap.note": "LDAP allows users to authenticate with their centralized account. It's compatible with services that provide an LDAP interface like Active Directory, Okta and Jumpcloud.",
 	"settings.ldap.infoTip": "Learn more about <a href='https://docs.n8n.io/user-management/ldap/' target='_blank'>LDAP in the Docs</a>",

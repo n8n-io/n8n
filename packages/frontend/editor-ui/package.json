@@ -57,6 +57,7 @@
     "@vue-flow/node-resizer": "^1.4.0",
     "@vueuse/components": "^10.11.0",
     "@vueuse/core": "catalog:frontend",
+    "ag-grid-vue3": "^34.1.1",
     "array.prototype.tosorted": "1.1.4",
     "axios": "catalog:",
     "bowser": "2.11.0",

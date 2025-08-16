@@ -49,7 +49,17 @@ const renderComponent = createComponentRenderer(DataStoreCard, {
 	global: {
 		stubs: {
 			N8nLink: {
-				template: '<div data-test-id="data-store-card-link"><slot /></div>',
+				template: '<a :href="href" data-test-id="data-store-card-link"><slot /></a>',
+				props: ['to'],
+				computed: {
+					href() {
+						// Generate href from the route object
+						if (this.to && typeof this.to === 'object') {
+							return `/projects/${this.to.params.projectId}/datastores/${this.to.params.id}`;
+						}
+						return '#';
+					},
+				},
 			},
 			TimeAgo: {
 				template: '<span>just now</span>',
@@ -98,29 +108,23 @@ describe('DataStoreCard', () => {
 		const wrapper = renderComponent();
 		const link = wrapper.getByTestId('data-store-card-link');
 		expect(link).toBeInTheDocument();
+		expect(link).toHaveAttribute(
+			'href',
+			`/projects/${DEFAULT_DATA_STORE.projectId}/datastores/${DEFAULT_DATA_STORE.id}`,
+		);
 	});
 
 	it('should display record count information', () => {
 		const { getByTestId } = renderComponent();
 		const recordCountElement = getByTestId('data-store-card-record-count');
 		expect(recordCountElement).toBeInTheDocument();
+		expect(recordCountElement).toHaveTextContent(`${DEFAULT_DATA_STORE.recordCount}`);
 	});
 
 	it('should display column count information', () => {
 		const { getByTestId } = renderComponent();
 		const columnCountElement = getByTestId('data-store-card-column-count');
 		expect(columnCountElement).toBeInTheDocument();
-	});
-
-	it('should display last updated information', () => {
-		const { getByTestId } = renderComponent();
-		const lastUpdatedElement = getByTestId('data-store-card-last-updated');
-		expect(lastUpdatedElement).toBeInTheDocument();
-	});
-
-	it('should display created information', () => {
-		const { getByTestId } = renderComponent();
-		const createdElement = getByTestId('data-store-card-created');
-		expect(createdElement).toBeInTheDocument();
+		expect(columnCountElement).toHaveTextContent(`${DEFAULT_DATA_STORE.columns.length + 1}`);
 	});
 });

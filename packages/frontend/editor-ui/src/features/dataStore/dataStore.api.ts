@@ -1,7 +1,11 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-import { type DataStore } from '@/features/dataStore/datastore.types';
+import type {
+	DataStoreColumnCreatePayload,
+	DataStore,
+	DataStoreColumn,
+} from '@/features/dataStore/datastore.types';
 
 export const fetchDataStoresApi = async (
 	context: IRestApiContext,
@@ -32,6 +36,7 @@ export const createDataStoreApi = async (
 	context: IRestApiContext,
 	name: string,
 	projectId?: string,
+	columns?: DataStoreColumnCreatePayload[],
 ) => {
 	return await makeRestApiRequest<DataStore>(
 		context,
@@ -39,7 +44,7 @@ export const createDataStoreApi = async (
 		`/projects/${projectId}/data-stores`,
 		{
 			name,
-			columns: [],
+			columns: columns ?? [],
 		},
 	);
 };
@@ -72,6 +77,22 @@ export const updateDataStoreApi = async (
 		`/projects/${projectId}/data-stores/${dataStoreId}`,
 		{
 			name,
+		},
+	);
+};
+
+export const addDataStoreColumnApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	projectId: string,
+	column: DataStoreColumnCreatePayload,
+) => {
+	return await makeRestApiRequest<DataStoreColumn>(
+		context,
+		'POST',
+		`/projects/${projectId}/data-stores/${dataStoreId}/columns`,
+		{
+			...column,
 		},
 	);
 };

@@ -8,6 +8,7 @@ import { useRouter } from 'vue-router';
 import { DATA_STORE_VIEW } from '@/features/dataStore/constants';
 import DataStoreBreadcrumbs from '@/features/dataStore/components/DataStoreBreadcrumbs.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import DataStoreTable from './components/dataGrid/DataStoreTable.vue';
 
 type Props = {
 	id: string;
@@ -50,14 +51,6 @@ const initialize = async () => {
 	}
 };
 
-const onAddColumnClick = () => {
-	toast.showMessage({
-		type: 'warning',
-		message: 'Coming soon',
-		duration: 3000,
-	});
-};
-
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('dataStore.dataStores'));
 	await initialize();
@@ -66,7 +59,7 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style['data-store-details-view']">
-		<div v-if="loading" class="loading">
+		<div v-if="loading" data-test-id="data-store-details-loading">
 			<n8n-loading
 				variant="h1"
 				:loading="true"
@@ -81,15 +74,7 @@ onMounted(async () => {
 				<DataStoreBreadcrumbs :data-store="dataStore" />
 			</div>
 			<div :class="$style.content">
-				<n8n-action-box
-					v-if="dataStore.columns.length === 0"
-					data-test-id="empty-shared-action-box"
-					:heading="i18n.baseText('dataStore.noColumns.heading')"
-					:description="i18n.baseText('dataStore.noColumns.description')"
-					:button-text="i18n.baseText('dataStore.noColumns.button.label')"
-					button-type="secondary"
-					@click:button="onAddColumnClick"
-				/>
+				<DataStoreTable :data-store="dataStore" />
 			</div>
 		</div>
 	</div>
@@ -108,7 +93,7 @@ onMounted(async () => {
 }
 
 .header-loading {
-	margin-bottom: var(--spacing-xl);
+	margin-bottom: var(--spacing-2xl);
 
 	div {
 		height: 2em;

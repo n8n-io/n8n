@@ -110,7 +110,7 @@ const onNameSubmit = (name: string) => {
 						>
 							{{
 								i18n.baseText('dataStore.card.column.count', {
-									interpolate: { count: props.dataStore.columns.length },
+									interpolate: { count: props.dataStore.columns.length + 1 },
 								})
 							}}
 						</N8nText>

@@ -7,8 +7,9 @@ import {
 	createDataStoreApi,
 	deleteDataStoreApi,
 	updateDataStoreApi,
+	addDataStoreColumnApi,
 } from '@/features/dataStore/dataStore.api';
-import type { DataStore } from '@/features/dataStore/datastore.types';
+import type { DataStore, DataStoreColumnCreatePayload } from '@/features/dataStore/datastore.types';
 import { useProjectsStore } from '@/stores/projects.store';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
@@ -83,6 +84,26 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return await fetchDataStoreDetails(datastoreId, projectId);
 	};
 
+	const addDataStoreColumn = async (
+		datastoreId: string,
+		projectId: string,
+		column: DataStoreColumnCreatePayload,
+	) => {
+		const newColumn = await addDataStoreColumnApi(
+			rootStore.restApiContext,
+			datastoreId,
+			projectId,
+			column,
+		);
+		if (newColumn) {
+			const index = dataStores.value.findIndex((store) => store.id === datastoreId);
+			if (index !== -1) {
+				dataStores.value[index].columns.push(newColumn);
+			}
+		}
+		return newColumn;
+	};
+
 	return {
 		dataStores,
 		totalCount,
@@ -92,5 +113,6 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		updateDataStore,
 		fetchDataStoreDetails,
 		fetchOrFindDataStore,
+		addDataStoreColumn,
 	};
 });

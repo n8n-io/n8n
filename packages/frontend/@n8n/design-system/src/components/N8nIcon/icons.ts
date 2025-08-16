@@ -179,9 +179,11 @@ import IconLucideTags from '~icons/lucide/tags';
 import IconLucideTerminal from '~icons/lucide/terminal';
 import IconLucideThumbsDown from '~icons/lucide/thumbs-down';
 import IconLucideThumbsUp from '~icons/lucide/thumbs-up';
+import IconLucideToggleRight from '~icons/lucide/toggle-right';
 import IconLucideTrash2 from '~icons/lucide/trash-2';
 import IconLucideTreePine from '~icons/lucide/tree-pine';
 import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
+import IconLucideType from '~icons/lucide/type';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
 import IconLucideUnlink from '~icons/lucide/unlink';
 import IconLucideUser from '~icons/lucide/user';
@@ -593,6 +595,8 @@ export const updatedIconSet = {
 	'trash-2': IconLucideTrash2,
 	'tree-pine': IconLucideTreePine,
 	'triangle-alert': IconLucideTriangleAlert,
+	type: IconLucideType,
+	'toggle-right': IconLucideToggleRight,
 	'undo-2': IconLucideUndo2,
 	unlink: IconLucideUnlink,
 	user: IconLucideUser,
