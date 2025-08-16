@@ -586,7 +586,7 @@ function getParentTypes(name: string): string[] {
 	const types: string[] = [];
 	for (const typeName of type.extends) {
 		types.push(typeName);
-		types.push.apply(types, getParentTypes(typeName)); // eslint-disable-line prefer-spread
+		types.push.apply(types, getParentTypes(typeName));
 	}
 
 	return types;
