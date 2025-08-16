@@ -243,12 +243,24 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		headers.authorization = `Basic ${encodeBasicAuthentication(user, pass)}`;
 	}
 
+	// curlconverter does not parse query parameters correctly if they contain commas or semicolons
+	// so we need to parse it again
+	const url = new URL(curlJson.url);
+	const queries = curlJson.queries ?? {};
+	for (const [key, value] of url.searchParams) {
+		queries[key] = value;
+	}
+
+	url.search = '';
+	// URL automatically adds a trailing slash if the path is empty
+	const urlString = url.pathname === '/' ? url.href.slice(0, -1) : url.href;
+
 	const httpNodeParameters: HttpNodeParameters = {
-		url: curlJson.url,
+		url: urlString,
 		authentication: 'none',
 		method: curlJson.method.toUpperCase(),
 		...extractHeaders({ ...headers, ...mapCookies(curlJson.cookies) }),
-		...extractQueries(curlJson.queries),
+		...extractQueries(queries),
 		options: {
 			redirect: {
 				redirect: {},
