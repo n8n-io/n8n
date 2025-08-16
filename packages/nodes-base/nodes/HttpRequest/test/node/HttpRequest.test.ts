@@ -106,6 +106,7 @@ describe('Test HTTP Request Node', () => {
 				completed: false,
 				userId: 15,
 			});
+		nock(baseUrl).get('/html').reply(200, '<html><body><h1>Test</h1></body></html>');
 
 		//PUT
 		nock(baseUrl).put('/todos/10', { userId: '42' }).reply(200, {
