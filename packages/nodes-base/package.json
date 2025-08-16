@@ -918,7 +918,7 @@
     "luxon": "catalog:",
     "mailparser": "3.6.7",
     "minifaker": "1.34.1",
-    "moment-timezone": "0.5.37",
+    "moment-timezone": "0.5.48",
     "mongodb": "6.11.0",
     "mqtt": "5.7.2",
     "mssql": "10.0.2",
