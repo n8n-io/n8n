@@ -1807,6 +1807,33 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</SuggestedWorkflows>
 			<N8nCallout
+				v-if="showReadyToRunWorkflowsCallout"
+				theme="secondary"
+				icon="bolt-filled"
+				:class="$style['easy-ai-workflow-callout']"
+			>
+				{{ readyToRunWorkflowsStore.getCalloutText() }}
+				<template #trailingContent>
+					<div :class="$style['callout-trailing-content']">
+						<N8nButton
+							data-test-id="easy-ai-button"
+							size="small"
+							type="secondary"
+							@click="handleCreateReadyToRunWorkflows('callout')"
+						>
+							{{ i18n.baseText('generic.startNow') }}
+						</N8nButton>
+						<N8nIcon
+							size="small"
+							icon="x"
+							:title="i18n.baseText('generic.dismiss')"
+							class="clickable"
+							@click="handleDismissReadyToRunCallout"
+						/>
+					</div>
+				</template>
+			</N8nCallout>
+			<N8nCallout
 				v-else-if="!loading && showEasyAIWorkflowCallout && easyAICalloutVisible"
 				theme="secondary"
 				icon="bot"
@@ -1829,33 +1856,6 @@ const onNameSubmit = async (name: string) => {
 							:title="i18n.baseText('generic.dismiss')"
 							class="clickable"
 							@click="dismissEasyAICallout"
-						/>
-					</div>
-				</template>
-			</N8nCallout>
-			<N8nCallout
-				v-if="showReadyToRunWorkflowsCallout"
-				theme="secondary"
-				icon="bolt-filled"
-				:class="$style['easy-ai-workflow-callout']"
-			>
-				{{ i18n.baseText('workflows.readyToRunWorkflows.callout') }}
-				<template #trailingContent>
-					<div :class="$style['callout-trailing-content']">
-						<N8nButton
-							data-test-id="easy-ai-button"
-							size="small"
-							type="secondary"
-							@click="handleCreateReadyToRunWorkflows('callout')"
-						>
-							{{ i18n.baseText('workflows.readyToRunWorkflows.cta') }}
-						</N8nButton>
-						<N8nIcon
-							size="small"
-							icon="x"
-							:title="i18n.baseText('generic.dismiss')"
-							class="clickable"
-							@click="handleDismissReadyToRunCallout"
 						/>
 					</div>
 				</template>
@@ -2076,11 +2076,11 @@ const onNameSubmit = async (name: string) => {
 							<N8nIcon
 								:class="$style.emptyStateCardIcon"
 								:stroke-width="1.5"
-								icon="zap"
+								icon="package-open"
 								color="foreground-dark"
 							/>
 							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ i18n.baseText('workflows.readyToRunWorkflows.card') }}
+								{{ readyToRunWorkflowsStore.getCardText() }}
 							</N8nText>
 						</div>
 					</N8nCard>
