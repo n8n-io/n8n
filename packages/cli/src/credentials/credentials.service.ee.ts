@@ -6,6 +6,8 @@ import { hasGlobalScope, rolesWithScope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
+import { GlobalConfig } from '@n8n/config';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { OwnershipService } from '@/services/ownership.service';
@@ -17,6 +19,7 @@ import { CredentialsService } from './credentials.service';
 @Service()
 export class EnterpriseCredentialsService {
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly credentialsService: CredentialsService,
@@ -30,6 +33,10 @@ export class EnterpriseCredentialsService {
 		shareWithIds: string[],
 		entityManager?: EntityManager,
 	) {
+		if (this.globalConfig.credentials.disableSharing) {
+			throw new BadRequestError('Credential sharing is disabled');
+		}
+
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
 
 		let projects = await em.find(Project, {
@@ -125,6 +132,10 @@ export class EnterpriseCredentialsService {
 	}
 
 	async transferOne(user: User, credentialId: string, destinationProjectId: string) {
+		if (this.globalConfig.credentials.disableSharing) {
+			throw new BadRequestError('Credential sharing is disabled');
+		}
+
 		// 1. get credential
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
