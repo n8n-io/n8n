@@ -6,6 +6,11 @@ import { Container } from '@n8n/di';
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
 import { DataStoreRepository } from '../data-store.repository';
 import { DataStoreService } from '../data-store.service';
+import { DataStoreColumnNameConflictError } from '../errors/data-store-column-name-conflict.error';
+import { DataStoreColumnNotFoundError } from '../errors/data-store-column-not-found.error';
+import { DataStoreNameConflictError } from '../errors/data-store-name-conflict.error';
+import { DataStoreNotFoundError } from '../errors/data-store-not-found.error';
+import { DataStoreValidationError } from '../errors/data-store-validation.error';
 import { toTableName } from '../utils/sql-utils';
 
 beforeAll(async () => {
@@ -172,9 +177,7 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				`Data store with name '${name}' already exists in this project`,
-			);
+			await expect(result).rejects.toThrow(DataStoreNameConflictError);
 		});
 	});
 
@@ -209,7 +212,7 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			await expect(result).rejects.toThrow("Data Store 'this is not an id' does not exist.");
+			await expect(result).rejects.toThrow(DataStoreNotFoundError);
 		});
 
 		it('should fail when renaming to a taken name', async () => {
@@ -229,9 +232,7 @@ describe('dataStore', () => {
 			const result = dataStoreService.updateDataStore(dataStoreNewId, project1.id, { name });
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				`Data store with name '${name}' already exists in this project`,
-			);
+			await expect(result).rejects.toThrow(DataStoreNameConflictError);
 		});
 	});
 
@@ -266,9 +267,7 @@ describe('dataStore', () => {
 			const result = dataStoreService.deleteDataStore('this is not an id', project1.id);
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				"Tried to delete non-existent data store 'this is not an id'",
-			);
+			await expect(result).rejects.toThrow(DataStoreNotFoundError);
 		});
 	});
 
@@ -404,9 +403,7 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				`column name 'myColumn1' already taken in data store '${dataStoreId}'`,
-			);
+			await expect(result).rejects.toThrow(DataStoreColumnNameConflictError);
 		});
 
 		it('should fail with adding column of non-existent table', async () => {
@@ -417,9 +414,7 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				"Tried to add column to non-existent data store 'this is not an id'",
-			);
+			await expect(result).rejects.toThrow(DataStoreNotFoundError);
 		});
 	});
 
@@ -477,9 +472,7 @@ describe('dataStore', () => {
 			const result = dataStoreService.deleteColumn(dataStoreId, project1.id, 'thisIsNotAnId');
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				`Tried to delete column with name not present in data store '${dataStoreId}'`,
-			);
+			await expect(result).rejects.toThrow(DataStoreColumnNotFoundError);
 		});
 
 		it('should fail when deleting column from unknown table', async () => {
@@ -497,9 +490,7 @@ describe('dataStore', () => {
 			const result = dataStoreService.deleteColumn('this is not an id', project1.id, c1.id);
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				"Tried to delete column from non-existent data store 'this is not an id'",
-			);
+			await expect(result).rejects.toThrow(DataStoreNotFoundError);
 		});
 	});
 
@@ -960,7 +951,7 @@ describe('dataStore', () => {
 			]);
 
 			// ASSERT
-			await expect(result).rejects.toThrow('mismatched key count');
+			await expect(result).rejects.toThrow(new DataStoreValidationError('mismatched key count'));
 		});
 
 		it('rejects a mismatched row with missing column', async () => {
@@ -982,7 +973,7 @@ describe('dataStore', () => {
 			]);
 
 			// ASSERT
-			await expect(result).rejects.toThrow('mismatched key count');
+			await expect(result).rejects.toThrow(new DataStoreValidationError('mismatched key count'));
 		});
 
 		it('rejects a mismatched row with replaced column', async () => {
@@ -1004,7 +995,7 @@ describe('dataStore', () => {
 			]);
 
 			// ASSERT
-			await expect(result).rejects.toThrow('unknown column name');
+			await expect(result).rejects.toThrow(new DataStoreValidationError('unknown column name'));
 		});
 
 		it('rejects unknown data store id', async () => {
@@ -1026,7 +1017,7 @@ describe('dataStore', () => {
 			]);
 
 			// ASSERT
-			await expect(result).rejects.toThrow("Data Store 'this is not an id' does not exist.");
+			await expect(result).rejects.toThrow(DataStoreNotFoundError);
 		});
 
 		it('rejects on empty column list', async () => {
@@ -1041,7 +1032,9 @@ describe('dataStore', () => {
 
 			// ASSERT
 			await expect(result).rejects.toThrow(
-				'No columns found for this data store or data store not found',
+				new DataStoreValidationError(
+					'No columns found for this data store or data store not found',
+				),
 			);
 		});
 
@@ -1059,7 +1052,9 @@ describe('dataStore', () => {
 			]);
 
 			// ASSERT
-			await expect(result).rejects.toThrow("value 'true' does not match column type 'number'");
+			await expect(result).rejects.toThrow(
+				new DataStoreValidationError("value 'true' does not match column type 'number'"),
+			);
 		});
 	});
 
@@ -1133,6 +1128,84 @@ describe('dataStore', () => {
 				{ fullName: 'Alice', age: 30, id: 1, pid: '1995-111a' },
 				{ fullName: 'Alice', age: 30, id: 2, pid: '1992-222b' },
 			]);
+		});
+	});
+
+	describe('deleteRows', () => {
+		it('deletes rows by IDs', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			// Insert test rows
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30 },
+				{ name: 'Bob', age: 25 },
+				{ name: 'Charlie', age: 35 },
+			]);
+
+			// Get initial data to find row IDs
+			const initialData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(initialData.count).toBe(3);
+
+			// ACT - Delete first and third rows
+			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, [1, 3]);
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const rows = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(rows.count).toBe(1);
+			expect(rows.data).toEqual([{ name: 'Bob', age: 25, id: 2 }]);
+		});
+
+		it('returns true when deleting empty list of IDs', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			// ACT
+			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, []);
+
+			// ASSERT
+			expect(result).toBe(true);
+		});
+
+		it('fails when trying to delete from non-existent data store', async () => {
+			// ACT & ASSERT
+			const result = dataStoreService.deleteRows('non-existent-id', project1.id, [1, 2]);
+
+			await expect(result).rejects.toThrow(DataStoreNotFoundError);
+		});
+
+		it('succeeds even if some IDs do not exist', async () => {
+			// ARRANGE
+			const dataStore = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+			const { id: dataStoreId } = dataStore;
+
+			// Insert one row
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }]);
+
+			// ACT - Try to delete existing and non-existing IDs
+			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, [1, 999, 1000]);
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const { count } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(count).toBe(0);
 		});
 	});
 

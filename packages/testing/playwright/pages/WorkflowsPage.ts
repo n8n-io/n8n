@@ -28,6 +28,10 @@ export class WorkflowsPage extends BasePage {
 		await this.page.getByTestId('resources-list-search').clear();
 	}
 
+	getProjectName() {
+		return this.page.getByTestId('project-name');
+	}
+
 	getSearchBar() {
 		return this.page.getByTestId('resources-list-search');
 	}
