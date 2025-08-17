@@ -66,10 +66,11 @@ export async function getGoogleAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions | ICredentialTestFunctions | IPollFunctions,
 	credentials: IDataObject,
 	service: GoogleServiceAccount,
+	scopes?: string[],
 ): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
-	const scopes = googleServiceAccountScopes[service];
+	const scopesToUse = scopes && scopes.length > 0 ? scopes : googleServiceAccountScopes[service];
 
 	const privateKey = formatPrivateKey(credentials.privateKey as string);
 	credentials.email = ((credentials.email as string) || '').trim();
@@ -80,7 +81,7 @@ export async function getGoogleAccessToken(
 		{
 			iss: credentials.email,
 			sub: credentials.delegatedEmail || credentials.email,
-			scope: scopes.join(' '),
+			scope: scopesToUse.join(' '),
 			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
 			exp: now + 3600,
