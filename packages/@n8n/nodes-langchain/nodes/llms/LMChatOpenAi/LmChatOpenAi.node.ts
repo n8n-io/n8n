@@ -291,10 +291,28 @@ export class LmChatOpenAi implements INodeType {
 						displayOptions: {
 							show: {
 								// reasoning_effort is only available on o1, o1-versioned, or on o3-mini and beyond. Not on o1-mini or other GPT-models.
-								'/model': [{ _cnd: { regex: '(^o1([-\\d]+)?$)|(^o[3-9].*)' } }],
+								'/model': [{ _cnd: { regex: '(^gpt-5.*)|(^o1([-\\d]+)?$)|(^o[3-9].*)' } }],
 							},
 						},
 					},
+					{
+  displayName: 'Text Verbosity',
+  name: 'textVerbosity',
+  default: 'low',
+  description: 'Controls how long the answer is. Lower = shorter, faster answers.',
+  type: 'options',
+  options: [
+    { name: 'Low',    value: 'low' },
+    { name: 'Medium', value: 'medium' },
+    { name: 'High',   value: 'high' },
+  ],
+  // Show for GPT-5 family
+  displayOptions: {
+    show: {
+      '/model': [{ _cnd: { regex: '^gpt-5.*' } }],
+    },
+  },
+},
 					{
 						displayName: 'Timeout',
 						name: 'timeout',
@@ -332,18 +350,20 @@ export class LmChatOpenAi implements INodeType {
 				? (this.getNodeParameter('model.value', itemIndex) as string)
 				: (this.getNodeParameter('model', itemIndex) as string);
 
-		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			baseURL?: string;
-			frequencyPenalty?: number;
-			maxTokens?: number;
-			maxRetries: number;
-			timeout: number;
-			presencePenalty?: number;
-			temperature?: number;
-			topP?: number;
-			responseFormat?: 'text' | 'json_object';
-			reasoningEffort?: 'low' | 'medium' | 'high';
-		};
+		const rawOptions = this.getNodeParameter('options', itemIndex, {}) as {
+  baseURL?: string;
+  frequencyPenalty?: number;
+  maxTokens?: number;
+  maxRetries: number;
+  timeout: number;
+  presencePenalty?: number;
+  temperature?: number;
+  topP?: number;
+  responseFormat?: 'text' | 'json_object';
+  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high';
+  textVerbosity?: 'low' | 'medium' | 'high';
+};
+const { reasoningEffort, textVerbosity, responseFormat, ...restOptions } = rawOptions;
 
 		const configuration: ClientOptions = {};
 
@@ -360,25 +380,46 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
-		const modelKwargs: {
-			response_format?: object;
-			reasoning_effort?: 'low' | 'medium' | 'high';
-		} = {};
-		if (options.responseFormat) modelKwargs.response_format = { type: options.responseFormat };
-		if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort))
-			modelKwargs.reasoning_effort = options.reasoningEffort;
+const modelKwargs: Record<string, any> = {};
+
+// Response format (chat/completions JSON mode)
+if (options.responseFormat) {
+  modelKwargs.response_format = { type: options.responseFormat };
+}
+
+// Reasoning/verbosity mapping by model family
+const isGpt5 = typeof modelName === 'string' && modelName.startsWith('gpt-5');
+const isOseries = /^o1([-\d]+)?$/.test(modelName) || /^o[3-9].*/.test(modelName);
+
+// GPT-5: use nested objects
+if (isGpt5) {
+  if (options.reasoningEffort) {
+    modelKwargs.reasoning = { effort: options.reasoningEffort };
+  }
+  if (options.textVerbosity) {
+    modelKwargs.text = { verbosity: options.textVerbosity };
+  }
+}
+
+// o1 / o3+: keep legacy key
+if (isOseries && options.reasoningEffort) {
+  // For o-series, OpenAI expects top-level `reasoning_effort`
+  modelKwargs.reasoning_effort = options.reasoningEffort === 'minimal'
+    ? 'low' // o-series has no "minimal"; map to "low"
+    : options.reasoningEffort;
+}
 
 		const model = new ChatOpenAI({
-			apiKey: credentials.apiKey as string,
-			model: modelName,
-			...options,
-			timeout: options.timeout ?? 60000,
-			maxRetries: options.maxRetries ?? 2,
-			configuration,
-			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs,
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
-		});
+  apiKey: credentials.apiKey as string,
+  model: modelName,
+  ...options,
+  timeout: options.timeout ?? 60000,
+  maxRetries: options.maxRetries ?? 2,
+  configuration,
+  callbacks: [new N8nLlmTracing(this)],
+  modelKwargs, // ← stays here
+  onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
+});
 
 		return {
 			response: model,
