@@ -409,8 +409,14 @@ export class Ssh implements INodeType {
 								execOptions = { cwd };
 							}
 
+							const result = await ssh.execCommand(finalCommand, execOptions);
 							returnItems.push({
-								json: (await ssh.execCommand(finalCommand, execOptions)) as unknown as IDataObject,
+								json: {
+									code: result.code,
+									signal: result.signal,
+									stdout: result.stdout,
+									stderr: result.stderr,
+								},
 								pairedItem: {
 									item: i,
 								},
