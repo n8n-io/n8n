@@ -39,10 +39,9 @@ async function resolveHomeDir(
 	this: IExecuteFunctions,
 	path: string,
 	ssh: NodeSSH,
+	remoteOS: RemoteOS,
 	itemIndex: number,
 ) {
-	const remoteOS = await detectRemoteOS(ssh);
-
 	// Mark Windows absolute paths (C:\, D:/) for special handling
 	if (remoteOS === RemoteOS.Windows && /^[A-Za-z]:[\\\/]/.test(path)) {
 		return `${WINDOWS_PATH_PREFIX}${path}`;
@@ -385,6 +384,9 @@ export class Ssh implements INodeType {
 				await ssh.connect(options);
 			}
 
+			// Detect OS once after connection is established, before processing items
+			const remoteOS = await detectRemoteOS(ssh);
+
 			for (let i = 0; i < items.length; i++) {
 				try {
 					if (resource === 'command') {
@@ -394,6 +396,7 @@ export class Ssh implements INodeType {
 								this,
 								this.getNodeParameter('cwd', i) as string,
 								ssh,
+								remoteOS,
 								i,
 							);
 
@@ -431,6 +434,7 @@ export class Ssh implements INodeType {
 								this,
 								this.getNodeParameter('path', i) as string,
 								ssh,
+								remoteOS,
 								i,
 							);
 
@@ -470,6 +474,7 @@ export class Ssh implements INodeType {
 								this,
 								this.getNodeParameter('path', i) as string,
 								ssh,
+								remoteOS,
 								i,
 							);
 							const fileName = this.getNodeParameter('options.fileName', i, '') as string;

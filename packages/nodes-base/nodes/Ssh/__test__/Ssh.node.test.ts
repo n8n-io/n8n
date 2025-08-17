@@ -129,4 +129,54 @@ describe('SSH Node', () => {
 			});
 		});
 	});
+
+	describe('OS detection optimization', () => {
+		beforeEach(() => {
+			mockSSHCommands(false);
+			mockNodeParameters({
+				resource: 'command',
+				operation: 'execute',
+				authentication: 'password',
+				command: 'echo test',
+				cwd: '/tmp',
+			});
+		});
+
+		it('should detect OS only once for multiple items', async () => {
+			// Setup multiple items to process
+			executeFunctionsMock.getInputData.mockReturnValue([
+				{ json: { id: 1 } },
+				{ json: { id: 2 } },
+				{ json: { id: 3 } },
+				{ json: { id: 4 } },
+				{ json: { id: 5 } },
+			]);
+
+			// Mock getNodeParameter to return values for each item
+			executeFunctionsMock.getNodeParameter.mockImplementation(
+				(parameterName: string, itemIndex: number) => {
+					if (parameterName === 'resource') return 'command';
+					if (parameterName === 'operation') return 'execute';
+					if (parameterName === 'authentication') return 'password';
+					if (parameterName === 'command') return `echo test${itemIndex}`;
+					if (parameterName === 'cwd') return '/tmp';
+					return null;
+				},
+			);
+
+			await sshNode.execute.call(executeFunctionsMock);
+
+			// Count how many times 'ver' command was called (OS detection)
+			const verCalls = mockSshInstance.execCommand.mock.calls.filter((call) => call[0] === 'ver');
+
+			// Should be called only once, not 5 times
+			expect(verCalls).toHaveLength(1);
+
+			// But the actual commands should be executed for each item
+			const echoCalls = mockSshInstance.execCommand.mock.calls.filter((call) =>
+				call[0].includes('echo test'),
+			);
+			expect(echoCalls).toHaveLength(5);
+		});
+	});
 });
