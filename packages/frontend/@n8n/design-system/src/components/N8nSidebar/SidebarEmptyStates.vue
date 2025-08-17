@@ -28,14 +28,13 @@ defineEmits<{
 			icon="plus"
 			type="tertiary"
 			text
-			square
 			@click="$emit('createProject')"
 		>
 			Create project
 		</N8nButton>
 	</div>
 	<div v-else>
-		<span class="itemIdent" v-for="level in new Array(level || 0 - 1)" :key="level" />
+		<span class="itemIdent" v-for="level in new Array((level || 1) - 1)" :key="level" />
 		<N8nText size="small" color="text-light" class="sidebarEmptyState">
 			{{ label }}
 		</N8nText>
@@ -60,5 +59,25 @@ defineEmits<{
 
 .sidebarEmptyState {
 	padding: var(--spacing-3xs) var(--spacing-3xs);
+}
+
+.itemIdent {
+	display: block;
+	position: relative;
+	width: 0.5rem;
+	min-width: 0.5rem;
+	align-self: stretch;
+	margin-left: 0.75rem;
+	border-left: 1px solid var(--color-foreground-light);
+}
+
+.itemIdent::before {
+	content: '';
+	position: absolute;
+	bottom: -1px;
+	left: -1px;
+	width: 1px;
+	height: 1px;
+	background-color: var(--color-foreground-light);
 }
 </style>

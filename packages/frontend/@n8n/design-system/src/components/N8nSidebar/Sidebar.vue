@@ -55,7 +55,7 @@ onUnmounted(() => {
 });
 
 function preventDefault<T>(event: TreeItemToggleEvent<T>) {
-	if (event.detail.originalEvent?.type === 'click') {
+	if (event.detail.originalEvent.type === 'click') {
 		event.detail.originalEvent.preventDefault();
 	}
 }
@@ -132,11 +132,12 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 							:id="item.value.id"
 							:label="item.value.label"
 							:level="item.level"
-							@click="$emit('createProject')"
+							@create-project="$emit('createProject')"
 						/>
 						<component
 							v-else-if="isCustomMenuItem(item.value as IMenuElement)"
 							:is="item.value.component"
+							class="component"
 							v-bind="item.value.props || {}"
 						/>
 						<SidebarItem
@@ -386,5 +387,9 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 
 .sidebarBottomItems {
 	margin-top: auto;
+}
+
+.component * {
+	width: 100%;
 }
 </style>

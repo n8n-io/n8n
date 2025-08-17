@@ -1,7 +1,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { IMenuElement, IMenuItem, isCustomMenuItem } from '@n8n/design-system';
+import { IMenuElement, IMenuItem, isCustomMenuItem, N8nLoading } from '@n8n/design-system';
 import { WorkflowListResource } from '@/Interface';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -228,14 +228,26 @@ export const useSidebarData = () => {
 				label: 'Projects',
 				type: 'subtitle',
 			});
+			items.value.push({
+				id: 'projects-loading',
+				component: N8nLoading,
+				props: {
+					rows: 3,
+					loading: true,
+					variant: 'p',
+					animated: true,
+				},
+			});
 
 			if (projectsStore.teamProjects.length === 0 && projectsStore.hasPermissionToCreateProjects) {
+				items.value = items.value.filter((item) => item.id !== 'projects-loading');
 				items.value.push({
 					id: 'no-team-projects',
 					label: 'No projects',
 					type: 'empty',
 				});
 			} else if (projectsStore.teamProjects.length === 0) {
+				items.value = items.value.filter((item) => item.id !== 'projects-loading');
 				items.value.push({
 					id: 'no-team-projects-cant-create',
 					label: 'No projects',
@@ -260,6 +272,8 @@ export const useSidebarData = () => {
 						children: buildNestedHierarchy(workflows, project.id),
 						type: 'project',
 					};
+
+					items.value = items.value.filter((item) => item.id !== 'projects-loading');
 
 					if (projectItem.children && projectItem.children.length === 0) {
 						projectItem.children.push({
