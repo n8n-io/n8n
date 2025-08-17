@@ -17,12 +17,37 @@ import { file as tmpFile } from 'tmp-promise';
 
 import { formatPrivateKey } from '@utils/utilities';
 
+const enum RemoteOS {
+	Windows = 'windows',
+	Unix = 'unix',
+}
+
+const WINDOWS_PATH_PREFIX = 'WINDOWS_PATH:';
+
+async function detectRemoteOS(ssh: NodeSSH): Promise<RemoteOS> {
+	// Check if remote OS is Windows using 'ver' command
+	const windowsResult = await ssh.execCommand('ver');
+	if (windowsResult.code === 0 && windowsResult.stdout.toLowerCase().includes('windows')) {
+		return RemoteOS.Windows;
+	}
+
+	// Default to Unix-like system
+	return RemoteOS.Unix;
+}
+
 async function resolveHomeDir(
 	this: IExecuteFunctions,
 	path: string,
 	ssh: NodeSSH,
 	itemIndex: number,
 ) {
+	const remoteOS = await detectRemoteOS(ssh);
+
+	// Mark Windows absolute paths (C:\, D:/) for special handling
+	if (remoteOS === RemoteOS.Windows && /^[A-Za-z]:[\\\/]/.test(path)) {
+		return `${WINDOWS_PATH_PREFIX}${path}`;
+	}
+
 	if (path.startsWith('~/')) {
 		let homeDir = (await ssh.execCommand('echo $HOME')).stdout;
 
@@ -371,8 +396,21 @@ export class Ssh implements INodeType {
 								ssh,
 								i,
 							);
+
+							let finalCommand = command;
+							let execOptions = {};
+
+							// Windows paths: change directory before executing command
+							if (cwd?.startsWith(WINDOWS_PATH_PREFIX)) {
+								const windowsPath = cwd.replace(WINDOWS_PATH_PREFIX, '');
+								// Prepend cd /d to handle drive changes
+								finalCommand = `cd /d "${windowsPath}" && ${command}`;
+							} else if (cwd) {
+								execOptions = { cwd };
+							}
+
 							returnItems.push({
-								json: (await ssh.execCommand(command, { cwd })) as unknown as IDataObject,
+								json: (await ssh.execCommand(finalCommand, execOptions)) as unknown as IDataObject,
 								pairedItem: {
 									item: i,
 								},
