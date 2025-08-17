@@ -222,49 +222,59 @@ export const useSidebarData = () => {
 			items.value.push(sharedItem);
 		}
 
-		// check if user has access to projects, push workflows
-		// push seperator first
-		if (isFoldersFeatureEnabled.value) {
+		if (projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled.value) {
 			items.value.push({
 				id: 'projects-separator',
 				label: 'Projects',
 				type: 'subtitle',
 			});
 
-			await projectsStore.getMyProjects();
+			if (projectsStore.teamProjects.length === 0 && projectsStore.hasPermissionToCreateProjects) {
+				items.value.push({
+					id: 'no-team-projects',
+					label: 'No projects',
+					type: 'empty',
+				});
+			} else if (projectsStore.teamProjects.length === 0) {
+				items.value.push({
+					id: 'no-team-projects-cant-create',
+					label: 'No projects',
+					type: 'empty',
+				});
+			} else {
+				for (const project of projectsStore.teamProjects) {
+					const workflows = await workflowsStore.fetchWorkflowsPage(
+						project.id,
+						undefined,
+						undefined,
+						undefined,
+						{},
+						true,
+					);
 
-			for (const project of projectsStore.teamProjects) {
-				const workflows = await workflowsStore.fetchWorkflowsPage(
-					project.id,
-					undefined,
-					undefined,
-					undefined,
-					{},
-					true,
-				);
+					const projectItem: IMenuElement = {
+						id: project.id,
+						label: project.name as string,
+						icon: (project.icon?.value || 'layers') as IconName,
+						route: { to: `/projects/${project.id}/workflows` },
+						children: buildNestedHierarchy(workflows, project.id),
+						type: 'project',
+					};
 
-				const projectItem: IMenuElement = {
-					id: project.id,
-					label: project.name as string,
-					icon: (project.icon?.value || 'layers') as IconName,
-					route: { to: `/projects/${project.id}/workflows` },
-					children: buildNestedHierarchy(workflows, project.id),
-					type: 'project',
-				};
+					if (projectItem.children && projectItem.children.length === 0) {
+						projectItem.children.push({
+							id: `${projectItem.id}-empty`,
+							label: 'No items in this project',
+							type: 'empty',
+						});
+					}
 
-				// Add empty state for project with no children
-				if (projectItem.children && projectItem.children.length === 0) {
-					projectItem.children.push({
-						id: `${projectItem.id}-empty`,
-						label: 'No items in this project',
-						type: 'empty',
-					});
+					items.value.push(projectItem);
 				}
-
-				items.value.push(projectItem);
 			}
 		}
 	}
+
 	return {
 		items,
 		bottomItems: visibleBottomMenuItems,

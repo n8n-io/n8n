@@ -10,6 +10,7 @@ import { useSidebarLayout } from './useSidebarLayout';
 import { IMenuItem, IMenuElement, isCustomMenuItem } from '@n8n/design-system/types';
 import SidebarSubMenu from './SidebarSubMenu.vue';
 import { TreeItem, TreeItemToggleEvent, TreeRoot, TreeVirtualizer } from 'reka-ui';
+import SidebarEmptyStates from './SidebarEmptyStates.vue';
 
 const props = defineProps<{
 	items: IMenuElement[];
@@ -54,7 +55,7 @@ onUnmounted(() => {
 });
 
 function preventDefault<T>(event: TreeItemToggleEvent<T>) {
-	if (event.detail.originalEvent.type === 'click') {
+	if (event.detail.originalEvent?.type === 'click') {
 		event.detail.originalEvent.preventDefault();
 	}
 }
@@ -126,12 +127,13 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 								{{ item.value.label }}
 							</N8nText>
 						</div>
-						<div v-else-if="item.value.type === 'empty'">
-							<span class="itemIdent" v-for="level in new Array(item.level - 1)" :key="level" />
-							<N8nText size="small" color="text-light" class="sidebarEmptyState">
-								{{ item.value.label }}
-							</N8nText>
-						</div>
+						<SidebarEmptyStates
+							v-else-if="item.value.type === 'empty'"
+							:id="item.value.id"
+							:label="item.value.label"
+							:level="item.level"
+							@click="$emit('createProject')"
+						/>
 						<component
 							v-else-if="isCustomMenuItem(item.value as IMenuElement)"
 							:is="item.value.component"
@@ -345,17 +347,6 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 	margin-right: auto;
 }
 
-.sidebarProjectsEmpty {
-	padding: var(--spacing-l) var(--spacing-2xs);
-	text-align: center;
-	border: dashed 1px var(--color-foreground-base);
-	border-radius: var(--border-radius-small);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: var(--spacing-2xs);
-}
-
 .sidebarSubMenuSection:first-of-type {
 	margin-bottom: var(--spacing-xs);
 }
@@ -371,11 +362,6 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 	align-items: center;
 	max-width: 100%;
 	overflow: hidden;
-}
-
-.sidebarEmptyState {
-	padding: var(--spacing-3xs) var(--spacing-3xs);
-	opacity: 0.7;
 }
 
 .itemIdent {
