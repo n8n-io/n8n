@@ -44,5 +44,6 @@ const playwrightRoot = findProjectRoot('playwright.config.ts');
  * @returns An absolute path to the file or directory.
  */
 export function resolveFromRoot(...pathSegments: string[]): string {
+	// eslint-disable-next-line n8n-local-rules/no-argument-spread
 	return path.join(playwrightRoot, ...pathSegments);
 }

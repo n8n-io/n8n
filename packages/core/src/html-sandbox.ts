@@ -1,6 +1,6 @@
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { JSDOM } from 'jsdom';
+import { ElementType, parseDocument } from 'htmlparser2';
 import type { TransformCallback } from 'stream';
 import { Transform } from 'stream';
 
@@ -13,10 +13,8 @@ export const isIframeSandboxDisabled = () => {
  */
 export const hasHtml = (str: string) => {
 	try {
-		const dom = new JSDOM(str);
-		return (
-			dom.window.document.body.children.length > 0 || dom.window.document.head.children.length > 0
-		);
+		const doc = parseDocument(str);
+		return doc.children.some((node) => node.type === ElementType.Tag);
 	} catch {
 		return false;
 	}
