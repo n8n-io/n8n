@@ -6,10 +6,12 @@ import { hasGlobalScope, rolesWithScope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { GlobalConfig } from '@n8n/config';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
@@ -22,6 +24,7 @@ export class EnterpriseCredentialsService {
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async shareWithProjects(
@@ -30,8 +33,8 @@ export class EnterpriseCredentialsService {
 		shareWithIds: string[],
 		entityManager?: EntityManager,
 	) {
-		if (process.env.N8N_DISABLE_CREDENTIAL_SHARING === 'true') {
-			throw new Error('Credential sharing is disabled on this instance.');
+		if (this.globalConfig.credentials.disableSharing) {
+			throw new BadRequestError('Credential sharing is disabled on this instance.');
 		}
 
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
@@ -129,8 +132,8 @@ export class EnterpriseCredentialsService {
 	}
 
 	async transferOne(user: User, credentialId: string, destinationProjectId: string) {
-		if (process.env.N8N_DISABLE_CREDENTIAL_SHARING === 'true') {
-			throw new Error('Credential transfer is disabled on this instance.');
+		if (this.globalConfig.credentials.disableSharing) {
+			throw new BadRequestError('Credential transfer is disabled on this instance.');
 		}
 
 		// 1. get credential
