@@ -2,17 +2,17 @@ import logging
 import os
 from .constants import LOG_FORMAT, LOG_DATE_FORMAT, ENV_HIDE_TASK_OFFER_LOGS
 
+COLORS = {
+    "DEBUG": "\033[34m",  # blue
+    "INFO": "\033[32m",  # green
+    "WARNING": "\033[33m",  # yellow
+    "ERROR": "\033[31m",  # red
+    "CRITICAL": "\033[31m",  # red
+}
+RESET = "\033[0m"
+
 
 class ColoredFormatter(logging.Formatter):
-    COLORS = {
-        "DEBUG": "\033[34m",  # blue
-        "INFO": "\033[32m",  # green
-        "WARNING": "\033[33m",  # yellow
-        "ERROR": "\033[31m",  # red
-        "CRITICAL": "\033[31m",  # red
-    }
-    RESET = "\033[0m"
-
     def format(self, record):
         formatted = super().format(record)
 
@@ -23,10 +23,10 @@ class ColoredFormatter(logging.Formatter):
             level = parts[1]
             message = "\t".join(parts[2:])
 
-            level_color = self.COLORS.get(record.levelname, "")
+            level_color = COLORS.get(record.levelname, "")
             if level_color:
-                level = level_color + level + self.RESET
-                message = level_color + message + self.RESET
+                level = level_color + level + RESET
+                message = level_color + message + RESET
 
             formatted = f"{timestamp}  {level}  {message}"
 
