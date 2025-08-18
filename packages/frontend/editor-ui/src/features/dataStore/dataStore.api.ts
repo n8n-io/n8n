@@ -18,7 +18,7 @@ export const fetchDataStoresApi = async (
 	filter?: {
 		id?: string | string[];
 		name?: string | string[];
-		projectId?: string | string[];
+		projectId: string | string[];
 	},
 ) => {
 	const apiEndpoint = projectId ? `/projects/${projectId}/data-stores` : '/data-stores-global';
@@ -36,7 +36,7 @@ export const fetchDataStoresApi = async (
 export const createDataStoreApi = async (
 	context: IRestApiContext,
 	name: string,
-	projectId?: string,
+	projectId: string,
 	columns?: DataStoreColumnCreatePayload[],
 ) => {
 	return await makeRestApiRequest<DataStore>(
@@ -53,7 +53,7 @@ export const createDataStoreApi = async (
 export const deleteDataStoreApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
-	projectId?: string,
+	projectId: string,
 ) => {
 	return await makeRestApiRequest<boolean>(
 		context,
@@ -70,7 +70,7 @@ export const updateDataStoreApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
 	name: string,
-	projectId?: string,
+	projectId: string,
 ) => {
 	return await makeRestApiRequest<DataStore>(
 		context,
@@ -119,7 +119,7 @@ export const insertDataStoreRowApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
 	row: DataStoreRow,
-	projectId?: string,
+	projectId: string,
 ) => {
 	return await makeRestApiRequest<boolean>(
 		context,
@@ -135,7 +135,7 @@ export const upsertDataStoreRowsApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
 	rows: DataStoreRow[],
-	projectId?: string,
+	projectId: string,
 	matchFields: string[] = ['id'],
 ) => {
 	return await makeRestApiRequest<boolean>(

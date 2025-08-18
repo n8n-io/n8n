@@ -124,10 +124,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
 		});
-		if (response.data.length > 0) {
-			return response;
-		}
-		return { data: [], count: 0 };
+		return response;
 	};
 
 	const insertEmptyRow = async (dataStore: DataStore) => {
