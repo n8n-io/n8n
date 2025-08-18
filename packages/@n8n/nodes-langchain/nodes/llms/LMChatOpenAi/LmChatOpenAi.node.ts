@@ -15,82 +15,6 @@ import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-h
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
-import OpenAI from 'openai';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessage, BaseMessage } from '@langchain/core/messages';
-import type { ChatResult } from '@langchain/core/outputs';
-
-// Minimal LangChain-compatible wrapper that uses the OpenAI Responses API
-class OpenAIResponsesChatModel extends BaseChatModel {
-  private client: OpenAI;
-  private model: string;
-  private params: Record<string, any>;
-
-  constructor(opts: {
-    apiKey: string;
-    baseURL?: string;
-    model: string;
-    params?: Record<string, any>;
-    timeout?: number;
-  }) {
-    super({});
-    this.client = new OpenAI({
-      apiKey: opts.apiKey,
-      baseURL: opts.baseURL,   // e.g. https://api.openai.com/v1
-      timeout: opts.timeout,
-    });
-    this.model = opts.model;
-    this.params = opts.params ?? {};
-  }
-
-  _llmType() {
-    return 'openai-responses';
-  }
-
-  // Map LangChain messages → Responses API "input"
-  private toOpenAIChat(messages: BaseMessage[]) {
-    return messages.map((m) => {
-      const t = m._getType();
-      const role =
-        t === 'ai' ? 'assistant' :
-        t === 'system' ? 'system' :
-        t === 'tool' ? 'tool' : 'user';
-
-      // Flatten LangChain content to plain text
-      const content =
-        typeof m.content === 'string'
-          ? m.content
-          : (Array.isArray(m.content)
-              ? m.content
-                  .map((p: any) =>
-                    typeof p === 'string' ? p : p?.text ?? '',
-                  )
-                  .join('')
-              : String(m.content ?? ''));
-
-      return { role, content };
-    });
-  }
-
-  async _generate(messages: BaseMessage[]): Promise<ChatResult> {
-    const input = this.toOpenAIChat(messages);
-    const body: Record<string, any> = { model: this.model, input, ...this.params };
-
-    const resp: any = await this.client.responses.create(body);
-
-    // Prefer output_text; fallback to first text part
-    const text =
-      resp.output_text ??
-      resp.output?.[0]?.content?.[0]?.text ??
-      '';
-
-    return {
-      generations: [{ text, message: new AIMessage({ content: text }) }],
-      llmOutput: resp,
-    };
-  }
-}
-
 export class LmChatOpenAi implements INodeType {
 	methods = {
 		listSearch: {
@@ -431,85 +355,60 @@ export class LmChatOpenAi implements INodeType {
       ? (this.getNodeParameter('model.value', itemIndex) as string)
       : (this.getNodeParameter('model', itemIndex) as string);
 
-  // Keep the variable name `options` so any later references remain valid
-  const options = this.getNodeParameter('options', itemIndex, {}) as {
-    baseURL?: string;
-    frequencyPenalty?: number;
-    maxTokens?: number;
-    maxRetries?: number;
-    timeout?: number;
-    presencePenalty?: number;
-    temperature?: number;
-    topP?: number;
-    responseFormat?: 'text' | 'json_object';
-    reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high';
-    textVerbosity?: 'low' | 'medium' | 'high';
-  };
+  // Keep the variable name `options`
+const options = this.getNodeParameter('options', itemIndex, {}) as {
+  baseURL?: string;
+  frequencyPenalty?: number;
+  maxTokens?: number;
+  maxRetries?: number;
+  timeout?: number;
+  presencePenalty?: number;
+  temperature?: number;
+  topP?: number;
+  responseFormat?: 'text' | 'json_object';
+  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high';
+  textVerbosity?: 'low' | 'medium' | 'high';
+};
 
-  // Pull out only what we need for modelKwargs, spread the rest into ChatOpenAI
-  const { reasoningEffort, textVerbosity, responseFormat, baseURL, ...restOptions } = options;
+// Only keep the extras in modelKwargs; spread the rest to ChatOpenAI
+const { reasoningEffort, textVerbosity, responseFormat, baseURL, ...restOptions } = options;
 
+// baseURL handling unchanged...
 const configuration: ClientOptions = {};
 if (baseURL) configuration.baseURL = baseURL;
 else if (credentials.url) configuration.baseURL = credentials.url as string;
+if (configuration.baseURL) {
+  configuration.fetchOptions = {
+    dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
+  };
+}
 
-  if (configuration.baseURL) {
-    configuration.fetchOptions = {
-      dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
-    };
-  }
-
-  // ---- Build modelKwargs (extra fields) ----
+// ---- Chat Completions extras ----
 const modelKwargs: Record<string, any> = {};
 if (responseFormat === 'json_object') {
   modelKwargs.response_format = { type: 'json_object' };
 }
 
-const isGpt5 = typeof modelName === 'string' && modelName.startsWith('gpt-5');
-const isOseries = /^o1([-\d]+)?$/.test(modelName) || /^o[3-9].*/.test(modelName);
+// Use TOP-LEVEL keys for chat/completions
+if (reasoningEffort) modelKwargs.reasoning_effort = reasoningEffort;
+if (textVerbosity)  modelKwargs.verbosity       = textVerbosity;
 
-if (isGpt5) {
-  // GPT-5 uses Responses API fields
-  if (reasoningEffort) modelKwargs.reasoning = { effort: reasoningEffort };
-  if (textVerbosity)  modelKwargs.text      = { verbosity: textVerbosity };
-} else if (isOseries && reasoningEffort) {
-  // o-series on chat.completions: legacy key
-  modelKwargs.reasoning_effort = reasoningEffort === 'minimal' ? 'low' : reasoningEffort;
+// Optional: guard for o-series (they don’t support "minimal"; map to "low")
+const isOSeries = /^o1([-\d]+)?$/.test(modelName) || /^o[3-9].*/.test(modelName);
+if (isOSeries && modelKwargs.reasoning_effort === 'minimal') {
+  modelKwargs.reasoning_effort = 'low';
 }
 
-// ---- Decide which client to return ----
-if (isGpt5) {
-  // Use our Responses API wrapper for GPT-5
-  // Map a few common knobs to Responses API names
-  const responsesParams: Record<string, any> = {
-    ...modelKwargs,
-  };
-  if (typeof restOptions.temperature === 'number') responsesParams.temperature = restOptions.temperature;
-  if (typeof restOptions.topP === 'number')       responsesParams.top_p = restOptions.topP;
-  if (typeof restOptions.maxTokens === 'number' && restOptions.maxTokens > 0)
-    responsesParams.max_output_tokens = restOptions.maxTokens;
-
-  const model = new OpenAIResponsesChatModel({
-    apiKey: credentials.apiKey as string,
-    baseURL: configuration.baseURL, // e.g. https://api.openai.com/v1
-    model: modelName,
-    params: responsesParams,
-    timeout: options.timeout ?? 60000,
-  });
-
-  return { response: model };
-}
-
-// Fallback: Chat Completions (LangChain’s ChatOpenAI) for non-GPT-5
+// Return the normal ChatOpenAI
 const model = new ChatOpenAI({
   apiKey: credentials.apiKey as string,
   model: modelName,
-  ...restOptions,
+  ...restOptions,                       // temperature, topP, maxTokens, etc.
   timeout: options.timeout ?? 60000,
   maxRetries: options.maxRetries ?? 2,
   configuration,
   callbacks: [new N8nLlmTracing(this)],
-  modelKwargs, // includes response_format and/or reasoning_effort
+  modelKwargs,                          // <-- carries reasoning_effort & verbosity
   onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 });
 
