@@ -6,6 +6,7 @@ import {
 	CreateDataStoreOptions,
 	DataStore,
 	DataStoreColumn,
+	DataStoreProxyProvider,
 	DataStoreRows,
 	IDataStoreProjectAggregateService,
 	IDataStoreProjectService,
@@ -23,7 +24,7 @@ import { DataStoreService } from './data-store.service';
 import { OwnershipService } from '@/services/ownership.service';
 
 @Service()
-export class DataStoreProxyService {
+export class DataStoreProxyService implements DataStoreProxyProvider {
 	constructor(
 		private readonly dataStoreService: DataStoreService,
 		private readonly ownershipService: OwnershipService,
