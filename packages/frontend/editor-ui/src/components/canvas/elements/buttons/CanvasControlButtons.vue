@@ -4,6 +4,8 @@ import TidyUpIcon from '@/components/TidyUpIcon.vue';
 import { useI18n } from '@n8n/i18n';
 import { Controls } from '@vue-flow/controls';
 import { computed } from 'vue';
+import { useExperimentalNdvStore } from '../../experimental/experimentalNdv.store';
+import { N8nIconButton } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
@@ -22,11 +24,18 @@ const emit = defineEmits<{
 	'zoom-out': [];
 	'zoom-to-fit': [];
 	'tidy-up': [];
+	'toggle-zoom-mode': [];
 }>();
 
 const i18n = useI18n();
 
-const isResetZoomVisible = computed(() => props.zoom !== 1);
+const experimentalNdvStore = useExperimentalNdvStore();
+
+const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(props.zoom));
+
+const isToggleZoomVisible = computed(() => experimentalNdvStore.isEnabled);
+
+const isResetZoomVisible = computed(() => !isToggleZoomVisible.value && props.zoom !== 1);
 
 function onResetZoom() {
 	emit('reset-zoom');
@@ -81,6 +90,22 @@ function onTidyUp() {
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
+			v-if="isToggleZoomVisible"
+			:label="
+				i18n.baseText(isExperimentalNdvActive ? 'nodeView.leaveZoomMode' : 'nodeView.enterZoomMode')
+			"
+			:shortcut="{ keys: ['Z'] }"
+		>
+			<N8nIconButton
+				square
+				type="tertiary"
+				size="large"
+				:class="$style.iconButton"
+				:icon="isExperimentalNdvActive ? 'undo-2' : 'crosshair'"
+				@click="emit('toggle-zoom-mode')"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
 			v-if="isResetZoomVisible"
 			:label="i18n.baseText('nodeView.resetZoom')"
 			:shortcut="{ keys: ['0'] }"
@@ -109,6 +134,30 @@ function onTidyUp() {
 				<TidyUpIcon />
 			</N8nButton>
 		</KeyboardShortcutTooltip>
+		<N8nTooltip
+			v-if="isExperimentalNdvActive"
+			placement="top"
+			:content="i18n.baseText('nodeView.expandAllNodes')"
+		>
+			<N8nIconButton
+				type="tertiary"
+				size="large"
+				icon="maximize-2"
+				@click="experimentalNdvStore.expandAllNodes"
+			/>
+		</N8nTooltip>
+		<N8nTooltip
+			v-if="isExperimentalNdvActive"
+			placement="top"
+			:content="i18n.baseText('nodeView.collapseAllNodes')"
+		>
+			<N8nIconButton
+				type="tertiary"
+				size="large"
+				icon="minimize-2"
+				@click="experimentalNdvStore.collapseAllNodes"
+			/>
+		</N8nTooltip>
 	</Controls>
 </template>
 

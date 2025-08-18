@@ -2,12 +2,12 @@
 
 exports[`components > N8nActionDropdown > should render custom styling correctly 1`] = `
 "<div class="action-dropdown-container actionDropdownContainer">
-  <el-dropdown-stub trigger="click" effect="light" placement="bottom" popperoptions="[object Object]" size="" splitbutton="false" hideonclick="true" loop="true" showtimeout="150" hidetimeout="150" tabindex="0" maxheight="" popperclass="shadow" disabled="false" role="menu" teleported="true"></el-dropdown-stub>
+  <el-dropdown-stub trigger="click" effect="light" placement="bottom" popperoptions="[object Object]" size="" splitbutton="false" hideonclick="true" loop="true" showtimeout="150" hidetimeout="150" tabindex="0" maxheight="" popperclass="shadow " disabled="false" role="menu" teleported="true"></el-dropdown-stub>
 </div>"
 `;
 
 exports[`components > N8nActionDropdown > should render default styling correctly 1`] = `
 "<div class="action-dropdown-container actionDropdownContainer">
-  <el-dropdown-stub trigger="click" effect="light" placement="bottom" popperoptions="[object Object]" size="" splitbutton="false" hideonclick="true" loop="true" showtimeout="150" hidetimeout="150" tabindex="0" maxheight="" popperclass="shadow" disabled="false" role="menu" teleported="true"></el-dropdown-stub>
+  <el-dropdown-stub trigger="click" effect="light" placement="bottom" popperoptions="[object Object]" size="" splitbutton="false" hideonclick="true" loop="true" showtimeout="150" hidetimeout="150" tabindex="0" maxheight="" popperclass="shadow " disabled="false" role="menu" teleported="true"></el-dropdown-stub>
 </div>"
 `;

@@ -21,7 +21,7 @@ import { useExecutionsStore } from '@/stores/executions.store';
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
 const props = defineProps<{
-	execution: ExecutionSummary;
+	execution?: ExecutionSummary;
 }>();
 
 const emit = defineEmits<{
@@ -45,6 +45,7 @@ const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
 const executionId = computed(() => route.params.executionId as string);
+const nodeId = computed(() => route.params.nodeId as string);
 const executionUIDetails = computed<IExecutionUIData | null>(() =>
 	props.execution ? executionHelpers.getUIDetails(props.execution) : null,
 );
@@ -108,7 +109,9 @@ async function onDeleteExecution(): Promise<void> {
 }
 
 function handleRetryClick(command: string) {
-	emit('retryExecution', { execution: props.execution, command });
+	if (props.execution) {
+		emit('retryExecution', { execution: props.execution, command });
+	}
 }
 
 function handleStopClick() {
@@ -327,6 +330,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			loader-type="spinner"
 			:execution-id="executionId"
 			:execution-mode="execution?.mode || ''"
+			:node-id="nodeId"
 		/>
 	</div>
 </template>

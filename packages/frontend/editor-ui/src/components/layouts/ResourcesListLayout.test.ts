@@ -4,8 +4,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import type { Resource } from '@/Interface';
 import type router from 'vue-router';
-import type { ProjectSharingData } from 'n8n-workflow';
 import { waitAllPromises } from '@/__tests__/utils';
+import type { ProjectSharingData } from '@/types/projects.types';
 
 const TEST_HOME_PROJECT: ProjectSharingData = vi.hoisted(() => ({
 	id: '1',
@@ -158,7 +158,11 @@ describe('ResourcesListLayout', () => {
 			props: {
 				resources: TEST_WORKFLOWS,
 				type: 'list-paginated',
-				showFiltersDropdown: true,
+				uiConfig: {
+					searchEnabled: true,
+					showFiltersDropdown: true,
+					sortEnabled: true,
+				},
 				filters: {
 					search: '',
 					homeProject: '',
@@ -181,7 +185,11 @@ describe('ResourcesListLayout', () => {
 			props: {
 				resources: TEST_WORKFLOWS,
 				type: 'list-paginated',
-				showFiltersDropdown: true,
+				uiConfig: {
+					searchEnabled: true,
+					showFiltersDropdown: true,
+					sortEnabled: true,
+				},
 				filters: {
 					search: '',
 					homeProject: '',
@@ -197,5 +205,140 @@ describe('ResourcesListLayout', () => {
 		expect(getByTestId('resources-list-filters-applied-info').textContent).toContain(
 			'Filters are applied.',
 		);
+	});
+
+	describe('uiConfig prop', () => {
+		it('should not render search input when searchEnabled is false', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					resources: TEST_WORKFLOWS,
+					type: 'list-paginated',
+					uiConfig: {
+						searchEnabled: false,
+						showFiltersDropdown: true,
+						sortEnabled: true,
+					},
+				},
+			});
+
+			expect(queryByTestId('resources-list-search')).not.toBeInTheDocument();
+		});
+
+		it('should render search input when searchEnabled is true', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					resources: TEST_WORKFLOWS,
+					type: 'list-paginated',
+					uiConfig: {
+						searchEnabled: true,
+						showFiltersDropdown: true,
+						sortEnabled: true,
+					},
+				},
+			});
+
+			expect(getByTestId('resources-list-search')).toBeInTheDocument();
+		});
+
+		it('should not render sort dropdown when sortEnabled is false', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					resources: TEST_WORKFLOWS,
+					type: 'list-paginated',
+					uiConfig: {
+						searchEnabled: true,
+						showFiltersDropdown: true,
+						sortEnabled: false,
+					},
+				},
+			});
+
+			expect(queryByTestId('resources-list-sort')).not.toBeInTheDocument();
+		});
+
+		it('should render sort dropdown when sortEnabled is true', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					resources: TEST_WORKFLOWS,
+					type: 'list-paginated',
+					uiConfig: {
+						searchEnabled: true,
+						showFiltersDropdown: true,
+						sortEnabled: true,
+					},
+				},
+			});
+
+			expect(getByTestId('resources-list-sort')).toBeInTheDocument();
+		});
+
+		it('should render filters dropdown trigger when showFiltersDropdown is true', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					resources: TEST_WORKFLOWS,
+					type: 'list-paginated',
+					uiConfig: {
+						searchEnabled: true,
+						showFiltersDropdown: true,
+						sortEnabled: true,
+					},
+				},
+			});
+
+			// Check if filters dropdown trigger is rendered
+			expect(getByTestId('resources-list-filters-trigger')).toBeInTheDocument();
+		});
+
+		it('should not render filters dropdown section when showFiltersDropdown is false', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					resources: TEST_WORKFLOWS,
+					type: 'list-paginated',
+					uiConfig: {
+						searchEnabled: true,
+						showFiltersDropdown: false,
+						sortEnabled: true,
+					},
+				},
+			});
+
+			// The filters dropdown trigger should not be rendered
+			expect(queryByTestId('resources-list-filters-trigger')).not.toBeInTheDocument();
+		});
+
+		it('should respect all uiConfig options when all are disabled', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					resources: TEST_WORKFLOWS,
+					type: 'list-paginated',
+					uiConfig: {
+						searchEnabled: false,
+						showFiltersDropdown: false,
+						sortEnabled: false,
+					},
+				},
+			});
+
+			expect(queryByTestId('resources-list-search')).not.toBeInTheDocument();
+			expect(queryByTestId('resources-list-sort')).not.toBeInTheDocument();
+		});
+
+		it('should respect all uiConfig options when all are enabled', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					resources: TEST_WORKFLOWS,
+					type: 'list-paginated',
+					uiConfig: {
+						searchEnabled: true,
+						showFiltersDropdown: true,
+						sortEnabled: true,
+					},
+				},
+			});
+
+			expect(getByTestId('resources-list-search')).toBeInTheDocument();
+			expect(getByTestId('resources-list-sort')).toBeInTheDocument();
+			expect(getByTestId('resources-list-filters-trigger')).toBeInTheDocument();
+		});
 	});
 });

@@ -47,7 +47,7 @@ export class Telemetry {
 		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
 
 		const {
-			config: { key, url },
+			config: { key, proxy, sourceConfig },
 		} = telemetrySettings;
 
 		const settingsStore = useSettingsStore();
@@ -57,10 +57,10 @@ export class Telemetry {
 
 		const logging = logLevel === 'debug' ? { logLevel: 'DEBUG' } : {};
 
-		this.initRudderStack(key, url, {
+		this.initRudderStack(key, proxy, {
 			integrations: { All: false },
 			loadIntegration: false,
-			configUrl: 'https://api-rs.n8n.io',
+			configUrl: sourceConfig,
 			...logging,
 		});
 
@@ -99,9 +99,12 @@ export class Telemetry {
 	track(event: string, properties?: ITelemetryTrackProperties) {
 		if (!this.rudderStack) return;
 
+		const posthogSessionId = window.posthog?.get_session_id?.();
+
 		const updatedProperties = {
 			...properties,
 			version_cli: useRootStore().versionCli,
+			posthog_session_id: posthogSessionId,
 		};
 
 		this.rudderStack.track(event, updatedProperties, {
@@ -201,7 +204,7 @@ export class Telemetry {
 		}
 	}
 
-	private initRudderStack(key: string, url: string, options: IDataObject) {
+	private initRudderStack(key: string, proxy: string, options: IDataObject) {
 		window.rudderanalytics = window.rudderanalytics || [];
 		if (!this.rudderStack) {
 			return;
@@ -252,7 +255,7 @@ export class Telemetry {
 		};
 
 		this.rudderStack.loadJS();
-		this.rudderStack.load(key, url, options);
+		this.rudderStack.load(key, proxy, options);
 	}
 }
 

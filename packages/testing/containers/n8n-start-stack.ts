@@ -1,9 +1,10 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
 
+import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import type { N8NConfig, N8NStack } from './n8n-test-container-creation';
 import { createN8NStack } from './n8n-test-container-creation';
-import { DockerImageNotFoundError } from './docker-image-not-found-error';
+import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 
 // ANSI colors for terminal output
 const colors = {
@@ -40,7 +41,16 @@ ${colors.yellow}Options:${colors.reset}
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
   --env KEY=VALUE   Set environment variables
+  --plan <plan>     Use performance plan preset (${Object.keys(BASE_PERFORMANCE_PLANS).join(', ')})
   --help, -h        Show this help
+
+${colors.yellow}Performance Plans:${colors.reset}
+${Object.entries(BASE_PERFORMANCE_PLANS)
+	.map(
+		([name, plan]) =>
+			`  ${name.padEnd(12)} ${plan.memory}GB RAM, ${plan.cpu} CPU cores - SQLite only`,
+	)
+	.join('\n')}
 
 ${colors.yellow}Environment Variables:${colors.reset}
   • N8N_DOCKER_IMAGE=<image>  Use a custom Docker image (default: n8nio/n8n:local)
@@ -61,6 +71,11 @@ ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# With environment variables${colors.reset}
   npm run stack --postgres --env N8N_LOG_LEVEL=info --env N8N_ENABLED_MODULES=insights
 
+  ${colors.bright}# Performance plan presets${colors.reset}
+${Object.keys(BASE_PERFORMANCE_PLANS)
+	.map((name) => `  npm run stack --plan ${name}`)
+	.join('\n')}
+
   ${colors.bright}# Parallel instances${colors.reset}
   npm run stack --name test-1
   npm run stack --name test-2
@@ -69,6 +84,7 @@ ${colors.yellow}Notes:${colors.reset}
   • SQLite is the default database (no external dependencies)
   • Queue mode requires PostgreSQL and enables horizontal scaling
   • Use --name for running multiple instances in parallel
+  • Performance plans simulate cloud constraints (SQLite only, resource-limited)
   • Press Ctrl+C to stop all containers
 `);
 }
@@ -84,6 +100,7 @@ async function main() {
 			workers: { type: 'string' },
 			name: { type: 'string' },
 			env: { type: 'string', multiple: true },
+			plan: { type: 'string' },
 		},
 		allowPositionals: false,
 	});
@@ -115,6 +132,32 @@ async function main() {
 		if (!values.queue && (values.mains ?? values.workers)) {
 			log.warn('--mains and --workers imply queue mode');
 		}
+	}
+
+	if (values.plan) {
+		const planName = values.plan;
+		if (!isValidPerformancePlan(planName)) {
+			log.error(`Invalid performance plan: ${values.plan}`);
+			log.error(`Available plans: ${Object.keys(BASE_PERFORMANCE_PLANS).join(', ')}`);
+			process.exit(1);
+		}
+
+		const plan = BASE_PERFORMANCE_PLANS[planName];
+
+		if (values.postgres) {
+			log.warn('Performance plans use SQLite only. PostgreSQL option ignored.');
+		}
+		if (values.queue || values.mains || values.workers) {
+			log.warn('Performance plans use SQLite only. Queue mode ignored.');
+		}
+
+		config.resourceQuota = plan;
+		config.postgres = false; // Force SQLite for performance plans
+		config.queueMode = false; // Force single instance for performance plans
+
+		log.info(
+			`Using ${planName} performance plan: ${plan.memory}GB RAM, ${plan.cpu} CPU cores (SQLite only)`,
+		);
 	}
 
 	// Parse environment variables
@@ -165,6 +208,7 @@ function displayConfig(config: N8NConfig) {
 	log.info(`Docker image: ${dockerImage}`);
 
 	// Determine actual database
+	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	const usePostgres = config.postgres || config.queueMode;
 	log.info(`Database: ${usePostgres ? 'PostgreSQL' : 'SQLite'}`);
 
@@ -175,10 +219,16 @@ function displayConfig(config: N8NConfig) {
 			log.info('(PostgreSQL automatically enabled for queue mode)');
 		}
 		if (qm.mains && qm.mains > 1) {
-			log.info('(nginx load balancer will be configured)');
+			log.info('(load balancer will be configured)');
 		}
 	} else {
 		log.info('Queue mode: disabled');
+	}
+
+	if (config.resourceQuota) {
+		log.info(
+			`Resource limits: ${config.resourceQuota.memory}GB RAM, ${config.resourceQuota.cpu} CPU cores`,
+		);
 	}
 
 	if (config.env) {
@@ -186,7 +236,7 @@ function displayConfig(config: N8NConfig) {
 		if (envCount > 0) {
 			log.info(`Environment variables: ${envCount} custom variable(s)`);
 			Object.entries(config.env).forEach(([key, value]) => {
-				console.log(`  ${key}=${value as string}`);
+				console.log(`  ${key}=${value}`);
 			});
 		}
 	}

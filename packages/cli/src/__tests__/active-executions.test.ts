@@ -225,6 +225,8 @@ describe('ActiveExecutions', () => {
 				metadata: {
 					nodeName: 'testNode',
 					nodeId: uuid(),
+					runIndex: 0,
+					itemIndex: 0,
 					timestamp: Date.now(),
 				},
 			};
@@ -242,6 +244,8 @@ describe('ActiveExecutions', () => {
 				metadata: {
 					nodeName: 'testNode',
 					nodeId: uuid(),
+					runIndex: 0,
+					itemIndex: 0,
 					timestamp: Date.now(),
 				},
 			};

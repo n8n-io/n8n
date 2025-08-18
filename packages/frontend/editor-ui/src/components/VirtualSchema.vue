@@ -45,6 +45,7 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { I18nT } from 'vue-i18n';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -116,11 +117,24 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 		}))
 		.filter(({ runIndex }) => runIndex !== -1);
 
-	// If outputIndex is specified, only use data from that specific output branch
-	const filteredOutputsWithData =
-		props.outputIndex !== undefined
-			? connectedOutputsWithData.filter(({ outputIndex }) => outputIndex === props.outputIndex)
-			: connectedOutputsWithData;
+	// For connected nodes with multiple outputs that connect to the current node,
+	// filter by outputIndex if it's specified and matches one of the connected outputs
+	// This ensures we show the correct branch when viewing multi-output nodes like SplitInBatches
+	let filteredOutputsWithData = connectedOutputsWithData;
+
+	// Only apply outputIndex filtering if:
+	// 1. outputIndex is specified
+	// 2. The node has multiple connected outputs
+	// 3. The specified outputIndex is one of the connected outputs
+	if (
+		props.outputIndex !== undefined &&
+		connectedOutputIndexes.length > 1 &&
+		connectedOutputIndexes.includes(props.outputIndex)
+	) {
+		filteredOutputsWithData = connectedOutputsWithData.filter(
+			({ outputIndex }) => outputIndex === props.outputIndex,
+		);
+	}
 
 	const nodeData = filteredOutputsWithData
 		.map(({ outputIndex, runIndex }) =>
@@ -417,13 +431,13 @@ const onDragEnd = (el: HTMLElement) => {
 		<div v-if="noSearchResults" class="no-results">
 			<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</N8nText>
 			<N8nText>
-				<i18n-t keypath="ndv.search.noMatchSchema.description" tag="span">
+				<I18nT keypath="ndv.search.noMatchSchema.description" tag="span" scope="global">
 					<template #link>
 						<a href="#" @click="emit('clear:search')">
 							{{ i18n.baseText('ndv.search.noMatchSchema.description.link') }}
 						</a>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</N8nText>
 		</div>
 
@@ -488,10 +502,11 @@ const onDragEnd = (el: HTMLElement) => {
 							:style="{ '--schema-level': item.level }"
 						>
 							<N8nText tag="div" size="small">
-								<i18n-t
+								<I18nT
 									v-if="item.key === 'executeSchema'"
 									tag="span"
 									keypath="dataMapping.schemaView.executeSchema"
+									scope="global"
 								>
 									<template #link>
 										<NodeExecuteButton
@@ -505,8 +520,13 @@ const onDragEnd = (el: HTMLElement) => {
 											:class="$style.executeButton"
 										/>
 									</template>
-								</i18n-t>
-								<i18n-t v-else tag="span" :keypath="`dataMapping.schemaView.${item.key}`" />
+								</I18nT>
+								<I18nT
+									v-else
+									tag="span"
+									:keypath="`dataMapping.schemaView.${item.key}`"
+									scope="global"
+								/>
 							</N8nText>
 						</div>
 					</DynamicScrollerItem>
@@ -563,9 +583,6 @@ const onDragEnd = (el: HTMLElement) => {
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
-}
-
-.notice {
 	margin-left: calc(var(--spacing-l) * var(--schema-level));
 }
 

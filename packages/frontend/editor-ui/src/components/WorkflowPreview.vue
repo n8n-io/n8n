@@ -13,6 +13,7 @@ const props = withDefaults(
 		workflow?: IWorkflowDb | IWorkflowTemplate['workflow'];
 		executionId?: string;
 		executionMode?: string;
+		nodeId?: string;
 		loaderType?: 'image' | 'spinner';
 		canOpenNDV?: boolean;
 		hideNodeIssues?: boolean;
@@ -24,6 +25,7 @@ const props = withDefaults(
 		workflow: undefined,
 		executionId: undefined,
 		executionMode: undefined,
+		nodeId: undefined,
 		loaderType: 'image',
 		canOpenNDV: true,
 		hideNodeIssues: false,
@@ -95,6 +97,7 @@ const loadExecution = () => {
 				command: 'openExecution',
 				executionId: props.executionId,
 				executionMode: props.executionMode ?? '',
+				nodeId: props.nodeId,
 				canOpenNDV: props.canOpenNDV,
 			}),
 			'*',

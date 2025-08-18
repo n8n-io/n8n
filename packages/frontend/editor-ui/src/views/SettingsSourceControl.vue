@@ -13,6 +13,7 @@ import type { Rule, RuleGroup } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import type { Validatable } from '@n8n/design-system';
 import { computed, onMounted, reactive, ref } from 'vue';
+import { I18nT } from 'vue-i18n';
 
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
@@ -200,13 +201,13 @@ const onSelectSshKeyType = (value: Validatable) => {
 			data-test-id="source-control-content-licensed"
 		>
 			<n8n-callout theme="secondary" icon="info" class="mt-2xl mb-l">
-				<i18n-t keypath="settings.sourceControl.description" tag="span">
+				<I18nT keypath="settings.sourceControl.description" tag="span" scope="global">
 					<template #link>
 						<a :href="locale.baseText('settings.sourceControl.docs.url')" target="_blank">
 							{{ locale.baseText('settings.sourceControl.description.link') }}
 						</a>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</n8n-callout>
 			<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
 				locale.baseText('settings.sourceControl.gitConfig')
@@ -275,7 +276,7 @@ const onSelectSshKeyType = (value: Validatable) => {
 					</n8n-button>
 				</div>
 				<n8n-notice type="info" class="mt-s">
-					<i18n-t keypath="settings.sourceControl.sshKeyDescription" tag="span">
+					<I18nT keypath="settings.sourceControl.sshKeyDescription" tag="span" scope="global">
 						<template #link>
 							<a
 								:href="locale.baseText('settings.sourceControl.docs.setup.ssh.url')"
@@ -283,7 +284,7 @@ const onSelectSshKeyType = (value: Validatable) => {
 								>{{ locale.baseText('settings.sourceControl.sshKeyDescriptionLink') }}</a
 							>
 						</template>
-					</i18n-t>
+					</I18nT>
 				</n8n-notice>
 			</div>
 			<n8n-button
@@ -338,11 +339,11 @@ const onSelectSshKeyType = (value: Validatable) => {
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
-						<i18n-t keypath="settings.sourceControl.protected" tag="span">
+						<I18nT keypath="settings.sourceControl.protected" tag="span" scope="global">
 							<template #bold>
 								<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
 							</template>
-						</i18n-t>
+						</I18nT>
 					</n8n-checkbox>
 				</div>
 				<div :class="$style.group">

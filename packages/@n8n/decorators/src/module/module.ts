@@ -16,14 +16,27 @@ export interface BaseEntity {
 	reload(): Promise<void>;
 }
 
-export type EntityClass = new () => BaseEntity;
+export interface TimestampedEntity {
+	id: string;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+export type EntityClass = new () => BaseEntity | TimestampedEntity;
 
 export type ModuleSettings = Record<string, unknown>;
 
 export interface ModuleInterface {
 	init?(): Promise<void>;
+	shutdown?(): Promise<void>;
 	entities?(): Promise<EntityClass[]>;
 	settings?(): Promise<ModuleSettings>;
+
+	/**
+	 * @returns Path to a dir to load nodes and credentials from.
+	 * @example '/Users/nathan/.n8n/nodes/node_modules'
+	 */
+	loadDir?(): string;
 }
 
 export type ModuleClass = Constructable<ModuleInterface>;

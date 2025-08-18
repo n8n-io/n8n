@@ -31,6 +31,7 @@ describe('WaitTracker', () => {
 			pushRef: 'push_ref',
 			parentExecution: undefined,
 		}),
+		startedAt: undefined,
 	});
 	execution.workflowData = mock<IWorkflowBase>({ id: 'abcd' });
 
@@ -196,6 +197,7 @@ describe('WaitTracker', () => {
 					workflowData: parentExecution.workflowData,
 					projectId: project.id,
 					pushRef: parentExecution.data.pushRef,
+					startedAt: parentExecution.startedAt,
 				},
 				false,
 				false,

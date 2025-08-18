@@ -35,4 +35,16 @@ export class NodeDisplayViewPage extends BasePage {
 	async close() {
 		await this.clickBackToCanvasButton();
 	}
+
+	async execute() {
+		await this.clickByTestId('node-execute-button');
+	}
+
+	getOutputPanel() {
+		return this.page.getByTestId('output-panel');
+	}
+
+	getParameterExpressionPreviewValue() {
+		return this.page.getByTestId('parameter-expression-preview-value');
+	}
 }

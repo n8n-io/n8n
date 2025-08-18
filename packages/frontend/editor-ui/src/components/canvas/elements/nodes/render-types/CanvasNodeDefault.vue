@@ -5,9 +5,10 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '@/types';
 import { useCanvas } from '@/composables/useCanvas';
+import CanvasNodeSettingsIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeSettingsIcons.vue';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '@/components/canvas/experimental/components/ExperimentalEmbeddedNodeDetails.vue';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -17,7 +18,7 @@ const emit = defineEmits<{
 	activate: [id: string, event: MouseEvent];
 }>();
 
-const { initialized, viewport } = useCanvas();
+const { initialized, viewport, isExperimentalNdvActive } = useCanvas();
 const {
 	id,
 	label,
@@ -26,6 +27,7 @@ const {
 	outputs,
 	connections,
 	isDisabled,
+	isReadOnly,
 	isSelected,
 	hasPinnedData,
 	executionStatus,
@@ -43,9 +45,8 @@ const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, no
 		connections,
 	});
 
+const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
-
-const experimentalNdvStore = useExperimentalNdvStore();
 
 const classes = computed(() => {
 	return {
@@ -73,6 +74,7 @@ const nodeSize = computed(() =>
 		mainInputs.value.length,
 		mainOutputs.value.length,
 		nonMainInputs.value.length,
+		isExperimentalNdvActive.value,
 	),
 );
 
@@ -132,10 +134,12 @@ function onActivate(event: MouseEvent) {
 
 <template>
 	<ExperimentalInPlaceNodeSettings
-		v-if="experimentalNdvStore.isActive(viewport.zoom)"
+		v-if="isExperimentalNdvActive"
 		:node-id="id"
 		:class="classes"
 		:style="styles"
+		:is-read-only="isReadOnly"
+		:is-configurable="renderOptions.configurable ?? false"
 	/>
 	<div
 		v-else
@@ -152,6 +156,13 @@ function onActivate(event: MouseEvent) {
 			:shrink="false"
 			:disabled="isDisabled"
 			:class="$style.icon"
+		/>
+		<CanvasNodeSettingsIcons
+			v-if="
+				!renderOptions.configuration &&
+				!isDisabled &&
+				!(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)
+			"
 		/>
 		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
 		<div :class="$style.description">
@@ -257,7 +268,8 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.selected {
-		box-shadow: 0 0 0 8px var(--color-canvas-selected-transparent);
+		box-shadow: 0 0 0 calc(8px * var(--canvas-zoom-compensation-factor, 1))
+			var(--color-canvas-selected-transparent);
 	}
 
 	&.success {

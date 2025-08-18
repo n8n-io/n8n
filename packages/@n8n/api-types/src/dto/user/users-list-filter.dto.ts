@@ -15,8 +15,8 @@ export const USERS_LIST_SORT_OPTIONS = [
 	'role:desc',
 	'mfaEnabled:asc',
 	'mfaEnabled:desc',
-	// 'lastActive:asc',
-	// 'lastActive:desc',
+	'lastActiveAt:asc',
+	'lastActiveAt:desc',
 ] as const;
 
 export type UsersListSortOptions = (typeof USERS_LIST_SORT_OPTIONS)[number];

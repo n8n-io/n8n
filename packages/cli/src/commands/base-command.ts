@@ -37,6 +37,7 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -132,9 +133,11 @@ export abstract class BaseCommand<F = never> {
 			);
 		}
 
-		const { communityPackages } = this.globalConfig.nodes;
-		if (communityPackages.enabled && this.needsCommunityPackages) {
-			const { CommunityPackagesService } = await import('@/services/community-packages.service');
+		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
+		if (communityPackagesConfig.enabled && this.needsCommunityPackages) {
+			const { CommunityPackagesService } = await import(
+				'@/community-packages/community-packages.service'
+			);
 			await Container.get(CommunityPackagesService).init();
 		}
 
@@ -282,7 +285,8 @@ export abstract class BaseCommand<F = never> {
 			await sleep(100); // give any in-flight query some time to finish
 			await this.dbConnection.close();
 		}
-		process.exit();
+		const exitCode = error ? 1 : 0;
+		process.exit(exitCode);
 	}
 
 	protected onTerminationSignal(signal: string) {

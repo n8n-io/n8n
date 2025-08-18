@@ -33,7 +33,6 @@ export const userListItemSchema = z.object({
 	signInType: z.string().optional(),
 	settings: userSettingsSchema.nullable().optional(),
 	personalizationAnswers: z.object({}).passthrough().nullable().optional(),
-	lastActive: z.string().optional(),
 	projectRelations: z.array(userProjectSchema).nullable().optional(),
 	mfaEnabled: z.boolean().optional(),
 	lastActiveAt: z.string().nullable().optional(),

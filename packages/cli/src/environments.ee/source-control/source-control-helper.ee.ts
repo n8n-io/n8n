@@ -1,5 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, isContainedWithin, safeJoinPath } from '@n8n/backend-common';
 import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
@@ -10,7 +10,6 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
-import { isContainedWithin } from '@/utils/path-util';
 
 import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
@@ -28,26 +27,26 @@ export function stringContainsExpression(testString: string): boolean {
 }
 
 export function getWorkflowExportPath(workflowId: string, workflowExportFolder: string): string {
-	return path.join(workflowExportFolder, `${workflowId}.json`);
+	return safeJoinPath(workflowExportFolder, `${workflowId}.json`);
 }
 
 export function getCredentialExportPath(
 	credentialId: string,
 	credentialExportFolder: string,
 ): string {
-	return path.join(credentialExportFolder, `${credentialId}.json`);
+	return safeJoinPath(credentialExportFolder, `${credentialId}.json`);
 }
 
 export function getVariablesPath(gitFolder: string): string {
-	return path.join(gitFolder, SOURCE_CONTROL_VARIABLES_EXPORT_FILE);
+	return safeJoinPath(gitFolder, SOURCE_CONTROL_VARIABLES_EXPORT_FILE);
 }
 
 export function getTagsPath(gitFolder: string): string {
-	return path.join(gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
+	return safeJoinPath(gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
 }
 
 export function getFoldersPath(gitFolder: string): string {
-	return path.join(gitFolder, SOURCE_CONTROL_FOLDERS_EXPORT_FILE);
+	return safeJoinPath(gitFolder, SOURCE_CONTROL_FOLDERS_EXPORT_FILE);
 }
 
 export async function readTagAndMappingsFromSourceControlFile(file: string): Promise<{
@@ -232,7 +231,9 @@ export function normalizeAndValidateSourceControlledFilePath(
 ) {
 	ok(path.isAbsolute(gitFolderPath), 'gitFolder must be an absolute path');
 
-	const normalizedPath = path.isAbsolute(filePath) ? filePath : path.join(gitFolderPath, filePath);
+	const normalizedPath = path.isAbsolute(filePath)
+		? filePath
+		: safeJoinPath(gitFolderPath, filePath);
 
 	if (!isContainedWithin(gitFolderPath, filePath)) {
 		throw new UserError(`File path ${filePath} is invalid`);

@@ -9,58 +9,10 @@ import {
 	escapeSingleCurlyBrackets,
 	getConnectedTools,
 	hasLongSequentialRepeat,
-	nodeNameToToolName,
 	unwrapNestedOutput,
+	getSessionId,
 } from '../helpers';
 import { N8nTool } from '../N8nTool';
-
-describe('nodeNameToToolName', () => {
-	const getNodeWithName = (name: string): INode => ({
-		id: 'test-node',
-		name,
-		type: 'test',
-		typeVersion: 1,
-		position: [0, 0] as [number, number],
-		parameters: {},
-	});
-	it('should replace spaces with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test Node'))).toBe('Test_Node');
-	});
-
-	it('should replace dots with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test.Node'))).toBe('Test_Node');
-	});
-
-	it('should replace question marks with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test?Node'))).toBe('Test_Node');
-	});
-
-	it('should replace exclamation marks with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test!Node'))).toBe('Test_Node');
-	});
-
-	it('should replace equals signs with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test=Node'))).toBe('Test_Node');
-	});
-
-	it('should replace multiple special characters with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test.Node?With!Special=Chars'))).toBe(
-			'Test_Node_With_Special_Chars',
-		);
-	});
-
-	it('should handle names that already have underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test_Node'))).toBe('Test_Node');
-	});
-
-	it('should handle names with consecutive special characters', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test..!!??==Node'))).toBe('Test_Node');
-	});
-
-	it('should replace various special characters with underscores', () => {
-		expect(nodeNameToToolName(getNodeWithName('Test#+*()[]{}:;,<>/\\\'"%$Node'))).toBe('Test_Node');
-	});
-});
 
 describe('escapeSingleCurlyBrackets', () => {
 	it('should return undefined when input is undefined', () => {
@@ -422,6 +374,52 @@ describe('unwrapNestedOutput', () => {
 		};
 
 		expect(unwrapNestedOutput(input)).toEqual(input);
+	});
+});
+
+describe('getSessionId', () => {
+	let mockCtx: any;
+
+	beforeEach(() => {
+		mockCtx = {
+			getNodeParameter: jest.fn(),
+			evaluateExpression: jest.fn(),
+			getChatTrigger: jest.fn(),
+			getNode: jest.fn(),
+		};
+	});
+
+	it('should retrieve sessionId from bodyData', () => {
+		mockCtx.getBodyData = jest.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: '12345' });
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('12345');
+	});
+
+	it('should retrieve sessionId from chat trigger', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValueOnce(undefined);
+		mockCtx.getChatTrigger.mockReturnValue({ name: 'chatTrigger' });
+		mockCtx.evaluateExpression.mockReturnValueOnce('67890');
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('67890');
+	});
+
+	it('should throw error if sessionId is not found', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue(undefined);
+		mockCtx.getChatTrigger.mockReturnValue(undefined);
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should use custom sessionId if provided', () => {
+		mockCtx.getNodeParameter.mockReturnValueOnce('custom').mockReturnValueOnce('customSessionId');
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('customSessionId');
 	});
 });
 

@@ -14,7 +14,6 @@ import {
 	type RelatedExecution,
 } from 'n8n-workflow';
 import type { LogEntry, LogEntrySelection, LogTreeCreationContext } from './logs.types';
-import { isProxy, isReactive, isRef, toRaw } from 'vue';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/constants';
 import { type ChatMessage } from '@n8n/chat/types';
 import get from 'lodash/get';
@@ -312,44 +311,6 @@ export function findSelectedLogEntry(
 	}
 }
 
-export function deepToRaw<T>(sourceObj: T): T {
-	const seen = new WeakMap();
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const objectIterator = (input: any): any => {
-		if (seen.has(input)) {
-			return input;
-		}
-
-		if (input !== null && typeof input === 'object') {
-			seen.set(input, true);
-		}
-
-		if (Array.isArray(input)) {
-			return input.map((item) => objectIterator(item));
-		}
-
-		if (isRef(input) || isReactive(input) || isProxy(input)) {
-			return objectIterator(toRaw(input));
-		}
-
-		if (
-			input !== null &&
-			typeof input === 'object' &&
-			Object.getPrototypeOf(input) === Object.prototype
-		) {
-			return Object.keys(input).reduce((acc, key) => {
-				acc[key as keyof typeof acc] = objectIterator(input[key]);
-				return acc;
-			}, {} as T);
-		}
-
-		return input;
-	};
-
-	return objectIterator(sourceObj);
-}
-
 export function flattenLogEntries(
 	entries: LogEntry[],
 	collapsedEntryIds: Record<string, boolean>,
@@ -565,7 +526,7 @@ function extractResponseText(responseData?: IDataObject): string | undefined {
 	}
 
 	// Paths where the response message might be located
-	const paths = ['output', 'text', 'response.text'];
+	const paths = ['output', 'text', 'response.text', 'message'];
 	const matchedPath = paths.find((path) => get(responseData, path));
 
 	if (!matchedPath) return JSON.stringify(responseData, null, 2);
@@ -597,6 +558,32 @@ export function restoreChatHistory(
 	);
 
 	return [...(userMessage ? [userMessage] : []), ...(botMessage ? [botMessage] : [])];
+}
+
+export async function processFiles(data: File[] | undefined) {
+	if (!data || data.length === 0) return [];
+
+	const filePromises = data.map(async (file) => {
+		// We do not need to await here as it will be awaited on the return by Promise.all
+		// eslint-disable-next-line @typescript-eslint/return-await
+		return new Promise<{ name: string; type: string; data: string }>((resolve, reject) => {
+			const reader = new FileReader();
+
+			reader.onload = () =>
+				resolve({
+					name: file.name,
+					type: file.type,
+					data: reader.result as string,
+				});
+
+			reader.onerror = () =>
+				reject(new Error(`Error reading file: ${reader.error?.message ?? 'Unknown error'}`));
+
+			reader.readAsDataURL(file);
+		});
+	});
+
+	return await Promise.all(filePromises);
 }
 
 export function isSubNodeLog(logEntry: LogEntry): boolean {

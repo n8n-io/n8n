@@ -195,6 +195,9 @@ describe('Test Evaluation', () => {
 					if (param === 'operation') {
 						return 'setMetrics';
 					}
+					if (param === 'metric') {
+						return 'customMetrics';
+					}
 					return param;
 				}),
 

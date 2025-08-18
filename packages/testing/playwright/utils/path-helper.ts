@@ -20,6 +20,22 @@ function findProjectRoot(marker: string): string {
 	return dir;
 }
 
+/**
+ * Finds a folder root by searching upwards for a marker folder named 'packages'.
+ * @returns The absolute path to the folder root.
+ */
+export function findPackagesRoot(marker: string): string {
+	let dir = __dirname;
+	while (!fs.existsSync(path.join(dir, marker))) {
+		const parentDir = path.dirname(dir);
+		if (parentDir === dir) {
+			throw new TestError('Could not find packages root');
+		}
+		dir = parentDir;
+	}
+	return dir;
+}
+
 const playwrightRoot = findProjectRoot('playwright.config.ts');
 
 /**
@@ -28,5 +44,6 @@ const playwrightRoot = findProjectRoot('playwright.config.ts');
  * @returns An absolute path to the file or directory.
  */
 export function resolveFromRoot(...pathSegments: string[]): string {
+	// eslint-disable-next-line n8n-local-rules/no-argument-spread
 	return path.join(playwrightRoot, ...pathSegments);
 }

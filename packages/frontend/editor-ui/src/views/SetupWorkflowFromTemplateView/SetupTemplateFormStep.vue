@@ -14,6 +14,7 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
+import { I18nT } from 'vue-i18n';
 
 // Props
 const props = withDefaults(
@@ -83,14 +84,14 @@ const onCredentialModalOpened = () => {
 		</N8nHeading>
 
 		<p :class="$style.description" data-test-id="credential-step-description">
-			<i18n-t
+			<I18nT
 				tag="span"
 				keypath="templateSetup.credential.description"
 				:plural="credentials.usedBy.length"
 				scope="global"
 			>
 				<span v-n8n-html="nodeNames" />
-			</i18n-t>
+			</I18nT>
 		</p>
 
 		<div :class="$style.credentials">

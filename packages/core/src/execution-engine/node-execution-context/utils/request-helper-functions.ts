@@ -929,6 +929,22 @@ export function applyPaginationRequestData(
 	return merge({}, requestData, preparedPaginationData);
 }
 
+function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
+	return new ClientOAuth2({
+		clientId: credentials.clientId,
+		clientSecret: credentials.clientSecret,
+		accessTokenUri: credentials.accessTokenUrl,
+		scopes: (credentials.scope as string).split(' '),
+		ignoreSSLIssues: credentials.ignoreSSLIssues,
+		authentication: credentials.authentication ?? 'header',
+		...(credentials.additionalBodyProperties && {
+			additionalBodyProperties: jsonParse(credentials.additionalBodyProperties, {
+				fallbackValue: {},
+			}),
+		}),
+	});
+}
+
 /** @deprecated make these requests using httpRequestWithAuthentication */
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
@@ -950,14 +966,7 @@ export async function requestOAuth2(
 		throw new ApplicationError('OAuth credentials not connected');
 	}
 
-	const oAuthClient = new ClientOAuth2({
-		clientId: credentials.clientId,
-		clientSecret: credentials.clientSecret,
-		accessTokenUri: credentials.accessTokenUrl,
-		scopes: (credentials.scope as string).split(' '),
-		ignoreSSLIssues: credentials.ignoreSSLIssues,
-		authentication: credentials.authentication ?? 'header',
-	});
+	const oAuthClient = createOAuth2Client(credentials);
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
 	// if it's the first time using the credentials, get the access token and save it into the DB.
@@ -980,7 +989,7 @@ export async function requestOAuth2(
 		credentials.oauthTokenData = data;
 
 		// Save the refreshed token
-		await additionalData.credentialsHelper.updateCredentials(
+		await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
 			nodeCredentials,
 			credentialsType,
 			credentials as unknown as ICredentialDataDecryptedObject,
@@ -1061,7 +1070,7 @@ export async function requestOAuth2(
 					});
 				}
 				const nodeCredentials = node.credentials[credentialsType];
-				await additionalData.credentialsHelper.updateCredentials(
+				await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,
@@ -1141,7 +1150,7 @@ export async function requestOAuth2(
 				const nodeCredentials = node.credentials[credentialsType];
 
 				// Save the refreshed token
-				await additionalData.credentialsHelper.updateCredentials(
+				await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
 					nodeCredentials,
 					credentialsType,
 					credentials as unknown as ICredentialDataDecryptedObject,

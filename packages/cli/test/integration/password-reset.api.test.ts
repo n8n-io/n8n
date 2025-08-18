@@ -279,7 +279,7 @@ describe('POST /change-password', () => {
 			id: owner.id,
 		});
 
-		const comparisonResult = await compare(passwordToStore, storedPassword);
+		const comparisonResult = await compare(passwordToStore, storedPassword!);
 		expect(comparisonResult).toBe(true);
 		expect(storedPassword).not.toBe(passwordToStore);
 

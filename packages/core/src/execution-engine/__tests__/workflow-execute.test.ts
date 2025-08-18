@@ -1965,7 +1965,7 @@ describe('WorkflowExecute', () => {
 
 		test('should return true when node has no input connections', () => {
 			workflow.nodes = {};
-			workflow.connectionsByDestinationNode = {};
+			workflow.setConnections({});
 
 			const hasInputData = workflowExecute.ensureInputData(workflow, node, executionData);
 
@@ -1978,11 +1978,11 @@ describe('WorkflowExecute', () => {
 				[parentNode.name]: parentNode,
 			};
 
-			workflow.connectionsByDestinationNode = {
-				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+			workflow.setConnections({
+				[parentNode.name]: {
+					main: [[{ node: node.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
-			};
+			});
 
 			const hasInputData = workflowExecute.ensureInputData(workflow, node, executionData);
 
@@ -1996,11 +1996,11 @@ describe('WorkflowExecute', () => {
 				[parentNode.name]: parentNode,
 			};
 
-			workflow.connectionsByDestinationNode = {
-				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+			workflow.setConnections({
+				[parentNode.name]: {
+					main: [[{ node: node.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
-			};
+			});
 
 			executionData.data = { main: [[{ json: { test: 'data' } }]] };
 
@@ -2015,11 +2015,11 @@ describe('WorkflowExecute', () => {
 				[parentNode.name]: parentNode,
 			};
 
-			workflow.connectionsByDestinationNode = {
-				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+			workflow.setConnections({
+				[parentNode.name]: {
+					main: [[{ node: node.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
-			};
+			});
 
 			executionData.data = { main: [null] };
 
@@ -2238,6 +2238,12 @@ describe('WorkflowExecute', () => {
 				{
 					type: 'error',
 					content: 'A detailed error description',
+					metadata: {
+						nodeId: errorNode.id,
+						nodeName: errorNode.name,
+						runIndex: 0,
+						itemIndex: 0,
+					},
 				},
 			]);
 		});
@@ -2296,6 +2302,12 @@ describe('WorkflowExecute', () => {
 				{
 					type: 'error',
 					content: 'The API returned an error',
+					metadata: {
+						nodeId: errorNode.id,
+						nodeName: errorNode.name,
+						runIndex: 0,
+						itemIndex: 0,
+					},
 				},
 			]);
 		});
@@ -2400,6 +2412,12 @@ describe('WorkflowExecute', () => {
 				{
 					type: 'error',
 					content: 'Custom error description',
+					metadata: {
+						nodeId: errorNode.id,
+						nodeName: errorNode.name,
+						runIndex: 0,
+						itemIndex: 0,
+					},
 				},
 			]);
 		});
@@ -2457,6 +2475,12 @@ describe('WorkflowExecute', () => {
 				{
 					type: 'error',
 					content: undefined, // When no description is available, content should be undefined
+					metadata: {
+						nodeId: errorNode.id,
+						nodeName: errorNode.name,
+						runIndex: 0,
+						itemIndex: 0,
+					},
 				},
 			]);
 		});

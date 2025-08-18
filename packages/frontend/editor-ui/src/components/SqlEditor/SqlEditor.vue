@@ -36,6 +36,7 @@ import {
 	expressionCloseBrackets,
 	expressionCloseBracketsConfig,
 } from '@/plugins/codemirror/expressionCloseBrackets';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -54,6 +55,7 @@ type Props = {
 	rows?: number;
 	isReadOnly?: boolean;
 	fullscreen?: boolean;
+	targetNodeParameterContext?: TargetNodeParameterContext;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -61,6 +63,7 @@ const props = withDefaults(defineProps<Props>(), {
 	rows: 4,
 	isReadOnly: false,
 	fullscreen: false,
+	targetNodeParameterContext: undefined,
 });
 
 const emit = defineEmits<{
@@ -70,6 +73,7 @@ const emit = defineEmits<{
 const container = ref<HTMLDivElement>();
 const sqlEditor = ref<HTMLDivElement>();
 const isFocused = ref(false);
+const outputPopover = ref<InstanceType<typeof InlineExpressionEditorOutput>>();
 
 const extensions = computed(() => {
 	const dialect = SQL_DIALECTS[props.dialect] ?? SQL_DIALECTS.StandardSQL;
@@ -117,19 +121,21 @@ const {
 	segments: { all: segments },
 	readEditorValue,
 	hasFocus: editorHasFocus,
+	focus,
 } = useExpressionEditor({
 	editorRef: sqlEditor,
 	editorValue: () => props.modelValue,
 	extensions,
 	skipSegments: ['Statement', 'CompositeIdentifier', 'Parens', 'Brackets'],
 	isReadOnly: props.isReadOnly,
+	targetNodeParameterContext: props.targetNodeParameterContext,
 	onChange: () => {
 		emit('update:model-value', readEditorValue());
 	},
 });
 
-watch(editorHasFocus, (focus) => {
-	if (focus) {
+watch(editorHasFocus, (hasFocus) => {
+	if (hasFocus) {
 		isFocused.value = true;
 	}
 });
@@ -151,9 +157,10 @@ onClickOutside(container, (event) => onBlur(event));
 function onBlur(event: FocusEvent | KeyboardEvent) {
 	if (
 		event?.target instanceof Element &&
-		Array.from(event.target.classList).some((_class) => _class.includes('resizer'))
+		(Array.from(event.target.classList).some((_class) => _class.includes('resizer')) ||
+			outputPopover.value?.contentRef?.contains(event.target))
 	) {
-		return; // prevent blur on resizing
+		return; // prevent blur on resizing or interacting with output popover
 	}
 
 	isFocused.value = false;
@@ -191,6 +198,10 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	await dropInExpressionEditor(toRaw(editor.value), event, value);
 }
+
+defineExpose({
+	focus,
+});
 </script>
 
 <template>
@@ -210,9 +221,11 @@ async function onDrop(value: string, event: MouseEvent) {
 		<slot name="suffix" />
 		<InlineExpressionEditorOutput
 			v-if="!fullscreen"
+			ref="outputPopover"
 			:segments="segments"
 			:is-read-only="isReadOnly"
 			:visible="isFocused"
+			:virtual-ref="container"
 		/>
 	</div>
 </template>

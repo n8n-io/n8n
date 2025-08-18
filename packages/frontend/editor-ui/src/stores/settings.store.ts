@@ -13,7 +13,6 @@ import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import {
 	INSECURE_CONNECTION_WARNING,
 	LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,
-	LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { UserManagementAuthenticationMethod } from '@/Interface';
@@ -95,6 +94,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const deploymentType = computed(() => settings.value.deployment?.type || 'default');
 
 	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
+
+	const activeModules = computed(() => settings.value.activeModules);
+
+	const isModuleActive = (moduleName: string) => {
+		return activeModules.value.includes(moduleName);
+	};
 
 	const partialExecutionVersion = computed<1 | 2>(() => {
 		const defaultVersion = settings.value.partialExecution?.version ?? 1;
@@ -178,8 +183,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
-	const activeModules = computed(() => settings.value.activeModules);
-
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
 		userManagement.value = newSettings.userManagement;
@@ -250,6 +253,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setEndpointWebhook(fetchedSettings.endpointWebhook);
 		rootStore.setEndpointWebhookTest(fetchedSettings.endpointWebhookTest);
 		rootStore.setEndpointWebhookWaiting(fetchedSettings.endpointWebhookWaiting);
+		rootStore.setEndpointMcp(fetchedSettings.endpointMcp);
+		rootStore.setEndpointMcpTest(fetchedSettings.endpointMcpTest);
 		rootStore.setTimezone(fetchedSettings.timezone);
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
@@ -309,15 +314,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const fetched = await moduleSettingsApi.getModuleSettings(useRootStore().restApiContext);
 		moduleSettings.value = fetched;
 	};
-
-	/**
-	 * (Experimental) Minimum zoom level of the canvas to render node settings in place of nodes, without opening NDV
-	 */
-	const experimental__minZoomNodeSettingsInCanvas = useLocalStorage(
-		LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
-		0,
-		{ writeDefaults: false },
-	);
 
 	/**
 	 * (Experimental) If set to true, show node settings for a selected node in docked pane
@@ -384,7 +380,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAskAiEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
-		experimental__minZoomNodeSettingsInCanvas,
 		experimental__dockedNodeSettingsEnabled,
 		partialExecutionVersion,
 		reset,
@@ -395,10 +390,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		getSettings,
 		setSettings,
 		initialize,
-		activeModules,
 		getModuleSettings,
 		moduleSettings,
 		isMFAEnforcementLicensed,
 		isMFAEnforced,
+		activeModules,
+		isModuleActive,
 	};
 });

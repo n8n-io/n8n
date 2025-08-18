@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useHistoryStore } from '@/stores/history.store';
 import {
 	CUSTOM_API_CALL_KEY,
@@ -20,7 +20,6 @@ import type {
 	ITaskDataConnections,
 	IRunData,
 	IBinaryKeyData,
-	IDataObject,
 	INode,
 	INodePropertyOptions,
 	INodeCredentialsDetails,
@@ -77,6 +76,8 @@ export function useNodeHelpers() {
 	const isProductionExecutionPreview = ref(false);
 	const pullConnActiveNodeName = ref<string | null>(null);
 
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+
 	function hasProxyAuth(node: INodeUi): boolean {
 		return Object.keys(node.parameters).includes('nodeCredentialType');
 	}
@@ -118,14 +119,13 @@ export function useNodeHelpers() {
 	): boolean {
 		const nodeType = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
 		if (node && nodeType) {
-			const currentWorkflowInstance = workflowsStore.getCurrentWorkflow();
-			const workflowNode = currentWorkflowInstance.getNode(node.name);
+			const workflowNode = workflowObject.value.getNode(node.name);
 
 			const isTriggerNode = !!node && nodeTypesStore.isTriggerNode(node.type);
 			const isToolNode = !!node && nodeTypesStore.isToolNode(node.type);
 
 			if (workflowNode) {
-				const inputs = NodeHelpers.getNodeInputs(currentWorkflowInstance, workflowNode, nodeType);
+				const inputs = NodeHelpers.getNodeInputs(workflowObject.value, workflowNode, nodeType);
 				const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
 				if (!inputNames.includes(NodeConnectionTypes.Main) && !isToolNode && !isTriggerNode) {
@@ -280,8 +280,7 @@ export function useNodeHelpers() {
 			return;
 		}
 
-		const workflow = workflowsStore.getCurrentWorkflow();
-		const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
+		const nodeInputIssues = getNodeInputIssues(workflowObject.value, node, nodeType);
 
 		workflowsStore.setNodeIssue({
 			node: node.name,
@@ -722,8 +721,8 @@ export function useNodeHelpers() {
 				name: node.name,
 				properties: {
 					disabled: newDisabledState,
-				} as IDataObject,
-			} as INodeUpdatePropertiesInformation;
+				},
+			};
 
 			telemetry.track('User set node enabled status', {
 				node_type: node.type,

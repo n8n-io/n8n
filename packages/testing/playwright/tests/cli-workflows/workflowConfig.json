@@ -1,0 +1,580 @@
+[
+	{
+		"workflowId": "1",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "4",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "10",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "20",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "21",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "22",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "26",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "27",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "28",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "29",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "30",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "31",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "33",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "38",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "39",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "40",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "41",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "42",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "43",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "45",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "46",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "47",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "50",
+		"status": "SKIPPED",
+		"skipReason": "We seem to hit their rate limit a lot."
+	},
+	{
+		"workflowId": "51",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "54",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "56",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "57",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "59",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "64",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "65",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "66",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "68",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "69",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "73",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "74",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "75",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "76",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "77",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "78",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "79",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "80",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "82",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "85",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "86",
+		"status": "SKIPPED",
+		"skipReason": "It looks like a timing issue with the delete operation. The contact was created but not found when trying to delete it. Tested it with the same workflow and it worked.",
+		"ticketReference": "CAT-790"
+	},
+	{
+		"workflowId": "87",
+		"status": "SKIPPED",
+		"skipReason": "It looks like a timing issue with the delete operation. The contact was created but not found when trying to delete it. Tested it with the same workflow and it worked.",
+		"ticketReference": "CAT-790"
+	},
+	{
+		"workflowId": "88",
+		"status": "SKIPPED",
+		"skipReason": "It looks like a timing issue with the delete operation. The contact was created but not found when trying to delete it. Tested it with the same workflow and it worked.",
+		"ticketReference": "CAT-790"
+	},
+	{
+		"workflowId": "89",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "92",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "94",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "102",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "104",
+		"status": "SKIPPED",
+		"skipReason": "This node is deprecated and has been replaced by the Extract From File node. Also it didn't interact with any live services, it could have been an integation test."
+	},
+	{
+		"workflowId": "106",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "112",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "113",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "115",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "116",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "117",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "118",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "119",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "120",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "121",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "122",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "123",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "124",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "125",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "126",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "127",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "128",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "129",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "130",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "131",
+		"status": "SKIPPED",
+		"skipReason": "This API service has been discontinued. For more details, please check here: https://notify-bot.line.me/closing-announce on node Line"
+	},
+	{
+		"workflowId": "134",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "135",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "136",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "137",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "138",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "141",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "142",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "143",
+		"status": "SKIPPED",
+		"skipReason": "Invalid API key for Clearbit."
+	},
+	{
+		"workflowId": "145",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "146",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "149",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "151",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "157",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "158",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "159",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "160",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "163",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "165",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "167",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "168",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "169",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "170",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "171",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "173",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "176",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "177",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "179",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "180",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "183",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "187",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "188",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "189",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "190",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "191",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "192",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "193",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "194",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "196",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "197",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "198",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "199",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "200",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "201",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "204",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "206",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "207",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "208",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "214",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "215",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "217",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "218",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "219",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "220",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "221",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "222",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "223",
+		"status": "SKIPPED",
+		"skipReason": "You can not complete this operation. Please check your balance on node LingvaNex"
+	},
+	{
+		"workflowId": "224",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "225",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "226",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "227",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "233",
+		"status": "SKIPPED",
+		"skipReason": "Not Found on node Qdrant Vector Store. Could be a timing issue."
+	},
+	{
+		"workflowId": "243",
+		"status": "ACTIVE",
+		"enableSchemaValidation": false
+	},
+	{
+		"workflowId": "252",
+		"status": "SKIPPED"
+	},
+	{
+		"workflowId": "253",
+		"enableSchemaValidation": false,
+		"skipReason": "Seems to return a different schema each time. Not sure why, based on which tools it uses/calls?",
+		"status": "ACTIVE"
+	},
+	{
+		"workflowId": "254",
+		"status": "ACTIVE",
+		"enableSchemaValidation": false,
+		"skipReason": "Seems to return a different schema each time. Not sure why, based on which tools it uses/calls?"
+	},
+	{
+		"workflowId": "257",
+		"status": "SKIPPED",
+		"enableSchemaValidation": false,
+		"skipReason": "Will occasionaly return TypeError: text.trim is not a function"
+	},
+	{
+		"workflowId": "258",
+		"status": "ACTIVE",
+		"enableSchemaValidation": false,
+		"skipReason": "Seems to return a different schema each time. Not sure why, based on which tools it uses/calls?"
+	},
+	{
+		"workflowId": "259",
+		"status": "ACTIVE",
+		"skipReason": "Please return an array of objects, one for each item you would like to output. on node Code"
+	}
+]

@@ -14,6 +14,14 @@ function runTests(options) {
 	process.env.E2E_TESTS = 'true';
 	process.env.NODE_OPTIONS = '--dns-result-order=ipv4first';
 
+	// Automatically pass through any N8N_ENV_FEAT_* environment variables
+	Object.keys(process.env).forEach((key) => {
+		if (key.startsWith('N8N_ENV_FEAT_')) {
+			// These are already in process.env and will be inherited by the spawned process
+			console.log(`Passing through environment feature flag: ${key}=${process.env[key]}`);
+		}
+	});
+
 	if (options.customEnv) {
 		Object.keys(options.customEnv).forEach((key) => {
 			process.env[key] = options.customEnv[key];
@@ -21,7 +29,11 @@ function runTests(options) {
 	}
 
 	const cmd = `start-server-and-test ${options.startCommand} ${options.url} '${options.testCommand}'`;
-	const testProcess = spawn(cmd, [], { stdio: 'inherit', shell: true });
+	const testProcess = spawn(cmd, [], {
+		stdio: 'inherit',
+		shell: true,
+		env: process.env, // TODO: Maybe pass only the necessary environment variables instead of all
+	});
 
 	// Listen for termination signals to properly kill the test process
 	process.on('SIGINT', () => {

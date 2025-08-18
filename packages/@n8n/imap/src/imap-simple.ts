@@ -4,7 +4,7 @@ import { type ImapMessage } from 'imap';
 
 import { getMessage } from './helpers/get-message';
 import { PartData } from './part-data';
-import type { Message, MessagePart } from './types';
+import type { Message, MessagePart, SearchCriteria } from './types';
 
 const IMAP_EVENTS = ['alert', 'mail', 'expunge', 'uidvalidity', 'update', 'close', 'end'] as const;
 
@@ -63,10 +63,11 @@ export class ImapSimple extends EventEmitter {
 	 */
 	async search(
 		/** Criteria to use to search. Passed to node-imap's .search() 1:1 */
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		searchCriteria: any[],
+		searchCriteria: SearchCriteria[],
 		/** Criteria to use to fetch the search results. Passed to node-imap's .fetch() 1:1 */
 		fetchOptions: Imap.FetchOptions,
+		/** Optional limit to restrict the number of messages fetched */
+		limit?: number,
 	) {
 		return await new Promise<Message[]>((resolve, reject) => {
 			this.imap.search(searchCriteria, (e, uids) => {
@@ -80,17 +81,23 @@ export class ImapSimple extends EventEmitter {
 					return;
 				}
 
-				const fetch = this.imap.fetch(uids, fetchOptions);
+				// If limit is specified, take only the first N UIDs
+				let uidsToFetch = uids;
+				if (limit && limit > 0 && uids.length > limit) {
+					uidsToFetch = uids.slice(0, limit);
+				}
+
+				const fetch = this.imap.fetch(uidsToFetch, fetchOptions);
 				let messagesRetrieved = 0;
 				const messages: Message[] = [];
 
 				const fetchOnMessage = async (message: Imap.ImapMessage, seqNo: number) => {
 					const msg: Message = await getMessage(message);
 					msg.seqNo = seqNo;
-					messages[seqNo] = msg;
+					messages.push(msg);
 
 					messagesRetrieved++;
-					if (messagesRetrieved === uids.length) {
+					if (messagesRetrieved === uidsToFetch.length) {
 						resolve(messages.filter((m) => !!m));
 					}
 				};
