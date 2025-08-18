@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { IHeaderParams } from 'ag-grid-community';
-import {
-	mapToDataStoreColumnType,
-	useDataStoreTypes,
-} from '@/features/dataStore/composables/useDataStoreTypes';
+import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import type { AGGridCellType } from '@/features/dataStore/datastore.types';
 import { ref, computed } from 'vue';
 
@@ -15,7 +12,7 @@ const props = defineProps<{
 	params: HeaderParamsWithDelete;
 }>();
 
-const { getIconForType } = useDataStoreTypes();
+const { getIconForType, mapToDataStoreColumnType } = useDataStoreTypes();
 
 const isHovered = ref(false);
 const isDropdownOpen = ref(false);
