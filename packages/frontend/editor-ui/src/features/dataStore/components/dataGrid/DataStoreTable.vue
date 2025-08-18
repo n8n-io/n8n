@@ -222,12 +222,12 @@ const initColumnDefinitions = () => {
 	];
 };
 
-const initialize = async () => {
+const initialize = () => {
 	initColumnDefinitions();
 };
 
-onMounted(async () => {
-	await initialize();
+onMounted(() => {
+	initialize();
 });
 </script>
 
