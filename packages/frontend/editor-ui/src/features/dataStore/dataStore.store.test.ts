@@ -61,4 +61,28 @@ describe('dataStore.store', () => {
 			targetIndex,
 		);
 	});
+
+	it('can delete a column', async () => {
+		const datastoreId = faker.string.alphanumeric(10);
+		const columnId = 'phone';
+		const projectId = 'p1';
+		dataStoreStore.$patch({
+			dataStores: [
+				{ id: datastoreId, columns: [{ id: columnId, index: 0, name: 'phone', type: 'string' }] },
+			],
+			totalCount: 1,
+		});
+		vi.spyOn(dataStoreApi, 'deleteDataStoreColumnApi').mockResolvedValue(true);
+
+		const deleted = await dataStoreStore.deleteDataStoreColumn(datastoreId, projectId, columnId);
+
+		expect(deleted).toBe(true);
+		expect(dataStoreApi.deleteDataStoreColumnApi).toHaveBeenCalledWith(
+			rootStore.restApiContext,
+			datastoreId,
+			projectId,
+			columnId,
+		);
+		expect(dataStoreStore.dataStores[0].columns.find((c) => c.id === columnId)).toBeUndefined();
+	});
 });
