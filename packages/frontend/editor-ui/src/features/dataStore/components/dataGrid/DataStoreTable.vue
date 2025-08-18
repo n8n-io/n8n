@@ -256,6 +256,8 @@ onMounted(async () => {
 				:loading="contentLoading"
 				:row-selection="rowSelection"
 				:get-row-id="(params) => params.data.id"
+				:single-click-edit="true"
+				:stop-editing-when-cells-lose-focus="true"
 				@grid-ready="onGridReady"
 				@cell-value-changed="onCellValueChanged"
 			/>
