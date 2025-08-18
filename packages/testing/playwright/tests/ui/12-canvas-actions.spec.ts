@@ -14,7 +14,7 @@ test.describe('Canvas Actions', () => {
 
 	test('should add first step', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await expect(n8n.canvas.canvasNodes()).toHaveCount(1);
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
 	});
 
 	test('should add a connected node using plus endpoint', async ({ n8n }) => {
@@ -24,7 +24,7 @@ test.describe('Canvas Actions', () => {
 		await n8n.page.keyboard.press('Enter');
 		await n8n.page.keyboard.press('Escape');
 
-		await expect(n8n.canvas.canvasNodes()).toHaveCount(2);
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(1);
 	});
 
@@ -39,7 +39,7 @@ test.describe('Canvas Actions', () => {
 			.first();
 		await sourceElement.dragTo(n8n.canvas.canvasPane(), { targetPosition: { x: 100, y: 100 } });
 
-		await expect(n8n.canvas.canvasNodes()).toHaveCount(2);
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(1);
 	});
 
@@ -54,7 +54,7 @@ test.describe('Canvas Actions', () => {
 		});
 
 		await expect(n8n.canvas.nodeCreatorCategoryItems()).toHaveCount(1);
-		await expect(n8n.canvas.canvasNodes()).toHaveCount(1);
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(0);
 	});
 
@@ -63,7 +63,7 @@ test.describe('Canvas Actions', () => {
 		await n8n.canvas.deselectAll();
 		await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
 
-		await expect(n8n.canvas.canvasNodes()).toHaveCount(2);
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(0);
 	});
 
@@ -72,7 +72,7 @@ test.describe('Canvas Actions', () => {
 		await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
 
-		await expect(n8n.canvas.canvasNodes()).toHaveCount(2);
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(1);
 
 		await n8n.canvas.addNodeBetweenNodes(
@@ -81,7 +81,7 @@ test.describe('Canvas Actions', () => {
 			HTTP_REQUEST_NODE_NAME,
 		);
 
-		await expect(n8n.canvas.canvasNodes()).toHaveCount(3);
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(2);
 	});
 
@@ -100,7 +100,7 @@ test.describe('Canvas Actions', () => {
 		await n8n.canvas.deleteConnectionBetweenNodes(MANUAL_TRIGGER_NODE_DISPLAY_NAME, CODE_NODE_NAME);
 
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(0);
-		await expect(n8n.canvas.canvasNodes()).toHaveCount(2);
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 	});
 
 	test.describe('Node hover actions', () => {
@@ -111,7 +111,7 @@ test.describe('Canvas Actions', () => {
 			await expect(
 				n8n.notifications.notificationContainerByText('Node executed successfully'),
 			).toHaveCount(1);
-			await expect(n8n.canvas.canvasNodes()).toHaveCount(1);
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
 		});
 
 		test('should disable and enable node', async ({ n8n }) => {
@@ -133,7 +133,7 @@ test.describe('Canvas Actions', () => {
 			await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
 			await n8n.canvas.deleteNodeByName(CODE_NODE_NAME);
 
-			await expect(n8n.canvas.canvasNodes()).toHaveCount(1);
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
 			await expect(n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME)).toBeVisible();
 		});
 	});
@@ -145,7 +145,7 @@ test.describe('Canvas Actions', () => {
 		await n8n.canvas.nodeByName(CODE_NODE_NAME).click();
 		await n8n.canvasComposer.copySelectedNodesWithToast();
 
-		await expect(n8n.canvas.canvasNodes()).toHaveCount(2);
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 	});
 
 	test('should select/deselect all nodes', async ({ n8n }) => {
@@ -163,7 +163,7 @@ test.describe('Canvas Actions', () => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
-		await n8n.canvas.canvasNodes().first().waitFor();
+		await n8n.canvas.getCanvasNodes().first().waitFor();
 		await n8n.canvas.navigateNodesWithArrows('left');
 
 		const selectedNodes = n8n.canvas.selectedNodes();
@@ -178,7 +178,7 @@ test.describe('Canvas Actions', () => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
-		await n8n.canvas.canvasNodes().first().waitFor();
+		await n8n.canvas.getCanvasNodes().first().waitFor();
 		await n8n.canvas.extendSelectionWithArrows('left');
 
 		await expect(n8n.canvas.selectedNodes()).toHaveCount(2);

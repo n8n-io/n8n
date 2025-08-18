@@ -207,6 +207,10 @@ export class CanvasPage extends BasePage {
 		return tags;
 	}
 
+	getWorkflowSaveButton(): Locator {
+		return this.page.getByTestId('workflow-save-button');
+	}
+
 	// Production Checklist methods
 	getProductionChecklistButton(): Locator {
 		return this.page.getByTestId('suggested-action-count');
@@ -251,7 +255,8 @@ export class CanvasPage extends BasePage {
 	async clickProductionChecklistAction(actionText: string): Promise<void> {
 		await this.getProductionChecklistActionItem(actionText).click();
 	}
-	canvasNodes(): Locator {
+
+	getCanvasNodes(): Locator {
 		return this.page.getByTestId('canvas-node');
 	}
 
