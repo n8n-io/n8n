@@ -112,7 +112,7 @@ const onInput = debounce(validateName, { debounceTime: 300 });
 										<N8nIcon
 											icon="circle-help"
 											size="small"
-											class="$style['error-tooltip']"
+											:class="$style['error-tooltip']"
 											color="text-base"
 											data-test-id="add-column-error-help-icon"
 										/>
