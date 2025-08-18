@@ -138,7 +138,11 @@ const onDeleteColumn = async (columnId: string) => {
 		gridApi.value.setGridOption('rowData', rowData.value);
 	}
 	try {
-		await dataStoreStore.deleteDataStoreColumn(props.dataStore.id, columnId);
+		await dataStoreStore.deleteDataStoreColumn(
+			props.dataStore.id,
+			props.dataStore.projectId,
+			columnId,
+		);
 	} catch (error: unknown) {
 		toast.showError(error as Error, i18n.baseText('dataStore.deleteColumn.error'));
 		colDefs.value.splice(columnToDeleteIndex, 0, columnToDelete);
@@ -190,6 +194,7 @@ const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 	try {
 		await dataStoreStore.moveDataStoreColumn(
 			props.dataStore.id,
+			props.dataStore.projectId,
 			moveEvent.column.getColId(),
 			moveEvent.toIndex - 1,
 		);
