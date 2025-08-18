@@ -13,7 +13,6 @@
 		"paths": {
 			"@/*": ["./*"]
 		},
-		"sourceMap": true,
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"types": ["node", "jest"]
 	},
