@@ -18,4 +18,8 @@ export class WorkflowsConfig {
 	/** How many workflows to activate simultaneously during startup. */
 	@Env('N8N_WORKFLOW_ACTIVATION_BATCH_SIZE')
 	activationBatchSize: number = 1;
+
+	/** Whether workflow sharing is disabled */
+	@Env('N8N_DISABLE_WORKFLOW_SHARING')
+	disableSharing: boolean = false;
 }
