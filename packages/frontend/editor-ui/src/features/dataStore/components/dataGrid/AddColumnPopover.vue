@@ -26,7 +26,8 @@ const nameInputRef = ref<HTMLInputElement | null>(null);
 
 const columnName = ref('');
 const columnType = ref<DataStoreColumnType>('string');
-const columnTypes = ref<DataStoreColumnType[]>(['string', 'number', 'boolean', 'date']);
+
+const columnTypes: DataStoreColumnType[] = ['string', 'number', 'boolean', 'date'];
 
 const error = ref<string | null>(null);
 
