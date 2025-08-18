@@ -8,7 +8,7 @@ export type DataStore = {
 	columns: DataStoreColumn[];
 	createdAt: string;
 	updatedAt: string;
-	projectId?: string;
+	projectId: string;
 	project?: Project;
 };
 

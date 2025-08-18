@@ -51,11 +51,15 @@ import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/composables/useToast';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
 
+import { TelemetryHelpers } from 'n8n-workflow';
+
 vi.mock('n8n-workflow', async (importOriginal) => {
-	const actual = await importOriginal<{}>();
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const actual = await importOriginal<typeof import('n8n-workflow')>();
 	return {
 		...actual,
 		TelemetryHelpers: {
+			...actual.TelemetryHelpers,
 			generateNodesGraph: vi.fn().mockReturnValue({
 				nodeGraph: {
 					nodes: [],
@@ -2726,34 +2730,6 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
-	describe('duplicateNodes', () => {
-		it('should duplicate nodes', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const nodeTypesStore = useNodeTypesStore();
-			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
-
-			nodeTypesStore.nodeTypes = {
-				[SET_NODE_TYPE]: { 1: nodeTypeDescription },
-			};
-
-			const nodes = buildImportNodes();
-			workflowsStore.setNodes(nodes);
-			workflowsStore.getNodesByIds.mockReturnValue(nodes);
-			workflowsStore.outgoingConnectionsByNodeName.mockReturnValue({});
-
-			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
-			workflowsStore.workflowObject = workflowObject;
-			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
-
-			const canvasOperations = useCanvasOperations();
-			const duplicatedNodeIds = await canvasOperations.duplicateNodes(['1', '2']);
-
-			expect(duplicatedNodeIds.length).toBe(2);
-			expect(duplicatedNodeIds).not.toContain('1');
-			expect(duplicatedNodeIds).not.toContain('2');
-		});
-	});
-
 	describe('copyNodes', () => {
 		it('should copy nodes', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
@@ -3417,6 +3393,69 @@ describe('useCanvasOperations', () => {
 			connectAdjacentNodes(nodeB.id);
 
 			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('duplicateNodes', () => {
+		it('should duplicate nodes', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+
+			const nodes = buildImportNodes();
+			workflowsStore.setNodes(nodes);
+			workflowsStore.getNodesByIds.mockReturnValue(nodes);
+			workflowsStore.outgoingConnectionsByNodeName.mockReturnValue({});
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
+
+			const canvasOperations = useCanvasOperations();
+			const duplicatedNodeIds = await canvasOperations.duplicateNodes(['1', '2']);
+
+			expect(duplicatedNodeIds.length).toBe(2);
+			expect(duplicatedNodeIds).not.toContain('1');
+			expect(duplicatedNodeIds).not.toContain('2');
+		});
+
+		it('should not crash when TelemetryHelpers.generateNodesGraph throws error', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const telemetry = useTelemetry();
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+
+			const nodes = buildImportNodes();
+			workflowsStore.setNodes(nodes);
+			workflowsStore.getNodesByIds.mockReturnValue(nodes);
+			workflowsStore.outgoingConnectionsByNodeName.mockReturnValue({});
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
+
+			// Mock TelemetryHelpers.generateNodesGraph to throw an error for this test
+			vi.mocked(TelemetryHelpers.generateNodesGraph).mockImplementationOnce(() => {
+				throw new Error('Telemetry generation failed');
+			});
+
+			// This should not throw even when telemetry fails
+			const canvasOperations = useCanvasOperations();
+			await expect(canvasOperations.duplicateNodes(['1', '2'])).resolves.not.toThrow();
+
+			// Telemetry should not be tracked when generation fails
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				'User imported workflow',
+				expect.any(Object),
+			);
 		});
 	});
 

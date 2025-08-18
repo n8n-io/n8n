@@ -30,7 +30,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 			instance.loaders.package1 = mock<DirectoryLoader>({
 				directory: '/icons/package1',
 			});
@@ -58,7 +58,7 @@ describe('LoadNodesAndCredentials', () => {
 	});
 
 	describe('convertNodeToAiTool', () => {
-		const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+		const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 
 		let fullNodeWrapper: { description: INodeTypeDescription };
 
@@ -290,7 +290,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 			instance.knownNodes['n8n-nodes-base.test'] = {
 				className: 'Test',
 				sourcePath: '/nodes-base/dist/nodes/Test/Test.node.js',
@@ -330,7 +330,7 @@ describe('LoadNodesAndCredentials', () => {
 		let instance: LoadNodesAndCredentials;
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 			instance.types.nodes = [
 				{
 					name: 'testNode',
@@ -455,7 +455,7 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		beforeEach(() => {
-			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock());
+			instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock());
 			instance.loaders = { CUSTOM: mockLoader };
 
 			// Allow access to directory

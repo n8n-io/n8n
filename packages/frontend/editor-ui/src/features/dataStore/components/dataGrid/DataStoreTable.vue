@@ -8,13 +8,21 @@ import type {
 	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
 import { AgGridVue } from 'ag-grid-vue3';
-import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import type {
 	GridApi,
 	GridReadyEvent,
 	ColDef,
 	ColumnMovedEvent,
 	ValueGetterParams,
+} from 'ag-grid-community';
+import {
+	ModuleRegistry,
+	ClientSideRowModelModule,
+	TextEditorModule,
+	LargeTextEditorModule,
+	ColumnAutoSizeModule,
+	CheckboxEditorModule,
+	NumberEditorModule,
 } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumnPopover.vue';
@@ -25,13 +33,17 @@ import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
-import {
-	getDefaultValueForType,
-	mapToAGCellType,
-} from '@/features/dataStore/composables/useDataStoreTypes';
+import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 
-// Register all Community features
-ModuleRegistry.registerModules([AllCommunityModule]);
+// Register only the modules we actually use
+ModuleRegistry.registerModules([
+	ClientSideRowModelModule,
+	TextEditorModule,
+	LargeTextEditorModule,
+	ColumnAutoSizeModule,
+	CheckboxEditorModule,
+	NumberEditorModule,
+]);
 
 type Props = {
 	dataStore: DataStore;
@@ -42,6 +54,7 @@ const props = defineProps<Props>();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
+const dataStoreTypes = useDataStoreTypes();
 
 const dataStoreStore = useDataStoreStore();
 
@@ -49,8 +62,6 @@ const dataStoreStore = useDataStoreStore();
 const gridApi = ref<GridApi | null>(null);
 const colDefs = ref<ColDef[]>([]);
 const rowData = ref<DataStoreRow[]>([]);
-
-const contentLoading = ref(false);
 
 // Shared config for all columns
 const defaultColumnDef = {
@@ -69,15 +80,29 @@ const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
 };
 
-const setCurrentPage = async (page: number) => {
+const setCurrentPage = (page: number) => {
 	currentPage.value = page;
-	// await fetchData();
 };
 
 const setPageSize = (size: number) => {
 	pageSize.value = size;
 	currentPage.value = 1; // Reset to first page on page size change
-	// await fetchData();
+};
+
+const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload }) => {
+	try {
+		const newColumn = await dataStoreStore.addDataStoreColumn(
+			props.dataStore.id,
+			props.dataStore.projectId,
+			column,
+		);
+		if (!newColumn) {
+			throw new Error(i18n.baseText('generic.unknownError'));
+		}
+		colDefs.value = [...colDefs.value, createColumnDef(newColumn)];
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
+	}
 };
 
 const onDeleteColumn = async (columnId: string) => {
@@ -120,27 +145,6 @@ const onDeleteColumn = async (columnId: string) => {
 	}
 };
 
-const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload }) => {
-	// TODO:
-	// - Add loading
-	try {
-		const newColumn = await dataStoreStore.addDataStoreColumn(props.dataStore.id, column);
-		if (!newColumn) {
-			throw new Error(i18n.baseText('generic.unknownError'));
-		}
-		colDefs.value.push(createColumnDef(newColumn));
-		rowData.value = rowData.value.map((row) => {
-			return { ...row, [newColumn.name]: getDefaultValueForType(newColumn.type) };
-		});
-		if (gridApi.value) {
-			gridApi.value.setGridOption('columnDefs', colDefs.value);
-			gridApi.value.setGridOption('rowData', rowData.value);
-		}
-	} catch (error) {
-		toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
-	}
-};
-
 const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {}) => {
 	const columnDef: ColDef = {
 		colId: col.id,
@@ -148,11 +152,10 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		headerName: col.name,
 		editable: true,
 		resizable: true,
-		cellDataType: mapToAGCellType(col.type),
 		valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
 			// If the value is null, return the default value for the column type
 			if (params.data?.[col.name] === null) {
-				return getDefaultValueForType(col.type);
+				return dataStoreTypes.getDefaultValueForType(col.type);
 			}
 			// Parse dates
 			if (col.type === 'date') {
@@ -163,6 +166,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		headerComponent: ColumnHeader,
 		headerComponentParams: { onDelete: onDeleteColumn },
 		...extraProps,
+		cellDataType: dataStoreTypes.mapToAGCellType(col.type),
 	};
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
@@ -229,7 +233,7 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style.wrapper">
-		<div :class="$style['grid-container']">
+		<div :class="$style['grid-container']" data-test-id="data-store-grid">
 			<AgGridVue
 				style="width: 100%"
 				:row-data="rowData"
@@ -240,7 +244,6 @@ onMounted(async () => {
 				:header-height="36"
 				:animate-rows="false"
 				:theme="n8nTheme"
-				:loading="contentLoading"
 				:suppress-drag-leave-hides-columns="true"
 				@grid-ready="onGridReady"
 				@column-moved="onColumnMoved"
@@ -252,7 +255,12 @@ onMounted(async () => {
 			/>
 		</div>
 		<div :class="$style.footer">
-			<n8n-icon-button icon="plus" class="mb-xl" type="secondary" />
+			<n8n-icon-button
+				icon="plus"
+				class="mb-xl"
+				type="secondary"
+				data-test-id="data-store-add-row-button"
+			/>
 			<el-pagination
 				v-model:current-page="currentPage"
 				v-model:page-size="pageSize"
