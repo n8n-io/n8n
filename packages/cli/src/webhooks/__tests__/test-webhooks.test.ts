@@ -8,6 +8,7 @@ import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -200,7 +201,6 @@ describe('TestWebhooks', () => {
 			registrations.toKey.mockImplementation(
 				(webhook: Pick<IWebhookData, 'webhookId' | 'httpMethod' | 'path'>) => {
 					const { webhookId, httpMethod, path: webhookPath } = webhook;
-					console.log('webhookId', webhookId, 'httpMethod', httpMethod, 'webhookPath', webhookPath);
 					if (!webhookId) return [httpMethod, webhookPath].join('|');
 
 					let path = webhookPath;
@@ -218,17 +218,17 @@ describe('TestWebhooks', () => {
 			const METHOD = 'POST';
 			const PATH_WITH_SLASH = 'register/';
 			const PATH_WITHOUT_SLASH = 'register';
+			const webhookData = {
+				httpMethod: METHOD as IHttpRequestMethods,
+				path: PATH_WITH_SLASH.endsWith('/') ? PATH_WITH_SLASH.slice(0, -1) : PATH_WITH_SLASH,
+			};
 
-			registrations.get.mockImplementation(async (key: string) => {
-				if (!key.startsWith(METHOD)) {
-					return undefined;
-				}
+			registrations.getRegistrationsHash.mockImplementation(async () => {
 				return {
-					workflowEntity: mock<WorkflowEntity>(),
-					webhook: mock<IWebhookData>({
-						httpMethod: METHOD,
-						path: PATH_WITH_SLASH.endsWith('/') ? PATH_WITH_SLASH.slice(0, -1) : PATH_WITH_SLASH,
-					}),
+					[registrations.toKey(webhookData)]: {
+						workflowEntity: mock<WorkflowEntity>(),
+						webhook: webhookData as IWebhookData,
+					},
 				};
 			});
 
@@ -243,17 +243,19 @@ describe('TestWebhooks', () => {
 			const METHOD = 'POST';
 			const PATH = '12345/register/:id';
 
-			registrations.get.mockImplementation(async (key: string) => {
-				if (!key.startsWith(METHOD)) {
-					return undefined;
-				}
+			const webhookData = {
+				webhookId: '12345',
+				httpMethod: METHOD as IHttpRequestMethods,
+				// Path for dynamic webhook does not contain webhookId
+				path: 'register/:id',
+			};
+
+			registrations.getRegistrationsHash.mockImplementation(async () => {
 				return {
-					workflowEntity: mock<WorkflowEntity>(),
-					webhook: mock<IWebhookData>({
-						webhookId: '12345',
-						httpMethod: METHOD,
-						path: PATH,
-					}),
+					[registrations.toKey(webhookData)]: {
+						workflowEntity: mock<WorkflowEntity>(),
+						webhook: webhookData as IWebhookData,
+					},
 				};
 			});
 

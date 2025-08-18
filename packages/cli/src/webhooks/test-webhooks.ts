@@ -203,12 +203,18 @@ export class TestWebhooks implements IWebhookManager {
 	async getWebhooksFromPath(rawPath: string) {
 		const path = removeTrailingSlash(rawPath);
 		const webhooks: IWebhookData[] = [];
-		for (const method of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as IHttpRequestMethods[]) {
-			let webhook = await this.getActiveWebhook(method, path);
+		const registrations = await this.registrations.getRegistrationsHash();
+
+		for (const httpMethod of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as IHttpRequestMethods[]) {
+			const key = this.registrations.toKey({ httpMethod, path });
+			let webhook = registrations?.[key]?.webhook;
 			if (!webhook) {
 				// check for dynamic webhooks
 				const [webhookId, ...segments] = path.split('/');
-				webhook = await this.getActiveWebhook(method, segments.join('/'), webhookId);
+				const key = this.registrations.toKey({ httpMethod, path, webhookId });
+				if (registrations?.[key]) {
+					webhook = this.getActiveWebhookFromRegistration(segments.join('/'), registrations?.[key]);
+				}
 			}
 			if (webhook) {
 				webhooks.push(webhook);
@@ -408,17 +414,10 @@ export class TestWebhooks implements IWebhookManager {
 		return foundWebhook;
 	}
 
-	async getActiveWebhook(httpMethod: IHttpRequestMethods, path: string, webhookId?: string) {
-		const key = this.registrations.toKey({ httpMethod, path, webhookId });
-
+	getActiveWebhookFromRegistration(path: string, registration: TestWebhookRegistration) {
 		let webhook: IWebhookData | undefined;
 		let maxMatches = 0;
 		const pathElementsSet = new Set(path.split('/'));
-		// check if static elements match in path
-		// if more results have been returned choose the one with the most static-route matches
-		const registration = await this.registrations.get(key);
-
-		if (!registration) return;
 
 		const { webhook: dynamicWebhook } = registration;
 
@@ -435,6 +434,18 @@ export class TestWebhooks implements IWebhookManager {
 		}
 
 		return webhook;
+	}
+
+	async getActiveWebhook(httpMethod: IHttpRequestMethods, path: string, webhookId?: string) {
+		const key = this.registrations.toKey({ httpMethod, path, webhookId });
+
+		// check if static elements match in path
+		// if more results have been returned choose the one with the most static-route matches
+		const registration = await this.registrations.get(key);
+
+		if (!registration) return;
+
+		return this.getActiveWebhookFromRegistration(path, registration);
 	}
 
 	/**
