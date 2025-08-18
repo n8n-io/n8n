@@ -121,11 +121,10 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		page: number,
 		pageSize: number,
 	) => {
-		const response = await getDataStoreRowsApi(rootStore.restApiContext, datastoreId, projectId, {
+		return await getDataStoreRowsApi(rootStore.restApiContext, datastoreId, projectId, {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
 		});
-		return response;
 	};
 
 	const insertEmptyRow = async (dataStore: DataStore) => {

@@ -20,6 +20,7 @@ import {
 	DateEditorModule,
 	ClientSideRowModelApiModule,
 	ValidationModule,
+	UndoRedoEditModule,
 } from 'ag-grid-community';
 import type {
 	GridApi,
@@ -36,7 +37,6 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { DEFAULT_ID_COLUMN_NAME, NO_TABLE_YET_MESSAGE } from '@/features/dataStore/constants';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
-import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -51,6 +51,7 @@ ModuleRegistry.registerModules([
 	RenderApiModule,
 	DateEditorModule,
 	ClientSideRowModelApiModule,
+	UndoRedoEditModule,
 ]);
 
 type Props = {
@@ -73,11 +74,11 @@ const dataStoreStore = useDataStoreStore();
 const gridApi = ref<GridApi | null>(null);
 const colDefs = ref<ColDef[]>([]);
 const rowData = ref<DataStoreRow[]>([]);
-const rowSelection = ref<RowSelectionOptions | 'single' | 'multiple'>({
+const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
 	mode: 'singleRow',
 	enableClickSelection: true,
 	checkboxes: false,
-});
+};
 
 const contentLoading = ref(false);
 
@@ -142,7 +143,7 @@ const createColumnDef = (col: DataStoreColumn) => {
 			// Parse dates
 			if (col.type === 'date') {
 				const value = params.data?.[col.name];
-				if (typeof value === 'string' && value !== null) {
+				if (typeof value === 'string') {
 					return new Date(value);
 				}
 			}
@@ -171,8 +172,8 @@ const onAddRowClick = async () => {
 		if (!inserted) {
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
-		await fetchDataStoreContent();
 		emit('toggleSave', true);
+		await fetchDataStoreContent();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 	} finally {
@@ -196,21 +197,14 @@ const initColumnDefinitions = () => {
 };
 
 const onCellValueChanged = async (params: CellValueChangedEvent) => {
-	const { data, oldValue, colDef, api } = params;
+	const { data, api } = params;
 
 	try {
 		emit('toggleSave', true);
-		await dataStoreStore.upsertRow(props.dataStore.id, props.dataStore.projectId ?? '', data);
+		await dataStoreStore.upsertRow(props.dataStore.id, props.dataStore.projectId, data);
 	} catch (error) {
-		// Revert old value if update fails
-		const fieldName = String(colDef.field);
-		// Use the type guard to ensure oldValue is a valid DataStoreValue
-		const validOldValue = isDataStoreValue(oldValue) ? oldValue : null;
-		const revertedData: DataStoreRow = { ...data, [fieldName]: validOldValue };
-		api.applyTransaction({
-			update: [revertedData],
-		});
-
+		// Revert cell to original value if the update fails
+		api.undoCellEditing();
 		toast.showError(error, i18n.baseText('dataStore.updateRow.error'));
 	} finally {
 		emit('toggleSave', false);
@@ -222,7 +216,7 @@ const fetchDataStoreContent = async () => {
 		contentLoading.value = true;
 		const fetchedRows = await dataStoreStore.fetchDataStoreContent(
 			props.dataStore.id,
-			props.dataStore.projectId ?? '',
+			props.dataStore.projectId,
 			currentPage.value,
 			pageSize.value,
 		);
@@ -269,6 +263,7 @@ onMounted(async () => {
 				:get-row-id="(params) => String(params.data.id)"
 				:single-click-edit="true"
 				:stop-editing-when-cells-lose-focus="true"
+				:undo-redo-cell-editing="true"
 				@grid-ready="onGridReady"
 				@cell-value-changed="onCellValueChanged"
 			/>

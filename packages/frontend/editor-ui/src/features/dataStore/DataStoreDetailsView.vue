@@ -5,10 +5,11 @@ import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
-import { DATA_STORE_VIEW } from '@/features/dataStore/constants';
+import { DATA_STORE_VIEW, MIN_LOADING_TIME } from '@/features/dataStore/constants';
 import DataStoreBreadcrumbs from '@/features/dataStore/components/DataStoreBreadcrumbs.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import DataStoreTable from './components/dataGrid/DataStoreTable.vue';
+import { useDebounce } from '@/composables/useDebounce';
 
 type Props = {
 	id: string;
@@ -27,7 +28,7 @@ const dataStoreStore = useDataStoreStore();
 const loading = ref(false);
 const saving = ref(false);
 const dataStore = ref<DataStore | null>(null);
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
+const { debounce } = useDebounce();
 
 const showErrorAndGoBackToList = async (error: unknown) => {
 	if (!(error instanceof Error)) {
@@ -53,19 +54,28 @@ const initialize = async () => {
 	}
 };
 
-const onToggleSave = (value: boolean) => {
-	// Cancel previous timer if it exists
-	if (saveTimer) {
-		clearTimeout(saveTimer);
-		saveTimer = null;
-	}
-
-	// Delay saving state to avoid flickering
-	const timeout = value ? 0 : 200;
-	saveTimer = setTimeout(() => {
+// Debounce creating new timer slightly if saving is initiated fast in succession
+const debouncedSetSaving = debounce(
+	(value: boolean) => {
 		saving.value = value;
-		saveTimer = null;
-	}, timeout);
+	},
+	{ debounceTime: 50, trailing: true },
+);
+
+// Debounce hiding the saving indicator so users can see saving state
+const debouncedHideSaving = debounce(
+	() => {
+		saving.value = false;
+	},
+	{ debounceTime: MIN_LOADING_TIME, trailing: true },
+);
+
+const onToggleSave = (value: boolean) => {
+	if (value) {
+		debouncedSetSaving(true);
+	} else {
+		debouncedHideSaving();
+	}
 };
 
 onMounted(async () => {
