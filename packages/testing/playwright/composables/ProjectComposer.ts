@@ -1,3 +1,5 @@
+import { nanoid } from 'nanoid';
+
 import type { n8nPage } from '../pages/n8nPage';
 
 export class ProjectComposer {
@@ -16,7 +18,7 @@ export class ProjectComposer {
 		]);
 		await this.n8n.notifications.waitForNotificationAndClose('saved successfully');
 		await this.n8n.page.waitForLoadState();
-		const projectNameUnique = projectName ?? `Project ${Date.now()}`;
+		const projectNameUnique = projectName ?? `Project ${nanoid(8)}`;
 		await this.n8n.projectSettings.fillProjectName(projectNameUnique);
 		await this.n8n.projectSettings.clickSaveButton();
 		const projectId = this.extractProjectIdFromPage('projects', 'settings');
