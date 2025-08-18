@@ -38,7 +38,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		totalCount.value = response.count;
 	};
 
-	const createDataStore = async (name: string, projectId?: string) => {
+	const createDataStore = async (name: string, projectId: string) => {
 		const newStore = await createDataStoreApi(rootStore.restApiContext, name, projectId);
 		if (!newStore.project && projectId) {
 			const project = await projectStore.fetchProject(projectId);
@@ -51,7 +51,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return newStore;
 	};
 
-	const deleteDataStore = async (datastoreId: string, projectId?: string) => {
+	const deleteDataStore = async (datastoreId: string, projectId: string) => {
 		const deleted = await deleteDataStoreApi(rootStore.restApiContext, datastoreId, projectId);
 		if (deleted) {
 			dataStores.value = dataStores.value.filter((store) => store.id !== datastoreId);
@@ -60,7 +60,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return deleted;
 	};
 
-	const updateDataStore = async (datastoreId: string, name: string, projectId?: string) => {
+	const updateDataStore = async (datastoreId: string, name: string, projectId: string) => {
 		const updated = await updateDataStoreApi(
 			rootStore.restApiContext,
 			datastoreId,
@@ -78,6 +78,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 
 	const fetchDataStoreDetails = async (datastoreId: string, projectId: string) => {
 		const response = await fetchDataStoresApi(rootStore.restApiContext, projectId, undefined, {
+			projectId,
 			id: datastoreId,
 		});
 		if (response.data.length > 0) {

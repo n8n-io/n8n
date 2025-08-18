@@ -140,12 +140,11 @@ const createColumnDef = (col: DataStoreColumn) => {
 				return dataStoreTypes.getDefaultValueForType(col.type);
 			}
 			// Parse dates
-			if (
-				col.type === 'date' &&
-				typeof params.data?.[col.name] === 'string' &&
-				params.data?.[col.name] !== null
-			) {
-				return new Date(params.data[col.name] as string);
+			if (col.type === 'date') {
+				const value = params.data?.[col.name];
+				if (typeof value === 'string' && value !== null) {
+					return new Date(value);
+				}
 			}
 			return params.data?.[col.name];
 		},
