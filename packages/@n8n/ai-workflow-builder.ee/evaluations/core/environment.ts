@@ -114,3 +114,18 @@ export function getConcurrencyLimit(): number {
 export function shouldGenerateTestCases(): boolean {
 	return process.env.GENERATE_TEST_CASES === 'true';
 }
+
+/**
+ * How many test cases to generate based on environment variable
+ * @returns Number of test cases to generate (defaults to 10)
+ */
+export function howManyTestCasesToGenerate(): number {
+	const envCount = process.env.GENERATE_TEST_CASES_COUNT;
+	if (envCount) {
+		const parsed = parseInt(envCount, 10);
+		if (!isNaN(parsed) && parsed > 0) {
+			return parsed;
+		}
+	}
+	return 10; // Default to 5 if not specified
+}

@@ -32,7 +32,6 @@ evaluations/
 │   ├── evaluation-calculator.ts  # Metrics calculation
 │   ├── evaluation-helpers.ts     # Common helper functions
 │   ├── evaluation-reporter.ts    # Report generation
-│   └── evaluation-runner.ts      # Execution utilities
 └── index.ts            # Main entry point
 ```
 
@@ -122,13 +121,13 @@ Violations are categorized by severity:
 
 ```bash
 # Run with default settings
-npm run evaluate
+pnpm evaluate
 
 # With additional generated test cases
-GENERATE_TEST_CASES=true npm run evaluate
+GENERATE_TEST_CASES=true pnpm evaluate
 
 # With custom concurrency
-EVALUATION_CONCURRENCY=10 npm run evaluate
+EVALUATION_CONCURRENCY=10 pnpm evaluate
 ```
 
 ### Langsmith Evaluation
@@ -142,7 +141,7 @@ export USE_LANGSMITH_EVAL=true
 export LANGSMITH_DATASET_NAME=your_dataset_name
 
 # Run evaluation
-npm run evaluate
+pnpm evaluate
 ```
 
 ## Configuration
@@ -150,7 +149,7 @@ npm run evaluate
 ### Required Files
 
 #### nodes.json
-**IMPORTANT**: The evaluation framework requires a `nodes.json` file in the evaluations root directory (`evaluations/nodes.json`). 
+**IMPORTANT**: The evaluation framework requires a `nodes.json` file in the evaluations root directory (`evaluations/nodes.json`).
 
 This file contains all n8n node type definitions and is used by the AI Workflow Builder agent to:
 - Know what nodes are available in n8n
@@ -162,8 +161,8 @@ The AI Workflow Builder agent needs access to node definitions to generate workf
 
 **How to generate nodes.json:**
 1. Run your n8n instance
-2. Export the node definitions to `evaluations/nodes.json`
-3. The file should contain an array of all available node type descriptions
+2. Download the node definitions from locally running n8n instance(http://localhost:5678/types/nodes.json)
+3. Save the node definitions to `evaluations/nodes.json`
 
 The evaluation will fail with a clear error message if `nodes.json` is missing.
 

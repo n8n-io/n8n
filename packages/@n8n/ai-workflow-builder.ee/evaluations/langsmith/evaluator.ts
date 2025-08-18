@@ -4,13 +4,86 @@ import type { Run, Example } from 'langsmith/schemas';
 
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
 import { evaluateWorkflow } from '../chains/workflow-evaluator.js';
-import type { EvaluationInput } from '../types/evaluation.js';
+import type { EvaluationInput, CategoryScore } from '../types/evaluation.js';
 import {
 	isSimpleWorkflow,
 	isValidPrompt,
 	formatViolations,
 	type UsageMetadata,
 } from '../types/langsmith.js';
+
+// Helper to validate run outputs
+function validateRunOutputs(outputs: unknown): {
+	workflow?: SimpleWorkflow;
+	prompt?: string;
+	referenceWorkflow?: SimpleWorkflow;
+	usage?: Partial<UsageMetadata>;
+	error?: string;
+} {
+	if (!outputs || typeof outputs !== 'object') {
+		return { error: 'No outputs found in run' };
+	}
+
+	const runOutputs = outputs as Record<string, unknown>;
+
+	if (!isSimpleWorkflow(runOutputs.workflow)) {
+		return { error: 'Invalid or missing workflow in outputs' };
+	}
+
+	if (!isValidPrompt(runOutputs.prompt)) {
+		return { error: 'Invalid or missing prompt in outputs' };
+	}
+
+	// Extract usage metadata if available
+	const usage = extractUsageMetadata(runOutputs.usage);
+
+	// Extract reference workflow if available
+	let referenceWorkflow: SimpleWorkflow | undefined;
+	if (runOutputs.referenceOutputs && typeof runOutputs.referenceOutputs === 'object') {
+		const refOutputs = runOutputs.referenceOutputs as Record<string, unknown>;
+		if (isSimpleWorkflow(refOutputs.workflowJSON)) {
+			referenceWorkflow = refOutputs.workflowJSON;
+		}
+	}
+
+	return {
+		workflow: runOutputs.workflow,
+		prompt: runOutputs.prompt,
+		referenceWorkflow,
+		usage,
+	};
+}
+
+// Helper to extract usage metadata
+function extractUsageMetadata(usage: unknown): Partial<UsageMetadata> {
+	if (!usage || typeof usage !== 'object') return {};
+
+	const rawUsage = usage as Record<string, unknown>;
+	const usageFieldMap: Record<string, keyof UsageMetadata> = {
+		input_tokens: 'input_tokens',
+		output_tokens: 'output_tokens',
+		cache_create_input_tokens: 'cache_creation_input_tokens',
+		cache_read_input_tokens: 'cache_read_input_tokens',
+	};
+
+	const result: Partial<UsageMetadata> = {};
+	for (const [sourceKey, targetKey] of Object.entries(usageFieldMap)) {
+		const value = rawUsage[sourceKey];
+		if (typeof value === 'number') {
+			result[targetKey] = value;
+		}
+	}
+	return result;
+}
+
+// Helper to convert category scores to Langsmith results
+function categoryToResult(key: string, category: CategoryScore): LangsmithEvaluationResult {
+	return {
+		key,
+		score: category.score,
+		comment: formatViolations(category.violations),
+	};
+}
 
 /**
  * Creates a Langsmith evaluator function that uses the LLM-based workflow evaluator
@@ -20,149 +93,63 @@ import {
 export function createLangsmithEvaluator(
 	llm: BaseChatModel,
 ): (rootRun: Run, example?: Example) => Promise<LangsmithEvaluationResult[]> {
-	// eslint-disable-next-line complexity
 	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
-		// Validate outputs exist
-		if (!rootRun.outputs) {
+		// Validate and extract outputs
+		const validation = validateRunOutputs(rootRun.outputs);
+		if (validation.error) {
 			return [
 				{
 					key: 'evaluationError',
 					score: 0,
-					comment: 'No outputs found in run',
+					comment: validation.error,
 				},
 			];
 		}
 
-		// Validate workflow with type guard
-		if (!isSimpleWorkflow(rootRun.outputs.workflow)) {
-			return [
-				{
-					key: 'evaluationError',
-					score: 0,
-					comment: 'Invalid or missing workflow in outputs',
-				},
-			];
-		}
-		const generatedWorkflow = rootRun.outputs.workflow;
-
-		// Validate prompt with type guard
-		if (!isValidPrompt(rootRun.outputs.prompt)) {
-			return [
-				{
-					key: 'evaluationError',
-					score: 0,
-					comment: 'Invalid or missing prompt in outputs',
-				},
-			];
-		}
-		const prompt = rootRun.outputs.prompt;
-
-		const usage: Partial<UsageMetadata> = {};
-		if (rootRun.outputs.usage && typeof rootRun.outputs.usage === 'object') {
-			const rawUsage = rootRun.outputs.usage as Record<string, unknown>;
-
-			// Only include valid numeric fields
-			if (typeof rawUsage.input_tokens === 'number') {
-				usage.input_tokens = rawUsage.input_tokens;
-			}
-			if (typeof rawUsage.output_tokens === 'number') {
-				usage.output_tokens = rawUsage.output_tokens;
-			}
-			if (typeof rawUsage.cache_create_input_tokens === 'number') {
-				usage.cache_creation_input_tokens = rawUsage.cache_create_input_tokens;
-			}
-			if (typeof rawUsage.cache_read_input_tokens === 'number') {
-				usage.cache_read_input_tokens = rawUsage.cache_read_input_tokens;
-			}
-		}
-
-		// Check for reference workflow if available
-		let referenceWorkflow: SimpleWorkflow | undefined;
-		if (rootRun.outputs.referenceOutputs && typeof rootRun.outputs.referenceOutputs === 'object') {
-			const refOutputs = rootRun.outputs.referenceOutputs as Record<string, unknown>;
-			if (isSimpleWorkflow(refOutputs.workflowJSON)) {
-				referenceWorkflow = refOutputs.workflowJSON;
-			}
-		}
-
-		// Prepare evaluation input
 		const evaluationInput: EvaluationInput = {
-			userPrompt: prompt,
-			generatedWorkflow,
-			referenceWorkflow,
+			userPrompt: validation.prompt!,
+			generatedWorkflow: validation.workflow!,
+			referenceWorkflow: validation.referenceWorkflow,
 		};
 
 		try {
-			// Run evaluation
 			const evaluationResult = await evaluateWorkflow(llm, evaluationInput);
-
-			// Convert to Langsmith format
 			const results: LangsmithEvaluationResult[] = [];
 
-			// Functionality
-			results.push({
-				key: 'functionality',
-				score: evaluationResult.functionality.score,
-				comment: formatViolations(evaluationResult.functionality.violations),
-			});
+			// Add category scores
+			const categories = [
+				{ key: 'functionality', score: evaluationResult.functionality },
+				{ key: 'connections', score: evaluationResult.connections },
+				{ key: 'expressions', score: evaluationResult.expressions },
+				{ key: 'nodeConfiguration', score: evaluationResult.nodeConfiguration },
+			];
 
-			// Connections
-			results.push({
-				key: 'connections',
-				score: evaluationResult.connections.score,
-				comment: formatViolations(evaluationResult.connections.violations),
-			});
-
-			// Expressions
-			results.push({
-				key: 'expressions',
-				score: evaluationResult.expressions.score,
-				comment: formatViolations(evaluationResult.expressions.violations),
-			});
-
-			// Node Configuration
-			results.push({
-				key: 'nodeConfiguration',
-				score: evaluationResult.nodeConfiguration.score,
-				comment: formatViolations(evaluationResult.nodeConfiguration.violations),
-			});
-
-			// Usage Metadata (if available)
-			if (usage.input_tokens !== undefined) {
-				results.push({
-					key: 'inputTokens',
-					score: usage.input_tokens,
-				});
-			}
-			if (usage.output_tokens !== undefined) {
-				results.push({
-					key: 'outputTokens',
-					score: usage.output_tokens,
-				});
-			}
-			if (usage.cache_creation_input_tokens !== undefined) {
-				results.push({
-					key: 'cacheCreationInputTokens',
-					score: usage.cache_creation_input_tokens,
-				});
-			}
-			if (usage.cache_read_input_tokens !== undefined) {
-				results.push({
-					key: 'cacheReadInputTokens',
-					score: usage.cache_read_input_tokens,
-				});
+			for (const { key, score } of categories) {
+				results.push(categoryToResult(key, score));
 			}
 
-			// Structural Similarity (if reference workflow exists)
-			if (referenceWorkflow && evaluationResult.structuralSimilarity.applicable) {
-				results.push({
-					key: 'structuralSimilarity',
-					score: evaluationResult.structuralSimilarity.score,
-					comment: formatViolations(evaluationResult.structuralSimilarity.violations),
-				});
+			// Add usage metadata if available
+			const usageMetrics = [
+				{ key: 'inputTokens', value: validation.usage?.input_tokens },
+				{ key: 'outputTokens', value: validation.usage?.output_tokens },
+				{ key: 'cacheCreationInputTokens', value: validation.usage?.cache_creation_input_tokens },
+				{ key: 'cacheReadInputTokens', value: validation.usage?.cache_read_input_tokens },
+			];
+
+			for (const metric of usageMetrics) {
+				if (metric.value !== undefined) {
+					results.push({ key: metric.key, score: metric.value });
+				}
 			}
 
-			// Overall Score
+			// Add structural similarity if applicable
+			if (validation.referenceWorkflow && evaluationResult.structuralSimilarity.applicable) {
+				results.push(
+					categoryToResult('structuralSimilarity', evaluationResult.structuralSimilarity),
+				);
+			}
+
+			// Add overall score
 			results.push({
 				key: 'overallScore',
 				score: evaluationResult.overallScore,
@@ -171,7 +158,6 @@ export function createLangsmithEvaluator(
 
 			return results;
 		} catch (error) {
-			// Return error results
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			return [
 				{

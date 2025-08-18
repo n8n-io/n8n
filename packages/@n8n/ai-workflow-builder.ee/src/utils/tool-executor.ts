@@ -1,3 +1,4 @@
+/* eslint-disable n8n-local-rules/no-argument-spread */
 import type { BaseMessage } from '@langchain/core/messages';
 import { isAIMessage, ToolMessage } from '@langchain/core/messages';
 import { ToolInputParsingException } from '@langchain/core/tools';
@@ -115,7 +116,7 @@ export async function executeToolsInParallel(
 	// Collect all messages from state updates
 	stateUpdates.forEach((update) => {
 		if (update.messages && Array.isArray(update.messages)) {
-			allMessages.push.apply(allMessages, update.messages);
+			allMessages.push(...allMessages, ...update.messages);
 		}
 	});
 
@@ -124,7 +125,7 @@ export async function executeToolsInParallel(
 
 	for (const update of stateUpdates) {
 		if (update.workflowOperations && Array.isArray(update.workflowOperations)) {
-			allOperations.push.apply(allOperations, update.workflowOperations);
+			allOperations.push(...allOperations, ...update.workflowOperations);
 		}
 	}
 

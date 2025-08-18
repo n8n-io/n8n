@@ -18,7 +18,7 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
 
 	return {
 		testCase,
-		generatedWorkflow: { nodes: [], connections: {} },
+		generatedWorkflow: { nodes: [], connections: {}, name: 'Generated Workflow' },
 		evaluationResult: {
 			overallScore: 0,
 			functionality: { score: 0, violations: [] },

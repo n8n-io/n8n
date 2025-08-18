@@ -46,21 +46,20 @@ Evaluate whether the workflow correctly implements what the user EXPLICITLY requ
 
 **DO NOT penalize for:**
 - Missing optimizations not requested by user
-- Lack of separate record creation when single field storage works
 - Missing features that would be "nice to have" but weren't specified
 - Alternative valid approaches to solve the same problem
 
 **Check for these violations:**
-- **Critical (-40 to -50 points)**: 
+- **Critical (-40 to -50 points)**:
   - Missing core functionality explicitly requested
   - Incorrect operation logic that prevents the workflow from working
-  - Workflows missing a trigger node when they need to start automatically
-- **Major (-15 to -25 points)**: 
+  - Workflows missing a trigger node when they need to start automatically or by some external event
+- **Major (-15 to -25 points)**:
   - Missing explicitly required data transformations
   - Incomplete implementation of requested features
   - Using completely wrong node type for the task (e.g., Set node when HTTP Request is clearly needed)
   - Workflows that would fail immediately on first execution due to structural issues
-- **Minor (-5 to -10 points)**: 
+- **Minor (-5 to -10 points)**:
   - Missing optional features explicitly mentioned by user
   - Using less optimal but functional node choices
 
@@ -119,10 +118,10 @@ Evaluate whether expressions correctly reference nodes and data using modern n8n
 - Focus on whether expressions would cause runtime FAILURES, not style preferences
 
 **Check for these violations:**
-- **Critical (-40 to -50 points)**: 
+- **Critical (-40 to -50 points)**:
   - Invalid JavaScript syntax that would cause runtime errors (unclosed brackets, syntax errors, malformed JSON)
   - Referencing truly non-existent nodes or fields that would cause runtime errors
-- **Major (-20 to -25 points)**: 
+- **Major (-20 to -25 points)**:
   - Missing required = prefix for expressions (e.g., \`{{ $json.name }}\` instead of \`={{ $json.name }}\`)
   - Using $fromAI in non-tool nodes (would cause runtime error)
   - Referencing undefined variables or functions
@@ -263,16 +262,16 @@ If a reference workflow is provided, evaluate how well the generated workflow fo
 - The Document Loader and Token Splitter do NOT need connections from Form
 
 ### AI Agent with Tools:
-- Form -> AI Agent (main) - carries user input
+- Chat Trigger -> AI Agent (main) - carries user input
 - ANY Tool node -> AI Agent (ai_tool) - provides tool capabilities
 - Tool nodes use $fromAI for dynamic parameter population by the AI
-- AI Agent doesn't need separate tools for file processing if using output parser
 
 ### Tool Node Parameters (ANY node ending with "Tool"):
 - Parameters with $fromAI expressions - VALID and expected pattern
 - Allows AI to dynamically determine values at runtime
 - Examples: email recipients, message content, search queries, API parameters
 - Format: {{ $fromAI('key', 'description', 'type', defaultValue) }}
+- Only 'key' is required, 'description', 'type', and 'defaultValue' are optional
 
 ### Placeholder Values:
 - Empty credential fields - user configuration point, not error
@@ -396,7 +395,7 @@ export function calculateWeightedScore(result: {
 	weightedSum += result.connections.score * weights.connections;
 	weightedSum += result.expressions.score * weights.expressions;
 	weightedSum += result.nodeConfiguration.score * weights.nodeConfiguration;
-	totalWeight +=
+	totalWeight =
 		weights.functionality + weights.connections + weights.expressions + weights.nodeConfiguration;
 
 	// Add structural similarity only if applicable

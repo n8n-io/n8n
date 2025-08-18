@@ -9,6 +9,8 @@ import { anthropicClaudeSonnet4 } from '../../src/llm-config.js';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
 import type { Violation } from '../types/evaluation.js';
 import type { TestResult } from '../types/test-result.js';
+import { join } from 'path';
+import { mkdirSync, writeFileSync } from 'fs';
 
 /**
  * Sets up the LLM with proper configuration
@@ -242,4 +244,27 @@ export function collectAllViolations(results: TestResult[]): Array<{
 	});
 
 	return allViolations;
+}
+
+/**
+ * Saves evaluation results to disk in both JSON and markdown formats
+ * @param results - Array of test results
+ * @param report - Generated markdown report
+ * @returns Paths to saved files
+ */
+export function saveEvaluationResults(
+	results: TestResult[],
+	report: string,
+): { reportPath: string; resultsPath: string } {
+	const resultsDir = join(process.cwd(), 'evaluations', 'results');
+	mkdirSync(resultsDir, { recursive: true });
+
+	const timestamp = new Date().toISOString().replace(/:/g, '-');
+	const reportPath = join(resultsDir, `evaluation-report-${timestamp}.md`);
+	const resultsPath = join(resultsDir, `evaluation-results-${timestamp}.json`);
+
+	writeFileSync(reportPath, report);
+	writeFileSync(resultsPath, JSON.stringify(results, null, 2));
+
+	return { reportPath, resultsPath };
 }

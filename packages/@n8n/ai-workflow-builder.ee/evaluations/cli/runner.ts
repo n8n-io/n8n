@@ -8,6 +8,7 @@ import {
 	createAgent,
 	getConcurrencyLimit,
 	shouldGenerateTestCases,
+	howManyTestCasesToGenerate,
 } from '../core/environment.js';
 import { runSingleTest, initializeTestTracking } from '../core/test-runner.js';
 import type { TestCase } from '../types/evaluation.js';
@@ -16,9 +17,8 @@ import {
 	calculateCategoryAverages,
 	countViolationsByType,
 } from '../utils/evaluation-calculator.js';
-import { formatHeader } from '../utils/evaluation-helpers.js';
+import { formatHeader, saveEvaluationResults } from '../utils/evaluation-helpers.js';
 import { generateMarkdownReport } from '../utils/evaluation-reporter.js';
-import { saveEvaluationResults } from '../utils/evaluation-runner.js';
 
 /**
  * Main CLI evaluation runner that executes all test cases in parallel
@@ -27,7 +27,6 @@ import { saveEvaluationResults } from '../utils/evaluation-runner.js';
 export async function runCliEvaluation(): Promise<void> {
 	console.log(formatHeader('AI Workflow Builder Full Evaluation', 70));
 	console.log();
-
 	try {
 		// Setup test environment
 		const { parsedNodeTypes, llm, tracer } = await setupTestEnvironment();
@@ -38,7 +37,7 @@ export async function runCliEvaluation(): Promise<void> {
 		// Optionally generate additional test cases
 		if (shouldGenerateTestCases()) {
 			console.log(pc.blue('➔ Generating additional test cases...'));
-			const generatedCases = await generateTestCases(llm, 2);
+			const generatedCases = await generateTestCases(llm, howManyTestCasesToGenerate());
 			testCases = [...testCases, ...generatedCases];
 		}
 

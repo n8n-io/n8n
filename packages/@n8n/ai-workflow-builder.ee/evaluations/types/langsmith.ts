@@ -2,19 +2,10 @@ import type { BaseMessage } from '@langchain/core/messages';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
 
-// Define strict interfaces
-export interface UsageMetadata {
-	input_tokens: number;
-	output_tokens: number;
-	cache_read_input_tokens: number;
-	cache_creation_input_tokens: number;
-}
+import type { AIMessageWithUsageMetadata } from '@/utils/token-usage';
 
-export interface MessageWithMetadata extends BaseMessage {
-	response_metadata: {
-		usage?: Partial<UsageMetadata>;
-	};
-}
+// Define strict interfaces
+export type UsageMetadata = AIMessageWithUsageMetadata['response_metadata']['usage'];
 
 export interface WorkflowOutput {
 	workflow?: unknown;
@@ -29,7 +20,7 @@ export interface WorkflowStateValues {
 }
 
 // Type guards - no coercion, just validation
-export function isMessageWithMetadata(message: BaseMessage): message is MessageWithMetadata {
+export function isMessageWithMetadata(message: BaseMessage): message is AIMessageWithUsageMetadata {
 	return (
 		message.response_metadata !== undefined &&
 		message.response_metadata !== null &&
@@ -74,9 +65,9 @@ export function isSimpleWorkflow(value: unknown): value is SimpleWorkflow {
 
 export function isWorkflowStateValues(values: unknown): values is WorkflowStateValues {
 	if (!values || typeof values !== 'object') return false;
+	if (!('messages' in values) || !('workflowJSON' in values)) return false;
 
-	const obj = values as Record<string, unknown>;
-	return Array.isArray(obj.messages) && isSimpleWorkflow(obj.workflowJSON);
+	return Array.isArray(values.messages) && isSimpleWorkflow(values.workflowJSON);
 }
 
 // Safe extraction without coercion
@@ -97,9 +88,10 @@ export function safeExtractUsage(messages: BaseMessage[]): UsageMetadata {
 		return {
 			input_tokens: acc.input_tokens + (usage.input_tokens ?? 0),
 			output_tokens: acc.output_tokens + (usage.output_tokens ?? 0),
-			cache_read_input_tokens: acc.cache_read_input_tokens + (usage.cache_read_input_tokens ?? 0),
+			cache_read_input_tokens:
+				(acc?.cache_read_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0),
 			cache_creation_input_tokens:
-				acc.cache_creation_input_tokens + (usage.cache_creation_input_tokens ?? 0),
+				(acc?.cache_creation_input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0),
 		};
 	}, defaultUsage);
 }
@@ -136,7 +128,7 @@ export function extractMessageContent(message: BaseMessage | undefined): string 
 	if (Array.isArray(content)) {
 		// Extract text from complex content
 		const textContent = content
-			.filter((item) => typeof item === 'object' && item.type === 'text')
+			.filter((item) => item?.type === 'text')
 			.map((item) => (item as { text: string }).text)
 			.join('\n');
 

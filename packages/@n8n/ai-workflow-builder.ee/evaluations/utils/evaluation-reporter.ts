@@ -125,7 +125,7 @@ export function displayTestResults(
 			const score = result.error ? 'N/A' : formatColoredScore(result.evaluationResult.overallScore);
 			console.log(`  ${badge} ${formatTestName(testCase.name, testCase.id)}`);
 			console.log(
-				`     Score: ${score} | Nodes: ${result.generatedWorkflow.nodes.length} | Time: ${result.generationTime}ms`,
+				`     Score: ${score} | Nodes: ${result.generatedWorkflow?.nodes?.length} | Time: ${result.generationTime}ms`,
 			);
 			if (result.error) {
 				console.log(`     ${pc.red('Error:')} ${pc.dim(result.error)}`);
