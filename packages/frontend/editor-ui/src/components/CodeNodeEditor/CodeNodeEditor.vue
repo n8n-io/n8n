@@ -112,7 +112,6 @@ const askAiEnabled = computed(() => {
 });
 
 watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) => {
-	console.log(prevLanguage);
 	if (readEditorValue().trim() === CODE_PLACEHOLDERS[prevLanguage]?.[prevMode]) {
 		emit('update:modelValue', placeholder.value);
 	}
