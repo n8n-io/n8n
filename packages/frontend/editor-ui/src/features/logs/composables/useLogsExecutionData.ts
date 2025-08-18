@@ -3,7 +3,7 @@ import { type IExecutionResponse } from '@/Interface';
 import { Workflow, type IRunExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useThrottleFn } from '@vueuse/core';
+import { useThrottleFn, watchDebounced, watchThrottled } from '@vueuse/core';
 import { createLogTree, findSubExecutionLocator, mergeStartData } from '@/features/logs/logs.utils';
 import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
@@ -47,18 +47,9 @@ export function useLogsExecutionData() {
 			nodes.some(isChatNode),
 		),
 	);
-	const entries = computed<LogEntry[]>(() => {
-		if (!execData.value?.data || !workflow.value) {
-			return [];
-		}
 
-		return createLogTree(
-			workflow.value,
-			execData.value,
-			subWorkflows.value,
-			subWorkflowExecData.value,
-		);
-	});
+	const entries = ref<LogEntry[]>([]);
+
 	const updateInterval = computed(() => ((entries.value?.length ?? 0) > 10 ? 300 : 0));
 
 	function resetExecutionData() {
@@ -93,6 +84,23 @@ export function useLogsExecutionData() {
 			toast.showError(e, 'Unable to load sub execution');
 		}
 	}
+
+	watchThrottled(
+		[workflow, execData, subWorkflows, subWorkflowExecData],
+		() => {
+			if (!execData.value?.data || !workflow.value) {
+				entries.value = [];
+			} else {
+				entries.value = createLogTree(
+					workflow.value,
+					execData.value,
+					subWorkflows.value,
+					subWorkflowExecData.value,
+				);
+			}
+		},
+		{ throttle: 1000 },
+	);
 
 	watch(
 		// Fields that should trigger update
