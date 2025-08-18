@@ -11,6 +11,7 @@
     "test:container:postgres": "playwright test --project='postgres:*'",
     "test:container:queue": "playwright test --project='queue:*'",
     "test:container:multi-main": "playwright test --project='multi-main:*'",
+    "test:container:trial": "playwright test --project='trial:*'",
     "test:workflows:setup": "tsx ./tests/cli-workflows/setup-workflow-tests.ts",
     "test:workflows": "playwright test --project=cli-workflows",
     "test:workflows:schema": "SCHEMA=true playwright test --project=cli-workflows",

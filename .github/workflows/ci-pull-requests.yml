@@ -5,6 +5,8 @@ on:
     branches:
       - '**'
       - '!release/*'
+    paths-ignore:
+      - packages/@n8n/task-runner-python/**
 
 jobs:
   install-and-build:

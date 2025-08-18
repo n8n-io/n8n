@@ -37,7 +37,7 @@ function getConditionAndParams(
 	dbType: DataSourceOptions['type'],
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
-	const column = `dataStore.${quoteIdentifier(filter.columnName, dbType)}`;
+	const column = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(filter.columnName, dbType)}`;
 
 	switch (filter.condition) {
 		case 'eq':
@@ -95,6 +95,20 @@ export class DataStoreRowsRepository {
 			}
 		}
 
+		return true;
+	}
+
+	async deleteRows(tableName: DataStoreUserTableName, ids: number[]) {
+		if (ids.length === 0) {
+			return true;
+		}
+
+		const dbType = this.dataSource.options.type;
+		const quotedTableName = quoteIdentifier(tableName, dbType);
+		const placeholders = ids.map((_, index) => getPlaceholder(index + 1, dbType)).join(', ');
+		const query = `DELETE FROM ${quotedTableName} WHERE id IN (${placeholders})`;
+
+		await this.dataSource.query(query, ids);
 		return true;
 	}
 
@@ -185,7 +199,6 @@ export class DataStoreRowsRepository {
 
 	private applySorting(query: QueryBuilder, dto: ListDataStoreContentQueryDto): void {
 		if (!dto.sortBy) {
-			// query.orderBy('dataStore.', 'DESC');
 			return;
 		}
 
@@ -195,7 +208,7 @@ export class DataStoreRowsRepository {
 
 	private applySortingByField(query: QueryBuilder, field: string, direction: 'DESC' | 'ASC'): void {
 		const dbType = this.dataSource.options.type;
-		const quotedField = `dataStore.${quoteIdentifier(field, dbType)}`;
+		const quotedField = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(field, dbType)}`;
 		query.orderBy(quotedField, direction);
 	}
 
