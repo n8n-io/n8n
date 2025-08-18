@@ -24,6 +24,8 @@ async def main():
     setup_logging()
     logger = logging.getLogger(__name__)
 
+    logger.info("Starting runner...")
+
     grant_token = os.getenv(ENV_GRANT_TOKEN)
 
     if grant_token is None:
@@ -45,9 +47,10 @@ async def main():
     try:
         await task_runner.start()
     except (KeyboardInterrupt, asyncio.CancelledError):
-        logger.info("Shutting down...")
+        logger.info("Shutting down runner...")
     finally:
         await task_runner.stop()
+        logger.info("Runner stopped")
 
 
 if __name__ == "__main__":
