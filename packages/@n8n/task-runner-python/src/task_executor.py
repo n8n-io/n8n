@@ -3,7 +3,7 @@ import logging
 import traceback
 import textwrap
 
-from constants import LOG_FORMAT
+from .constants import LOG_FORMAT
 from .errors import TaskExecutionError, TaskTimeoutError
 from .message_types.broker import NodeMode, Items
 

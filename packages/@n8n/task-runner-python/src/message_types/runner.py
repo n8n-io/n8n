@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Literal, Union, Any, Dict
 
-from constants import (
+from ..constants import (
     RUNNER_INFO,
     RUNNER_TASK_ACCEPTED,
     RUNNER_TASK_DONE,

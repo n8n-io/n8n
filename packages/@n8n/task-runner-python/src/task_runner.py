@@ -9,8 +9,8 @@ import random
 
 from nanoid import generate as nanoid
 
-from errors import WebsocketConnectionError, TaskMissingError
-from message_types.broker import TaskSettings
+from .errors import WebsocketConnectionError, TaskMissingError
+from .message_types.broker import TaskSettings
 
 from .constants import (
     LOG_FORMAT,

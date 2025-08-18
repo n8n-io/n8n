@@ -2,7 +2,7 @@ import json
 from dataclasses import asdict
 from typing import cast
 
-from message_types.broker import NodeMode, TaskSettings
+from .message_types.broker import NodeMode, TaskSettings
 from .constants import (
     BROKER_INFO_REQUEST,
     BROKER_RUNNER_REGISTERED,
