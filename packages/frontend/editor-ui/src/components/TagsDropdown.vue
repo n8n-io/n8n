@@ -59,7 +59,9 @@ const container = ref<HTMLDivElement>();
 const dropdownId = uuid();
 
 const options = computed<ITag[]>(() => {
-	return props.allTags.filter((tag: ITag) => tag && tag.name.includes(filter.value));
+	return props.allTags.filter(
+		(tag: ITag) => tag && tag.name.toLowerCase().includes(filter.value.toLowerCase()),
+	);
 });
 
 const appliedTags = computed<string[]>(() => {
@@ -70,12 +72,14 @@ const containerClasses = computed(() => {
 	return { 'tags-container': true, focused: focused.value };
 });
 
-const dropdownClasses = computed(() => ({
-	'tags-dropdown': true,
-	[`tags-dropdown-${dropdownId}`]: true,
-	'tags-dropdown-create-enabled': props.createEnabled,
-	'tags-dropdown-manage-enabled': props.manageEnabled,
-}));
+const dropdownClasses = computed(() =>
+	[
+		'tags-dropdown',
+		`tags-dropdown-${dropdownId}`,
+		props.createEnabled ? 'tags-dropdown-create-enabled' : '',
+		props.manageEnabled ? 'tags-dropdown-manage-enabled' : '',
+	].join(' '),
+);
 
 watch(
 	() => props.allTags,
@@ -233,7 +237,7 @@ onClickOutside(
 				:value="CREATE_KEY"
 				class="ops"
 			>
-				<font-awesome-icon icon="plus-circle" />
+				<n8n-icon icon="circle-plus" />
 				<span>
 					{{ i18n.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
 				</span>
@@ -257,7 +261,7 @@ onClickOutside(
 			/>
 
 			<N8nOption v-if="manageEnabled" :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
-				<font-awesome-icon icon="cog" />
+				<n8n-icon icon="cog" />
 				<span>{{ i18n.baseText('tagsDropdown.manageTags') }}</span>
 			</N8nOption>
 		</N8nSelect>

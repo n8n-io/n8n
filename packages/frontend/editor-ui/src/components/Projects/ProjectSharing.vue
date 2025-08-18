@@ -4,12 +4,12 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	ProjectTypes,
-	type ProjectIcon as ProjectIconItem,
 	type ProjectListItem,
 	type ProjectSharingData,
 } from '@/types/projects.types';
 import ProjectSharingInfo from '@/components/Projects/ProjectSharingInfo.vue';
 import { sortByProperty } from '@n8n/utils/sort/sortByProperty';
+import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 const locale = useI18n();
 
@@ -51,14 +51,14 @@ const filteredProjects = computed(() =>
 	),
 );
 
-const projectIcon = computed<ProjectIconItem>(() => {
-	const defaultIcon: ProjectIconItem = { type: 'icon', value: 'layer-group' };
+const projectIcon = computed<IconOrEmoji>(() => {
+	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layers' };
 	const project = props.projects.find((p) => p.id === selectedProject.value);
 
 	if (project?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
 	} else if (project?.type === ProjectTypes.Team) {
-		return project.icon ?? defaultIcon;
+		return isIconOrEmoji(project.icon) ? project.icon : defaultIcon;
 	}
 
 	return defaultIcon;
@@ -171,7 +171,7 @@ watch(
 					type="tertiary"
 					native-type="button"
 					square
-					icon="trash"
+					icon="trash-2"
 					:disabled="props.readonly"
 					data-test-id="project-sharing-remove"
 					@click="onRoleAction(project, 'remove')"

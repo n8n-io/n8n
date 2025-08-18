@@ -12,6 +12,7 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import type { IconColor } from '@n8n/design-system';
 import { type IAccordionItem } from '@n8n/design-system/components/N8nInfoAccordion/InfoAccordion.vue';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean;
@@ -65,7 +66,7 @@ const accordionItems = computed((): IAccordionItem[] => [
 	{
 		id: 'manualExecutions',
 		label: locale.baseText('executionsLandingPage.emptyState.accordion.testExecutions'),
-		icon: workflowSaveSettings.value.saveTestExecutions ? 'check' : 'times',
+		icon: workflowSaveSettings.value.saveTestExecutions ? 'check' : 'x',
 		iconColor: workflowSaveSettings.value.saveTestExecutions ? 'success' : 'danger',
 	},
 ]);
@@ -79,13 +80,13 @@ const shouldExpandAccordion = computed(() => {
 		!workflowSaveSettings.value.saveTestExecutions
 	);
 });
-const productionExecutionsIcon = computed((): { color: IconColor; icon: string } => {
+const productionExecutionsIcon = computed((): { color: IconColor; icon: IconName } => {
 	if (productionExecutionsStatus.value === 'saving') {
 		return { icon: 'check', color: 'success' };
 	} else if (productionExecutionsStatus.value === 'not-saving') {
-		return { icon: 'times', color: 'danger' };
+		return { icon: 'x', color: 'danger' };
 	}
-	return { icon: 'exclamation-triangle', color: 'warning' };
+	return { icon: 'triangle-alert', color: 'warning' };
 });
 const productionExecutionsStatus = computed(() => {
 	if (
@@ -101,12 +102,12 @@ const productionExecutionsStatus = computed(() => {
 	}
 });
 const workflowSettings = computed(() => deepCopy(workflowsStore.workflowSettings));
-const accordionIcon = computed(() => {
+const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefined => {
 	if (
 		!workflowSaveSettings.value.saveTestExecutions ||
 		productionExecutionsStatus.value !== 'saving'
 	) {
-		return { icon: 'exclamation-triangle', color: 'warning' as IconColor };
+		return { icon: 'triangle-alert', color: 'warning' };
 	}
 	return undefined;
 });

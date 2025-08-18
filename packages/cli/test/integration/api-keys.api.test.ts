@@ -1,7 +1,5 @@
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
-import { testDb } from '@n8n/backend-test-utils';
-import { randomValidPassword } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { testDb, randomValidPassword, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ApiKeyRepository } from '@n8n/db';

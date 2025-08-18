@@ -5,7 +5,6 @@ import { MultiMainMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import config from '@/config';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { RedisClientService } from '@/services/redis-client.service';
 import { TypedEmitter } from '@/typed-emitter';
@@ -48,7 +47,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	private leaderCheckInterval: NodeJS.Timeout | undefined;
 
 	async init() {
-		const prefix = config.getEnv('redis.prefix');
+		const prefix = this.globalConfig.redis.prefix;
 		const validPrefix = this.redisClientService.toValidPrefix(prefix);
 		this.leaderKey = validPrefix + ':main_instance_leader';
 

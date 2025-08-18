@@ -119,6 +119,7 @@ export class WaitTracker {
 			workflowData: fullExecutionData.workflowData,
 			projectId: project.id,
 			pushRef: fullExecutionData.data.pushRef,
+			startedAt: fullExecutionData.startedAt,
 		};
 
 		// Start the execution again

@@ -91,6 +91,9 @@
                 },
                 "LNAME": {
                     "type": "string"
+                },
+                "PHONE": {
+                    "type": "string"
                 }
             }
         },
@@ -142,5 +145,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

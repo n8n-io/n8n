@@ -1,13 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { ExternalSecretsProxy } from 'n8n-core';
-import type { IWorkflowBase } from 'n8n-workflow';
 import type {
+	IWorkflowBase,
 	IExecuteWorkflowInfo,
 	IWorkflowExecuteAdditionalData,
 	ExecuteWorkflowOptions,

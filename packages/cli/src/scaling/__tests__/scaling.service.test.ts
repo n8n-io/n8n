@@ -1,5 +1,4 @@
-import { mockLogger } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
@@ -43,6 +42,12 @@ describe('ScalingService', () => {
 			metrics: {
 				includeQueueMetrics: false,
 				queueMetricsInterval: 20,
+			},
+		},
+		executions: {
+			queueRecovery: {
+				interval: 180,
+				batchSize: 100,
 			},
 		},
 	});

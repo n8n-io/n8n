@@ -3,7 +3,7 @@ export interface ExtensionMap {
 	functions: Record<string, Extension>;
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-restricted-types
 export type Extension = Function & { doc?: DocMetadata };
 
 export type NativeDoc = {

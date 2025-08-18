@@ -79,7 +79,7 @@ export const useCodeEditor = <L extends CodeEditorLanguage>({
 	language: MaybeRefOrGetter<L>;
 	editorValue?: MaybeRefOrGetter<string>;
 	placeholder?: MaybeRefOrGetter<string>;
-	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext>;
+	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext | undefined>;
 	extensions?: MaybeRefOrGetter<Extension[]>;
 	isReadOnly?: MaybeRefOrGetter<boolean>;
 	theme?: MaybeRefOrGetter<{

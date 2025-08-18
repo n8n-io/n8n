@@ -78,9 +78,12 @@ const hideContent = computed(() => {
 	}
 
 	if (node.value) {
-		const hideContentValue = workflowHelpers
-			.getCurrentWorkflow()
-			.expression.getSimpleParameterValue(node.value, hideContent, 'internal', {});
+		const hideContentValue = workflowsStore.workflowObject.expression.getSimpleParameterValue(
+			node.value,
+			hideContent,
+			'internal',
+			{},
+		);
 
 		if (typeof hideContentValue === 'boolean') {
 			return hideContentValue;
@@ -477,7 +480,7 @@ const onNodeExecute = () => {
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-background-base);
+	background-color: var(--color-run-data-background);
 	display: flex;
 	flex-direction: column;
 

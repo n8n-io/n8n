@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 import * as iconvlite from 'iconv-lite';
 import * as qp from 'quoted-printable';
 import * as utf8 from 'utf8';

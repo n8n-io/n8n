@@ -4,18 +4,22 @@ import { Z } from 'zod-class';
 
 import { createTakeValidator, paginationSchema } from '../pagination/pagination.dto';
 
-const USERS_LIST_SORT_OPTIONS = [
+export const USERS_LIST_SORT_OPTIONS = [
 	'firstName:asc',
 	'firstName:desc',
 	'lastName:asc',
 	'lastName:desc',
+	'email:asc',
+	'email:desc',
 	'role:asc', // ascending order by role is Owner, Admin, Member
 	'role:desc',
 	'mfaEnabled:asc',
 	'mfaEnabled:desc',
-	// 'lastActive:asc',
-	// 'lastActive:desc',
+	'lastActiveAt:asc',
+	'lastActiveAt:desc',
 ] as const;
+
+export type UsersListSortOptions = (typeof USERS_LIST_SORT_OPTIONS)[number];
 
 const usersListSortByValidator = z
 	.array(

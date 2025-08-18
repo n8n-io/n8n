@@ -12,8 +12,8 @@ import type {
 	INodeTypes,
 	IExecuteFunctions,
 	IRunData,
+	ITaskData,
 } from 'n8n-workflow';
-import type { ITaskData } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { ExecuteContext } from '../../execute-context';

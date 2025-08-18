@@ -19,13 +19,14 @@ export const RESOURCES = {
 	securityAudit: ['generate'] as const,
 	sourceControl: ['pull', 'push', 'manage'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
-	user: ['resetPassword', 'changeRole', ...DEFAULT_OPERATIONS] as const,
+	user: ['resetPassword', 'changeRole', 'enforceMfa', ...DEFAULT_OPERATIONS] as const,
 	variable: [...DEFAULT_OPERATIONS] as const,
 	workersView: ['manage'] as const,
 	workflow: ['share', 'execute', 'move', ...DEFAULT_OPERATIONS] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list'] as const,
 	oidc: ['manage'] as const,
+	dataStore: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
@@ -34,7 +35,7 @@ export const API_KEY_RESOURCES = {
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
 	project: ['create', 'update', 'delete', 'list'] as const,
-	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
+	user: ['read', 'list', 'create', 'changeRole', 'delete', 'enforceMfa'] as const,
 	execution: ['delete', 'read', 'list', 'get'] as const,
 	credential: ['create', 'move', 'delete'] as const,
 	sourceControl: ['pull'] as const,

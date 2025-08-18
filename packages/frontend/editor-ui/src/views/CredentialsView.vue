@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import CredentialCard from '@/components/CredentialCard.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import type { BaseFilters, Resource } from '@/Interface';
+import type { BaseFilters, Resource, ICredentialTypeMap } from '@/Interface';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useProjectPages } from '@/composables/useProjectPages';
@@ -14,7 +14,6 @@ import {
 } from '@/constants';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
-import type { ICredentialTypeMap } from '@/Interface';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import useEnvironmentsStore from '@/stores/environments.ee.store';

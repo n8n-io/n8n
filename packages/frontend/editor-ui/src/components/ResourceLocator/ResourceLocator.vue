@@ -186,8 +186,9 @@ const hasCredentialError = computed(() => {
 	);
 });
 
-const credentialsNotSet = computed(() => {
+const credentialsRequiredAndNotSet = computed(() => {
 	if (!props.node) return false;
+	if (skipCredentialsCheckInRLC.value) return false;
 	const nodeType = nodeTypesStore.getNodeType(props.node.type);
 	if (nodeType) {
 		const usesCredentials = nodeType.credentials !== undefined && nodeType.credentials.length > 0;
@@ -315,6 +316,10 @@ const currentQueryError = computed(() => {
 
 const isSearchable = computed(() => !!getPropertyArgument(currentMode.value, 'searchable'));
 
+const skipCredentialsCheckInRLC = computed(
+	() => !!getPropertyArgument(currentMode.value, 'skipCredentialsCheckInRLC'),
+);
+
 const requiresSearchFilter = computed(
 	() => !!getPropertyArgument(currentMode.value, 'searchFilterRequired'),
 );
@@ -359,7 +364,7 @@ const allowNewResources = computed(() => {
 	return {
 		label: i18n.baseText(addNewResourceOptions.label as BaseTextKey, {
 			interpolate: {
-				resourceName: !!searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
+				resourceName: searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
 			},
 		}),
 		method: addNewResourceOptions.method,
@@ -600,12 +605,7 @@ function onModeSelected(value: string): void {
 			mode: value,
 			value: props.modelValue.cachedResultUrl,
 		});
-	} else if (
-		value === 'id' &&
-		selectedMode.value === 'list' &&
-		props.modelValue &&
-		props.modelValue.value
-	) {
+	} else if (value === 'id' && selectedMode.value === 'list' && props.modelValue?.value) {
 		emit('update:modelValue', { __rl: true, mode: value, value: props.modelValue.value });
 	} else {
 		emit('update:modelValue', { __rl: true, mode: value, value: '' });
@@ -656,9 +656,13 @@ function loadResourcesDebounced() {
 }
 
 function setResponse(paramsKey: string, response: Partial<IResourceLocatorQuery>) {
+	// Force reactivity by creating a completely new cached responses object
+	const existingResponse = cachedResponses.value[paramsKey] || {};
+	const newResponse = { ...existingResponse, ...response };
+
 	cachedResponses.value = {
 		...cachedResponses.value,
-		[paramsKey]: { ...cachedResponses.value[paramsKey], ...response },
+		[paramsKey]: newResponse,
 	};
 }
 
@@ -667,7 +671,7 @@ async function loadResources() {
 	const paramsKey = currentRequestKey.value;
 	const cachedResponse = cachedResponses.value[paramsKey];
 
-	if (credentialsNotSet.value) {
+	if (credentialsRequiredAndNotSet.value) {
 		setResponse(paramsKey, { error: true });
 		return;
 	}
@@ -729,19 +733,28 @@ async function loadResources() {
 
 		const response = await nodeTypesStore.getResourceLocatorResults(requestParams);
 
-		setResponse(paramsKey, {
+		const responseData = {
 			results: (cachedResponse?.results ?? []).concat(response.results),
 			nextPageToken: response.paginationToken ?? null,
 			loading: false,
 			error: false,
-		});
+		};
+
+		// Store response under the original key to prevent cache pollution
+		setResponse(paramsKey, responseData);
+
+		// If the key changed during the request, also store under current key to prevent infinite loading
+		const currentKey = currentRequestKey.value;
+		if (currentKey !== paramsKey) {
+			setResponse(currentKey, responseData);
+		}
 
 		if (params.filter && !hasCompletedASearch.value) {
 			hasCompletedASearch.value = true;
 			trackEvent('User searched resource locator list');
 		}
 	} catch (e) {
-		setResponse(paramsKey, {
+		const errorData = {
 			loading: false,
 			error: true,
 			errorDetails: {
@@ -750,7 +763,16 @@ async function loadResources() {
 				httpCode: e.httpCode,
 				stackTrace: e.stacktrace,
 			},
-		});
+		};
+
+		// Store error under the original key
+		setResponse(paramsKey, errorData);
+
+		// If the key changed during the request, also store under current key to prevent infinite loading
+		const currentKey = currentRequestKey.value;
+		if (currentKey !== paramsKey) {
+			setResponse(currentKey, errorData);
+		}
 	}
 }
 
@@ -847,14 +869,10 @@ function onInputBlur(event: FocusEvent) {
 function applyOverride() {
 	if (!props.node || !fromAIOverride.value) return;
 
-	telemetry.track(
-		'User turned on fromAI override',
-		{
-			nodeType: props.node.type,
-			parameter: props.path,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User turned on fromAI override', {
+		nodeType: props.node.type,
+		parameter: props.path,
+	});
 	updateFromAIOverrideValues(fromAIOverride.value, props.modelValue.value?.toString() ?? '');
 
 	emit('update:modelValue', {
@@ -866,14 +884,10 @@ function applyOverride() {
 function removeOverride() {
 	if (!props.node || !fromAIOverride.value) return;
 
-	telemetry.track(
-		'User turned off fromAI override',
-		{
-			nodeType: props.node.type,
-			parameter: props.path,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User turned off fromAI override', {
+		nodeType: props.node.type,
+		parameter: props.path,
+	});
 	emit('update:modelValue', {
 		...props.modelValue,
 		value: buildValueFromOverride(fromAIOverride.value, props, false),
@@ -913,7 +927,7 @@ function removeOverride() {
 			<template #error>
 				<div :class="$style.errorContainer" data-test-id="rlc-error-container">
 					<n8n-text
-						v-if="credentialsNotSet || currentResponse.errorDetails"
+						v-if="credentialsRequiredAndNotSet || currentResponse.errorDetails"
 						color="text-dark"
 						align="center"
 						tag="div"
@@ -937,9 +951,12 @@ function removeOverride() {
 							{{ currentResponse.errorDetails.description }}
 						</N8nNotice>
 					</div>
-					<div v-if="hasCredentialError || credentialsNotSet" data-test-id="permission-error-link">
+					<div
+						v-if="hasCredentialError || credentialsRequiredAndNotSet"
+						data-test-id="permission-error-link"
+					>
 						<a
-							v-if="credentialsNotSet"
+							v-if="credentialsRequiredAndNotSet"
 							:class="$style['credential-link']"
 							@click="createNewCredential"
 						>
@@ -1077,7 +1094,7 @@ function removeOverride() {
 					/>
 					<div v-else-if="urlValue" :class="$style.openResourceLink">
 						<n8n-link theme="text" @click.stop="openResource(urlValue)">
-							<font-awesome-icon icon="external-link-alt" :title="getLinkAlt(valueToDisplay)" />
+							<n8n-icon icon="external-link" :title="getLinkAlt(valueToDisplay)" />
 						</n8n-link>
 					</div>
 				</div>
@@ -1095,5 +1112,5 @@ function removeOverride() {
 </template>
 
 <style lang="scss" module>
-@import './resourceLocator.scss';
+@use './resourceLocator.scss';
 </style>

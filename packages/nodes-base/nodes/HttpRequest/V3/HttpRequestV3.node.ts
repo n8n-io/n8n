@@ -27,8 +27,6 @@ import type { Readable } from 'stream';
 import { keysToLowercase } from '@utils/utilities';
 
 import { mainProperties } from './Description';
-import { setFilename } from './utils/binaryData';
-import { mimeTypeFromResponse } from './utils/parse';
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
@@ -40,6 +38,8 @@ import {
 	sanitizeUiMessage,
 	setAgentOptions,
 } from '../GenericFunctions';
+import { setFilename } from './utils/binaryData';
+import { mimeTypeFromResponse } from './utils/parse';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
 
 function toText<T>(data: T) {
@@ -1000,7 +1000,6 @@ export class HttpRequestV3 implements INodeType {
 						}
 
 						if (Array.isArray(response)) {
-							// eslint-disable-next-line @typescript-eslint/no-loop-func
 							response.forEach((item) =>
 								returnItems.push({
 									json: item,

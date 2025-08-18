@@ -1,4 +1,4 @@
-import type { FrontendSettings, ITelemetrySettings } from '@n8n/api-types';
+import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -10,6 +10,8 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
+import type { CommunityPackagesService } from '@/community-packages/community-packages.service';
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
@@ -17,9 +19,9 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { MfaService } from '@/mfa/mfa.service';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
-import type { CommunityPackagesService } from '@/services/community-packages.service';
 import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
@@ -51,17 +53,32 @@ export class FrontendService {
 		private readonly binaryDataConfig: BinaryDataConfig,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly mfaService: MfaService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
 
 		this.initSettings();
 
-		if (this.globalConfig.nodes.communityPackages.enabled) {
-			void import('@/services/community-packages.service').then(({ CommunityPackagesService }) => {
-				this.communityPackagesService = Container.get(CommunityPackagesService);
-			});
+		if (Container.get(CommunityPackagesConfig).enabled) {
+			void import('@/community-packages/community-packages.service').then(
+				({ CommunityPackagesService }) => {
+					this.communityPackagesService = Container.get(CommunityPackagesService);
+				},
+			);
 		}
+	}
+
+	private collectEnvFeatureFlags(): N8nEnvFeatFlags {
+		const envFeatureFlags: N8nEnvFeatFlags = {};
+
+		for (const [key, value] of Object.entries(process.env)) {
+			if (key.startsWith('N8N_ENV_FEAT_') && value !== undefined) {
+				envFeatureFlags[key as keyof N8nEnvFeatFlags] = value;
+			}
+		}
+
+		return envFeatureFlags;
 	}
 
 	private initSettings() {
@@ -75,13 +92,15 @@ export class FrontendService {
 		if (telemetrySettings.enabled) {
 			const conf = this.globalConfig.diagnostics.frontendConfig;
 			const [key, url] = conf.split(';');
+			const proxy = `${instanceBaseUrl}/${restEndpoint}/telemetry/proxy`;
+			const sourceConfig = `${instanceBaseUrl}/${restEndpoint}/telemetry/rudderstack`;
 
 			if (!key || !url) {
 				this.logger.warn('Diagnostics frontend config is invalid');
 				telemetrySettings.enabled = false;
 			}
 
-			telemetrySettings.config = { key, url };
+			telemetrySettings.config = { key, url, proxy, sourceConfig };
 		}
 
 		this.settings = {
@@ -110,7 +129,7 @@ export class FrontendService {
 			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
 			versionCli: N8N_VERSION,
-			concurrency: config.getEnv('executions.concurrency.productionLimit'),
+			concurrency: this.globalConfig.executions.concurrency.productionLimit,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -181,8 +200,8 @@ export class FrontendService {
 			executionMode: config.getEnv('executions.mode'),
 			isMultiMain: this.instanceSettings.isMultiMain,
 			pushBackend: this.pushConfig.backend,
-			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
-			unverifiedCommunityNodesEnabled: this.globalConfig.nodes.communityPackages.unverifiedEnabled,
+			communityNodesEnabled: Container.get(CommunityPackagesConfig).enabled,
+			unverifiedCommunityNodesEnabled: Container.get(CommunityPackagesConfig).unverifiedEnabled,
 			deployment: {
 				type: this.globalConfig.deployment.type,
 			},
@@ -195,6 +214,7 @@ export class FrontendService {
 				ldap: false,
 				saml: false,
 				oidc: false,
+				mfaEnforcement: false,
 				logStreaming: false,
 				advancedExecutionFilters: false,
 				variables: false,
@@ -208,6 +228,7 @@ export class FrontendService {
 				workerView: false,
 				advancedPermissions: false,
 				apiKeyScopes: false,
+				workflowDiffs: false,
 				projects: {
 					team: {
 						limit: 0,
@@ -216,6 +237,7 @@ export class FrontendService {
 			},
 			mfa: {
 				enabled: false,
+				enforced: false,
 			},
 			hideUsagePage: this.globalConfig.hideUsagePage,
 			license: {
@@ -256,6 +278,7 @@ export class FrontendService {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
+			envFeatureFlags: this.collectEnvFeatureFlags(),
 		};
 	}
 
@@ -321,6 +344,7 @@ export class FrontendService {
 			ldap: this.license.isLdapEnabled(),
 			saml: this.license.isSamlEnabled(),
 			oidc: this.licenseState.isOidcLicensed(),
+			mfaEnforcement: this.licenseState.isMFAEnforcementLicensed(),
 			advancedExecutionFilters: this.license.isAdvancedExecutionFiltersEnabled(),
 			variables: this.license.isVariablesEnabled(),
 			sourceControl: this.license.isSourceControlLicensed(),
@@ -333,25 +357,26 @@ export class FrontendService {
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
+			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {
 				loginLabel: getLdapLoginLabel(),
-				loginEnabled: config.getEnv('sso.ldap.loginEnabled'),
+				loginEnabled: this.globalConfig.sso.ldap.loginEnabled,
 			});
 		}
 
 		if (this.license.isSamlEnabled()) {
 			Object.assign(this.settings.sso.saml, {
 				loginLabel: getSamlLoginLabel(),
-				loginEnabled: config.getEnv('sso.saml.loginEnabled'),
+				loginEnabled: this.globalConfig.sso.saml.loginEnabled,
 			});
 		}
 
 		if (this.licenseState.isOidcLicensed()) {
 			Object.assign(this.settings.sso.oidc, {
-				loginEnabled: config.getEnv('sso.oidc.loginEnabled'),
+				loginEnabled: this.globalConfig.sso.oidc.loginEnabled,
 			});
 		}
 
@@ -385,6 +410,9 @@ export class FrontendService {
 
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 
+		// TODO: read from settings
+		this.settings.mfa.enforced = this.mfaService.isMFAEnforced();
+
 		this.settings.executionMode = config.getEnv('executions.mode');
 
 		this.settings.binaryDataMode = this.binaryDataConfig.mode;
@@ -395,6 +423,9 @@ export class FrontendService {
 
 		// Refresh evaluation settings
 		this.settings.evaluation.quota = this.licenseState.getMaxWorkflowsWithEvaluations();
+
+		// Refresh environment feature flags
+		this.settings.envFeatureFlags = this.collectEnvFeatureFlags();
 
 		return this.settings;
 	}

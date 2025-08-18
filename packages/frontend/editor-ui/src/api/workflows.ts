@@ -8,6 +8,7 @@ import type {
 	IWorkflowDb,
 	NewWorkflowResponse,
 	WorkflowListResource,
+	WorkflowResource,
 } from '@/Interface';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
@@ -41,6 +42,17 @@ export async function getWorkflows(context: IRestApiContext, filter?: object, op
 		...(filter ? { filter } : {}),
 		...(options ? options : {}),
 	});
+}
+
+export async function getWorkflowsWithNodesIncluded(context: IRestApiContext, nodeTypes: string[]) {
+	return await getFullApiResponse<WorkflowResource[]>(
+		context,
+		'POST',
+		'/workflows/with-node-types',
+		{
+			nodeTypes,
+		},
+	);
 }
 
 export async function getWorkflowsAndFolders(

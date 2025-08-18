@@ -1,6 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { CredentialsEntity } from '@n8n/db';
-import type { User } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { response as Response } from 'express';
 import nock from 'nock';

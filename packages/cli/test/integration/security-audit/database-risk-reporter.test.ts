@@ -1,6 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { generateNanoId } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { generateNanoId, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';

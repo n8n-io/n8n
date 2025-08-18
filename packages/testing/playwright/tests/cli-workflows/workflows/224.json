@@ -1,0 +1,350 @@
+{
+	"createdAt": "2021-07-05T14:32:19.990Z",
+	"updatedAt": "2021-07-09T12:39:46.228Z",
+	"id": "224",
+	"name": "QuickBase:Record:create update getAll upsert:Report:run get:Field:getAll:File:download",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 250],
+			"id": "bf5f914e-83a9-4ad6-a539-d2eda48cf8ea"
+		},
+		{
+			"parameters": {
+				"resource": "field",
+				"tableId": "brkf6p68v",
+				"limit": 1,
+				"options": {}
+			},
+			"name": "Quick Base",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [450, 90],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "217",
+					"name": "Quick Base API creds"
+				}
+			},
+			"id": "f5a894fe-fd72-43d9-8d19-a3913ad04c56"
+		},
+		{
+			"parameters": {
+				"tableId": "brkf6p68v",
+				"columns": "name",
+				"simple": false,
+				"options": {
+					"fields": [2, 1, 6, 3]
+				}
+			},
+			"name": "Quick Base1",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [590, 240],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "217",
+					"name": "Quick Base API creds"
+				}
+			},
+			"id": "873001c3-3c1f-4311-9b5a-a04d3bdf5321"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "name",
+							"value": "=TestRecordName{{Date.now()}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [450, 240],
+			"id": "c4613406-ddd6-4f8e-bef9-cf65f1250840"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"tableId": "brkf6p68v",
+				"columns": "name",
+				"updateKey": "=name",
+				"simple": false,
+				"options": {
+					"fields": [2, 1, 6, 3]
+				}
+			},
+			"name": "Quick Base2",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [890, 240],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "217",
+					"name": "Quick Base API creds"
+				}
+			},
+			"id": "0a93b666-c58c-4b85-950b-1abb94fe66d8"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "name",
+							"value": "=UpdatedTestRecordName{{Date.now()}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [740, 240],
+			"id": "72a5922b-dbb9-4e44-85d1-6bb89eef35b0"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"tableId": "brkf6p68v",
+				"limit": 1,
+				"options": {
+					"select": [6, 3]
+				}
+			},
+			"name": "Quick Base3",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [1040, 240],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "217",
+					"name": "Quick Base API creds"
+				}
+			},
+			"id": "8529e62b-8274-46d2-be2f-bdba8dae2765"
+		},
+		{
+			"parameters": {
+				"operation": "upsert",
+				"tableId": "brkf6p68v",
+				"columns": "name",
+				"updateKey": "name",
+				"options": {
+					"fields": [6, 3]
+				}
+			},
+			"name": "Quick Base4",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [1340, 240],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "217",
+					"name": "Quick Base API creds"
+				}
+			},
+			"id": "ff322a95-9fe6-4432-98fe-e655c69c212a"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "name",
+							"value": "=TestUpsertRecordName{{Date.now()}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set2",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1190, 240],
+			"id": "7df37b96-5357-4f1b-ae79-deaa537b7a79"
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "run",
+				"tableId": "brkf6p68v",
+				"reportId": "1",
+				"returnAll": false,
+				"limit": 1
+			},
+			"name": "Quick Base5",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [450, 390],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "217",
+					"name": "Quick Base API creds"
+				}
+			},
+			"id": "2b8bbaa2-0983-4074-932e-4ba02d74448b"
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"tableId": "brkf6p68v",
+				"reportId": "1"
+			},
+			"name": "Quick Base6",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [600, 390],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "217",
+					"name": "Quick Base API creds"
+				}
+			},
+			"id": "4b2c54e4-17c3-4648-aa4a-6bd9052a8364"
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"tableId": "brkf6p68v",
+				"recordId": "1",
+				"fieldId": "9"
+			},
+			"name": "Quick Base7",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [450, 540],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "217",
+					"name": "Quick Base API creds"
+				}
+			},
+			"id": "70bd2916-790b-4791-8bd3-964ecca4d109"
+		}
+	],
+	"connections": {
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Quick Base1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Quick Base1": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set1": {
+			"main": [
+				[
+					{
+						"node": "Quick Base2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Quick Base2": {
+			"main": [
+				[
+					{
+						"node": "Quick Base3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Quick Base3": {
+			"main": [
+				[
+					{
+						"node": "Set2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set2": {
+			"main": [
+				[
+					{
+						"node": "Quick Base4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Quick Base",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Quick Base5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Quick Base7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Quick Base5": {
+			"main": [
+				[
+					{
+						"node": "Quick Base6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Quick Base7": {
+			"main": [[]]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

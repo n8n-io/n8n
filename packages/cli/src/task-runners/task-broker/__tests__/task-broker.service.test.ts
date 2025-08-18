@@ -719,7 +719,7 @@ describe('TaskBroker', () => {
 	describe('task execution timeouts', () => {
 		let taskBroker: TaskBroker;
 		let config: TaskRunnersConfig;
-		let runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
+		const runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
 
 		beforeAll(() => {
 			jest.useFakeTimers();

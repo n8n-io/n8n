@@ -61,7 +61,7 @@ function onCardClick(e: MouseEvent) {
 			<div v-if="!simpleView" :class="$style.content">
 				<span v-if="workflow.totalViews">
 					<n8n-text size="small" color="text-light">
-						<font-awesome-icon icon="eye" />
+						<n8n-icon icon="eye" size="xsmall" />
 						{{ abbreviateNumber(workflow.totalViews) }}
 					</n8n-text>
 				</span>

@@ -45,8 +45,7 @@ const node = computed(() =>
 
 const parentNode = computed(() => {
 	if (!node.value) return undefined;
-	const workflow = workflowsStore.getCurrentWorkflow();
-	const parentNodes = workflow.getChildNodes(node.value.name, 'ALL', 1);
+	const parentNodes = workflowsStore.workflowObject.getChildNodes(node.value.name, 'ALL', 1);
 	if (parentNodes.length === 0) return undefined;
 	return workflowsStore.getNodeByName(parentNodes[0])?.name;
 });
@@ -298,7 +297,7 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 				<el-col :span="5" :offset="19">
 					<n8n-button
 						data-test-id="execute-workflow-button"
-						icon="flask"
+						icon="flask-conical"
 						:label="i18n.baseText('fromAiParametersModal.execute')"
 						@click="onExecute"
 					/>

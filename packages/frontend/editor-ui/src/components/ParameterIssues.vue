@@ -16,7 +16,7 @@ const i18n = useI18n();
 			<template #content>
 				<TitledList :title="`${i18n.baseText('parameterInput.issues')}:`" :items="issues" />
 			</template>
-			<N8nIcon icon="exclamation-triangle" />
+			<N8nIcon icon="triangle-alert" />
 		</N8nTooltip>
 	</div>
 </template>

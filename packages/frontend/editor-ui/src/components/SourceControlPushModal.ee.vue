@@ -4,14 +4,17 @@ import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
+import type { WorkflowResource } from '@/Interface';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import { ResourceType } from '@/utils/projects.utils';
 import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '@/utils/sourceControlUtils';
+import type { SourceControlledFile } from '@n8n/api-types';
 import {
-	type SourceControlledFile,
+	ROLE,
 	SOURCE_CONTROL_FILE_LOCATION,
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
@@ -19,6 +22,7 @@ import {
 import {
 	N8nBadge,
 	N8nButton,
+	N8nCallout,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
@@ -32,31 +36,84 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { refDebounced } from '@vueuse/core';
+import { refDebounced, useStorage } from '@vueuse/core';
 import dateformat from 'dateformat';
 import orderBy from 'lodash/orderBy';
-import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch, watchEffect } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from './Modal.vue';
-import { type WorkflowResource } from '@/Interface';
 
 const props = defineProps<{
-	data: { eventBus: EventBus; status: SourceControlledFile[] };
+	data: { eventBus: EventBus; status?: SourceControlledFile[] };
 }>();
 
 const loadingService = useLoadingService();
-const uiStore = useUIStore();
 const toast = useToast();
 const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 const projectsStore = useProjectsStore();
 const route = useRoute();
+const router = useRouter();
 const telemetry = useTelemetry();
+const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+
+const isWorkflowDiffsEnabled = computed(() => settingsStore.settings.enterprise.workflowDiffs);
+
+// Reactive status state - starts with props data or empty, then loads fresh data
+const status = ref<SourceControlledFile[]>(props.data.status ?? []);
+const isLoading = ref(false);
+
+// Load fresh source control status when modal opens
+async function loadSourceControlStatus() {
+	if (isLoading.value) return;
+
+	isLoading.value = true;
+	loadingService.startLoading();
+	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
+
+	try {
+		const freshStatus = await sourceControlStore.getAggregatedStatus();
+
+		if (!freshStatus.length) {
+			toast.showMessage({
+				title: 'No changes to commit',
+				message: 'Everything is up to date',
+				type: 'info',
+			});
+			// Close modal since there's nothing to show
+			close();
+			return;
+		}
+
+		status.value = freshStatus;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('error'));
+		close();
+	} finally {
+		loadingService.stopLoading();
+		loadingService.setLoadingText(i18n.baseText('genericHelpers.loading'));
+		isLoading.value = false;
+	}
+}
+
+const projectAdminCalloutDismissed = useStorage(
+	'SOURCE_CONTROL_PROJECT_ADMIN_CALLOUT_DISMISSED',
+	false,
+	localStorage,
+);
 
 onBeforeMount(() => {
 	void projectsStore.getAvailableProjects();
+});
+
+const projectsForFilters = computed(() => {
+	return projectsStore.availableProjects.filter(
+		// global admins role is empty...
+		(project) => !project.role || project.role === 'project:admin',
+	);
 });
 
 const concatenateWithAnd = (messages: string[]) =>
@@ -163,20 +220,38 @@ const workflowId = computed(
 		([VIEWS.WORKFLOW].includes(route.name as VIEWS) && route.params.name?.toString()) || undefined,
 );
 
-const changes = computed(() => classifyFilesByType(props.data.status, workflowId.value));
+const changes = computed(() => classifyFilesByType(status.value, workflowId.value));
 
 const selectedWorkflows = reactive<Set<string>>(new Set());
 
 const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFileWithProject) =>
 	workflow && selectedWorkflows.add(workflow.id);
 
-onMounted(() => maybeSelectCurrentWorkflow(changes.value.currentWorkflow));
+const currentProject = computed(() => {
+	if (!route.params.projectId) {
+		return null;
+	}
+
+	const project = projectsStore.availableProjects.find(
+		(project) => project.id === route.params.projectId?.toString(),
+	);
+
+	if (!project) {
+		return null;
+	}
+
+	if (!project.role || project.role === 'project:admin') {
+		return project;
+	}
+
+	return null;
+});
 
 const filters = ref<{ status?: SourceControlledFileStatus; project: ProjectSharingData | null }>({
-	project: null,
+	project: currentProject.value,
 });
 const filtersApplied = computed(
-	() => Boolean(search.value) || Boolean(Object.keys(filters.value).length),
+	() => Boolean(search.value) || Boolean(Object.values(filters.value).filter(Boolean).length),
 );
 const resetFilters = () => {
 	filters.value = { project: null };
@@ -213,11 +288,18 @@ const filteredWorkflows = computed(() => {
 			return false;
 		}
 
-		if (workflow.project && filters.value.project) {
-			return workflow.project.id === filters.value.project.id;
+		// Project filter logic: if a project filter is set, only show items from that project
+		if (filters.value.project) {
+			// Item must have a project and it must match the filter
+			return workflow.project?.id === filters.value.project.id;
 		}
 
-		return !(filters.value.status && filters.value.status !== workflow.status);
+		// Status filter (only applied when no project filter is active)
+		if (filters.value.status && filters.value.status !== workflow.status) {
+			return false;
+		}
+
+		return true;
 	});
 });
 
@@ -244,7 +326,18 @@ const filteredCredentials = computed(() => {
 			return false;
 		}
 
-		return !(filters.value.status && filters.value.status !== credential.status);
+		// Project filter logic: if a project filter is set, only show items from that project
+		if (filters.value.project) {
+			// Item must have a project and it must match the filter
+			return credential.project?.id === filters.value.project.id;
+		}
+
+		// Status filter (only applied when no project filter is active)
+		if (filters.value.status && filters.value.status !== credential.status) {
+			return false;
+		}
+
+		return true;
 	});
 });
 
@@ -304,7 +397,9 @@ function onToggleSelectAll() {
 }
 
 function close() {
-	uiStore.closeModal(SOURCE_CONTROL_PUSH_MODAL_KEY);
+	// Navigate back in history to maintain proper browser navigation
+	// The useWorkflowDiffRouting composable will handle closing the modal
+	router.back();
 }
 
 function renderUpdatedAt(file: SourceControlledFile) {
@@ -417,16 +512,23 @@ const allVisibleItemsSelected = computed(() => {
 
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		const workflowsSet = new Set(sortedWorkflows.value.map(({ id }) => id));
+
+		if (!workflowsSet.size) {
+			return false;
+		}
 		const notSelectedVisibleItems = workflowsSet.difference(toRaw(activeSelection.value));
 
-		return !Boolean(notSelectedVisibleItems.size);
+		return !notSelectedVisibleItems.size;
 	}
 
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
 		const credentialsSet = new Set(sortedCredentials.value.map(({ id }) => id));
+		if (!credentialsSet.size) {
+			return false;
+		}
 		const notSelectedVisibleItems = credentialsSet.difference(toRaw(activeSelection.value));
 
-		return !Boolean(notSelectedVisibleItems.size);
+		return !notSelectedVisibleItems.size;
 	}
 
 	return false;
@@ -460,6 +562,14 @@ const activeDataSourceFiltered = computed(() => {
 	return [];
 });
 
+const activeEntityLocale = computed(() => {
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return 'generic.workflows';
+	}
+
+	return 'generic.credentials';
+});
+
 const activeSelection = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		return selectedWorkflows;
@@ -487,11 +597,11 @@ const tabs = computed(() => {
 	];
 });
 
-const filtersActiveText = computed(() => {
+const filtersNoResultText = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
-		return i18n.baseText('workflows.filters.active');
+		return i18n.baseText('workflows.noResults');
 	}
-	return i18n.baseText('credentials.filters.active');
+	return i18n.baseText('credentials.noResults');
 });
 
 function castType(type: string): ResourceType {
@@ -501,25 +611,76 @@ function castType(type: string): ResourceType {
 	return ResourceType.Credential;
 }
 
-function castProject(project: ProjectListItem) {
-	return { homeProject: project } as unknown as WorkflowResource;
+function castProject(project: ProjectListItem): WorkflowResource {
+	// Create a properly typed object that satisfies WorkflowResource
+	// This is a workaround for the ProjectCardBadge component expecting WorkflowResource
+	const resource: WorkflowResource = {
+		homeProject: project,
+		id: '',
+		name: '',
+		active: false,
+		createdAt: '',
+		updatedAt: '',
+		isArchived: false,
+		readOnly: false,
+		resourceType: 'workflow',
+		sharedWithProjects: [],
+	};
+	return resource;
 }
+
+function openDiffModal(id: string) {
+	telemetry.track('User clicks compare workflows', {
+		workflow_id: id,
+		context: 'source_control_push',
+	});
+
+	// Only update route - modal will be opened by route watcher
+	void router.push({
+		query: {
+			...route.query,
+			diff: id,
+			direction: 'push',
+		},
+	});
+}
+
+// Auto-select current workflow when it becomes available
+watchEffect(() => {
+	if (changes.value.currentWorkflow && !selectedWorkflows.has(changes.value.currentWorkflow.id)) {
+		maybeSelectCurrentWorkflow(changes.value.currentWorkflow);
+	}
+});
+
+// Load data when modal opens
+onMounted(async () => {
+	// Only load fresh data if we don't have any initial data
+	if (!props.data.status || props.data.status.length === 0) {
+		await loadSourceControlStatus();
+	}
+});
 </script>
 
 <template>
 	<Modal
+		v-if="!isLoading"
 		width="812px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
 		:height="modalHeight"
 		:custom-class="$style.sourceControlPush"
+		:before-close="close"
 	>
 		<template #header>
 			<N8nHeading tag="h1" size="xlarge">
 				{{ i18n.baseText('settings.sourceControl.modals.push.title') }}
 			</N8nHeading>
 
-			<div v-if="changes.workflow.length" :class="[$style.filtersRow]" class="mt-l">
+			<div
+				v-if="changes.workflow.length || changes.credential.length"
+				:class="[$style.filtersRow]"
+				class="mt-l"
+			>
 				<div :class="[$style.filters]">
 					<N8nInput
 						v-model="search"
@@ -535,7 +696,7 @@ function castProject(project: ProjectListItem) {
 					<N8nPopover trigger="click" width="304" style="align-self: normal">
 						<template #reference>
 							<N8nButton
-								icon="filter"
+								icon="funnel"
 								type="tertiary"
 								style="height: 100%"
 								:active="Boolean(filterCount)"
@@ -563,8 +724,7 @@ function castProject(project: ProjectListItem) {
 								:key="option.label"
 								data-test-id="source-control-status-filter-option"
 								v-bind="option"
-							>
-							</N8nOption>
+							/>
 						</N8nSelect>
 						<N8nInputLabel
 							:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
@@ -576,7 +736,7 @@ function castProject(project: ProjectListItem) {
 						<ProjectSharing
 							v-model="filters.project"
 							data-test-id="source-control-push-modal-project-search"
-							:projects="projectsStore.availableProjects"
+							:projects="projectsForFilters"
 							:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 							:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 						/>
@@ -588,6 +748,26 @@ function castProject(project: ProjectListItem) {
 					</N8nPopover>
 				</div>
 			</div>
+			<template v-if="usersStore.currentUser && usersStore.currentUser.role">
+				<template
+					v-if="
+						usersStore.currentUser.role !== ROLE.Owner && usersStore.currentUser.role !== ROLE.Admin
+					"
+				>
+					<N8nCallout v-if="!projectAdminCalloutDismissed" theme="secondary" class="mt-s">
+						{{ i18n.baseText('settings.sourceControl.modals.push.projectAdmin.callout') }}
+						<template #trailingContent>
+							<N8nIcon
+								icon="x"
+								title="Dismiss"
+								size="medium"
+								type="secondary"
+								@click="projectAdminCalloutDismissed = true"
+							/>
+						</template>
+					</N8nCallout>
+				</template>
+			</template>
 		</template>
 		<template #content>
 			<div style="display: flex; height: 100%">
@@ -601,8 +781,8 @@ function castProject(project: ProjectListItem) {
 						>
 							<div>{{ tab.label }}</div>
 							<N8nText tag="div" color="text-light">
-								{{ tab.selected }} / {{ tab.total }} selected</N8nText
-							>
+								{{ tab.selected }} / {{ tab.total }} selected
+							</N8nText>
 						</button>
 					</template>
 				</div>
@@ -614,18 +794,25 @@ function castProject(project: ProjectListItem) {
 								:indeterminate="selectAllIndeterminate"
 								:model-value="allVisibleItemsSelected"
 								data-test-id="source-control-push-modal-toggle-all"
+								:disabled="activeDataSourceFiltered.length === 0"
 								@update:model-value="onToggleSelectAll"
 							>
 								<N8nText> Title </N8nText>
 							</N8nCheckbox>
-						</div>
-						<div style="flex: 1; overflow: hidden">
 							<N8nInfoTip
-								v-if="filtersApplied && activeDataSource.length && !activeDataSourceFiltered.length"
+								v-if="filtersApplied"
 								class="p-xs"
 								:bold="false"
+								:class="$style.filtersApplied"
 							>
-								{{ filtersActiveText }}
+								{{
+									i18n.baseText('settings.sourceControl.modals.push.filter', {
+										interpolate: {
+											count: `${activeDataSourceFiltered.length} / ${activeDataSource.length}`,
+											entity: i18n.baseText(activeEntityLocale).toLowerCase(),
+										},
+									})
+								}}
 								<N8nLink
 									size="small"
 									data-test-id="source-control-filters-reset"
@@ -633,6 +820,11 @@ function castProject(project: ProjectListItem) {
 								>
 									{{ i18n.baseText('workflows.filters.active.reset') }}
 								</N8nLink>
+							</N8nInfoTip>
+						</div>
+						<div style="flex: 1; overflow: hidden">
+							<N8nInfoTip v-if="!activeDataSourceFiltered.length" class="p-xs" :bold="false">
+								{{ filtersNoResultText }}
 							</N8nInfoTip>
 							<DynamicScroller
 								v-if="activeDataSourceFiltered.length"
@@ -655,29 +847,8 @@ function castProject(project: ProjectListItem) {
 											@update:model-value="toggleSelected(file.id)"
 										>
 											<span>
-												<N8nText
-													v-if="file.status === SOURCE_CONTROL_FILE_STATUS.deleted"
-													color="text-light"
-												>
-													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow">
-														Deleted Workflow:
-													</span>
-													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential">
-														Deleted Credential:
-													</span>
-													<span v-if="file.type === SOURCE_CONTROL_FILE_TYPE.folders">
-														Deleted Folders:
-													</span>
-													<strong>{{ file.name || file.id }}</strong>
-												</N8nText>
-												<N8nText
-													v-else
-													tag="div"
-													bold
-													color="text-dark"
-													:class="[$style.listItemName]"
-												>
-													{{ file.name }}
+												<N8nText tag="div" bold color="text-dark" :class="[$style.listItemName]">
+													{{ file.name || file.id }}
 												</N8nText>
 												<N8nText
 													v-if="file.updatedAt"
@@ -714,9 +885,17 @@ function castProject(project: ProjectListItem) {
 														:show-badge-border="false"
 													/>
 												</template>
-												<N8nBadge :theme="getStatusTheme(file.status)">
+												<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
 													{{ getStatusText(file.status) }}
 												</N8nBadge>
+												<template v-if="isWorkflowDiffsEnabled">
+													<N8nIconButton
+														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+														icon="file-diff"
+														type="secondary"
+														@click="openDiffModal(file.id)"
+													/>
+												</template>
 											</span>
 										</N8nCheckbox>
 									</DynamicScrollerItem>
@@ -733,8 +912,8 @@ function castProject(project: ProjectListItem) {
 				<N8nText bold size="medium">Changes to variables, tags and folders </N8nText>
 				<br />
 				<template v-for="{ title, content } in userNotices" :key="title">
-					<N8nText bold size="small">{{ title }}</N8nText>
-					<N8nText size="small">: {{ content }}. </N8nText>
+					<N8nText bold size="small"> {{ title }}</N8nText>
+					<N8nText size="small"> : {{ content }}. </N8nText>
 				</template>
 			</N8nNotice>
 
@@ -750,7 +929,7 @@ function castProject(project: ProjectListItem) {
 					:placeholder="
 						i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
 					"
-					@keydown.enter="onCommitKeyDownEnter"
+					@keydown.enter.stop="onCommitKeyDownEnter"
 				/>
 				<N8nButton
 					data-test-id="source-control-push-modal-submit"
@@ -784,6 +963,11 @@ function castProject(project: ProjectListItem) {
 .selectAll {
 	flex-shrink: 0;
 	margin-bottom: 0;
+	padding: 10px 16px;
+}
+
+.filtersApplied {
+	border-top: var(--border-base);
 }
 
 .scroller {
@@ -832,6 +1016,7 @@ function castProject(project: ProjectListItem) {
 .badges {
 	display: flex;
 	gap: 10px;
+	align-items: center;
 }
 
 .footer {
@@ -863,7 +1048,8 @@ function castProject(project: ProjectListItem) {
 
 .tableHeader {
 	border-bottom: var(--border-base);
-	padding: 10px 16px;
+	display: flex;
+	flex-direction: column;
 }
 
 .tabs {

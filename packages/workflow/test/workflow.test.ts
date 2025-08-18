@@ -1,7 +1,8 @@
-import { mock } from 'jest-mock-extended';
+/* eslint-disable import/order */
+import { mock } from 'vitest-mock-extended';
 
-import { UserError } from '@/errors';
-import { NodeConnectionTypes } from '@/interfaces';
+import { UserError } from '../src/errors';
+import { NodeConnectionTypes } from '../src/interfaces';
 import type {
 	IBinaryKeyData,
 	IConnection,
@@ -12,11 +13,12 @@ import type {
 	INodeParameters,
 	IRunExecutionData,
 	NodeParameterValueType,
-} from '@/interfaces';
-import { Workflow } from '@/workflow';
+} from '../src/interfaces';
+import { Workflow } from '../src/workflow';
 
 process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 
+// eslint-disable-next-line import/order
 import * as Helpers from './helpers';
 
 interface StubNode {
@@ -347,7 +349,7 @@ describe('Workflow', () => {
 	});
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('renameNodeInParameterValue', () => {
@@ -2104,127 +2106,6 @@ describe('Workflow', () => {
 		});
 	});
 
-	describe('getConnectionsByDestination', () => {
-		it('should return empty object when there are no connections', () => {
-			const result = Workflow.getConnectionsByDestination({});
-
-			expect(result).toEqual({});
-		});
-
-		it('should return connections by destination node', () => {
-			const connections: IConnections = {
-				Node1: {
-					[NodeConnectionTypes.Main]: [
-						[
-							{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 },
-							{ node: 'Node3', type: NodeConnectionTypes.Main, index: 1 },
-						],
-					],
-				},
-			};
-			const result = Workflow.getConnectionsByDestination(connections);
-			expect(result).toEqual({
-				Node2: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-				Node3: {
-					[NodeConnectionTypes.Main]: [
-						[],
-						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-			});
-		});
-
-		it('should handle multiple connection types', () => {
-			const connections: IConnections = {
-				Node1: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-					[NodeConnectionTypes.AiAgent]: [
-						[{ node: 'Node3', type: NodeConnectionTypes.AiAgent, index: 0 }],
-					],
-				},
-			};
-
-			const result = Workflow.getConnectionsByDestination(connections);
-			expect(result).toEqual({
-				Node2: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-				Node3: {
-					[NodeConnectionTypes.AiAgent]: [
-						[{ node: 'Node1', type: NodeConnectionTypes.AiAgent, index: 0 }],
-					],
-				},
-			});
-		});
-
-		it('should handle nodes with no connections', () => {
-			const connections: IConnections = {
-				Node1: {
-					[NodeConnectionTypes.Main]: [[]],
-				},
-			};
-
-			const result = Workflow.getConnectionsByDestination(connections);
-			expect(result).toEqual({});
-		});
-
-		// @issue https://linear.app/n8n/issue/N8N-7880/cannot-load-some-templates
-		it('should handle nodes with null connections', () => {
-			const connections: IConnections = {
-				Node1: {
-					[NodeConnectionTypes.Main]: [
-						null as unknown as IConnection[],
-						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-			};
-
-			const result = Workflow.getConnectionsByDestination(connections);
-			expect(result).toEqual({
-				Node2: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: 'Node1', type: NodeConnectionTypes.Main, index: 1 }],
-					],
-				},
-			});
-		});
-
-		it('should handle nodes with multiple input connections', () => {
-			const connections: IConnections = {
-				Node1: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-				Node3: {
-					[NodeConnectionTypes.Main]: [
-						[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }],
-					],
-				},
-			};
-
-			const result = Workflow.getConnectionsByDestination(connections);
-			expect(result).toEqual({
-				Node2: {
-					[NodeConnectionTypes.Main]: [
-						[
-							{ node: 'Node1', type: NodeConnectionTypes.Main, index: 0 },
-							{ node: 'Node3', type: NodeConnectionTypes.Main, index: 0 },
-						],
-					],
-				},
-			});
-		});
-	});
-
 	describe('getHighestNode', () => {
 		const createNode = (name: string, disabled = false) =>
 			({
@@ -2584,6 +2465,25 @@ describe('Workflow', () => {
 
 			expect(workflow.getStartNode()).toBeUndefined();
 		});
+
+		test('returns the single node when only one non-disabled node exists', () => {
+			const singleNode = {
+				name: 'SingleNode',
+				type: 'test.set',
+				typeVersion: 1,
+				id: 'uuid-single',
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+			const workflow = new Workflow({
+				nodes: [singleNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			expect(workflow.getStartNode()).toBe(singleNode);
+		});
 	});
 
 	describe('getNode', () => {
@@ -2621,7 +2521,7 @@ describe('Workflow', () => {
 
 		test('should skip nodes that do not exist and log a warning', () => {
 			// Spy on console.warn
-			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			const nodes = SIMPLE_WORKFLOW.getNodes(['Start', 'NonExistentNode', 'Set1']);
 			expect(nodes).toHaveLength(2);
@@ -2634,7 +2534,7 @@ describe('Workflow', () => {
 
 		test('should return an empty array if none of the requested nodes exist', () => {
 			// Spy on console.warn
-			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			const nodes = SIMPLE_WORKFLOW.getNodes(['NonExistentNode1', 'NonExistentNode2']);
 			expect(nodes).toHaveLength(0);

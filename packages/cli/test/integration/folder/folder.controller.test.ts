@@ -1,14 +1,16 @@
 import { faker } from '@faker-js/faker';
-import { createWorkflow, getWorkflowSharing } from '@n8n/backend-test-utils';
-import { randomCredentialPayload } from '@n8n/backend-test-utils';
-import { createTeamProject, getPersonalProject, linkUserToProject } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
-import type { Project, ProjectRole } from '@n8n/db';
-import type { User } from '@n8n/db';
-import { FolderRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import {
+	createWorkflow,
+	getWorkflowSharing,
+	randomCredentialPayload,
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { Project, ProjectRole, User } from '@n8n/db';
+import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
@@ -47,6 +49,8 @@ let workflowRepository: WorkflowRepository;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
 beforeEach(async () => {
+	testServer.license.enable('feat:folders');
+
 	await testDb.truncate(['Folder', 'SharedWorkflow', 'TagEntity', 'Project', 'ProjectRelation']);
 
 	projectRepository = Container.get(ProjectRepository);
@@ -64,6 +68,18 @@ beforeEach(async () => {
 });
 
 describe('POST /projects/:projectId/folders', () => {
+	test('should now create folder if license does not allow it', async () => {
+		testServer.license.disable('feat:folders');
+		const project = await createTeamProject(undefined, owner);
+		await linkUserToProject(member, project, 'project:viewer');
+
+		const payload = {
+			name: 'Test Folder',
+		};
+
+		await authMemberAgent.post(`/projects/${project.id}/folders`).send(payload).expect(403);
+	});
+
 	test('should not create folder when project does not exist', async () => {
 		const payload = {
 			name: 'Test Folder',
@@ -233,6 +249,32 @@ describe('POST /projects/:projectId/folders', () => {
 });
 
 describe('GET /projects/:projectId/folders/:folderId/tree', () => {
+	test('should not retrieve folder tree if license does not allow it', async () => {
+		testServer.license.disable('feat:folders');
+
+		const project = await createTeamProject('test', owner);
+		const rootFolder = await createFolder(project, { name: 'Root' });
+
+		const childFolder1 = await createFolder(project, {
+			name: 'Child 1',
+			parentFolder: rootFolder,
+		});
+
+		await createFolder(project, {
+			name: 'Child 2',
+			parentFolder: rootFolder,
+		});
+
+		const grandchildFolder = await createFolder(project, {
+			name: 'Grandchild',
+			parentFolder: childFolder1,
+		});
+
+		await authOwnerAgent
+			.get(`/projects/${project.id}/folders/${grandchildFolder.id}/tree`)
+			.expect(403);
+	});
+
 	test('should not get folder tree when project does not exist', async () => {
 		await authOwnerAgent.get('/projects/non-existing-id/folders/some-folder-id/tree').expect(403);
 	});
@@ -309,6 +351,68 @@ describe('GET /projects/:projectId/folders/:folderId/tree', () => {
 });
 
 describe('GET /projects/:projectId/folders/:folderId/credentials', () => {
+	test('should not retrieve folder tree if license does not allow it', async () => {
+		testServer.license.disable('feat:folders');
+
+		const project = await createTeamProject('test', owner);
+		const rootFolder = await createFolder(project, { name: 'Root' });
+
+		const childFolder1 = await createFolder(project, {
+			name: 'Child 1',
+			parentFolder: rootFolder,
+		});
+
+		await createFolder(project, {
+			name: 'Child 2',
+			parentFolder: rootFolder,
+		});
+
+		const grandchildFolder = await createFolder(project, {
+			name: 'Grandchild',
+			parentFolder: childFolder1,
+		});
+
+		for (const folder of [rootFolder, childFolder1, grandchildFolder]) {
+			const credential = await createCredentials(
+				{
+					name: `Test credential ${folder.name}`,
+					data: '',
+					type: 'test',
+				},
+				project,
+			);
+
+			await createWorkflow(
+				{
+					name: 'Test Workflow',
+					parentFolder: folder,
+					active: false,
+					nodes: [
+						{
+							parameters: {},
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1.2,
+							position: [0, 0],
+							id: faker.string.uuid(),
+							name: 'OpenAI Chat Model',
+							credentials: {
+								openAiApi: {
+									id: credential.id,
+									name: credential.name,
+								},
+							},
+						},
+					],
+				},
+				owner,
+			);
+		}
+
+		await authOwnerAgent
+			.get(`/projects/${project.id}/folders/${childFolder1.id}/credentials`)
+			.expect(403);
+	});
+
 	test('should not get folder credentials when project does not exist', async () => {
 		await authOwnerAgent
 			.get('/projects/non-existing-id/folders/some-folder-id/credentials')
@@ -414,6 +518,23 @@ describe('GET /projects/:projectId/folders/:folderId/credentials', () => {
 });
 
 describe('PATCH /projects/:projectId/folders/:folderId', () => {
+	test('should not update folder if license does not allow it', async () => {
+		testServer.license.disable('feat:folders');
+
+		const project = await createTeamProject(undefined, owner);
+		const folder = await createFolder(project, { name: 'Original Name' });
+		await linkUserToProject(member, project, 'project:editor');
+
+		const payload = {
+			name: 'Updated Folder Name',
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${project.id}/folders/${folder.id}`)
+			.send(payload)
+			.expect(403);
+	});
+
 	test('should not update folder when project does not exist', async () => {
 		const payload = {
 			name: 'Updated Folder Name',
@@ -676,7 +797,7 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 		});
 
 		// Verify initial state
-		let folder = await folderRepository.findOne({
+		const folder = await folderRepository.findOne({
 			where: { id: folderToMove.id },
 			relations: ['parentFolder'],
 		});
@@ -765,10 +886,12 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 			parentFolderId: folder.id,
 		};
 
-		await authOwnerAgent
+		const response = await authOwnerAgent
 			.patch(`/projects/${project.id}/folders/${folder.id}`)
 			.send(payload)
 			.expect(400);
+
+		expect(response.body.message).toBe('Cannot set a folder as its own parent');
 
 		const folderInDb = await folderRepository.findOne({
 			where: { id: folder.id },
@@ -778,9 +901,104 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 		expect(folderInDb).toBeDefined();
 		expect(folderInDb?.parentFolder).toBeNull();
 	});
+
+	test("should not allow setting folder's parent to a folder that is a direct child", async () => {
+		const project = await createTeamProject(undefined, owner);
+
+		// A
+		// └── B
+		//     └── C
+		const folderA = await createFolder(project, { name: 'A' });
+		const folderB = await createFolder(project, {
+			name: 'B',
+			parentFolder: folderA,
+		});
+		const folderC = await createFolder(project, {
+			name: 'C',
+			parentFolder: folderB,
+		});
+
+		// Attempt to make the parent of B its child C
+		const payload = {
+			parentFolderId: folderC.id,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/${folderB.id}`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toBe(
+			"Cannot set a folder's parent to a folder that is a descendant of the current folder",
+		);
+
+		const folderBInDb = await folderRepository.findOne({
+			where: { id: folderB.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(folderBInDb).toBeDefined();
+		expect(folderBInDb?.parentFolder?.id).toBe(folderA.id);
+	});
+
+	test("should not allow setting folder's parent to a folder that is a descendant", async () => {
+		const project = await createTeamProject(undefined, owner);
+
+		// A
+		// └── B
+		//     └── C
+		//         └── D
+		const folderA = await createFolder(project, { name: 'A' });
+		const folderB = await createFolder(project, {
+			name: 'B',
+			parentFolder: folderA,
+		});
+		const folderC = await createFolder(project, {
+			name: 'C',
+			parentFolder: folderB,
+		});
+		const folderD = await createFolder(project, {
+			name: 'D',
+			parentFolder: folderC,
+		});
+
+		// Attempt to make the parent of A the descendant D
+		const payload = {
+			parentFolderId: folderD.id,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${project.id}/folders/${folderA.id}`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toBe(
+			"Cannot set a folder's parent to a folder that is a descendant of the current folder",
+		);
+
+		const folderAInDb = await folderRepository.findOne({
+			where: { id: folderA.id },
+			relations: ['parentFolder'],
+		});
+
+		expect(folderAInDb).toBeDefined();
+		expect(folderAInDb?.parentFolder?.id).not.toBeDefined();
+	});
 });
 
 describe('DELETE /projects/:projectId/folders/:folderId', () => {
+	test('should not delete folder if license does not allow it', async () => {
+		testServer.license.disable('feat:folders');
+
+		const project = await createTeamProject(undefined, owner);
+		const folder = await createFolder(project);
+
+		await authOwnerAgent
+			.delete(`/projects/${project.id}/folders/${folder.id}`)
+			.send({})
+			.expect(403);
+	});
+
 	test('should not delete folder when project does not exist', async () => {
 		await authOwnerAgent
 			.delete('/projects/non-existing-id/folders/some-folder-id')
@@ -1072,6 +1290,16 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 });
 
 describe('GET /projects/:projectId/folders', () => {
+	test('should not retrieve folder if license does not allow it', async () => {
+		testServer.license.disable('feat:folders');
+
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+		await createFolder(project, { name: 'Test Folder' });
+
+		await authMemberAgent.get(`/projects/${project.id}/folders`).expect(403);
+	});
+
 	test('should not list folders when project does not exist', async () => {
 		await authOwnerAgent.get('/projects/non-existing-id/folders').expect(403);
 	});
@@ -1383,14 +1611,19 @@ describe('GET /projects/:projectId/folders', () => {
 	});
 
 	test('should select path field when requested', async () => {
-		const folder1 = await createFolder(ownerProject, { name: 'Test Folder' });
+		const folder1 = await createFolder(ownerProject, {
+			name: 'Test Folder',
+			updatedAt: DateTime.now().minus({ seconds: 2 }).toJSDate(),
+		});
 		const folder2 = await createFolder(ownerProject, {
 			name: 'Test Folder 2',
 			parentFolder: folder1,
+			updatedAt: DateTime.now().minus({ seconds: 1 }).toJSDate(),
 		});
 		const folder3 = await createFolder(ownerProject, {
 			name: 'Test Folder 3',
 			parentFolder: folder2,
+			updatedAt: DateTime.now().toJSDate(),
 		});
 
 		const response = await authOwnerAgent
@@ -1483,6 +1716,16 @@ describe('GET /projects/:projectId/folders', () => {
 });
 
 describe('GET /projects/:projectId/folders/content', () => {
+	test('should not retrieve folder content if license does not allow it', async () => {
+		testServer.license.disable('feat:folders');
+
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+		const folder = await createFolder(project, { name: 'Test Folder' });
+
+		await authMemberAgent.get(`/projects/${project.id}/folders/${folder.id}/content`).expect(403);
+	});
+
 	test('should not list folders when project does not exist', async () => {
 		await authOwnerAgent
 			.get('/projects/non-existing-id/folders/no-existing-id/content')
@@ -1547,6 +1790,31 @@ describe('GET /projects/:projectId/folders/content', () => {
 });
 
 describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
+	test('should not transfer folder if license does not allow it', async () => {
+		testServer.license.disable('feat:folders');
+
+		const admin = await createUser({ role: 'global:admin' });
+		const sourceProject = await createTeamProject('source project', admin);
+		const destinationProject = await createTeamProject('destination project', member);
+		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+			role: 'credential:owner',
+		});
+
+		// ACT
+		await testServer
+			.authAgentFor(owner)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				destinationParentFolderId: '0',
+				shareCredentials: [credential.id],
+			})
+			.expect(403);
+	});
+
 	test('cannot transfer into the same project', async () => {
 		const sourceProject = await createTeamProject('source project', member);
 		const destinationProject = await createTeamProject('Team Project', member);

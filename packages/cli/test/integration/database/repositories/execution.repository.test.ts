@@ -1,8 +1,6 @@
-import { createWorkflow } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
+import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { ExecutionDataRepository } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 describe('ExecutionRepository', () => {

@@ -1,6 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
-import { mockLogger } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';

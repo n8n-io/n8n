@@ -7,6 +7,7 @@ import type {
 	AppCredentials,
 	BaseNode,
 } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
+import { I18nT } from 'vue-i18n';
 
 const i18n = useI18n();
 
@@ -27,9 +28,9 @@ const appNodeCounts = computed(() => {
 
 <template>
 	<N8nNotice :class="$style.notice" theme="info">
-		<i18n-t tag="span" keypath="templateSetup.instructions" scope="global">
+		<I18nT tag="span" keypath="templateSetup.instructions" scope="global">
 			<span v-n8n-html="appNodeCounts" />
-		</i18n-t>
+		</I18nT>
 	</N8nNotice>
 </template>
 

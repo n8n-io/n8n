@@ -19,6 +19,7 @@ export type JobData = {
 	executionId: string;
 	loadStaticData: boolean;
 	pushRef?: string;
+	streamingEnabled?: boolean;
 };
 
 export type JobResult = {

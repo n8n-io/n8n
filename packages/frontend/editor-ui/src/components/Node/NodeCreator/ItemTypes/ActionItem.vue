@@ -3,7 +3,7 @@ import { reactive, computed, toRefs } from 'vue';
 import type { ActionTypeDescription, SimplifiedNodeType } from '@/Interface';
 import { WEBHOOK_NODE_TYPE, DRAG_EVENT_DATA_KEY } from '@/constants';
 
-import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, getNewNodePosition } from '@/utils/nodeViewUtils';
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import { useViewStacks } from '../composables/useViewStacks';
@@ -76,7 +76,10 @@ function onDragOver(event: DragEvent): void {
 		return;
 	}
 
-	const [x, y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
+	const [x, y] = getNewNodePosition(
+		[],
+		[event.pageX - DEFAULT_NODE_SIZE[0] / 2, event.pageY - DEFAULT_NODE_SIZE[1] / 2],
+	);
 
 	state.draggablePosition = { x, y };
 }

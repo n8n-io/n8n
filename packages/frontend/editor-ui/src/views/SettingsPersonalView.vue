@@ -4,7 +4,8 @@ import { ROLE, type Role } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
+import type { IFormInputs, ThemeOption } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	MFA_DOCS_URL,
@@ -86,7 +87,9 @@ const isPersonalSecurityEnabled = computed((): boolean => {
 const mfaDisabled = computed((): boolean => {
 	return !usersStore.mfaEnabled;
 });
-
+const mfaEnforced = computed((): boolean => {
+	return settingsStore.isMFAEnforced;
+});
 const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
@@ -362,6 +365,11 @@ onBeforeUnmount(() => {
 						</n8n-link>
 					</n8n-text>
 				</div>
+				<n8n-notice
+					v-if="mfaDisabled && mfaEnforced"
+					:content="i18n.baseText('settings.personal.mfa.enforced')"
+				/>
+
 				<n8n-button
 					v-if="mfaDisabled"
 					:class="$style.button"
@@ -421,10 +429,11 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .container {
+	padding-bottom: 100px;
+
 	> * {
 		margin-bottom: var(--spacing-2xl);
 	}
-	padding-bottom: 100px;
 }
 
 .header {

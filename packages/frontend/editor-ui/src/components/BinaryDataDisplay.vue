@@ -95,11 +95,11 @@ function closeWindow() {
 <style lang="scss">
 .binary-data-window {
 	position: absolute;
-	top: 50px;
+	top: 0;
 	left: 0;
 	z-index: 10;
 	width: 100%;
-	height: calc(100% - 50px);
+	height: 100%;
 	background-color: var(--color-run-data-background);
 	overflow: hidden;
 	text-align: center;
@@ -111,7 +111,7 @@ function closeWindow() {
 	.binary-data-window-wrapper {
 		margin-top: 0.5em;
 		padding: 0 1em;
-		height: calc(100% - 50px);
+		height: 100%;
 
 		.el-row,
 		.el-col {

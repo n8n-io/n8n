@@ -1,6 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { IExecutionResponse } from '@n8n/db';
-import type { ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { WorkflowOperationError } from 'n8n-workflow';
 

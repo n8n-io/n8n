@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
 import { isChatNode } from '@/utils/aiUtils';
+import { I18nT } from 'vue-i18n';
 
 const emit = defineEmits<{
 	mouseenter: [event: MouseEvent];
@@ -50,7 +51,7 @@ const actions = computed(() =>
 			return aY === bY ? aX - bX : aY - bY;
 		})
 		.map<ActionDropdownItem>((node) => ({
-			label: truncateBeforeLast(node.name, 25),
+			label: truncateBeforeLast(node.name, 50),
 			disabled: !!node.disabled || props.executing,
 			id: node.name,
 			checked: props.selectedTriggerNodeName === node.name,
@@ -83,7 +84,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				:loading="executing"
 				:disabled="disabled"
 				size="large"
-				icon="flask"
+				icon="flask-conical"
 				type="primary"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
@@ -93,7 +94,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				<span :class="$style.buttonContent">
 					{{ label }}
 					<N8nText v-if="isSplitButton" :class="$style.subText" :bold="false">
-						<I18nT keypath="nodeView.runButtonText.from">
+						<I18nT keypath="nodeView.runButtonText.from" scope="global">
 							<template #nodeName>
 								<N8nText bold size="mini">
 									{{ truncateBeforeLast(props.selectedTriggerNodeName ?? '', 25) }}
@@ -111,6 +112,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				:items="actions"
 				:disabled="disabled"
 				placement="top"
+				:extra-popper-class="$style.menuPopper"
 				@select="emit('selectTriggerNode', $event)"
 			>
 				<template #activator>
@@ -120,14 +122,14 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 						:disabled="disabled"
 						:class="$style.chevron"
 						aria-label="Select trigger node"
-						icon="angle-down"
+						icon="chevron-down"
 					/>
 				</template>
 				<template #menuItem="item">
 					<div :class="[$style.menuItem, item.disabled ? $style.disabled : '']">
 						<NodeIcon :class="$style.menuIcon" :size="16" :node-type="getNodeTypeByName(item.id)" />
 						<span>
-							<I18nT keypath="nodeView.runButtonText.from">
+							<I18nT keypath="nodeView.runButtonText.from" scope="global">
 								<template #nodeName>
 									<N8nText bold size="small">{{ item.label }}</N8nText>
 								</template>
@@ -171,6 +173,11 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .menu :global(.el-dropdown) {
 	height: 100%;
+}
+
+.menuPopper {
+	// Width upper bound is enforced by char count instead
+	max-width: none !important;
 }
 
 .menuItem {

@@ -1,7 +1,5 @@
-import { createWorkflow } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
-import { StatisticsNames, WorkflowStatistics } from '@n8n/db';
-import { WorkflowStatisticsRepository } from '@n8n/db';
+import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { StatisticsNames, WorkflowStatistics, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type InsertResult, QueryFailedError } from '@n8n/typeorm';
 import { mock, mockClear } from 'jest-mock-extended';

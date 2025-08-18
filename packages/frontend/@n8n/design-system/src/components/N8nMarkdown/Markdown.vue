@@ -424,6 +424,10 @@ input[type='checkbox'] + label {
 	iframe {
 		aspect-ratio: 16/9 auto;
 	}
+
+	summary {
+		cursor: pointer;
+	}
 }
 
 .spacer {

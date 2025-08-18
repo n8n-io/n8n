@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
@@ -34,7 +32,8 @@ const ragStarterCallout: INodeProperties = {
 	typeOptions: {
 		calloutAction: {
 			label: 'RAG starter template',
-			type: 'openRagStarterTemplate',
+			type: 'openSampleWorkflowTemplate',
+			templateId: 'rag-starter-template',
 		},
 	},
 	default: '',
@@ -77,7 +76,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				},
 			},
 			credentials: args.meta.credentials,
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 			inputs: `={{
 			((parameters) => {
 				const mode = parameters?.mode;

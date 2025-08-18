@@ -8,7 +8,6 @@ import type {
 	IVersionNotificationSettings,
 	ROLE,
 	Role,
-	User,
 } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag } from '@n8n/design-system';
@@ -37,12 +36,10 @@ import type {
 	ExecutionStatus,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
-	IUserSettings,
 	INodeExecutionData,
 	INodeProperties,
 	NodeConnectionType,
 	StartNodeData,
-	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
 	ITaskData,
 	ISourceData,
@@ -70,6 +67,8 @@ import type { BulkCommand, Undoable } from '@/models/history';
 
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
+import type { IUser, IUserResponse } from '@n8n/rest-api-client/api/users';
 
 export * from '@n8n/design-system/types';
 
@@ -110,6 +109,7 @@ declare global {
 				set?(metadata: IDataObject): void;
 			};
 			debug?(): void;
+			get_session_id?(): string | null;
 		};
 		analytics?: {
 			identify(userId: string): void;
@@ -121,17 +121,6 @@ declare global {
 			getVariant: (name: string) => string | boolean | undefined;
 			override: (name: string, value: string) => void;
 		};
-		// https://developer.mozilla.org/en-US/docs/Web/API/DocumentPictureInPicture
-		documentPictureInPicture?: {
-			window: Window | null;
-			requestWindow: (options?: {
-				width?: number;
-				height?: number;
-				preferInitialWindowPlacement?: boolean;
-				disallowReturnToOpener?: boolean;
-			}) => Promise<Window>;
-		};
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
 	}
 }
@@ -160,10 +149,7 @@ export interface IUpdateInformation<T extends NodeParameterValueType = NodeParam
 
 export interface INodeUpdatePropertiesInformation {
 	name: string; // Node-Name
-	properties: {
-		position: XYPosition;
-		[key: string]: IDataObject | XYPosition;
-	};
+	properties: Partial<INodeUi>;
 }
 
 export type XYPosition = [number, number];
@@ -177,6 +163,7 @@ export interface INodeUi extends INode {
 	issues?: INodeIssues;
 	name: string;
 	pinData?: IDataObject;
+	draggable?: boolean;
 }
 
 export interface INodeTypesMaxCount {
@@ -329,7 +316,19 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 };
 
-export type Resource = WorkflowResource | FolderResource | CredentialsResource | VariableResource;
+// Base resource types that are always available
+export type CoreResource =
+	| WorkflowResource
+	| FolderResource
+	| CredentialsResource
+	| VariableResource;
+
+// This interface can be extended by modules to add their own resource types
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ModuleResources {}
+
+// The Resource type is the union of core resources and any module resources
+export type Resource = CoreResource | ModuleResources[keyof ModuleResources];
 
 export type BaseFilters = {
 	search: string;
@@ -520,71 +519,7 @@ export interface IExecutionDeleteFilter {
 	ids?: string[];
 }
 
-export type IPersonalizationSurveyAnswersV1 = {
-	codingSkill?: string | null;
-	companyIndustry?: string[] | null;
-	companySize?: string | null;
-	otherCompanyIndustry?: string | null;
-	otherWorkArea?: string | null;
-	workArea?: string[] | string | null;
-};
-
-export type IPersonalizationSurveyAnswersV2 = {
-	version: 'v2';
-	automationGoal?: string | null;
-	codingSkill?: string | null;
-	companyIndustryExtended?: string[] | null;
-	companySize?: string | null;
-	companyType?: string | null;
-	customerType?: string | null;
-	mspFocus?: string[] | null;
-	mspFocusOther?: string | null;
-	otherAutomationGoal?: string | null;
-	otherCompanyIndustryExtended?: string[] | null;
-};
-
-export type IPersonalizationSurveyAnswersV3 = {
-	version: 'v3';
-	automationGoal?: string | null;
-	otherAutomationGoal?: string | null;
-	companyIndustryExtended?: string[] | null;
-	otherCompanyIndustryExtended?: string[] | null;
-	companySize?: string | null;
-	companyType?: string | null;
-	automationGoalSm?: string[] | null;
-	automationGoalSmOther?: string | null;
-	usageModes?: string[] | null;
-	email?: string | null;
-};
-
-export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
-
-export type IPersonalizationSurveyVersions =
-	| IPersonalizationSurveyAnswersV1
-	| IPersonalizationSurveyAnswersV2
-	| IPersonalizationSurveyAnswersV3
-	| IPersonalizationSurveyAnswersV4;
-
 export type InvitableRoleName = (typeof ROLE)['Member' | 'Admin'];
-
-export interface IUserResponse extends User {
-	globalScopes?: Scope[];
-	personalizationAnswers?: IPersonalizationSurveyVersions | null;
-	settings?: IUserSettings | null;
-}
-
-export interface CurrentUserResponse extends IUserResponse {
-	featureFlags?: FeatureFlags;
-}
-
-export interface IUser extends IUserResponse {
-	isDefaultUser: boolean;
-	isPendingUser: boolean;
-	inviteAcceptUrl?: string;
-	fullName?: string;
-	createdAt?: string;
-	mfaEnabled: boolean;
-}
 
 export interface IUserListAction {
 	label: string;
@@ -668,7 +603,7 @@ export type SimplifiedNodeType = Pick<
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
-	icon?: string;
+	icon?: IconName;
 	iconProps?: {
 		color?: string;
 	};
@@ -700,11 +635,13 @@ export interface LinkItemProps {
 }
 
 export interface OpenTemplateItemProps {
-	key: 'rag-starter-template';
+	templateId: string;
 	title: string;
 	description: string;
-	icon: string;
+	nodes?: INodeTypeDescription[];
+	icon?: string;
 	tag?: NodeCreatorTag;
+	compact?: boolean;
 }
 
 export interface ActionTypeDescription extends SimplifiedNodeType {
@@ -797,6 +734,7 @@ export type NodeTypeSelectedPayload = {
 		resource?: string;
 		operation?: string;
 	};
+	actionName?: string;
 };
 
 export interface SubcategorizedNodeTypes {
@@ -977,7 +915,8 @@ export type NodeCreatorOpenSource =
 	| 'notice_error_message'
 	| 'add_node_button'
 	| 'add_evaluation_trigger_button'
-	| 'add_evaluation_node_button';
+	| 'add_evaluation_node_button'
+	| 'templates_callout';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
@@ -1072,9 +1011,10 @@ export interface ITab<Value extends string | number = string | number> {
 	value: Value;
 	label?: string;
 	href?: string;
-	icon?: string;
+	icon?: IconName;
 	align?: 'right';
 	tooltip?: string;
+	notification?: boolean;
 }
 
 export interface ITabBarItem {
@@ -1281,6 +1221,7 @@ export type AddedNode = {
 	type: string;
 	openDetail?: boolean;
 	isAutoAdd?: boolean;
+	actionName?: string;
 } & Partial<INodeUi>;
 
 export type AddedNodeConnection = {
@@ -1319,7 +1260,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'WorkflowHistory'
 	| 'WorkerView'
 	| 'AdvancedPermissions'
-	| 'ApiKeyScopes';
+	| 'ApiKeyScopes'
+	| 'EnforceMFA';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

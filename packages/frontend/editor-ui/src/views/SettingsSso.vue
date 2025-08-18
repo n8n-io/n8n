@@ -6,22 +6,15 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM } from '@/constants';
-import { useSSOStore } from '@/stores/sso.store';
+import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '@/stores/sso.store';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref } from 'vue';
-
-type SupportedProtocolType = (typeof SupportedProtocols)[keyof typeof SupportedProtocols];
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
 	XML: 'xml',
 };
-
-const SupportedProtocols = {
-	SAML: 'saml',
-	OIDC: 'oidc',
-} as const;
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -164,6 +157,9 @@ const onSave = async () => {
 				: { metadata: metadata.value };
 		await ssoStore.saveSamlConfig(config);
 
+		// Update store with saved protocol selection
+		ssoStore.selectedAuthProtocol = authProtocol.value;
+
 		if (!ssoStore.isSamlLoginEnabled) {
 			const answer = await message.confirm(
 				i18n.baseText('settings.sso.settings.save.activate.message'),
@@ -235,12 +231,8 @@ const isToggleSsoDisabled = computed(() => {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.sso.title'));
 	await Promise.all([loadSamlConfig(), loadOidcConfig()]);
-
-	if (ssoStore.isDefaultAuthenticationSaml) {
-		authProtocol.value = SupportedProtocols.SAML;
-	} else if (ssoStore.isDefaultAuthenticationOidc) {
-		authProtocol.value = SupportedProtocols.OIDC;
-	}
+	ssoStore.initializeSelectedProtocol();
+	authProtocol.value = ssoStore.selectedAuthProtocol || SupportedProtocols.SAML;
 });
 
 const getOidcConfig = async () => {
@@ -298,6 +290,9 @@ async function onOidcSettingsSave() {
 		discoveryEndpoint: discoveryEndpoint.value,
 		loginEnabled: ssoStore.isOidcLoginEnabled,
 	});
+
+	// Update store with saved protocol selection
+	ssoStore.selectedAuthProtocol = authProtocol.value;
 
 	clientSecret.value = newConfig.clientSecret;
 	trackUpdateSettings();

@@ -276,7 +276,7 @@ exports[`CodeDiff > renders code diff correctly 1`] = `
         data-test-id="replace-code-button"
         disabled="false"
         element="button"
-        icon="refresh"
+        icon="refresh-cw"
         label=""
         loading="false"
         outline="false"
@@ -543,8 +543,7 @@ exports[`CodeDiff > renders error state correctly 1`] = `
         <n8n-icon-stub
           class="mr-5xs"
           color="danger"
-          icon="exclamation-triangle"
-          size="medium"
+          icon="triangle-alert"
           spin="false"
         />
         <span
@@ -814,7 +813,7 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           data-test-id="undo-replace-button"
           disabled="false"
           element="button"
-          icon="undo"
+          icon="undo-2"
           label=""
           loading="false"
           outline="false"
@@ -827,7 +826,6 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           class="ml-xs"
           color="success"
           icon="check"
-          size="medium"
           spin="false"
         />
         <span
@@ -1097,7 +1095,7 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         data-test-id="replace-code-button"
         disabled="false"
         element="button"
-        icon="refresh"
+        icon="refresh-cw"
         label=""
         loading="true"
         outline="false"

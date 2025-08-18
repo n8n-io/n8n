@@ -141,7 +141,7 @@ const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
 	template: `<Breadcrumbs v-bind="args">
     <template #prepend>
       <div style="display: flex; align-items: center; gap: 8px;">
-        <n8n-icon icon="layer-group"/>
+        <n8n-icon icon="layers"/>
         <n8n-text>My Project</n8n-text>
       </div>
     </template>

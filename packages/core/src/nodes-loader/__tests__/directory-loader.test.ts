@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type {
+	IconFile,
 	ICredentialType,
 	INodeType,
 	INodeTypeDescription,
@@ -133,6 +134,20 @@ describe('DirectoryLoader', () => {
 			expect(mockNode2.description.iconUrl).toBe('icons/n8n-nodes-testing/dist/Node2/node2.svg');
 		});
 
+		it('should throw error if node has icon not contained within the package directory', async () => {
+			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
+			mockNode2.description.icon = {
+				light: 'file:../../../../../../evil' as IconFile,
+				dark: 'file:dark.svg',
+			};
+
+			const loader = new PackageDirectoryLoader(directory);
+
+			await expect(loader.loadAll()).rejects.toThrow(
+				'Icon path "../../../../evil" is not contained within',
+			);
+		});
+
 		it('should throw error when package.json is missing', async () => {
 			mockFs.readFileSync.mockImplementationOnce(() => {
 				throw new Error('ENOENT');
@@ -192,6 +207,15 @@ describe('DirectoryLoader', () => {
 
 			expect(mockCredential1.supportedNodes).toEqual(['node1']);
 			expect(mockCredential1.iconUrl).toBe(mockNode1.description.iconUrl);
+		});
+
+		it('should not include nodes that are not in "includeNodes" even if they are from a different package', async () => {
+			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
+
+			const loader = new PackageDirectoryLoader(directory, [], ['n8n-nodes-other-package.node']);
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({});
 		});
 	});
 
@@ -286,6 +310,43 @@ describe('DirectoryLoader', () => {
 				directory,
 				[],
 				['n8n-nodes-testing.nonexistent'],
+			);
+			await loader.loadAll();
+
+			expect(loader.isLazyLoaded).toBe(true);
+			expect(loader.known.nodes).toEqual({});
+			expect(loader.types.nodes).toHaveLength(0);
+			expect(classLoader.loadClassInIsolation).not.toHaveBeenCalled();
+		});
+
+		it('should not include nodes that are not in "includeNodes" even if they are from a different package', async () => {
+			mockFs.readFileSync.calledWith(`${directory}/package.json`).mockReturnValue(packageJson);
+
+			mockFsPromises.readFile.mockImplementation(async (path) => {
+				if (typeof path !== 'string') throw new Error('Invalid path');
+
+				if (path.endsWith('known/nodes.json')) {
+					return JSON.stringify({
+						node1: { className: 'Node1', sourcePath: 'dist/Node1/Node1.node.js' },
+						node2: { className: 'Node2', sourcePath: 'dist/Node2/Node2.node.js' },
+					});
+				}
+				if (path.endsWith('known/credentials.json')) {
+					return JSON.stringify({});
+				}
+				if (path.endsWith('types/nodes.json')) {
+					return JSON.stringify([{ name: 'node1' }, { name: 'node2' }]);
+				}
+				if (path.endsWith('types/credentials.json')) {
+					return JSON.stringify([]);
+				}
+				throw new Error('File not found');
+			});
+
+			const loader = new LazyPackageDirectoryLoader(
+				directory,
+				[],
+				['n8n-nodes-other-package.node'],
 			);
 			await loader.loadAll();
 
@@ -568,6 +629,18 @@ describe('DirectoryLoader', () => {
 
 			expect(() => loader.loadCredentialFromFile(filePath)).toThrow('Class could not be found');
 		});
+
+		it('should not push credential to types array when lazy loaded', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			loader.isLazyLoaded = true;
+
+			loader.loadCredentialFromFile('dist/Credential1.js');
+
+			expect(loader.credentialTypes).toEqual({
+				credential1: { sourcePath: 'dist/Credential1.js', type: mockCredential1 },
+			});
+			expect(loader.types.credentials).toEqual([]);
+		});
 	});
 
 	describe('getCredential', () => {
@@ -659,6 +732,23 @@ describe('DirectoryLoader', () => {
 				dark: 'icons/CUSTOM/dist/Node1/dark.svg',
 			});
 			expect(nodeWithIcon.description.icon).toBeUndefined();
+		});
+
+		it('should error if icon path is not contained within the package directory', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const filePath = 'dist/Node1/Node1.node.js';
+
+			const nodeWithIcon = createNode('nodeWithIcon');
+			nodeWithIcon.description.icon = {
+				light: 'file:../../../evil' as IconFile,
+				dark: 'file:dark.svg',
+			};
+
+			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithIcon);
+
+			expect(() => loader.loadNodeFromFile(filePath)).toThrow(
+				'Icon path "../evil" is not contained within',
+			);
 		});
 
 		it('should skip node if not in includeNodes', () => {

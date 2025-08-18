@@ -63,6 +63,10 @@ export class LicenseState {
 		return this.isLicensed('feat:oidc');
 	}
 
+	isMFAEnforcementLicensed() {
+		return this.isLicensed('feat:mfaEnforcement');
+	}
+
 	isApiKeyScopesLicensed() {
 		return this.isLicensed('feat:apiKeyScopes');
 	}
@@ -153,6 +157,10 @@ export class LicenseState {
 
 	isInsightsHourlyDataLicensed() {
 		return this.isLicensed('feat:insights:viewHourlyData');
+	}
+
+	isWorkflowDiffsLicensed() {
+		return this.isLicensed('feat:workflowDiffs');
 	}
 
 	// --------------------

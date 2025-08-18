@@ -31,6 +31,7 @@ import { generateCodeForAiTransform } from '@/components/ButtonParameter/utils';
 import { needsAgentInput } from '@/utils/nodes/nodeTransforms';
 import { useUIStore } from '@/stores/ui.store';
 import type { ButtonType } from '@n8n/design-system';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 const NODE_TEST_STEP_POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
 const MAX_POPUP_COUNT = 10;
@@ -44,13 +45,18 @@ const props = withDefaults(
 		label?: string;
 		type?: ButtonType;
 		size?: ButtonSize;
+		icon?: IconName;
+		square?: boolean;
 		transparent?: boolean;
 		hideIcon?: boolean;
+		hideLabel?: boolean;
 		tooltip?: string;
+		tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
 	}>(),
 	{
 		disabled: false,
 		transparent: false,
+		square: false,
 	},
 );
 
@@ -59,6 +65,8 @@ const emit = defineEmits<{
 	execute: [];
 	valueChanged: [value: IUpdateInformation];
 }>();
+
+const slots = defineSlots<{ persistentTooltipContent?: {} }>();
 
 defineOptions({
 	inheritAttrs: false,
@@ -188,6 +196,10 @@ const tooltipText = computed(() => {
 });
 
 const buttonLabel = computed(() => {
+	if (props.hideLabel) {
+		return '';
+	}
+
 	if (isListeningForEvents.value || isListeningForWorkflowEvents.value) {
 		return i18n.baseText('ndv.execute.stopListening');
 	}
@@ -221,9 +233,10 @@ const isLoading = computed(
 		(isNodeRunning.value && !isListeningForEvents.value && !isListeningForWorkflowEvents.value),
 );
 
-const buttonIcon = computed(() => {
+const buttonIcon = computed((): IconName | undefined => {
+	if (props.icon) return props.icon;
 	if (shouldGenerateCode.value) return 'terminal';
-	if (!isListeningForEvents.value && !props.hideIcon) return 'flask';
+	if (!isListeningForEvents.value && !props.hideIcon) return 'flask-conical';
 	return undefined;
 });
 
@@ -377,7 +390,16 @@ async function onClick() {
 </script>
 
 <template>
-	<N8nTooltip placement="right" :disabled="!tooltipText" :content="tooltipText">
+	<N8nTooltip
+		:placement="tooltipPlacement ?? 'right'"
+		:disabled="!tooltipText && !slots.persistentTooltipContent"
+		:visible="slots.persistentTooltipContent ? true : undefined"
+	>
+		<template #content>
+			<slot name="persistentTooltipContent">
+				{{ tooltipText }}
+			</slot>
+		</template>
 		<N8nButton
 			v-bind="$attrs"
 			:loading="isLoading"
@@ -386,6 +408,7 @@ async function onClick() {
 			:type="type"
 			:size="size"
 			:icon="buttonIcon"
+			:square="square"
 			:transparent-background="transparent"
 			:title="
 				!isTriggerNode && !tooltipText ? i18n.baseText('ndv.execute.testNode.description') : ''

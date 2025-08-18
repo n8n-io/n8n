@@ -5,13 +5,14 @@ import { onMounted, ref } from 'vue';
 import type { IconColor } from '@n8n/design-system/types/icon';
 
 import N8nIcon from '../N8nIcon';
+import { type IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 
 export interface IAccordionItem {
 	id: string;
 	label: string;
-	icon: string;
+	icon: IconName;
 	iconColor?: IconColor;
 	tooltip?: string | null;
 }
@@ -21,7 +22,7 @@ interface InfoAccordionProps {
 	description?: string;
 	items?: IAccordionItem[];
 	initiallyExpanded?: boolean;
-	headerIcon?: { icon: string; color: IconColor };
+	headerIcon?: { icon: IconName; color: IconColor };
 	eventBus?: EventBus;
 }
 

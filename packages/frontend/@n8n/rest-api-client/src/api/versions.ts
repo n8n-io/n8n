@@ -29,15 +29,22 @@ export interface Version {
 	securityIssueFixVersion: string;
 }
 
+export interface WhatsNewSection {
+	title: string;
+	calloutText: string;
+	footer: string;
+	items: WhatsNewArticle[];
+	createdAt: string;
+	updatedAt: string | null;
+}
+
 export interface WhatsNewArticle {
 	id: number;
-	title: string;
 	createdAt: string;
 	updatedAt: string | null;
 	publishedAt: string;
+	title: string;
 	content: string;
-	calloutTitle: string;
-	calloutText: string;
 }
 
 export async function getNextVersions(
@@ -49,11 +56,11 @@ export async function getNextVersions(
 	return await get(endpoint, currentVersion, {}, headers);
 }
 
-export async function getWhatsNewArticles(
+export async function getWhatsNewSection(
 	endpoint: string,
 	currentVersion: string,
 	instanceId: string,
-): Promise<WhatsNewArticle[]> {
+): Promise<WhatsNewSection> {
 	const headers = {
 		[INSTANCE_ID_HEADER as string]: instanceId,
 		[INSTANCE_VERSION_HEADER as string]: currentVersion,

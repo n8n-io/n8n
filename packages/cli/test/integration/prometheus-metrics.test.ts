@@ -31,6 +31,7 @@ globalConfig.endpoints.metrics = {
 	includeCredentialTypeLabel: false,
 	includeNodeTypeLabel: false,
 	includeWorkflowIdLabel: false,
+	includeWorkflowNameLabel: false,
 	includeApiPathLabel: true,
 	includeApiMethodLabel: true,
 	includeApiStatusCodeLabel: true,

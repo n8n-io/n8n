@@ -14,7 +14,7 @@ const throwFileNotFound = () => {
 };
 
 const binaryDataService = mockInstance(BinaryDataService);
-let testServer = setupTestServer({ endpointGroups: ['binaryData'] });
+const testServer = setupTestServer({ endpointGroups: ['binaryData'] });
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {

@@ -131,17 +131,40 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			)) as IExecuteFunctions['getNodeParameter'];
 	}
 
-	async sendChunk(type: ChunkType, content?: IDataObject | string): Promise<void> {
+	isStreaming(): boolean {
+		// Check if we have sendChunk handlers
+		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
+		const hasHandlers = handlers !== undefined && handlers > 0;
+
+		// Check if streaming was enabled for this execution
+		const streamingEnabled = this.additionalData.streamingEnabled === true;
+
+		// Check current execution mode supports streaming
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated'];
+		const isStreamingMode = executionModeSupportsStreaming.includes(this.mode);
+
+		return hasHandlers && isStreamingMode && streamingEnabled;
+	}
+
+	async sendChunk(
+		type: ChunkType,
+		itemIndex: number,
+		content?: IDataObject | string,
+	): Promise<void> {
 		const node = this.getNode();
 		const metadata = {
 			nodeId: node.id,
 			nodeName: node.name,
+			itemIndex,
+			runIndex: this.runIndex,
 			timestamp: Date.now(),
 		};
 
+		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);
+
 		const message: StructuredChunk = {
 			type,
-			content: content ? JSON.stringify(content) : undefined,
+			content: parsedContent,
 			metadata,
 		};
 

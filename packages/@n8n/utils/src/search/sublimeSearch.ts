@@ -221,7 +221,7 @@ function getValue<T extends object>(obj: T, prop: string): unknown {
 
 export function sublimeSearch<T extends object>(
 	filter: string,
-	data: Readonly<T[]>,
+	data: readonly T[],
 	keys: Array<{ key: string; weight: number }> = DEFAULT_KEYS,
 ): Array<{ score: number; item: T }> {
 	const results = data.reduce((accu: Array<{ score: number; item: T }>, item: T) => {

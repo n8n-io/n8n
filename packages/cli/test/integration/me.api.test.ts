@@ -1,10 +1,13 @@
-import { randomEmail, randomName, randomValidPassword } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
+import {
+	randomEmail,
+	randomName,
+	randomValidPassword,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 import validator from 'validator';
@@ -18,7 +21,10 @@ const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
+	mockInstance(GlobalConfig, {
+		publicApi: { disabled: false },
+		sso: { saml: { loginEnabled: true } },
+	});
 });
 
 describe('Owner shell', () => {

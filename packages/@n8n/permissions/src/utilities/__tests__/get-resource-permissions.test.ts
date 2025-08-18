@@ -31,6 +31,7 @@ describe('permissions', () => {
 			workflow: {},
 			folder: {},
 			insights: {},
+			dataStore: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -128,6 +129,7 @@ describe('permissions', () => {
 			insights: {
 				list: true,
 			},
+			dataStore: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

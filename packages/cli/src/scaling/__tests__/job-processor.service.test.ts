@@ -1,12 +1,17 @@
 import type { Logger } from '@n8n/backend-common';
-import type { IExecutionResponse } from '@n8n/db';
-import type { ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { WorkflowExecute as ActualWorkflowExecute } from 'n8n-core';
 import { ExternalSecretsProxy } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
-import type { IPinData, ITaskData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { Workflow, type IRunExecutionData, type WorkflowExecuteMode } from 'n8n-workflow';
+import {
+	type IPinData,
+	type ITaskData,
+	type IWorkflowExecuteAdditionalData,
+	Workflow,
+	type IRunExecutionData,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';

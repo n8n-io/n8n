@@ -1,9 +1,13 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { createTeamProject, getPersonalProject, linkUserToProject } from '@n8n/backend-test-utils';
-import { createWorkflow } from '@n8n/backend-test-utils';
-import { randomCredentialPayload } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
-import { mockInstance } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getPersonalProject,
+	linkUserToProject,
+	createWorkflow,
+	randomCredentialPayload,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import {
 	type CredentialsEntity,
 	CredentialsRepository,
@@ -16,10 +20,12 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import { FolderRepository } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import {
+	FolderRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
@@ -337,7 +343,7 @@ describe('SourceControlImportService', () => {
 
 		describe('if user is an instance owner', () => {
 			it('should get all available workflows on the instance', async () => {
-				let versions = await service.getLocalVersionIdsFromDb(
+				const versions = await service.getLocalVersionIdsFromDb(
 					new SourceControlContext(instanceOwner),
 				);
 
@@ -355,7 +361,7 @@ describe('SourceControlImportService', () => {
 
 		describe('if user is a project admin of a team project', () => {
 			it('should only get all available workflows from the team project', async () => {
-				let versions = await service.getLocalVersionIdsFromDb(
+				const versions = await service.getLocalVersionIdsFromDb(
 					new SourceControlContext(projectAdmin),
 				);
 
@@ -367,7 +373,7 @@ describe('SourceControlImportService', () => {
 
 		describe('if user is a project member of a team project', () => {
 			it('should not get any workflows', async () => {
-				let versions = await service.getLocalVersionIdsFromDb(
+				const versions = await service.getLocalVersionIdsFromDb(
 					new SourceControlContext(projectMember),
 				);
 
@@ -627,7 +633,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should get all available credentials on the instance, for an instance owner', async () => {
-			let versions = await service.getLocalCredentialsFromDb(
+			const versions = await service.getLocalCredentialsFromDb(
 				new SourceControlContext(instanceOwner),
 			);
 
@@ -637,7 +643,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should only get all available credentials from the team project, for a project admin', async () => {
-			let versions = await service.getLocalCredentialsFromDb(
+			const versions = await service.getLocalCredentialsFromDb(
 				new SourceControlContext(projectAdmin),
 			);
 
@@ -647,7 +653,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should not get any workflows, for a project member', async () => {
-			let versions = await service.getLocalCredentialsFromDb(
+			const versions = await service.getLocalCredentialsFromDb(
 				new SourceControlContext(projectMember),
 			);
 
@@ -711,7 +717,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should get all available folders on the instance, for an instance owner', async () => {
-			let folders = await service.getLocalFoldersAndMappingsFromDb(
+			const folders = await service.getLocalFoldersAndMappingsFromDb(
 				new SourceControlContext(instanceOwner),
 			);
 
@@ -721,7 +727,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should only get all available folders from the team project, for a project admin', async () => {
-			let versions = await service.getLocalFoldersAndMappingsFromDb(
+			const versions = await service.getLocalFoldersAndMappingsFromDb(
 				new SourceControlContext(projectAdmin),
 			);
 
@@ -731,7 +737,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should not get any folders, for a project member', async () => {
-			let versions = await service.getLocalFoldersAndMappingsFromDb(
+			const versions = await service.getLocalFoldersAndMappingsFromDb(
 				new SourceControlContext(projectMember),
 			);
 
@@ -1014,7 +1020,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should get all available tags and mappings on the instance, for an instance owner', async () => {
-			let result = await service.getLocalTagsAndMappingsFromDb(
+			const result = await service.getLocalTagsAndMappingsFromDb(
 				new SourceControlContext(instanceOwner),
 			);
 
@@ -1035,7 +1041,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should only get all available tags and only mappings from the team project, for a project admin', async () => {
-			let result = await service.getLocalTagsAndMappingsFromDb(
+			const result = await service.getLocalTagsAndMappingsFromDb(
 				new SourceControlContext(projectAdmin),
 			);
 
@@ -1059,7 +1065,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should get all available tags but no mappings, for a project member', async () => {
-			let result = await service.getLocalTagsAndMappingsFromDb(
+			const result = await service.getLocalTagsAndMappingsFromDb(
 				new SourceControlContext(projectMember),
 			);
 

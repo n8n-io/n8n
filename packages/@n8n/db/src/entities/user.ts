@@ -1,5 +1,4 @@
-import type { AuthPrincipal } from '@n8n/permissions';
-import { GlobalRole } from '@n8n/permissions';
+import type { AuthPrincipal, GlobalRole } from '@n8n/permissions';
 import {
 	AfterLoad,
 	AfterUpdate,
@@ -53,9 +52,9 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
 
-	@Column({ nullable: true })
+	@Column({ type: String, nullable: true })
 	@IsString({ message: 'Password must be of type string.' })
-	password: string;
+	password: string | null;
 
 	@JsonColumn({
 		nullable: true,

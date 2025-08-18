@@ -2,15 +2,14 @@
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { AI_CREDITS_EXPERIMENT } from '@/constants';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, ref } from 'vue';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
+import { N8nCallout, N8nText } from '@n8n/design-system';
 
 const LANGCHAIN_NODES_PREFIX = '@n8n/n8n-nodes-langchain.';
 
@@ -27,7 +26,6 @@ const showSuccessCallout = ref(false);
 const claimingCredits = ref(false);
 
 const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
 const credentialsStore = useCredentialsStore();
 const usersStore = useUsersStore();
 const ndvStore = useNDVStore();
@@ -58,7 +56,6 @@ const userCanClaimOpenAiCredits = computed(() => {
 	return (
 		settingsStore.isAiCreditsEnabled &&
 		activeNodeHasOpenAiApiCredential.value &&
-		posthogStore.getVariant(AI_CREDITS_EXPERIMENT.name) === AI_CREDITS_EXPERIMENT.variant &&
 		!userHasOpenAiCredentialAlready.value &&
 		!userHasClaimedAiCreditsAlready.value
 	);
@@ -89,38 +86,39 @@ const onClaimCreditsClicked = async () => {
 };
 </script>
 <template>
-	<div class="mt-xs">
-		<n8n-callout
-			v-if="userCanClaimOpenAiCredits && !showSuccessCallout"
-			theme="secondary"
-			icon="exclamation-circle"
-		>
+	<N8nCallout
+		v-if="userCanClaimOpenAiCredits && !showSuccessCallout"
+		theme="secondary"
+		icon="circle-alert"
+		class="mt-xs"
+	>
+		{{
+			i18n.baseText('freeAi.credits.callout.claim.title', {
+				interpolate: { credits: settingsStore.aiCreditsQuota },
+			})
+		}}
+		<template #trailingContent>
+			<n8n-button
+				type="tertiary"
+				size="small"
+				:label="i18n.baseText('freeAi.credits.callout.claim.button.label')"
+				:loading="claimingCredits"
+				@click="onClaimCreditsClicked"
+			/>
+		</template>
+	</N8nCallout>
+	<N8nCallout v-else-if="showSuccessCallout" theme="success" icon="circle-check" class="mt-xs">
+		<N8nText size="small">
 			{{
-				i18n.baseText('freeAi.credits.callout.claim.title', {
+				i18n.baseText('freeAi.credits.callout.success.title.part1', {
 					interpolate: { credits: settingsStore.aiCreditsQuota },
 				})
 			}}
-			<template #trailingContent>
-				<n8n-button
-					type="tertiary"
-					size="small"
-					:label="i18n.baseText('freeAi.credits.callout.claim.button.label')"
-					:loading="claimingCredits"
-					@click="onClaimCreditsClicked"
-				/>
-			</template>
-		</n8n-callout>
-		<n8n-callout v-else-if="showSuccessCallout" theme="success" icon="check-circle">
-			<n8n-text size="small">
-				{{
-					i18n.baseText('freeAi.credits.callout.success.title.part1', {
-						interpolate: { credits: settingsStore.aiCreditsQuota },
-					})
-				}}</n8n-text
-			>&nbsp;
-			<n8n-text size="small" :bold="true">
-				{{ i18n.baseText('freeAi.credits.callout.success.title.part2') }}</n8n-text
-			>
-		</n8n-callout>
-	</div>
+		</N8nText>
+		&nbsp;
+		<N8nText size="small" :bold="true">
+			{{ i18n.baseText('freeAi.credits.callout.success.title.part2') }}
+		</N8nText>
+	</N8nCallout>
+	<div v-else />
 </template>

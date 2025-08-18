@@ -57,7 +57,7 @@ export class ControllerRegistry {
 				controller,
 				handlerName,
 			) as unknown[];
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
+
 			const handler = async (req: Request, res: Response) => {
 				const args: unknown[] = [req, res];
 				for (let index = 0; index < route.args.length; index++) {
@@ -83,11 +83,11 @@ export class ControllerRegistry {
 				...(inProduction && route.rateLimit
 					? [this.createRateLimitMiddleware(route.rateLimit)]
 					: []),
-				// eslint-disable-next-line @typescript-eslint/unbound-method
+
 				...(route.skipAuth
 					? []
 					: ([
-							this.authService.authMiddleware.bind(this.authService),
+							this.authService.createAuthMiddleware(route.allowSkipMFA),
 							this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
 						] as RequestHandler[])),
 				...(route.licenseFeature ? [this.createLicenseMiddleware(route.licenseFeature)] : []),

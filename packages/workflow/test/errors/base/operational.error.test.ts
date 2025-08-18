@@ -1,5 +1,5 @@
-import { BaseError } from '@/errors/base/base.error';
-import { OperationalError } from '@/errors/base/operational.error';
+import { BaseError } from '../../../src/errors/base/base.error';
+import { OperationalError } from '../../../src/errors/base/operational.error';
 
 describe('OperationalError', () => {
 	it('should be an instance of OperationalError', () => {

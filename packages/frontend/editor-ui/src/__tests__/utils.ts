@@ -138,3 +138,20 @@ export const mockedStore = <TStoreDef extends () => unknown>(
 };
 
 export type MockedStore<T extends () => unknown> = ReturnType<typeof mockedStore<T>>;
+
+export type Emitter = (event: string, ...args: unknown[]) => void;
+export type Emitters<T extends string> = Record<
+	T,
+	{
+		emit: Emitter;
+	}
+>;
+export const useEmitters = <T extends string>() => {
+	const emitters = {} as Emitters<T>;
+	return {
+		emitters,
+		addEmitter: (name: T, emitter: Emitter) => {
+			emitters[name] = { emit: emitter };
+		},
+	};
+};

@@ -57,6 +57,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	blur: [];
 	update: [value: IUpdateInformation];
+	hover: [hovered: boolean];
 }>();
 
 const i18n = useI18n();
@@ -66,6 +67,7 @@ const eventBus = ref(createEventBus());
 const focused = ref(false);
 const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
+const wrapperHovered = ref(false);
 
 const ndvStore = useNDVStore();
 const telemetry = useTelemetry();
@@ -137,6 +139,14 @@ function onBlur() {
 
 function onMenuExpanded(expanded: boolean) {
 	menuExpanded.value = expanded;
+}
+
+function onWrapperMouseEnter() {
+	wrapperHovered.value = true;
+}
+
+function onWrapperMouseLeave() {
+	wrapperHovered.value = false;
 }
 
 function optionSelected(command: string) {
@@ -249,6 +259,10 @@ watch(
 	},
 );
 
+watch(wrapperHovered, (hovered) => {
+	emit('hover', hovered);
+});
+
 const parameterInputWrapper = useTemplateRef('parameterInputWrapper');
 const isSingleLineInput: ComputedRef<boolean> = computed(
 	() => parameterInputWrapper.value?.isSingleLineInput ?? false,
@@ -257,14 +271,10 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 function applyOverride() {
 	if (!fromAIOverride.value) return;
 
-	telemetry.track(
-		'User turned on fromAI override',
-		{
-			nodeType: activeNode.value?.type,
-			parameter: props.path,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User turned on fromAI override', {
+		nodeType: activeNode.value?.type,
+		parameter: props.path,
+	});
 	updateFromAIOverrideValues(fromAIOverride.value, String(props.value));
 	const value = buildValueFromOverride(fromAIOverride.value, props, true);
 	valueChanged({
@@ -277,14 +287,10 @@ function applyOverride() {
 function removeOverride(clearField = false) {
 	if (!fromAIOverride.value) return;
 
-	telemetry.track(
-		'User turned off fromAI override',
-		{
-			nodeType: activeNode.value?.type,
-			parameter: props.path,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User turned off fromAI override', {
+		nodeType: activeNode.value?.type,
+		parameter: props.path,
+	});
 	valueChanged({
 		node: activeNode.value?.name,
 		name: props.path,
@@ -313,6 +319,8 @@ function removeOverride(clearField = false) {
 		:bold="false"
 		:size="label.size"
 		color="text-dark"
+		@mouseenter="onWrapperMouseEnter"
+		@mouseleave="onWrapperMouseLeave"
 	>
 		<template
 			v-if="showOverrideButton && !isSingleLineInput && optionsPosition === 'top'"
@@ -336,6 +344,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
@@ -398,6 +407,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>

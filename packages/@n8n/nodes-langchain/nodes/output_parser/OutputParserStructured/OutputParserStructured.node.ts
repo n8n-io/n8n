@@ -66,7 +66,7 @@ export class OutputParserStructured implements INodeType {
 				return [];
 			})($parameter)
 		}}`,
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [

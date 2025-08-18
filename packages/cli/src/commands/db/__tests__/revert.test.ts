@@ -1,8 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IrreversibleMigration, ReversibleMigration } from '@n8n/db';
-import type { Migration, MigrationExecutor } from '@n8n/typeorm';
-import { type DataSource } from '@n8n/typeorm';
+import type { Migration, MigrationExecutor, DataSource } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import { main } from '@/commands/db/revert';

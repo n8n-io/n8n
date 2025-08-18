@@ -2,10 +2,10 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
-import type { UserAction } from '@n8n/design-system';
+import type { TabOptions, UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { type ProjectIcon as ProjectIconType, ProjectTypes } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
@@ -16,7 +16,16 @@ import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.v
 import { useSettingsStore } from '@/stores/settings.store';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
+import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { useUIStore } from '@/stores/ui.store';
+
+export type CustomAction = {
+	id: string;
+	label: string;
+	disabled?: boolean;
+};
 
 const route = useRoute();
 const router = useRouter();
@@ -24,28 +33,41 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
+
 const projectPages = useProjectPages();
+
+type Props = {
+	customActions?: CustomAction[];
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	customActions: () => [],
+});
 
 const emit = defineEmits<{
 	createFolder: [];
+	customActionSelected: [actionId: string, projectId: string];
 }>();
 
-const headerIcon = computed((): ProjectIconType => {
+const headerIcon = computed((): IconOrEmoji => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
 	} else if (projectsStore.currentProject?.name) {
-		return projectsStore.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
+		return isIconOrEmoji(projectsStore.currentProject.icon)
+			? projectsStore.currentProject.icon
+			: { type: 'icon', value: 'layers' };
 	} else {
-		return { type: 'icon', value: 'home' };
+		return { type: 'icon', value: 'house' };
 	}
 });
 
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
-		if (projectPages.isOverviewSubPage) {
-			return i18n.baseText('projects.menu.overview');
-		} else if (projectPages.isSharedSubPage) {
+		if (projectPages.isSharedSubPage) {
 			return i18n.baseText('projects.header.shared.title');
+		} else if (projectPages.isOverviewSubPage) {
+			return i18n.baseText('projects.menu.overview');
 		}
 		return null;
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
@@ -79,6 +101,23 @@ const showFolders = computed(() => {
 	);
 });
 
+const customProjectTabs = computed((): Array<TabOptions<string>> => {
+	// Determine the type of tab based on the current project page
+	let tabType: 'shared' | 'overview' | 'project';
+	if (projectPages.isSharedSubPage) {
+		tabType = 'shared';
+	} else if (projectPages.isOverviewSubPage) {
+		tabType = 'overview';
+	} else {
+		tabType = 'project';
+	}
+	// Only pick up tabs from active modules
+	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter(
+		settingsStore.isModuleActive,
+	);
+	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+});
+
 const ACTION_TYPES = {
 	WORKFLOW: 'workflow',
 	CREDENTIAL: 'credential',
@@ -89,7 +128,7 @@ type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 const createWorkflowButton = computed(() => ({
 	value: ACTION_TYPES.WORKFLOW,
 	label: i18n.baseText('projects.header.create.workflow'),
-	icon: sourceControlStore.preferences.branchReadOnly ? 'lock' : undefined,
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
 	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||
@@ -113,6 +152,17 @@ const menu = computed(() => {
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes).folder.create,
+		});
+	}
+
+	// Append custom actions
+	if (props.customActions?.length) {
+		props.customActions.forEach((customAction) => {
+			items.push({
+				value: customAction.id,
+				label: customAction.label,
+				disabled: customAction.disabled ?? false,
+			});
 		});
 	}
 	return items;
@@ -143,26 +193,26 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			},
 		});
 	},
-	[ACTION_TYPES.FOLDER]: async () => {
+	[ACTION_TYPES.FOLDER]: () => {
 		emit('createFolder');
 	},
 } as const;
 
 const pageType = computed(() => {
-	if (projectPages.isOverviewSubPage) {
-		return 'overview';
-	} else if (projectPages.isSharedSubPage) {
+	if (projectPages.isSharedSubPage) {
 		return 'shared';
+	} else if (projectPages.isOverviewSubPage) {
+		return 'overview';
 	} else {
 		return 'project';
 	}
 });
 
 const sectionDescription = computed(() => {
-	if (projectPages.isOverviewSubPage) {
-		return i18n.baseText('projects.header.overview.subtitle');
-	} else if (projectPages.isSharedSubPage) {
+	if (projectPages.isSharedSubPage) {
 		return i18n.baseText('projects.header.shared.subtitle');
+	} else if (projectPages.isOverviewSubPage) {
+		return i18n.baseText('projects.header.overview.subtitle');
 	} else if (isPersonalProject.value) {
 		return i18n.baseText('projects.header.personal.subtitle');
 	}
@@ -216,6 +266,13 @@ const onSelect = (action: string) => {
 	if (!homeProject.value) {
 		return;
 	}
+
+	// Check if this is a custom action
+	if (!executableAction) {
+		emit('customActionSelected', action, homeProject.value.id);
+		return;
+	}
+
 	executableAction(homeProject.value.id);
 };
 </script>
@@ -274,6 +331,7 @@ const onSelect = (action: string) => {
 				:page-type="pageType"
 				:show-executions="!projectPages.isSharedSubPage"
 				:show-settings="showSettings"
+				:additional-tabs="customProjectTabs"
 			/>
 		</div>
 	</div>

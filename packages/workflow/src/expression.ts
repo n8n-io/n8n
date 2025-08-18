@@ -1,10 +1,11 @@
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { ApplicationError } from './errors/application.error';
+import { ApplicationError } from '@n8n/errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import { sanitizer, sanitizerName } from './expression-sandboxing';
+import { isExpression } from './expressions/expression-helpers';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
@@ -118,7 +119,7 @@ export class Expression {
 		contextNodeName?: string,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Check if it is an expression
-		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
+		if (!isExpression(parameterValue)) {
 			// Is no expression so return value
 			return parameterValue;
 		}

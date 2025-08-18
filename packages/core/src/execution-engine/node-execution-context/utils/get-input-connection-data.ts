@@ -29,7 +29,7 @@ import {
 
 import { createNodeAsTool } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
 
 function getNextRunIndex(runExecutionData: IRunExecutionData, nodeName: string) {

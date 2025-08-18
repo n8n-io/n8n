@@ -6,7 +6,7 @@ import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
 import N8nText from '../N8nText';
 
-interface UsersInfoProps {
+export interface UsersInfoProps {
 	firstName?: string | null;
 	lastName?: string | null;
 	email?: string | null;
@@ -16,6 +16,7 @@ interface UsersInfoProps {
 	disabled?: boolean;
 	settings?: object;
 	isSamlLoginEnabled?: boolean;
+	mfaEnabled?: boolean;
 }
 
 const props = withDefaults(defineProps<UsersInfoProps>(), {

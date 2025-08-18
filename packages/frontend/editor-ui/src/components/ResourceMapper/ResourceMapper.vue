@@ -40,6 +40,7 @@ type Props = {
 	teleported?: boolean;
 	dependentParametersValues?: string | null;
 	isReadOnly?: boolean;
+	allowEmptyStrings?: boolean;
 };
 
 const nodeTypesStore = useNodeTypesStore();
@@ -50,6 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
 	dependentParametersValues: null,
 	isReadOnly: false,
+	allowEmptyStrings: false,
 });
 
 const { onDocumentVisible } = useDocumentVisibility();
@@ -436,8 +438,8 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 	let newValue = null;
 	if (
 		updateInfo.value !== undefined &&
-		updateInfo.value !== '' &&
 		updateInfo.value !== null &&
+		(props.allowEmptyStrings || updateInfo.value !== '') &&
 		isResourceMapperValue(updateInfo.value)
 	) {
 		newValue = updateInfo.value;
@@ -598,7 +600,7 @@ defineExpose({
 			@refresh-field-list="initFetching(true)"
 		/>
 		<N8nText v-if="!showMappingModeSelect && state.loading" size="small">
-			<N8nIcon icon="sync-alt" size="xsmall" :spin="true" />
+			<N8nIcon icon="refresh-cw" size="xsmall" :spin="true" />
 			{{
 				locale.baseText('resourceMapper.fetchingFields.message', {
 					interpolate: {
@@ -639,7 +641,7 @@ defineExpose({
 			<template #trailingContent>
 				<N8nButton
 					size="mini"
-					icon="refresh"
+					icon="refresh-cw"
 					type="secondary"
 					:loading="state.refreshInProgress"
 					@click="initFetching(true)"

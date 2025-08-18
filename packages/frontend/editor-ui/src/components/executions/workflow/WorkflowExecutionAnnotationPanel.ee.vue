@@ -51,7 +51,7 @@ function onDropdownVisibleChange(visible: boolean) {
 		<N8nButton
 			:title="i18n.baseText('executionDetails.additionalActions')"
 			:disabled="!workflowPermissions.update"
-			icon="tasks"
+			icon="list-checks"
 			:class="{
 				[$style.highlightDataButton]: true,
 				[$style.highlightDataButtonActive]: customDataLength > 0,
@@ -62,7 +62,7 @@ function onDropdownVisibleChange(visible: boolean) {
 			data-test-id="execution-preview-ellipsis-button"
 			@blur="onEllipsisButtonBlur"
 		>
-			<n8n-badge :class="$style.badge" theme="primary" v-if="customDataLength > 0">
+			<n8n-badge v-if="customDataLength > 0" :class="$style.badge" theme="primary">
 				{{ customDataLength.toString() }}
 			</n8n-badge>
 		</N8nButton>

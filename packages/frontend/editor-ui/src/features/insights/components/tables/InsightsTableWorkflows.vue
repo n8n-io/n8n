@@ -7,19 +7,22 @@ import {
 	transformInsightsTimeSaved,
 } from '@/features/insights/insights.utils';
 import type { InsightsByWorkflow } from '@n8n/api-types';
-import { N8nTooltip } from '@n8n/design-system';
-import N8nDataTableServer, {
-	type TableHeader,
-} from '@n8n/design-system/components/N8nDataTableServer/N8nDataTableServer.vue';
+import { N8nTooltip, N8nDataTableServer } from '@n8n/design-system';
+import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
-import { computed, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { type RouteLocationRaw, type LocationQueryRaw } from 'vue-router';
+
+const InsightsPaywall = defineAsyncComponent(
+	async () => await import('@/features/insights/components/InsightsPaywall.vue'),
+);
 
 const props = defineProps<{
 	data: InsightsByWorkflow;
 	loading?: boolean;
+	isDashboardEnabled?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -27,14 +30,34 @@ const telemetry = useTelemetry();
 
 type Item = InsightsByWorkflow['data'][number];
 
-const rows = computed(() => props.data.data);
+const sampleWorkflows: InsightsByWorkflow['data'] = Array.from({ length: 10 }, (_, i) => ({
+	workflowId: `sample-workflow-${i + 1}`,
+	workflowName: `Sample Workflow ${i + 1}`,
+	total: Math.floor(Math.random() * 2000) + 500,
+	failed: Math.floor(Math.random() * 100) + 20,
+	failureRate: Math.random() * 100,
+	timeSaved: Math.floor(Math.random() * 300000) + 60000,
+	averageRunTime: Math.floor(Math.random() * 60000) + 15000,
+	projectName: `Sample Project ${i + 1}`,
+	projectId: `sample-project-${i + 1}`,
+	succeeded: Math.floor(Math.random() * 2000) + 500,
+	runTime: Math.floor(Math.random() * 60000) + 15000,
+}));
+
+const sampleData: InsightsByWorkflow = {
+	data: sampleWorkflows,
+	count: sampleWorkflows.length,
+};
+
+const tableData = computed(() => (props.isDashboardEnabled ? props.data : sampleData));
+const rows = computed(() => tableData.value.data);
 
 const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: 'Name',
 		key: 'workflowName',
 		width: 400,
-		disableSort: true,
+		disableSort: !props.isDashboardEnabled,
 	},
 	{
 		title: i18n.baseText('insights.banner.title.total'),
@@ -42,6 +65,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 		value(row) {
 			return row.total.toLocaleString('en-US');
 		},
+		disableSort: !props.isDashboardEnabled,
 	},
 	{
 		title: i18n.baseText('insights.banner.title.failed'),
@@ -49,6 +73,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 		value(row) {
 			return row.failed.toLocaleString('en-US');
 		},
+		disableSort: !props.isDashboardEnabled,
 	},
 	{
 		title: i18n.baseText('insights.banner.title.failureRate'),
@@ -59,6 +84,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 				INSIGHTS_UNIT_MAPPING.failureRate(row.failureRate)
 			);
 		},
+		disableSort: !props.isDashboardEnabled,
 	},
 	{
 		title: i18n.baseText('insights.banner.title.timeSaved'),
@@ -69,6 +95,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 				INSIGHTS_UNIT_MAPPING.timeSaved(row.timeSaved)
 			);
 		},
+		disableSort: !props.isDashboardEnabled,
 	},
 	{
 		title: i18n.baseText('insights.banner.title.averageRunTime'),
@@ -79,6 +106,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 				INSIGHTS_UNIT_MAPPING.averageRunTime(row.averageRunTime)
 			);
 		},
+		disableSort: !props.isDashboardEnabled,
 	},
 	{
 		title: i18n.baseText('insights.dashboard.table.projectName'),
@@ -127,30 +155,43 @@ watch(sortBy, (newValue) => {
 
 <template>
 	<div>
-		<N8nHeading bold tag="h3" size="medium" class="mb-s">Workflow insights</N8nHeading>
+		<N8nHeading bold tag="h3" size="medium" class="mb-s">{{
+			i18n.baseText('insights.dashboard.table.title')
+		}}</N8nHeading>
 		<N8nDataTableServer
 			v-model:sort-by="sortBy"
 			v-model:page="currentPage"
 			v-model:items-per-page="itemsPerPage"
 			:items="rows"
 			:headers="headers"
-			:items-length="data.count"
+			:items-length="tableData.count"
 			@update:options="emit('update:options', $event)"
 		>
 			<template #[`item.workflowName`]="{ item }">
-				<router-link :to="getWorkflowLink(item)" class="link" @click="trackWorkflowClick(item)">
+				<component
+					:is="item.workflowId ? 'router-link' : 'div'"
+					v-bind="
+						item.workflowId
+							? {
+									to: getWorkflowLink(item),
+									class: $style.link,
+									onClick: () => trackWorkflowClick(item),
+								}
+							: {}
+					"
+				>
 					<N8nTooltip :content="item.workflowName" placement="top">
-						<div class="ellipsis">
+						<div :class="$style.ellipsis">
 							{{ item.workflowName }}
 						</div>
 					</N8nTooltip>
-				</router-link>
+				</component>
 			</template>
 			<template #[`item.timeSaved`]="{ item, value }">
 				<router-link
-					v-if="!item.timeSaved"
+					v-if="!item.timeSaved && item.workflowId"
 					:to="getWorkflowLink(item, { settings: 'true' })"
-					class="link"
+					:class="$style.link"
 				>
 					{{ i18n.baseText('insights.dashboard.table.estimate') }}
 				</router-link>
@@ -160,17 +201,22 @@ watch(sortBy, (newValue) => {
 			</template>
 			<template #[`item.projectName`]="{ item }">
 				<N8nTooltip v-if="item.projectName" :content="item.projectName" placement="top">
-					<div class="ellipsis">
+					<div :class="$style.ellipsis">
 						{{ item.projectName }}
 					</div>
 				</N8nTooltip>
 				<template v-else> - </template>
 			</template>
+			<template v-if="!isDashboardEnabled" #cover>
+				<div :class="$style.blurryCover">
+					<InsightsPaywall />
+				</div>
+			</template>
 		</N8nDataTableServer>
 	</div>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss" module>
 .ellipsis {
 	white-space: nowrap;
 	overflow: hidden;
@@ -189,6 +235,31 @@ watch(sortBy, (newValue) => {
 	max-width: 100%;
 	&:hover {
 		color: var(--color-text-dark);
+	}
+}
+
+.blurryCover {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: 1;
+	backdrop-filter: blur(10px);
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background: var(--color-foreground-xlight);
+		opacity: 0.5;
+		z-index: -1;
 	}
 }
 </style>

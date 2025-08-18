@@ -5,6 +5,7 @@ import {
 	NodeOperationError,
 	traverseNodeParameters,
 	NodeHelpers,
+	nodeNameToToolName,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -86,15 +87,6 @@ function getSchema(node: INode) {
 	}, {});
 
 	return z.object(schemaObj).required();
-}
-
-/**
- * Converts a node name to a valid tool name by replacing special characters with underscores
- * and collapsing consecutive underscores into a single one.
- * This method is copied from `packages/@n8n/nodes-langchain/utils/helpers.ts`.
- */
-export function nodeNameToToolName(node: INode): string {
-	return node.name.replace(/[\s.?!=+#@&*()[\]{}:;,<>\/\\'"^%$]/g, '_').replace(/_+/g, '_');
 }
 
 /**

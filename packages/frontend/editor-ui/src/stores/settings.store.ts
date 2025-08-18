@@ -13,7 +13,6 @@ import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import {
 	INSECURE_CONNECTION_WARNING,
 	LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,
-	LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { UserManagementAuthenticationMethod } from '@/Interface';
@@ -49,6 +48,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const saveDataSuccessExecution = ref<WorkflowSettings.SaveDataExecution>('all');
 	const saveManualExecutions = ref(false);
 	const saveDataProgressExecution = ref(false);
+	const isMFAEnforced = ref(false);
 
 	const isDocker = computed(() => settings.value?.isDocker ?? false);
 
@@ -95,6 +95,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
 
+	const activeModules = computed(() => settings.value.activeModules);
+
+	const isModuleActive = (moduleName: string) => {
+		return activeModules.value.includes(moduleName);
+	};
+
 	const partialExecutionVersion = computed<1 | 2>(() => {
 		const defaultVersion = settings.value.partialExecution?.version ?? 1;
 		// -1 means we pick the defaultVersion
@@ -129,6 +135,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isTelemetryEnabled = computed(
 		() => settings.value.telemetry && settings.value.telemetry.enabled,
 	);
+
+	const isMFAEnforcementLicensed = computed(() => {
+		return settings.value.enterprise?.mfaEnforcement ?? false;
+	});
 
 	const isMfaFeatureEnabled = computed(() => mfa.value.enabled);
 
@@ -172,8 +182,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
-
-	const activeModules = computed(() => settings.value.activeModules);
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
@@ -235,6 +243,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		setSaveDataProgressExecution(fetchedSettings.saveExecutionProgress);
 		setSaveManualExecutions(fetchedSettings.saveManualExecutions);
 
+		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
+
 		rootStore.setUrlBaseWebhook(fetchedSettings.urlBaseWebhook);
 		rootStore.setUrlBaseEditor(fetchedSettings.urlBaseEditor);
 		rootStore.setEndpointForm(fetchedSettings.endpointForm);
@@ -243,6 +253,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setEndpointWebhook(fetchedSettings.endpointWebhook);
 		rootStore.setEndpointWebhookTest(fetchedSettings.endpointWebhookTest);
 		rootStore.setEndpointWebhookWaiting(fetchedSettings.endpointWebhookWaiting);
+		rootStore.setEndpointMcp(fetchedSettings.endpointMcp);
+		rootStore.setEndpointMcpTest(fetchedSettings.endpointMcpTest);
 		rootStore.setTimezone(fetchedSettings.timezone);
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
@@ -302,15 +314,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const fetched = await moduleSettingsApi.getModuleSettings(useRootStore().restApiContext);
 		moduleSettings.value = fetched;
 	};
-
-	/**
-	 * (Experimental) Minimum zoom level of the canvas to render node settings in place of nodes, without opening NDV
-	 */
-	const experimental__minZoomNodeSettingsInCanvas = useLocalStorage(
-		LOCAL_STORAGE_EXPERIMENTAL_MIN_ZOOM_NODE_SETTINGS_IN_CANVAS,
-		0,
-		{ writeDefaults: false },
-	);
 
 	/**
 	 * (Experimental) If set to true, show node settings for a selected node in docked pane
@@ -377,7 +380,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAskAiEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
-		experimental__minZoomNodeSettingsInCanvas,
 		experimental__dockedNodeSettingsEnabled,
 		partialExecutionVersion,
 		reset,
@@ -388,8 +390,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		getSettings,
 		setSettings,
 		initialize,
-		activeModules,
 		getModuleSettings,
 		moduleSettings,
+		isMFAEnforcementLicensed,
+		isMFAEnforced,
+		activeModules,
+		isModuleActive,
 	};
 });

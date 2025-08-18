@@ -4,7 +4,6 @@ import { ref } from 'vue';
 import { useI18n } from '../../composables/useI18n';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
-import BetaTag from '../BetaTag/BetaTag.vue';
 
 const { t } = useI18n();
 
@@ -48,9 +47,6 @@ function onMouseLeave() {
 					"
 				/>
 			</div>
-			<div>
-				<BetaTag />
-			</div>
 		</div>
 	</button>
 </template>
@@ -92,7 +88,6 @@ function onMouseLeave() {
 
 .text {
 	position: absolute;
-	top: -1px;
 	display: flex;
 	flex-direction: column;
 	align-items: end;

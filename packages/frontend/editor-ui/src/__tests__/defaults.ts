@@ -26,6 +26,7 @@ export const defaultSettings: FrontendSettings = {
 		ldap: false,
 		oidc: false,
 		saml: false,
+		mfaEnforcement: false,
 		logStreaming: false,
 		debugInEditor: false,
 		advancedExecutionFilters: false,
@@ -39,6 +40,7 @@ export const defaultSettings: FrontendSettings = {
 		workerView: false,
 		advancedPermissions: false,
 		apiKeyScopes: false,
+		workflowDiffs: false,
 		projects: {
 			team: {
 				limit: 1,
@@ -122,6 +124,7 @@ export const defaultSettings: FrontendSettings = {
 	previewMode: false,
 	mfa: {
 		enabled: false,
+		enforced: false,
 	},
 	askAi: {
 		enabled: false,
@@ -151,4 +154,5 @@ export const defaultSettings: FrontendSettings = {
 		quota: 0,
 	},
 	activeModules: [],
+	envFeatureFlags: {},
 };

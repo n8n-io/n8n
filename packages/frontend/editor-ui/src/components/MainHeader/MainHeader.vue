@@ -9,12 +9,10 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	STICKY_NODE_TYPE,
 	VIEWS,
-	WORKFLOW_EVALUATION_EXPERIMENT,
 	N8N_MAIN_GITHUB_REPO_URL,
 } from '@/constants';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -37,7 +35,6 @@ const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
 
 const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
 const workflowToReturnTo = ref('');
@@ -59,18 +56,11 @@ const executionRoutes: VIEWS[] = [
 	VIEWS.EXECUTION_PREVIEW,
 ];
 const tabBarItems = computed(() => {
-	const items = [
+	return [
 		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
 		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
+		{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
 	];
-
-	if (posthogStore.isFeatureEnabled(WORKFLOW_EVALUATION_EXPERIMENT)) {
-		items.push({
-			value: MAIN_HEADER_TABS.EVALUATION,
-			label: locale.baseText('generic.tests'),
-		});
-	}
-	return items;
 });
 
 const activeNode = computed(() => ndvStore.activeNode);
@@ -286,7 +276,7 @@ function hideGithubButton() {
 						</GithubButton>
 						<N8nIcon
 							:class="$style['close-github-button']"
-							icon="times-circle"
+							icon="circle-x"
 							size="medium"
 							@click="hideGithubButton"
 						/>
@@ -351,7 +341,7 @@ function hideGithubButton() {
 	cursor: pointer;
 
 	&:hover {
-		color: var(--prim-color-primary-shade-100);
+		color: var(--p-color-primary-420);
 	}
 }
 .github-button-container {
@@ -360,5 +350,24 @@ function hideGithubButton() {
 
 .github-button:hover .close-github-button {
 	display: block;
+}
+
+@media (max-width: 1390px) {
+	.github-button {
+		padding: var(--spacing-5xs) var(--spacing-xs);
+	}
+}
+
+@media (max-width: 1340px) {
+	.github-button {
+		border-left: 0;
+		padding-left: 0;
+	}
+}
+
+@media (max-width: 1290px) {
+	.github-button {
+		display: none;
+	}
 }
 </style>

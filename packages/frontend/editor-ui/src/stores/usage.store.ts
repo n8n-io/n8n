@@ -83,6 +83,7 @@ export const useUsageStore = defineStore('usage', () => {
 		const data = await usageApi.activateLicenseKey(rootStore.restApiContext, { activationKey });
 		setData(data);
 		await settingsStore.getSettings();
+		await settingsStore.getModuleSettings();
 	};
 
 	const refreshLicenseManagementToken = async () => {

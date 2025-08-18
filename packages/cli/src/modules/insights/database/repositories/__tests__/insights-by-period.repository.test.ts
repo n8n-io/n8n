@@ -1,7 +1,4 @@
-import { createTeamProject } from '@n8n/backend-test-utils';
-import { createWorkflow } from '@n8n/backend-test-utils';
-import { testDb } from '@n8n/backend-test-utils';
-import { testModules } from '@n8n/backend-test-utils';
+import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
@@ -53,6 +50,7 @@ describe('InsightsByPeriodRepository', () => {
 				const result = await insightsByPeriodRepository.getInsightsByTime({
 					maxAgeInDays: 1,
 					periodUnit: 'day',
+					insightTypes: ['success', 'failure', 'time_saved_min'],
 				});
 
 				// ASSERT
