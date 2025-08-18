@@ -1807,33 +1807,6 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</SuggestedWorkflows>
 			<N8nCallout
-				v-else-if="!loading && showEasyAIWorkflowCallout && easyAICalloutVisible"
-				theme="secondary"
-				icon="bot"
-				:class="$style['easy-ai-workflow-callout']"
-			>
-				{{ i18n.baseText('workflows.list.easyAI') }}
-				<template #trailingContent>
-					<div :class="$style['callout-trailing-content']">
-						<N8nButton
-							data-test-id="easy-ai-button"
-							size="small"
-							type="secondary"
-							@click="openAIWorkflow('callout')"
-						>
-							{{ i18n.baseText('generic.tryNow') }}
-						</N8nButton>
-						<N8nIcon
-							size="small"
-							icon="x"
-							:title="i18n.baseText('generic.dismiss')"
-							class="clickable"
-							@click="dismissEasyAICallout"
-						/>
-					</div>
-				</template>
-			</N8nCallout>
-			<N8nCallout
 				v-if="showReadyToRunWorkflowsCallout"
 				theme="secondary"
 				icon="bolt-filled"
