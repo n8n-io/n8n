@@ -36,7 +36,7 @@ export const DEFAULT_LINTER_DELAY_IN_MS = 500;
 export const OFFSET_FOR_SCRIPT_WRAPPER = 'module.exports = async function() {'.length;
 
 export const CODE_PLACEHOLDERS: Partial<
-	Record<CodeNodeEditorLanguage, Record<CodeExecutionMode, string>>
+	Record<CodeNodeEditorLanguage | 'pythonNative', Record<CodeExecutionMode, string>>
 > = {
 	javaScript: {
 		runOnceForAllItems: `
@@ -62,5 +62,16 @@ return _input.all()`.trim(),
 # Add a new field called 'myNewField' to the JSON of the item
 _input.item.json.myNewField = 1
 return _input.item`.trim(),
+	},
+	pythonNative: {
+		runOnceForAllItems: `
+# Loop over input items and add a new field called 'my_new_field' to the JSON of each one
+for item in _items:
+  item["json"]["my_new_field"] = 1
+return _items`.trim(),
+		runOnceForEachItem: `
+# Add a new field called 'myNewField' to the JSON of the item
+_item["json"]["my_new_field"] = 1
+return _item`.trim(),
 	},
 };
