@@ -27,6 +27,17 @@ class ConcurrencyConfig {
 }
 
 @Config
+class QueueRecoveryConfig {
+	/** How often (minutes) to check for queue recovery. */
+	@Env('N8N_EXECUTIONS_QUEUE_RECOVERY_INTERVAL')
+	interval: number = 180;
+
+	/** Size of batch of executions to check for queue recovery. */
+	@Env('N8N_EXECUTIONS_QUEUE_RECOVERY_BATCH')
+	batchSize: number = 100;
+}
+
+@Config
 export class ExecutionsConfig {
 	/** Whether to delete past executions on a rolling basis. */
 	@Env('EXECUTIONS_DATA_PRUNE')
@@ -56,4 +67,7 @@ export class ExecutionsConfig {
 
 	@Nested
 	concurrency: ConcurrencyConfig;
+
+	@Nested
+	queueRecovery: QueueRecoveryConfig;
 }

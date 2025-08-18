@@ -29,9 +29,7 @@ test.describe('Workflows', () => {
 		await n8n.canvas.setWorkflowName(workflowName);
 		await n8n.canvas.clickSaveWorkflowButton();
 
-		await expect(
-			n8n.notifications.notificationContainerByText(NOTIFICATIONS.CREATED),
-		).toBeVisible();
+		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.CREATED)).toBeVisible();
 	});
 
 	test('should search for workflows', async ({ n8n }) => {
@@ -72,18 +70,14 @@ test.describe('Workflows', () => {
 
 		const workflow = n8n.workflows.getWorkflowByName(workflowName);
 		await n8n.workflows.archiveWorkflow(workflow);
-		await expect(
-			n8n.notifications.notificationContainerByText(NOTIFICATIONS.ARCHIVED),
-		).toBeVisible();
+		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.ARCHIVED)).toBeVisible();
 
 		await expect(workflow).toBeHidden();
 		await n8n.workflows.toggleShowArchived();
 		await expect(workflow).toBeVisible();
 
 		await n8n.workflows.unarchiveWorkflow(workflow);
-		await expect(
-			n8n.notifications.notificationContainerByText(NOTIFICATIONS.UNARCHIVED),
-		).toBeVisible();
+		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.UNARCHIVED)).toBeVisible();
 	});
 
 	test('should delete an archived workflow', async ({ n8n }) => {
@@ -95,16 +89,12 @@ test.describe('Workflows', () => {
 
 		const workflow = n8n.workflows.getWorkflowByName(workflowName);
 		await n8n.workflows.archiveWorkflow(workflow);
-		await expect(
-			n8n.notifications.notificationContainerByText(NOTIFICATIONS.ARCHIVED),
-		).toBeVisible();
+		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.ARCHIVED)).toBeVisible();
 
 		await n8n.workflows.toggleShowArchived();
 
 		await n8n.workflows.deleteWorkflow(workflow);
-		await expect(
-			n8n.notifications.notificationContainerByText(NOTIFICATIONS.DELETED),
-		).toBeVisible();
+		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.DELETED)).toBeVisible();
 
 		await expect(workflow).toBeHidden();
 	});
