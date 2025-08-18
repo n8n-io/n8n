@@ -252,7 +252,7 @@ export function getFilterValue<T>(
 				});
 			}
 		}
-		throw new NodeOperationError(context.getNode(), `Error: No JSON string provided.`, {
+		throw new NodeOperationError(context.getNode(), 'Error: No JSON string provided.', {
 			itemIndex,
 			description: `Could not parse JSON for ${name}`,
 		});
