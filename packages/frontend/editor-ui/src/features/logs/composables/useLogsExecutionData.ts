@@ -3,7 +3,7 @@ import { type IExecutionResponse } from '@/Interface';
 import { Workflow, type IRunExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useThrottleFn, watchDebounced, watchThrottled } from '@vueuse/core';
+import { useThrottleFn, watchThrottled } from '@vueuse/core';
 import { createLogTree, findSubExecutionLocator, mergeStartData } from '@/features/logs/logs.utils';
 import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
