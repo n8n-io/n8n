@@ -134,7 +134,19 @@ export const stringifyExpressionResult = (
 		return i18n.baseText('parameterInput.emptyString');
 	}
 
-	return typeof result.result === 'string' ? result.result : String(result.result);
+	if (typeof result.result === 'string') {
+		return result.result;
+	}
+
+	if (
+		typeof result.result === 'object' &&
+		result.result !== null &&
+		Object.keys(result.result).length === 0
+	) {
+		return i18n.baseText('runData.emptyObject');
+	}
+
+	return String(result.result);
 };
 
 export const completeExpressionSyntax = <T>(value: T, isSpecializedEditor = false) => {
