@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
+import ProjectHeader, { type CustomAction } from '@/components/Projects/ProjectHeader.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useProjectPages } from '@/composables/useProjectPages';
@@ -10,13 +10,12 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { IUser, SortingAndPaginationUpdates, UserAction } from '@/Interface';
+import type { SortingAndPaginationUpdates } from '@/Interface';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import {
 	ADD_DATA_STORE_MODAL_KEY,
-	DATA_STORE_CARD_ACTIONS,
 	DEFAULT_DATA_STORE_PAGE_SIZE,
 } from '@/features/dataStore/constants';
 import { useDebounce } from '@/composables/useDebounce';
@@ -41,6 +40,14 @@ const loading = ref(true);
 
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_DATA_STORE_PAGE_SIZE);
+
+const customProjectActions = computed<CustomAction[]>(() => [
+	{
+		id: 'add-data-store',
+		label: i18n.baseText('dataStore.add.button.label'),
+		disabled: loading.value || projectPages.isOverviewSubPage,
+	},
+]);
 
 const dataStoreResources = computed<DataStoreResource[]>(() =>
 	dataStoreStore.dataStores.map((ds) => {
@@ -77,31 +84,13 @@ const emptyCalloutButtonText = computed(() => {
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
-const cardActions = computed<Array<UserAction<IUser>>>(() => [
-	{
-		label: i18n.baseText('generic.rename'),
-		value: DATA_STORE_CARD_ACTIONS.RENAME,
-		disabled: readOnlyEnv.value,
-	},
-	{
-		label: i18n.baseText('generic.delete'),
-		value: DATA_STORE_CARD_ACTIONS.DELETE,
-		disabled: readOnlyEnv.value,
-	},
-	{
-		label: i18n.baseText('generic.clear'),
-		value: DATA_STORE_CARD_ACTIONS.CLEAR,
-		disabled: readOnlyEnv.value,
-	},
-]);
-
 const initialize = async () => {
 	loading.value = true;
 	const projectId = Array.isArray(route.params.projectId)
 		? route.params.projectId[0]
 		: route.params.projectId;
 	try {
-		await dataStoreStore.loadDataStores(projectId, currentPage.value, pageSize.value);
+		await dataStoreStore.fetchDataStores(projectId, currentPage.value, pageSize.value);
 	} catch (error) {
 		toast.showError(error, 'Error loading data stores');
 	} finally {
@@ -125,8 +114,32 @@ const onAddModalClick = () => {
 	useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
 };
 
+const onProjectHeaderAction = (action: string) => {
+	if (action === 'add-data-store') {
+		useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
+	}
+};
+
+const onCardRename = async (payload: { dataStore: DataStoreResource }) => {
+	try {
+		const updated = await dataStoreStore.updateDataStore(
+			payload.dataStore.id,
+			payload.dataStore.name,
+			payload.dataStore.projectId,
+		);
+		if (!updated) {
+			toast.showError(
+				new Error(i18n.baseText('generic.unknownError')),
+				i18n.baseText('dataStore.rename.error'),
+			);
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.rename.error'));
+	}
+};
+
 onMounted(() => {
-	documentTitle.set(i18n.baseText('dataStore.tab.label'));
+	documentTitle.set(i18n.baseText('dataStore.dataStores'));
 });
 </script>
 <template>
@@ -149,7 +162,10 @@ onMounted(() => {
 		@update:pagination-and-sort="onPaginationUpdate"
 	>
 		<template #header>
-			<ProjectHeader>
+			<ProjectHeader
+				:custom-actions="customProjectActions"
+				@custom-action-selected="onProjectHeaderAction"
+			>
 				<InsightsSummary
 					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
@@ -165,7 +181,7 @@ onMounted(() => {
 				:description="emptyCalloutDescription"
 				:button-text="emptyCalloutButtonText"
 				button-type="secondary"
-				@click="onAddModalClick"
+				@click:button="onAddModalClick"
 			/>
 		</template>
 		<template #item="{ item: data }">
@@ -173,8 +189,8 @@ onMounted(() => {
 				class="mb-2xs"
 				:data-store="data as DataStoreResource"
 				:show-ownership-badge="projectPages.isOverviewSubPage"
-				:actions="cardActions"
 				:read-only="readOnlyEnv"
+				@rename="onCardRename"
 			/>
 		</template>
 	</ResourcesListLayout>

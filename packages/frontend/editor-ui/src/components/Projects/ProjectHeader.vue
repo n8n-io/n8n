@@ -21,6 +21,12 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/stores/ui.store';
 
+export type CustomAction = {
+	id: string;
+	label: string;
+	disabled?: boolean;
+};
+
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -31,8 +37,17 @@ const uiStore = useUIStore();
 
 const projectPages = useProjectPages();
 
+type Props = {
+	customActions?: CustomAction[];
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	customActions: () => [],
+});
+
 const emit = defineEmits<{
 	createFolder: [];
+	customActionSelected: [actionId: string, projectId: string];
 }>();
 
 const headerIcon = computed((): IconOrEmoji => {
@@ -49,10 +64,10 @@ const headerIcon = computed((): IconOrEmoji => {
 
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
-		if (projectPages.isOverviewSubPage) {
-			return i18n.baseText('projects.menu.overview');
-		} else if (projectPages.isSharedSubPage) {
+		if (projectPages.isSharedSubPage) {
 			return i18n.baseText('projects.header.shared.title');
+		} else if (projectPages.isOverviewSubPage) {
+			return i18n.baseText('projects.menu.overview');
 		}
 		return null;
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
@@ -139,6 +154,17 @@ const menu = computed(() => {
 				!getResourcePermissions(homeProject.value?.scopes).folder.create,
 		});
 	}
+
+	// Append custom actions
+	if (props.customActions?.length) {
+		props.customActions.forEach((customAction) => {
+			items.push({
+				value: customAction.id,
+				label: customAction.label,
+				disabled: customAction.disabled ?? false,
+			});
+		});
+	}
 	return items;
 });
 
@@ -167,26 +193,26 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			},
 		});
 	},
-	[ACTION_TYPES.FOLDER]: async () => {
+	[ACTION_TYPES.FOLDER]: () => {
 		emit('createFolder');
 	},
 } as const;
 
 const pageType = computed(() => {
-	if (projectPages.isOverviewSubPage) {
-		return 'overview';
-	} else if (projectPages.isSharedSubPage) {
+	if (projectPages.isSharedSubPage) {
 		return 'shared';
+	} else if (projectPages.isOverviewSubPage) {
+		return 'overview';
 	} else {
 		return 'project';
 	}
 });
 
 const sectionDescription = computed(() => {
-	if (projectPages.isOverviewSubPage) {
-		return i18n.baseText('projects.header.overview.subtitle');
-	} else if (projectPages.isSharedSubPage) {
+	if (projectPages.isSharedSubPage) {
 		return i18n.baseText('projects.header.shared.subtitle');
+	} else if (projectPages.isOverviewSubPage) {
+		return i18n.baseText('projects.header.overview.subtitle');
 	} else if (isPersonalProject.value) {
 		return i18n.baseText('projects.header.personal.subtitle');
 	}
@@ -240,6 +266,13 @@ const onSelect = (action: string) => {
 	if (!homeProject.value) {
 		return;
 	}
+
+	// Check if this is a custom action
+	if (!executableAction) {
+		emit('customActionSelected', action, homeProject.value.id);
+		return;
+	}
+
 	executableAction(homeProject.value.id);
 };
 </script>

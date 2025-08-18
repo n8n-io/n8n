@@ -9,13 +9,50 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '../__tests__/defaults';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from './posthog.test';
-import { WORKFLOW_BUILDER_EXPERIMENT } from '@/constants';
+import { WORKFLOW_BUILDER_EXPERIMENT, DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
 import { reactive } from 'vue';
 import * as chatAPI from '@/api/ai';
 import * as telemetryModule from '@/composables/useTelemetry';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { DEFAULT_CHAT_WIDTH, MAX_CHAT_WIDTH, MIN_CHAT_WIDTH } from './assistant.store';
+
+// Mock useI18n to return the keys instead of translations
+vi.mock('@n8n/i18n', () => ({
+	useI18n: () => ({
+		baseText: (key: string) => key,
+	}),
+}));
+
+// Mock useToast
+vi.mock('@/composables/useToast', () => ({
+	useToast: () => ({
+		showMessage: vi.fn(),
+	}),
+}));
+
+// Mock the workflows store
+const mockSetWorkflowName = vi.fn();
+const mockRemoveAllConnections = vi.fn();
+const mockRemoveAllNodes = vi.fn();
+const mockWorkflow = {
+	name: DEFAULT_NEW_WORKFLOW_NAME,
+	nodes: [],
+	connections: {},
+};
+
+vi.mock('./workflows.store', () => ({
+	useWorkflowsStore: vi.fn(() => ({
+		workflow: mockWorkflow,
+		workflowId: 'test-workflow-id',
+		allNodes: [],
+		nodesByName: {},
+		workflowExecutionData: null,
+		setWorkflowName: mockSetWorkflowName,
+		removeAllConnections: mockRemoveAllConnections,
+		removeAllNodes: mockRemoveAllNodes,
+	})),
+}));
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
@@ -69,6 +106,14 @@ describe('AI Builder store', () => {
 		posthogStore = usePostHog();
 		posthogStore.init();
 		track.mockReset();
+		// Reset workflow store mocks
+		mockSetWorkflowName.mockReset();
+		mockRemoveAllConnections.mockReset();
+		mockRemoveAllNodes.mockReset();
+		// Reset workflow to default state
+		mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+		mockWorkflow.nodes = [];
+		mockWorkflow.connections = {};
 	});
 
 	afterEach(() => {
@@ -195,8 +240,8 @@ describe('AI Builder store', () => {
 
 		builderStore.sendChatMessage({ text: 'Add nodes and connect them' });
 
-		// Initially shows "Thinking..." from prepareForStreaming
-		expect(builderStore.assistantThinkingMessage).toBe('Thinking...');
+		// Initially shows "aiAssistant.thinkingSteps.thinking" from prepareForStreaming
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		// First tool starts
 		onMessageCallback({
@@ -212,8 +257,8 @@ describe('AI Builder store', () => {
 			],
 		});
 
-		// Should show "Running tools..."
-		expect(builderStore.assistantThinkingMessage).toBe('Running tools...');
+		// Should show "aiAssistant.thinkingSteps.runningTools"
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 
 		// Second tool starts (different toolCallId)
 		onMessageCallback({
@@ -229,8 +274,8 @@ describe('AI Builder store', () => {
 			],
 		});
 
-		// Still showing "Running tools..." with multiple tools
-		expect(builderStore.assistantThinkingMessage).toBe('Running tools...');
+		// Still showing "aiAssistant.thinkingSteps.runningTools" with multiple tools
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 
 		// First tool completes
 		onMessageCallback({
@@ -246,8 +291,8 @@ describe('AI Builder store', () => {
 			],
 		});
 
-		// Still "Running tools..." because second tool is still running
-		expect(builderStore.assistantThinkingMessage).toBe('Running tools...');
+		// Still "aiAssistant.thinkingSteps.runningTools" because second tool is still running
+		expect(builderStore.assistantThinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 
 		// Second tool completes
 		onMessageCallback({
@@ -263,15 +308,19 @@ describe('AI Builder store', () => {
 			],
 		});
 
-		// Now should show "Processing results..." because all tools completed
-		expect(builderStore.assistantThinkingMessage).toBe('Processing results...');
+		// Now should show "aiAssistant.thinkingSteps.processingResults" because all tools completed
+		expect(builderStore.assistantThinkingMessage).toBe(
+			'aiAssistant.thinkingSteps.processingResults',
+		);
 
 		// Call onDone to stop streaming
 		onDoneCallback();
 
 		// Message should persist after streaming ends
 		expect(builderStore.streaming).toBe(false);
-		expect(builderStore.assistantThinkingMessage).toBe('Processing results...');
+		expect(builderStore.assistantThinkingMessage).toBe(
+			'aiAssistant.thinkingSteps.processingResults',
+		);
 
 		vi.useRealTimers();
 	});
@@ -311,14 +360,18 @@ describe('AI Builder store', () => {
 
 		builderStore.sendChatMessage({ text: 'Add a node' });
 
-		// Should show "Processing results..." when tool completes
+		// Should show "aiAssistant.thinkingSteps.processingResults" when tool completes
 		await vi.waitFor(() =>
-			expect(builderStore.assistantThinkingMessage).toBe('Processing results...'),
+			expect(builderStore.assistantThinkingMessage).toBe(
+				'aiAssistant.thinkingSteps.processingResults',
+			),
 		);
 
-		// Should still show "Processing results..." after workflow-updated
+		// Should still show "aiAssistant.thinkingSteps.processingResults" after workflow-updated
 		await vi.waitFor(() => expect(builderStore.chatMessages).toHaveLength(3)); // user + tool + workflow
-		expect(builderStore.assistantThinkingMessage).toBe('Processing results...');
+		expect(builderStore.assistantThinkingMessage).toBe(
+			'aiAssistant.thinkingSteps.processingResults',
+		);
 
 		// Verify streaming has ended
 		expect(builderStore.streaming).toBe(false);
@@ -707,6 +760,296 @@ describe('AI Builder store', () => {
 			expect(assistantMessages).toHaveLength(1);
 			expect(assistantMessages[0].type).toBe('text');
 			expect((assistantMessages[0] as ChatUI.TextMessage).content).toBe('[Task aborted]');
+		});
+	});
+
+	describe('Rating logic integration', () => {
+		it('should clear ratings from existing messages when preparing for streaming', () => {
+			const builderStore = useBuilderStore();
+
+			// Setup initial messages with ratings
+			builderStore.chatMessages = [
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Previous message',
+					showRating: true,
+					ratingStyle: 'regular',
+					read: false,
+				} satisfies ChatUI.AssistantMessage,
+				{
+					id: 'msg-2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Another message',
+					showRating: true,
+					ratingStyle: 'minimal',
+					read: false,
+				} satisfies ChatUI.AssistantMessage,
+			];
+
+			// Mock API to prevent actual network calls
+			apiSpy.mockImplementationOnce(() => {});
+
+			// Send new message which calls prepareForStreaming
+			builderStore.sendChatMessage({ text: 'New message' });
+
+			// Verify that existing messages no longer have rating properties
+			expect(builderStore.chatMessages).toHaveLength(3); // 2 existing + 1 new user message
+
+			const firstMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
+			expect(firstMessage).not.toHaveProperty('showRating');
+			expect(firstMessage).not.toHaveProperty('ratingStyle');
+			expect(firstMessage.content).toBe('Previous message');
+
+			const secondMessage = builderStore.chatMessages[1] as ChatUI.TextMessage;
+			expect(secondMessage).not.toHaveProperty('showRating');
+			expect(secondMessage).not.toHaveProperty('ratingStyle');
+			expect(secondMessage.content).toBe('Another message');
+
+			// New user message should not have rating properties
+			const userMessage = builderStore.chatMessages[2] as ChatUI.TextMessage;
+			expect(userMessage.role).toBe('user');
+			expect(userMessage.content).toBe('New message');
+			expect(userMessage).not.toHaveProperty('showRating');
+			expect(userMessage).not.toHaveProperty('ratingStyle');
+		});
+	});
+
+	describe('applyWorkflowUpdate with workflow naming', () => {
+		it('should apply generated workflow name during initial generation when workflow has default name', () => {
+			const builderStore = useBuilderStore();
+
+			// Set initial generation flag
+			builderStore.initialGeneration = true;
+
+			// Ensure workflow has default name
+			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+
+			// Create workflow JSON with a generated name
+			const workflowJson = JSON.stringify({
+				name: 'Generated Workflow Name for Email Processing',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify setWorkflowName was called with the generated name
+			expect(mockSetWorkflowName).toHaveBeenCalledWith({
+				newName: 'Generated Workflow Name for Email Processing',
+				setStateDirty: false,
+			});
+		});
+
+		it('should NOT apply generated workflow name during initial generation when workflow has custom name', () => {
+			const builderStore = useBuilderStore();
+
+			// Set initial generation flag
+			builderStore.initialGeneration = true;
+
+			// Set a custom workflow name (not the default)
+			mockWorkflow.name = 'My Custom Workflow';
+
+			// Create workflow JSON with a generated name
+			const workflowJson = JSON.stringify({
+				name: 'Generated Workflow Name for Email Processing',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify setWorkflowName was NOT called
+			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+		});
+
+		it('should NOT apply generated workflow name when not initial generation', () => {
+			const builderStore = useBuilderStore();
+
+			// Ensure initial generation flag is false
+			builderStore.initialGeneration = false;
+
+			// Ensure workflow has default name
+			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+
+			// Create workflow JSON with a generated name
+			const workflowJson = JSON.stringify({
+				name: 'Generated Workflow Name for Email Processing',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify setWorkflowName was NOT called
+			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+		});
+
+		it('should handle workflow updates without name property', () => {
+			const builderStore = useBuilderStore();
+
+			// Set initial generation flag
+			builderStore.initialGeneration = true;
+
+			// Ensure workflow has default name
+			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+
+			// Create workflow JSON without a name property
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify setWorkflowName was NOT called
+			expect(mockSetWorkflowName).not.toHaveBeenCalled();
+		});
+
+		it('should handle workflow names that start with but are not exactly the default name', () => {
+			const builderStore = useBuilderStore();
+
+			// Set initial generation flag
+			builderStore.initialGeneration = true;
+
+			// Set workflow name that starts with default but has more text
+			mockWorkflow.name = `${DEFAULT_NEW_WORKFLOW_NAME} - Copy`;
+
+			// Create workflow JSON with a generated name
+			const workflowJson = JSON.stringify({
+				name: 'Generated Workflow Name for Email Processing',
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify setWorkflowName WAS called because the name starts with default
+			expect(mockSetWorkflowName).toHaveBeenCalledWith({
+				newName: 'Generated Workflow Name for Email Processing',
+				setStateDirty: false,
+			});
+		});
+
+		it('should handle malformed JSON gracefully', () => {
+			const builderStore = useBuilderStore();
+
+			// Set initial generation flag
+			builderStore.initialGeneration = true;
+
+			// Create malformed JSON
+			const workflowJson = '{ invalid json }';
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update failed
+			expect(result.success).toBe(false);
+			expect(result.error).toBeDefined();
+		});
+
+		it('should maintain initial generation flag state across multiple updates', () => {
+			const builderStore = useBuilderStore();
+
+			// Set initial generation flag
+			builderStore.initialGeneration = true;
+
+			// Ensure workflow has default name
+			mockWorkflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+
+			// First update with name
+			const workflowJson1 = JSON.stringify({
+				name: 'First Generated Name',
+				nodes: [],
+				connections: {},
+			});
+
+			builderStore.applyWorkflowUpdate(workflowJson1);
+			expect(mockSetWorkflowName).toHaveBeenCalledTimes(1);
+
+			// The flag should still be true for subsequent updates in the same generation
+			expect(builderStore.initialGeneration).toBe(true);
+
+			// Second update without name (simulating further tool operations)
+			const workflowJson2 = JSON.stringify({
+				nodes: [
+					{
+						id: 'node2',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						position: [450, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			builderStore.applyWorkflowUpdate(workflowJson2);
+
+			// Should not call setWorkflowName again
+			expect(mockSetWorkflowName).toHaveBeenCalledTimes(1);
 		});
 	});
 });

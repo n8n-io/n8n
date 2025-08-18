@@ -83,7 +83,8 @@ import {
 } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
-import type { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
+import type { IFormInputs } from '@/Interface';
+import type { IPersonalizationLatestVersion } from '@n8n/rest-api-client/api/users';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/stores/users.store';
 import { createFormEventBus } from '@n8n/design-system/utils';

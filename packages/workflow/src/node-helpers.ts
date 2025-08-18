@@ -2,7 +2,6 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable prefer-spread */
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
@@ -1702,13 +1701,9 @@ export function isDefaultNodeName(
 	nodeType: INodeTypeDescription,
 	parameters: INodeParameters,
 ): boolean {
-	const legacyDefaultName = nodeType.defaults.name ?? nodeType.displayName;
 	const currentDefaultName = makeNodeName(parameters, nodeType);
-	for (const defaultName of [legacyDefaultName, currentDefaultName]) {
-		if (name.startsWith(defaultName) && /^\d*$/.test(name.slice(defaultName.length))) return true;
-	}
 
-	return false;
+	return name.startsWith(currentDefaultName) && /^\d*$/.test(name.slice(currentDefaultName.length));
 }
 
 /**

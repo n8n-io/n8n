@@ -23,6 +23,8 @@ export { NoUrl } from './utils/validators/no-url.validator';
 export * from './repositories';
 export * from './subscribers';
 
+export { Column as DslColumn } from './migrations/dsl/column';
+export { CreateTable } from './migrations/dsl/table';
 export { sqliteMigrations } from './migrations/sqlite';
 export { mysqlMigrations } from './migrations/mysqldb';
 export { postgresMigrations } from './migrations/postgresdb';
@@ -31,3 +33,5 @@ export { wrapMigration } from './migrations/migration-helpers';
 export * from './migrations/migration-types';
 export { DbConnection } from './connection/db-connection';
 export { DbConnectionOptions } from './connection/db-connection-options';
+
+export { AuthRolesService } from './services/auth.roles.service';

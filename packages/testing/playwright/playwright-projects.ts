@@ -15,7 +15,7 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'standard', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
 	{ name: 'queue', config: { queueMode: true } },
-	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } }, // Multi main is having timing issues on startup, needs to be resolved
+	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
 ];
 
 export function getProjects(): Project[] {

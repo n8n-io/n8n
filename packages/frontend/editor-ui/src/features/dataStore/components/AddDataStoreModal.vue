@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
 import { onMounted, ref } from 'vue';
-import { useDataStoreStore } from '../dataStore.store';
+import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useRoute } from 'vue-router';
@@ -31,7 +31,7 @@ onMounted(() => {
 
 const onSubmit = async () => {
 	try {
-		await dataStoreStore.createNewDataStore(dataStoreName.value, route.params.projectId as string);
+		await dataStoreStore.createDataStore(dataStoreName.value, route.params.projectId as string);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.add.error'));
 	} finally {

@@ -52,7 +52,7 @@ export function compareWorkflowsNodes<T extends { id: string }>(
 
 	const diff: WorkflowDiff<T> = new Map();
 
-	baseNodes.entries().forEach(([id, node]) => {
+	for (const [id, node] of baseNodes.entries()) {
 		if (!targetNodes.has(id)) {
 			diff.set(id, { status: NodeDiffStatus.Deleted, node });
 		} else if (!nodesEqual(baseNodes.get(id), targetNodes.get(id))) {
@@ -60,13 +60,13 @@ export function compareWorkflowsNodes<T extends { id: string }>(
 		} else {
 			diff.set(id, { status: NodeDiffStatus.Eq, node });
 		}
-	});
+	}
 
-	targetNodes.entries().forEach(([id, node]) => {
+	for (const [id, node] of targetNodes.entries()) {
 		if (!baseNodes.has(id)) {
 			diff.set(id, { status: NodeDiffStatus.Added, node });
 		}
-	});
+	}
 
 	return diff;
 }
@@ -173,12 +173,18 @@ export const useWorkflowDiff = (
 		targetRefs.workflowObjectRef,
 	);
 
-	const nodesDiff = computed(() =>
-		compareWorkflowsNodes(
-			source.value.workflow?.value?.nodes ?? [],
-			target.value.workflow?.value?.nodes ?? [],
-		),
-	);
+	const nodesDiff = computed(() => {
+		// Handle case where one or both workflows don't exist
+		const sourceNodes = source.value?.workflow?.value?.nodes ?? [];
+		const targetNodes = target.value?.workflow?.value?.nodes ?? [];
+
+		// If neither workflow exists, return empty diff
+		if (sourceNodes.length === 0 && targetNodes.length === 0) {
+			return new Map<string, NodeDiff<INodeUi>>();
+		}
+
+		return compareWorkflowsNodes(sourceNodes, targetNodes);
+	});
 
 	type Connection = {
 		id: string;
@@ -217,8 +223,14 @@ export const useWorkflowDiff = (
 	}
 
 	const connectionsDiff = computed(() => {
+		// Handle case where one or both workflows don't exist
 		const sourceConnections = mapConnections(source.value?.connections ?? []);
 		const targetConnections = mapConnections(target.value?.connections ?? []);
+
+		// If neither workflow has connections, return empty diff
+		if (sourceConnections.set.size === 0 && targetConnections.set.size === 0) {
+			return new Map<string, { status: NodeDiffStatus; connection: Connection }>();
+		}
 
 		const added = targetConnections.set.difference(sourceConnections.set);
 		const removed = sourceConnections.set.difference(targetConnections.set);

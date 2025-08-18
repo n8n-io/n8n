@@ -55,7 +55,8 @@ async function onSubmit() {
 	// Here we need to await for chat to open and session to be loaded
 	await builderStore.openChat();
 	isLoading.value = false;
-	builderStore.sendChatMessage({ text: prompt.value, source: 'canvas' });
+	// Always pass initialGeneration as true from canvas since the prompt only shows on empty canvas
+	builderStore.sendChatMessage({ text: prompt.value, source: 'canvas', initialGeneration: true });
 }
 
 /**
@@ -127,6 +128,7 @@ function onAddNodeClick() {
 					:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
 					:read-only="false"
 					:rows="15"
+					:maxlength="1000"
 					@focus="isFocused = true"
 					@blur="isFocused = false"
 					@keydown.meta.enter.stop="onSubmit"

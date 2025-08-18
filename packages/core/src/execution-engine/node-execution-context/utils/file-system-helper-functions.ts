@@ -8,6 +8,7 @@ import {
 	writeFile as fsWriteFile,
 	realpath as fsRealpath,
 } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 import {
 	BINARY_DATA_STORAGE_PATH,
@@ -34,7 +35,17 @@ const getAllowedPaths = () => {
 
 export async function isFilePathBlocked(filePath: string): Promise<boolean> {
 	const allowedPaths = getAllowedPaths();
-	const resolvedFilePath = await fsRealpath(filePath);
+	let resolvedFilePath = '';
+	try {
+		resolvedFilePath = await fsRealpath(filePath);
+	} catch (error) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		if (error.code === 'ENOENT') {
+			resolvedFilePath = resolve(filePath);
+		} else {
+			throw error;
+		}
+	}
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
 
 	const restrictedPaths = blockFileAccessToN8nFiles ? getN8nRestrictedPaths() : [];

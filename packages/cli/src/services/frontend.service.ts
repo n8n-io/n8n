@@ -129,7 +129,7 @@ export class FrontendService {
 			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
 			versionCli: N8N_VERSION,
-			concurrency: config.getEnv('executions.concurrency.productionLimit'),
+			concurrency: this.globalConfig.executions.concurrency.productionLimit,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -228,6 +228,7 @@ export class FrontendService {
 				workerView: false,
 				advancedPermissions: false,
 				apiKeyScopes: false,
+				workflowDiffs: false,
 				projects: {
 					team: {
 						limit: 0,
@@ -356,6 +357,7 @@ export class FrontendService {
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
+			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {

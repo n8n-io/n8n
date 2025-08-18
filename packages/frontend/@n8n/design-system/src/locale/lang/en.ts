@@ -4,6 +4,9 @@ import type { N8nLocale } from '@n8n/design-system/types';
 export default {
 	'generic.retry': 'Retry',
 	'generic.cancel': 'Cancel',
+	'generic.ignore': 'Ignore',
+	'generic.ignoreAll': 'Ignore all',
+	'generic.moreInfo': 'More info',
 	'nds.auth.roles.owner': 'Owner',
 	'nds.userInfo.you': '(you)',
 	'nds.userSelect.selectUser': 'Select User',
@@ -37,7 +40,7 @@ export default {
 	'assistantChat.builder.configuredNodes': 'Configured nodes',
 	'assistantChat.builder.thumbsUp': 'Helpful',
 	'assistantChat.builder.thumbsDown': 'Not helpful',
-	'assistantChat.builder.feedbackPlaceholder': 'Tell us about your experience',
+	'assistantChat.builder.feedbackPlaceholder': 'What went wrong?',
 	'assistantChat.builder.success': 'Thank you for your feedback!',
 	'assistantChat.builder.submit': 'Submit feedback',
 	'assistantChat.builder.workflowGenerated1': 'Your workflow was created successfully!',

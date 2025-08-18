@@ -42,6 +42,7 @@ import type {
 import { NodeConnectionTypes } from './interfaces';
 import { getNodeParameters } from './node-helpers';
 import { jsonParse } from './utils';
+import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 
 const isNodeApiError = (error: unknown): error is NodeApiError =>
 	typeof error === 'object' && error !== null && 'name' in error && error?.name === 'NodeApiError';
@@ -414,11 +415,18 @@ export function generateNodesGraph(
 			options?.isCloudDeployment &&
 			node.parameters?.operation === 'setMetrics'
 		) {
-			const metrics = node.parameters?.metrics as IDataObject;
+			const metrics = node.parameters?.metrics as IDataObject | undefined;
 
-			nodeItem.metric_names = (metrics.assignments as Array<{ name: string }> | undefined)?.map(
-				(metric: { name: string }) => metric.name,
-			);
+			// If metrics are not defined, it means the node is using preconfigured metric
+			if (!metrics) {
+				const predefinedMetricKey =
+					(node.parameters?.metric as string | undefined) ?? DEFAULT_EVALUATION_METRIC;
+				nodeItem.metric_names = [predefinedMetricKey];
+			} else {
+				nodeItem.metric_names = (metrics.assignments as Array<{ name: string }> | undefined)?.map(
+					(metric: { name: string }) => metric.name,
+				);
+			}
 		} else if (node.type === CODE_NODE_TYPE) {
 			const { language } = node.parameters;
 			nodeItem.language =

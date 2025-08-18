@@ -9,6 +9,7 @@ import {
 	INSTANCE_ADMIN_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
+import { WorkflowApiHelper } from './workflow-api-helper';
 
 export interface LoginResponseData {
 	id: string;
@@ -30,10 +31,12 @@ const DB_TAGS = {
 } as const;
 
 export class ApiHelpers {
-	private request: APIRequestContext;
+	request: APIRequestContext;
+	workflowApi: WorkflowApiHelper;
 
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
+		this.workflowApi = new WorkflowApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====
@@ -142,6 +145,41 @@ export class ApiHelpers {
 		await this.request.patch('/rest/e2e/queue-mode', {
 			data: { enabled },
 		});
+	}
+
+	// ===== FEATURE FLAG METHODS =====
+
+	async setEnvFeatureFlags(flags: Record<string, string>): Promise<{
+		data: {
+			success: boolean;
+			message: string;
+			flags: Record<string, string>;
+		};
+	}> {
+		const response = await this.request.patch('/rest/e2e/env-feature-flags', {
+			data: { flags },
+		});
+		return await response.json();
+	}
+
+	async clearEnvFeatureFlags(): Promise<{
+		data: {
+			success: boolean;
+			message: string;
+			flags: Record<string, string>;
+		};
+	}> {
+		const response = await this.request.patch('/rest/e2e/env-feature-flags', {
+			data: { flags: {} },
+		});
+		return await response.json();
+	}
+
+	async getEnvFeatureFlags(): Promise<{
+		data: Record<string, string>;
+	}> {
+		const response = await this.request.get('/rest/e2e/env-feature-flags');
+		return await response.json();
 	}
 
 	// ===== CONVENIENCE METHODS =====

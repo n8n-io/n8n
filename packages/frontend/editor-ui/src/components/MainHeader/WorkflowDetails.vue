@@ -7,7 +7,6 @@ import {
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PROJECT_MOVE_RESOURCE_MODAL,
-	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -21,6 +20,7 @@ import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
+import WorkflowProductionChecklist from '@/components/WorkflowProductionChecklist.vue';
 import { ResourceType } from '@/utils/projects.utils';
 
 import { useProjectsStore } from '@/stores/projects.store';
@@ -40,7 +40,6 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { nodeViewEventBus } from '@/event-bus';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useCanvasStore } from '@/stores/canvas.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
@@ -63,6 +62,9 @@ import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { sanitizeFilename } from '@/utils/fileUtils';
 import { I18nT } from 'vue-i18n';
 
+const WORKFLOW_NAME_MAX_WIDTH_SMALL_SCREENS = 150;
+const WORKFLOW_NAME_MAX_WIDTH_WIDE_SCREENS = 200;
+
 const props = defineProps<{
 	readOnly?: boolean;
 	id: IWorkflowDb['id'];
@@ -78,7 +80,6 @@ const props = defineProps<{
 const $style = useCssModule();
 
 const rootStore = useRootStore();
-const canvasStore = useCanvasStore();
 const settingsStore = useSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const tagsStore = useTagsStore();
@@ -108,7 +109,6 @@ const tagsSaving = ref(false);
 const importFileRef = ref<HTMLInputElement | undefined>();
 
 const tagsEventBus = createEventBus();
-const sourceControlModalEventBus = createEventBus();
 const changeOwnerEventBus = createEventBus();
 
 const hasChanged = (prev: string[], curr: string[]) => {
@@ -484,15 +484,15 @@ async function onWorkflowMenuSelect(value: string): Promise<void> {
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
-			canvasStore.startLoading();
 			try {
 				await onSaveButtonClick();
 
-				const status = await sourceControlStore.getAggregatedStatus();
-
-				uiStore.openModalWithData({
-					name: SOURCE_CONTROL_PUSH_MODAL_KEY,
-					data: { eventBus: sourceControlModalEventBus, status },
+				// Navigate to route with sourceControl param - modal will handle data loading and loading states
+				void router.push({
+					query: {
+						...route.query,
+						sourceControl: 'push',
+					},
 				});
 			} catch (error) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -507,8 +507,6 @@ async function onWorkflowMenuSelect(value: string): Promise<void> {
 					default:
 						toast.showError(error, locale.baseText('error'));
 				}
-			} finally {
-				canvasStore.stopLoading();
 			}
 
 			break;
@@ -693,7 +691,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 			class="name-container"
 			data-test-id="canvas-breadcrumbs"
 		>
-			<template #default>
+			<template #default="{ bp }">
 				<FolderBreadcrumbs
 					:current-folder="currentFolderForBreadcrumbs"
 					:current-folder-as-link="true"
@@ -713,6 +711,11 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 							class="name"
 							:model-value="name"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
+							:max-width="
+								['XS', 'SM'].includes(bp)
+									? WORKFLOW_NAME_MAX_WIDTH_SMALL_SCREENS
+									: WORKFLOW_NAME_MAX_WIDTH_WIDE_SCREENS
+							"
 							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							@update:model-value="onNameSubmit"
@@ -774,6 +777,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 		</span>
 
 		<PushConnectionTracker class="actions">
+			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<span :class="`activator ${$style.group}`">
 				<WorkflowActivator
 					:is-archived="isArchived"
@@ -939,6 +943,26 @@ $--header-spacing: 20px;
 		:deep(input) {
 			min-width: 180px;
 		}
+	}
+}
+
+@media (max-width: 1390px) {
+	.name-container {
+		margin-right: var(--spacing-xs);
+	}
+
+	.actions {
+		gap: var(--spacing-xs);
+	}
+}
+
+@media (max-width: 1350px) {
+	.name-container {
+		margin-right: var(--spacing-2xs);
+	}
+
+	.actions {
+		gap: var(--spacing-2xs);
 	}
 }
 </style>

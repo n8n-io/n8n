@@ -19,6 +19,7 @@ export type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update' | 'ret
 export interface NodeMeta {
 	displayName: string;
 	name: string;
+	hidden?: boolean;
 	description: string;
 	docsUrl: string;
 	icon: Icon;

@@ -9,6 +9,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { createRouter, createWebHistory } from 'vue-router';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
+
 vi.mock('@/composables/useProjectPages', () => ({
 	useProjectPages: vi.fn().mockReturnValue({
 		isOverviewSubPage: false,
@@ -23,7 +24,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 		...actualObj,
 		useI18n: vi.fn(() => ({
 			baseText: vi.fn((key: string) => {
-				if (key === 'dataStore.tab.label') return 'Data Store';
+				if (key === 'dataStore.dataStores') return 'Data Stores';
 				if (key === 'projects.menu.personal') return 'Personal';
 				if (key === 'dataStore.empty.label') return 'No data stores';
 				if (key === 'dataStore.empty.description') return 'No data stores description';
@@ -100,9 +101,9 @@ const initialState = {
 const TEST_DATA_STORE: DataStoreResource = {
 	id: '1',
 	name: 'Test Data Store',
-	size: 1024,
+	sizeBytes: 1024,
 	recordCount: 100,
-	columnCount: 5,
+	columns: [],
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
 	resourceType: 'datastore',
@@ -123,7 +124,7 @@ describe('DataStoreView', () => {
 		// Mock dataStore store state
 		dataStoreStore.dataStores = [TEST_DATA_STORE];
 		dataStoreStore.totalCount = 1;
-		dataStoreStore.loadDataStores = vi.fn().mockResolvedValue(undefined);
+		dataStoreStore.fetchDataStores = vi.fn().mockResolvedValue(undefined);
 
 		projectsStore.getCurrentProjectId = vi.fn(() => 'test-project');
 		sourceControlStore.isProjectShared = vi.fn(() => false);
@@ -134,7 +135,7 @@ describe('DataStoreView', () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(dataStoreStore.loadDataStores).toHaveBeenCalledWith('test-project', 1, 25);
+			expect(dataStoreStore.fetchDataStores).toHaveBeenCalledWith('test-project', 1, 25);
 			expect(getByTestId('resources-list-wrapper')).toBeInTheDocument();
 		});
 
@@ -142,12 +143,12 @@ describe('DataStoreView', () => {
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(mockDocumentTitle.set).toHaveBeenCalledWith('Data Store');
+			expect(mockDocumentTitle.set).toHaveBeenCalledWith('Data Stores');
 		});
 
 		it('should handle initialization error', async () => {
 			const error = new Error('Store Error');
-			dataStoreStore.loadDataStores = vi.fn().mockRejectedValue(error);
+			dataStoreStore.fetchDataStores = vi.fn().mockRejectedValue(error);
 
 			renderComponent({ pinia });
 			await waitAllPromises();
@@ -201,7 +202,7 @@ describe('DataStoreView', () => {
 			await waitAllPromises();
 
 			// Clear the initial call
-			dataStoreStore.loadDataStores = vi.fn().mockClear();
+			dataStoreStore.fetchDataStores = vi.fn().mockClear();
 			mockDebounce.callDebounced.mockClear();
 
 			// The component should be rendered and ready to handle pagination
@@ -223,7 +224,7 @@ describe('DataStoreView', () => {
 			await waitAllPromises();
 
 			// Initial call should use default page size of 25
-			expect(dataStoreStore.loadDataStores).toHaveBeenCalledWith('test-project', 1, 25);
+			expect(dataStoreStore.fetchDataStores).toHaveBeenCalledWith('test-project', 1, 25);
 		});
 	});
 });

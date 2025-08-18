@@ -19,8 +19,10 @@ export const LOG_SCOPES = [
 	'insights',
 	'workflow-activation',
 	'ssh-client',
+	'data-store',
 	'cron',
 	'community-nodes',
+	'legacy-sqlite-execution-recovery',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

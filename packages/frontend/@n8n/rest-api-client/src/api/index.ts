@@ -17,6 +17,7 @@ export * from './sso';
 export * from './tags';
 export * from './templates';
 export * from './ui';
+export * from './users';
 export * from './versions';
 export * from './webhooks';
 export * from './workflowHistory';
