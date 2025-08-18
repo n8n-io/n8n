@@ -5,7 +5,6 @@ import type {
 	DataStoreColumn,
 	DataStoreColumnCreatePayload,
 	DataStoreRow,
-	DataStoreValue,
 } from '@/features/dataStore/datastore.types';
 import { AgGridVue } from 'ag-grid-vue3';
 import {
@@ -20,6 +19,7 @@ import {
 	RenderApiModule,
 	DateEditorModule,
 	ClientSideRowModelApiModule,
+	ValidationModule,
 } from 'ag-grid-community';
 import type {
 	GridApi,
@@ -36,10 +36,11 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { DEFAULT_ID_COLUMN_NAME, NO_TABLE_YET_MESSAGE } from '@/features/dataStore/constants';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
-import { ResponseError } from '@n8n/rest-api-client';
+import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
+	ValidationModule, // This module allows us to see AG Grid errors in browser console
 	ClientSideRowModelModule,
 	TextEditorModule,
 	LargeTextEditorModule,
@@ -139,8 +140,12 @@ const createColumnDef = (col: DataStoreColumn) => {
 				return dataStoreTypes.getDefaultValueForType(col.type);
 			}
 			// Parse dates
-			if (col.type === 'date') {
-				return new Date(params.data?.[col.name] as string);
+			if (
+				col.type === 'date' &&
+				typeof params.data?.[col.name] === 'string' &&
+				params.data?.[col.name] !== null
+			) {
+				return new Date(params.data[col.name] as string);
 			}
 			return params.data?.[col.name];
 		},
@@ -161,7 +166,7 @@ const onAddRowClick = async () => {
 	try {
 		// Go to last page if we are not there already
 		if (currentPage.value * pageSize.value < totalItems.value) {
-			await setCurrentPage(Math.floor(totalItems.value / pageSize.value));
+			await setCurrentPage(Math.ceil(totalItems.value / pageSize.value));
 		}
 		const inserted = await dataStoreStore.insertEmptyRow(props.dataStore);
 		if (!inserted) {
@@ -200,7 +205,9 @@ const onCellValueChanged = async (params: CellValueChangedEvent) => {
 	} catch (error) {
 		// Revert old value if update fails
 		const fieldName = String(colDef.field);
-		const revertedData: DataStoreRow = { ...data, [fieldName]: oldValue as DataStoreValue };
+		// Use the type guard to ensure oldValue is a valid DataStoreValue
+		const validOldValue = isDataStoreValue(oldValue) ? oldValue : null;
+		const revertedData: DataStoreRow = { ...data, [fieldName]: validOldValue };
 		api.applyTransaction({
 			update: [revertedData],
 		});
@@ -260,7 +267,7 @@ onMounted(async () => {
 				:theme="n8nTheme"
 				:loading="contentLoading"
 				:row-selection="rowSelection"
-				:get-row-id="(params) => params.data.id"
+				:get-row-id="(params) => String(params.data.id)"
 				:single-click-edit="true"
 				:stop-editing-when-cells-lose-focus="true"
 				@grid-ready="onGridReady"

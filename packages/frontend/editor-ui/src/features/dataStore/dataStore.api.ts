@@ -101,7 +101,7 @@ export const addDataStoreColumnApi = async (
 export const getDataStoreRowsApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
-	projectId?: string,
+	projectId: string,
 	options?: {
 		skip?: number;
 		take?: number;
