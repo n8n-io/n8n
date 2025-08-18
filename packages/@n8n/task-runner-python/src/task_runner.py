@@ -88,8 +88,6 @@ class TaskRunner:
         )
 
     async def start(self) -> None:
-        self.logger.info("Starting...")
-
         headers = {"Authorization": f"Bearer {self.grant_token}"}
 
         try:
@@ -108,8 +106,6 @@ class TaskRunner:
             raise
 
     async def stop(self) -> None:
-        self.logger.info("Stopping...")
-
         if self.offers_coroutine:
             self.offers_coroutine.cancel()
 

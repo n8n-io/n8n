@@ -20,12 +20,10 @@ from .logs import setup_logging
 from .task_runner import TaskRunner, TaskRunnerOpts
 
 
-setup_logging()
-
-logger = logging.getLogger(__name__)
-
-
 async def main():
+    setup_logging()
+    logger = logging.getLogger(__name__)
+
     grant_token = os.getenv(ENV_GRANT_TOKEN)
 
     if grant_token is None:
