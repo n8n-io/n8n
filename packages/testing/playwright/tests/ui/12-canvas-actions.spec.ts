@@ -109,7 +109,7 @@ test.describe('Canvas Actions', () => {
 			await n8n.canvas.executeNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 
 			await expect(
-				n8n.notifications.notificationContainerByText('Node executed successfully'),
+				n8n.notifications.getNotificationByTitle('Node executed successfully'),
 			).toHaveCount(1);
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
 		});
