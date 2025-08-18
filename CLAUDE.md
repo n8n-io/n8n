@@ -78,6 +78,16 @@ The monorepo is organized into these key packages:
 - **`@n8n/design-system`**: Vue component library for UI consistency
 - **`@n8n/config`**: Centralized configuration management
 
+### Using architecture docs
+
+The `docs/architecture` directory contains system architecture documentation covering design decisions and implementation details. Start with `docs/architecture/README.md` for navigation.
+
+When working on features:
+1. Check relevant architecture docs before making changes
+2. Search docs for existing patterns and conventions
+
+Note: Documentation is work in progress - some areas may be incomplete.
+
 ## Technology Stack
 
 - **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
