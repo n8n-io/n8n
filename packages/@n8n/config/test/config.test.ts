@@ -310,6 +310,14 @@ describe('GlobalConfig', () => {
 				hardDelete: 15,
 				softDelete: 60,
 			},
+			concurrency: {
+				productionLimit: -1,
+				evaluationLimit: -1,
+			},
+			queueRecovery: {
+				interval: 180,
+				batchSize: 100,
+			},
 		},
 		diagnostics: {
 			enabled: true,
