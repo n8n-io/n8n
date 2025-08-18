@@ -2919,8 +2919,8 @@ importers:
         specifier: 1.34.1
         version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
       moment-timezone:
-        specifier: 0.5.37
-        version: 0.5.37
+        specifier: 0.5.48
+        version: 0.5.48
       mongodb:
         specifier: 6.11.0
         version: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.3)
@@ -12912,8 +12912,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  moment-timezone@0.5.37:
-    resolution: {integrity: sha512-uEDzDNFhfaywRl+vwXxffjjq1q0Vzr+fcQpQ1bU0kbzorfS7zVtZnCnGc8mhWmF39d4g4YriF6kwA75mJKE/Zg==}
+  moment-timezone@0.5.48:
+    resolution: {integrity: sha512-f22b8LV1gbTO2ms2j2z13MuPogNoh5UzxL3nzNAYKGraILnbGc9NEE6dyiiiLv46DGRb8A4kg8UKWLjPthxBHw==}
 
   moment@2.29.4:
     resolution: {integrity: sha512-5LC9SOxjSc2HF6vO2CyuTDNivEdoz2IvyJJGj6X8DJ0eFyfszE0QiEd+iXmBvUP3WHxSjFH/vIsA0EN00cgr8w==}
@@ -29197,7 +29197,7 @@ snapshots:
       requirejs: 2.3.7
       requirejs-config-file: 4.0.0
 
-  moment-timezone@0.5.37:
+  moment-timezone@0.5.48:
     dependencies:
       moment: 2.29.4
 
@@ -31459,7 +31459,7 @@ snapshots:
       mime-types: 2.1.35
       mkdirp: 1.0.4
       moment: 2.29.4
-      moment-timezone: 0.5.37
+      moment-timezone: 0.5.48
       oauth4webapi: 3.5.1
       open: 7.4.2
       python-struct: 1.1.3
