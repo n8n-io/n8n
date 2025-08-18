@@ -125,7 +125,7 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [mongoNamespaceField, preFilterField, postFilterField],
+		options: [mongoNamespaceField, metadataFilterField, preFilterField, postFilterField],
 	},
 ];
 
