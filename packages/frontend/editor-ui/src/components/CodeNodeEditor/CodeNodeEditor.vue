@@ -21,12 +21,14 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { dropInCodeEditor } from '@/plugins/codemirror/dragAndDrop';
 import type { TargetNodeParameterContext } from '@/Interface';
 
+export type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
+
 type Props = {
 	mode: CodeExecutionMode;
 	modelValue: string;
 	aiButtonEnabled?: boolean;
 	fillParent?: boolean;
-	language?: CodeNodeEditorLanguage;
+	language?: CodeNodeLanguageOption;
 	isReadOnly?: boolean;
 	rows?: number;
 	id?: string;
@@ -63,7 +65,7 @@ const settingsStore = useSettingsStore();
 
 const linter = useLinter(
 	() => props.mode,
-	() => props.language,
+	() => (props.language === 'pythonNative' ? 'python' : props.language),
 );
 const extensions = computed(() => [linter.value]);
 const placeholder = computed(() => CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '');
@@ -74,7 +76,7 @@ const dragAndDropEnabled = computed(() => {
 const { highlightLine, readEditorValue, editor, focus } = useCodeEditor({
 	id: props.id,
 	editorRef: codeNodeEditorRef,
-	language: () => props.language,
+	language: () => (props.language === 'pythonNative' ? 'python' : props.language),
 	languageParams: () => ({ mode: props.mode }),
 	editorValue: () => props.modelValue,
 	placeholder,
@@ -110,6 +112,7 @@ const askAiEnabled = computed(() => {
 });
 
 watch([() => props.language, () => props.mode], (_, [prevLanguage, prevMode]) => {
+	console.log(prevLanguage);
 	if (readEditorValue().trim() === CODE_PLACEHOLDERS[prevLanguage]?.[prevMode]) {
 		emit('update:modelValue', placeholder.value);
 	}

@@ -259,10 +259,14 @@ const editorIsReadOnly = computed<boolean>(() => {
 	return getTypeOption<boolean>('editorIsReadOnly') ?? false;
 });
 
-const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
-	if (editorType.value === 'json' || props.parameter.type === 'json')
+const editorLanguage = computed<CodeNodeEditorLanguage | 'pythonNative'>(() => {
+	if (editorType.value === 'json' || props.parameter.type === 'json') {
 		return 'json' as CodeNodeEditorLanguage;
-	return getTypeOption<CodeNodeEditorLanguage>('editorLanguage') ?? 'javaScript';
+	}
+
+	if (node.value?.parameters?.language === 'pythonNative') return 'pythonNative';
+
+	return getTypeOption<CodeNodeEditorLanguage | 'pythonNative'>('editorLanguage') ?? 'javaScript';
 });
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
