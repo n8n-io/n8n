@@ -8,11 +8,12 @@ import {
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository, QueryFailedError } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DateTime } from 'luxon';
+
 import { createDataStore } from '@test-integration/db/data-stores';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
-import { DateTime } from 'luxon';
 
 import { DataStoreColumnRepository } from '../data-store-column.repository';
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
@@ -1586,7 +1587,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			count: 1,
 			data: [
 				{
-					id: 1,
+					n8n_row_id: 1,
 					first: 'test value',
 					second: 'another value',
 				},
@@ -1625,7 +1626,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			count: 1,
 			data: [
 				{
-					id: 1,
+					n8n_row_id: 1,
 					first: 'test value',
 					second: 'another value',
 				},
@@ -1664,7 +1665,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			count: 1,
 			data: [
 				{
-					id: 1,
+					n8n_row_id: 1,
 					first: 'test value',
 					second: 'another value',
 				},
@@ -1700,7 +1701,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			count: 1,
 			data: [
 				{
-					id: 1,
+					n8n_row_id: 1,
 					first: 'test value',
 					second: 'another value',
 				},
@@ -2538,7 +2539,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {
-			sortBy: ['id', 'ASC'],
+			sortBy: ['n8n_row_id', 'ASC'],
 		});
 		expect(rowsInDb.count).toBe(3);
 		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
