@@ -128,7 +128,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 
 	describe('.getEmbeddingFieldName', () => {
 		beforeEach(() => {
-			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			dataFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === EMBEDDING_NAME) return 'testEmbedding';
 				return '';
 			});
@@ -141,7 +141,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 
 	describe('.getMetadataFieldName', () => {
 		beforeEach(() => {
-			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			dataFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === METADATA_FIELD_NAME) return 'testMetadata';
 				return '';
 			});
@@ -155,7 +155,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 	describe('.getFilterValue', () => {
 		describe('when no post filter is present', () => {
 			beforeEach(() => {
-				executeFunctions.getNodeParameter.mockImplementation(() => {
+				dataFunctions.getNodeParameter.mockImplementation(() => {
 					return {};
 				});
 			});
@@ -168,7 +168,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 		describe('when a post filter is present', () => {
 			describe('when the JSON is valid', () => {
 				beforeEach(() => {
-					executeFunctions.getNodeParameter.mockImplementation(() => {
+					dataFunctions.getNodeParameter.mockImplementation(() => {
 						return { postFilterPipeline: '[{ "$match": { "name": "value" }}]' };
 					});
 				});
@@ -182,7 +182,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 
 			describe('when the JSON is invalid', () => {
 				beforeEach(() => {
-					executeFunctions.getNodeParameter.mockImplementation(() => {
+					dataFunctions.getNodeParameter.mockImplementation(() => {
 						return { postFilterPipeline: '[{ "$match": { "name":}}]' };
 					});
 				});
@@ -197,7 +197,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 
 		describe('when a pre filter is present', () => {
 			beforeEach(() => {
-				executeFunctions.getNodeParameter.mockImplementation(() => {
+				dataFunctions.getNodeParameter.mockImplementation(() => {
 					return {};
 				});
 			});
@@ -210,7 +210,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 		describe('when a pre filter is present', () => {
 			describe('when the JSON is valid', () => {
 				beforeEach(() => {
-					executeFunctions.getNodeParameter.mockImplementation(() => {
+					dataFunctions.getNodeParameter.mockImplementation(() => {
 						return { preFilter: '{ "name": "value" }' };
 					});
 				});
@@ -222,7 +222,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 
 			describe('when the JSON is invalid', () => {
 				beforeEach(() => {
-					executeFunctions.getNodeParameter.mockImplementation(() => {
+					dataFunctions.getNodeParameter.mockImplementation(() => {
 						return { preFilter: '"name":}}]' };
 					});
 				});
