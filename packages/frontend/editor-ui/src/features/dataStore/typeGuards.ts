@@ -1,4 +1,4 @@
-import type { DataStoreValue } from '@features/dataStore/datastore.types';
+import type { DataStoreValue } from '@/features/dataStore/datastore.types';
 
 export const isDataStoreValue = (value: unknown): value is DataStoreValue => {
 	return (
