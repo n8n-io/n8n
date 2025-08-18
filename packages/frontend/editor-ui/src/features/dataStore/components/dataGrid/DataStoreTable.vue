@@ -136,9 +136,9 @@ const createColumnDef = (col: DataStoreColumn) => {
 		editable: col.name !== DEFAULT_ID_COLUMN_NAME,
 		cellDataType: dataStoreTypes.mapToAGCellType(col.type),
 		valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
-			// If the value is null, return the default value for the column type
-			if (params.data?.[col.name] === null) {
-				return dataStoreTypes.getDefaultValueForType(col.type);
+			// If the value is null, return null to show empty cell
+			if (params.data?.[col.name] === null || params.data?.[col.name] === undefined) {
+				return null;
 			}
 			// Parse dates
 			if (col.type === 'date') {
