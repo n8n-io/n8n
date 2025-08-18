@@ -14,6 +14,14 @@ n8n is a workflow automation platform that gives technical teams the flexibility
 - **Enterprise-Ready**: Advanced permissions, SSO, and air-gapped deployments
 - **Active Community**: 400+ integrations and 900+ ready-to-use [templates](https://n8n.io/workflows)
 
+## Slack Integration
+
+n8n's Slack integration allows you to automate workflows triggered by Slack events. With recent improvements, handling Slack triggers is more robust, enabling seamless automation for your team's communication needs.
+
+- **Setup Instructions**: Configure Slack triggers by setting up the necessary tokens and permissions in your Slack workspace.
+- **Event Handling**: Easily manage events such as message posts, reactions, and file uploads.
+- **Use Cases**: Automate notifications, data collection from channels, and more.
+
 ## Quick Start
 
 Try n8n instantly with [npx](https://docs.n8n.io/hosting/installation/npm/) (requires [Node.js](https://nodejs.org/en/)):
@@ -31,6 +39,10 @@ docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n
 
 Access the editor at http://localhost:5678
 
+## Detailed Installation
+
+Follow our comprehensive [installation guide](https://docs.n8n.io/hosting/installation/) for setting up n8n with all its dependencies. Ensure your environment meets the requirements for Slack integration.
+
 ## Resources
 
 - 📚 [Documentation](https://docs.n8n.io)
@@ -39,6 +51,16 @@ Access the editor at http://localhost:5678
 - 🤖 [AI & LangChain Guide](https://docs.n8n.io/langchain/)
 - 👥 [Community Forum](https://community.n8n.io)
 - 📖 [Community Tutorials](https://community.n8n.io/c/tutorials/28)
+
+## Testing Instructions
+
+Run the test suite to ensure all features, including Slack trigger handling, work as expected. Use the following command to execute tests:
+
+```
+npm test
+```
+
+For specific Slack-related tests, refer to the test documentation in the `test` directory.
 
 ## Support
 
