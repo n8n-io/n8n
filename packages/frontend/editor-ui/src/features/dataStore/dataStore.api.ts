@@ -27,7 +27,7 @@ export const fetchDataStoresApi = async (
 		apiEndpoint,
 		{
 			...options,
-			...(filter ?? {}),
+			...(filter ? { filter } : {}),
 		},
 	);
 };
