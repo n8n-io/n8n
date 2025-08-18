@@ -128,7 +128,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 
 	describe('.getEmbeddingFieldName', () => {
 		beforeEach(() => {
-			dataFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === EMBEDDING_NAME) return 'testEmbedding';
 				return '';
 			});
@@ -141,7 +141,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 
 	describe('.getMetadataFieldName', () => {
 		beforeEach(() => {
-			dataFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === METADATA_FIELD_NAME) return 'testMetadata';
 				return '';
 			});

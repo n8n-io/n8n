@@ -234,22 +234,28 @@ export const getVectorIndexName = getParameter.bind(null, VECTOR_INDEX_NAME);
 export const getEmbeddingFieldName = getParameter.bind(null, EMBEDDING_NAME);
 export const getMetadataFieldName = getParameter.bind(null, METADATA_FIELD_NAME);
 
-export function getFilterValue(
+export function getFilterValue<T>(
 	name: string,
 	context: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
-): IDataObject | undefined {
-	const options = context.getNodeParameter('options', itemIndex, {});
+): T | undefined {
+	const options: IDataObject = context.getNodeParameter('options', itemIndex, {});
 
 	if (options[name]) {
-		try {
-			return JSON.parse(options[name] as string) as IDataObject;
-		} catch (error) {
-			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
-				itemIndex,
-				description: `Could not parse JSON for ${name}`,
-			});
+		if (typeof options[name] === 'string') {
+			try {
+				return JSON.parse(options[name]);
+			} catch (error) {
+				throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
+					itemIndex,
+					description: `Could not parse JSON for ${name}`,
+				});
+			}
 		}
+		throw new NodeOperationError(context.getNode(), `Error: No JSON string provided.`, {
+			itemIndex,
+			description: `Could not parse JSON for ${name}`,
+		});
 	}
 
 	return undefined;
@@ -257,14 +263,13 @@ export function getFilterValue(
 
 class ExtendedMongoDBAtlasVectorSearch extends MongoDBAtlasVectorSearch {
 	preFilter: IDataObject;
-
-	postFilterPipeline?: IDataObject;
+	postFilterPipeline?: IDataObject[];
 
 	constructor(
 		embeddings: EmbeddingsInterface,
 		options: MongoDBAtlasVectorSearchLibArgs,
 		preFilter: IDataObject,
-		postFilterPipeline?: IDataObject,
+		postFilterPipeline?: IDataObject[],
 	) {
 		super(embeddings, options);
 		this.preFilter = preFilter;
@@ -272,12 +277,11 @@ class ExtendedMongoDBAtlasVectorSearch extends MongoDBAtlasVectorSearch {
 	}
 
 	async similaritySearchVectorWithScore(query: number[], k: number) {
-		const mergedFilter = { preFilter: this.preFilter, postFilterPipeline: this.postFilterPipeline };
-		return await super.similaritySearchVectorWithScore(
-			query,
-			k,
-			mergedFilter as MongoDBAtlasVectorSearch['FilterType'],
-		);
+		const mergedFilter: MongoDBAtlasVectorSearch['FilterType'] = {
+			preFilter: this.preFilter,
+			postFilterPipeline: this.postFilterPipeline,
+		};
+		return await super.similaritySearchVectorWithScore(query, k, mergedFilter);
 	}
 }
 
@@ -324,8 +328,12 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 					description: 'Please check that the index exists in your collection',
 				});
 			}
-			const preFilter = getFilterValue(PRE_FILTER_NAME, context, itemIndex);
-			const postFilterPipeline = getFilterValue(POST_FILTER_NAME, context, itemIndex);
+			const preFilter = getFilterValue<IDataObject>(PRE_FILTER_NAME, context, itemIndex);
+			const postFilterPipeline = getFilterValue<IDataObject[]>(
+				POST_FILTER_NAME,
+				context,
+				itemIndex,
+			);
 
 			return new ExtendedMongoDBAtlasVectorSearch(
 				embeddings,
