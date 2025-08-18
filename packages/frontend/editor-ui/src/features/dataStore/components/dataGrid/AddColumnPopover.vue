@@ -87,7 +87,11 @@ const onInput = debounce(validateName, { debounceTime: 300 });
 				@update:open="handlePopoverOpenChange"
 			>
 				<template #trigger>
-					<N8nIconButton icon="plus" type="tertiary" />
+					<N8nIconButton
+						data-test-id="data-store-add-column-trigger-button"
+						icon="plus"
+						type="tertiary"
+					/>
 				</template>
 				<template #content>
 					<div :class="$style['popover-content']">
@@ -139,7 +143,7 @@ const onInput = debounce(validateName, { debounceTime: 300 });
 								</N8nSelect>
 							</N8nInputLabel>
 							<N8nButton
-								data-test-id="data-store-add-column-button"
+								data-test-id="data-store-add-column-submit-button"
 								type="primary"
 								class="mt-m"
 								size="large"

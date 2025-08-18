@@ -50,14 +50,13 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should render the add column button', () => {
-		const { getByRole } = renderComponent();
-		const addButton = getByRole('button');
-		expect(addButton).toBeInTheDocument();
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('data-store-add-column-trigger-button')).toBeInTheDocument();
 	});
 
 	it('should focus name input when popover opens', async () => {
-		const { getByRole, getByPlaceholderText } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByTestId, getByPlaceholderText } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
@@ -68,15 +67,15 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should emit addColumn event with correct payload', async () => {
-		const { getByRole, getByPlaceholderText, getByTestId, emitted } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByTestId, getByPlaceholderText, emitted } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
 		const nameInput = getByPlaceholderText('Enter column name');
 		await fireEvent.update(nameInput, 'newColumn');
 
-		const submitButton = getByTestId('data-store-add-column-button');
+		const submitButton = getByTestId('data-store-add-column-submit-button');
 		expect(submitButton).not.toBeDisabled();
 		await fireEvent.click(submitButton);
 
@@ -92,20 +91,20 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should disable submit button when name is empty', async () => {
-		const { getByRole, getByTestId } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByTestId } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
 		await waitFor(() => {
-			const submitButton = getByTestId('data-store-add-column-button');
+			const submitButton = getByTestId('data-store-add-column-submit-button');
 			expect(submitButton).toBeDisabled();
 		});
 	});
 
 	it('should show error for invalid column names', async () => {
-		const { getByRole, getByPlaceholderText, getByText, getByTestId } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByPlaceholderText, getByText, getByTestId } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
@@ -117,14 +116,14 @@ describe('AddColumnPopover', () => {
 
 		await waitFor(() => {
 			expect(getByText('Invalid column name')).toBeInTheDocument();
-			const submitButton = getByTestId('data-store-add-column-button');
+			const submitButton = getByTestId('data-store-add-column-submit-button');
 			expect(submitButton).toBeDisabled();
 		});
 	});
 
 	it('should allow valid column names', async () => {
-		const { getByRole, getByPlaceholderText, queryByText } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByTestId, getByPlaceholderText, queryByText } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
@@ -144,8 +143,8 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should clear error when correcting invalid name', async () => {
-		const { getByRole, getByPlaceholderText, getByText, queryByText } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByTestId, getByPlaceholderText, getByText, queryByText } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
@@ -169,8 +168,8 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should respect max column name length', async () => {
-		const { getByRole, getByPlaceholderText } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByTestId, getByPlaceholderText } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
@@ -180,8 +179,8 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should allow selecting different column types', async () => {
-		const { getByRole, getByPlaceholderText, getByText, getByTestId, emitted } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByPlaceholderText, getByRole, getByText, getByTestId, emitted } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
@@ -196,7 +195,7 @@ describe('AddColumnPopover', () => {
 		const numberOption = getByText('number');
 		await fireEvent.click(numberOption);
 
-		const submitButton = getByTestId('data-store-add-column-button');
+		const submitButton = getByTestId('data-store-add-column-submit-button');
 		await fireEvent.click(submitButton);
 
 		expect(emitted().addColumn).toBeTruthy();
@@ -211,15 +210,15 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should reset form after successful submission', async () => {
-		const { getByRole, getByPlaceholderText, getByTestId } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByPlaceholderText, getByTestId } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
 		const nameInput = getByPlaceholderText('Enter column name') as HTMLInputElement;
 		await fireEvent.update(nameInput, 'testColumn');
 
-		const submitButton = getByTestId('data-store-add-column-button');
+		const submitButton = getByTestId('data-store-add-column-submit-button');
 		await fireEvent.click(submitButton);
 
 		// Click button again to open popover
@@ -232,15 +231,15 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should close popover after successful submission', async () => {
-		const { getByRole, getByPlaceholderText, getByTestId, queryByText } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByPlaceholderText, getByTestId, queryByText } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
 		const nameInput = getByPlaceholderText('Enter column name');
 		await fireEvent.update(nameInput, 'testColumn');
 
-		const submitButton = getByTestId('data-store-add-column-button');
+		const submitButton = getByTestId('data-store-add-column-submit-button');
 		await fireEvent.click(submitButton);
 
 		await waitFor(() => {
@@ -249,8 +248,8 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should allow submission with Enter key', async () => {
-		const { getByRole, getByPlaceholderText, emitted } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByTestId, getByPlaceholderText, emitted } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
@@ -270,8 +269,8 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should display all column type options', async () => {
-		const { getByRole, getByText } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByTestId, getByRole, getByText } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
@@ -287,8 +286,8 @@ describe('AddColumnPopover', () => {
 	});
 
 	it('should show tooltip with error description', async () => {
-		const { getByRole, getByPlaceholderText, getByText, getByTestId } = renderComponent();
-		const addButton = getByRole('button');
+		const { getByPlaceholderText, getByText, getByTestId } = renderComponent();
+		const addButton = getByTestId('data-store-add-column-trigger-button');
 
 		await fireEvent.click(addButton);
 
