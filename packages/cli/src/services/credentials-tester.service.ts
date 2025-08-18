@@ -35,6 +35,7 @@ import { CredentialsHelper } from '../credentials-helper';
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { getAllKeys, getAllKeyValuesAsString } from '@/utils';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -62,51 +63,6 @@ const mockNodeTypes: INodeTypes = {
 		}
 		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
 	},
-};
-
-// This function recursively get all keys of an object / array
-// Filtered by the provided value filter
-const getAllKeys = (
-	obj: unknown,
-	keys: string[],
-	valueFilter: (value: string) => boolean,
-): string[] => {
-	if (Array.isArray(obj)) {
-		obj.forEach((item) => getAllKeys(item, keys, valueFilter));
-	} else if (obj && typeof obj === 'object') {
-		for (const [key, value] of Object.entries(obj)) {
-			if (typeof value === 'string' && valueFilter(value)) keys.push(key);
-			else getAllKeys(value, keys, valueFilter);
-		}
-	}
-	return keys;
-};
-
-// This function gets all stringified values of an object, filtered by the provided keys subset
-const getAllKeyValuesAsString = (obj: unknown, keys: string[]): string[] => {
-	const result: string[] = [];
-	if (Array.isArray(obj)) {
-		result.push.apply(
-			result,
-			obj.flatMap((item) => getAllKeyValuesAsString(item, keys)),
-		);
-	} else if (typeof obj === 'object' && obj !== null) {
-		Object.keys(obj).forEach((key) => {
-			// Check if the key is in the list of keys to filter
-			if (keys.includes(key)) {
-				const value = (obj as Record<string, unknown>)[key];
-				if (typeof value !== 'undefined' && value !== null) {
-					result.push(value.toString());
-				}
-			} else {
-				result.push.apply(
-					result,
-					getAllKeyValuesAsString((obj as Record<string, unknown>)[key], keys),
-				);
-			}
-		});
-	}
-	return result;
 };
 
 @Service()
