@@ -40,7 +40,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 		},
 		{
 			name: PROJECT_DATA_STORES,
-			path: 'datastores',
+			path: 'datastores/:new(new)?',
 			props: true,
 			components: {
 				default: DataStoreView,

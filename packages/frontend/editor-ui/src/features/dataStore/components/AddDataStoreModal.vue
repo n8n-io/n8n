@@ -4,7 +4,8 @@ import { onMounted, ref } from 'vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { DATA_STORE_DETAILS, PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 
 type Props = {
 	modalName: string;
@@ -16,6 +17,7 @@ const dataStoreStore = useDataStoreStore();
 const uiStore = useUIStore();
 
 const route = useRoute();
+const router = useRouter();
 const i18n = useI18n();
 const toast = useToast();
 
@@ -31,7 +33,17 @@ onMounted(() => {
 
 const onSubmit = async () => {
 	try {
-		await dataStoreStore.createDataStore(dataStoreName.value, route.params.projectId as string);
+		const newDataStore = await dataStoreStore.createDataStore(
+			dataStoreName.value,
+			route.params.projectId as string,
+		);
+		void router.push({
+			name: DATA_STORE_DETAILS,
+			params: {
+				id: newDataStore.id,
+			},
+		});
+		uiStore.closeModal(props.modalName);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.add.error'));
 	} finally {
@@ -39,10 +51,19 @@ const onSubmit = async () => {
 		uiStore.closeModal(props.modalName);
 	}
 };
+
+const onCancel = () => {
+	uiStore.closeModal(props.modalName);
+	void router.replace({ name: PROJECT_DATA_STORES });
+};
+
+const redirectToDataStores = () => {
+	void router.replace({ name: PROJECT_DATA_STORES });
+};
 </script>
 
 <template>
-	<Modal :name="props.modalName" :center="true" width="540px">
+	<Modal :name="props.modalName" :center="true" width="540px" :before-close="redirectToDataStores">
 		<template #header>
 			<h2>{{ i18n.baseText('dataStore.add.title') }}</h2>
 		</template>
@@ -66,7 +87,7 @@ const onSubmit = async () => {
 				</n8n-input-label>
 			</div>
 		</template>
-		<template #footer="{ close }">
+		<template #footer>
 			<div :class="$style.footer">
 				<n8n-button
 					:disabled="!dataStoreName"
@@ -78,7 +99,7 @@ const onSubmit = async () => {
 					type="secondary"
 					:label="i18n.baseText('generic.cancel')"
 					data-test-id="cancel-add-data-store-button"
-					@click="close"
+					@click="onCancel"
 				/>
 			</div>
 		</template>

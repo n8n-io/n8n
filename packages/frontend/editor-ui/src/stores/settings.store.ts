@@ -144,6 +144,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isFoldersFeatureEnabled = computed(() => folders.value.enabled);
 
+	const isDataStoreFeatureEnabled = computed(() => isModuleActive('data-store'));
+
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
 	);
@@ -396,5 +398,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
+		isDataStoreFeatureEnabled,
 	};
 });
