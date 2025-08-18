@@ -31,11 +31,21 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 			return false;
 		}
 
-		// Allow horizontal arrows for cursor movement when input has content
-		const isHorizontalArrow = key === 'ArrowLeft' || key === 'ArrowRight';
 		const hasContent = target.value.length > 0;
 
-		return isHorizontalArrow && hasContent;
+		// Allow left arrow for cursor movement when input has content
+		if (key === 'ArrowLeft' && hasContent) {
+			return true;
+		}
+
+		// Allow right arrow for cursor movement only when cursor is NOT at the end
+		if (key === 'ArrowRight' && hasContent) {
+			const cursorPosition = target.selectionStart || 0;
+			const isAtEnd = cursorPosition >= target.value.length;
+			return !isAtEnd;
+		}
+
+		return false;
 	}
 
 	function getItemType(element?: Element) {
