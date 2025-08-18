@@ -2111,7 +2111,15 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 				},
 				{
 					name: 'b',
-					type: 'string',
+					type: 'number',
+				},
+				{
+					name: 'c',
+					type: 'boolean',
+				},
+				{
+					name: 'd',
+					type: 'date',
 				},
 			],
 		});
@@ -2119,8 +2127,10 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		const payload = {
 			data: [
 				{
-					a: 'something',
+					a: null,
 					b: null,
+					c: null,
+					d: null,
 				},
 			],
 		};
