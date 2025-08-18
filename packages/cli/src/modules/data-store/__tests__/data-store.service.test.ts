@@ -98,10 +98,14 @@ describe('dataStore', () => {
 
 			const userTableName = toTableName(dataStoreId);
 			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
-			const table = await queryRunner.getTable(userTableName);
-			const columnNames = table?.columns.map((col) => col.name);
+			try {
+				const table = await queryRunner.getTable(userTableName);
+				const columnNames = table?.columns.map((col) => col.name);
 
-			expect(columnNames).toEqual(['id']);
+				expect(columnNames).toEqual(['id']);
+			} finally {
+				await queryRunner.release();
+			}
 		});
 
 		it('should succeed even if the name exists in a different project', async () => {
@@ -333,19 +337,23 @@ describe('dataStore', () => {
 
 			const userTableName = toTableName(dataStoreId);
 			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
-			const table = await queryRunner.getTable(userTableName);
-			const columnNames = table?.columns.map((col) => col.name);
+			try {
+				const table = await queryRunner.getTable(userTableName);
+				const columnNames = table?.columns.map((col) => col.name);
 
-			expect(columnNames).toEqual(
-				expect.arrayContaining([
-					'id',
-					'myColumn0',
-					'myColumn1',
-					'myColumn2',
-					'myColumn3',
-					'myColumn4',
-				]),
-			);
+				expect(columnNames).toEqual(
+					expect.arrayContaining([
+						'id',
+						'myColumn0',
+						'myColumn1',
+						'myColumn2',
+						'myColumn3',
+						'myColumn4',
+					]),
+				);
+			} finally {
+				await queryRunner.release();
+			}
 		});
 
 		it('should succeed with adding columns to an empty table', async () => {
@@ -396,10 +404,14 @@ describe('dataStore', () => {
 
 			const userTableName = toTableName(dataStoreId);
 			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
-			const table = await queryRunner.getTable(userTableName);
-			const columnNames = table?.columns.map((col) => col.name);
+			try {
+				const table = await queryRunner.getTable(userTableName);
+				const columnNames = table?.columns.map((col) => col.name);
 
-			expect(columnNames).toEqual(expect.arrayContaining(['id', 'myColumn0', 'myColumn1']));
+				expect(columnNames).toEqual(expect.arrayContaining(['id', 'myColumn0', 'myColumn1']));
+			} finally {
+				await queryRunner.release();
+			}
 		});
 
 		it('should fail with adding two columns of the same name', async () => {
