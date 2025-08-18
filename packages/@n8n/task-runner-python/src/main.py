@@ -16,7 +16,7 @@ from .constants import (
     DEFAULT_MAX_PAYLOAD_SIZE,
     ENV_TASK_TIMEOUT,
 )
-from .logging import setup_logging
+from .logs import setup_logging
 from .task_runner import TaskRunner, TaskRunnerOpts
 
 
