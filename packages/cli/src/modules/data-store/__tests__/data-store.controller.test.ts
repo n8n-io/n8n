@@ -2540,7 +2540,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {
-			sortBy: ['DATA_STORE_ROW_INTERNAL_ID', 'ASC'],
+			sortBy: [DATA_STORE_ROW_INTERNAL_ID, 'ASC'],
 		});
 		expect(rowsInDb.count).toBe(3);
 		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
