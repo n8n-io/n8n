@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useRouter } from 'vue-router';
 import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
-import { DATA_STORE_VIEW } from '@/features/dataStore/constants';
+import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 
@@ -51,7 +51,10 @@ const onItemClicked = async (item: PathItem) => {
 };
 
 const onDelete = async () => {
-	await router.push({ name: DATA_STORE_VIEW, params: { projectId: props.dataStore.projectId } });
+	await router.push({
+		name: PROJECT_DATA_STORES,
+		params: { projectId: props.dataStore.projectId },
+	});
 };
 
 const onRename = async () => {

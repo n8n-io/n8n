@@ -18,7 +18,6 @@ import {
 	extractNodeParameters,
 	formatChangesForPrompt,
 	updateNodeWithParameters,
-	mergeParameters,
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
 import type { UpdateNodeParametersOutput } from '../types/tools';
@@ -140,16 +139,12 @@ export function createUpdateNodeParametersTool(
 					}
 
 					// Fix expression prefixes in the new parameters
-					const fixedParameters = fixExpressionPrefixes(newParameters.parameters);
-
-					// Merge the new parameters with existing ones
-					const updatedParameters = mergeParameters(
-						currentParameters,
-						fixedParameters as INodeParameters,
-					);
+					const fixedParameters = fixExpressionPrefixes(
+						newParameters.parameters,
+					) as INodeParameters;
 
 					// Create updated node
-					const updatedNode = updateNodeWithParameters(node, updatedParameters);
+					const updatedNode = updateNodeWithParameters(node, fixedParameters);
 
 					// Build success message
 					const message = buildSuccessMessage(node, changes);
@@ -159,7 +154,7 @@ export function createUpdateNodeParametersTool(
 						nodeId,
 						nodeName: node.name,
 						nodeType: node.type,
-						updatedParameters,
+						updatedParameters: fixedParameters,
 						appliedChanges: changes,
 						message,
 					};

@@ -30,9 +30,9 @@ const summaryParser = z
 
 const aggregatedInsightsByWorkflowParser = z
 	.object({
-		workflowId: z.string(),
+		workflowId: z.string().nullable(),
 		workflowName: z.string(),
-		projectId: z.string(),
+		projectId: z.string().nullable(),
 		projectName: z.string(),
 		total: z.union([z.number(), z.string()]).transform((value) => Number(value)),
 		succeeded: z.union([z.number(), z.string()]).transform((value) => Number(value)),
