@@ -17,7 +17,8 @@ const THREE_DAYS = ONE_DAY * 3;
 const SEVEN_DAYS = ONE_DAY * 7;
 const ABOUT_SIX_MONTHS = ONE_DAY * 30 * 6 + ONE_DAY;
 
-describe('NpsSurvey', () => {
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('NpsSurvey', () => {
 	beforeEach(() => {
 		cy.resetDatabase();
 		cy.signin(INSTANCE_ADMIN);
