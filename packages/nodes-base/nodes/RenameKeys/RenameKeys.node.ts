@@ -2,7 +2,7 @@ import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 import { NodeConnectionTypes, NodeOperationError, deepCopy } from 'n8n-workflow';
-import safeRegex from 'safe-regex';
+import { isSafe } from 'redos-detector';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -180,18 +180,13 @@ export class RenameKeys implements INodeType {
 			const { searchRegex, replaceRegex, options } = replacement;
 			const { depth, caseInsensitive } = options as IDataObject;
 
-			if (!safeRegex(searchRegex as string)) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Unsafe regex pattern detected: "${searchRegex}". ` +
-						'This pattern may cause performance issues or service disruption. ' +
-						'Please use a simpler pattern without nested quantifiers like (a+)+ or (x*)*.',
-				);
-			}
 			const flags = (caseInsensitive as boolean) ? 'i' : undefined;
 
 			const regex = new RegExp(searchRegex as string, flags);
-
+			const safetyResult = isSafe(regex);
+			if (!safetyResult.safe) {
+				throw new NodeOperationError(this.getNode(), 'Unsafe regex pattern detected');
+			}
 			const renameObjectKeys = (obj: IDataObject, objDepth: number) => {
 				for (const key in obj) {
 					if (Array.isArray(obj)) {
