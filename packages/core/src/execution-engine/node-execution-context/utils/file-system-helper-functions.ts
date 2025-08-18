@@ -63,7 +63,7 @@ export async function isFilePathBlocked(filePath: string): Promise<boolean> {
 
 export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
 	async createReadStream(filePath) {
-		if (await isFilePathBlocked(filePath as string)) {
+		if (await isFilePathBlocked(filePath.toString())) {
 			const allowedPaths = getAllowedPaths();
 			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
 			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
