@@ -77,6 +77,7 @@ describe('AddColumnPopover', () => {
 		await fireEvent.update(nameInput, 'newColumn');
 
 		const submitButton = getByTestId('data-store-add-column-button');
+		expect(submitButton).not.toBeDisabled();
 		await fireEvent.click(submitButton);
 
 		expect(emitted().addColumn).toBeTruthy();
@@ -99,21 +100,6 @@ describe('AddColumnPopover', () => {
 		await waitFor(() => {
 			const submitButton = getByTestId('data-store-add-column-button');
 			expect(submitButton).toBeDisabled();
-		});
-	});
-
-	it('should enable submit button when name is provided', async () => {
-		const { getByRole, getByPlaceholderText, getByTestId } = renderComponent();
-		const addButton = getByRole('button');
-
-		await fireEvent.click(addButton);
-
-		const nameInput = getByPlaceholderText('Enter column name');
-		await fireEvent.update(nameInput, 'validName');
-
-		await waitFor(() => {
-			const submitButton = getByTestId('data-store-add-column-button');
-			expect(submitButton).not.toBeDisabled();
 		});
 	});
 
