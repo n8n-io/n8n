@@ -14,7 +14,7 @@ function copyTokenizerJsonFiles(baseDir) {
 		const sourcePath = path.resolve(baseDir, file);
 		const targetPath = path.resolve(baseDir, 'dist', file);
 		fs.copyFileSync(sourcePath, targetPath);
-		console.log(`Copied: ${file} -> dist/${file}`);
+		// Removed console.log for file copy notification
 	}
 }
 

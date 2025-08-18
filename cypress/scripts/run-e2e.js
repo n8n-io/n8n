@@ -18,7 +18,7 @@ function runTests(options) {
 	Object.keys(process.env).forEach((key) => {
 		if (key.startsWith('N8N_ENV_FEAT_')) {
 			// These are already in process.env and will be inherited by the spawned process
-			console.log(`Passing through environment feature flag: ${key}=${process.env[key]}`);
+			// Removed console.log for feature flag
 		}
 	});
 
