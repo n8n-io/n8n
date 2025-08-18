@@ -259,4 +259,8 @@ export class CanvasPage extends BasePage {
 	async clickProductionChecklistAction(actionText: string): Promise<void> {
 		await this.getProductionChecklistActionItem(actionText).click();
 	}
+
+	getCanvasNodes() {
+		return this.page.getByTestId('canvas-node');
+	}
 }
