@@ -1,6 +1,5 @@
 import mock from 'jest-mock-extended/lib/Mock';
 import type {
-	ICredentialsDecrypted,
 	ICredentialType,
 	INodeCredentialTestResult,
 	INodeType,
@@ -60,8 +59,7 @@ describe('CredentialsTester', () => {
 				mock<INodeType>({
 					methods: {
 						credentialTest: {
-							testCredentialsFunction: async (credentials: ICredentialsDecrypted) =>
-								testCredentialsFunctionReturn,
+							testCredentialsFunction: async () => testCredentialsFunctionReturn,
 						},
 					},
 					description: {
