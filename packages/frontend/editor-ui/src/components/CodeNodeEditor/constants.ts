@@ -70,7 +70,7 @@ for item in _items:
   item["json"]["my_new_field"] = 1
 return _items`.trim(),
 		runOnceForEachItem: `
-# Add a new field called 'myNewField' to the JSON of the item
+# Add a new field called 'my_new_field' to the JSON of the item
 _item["json"]["my_new_field"] = 1
 return _item`.trim(),
 	},
