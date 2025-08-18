@@ -1,8 +1,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
-
-import type { AIMessageWithUsageMetadata } from '@/utils/token-usage';
+import type { AIMessageWithUsageMetadata } from '../../src/utils/token-usage';
 
 // Define strict interfaces
 export type UsageMetadata = AIMessageWithUsageMetadata['response_metadata']['usage'];

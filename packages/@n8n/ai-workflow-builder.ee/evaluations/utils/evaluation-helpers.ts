@@ -1,16 +1,16 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
+import { mkdirSync, writeFileSync } from 'fs';
 import { Client } from 'langsmith';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import { join } from 'path';
 import pc from 'picocolors';
 
 import { anthropicClaudeSonnet4 } from '../../src/llm-config.js';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
 import type { Violation } from '../types/evaluation.js';
 import type { TestResult } from '../types/test-result.js';
-import { join } from 'path';
-import { mkdirSync, writeFileSync } from 'fs';
 
 /**
  * Sets up the LLM with proper configuration
