@@ -27,6 +27,7 @@ const dataStoreStore = useDataStoreStore();
 const loading = ref(false);
 const saving = ref(false);
 const dataStore = ref<DataStore | null>(null);
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 const showErrorAndGoBackToList = async (error: unknown) => {
 	if (!(error instanceof Error)) {
@@ -53,10 +54,17 @@ const initialize = async () => {
 };
 
 const onToggleSave = (value: boolean) => {
+	// Cancel previous timer if it exists
+	if (saveTimer) {
+		clearTimeout(saveTimer);
+		saveTimer = null;
+	}
+
 	// Delay saving state to avoid flickering
 	const timeout = value ? 0 : 200;
-	setTimeout(() => {
+	saveTimer = setTimeout(() => {
 		saving.value = value;
+		saveTimer = null;
 	}, timeout);
 };
 
