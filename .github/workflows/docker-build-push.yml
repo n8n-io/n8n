@@ -279,7 +279,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push Docker image
-        uses: useblacksmith/build-push-action@6fe3b1c3665ca911656e8249f6195103b7dc9782 # v1.2
+        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
         with:
           context: .
           file: ./docker/images/n8n/Dockerfile

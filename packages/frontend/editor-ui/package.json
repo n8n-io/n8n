@@ -102,8 +102,7 @@
     "vue3-touch-events": "^4.1.3",
     "vuedraggable": "4.1.0",
     "web-tree-sitter": "0.24.3",
-    "xss": "catalog:",
-    "z-vue-scan": "^0.0.35"
+    "xss": "catalog:"
   },
   "devDependencies": {
     "@faker-js/faker": "^8.0.2",
@@ -135,7 +134,8 @@
     "vite-svg-loader": "5.1.0",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
-    "vue-tsc": "catalog:frontend"
+    "vue-tsc": "catalog:frontend",
+    "z-vue-scan": "^0.0.35"
   },
   "peerDependencies": {
     "@fortawesome/fontawesome-svg-core": "*",

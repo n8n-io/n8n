@@ -68,7 +68,7 @@ export const WorkflowState = Annotation.Root({
 	// Now a simple field without custom reducer - all updates go through operations
 	workflowJSON: Annotation<SimpleWorkflow>({
 		reducer: (x, y) => y ?? x,
-		default: () => ({ nodes: [], connections: {} }),
+		default: () => ({ nodes: [], connections: {}, name: '' }),
 	}),
 	// Operations to apply to the workflow - processed by a separate node
 	workflowOperations: Annotation<WorkflowOperation[] | null>({

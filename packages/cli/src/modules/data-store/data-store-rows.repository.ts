@@ -98,6 +98,20 @@ export class DataStoreRowsRepository {
 		return true;
 	}
 
+	async deleteRows(tableName: DataStoreUserTableName, ids: number[]) {
+		if (ids.length === 0) {
+			return true;
+		}
+
+		const dbType = this.dataSource.options.type;
+		const quotedTableName = quoteIdentifier(tableName, dbType);
+		const placeholders = ids.map((_, index) => getPlaceholder(index + 1, dbType)).join(', ');
+		const query = `DELETE FROM ${quotedTableName} WHERE id IN (${placeholders})`;
+
+		await this.dataSource.query(query, ids);
+		return true;
+	}
+
 	async createTableWithColumns(
 		tableName: string,
 		columns: DataStoreColumn[],
