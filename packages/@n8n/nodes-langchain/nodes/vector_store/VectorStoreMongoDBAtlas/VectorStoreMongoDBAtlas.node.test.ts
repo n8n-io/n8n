@@ -195,7 +195,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 			});
 		});
 
-		describe('when a pre filter is present', () => {
+		describe('when no pre filter is present', () => {
 			beforeEach(() => {
 				dataFunctions.getNodeParameter.mockImplementation(() => {
 					return {};
