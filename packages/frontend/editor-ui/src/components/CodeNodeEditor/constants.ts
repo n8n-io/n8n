@@ -1,6 +1,7 @@
 import { STICKY_NODE_TYPE } from '@/constants';
 import type { Diagnostic } from '@codemirror/lint';
 import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
+import { CodeNodeLanguageOption } from './CodeNodeEditor.vue';
 
 export const NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION = [STICKY_NODE_TYPE];
 
@@ -36,7 +37,7 @@ export const DEFAULT_LINTER_DELAY_IN_MS = 500;
 export const OFFSET_FOR_SCRIPT_WRAPPER = 'module.exports = async function() {'.length;
 
 export const CODE_PLACEHOLDERS: Partial<
-	Record<CodeNodeEditorLanguage | 'pythonNative', Record<CodeExecutionMode, string>>
+	Record<CodeNodeLanguageOption, Record<CodeExecutionMode, string>>
 > = {
 	javaScript: {
 		runOnceForAllItems: `
