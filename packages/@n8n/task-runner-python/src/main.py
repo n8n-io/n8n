@@ -46,7 +46,7 @@ async def main():
 
     try:
         await task_runner.start()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, asyncio.CancelledError):
         logger.info("Shutting down...")
     finally:
         await task_runner.stop()
