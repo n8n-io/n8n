@@ -9,14 +9,6 @@ export class CanvasPage extends BasePage {
 		return this.page.getByRole('button', { name: 'Save' });
 	}
 
-	workflowSaveButton(): Locator {
-		return this.page.getByTestId('workflow-save-button');
-	}
-
-	canvasAddButton(): Locator {
-		return this.page.getByTestId('canvas-add-button');
-	}
-
 	nodeCreatorItemByName(text: string): Locator {
 		return this.page.getByTestId('node-creator-item-name').getByText(text, { exact: true });
 	}
@@ -45,16 +37,20 @@ export class CanvasPage extends BasePage {
 		await this.clickByTestId('canvas-plus-button');
 	}
 
+	getCanvasNodes() {
+		return this.page.getByTestId('canvas-node');
+	}
+
 	async clickNodeCreatorPlusButton(): Promise<void> {
 		await this.clickByTestId('node-creator-plus-button');
 	}
 
 	async clickSaveWorkflowButton(): Promise<void> {
-		await this.clickButtonByName('Save');
+		await this.saveWorkflowButton().click();
 	}
 
 	async fillNodeCreatorSearchBar(text: string): Promise<void> {
-		await this.fillByTestId('node-creator-search-bar', text);
+		await this.nodeCreatorSearchBar().fill(text);
 	}
 
 	async clickNodeCreatorItemName(text: string): Promise<void> {
@@ -69,14 +65,14 @@ export class CanvasPage extends BasePage {
 
 	async addNodeAndCloseNDV(text: string, subItemText?: string): Promise<void> {
 		if (subItemText) {
-			await this.addNodeToCanvasWithSubItem(text, subItemText);
+			await this.addNodeWithSubItem(text, subItemText);
 		} else {
 			await this.addNode(text);
 		}
 		await this.page.keyboard.press('Escape');
 	}
 
-	async addNodeToCanvasWithSubItem(searchText: string, subItemText: string): Promise<void> {
+	async addNodeWithSubItem(searchText: string, subItemText: string): Promise<void> {
 		await this.addNode(searchText);
 		await this.nodeCreatorSubItem(subItemText).click();
 	}
@@ -89,6 +85,10 @@ export class CanvasPage extends BasePage {
 		await this.clickSaveWorkflowButton();
 	}
 
+	getExecuteWorkflowButton(): Locator {
+		return this.page.getByTestId('execute-workflow-button');
+	}
+
 	async clickExecuteWorkflowButton(): Promise<void> {
 		await this.page.getByTestId('execute-workflow-button').click();
 	}
@@ -97,12 +97,12 @@ export class CanvasPage extends BasePage {
 		await this.page.getByRole('button', { name: 'Debug in editor' }).click();
 	}
 
-	async pinNodeByNameUsingContextMenu(nodeName: string): Promise<void> {
+	async pinNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
 		await this.page.getByTestId('context-menu').getByText('Pin').click();
 	}
 
-	async unpinNodeByNameUsingContextMenu(nodeName: string): Promise<void> {
+	async unpinNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
 		await this.page.getByText('Unpin').click();
 	}
@@ -215,6 +215,10 @@ export class CanvasPage extends BasePage {
 		return tags;
 	}
 
+	getWorkflowSaveButton(): Locator {
+		return this.page.getByTestId('workflow-save-button');
+	}
+
 	// Production Checklist methods
 	getProductionChecklistButton(): Locator {
 		return this.page.getByTestId('suggested-action-count');
@@ -260,7 +264,164 @@ export class CanvasPage extends BasePage {
 		await this.getProductionChecklistActionItem(actionText).click();
 	}
 
-	getCanvasNodes() {
+	async duplicateNode(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click({ button: 'right' });
+		await this.page.getByTestId('context-menu').getByText('Duplicate').click();
+	}
+
+	getCanvasNodes(): Locator {
 		return this.page.getByTestId('canvas-node');
+	}
+
+	nodeConnections(): Locator {
+		return this.page.locator('[data-test-id="edge"]');
+	}
+
+	canvasNodePlusEndpointByName(nodeName: string): Locator {
+		return this.page
+			.locator(
+				`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
+			)
+			.first();
+	}
+
+	nodeCreatorSearchBar(): Locator {
+		return this.page.getByTestId('node-creator-search-bar');
+	}
+
+	nodeCreatorNodeItems(): Locator {
+		return this.page.getByTestId('node-creator-node-item');
+	}
+
+	nodeCreatorActionItems(): Locator {
+		return this.page.getByTestId('node-creator-action-item');
+	}
+
+	nodeCreatorCategoryItems(): Locator {
+		return this.page.getByTestId('node-creator-category-item');
+	}
+
+	selectedNodes(): Locator {
+		return this.page
+			.locator('[data-test-id="canvas-node"]')
+			.locator('xpath=..')
+			.locator('.selected');
+	}
+
+	disabledNodes(): Locator {
+		return this.page.locator('[data-canvas-node-render-type][class*="disabled"]');
+	}
+
+	nodeExecuteButton(nodeName: string): Locator {
+		return this.nodeToolbar(nodeName).getByTestId('execute-node-button');
+	}
+
+	canvasPane(): Locator {
+		return this.page.getByTestId('canvas-wrapper');
+	}
+
+	// Actions
+
+	async addInitialNodeToCanvas(nodeName: string): Promise<void> {
+		await this.clickCanvasPlusButton();
+		await this.fillNodeCreatorSearchBar(nodeName);
+		await this.clickNodeCreatorItemName(nodeName);
+	}
+
+	async clickNodePlusEndpoint(nodeName: string): Promise<void> {
+		await this.canvasNodePlusEndpointByName(nodeName).click();
+	}
+
+	async executeNode(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).hover();
+		await this.nodeExecuteButton(nodeName).click();
+	}
+
+	async selectAll(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+a');
+	}
+
+	async copyNodes(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+c');
+	}
+
+	async deselectAll(): Promise<void> {
+		await this.canvasPane().click({ position: { x: 10, y: 10 } });
+	}
+
+	getNodeLeftPosition(nodeLocator: Locator): Promise<number> {
+		return nodeLocator.evaluate((el) => el.getBoundingClientRect().left);
+	}
+
+	// Connection helpers
+	connectionBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
+		return this.page.locator(
+			`[data-test-id="edge"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"]`,
+		);
+	}
+
+	connectionToolbarBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
+		return this.page.locator(
+			`[data-test-id="edge-label"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"] [data-test-id="canvas-edge-toolbar"]`,
+		);
+	}
+
+	// Canvas action helpers
+	async addNodeBetweenNodes(
+		sourceNodeName: string,
+		targetNodeName: string,
+		newNodeName: string,
+	): Promise<void> {
+		const specificConnection = this.connectionBetweenNodes(sourceNodeName, targetNodeName);
+		// eslint-disable-next-line playwright/no-force-option
+		await specificConnection.hover({ force: true });
+
+		const addNodeButton = this.connectionToolbarBetweenNodes(
+			sourceNodeName,
+			targetNodeName,
+		).getByTestId('add-connection-button');
+
+		await addNodeButton.click();
+		await this.fillNodeCreatorSearchBar(newNodeName);
+		await this.clickNodeCreatorItemName(newNodeName);
+		await this.page.keyboard.press('Escape');
+	}
+
+	async deleteConnectionBetweenNodes(
+		sourceNodeName: string,
+		targetNodeName: string,
+	): Promise<void> {
+		const specificConnection = this.connectionBetweenNodes(sourceNodeName, targetNodeName);
+		// eslint-disable-next-line playwright/no-force-option
+		await specificConnection.hover({ force: true });
+
+		const deleteButton = this.connectionToolbarBetweenNodes(
+			sourceNodeName,
+			targetNodeName,
+		).getByTestId('delete-connection-button');
+
+		await deleteButton.click();
+	}
+
+	async navigateNodesWithArrows(direction: 'left' | 'right' | 'up' | 'down'): Promise<void> {
+		const keyMap = {
+			left: 'ArrowLeft',
+			right: 'ArrowRight',
+			up: 'ArrowUp',
+			down: 'ArrowDown',
+		};
+		await this.canvasPane().focus();
+		await this.page.keyboard.press(keyMap[direction]);
+	}
+
+	async extendSelectionWithArrows(direction: 'left' | 'right' | 'up' | 'down'): Promise<void> {
+		const keyMap = {
+			left: 'Shift+ArrowLeft',
+			right: 'Shift+ArrowRight',
+			up: 'Shift+ArrowUp',
+			down: 'Shift+ArrowDown',
+		};
+		await this.canvasPane().focus();
+		await this.page.keyboard.press(keyMap[direction]);
 	}
 }
