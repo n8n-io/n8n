@@ -23484,7 +23484,7 @@ snapshots:
       axios: 1.11.0(debug@4.4.1)
       is-retry-allowed: 2.2.0
 
-  axios-retry@4.5.0(axios@1.11.0(debug@4.4.1)):
+  axios-retry@4.5.0(axios@1.11.0):
     dependencies:
       axios: 1.11.0(debug@4.3.6)
       is-retry-allowed: 2.2.0
