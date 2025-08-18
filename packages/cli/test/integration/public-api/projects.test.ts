@@ -48,8 +48,6 @@ describe('Projects in Public API', () => {
 			 */
 			const response = await testServer.publicApiAgentFor(owner).get('/projects');
 
-			console.log(response.body);
-
 			/**
 			 * Assert
 			 */
