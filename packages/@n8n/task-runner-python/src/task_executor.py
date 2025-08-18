@@ -3,16 +3,15 @@ import logging
 import traceback
 import textwrap
 
-from .constants import LOG_FORMAT
 from .errors import TaskExecutionError, TaskTimeoutError
 from .message_types.broker import NodeMode, Items
-
-logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
-logger = logging.getLogger(__name__)
 
 
 class TaskExecutor:
     """Responsible for executing Python code tasks in isolated subprocesses."""
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
 
     @staticmethod
     def create_process(code: str, node_mode: NodeMode, items: Items):

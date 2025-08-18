@@ -3,6 +3,8 @@ import logging
 import os
 import sys
 
+os.environ["WEBSOCKETS_MAX_LOG_SIZE"] = "256"
+
 from .constants import (
     DEFAULT_MAX_CONCURRENCY,
     DEFAULT_TASK_TIMEOUT,
@@ -13,11 +15,12 @@ from .constants import (
     DEFAULT_TASK_BROKER_URI,
     DEFAULT_MAX_PAYLOAD_SIZE,
     ENV_TASK_TIMEOUT,
-    LOG_FORMAT,
 )
+from .logging import setup_logging
 from .task_runner import TaskRunner, TaskRunnerOpts
 
-logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+
+setup_logging()
 
 logger = logging.getLogger(__name__)
 

@@ -13,7 +13,6 @@ from .errors import WebsocketConnectionError, TaskMissingError
 from .message_types.broker import TaskSettings
 
 from .constants import (
-    LOG_FORMAT,
     RUNNER_NAME,
     TASK_TYPE_PYTHON,
     OFFER_INTERVAL,
@@ -40,9 +39,6 @@ from .message_types import (
 from .message_serde import MessageSerde
 from .task_state import TaskState, TaskStatus
 from .task_executor import TaskExecutor
-
-logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
-logger = logging.getLogger(__name__)
 
 
 class TaskOffer:
@@ -84,6 +80,7 @@ class TaskRunner:
         self.offers_coroutine: Optional[asyncio.Task] = None
         self.serde = MessageSerde()
         self.executor = TaskExecutor()
+        self.logger = logging.getLogger(__name__)
 
         websocket_host = urlparse(opts.task_broker_uri).netloc
         self.websocket_url = (
@@ -91,7 +88,7 @@ class TaskRunner:
         )
 
     async def start(self) -> None:
-        logger.info("Starting Python task runner...")
+        self.logger.info("Starting...")
 
         headers = {"Authorization": f"Bearer {self.grant_token}"}
 
@@ -102,22 +99,23 @@ class TaskRunner:
                 max_size=self.opts.max_payload_size,
             )
 
-            logger.info(f"Connected to task broker at {self.websocket_url}")
+            self.logger.info("Connected to broker")
 
             await self._listen_for_messages()
 
         except Exception as e:
-            logger.error(f"Failed to connect to task broker: {e}")
+            self.logger.error(f"Failed to connect to task broker: {e}")
             raise
 
     async def stop(self) -> None:
-        logger.info("Stopping Python task runner...")
+        self.logger.info("Stopping...")
 
         if self.offers_coroutine:
             self.offers_coroutine.cancel()
 
         if self.websocket_connection:
             await self.websocket_connection.close()
+            self.logger.info("Disconnected from broker")
 
     # ========== Messages ==========
 
@@ -130,7 +128,7 @@ class TaskRunner:
                 message = self.serde.deserialize_broker_message(raw_message)
                 await self._handle_message(message)
             except Exception as e:
-                logger.error(f"Error handling message: {e}")
+                self.logger.error(f"Error handling message: {e}")
 
     async def _handle_message(self, message: BrokerMessage) -> None:
         match message:
@@ -145,7 +143,7 @@ class TaskRunner:
             case BrokerTaskCancel():
                 await self._handle_task_cancel(message)
             case _:
-                logger.warning(f"Unhandled message type: {type(message)}")
+                self.logger.warning(f"Unhandled message type: {type(message)}")
 
     async def _handle_info_request(self) -> None:
         response = RunnerInfo(name=self.name, types=[TASK_TYPE_PYTHON])
@@ -154,6 +152,7 @@ class TaskRunner:
     async def _handle_runner_registered(self) -> None:
         self.can_send_offers = True
         self.offers_coroutine = asyncio.create_task(self._send_offers_loop())
+        self.logger.info("Registered with broker")
 
     async def _handle_task_offer_accept(self, message: BrokerTaskOfferAccept) -> None:
         offer = self.open_offers.get(message.offer_id)
@@ -181,19 +180,25 @@ class TaskRunner:
 
         response = RunnerTaskAccepted(task_id=message.task_id)
         await self._send_message(response)
+        self.logger.info(f"Accepted task {message.task_id}")
 
     async def _handle_task_settings(self, message: BrokerTaskSettings) -> None:
         task_state = self.running_tasks.get(message.task_id)
         if task_state is None:
-            logger.warning(f"Received settings for unknown task: {message.task_id}")
+            self.logger.warning(
+                f"Received settings for unknown task: {message.task_id}"
+            )
             return
 
         if task_state.status != TaskStatus.WAITING_FOR_SETTINGS:
-            logger.warning(f"Received settings for task in status: {task_state.status}")
+            self.logger.warning(
+                f"Received settings for task in status: {task_state.status}"
+            )
             return
 
         task_state.status = TaskStatus.RUNNING
         asyncio.create_task(self._execute_task(message.task_id, message.settings))
+        self.logger.info(f"Received task {message.task_id}")
 
     async def _execute_task(self, task_id: str, task_settings: TaskSettings) -> None:
         try:
@@ -214,6 +219,7 @@ class TaskRunner:
 
             response = RunnerTaskDone(task_id=task_id, data={"result": result})
             await self._send_message(response)
+            self.logger.info(f"Completed task {task_id}")
 
         except Exception as e:
             response = RunnerTaskError(task_id=task_id, error={"message": str(e)})
@@ -226,7 +232,7 @@ class TaskRunner:
         task_state = self.running_tasks.get(message.task_id)
 
         if task_state is None:
-            logger.warning(f"Received cancel for unknown task: {message.task_id}")
+            self.logger.warning(f"Received cancel for unknown task: {message.task_id}")
             return
 
         if task_state.status == TaskStatus.WAITING_FOR_SETTINGS:
@@ -255,7 +261,7 @@ class TaskRunner:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error sending offers: {e}")
+                self.logger.error(f"Error sending offers: {e}")
 
     async def _send_offers(self) -> None:
         if not self.can_send_offers:
