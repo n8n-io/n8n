@@ -266,7 +266,7 @@ export class LmChatOpenAi implements INodeType {
 					{
 						displayName: 'Reasoning Effort',
 						name: 'reasoningEffort',
-						default: 'medium',
+						default: 'minimal',
 						description:
 							'Controls the amount of reasoning tokens to use. A value of "low" will favor speed and economical token usage, "high" will favor more complete reasoning at the cost of more tokens generated and slower responses.',
 						type: 'options',
@@ -342,87 +342,72 @@ export class LmChatOpenAi implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('openAiApi');
+  const credentials = await this.getCredentials('openAiApi');
 
-		const version = this.getNode().typeVersion;
-		const modelName =
-			version >= 1.2
-				? (this.getNodeParameter('model.value', itemIndex) as string)
-				: (this.getNodeParameter('model', itemIndex) as string);
+  const version = this.getNode().typeVersion;
+  const modelName =
+    version >= 1.2
+      ? (this.getNodeParameter('model.value', itemIndex) as string)
+      : (this.getNodeParameter('model', itemIndex) as string);
 
-		const rawOptions = this.getNodeParameter('options', itemIndex, {}) as {
-  baseURL?: string;
-  frequencyPenalty?: number;
-  maxTokens?: number;
-  maxRetries: number;
-  timeout: number;
-  presencePenalty?: number;
-  temperature?: number;
-  topP?: number;
-  responseFormat?: 'text' | 'json_object';
-  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high';
-  textVerbosity?: 'low' | 'medium' | 'high';
-};
-const { reasoningEffort, textVerbosity, responseFormat, ...restOptions } = rawOptions;
+  // Keep the variable name `options` so any later references remain valid
+  const options = this.getNodeParameter('options', itemIndex, {}) as {
+    baseURL?: string;
+    frequencyPenalty?: number;
+    maxTokens?: number;
+    maxRetries?: number;
+    timeout?: number;
+    presencePenalty?: number;
+    temperature?: number;
+    topP?: number;
+    responseFormat?: 'text' | 'json_object';
+    reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high';
+    textVerbosity?: 'low' | 'medium' | 'high';
+  };
 
-		const configuration: ClientOptions = {};
+  // Pull out only what we need for modelKwargs, spread the rest into ChatOpenAI
+  const { reasoningEffort, textVerbosity, responseFormat, baseURL, ...restOptions } = options;
 
-		if (options.baseURL) {
-			configuration.baseURL = options.baseURL;
-		} else if (credentials.url) {
-			configuration.baseURL = credentials.url as string;
-		}
+const configuration: ClientOptions = {};
+if (baseURL) configuration.baseURL = baseURL;
+else if (credentials.url) configuration.baseURL = credentials.url as string;
 
-		if (configuration.baseURL) {
-			configuration.fetchOptions = {
-				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
-			};
-		}
-
-		// Extra options to send to OpenAI, that are not directly supported by LangChain
-const modelKwargs: Record<string, any> = {};
-
-// Response format (chat/completions JSON mode)
-if (options.responseFormat) {
-  modelKwargs.response_format = { type: options.responseFormat };
-}
-
-// Reasoning/verbosity mapping by model family
-const isGpt5 = typeof modelName === 'string' && modelName.startsWith('gpt-5');
-const isOseries = /^o1([-\d]+)?$/.test(modelName) || /^o[3-9].*/.test(modelName);
-
-// GPT-5: use nested objects
-if (isGpt5) {
-  if (options.reasoningEffort) {
-    modelKwargs.reasoning = { effort: options.reasoningEffort };
+  if (configuration.baseURL) {
+    configuration.fetchOptions = {
+      dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
+    };
   }
-  if (options.textVerbosity) {
-    modelKwargs.text = { verbosity: options.textVerbosity };
+
+  // ---- Build modelKwargs (extra fields not exposed directly by LangChain) ----
+  const modelKwargs: Record<string, any> = {};
+  if (responseFormat === 'json_object') {
+  modelKwargs.response_format = { type: 'json_object' };
+}
+
+  // Choose field shape based on model family
+  const isGpt5 = typeof modelName === 'string' && modelName.startsWith('gpt-5');
+  const isOseries = /^o1([-\d]+)?$/.test(modelName) || /^o[3-9].*/.test(modelName);
+
+  if (isGpt5) {
+    if (reasoningEffort) modelKwargs.reasoning = { effort: reasoningEffort };
+    if (textVerbosity)  modelKwargs.text      = { verbosity: textVerbosity };
+  } else if (isOseries && reasoningEffort) {
+    // o-series uses top-level reasoning_effort and doesn’t support "minimal"
+    modelKwargs.reasoning_effort = reasoningEffort === 'minimal' ? 'low' : reasoningEffort;
   }
+
+  const model = new ChatOpenAI({
+    apiKey: credentials.apiKey as string,
+    model: modelName,
+    ...restOptions,                          // cleaned options
+    timeout: options.timeout ?? 60000,       // still read these from `options`
+    maxRetries: options.maxRetries ?? 2,
+    configuration,
+    callbacks: [new N8nLlmTracing(this)],
+    modelKwargs,
+    onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
+  });
+
+  return { response: model };
 }
-
-// o1 / o3+: keep legacy key
-if (isOseries && options.reasoningEffort) {
-  // For o-series, OpenAI expects top-level `reasoning_effort`
-  modelKwargs.reasoning_effort = options.reasoningEffort === 'minimal'
-    ? 'low' // o-series has no "minimal"; map to "low"
-    : options.reasoningEffort;
-}
-
-		const model = new ChatOpenAI({
-  apiKey: credentials.apiKey as string,
-  model: modelName,
-  ...options,
-  timeout: options.timeout ?? 60000,
-  maxRetries: options.maxRetries ?? 2,
-  configuration,
-  callbacks: [new N8nLlmTracing(this)],
-  modelKwargs, // ← stays here
-  onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
-});
-
-		return {
-			response: model,
-		};
-	}
 }
