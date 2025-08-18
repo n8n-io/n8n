@@ -1,10 +1,5 @@
 import mock from 'jest-mock-extended/lib/Mock';
-import type {
-	ICredentialType,
-	INodeCredentialTestResult,
-	INodeType,
-	IWorkflowExecuteAdditionalData,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
@@ -46,12 +41,10 @@ describe('CredentialsTester', () => {
 	});
 
 	describe('testCredentials', () => {
-		const testCredentialsFunctionReturn: INodeCredentialTestResult = {
-			status: 'Error',
-			message: 'Test failed for apiKey secret_api_key',
-		};
+		let mockTestFunction: jest.Mock;
 
 		beforeEach(() => {
+			mockTestFunction = jest.fn();
 			credentialTypes.getByName.mockReturnValue(mock<ICredentialType>({ test: undefined }));
 			credentialTypes.getSupportedNodes.mockReturnValue(['testCredentials']);
 			credentialTypes.getParentTypes.mockReturnValue([]);
@@ -59,7 +52,7 @@ describe('CredentialsTester', () => {
 				mock<INodeType>({
 					methods: {
 						credentialTest: {
-							testCredentialsFunction: async () => testCredentialsFunctionReturn,
+							testCredentialsFunction: mockTestFunction,
 						},
 					},
 					description: {
@@ -73,6 +66,11 @@ describe('CredentialsTester', () => {
 		});
 
 		it('should redact secrets in error messages', async () => {
+			mockTestFunction.mockResolvedValue({
+				status: 'Error',
+				message: 'Test failed for apiKey secret_api_key',
+			});
+
 			const computedCredentialsData = {
 				testNestedData: {
 					access_token: 'abc123',
@@ -106,6 +104,11 @@ describe('CredentialsTester', () => {
 		});
 
 		it('should not redact secrets with value shorter than 3 characters', async () => {
+			mockTestFunction.mockResolvedValue({
+				status: 'Error',
+				message: 'Test failed for apiKey se',
+			});
+
 			const computedCredentialsData = {
 				testNestedData: {
 					access_token: 'abc123',
@@ -123,7 +126,6 @@ describe('CredentialsTester', () => {
 					apiKey: '{{ $secrets.apiKey }}',
 				},
 			};
-			testCredentialsFunctionReturn.message = 'Test failed for apiKey se';
 			const redactedMessage = await credentialsTester.testCredentials(
 				'user-id',
 				'testCredentials',

@@ -86,7 +86,10 @@ const getAllKeys = (
 const getAllKeyValuesAsString = (obj: unknown, keys: string[]): string[] => {
 	const result: string[] = [];
 	if (Array.isArray(obj)) {
-		result.push(...obj.flatMap((item) => getAllKeyValuesAsString(item, keys)));
+		result.push.apply(
+			result,
+			obj.flatMap((item) => getAllKeyValuesAsString(item, keys)),
+		);
 	} else if (typeof obj === 'object' && obj !== null) {
 		Object.keys(obj).forEach((key) => {
 			// Check if the key is in the list of keys to filter
@@ -96,7 +99,10 @@ const getAllKeyValuesAsString = (obj: unknown, keys: string[]): string[] => {
 					result.push(value.toString());
 				}
 			} else {
-				result.push(...getAllKeyValuesAsString((obj as Record<string, unknown>)[key], keys));
+				result.push.apply(
+					result,
+					getAllKeyValuesAsString((obj as Record<string, unknown>)[key], keys),
+				);
 			}
 		});
 	}
@@ -216,6 +222,8 @@ export class CredentialsTester {
 			// Filter out short values as it's obviously either an error
 			// or a "debug" value that we do not want to redact
 			.filter((value) => value.length > 3)
+			// Sort by descending length to avoid partial redaction of longer secrets
+			.sort((a, b) => b.length - a.length)
 			.forEach((value) => {
 				message = message.replaceAll(value, `*****${value.slice(-3)}`);
 			});
