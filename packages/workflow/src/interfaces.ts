@@ -13,7 +13,10 @@ import type { SecureContextOptions } from 'tls';
 import type { URLSearchParams } from 'url';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './constants';
-import type { IDataStoreProjectService } from './data-store.types';
+import type {
+	IDataStoreProjectAggregateService,
+	IDataStoreProjectService,
+} from './data-store.types';
 import type { IDeferredPromise } from './deferred-promise';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
@@ -917,24 +920,21 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 
 export type ContextType = 'flow' | 'node';
 
-export type DataStoreProxy = {
+export type DataStoreProxyProvider = {
+	getDataStoreAggregateProxy(
+		workflow: Workflow,
+		node: INode,
+	): Promise<IDataStoreProjectAggregateService>;
 	getDataStoreProxy(
 		workflow: Workflow,
 		node: INode,
-		dataStoreId?: undefined,
-	): Promise<Pick<IDataStoreProjectService, 'getManyAndCount'>>;
-	getDataStoreProxy(
-		workflow: Workflow,
-		node: INode,
-		dataStoreId?: string,
+		dataStoreId: string,
 	): Promise<IDataStoreProjectService>;
 };
 
 export type DataStoreProxyFunctions = {
-	getDataStoreProxy(
-		dataStoreId?: undefined,
-	): Promise<Pick<IDataStoreProjectService, 'getManyAndCount'>>;
-	getDataStoreProxy(dataStoreId?: string): Promise<IDataStoreProjectService>;
+	getDataStoreAggregateProxy(): Promise<IDataStoreProjectAggregateService>;
+	getDataStoreProxy(dataStoreId: string): Promise<IDataStoreProjectService>;
 };
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {

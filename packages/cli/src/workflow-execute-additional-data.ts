@@ -379,7 +379,7 @@ export async function getBase(
 	const eventService = Container.get(EventService);
 
 	return {
-		dataStoreProxy: Container.get(DataStoreProxyService),
+		dataStoreProxyProvider: Container.get(DataStoreProxyService),
 		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,

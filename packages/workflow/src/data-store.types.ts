@@ -74,17 +74,19 @@ export type DataStoreColumnJsType = string | number | boolean | Date;
 
 export type DataStoreRows = Array<Record<PropertyKey, DataStoreColumnJsType | null>>;
 
-// API for a data store service operating on a specific projectId
-export interface IDataStoreProjectService {
+// APIs for a data store service operating on a specific projectId
+export interface IDataStoreProjectAggregateService {
 	createDataStore(options: CreateDataStoreOptions): Promise<DataStore>;
-
-	updateDataStore(options: UpdateDataStoreOptions): Promise<boolean>;
 
 	getManyAndCount(options: ListDataStoreOptions): Promise<{ count: number; data: DataStore[] }>;
 
 	deleteDataStoreAll(): Promise<boolean>;
+}
+// APIs for a data store service operating on a specific projectId and dataStoreId
+export interface IDataStoreProjectService {
+	updateDataStore(options: UpdateDataStoreOptions): Promise<boolean>;
 
-	deleteDataStore(dataStoreId: string): Promise<boolean>;
+	deleteDataStore(): Promise<boolean>;
 
 	getColumns(): Promise<DataStoreColumn[]>;
 

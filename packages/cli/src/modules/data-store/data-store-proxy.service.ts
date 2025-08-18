@@ -7,6 +7,7 @@ import {
 	DataStore,
 	DataStoreColumn,
 	DataStoreRows,
+	IDataStoreProjectAggregateService,
 	IDataStoreProjectService,
 	INode,
 	ListDataStoreOptions,
@@ -17,15 +18,9 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-// Aggregate operations (project-level, don't require specific dataStoreId)
-type DataStoreAggregateOperations = Pick<
-	IDataStoreProjectService,
-	'getManyAndCount' | 'createDataStore' | 'deleteDataStoreAll'
->;
+import { DataStoreService } from './data-store.service';
 
 import { OwnershipService } from '@/services/ownership.service';
-
-import { DataStoreService } from './data-store.service';
 
 @Service()
 export class DataStoreProxyService {
@@ -37,30 +32,41 @@ export class DataStoreProxyService {
 		this.logger = this.logger.scoped('data-store');
 	}
 
-	async getDataStoreProxy(
-		workflow: Workflow,
-		node: INode,
-		dataStoreId?: undefined,
-	): Promise<DataStoreAggregateOperations>;
-	async getDataStoreProxy(
-		workflow: Workflow,
-		node: INode,
-		dataStoreId?: string,
-	): Promise<IDataStoreProjectService>;
-	async getDataStoreProxy<T extends string | undefined>(
-		workflow: Workflow,
-		node: INode,
-		dataStoreId?: T,
-	): Promise<IDataStoreProjectService | DataStoreAggregateOperations> {
+	private validateRequest(node: INode) {
 		if (node.type !== 'n8n-nodes-base.dataStore') {
 			throw new Error('This proxy is only available for data store nodes');
 		}
+	}
 
+	private async getProjectId(workflow: Workflow) {
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflow.id);
-		const projectId = homeProject.id;
-		const dataStoreService = this.dataStoreService;
+		return homeProject.id;
+	}
 
-		const aggregateOperations = {
+	async getDataStoreAggregateProxy(
+		workflow: Workflow,
+		node: INode,
+	): Promise<IDataStoreProjectAggregateService> {
+		this.validateRequest(node);
+		const projectId = await this.getProjectId(workflow);
+
+		return this.makeAggregateOperations(projectId);
+	}
+
+	async getDataStoreProxy(
+		workflow: Workflow,
+		node: INode,
+		dataStoreId: string,
+	): Promise<IDataStoreProjectService> {
+		this.validateRequest(node);
+		const projectId = await this.getProjectId(workflow);
+
+		return this.makeDataStoreOperations(projectId, dataStoreId);
+	}
+
+	private makeAggregateOperations(projectId: string): IDataStoreProjectAggregateService {
+		const dataStoreService = this.dataStoreService;
+		return {
 			async getManyAndCount(options: ListDataStoreOptions = {}) {
 				const serviceOptions: DataStoreListOptions = {
 					...options,
@@ -77,57 +83,53 @@ export class DataStoreProxyService {
 				return await dataStoreService.deleteDataStoreByProjectId(projectId);
 			},
 		};
+	}
 
-		const dataStoreSpecificOperations =
-			dataStoreId === undefined
-				? {}
-				: {
-						// DataStore management
-						async updateDataStore(options: UpdateDataStoreOptions): Promise<boolean> {
-							return await dataStoreService.updateDataStore(dataStoreId, projectId, options);
-						},
-
-						async deleteDataStore(): Promise<boolean> {
-							return await dataStoreService.deleteDataStore(dataStoreId, projectId);
-						},
-
-						// Column operations
-						async getColumns(): Promise<DataStoreColumn[]> {
-							return await dataStoreService.getColumns(dataStoreId, projectId);
-						},
-
-						async addColumn(options: AddDataStoreColumnOptions): Promise<DataStoreColumn> {
-							return await dataStoreService.addColumn(dataStoreId, projectId, options);
-						},
-
-						async moveColumn(
-							columnId: string,
-							options: MoveDataStoreColumnOptions,
-						): Promise<boolean> {
-							return await dataStoreService.moveColumn(dataStoreId, projectId, columnId, options);
-						},
-
-						async deleteColumn(columnId: string): Promise<boolean> {
-							return await dataStoreService.deleteColumn(dataStoreId, projectId, columnId);
-						},
-
-						// Row operations
-						async getManyRowsAndCount(options: Partial<ListDataStoreRowsOptions>) {
-							return await dataStoreService.getManyRowsAndCount(dataStoreId, projectId, options);
-						},
-
-						async insertRows(rows: DataStoreRows) {
-							return await dataStoreService.insertRows(dataStoreId, projectId, rows);
-						},
-
-						async upsertRows(options: UpsertDataStoreRowsOptions) {
-							return await dataStoreService.upsertRows(dataStoreId, projectId, options);
-						},
-					};
+	private makeDataStoreOperations(
+		projectId: string,
+		dataStoreId: string,
+	): Omit<IDataStoreProjectService, keyof IDataStoreProjectAggregateService> {
+		const dataStoreService = this.dataStoreService;
 
 		return {
-			...aggregateOperations,
-			...dataStoreSpecificOperations,
+			// DataStore management
+			async updateDataStore(options: UpdateDataStoreOptions): Promise<boolean> {
+				return await dataStoreService.updateDataStore(dataStoreId, projectId, options);
+			},
+
+			async deleteDataStore(): Promise<boolean> {
+				return await dataStoreService.deleteDataStore(dataStoreId, projectId);
+			},
+
+			// Column operations
+			async getColumns(): Promise<DataStoreColumn[]> {
+				return await dataStoreService.getColumns(dataStoreId, projectId);
+			},
+
+			async addColumn(options: AddDataStoreColumnOptions): Promise<DataStoreColumn> {
+				return await dataStoreService.addColumn(dataStoreId, projectId, options);
+			},
+
+			async moveColumn(columnId: string, options: MoveDataStoreColumnOptions): Promise<boolean> {
+				return await dataStoreService.moveColumn(dataStoreId, projectId, columnId, options);
+			},
+
+			async deleteColumn(columnId: string): Promise<boolean> {
+				return await dataStoreService.deleteColumn(dataStoreId, projectId, columnId);
+			},
+
+			// Row operations
+			async getManyRowsAndCount(options: Partial<ListDataStoreRowsOptions>) {
+				return await dataStoreService.getManyRowsAndCount(dataStoreId, projectId, options);
+			},
+
+			async insertRows(rows: DataStoreRows) {
+				return await dataStoreService.insertRows(dataStoreId, projectId, rows);
+			},
+
+			async upsertRows(options: UpsertDataStoreRowsOptions) {
+				return await dataStoreService.upsertRows(dataStoreId, projectId, options);
+			},
 		};
 	}
 }
