@@ -1812,7 +1812,7 @@ const onNameSubmit = async (name: string) => {
 				icon="bolt-filled"
 				:class="$style['easy-ai-workflow-callout']"
 			>
-				{{ i18n.baseText('workflows.readyToRunWorkflows.callout') }}
+				{{ readyToRunWorkflowsStore.getCalloutText() }}
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
@@ -1821,7 +1821,7 @@ const onNameSubmit = async (name: string) => {
 							type="secondary"
 							@click="handleCreateReadyToRunWorkflows('callout')"
 						>
-							{{ i18n.baseText('workflows.readyToRunWorkflows.cta') }}
+							{{ i18n.baseText('generic.startNow') }}
 						</N8nButton>
 						<N8nIcon
 							size="small"
@@ -2049,11 +2049,11 @@ const onNameSubmit = async (name: string) => {
 							<N8nIcon
 								:class="$style.emptyStateCardIcon"
 								:stroke-width="1.5"
-								icon="zap"
+								icon="package-open"
 								color="foreground-dark"
 							/>
 							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ i18n.baseText('workflows.readyToRunWorkflows.card') }}
+								{{ readyToRunWorkflowsStore.getCardText() }}
 							</N8nText>
 						</div>
 					</N8nCard>
