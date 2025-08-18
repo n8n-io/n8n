@@ -94,56 +94,31 @@ export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
 };
 
 /**
- * Recursively gets all keys of an object or array, filtered by the provided value filter.
+ * Recursively gets all key paths of an object or array, filtered by the provided value filter.
  * @param obj - The object or array to search.
  * @param keys - The array to store matching keys.
  * @param valueFilter - A function to filter values.
- * @returns The array of matching keys.
+ * @returns The array of matching key paths.
  */
-export const getAllKeys = (
+export const getAllKeyPaths = (
 	obj: unknown,
-	keys: string[],
+	currentPath = '',
+	paths: string[] = [],
 	valueFilter: (value: string) => boolean,
 ): string[] => {
 	if (Array.isArray(obj)) {
-		obj.forEach((item) => getAllKeys(item, keys, valueFilter));
+		obj.forEach((item, index) =>
+			getAllKeyPaths(item, `${currentPath}[${index}]`, paths, valueFilter),
+		);
 	} else if (obj && typeof obj === 'object') {
 		for (const [key, value] of Object.entries(obj)) {
-			if (typeof value === 'string' && valueFilter(value)) keys.push(key);
-			else getAllKeys(value, keys, valueFilter);
+			const newPath = currentPath ? `${currentPath}.${key}` : key;
+			if (typeof value === 'string' && valueFilter(value)) {
+				paths.push(newPath);
+			} else {
+				getAllKeyPaths(value, newPath, paths, valueFilter);
+			}
 		}
 	}
-	return keys;
-};
-
-/**
- * Gets all stringified values of an object, filtered by the provided keys subset.
- * @param obj - The object or array to search.
- * @param keys - The subset of keys to filter.
- * @returns An array of stringified values for the matching keys.
- */
-export const getAllKeyValuesAsString = (obj: unknown, keys: string[]): string[] => {
-	const result: string[] = [];
-	if (Array.isArray(obj)) {
-		result.push.apply(
-			result,
-			obj.flatMap((item) => getAllKeyValuesAsString(item, keys)),
-		);
-	} else if (typeof obj === 'object' && obj !== null) {
-		Object.keys(obj).forEach((key) => {
-			// Check if the key is in the list of keys to filter
-			if (keys.includes(key)) {
-				const value = (obj as Record<string, unknown>)[key];
-				if (typeof value !== 'undefined' && value !== null) {
-					result.push(value.toString());
-				}
-			} else {
-				result.push.apply(
-					result,
-					getAllKeyValuesAsString((obj as Record<string, unknown>)[key], keys),
-				);
-			}
-		});
-	}
-	return result;
+	return paths;
 };

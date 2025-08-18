@@ -29,13 +29,13 @@ import type {
 } from 'n8n-workflow';
 import { VersionedNodeType, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
 
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { CredentialsHelper } from '../credentials-helper';
-
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
+import { getAllKeyPaths } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { getAllKeys, getAllKeyValuesAsString } from '@/utils';
+
+import { RESPONSE_ERROR_MESSAGES } from '../constants';
+import { CredentialsHelper } from '../credentials-helper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -103,7 +103,7 @@ export class CredentialsTester {
 			const allNodeTypes: INodeType[] = [];
 			if (node instanceof VersionedNodeType) {
 				// Node is versioned
-				allNodeTypes.push(...Object.values(node.nodeVersions));
+				allNodeTypes.push.apply(allNodeTypes, Object.values(node.nodeVersions));
 			} else {
 				// Node is not versioned
 				allNodeTypes.push(node as INodeType);
@@ -168,21 +168,18 @@ export class CredentialsTester {
 	private redactSecrets(
 		message: string,
 		credentialsData: ICredentialsDecrypted['data'],
-		secretKeys: string[],
+		secretPaths: string[],
 	): string {
-		if (secretKeys.length === 0) {
+		if (secretPaths.length === 0) {
 			return message;
 		}
-		const credentialsDataSecretsKeyValue = getAllKeyValuesAsString(credentialsData, secretKeys);
-		Object.values(credentialsDataSecretsKeyValue)
-			// Filter out short values as it's obviously either an error
-			// or a "debug" value that we do not want to redact
-			.filter((value) => value.length > 3)
-			// Sort by descending length to avoid partial redaction of longer secrets
-			.sort((a, b) => b.length - a.length)
-			.forEach((value) => {
-				message = message.replaceAll(value, `*****${value.slice(-3)}`);
-			});
+		const updatedSecrets = secretPaths
+			.map((path) => get(credentialsData, path))
+			.filter((value) => value !== undefined);
+
+		updatedSecrets.forEach((value) => {
+			message = message.replaceAll(value.toString(), `*****${value.toString().slice(-3)}`);
+		});
 		return message;
 	}
 
@@ -206,7 +203,7 @@ export class CredentialsTester {
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(userId);
 
 				// Keep all credentials data keys which have a secret value
-				credentialsDataSecretKeys = getAllKeys(credentialsDecrypted.data, [], (value) =>
+				credentialsDataSecretKeys = getAllKeyPaths(credentialsDecrypted.data, '', [], (value) =>
 					value.includes('$secrets.'),
 				);
 				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(

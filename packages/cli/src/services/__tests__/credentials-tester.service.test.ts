@@ -85,7 +85,9 @@ describe('CredentialsTester', () => {
 				...computedCredentialsData,
 				testNestedData: {
 					...computedCredentialsData.testNestedData,
-					apiKey: '{{ $secrets.apiKey }}',
+					secretData: {
+						apiKey: '{{ $secrets.apiKey }}',
+					},
 				},
 			};
 			const redactedMessage = await credentialsTester.testCredentials(
