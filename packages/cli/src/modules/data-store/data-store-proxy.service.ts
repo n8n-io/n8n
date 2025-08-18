@@ -84,44 +84,44 @@ export class DataStoreProxyService {
 				: {
 						// DataStore management
 						async updateDataStore(options: UpdateDataStoreOptions): Promise<boolean> {
-							return await dataStoreService.updateDataStore(dataStoreId, options);
+							return await dataStoreService.updateDataStore(dataStoreId, projectId, options);
 						},
 
 						async deleteDataStore(): Promise<boolean> {
-							return await dataStoreService.deleteDataStore(dataStoreId);
+							return await dataStoreService.deleteDataStore(dataStoreId, projectId);
 						},
 
 						// Column operations
 						async getColumns(): Promise<DataStoreColumn[]> {
-							return await dataStoreService.getColumns(dataStoreId);
+							return await dataStoreService.getColumns(dataStoreId, projectId);
 						},
 
 						async addColumn(options: AddDataStoreColumnOptions): Promise<DataStoreColumn> {
-							return await dataStoreService.addColumn(dataStoreId, options);
+							return await dataStoreService.addColumn(dataStoreId, projectId, options);
 						},
 
 						async moveColumn(
 							columnId: string,
 							options: MoveDataStoreColumnOptions,
 						): Promise<boolean> {
-							return await dataStoreService.moveColumn(dataStoreId, columnId, options);
+							return await dataStoreService.moveColumn(dataStoreId, projectId, columnId, options);
 						},
 
 						async deleteColumn(columnId: string): Promise<boolean> {
-							return await dataStoreService.deleteColumn(dataStoreId, columnId);
+							return await dataStoreService.deleteColumn(dataStoreId, projectId, columnId);
 						},
 
 						// Row operations
 						async getManyRowsAndCount(options: Partial<ListDataStoreRowsOptions>) {
-							return await dataStoreService.getManyRowsAndCount(dataStoreId, options);
+							return await dataStoreService.getManyRowsAndCount(dataStoreId, projectId, options);
 						},
 
 						async insertRows(rows: DataStoreRows) {
-							return await dataStoreService.insertRows(dataStoreId, rows);
+							return await dataStoreService.insertRows(dataStoreId, projectId, rows);
 						},
 
 						async upsertRows(options: UpsertDataStoreRowsOptions) {
-							return await dataStoreService.upsertRows(dataStoreId, options);
+							return await dataStoreService.upsertRows(dataStoreId, projectId, options);
 						},
 					};
 
