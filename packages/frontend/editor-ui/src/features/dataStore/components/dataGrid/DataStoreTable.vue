@@ -293,17 +293,17 @@ onMounted(async () => {
 	--ag-font-size: var(--font-size-xs);
 	--ag-row-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 
-	--ag-header-background-color: var(--color-background-base);
+	--ag-header-background-color: var(--color-background-light-base);
 	--ag-header-font-size: var(--font-size-xs);
 	--ag-header-font-weight: var(--font-weight-bold);
 	--ag-header-foreground-color: var(--color-text-dark);
 	--ag-cell-horizontal-padding: var(--spacing-2xs);
-	--ag-header-column-resize-handle-color: var(--border-color-base);
+	--ag-header-column-resize-handle-color: var(--color-foreground-base);
 	--ag-header-column-resize-handle-height: 100%;
 	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 
 	:global(.ag-header-cell-resize) {
-		width: var(--spacing-4xs);
+		width: var(--spacing-xs);
 	}
 }
 
