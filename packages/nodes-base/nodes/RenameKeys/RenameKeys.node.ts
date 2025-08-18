@@ -1,7 +1,8 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
-import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, deepCopy } from 'n8n-workflow';
+import { isSafe } from 'redos-detector';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -182,7 +183,10 @@ export class RenameKeys implements INodeType {
 			const flags = (caseInsensitive as boolean) ? 'i' : undefined;
 
 			const regex = new RegExp(searchRegex as string, flags);
-
+			const safetyResult = isSafe(regex);
+			if (!safetyResult.safe) {
+				throw new NodeOperationError(this.getNode(), 'Unsafe regex pattern detected');
+			}
 			const renameObjectKeys = (obj: IDataObject, objDepth: number) => {
 				for (const key in obj) {
 					if (Array.isArray(obj)) {
