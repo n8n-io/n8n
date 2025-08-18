@@ -129,9 +129,7 @@ test.describe('Security Notifications', () => {
 			await n8n.goHome();
 
 			// Verify security notification appears with default message
-			const notification = n8n.notifications.notificationContainerByText(
-				'Critical update available',
-			);
+			const notification = n8n.notifications.getNotificationByTitle('Critical update available');
 			await expect(notification).toBeVisible();
 			await expect(notification).toContainText('Please update to latest version.');
 			await expect(notification).toContainText('More info');
@@ -153,7 +151,7 @@ test.describe('Security Notifications', () => {
 			await n8n.goHome();
 
 			// Verify notification shows specific fix version (dynamically generated)
-			const notificationWithFixVersion = n8n.notifications.notificationContainerByText(
+			const notificationWithFixVersion = n8n.notifications.getNotificationByTitle(
 				'Critical update available',
 			);
 			await expect(notificationWithFixVersion).toBeVisible();
@@ -174,9 +172,7 @@ test.describe('Security Notifications', () => {
 			await n8n.goHome();
 
 			// Wait for and click the security notification
-			const notification = n8n.notifications.notificationContainerByText(
-				'Critical update available',
-			);
+			const notification = n8n.notifications.getNotificationByTitle('Critical update available');
 			await expect(notification).toBeVisible();
 			await notification.click();
 
@@ -199,9 +195,7 @@ test.describe('Security Notifications', () => {
 			await n8n.goHome();
 
 			// Verify no security notification appears when no security issue
-			const notification = n8n.notifications.notificationContainerByText(
-				'Critical update available',
-			);
+			const notification = n8n.notifications.getNotificationByTitle('Critical update available');
 			await expect(notification).toBeHidden();
 		});
 
@@ -212,9 +206,7 @@ test.describe('Security Notifications', () => {
 			await n8n.goHome();
 
 			// Verify no security notification appears on API failure
-			const notification = n8n.notifications.notificationContainerByText(
-				'Critical update available',
-			);
+			const notification = n8n.notifications.getNotificationByTitle('Critical update available');
 			await expect(notification).toBeHidden();
 
 			// Verify the app still functions normally

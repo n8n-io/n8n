@@ -1,5 +1,4 @@
-import type { UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
-import type { CreateApiKeyRequestDto } from '@n8n/api-types/src/dto/api-keys/create-api-key-request.dto';
+import type { CreateApiKeyRequestDto, UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
