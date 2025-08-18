@@ -100,8 +100,8 @@ export const addDataStoreColumnApi = async (
 export const deleteDataStoreColumnApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
+	projectId: string,
 	columnId: string,
-	projectId?: string,
 ) => {
 	return await makeRestApiRequest<boolean>(
 		context,
@@ -113,9 +113,9 @@ export const deleteDataStoreColumnApi = async (
 export const moveDataStoreColumnApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
+	projectId: string,
 	columnId: string,
 	targetIndex: number,
-	projectId?: string,
 ) => {
 	return await makeRestApiRequest<boolean>(
 		context,
