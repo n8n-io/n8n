@@ -29,6 +29,7 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 import { Telemetry } from '@/telemetry';
 import { executeWorkflow, getBase, getRunData } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { DataStoreProxyService } from '@/modules/data-store/data-store-proxy.service';
 
 const EXECUTION_ID = '123';
 const LAST_NODE_EXECUTED = 'Last node executed';
@@ -98,6 +99,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(CredentialsPermissionChecker);
 	mockInstance(SubworkflowPolicyChecker);
 	mockInstance(WorkflowStatisticsService);
+	mockInstance(DataStoreProxyService);
 
 	const urlService = mockInstance(UrlService);
 	Container.set(UrlService, urlService);
