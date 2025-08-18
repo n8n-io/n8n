@@ -1940,6 +1940,214 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
 		expect(rowsInDb.count).toBe(0);
 	});
+
+	test('should insert columns with dates', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'a',
+					type: 'date',
+				},
+				{
+					name: 'b',
+					type: 'date',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					a: '2025-08-15T09:48:14.259Z',
+					b: '2025-08-15T12:34:56+02:00',
+				},
+			],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({
+			a: '2025-08-15T09:48:14.259Z',
+			b: '2025-08-15T10:34:56.000Z',
+		});
+	});
+
+	test('should insert columns with strings', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'a',
+					type: 'string',
+				},
+				{
+					name: 'b',
+					type: 'string',
+				},
+				{
+					name: 'c',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					a: 'some string',
+					b: '',
+					c: '2025-08-15T09:48:14.259Z',
+				},
+			],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject(payload.data[0]);
+	});
+
+	test('should insert columns with booleans', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'a',
+					type: 'boolean',
+				},
+				{
+					name: 'b',
+					type: 'boolean',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					a: true,
+					b: false,
+				},
+			],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject(payload.data[0]);
+	});
+
+	test('should insert columns with numbers', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'a',
+					type: 'number',
+				},
+				{
+					name: 'b',
+					type: 'number',
+				},
+				{
+					name: 'c',
+					type: 'number',
+				},
+				{
+					name: 'd',
+					type: 'number',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					a: 1,
+					b: 0,
+					c: -1,
+					d: 0.2340439341231259,
+				},
+			],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject(payload.data[0]);
+	});
+
+	test('should insert columns with null values', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'a',
+					type: 'string',
+				},
+				{
+					name: 'b',
+					type: 'number',
+				},
+				{
+					name: 'c',
+					type: 'boolean',
+				},
+				{
+					name: 'd',
+					type: 'date',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					a: null,
+					b: null,
+					c: null,
+					d: null,
+				},
+			],
+		};
+
+		await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject(payload.data[0]);
+	});
 });
 
 describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
