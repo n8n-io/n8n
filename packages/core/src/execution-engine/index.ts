@@ -7,7 +7,7 @@ declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
 		hooks?: ExecutionLifecycleHooks;
 		externalSecretsProxy: ExternalSecretsProxy;
-		dataStoreProxyProvider: DataStoreProxyProvider;
+		dataStoreProxyProvider?: DataStoreProxyProvider;
 	}
 }
 

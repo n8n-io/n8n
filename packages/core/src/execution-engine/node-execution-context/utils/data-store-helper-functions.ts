@@ -9,11 +9,13 @@ export function getDataStoreHelperFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	workflow: Workflow,
 	node: INode,
-): DataStoreProxyFunctions {
+): Partial<DataStoreProxyFunctions> {
+	if (additionalData.dataStoreProxyProvider === undefined) return {};
+	const dataStoreProxyProvider = additionalData.dataStoreProxyProvider;
 	return {
 		getDataStoreAggregateProxy: async () =>
-			await additionalData.dataStoreProxyProvider.getDataStoreAggregateProxy(workflow, node),
+			await dataStoreProxyProvider.getDataStoreAggregateProxy(workflow, node),
 		getDataStoreProxy: async (dataStoreId: string) =>
-			await additionalData.dataStoreProxyProvider.getDataStoreProxy(workflow, node, dataStoreId),
+			await dataStoreProxyProvider.getDataStoreProxy(workflow, node, dataStoreId),
 	};
 }

@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -378,8 +378,13 @@ export async function getBase(
 
 	const eventService = Container.get(EventService);
 
+	const moduleRegistry = Container.get(ModuleRegistry);
+	const dataStoreProxyProvider = moduleRegistry.isActive('data-store')
+		? Container.get(DataStoreProxyService)
+		: undefined;
+
 	return {
-		dataStoreProxyProvider: Container.get(DataStoreProxyService),
+		dataStoreProxyProvider,
 		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,

@@ -933,8 +933,9 @@ export type DataStoreProxyProvider = {
 };
 
 export type DataStoreProxyFunctions = {
-	getDataStoreAggregateProxy(): Promise<IDataStoreProjectAggregateService>;
-	getDataStoreProxy(dataStoreId: string): Promise<IDataStoreProjectService>;
+	// These are optional to account for situations where the data-store module is disabled
+	getDataStoreAggregateProxy?(): Promise<IDataStoreProjectAggregateService>;
+	getDataStoreProxy?(dataStoreId: string): Promise<IDataStoreProjectService>;
 };
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {

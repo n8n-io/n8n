@@ -1,6 +1,5 @@
 import {
 	DATA_STORE_COLUMN_REGEX,
-	type DataStoreRows,
 	type DataStoreCreateColumnSchema,
 	type DataStoreColumn,
 } from '@n8n/api-types';
@@ -11,6 +10,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { DataStoreUserTableName } from '../data-store.types';
+import { DataStoreRows } from 'n8n-workflow';
 
 export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {

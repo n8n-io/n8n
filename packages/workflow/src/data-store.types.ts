@@ -72,7 +72,7 @@ export type AddDataStoreColumnOptions = Pick<DataStoreColumn, 'name' | 'type'> &
 
 export type DataStoreColumnJsType = string | number | boolean | Date;
 
-export type DataStoreRows = Array<Record<PropertyKey, DataStoreColumnJsType | null>>;
+export type DataStoreRows = Array<Record<string, DataStoreColumnJsType | null>>;
 
 // APIs for a data store service operating on a specific projectId
 export interface IDataStoreProjectAggregateService {
