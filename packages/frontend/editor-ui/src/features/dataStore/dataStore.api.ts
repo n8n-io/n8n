@@ -5,6 +5,7 @@ import type {
 	DataStoreColumnCreatePayload,
 	DataStore,
 	DataStoreColumn,
+	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
 
 export const fetchDataStoresApi = async (
@@ -93,6 +94,57 @@ export const addDataStoreColumnApi = async (
 		`/projects/${projectId}/data-stores/${dataStoreId}/columns`,
 		{
 			...column,
+		},
+	);
+};
+
+export const getDataStoreRowsApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	projectId?: string,
+	options?: {
+		skip?: number;
+		take?: number;
+	},
+) => {
+	return await makeRestApiRequest<{
+		count: number;
+		data: DataStoreRow[];
+	}>(context, 'GET', `/projects/${projectId}/data-stores/${dataStoreId}/rows`, {
+		...options,
+	});
+};
+
+export const insertDataStoreRowApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	row: DataStoreRow,
+	projectId?: string,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'POST',
+		`/projects/${projectId}/data-stores/${dataStoreId}/insert`,
+		{
+			data: [row],
+		},
+	);
+};
+
+export const upsertDataStoreRowsApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	rows: DataStoreRow[],
+	projectId?: string,
+	matchFields: string[] = ['id'],
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'POST',
+		`/projects/${projectId}/data-stores/${dataStoreId}/upsert`,
+		{
+			rows,
+			matchFields,
 		},
 	);
 };

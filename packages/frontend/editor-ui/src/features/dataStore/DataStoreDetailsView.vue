@@ -25,6 +25,7 @@ const documentTitle = useDocumentTitle();
 const dataStoreStore = useDataStoreStore();
 
 const loading = ref(false);
+const saving = ref(false);
 const dataStore = ref<DataStore | null>(null);
 
 const showErrorAndGoBackToList = async (error: unknown) => {
@@ -51,6 +52,14 @@ const initialize = async () => {
 	}
 };
 
+const onToggleSave = (value: boolean) => {
+	// Delay saving state to avoid flickering
+	const timeout = value ? 0 : 200;
+	setTimeout(() => {
+		saving.value = value;
+	}, timeout);
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('dataStore.dataStores'));
 	await initialize();
@@ -72,9 +81,13 @@ onMounted(async () => {
 		<div v-else-if="dataStore">
 			<div :class="$style.header">
 				<DataStoreBreadcrumbs :data-store="dataStore" />
+				<div v-if="saving" :class="$style.saving">
+					<n8n-spinner />
+					<n8n-text>{{ i18n.baseText('generic.saving') }}...</n8n-text>
+				</div>
 			</div>
 			<div :class="$style.content">
-				<DataStoreTable :data-store="dataStore" />
+				<DataStoreTable :data-store="dataStore" @toggle-save="onToggleSave" />
 			</div>
 		</div>
 	</div>
@@ -102,8 +115,15 @@ onMounted(async () => {
 
 .header {
 	display: flex;
+	gap: var(--spacing-l);
 	align-items: center;
-	justify-content: space-between;
 	margin-bottom: var(--spacing-xl);
+}
+
+.saving {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
+	margin-top: var(--spacing-5xs);
 }
 </style>
