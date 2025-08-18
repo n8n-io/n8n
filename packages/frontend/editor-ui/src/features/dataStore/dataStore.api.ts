@@ -111,7 +111,7 @@ export const getDataStoreRowsApi = async (
 		count: number;
 		data: DataStoreRow[];
 	}>(context, 'GET', `/projects/${projectId}/data-stores/${dataStoreId}/rows`, {
-		options: options ?? undefined,
+		...(options ?? {}),
 	});
 };
 
