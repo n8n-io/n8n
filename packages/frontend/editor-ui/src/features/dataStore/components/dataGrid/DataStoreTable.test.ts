@@ -43,6 +43,7 @@ vi.mock('ag-grid-community', () => ({
 	DateEditorModule: {},
 	ClientSideRowModelApiModule: {},
 	ValidationModule: {},
+	UndoRedoEditModule: {},
 }));
 
 // Mock the n8n theme
