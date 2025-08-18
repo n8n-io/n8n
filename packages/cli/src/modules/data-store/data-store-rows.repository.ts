@@ -16,6 +16,7 @@ import {
 } from '@n8n/typeorm';
 
 import { DataStoreColumn } from './data-store-column.entity';
+import { DATA_STORE_ROW_INTERNAL_ID } from './data-store.types';
 import {
 	addColumnQuery,
 	buildInsertQuery,
@@ -106,7 +107,7 @@ export class DataStoreRowsRepository {
 		const dbType = this.dataSource.options.type;
 		const quotedTableName = quoteIdentifier(tableName, dbType);
 		const placeholders = ids.map((_, index) => getPlaceholder(index + 1, dbType)).join(', ');
-		const query = `DELETE FROM ${quotedTableName} WHERE n8n_row_id IN (${placeholders})`;
+		const query = `DELETE FROM ${quotedTableName} WHERE ${quoteIdentifier(DATA_STORE_ROW_INTERNAL_ID, dbType)} IN (${placeholders})`;
 
 		await this.dataSource.query(query, ids);
 		return true;
@@ -118,7 +119,7 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 	) {
 		const dslColumns = [
-			new DslColumn('n8n_row_id').int.autoGenerate2.primary,
+			new DslColumn(DATA_STORE_ROW_INTERNAL_ID).int.autoGenerate2.primary,
 			...toDslColumns(columns),
 		];
 		const createTable = new CreateTable(tableName, '', queryRunner);
@@ -163,7 +164,9 @@ export class DataStoreRowsRepository {
 
 	async getRowIds(dataStoreId: DataStoreUserTableName, dto: ListDataStoreContentQueryDto) {
 		const [_, query] = this.getManyQuery(dataStoreId, dto);
-		const result = await query.select('dataStore.n8n_row_id').getRawMany<number>();
+		const result = await query
+			.select(`dataStore.${DATA_STORE_ROW_INTERNAL_ID}`)
+			.getRawMany<number>();
 		return result;
 	}
 

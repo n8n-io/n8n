@@ -18,6 +18,7 @@ import * as utils from '@test-integration/utils';
 import { DataStoreColumnRepository } from '../data-store-column.repository';
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
 import { DataStoreRepository } from '../data-store.repository';
+import { DATA_STORE_ROW_INTERNAL_ID } from '../data-store.types';
 import { toTableName } from '../utils/sql-utils';
 
 let owner: User;
@@ -1587,7 +1588,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			count: 1,
 			data: [
 				{
-					n8n_row_id: 1,
+					[DATA_STORE_ROW_INTERNAL_ID]: 1,
 					first: 'test value',
 					second: 'another value',
 				},
@@ -1626,7 +1627,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			count: 1,
 			data: [
 				{
-					n8n_row_id: 1,
+					[DATA_STORE_ROW_INTERNAL_ID]: 1,
 					first: 'test value',
 					second: 'another value',
 				},
@@ -1665,7 +1666,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			count: 1,
 			data: [
 				{
-					n8n_row_id: 1,
+					[DATA_STORE_ROW_INTERNAL_ID]: 1,
 					first: 'test value',
 					second: 'another value',
 				},
@@ -1701,7 +1702,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			count: 1,
 			data: [
 				{
-					n8n_row_id: 1,
+					[DATA_STORE_ROW_INTERNAL_ID]: 1,
 					first: 'test value',
 					second: 'another value',
 				},
@@ -2539,7 +2540,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 			.expect(200);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {
-			sortBy: ['n8n_row_id', 'ASC'],
+			sortBy: ['DATA_STORE_ROW_INTERNAL_ID', 'ASC'],
 		});
 		expect(rowsInDb.count).toBe(3);
 		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);

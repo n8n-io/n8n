@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
 import { DataStoreRepository } from '../data-store.repository';
 import { DataStoreService } from '../data-store.service';
+import { DATA_STORE_ROW_INTERNAL_ID } from '../data-store.types';
 import { DataStoreColumnNameConflictError } from '../errors/data-store-column-name-conflict.error';
 import { DataStoreColumnNotFoundError } from '../errors/data-store-column-not-found.error';
 import { DataStoreNameConflictError } from '../errors/data-store-name-conflict.error';
@@ -147,7 +148,7 @@ describe('dataStore', () => {
 			expect(rows).toEqual([]);
 		});
 
-		it('should allow creating a column named "id" and use n8n_row_id for internal row ID', async () => {
+		it('should allow creating a column named "id" and use DATA_STORE_ROW_INTERNAL_ID for internal row ID', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -172,8 +173,8 @@ describe('dataStore', () => {
 
 			expect(count).toBe(2);
 			expect(data).toEqual([
-				{ id: 'user-123', name: 'Alice', n8n_row_id: 1 },
-				{ id: 'user-456', name: 'Bob', n8n_row_id: 2 },
+				{ id: 'user-123', name: 'Alice', [DATA_STORE_ROW_INTERNAL_ID]: 1 },
+				{ id: 'user-456', name: 'Bob', [DATA_STORE_ROW_INTERNAL_ID]: 2 },
 			]);
 		});
 
@@ -920,7 +921,7 @@ describe('dataStore', () => {
 			expect(data).toEqual(
 				rows.map((row, i) => ({
 					...row,
-					n8n_row_id: i + 1,
+					[DATA_STORE_ROW_INTERNAL_ID]: i + 1,
 					c1: row.c1,
 					c2: row.c2,
 					c3: row.c3 instanceof Date ? row.c3.toISOString() : row.c3,
@@ -957,8 +958,8 @@ describe('dataStore', () => {
 
 			expect(count).toEqual(2);
 			expect(data).toEqual([
-				{ c1: 1, c2: 'foo', n8n_row_id: 1 },
-				{ c1: 1, c2: 'foo', n8n_row_id: 2 },
+				{ c1: 1, c2: 'foo', [DATA_STORE_ROW_INTERNAL_ID]: 1 },
+				{ c1: 1, c2: 'foo', [DATA_STORE_ROW_INTERNAL_ID]: 2 },
 			]);
 		});
 
@@ -1120,7 +1121,9 @@ describe('dataStore', () => {
 			);
 
 			expect(count).toEqual(1);
-			expect(data).toEqual([{ fullName: 'Alicia', age: 31, n8n_row_id: 1, pid: '1995-111a' }]);
+			expect(data).toEqual([
+				{ fullName: 'Alicia', age: 31, [DATA_STORE_ROW_INTERNAL_ID]: 1, pid: '1995-111a' },
+			]);
 		});
 
 		it('inserts a row if filter does not match', async () => {
@@ -1155,8 +1158,8 @@ describe('dataStore', () => {
 
 			expect(count).toEqual(2);
 			expect(data).toEqual([
-				{ fullName: 'Alice', age: 30, n8n_row_id: 1, pid: '1995-111a' },
-				{ fullName: 'Alice', age: 30, n8n_row_id: 2, pid: '1992-222b' },
+				{ fullName: 'Alice', age: 30, [DATA_STORE_ROW_INTERNAL_ID]: 1, pid: '1995-111a' },
+				{ fullName: 'Alice', age: 30, [DATA_STORE_ROW_INTERNAL_ID]: 2, pid: '1992-222b' },
 			]);
 		});
 	});
@@ -1192,7 +1195,7 @@ describe('dataStore', () => {
 
 			const rows = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(rows.count).toBe(1);
-			expect(rows.data).toEqual([{ name: 'Bob', age: 25, n8n_row_id: 2 }]);
+			expect(rows.data).toEqual([{ name: 'Bob', age: 25, [DATA_STORE_ROW_INTERNAL_ID]: 2 }]);
 		});
 
 		it('returns true when deleting empty list of IDs', async () => {
@@ -1272,28 +1275,28 @@ describe('dataStore', () => {
 					c2: rows[0].c2,
 					c3: '1970-01-01T00:00:00.000Z',
 					c4: rows[0].c4,
-					n8n_row_id: 1,
+					[DATA_STORE_ROW_INTERNAL_ID]: 1,
 				},
 				{
 					c1: rows[1].c1,
 					c2: rows[1].c2,
 					c3: '1970-01-01T00:00:00.001Z',
 					c4: rows[1].c4,
-					n8n_row_id: 2,
+					[DATA_STORE_ROW_INTERNAL_ID]: 2,
 				},
 				{
 					c1: rows[2].c1,
 					c2: rows[2].c2,
 					c3: '1970-01-01T00:00:00.002Z',
 					c4: rows[2].c4,
-					n8n_row_id: 3,
+					[DATA_STORE_ROW_INTERNAL_ID]: 3,
 				},
 			]);
 		});
 	});
 
 	describe('custom id column', () => {
-		it('can delete rows by n8n_row_id even when there is a custom id column', async () => {
+		it('can delete rows by DATA_STORE_ROW_INTERNAL_ID even when there is a custom id column', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1309,7 +1312,7 @@ describe('dataStore', () => {
 				{ id: 'user-789', name: 'Charlie' },
 			]);
 
-			// ACT - Delete by n8n_row_id (system ID)
+			// ACT - Delete by internal ID
 			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, [1, 3]);
 
 			// ASSERT
@@ -1322,7 +1325,7 @@ describe('dataStore', () => {
 			);
 
 			expect(count).toBe(1);
-			expect(data).toEqual([{ id: 'user-456', name: 'Bob', n8n_row_id: 2 }]);
+			expect(data).toEqual([{ id: 'user-456', name: 'Bob', [DATA_STORE_ROW_INTERNAL_ID]: 2 }]);
 		});
 	});
 });
