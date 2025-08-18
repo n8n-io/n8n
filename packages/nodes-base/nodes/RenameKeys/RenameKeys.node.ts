@@ -9,7 +9,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
 interface IRenameKey {
 	currentKey: string;
 	newKey: string;
@@ -160,7 +159,6 @@ export class RenameKeys implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-
 		const returnData: INodeExecutionData[] = [];
 
 		let item: INodeExecutionData;
@@ -189,10 +187,7 @@ export class RenameKeys implements INodeType {
 			const flags = (caseInsensitive as boolean) ? 'i' : undefined;
 
 			const regex = new RegExp(searchRegex as string, flags);
-			const safetyResult = isSafe(regex);
-			if (!safetyResult.safe) {
-				throw new NodeOperationError(this.getNode(), 'Unsafe regex pattern detected');
-			}
+
 			const renameObjectKeys = (obj: IDataObject, objDepth: number) => {
 				for (const key in obj) {
 					if (Array.isArray(obj)) {
@@ -218,34 +213,46 @@ export class RenameKeys implements INodeType {
 			newItem.json = renameObjectKeys(newItem.json, depth as number);
 		};
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			renameKeys = this.getNodeParameter('keys.key', itemIndex, []) as IRenameKey[];
-			const regexReplacements = this.getNodeParameter(
-				'additionalOptions.regexReplacement.replacements',
-				itemIndex,
-				[],
-			) as IDataObject[];
+			try {
+				renameKeys = this.getNodeParameter('keys.key', itemIndex, []) as IRenameKey[];
+				const regexReplacements = this.getNodeParameter(
+					'additionalOptions.regexReplacement.replacements',
+					itemIndex,
+					[],
+				) as IDataObject[];
 
-			item = items[itemIndex];
+				item = items[itemIndex];
 
-			// Copy the whole JSON data as data on any level can be renamed
-			newItem = {
-				json: deepCopy(item.json),
-				pairedItem: {
-					item: itemIndex,
-				},
-			};
+				// Copy the whole JSON data as data on any level can be renamed
+				newItem = {
+					json: deepCopy(item.json),
+					pairedItem: {
+						item: itemIndex,
+					},
+				};
 
-			if (item.binary !== undefined) {
-				// Reference binary data if any exists. We can reference it
-				// as this nodes does not change it
-				newItem.binary = item.binary;
+				if (item.binary !== undefined) {
+					// Reference binary data if any exists. We can reference it
+					// as this nodes does not change it
+					newItem.binary = item.binary;
+				}
+
+				renameKeys.forEach(renameKey);
+
+				regexReplacements.forEach(regexReplaceKey);
+
+				returnData.push(newItem);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: itemIndex } },
+					);
+					returnData.push(...executionErrorData);
+					continue;
+				}
+				throw error;
 			}
-
-			renameKeys.forEach(renameKey);
-
-			regexReplacements.forEach(regexReplaceKey);
-
-			returnData.push(newItem);
 		}
 
 		return [returnData];
