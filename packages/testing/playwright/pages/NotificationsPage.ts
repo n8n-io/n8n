@@ -39,9 +39,7 @@ export class NotificationsPage {
 	 * @returns A Locator for the notification container element.
 	 */
 	getNotificationByTitleOrContent(text: string | RegExp): Locator {
-		return this.page.getByRole('alert').filter({
-			has: this.page.locator('.el-notification').filter({ hasText: text }),
-		});
+		return this.page.getByRole('alert').filter({ hasText: text });
 	}
 
 	/**
@@ -53,14 +51,7 @@ export class NotificationsPage {
 	 * @returns A Locator for the notification container element.
 	 */
 	getNotificationByTitleOrContentForNode(text: string | RegExp, nodeName: string): Locator {
-		return this.page
-			.getByRole('alert')
-			.filter({
-				has: this.page.locator('.el-notification').filter({ hasText: text }),
-			})
-			.filter({
-				has: this.page.locator('.el-notification').filter({ hasText: nodeName }),
-			});
+		return this.page.getByRole('alert').filter({ hasText: text }).filter({ hasText: nodeName });
 	}
 
 	/**

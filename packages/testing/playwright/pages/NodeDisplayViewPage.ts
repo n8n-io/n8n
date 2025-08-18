@@ -52,10 +52,6 @@ export class NodeDisplayViewPage extends BasePage {
 		return this.page.getByTestId('parameter-expression-preview-value');
 	}
 
-	async executePrevious() {
-		await this.clickByTestId('execute-previous-node');
-	}
-
 	getEditPinnedDataButton() {
 		return this.page.getByTestId('ndv-edit-pinned-data');
 	}
@@ -122,7 +118,7 @@ export class NodeDisplayViewPage extends BasePage {
 		await this.page.evaluate(async (jsonData) => {
 			await navigator.clipboard.writeText(JSON.stringify(jsonData));
 		}, data);
-		await this.page.keyboard.press('Meta+V');
+		await this.page.keyboard.press('ControlOrMeta+V');
 
 		await this.savePinnedData();
 	}
@@ -167,7 +163,7 @@ export class NodeDisplayViewPage extends BasePage {
 	async clearExpressionEditor() {
 		const editor = this.getInlineExpressionEditorInput();
 		await editor.click();
-		await this.page.keyboard.press('Control+a');
+		await this.page.keyboard.press('ControlOrMeta+A');
 		await this.page.keyboard.press('Delete');
 	}
 
