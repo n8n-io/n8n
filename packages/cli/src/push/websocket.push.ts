@@ -68,8 +68,8 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 		connection.close();
 	}
 
-	protected sendToOneConnection(connection: WebSocket, data: string): void {
-		connection.send(data);
+	protected sendToOneConnection(connection: WebSocket, data: string, isBinary: boolean): void {
+		connection.send(data, { binary: isBinary });
 	}
 
 	protected ping(connection: WebSocket): void {

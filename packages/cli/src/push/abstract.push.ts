@@ -25,7 +25,11 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 	protected userIdByPushRef: Record<string, string> = {};
 
 	protected abstract close(connection: Connection): void;
-	protected abstract sendToOneConnection(connection: Connection, data: string): void;
+	protected abstract sendToOneConnection(
+		connection: Connection,
+		data: string,
+		isBinary: boolean,
+	): void;
 	protected abstract ping(connection: Connection): void;
 
 	constructor(
@@ -69,7 +73,7 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		delete this.userIdByPushRef[pushRef];
 	}
 
-	private sendTo({ type, data }: PushMessage, pushRefs: string[]) {
+	private sendTo({ type, data }: PushMessage, pushRefs: string[], isBinary: boolean = false) {
 		this.logger.debug(`Pushed to frontend: ${type}`, {
 			dataType: type,
 			pushRefs: pushRefs.join(', '),
@@ -80,7 +84,7 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		for (const pushRef of pushRefs) {
 			const connection = this.connections[pushRef];
 			assert(connection);
-			this.sendToOneConnection(connection, stringifiedPayload);
+			this.sendToOneConnection(connection, stringifiedPayload, isBinary);
 		}
 	}
 
@@ -100,7 +104,7 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 			return;
 		}
 
-		this.sendTo(pushMsg, [pushRef]);
+		this.sendTo(pushMsg, [pushRef], pushMsg.type === 'nodeExecuteAfterData');
 	}
 
 	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
