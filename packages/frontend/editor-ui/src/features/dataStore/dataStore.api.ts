@@ -27,8 +27,8 @@ export const fetchDataStoresApi = async (
 		'GET',
 		apiEndpoint,
 		{
-			...options,
-			...(filter ?? {}),
+			options: options ?? undefined,
+			filter: filter ?? undefined,
 		},
 	);
 };

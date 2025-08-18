@@ -34,8 +34,9 @@ import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumn
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
+import { DEFAULT_ID_COLUMN_NAME, NO_TABLE_YET_MESSAGE } from '@/features/dataStore/constants';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
+import { ResponseError } from '@n8n/rest-api-client';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -223,7 +224,11 @@ const fetchDataStoreContent = async () => {
 		totalItems.value = fetchedRows.count;
 		rowData.value = rows.value;
 	} catch (error) {
-		toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));
+		// TODO: We currently don't create user tables until user columns or rows are added
+		// so we need to ignore NO_TABLE_YET_MESSAGE error here
+		if ('message' in error && !error.message.includes(NO_TABLE_YET_MESSAGE)) {
+			toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));
+		}
 	} finally {
 		contentLoading.value = false;
 		if (gridApi.value) {
