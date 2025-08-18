@@ -414,9 +414,10 @@ export class TestWebhooks implements IWebhookManager {
 		return foundWebhook;
 	}
 
-	getActiveWebhookFromRegistration(path: string, registration: TestWebhookRegistration) {
-		let webhook: IWebhookData | undefined;
-		let maxMatches = 0;
+	getActiveWebhookFromRegistration(
+		path: string,
+		registration: TestWebhookRegistration,
+	): IWebhookData | undefined {
 		const pathElementsSet = new Set(path.split('/'));
 
 		const { webhook: dynamicWebhook } = registration;
@@ -424,23 +425,15 @@ export class TestWebhooks implements IWebhookManager {
 		const staticElements = dynamicWebhook.path.split('/').filter((ele) => !ele.startsWith(':'));
 		const allStaticExist = staticElements.every((staticEle) => pathElementsSet.has(staticEle));
 
-		if (allStaticExist && staticElements.length > maxMatches) {
-			maxMatches = staticElements.length;
-			webhook = dynamicWebhook;
+		// webhook matches if all static elements exist or if there are no static elements
+		if ((allStaticExist && staticElements.length > 0) || staticElements.length === 0) {
+			return dynamicWebhook;
 		}
-		// handle routes with no static elements
-		else if (staticElements.length === 0 && !webhook) {
-			webhook = dynamicWebhook;
-		}
-
-		return webhook;
+		return undefined;
 	}
 
 	async getActiveWebhook(httpMethod: IHttpRequestMethods, path: string, webhookId?: string) {
 		const key = this.registrations.toKey({ httpMethod, path, webhookId });
-
-		// check if static elements match in path
-		// if more results have been returned choose the one with the most static-route matches
 		const registration = await this.registrations.get(key);
 
 		if (!registration) return;

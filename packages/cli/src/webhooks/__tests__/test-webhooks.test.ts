@@ -220,14 +220,14 @@ describe('TestWebhooks', () => {
 			const PATH_WITHOUT_SLASH = 'register';
 			const webhookData = {
 				httpMethod: METHOD as IHttpRequestMethods,
-				path: PATH_WITH_SLASH.endsWith('/') ? PATH_WITH_SLASH.slice(0, -1) : PATH_WITH_SLASH,
-			};
+				path: PATH_WITHOUT_SLASH,
+			} as IWebhookData;
 
 			registrations.getRegistrationsHash.mockImplementation(async () => {
 				return {
 					[registrations.toKey(webhookData)]: {
 						workflowEntity: mock<WorkflowEntity>(),
-						webhook: webhookData as IWebhookData,
+						webhook: webhookData,
 					},
 				};
 			});

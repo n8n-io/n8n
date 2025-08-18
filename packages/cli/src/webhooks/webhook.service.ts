@@ -135,12 +135,12 @@ export class WebhookService {
 
 	async getWebhookMethods(rawPath: string) {
 		// Try to find static webhooks first
-		const webhooks = await this.webhookRepository
+		const staticMethods = await this.webhookRepository
 			.find({ select: ['method'], where: { webhookPath: rawPath } })
 			.then((rows) => rows.map((r) => r.method));
 
-		if (webhooks.length > 0) {
-			return webhooks;
+		if (staticMethods.length > 0) {
+			return staticMethods;
 		}
 
 		// Otherwise, try to find dynamic webhooks based on path only
