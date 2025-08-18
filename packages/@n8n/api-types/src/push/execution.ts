@@ -57,7 +57,7 @@ export type NodeExecuteAfter = {
 	data: {
 		executionId: string;
 		nodeName: string;
-		data: ITaskData;
+		// data: ITaskData;
 
 		/**
 		 * When a worker relays updates about a manual execution to main, if the
@@ -72,10 +72,20 @@ export type NodeExecuteAfter = {
 	};
 };
 
+export type NodeExecuteAfterData = {
+	type: 'nodeExecuteAfterData';
+	data: {
+		executionId: string;
+		nodeName: string;
+		data: ITaskData;
+	};
+};
+
 export type ExecutionPushMessage =
 	| ExecutionStarted
 	| ExecutionWaiting
 	| ExecutionFinished
 	| ExecutionRecovered
 	| NodeExecuteBefore
-	| NodeExecuteAfter;
+	| NodeExecuteAfter
+	| NodeExecuteAfterData;
