@@ -3,7 +3,7 @@ import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeSSH } from 'node-ssh';
 
-import { Ssh } from '../Ssh.node';
+import { Ssh, ShellType } from '../Ssh.node';
 
 // Mock NodeSSH
 jest.mock('node-ssh');
@@ -21,10 +21,15 @@ describe('SSH Node', () => {
 		signal: null,
 	});
 
-	const mockSSHCommands = (isWindows: boolean, homeDir = '/home/user') => {
+	const mockShellTypeDetection = (shellType: ShellType, homeDir = '/home/user') => {
 		mockSshInstance.execCommand.mockImplementation(async (command: string) => {
+			if (command === 'echo $PSVersionTable') {
+				return shellType === ShellType.PowerShell
+					? createSSHResponse(0, 'PSVersion 7.0.0')
+					: createSSHResponse(1, '', 'command not found');
+			}
 			if (command === 'ver') {
-				return isWindows
+				return shellType === ShellType.Cmd
 					? createSSHResponse(0, 'Microsoft Windows [Version 10.0.19041.1]')
 					: createSSHResponse(1, '', 'command not found');
 			}
@@ -66,9 +71,9 @@ describe('SSH Node', () => {
 		});
 	});
 
-	describe('Windows paths', () => {
+	describe('Windows cmd', () => {
 		beforeEach(() => {
-			mockSSHCommands(true);
+			mockShellTypeDetection(ShellType.Cmd);
 			mockNodeParameters({
 				resource: 'command',
 				operation: 'execute',
@@ -78,7 +83,7 @@ describe('SSH Node', () => {
 			});
 		});
 
-		it('should prepend cd /d before command', async () => {
+		it('should use cd /d for directory changes', async () => {
 			await sshNode.execute.call(executeFunctionsMock);
 
 			expect(mockSshInstance.execCommand).toHaveBeenCalledWith(
@@ -88,9 +93,37 @@ describe('SSH Node', () => {
 		});
 	});
 
-	describe('Unix paths', () => {
+	describe('Windows PowerShell', () => {
 		beforeEach(() => {
-			mockSSHCommands(false);
+			mockShellTypeDetection(ShellType.PowerShell);
+			mockNodeParameters({
+				resource: 'command',
+				operation: 'execute',
+				authentication: 'password',
+				command: 'Get-Process',
+				cwd: 'C:\\Windows',
+			});
+		});
+
+		it('should use cwd option for directory changes', async () => {
+			await sshNode.execute.call(executeFunctionsMock);
+
+			// Should NOT use cd /d for PowerShell
+			const cdCalls = mockSshInstance.execCommand.mock.calls.filter((call) =>
+				call[0].includes('cd /d'),
+			);
+			expect(cdCalls).toHaveLength(0);
+
+			// Should use cwd option instead
+			expect(mockSshInstance.execCommand).toHaveBeenCalledWith('Get-Process', {
+				cwd: 'C:\\Windows',
+			});
+		});
+	});
+
+	describe('Unix', () => {
+		beforeEach(() => {
+			mockShellTypeDetection(ShellType.Unix);
 			mockNodeParameters({
 				resource: 'command',
 				operation: 'execute',
@@ -100,7 +133,7 @@ describe('SSH Node', () => {
 			});
 		});
 
-		it('should use cwd option for directory change', async () => {
+		it('should use cwd option for directory changes', async () => {
 			await sshNode.execute.call(executeFunctionsMock);
 
 			expect(mockSshInstance.execCommand).toHaveBeenCalledWith('ls -la', {
@@ -111,7 +144,7 @@ describe('SSH Node', () => {
 
 	describe('Tilde expansion', () => {
 		beforeEach(() => {
-			mockSSHCommands(false, '/home/testuser');
+			mockShellTypeDetection(ShellType.Unix, '/home/testuser');
 			mockNodeParameters({
 				resource: 'command',
 				operation: 'execute',
@@ -130,9 +163,9 @@ describe('SSH Node', () => {
 		});
 	});
 
-	describe('OS detection optimization', () => {
+	describe('Shell type detection optimization', () => {
 		beforeEach(() => {
-			mockSSHCommands(false);
+			mockShellTypeDetection(ShellType.Unix);
 			mockNodeParameters({
 				resource: 'command',
 				operation: 'execute',
@@ -142,7 +175,7 @@ describe('SSH Node', () => {
 			});
 		});
 
-		it('should detect OS only once for multiple items', async () => {
+		it('should detect shell type only once for multiple items', async () => {
 			// Setup multiple items to process
 			executeFunctionsMock.getInputData.mockReturnValue([
 				{ json: { id: 1 } },
@@ -166,10 +199,14 @@ describe('SSH Node', () => {
 
 			await sshNode.execute.call(executeFunctionsMock);
 
-			// Count how many times 'ver' command was called (OS detection)
+			// Count shell detection commands
+			const psCheckCalls = mockSshInstance.execCommand.mock.calls.filter(
+				(call) => call[0] === 'echo $PSVersionTable',
+			);
 			const verCalls = mockSshInstance.execCommand.mock.calls.filter((call) => call[0] === 'ver');
 
-			// Should be called only once, not 5 times
+			// Shell detection should happen only once at the beginning
+			expect(psCheckCalls).toHaveLength(1);
 			expect(verCalls).toHaveLength(1);
 
 			// But the actual commands should be executed for each item

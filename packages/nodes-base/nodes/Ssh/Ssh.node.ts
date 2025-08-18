@@ -17,34 +17,46 @@ import { file as tmpFile } from 'tmp-promise';
 
 import { formatPrivateKey } from '@utils/utilities';
 
-const enum RemoteOS {
-	Windows = 'windows',
+export const enum ShellType {
+	Cmd = 'cmd',
+	PowerShell = 'powershell',
 	Unix = 'unix',
 }
 
-const WINDOWS_PATH_PREFIX = 'WINDOWS_PATH:';
+const CMD_PATH_PREFIX = 'CMD_PATH:';
 
-async function detectRemoteOS(ssh: NodeSSH): Promise<RemoteOS> {
-	// Check if remote OS is Windows using 'ver' command
-	const windowsResult = await ssh.execCommand('ver');
-	if (windowsResult.code === 0 && windowsResult.stdout.toLowerCase().includes('windows')) {
-		return RemoteOS.Windows;
+async function detectShellType(ssh: NodeSSH): Promise<ShellType> {
+	// Check for PowerShell
+	const psResult = await ssh.execCommand('echo $PSVersionTable');
+	// PowerShell should return version info, not the literal string
+	if (
+		psResult.code === 0 &&
+		psResult.stdout.toLowerCase().includes('psversion') &&
+		!psResult.stdout.includes('$PSVersionTable')
+	) {
+		return ShellType.PowerShell;
+	}
+
+	// Check for Windows cmd
+	const cmdResult = await ssh.execCommand('ver');
+	if (cmdResult.code === 0 && cmdResult.stdout.toLowerCase().includes('windows')) {
+		return ShellType.Cmd;
 	}
 
 	// Default to Unix-like system
-	return RemoteOS.Unix;
+	return ShellType.Unix;
 }
 
 async function resolveHomeDir(
 	this: IExecuteFunctions,
 	path: string,
 	ssh: NodeSSH,
-	remoteOS: RemoteOS,
+	shellType: ShellType,
 	itemIndex: number,
 ) {
-	// Mark Windows absolute paths (C:\, D:/) for special handling
-	if (remoteOS === RemoteOS.Windows && /^[A-Za-z]:[\\\/]/.test(path)) {
-		return `${WINDOWS_PATH_PREFIX}${path}`;
+	// Mark Windows cmd absolute paths (C:\, D:/) for special handling
+	if (shellType === ShellType.Cmd && /^[A-Za-z]:[\\\/]/.test(path)) {
+		return `${CMD_PATH_PREFIX}${path}`;
 	}
 
 	if (path.startsWith('~/')) {
@@ -384,8 +396,8 @@ export class Ssh implements INodeType {
 				await ssh.connect(options);
 			}
 
-			// Detect OS once after connection is established, before processing items
-			const remoteOS = await detectRemoteOS(ssh);
+			// Detect shell type once after connection is established, before processing items
+			const shellType = await detectShellType(ssh);
 
 			for (let i = 0; i < items.length; i++) {
 				try {
@@ -396,19 +408,20 @@ export class Ssh implements INodeType {
 								this,
 								this.getNodeParameter('cwd', i) as string,
 								ssh,
-								remoteOS,
+								shellType,
 								i,
 							);
 
 							let finalCommand = command;
 							let execOptions = {};
 
-							// Windows paths: change directory before executing command
-							if (cwd?.startsWith(WINDOWS_PATH_PREFIX)) {
-								const windowsPath = cwd.replace(WINDOWS_PATH_PREFIX, '');
-								// Prepend cd /d to handle drive changes
-								finalCommand = `cd /d "${windowsPath}" && ${command}`;
+							// Handle working directory based on shell type
+							if (cwd?.startsWith(CMD_PATH_PREFIX)) {
+								// Windows cmd needs 'cd /d' to change drives
+								const cmdPath = cwd.replace(CMD_PATH_PREFIX, '');
+								finalCommand = `cd /d "${cmdPath}" && ${command}`;
 							} else if (cwd) {
+								// Unix and PowerShell support the cwd option
 								execOptions = { cwd };
 							}
 
@@ -434,7 +447,7 @@ export class Ssh implements INodeType {
 								this,
 								this.getNodeParameter('path', i) as string,
 								ssh,
-								remoteOS,
+								shellType,
 								i,
 							);
 
@@ -474,7 +487,7 @@ export class Ssh implements INodeType {
 								this,
 								this.getNodeParameter('path', i) as string,
 								ssh,
-								remoteOS,
+								shellType,
 								i,
 							);
 							const fileName = this.getNodeParameter('options.fileName', i, '') as string;
