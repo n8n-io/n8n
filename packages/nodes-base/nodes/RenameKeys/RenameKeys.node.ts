@@ -1,7 +1,7 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
-import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, deepCopy } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -14,7 +14,15 @@ interface IRenameKey {
 	currentKey: string;
 	newKey: string;
 }
-
+function isUnsafeRegex(pattern: string): boolean {
+	const dangerousPatterns = [
+		/\([^)]*\+[^)]*\)\+/, // (x+)+
+		/\([^)]*\*[^)]*\)\*/, // (x*)*
+		/\([^)]*\+[^)]*\)\*/, // (x+)*
+		/\([^)]*\*[^)]*\)\+/, // (x*)+
+	];
+	return dangerousPatterns.some((dp) => dp.test(pattern));
+}
 export class RenameKeys implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Rename Keys',
@@ -179,6 +187,12 @@ export class RenameKeys implements INodeType {
 			const { searchRegex, replaceRegex, options } = replacement;
 			const { depth, caseInsensitive } = options as IDataObject;
 
+			if (isUnsafeRegex(searchRegex as string)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Unsafe regex pattern detected: nested quantifiers like (a+)+ are not allowed for security reasons',
+				);
+			}
 			const flags = (caseInsensitive as boolean) ? 'i' : undefined;
 
 			const regex = new RegExp(searchRegex as string, flags);
