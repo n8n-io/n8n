@@ -7,10 +7,10 @@ from urllib.parse import urlparse
 import websockets
 import random
 
-from nanoid import generate as nanoid
 
 from .errors import WebsocketConnectionError, TaskMissingError
 from .message_types.broker import TaskSettings
+from .nanoid import nanoid
 
 from .constants import (
     RUNNER_NAME,
