@@ -176,7 +176,7 @@ export class WorkflowExecute {
 		return this.processRunExecutionData(workflow);
 	}
 
-	forceInputNodeExecution(workflow: Workflow): boolean {
+	isLegacyExecutionOrder(workflow: Workflow): boolean {
 		return workflow.settings.executionOrder !== 'v1';
 	}
 
@@ -784,8 +784,6 @@ export class WorkflowExecute {
 				// are already on the list to be processed.
 				// If that is not the case add it.
 
-				const forceInputNodeExecution = this.forceInputNodeExecution(workflow);
-
 				for (
 					let inputIndex = 0;
 					inputIndex < workflow.connectionsByDestinationNode[connectionData.node].main.length;
@@ -834,7 +832,7 @@ export class WorkflowExecute {
 							continue;
 						}
 
-						if (!forceInputNodeExecution) {
+						if (!this.isLegacyExecutionOrder(workflow)) {
 							// Do not automatically follow all incoming nodes and force them
 							// to execute
 							continue;
@@ -1119,7 +1117,7 @@ export class WorkflowExecute {
 			}
 
 			// We always use the data of main input and the first input for execute
-			let connectionInputData = inputData.main[0] as INodeExecutionData[];
+			let connectionInputData = inputData.main[0];
 
 			const forceInputNodeExecution = workflow.settings.executionOrder !== 'v1';
 			if (!forceInputNodeExecution) {
@@ -1133,7 +1131,7 @@ export class WorkflowExecute {
 				}
 			}
 
-			if (connectionInputData.length === 0) {
+			if (!connectionInputData || connectionInputData.length === 0) {
 				return null;
 			}
 
@@ -1490,7 +1488,6 @@ export class WorkflowExecute {
 		Logger.debug('Workflow execution started', { workflowId: workflow.id });
 
 		const startedAt = new Date();
-		const forceInputNodeExecution = this.forceInputNodeExecution(workflow);
 
 		this.status = 'running';
 
@@ -2021,7 +2018,7 @@ export class WorkflowExecute {
 									if (
 										nodeSuccessData![outputIndex] &&
 										(nodeSuccessData![outputIndex].length !== 0 ||
-											(connectionData.index > 0 && forceInputNodeExecution))
+											(connectionData.index > 0 && this.isLegacyExecutionOrder(workflow)))
 									) {
 										// Add the node only if it did execute or if connected to second "optional" input
 										if (workflow.settings.executionOrder === 'v1') {
@@ -2336,7 +2333,7 @@ export class WorkflowExecute {
 				return false;
 			}
 
-			if (this.forceInputNodeExecution(workflow)) {
+			if (this.isLegacyExecutionOrder(workflow)) {
 				// Check if it has the data for all the inputs
 				// The most nodes just have one but merge node for example has two and data
 				// of both inputs has to be available to be able to process the node.
