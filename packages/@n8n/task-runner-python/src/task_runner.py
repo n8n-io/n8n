@@ -227,7 +227,7 @@ class TaskRunner:
         task_state = self.running_tasks.get(message.task_id)
 
         if task_state is None:
-            self.logger.warning(f"Received cancel for unknown task: {message.task_id}")
+            self.logger.warning(f"Received cancel for unknown task: {message.task_id}. Discarding message.")
             return
 
         if task_state.status == TaskStatus.WAITING_FOR_SETTINGS:
