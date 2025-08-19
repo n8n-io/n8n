@@ -121,16 +121,6 @@ declare global {
 			getVariant: (name: string) => string | boolean | undefined;
 			override: (name: string, value: string) => void;
 		};
-		// https://developer.mozilla.org/en-US/docs/Web/API/DocumentPictureInPicture
-		documentPictureInPicture?: {
-			window: Window | null;
-			requestWindow: (options?: {
-				width?: number;
-				height?: number;
-				preferInitialWindowPlacement?: boolean;
-				disallowReturnToOpener?: boolean;
-			}) => Promise<Window>;
-		};
 		Cypress: unknown;
 	}
 }
@@ -645,11 +635,13 @@ export interface LinkItemProps {
 }
 
 export interface OpenTemplateItemProps {
-	key: 'rag-starter-template';
+	templateId: string;
 	title: string;
 	description: string;
-	icon: string;
+	nodes?: INodeTypeDescription[];
+	icon?: string;
 	tag?: NodeCreatorTag;
+	compact?: boolean;
 }
 
 export interface ActionTypeDescription extends SimplifiedNodeType {
@@ -742,6 +734,7 @@ export type NodeTypeSelectedPayload = {
 		resource?: string;
 		operation?: string;
 	};
+	actionName?: string;
 };
 
 export interface SubcategorizedNodeTypes {
@@ -922,7 +915,8 @@ export type NodeCreatorOpenSource =
 	| 'notice_error_message'
 	| 'add_node_button'
 	| 'add_evaluation_trigger_button'
-	| 'add_evaluation_node_button';
+	| 'add_evaluation_node_button'
+	| 'templates_callout';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
@@ -1227,6 +1221,7 @@ export type AddedNode = {
 	type: string;
 	openDetail?: boolean;
 	isAutoAdd?: boolean;
+	actionName?: string;
 } & Partial<INodeUi>;
 
 export type AddedNodeConnection = {

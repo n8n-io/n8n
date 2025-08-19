@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import DataStoreCard from './DataStoreCard.vue';
+import DataStoreCard from '@/features/dataStore/components/DataStoreCard.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { DataStoreResource } from '@/features/dataStore/types';
 import type { UserAction } from '@/Interface';
@@ -49,7 +49,17 @@ const renderComponent = createComponentRenderer(DataStoreCard, {
 	global: {
 		stubs: {
 			N8nLink: {
-				template: '<div data-test-id="data-store-card-link"><slot /></div>',
+				template: '<a :href="href" data-test-id="data-store-card-link"><slot /></a>',
+				props: ['to'],
+				computed: {
+					href() {
+						// Generate href from the route object
+						if (this.to && typeof this.to === 'object') {
+							return `/projects/${this.to.params.projectId}/datastores/${this.to.params.id}`;
+						}
+						return '#';
+					},
+				},
 			},
 			TimeAgo: {
 				template: '<span>just now</span>',
@@ -94,47 +104,27 @@ describe('DataStoreCard', () => {
 		expect(getByText('Read only')).toBeInTheDocument();
 	});
 
-	it('should not render action dropdown if no actions are provided', () => {
-		const { queryByTestId } = renderComponent({
-			props: {
-				actions: [],
-			},
-		});
-		expect(queryByTestId('data-store-card-actions')).not.toBeInTheDocument();
-	});
-
-	it('should render action dropdown if actions are provided', () => {
-		const { getByTestId } = renderComponent();
-		expect(getByTestId('data-store-card-actions')).toBeInTheDocument();
-	});
-
 	it('should render correct route to data store details', () => {
 		const wrapper = renderComponent();
 		const link = wrapper.getByTestId('data-store-card-link');
 		expect(link).toBeInTheDocument();
+		expect(link).toHaveAttribute(
+			'href',
+			`/projects/${DEFAULT_DATA_STORE.projectId}/datastores/${DEFAULT_DATA_STORE.id}`,
+		);
 	});
 
 	it('should display record count information', () => {
 		const { getByTestId } = renderComponent();
 		const recordCountElement = getByTestId('data-store-card-record-count');
 		expect(recordCountElement).toBeInTheDocument();
+		expect(recordCountElement).toHaveTextContent(`${DEFAULT_DATA_STORE.recordCount}`);
 	});
 
 	it('should display column count information', () => {
 		const { getByTestId } = renderComponent();
 		const columnCountElement = getByTestId('data-store-card-column-count');
 		expect(columnCountElement).toBeInTheDocument();
-	});
-
-	it('should display last updated information', () => {
-		const { getByTestId } = renderComponent();
-		const lastUpdatedElement = getByTestId('data-store-card-last-updated');
-		expect(lastUpdatedElement).toBeInTheDocument();
-	});
-
-	it('should display created information', () => {
-		const { getByTestId } = renderComponent();
-		const createdElement = getByTestId('data-store-card-created');
-		expect(createdElement).toBeInTheDocument();
+		expect(columnCountElement).toHaveTextContent(`${DEFAULT_DATA_STORE.columns.length + 1}`);
 	});
 });

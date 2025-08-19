@@ -448,4 +448,9 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			NDVDialog.actions.close();
 		});
 	});
+
+	it('should open and close the about modal on keyboard shortcut', () => {
+		WorkflowPage.actions.hitOpenAbout();
+		cy.getByTestId('close-about-modal-button').click();
+	});
 });

@@ -67,6 +67,7 @@ import {
 	VIEWS,
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	ABOUT_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -123,7 +124,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
-import { getEasyAiWorkflowJson, getRagStarterWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { getSampleWorkflowByTemplateId } from '@/utils/templates/workflowSamples';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
@@ -139,6 +140,7 @@ import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatBut
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useKeybindings } from '@/composables/useKeybindings';
 
 defineOptions({
 	name: 'NodeView',
@@ -254,6 +256,9 @@ const {
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
+useKeybindings({
+	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
+});
 
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
@@ -389,27 +394,24 @@ async function initializeRoute(force = false) {
 	if (isBlankRedirect.value) {
 		isBlankRedirect.value = false;
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
-		const templateId = route.params.id;
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
+		const templateId = route.params.id;
+		if (!templateId) {
+			return;
+		}
 
 		if (loadWorkflowFromJSON) {
-			const easyAiWorkflowJson = getEasyAiWorkflowJson();
-			const ragStarterWorkflowJson = getRagStarterWorkflowJson();
-
-			switch (templateId) {
-				case easyAiWorkflowJson.meta.templateId:
-					await openTemplateFromWorkflowJSON(easyAiWorkflowJson);
-					break;
-				case ragStarterWorkflowJson.meta.templateId:
-					await openTemplateFromWorkflowJSON(ragStarterWorkflowJson);
-					break;
-				default:
-					toast.showError(
-						new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
-						i18n.baseText('nodeView.couldntImportWorkflow'),
-					);
-					await router.replace({ name: VIEWS.NEW_WORKFLOW });
+			const workflow = getSampleWorkflowByTemplateId(templateId.toString());
+			if (!workflow) {
+				toast.showError(
+					new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
+					i18n.baseText('nodeView.couldntImportWorkflow'),
+				);
+				await router.replace({ name: VIEWS.NEW_WORKFLOW });
+				return;
 			}
+
+			await openTemplateFromWorkflowJSON(workflow);
 		} else {
 			await openWorkflowTemplate(templateId.toString());
 		}
@@ -609,7 +611,11 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 		query: { templateId, parentFolderId },
 	});
 
-	await importTemplate({ id: templateId, name: workflow.name, workflow });
+	await importTemplate({
+		id: templateId,
+		name: workflow.name,
+		workflow,
+	});
 
 	uiStore.stateIsDirty = true;
 

@@ -12,13 +12,27 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import type { Scope } from '@n8n/permissions';
 import type { RouteLocationRaw } from 'vue-router';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+
+type ProjectIcon = IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
+
+const isIconName = (icon: unknown): icon is IconName =>
+	typeof icon === 'string' && Object.keys(updatedIconSet).includes(icon);
+
+const isProjectIcon = (icon: unknown): icon is ProjectIcon =>
+	isIconName(icon) ||
+	(typeof icon === 'object' &&
+		icon !== null &&
+		'value' in icon &&
+		typeof icon.value === 'string' &&
+		'type' in icon &&
+		(icon.type === 'emoji' || (icon.type === 'icon' && isIconName(icon.value))));
 
 type BaseItem = {
 	id: string;
 	title: string;
 	disabled?: boolean;
-	icon?: IconName;
+	icon?: ProjectIcon;
 	route?: RouteLocationRaw;
 };
 
@@ -30,6 +44,7 @@ export const useGlobalEntityCreation = () => {
 	const CREATE_PROJECT_ID = 'create-project';
 	const WORKFLOWS_MENU_ID = 'workflow';
 	const CREDENTIALS_MENU_ID = 'credential';
+	const DEFAULT_ICON: IconName = 'layers';
 
 	const settingsStore = useSettingsStore();
 	const cloudPlanStore = useCloudPlanStore();
@@ -117,7 +132,7 @@ export const useGlobalEntityCreation = () => {
 						...displayProjects.value.map((project) => ({
 							id: `workflow-${project.id}`,
 							title: project.name as string,
-							icon: 'layers' as IconName,
+							icon: isProjectIcon(project.icon) ? project.icon : DEFAULT_ICON,
 							disabled: disabledWorkflow(project.scopes),
 							route: {
 								name: VIEWS.NEW_WORKFLOW,
@@ -141,7 +156,7 @@ export const useGlobalEntityCreation = () => {
 						{
 							id: 'credential-personal',
 							title: i18n.baseText('projects.menu.personal'),
-							icon: 'user' as IconName,
+							icon: 'user',
 							disabled: disabledCredential(projectsStore.personalProject?.scopes),
 							route: {
 								name: VIEWS.PROJECTS_CREDENTIALS,
@@ -151,7 +166,7 @@ export const useGlobalEntityCreation = () => {
 						...displayProjects.value.map((project) => ({
 							id: `credential-${project.id}`,
 							title: project.name as string,
-							icon: 'layers' as IconName,
+							icon: isProjectIcon(project.icon) ? project.icon : DEFAULT_ICON,
 							disabled: disabledCredential(project.scopes),
 							route: {
 								name: VIEWS.PROJECTS_CREDENTIALS,
@@ -166,7 +181,7 @@ export const useGlobalEntityCreation = () => {
 				title: 'Project',
 				disabled: !projectsStore.canCreateProjects || !projectsStore.hasPermissionToCreateProjects,
 			},
-		];
+		] satisfies Item[];
 	});
 
 	const createProject = async () => {
@@ -175,7 +190,7 @@ export const useGlobalEntityCreation = () => {
 		try {
 			const newProject = await projectsStore.createProject({
 				name: i18n.baseText('projects.settings.newProjectName'),
-				icon: { type: 'icon', value: 'layers' },
+				icon: { type: 'icon', value: DEFAULT_ICON },
 			});
 			await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
 			toast.showMessage({

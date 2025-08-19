@@ -25,6 +25,8 @@ import SuggestedWorkflowCard from '@/experiments/personalizedTemplates/component
 import SuggestedWorkflows from '@/experiments/personalizedTemplates/components/SuggestedWorkflows.vue';
 import { usePersonalizedTemplatesStore } from '@/experiments/personalizedTemplates/stores/personalizedTemplates.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
+import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
@@ -49,7 +51,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
-import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { getEasyAiWorkflowJson } from '@/utils/templates/workflowSamples';
 import {
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
@@ -120,6 +122,7 @@ const templatesStore = useTemplatesStore();
 const aiStarterTemplatesStore = useAITemplatesStarterCollectionStore();
 const personalizedTemplatesStore = usePersonalizedTemplatesStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
+const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -475,6 +478,18 @@ const onFolderDeleted = async (payload: {
 		deleted_sub_workflows: payload.workflowCount,
 	});
 };
+
+const showInsights = computed(() => {
+	return (
+		projectPages.isOverviewSubPage &&
+		insightsStore.isSummaryEnabled &&
+		(!personalizedTemplatesV2Store.isFeatureEnabled() || workflowListResources.value.length > 0)
+	);
+});
+
+const showTemplateRecommendationV2 = computed(() => {
+	return personalizedTemplatesV2Store.isFeatureEnabled() && !loading.value;
+});
 
 /**
  * LIFE-CYCLE HOOKS
@@ -907,6 +922,15 @@ const handleCreateReadyToRunWorkflows = async (source: 'card' | 'callout') => {
 	}
 };
 
+const dismissStarterCollectionCallout = () => {
+	aiStarterTemplatesStore.dismissCallout();
+	aiStarterTemplatesStore.trackUserDismissedCallout();
+};
+
+const dismissEasyAICallout = () => {
+	easyAICalloutVisible.value = false;
+};
+
 const openAIWorkflow = async (source: string) => {
 	dismissEasyAICallout();
 	telemetry.track('User clicked test AI workflow', {
@@ -922,18 +946,9 @@ const openAIWorkflow = async (source: string) => {
 	});
 };
 
-const dismissStarterCollectionCallout = () => {
-	aiStarterTemplatesStore.dismissCallout();
-	aiStarterTemplatesStore.trackUserDismissedCallout();
-};
-
 const onShowArchived = async () => {
 	filters.value.showArchived = true;
 	await onFiltersUpdated();
-};
-
-const dismissEasyAICallout = () => {
-	easyAICalloutVisible.value = false;
 };
 
 const handleDismissReadyToRunCallout = () => {
@@ -1699,7 +1714,7 @@ const onNameSubmit = async (name: string) => {
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent">
 				<InsightsSummary
-					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
+					v-if="showInsights"
 					:loading="insightsStore.weeklySummary.isLoading"
 					:summary="insightsStore.weeklySummary.state"
 					time-range="week"
@@ -1792,39 +1807,12 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</SuggestedWorkflows>
 			<N8nCallout
-				v-else-if="!loading && showEasyAIWorkflowCallout && easyAICalloutVisible"
-				theme="secondary"
-				icon="bot"
-				:class="$style['easy-ai-workflow-callout']"
-			>
-				{{ i18n.baseText('workflows.list.easyAI') }}
-				<template #trailingContent>
-					<div :class="$style['callout-trailing-content']">
-						<N8nButton
-							data-test-id="easy-ai-button"
-							size="small"
-							type="secondary"
-							@click="openAIWorkflow('callout')"
-						>
-							{{ i18n.baseText('generic.tryNow') }}
-						</N8nButton>
-						<N8nIcon
-							size="small"
-							icon="x"
-							:title="i18n.baseText('generic.dismiss')"
-							class="clickable"
-							@click="dismissEasyAICallout"
-						/>
-					</div>
-				</template>
-			</N8nCallout>
-			<N8nCallout
 				v-if="showReadyToRunWorkflowsCallout"
 				theme="secondary"
 				icon="bolt-filled"
 				:class="$style['easy-ai-workflow-callout']"
 			>
-				{{ i18n.baseText('workflows.readyToRunWorkflows.callout') }}
+				{{ readyToRunWorkflowsStore.getCalloutText() }}
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
@@ -1833,7 +1821,7 @@ const onNameSubmit = async (name: string) => {
 							type="secondary"
 							@click="handleCreateReadyToRunWorkflows('callout')"
 						>
-							{{ i18n.baseText('workflows.readyToRunWorkflows.cta') }}
+							{{ i18n.baseText('generic.startNow') }}
 						</N8nButton>
 						<N8nIcon
 							size="small"
@@ -2061,11 +2049,11 @@ const onNameSubmit = async (name: string) => {
 							<N8nIcon
 								:class="$style.emptyStateCardIcon"
 								:stroke-width="1.5"
-								icon="zap"
+								icon="package-open"
 								color="foreground-dark"
 							/>
 							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ i18n.baseText('workflows.readyToRunWorkflows.card') }}
+								{{ readyToRunWorkflowsStore.getCardText() }}
 							</N8nText>
 						</div>
 					</N8nCard>
@@ -2089,6 +2077,7 @@ const onNameSubmit = async (name: string) => {
 						</div>
 					</N8nCard>
 				</div>
+				<TemplateRecommendationV2 v-if="showTemplateRecommendationV2" />
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
