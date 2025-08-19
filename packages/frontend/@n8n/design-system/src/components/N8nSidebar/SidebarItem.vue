@@ -4,7 +4,6 @@ import N8nIcon from '../N8nIcon';
 import { IconName, isSupportedIconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
 import N8nText from '../N8nText';
-
 import { IMenuItem } from '@n8n/design-system/types';
 
 const props = defineProps<{
@@ -44,7 +43,7 @@ const to = computed(() => {
 			v-for="level in new Array(level - 1)"
 			:key="level"
 		/>
-		<N8nRoute :to="to" :class="{ sidebarItem: true }">
+		<N8nRoute :to="to" :class="{ sidebarItem: true }" :aria-label="props.ariaLabel">
 			<div
 				v-if="item.type !== 'workflow'"
 				:class="{ sidebarItemDropdown: true, other: item.type === 'other' }"
@@ -78,6 +77,10 @@ const to = computed(() => {
 	max-width: 100%;
 }
 
+.router-link-active {
+	background-color: var(--color-foreground-light);
+}
+
 .sidebarItem {
 	display: flex;
 	align-items: center;
@@ -86,10 +89,10 @@ const to = computed(() => {
 	cursor: pointer;
 	color: var(--color-text-base);
 	border-radius: var(--spacing-4xs);
-	margin-top: 1px;
 	cursor: pointer;
 	min-width: 0;
 	width: 100%;
+	height: calc(100% - 1px);
 
 	&:hover .sidebarItemDropdownIcon {
 		color: var(--color-text-dark);
