@@ -227,7 +227,7 @@ describe('WorkflowBuilderAgent', () => {
 		it('should handle GraphRecursionError', async () => {
 			mockCreateStreamProcessor.mockImplementation(() => {
 				// eslint-disable-next-line require-yield
-				return (function* () {
+				return (async function* () {
 					throw new GraphRecursionError('Recursion limit exceeded');
 				})();
 			});
@@ -262,7 +262,7 @@ describe('WorkflowBuilderAgent', () => {
 			// Mock createStreamProcessor to throw an unknown error (not GraphRecursionError or abort)
 			mockCreateStreamProcessor.mockImplementation(() => {
 				// eslint-disable-next-line require-yield
-				return (function* () {
+				return (async function* () {
 					throw unknownError;
 				})();
 			});
