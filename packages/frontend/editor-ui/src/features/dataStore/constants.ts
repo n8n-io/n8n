@@ -19,3 +19,7 @@ export const DEFAULT_ID_COLUMN_NAME = 'id';
 export const MAX_COLUMN_NAME_LENGTH = 128;
 
 export const COLUMN_NAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9-]*$/;
+
+export const NO_TABLE_YET_MESSAGE = 'SQLITE_ERROR: no such table:';
+
+export const MIN_LOADING_TIME = 500; // ms
