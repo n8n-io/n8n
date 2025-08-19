@@ -2496,7 +2496,6 @@ export interface AiAgentRequest {
 }
 
 export interface IWorkflowExecuteAdditionalData {
-	[key: string]: unknown;
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,

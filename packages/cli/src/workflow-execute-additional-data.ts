@@ -444,6 +444,8 @@ export async function getBase(
 	};
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {
+		// @ts-expect-error Adding an index signature `[key: string]: unknown`
+		// to `IWorkflowExecuteAdditionalData` triggers complex type errors for derived types.
 		additionalData[moduleName] = moduleContext;
 	}
 
