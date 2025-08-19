@@ -17,7 +17,7 @@ async function getCredentialsForProject(api: ApiHelpers, projectId?: string) {
 	return await api.get('/rest/credentials', params);
 }
 
-test.describe('Projects @db:reset', () => {
+test.describe('Projects', () => {
 	test.beforeEach(async ({ api, n8n }) => {
 		await api.enableFeature('sharing');
 		await api.enableFeature('folders');

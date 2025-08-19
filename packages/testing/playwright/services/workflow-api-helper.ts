@@ -16,7 +16,7 @@ export class WorkflowApiHelper {
 	}
 
 	async setActive(workflowId: string, active: boolean) {
-		const response = await this.api.request.patch(`/rest/workflows/${workflowId}`, {
+		const response = await this.api.request.patch(`/rest/workflows/${workflowId}?forceSave=true`, {
 			data: { active },
 		});
 
@@ -88,37 +88,5 @@ export class WorkflowApiHelper {
 		}
 
 		throw new TestError(`Execution did not complete within ${timeoutMs}ms`);
-	}
-
-	async triggerWebhook(
-		path: string,
-		options: { method?: 'GET' | 'POST'; data?: object; params?: Record<string, string> } = {},
-	) {
-		const { method = 'POST', data, params } = options;
-
-		let url = `/webhook/${path}`;
-		if (params && Object.keys(params).length > 0) {
-			const searchParams = new URLSearchParams(params);
-			url += `?${searchParams.toString()}`;
-		}
-
-		const requestOptions: Record<string, unknown> = {
-			headers: { 'Content-Type': 'application/json' },
-		};
-
-		if (data && method === 'POST') {
-			requestOptions.data = data;
-		}
-
-		const response =
-			method === 'GET'
-				? await this.api.request.get(url)
-				: await this.api.request.post(url, requestOptions);
-
-		if (!response.ok()) {
-			throw new TestError(`Webhook trigger failed: ${await response.text()}`);
-		}
-
-		return response;
 	}
 }

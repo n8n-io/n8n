@@ -15,24 +15,43 @@ import {
 	ColumnAutoSizeModule,
 	CheckboxEditorModule,
 	NumberEditorModule,
+	RowSelectionModule,
+	RenderApiModule,
+	DateEditorModule,
+	ClientSideRowModelApiModule,
+	ValidationModule,
+	UndoRedoEditModule,
 } from 'ag-grid-community';
-import type { GridApi, GridReadyEvent, ColDef } from 'ag-grid-community';
+import type {
+	GridApi,
+	GridReadyEvent,
+	ColDef,
+	RowSelectionOptions,
+	CellValueChangedEvent,
+	ValueGetterParams,
+} from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumnPopover.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
+import { DEFAULT_ID_COLUMN_NAME, NO_TABLE_YET_MESSAGE } from '@/features/dataStore/constants';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
+	ValidationModule, // This module allows us to see AG Grid errors in browser console
 	ClientSideRowModelModule,
 	TextEditorModule,
 	LargeTextEditorModule,
 	ColumnAutoSizeModule,
 	CheckboxEditorModule,
 	NumberEditorModule,
+	RowSelectionModule,
+	RenderApiModule,
+	DateEditorModule,
+	ClientSideRowModelApiModule,
+	UndoRedoEditModule,
 ]);
 
 type Props = {
@@ -40,6 +59,10 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+
+const emit = defineEmits<{
+	toggleSave: [value: boolean];
+}>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -51,6 +74,13 @@ const dataStoreStore = useDataStoreStore();
 const gridApi = ref<GridApi | null>(null);
 const colDefs = ref<ColDef[]>([]);
 const rowData = ref<DataStoreRow[]>([]);
+const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
+	mode: 'singleRow',
+	enableClickSelection: true,
+	checkboxes: false,
+};
+
+const contentLoading = ref(false);
 
 // Shared config for all columns
 const defaultColumnDef = {
@@ -60,22 +90,26 @@ const defaultColumnDef = {
 };
 
 // Pagination
+const pageSizeOptions = [10, 20, 50];
 const currentPage = ref(1);
 const pageSize = ref(20);
-const pageSizeOptions = ref([10, 20, 50]);
 const totalItems = ref(0);
+
+// Data store content
+const rows = ref<DataStoreRow[]>([]);
 
 const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
 };
 
-const setCurrentPage = (page: number) => {
+const setCurrentPage = async (page: number) => {
 	currentPage.value = page;
+	await fetchDataStoreContent();
 };
-
-const setPageSize = (size: number) => {
+const setPageSize = async (size: number) => {
 	pageSize.value = size;
 	currentPage.value = 1; // Reset to first page on page size change
+	await fetchDataStoreContent();
 };
 
 const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload }) => {
@@ -101,13 +135,50 @@ const createColumnDef = (col: DataStoreColumn) => {
 		headerName: col.name,
 		editable: col.name !== DEFAULT_ID_COLUMN_NAME,
 		cellDataType: dataStoreTypes.mapToAGCellType(col.type),
+		valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
+			// If the value is null, return null to show empty cell
+			if (params.data?.[col.name] === null || params.data?.[col.name] === undefined) {
+				return null;
+			}
+			// Parse dates
+			if (col.type === 'date') {
+				const value = params.data?.[col.name];
+				if (typeof value === 'string') {
+					return new Date(value);
+				}
+			}
+			return params.data?.[col.name];
+		},
 	};
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
 		columnDef.cellEditor = 'agLargeTextCellEditor';
 		columnDef.cellEditorPopup = true;
 	}
+	// Setup date editor
+	if (col.type === 'date') {
+		columnDef.cellEditor = 'agDateCellEditor';
+	}
 	return columnDef;
+};
+
+const onAddRowClick = async () => {
+	try {
+		// Go to last page if we are not there already
+		if (currentPage.value * pageSize.value < totalItems.value) {
+			await setCurrentPage(Math.ceil(totalItems.value / pageSize.value));
+		}
+		const inserted = await dataStoreStore.insertEmptyRow(props.dataStore);
+		if (!inserted) {
+			throw new Error(i18n.baseText('generic.unknownError'));
+		}
+		emit('toggleSave', true);
+		await fetchDataStoreContent();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
+	} finally {
+		emit('toggleSave', false);
+	}
 };
 
 const initColumnDefinitions = () => {
@@ -125,12 +196,54 @@ const initColumnDefinitions = () => {
 	];
 };
 
-const initialize = () => {
-	initColumnDefinitions();
+const onCellValueChanged = async (params: CellValueChangedEvent) => {
+	const { data, api } = params;
+
+	try {
+		emit('toggleSave', true);
+		await dataStoreStore.upsertRow(props.dataStore.id, props.dataStore.projectId, data);
+	} catch (error) {
+		// Revert cell to original value if the update fails
+		api.undoCellEditing();
+		toast.showError(error, i18n.baseText('dataStore.updateRow.error'));
+	} finally {
+		emit('toggleSave', false);
+	}
 };
 
-onMounted(() => {
-	initialize();
+const fetchDataStoreContent = async () => {
+	try {
+		contentLoading.value = true;
+		const fetchedRows = await dataStoreStore.fetchDataStoreContent(
+			props.dataStore.id,
+			props.dataStore.projectId,
+			currentPage.value,
+			pageSize.value,
+		);
+		rows.value = fetchedRows.data;
+		totalItems.value = fetchedRows.count;
+		rowData.value = rows.value;
+	} catch (error) {
+		// TODO: We currently don't create user tables until user columns or rows are added
+		// so we need to ignore NO_TABLE_YET_MESSAGE error here
+		if ('message' in error && !error.message.includes(NO_TABLE_YET_MESSAGE)) {
+			toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));
+		}
+	} finally {
+		contentLoading.value = false;
+		if (gridApi.value) {
+			gridApi.value.refreshHeader();
+		}
+	}
+};
+
+const initialize = async () => {
+	initColumnDefinitions();
+	await fetchDataStoreContent();
+};
+
+onMounted(async () => {
+	await initialize();
 });
 </script>
 
@@ -145,7 +258,14 @@ onMounted(() => {
 				:dom-layout="'autoHeight'"
 				:animate-rows="false"
 				:theme="n8nTheme"
+				:loading="contentLoading"
+				:row-selection="rowSelection"
+				:get-row-id="(params) => String(params.data.id)"
+				:single-click-edit="true"
+				:stop-editing-when-cells-lose-focus="true"
+				:undo-redo-cell-editing="true"
 				@grid-ready="onGridReady"
+				@cell-value-changed="onCellValueChanged"
 			/>
 			<AddColumnPopover
 				:data-store="props.dataStore"
@@ -154,20 +274,23 @@ onMounted(() => {
 			/>
 		</div>
 		<div :class="$style.footer">
-			<n8n-icon-button
-				icon="plus"
-				class="mb-xl"
-				type="secondary"
-				data-test-id="data-store-add-row-button"
-			/>
+			<n8n-tooltip :content="i18n.baseText('dataStore.addRow.label')">
+				<n8n-icon-button
+					data-test-id="data-store-add-row-button"
+					icon="plus"
+					class="mb-xl"
+					type="secondary"
+					@click="onAddRowClick"
+				/>
+			</n8n-tooltip>
 			<el-pagination
 				v-model:current-page="currentPage"
 				v-model:page-size="pageSize"
+				data-test-id="data-store-content-pagination"
 				background
 				:total="totalItems"
 				:page-sizes="pageSizeOptions"
 				layout="total, prev, pager, next, sizes"
-				data-test-id="data-store-content-pagination"
 				@update:current-page="setCurrentPage"
 				@size-change="setPageSize"
 			/>
@@ -199,7 +322,6 @@ onMounted(() => {
 	--ag-font-family: var(--font-family);
 	--ag-font-size: var(--font-size-xs);
 	--ag-row-height: calc(var(--ag-grid-size) * 0.8 + 32px);
-
 	--ag-header-background-color: var(--color-background-base);
 	--ag-header-font-size: var(--font-size-xs);
 	--ag-header-font-weight: var(--font-weight-bold);
