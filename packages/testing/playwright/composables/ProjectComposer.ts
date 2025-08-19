@@ -12,13 +12,7 @@ export class ProjectComposer {
 	 */
 	async createProject(projectName?: string) {
 		await this.n8n.page.getByTestId('universal-add').click();
-		await Promise.all([
-			//this.n8n.page.waitForResponse('**/rest/projects/*'),
-			this.n8n.page
-				.getByTestId('navigation-menu-item')
-				.filter({ hasText: 'Project' })
-				.click(),
-		]);
+		await this.n8n.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' }).click();
 		await this.n8n.notifications.waitForNotificationAndClose('saved successfully');
 		await this.n8n.page.waitForLoadState();
 		const projectNameUnique = projectName ?? `Project ${nanoid(8)}`;
