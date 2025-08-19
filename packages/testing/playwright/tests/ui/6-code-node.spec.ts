@@ -36,7 +36,7 @@ test.describe('Code node', () => {
 			await n8n.ndv.execute();
 
 			await expect(
-				n8n.notifications.notificationContainerByText('Node executed successfully').first(),
+				n8n.notifications.getNotificationByTitle('Node executed successfully').first(),
 			).toBeVisible();
 
 			await n8n.ndv.getParameterInput('mode').click();
@@ -45,7 +45,7 @@ test.describe('Code node', () => {
 			await n8n.ndv.execute();
 
 			await expect(
-				n8n.notifications.notificationContainerByText('Node executed successfully').first(),
+				n8n.notifications.getNotificationByTitle('Node executed successfully').first(),
 			).toBeVisible();
 		});
 

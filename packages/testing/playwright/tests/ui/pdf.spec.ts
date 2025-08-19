@@ -7,7 +7,7 @@ test.describe('PDF Test', () => {
 		await n8n.canvas.importWorkflow('test_pdf_workflow.json', 'PDF Workflow');
 		await n8n.canvas.clickExecuteWorkflowButton();
 		await expect(
-			n8n.notifications.notificationContainerByText('Workflow executed successfully'),
+			n8n.notifications.getNotificationByTitle('Workflow executed successfully'),
 		).toBeVisible();
 	});
 });

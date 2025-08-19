@@ -779,7 +779,8 @@ export const BATCH_11AUG_EXPERIMENT = {
 	name: '37_onboarding_experiments_batch_aug11',
 	control: 'control',
 	variantReadyToRun: 'variant-ready-to-run-workflows',
-	variantStarterPack: 'variant-starter-pack-v2',
+	variantReadyToRun2: 'variant-ready-to-run-workflows_v2',
+	variantReadyToRun3: 'variant-ready-to-run-workflows_v3',
 };
 
 export const PRE_BUILT_AGENTS_EXPERIMENT = {

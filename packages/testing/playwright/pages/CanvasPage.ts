@@ -37,6 +37,10 @@ export class CanvasPage extends BasePage {
 		await this.clickByTestId('canvas-plus-button');
 	}
 
+	getCanvasNodes() {
+		return this.page.getByTestId('canvas-node');
+	}
+
 	async clickNodeCreatorPlusButton(): Promise<void> {
 		await this.clickByTestId('node-creator-plus-button');
 	}
@@ -79,6 +83,10 @@ export class CanvasPage extends BasePage {
 
 	async saveWorkflow(): Promise<void> {
 		await this.clickSaveWorkflowButton();
+	}
+
+	getExecuteWorkflowButton(): Locator {
+		return this.page.getByTestId('execute-workflow-button');
 	}
 
 	async clickExecuteWorkflowButton(): Promise<void> {
@@ -162,8 +170,11 @@ export class CanvasPage extends BasePage {
 			(response) =>
 				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
 		);
+
 		await this.page.getByTestId('workflow-activate-switch').click();
 		await responsePromise;
+
+		await this.page.waitForTimeout(200);
 	}
 
 	async clickZoomToFitButton(): Promise<void> {
@@ -256,8 +267,9 @@ export class CanvasPage extends BasePage {
 		await this.getProductionChecklistActionItem(actionText).click();
 	}
 
-	getCanvasNodes(): Locator {
-		return this.page.getByTestId('canvas-node');
+	async duplicateNode(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click({ button: 'right' });
+		await this.page.getByTestId('context-menu').getByText('Duplicate').click();
 	}
 
 	nodeConnections(): Locator {

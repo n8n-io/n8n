@@ -237,14 +237,14 @@ export const useWorkflowDiff = (
 
 		const acc = new Map<string, { status: NodeDiffStatus; connection: Connection }>();
 
-		added
-			.values()
-			.forEach((id) => formatConnectionDiff(id, NodeDiffStatus.Added, targetConnections.map, acc));
-		removed
-			.values()
-			.forEach((id) =>
-				formatConnectionDiff(id, NodeDiffStatus.Deleted, sourceConnections.map, acc),
-			);
+		for (const id of added.values()) {
+			formatConnectionDiff(id, NodeDiffStatus.Added, targetConnections.map, acc);
+		}
+
+		for (const id of removed.values()) {
+			formatConnectionDiff(id, NodeDiffStatus.Deleted, sourceConnections.map, acc);
+		}
+
 		return acc;
 	});
 

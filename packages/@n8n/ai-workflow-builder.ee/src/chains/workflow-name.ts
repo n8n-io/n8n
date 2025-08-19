@@ -9,7 +9,7 @@ const workflowNamingPromptTemplate = PromptTemplate.fromTemplate(
 {initialPrompt}
 </initial_prompt>
 
-This name should be concise, descriptive, and suitable for a workflow that automates tasks related to the given prompt. The name should be in a format that is easy to read and understand.
+This name should be concise, descriptive, and suitable for a workflow that automates tasks related to the given prompt. The name should be in a format that is easy to read and understand. Do not include the word "workflow" in the name.
 `,
 );
 
