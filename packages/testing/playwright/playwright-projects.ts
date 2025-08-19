@@ -36,7 +36,6 @@ export function getProjects(): Project[] {
 				testDir: './tests/ui',
 				grep: SERIAL_EXECUTION,
 				workers: 1,
-				dependencies: ['ui'],
 				use: { baseURL: process.env.N8N_BASE_URL },
 			},
 		);
