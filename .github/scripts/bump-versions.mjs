@@ -7,9 +7,24 @@ import assert from 'assert';
 
 const exec = promisify(child_process.exec);
 
+function generateExperimentVersion(currentVersion) {
+	const parsed = semver.parse(currentVersion);
+	if (!parsed) throw new Error(`Invalid version: ${currentVersion}`);
+	
+	// Check if it's already an experiment version
+	if (parsed.prerelease.length > 0 && parsed.prerelease[0] === 'exp') {
+		// Increment the experiment minor version
+		const expMinor = (parsed.prerelease[1] || 0) + 1;
+		return `${parsed.major}.${parsed.minor}.${parsed.patch}-exp.${expMinor}`;
+	}
+	
+	// Create new experiment version: <major>.<minor>.<patch>-exp.0
+	return `${parsed.major}.${parsed.minor}.${parsed.patch}-exp.0`;
+}
+
 const rootDir = process.cwd();
 const releaseType = process.env.RELEASE_TYPE;
-assert.match(releaseType, /^(patch|minor|major)$/, 'Invalid RELEASE_TYPE');
+assert.match(releaseType, /^(patch|minor|major|experiment)$/, 'Invalid RELEASE_TYPE');
 
 // TODO: if releaseType is `auto` determine release type based on the changelog
 
@@ -46,7 +61,9 @@ for (const packageName in packageMap) {
 		Object.keys(packageJson.dependencies || {}).some(
 			(dependencyName) => packageMap[dependencyName]?.isDirty,
 		)
-			? semver.inc(version, releaseType)
+			? releaseType === 'experiment' 
+				? generateExperimentVersion(version)
+				: semver.inc(version, releaseType)
 			: version;
 
 	await writeFile(packageFile, JSON.stringify(packageJson, null, 2) + '\n');
