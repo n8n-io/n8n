@@ -38,7 +38,7 @@ test.describe('Performance Example: Multiple sets}', () => {
 	];
 
 	testData.forEach(({ size, timeout, budgets }) => {
-		test(`workflow performance - ${size.toLocaleString()} items @db:reset`, async ({ n8n }) => {
+		test(`workflow performance - ${size.toLocaleString()} items`, async ({ n8n }) => {
 			test.setTimeout(timeout);
 
 			// Setup workflow
@@ -93,7 +93,7 @@ test.describe('Performance Example: Multiple sets}', () => {
 	});
 });
 
-test('Performance Example: Multiple Loops in a single test @db:reset', async ({ n8n }) => {
+test('Performance Example: Multiple Loops in a single test', async ({ n8n }) => {
 	await setupPerformanceTest(n8n, 30000);
 	const loopSize = 20;
 	const stats = [];
@@ -117,7 +117,7 @@ test('Performance Example: Multiple Loops in a single test @db:reset', async ({ 
 	expect(average).toBeLessThan(2000);
 });
 
-test('Performance Example: Aserting on a performance metric @db:reset', async ({ n8n }) => {
+test('Performance Example: Aserting on a performance metric', async ({ n8n }) => {
 	await setupPerformanceTest(n8n, 30000);
 	await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
 	const openNodeDuration = await measurePerformance(n8n.page, 'open-node', async () => {

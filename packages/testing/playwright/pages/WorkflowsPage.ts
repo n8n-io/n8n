@@ -79,7 +79,7 @@ export class WorkflowsPage extends BasePage {
 	async shareWorkflow(workflowName: string) {
 		const workflow = this.getWorkflowByName(workflowName);
 		await workflow.getByTestId('workflow-card-actions').click();
-		await this.page.getByRole('menuitem', { name: 'Share' }).click();
+		await this.page.getByRole('menuitem', { name: 'Share...' }).click();
 	}
 
 	getArchiveMenuItem() {
