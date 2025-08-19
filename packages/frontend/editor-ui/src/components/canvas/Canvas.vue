@@ -107,7 +107,6 @@ const emit = defineEmits<{
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
 	'open:sub-workflow': [nodeId: string];
-	'open:about': [];
 	'start-chat': [];
 	'extract-workflow': [ids: string[]];
 }>();
@@ -346,7 +345,6 @@ const keyMap = computed(() => {
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
 		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
-		ctrl_alt_o: () => emit('open:about'),
 	};
 	return fullKeymap;
 });

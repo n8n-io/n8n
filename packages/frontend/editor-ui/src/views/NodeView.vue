@@ -140,6 +140,7 @@ import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatBut
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useKeybindings } from '@/composables/useKeybindings';
 
 defineOptions({
 	name: 'NodeView',
@@ -255,6 +256,9 @@ const {
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
+useKeybindings({
+	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
+});
 
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
@@ -2083,7 +2087,6 @@ onBeforeUnmount(() => {
 			@toggle:focus-panel="onToggleFocusPanel"
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="startChat()"
-			@open:about="uiStore.openModal(ABOUT_MODAL_KEY)"
 		>
 			<Suspense>
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
