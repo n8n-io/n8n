@@ -63,10 +63,7 @@ test.describe('Projects @db:reset', () => {
 			n8n.page.getByText('Workflow successfully created', { exact: false }),
 		).toBeVisible();
 
-		await n8n.canvas.addNodeToCanvasWithSubItem(
-			EXECUTE_WORKFLOW_NODE_NAME,
-			'Execute A Sub Workflow',
-		);
+		await n8n.canvas.addNodeWithSubItem(EXECUTE_WORKFLOW_NODE_NAME, 'Execute A Sub Workflow');
 
 		const subWorkflowPagePromise = n8n.page.waitForEvent('popup');
 
@@ -77,7 +74,7 @@ test.describe('Projects @db:reset', () => {
 		await subn8n.ndv.clickBackToCanvasButton();
 
 		await subn8n.canvas.deleteNodeByName('Replace me with your logic');
-		await subn8n.canvas.addNodeToCanvasWithSubItem(NOTION_NODE_NAME, 'Append a block');
+		await subn8n.canvas.addNodeWithSubItem(NOTION_NODE_NAME, 'Append a block');
 
 		await subn8n.credentials.createAndSaveNewCredential('apiKey', NOTION_API_KEY);
 
