@@ -80,11 +80,15 @@ The monorepo is organized into these key packages:
 
 ### Using architecture docs
 
-The `docs/architecture` directory contains system architecture documentation covering design decisions and implementation details. Start with `docs/architecture/README.md` for navigation.
+The `docs/architecture` directory contains system architecture documentation covering design decisions and implementation details.
+These documents are essential for understanding how different components of the system interact and are structured.
+You can search for specific features or subsystems in these documents, or start with `docs/architecture/README.md` for navigation.
 
 When working on features:
 1. Check relevant architecture docs before making changes
 2. Search docs for existing patterns and conventions
+
+When user asks questions – always search for the relevant docs before answering.
 
 Note: Documentation is work in progress - some areas may be incomplete.
 
