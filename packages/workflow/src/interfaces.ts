@@ -2496,6 +2496,10 @@ export interface AiAgentRequest {
 }
 
 export interface IWorkflowExecuteAdditionalData {
+	[key: string]: unknown;
+	insights?: {
+		proxy: { method: () => void };
+	};
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
