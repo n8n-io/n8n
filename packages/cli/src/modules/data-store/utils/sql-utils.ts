@@ -18,7 +18,7 @@ export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[
 
 		switch (col.type) {
 			case 'number':
-				return name.float;
+				return name.double;
 			case 'boolean':
 				return name.bool;
 			case 'string':
@@ -48,7 +48,7 @@ function dataStoreColumnTypeToSql(
 				case 'sqlite':
 					return 'REAL';
 				default:
-					return 'FLOAT';
+					return 'DOUBLE';
 			}
 		case 'boolean':
 			return 'BOOLEAN';

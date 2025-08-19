@@ -10,7 +10,7 @@ export class Column {
 		| 'timestamptz'
 		| 'timestamp'
 		| 'uuid'
-		| 'float';
+		| 'double';
 
 	private isGenerated = false;
 
@@ -40,8 +40,8 @@ export class Column {
 		return this;
 	}
 
-	get float() {
-		this.type = 'float';
+	get double() {
+		this.type = 'double';
 		return this;
 	}
 
@@ -168,7 +168,7 @@ export class Column {
 			if (isMysql) options.type = 'varchar(36)';
 			// we haven't been defining length on "uuid" varchar on sqlite
 			if (isSqlite) options.type = 'varchar';
-		} else if (type === 'float') {
+		} else if (type === 'double') {
 			if (isPostgres) {
 				options.type = 'double precision';
 			} else if (isMysql) {
