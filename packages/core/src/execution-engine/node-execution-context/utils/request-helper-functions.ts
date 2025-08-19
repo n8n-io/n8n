@@ -25,7 +25,6 @@ import { type AgentOptions, Agent as HttpsAgent } from 'https';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
-import merge from 'lodash/merge';
 import pick from 'lodash/pick';
 import {
 	NodeApiError,
@@ -909,6 +908,44 @@ export async function httpRequest(
 	return result.data;
 }
 
+/**
+ * Deep merge function that handles nested objects and arrays properly for pagination
+ */
+function deepMergeForPagination(target: any, source: any): any {
+	if (!source || typeof source !== 'object') {
+		return target;
+	}
+
+	const result = Array.isArray(target) ? [...target] : { ...target };
+
+	Object.keys(source).forEach((key) => {
+		const sourceValue = source[key];
+		const targetValue = result[key];
+
+		if (Array.isArray(sourceValue)) {
+			// For arrays, we need to deep merge each element
+			if (Array.isArray(targetValue)) {
+				result[key] = sourceValue.map((item, index) => {
+					if (typeof item === 'object' && item !== null && targetValue[index]) {
+						return deepMergeForPagination(targetValue[index], item);
+					}
+					return item;
+				});
+			} else {
+				result[key] = sourceValue;
+			}
+		} else if (sourceValue && typeof sourceValue === 'object' && !Buffer.isBuffer(sourceValue)) {
+			// Deep merge objects
+			result[key] = deepMergeForPagination(targetValue || {}, sourceValue);
+		} else {
+			// Primitive values - directly assign
+			result[key] = sourceValue;
+		}
+	});
+
+	return result;
+}
+
 export function applyPaginationRequestData(
 	requestData: IRequestOptions,
 	paginationRequestData: PaginationOptions['request'],
@@ -926,7 +963,9 @@ export function applyPaginationRequestData(
 		delete preparedPaginationData.body;
 	}
 
-	return merge({}, requestData, preparedPaginationData);
+	// Use deep merge for proper handling of nested structures
+	const baseData = { ...requestData };
+	return deepMergeForPagination(baseData, preparedPaginationData);
 }
 
 function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {

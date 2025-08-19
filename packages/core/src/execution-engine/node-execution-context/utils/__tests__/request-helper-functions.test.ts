@@ -956,4 +956,141 @@ describe('Request Helper Functions', () => {
 			});
 		});
 	});
+
+	describe('applyPaginationRequestData', () => {
+		test('should merge simple objects correctly', () => {
+			const requestData = {
+				qs: { filter: 'test' },
+				body: { existing: 'value' },
+			};
+			const paginationData = {
+				qs: { page: 1 },
+				body: { newField: 'newValue' },
+			};
+
+			const result = applyPaginationRequestData(requestData, paginationData);
+
+			expect(result.qs).toEqual({ filter: 'test', page: 1 });
+			expect(result.body).toEqual({ existing: 'value', newField: 'newValue' });
+		});
+
+		test('should handle nested objects with arrays properly', () => {
+			const requestData = {
+				body: {
+					call: 'ListarCategorias',
+					param: [{ pagina: 1, registros_por_pagina: 50 }],
+					app_key: '#APP_KEY#',
+					app_secret: '#APP_SECRET#',
+				},
+			};
+			const paginationData = {
+				body: {
+					param: [{ pagina: 2 }],
+				},
+			};
+
+			const result = applyPaginationRequestData(requestData, paginationData);
+
+			expect(result.body).toEqual({
+				call: 'ListarCategorias',
+				param: [{ pagina: 2, registros_por_pagina: 50 }],
+				app_key: '#APP_KEY#',
+				app_secret: '#APP_SECRET#',
+			});
+		});
+
+		test('should handle nested arrays with multiple objects', () => {
+			const requestData = {
+				body: {
+					param: [
+						{ pagina: 1, registros_por_pagina: 50, filter: 'active' },
+						{ otherParam: 'value' },
+					],
+				},
+			};
+			const paginationData = {
+				body: {
+					param: [{ pagina: 3 }, { otherParam: 'updatedValue' }],
+				},
+			};
+
+			const result = applyPaginationRequestData(requestData, paginationData);
+
+			expect(result.body).toEqual({
+				param: [
+					{ pagina: 3, registros_por_pagina: 50, filter: 'active' },
+					{ otherParam: 'updatedValue' },
+				],
+			});
+		});
+
+		test('should handle formData correctly', () => {
+			const requestData = {
+				formData: { field1: 'value1' },
+			};
+			const paginationData = {
+				body: { page: 2 },
+			};
+
+			const result = applyPaginationRequestData(requestData, paginationData);
+
+			expect(result.formData).toEqual({ page: 2 });
+			expect(result.body).toBeUndefined();
+		});
+
+		test('should handle form correctly', () => {
+			const requestData = {
+				form: { field1: 'value1' },
+			};
+			const paginationData = {
+				body: { page: 2 },
+			};
+
+			const result = applyPaginationRequestData(requestData, paginationData);
+
+			expect(result.form).toEqual({ page: 2 });
+			expect(result.body).toBeUndefined();
+		});
+
+		test('should handle complex nested structures', () => {
+			const requestData = {
+				body: {
+					query: {
+						bool: {
+							must: [
+								{ match: { status: 'active' } },
+								{ range: { date: { gte: '2023-01-01' } } },
+							],
+							filter: [{ term: { category: 'test' } }],
+						},
+					},
+					from: 0,
+					size: 10,
+				},
+			};
+			const paginationData = {
+				body: {
+					from: 20,
+					query: {
+						bool: {
+							must: [{ match: { status: 'active' } }, { range: { date: { gte: '2023-02-01' } } }],
+						},
+					},
+				},
+			};
+
+			const result = applyPaginationRequestData(requestData, paginationData);
+
+			expect(result.body).toEqual({
+				query: {
+					bool: {
+						must: [{ match: { status: 'active' } }, { range: { date: { gte: '2023-02-01' } } }],
+						filter: [{ term: { category: 'test' } }],
+					},
+				},
+				from: 20,
+				size: 10,
+			});
+		});
+	});
 });
