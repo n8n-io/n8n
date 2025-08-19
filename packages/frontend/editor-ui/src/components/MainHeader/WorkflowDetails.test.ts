@@ -18,14 +18,24 @@ import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	...(await importOriginal<typeof import('vue-router')>()),
-	useRoute: vi.fn().mockReturnValue({}),
+	useRoute: vi.fn().mockReturnValue({
+		params: { name: 'test' },
+		query: { parentFolderId: '1' },
+	}),
 	useRouter: vi.fn().mockReturnValue({
 		replace: vi.fn(),
 		push: vi.fn().mockResolvedValue(undefined),
+		currentRoute: {
+			value: {
+				params: { name: 'test' },
+				query: { parentFolderId: '1' },
+			},
+		},
 	}),
 }));
 
@@ -54,6 +64,12 @@ vi.mock('@/composables/useMessage', () => {
 		}),
 	};
 });
+
+vi.mock('@/composables/useWorkflowSaving', () => ({
+	useWorkflowSaving: () => ({
+		saveCurrentWorkflow: vi.fn().mockResolvedValue(true),
+	}),
+}));
 
 const initialState = {
 	[STORES.SETTINGS]: {
@@ -98,6 +114,7 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 
 let uiStore: ReturnType<typeof useUIStore>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let projectsStore: MockedStore<typeof useProjectsStore>;
 let message: ReturnType<typeof useMessage>;
 let toast: ReturnType<typeof useToast>;
 let router: ReturnType<typeof useRouter>;
@@ -114,6 +131,12 @@ describe('WorkflowDetails', () => {
 	beforeEach(() => {
 		uiStore = useUIStore();
 		workflowsStore = mockedStore(useWorkflowsStore);
+		projectsStore = mockedStore(useProjectsStore);
+
+		// Set up default mocks
+		workflowsStore.saveCurrentWorkflow = vi.fn().mockResolvedValue(true);
+		projectsStore.currentProject = null;
+		projectsStore.personalProject = { id: 'personal', name: 'Personal' };
 
 		message = useMessage();
 		toast = useToast();
@@ -420,6 +443,101 @@ describe('WorkflowDetails', () => {
 				name: PROJECT_MOVE_RESOURCE_MODAL,
 				data: expect.objectContaining({ resource: expect.objectContaining({ id: workflow.id }) }),
 			});
+		});
+	});
+
+	describe('Toast notifications', () => {
+		it('should show personal toast when creating workflow without project context', async () => {
+			projectsStore.currentProject = null;
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...workflow,
+					id: 'new',
+					readOnly: false,
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-save-button'));
+
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'success',
+				}),
+			);
+		});
+
+		it('should show project toast when creating workflow in non-personal project', async () => {
+			projectsStore.currentProject = {
+				id: 'project-1',
+				name: 'Test Project',
+				type: 'team',
+				icon: null,
+				createdAt: '2023-01-01',
+				updatedAt: '2023-01-01',
+				relations: [],
+				scopes: [],
+			};
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...workflow,
+					id: 'new',
+					readOnly: false,
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-save-button'));
+
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'success',
+				}),
+			);
+		});
+
+		it('should show folder toast when creating workflow in folder context', async () => {
+			projectsStore.currentProject = {
+				id: 'project-1',
+				name: 'Test Project',
+				type: 'team',
+				icon: null,
+				createdAt: '2023-01-01',
+				updatedAt: '2023-01-01',
+				relations: [],
+				scopes: [],
+			};
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...workflow,
+					id: 'new',
+					readOnly: false,
+					currentFolder: { id: 'folder-1', name: 'Test Folder' },
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-save-button'));
+
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'success',
+				}),
+			);
+		});
+
+		it('should not show toast when saving existing workflow', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...workflow,
+					id: '123',
+					readOnly: false,
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-save-button'));
+
+			expect(toast.showMessage).not.toHaveBeenCalled();
 		});
 	});
 
