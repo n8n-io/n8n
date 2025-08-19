@@ -33,43 +33,6 @@ export const schema = {
 			default: 3600,
 			env: 'EXECUTIONS_TIMEOUT_MAX',
 		},
-
-		// If a workflow executes all the data gets saved by default. This
-		// could be a problem when a workflow gets executed a lot and processes
-		// a lot of data. To not exceed the database's capacity it is possible to
-		// prune the database regularly or to not save the execution at all.
-		// Depending on if the execution did succeed or error a different
-		// save behaviour can be set.
-		saveDataOnError: {
-			doc: 'What workflow execution data to save on error',
-			format: ['all', 'none'] as const,
-			default: 'all',
-			env: 'EXECUTIONS_DATA_SAVE_ON_ERROR',
-		},
-		saveDataOnSuccess: {
-			doc: 'What workflow execution data to save on success',
-			format: ['all', 'none'] as const,
-			default: 'all',
-			env: 'EXECUTIONS_DATA_SAVE_ON_SUCCESS',
-		},
-		saveExecutionProgress: {
-			doc: 'Whether or not to save progress for each node executed',
-			format: Boolean,
-			default: false,
-			env: 'EXECUTIONS_DATA_SAVE_ON_PROGRESS',
-		},
-
-		// If the executions of workflows which got started via the editor
-		// should be saved. By default they will not be saved as this runs
-		// are normally only for testing and debugging. This setting can
-		// also be overwritten on a per workflow basis in the workflow settings
-		// in the editor.
-		saveDataManualExecutions: {
-			doc: 'Save data of executions when started manually via editor',
-			format: Boolean,
-			default: true,
-			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS',
-		},
 	},
 
 	userManagement: {
