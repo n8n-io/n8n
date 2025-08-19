@@ -22,6 +22,8 @@ export function useSidebarLayout({ defaultWidth = 300 }: UseSidebarLayoutOptions
 	const sidebarWidth = ref<number>(persistedWidth.value);
 	const isResizing = ref(false);
 
+	const subMenuOpen = ref(true);
+
 	const panelIcon = computed(() => {
 		return state.value === 'open' ? 'panel-left-close' : 'panel-left-open';
 	});
@@ -57,6 +59,7 @@ export function useSidebarLayout({ defaultWidth = 300 }: UseSidebarLayoutOptions
 	}
 
 	function peakMouseOver(event: MouseEvent) {
+		if (subMenuOpen.value) return;
 		if (event.relatedTarget == null) {
 			return;
 		}
@@ -80,6 +83,7 @@ export function useSidebarLayout({ defaultWidth = 300 }: UseSidebarLayoutOptions
 		sidebarWidth,
 		isResizing,
 		panelIcon,
+		subMenuOpen,
 		toggleSidebar,
 		peakSidebar,
 		onResizeStart,

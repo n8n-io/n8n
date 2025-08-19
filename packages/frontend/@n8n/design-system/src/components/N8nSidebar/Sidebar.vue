@@ -36,6 +36,7 @@ const {
 	onResize,
 	onResizeEnd,
 	peakMouseOver,
+	subMenuOpen,
 } = useSidebarLayout({});
 
 onMounted(() => {
@@ -196,7 +197,7 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 					/>
 				</N8nRoute>
 			</N8nTooltip>
-			<SidebarSubMenu>
+			<SidebarSubMenu @update:open="(state) => (subMenuOpen = state)" :subMenuOpen="subMenuOpen">
 				<template #trigger>
 					<N8nIconButton
 						icon-size="large"

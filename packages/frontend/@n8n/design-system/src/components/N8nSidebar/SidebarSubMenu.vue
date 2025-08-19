@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui';
+
+defineProps<{ subMenuOpen: boolean }>();
+defineEmits<{
+	(e: 'update:open', state: boolean): void;
+}>();
 </script>
 
 <template>
-	<PopoverRoot>
+	<PopoverRoot :open="subMenuOpen" @update:open="$emit('update:open', $event)">
 		<PopoverTrigger asChild class="sidebarSubMenuTrigger">
 			<slot name="trigger" />
 		</PopoverTrigger>
