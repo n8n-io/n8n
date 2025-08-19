@@ -184,6 +184,13 @@ export class HttpRequestV3 implements INodeType {
 
 				const url = this.getNodeParameter('url', itemIndex) as string;
 
+				if (!url.startsWith('http://') && !url.startsWith('https://')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Invalid URL: ${url}. URL must start with "http" or "https".`,
+					);
+				}
+
 				const checkDomainRestrictions = async (
 					credentialData: ICredentialDataDecryptedObject,
 					url: string,
