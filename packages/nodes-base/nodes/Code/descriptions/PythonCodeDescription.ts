@@ -48,7 +48,7 @@ export const pythonCodeDescription: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: `${PRINT_INSTRUCTION}<br><br>The native Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> and <code>_item</code>.`,
+		displayName: `${PRINT_INSTRUCTION}<br><br>The native Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> in all-items mode and <code>_item</code> in per-item mode.`,
 		name: 'notice',
 		type: 'notice',
 		displayOptions: {
