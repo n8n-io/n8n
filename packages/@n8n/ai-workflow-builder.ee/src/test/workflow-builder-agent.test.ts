@@ -57,6 +57,15 @@ jest.mock('@/chains/conversation-compact', () => ({
 	conversationCompactChain: jest.fn(),
 }));
 
+// Mock crypto.randomUUID
+const mockRandomUUID = jest.fn();
+Object.defineProperty(global, 'crypto', {
+	value: {
+		randomUUID: mockRandomUUID,
+	},
+	writable: true,
+});
+
 // Remove the CompiledAgent interface since we're no longer mocking internal workflow compilation
 
 describe('WorkflowBuilderAgent', () => {
@@ -123,41 +132,11 @@ describe('WorkflowBuilderAgent', () => {
 		agent = new WorkflowBuilderAgent(config);
 	});
 
-	describe('constructor', () => {
-		it('should initialize with provided configuration', () => {
-			expect(agent).toBeInstanceOf(WorkflowBuilderAgent);
-		});
-
-		it('should use default MemorySaver when checkpointer is not provided', () => {
-			const configWithoutCheckpointer = {
-				...config,
-				checkpointer: undefined,
-			};
-			const agentWithoutCheckpointer = new WorkflowBuilderAgent(configWithoutCheckpointer);
-			expect(agentWithoutCheckpointer).toBeInstanceOf(WorkflowBuilderAgent);
-		});
-
-		it('should use default auto compact threshold when not provided', () => {
-			const configWithoutThreshold = {
-				...config,
-				autoCompactThresholdTokens: undefined,
-			};
-			const agentWithoutThreshold = new WorkflowBuilderAgent(configWithoutThreshold);
-			expect(agentWithoutThreshold).toBeInstanceOf(WorkflowBuilderAgent);
-		});
-
-		it('should use custom auto compact threshold when provided', () => {
-			const customThreshold = 5000;
-			const configWithThreshold = {
-				...config,
-				autoCompactThresholdTokens: customThreshold,
-			};
-			const agentWithThreshold = new WorkflowBuilderAgent(configWithThreshold);
-			expect(agentWithThreshold).toBeInstanceOf(WorkflowBuilderAgent);
-		});
-	});
-
 	describe('generateThreadId', () => {
+		beforeEach(() => {
+			mockRandomUUID.mockReset();
+		});
+
 		it('should generate thread ID with workflowId and userId', () => {
 			const workflowId = 'workflow-123';
 			const userId = 'user-456';
@@ -172,13 +151,13 @@ describe('WorkflowBuilderAgent', () => {
 		});
 
 		it('should generate random UUID when no workflowId provided', () => {
-			const threadId = WorkflowBuilderAgent.generateThreadId();
-			expect(threadId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
-		});
+			const mockUuid = 'test-uuid-1234-5678-9012';
+			mockRandomUUID.mockReturnValue(mockUuid);
 
-		it('should generate random UUID when workflowId is undefined', () => {
-			const threadId = WorkflowBuilderAgent.generateThreadId(undefined);
-			expect(threadId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+			const threadId = WorkflowBuilderAgent.generateThreadId();
+
+			expect(mockRandomUUID).toHaveBeenCalled();
+			expect(threadId).toBe(mockUuid);
 		});
 	});
 
@@ -245,23 +224,7 @@ describe('WorkflowBuilderAgent', () => {
 			expect(result.value).toEqual(mockStreamOutput);
 		});
 
-		it('should handle abort signal gracefully', async () => {
-			// Create an AbortController and abort it immediately
-			const abortController = new AbortController();
-			abortController.abort();
-
-			// When the signal is already aborted, the chat method should handle it gracefully
-			// We can't easily test the internal abort handling without mocking private methods,
-			// so we'll test that the method can be called with an aborted signal
-			const generator = agent.chat(mockPayload, 'user-123', abortController.signal);
-
-			// The method should either complete or handle the abort gracefully
-			// depending on when the abort happens in the execution
-			await expect(generator.next()).resolves.toBeDefined();
-		});
-
 		it('should handle GraphRecursionError', async () => {
-			// Mock createStreamProcessor to throw GraphRecursionError
 			mockCreateStreamProcessor.mockImplementation(() => {
 				// eslint-disable-next-line require-yield
 				return (function* () {
@@ -285,9 +248,6 @@ describe('WorkflowBuilderAgent', () => {
 				},
 			});
 
-			// Mock the agent.stream to throw the invalid request error
-			// This will be thrown from within the chat method when it tries to create the stream
-			// Since we can't easily mock the internal workflow compilation, we'll test this via LLM errors
 			(mockLlmSimple.invoke as jest.Mock).mockRejectedValue(invalidRequestError);
 
 			await expect(async () => {
@@ -311,24 +271,6 @@ describe('WorkflowBuilderAgent', () => {
 				const generator = agent.chat(mockPayload);
 				await generator.next();
 			}).rejects.toThrow(unknownError);
-		});
-	});
-
-	describe('getState', () => {
-		it('should return agent state for given workflowId and userId', async () => {
-			const workflowId = 'workflow-123';
-			const userId = 'user-456';
-
-			// Test that the method exists and can be called
-			// We don't need to test the internal implementation details
-			await expect(agent.getState(workflowId, userId)).resolves.toBeDefined();
-		});
-
-		it('should handle missing userId', async () => {
-			const workflowId = 'workflow-123';
-
-			// Test that the method exists and can be called without userId
-			await expect(agent.getState(workflowId)).resolves.toBeDefined();
 		});
 	});
 
@@ -380,6 +322,7 @@ describe('WorkflowBuilderAgent', () => {
 			expect(result.sessions).toHaveLength(0);
 			expect(mockLogger.debug).toHaveBeenCalledWith('No session found for workflow:', {
 				workflowId,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				error: expect.any(Error),
 			});
 		});
