@@ -255,6 +255,23 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 	border-right: var(--border-base);
 	display: flex;
 	flex-direction: column;
+
+	scrollbar-width: thin; /* Firefox */
+	scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.1); /* Firefox */
+
+	&::-webkit-scrollbar {
+		width: 8px; /* vertical scrollbar */
+		height: 8px; /* horizontal scrollbar */
+	}
+
+	&::-webkit-scrollbar-thumb {
+		background-color: rgba(0, 0, 0, 0.1);
+		border-radius: 4px;
+	}
+
+	&::-webkit-scrollbar-thumb:hover {
+		background: rgba(0, 0, 0, 0.2);
+	}
 }
 
 .resizeWrapperHidden,
