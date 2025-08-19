@@ -67,6 +67,7 @@ import {
 	VIEWS,
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	ABOUT_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -2082,6 +2083,7 @@ onBeforeUnmount(() => {
 			@toggle:focus-panel="onToggleFocusPanel"
 			@extract-workflow="onExtractWorkflow"
 			@start-chat="startChat()"
+			@open:about="uiStore.openModal(ABOUT_MODAL_KEY)"
 		>
 			<Suspense>
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />

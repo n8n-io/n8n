@@ -255,6 +255,7 @@ const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
 onMounted(async () => {
 	window.addEventListener('resize', onResize);
+	window.addEventListener('keydown', onKeyDown);
 	basePath.value = rootStore.baseUrl;
 	if (user.value) {
 		void externalHooks.run('mainSidebar.mounted', {
@@ -270,6 +271,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
 	becomeTemplateCreatorStore.stopMonitoringCta();
 	window.removeEventListener('resize', onResize);
+	window.removeEventListener('keydown', onKeyDown);
 });
 
 const trackHelpItemClick = (itemType: string) => {
@@ -360,6 +362,12 @@ const handleSelect = (key: string) => {
 
 function onResize() {
 	void callDebounced(onResizeEnd, { debounceTime: 250 });
+}
+
+function onKeyDown(e: KeyboardEvent) {
+	if (e.altKey && e.metaKey && e.code === 'KeyO') {
+		handleSelect('about');
+	}
 }
 
 async function onResizeEnd() {
