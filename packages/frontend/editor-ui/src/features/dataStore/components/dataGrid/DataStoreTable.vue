@@ -206,7 +206,11 @@ const initColumnDefinitions = () => {
 };
 
 const onCellValueChanged = async (params: CellValueChangedEvent) => {
-	const { data, api } = params;
+	const { data, api, oldValue, value } = params;
+
+	if (value === oldValue) {
+		return;
+	}
 
 	try {
 		emit('toggleSave', true);
