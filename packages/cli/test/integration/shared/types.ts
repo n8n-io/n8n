@@ -43,7 +43,8 @@ type EndpointGroup =
 	| 'ai'
 	| 'folder'
 	| 'insights'
-	| 'data-store';
+	| 'data-store'
+	| 'module-settings';
 
 type ModuleName = 'insights' | 'external-secrets' | 'data-store';
 
