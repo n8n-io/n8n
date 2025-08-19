@@ -9,6 +9,7 @@ import {
 	INSTANCE_ADMIN_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
+import { WorkflowApiHelper } from './workflow-api-helper';
 
 export interface LoginResponseData {
 	id: string;
@@ -30,10 +31,12 @@ const DB_TAGS = {
 } as const;
 
 export class ApiHelpers {
-	private request: APIRequestContext;
+	request: APIRequestContext;
+	workflowApi: WorkflowApiHelper;
 
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
+		this.workflowApi = new WorkflowApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====

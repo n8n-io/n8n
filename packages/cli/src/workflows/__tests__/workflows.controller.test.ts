@@ -1,4 +1,4 @@
-import type { ImportWorkflowFromUrlDto } from '@n8n/api-types/src/dto/workflows/import-workflow-from-url.dto';
+import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import axios from 'axios';
 import type { Response } from 'express';

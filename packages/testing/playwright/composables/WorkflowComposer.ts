@@ -36,7 +36,14 @@ export class WorkflowComposer {
 	async createWorkflow(workflowName = 'My New Workflow') {
 		await this.n8n.workflows.clickAddWorkflowButton();
 		await this.n8n.canvas.setWorkflowName(workflowName);
+
+		const responsePromise = this.n8n.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/workflows') && response.request().method() === 'POST',
+		);
 		await this.n8n.canvas.saveWorkflow();
+
+		await responsePromise;
 	}
 
 	/**
