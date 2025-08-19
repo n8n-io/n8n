@@ -8,13 +8,23 @@ import {
 	deleteDataStoreApi,
 	updateDataStoreApi,
 	addDataStoreColumnApi,
+	getDataStoreRowsApi,
+	insertDataStoreRowApi,
+	upsertDataStoreRowsApi,
 } from '@/features/dataStore/dataStore.api';
-import type { DataStore, DataStoreColumnCreatePayload } from '@/features/dataStore/datastore.types';
+import type {
+	DataStore,
+	DataStoreColumnCreatePayload,
+	DataStoreRow,
+} from '@/features/dataStore/datastore.types';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const rootStore = useRootStore();
 	const projectStore = useProjectsStore();
+
+	const dataStoreTypes = useDataStoreTypes();
 
 	const dataStores = ref<DataStore[]>([]);
 	const totalCount = ref(0);
@@ -28,7 +38,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		totalCount.value = response.count;
 	};
 
-	const createDataStore = async (name: string, projectId?: string) => {
+	const createDataStore = async (name: string, projectId: string) => {
 		const newStore = await createDataStoreApi(rootStore.restApiContext, name, projectId);
 		if (!newStore.project && projectId) {
 			const project = await projectStore.fetchProject(projectId);
@@ -41,7 +51,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return newStore;
 	};
 
-	const deleteDataStore = async (datastoreId: string, projectId?: string) => {
+	const deleteDataStore = async (datastoreId: string, projectId: string) => {
 		const deleted = await deleteDataStoreApi(rootStore.restApiContext, datastoreId, projectId);
 		if (deleted) {
 			dataStores.value = dataStores.value.filter((store) => store.id !== datastoreId);
@@ -50,7 +60,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return deleted;
 	};
 
-	const updateDataStore = async (datastoreId: string, name: string, projectId?: string) => {
+	const updateDataStore = async (datastoreId: string, name: string, projectId: string) => {
 		const updated = await updateDataStoreApi(
 			rootStore.restApiContext,
 			datastoreId,
@@ -68,6 +78,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 
 	const fetchDataStoreDetails = async (datastoreId: string, projectId: string) => {
 		const response = await fetchDataStoresApi(rootStore.restApiContext, projectId, undefined, {
+			projectId,
 			id: datastoreId,
 		});
 		if (response.data.length > 0) {
@@ -104,6 +115,36 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return newColumn;
 	};
 
+	const fetchDataStoreContent = async (
+		datastoreId: string,
+		projectId: string,
+		page: number,
+		pageSize: number,
+	) => {
+		return await getDataStoreRowsApi(rootStore.restApiContext, datastoreId, projectId, {
+			skip: (page - 1) * pageSize,
+			take: pageSize,
+		});
+	};
+
+	const insertEmptyRow = async (dataStore: DataStore) => {
+		const emptyRow: DataStoreRow = {};
+		dataStore.columns.forEach((column) => {
+			// Set default values based on column type
+			emptyRow[column.name] = dataStoreTypes.getDefaultValueForType(column.type);
+		});
+		return await insertDataStoreRowApi(
+			rootStore.restApiContext,
+			dataStore.id,
+			emptyRow,
+			dataStore.projectId,
+		);
+	};
+
+	const upsertRow = async (dataStoreId: string, projectId: string, row: DataStoreRow) => {
+		return await upsertDataStoreRowsApi(rootStore.restApiContext, dataStoreId, [row], projectId);
+	};
+
 	return {
 		dataStores,
 		totalCount,
@@ -114,5 +155,8 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		fetchDataStoreDetails,
 		fetchOrFindDataStore,
 		addDataStoreColumn,
+		fetchDataStoreContent,
+		insertEmptyRow,
+		upsertRow,
 	};
 });
