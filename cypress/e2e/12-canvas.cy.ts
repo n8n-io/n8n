@@ -449,7 +449,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		});
 	});
 
-	it.only('should open and close the about modal on keyboard shortcut', () => {
+	it('should open and close the about modal on keyboard shortcut', () => {
 		WorkflowPage.actions.hitOpenAbout();
 		cy.getByTestId('close-about-modal-button').click();
 	});
