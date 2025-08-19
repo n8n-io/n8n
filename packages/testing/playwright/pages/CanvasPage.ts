@@ -170,8 +170,11 @@ export class CanvasPage extends BasePage {
 			(response) =>
 				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
 		);
+
 		await this.page.getByTestId('workflow-activate-switch').click();
 		await responsePromise;
+
+		await this.page.waitForTimeout(200);
 	}
 
 	async clickZoomToFitButton(): Promise<void> {
@@ -267,10 +270,6 @@ export class CanvasPage extends BasePage {
 	async duplicateNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
 		await this.page.getByTestId('context-menu').getByText('Duplicate').click();
-	}
-
-	getCanvasNodes(): Locator {
-		return this.page.getByTestId('canvas-node');
 	}
 
 	nodeConnections(): Locator {
