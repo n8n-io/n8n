@@ -76,10 +76,9 @@ class TaskExecutor:
 
         try:
             code = TaskExecutor._wrap_code(raw_code)
-            # TODO: Passing twice?
-            namespace = {"__builtins__": __builtins__, "_items": items}
-            exec(code, namespace, namespace)
-            queue.put({"result": namespace["user_output"]})
+            globals = {"__builtins__": __builtins__, "_items": items}
+            exec(code, globals)
+            queue.put({"result": globals["user_output"]})
 
         except Exception as e:
             TaskExecutor._put_error(queue, e)
@@ -92,10 +91,9 @@ class TaskExecutor:
             result = []
             for index, item in enumerate(items):
                 code = TaskExecutor._wrap_code(raw_code)
-                # TODO: Passing twice?
-                namespace = {"__builtins__": __builtins__, "_item": item}
-                exec(code, namespace, namespace)
-                user_output = namespace["user_output"]
+                globals = {"__builtins__": __builtins__, "_item": item}
+                exec(code, globals)
+                user_output = globals["user_output"]
 
                 if user_output is None:
                     continue
