@@ -20,7 +20,7 @@ on:
         required: true
         type: string
       release_type:
-        description: 'Release type (stable, nightly, dev, experimental)'
+        description: 'Release type (stable, nightly, dev)'
         required: false
         type: string
         default: 'stable'
@@ -211,11 +211,6 @@ jobs:
               GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
               DOCKER_TAGS_FOR_PUSH="${DOCKER_BASE}:${N8N_VERSION_TAG}-${PLATFORM}"
               ;;
-            "experimental")
-              PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:${N8N_VERSION_TAG}"
-              GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
-              DOCKER_TAGS_FOR_PUSH="${DOCKER_BASE}:${N8N_VERSION_TAG}-${PLATFORM}"
-              ;;
             "nightly")
               PRIMARY_GHCR_MANIFEST_TAG_VALUE="${GHCR_BASE}:nightly"
               GHCR_TAGS_FOR_PUSH="${PRIMARY_GHCR_MANIFEST_TAG_VALUE}-${PLATFORM}"
@@ -326,12 +321,6 @@ jobs:
           # Determine if Docker Hub manifest is needed and construct the tag
           case "$RELEASE_TYPE" in
             "stable")
-              {
-                echo "DOCKER_MANIFEST_TAG=${DOCKER_BASE}:${N8N_VERSION}"
-                echo "CREATE_DOCKERHUB_MANIFEST=true"
-              } >> "$GITHUB_OUTPUT"
-              ;;
-            "experimental")
               {
                 echo "DOCKER_MANIFEST_TAG=${DOCKER_BASE}:${N8N_VERSION}"
                 echo "CREATE_DOCKERHUB_MANIFEST=true"

@@ -75,7 +75,7 @@ jobs:
     uses: ./.github/workflows/docker-build-push.yml
     with:
       n8n_version: ${{ needs.publish-to-npm.outputs.release }}
-      release_type: ${{ contains(needs.publish-to-npm.outputs.release, '-exp.') && 'experimental' || 'stable' }}
+      release_type: stable
     secrets: inherit
 
   create-github-release:
