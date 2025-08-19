@@ -423,4 +423,15 @@ export class CanvasPage extends BasePage {
 		await this.canvasPane().focus();
 		await this.page.keyboard.press(keyMap[direction]);
 	}
+
+	/**
+	 * Visit the workflow page with a specific timestamp for NPS survey testing.
+	 * Uses Playwright's clock API to set a fixed time.
+	 */
+	async visitWithTimestamp(timestamp: number): Promise<void> {
+		// Set fixed time using Playwright's clock API
+		await this.page.clock.setFixedTime(timestamp);
+
+		await this.page.goto('/workflow/new');
+	}
 }
