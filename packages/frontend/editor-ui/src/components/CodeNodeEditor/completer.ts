@@ -24,7 +24,20 @@ export const useCompleter = (
 	mode: MaybeRefOrGetter<CodeExecutionMode>,
 	editor: MaybeRefOrGetter<EditorView | null>,
 ) => {
-	function autocompletionExtension(language: 'javaScript' | 'python'): Extension {
+	function autocompletionExtension(language: 'javaScript' | 'python' | 'pythonNative'): Extension {
+		if (language === 'pythonNative') {
+			const completions = (context: CompletionContext): CompletionResult | null => {
+				const word = context.matchBefore(/\w*/);
+				if (!word) return null;
+
+				const label = toValue(mode) === 'runOnceForEachItem' ? '_item' : '_items';
+
+				return { from: word.from, options: [{ label, type: 'variable' }] };
+			};
+
+			return autocompletion({ icons: false, override: [completions] });
+		}
+
 		// Base completions
 		const { baseCompletions, itemCompletions, nodeSelectorCompletions } = useBaseCompletions(
 			toValue(mode),
