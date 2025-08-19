@@ -19,7 +19,8 @@ vi.mock('ag-grid-vue3', () => ({
 		mounted(this: MockComponentInstance) {
 			this.$emit('gridReady', {
 				api: {
-					// Mock API methods
+					refreshHeader: vi.fn(),
+					applyTransaction: vi.fn(),
 				},
 			});
 		},
@@ -37,6 +38,12 @@ vi.mock('ag-grid-community', () => ({
 	ColumnAutoSizeModule: {},
 	CheckboxEditorModule: {},
 	NumberEditorModule: {},
+	RowSelectionModule: {},
+	RenderApiModule: {},
+	DateEditorModule: {},
+	ClientSideRowModelApiModule: {},
+	ValidationModule: {},
+	UndoRedoEditModule: {},
 }));
 
 // Mock the n8n theme
