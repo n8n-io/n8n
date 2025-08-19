@@ -1,4 +1,4 @@
-import { watch, computed, ref } from 'vue';
+import { watch, computed, ref, type Ref } from 'vue';
 import { type IExecutionResponse } from '@/Interface';
 import { Workflow, type IRunExecutionData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -85,23 +85,6 @@ export function useLogsExecutionData() {
 		}
 	}
 
-	watchThrottled(
-		[workflow, execData, subWorkflows, subWorkflowExecData],
-		() => {
-			if (!execData.value?.data || !workflow.value) {
-				entries.value = [];
-			} else {
-				entries.value = createLogTree(
-					workflow.value,
-					execData.value,
-					subWorkflows.value,
-					subWorkflowExecData.value,
-				);
-			}
-		},
-		{ throttle: 1000 },
-	);
-
 	watch(
 		// Fields that should trigger update
 		[
@@ -134,9 +117,31 @@ export function useLogsExecutionData() {
 		{ immediate: true },
 	);
 
+	/**
+	 * We're using `watchThrottled` instead of `computed` here to improve
+	 * performance and avoid unnecessary re-computations because
+	 * the log tree can easily become large and complex.
+	 */
+	watchThrottled(
+		[workflow, execData, subWorkflows, subWorkflowExecData],
+		() => {
+			if (!execData.value?.data || !workflow.value) {
+				entries.value = [];
+			} else {
+				entries.value = createLogTree(
+					workflow.value,
+					execData.value,
+					subWorkflows.value,
+					subWorkflowExecData.value,
+				);
+			}
+		},
+		{ throttle: 1000, immediate: true, deep: true },
+	);
+
 	return {
 		execution: computed(() => execData.value),
-		entries,
+		entries: entries as Ref<LogEntry[]>,
 		hasChat,
 		latestNodeNameById,
 		resetExecutionData,
