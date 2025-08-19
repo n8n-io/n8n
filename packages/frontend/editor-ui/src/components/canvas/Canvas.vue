@@ -107,6 +107,7 @@ const emit = defineEmits<{
 	'viewport:change': [viewport: ViewportTransform, dimensions: Dimensions];
 	'selection:end': [position: XYPosition];
 	'open:sub-workflow': [nodeId: string];
+	'open:about': [];
 	'start-chat': [];
 	'extract-workflow': [ids: string[]];
 }>();
