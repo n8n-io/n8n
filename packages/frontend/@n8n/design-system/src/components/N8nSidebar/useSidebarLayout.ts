@@ -22,17 +22,25 @@ export function useSidebarLayout({ defaultWidth = 300 }: UseSidebarLayoutOptions
 	const sidebarWidth = ref<number>(persistedWidth.value);
 	const isResizing = ref(false);
 
-	const subMenuOpen = ref(true);
+	const subMenuOpen = ref(false);
 
 	const panelIcon = computed(() => {
 		return state.value === 'open' ? 'panel-left-close' : 'panel-left-open';
 	});
 
-	function toggleSidebar() {
-		if (state.value === 'open') {
-			state.value = 'peak';
+	function toggleHidden() {
+		if (state.value === 'open' || state.value === 'peak') {
+			state.value = 'hidden';
 		} else {
 			state.value = 'open';
+		}
+	}
+
+	function togglePeak() {
+		if (state.value === 'peak') {
+			state.value = 'open';
+		} else {
+			state.value = 'peak';
 		}
 	}
 
@@ -84,7 +92,8 @@ export function useSidebarLayout({ defaultWidth = 300 }: UseSidebarLayoutOptions
 		isResizing,
 		panelIcon,
 		subMenuOpen,
-		toggleSidebar,
+		toggleHidden,
+		togglePeak,
 		peakSidebar,
 		onResizeStart,
 		onResize,

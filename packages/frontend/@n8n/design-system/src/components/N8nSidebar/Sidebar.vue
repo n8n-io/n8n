@@ -30,7 +30,8 @@ const {
 	state,
 	sidebarWidth,
 	panelIcon,
-	toggleSidebar,
+	toggleHidden,
+	togglePeak,
 	peakSidebar,
 	onResizeStart,
 	onResize,
@@ -46,13 +47,13 @@ onMounted(() => {
 			if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
 				return;
 			}
-			toggleSidebar();
+			toggleHidden();
 		}
 	});
 });
 
 onUnmounted(() => {
-	window.removeEventListener('keydown', toggleSidebar);
+	window.removeEventListener('keydown', togglePeak);
 });
 
 function preventDefault<T>(event: TreeItemToggleEvent<T>) {
@@ -107,7 +108,7 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 						type="secondary"
 						text
 						square
-						@click="toggleSidebar"
+						@click="togglePeak"
 					/>
 				</N8nTooltip>
 			</header>
