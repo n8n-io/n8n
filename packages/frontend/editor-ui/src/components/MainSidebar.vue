@@ -60,7 +60,7 @@ const user = ref<Element | null>(null);
 
 const basePath = ref('');
 
-const { items, bottomItems } = useSidebarData();
+const { items, bottomItems, projectsEmptyState } = useSidebarData();
 
 const {
 	menu,
@@ -261,6 +261,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 		:release-channel="settingsStore.settings.releaseChannel"
 		:help-items="helpMenuItems"
 		:handle-select="handleSelect"
+		:projects-empty-state="projectsEmptyState"
 		@logout="onLogout"
 		@createProject="handleMenuSelect('create-project')"
 	>

@@ -82,6 +82,11 @@ export const useSidebarData = () => {
 		return bottomMenuItems.value.filter((item) => item.available !== false);
 	});
 
+	const projectsEmptyState = ref({
+		visible: false,
+		canCreate: false,
+	});
+
 	const items = ref<IMenuElement[]>([
 		{
 			id: 'overview',
@@ -206,7 +211,12 @@ export const useSidebarData = () => {
 				label: 'Shared with me',
 				icon: 'share',
 				route: { to: '/shared/workflows' },
-				children: buildNestedHierarchy(workflows),
+				children: buildNestedHierarchy(
+					workflows.map((workflow) => ({
+						...workflow,
+						resource: 'workflow',
+					})),
+				),
 				type: 'project',
 			};
 
@@ -239,20 +249,12 @@ export const useSidebarData = () => {
 				},
 			});
 
-			if (projectsStore.teamProjects.length === 0 && projectsStore.hasPermissionToCreateProjects) {
+			if (projectsStore.teamProjects.length === 0) {
 				items.value = items.value.filter((item) => item.id !== 'projects-loading');
-				items.value.push({
-					id: 'no-team-projects',
-					label: 'No projects',
-					type: 'empty',
-				});
-			} else if (projectsStore.teamProjects.length === 0) {
-				items.value = items.value.filter((item) => item.id !== 'projects-loading');
-				items.value.push({
-					id: 'no-team-projects-cant-create',
-					label: 'No projects',
-					type: 'empty',
-				});
+				projectsEmptyState.value = {
+					visible: true,
+					canCreate: projectsStore.hasPermissionToCreateProjects,
+				};
 			} else {
 				for (const project of projectsStore.teamProjects) {
 					const workflows = await workflowsStore.fetchWorkflowsPage(
@@ -291,6 +293,7 @@ export const useSidebarData = () => {
 
 	return {
 		items,
+		projectsEmptyState,
 		bottomItems: visibleBottomMenuItems,
 	};
 };

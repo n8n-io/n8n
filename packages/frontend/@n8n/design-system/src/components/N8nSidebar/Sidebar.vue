@@ -10,10 +10,14 @@ import { useSidebarLayout } from './useSidebarLayout';
 import { IMenuItem, IMenuElement, isCustomMenuItem } from '@n8n/design-system/types';
 import SidebarSubMenu from './SidebarSubMenu.vue';
 import { TreeItem, TreeItemToggleEvent, TreeRoot, TreeVirtualizer } from 'reka-ui';
-import SidebarEmptyStates from './SidebarEmptyStates.vue';
+import SidebarProjectsEmpty from './SidebarProjectsEmpty.vue';
 
 const props = defineProps<{
 	items: IMenuElement[];
+	projectsEmptyState?: {
+		visible: boolean;
+		canCreate: boolean;
+	};
 	bottomItems?: IMenuElement[];
 	userName: string;
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
@@ -61,6 +65,8 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 		event.detail.originalEvent.preventDefault();
 	}
 }
+
+console.log(props.projectsEmptyState);
 </script>
 
 <template>
@@ -129,13 +135,16 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 								{{ item.value.label }}
 							</N8nText>
 						</div>
-						<SidebarEmptyStates
-							v-else-if="item.value.type === 'empty'"
-							:id="item.value.id"
-							:label="item.value.label"
-							:level="item.level"
-							@create-project="$emit('createProject')"
-						/>
+						<div v-else-if="item.value.type === 'empty'">
+							<span
+								class="itemIdent"
+								v-for="level in new Array((item.level || 1) - 1)"
+								:key="level"
+							/>
+							<N8nText size="small" color="text-light" class="sidebarEmptyState">
+								{{ item.value.label }}
+							</N8nText>
+						</div>
 						<component
 							v-else-if="isCustomMenuItem(item.value as IMenuElement)"
 							:is="item.value.component"
@@ -154,6 +163,10 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 					</TreeItem>
 				</TreeVirtualizer>
 			</TreeRoot>
+			<SidebarProjectsEmpty
+				v-if="projectsEmptyState?.visible"
+				:can-create="projectsEmptyState.canCreate"
+			/>
 			<div v-if="bottomItems?.length" class="sidebarBottomItems">
 				<SidebarItem
 					v-for="item in bottomItems"
@@ -164,6 +177,7 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 				/>
 			</div>
 		</nav>
+
 		<slot name="creatorCallout" />
 		<slot name="sourceControl" />
 		<div class="sidebarUserArea">
@@ -337,6 +351,10 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 	position: sticky;
 	top: 100%;
 	margin-top: auto;
+}
+
+.sidebarEmptyState {
+	padding: var(--spacing-3xs) var(--spacing-3xs);
 }
 
 .interactiveArea {
