@@ -18,7 +18,6 @@ import {
 	type ChatPayload,
 } from '@/workflow-builder-agent';
 
-// Mock the dependencies
 jest.mock('@/tools/add-node.tool', () => ({
 	createAddNodeTool: jest.fn().mockReturnValue({ name: 'add_node' }),
 }));
@@ -57,7 +56,6 @@ jest.mock('@/chains/conversation-compact', () => ({
 	conversationCompactChain: jest.fn(),
 }));
 
-// Mock crypto.randomUUID
 const mockRandomUUID = jest.fn();
 Object.defineProperty(global, 'crypto', {
 	value: {
@@ -65,8 +63,6 @@ Object.defineProperty(global, 'crypto', {
 	},
 	writable: true,
 });
-
-// Remove the CompiledAgent interface since we're no longer mocking internal workflow compilation
 
 describe('WorkflowBuilderAgent', () => {
 	let agent: WorkflowBuilderAgent;
