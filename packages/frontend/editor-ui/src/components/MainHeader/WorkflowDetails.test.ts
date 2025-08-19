@@ -19,6 +19,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useProjectsStore } from '@/stores/projects.store';
+import type { Project } from '@/types/projects.types';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -136,7 +137,7 @@ describe('WorkflowDetails', () => {
 		// Set up default mocks
 		workflowsStore.saveCurrentWorkflow = vi.fn().mockResolvedValue(true);
 		projectsStore.currentProject = null;
-		projectsStore.personalProject = { id: 'personal', name: 'Personal' };
+		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;
 
 		message = useMessage();
 		toast = useToast();
