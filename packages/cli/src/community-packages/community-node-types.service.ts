@@ -9,6 +9,7 @@ import { getCommunityNodeTypes, StrapiCommunityNodeType } from './community-node
 import { CommunityPackagesService } from './community-packages.service';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
+const RETRY_INTERVAL = 5 * 60 * 1000;
 
 @Service()
 export class CommunityNodeTypesService {
@@ -46,7 +47,13 @@ export class CommunityNodeTypesService {
 	}
 
 	private updateCommunityNodeTypes(nodeTypes: StrapiCommunityNodeType[]) {
-		if (!nodeTypes?.length) return;
+		if (!nodeTypes?.length) {
+			// When we get empty data, don't wait the full UPDATE_INTERVAL to try again.
+			// Instead, set the timestamp to retry after RETRY_INTERVAL with some
+			// random jitter to avoid all instances retrying at once
+			this.setTimestampForRetry();
+			return;
+		}
 
 		this.resetCommunityNodeTypes();
 
@@ -64,6 +71,11 @@ export class CommunityNodeTypesService {
 		return Date.now() - this.lastUpdateTimestamp > UPDATE_INTERVAL;
 	}
 
+	private setTimestampForRetry() {
+		const jitter = Math.floor(Math.random() * 4 * 60 * 1000) - 2 * 60 * 1000;
+		this.lastUpdateTimestamp = Date.now() - (UPDATE_INTERVAL - RETRY_INTERVAL + jitter);
+	}
+
 	private async createIsInstalled() {
 		const installedPackages = (await this.communityPackagesService.getAllInstalledPackages()) ?? [];
 		const installedPackageNames = new Set(installedPackages.map((p) => p.packageName));
@@ -72,7 +84,7 @@ export class CommunityNodeTypesService {
 	}
 
 	async getCommunityNodeTypes(): Promise<CommunityNodeType[]> {
-		if (this.updateRequired() || !this.communityNodeTypes.size) {
+		if (this.updateRequired()) {
 			await this.fetchNodeTypes();
 		}
 
