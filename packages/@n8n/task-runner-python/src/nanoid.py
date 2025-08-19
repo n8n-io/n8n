@@ -1,7 +1,8 @@
 from nanoid.generate import generate
+import string
 
-NANOID_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-
+NANOID_CHARSET = string.ascii_uppercase + string.ascii_lowercase + string.digits
+NANOID_LENGTH = 21
 
 def nanoid() -> str:
-    return generate(alphabet=NANOID_CHARSET, size=16)
+    return generate(NANOID_CHARSET, NANOID_LENGTH)

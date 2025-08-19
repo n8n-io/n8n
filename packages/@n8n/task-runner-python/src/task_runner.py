@@ -104,7 +104,7 @@ class TaskRunner:
 
             await self._listen_for_messages()
 
-        except Exception as e:
+        except Exception:
             raise WebsocketConnectionError(self.task_broker_uri)
 
     async def stop(self) -> None:

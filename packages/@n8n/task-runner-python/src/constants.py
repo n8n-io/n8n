@@ -39,5 +39,7 @@ LOG_FORMAT = "%(asctime)s.%(msecs)03d\t%(levelname)s\t%(message)s"
 LOG_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 # Rejection reasons
-TASK_REJECTED_REASON_OFFER_EXPIRED = "Offer expired - not accepted within validity window"
+TASK_REJECTED_REASON_OFFER_EXPIRED = (
+    "Offer expired - not accepted within validity window"
+)
 TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capacity"
