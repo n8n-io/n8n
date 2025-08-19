@@ -142,7 +142,6 @@ const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload })
 };
 
 const onDeleteColumn = async (columnId: string) => {
-	// TODO: how can we skip doing this in all handlers?
 	if (!gridApi.value) return;
 
 	const columnToDelete = colDefs.value.find((col) => col.colId === columnId);
@@ -192,17 +191,6 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		headerName: col.name,
 		editable: true,
 		resizable: true,
-		valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
-			// If the value is null, return the default value for the column type
-			if (params.data?.[col.name] === null) {
-				return dataStoreTypes.getDefaultValueForType(col.type);
-			}
-			// Parse dates
-			if (col.type === 'date') {
-				return new Date(params.data?.[col.name] as string);
-			}
-			return params.data?.[col.name];
-		},
 		headerComponent: ColumnHeader,
 		headerComponentParams: { onDelete: onDeleteColumn },
 		...extraProps,

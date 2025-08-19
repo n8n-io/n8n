@@ -3,7 +3,7 @@ import type { IHeaderParams } from 'ag-grid-community';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { isAGGridCellType } from '@/features/dataStore/types';
+import { isAGGridCellType } from '@/features/dataStore/typeGuards';
 
 type HeaderParamsWithDelete = IHeaderParams & {
 	onDelete: (columnId: string) => void;
@@ -52,6 +52,15 @@ const typeIcon = computed(() => {
 	}
 	return getIconForType(mapToDataStoreColumnType(cellDataType));
 });
+
+const columnActionItems = [
+	{
+		id: ItemAction.Delete,
+		label: i18n.baseText('dataStore.deleteColumn.confirm.title'),
+		icon: 'trash-2',
+		customClass: 'data-store-column-header-action-item',
+	} as const,
+];
 </script>
 <template>
 	<div
@@ -69,14 +78,7 @@ const typeIcon = computed(() => {
 		<N8nActionDropdown
 			v-show="isDropdownVisible"
 			data-test-id="data-store-column-header-actions"
-			:items="[
-				{
-					id: ItemAction.Delete,
-					label: i18n.baseText('dataStore.columnActions.delete'),
-					icon: 'trash-2',
-					customClass: 'data-store-column-header-action-item',
-				},
-			]"
+			:items="columnActionItems"
 			:placement="'bottom-start'"
 			:activator-icon="'ellipsis'"
 			@select="onItemClick"

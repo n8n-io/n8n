@@ -4,7 +4,7 @@ import type {
 	DataStoreColumnType,
 	DataStoreValue,
 } from '@/features/dataStore/datastore.types';
-import { isAGGridCellType } from '@/features/dataStore/types';
+import { isAGGridCellType } from '@/features/dataStore/typeGuards';
 
 /* eslint-disable id-denylist */
 const COLUMN_TYPE_ICONS: Record<DataStoreColumnType, IconName> = {
