@@ -36,4 +36,4 @@ ENV_HIDE_TASK_OFFER_LOGS = "N8N_RUNNERS_HIDE_TASK_OFFER_LOGS"
 
 # Logging
 LOG_FORMAT = "%(asctime)s.%(msecs)03d\t%(levelname)s\t%(message)s"
-LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+LOG_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"

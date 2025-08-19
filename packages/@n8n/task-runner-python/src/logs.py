@@ -1,6 +1,6 @@
 import logging
 import os
-from .constants import LOG_FORMAT, LOG_DATE_FORMAT, ENV_HIDE_TASK_OFFER_LOGS
+from .constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT, ENV_HIDE_TASK_OFFER_LOGS
 
 COLORS = {
     "DEBUG": "\033[34m",  # blue
@@ -9,10 +9,11 @@ COLORS = {
     "ERROR": "\033[31m",  # red
     "CRITICAL": "\033[31m",  # red
 }
+
 RESET = "\033[0m"
 
 
-class ColoredFormatter(logging.Formatter):
+class ColorFormatter(logging.Formatter):
     def format(self, record):
         formatted = super().format(record)
 
@@ -21,7 +22,7 @@ class ColoredFormatter(logging.Formatter):
         if len(parts) >= 3:
             timestamp = parts[0]
             level = parts[1]
-            message = "\t".join(parts[2:])
+            message = " ".join(parts[2:])
 
             level_color = COLORS.get(record.levelname, "")
             if level_color:
@@ -34,34 +35,31 @@ class ColoredFormatter(logging.Formatter):
 
 
 class TaskOfferFilter(logging.Filter):
-    def __init__(self, hide_offers=False):
+    def __init__(self):
         super().__init__()
-        self.hide_offers = hide_offers
+        self.hide_offers = os.getenv(ENV_HIDE_TASK_OFFER_LOGS, "").lower() == "true"
 
     def filter(self, record):
-        if not self.hide_offers:
-            return True
+        """Filter out task offers if N8N_RUNNERS_HIDE_TASK_OFFER_LOGS is 'true'."""
 
-        if (
+        return not (self.hide_offers and self._is_task_offer_message(record))
+
+    def _is_task_offer_message(self, record):
+        return (
             record.levelname == "DEBUG"
             and "websockets" in record.name
             and '"runner:taskoffer"' in record.getMessage()
-        ):
-            return False
-        return True
+        )
 
 
 def setup_logging():
-    root_logger = logging.getLogger()
+    logger = logging.getLogger()
 
-    handler = logging.StreamHandler()
-    formatter = ColoredFormatter(LOG_FORMAT, LOG_DATE_FORMAT)
-    handler.setFormatter(formatter)
-    hide_offers = os.getenv(ENV_HIDE_TASK_OFFER_LOGS, "").lower() == "true"
-    handler.addFilter(TaskOfferFilter(hide_offers))
+    logger.setLevel(logging.INFO)
 
-    root_logger.addHandler(handler)
-    root_logger.setLevel(logging.INFO)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(ColorFormatter(LOG_FORMAT, LOG_TIMESTAMP_FORMAT))
+    stream_handler.addFilter(TaskOfferFilter())
+    logger.addHandler(stream_handler)
 
-    websockets_logger = logging.getLogger("websockets.client")
-    websockets_logger.setLevel(logging.DEBUG)
+    logging.getLogger("websockets.client").setLevel(logging.DEBUG)
