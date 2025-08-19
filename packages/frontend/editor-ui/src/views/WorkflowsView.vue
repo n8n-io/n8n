@@ -1807,39 +1807,12 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</SuggestedWorkflows>
 			<N8nCallout
-				v-else-if="!loading && showEasyAIWorkflowCallout && easyAICalloutVisible"
-				theme="secondary"
-				icon="bot"
-				:class="$style['easy-ai-workflow-callout']"
-			>
-				{{ i18n.baseText('workflows.list.easyAI') }}
-				<template #trailingContent>
-					<div :class="$style['callout-trailing-content']">
-						<N8nButton
-							data-test-id="easy-ai-button"
-							size="small"
-							type="secondary"
-							@click="openAIWorkflow('callout')"
-						>
-							{{ i18n.baseText('generic.tryNow') }}
-						</N8nButton>
-						<N8nIcon
-							size="small"
-							icon="x"
-							:title="i18n.baseText('generic.dismiss')"
-							class="clickable"
-							@click="dismissEasyAICallout"
-						/>
-					</div>
-				</template>
-			</N8nCallout>
-			<N8nCallout
 				v-if="showReadyToRunWorkflowsCallout"
 				theme="secondary"
 				icon="bolt-filled"
 				:class="$style['easy-ai-workflow-callout']"
 			>
-				{{ i18n.baseText('workflows.readyToRunWorkflows.callout') }}
+				{{ readyToRunWorkflowsStore.getCalloutText() }}
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
@@ -1848,7 +1821,7 @@ const onNameSubmit = async (name: string) => {
 							type="secondary"
 							@click="handleCreateReadyToRunWorkflows('callout')"
 						>
-							{{ i18n.baseText('workflows.readyToRunWorkflows.cta') }}
+							{{ i18n.baseText('generic.startNow') }}
 						</N8nButton>
 						<N8nIcon
 							size="small"
@@ -2076,11 +2049,11 @@ const onNameSubmit = async (name: string) => {
 							<N8nIcon
 								:class="$style.emptyStateCardIcon"
 								:stroke-width="1.5"
-								icon="zap"
+								icon="package-open"
 								color="foreground-dark"
 							/>
 							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ i18n.baseText('workflows.readyToRunWorkflows.card') }}
+								{{ readyToRunWorkflowsStore.getCardText() }}
 							</N8nText>
 						</div>
 					</N8nCard>

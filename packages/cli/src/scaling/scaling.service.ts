@@ -73,7 +73,7 @@ export class ScalingService {
 
 		this.registerListeners();
 
-		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery();
+		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery(0);
 
 		this.scheduleQueueMetrics();
 
@@ -459,6 +459,8 @@ export class ScalingService {
 				this.scheduleQueueRecovery();
 			}
 		}, waitMs);
+
+		if (waitMs === 0) return;
 
 		const wait = [this.queueRecoveryContext.waitMs / Time.minutes.toMilliseconds, 'min'].join(' ');
 
