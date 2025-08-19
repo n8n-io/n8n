@@ -42,6 +42,7 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
+
 import type { ToolCall } from '@langchain/core/messages/tool';
 
 type ToolCallRequest = {
@@ -150,7 +151,7 @@ async function processEventStream(
 		agentResult.intermediateSteps = [];
 	}
 
-	const toolCalls: ToolCallRequest[] = [];
+	const toolCalls: any[] = [];
 
 	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {

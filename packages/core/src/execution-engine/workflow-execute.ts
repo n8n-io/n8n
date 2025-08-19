@@ -8,6 +8,7 @@ import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
 import get from 'lodash/get';
+import omit from 'lodash/omit';
 import type {
 	ExecutionBaseError,
 	ExecutionStatus,
@@ -62,7 +63,7 @@ import * as NodeExecuteFunctions from '@/node-execute-functions';
 import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
-import { ExecuteContext, PollContext } from './node-execution-context';
+import { ExecuteContext, PollContext, SupplyDataContext } from './node-execution-context';
 import {
 	DirectedGraph,
 	findStartNodes,
@@ -1125,6 +1126,113 @@ export class WorkflowExecute {
 	}
 
 	/**
+	 * Executes a node with supplyData method, calling invoke if present on the response
+	 */
+	private async executeSupplyDataNode(
+		workflow: Workflow,
+		node: INode,
+		nodeType: INodeType,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		inputData: ITaskDataConnections,
+		executionData: IExecuteData,
+		abortSignal?: AbortSignal,
+	): Promise<IRunNodeResponse | EngineRequest> {
+		const closeFunctions: CloseFunction[] = [];
+		const context = new SupplyDataContext(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			NodeConnectionTypes.AiTool,
+			executionData,
+			closeFunctions,
+			abortSignal,
+		);
+
+		let data: INodeExecutionData[][] | null;
+
+		// Call the supplyData method with itemIndex (typically 0 for single item processing)
+		const itemIndex = 0;
+		const suppliedData = await nodeType.supplyData!.call(context, itemIndex);
+
+		const input = omit(connectionInputData[itemIndex]?.json, 'toolCallId');
+
+		// Check if the response has an invoke method and call it
+		if (suppliedData?.response && typeof (suppliedData.response as any).invoke === 'function') {
+			// For tools executed via the engine, unwrap the logWrapper to avoid duplicate logging
+			let tool = suppliedData.response as any;
+			const isWrapped = tool.__n8n_is_wrapped__ === true && tool.__n8n_wrapped_tool__;
+
+			if (isWrapped) {
+				tool = tool.__n8n_wrapped_tool__;
+
+				// Log AI event for analytics
+				const eventData: any = { query: input };
+				if (tool.metadata?.isFromToolkit) {
+					eventData.tool = {
+						name: tool.name,
+						description: tool.description,
+					};
+				}
+				context.logAiEvent('ai-tool-called', JSON.stringify({ ...eventData }));
+			}
+
+			// Call the tool and let the normal execution flow handle input/output data
+			const response = await tool.invoke(input);
+			data = response;
+		} else {
+			// Return supplied data response directly if no invoke method
+			data = suppliedData?.response as INodeExecutionData[][] | null;
+		}
+
+		if (data && !Array.isArray(data)) {
+			data = [[{ json: data, pairedItem: { item: itemIndex } }]];
+		} else if (data && Array.isArray(data) && data.length > 0 && !Array.isArray(data[0])) {
+			// Handle vector store data that returns array of objects instead of INodeExecutionData[][]
+			// Transform array of objects to proper INodeExecutionData format
+			data = [
+				data.map(
+					(item: any, index) =>
+						({
+							json: item,
+							pairedItem: { item: index },
+						}) as INodeExecutionData,
+				),
+			];
+		}
+
+		this.reportJsonIncompatibleOutput(data, workflow, node);
+
+		const closeFunctionsResults = await Promise.allSettled(
+			closeFunctions.map(async (fn) => await fn()),
+		);
+
+		const closingErrors = closeFunctionsResults
+			.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			.map((result) => result.reason);
+
+		if (closingErrors.length > 0) {
+			if (closingErrors[0] instanceof Error) throw closingErrors[0];
+			throw new ApplicationError("Error on execution node's close function(s)", {
+				extra: { nodeName: node.name },
+				tags: { nodeType: node.type },
+				cause: closingErrors,
+			});
+		}
+
+		return { data };
+	}
+
+	/**
 	 * Executes a poll node
 	 */
 	private async executePollNode(
@@ -1270,7 +1378,10 @@ export class WorkflowExecute {
 
 		inputData = this.handleExecuteOnce(node, inputData);
 
-		if (nodeType.execute || customOperation) {
+		if (
+			(nodeType.execute || customOperation) &&
+			(!node.type.includes('vectorStore') || node.parameters?.mode !== 'retrieve-as-tool')
+		) {
 			return await this.executeNode(
 				workflow,
 				node,
@@ -1285,6 +1396,23 @@ export class WorkflowExecute {
 				executionData,
 				abortSignal,
 				subNodeExecutionResults,
+			);
+		}
+
+		const hasSupplyData = typeof nodeType.supplyData === 'function';
+		if (hasSupplyData) {
+			return await this.executeSupplyDataNode(
+				workflow,
+				node,
+				nodeType,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executionData,
+				abortSignal,
 			);
 		}
 
@@ -1950,6 +2078,7 @@ export class WorkflowExecute {
 						} as ITaskDataConnections;
 					}
 
+					// const runDataAlreadyExists = false;
 					const runDataAlreadyExists =
 						!!this.runExecutionData.resultData.runData[executionNode.name][runIndex];
 					if (runDataAlreadyExists) {
@@ -2421,6 +2550,10 @@ export class WorkflowExecute {
 		} else {
 			Logger.debug('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
+			// TODO: Do we need this actually? I think this was only necessary when
+			// the agent was collecting the responses from the run data itself, with
+			// the requests and responses being coupled and passed back to the agent
+			// this is redundant, right?
 			fullRunData.status = 'success';
 		}
 

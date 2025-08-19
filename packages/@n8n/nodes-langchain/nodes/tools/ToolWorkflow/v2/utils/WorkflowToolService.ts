@@ -169,7 +169,10 @@ export class WorkflowToolService {
 						);
 					}
 
-					return processedResponse;
+						return processedResponse;
+					} else {
+						return responseData;
+					}
 				} catch (error) {
 					// Check if error is due to cancellation
 					if (abortSignal?.aborted) {

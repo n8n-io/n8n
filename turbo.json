@@ -1,6 +1,7 @@
 {
 	"globalEnv": ["CI", "COVERAGE_ENABLED"],
 	"tasks": {
+		"tsc-alias": {},
 		"clean": { "cache": false },
 		"build": {
 			"dependsOn": ["^build"],

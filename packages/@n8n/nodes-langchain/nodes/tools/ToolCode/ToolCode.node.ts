@@ -1,4 +1,4 @@
-import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import { DynamicTool, DynamicStructuredTool } from '@langchain/core/tools';
 import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';

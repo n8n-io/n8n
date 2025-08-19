@@ -14,6 +14,29 @@ import { nodeNameToToolName } from 'n8n-workflow';
 import { localResourceMapping } from './methods';
 import { WorkflowToolService } from './utils/WorkflowToolService';
 import { versionDescription } from './versionDescription';
+import type { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+
+async function getTool(
+	ctx: ISupplyDataFunctions | IExecuteFunctions,
+	enableLogging: boolean,
+): Promise<DynamicTool | DynamicStructuredTool> {
+	const node = ctx.getNode();
+	const { typeVersion } = node;
+	const returnAllItems = typeVersion > 2;
+
+	const workflowToolService = new WorkflowToolService(ctx, { returnAllItems });
+	const name =
+		typeVersion <= 2.1 ? (ctx.getNodeParameter('name', 0) as string) : nodeNameToToolName(node);
+	const description = ctx.getNodeParameter('description', 0) as string;
+
+	return await workflowToolService.createTool({
+		ctx,
+		name,
+		description,
+		itemIndex: 0,
+		log: enableLogging,
+	});
+}
 
 async function getTool(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,

@@ -123,6 +123,13 @@ export function logWrapper<
 >(originalInstance: T, executeFunctions: IExecuteFunctions | ISupplyDataFunctions): T {
 	return new Proxy(originalInstance, {
 		get: (target, prop) => {
+			// Special property to identify this as a wrapped tool and access the original
+			if (prop === '__n8n_wrapped_tool__') {
+				return target;
+			}
+			if (prop === '__n8n_is_wrapped__') {
+				return true;
+			}
 			let connectionType: NodeConnectionType | undefined;
 			// ========== BaseChatMemory ==========
 			if (isBaseChatMemory(originalInstance)) {

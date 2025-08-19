@@ -1,12 +1,12 @@
 import { Calculator } from '@langchain/community/tools/calculator';
 import {
 	type IExecuteFunctions,
-	type INodeExecutionData,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	type INodeExecutionData,
 } from 'n8n-workflow';
 
 import { logWrapper } from '@utils/logWrapper';

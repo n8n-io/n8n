@@ -1,0 +1,17 @@
+{
+	"node": "n8n-nodes-langchain.lmFakeTesting",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Fake LLM node for testing purposes only. Provides configurable responses and error simulation.",
+	"categories": ["AI"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmfaketesting/"
+			}
+		]
+	},
+	"subcategories": {
+		"AI": ["Language Models", "Testing"]
+	}
+}

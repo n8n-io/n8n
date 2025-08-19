@@ -1115,6 +1115,7 @@ describe('WorkflowExecute', () => {
 			execute: undefined,
 			poll: undefined,
 			webhook: undefined,
+			supplyData: undefined,
 			async trigger() {
 				return triggerResponse;
 			},
@@ -2105,6 +2106,7 @@ describe('WorkflowExecute', () => {
 					name: 'nodeName',
 					parameters,
 					forceCustomOperation,
+					type: 'type',
 				});
 
 				const workflow = new Workflow({

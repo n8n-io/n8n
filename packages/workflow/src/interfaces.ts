@@ -979,6 +979,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData[];
 		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
+		getSubnodes(connectionType: NodeConnectionType): string[];
+		getRunIndex(): number;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
@@ -1718,7 +1720,7 @@ export type NodeOutput =
 export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData>;
-	execute?(this: IExecuteFunctions, response?: EngineResponse): Promise<NodeOutput>;
+	execute?(this: IExecuteFunctions, response?: Response): Promise<NodeOutput>;
 	/**
 	 * A function called when a node receives a chat message. Allows it to react
 	 * to the message before it gets executed.
@@ -1773,6 +1775,35 @@ export interface INodeType {
 		};
 	};
 }
+
+type ExecutionNodeAction<T> = {
+	actionType: 'ExecutionNodeAction';
+	nodeName: string;
+	input: IDataObject;
+	// input: string | Record<string, unknown>;
+	// input: INodeExecutionData[][] | null | undefined;
+	type: NodeConnectionType;
+	id: string;
+	metadata: T;
+};
+type Action<T = unknown> = ExecutionNodeAction<T>;
+// TODO: this should use `unknown`, but jest-mock-extended will turn this into
+// `Partial<unknown>` which `unknown` cannot be assigned to, which leads to a
+// lot of type errors in our tests.
+// The correct fix is to make a PR to jest-mock-extended and make it handle
+// `unknown` special, turning it into `unknown` instead of `Partial<unknown`.
+export type Request<T = object> = {
+	actions: Array<Action<T>>;
+	metadata: T;
+};
+export type SubNodeExecutionResult<T = unknown> = {
+	action: ExecutionNodeAction<T>;
+	data: ITaskData;
+};
+export type Response<T = unknown> = {
+	actionResponses: Array<SubNodeExecutionResult<T>>;
+	metadata: T;
+};
 
 /**
  * Represents a request to execute a specific node and receive the result back.

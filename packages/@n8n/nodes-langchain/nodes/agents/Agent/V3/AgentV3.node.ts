@@ -11,6 +11,7 @@ import type {
 } from 'n8n-workflow';
 
 import { toolsAgentProperties } from '../agents/ToolsAgent/V3/description';
+
 import type { RequestResponseMetadata } from '../agents/ToolsAgent/V3/execute';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V3/execute';
 import { getInputs } from '../utils';
@@ -82,6 +83,11 @@ export class AgentV3 implements INodeType {
 					type: 'boolean',
 					default: false,
 					noDataExpression: true,
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 2.1 } }],
+						},
+					},
 				},
 				{
 					displayName:

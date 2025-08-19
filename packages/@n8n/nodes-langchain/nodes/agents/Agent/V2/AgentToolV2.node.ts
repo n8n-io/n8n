@@ -10,7 +10,7 @@ import type {
 
 import { textInput, toolDescription } from '@utils/descriptions';
 
-import { getInputs } from './utils';
+import { getInputs } from '../utils';
 import { getToolsAgentProperties } from '../agents/ToolsAgent/V2/description';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V2/execute';
 
