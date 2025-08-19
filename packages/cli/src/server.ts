@@ -64,7 +64,6 @@ import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
-
 import { MfaService } from './mfa/mfa.service';
 import { CommunityPackagesConfig } from './community-packages/community-packages.config';
 
@@ -92,6 +91,7 @@ export class Server extends AbstractServer {
 		if (!this.globalConfig.endpoints.disableUi) {
 			const { FrontendService } = await import('@/services/frontend.service');
 			this.frontendService = Container.get(FrontendService);
+			await import('@/controllers/module-settings.controller');
 		}
 
 		this.presetCredentialsLoaded = false;
@@ -278,12 +278,6 @@ export class Server extends AbstractServer {
 			this.app.get(
 				`/${this.restEndpoint}/settings`,
 				ResponseHelper.send(async () => frontendService.getSettings()),
-			);
-
-			// Returns settings for all loaded modules
-			this.app.get(
-				`/${this.restEndpoint}/module-settings`,
-				ResponseHelper.send(async () => frontendService.getModuleSettings()),
 			);
 
 			this.app.get(`/${this.restEndpoint}/config.js`, (_req, res) => {
