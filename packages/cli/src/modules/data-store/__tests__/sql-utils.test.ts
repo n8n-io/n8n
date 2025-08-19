@@ -10,13 +10,40 @@ import {
 
 describe('sql-utils', () => {
 	describe('addColumnQuery', () => {
-		it('should generate a valid SQL query for adding columns to a table', () => {
+		it('should generate a valid SQL query for adding columns to a table, sqlite', () => {
 			const tableName = 'data_store_user_abc';
 			const column = { name: 'email', type: 'number' as const };
 
 			const query = addColumnQuery(tableName, column, 'sqlite');
 
-			expect(query).toBe('ALTER TABLE "data_store_user_abc" ADD "email" FLOAT');
+			expect(query).toBe('ALTER TABLE "data_store_user_abc" ADD "email" REAL');
+		});
+
+		it('should generate a valid SQL query for adding columns to a table, postgres', () => {
+			const tableName = 'data_store_user_abc';
+			const column = { name: 'email', type: 'number' as const };
+
+			const query = addColumnQuery(tableName, column, 'postgres');
+
+			expect(query).toBe('ALTER TABLE "data_store_user_abc" ADD "email" DOUBLE PRECISION');
+		});
+
+		it('should generate a valid SQL query for adding columns to a table, mysql', () => {
+			const tableName = 'data_store_user_abc';
+			const column = { name: 'email', type: 'number' as const };
+
+			const query = addColumnQuery(tableName, column, 'mysql');
+
+			expect(query).toBe('ALTER TABLE `data_store_user_abc` ADD `email` DOUBLE');
+		});
+
+		it('should generate a valid SQL query for adding columns to a table, mariadb', () => {
+			const tableName = 'data_store_user_abc';
+			const column = { name: 'email', type: 'number' as const };
+
+			const query = addColumnQuery(tableName, column, 'mariadb');
+
+			expect(query).toBe('ALTER TABLE `data_store_user_abc` ADD `email` DOUBLE');
 		});
 	});
 
