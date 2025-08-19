@@ -2,7 +2,6 @@ import type {
 	ListDataStoreContentQueryDto,
 	ListDataStoreContentFilter,
 	DataStoreUserTableName,
-	DataStoreRows,
 	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
 import { CreateTable, DslColumn } from '@n8n/db';
@@ -27,6 +26,7 @@ import {
 	toDslColumns,
 	toTableName,
 } from './utils/sql-utils';
+import { DataStoreRows } from 'n8n-workflow';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
