@@ -12,6 +12,11 @@ export function getDataStoreHelperFunctions(
 ): DataStoreProxyFunctions {
 	return {
 		getDataStoreProxy: async <T extends string | undefined>(dataStoreId?: T) =>
-			await additionalData.dataStoreProxy.getDataStoreProxy(workflow, node, dataStoreId),
+			await additionalData.dataStoreProxy.getDataStoreProxy(
+				workflow,
+				node,
+				dataStoreId,
+				additionalData.projectId,
+			),
 	};
 }

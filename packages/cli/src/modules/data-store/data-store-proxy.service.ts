@@ -41,23 +41,33 @@ export class DataStoreProxyService {
 		workflow: Workflow,
 		node: INode,
 		dataStoreId?: undefined,
+		dataStoreProjectId?: undefined,
 	): Promise<DataStoreAggregateOperations>;
 	async getDataStoreProxy(
 		workflow: Workflow,
 		node: INode,
 		dataStoreId?: string,
+		dataStoreProjectId?: string,
 	): Promise<IDataStoreProjectService>;
 	async getDataStoreProxy<T extends string | undefined>(
 		workflow: Workflow,
 		node: INode,
 		dataStoreId?: T,
+		dataStoreProjectId?: T,
 	): Promise<IDataStoreProjectService | DataStoreAggregateOperations> {
 		if (node.type !== 'n8n-nodes-base.dataStore') {
 			throw new Error('This proxy is only available for data store nodes');
 		}
 
-		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflow.id);
-		const projectId = homeProject.id;
+		// If this proxy receives a projectId, it will be used for all data store
+		// operations over the workflow's home project. This is relevant on the resource locator,
+		// as the LoadOptionsContext doesn't contain real workflow or project information, the workflow
+		// object received from there is a fake one without ID (and one that possibly hasn't been saved yet).
+		// Resource locator component passes the current project ID as a workaround to its requests,
+		// and that project is then used here even if the workflow hasn't been saved yet.
+		const projectId =
+			dataStoreProjectId ?? (await this.ownershipService.getWorkflowProjectCached(workflow.id)).id;
+
 		const dataStoreService = this.dataStoreService;
 
 		const aggregateOperations = {

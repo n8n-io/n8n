@@ -922,11 +922,13 @@ export type DataStoreProxy = {
 		workflow: Workflow,
 		node: INode,
 		dataStoreId?: undefined,
+		projectId?: undefined,
 	): Promise<Pick<IDataStoreProjectService, 'getManyAndCount'>>;
 	getDataStoreProxy(
 		workflow: Workflow,
 		node: INode,
 		dataStoreId?: string,
+		projectId?: string,
 	): Promise<IDataStoreProjectService>;
 };
 
