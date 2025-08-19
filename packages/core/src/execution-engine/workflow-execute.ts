@@ -1119,7 +1119,7 @@ export class WorkflowExecute {
 			}
 
 			// We always use the data of main input and the first input for execute
-			let connectionInputData = inputData.main[0] as INodeExecutionData[];
+			let connectionInputData = inputData.main[0];
 
 			const forceInputNodeExecution = workflow.settings.executionOrder !== 'v1';
 			if (!forceInputNodeExecution) {
@@ -1133,7 +1133,7 @@ export class WorkflowExecute {
 				}
 			}
 
-			if (connectionInputData.length === 0) {
+			if (!connectionInputData || connectionInputData.length === 0) {
 				return null;
 			}
 
