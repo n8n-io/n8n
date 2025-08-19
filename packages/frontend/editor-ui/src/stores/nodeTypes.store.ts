@@ -340,18 +340,16 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 		nodeTypesRequestInProgress.value = (async () => {
 			try {
-				const fetchedNodeTypes: INodeTypeDescription[] = await nodeTypesApi.getNodeTypes(
-					rootStore.baseUrl,
-				);
-				await fetchCommunityNodePreviews();
+				const [fetchedNodeTypes, _] = await Promise.all([
+					nodeTypesApi.getNodeTypes(rootStore.baseUrl),
+					fetchCommunityNodePreviews(),
+				]);
 
 				if (fetchedNodeTypes.length) {
 					setNodeTypes(fetchedNodeTypes);
 				}
 			} finally {
-				setTimeout(() => {
-					nodeTypesRequestInProgress.value = null;
-				}, 1000);
+				nodeTypesRequestInProgress.value = null;
 			}
 		})();
 
