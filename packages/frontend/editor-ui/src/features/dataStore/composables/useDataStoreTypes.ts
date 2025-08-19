@@ -4,6 +4,7 @@ import type {
 	DataStoreColumnType,
 	DataStoreValue,
 } from '@/features/dataStore/datastore.types';
+import { isAGGridCellType } from '@/features/dataStore/types';
 
 /* eslint-disable id-denylist */
 const COLUMN_TYPE_ICONS: Record<DataStoreColumnType, IconName> = {
@@ -32,6 +33,9 @@ export const useDataStoreTypes = () => {
 	};
 
 	const mapToDataStoreColumnType = (colType: AGGridCellType): DataStoreColumnType => {
+		if (!isAGGridCellType(colType)) {
+			return 'string';
+		}
 		if (colType === 'text') {
 			return 'string';
 		}

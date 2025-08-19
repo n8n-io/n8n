@@ -1,5 +1,9 @@
 import type { BaseResource } from '@/Interface';
-import type { DataStore } from '@/features/dataStore/datastore.types';
+import type {
+	AGGridCellType,
+	DataStore,
+	DataStoreColumnType,
+} from '@/features/dataStore/datastore.types';
 
 /**
  * Data Store resource type definition
@@ -16,6 +20,17 @@ declare module '@/Interface' {
 		dataStore: DataStoreResource;
 	}
 }
+
+export const isAGGridCellType = (value: unknown): value is AGGridCellType => {
+	return (
+		typeof value === 'string' &&
+		['text', 'number', 'boolean', 'date', 'dateString', 'object'].includes(value)
+	);
+};
+
+export const isDataStoreColumnType = (value: unknown): value is DataStoreColumnType => {
+	return typeof value === 'string' && ['string', 'number', 'boolean', 'date'].includes(value);
+};
 
 // Export to make this a module
 export {};

@@ -14,6 +14,10 @@ describe('dataStore.store', () => {
 		dataStoreStore = useDataStoreStore();
 	});
 
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	it('can move a column', async () => {
 		const datastoreId = faker.string.alphanumeric(10);
 		const columnId = 'phone';

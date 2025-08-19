@@ -80,6 +80,13 @@ const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
 };
 
+const refreshGridData = () => {
+	if (gridApi.value) {
+		gridApi.value.setGridOption('columnDefs', colDefs.value);
+		gridApi.value.setGridOption('rowData', rowData.value);
+	}
+};
+
 const setCurrentPage = (page: number) => {
 	currentPage.value = page;
 };
@@ -129,23 +136,23 @@ const onDeleteColumn = async (columnId: string) => {
 
 	const columnToDeleteIndex = colDefs.value.findIndex((col) => col.colId === columnId);
 	colDefs.value = colDefs.value.filter((def) => def.colId !== columnId);
+	const rowDataOldValue = [...rowData.value];
 	rowData.value = rowData.value.map((row) => {
-		const { [columnToDelete.field!]: _, ...rest } = row;
+		const { [columnToDelete.field ?? '']: _, ...rest } = row;
 		return rest;
 	});
-	if (gridApi.value) {
-		gridApi.value.setGridOption('columnDefs', colDefs.value);
-		gridApi.value.setGridOption('rowData', rowData.value);
-	}
+	refreshGridData();
 	try {
 		await dataStoreStore.deleteDataStoreColumn(
 			props.dataStore.id,
 			props.dataStore.projectId,
 			columnId,
 		);
-	} catch (error: unknown) {
-		toast.showError(error as Error, i18n.baseText('dataStore.deleteColumn.error'));
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.deleteColumn.error'));
 		colDefs.value.splice(columnToDeleteIndex, 0, columnToDelete);
+		rowData.value = rowDataOldValue;
+		refreshGridData();
 	}
 };
 
@@ -184,7 +191,7 @@ const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 	if (
 		!moveEvent.finished ||
 		moveEvent.source !== 'uiColumnMoved' ||
-		!moveEvent.toIndex ||
+		moveEvent.toIndex === undefined ||
 		!moveEvent.column
 	) {
 		return;
