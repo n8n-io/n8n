@@ -82,6 +82,7 @@ class TaskRunner:
         self.executor = TaskExecutor()
         self.logger = logging.getLogger(__name__)
 
+        self.task_broker_uri = opts.task_broker_uri
         websocket_host = urlparse(opts.task_broker_uri).netloc
         self.websocket_url = (
             f"ws://{websocket_host}{TASK_BROKER_WS_PATH}?id={self.runner_id}"
@@ -102,8 +103,7 @@ class TaskRunner:
             await self._listen_for_messages()
 
         except Exception as e:
-            self.logger.error(f"Failed to connect to task broker: {e}")
-            raise
+            raise WebsocketConnectionError(self.task_broker_uri)
 
     async def stop(self) -> None:
         if self.offers_coroutine:
@@ -117,7 +117,7 @@ class TaskRunner:
 
     async def _listen_for_messages(self) -> None:
         if self.websocket_connection is None:
-            raise WebsocketConnectionError()
+            raise WebsocketConnectionError(self.task_broker_uri)
 
         async for raw_message in self.websocket_connection:
             try:
@@ -242,7 +242,7 @@ class TaskRunner:
 
     async def _send_message(self, message: RunnerMessage) -> None:
         if self.websocket_connection is None:
-            raise WebsocketConnectionError()
+            raise WebsocketConnectionError(self.task_broker_uri)
 
         serialized = self.serde.serialize_runner_message(message)
         await self.websocket_connection.send(serialized)
