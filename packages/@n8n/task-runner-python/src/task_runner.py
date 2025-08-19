@@ -14,6 +14,8 @@ from .nanoid import nanoid
 
 from .constants import (
     RUNNER_NAME,
+    TASK_REJECTED_REASON_AT_CAPACITY,
+    TASK_REJECTED_REASON_OFFER_EXPIRED,
     TASK_TYPE_PYTHON,
     OFFER_INTERVAL,
     OFFER_VALIDITY,
@@ -156,7 +158,7 @@ class TaskRunner:
         if offer is None or offer.has_expired:
             response = RunnerTaskRejected(
                 task_id=message.task_id,
-                reason="Offer expired - not accepted within validity window",
+                reason=TASK_REJECTED_REASON_OFFER_EXPIRED,
             )
             await self._send_message(response)
             return
@@ -164,7 +166,7 @@ class TaskRunner:
         if len(self.running_tasks) >= self.opts.max_concurrency:
             response = RunnerTaskRejected(
                 task_id=message.task_id,
-                reason="No open task slots - runner already at capacity",
+                reason=TASK_REJECTED_REASON_AT_CAPACITY,
             )
             await self._send_message(response)
             return
@@ -181,14 +183,11 @@ class TaskRunner:
     async def _handle_task_settings(self, message: BrokerTaskSettings) -> None:
         task_state = self.running_tasks.get(message.task_id)
         if task_state is None:
-            self.logger.warning(
-                f"Received settings for unknown task: {message.task_id}"
-            )
-            return
+            raise TaskMissingError(message.task_id)
 
         if task_state.status != TaskStatus.WAITING_FOR_SETTINGS:
             self.logger.warning(
-                f"Received settings for task in status: {task_state.status}"
+                f"Received settings for task but it is already {task_state.status}. Discarding message."
             )
             return
 
@@ -232,7 +231,7 @@ class TaskRunner:
             return
 
         if task_state.status == TaskStatus.WAITING_FOR_SETTINGS:
-            del self.running_tasks[message.task_id]
+            self.running_tasks.pop(message.task_id, None)
             await self._send_offers()
             return
 
