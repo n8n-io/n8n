@@ -380,7 +380,7 @@ export async function getBase(
 	const moduleRegistry = Container.get(ModuleRegistry);
 	const dataStoreProxyProvider = moduleRegistry.isActive('data-store')
 		? Container.get(
-				(await import('./modules/data-store/data-store-proxy.service')).DataStoreProxyService,
+				(await import('@/modules/data-store/data-store-proxy.service')).DataStoreProxyService,
 			)
 		: undefined;
 
