@@ -86,13 +86,16 @@
         "merge_fields": {
             "type": "object",
             "properties": {
+                "BIRTHDAY": {
+                    "type": "string"
+                },
+                "COMPANY": {
+                    "type": "string"
+                },
                 "FNAME": {
                     "type": "string"
                 },
                 "LNAME": {
-                    "type": "string"
-                },
-                "PHONE": {
                     "type": "string"
                 }
             }
@@ -145,5 +148,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
