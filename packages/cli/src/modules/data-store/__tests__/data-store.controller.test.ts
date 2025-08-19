@@ -62,7 +62,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	// await testDb.terminate();
+	await testDb.terminate();
 });
 
 describe('POST /projects/:projectId/data-stores', () => {
