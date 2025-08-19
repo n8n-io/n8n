@@ -391,7 +391,7 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type('d');
 		},
 		hitOpenAbout: () => {
-			cy.get('body').type('{alt}{meta}o');
+			this.actions.hitComboShortcut(`alt+${META_KEY}`, 'o');
 		},
 		hitCopy: () => {
 			this.actions.hitComboShortcut(`{${META_KEY}}`, 'c');
