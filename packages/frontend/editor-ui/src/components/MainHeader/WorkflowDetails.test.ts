@@ -463,6 +463,7 @@ describe('WorkflowDetails', () => {
 			expect(toast.showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'success',
+					title: 'Workflow successfully created inside your personal space',
 				}),
 			);
 		});
@@ -492,6 +493,8 @@ describe('WorkflowDetails', () => {
 			expect(toast.showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'success',
+					title: 'Workflow successfully created in Test Project',
+					message: 'All members from Test Project will have access to this workflow.',
 				}),
 			);
 		});
@@ -522,6 +525,8 @@ describe('WorkflowDetails', () => {
 			expect(toast.showMessage).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'success',
+					title: 'Workflow successfully created in "Test Project", within "Test Folder"',
+					message: 'All members from Test Project will have access to this workflow.',
 				}),
 			);
 		});

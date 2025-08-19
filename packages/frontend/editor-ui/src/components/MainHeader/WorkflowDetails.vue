@@ -652,16 +652,15 @@ function getToastContent() {
 		};
 	}
 
-	const title = props.currentFolder
-		? locale.baseText('workflows.create.folder.toast.title', {
-				interpolate: {
-					projectName,
-					folderName: props.currentFolder.name ?? '',
-				},
-			})
-		: locale.baseText('workflows.create.project.toast.title', {
-				interpolate: { projectName },
-			});
+	const titleKey = props.currentFolder
+		? 'workflows.create.folder.toast.title'
+		: 'workflows.create.project.toast.title';
+
+	const interpolateData: Record<string, string> = props.currentFolder
+		? { projectName, folderName: props.currentFolder.name ?? '' }
+		: { projectName };
+
+	const title = locale.baseText(titleKey, { interpolate: interpolateData });
 
 	const toastMessage = locale.baseText('workflows.create.project.toast.text', {
 		interpolate: { projectName },
