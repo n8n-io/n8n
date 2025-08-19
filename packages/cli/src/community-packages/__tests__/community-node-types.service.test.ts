@@ -39,6 +39,10 @@ describe('CommunityNodeTypesService', () => {
 		service = new CommunityNodeTypesService(loggerMock, configMock, communityPackagesServiceMock);
 	});
 
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	describe('fetchNodeTypes', () => {
 		it('should use staging environment when ENVIRONMENT=staging', async () => {
 			process.env.ENVIRONMENT = 'staging';
