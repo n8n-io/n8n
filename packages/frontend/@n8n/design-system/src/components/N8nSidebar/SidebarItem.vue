@@ -84,12 +84,12 @@ const to = computed(() => {
 	padding: var(--spacing-3xs) var(--spacing-4xs);
 	gap: var(--spacing-4xs);
 	cursor: pointer;
-	width: 100%;
-	max-width: 100%;
 	color: var(--color-text-base);
 	border-radius: var(--spacing-4xs);
 	margin-top: 1px;
 	cursor: pointer;
+	min-width: 0;
+	width: 100%;
 
 	&:hover .sidebarItemDropdownIcon {
 		color: var(--color-text-dark);
@@ -108,10 +108,11 @@ const to = computed(() => {
 }
 
 .sidebarItemText {
-	max-width: 100%;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
+	flex: 1;
+	min-width: 0;
 }
 
 .sidebarItemText * {
