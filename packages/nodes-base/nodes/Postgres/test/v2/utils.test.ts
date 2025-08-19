@@ -302,6 +302,37 @@ describe('Test PostgresV2, addWhereClauses', () => {
 		// Text strings should remain as strings
 		expect(updatedValues).toEqual(['public', 'my_table', 'name', 'M', 'category', 'Electronics']);
 	});
+
+	it('should not convert empty strings or whitespace-only strings to numbers', () => {
+		const query = 'SELECT * FROM $1:name.$2:name';
+		const values = ['public', 'my_table'];
+		const whereClauses = [
+			{ column: 'empty_field', condition: '>', value: '' },
+			{ column: 'whitespace_field', condition: '>=', value: '   ' },
+		];
+
+		const [updatedQuery, updatedValues] = addWhereClauses(
+			node,
+			0,
+			query,
+			whereClauses,
+			values,
+			'AND',
+		);
+
+		expect(updatedQuery).toEqual(
+			'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 AND $5:name >= $6',
+		);
+		// These should NOT be converted to numbers
+		expect(updatedValues).toEqual([
+			'public',
+			'my_table',
+			'empty_field',
+			'',
+			'whitespace_field',
+			'   ',
+		]);
+	});
 });
 
 describe('Test PostgresV2, addSortRules', () => {

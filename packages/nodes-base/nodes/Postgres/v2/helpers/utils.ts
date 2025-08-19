@@ -154,7 +154,12 @@ export function addWhereClauses(
 			clause.condition = '=';
 		}
 		if (['>', '<', '>=', '<='].includes(clause.condition)) {
-			const numericValue = Number(clause.value);
+			const numericValue =
+				typeof clause.value === 'string' &&
+				clause.value.trim() !== '' &&
+				!Number.isNaN(Number(clause.value))
+					? Number(clause.value)
+					: NaN;
 
 			// Convert to number if numeric, otherwise keep as string for dates/text
 			if (!Number.isNaN(numericValue)) {
