@@ -260,9 +260,8 @@ const editorIsReadOnly = computed<boolean>(() => {
 });
 
 const editorLanguage = computed<CodeNodeLanguageOption>(() => {
-	if (editorType.value === 'json' || props.parameter.type === 'json') {
+	if (editorType.value === 'json' || props.parameter.type === 'json')
 		return 'json' as CodeNodeLanguageOption;
-	}
 
 	if (node.value?.parameters?.language === 'pythonNative') return 'pythonNative';
 
