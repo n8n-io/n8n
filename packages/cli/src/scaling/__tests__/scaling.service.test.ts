@@ -118,7 +118,7 @@ describe('ScalingService', () => {
 				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
 				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
-				expect(scheduleQueueRecoverySpy).toHaveBeenCalled();
+				expect(scheduleQueueRecoverySpy).toHaveBeenCalledWith(0);
 			});
 		});
 
