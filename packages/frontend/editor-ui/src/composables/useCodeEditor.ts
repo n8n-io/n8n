@@ -134,7 +134,7 @@ export const useCodeEditor = <L extends CodeNodeLanguageOption>({
 			languageFacet.of(lang === 'pythonNative' ? 'python' : lang),
 		];
 
-		switch (lang as keyof CodeEditorLanguageParamsMap) {
+		switch (lang) {
 			case 'javaScript': {
 				const tsExtension = await createTsWorker();
 				langExtensions.push(tsExtension);
