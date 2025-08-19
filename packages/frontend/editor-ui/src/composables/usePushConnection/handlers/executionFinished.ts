@@ -1,33 +1,34 @@
-import type { ExecutionFinished } from '@n8n/api-types/push/execution';
-import { useUIStore } from '@/stores/ui.store';
 import type { IExecutionResponse } from '@/Interface';
-import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
-import {
-	clearPopupWindowState,
-	hasTrimmedData,
-	hasTrimmedItem,
-	getExecutionErrorToastConfiguration,
-	getExecutionErrorMessage,
-} from '@/utils/executionUtils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { parse } from 'flatted';
-import { useToast } from '@/composables/useToast';
-import type { useRouter } from 'vue-router';
-import { useI18n } from '@n8n/i18n';
-import { TelemetryHelpers, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import type { IWorkflowBase, ExpressionError, IDataObject, IRunExecutionData } from 'n8n-workflow';
-import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
-import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
+import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { SampleTemplates, isPrebuiltAgentTemplateId } from '@/utils/templates/workflowSamples';
+import {
+	clearPopupWindowState,
+	getExecutionErrorMessage,
+	getExecutionErrorToastConfiguration,
+	hasTrimmedData,
+	hasTrimmedItem,
+} from '@/utils/executionUtils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
+import type { ExecutionFinished } from '@n8n/api-types/push/execution';
+import { useI18n } from '@n8n/i18n';
+import { parse } from 'flatted';
+import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
+import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
+import type { useRouter } from 'vue-router';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -44,6 +45,7 @@ export async function executionFinished(
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
+	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 
 	workflowsStore.lastAddedExecutingNode = null;
 
@@ -57,19 +59,26 @@ export async function executionFinished(
 	clearPopupWindowState();
 
 	const workflow = workflowsStore.getWorkflowById(data.workflowId);
-	if (workflow?.meta?.templateId) {
-		const easyAiWorkflowJson = getEasyAiWorkflowJson();
-		const isEasyAIWorkflow = workflow.meta.templateId === easyAiWorkflowJson.meta.templateId;
+	const templateId = workflow?.meta?.templateId;
+
+	if (templateId) {
+		const isEasyAIWorkflow = templateId === SampleTemplates.EasyAiTemplate;
 		if (isEasyAIWorkflow) {
 			telemetry.track('User executed test AI workflow', {
 				status: data.status,
 			});
-		}
-		if (workflow.meta.templateId.startsWith('035_template_onboarding')) {
+		} else if (templateId.startsWith('035_template_onboarding')) {
 			aiTemplatesStarterCollectionStore.trackUserExecutedWorkflow(
-				workflow.meta.templateId.split('-').pop() ?? '',
+				templateId.split('-').pop() ?? '',
 				data.status,
 			);
+		} else if (templateId.startsWith('37_onboarding_experiments_batch_aug11')) {
+			readyToRunWorkflowsStore.trackExecuteWorkflow(templateId.split('-').pop() ?? '', data.status);
+		} else if (isPrebuiltAgentTemplateId(templateId)) {
+			telemetry.track('User executed pre-built Agent', {
+				template: templateId,
+				status: data.status,
+			});
 		}
 	}
 
@@ -243,7 +252,7 @@ export function handleExecutionFinishedWithWaitTill(options: {
 	const settingsStore = useSettingsStore();
 	const workflowSaving = useWorkflowSaving(options);
 	const workflowHelpers = useWorkflowHelpers();
-	const workflowObject = workflowsStore.getCurrentWorkflow();
+	const workflowObject = workflowsStore.workflowObject;
 
 	const workflowSettings = workflowsStore.workflowSettings;
 	const saveManualExecutions =
@@ -277,7 +286,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
-	const workflowObject = workflowsStore.getCurrentWorkflow();
+	const workflowObject = workflowsStore.workflowObject;
 
 	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'ERROR');
 
@@ -367,7 +376,7 @@ export function handleExecutionFinishedWithOther(successToastAlreadyShown: boole
 	const i18n = useI18n();
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowObject = workflowsStore.getCurrentWorkflow();
+	const workflowObject = workflowsStore.workflowObject;
 
 	workflowHelpers.setDocumentTitle(workflowObject.name as string, 'IDLE');
 

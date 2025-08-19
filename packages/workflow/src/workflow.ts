@@ -36,6 +36,7 @@ import type {
 	INodeConnection,
 	IObservableObject,
 	NodeParameterValueType,
+	INodeOutputConfiguration,
 	NodeConnectionType,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
@@ -67,9 +68,9 @@ export class Workflow {
 
 	nodes: INodes = {};
 
-	connectionsBySourceNode: IConnections;
+	connectionsBySourceNode: IConnections = {};
 
-	connectionsByDestinationNode: IConnections;
+	connectionsByDestinationNode: IConnections = {};
 
 	nodeTypes: INodeTypes;
 
@@ -77,7 +78,7 @@ export class Workflow {
 
 	active: boolean;
 
-	settings: IWorkflowSettings;
+	settings: IWorkflowSettings = {};
 
 	readonly timezone: string;
 
@@ -93,15 +94,9 @@ export class Workflow {
 		this.id = parameters.id as string; // @tech_debt Ensure this is not optional
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
-		this.pinData = parameters.pinData;
 
-		// Save nodes in workflow as object to be able to get the
-		// nodes easily by its name.
-		// Also directly add the default values of the node type.
 		let nodeType: INodeType | undefined;
 		for (const node of parameters.nodes) {
-			this.nodes[node.name] = node;
-
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType === undefined) {
@@ -127,10 +122,11 @@ export class Workflow {
 			);
 			node.parameters = nodeParameters !== null ? nodeParameters : {};
 		}
-		this.connectionsBySourceNode = parameters.connections;
 
-		// Save also the connections by the destination nodes
-		this.connectionsByDestinationNode = mapConnectionsByDestination(parameters.connections);
+		this.setNodes(parameters.nodes);
+		this.setConnections(parameters.connections);
+		this.setPinData(parameters.pinData);
+		this.setSettings(parameters.settings ?? {});
 
 		this.active = parameters.active || false;
 
@@ -138,10 +134,30 @@ export class Workflow {
 			ignoreEmptyOnFirstChild: true,
 		});
 
-		this.settings = parameters.settings || {};
 		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
 
 		this.expression = new Expression(this);
+	}
+
+	// Save nodes in workflow as object to be able to get the nodes easily by their name.
+	setNodes(nodes: INode[]) {
+		this.nodes = {};
+		for (const node of nodes) {
+			this.nodes[node.name] = node;
+		}
+	}
+
+	setConnections(connections: IConnections) {
+		this.connectionsBySourceNode = connections;
+		this.connectionsByDestinationNode = mapConnectionsByDestination(this.connectionsBySourceNode);
+	}
+
+	setPinData(pinData: IPinData | undefined) {
+		this.pinData = pinData;
+	}
+
+	setSettings(settings: IWorkflowSettings) {
+		this.settings = settings;
 	}
 
 	overrideStaticData(staticData?: IDataObject) {
@@ -471,9 +487,6 @@ export class Workflow {
 				}
 			}
 		}
-
-		// Use the updated connections to create updated connections by destination nodes
-		this.connectionsByDestinationNode = mapConnectionsByDestination(this.connectionsBySourceNode);
 	}
 
 	/**
@@ -676,28 +689,40 @@ export class Workflow {
 		return returnConns;
 	}
 
-	getParentMainInputNode(node: INode | null | undefined): INode | null | undefined {
-		if (!node) return node;
+	getParentMainInputNode(node: INode): INode {
+		if (node) {
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
 
-		const nodeConnections = this.connectionsBySourceNode[node.name];
-		if (!nodeConnections) return node;
-
-		// Get non-main connection types
-		const nonMainConnectionTypes = Object.keys(nodeConnections).filter(
-			(type) => type !== NodeConnectionTypes.Main,
-		);
-
-		for (const connectionType of nonMainConnectionTypes) {
-			const connections = nodeConnections[connectionType] ?? [];
-			for (const connectionGroup of connections) {
-				for (const connection of connectionGroup ?? []) {
-					if (connection?.node) {
-						const returnNode = this.getNode(connection.node);
-						if (!returnNode) {
-							throw new ApplicationError(`Node "${connection.node}" not found`);
-						}
-						return this.getParentMainInputNode(returnNode);
+			if (
+				outputs.find(
+					(output) =>
+						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionTypes.Main,
+				)
+			) {
+				// Get the first node which is connected to a non-main output
+				const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
+					const parentNodes = this.getChildNodes(
+						node.name,
+						(outputName as INodeOutputConfiguration)?.type ?? outputName,
+					);
+					if (parentNodes.length > 0) {
+						acc.push(...parentNodes);
 					}
+					return acc;
+				}, [] as string[]);
+
+				if (nonMainNodesConnected.length) {
+					const returnNode = this.getNode(nonMainNodesConnected[0]);
+					if (returnNode === null) {
+						// This should theoretically never happen as the node is connected
+						// but who knows and it makes TS happy
+						throw new ApplicationError(`Node "${nonMainNodesConnected[0]}" not found`);
+					}
+
+					// The chain of non-main nodes is potentially not finished yet so
+					// keep on going
+					return this.getParentMainInputNode(returnNode);
 				}
 			}
 		}
@@ -905,65 +930,5 @@ export class Workflow {
 		}
 
 		return result;
-	}
-
-	/**
-	 * Checks if there's a bidirectional path between two nodes.
-	 * This handles AI/tool nodes that have complex connection patterns
-	 * where simple parent-child traversal doesn't work.
-	 *
-	 * @param fromNodeName The starting node name
-	 * @param toNodeName The target node name
-	 * @param maxDepth Maximum depth to search (default: 50)
-	 * @returns true if there's a path between the nodes
-	 */
-	hasPath(fromNodeName: string, toNodeName: string, maxDepth = 50): boolean {
-		if (fromNodeName === toNodeName) return true;
-
-		// Get connection types that actually exist in this workflow
-		// We need both source and destination connection types for bidirectional search
-		const connectionTypes = new Set<NodeConnectionType>();
-		for (const nodeConnections of Object.values(this.connectionsBySourceNode).concat(
-			Object.values(this.connectionsByDestinationNode),
-		)) {
-			for (const type of Object.keys(nodeConnections)) {
-				connectionTypes.add(type as NodeConnectionType);
-			}
-		}
-
-		const visited = new Set<string>();
-		const queue: Array<{ nodeName: string; depth: number }> = [
-			{ nodeName: fromNodeName, depth: 0 },
-		];
-
-		while (queue.length > 0) {
-			const { nodeName, depth } = queue.shift()!;
-
-			if (depth > maxDepth) continue;
-			if (visited.has(nodeName)) continue;
-			if (nodeName === toNodeName) return true;
-
-			visited.add(nodeName);
-
-			for (const connectionType of connectionTypes) {
-				// Get children (forward direction)
-				const children = this.getChildNodes(nodeName, connectionType);
-				for (const childName of children) {
-					if (!visited.has(childName)) {
-						queue.push({ nodeName: childName, depth: depth + 1 });
-					}
-				}
-
-				// Get parents (backward direction)
-				const parents = this.getParentNodes(nodeName, connectionType);
-				for (const parentName of parents) {
-					if (!visited.has(parentName)) {
-						queue.push({ nodeName: parentName, depth: depth + 1 });
-					}
-				}
-			}
-		}
-
-		return false;
 	}
 }

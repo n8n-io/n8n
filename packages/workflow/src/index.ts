@@ -67,6 +67,8 @@ export { ExpressionExtensions } from './extensions';
 export * as ExpressionParser from './extensions/expression-parser';
 export { NativeMethods } from './native-methods';
 export * from './node-parameters/filter-parameter';
+export * from './node-parameters/parameter-type-validation';
+export * from './evaluation-helpers';
 
 export type {
 	DocMetadata,

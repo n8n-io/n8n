@@ -149,7 +149,7 @@ Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 });
 
 Cypress.Commands.add('readClipboard', () =>
-	cy.window().then(async (win) => await win.navigator.clipboard.readText()),
+	cy.window().then((win) => win.navigator.clipboard.readText()),
 );
 
 Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
@@ -257,6 +257,57 @@ Cypress.Commands.add('resetDatabase', () => {
 		owner: INSTANCE_OWNER,
 		members: INSTANCE_MEMBERS,
 		admin: INSTANCE_ADMIN,
+	});
+});
+
+Cypress.Commands.add('clearIndexedDB', (dbName: string, storeName?: string) => {
+	cy.window().then((win) => {
+		return new Promise<void>((resolve, reject) => {
+			if (!win.indexedDB) {
+				resolve();
+				return;
+			}
+
+			// If storeName is provided, clear specific store; otherwise delete entire database
+			if (storeName) {
+				const openRequest = win.indexedDB.open(dbName);
+
+				openRequest.onsuccess = () => {
+					const db = openRequest.result;
+
+					if (!db.objectStoreNames.contains(storeName)) {
+						db.close();
+						resolve();
+						return;
+					}
+
+					const transaction = db.transaction([storeName], 'readwrite');
+					const store = transaction.objectStore(storeName);
+					const clearRequest = store.clear();
+
+					clearRequest.onsuccess = () => {
+						db.close();
+						resolve();
+					};
+
+					clearRequest.onerror = () => {
+						db.close();
+						// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+						reject(clearRequest.error);
+					};
+				};
+
+				openRequest.onerror = () => {
+					resolve(); // Database doesn't exist, nothing to clear
+				};
+			} else {
+				const deleteRequest = win.indexedDB.deleteDatabase(dbName);
+
+				deleteRequest.onsuccess = () => resolve();
+				deleteRequest.onerror = () => resolve(); // Ignore errors if DB doesn't exist
+				deleteRequest.onblocked = () => resolve(); // Ignore if blocked
+			}
+		});
 	});
 });
 

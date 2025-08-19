@@ -15,7 +15,8 @@ import {
 	EnterpriseEditionFeature,
 	INVITE_USER_MODAL_KEY,
 } from '@/constants';
-import type { InvitableRoleName, IUser } from '@/Interface';
+import type { InvitableRoleName } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -511,7 +512,7 @@ async function onUpdateMfaEnforced(value: boolean) {
 
 .settingsContainerInfo {
 	display: flex;
-	padding: 8px 0px;
+	padding: 8px 0;
 	flex-direction: column;
 	justify-content: center;
 	align-items: flex-start;

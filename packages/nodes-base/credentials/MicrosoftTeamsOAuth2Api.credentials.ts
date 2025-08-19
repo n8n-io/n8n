@@ -15,7 +15,8 @@ export class MicrosoftTeamsOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: 'openid offline_access User.ReadWrite.All Group.ReadWrite.All Chat.ReadWrite',
+			default:
+				'openid offline_access User.ReadWrite.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All',
 		},
 		{
 			displayName: `

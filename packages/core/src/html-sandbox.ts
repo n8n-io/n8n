@@ -1,16 +1,20 @@
-import { JSDOM } from 'jsdom';
+import { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import { ElementType, parseDocument } from 'htmlparser2';
 import type { TransformCallback } from 'stream';
 import { Transform } from 'stream';
+
+export const isIframeSandboxDisabled = () => {
+	return Container.get(SecurityConfig).disableIframeSandboxing;
+};
 
 /**
  * Checks if the given string contains HTML.
  */
 export const hasHtml = (str: string) => {
 	try {
-		const dom = new JSDOM(str);
-		return (
-			dom.window.document.body.children.length > 0 || dom.window.document.head.children.length > 0
-		);
+		const doc = parseDocument(str);
+		return doc.children.some((node) => node.type === ElementType.Tag);
 	} catch {
 		return false;
 	}
@@ -20,12 +24,15 @@ export const hasHtml = (str: string) => {
  * Sandboxes the HTML response to prevent possible exploitation, if the data has HTML.
  * If the data does not have HTML, it will be returned as is.
  * Otherwise, it embeds the response in an iframe to make sure the HTML has a different origin.
+ * Env var `N8N_INSECURE_DISABLE_WEBHOOK_IFRAME_SANDBOX` can be used, in this case sandboxing is disabled.
  *
  * @param data - The data to sandbox.
  * @param forceSandbox - Whether to force sandboxing even if the data does not contain HTML.
  * @returns The sandboxed HTML response.
  */
 export const sandboxHtmlResponse = <T>(data: T, forceSandbox = false) => {
+	if (isIframeSandboxDisabled()) return data;
+
 	let text;
 	if (typeof data !== 'string') {
 		text = JSON.stringify(data);
@@ -33,9 +40,7 @@ export const sandboxHtmlResponse = <T>(data: T, forceSandbox = false) => {
 		text = data;
 	}
 
-	if (!forceSandbox && !hasHtml(text)) {
-		return text;
-	}
+	if (!forceSandbox && !hasHtml(text)) return text;
 
 	// Escape & and " as mentioned in the spec:
 	// https://html.spec.whatwg.org/multipage/iframe-embed-object.html#the-iframe-element

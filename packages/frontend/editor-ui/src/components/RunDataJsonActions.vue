@@ -9,7 +9,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { nonExistingJsonPath, PiPWindowSymbol } from '@/constants';
+import { nonExistingJsonPath, PopOutWindowKey } from '@/constants';
 import { useClipboard } from '@/composables/useClipboard';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { inject, computed, ref } from 'vue';
@@ -39,8 +39,8 @@ const props = withDefaults(
 	},
 );
 
-const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
-const isInPiPWindow = computed(() => pipWindow?.value !== undefined);
+const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
+const isInPopOutWindow = computed(() => popOutWindow?.value !== undefined);
 
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
@@ -195,7 +195,7 @@ function handleCopyClick(commandData: { command: string }) {
 			v-else
 			trigger="click"
 			:teleported="
-				!isInPiPWindow // disabling teleport ensures the menu is rendered in PiP window
+				!isInPopOutWindow // disabling teleport ensures the menu is rendered in pop-out window
 			"
 			@command="handleCopyClick"
 		>

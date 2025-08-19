@@ -3,7 +3,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { STORES } from '@n8n/stores';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
-import type { IUser } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';

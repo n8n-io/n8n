@@ -29,10 +29,11 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import OrderSwitcher from './../OrderSwitcher.vue';
-import { isNodePreviewKey } from '../utils';
+import { getActiveViewCallouts, isNodePreviewKey } from '../utils';
 
 import CommunityNodeInfo from '../Panel/CommunityNodeInfo.vue';
 import CommunityNodeFooter from '../Panel/CommunityNodeFooter.vue';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
 const emit = defineEmits<{
 	nodeTypeSelected: [value: NodeTypeSelectedPayload[]];
@@ -53,6 +54,7 @@ const {
 } = useActions();
 
 const nodeCreatorStore = useNodeCreatorStore();
+const calloutHelpers = useCalloutHelpers();
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>
@@ -159,6 +161,15 @@ function onKeySelect(activeItemId: string) {
 }
 
 function onSelected(actionCreateElement: INodeCreateElement) {
+	if (actionCreateElement.type === 'openTemplate') {
+		calloutHelpers.openSampleWorkflowTemplate(actionCreateElement.properties.templateId, {
+			telemetry: {
+				source: 'nodeCreator',
+				section: useViewStacks().activeViewStack.title,
+			},
+		});
+	}
+
 	if (actionCreateElement.type !== 'action') return;
 
 	const actionData = getActionData(actionCreateElement.properties);
@@ -234,6 +245,14 @@ function addHttpNode() {
 onMounted(() => {
 	trackActionsView();
 });
+
+const callouts = computed<INodeCreateElement[]>(() =>
+	getActiveViewCallouts(
+		useViewStacks().activeViewStack.title,
+		calloutHelpers.isPreBuiltAgentsCalloutVisible.value,
+		calloutHelpers.getPreBuiltAgentNodeCreatorItems(),
+	),
+);
 </script>
 
 <template>
@@ -243,6 +262,8 @@ onMounted(() => {
 			[$style.containerPaddingBottom]: !communityNodeDetails,
 		}"
 	>
+		<ItemsRenderer :elements="callouts" :class="$style.items" @selected="onSelected" />
+
 		<CommunityNodeInfo v-if="communityNodeDetails" />
 		<OrderSwitcher v-if="rootView" :root-view="rootView">
 			<template v-if="shouldShowTriggers" #triggers>

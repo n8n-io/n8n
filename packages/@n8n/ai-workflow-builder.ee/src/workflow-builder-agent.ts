@@ -1,6 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessage, ToolMessage } from '@langchain/core/messages';
-import { HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import type { ToolMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { StateGraph, MemorySaver, END } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
@@ -11,8 +12,11 @@ import type {
 	NodeExecutionSchema,
 } from 'n8n-workflow';
 
+import { workflowNameChain } from '@/chains/workflow-name';
+import { DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS, MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
+
 import { conversationCompactChain } from './chains/conversation-compact';
-import { LLMServiceError } from './errors';
+import { LLMServiceError, ValidationError } from './errors';
 import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
 import { createNodeDetailsTool } from './tools/node-details.tool';
@@ -23,6 +27,7 @@ import { createUpdateNodeParametersTool } from './tools/update-node-parameters.t
 import type { SimpleWorkflow } from './types/workflow';
 import { processOperations } from './utils/operations-processor';
 import { createStreamProcessor, formatMessages } from './utils/stream-processor';
+import { extractLastTokenUsage } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
 
@@ -33,6 +38,7 @@ export interface WorkflowBuilderAgentConfig {
 	logger?: Logger;
 	checkpointer?: MemorySaver;
 	tracer?: LangChainTracer;
+	autoCompactThresholdTokens?: number;
 }
 
 export interface ChatPayload {
@@ -51,6 +57,7 @@ export class WorkflowBuilderAgent {
 	private llmComplexTask: BaseChatModel;
 	private logger?: Logger;
 	private tracer?: LangChainTracer;
+	private autoCompactThresholdTokens: number;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -59,6 +66,8 @@ export class WorkflowBuilderAgent {
 		this.logger = config.logger;
 		this.checkpointer = config.checkpointer ?? new MemorySaver();
 		this.tracer = config.tracer;
+		this.autoCompactThresholdTokens =
+			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
 	}
 
 	private createWorkflow() {
@@ -94,15 +103,45 @@ export class WorkflowBuilderAgent {
 			return { messages: [response] };
 		};
 
-		const shouldModifyState = ({ messages }: typeof WorkflowState.State) => {
-			const lastMessage = messages[messages.length - 1] as HumanMessage;
+		const shouldAutoCompact = ({ messages }: typeof WorkflowState.State) => {
+			const tokenUsage = extractLastTokenUsage(messages);
 
-			if (lastMessage.content === '/compact') {
+			if (!tokenUsage) {
+				this.logger?.debug('No token usage metadata found');
+				return false;
+			}
+
+			const tokensUsed = tokenUsage.input_tokens + tokenUsage.output_tokens;
+
+			this.logger?.debug('Token usage', {
+				inputTokens: tokenUsage.input_tokens,
+				outputTokens: tokenUsage.output_tokens,
+				totalTokens: tokensUsed,
+			});
+
+			return tokensUsed > this.autoCompactThresholdTokens;
+		};
+
+		const shouldModifyState = (state: typeof WorkflowState.State) => {
+			const { messages, workflowContext } = state;
+			const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!; // There always should be at least one human message in the array
+
+			if (lastHumanMessage.content === '/compact') {
 				return 'compact_messages';
 			}
 
-			if (lastMessage.content === '/clear') {
+			if (lastHumanMessage.content === '/clear') {
 				return 'delete_messages';
+			}
+
+			// If the workflow is empty (no nodes),
+			// we consider it initial generation request and auto-generate a name for the workflow.
+			if (workflowContext?.currentWorkflow?.nodes?.length === 0 && messages.length === 1) {
+				return 'create_workflow_name';
+			}
+
+			if (shouldAutoCompact(state)) {
+				return 'auto_compact_messages';
 			}
 
 			return 'agent';
@@ -130,25 +169,86 @@ export class WorkflowBuilderAgent {
 				workflowJSON: {
 					nodes: [],
 					connections: {},
+					name: '',
 				},
 			};
 
 			return stateUpdate;
 		}
 
+		/**
+		 * Compacts the conversation history by summarizing it
+		 * and removing original messages.
+		 * Might be triggered manually by the user with `/compact` message, or run automatically
+		 * when the conversation history exceeds a certain token limit.
+		 */
 		const compactSession = async (state: typeof WorkflowState.State) => {
 			if (!this.llmSimpleTask) {
 				throw new LLMServiceError('LLM not setup');
 			}
-			const messages = state.messages;
-			const compactedMessages = await conversationCompactChain(this.llmSimpleTask, messages);
 
+			const { messages, previousSummary } = state;
+			const lastHumanMessage = messages[messages.length - 1] satisfies HumanMessage;
+			const isAutoCompact = lastHumanMessage.content !== '/compact';
+
+			this.logger?.debug('Compacting conversation history', {
+				isAutoCompact,
+			});
+
+			const compactedMessages = await conversationCompactChain(
+				this.llmSimpleTask,
+				messages,
+				previousSummary,
+			);
+
+			// The summarized conversation history will become a part of system prompt
+			// and will be used in the next LLM call.
+			// We will remove all messages and replace them with a mock HumanMessage and AIMessage
+			// to indicate that the conversation history has been compacted.
+			// If this is an auto-compact, we will also keep the last human message, as it will continue executing the workflow.
 			return {
+				previousSummary: compactedMessages.summaryPlain,
 				messages: [
 					...messages.map((m) => new RemoveMessage({ id: m.id! })),
-					...compactedMessages.newMessages,
+					new HumanMessage('Please compress the conversation history'),
+					new AIMessage('Successfully compacted conversation history'),
+					...(isAutoCompact ? [new HumanMessage({ content: lastHumanMessage.content })] : []),
 				],
 			};
+		};
+
+		/**
+		 * Creates a workflow name based on the initial user message.
+		 */
+		const createWorkflowName = async (state: typeof WorkflowState.State) => {
+			if (!this.llmSimpleTask) {
+				throw new LLMServiceError('LLM not setup');
+			}
+
+			const { workflowJSON, messages } = state;
+
+			if (messages.length === 1 && messages[0] instanceof HumanMessage) {
+				const initialMessage = messages[0] satisfies HumanMessage;
+
+				if (typeof initialMessage.content !== 'string') {
+					this.logger?.debug(
+						'Initial message content is not a string, skipping workflow name generation',
+					);
+					return {};
+				}
+
+				this.logger?.debug('Generating workflow name');
+				const { name } = await workflowNameChain(this.llmSimpleTask, initialMessage.content);
+
+				return {
+					workflowJSON: {
+						...workflowJSON,
+						name,
+					},
+				};
+			}
+
+			return {};
 		};
 
 		const workflow = new StateGraph(WorkflowState)
@@ -157,15 +257,20 @@ export class WorkflowBuilderAgent {
 			.addNode('process_operations', processOperations)
 			.addNode('delete_messages', deleteMessages)
 			.addNode('compact_messages', compactSession)
+			.addNode('auto_compact_messages', compactSession)
+			.addNode('create_workflow_name', createWorkflowName)
 			.addConditionalEdges('__start__', shouldModifyState)
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent')
+			.addEdge('auto_compact_messages', 'agent')
+			.addEdge('create_workflow_name', 'agent')
 			.addEdge('delete_messages', END)
 			.addEdge('compact_messages', END)
 			.addConditionalEdges('agent', shouldContinue);
 
 		return workflow;
 	}
+
 	async getState(workflowId: string, userId?: string) {
 		const workflow = this.createWorkflow();
 		const agent = workflow.compile({ checkpointer: this.checkpointer });
@@ -180,71 +285,85 @@ export class WorkflowBuilderAgent {
 			: crypto.randomUUID();
 	}
 
-	async *chat(payload: ChatPayload, userId?: string) {
+	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {
+		return (
+			(payload.workflowContext?.currentWorkflow as SimpleWorkflow) ?? {
+				nodes: [],
+				connections: {},
+			}
+		);
+	}
+
+	async *chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
+		// Check for the message maximum length
+		if (payload.message.length > MAX_AI_BUILDER_PROMPT_LENGTH) {
+			this.logger?.warn('Message exceeds maximum length', {
+				messageLength: payload.message.length,
+				maxLength: MAX_AI_BUILDER_PROMPT_LENGTH,
+			});
+
+			throw new ValidationError(
+				`Message exceeds maximum length of ${MAX_AI_BUILDER_PROMPT_LENGTH} characters`,
+			);
+		}
+
 		const agent = this.createWorkflow().compile({ checkpointer: this.checkpointer });
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
 		const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
-
-		// Configure thread for checkpointing
-		const threadConfig = {
+		const threadConfig: RunnableConfig = {
 			configurable: {
 				thread_id: threadId,
 			},
 		};
+		const streamConfig = {
+			...threadConfig,
+			streamMode: ['updates', 'custom'],
+			recursionLimit: 30,
+			signal: abortSignal,
+			callbacks: this.tracer ? [this.tracer] : undefined,
+		} as RunnableConfig;
 
-		// Check if this is a subsequent message
-		// If so, update the workflowJSON with the current editor state
-		const existingCheckpoint = await this.checkpointer.getTuple(threadConfig);
-
-		let stream;
-
-		if (!existingCheckpoint?.checkpoint) {
-			// First message - use initial state
-			const initialState: typeof WorkflowState.State = {
+		const stream = await agent.stream(
+			{
 				messages: [new HumanMessage({ content: payload.message })],
-				workflowJSON: (payload.workflowContext?.currentWorkflow as SimpleWorkflow) ?? {
-					nodes: [],
-					connections: {},
-				},
+				workflowJSON: this.getDefaultWorkflowJSON(payload),
 				workflowOperations: [],
 				workflowContext: payload.workflowContext,
-			};
+			},
+			streamConfig,
+		);
 
-			stream = await agent.stream(initialState, {
-				...threadConfig,
-				streamMode: ['updates', 'custom'],
-				recursionLimit: 30,
-				callbacks: this.tracer ? [this.tracer] : undefined,
-			});
-		} else {
-			// Subsequent message - update the state with current workflow
-			const stateUpdate: Partial<typeof WorkflowState.State> = {
-				messages: [new HumanMessage({ content: payload.message })],
-				workflowOperations: [], // Clear any pending operations from previous message
-				workflowContext: payload.workflowContext,
-				workflowJSON: { nodes: [], connections: {} }, // Default to empty workflow
-			};
-
-			if (payload.workflowContext?.currentWorkflow) {
-				stateUpdate.workflowJSON = payload.workflowContext?.currentWorkflow as SimpleWorkflow;
+		try {
+			const streamProcessor = createStreamProcessor(stream);
+			for await (const output of streamProcessor) {
+				yield output;
 			}
+		} catch (error) {
+			if (
+				error &&
+				typeof error === 'object' &&
+				'message' in error &&
+				typeof error.message === 'string' &&
+				// This is naive, but it's all we get from LangGraph AbortError
+				['Abort', 'Aborted'].includes(error.message)
+			) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				const messages = (await agent.getState(threadConfig)).values.messages as Array<
+					AIMessage | HumanMessage | ToolMessage
+				>;
 
-			// Stream with just the new message
-			stream = await agent.stream(stateUpdate, {
-				...threadConfig,
-				streamMode: ['updates', 'custom'],
-				recursionLimit: 80,
-				callbacks: this.tracer ? [this.tracer] : undefined,
-			});
-		}
-
-		// Use the stream processor utility to handle chunk processing
-		const streamProcessor = createStreamProcessor(stream);
-
-		for await (const output of streamProcessor) {
-			yield output;
+				// Handle abort errors gracefully
+				const abortedAiMessage = new AIMessage({
+					content: '[Task aborted]',
+					id: crypto.randomUUID(),
+				});
+				// TODO: Should we clear tool calls that are in progress?
+				await agent.updateState(threadConfig, { messages: [...messages, abortedAiMessage] });
+				return;
+			}
+			throw error;
 		}
 	}
 
@@ -256,7 +375,7 @@ export class WorkflowBuilderAgent {
 
 		if (workflowId) {
 			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
-			const threadConfig = {
+			const threadConfig: RunnableConfig = {
 				configurable: {
 					thread_id: threadId,
 				},

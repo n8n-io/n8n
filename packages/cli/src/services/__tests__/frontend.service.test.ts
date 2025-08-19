@@ -1,17 +1,19 @@
-import { mock } from 'jest-mock-extended';
-import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import type { Logger, LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import type { GlobalConfig, SecurityConfig } from '@n8n/config';
+import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, BinaryDataConfig } from 'n8n-core';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { License } from '@/license';
-import type { UserManagementMailer } from '@/user-management/email';
-import type { UrlService } from '@/services/url.service';
-import type { PushConfig } from '@/push/push.config';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
-
+import type { PushConfig } from '@/push/push.config';
 import { FrontendService } from '@/services/frontend.service';
+import type { UrlService } from '@/services/url.service';
+import type { UserManagementMailer } from '@/user-management/email';
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
+import { Container } from '@n8n/di';
 
 describe('FrontendService', () => {
 	let originalEnv: NodeJS.ProcessEnv;
@@ -32,7 +34,7 @@ describe('FrontendService', () => {
 				endpoints: { rest: 'rest' },
 				diagnostics: { enabled: false },
 				templates: { enabled: false, host: '' },
-				nodes: { communityPackages: { enabled: false } },
+				nodes: {},
 				tags: { disabled: false },
 				logging: { level: 'info' },
 				hiringBanner: { enabled: false },
@@ -63,6 +65,13 @@ describe('FrontendService', () => {
 					oidc: { loginEnabled: false },
 				},
 			});
+
+			Container.set(
+				CommunityPackagesConfig,
+				mock<CommunityPackagesConfig>({
+					enabled: false,
+				}),
+			);
 
 			const logger = mock<Logger>();
 			const instanceSettings = mock<InstanceSettings>({

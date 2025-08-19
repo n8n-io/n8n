@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 import fs from 'fs';
 import { mock } from 'jest-mock-extended';
 
+import type { UserManagementConfig } from '../src/configs/user-management.config';
 import { GlobalConfig } from '../src/index';
 
 jest.mock('fs');
@@ -101,6 +102,9 @@ describe('GlobalConfig', () => {
 			},
 		},
 		userManagement: {
+			jwtSecret: '',
+			jwtSessionDurationHours: 168,
+			jwtRefreshTimeoutHours: 0,
 			emails: {
 				mode: 'smtp',
 				smtp: {
@@ -124,7 +128,7 @@ describe('GlobalConfig', () => {
 					'project-shared': '',
 				},
 			},
-		},
+		} as UserManagementConfig,
 		eventBus: {
 			checkUnsentInterval: 0,
 			crashRecoveryMode: 'extensive',
@@ -138,14 +142,6 @@ describe('GlobalConfig', () => {
 			files: [],
 		},
 		nodes: {
-			communityPackages: {
-				enabled: true,
-				registry: 'https://registry.npmjs.org',
-				reinstallMissing: false,
-				unverifiedEnabled: true,
-				verifiedEnabled: true,
-				preventLoading: false,
-			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
 			exclude: [],
@@ -303,6 +299,7 @@ describe('GlobalConfig', () => {
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
+			disableIframeSandboxing: false,
 		},
 		executions: {
 			pruneData: true,
@@ -312,6 +309,14 @@ describe('GlobalConfig', () => {
 			pruneDataIntervals: {
 				hardDelete: 15,
 				softDelete: 60,
+			},
+			concurrency: {
+				productionLimit: -1,
+				evaluationLimit: -1,
+			},
+			queueRecovery: {
+				interval: 180,
+				batchSize: 100,
 			},
 		},
 		diagnostics: {

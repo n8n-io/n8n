@@ -168,21 +168,28 @@ watch(sortBy, (newValue) => {
 			@update:options="emit('update:options', $event)"
 		>
 			<template #[`item.workflowName`]="{ item }">
-				<router-link
-					:to="getWorkflowLink(item)"
-					:class="$style.link"
-					@click="trackWorkflowClick(item)"
+				<component
+					:is="item.workflowId ? 'router-link' : 'div'"
+					v-bind="
+						item.workflowId
+							? {
+									to: getWorkflowLink(item),
+									class: $style.link,
+									onClick: () => trackWorkflowClick(item),
+								}
+							: {}
+					"
 				>
 					<N8nTooltip :content="item.workflowName" placement="top">
 						<div :class="$style.ellipsis">
 							{{ item.workflowName }}
 						</div>
 					</N8nTooltip>
-				</router-link>
+				</component>
 			</template>
 			<template #[`item.timeSaved`]="{ item, value }">
 				<router-link
-					v-if="!item.timeSaved"
+					v-if="!item.timeSaved && item.workflowId"
 					:to="getWorkflowLink(item, { settings: 'true' })"
 					:class="$style.link"
 				>

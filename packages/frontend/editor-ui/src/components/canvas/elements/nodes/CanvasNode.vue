@@ -108,7 +108,11 @@ const classes = computed(() => ({
 const renderType = computed<CanvasNodeRenderType>(() => props.data.render.type);
 
 const dataTestId = computed(() =>
-	[CanvasNodeRenderType.StickyNote, CanvasNodeRenderType.AddNodes].includes(renderType.value)
+	[
+		CanvasNodeRenderType.StickyNote,
+		CanvasNodeRenderType.AddNodes,
+		CanvasNodeRenderType.AIPrompt,
+	].includes(renderType.value)
 		? undefined
 		: 'canvas-node',
 );
@@ -393,6 +397,8 @@ onBeforeUnmount(() => {
 			data-test-id="canvas-node-toolbar"
 			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
+			:show-status-icons="isExperimentalNdvActive"
+			:items-class="$style.canvasNodeToolbarItems"
 			@delete="onDelete"
 			@toggle="onDisabledToggle"
 			@run="onRun"
@@ -427,27 +433,24 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .canvasNode {
+	.canvasNodeToolbarItems {
+		transition: opacity 0.1s ease-in;
+		opacity: 0;
+	}
+
 	&:hover:not(:has(> .trigger:hover)), // exclude .trigger which has extended hit zone
 	&:focus-within,
 	&.showToolbar {
-		.canvasNodeToolbar {
+		.canvasNodeToolbarItems {
 			opacity: 1;
 		}
 	}
 }
 
 .canvasNodeToolbar {
-	transition: opacity 0.1s ease-in;
 	position: absolute;
-	top: 0;
-	left: 50%;
-	transform: translate(-50%, -100%) scale(var(--canvas-zoom-compensation-factor, 1));
-	opacity: 0;
+	bottom: 100%;
+	left: 0;
 	z-index: 1;
-
-	&:focus-within,
-	&:hover {
-		opacity: 1;
-	}
 }
 </style>
