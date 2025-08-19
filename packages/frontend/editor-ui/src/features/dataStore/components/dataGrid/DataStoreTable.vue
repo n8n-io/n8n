@@ -35,7 +35,11 @@ import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumn
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { DEFAULT_ID_COLUMN_NAME, NO_TABLE_YET_MESSAGE } from '@/features/dataStore/constants';
+import {
+	DEFAULT_ID_COLUMN_NAME,
+	DEFAULT_ID_COLUMN_WIDTH,
+	NO_TABLE_YET_MESSAGE,
+} from '@/features/dataStore/constants';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 
 // Register only the modules we actually use
@@ -75,15 +79,15 @@ const gridApi = ref<GridApi | null>(null);
 const colDefs = ref<ColDef[]>([]);
 const rowData = ref<DataStoreRow[]>([]);
 const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
-	mode: 'singleRow',
-	enableClickSelection: true,
-	checkboxes: false,
+	mode: 'multiRow',
+	enableClickSelection: false,
+	checkboxes: true,
 };
 
 const contentLoading = ref(false);
 
 // Shared config for all columns
-const defaultColumnDef = {
+const defaultColumnDef: ColDef = {
 	flex: 1,
 	sortable: false,
 	filter: false,
@@ -150,6 +154,11 @@ const createColumnDef = (col: DataStoreColumn) => {
 			return params.data?.[col.name];
 		},
 	};
+	// Make id column narrower
+	if (col.name === DEFAULT_ID_COLUMN_NAME) {
+		columnDef.width = DEFAULT_ID_COLUMN_WIDTH;
+		columnDef.flex = 0;
+	}
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
 		columnDef.cellEditor = 'agLargeTextCellEditor';
@@ -333,6 +342,15 @@ onMounted(async () => {
 
 	:global(.ag-header-cell-resize) {
 		width: var(--spacing-4xs);
+	}
+
+	// Don't show borders for the checkbox cells
+	:global(.ag-cell[col-id='ag-Grid-SelectionColumn']) {
+		border: none;
+	}
+
+	:global(.ag-cell[col-id='ag-Grid-SelectionColumn'].ag-cell-focus) {
+		outline: none;
 	}
 }
 
