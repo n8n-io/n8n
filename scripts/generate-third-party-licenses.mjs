@@ -193,8 +193,13 @@ ${packagesMarkdown}`;
     // Write the file
     await fs.writeFile(resolve(rootDir, 'THIRD_PARTY_LICENSES.md'), markdownContent, 'utf-8');
     
-    console.log('🎉 Generated THIRD_PARTY_LICENSES.md');
-    console.log(`📊 Included ${validPackages.length} third-party packages with full license texts`);
+    // Copy to assets folder
+    await fs.copyFile(
+      resolve(rootDir, 'THIRD_PARTY_LICENSES.md'),
+      resolve(rootDir, 'assets/THIRD_PARTY_LICENSES.md')
+    );
+    
+    console.log(`🎉 Generated THIRD_PARTY_LICENSES.md with ${validPackages.length} third-party packages`);
     
   } catch (error) {
     console.error('❌ Error generating licenses:', error.message);

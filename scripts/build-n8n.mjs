@@ -108,7 +108,26 @@ const packageBuildTime = getElapsedTime('package_build');
 echo(chalk.green(`✅ Package build completed in ${formatDuration(packageBuildTime)}`));
 printDivider();
 
-// 2. Prepare for deployment - clean package.json files
+// 2. Generate third-party licenses
+echo(chalk.yellow('INFO: Generating third-party licenses...'));
+startTimer('license_generation');
+
+try {
+	const licenseProcess = $`cd ${config.rootDir} && pnpm generate:third-party-licenses`;
+	licenseProcess.pipe(process.stdout);
+	await licenseProcess;
+	
+	echo(chalk.green('✅ Third-party licenses generated'));
+} catch (error) {
+	console.error(chalk.red('⚠️  Failed to generate third-party licenses:'), error.message);
+	echo(chalk.blue('ℹ️  Build will continue without licenses file'));
+}
+
+const licenseTime = getElapsedTime('license_generation');
+echo(chalk.green(`✅ License generation completed in ${formatDuration(licenseTime)}`));
+printDivider();
+
+// 3. Prepare for deployment - clean package.json files
 echo(chalk.yellow('INFO: Performing pre-deploy cleanup on package.json files...'));
 
 // Find and backup package.json files
