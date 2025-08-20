@@ -17,7 +17,6 @@ import {
 import { DataStoreColumn } from './data-store-column.entity';
 import {
 	addColumnQuery,
-	buildInsertQuery,
 	buildUpdateQuery,
 	deleteColumnQuery,
 	getPlaceholder,
@@ -57,11 +56,22 @@ export class DataStoreRowsRepository {
 		rows: DataStoreRows,
 		columns: DataStoreColumn[],
 	) {
-		const dbType = this.dataSource.options.type;
-		return (await this.dataSource.query.apply(
-			this.dataSource,
-			buildInsertQuery(tableName, rows, columns, dbType),
-		)) as number;
+		const result = [];
+		for (const row of rows) {
+			const x = await this.dataSource
+				.createQueryBuilder()
+				.insert()
+				.into(
+					tableName,
+					columns.map((x) => x.name),
+				)
+				.values(row)
+				.execute();
+
+			result.push(x.raw as number);
+		}
+
+		return result;
 	}
 
 	async upsertRows(
