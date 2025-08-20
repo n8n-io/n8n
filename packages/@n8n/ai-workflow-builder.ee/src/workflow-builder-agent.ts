@@ -372,7 +372,22 @@ export class WorkflowBuilderAgent {
 		throw error;
 	}
 
-	private async handleAbortError(
+	private async *processAgentStream(
+		stream: AsyncGenerator<[string, unknown], void, unknown>,
+		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+		threadConfig: RunnableConfig,
+	) {
+		try {
+			const streamProcessor = createStreamProcessor(stream);
+			for await (const output of streamProcessor) {
+				yield output;
+			}
+		} catch (error) {
+			await this.handleAgentStreamError(error, agent, threadConfig);
+		}
+	}
+
+	private async handleAgentStreamError(
 		error: unknown,
 		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
 		threadConfig: RunnableConfig,
@@ -409,21 +424,6 @@ export class WorkflowBuilderAgent {
 
 		// Re-throw any other errors
 		throw error;
-	}
-
-	private async *processAgentStream(
-		stream: AsyncGenerator<[string, unknown], void, unknown>,
-		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
-		threadConfig: RunnableConfig,
-	) {
-		try {
-			const streamProcessor = createStreamProcessor(stream);
-			for await (const output of streamProcessor) {
-				yield output;
-			}
-		} catch (error) {
-			await this.handleAbortError(error, agent, threadConfig);
-		}
 	}
 
 	private getInvalidRequestError(error: unknown): string | undefined {
