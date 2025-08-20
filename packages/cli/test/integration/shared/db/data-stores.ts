@@ -1,7 +1,8 @@
-import type { CreateDataStoreColumnDto, DataStoreRows } from '@n8n/api-types';
+import type { CreateDataStoreColumnDto } from '@n8n/api-types';
 import { randomName } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from '@/modules/data-store/data-store-column.repository';
 import { DataStoreRowsRepository } from '@/modules/data-store/data-store-rows.repository';

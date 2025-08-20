@@ -377,7 +377,15 @@ export async function getBase(
 
 	const eventService = Container.get(EventService);
 
+	const moduleRegistry = Container.get(ModuleRegistry);
+	const dataStoreProxyProvider = moduleRegistry.isActive('data-store')
+		? Container.get(
+				(await import('@/modules/data-store/data-store-proxy.service')).DataStoreProxyService,
+			)
+		: undefined;
+
 	const additionalData: IWorkflowExecuteAdditionalData = {
+		dataStoreProxyProvider,
 		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,

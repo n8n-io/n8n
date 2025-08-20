@@ -221,8 +221,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 				'dataStore',
 				...this.getDataStoreColumnFields('data_store_column'),
 				...this.getProjectFields('project'),
-			])
-			.addOrderBy('data_store_column.index', 'ASC');
+			]);
 	}
 
 	private getDataStoreColumnFields(alias: string): string[] {
@@ -232,6 +231,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 			`${alias}.type`,
 			`${alias}.createdAt`,
 			`${alias}.updatedAt`,
+			`${alias}.index`,
 		];
 	}
 

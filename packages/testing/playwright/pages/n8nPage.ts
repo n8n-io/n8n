@@ -8,6 +8,7 @@ import { ExecutionsPage } from './ExecutionsPage';
 import { IframePage } from './IframePage';
 import { NodeDisplayViewPage } from './NodeDisplayViewPage';
 import { NotificationsPage } from './NotificationsPage';
+import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SettingsPage } from './SettingsPage';
 import { SidebarPage } from './SidebarPage';
@@ -31,6 +32,7 @@ export class n8nPage {
 
 	readonly iframe: IframePage;
 	readonly ndv: NodeDisplayViewPage;
+	readonly npsSurvey: NpsSurveyPage;
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settings: SettingsPage;
 	readonly versions: VersionsPage;
@@ -60,6 +62,7 @@ export class n8nPage {
 
 		this.iframe = new IframePage(page);
 		this.ndv = new NodeDisplayViewPage(page);
+		this.npsSurvey = new NpsSurveyPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settings = new SettingsPage(page);
 		this.versions = new VersionsPage(page);
