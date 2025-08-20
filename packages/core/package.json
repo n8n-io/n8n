@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.106.1",
+  "version": "1.106.2",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
