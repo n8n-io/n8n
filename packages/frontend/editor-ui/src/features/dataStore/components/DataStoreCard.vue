@@ -19,14 +19,6 @@ const props = withDefaults(defineProps<Props>(), {
 	showOwnershipBadge: false,
 });
 
-const emit = defineEmits<{
-	rename: [
-		value: {
-			dataStore: DataStoreResource;
-		},
-	];
-}>();
-
 const renameInput = useTemplateRef<{ forceFocus?: () => void }>('renameInput');
 
 const dataStoreRoute = computed(() => {
@@ -47,14 +39,6 @@ const onRename = () => {
 			renameInput.value?.forceFocus?.();
 		}, 100);
 	}
-};
-
-const onNameSubmit = (name: string) => {
-	if (props.dataStore.name === name) return;
-
-	emit('rename', {
-		dataStore: { ...props.dataStore, name },
-	});
 };
 </script>
 <template>
