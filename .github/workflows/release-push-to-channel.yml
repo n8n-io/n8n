@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'n8n Release version to push to a channel (e.g., 1.2.3 or 1.2.3-beta.4)'
+        description: 'n8n Release version to push to a channel (e.g., 1.2.3, 1.2.3-beta.4, or 1.2.3-exp.0)'
         required: true
         type: string
 
