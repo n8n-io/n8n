@@ -952,20 +952,27 @@ export function applyPaginationRequestData(
 ): IRequestOptions {
 	const preparedPaginationData: Partial<IRequestOptions> = {
 		...paginationRequestData,
-		uri: paginationRequestData.url,
 	};
 
-	if ('formData' in requestData) {
-		preparedPaginationData.formData = paginationRequestData.body;
+	// Only set uri if url is provided in pagination data
+	if (paginationRequestData.url) {
+		preparedPaginationData.uri = paginationRequestData.url;
+	}
+
+	// Start with a copy of the base data
+	const result = { ...requestData };
+
+	// Handle formData and form replacement (not merging)
+	if ('formData' in requestData && paginationRequestData.body) {
+		result.formData = paginationRequestData.body;
 		delete preparedPaginationData.body;
-	} else if ('form' in requestData) {
-		preparedPaginationData.form = paginationRequestData.body;
+	} else if ('form' in requestData && paginationRequestData.body) {
+		result.form = paginationRequestData.body;
 		delete preparedPaginationData.body;
 	}
 
-	// Use deep merge for proper handling of nested structures
-	const baseData = { ...requestData };
-	return deepMergeForPagination(baseData, preparedPaginationData);
+	// Use deep merge for all other properties
+	return deepMergeForPagination(result, preparedPaginationData);
 }
 
 function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
