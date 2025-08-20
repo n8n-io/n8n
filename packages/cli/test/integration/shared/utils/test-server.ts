@@ -309,6 +309,10 @@ export const setupTestServer = ({
 					case 'data-store':
 						await import('@/modules/data-store/data-store.module');
 						break;
+
+					case 'module-settings':
+						await import('@/controllers/module-settings.controller');
+						break;
 				}
 			}
 
