@@ -10,9 +10,8 @@ import {
 	PrimaryGeneratedColumn,
 	BeforeInsert,
 } from '@n8n/typeorm';
-import { IsEmail, validateSync } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { JsonColumn, WithTimestamps } from './abstract-entity';
 import type { ApiKey } from './api-key';
@@ -34,7 +33,6 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 		transformer: lowerCaser,
 	})
 	@Index({ unique: true })
-	@IsEmail()
 	email: string;
 
 	@Column({ length: 32, nullable: true })
@@ -83,10 +81,9 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 
 		// Validate email if present (including empty strings)
 		if (this.email !== null && this.email !== undefined) {
-			const errors = validateSync(this, { skipMissingProperties: true });
-			const emailError = errors.find((error) => error.property === 'email');
-			if (emailError) {
-				throw new UserError(`Invalid email address: ${this.email}`);
+			const result = z.string().email().safeParse(this.email);
+			if (!result.success) {
+				throw new Error(`Cannot save user <${this.email}>: Provided email is invalid`);
 			}
 		}
 	}

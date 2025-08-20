@@ -1,5 +1,3 @@
-import { UserError } from 'n8n-workflow';
-
 import { User } from '../user';
 
 describe('User Entity', () => {
@@ -82,39 +80,47 @@ describe('User Entity', () => {
 		});
 
 		describe('invalid email scenarios', () => {
-			it('should throw UserError for invalid email format', () => {
+			it('should throw Error for invalid email format', () => {
 				const user = new User();
 				user.email = 'invalid-email';
 
-				expect(() => user.preUpsertHook()).toThrow(UserError);
-				expect(() => user.preUpsertHook()).toThrow('Invalid email address: invalid-email');
+				expect(() => user.preUpsertHook()).toThrow(Error);
+				expect(() => user.preUpsertHook()).toThrow(
+					'Cannot save user <invalid-email>: Provided email is invalid',
+				);
 			});
 
-			it('should throw UserError for email without domain', () => {
+			it('should throw Error for email without domain', () => {
 				const user = new User();
 				user.email = 'test@';
 
-				expect(() => user.preUpsertHook()).toThrow(UserError);
-				expect(() => user.preUpsertHook()).toThrow('Invalid email address: test@');
+				expect(() => user.preUpsertHook()).toThrow(Error);
+				expect(() => user.preUpsertHook()).toThrow(
+					'Cannot save user <test@>: Provided email is invalid',
+				);
 			});
 
-			it('should throw UserError for email without @ symbol', () => {
+			it('should throw Error for email without @ symbol', () => {
 				const user = new User();
 				user.email = 'testexample.com';
 
-				expect(() => user.preUpsertHook()).toThrow(UserError);
-				expect(() => user.preUpsertHook()).toThrow('Invalid email address: testexample.com');
+				expect(() => user.preUpsertHook()).toThrow(Error);
+				expect(() => user.preUpsertHook()).toThrow(
+					'Cannot save user <testexample.com>: Provided email is invalid',
+				);
 			});
 
-			it('should throw UserError for email without local part', () => {
+			it('should throw Error for email without local part', () => {
 				const user = new User();
 				user.email = '@example.com';
 
-				expect(() => user.preUpsertHook()).toThrow(UserError);
-				expect(() => user.preUpsertHook()).toThrow('Invalid email address: @example.com');
+				expect(() => user.preUpsertHook()).toThrow(Error);
+				expect(() => user.preUpsertHook()).toThrow(
+					'Cannot save user <@example.com>: Provided email is invalid',
+				);
 			});
 
-			it('should throw UserError for various invalid formats', () => {
+			it('should throw Error for various invalid formats', () => {
 				const invalidEmails = [
 					'test..email@example.com',
 					'test@',
@@ -132,39 +138,47 @@ describe('User Entity', () => {
 					const user = new User();
 					user.email = email;
 
-					expect(() => user.preUpsertHook()).toThrow(UserError);
-					expect(() => user.preUpsertHook()).toThrow(`Invalid email address: ${email}`);
+					expect(() => user.preUpsertHook()).toThrow(Error);
+					expect(() => user.preUpsertHook()).toThrow(
+						`Cannot save user <${email}>: Provided email is invalid`,
+					);
 				});
 			});
 		});
 
 		describe('edge cases', () => {
-			it('should throw UserError for empty string email', () => {
+			it('should throw Error for empty string email', () => {
 				const user = new User();
 				user.email = '';
 
-				expect(() => user.preUpsertHook()).toThrow(UserError);
-				expect(() => user.preUpsertHook()).toThrow('Invalid email address: ');
+				expect(() => user.preUpsertHook()).toThrow(Error);
+				expect(() => user.preUpsertHook()).toThrow(
+					'Cannot save user <>: Provided email is invalid',
+				);
 			});
 
-			it('should throw UserError for whitespace-only email', () => {
+			it('should throw Error for whitespace-only email', () => {
 				const user = new User();
 				user.email = '   ';
 
-				expect(() => user.preUpsertHook()).toThrow(UserError);
-				expect(() => user.preUpsertHook()).toThrow('Invalid email address:    ');
+				expect(() => user.preUpsertHook()).toThrow(Error);
+				expect(() => user.preUpsertHook()).toThrow(
+					'Cannot save user <   >: Provided email is invalid',
+				);
 			});
 
-			it('should throw UserError for very long invalid email', () => {
+			it('should throw Error for very long invalid email', () => {
 				const user = new User();
 				const longInvalidEmail = 'a'.repeat(300) + '@invalid';
 				user.email = longInvalidEmail;
 
-				expect(() => user.preUpsertHook()).toThrow(UserError);
-				expect(() => user.preUpsertHook()).toThrow(`Invalid email address: ${longInvalidEmail}`);
+				expect(() => user.preUpsertHook()).toThrow(Error);
+				expect(() => user.preUpsertHook()).toThrow(
+					`Cannot save user <${longInvalidEmail}>: Provided email is invalid`,
+				);
 			});
 
-			it('should throw UserError for emails with special characters that should fail', () => {
+			it('should throw Error for emails with special characters that should fail', () => {
 				const invalidEmailsWithSpecialChars = [
 					'test<>@example.com',
 					'test[]@example.com',
@@ -180,8 +194,10 @@ describe('User Entity', () => {
 					const user = new User();
 					user.email = email;
 
-					expect(() => user.preUpsertHook()).toThrow(UserError);
-					expect(() => user.preUpsertHook()).toThrow(`Invalid email address: ${email}`);
+					expect(() => user.preUpsertHook()).toThrow(Error);
+					expect(() => user.preUpsertHook()).toThrow(
+						`Cannot save user <${email}>: Provided email is invalid`,
+					);
 				});
 			});
 		});
@@ -192,8 +208,10 @@ describe('User Entity', () => {
 				user.email = 'invalid-email-format';
 
 				// The preUpsertHook is decorated with @BeforeInsert, so it should be called
-				expect(() => user.preUpsertHook()).toThrow(UserError);
-				expect(() => user.preUpsertHook()).toThrow('Invalid email address: invalid-email-format');
+				expect(() => user.preUpsertHook()).toThrow(Error);
+				expect(() => user.preUpsertHook()).toThrow(
+					'Cannot save user <invalid-email-format>: Provided email is invalid',
+				);
 			});
 
 			it('should validate email during entity update (BeforeUpdate)', () => {
@@ -207,8 +225,10 @@ describe('User Entity', () => {
 				user.email = 'invalid-email';
 
 				// The preUpsertHook is decorated with @BeforeUpdate, so it should be called
-				expect(() => user.preUpsertHook()).toThrow(UserError);
-				expect(() => user.preUpsertHook()).toThrow('Invalid email address: invalid-email');
+				expect(() => user.preUpsertHook()).toThrow(Error);
+				expect(() => user.preUpsertHook()).toThrow(
+					'Cannot save user <invalid-email>: Provided email is invalid',
+				);
 			});
 
 			it('should preserve email lowercasing functionality during lifecycle events', () => {
@@ -243,8 +263,10 @@ describe('User Entity', () => {
 
 				// Change to invalid email should throw
 				user.email = 'invalid-email';
-				expect(() => user.preUpsertHook()).toThrow(UserError);
-				expect(() => user.preUpsertHook()).toThrow('Invalid email address: invalid-email');
+				expect(() => user.preUpsertHook()).toThrow(Error);
+				expect(() => user.preUpsertHook()).toThrow(
+					'Cannot save user <invalid-email>: Provided email is invalid',
+				);
 			});
 		});
 	});
