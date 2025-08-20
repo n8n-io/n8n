@@ -1,4 +1,4 @@
-import type { IWorkflowDb } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type IWorkflowDb } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
@@ -404,7 +404,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'inviter@example.com',
 					firstName: 'Inviter',
 					lastName: 'User',
-					role: { slug: 'global:owner' },
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				targetUserId: ['newUser123'],
 				publicApi: false,
@@ -488,7 +488,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'loggedin@example.com',
 					firstName: 'Logged',
 					lastName: 'In',
-					role: { slug: 'global:owner' },
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				authenticationMethod: 'email',
 			};
@@ -708,7 +708,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'sharer@example.com',
 					firstName: 'Alice',
 					lastName: 'Sharer',
-					role: { slug: 'global:owner' },
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				credentialId: 'cred789',
 				credentialType: 'githubApi',
@@ -743,7 +743,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'user@example.com',
 					firstName: 'Test',
 					lastName: 'User',
-					role: { slug: 'global:owner' },
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				credentialType: 'githubApi',
 				credentialId: 'cred456',
@@ -778,7 +778,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'creduser@example.com',
 					firstName: 'Cred',
 					lastName: 'User',
-					role: { slug: 'global:owner' },
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				credentialId: 'cred789',
 				credentialType: 'githubApi',
@@ -807,7 +807,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'updatecred@example.com',
 					firstName: 'Update',
 					lastName: 'Cred',
-					role: { slug: 'global:owner' },
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				credentialId: 'cred101',
 				credentialType: 'slackApi',
@@ -1002,7 +1002,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'apiuser@example.com',
 					firstName: 'API',
 					lastName: 'User',
-					role: { slug: 'global:owner' },
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				publicApi: true,
 			};
@@ -1028,7 +1028,7 @@ describe('LogStreamingEventRelay', () => {
 					email: 'apiuser@example.com',
 					firstName: 'API',
 					lastName: 'User',
-					role: { slug: 'global:owner' },
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				publicApi: true,
 			};
