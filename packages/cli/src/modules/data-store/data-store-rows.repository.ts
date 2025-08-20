@@ -56,9 +56,13 @@ export class DataStoreRowsRepository {
 		rows: DataStoreRows,
 		columns: DataStoreColumn[],
 	) {
-		const result = [];
+		const insertedIds = [];
+		// We insert one by one as the default behavior of returning the last inserted ID
+		// is consistent, whereas getting all inserted IDs when inserting multiple values is
+		// surprisingly awkward without Entities, e.g. `RETURNING id` explicitly does not aggregate
+		// and the `identifiers` array output of `execute()` is empty
 		for (const row of rows) {
-			const x = await this.dataSource
+			const result = await this.dataSource
 				.createQueryBuilder()
 				.insert()
 				.into(
@@ -68,10 +72,10 @@ export class DataStoreRowsRepository {
 				.values(row)
 				.execute();
 
-			result.push(x.raw as number);
+			insertedIds.push(result.raw as number);
 		}
 
-		return result;
+		return insertedIds;
 	}
 
 	async upsertRows(
