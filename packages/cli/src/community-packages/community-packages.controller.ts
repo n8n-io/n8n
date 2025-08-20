@@ -25,8 +25,8 @@ const {
 } = RESPONSE_ERROR_MESSAGES;
 
 const isClientError = (error: Error) =>
-	[PACKAGE_VERSION_NOT_FOUND, PACKAGE_DOES_NOT_CONTAIN_NODES, PACKAGE_NOT_FOUND].some((msg) =>
-		error.message.includes(msg),
+	[PACKAGE_VERSION_NOT_FOUND, PACKAGE_DOES_NOT_CONTAIN_NODES, PACKAGE_NOT_FOUND].some(
+		(msg) => typeof error.message === 'string' && error.message.includes(msg),
 	);
 
 export function isNpmError(error: unknown): error is { code: number; stdout: string } {

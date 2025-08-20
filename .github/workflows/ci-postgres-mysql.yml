@@ -7,11 +7,13 @@ on:
   pull_request:
     paths:
       - packages/cli/src/databases/**
-      - packages/@n8n/db/**
       - packages/cli/src/modules/*/database/**
+      - packages/cli/src/modules/**/*.entity.ts
+      - packages/cli/src/modules/**/*.repository.ts
       - packages/cli/test/integration/**
       - packages/cli/test/shared/db/**
       - packages/@n8n/db/**
+      - packages/cli/**/__tests__/**
       - .github/workflows/ci-postgres-mysql.yml
       - .github/docker-compose.yml
   pull_request_review:

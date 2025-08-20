@@ -1,25 +1,18 @@
-import { readFileSync } from 'fs';
-
 import { test, expect } from '../../fixtures/base';
-import { resolveFromRoot } from '../../utils/path-helper';
+import { importAndActivateWebhookWorkflow, triggerWebhook } from '../../services/webhook-helper';
 
 test.describe('External Webhook Triggering @auth:owner', () => {
 	test('should create workflow via API, activate it, trigger webhook externally, and verify execution', async ({
 		api,
 	}) => {
-		const workflowDefinition = JSON.parse(
-			readFileSync(resolveFromRoot('workflows', 'simple-webhook-test.json'), 'utf8'),
+		const { webhookPath, workflowId } = await importAndActivateWebhookWorkflow(
+			api,
+			'simple-webhook-test.json',
 		);
-
-		const createdWorkflow = await api.workflowApi.createWorkflow(workflowDefinition);
-		expect(createdWorkflow.id).toBeDefined();
-
-		const workflowId = createdWorkflow.id;
-		await api.workflowApi.setActive(workflowId, true);
 
 		const testPayload = { message: 'Hello from Playwright test' };
 
-		const webhookResponse = await api.workflowApi.triggerWebhook('test-webhook', {
+		const webhookResponse = await triggerWebhook(api, webhookPath, {
 			data: testPayload,
 		});
 		expect(webhookResponse.ok()).toBe(true);
