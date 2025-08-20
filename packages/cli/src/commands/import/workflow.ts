@@ -219,7 +219,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		if (!userId) {
 			const owner = await Container.get(UserRepository).findOneBy({
-				role: GLOBAL_OWNER_ROLE,
+				role: { slug: GLOBAL_OWNER_ROLE.slug },
 			});
 			if (!owner) {
 				throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
