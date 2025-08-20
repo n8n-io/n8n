@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class AzureOpenAiApi implements ICredentialType {
 	name = 'azureOpenAiApi';
@@ -35,4 +35,13 @@ export class AzureOpenAiApi implements ICredentialType {
 			placeholder: 'https://westeurope.api.cognitive.microsoft.com',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				'api-key': '={{$credentials.apiKey}}',
+			},
+		},
+	};
 }
