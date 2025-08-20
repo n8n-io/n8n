@@ -9,7 +9,8 @@ export class Column {
 		| 'json'
 		| 'timestamptz'
 		| 'timestamp'
-		| 'uuid';
+		| 'uuid'
+		| 'double';
 
 	private isGenerated = false;
 
@@ -36,6 +37,11 @@ export class Column {
 
 	get int() {
 		this.type = 'int';
+		return this;
+	}
+
+	get double() {
+		this.type = 'double';
 		return this;
 	}
 
@@ -162,6 +168,14 @@ export class Column {
 			if (isMysql) options.type = 'varchar(36)';
 			// we haven't been defining length on "uuid" varchar on sqlite
 			if (isSqlite) options.type = 'varchar';
+		} else if (type === 'double') {
+			if (isPostgres) {
+				options.type = 'double precision';
+			} else if (isMysql) {
+				options.type = 'double';
+			} else if (isSqlite) {
+				options.type = 'real';
+			}
 		}
 
 		if (

@@ -20,8 +20,9 @@
     "deps:report": "madge src/index.ts --json > deps-report.json && echo 'Dependency report saved to deps-report.json'",
     "deps:orphans": "madge src/index.ts --orphans",
     "deps:all": "pnpm run deps:graph && pnpm run deps:graph:service && pnpm run deps:graph:tools && pnpm run deps:circular && pnpm run deps:report",
-    "eval": "tsx evaluations/run-evaluation.ts",
-    "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations/run-evaluation.ts"
+    "eval": "tsx evaluations",
+    "eval:langsmith": "USE_LANGSMITH_EVAL=true tsx evaluations",
+    "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

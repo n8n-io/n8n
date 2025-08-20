@@ -38,10 +38,6 @@ export class DataStoreRepository extends Repository<DataStore> {
 				throw new UnexpectedError('QueryRunner is not available');
 			}
 
-			if (columns.length === 0) {
-				return;
-			}
-
 			// insert columns
 			const columnEntities = columns.map((col, index) =>
 				em.create(DataStoreColumn, {
@@ -51,9 +47,12 @@ export class DataStoreRepository extends Repository<DataStore> {
 					index: col.index ?? index,
 				}),
 			);
-			await em.insert(DataStoreColumn, columnEntities);
 
-			// create user table
+			if (columnEntities.length > 0) {
+				await em.insert(DataStoreColumn, columnEntities);
+			}
+
+			// create user table (will create empty table with just id column if no columns)
 			await this.dataStoreRowsRepository.createTableWithColumns(
 				tableName,
 				columnEntities,
@@ -222,8 +221,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 				'dataStore',
 				...this.getDataStoreColumnFields('data_store_column'),
 				...this.getProjectFields('project'),
-			])
-			.addOrderBy('data_store_column.index', 'ASC');
+			]);
 	}
 
 	private getDataStoreColumnFields(alias: string): string[] {
@@ -233,6 +231,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 			`${alias}.type`,
 			`${alias}.createdAt`,
 			`${alias}.updatedAt`,
+			`${alias}.index`,
 		];
 	}
 

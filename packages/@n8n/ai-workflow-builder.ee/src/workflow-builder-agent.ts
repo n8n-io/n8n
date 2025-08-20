@@ -3,13 +3,14 @@ import type { ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import { StateGraph, MemorySaver, END } from '@langchain/langgraph';
+import { StateGraph, MemorySaver, END, GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
-import type {
-	INodeTypeDescription,
-	IRunExecutionData,
-	IWorkflowBase,
-	NodeExecutionSchema,
+import {
+	ApplicationError,
+	type INodeTypeDescription,
+	type IRunExecutionData,
+	type IWorkflowBase,
+	type NodeExecutionSchema,
 } from 'n8n-workflow';
 
 import { workflowNameChain } from '@/chains/workflow-name';
@@ -148,7 +149,7 @@ export class WorkflowBuilderAgent {
 		};
 
 		const shouldContinue = ({ messages }: typeof WorkflowState.State) => {
-			const lastMessage = messages[messages.length - 1] as AIMessage;
+			const lastMessage: AIMessage = messages[messages.length - 1];
 
 			if (lastMessage.tool_calls?.length) {
 				return 'tools';
@@ -295,10 +296,26 @@ export class WorkflowBuilderAgent {
 	}
 
 	async *chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
-		// Check for the message maximum length
-		if (payload.message.length > MAX_AI_BUILDER_PROMPT_LENGTH) {
+		this.validateMessageLength(payload.message);
+
+		const { agent, threadConfig, streamConfig } = this.setupAgentAndConfigs(
+			payload,
+			userId,
+			abortSignal,
+		);
+
+		try {
+			const stream = await this.createAgentStream(payload, streamConfig, agent);
+			yield* this.processAgentStream(stream, agent, threadConfig);
+		} catch (error: unknown) {
+			this.handleStreamError(error);
+		}
+	}
+
+	private validateMessageLength(message: string): void {
+		if (message.length > MAX_AI_BUILDER_PROMPT_LENGTH) {
 			this.logger?.warn('Message exceeds maximum length', {
-				messageLength: payload.message.length,
+				messageLength: message.length,
 				maxLength: MAX_AI_BUILDER_PROMPT_LENGTH,
 			});
 
@@ -306,7 +323,9 @@ export class WorkflowBuilderAgent {
 				`Message exceeds maximum length of ${MAX_AI_BUILDER_PROMPT_LENGTH} characters`,
 			);
 		}
+	}
 
+	private setupAgentAndConfigs(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
 		const agent = this.createWorkflow().compile({ checkpointer: this.checkpointer });
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
@@ -320,12 +339,20 @@ export class WorkflowBuilderAgent {
 		const streamConfig = {
 			...threadConfig,
 			streamMode: ['updates', 'custom'],
-			recursionLimit: 30,
+			recursionLimit: 50,
 			signal: abortSignal,
 			callbacks: this.tracer ? [this.tracer] : undefined,
-		} as RunnableConfig;
+		};
 
-		const stream = await agent.stream(
+		return { agent, threadConfig, streamConfig };
+	}
+
+	private async createAgentStream(
+		payload: ChatPayload,
+		streamConfig: RunnableConfig,
+		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+	) {
+		return await agent.stream(
 			{
 				messages: [new HumanMessage({ content: payload.message })],
 				workflowJSON: this.getDefaultWorkflowJSON(payload),
@@ -334,37 +361,93 @@ export class WorkflowBuilderAgent {
 			},
 			streamConfig,
 		);
+	}
 
+	private handleStreamError(error: unknown): never {
+		const invalidRequestErrorMessage = this.getInvalidRequestError(error);
+		if (invalidRequestErrorMessage) {
+			throw new ValidationError(invalidRequestErrorMessage);
+		}
+
+		throw error;
+	}
+
+	private async *processAgentStream(
+		stream: AsyncGenerator<[string, unknown], void, unknown>,
+		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+		threadConfig: RunnableConfig,
+	) {
 		try {
 			const streamProcessor = createStreamProcessor(stream);
 			for await (const output of streamProcessor) {
 				yield output;
 			}
 		} catch (error) {
-			if (
-				error &&
-				typeof error === 'object' &&
-				'message' in error &&
-				typeof error.message === 'string' &&
-				// This is naive, but it's all we get from LangGraph AbortError
-				['Abort', 'Aborted'].includes(error.message)
-			) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const messages = (await agent.getState(threadConfig)).values.messages as Array<
-					AIMessage | HumanMessage | ToolMessage
-				>;
-
-				// Handle abort errors gracefully
-				const abortedAiMessage = new AIMessage({
-					content: '[Task aborted]',
-					id: crypto.randomUUID(),
-				});
-				// TODO: Should we clear tool calls that are in progress?
-				await agent.updateState(threadConfig, { messages: [...messages, abortedAiMessage] });
-				return;
-			}
-			throw error;
+			await this.handleAgentStreamError(error, agent, threadConfig);
 		}
+	}
+
+	private async handleAgentStreamError(
+		error: unknown,
+		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+		threadConfig: RunnableConfig,
+	): Promise<void> {
+		if (
+			error &&
+			typeof error === 'object' &&
+			'message' in error &&
+			typeof error.message === 'string' &&
+			// This is naive, but it's all we get from LangGraph AbortError
+			['Abort', 'Aborted'].includes(error.message)
+		) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			const messages = (await agent.getState(threadConfig)).values.messages as Array<
+				AIMessage | HumanMessage | ToolMessage
+			>;
+
+			// Handle abort errors gracefully
+			const abortedAiMessage = new AIMessage({
+				content: '[Task aborted]',
+				id: crypto.randomUUID(),
+			});
+			// TODO: Should we clear tool calls that are in progress?
+			await agent.updateState(threadConfig, { messages: [...messages, abortedAiMessage] });
+			return;
+		}
+
+		// If it's not an abort error, check for GraphRecursionError
+		if (error instanceof GraphRecursionError) {
+			throw new ApplicationError(
+				'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.',
+			);
+		}
+
+		// Re-throw any other errors
+		throw error;
+	}
+
+	private getInvalidRequestError(error: unknown): string | undefined {
+		if (
+			error instanceof Error &&
+			'error' in error &&
+			typeof error.error === 'object' &&
+			error.error
+		) {
+			const innerError = error.error;
+			if ('error' in innerError && typeof innerError.error === 'object' && innerError.error) {
+				const errorDetails = innerError.error;
+				if (
+					'type' in errorDetails &&
+					errorDetails.type === 'invalid_request_error' &&
+					'message' in errorDetails &&
+					typeof errorDetails.message === 'string'
+				) {
+					return errorDetails.message;
+				}
+			}
+		}
+
+		return undefined;
 	}
 
 	async getSessions(workflowId: string | undefined, userId?: string) {
