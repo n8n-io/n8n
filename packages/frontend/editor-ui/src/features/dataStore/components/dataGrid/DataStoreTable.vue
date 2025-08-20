@@ -433,6 +433,8 @@ onMounted(async () => {
 
 	:global(.ag-header-cell-resize) {
 		width: var(--spacing-xs);
+		// this is needed so that we compensate for the width
+		right: -7px;
 	}
 }
 
