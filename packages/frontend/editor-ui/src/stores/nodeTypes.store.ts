@@ -6,7 +6,11 @@ import type {
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
 import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
-import { HTTP_REQUEST_NODE_TYPE, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
+import {
+	HTTP_REQUEST_NODE_TYPE,
+	CREDENTIAL_ONLY_HTTP_NODE_VERSION,
+	MODULE_ENABLED_NODES,
+} from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@n8n/i18n';
@@ -30,7 +34,6 @@ import { computed, ref } from 'vue';
 import { useActionsGenerator } from '../components/Node/NodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '../components/Node/NodeCreator/utils';
 import { useSettingsStore } from '@/stores/settings.store';
-import { DATA_STORE_MODULE_NAME } from '@/features/dataStore/constants';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
@@ -86,13 +89,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			.filter(Boolean);
 	});
 
+	// Nodes defined with `hidden: true` that are still shown if their modules are enabled
 	const moduleEnabledNodeTypes = computed<INodeTypeDescription[]>(() => {
-		// Nodes defined with `hidden: true`, but shown if certain modules are enabled
-		const moduleEnabledNodes = [
-			{ nodeType: 'n8n-nodes-base.dataStore', module: DATA_STORE_MODULE_NAME },
-		];
-
-		return moduleEnabledNodes.flatMap((node) => {
+		return MODULE_ENABLED_NODES.flatMap((node) => {
 			const nodeVersions = nodeTypes.value[node.nodeType] ?? {};
 			const versionNumbers = Object.keys(nodeVersions).map(Number);
 			const latest = nodeVersions[Math.max(...versionNumbers)];
