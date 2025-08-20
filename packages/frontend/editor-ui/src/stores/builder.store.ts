@@ -286,6 +286,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 						chatMessages.value,
 						response.messages,
 						generateMessageId(),
+						retry,
 					);
 					chatMessages.value = result.messages;
 
