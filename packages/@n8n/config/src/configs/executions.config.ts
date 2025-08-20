@@ -70,4 +70,20 @@ export class ExecutionsConfig {
 
 	@Nested
 	queueRecovery: QueueRecoveryConfig;
+
+	/** Whether to save execution data for failed production executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_ERROR')
+	saveDataOnError: 'all' | 'none' = 'all';
+
+	/** Whether to save execution data for successful production executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_SUCCESS')
+	saveDataOnSuccess: 'all' | 'none' = 'all';
+
+	/** Whether to save execution data as each node executes. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_PROGRESS')
+	saveExecutionProgress: boolean = false;
+
+	/** Whether to save execution data for manual executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
+	saveDataManualExecutions: boolean = true;
 }
