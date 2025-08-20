@@ -149,9 +149,22 @@ export class DataStoreService {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+		if (columns.length === 0) {
+			throw new DataStoreValidationError(
+				'No columns found for this data store or data store not found',
+			);
+		}
 
-		this.validateRowsWithColumns([dto.filter], columns, true, true);
-		this.validateRowsWithColumns([dto.data], columns, true, false);
+		const { data, filter } = dto;
+		if (!filter || Object.keys(filter).length === 0) {
+			throw new DataStoreValidationError('Filter columns must not be empty for updateRow');
+		}
+		if (!data || Object.keys(data).length === 0) {
+			throw new DataStoreValidationError('Data columns must not be empty for updateRow');
+		}
+
+		this.validateRowsWithColumns([filter], columns, true, true);
+		this.validateRowsWithColumns([data], columns, true, false);
 
 		return await this.dataStoreRowsRepository.updateRow(toTableName(dataStoreId), dto, columns);
 	}

@@ -1453,7 +1453,7 @@ describe('dataStore', () => {
 			expect(data).toEqual([{ id: 1, name: 'Alice', age: 30 }]);
 		});
 
-		it('should return false when filters are empty', async () => {
+		it('should throw validation error when filters are empty', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1466,19 +1466,21 @@ describe('dataStore', () => {
 			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice', age: 30 }]);
 
 			// ACT
-			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
+			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
 				filter: {},
 				data: { name: 'Alice', age: 31 },
 			});
 
 			// ASSERT
-			expect(result).toBe(false);
+			await expect(result).rejects.toThrow(
+				new DataStoreValidationError('Filter columns must not be empty for updateRow'),
+			);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual([{ id: 1, name: 'Alice', age: 30 }]);
 		});
 
-		it('should return false when data is empty', async () => {
+		it('should throw validation error when data is empty', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1491,13 +1493,15 @@ describe('dataStore', () => {
 			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice', age: 30 }]);
 
 			// ACT
-			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
+			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
 				filter: { name: 'Alice' },
 				data: {},
 			});
 
 			// ASSERT
-			expect(result).toBe(false);
+			await expect(result).rejects.toThrow(
+				new DataStoreValidationError('Data columns must not be empty for updateRow'),
+			);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual([{ id: 1, name: 'Alice', age: 30 }]);
