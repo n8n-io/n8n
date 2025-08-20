@@ -1,6 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import DataStoreTable from '@/features/dataStore/components/dataGrid/DataStoreTable.vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import type { DataStore } from '@/features/dataStore/datastore.types';
@@ -67,6 +68,19 @@ vi.mock('@/composables/useToast', () => ({
 	useToast: () => ({
 		showError: vi.fn(),
 		showSuccess: vi.fn(),
+	}),
+}));
+
+vi.mock('@n8n/i18n', async (importOriginal) => ({
+	...(await importOriginal()),
+	useI18n: () => ({
+		baseText: (key: string) => {
+			const translations: Record<string, string> = {
+				'dataStore.addRow.label': 'Add Row',
+				'dataStore.addRow.disabled.tooltip': 'Add a column first',
+			};
+			return translations[key] || key;
+		},
 	}),
 }));
 
@@ -181,6 +195,55 @@ describe('DataStoreTable', () => {
 			});
 
 			expect(getByTestId('ag-grid-vue')).toBeInTheDocument();
+		});
+	});
+
+	describe('Add Row Button State', () => {
+		it('should disable add row button and show disabled tooltip when there are no user columns', async () => {
+			const emptyDataStore: DataStore = {
+				...mockDataStore,
+				columns: [],
+			};
+
+			const { getByTestId, getByRole, queryByRole } = renderComponent({
+				props: {
+					dataStore: emptyDataStore,
+				},
+			});
+
+			const addRowButton = getByTestId('data-store-add-row-button');
+			expect(addRowButton).toBeDisabled();
+
+			// Check tooltip is not visible initially
+			expect(queryByRole('tooltip')).not.toBeInTheDocument();
+
+			// Hover over the button to show tooltip
+			await userEvent.hover(addRowButton);
+
+			// Check tooltip appears with disabled content
+			await waitFor(() => {
+				expect(getByRole('tooltip')).toBeVisible();
+				expect(getByRole('tooltip')).toHaveTextContent('Add a column first');
+			});
+		});
+
+		it('should enable add row button and show enabled tooltip when there are user columns', async () => {
+			const { getByTestId, getByRole, queryByRole } = renderComponent();
+
+			const addRowButton = getByTestId('data-store-add-row-button');
+			expect(addRowButton).not.toBeDisabled();
+
+			// Check tooltip is not visible initially
+			expect(queryByRole('tooltip')).not.toBeInTheDocument();
+
+			// Hover over the button to show tooltip
+			await userEvent.hover(addRowButton);
+
+			// Check tooltip appears with enabled content
+			await waitFor(() => {
+				expect(getByRole('tooltip')).toBeVisible();
+				expect(getByRole('tooltip')).toHaveTextContent('Add Row');
+			});
 		});
 	});
 });
