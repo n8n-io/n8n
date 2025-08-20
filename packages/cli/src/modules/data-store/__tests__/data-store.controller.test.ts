@@ -2076,6 +2076,10 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 					name: 'd',
 					type: 'number',
 				},
+				{
+					name: 'e',
+					type: 'number',
+				},
 			],
 		});
 
@@ -2086,6 +2090,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 					b: 0,
 					c: -1,
 					d: 0.2340439341231259,
+					e: 2340439341231259,
 				},
 			],
 		};

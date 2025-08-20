@@ -88,7 +88,7 @@ export class AiWorkflowBuilderService {
 				},
 			});
 		} catch (error) {
-			const llmError = new LLMServiceError('Failed to setup LLM models', {
+			const llmError = new LLMServiceError('Failed to connect to LLM Provider', {
 				cause: error,
 				tags: {
 					hasClient: !!this.client,

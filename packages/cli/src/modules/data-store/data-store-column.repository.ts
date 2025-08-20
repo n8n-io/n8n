@@ -62,7 +62,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 				throw new UnexpectedError('QueryRunner is not available');
 			}
 
-			await this.dataStoreRowsRepository.ensureTableAndAddColumn(
+			await this.dataStoreRowsRepository.addColumn(
 				dataStoreId,
 				column,
 				queryRunner,
