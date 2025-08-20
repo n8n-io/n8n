@@ -7,7 +7,7 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { compare } from 'bcryptjs';
 import { mock } from 'jest-mock-extended';
@@ -39,8 +39,8 @@ let authService: AuthService;
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	owner = await createUser({ role: { slug: 'global:owner' } });
-	member = await createUser({ role: { slug: 'global:member' } });
+	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+	member = await createUser({ role: GLOBAL_MEMBER_ROLE });
 	externalHooks.run.mockReset();
 	jest.replaceProperty(mailer, 'isEmailSetUp', true);
 	authService = Container.get(AuthService);

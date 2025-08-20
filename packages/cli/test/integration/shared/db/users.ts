@@ -201,5 +201,7 @@ export const getLdapIdentities = async () =>
 	});
 
 export async function getGlobalOwner() {
-	return await Container.get(UserRepository).findOneByOrFail({ role: { slug: 'global:owner' } });
+	return await Container.get(UserRepository).findOneByOrFail({
+		role: { slug: GLOBAL_OWNER_ROLE.slug },
+	});
 }

@@ -243,7 +243,7 @@ describe('Member', () => {
 
 describe('Owner', () => {
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const owner = await createUser({ role: { slug: 'global:owner' } });
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 		const authOwnerAgent = testServer.authAgentFor(owner);
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {

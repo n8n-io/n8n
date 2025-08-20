@@ -5,6 +5,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	UserRepository,
+	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -218,7 +219,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		if (!userId) {
 			const owner = await Container.get(UserRepository).findOneBy({
-				role: { slug: 'global:owner' },
+				role: GLOBAL_OWNER_ROLE,
 			});
 			if (!owner) {
 				throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
