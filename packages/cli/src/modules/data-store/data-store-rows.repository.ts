@@ -104,9 +104,9 @@ export class DataStoreRowsRepository {
 		}
 
 		const dbType = this.dataSource.options.type;
-		const tableName = this.toTableName(dataStoreId);
+		const quotedTableName = quoteIdentifier(this.toTableName(dataStoreId), dbType);
 		const placeholders = ids.map((_, index) => getPlaceholder(index + 1, dbType)).join(', ');
-		const query = `DELETE FROM ${tableName} WHERE id IN (${placeholders})`;
+		const query = `DELETE FROM ${quotedTableName} WHERE id IN (${placeholders})`;
 
 		await this.dataSource.query(query, ids);
 		return true;
