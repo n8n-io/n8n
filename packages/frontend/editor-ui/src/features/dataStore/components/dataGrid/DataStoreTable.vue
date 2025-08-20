@@ -205,7 +205,7 @@ const initColumnDefinitions = () => {
 	];
 };
 
-const onCellValueChanged = async (params: CellValueChangedEvent) => {
+const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) => {
 	const { data, api, oldValue, value } = params;
 
 	if (value === oldValue) {
