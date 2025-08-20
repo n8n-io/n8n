@@ -910,11 +910,21 @@ export async function httpRequest(
 
 /**
  * Deep merge function that handles nested objects and arrays properly for pagination
+ * Includes cycle detection to prevent stack overflow on circular references
  */
-function deepMergeForPagination(target: any, source: any): any {
+function deepMergeForPagination(target: any, source: any, visited = new WeakSet()): any {
 	if (!source || typeof source !== 'object') {
 		return target;
 	}
+
+	// Check for circular reference in source
+	if (visited.has(source)) {
+		// Return a shallow copy to break the cycle
+		return Array.isArray(source) ? [...source] : { ...source };
+	}
+
+	// Add source to visited set
+	visited.add(source);
 
 	const result = Array.isArray(target) ? [...target] : { ...target };
 
@@ -927,7 +937,7 @@ function deepMergeForPagination(target: any, source: any): any {
 			if (Array.isArray(targetValue)) {
 				result[key] = sourceValue.map((item, index) => {
 					if (typeof item === 'object' && item !== null && targetValue[index]) {
-						return deepMergeForPagination(targetValue[index], item);
+						return deepMergeForPagination(targetValue[index], item, visited);
 					}
 					return item;
 				});
@@ -936,12 +946,15 @@ function deepMergeForPagination(target: any, source: any): any {
 			}
 		} else if (sourceValue && typeof sourceValue === 'object' && !Buffer.isBuffer(sourceValue)) {
 			// Deep merge objects
-			result[key] = deepMergeForPagination(targetValue || {}, sourceValue);
+			result[key] = deepMergeForPagination(targetValue || {}, sourceValue, visited);
 		} else {
 			// Primitive values - directly assign
 			result[key] = sourceValue;
 		}
 	});
+
+	// Remove source from visited set after processing
+	visited.delete(source);
 
 	return result;
 }
