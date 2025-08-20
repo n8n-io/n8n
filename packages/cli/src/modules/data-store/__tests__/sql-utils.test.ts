@@ -1,4 +1,4 @@
-import type { DataStoreRows } from '@n8n/api-types';
+import type { DataStoreRows } from 'n8n-workflow';
 
 import {
 	addColumnQuery,
