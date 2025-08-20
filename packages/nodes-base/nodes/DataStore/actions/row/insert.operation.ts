@@ -1,10 +1,10 @@
 import {
-	OperationalError,
 	type IDisplayOptions,
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeProperties,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { COLUMNS } from '../../common/fields';
@@ -48,7 +48,7 @@ export async function execute(
 	const success = await dataStoreProxy.insertRows([data as never]);
 
 	if (!success) {
-		throw new OperationalError('Failed to insert record into data store');
+		throw new NodeOperationError(this.getNode(), 'Failed to insert record into data store');
 	}
 
 	return [{ json: data }];

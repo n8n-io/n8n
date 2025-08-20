@@ -2,6 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import * as get from './get.operation';
 import * as insert from './insert.operation';
+import { DATA_STORE_ID_FIELD } from '../../common/fields';
 
 export { insert, get };
 
@@ -49,6 +50,30 @@ export const description: INodeProperties[] = [
 			},
 		],
 		default: 'insert',
+	},
+	{
+		displayName: 'Data Store',
+		name: DATA_STORE_ID_FIELD,
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'tableSearch',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+			},
+		],
+		displayOptions: { show: { resource: ['row'] } },
 	},
 
 	...insert.description,

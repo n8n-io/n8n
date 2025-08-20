@@ -18,6 +18,7 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const dataStoreProxy = await getDataStoreProxy(this, index);
+	// todo: pagination
 	const response = await dataStoreProxy.getManyRowsAndCount({});
-	return (response?.data ?? []).map((json) => ({ json }));
+	return response.data.map((json) => ({ json }));
 }

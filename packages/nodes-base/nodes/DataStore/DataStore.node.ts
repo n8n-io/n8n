@@ -50,11 +50,24 @@ export class DataStore implements INodeType {
 
 	methods = {
 		listSearch: {
-			async tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+			// @ADO-3904: Pagination here does not work until a filter is entered or removed, suspected bug in ResourceLocator
+			async tableSearch(
+				this: ILoadOptionsFunctions,
+				filterString?: string,
+				prevPaginationToken?: string,
+			): Promise<INodeListSearchResult> {
 				if (this.helpers.getDataStoreAggregateProxy === undefined) return { results: [] };
-
 				const proxy = await this.helpers.getDataStoreAggregateProxy();
-				const result = await proxy.getManyAndCount({ take: 1000000 });
+
+				const skip = prevPaginationToken === undefined ? 0 : parseInt(prevPaginationToken, 10);
+				const take = 100;
+				const filter =
+					filterString === undefined ? {} : { filter: { name: filterString.toLowerCase() } };
+				const result = await proxy.getManyAndCount({
+					skip,
+					take,
+					...filter,
+				});
 
 				const results = result.data.map((row) => {
 					return {
@@ -63,8 +76,11 @@ export class DataStore implements INodeType {
 					};
 				});
 
+				const paginationToken = results.length === take ? `${skip + take}` : undefined;
+
 				return {
 					results,
+					paginationToken,
 				};
 			},
 		},

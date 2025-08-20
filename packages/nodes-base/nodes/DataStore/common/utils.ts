@@ -8,17 +8,17 @@ import {
 import { DATA_STORE_ID_FIELD } from './fields';
 
 export async function getDataStoreProxy(
-	ef: IExecuteFunctions,
+	ctx: IExecuteFunctions,
 	i: number,
 ): Promise<IDataStoreProjectService> {
-	if (ef.helpers.getDataStoreProxy === undefined)
+	if (ctx.helpers.getDataStoreProxy === undefined)
 		throw new UserError('Attempted to use Data Store node but the module is disabled');
 
-	const dataStoreId = ef.getNodeParameter(DATA_STORE_ID_FIELD, i, '', {
+	const dataStoreId = ctx.getNodeParameter(DATA_STORE_ID_FIELD, i, '', {
 		extractValue: true,
 	}) as string;
 
-	return await ef.helpers.getDataStoreProxy(dataStoreId);
+	return await ctx.helpers.getDataStoreProxy(dataStoreId);
 }
 
 export async function getDataStoreAggregateProxy(
