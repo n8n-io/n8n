@@ -149,7 +149,7 @@ export class WorkflowBuilderAgent {
 		};
 
 		const shouldContinue = ({ messages }: typeof WorkflowState.State) => {
-			const lastMessage = messages[messages.length - 1] as AIMessage;
+			const lastMessage: AIMessage = messages[messages.length - 1];
 
 			if (lastMessage.tool_calls?.length) {
 				return 'tools';
@@ -296,10 +296,26 @@ export class WorkflowBuilderAgent {
 	}
 
 	async *chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
-		// Check for the message maximum length
-		if (payload.message.length > MAX_AI_BUILDER_PROMPT_LENGTH) {
+		this.validateMessageLength(payload.message);
+
+		const { agent, threadConfig, streamConfig } = this.setupAgentAndConfigs(
+			payload,
+			userId,
+			abortSignal,
+		);
+
+		try {
+			const stream = await this.createAgentStream(payload, streamConfig, agent);
+			yield* this.processAgentStream(stream, agent, threadConfig);
+		} catch (error: unknown) {
+			this.handleStreamError(error);
+		}
+	}
+
+	private validateMessageLength(message: string): void {
+		if (message.length > MAX_AI_BUILDER_PROMPT_LENGTH) {
 			this.logger?.warn('Message exceeds maximum length', {
-				messageLength: payload.message.length,
+				messageLength: message.length,
 				maxLength: MAX_AI_BUILDER_PROMPT_LENGTH,
 			});
 
@@ -307,7 +323,9 @@ export class WorkflowBuilderAgent {
 				`Message exceeds maximum length of ${MAX_AI_BUILDER_PROMPT_LENGTH} characters`,
 			);
 		}
+	}
 
+	private setupAgentAndConfigs(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
 		const agent = this.createWorkflow().compile({ checkpointer: this.checkpointer });
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
@@ -324,61 +342,87 @@ export class WorkflowBuilderAgent {
 			recursionLimit: 50,
 			signal: abortSignal,
 			callbacks: this.tracer ? [this.tracer] : undefined,
-		} as RunnableConfig;
+		};
 
-		try {
-			const stream = await agent.stream(
-				{
-					messages: [new HumanMessage({ content: payload.message })],
-					workflowJSON: this.getDefaultWorkflowJSON(payload),
-					workflowOperations: [],
-					workflowContext: payload.workflowContext,
-				},
-				streamConfig,
+		return { agent, threadConfig, streamConfig };
+	}
+
+	private async createAgentStream(
+		payload: ChatPayload,
+		streamConfig: RunnableConfig,
+		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+	) {
+		return await agent.stream(
+			{
+				messages: [new HumanMessage({ content: payload.message })],
+				workflowJSON: this.getDefaultWorkflowJSON(payload),
+				workflowOperations: [],
+				workflowContext: payload.workflowContext,
+			},
+			streamConfig,
+		);
+	}
+
+	private handleStreamError(error: unknown): never {
+		const invalidRequestErrorMessage = this.getInvalidRequestError(error);
+		if (invalidRequestErrorMessage) {
+			throw new ValidationError(invalidRequestErrorMessage);
+		}
+
+		throw error;
+	}
+
+	private async handleAbortError(
+		error: unknown,
+		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+		threadConfig: RunnableConfig,
+	): Promise<void> {
+		if (
+			error &&
+			typeof error === 'object' &&
+			'message' in error &&
+			typeof error.message === 'string' &&
+			// This is naive, but it's all we get from LangGraph AbortError
+			['Abort', 'Aborted'].includes(error.message)
+		) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			const messages = (await agent.getState(threadConfig)).values.messages as Array<
+				AIMessage | HumanMessage | ToolMessage
+			>;
+
+			// Handle abort errors gracefully
+			const abortedAiMessage = new AIMessage({
+				content: '[Task aborted]',
+				id: crypto.randomUUID(),
+			});
+			// TODO: Should we clear tool calls that are in progress?
+			await agent.updateState(threadConfig, { messages: [...messages, abortedAiMessage] });
+			return;
+		}
+
+		// If it's not an abort error, check for GraphRecursionError
+		if (error instanceof GraphRecursionError) {
+			throw new ApplicationError(
+				'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.',
 			);
+		}
 
-			try {
-				const streamProcessor = createStreamProcessor(stream);
-				for await (const output of streamProcessor) {
-					yield output;
-				}
-			} catch (error) {
-				if (
-					error &&
-					typeof error === 'object' &&
-					'message' in error &&
-					typeof error.message === 'string' &&
-					// This is naive, but it's all we get from LangGraph AbortError
-					['Abort', 'Aborted'].includes(error.message)
-				) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					const messages = (await agent.getState(threadConfig)).values.messages as Array<
-						AIMessage | HumanMessage | ToolMessage
-					>;
+		// Re-throw any other errors
+		throw error;
+	}
 
-					// Handle abort errors gracefully
-					const abortedAiMessage = new AIMessage({
-						content: '[Task aborted]',
-						id: crypto.randomUUID(),
-					});
-					// TODO: Should we clear tool calls that are in progress?
-					await agent.updateState(threadConfig, { messages: [...messages, abortedAiMessage] });
-					return;
-				} else if (error instanceof GraphRecursionError) {
-					throw new ApplicationError(
-						'Workflow generation stopped: The AI reached the maximum number of steps while building your workflow. This usually means the workflow design became too complex or got stuck in a loop while trying to create the nodes and connections.',
-					);
-				}
-
-				throw error;
+	private async *processAgentStream(
+		stream: AsyncGenerator<[string, unknown], void, unknown>,
+		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+		threadConfig: RunnableConfig,
+	) {
+		try {
+			const streamProcessor = createStreamProcessor(stream);
+			for await (const output of streamProcessor) {
+				yield output;
 			}
-		} catch (error: unknown) {
-			const invalidRequestErrorMessage = this.getInvalidRequestError(error);
-			if (invalidRequestErrorMessage) {
-				throw new ValidationError(invalidRequestErrorMessage);
-			}
-
-			throw error;
+		} catch (error) {
+			await this.handleAbortError(error, agent, threadConfig);
 		}
 	}
 
