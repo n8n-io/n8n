@@ -9,8 +9,8 @@ import {
 	INSTANCE_ADMIN_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
-import { WorkflowApiHelper } from './workflow-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
+import { WorkflowApiHelper } from './workflow-api-helper';
 
 export interface LoginResponseData {
 	id: string;

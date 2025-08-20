@@ -24,7 +24,7 @@ type WorkflowImportResult = {
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
-	async createWorkflow(workflow: object) {
+	async createWorkflow(workflow: IWorkflowBase) {
 		const response = await this.api.request.post('/rest/workflows', { data: workflow });
 
 		if (!response.ok()) {
@@ -89,8 +89,8 @@ export class WorkflowApiHelper {
 		options?: { webhookPrefix?: string; idLength?: number },
 	): Promise<WorkflowImportResult> {
 		const { webhookPath, webhookId } = this.makeWorkflowUnique(workflow, options);
-		const createdWorkflow = await this.createWorkflow(workflow as object);
-		const workflowId = createdWorkflow.id as string;
+		const createdWorkflow = await this.createWorkflow(workflow);
+		const workflowId: string = String(createdWorkflow.id);
 
 		return {
 			workflowId,
@@ -109,9 +109,9 @@ export class WorkflowApiHelper {
 		fileName: string,
 		options?: { webhookPrefix?: string; idLength?: number },
 	): Promise<WorkflowImportResult> {
-		const workflowDefinition = JSON.parse(
+		const workflowDefinition: IWorkflowBase = JSON.parse(
 			readFileSync(resolveFromRoot('workflows', fileName), 'utf8'),
-		) as IWorkflowBase;
+		);
 
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
 

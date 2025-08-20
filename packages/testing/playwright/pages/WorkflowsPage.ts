@@ -12,14 +12,14 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	/**
-	 * This the add workflow button on the workflows page, visible when there are already workflows.
+	 * This is the add workflow button on the workflows page, visible when there are already workflows.
 	 */
 	async clickAddWorkflowButton() {
 		await this.clickByTestId('add-resource-workflow');
 	}
 
 	/**
-	 * This the new workflow button on the workflows page, visible when there are no workflows.
+	 * This is the new workflow button on the workflows page, visible when there are no workflows.
 	 */
 	async clickNewWorkflowCard() {
 		await this.clickByTestId('new-workflow-card');
