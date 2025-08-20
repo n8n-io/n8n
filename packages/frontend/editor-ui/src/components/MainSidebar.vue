@@ -36,6 +36,7 @@ import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
+import { useKeybindings } from '@/composables/useKeybindings';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -58,6 +59,9 @@ const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
 
+useKeybindings({
+	ctrl_alt_o: () => handleSelect('about'),
+});
 useUserHelpers(router, route);
 
 // Template refs
