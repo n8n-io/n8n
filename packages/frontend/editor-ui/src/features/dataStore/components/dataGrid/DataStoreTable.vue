@@ -273,11 +273,12 @@ const onAddRowClick = async () => {
 		if (currentPage.value * pageSize.value < totalItems.value) {
 			await setCurrentPage(Math.ceil(totalItems.value / pageSize.value));
 		}
+		contentLoading.value = true;
+		emit('toggleSave', true);
 		const inserted = await dataStoreStore.insertEmptyRow(props.dataStore);
 		if (!inserted) {
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
-		emit('toggleSave', true);
 		await fetchDataStoreContent();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
