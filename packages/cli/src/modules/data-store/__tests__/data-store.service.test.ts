@@ -795,6 +795,7 @@ describe('dataStore', () => {
 						createdAt: expect.any(Date),
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						updatedAt: expect.any(Date),
+						index: 0,
 					},
 					{
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -805,6 +806,7 @@ describe('dataStore', () => {
 						createdAt: expect.any(Date),
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						updatedAt: expect.any(Date),
+						index: 1,
 					},
 					{
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -815,6 +817,7 @@ describe('dataStore', () => {
 						createdAt: expect.any(Date),
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						updatedAt: expect.any(Date),
+						index: 2,
 					},
 					{
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -825,6 +828,7 @@ describe('dataStore', () => {
 						createdAt: expect.any(Date),
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						updatedAt: expect.any(Date),
+						index: 3,
 					},
 				]),
 			);
