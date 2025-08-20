@@ -11,7 +11,6 @@ import {
 	BeforeInsert,
 } from '@n8n/typeorm';
 import type { IUser, IUserSettings } from 'n8n-workflow';
-import { z } from 'zod';
 
 import { JsonColumn, WithTimestamps } from './abstract-entity';
 import type { ApiKey } from './api-key';
@@ -20,6 +19,7 @@ import type { ProjectRelation } from './project-relation';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 import type { IPersonalizationSurveyAnswers } from './types-db';
+import { isValidEmail } from '../utils/is-valid-email';
 import { lowerCaser, objectRetriever } from '../utils/transformers';
 
 @Entity()
@@ -81,8 +81,8 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 
 		// Validate email if present (including empty strings)
 		if (this.email !== null && this.email !== undefined) {
-			const result = z.string().email().safeParse(this.email);
-			if (!result.success) {
+			const result = isValidEmail(this.email);
+			if (!result) {
 				throw new Error(`Cannot save user <${this.email}>: Provided email is invalid`);
 			}
 		}
