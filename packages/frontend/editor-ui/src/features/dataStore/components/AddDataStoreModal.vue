@@ -43,7 +43,6 @@ const onSubmit = async () => {
 				id: newDataStore.id,
 			},
 		});
-		uiStore.closeModal(props.modalName);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.add.error'));
 	} finally {

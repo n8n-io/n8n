@@ -54,7 +54,7 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="add-resource-workflow" @click="$emit('action', 'workflow')">Workflow</button>
 			<button data-test-id="action-credential" @click="$emit('action', 'credential')">Credentials</button>
 			<div data-test-id="add-resource-actions" >
-				<button v-for="action in $props.actions" :key="action.value" data-test-id="action-{{ action.value }}" @click="$emit('action', '{{ action.value }}')">{{ action.label }}</button>
+				<button v-for="action in $props.actions" :key="action.value"></button>
 			</div>
 		</div>
 	`,

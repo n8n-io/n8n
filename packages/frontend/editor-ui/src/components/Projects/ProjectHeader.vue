@@ -149,7 +149,7 @@ const menu = computed(() => {
 			label: i18n.baseText('dataStore.add.button.label'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
-				!getResourcePermissions(homeProject.value?.scopes).dataStore.create,
+				!getResourcePermissions(homeProject.value?.scopes)?.dataStore?.create,
 		});
 	}
 

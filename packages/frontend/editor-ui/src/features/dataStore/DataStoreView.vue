@@ -34,6 +34,7 @@ const dataStoreStore = useDataStoreStore();
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
+const uiStore = useUIStore();
 
 const loading = ref(true);
 
@@ -102,12 +103,12 @@ const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
 };
 
 const onAddModalClick = () => {
-	useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
+	uiStore.openModal(ADD_DATA_STORE_MODAL_KEY);
 };
 
 const onProjectHeaderAction = (action: string) => {
 	if (action === 'add-data-store') {
-		useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
+		uiStore.openModal(ADD_DATA_STORE_MODAL_KEY);
 	}
 };
 
@@ -137,7 +138,7 @@ watch(
 	() => route.params.new,
 	() => {
 		if (route.params.new === 'new') {
-			useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
+			uiStore.openModal(ADD_DATA_STORE_MODAL_KEY);
 		}
 	},
 	{ immediate: true },

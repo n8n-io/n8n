@@ -148,6 +148,7 @@ const onDeleteColumn = async (columnId: string) => {
 
 	const columnToDeleteIndex = colDefs.value.findIndex((col) => col.colId === columnId);
 	colDefs.value = colDefs.value.filter((def) => def.colId !== columnId);
+	const rowDataOldValue = [...rowData.value];
 	rowData.value = rowData.value.map((row) => {
 		const { [columnToDelete.field!]: _, ...rest } = row;
 		return rest;
@@ -162,6 +163,8 @@ const onDeleteColumn = async (columnId: string) => {
 	} catch (error: unknown) {
 		toast.showError(error as Error, i18n.baseText('dataStore.deleteColumn.error'));
 		colDefs.value.splice(columnToDeleteIndex, 0, columnToDelete);
+		rowData.value = rowDataOldValue;
+		refreshGridData();
 	}
 };
 
@@ -196,7 +199,6 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		lockPinned: true,
 		headerComponent: ColumnHeader,
 		headerComponentParams: { onDelete: onDeleteColumn },
-		...extraProps,
 		cellDataType: mapToAGCellType(col.type),
 		valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
 			// If the value is null, return null to show empty cell
