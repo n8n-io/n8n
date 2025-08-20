@@ -101,43 +101,38 @@ export class UsersController {
 		_res: Response,
 		@Query listQueryOptions: UsersListFilterDto,
 	) {
-		try {
-			const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
+		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
 
-			const response = await userQuery.getManyAndCount();
+		const response = await userQuery.getManyAndCount();
 
-			const [users, count] = response;
+		const [users, count] = response;
 
-			const withInviteUrl = hasGlobalScope(req.user, 'user:create');
+		const withInviteUrl = hasGlobalScope(req.user, 'user:create');
 
-			const publicUsers = await Promise.all(
-				users.map(async (u) => {
-					const user = await this.userService.toPublic(u, {
-						withInviteUrl,
-						inviterId: req.user.id,
-					});
-					if (listQueryOptions.select && !listQueryOptions.select?.includes('role')) {
-						delete user.role;
-					}
-					return {
-						...user,
-						projectRelations: u.projectRelations?.map((pr) => ({
-							id: pr.projectId,
-							role: pr.role, // normalize role for frontend
-							name: pr.project.name,
-						})),
-					};
-				}),
-			);
+		const publicUsers = await Promise.all(
+			users.map(async (u) => {
+				const user = await this.userService.toPublic(u, {
+					withInviteUrl,
+					inviterId: req.user.id,
+				});
+				if (listQueryOptions.select && !listQueryOptions.select?.includes('role')) {
+					delete user.role;
+				}
+				return {
+					...user,
+					projectRelations: u.projectRelations?.map((pr) => ({
+						id: pr.projectId,
+						role: pr.role, // normalize role for frontend
+						name: pr.project.name,
+					})),
+				};
+			}),
+		);
 
-			return usersListSchema.parse({
-				count,
-				items: this.removeSupplementaryFields(publicUsers, listQueryOptions),
-			});
-		} catch (error) {
-			this.logger.error('Failed to list users', { error });
-			throw error;
-		}
+		return usersListSchema.parse({
+			count,
+			items: this.removeSupplementaryFields(publicUsers, listQueryOptions),
+		});
 	}
 
 	@Get('/:id/password-reset-link')
