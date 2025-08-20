@@ -143,6 +143,7 @@ const menu = computed(() => {
 	}
 
 	if (settingsStore.isDataStoreFeatureEnabled) {
+		// TODO: this should probably be moved to the module descriptor as a setting
 		items.push({
 			value: ACTION_TYPES.DATA_STORE,
 			label: i18n.baseText('dataStore.add.button.label'),
