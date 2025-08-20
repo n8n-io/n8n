@@ -30,6 +30,7 @@ import { computed, ref } from 'vue';
 import { useActionsGenerator } from '../components/Node/NodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '../components/Node/NodeCreator/utils';
 import { useSettingsStore } from '@/stores/settings.store';
+import { DATA_STORE_MODULE_NAME } from '@/features/dataStore/constants';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
@@ -83,6 +84,28 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 				return nodeVersions[Math.max(...versionNumbers)];
 			})
 			.filter(Boolean);
+	});
+
+	const moduleEnabledNodeTypes = computed<INodeTypeDescription[]>(() => {
+		// Nodes defined with `hidden: true`, but shown if certain modules are enabled
+		const moduleEnabledNodes = [
+			{ nodeType: 'n8n-nodes-base.dataStore', module: DATA_STORE_MODULE_NAME },
+		];
+
+		return moduleEnabledNodes.flatMap((node) => {
+			const nodeVersions = nodeTypes.value[node.nodeType] ?? {};
+			const versionNumbers = Object.keys(nodeVersions).map(Number);
+			const latest = nodeVersions[Math.max(...versionNumbers)];
+
+			if (latest?.hidden && settingsStore.isModuleActive(node.module)) {
+				return {
+					...latest,
+					hidden: undefined,
+				};
+			}
+
+			return [];
+		});
 	});
 
 	const getNodeType = computed(() => {
@@ -169,6 +192,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const visibleNodeTypes = computed(() => {
 		return allLatestNodeTypes.value
 			.concat(officialCommunityNodeTypes.value)
+			.concat(moduleEnabledNodeTypes.value)
 			.filter((nodeType) => !nodeType.hidden);
 	});
 
