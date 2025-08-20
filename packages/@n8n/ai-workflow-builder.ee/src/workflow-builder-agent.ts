@@ -375,7 +375,7 @@ export class WorkflowBuilderAgent {
 		} catch (error: unknown) {
 			const invalidRequestErrorMessage = this.getInvalidRequestError(error);
 			if (invalidRequestErrorMessage) {
-				throw new ApplicationError(invalidRequestErrorMessage);
+				throw new ValidationError(invalidRequestErrorMessage);
 			}
 
 			throw error;
