@@ -83,7 +83,7 @@ describe('DataStoreCard', () => {
 	it('should render data store info correctly', () => {
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('data-store-card-icon')).toBeInTheDocument();
-		expect(getByTestId('datastore-name-input')).toHaveTextContent(DEFAULT_DATA_STORE.name);
+		expect(getByTestId('data-store-card-name')).toHaveTextContent(DEFAULT_DATA_STORE.name);
 		expect(getByTestId('data-store-card-record-count')).toBeInTheDocument();
 		expect(getByTestId('data-store-card-column-count')).toBeInTheDocument();
 		expect(getByTestId('data-store-card-last-updated')).toHaveTextContent('Last updated');

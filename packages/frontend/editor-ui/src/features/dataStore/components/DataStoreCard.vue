@@ -72,17 +72,9 @@ const onNameSubmit = (name: string) => {
 				</template>
 				<template #header>
 					<div :class="$style['card-header']" @click.prevent>
-						<N8nInlineTextEdit
-							ref="renameInput"
-							data-test-id="datastore-name-input"
-							:placeholder="i18n.baseText('dataStore.add.input.name.label')"
-							:class="$style['card-name']"
-							:model-value="props.dataStore.name"
-							:max-length="50"
-							:read-only="props.readOnly"
-							:disabled="props.readOnly"
-							@update:model-value="onNameSubmit"
-						/>
+						<n8n-text tag="h2" bold class="$style['card-name']" data-test-id="data-store-card-name">
+							{{ props.dataStore.name }}
+						</n8n-text>
 						<N8nBadge v-if="props.readOnly" class="ml-3xs" theme="tertiary" bold>
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
