@@ -2877,6 +2877,7 @@
 	"dataStore.addColumn.invalidName.description": "Only alphanumeric characters and non-leading dashes are allowed for column names",
 	"dataStore.fetchContent.error": "Error fetching data store content",
 	"dataStore.addRow.label": "Add Row",
+	"dataStore.addRow.disabled.tooltip": "Add columns first",
 	"dataStore.addRow.error": "Error adding row",
 	"dataStore.updateRow.error": "Error updating row",
 	"settings.ldap": "LDAP",

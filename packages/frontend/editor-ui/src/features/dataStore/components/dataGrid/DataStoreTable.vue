@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import orderBy from 'lodash/orderBy';
 import type {
 	DataStore,
@@ -109,6 +109,16 @@ const totalItems = ref(0);
 
 // Data store content
 const rows = ref<DataStoreRow[]>([]);
+
+const noUserColumns = computed(() => {
+	return props.dataStore.columns.length === 0;
+});
+
+const addRowButtonTooltip = computed(() => {
+	return noUserColumns.value
+		? i18n.baseText('dataStore.addRow.disabled.tooltip')
+		: i18n.baseText('dataStore.addRow.label');
+});
 
 const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
@@ -390,12 +400,13 @@ onMounted(async () => {
 			/>
 		</div>
 		<div :class="$style.footer">
-			<n8n-tooltip :content="i18n.baseText('dataStore.addRow.label')">
+			<n8n-tooltip :content="addRowButtonTooltip">
 				<n8n-icon-button
 					data-test-id="data-store-add-row-button"
 					icon="plus"
 					class="mb-xl"
 					type="secondary"
+					:disabled="noUserColumns"
 					@click="onAddRowClick"
 				/>
 			</n8n-tooltip>
