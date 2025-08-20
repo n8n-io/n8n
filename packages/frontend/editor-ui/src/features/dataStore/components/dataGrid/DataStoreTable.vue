@@ -152,12 +152,13 @@ const onDeleteColumn = async (columnId: string) => {
 		const { [columnToDelete.field!]: _, ...rest } = row;
 		return rest;
 	});
-	if (gridApi.value) {
-		gridApi.value.setGridOption('columnDefs', colDefs.value);
-		gridApi.value.setGridOption('rowData', rowData.value);
-	}
+	refreshGridData();
 	try {
-		await dataStoreStore.deleteDataStoreColumn(props.dataStore.id, columnId);
+		await dataStoreStore.deleteDataStoreColumn(
+			props.dataStore.id,
+			props.dataStore.projectId,
+			columnId,
+		);
 	} catch (error: unknown) {
 		toast.showError(error as Error, i18n.baseText('dataStore.deleteColumn.error'));
 		colDefs.value.splice(columnToDeleteIndex, 0, columnToDelete);
