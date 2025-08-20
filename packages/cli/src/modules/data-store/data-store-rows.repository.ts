@@ -2,7 +2,6 @@ import type {
 	ListDataStoreContentQueryDto,
 	ListDataStoreContentFilter,
 	DataStoreUserTableName,
-	DataStoreRows,
 	UpsertDataStoreRowsDto,
 	UpdateDataStoreRowDto,
 } from '@n8n/api-types';
@@ -29,6 +28,7 @@ import {
 	toDslColumns,
 	toTableName,
 } from './utils/sql-utils';
+import { DataStoreRows } from 'n8n-workflow';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
@@ -141,19 +141,14 @@ export class DataStoreRowsRepository {
 		await createTable.execute(queryRunner);
 	}
 
-	async ensureTableAndAddColumn(
+	async addColumn(
 		dataStoreId: string,
 		column: DataStoreColumn,
 		queryRunner: QueryRunner,
 		dbType: DataSourceOptions['type'],
 	) {
 		const tableName = toTableName(dataStoreId);
-		const tableExists = await queryRunner.hasTable(tableName);
-		if (!tableExists) {
-			await this.createTableWithColumns(tableName, [column], queryRunner);
-		} else {
-			await queryRunner.manager.query(addColumnQuery(tableName, column, dbType));
-		}
+		await queryRunner.manager.query(addColumnQuery(tableName, column, dbType));
 	}
 
 	async dropColumnFromTable(

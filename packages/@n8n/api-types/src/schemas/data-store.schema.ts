@@ -59,9 +59,3 @@ export const dateTimeSchema = z
 
 // Dates are received as date strings and validated before insertion
 export const dataStoreColumnValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
-
-export type DataStoreColumnJsType = string | number | boolean | Date;
-
-export type DataStoreRow = Record<string, DataStoreColumnJsType | null>;
-
-export type DataStoreRows = DataStoreRow[];

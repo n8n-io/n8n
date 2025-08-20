@@ -5,13 +5,13 @@ import type {
 	ListDataStoreContentQueryDto,
 	MoveDataStoreColumnDto,
 	DataStoreListOptions,
-	DataStoreRows,
 	UpsertDataStoreRowsDto,
 	UpdateDataStoreDto,
 	UpdateDataStoreRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import type { DataStoreRow, DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
@@ -21,7 +21,6 @@ import { DataStoreNameConflictError } from './errors/data-store-name-conflict.er
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { toTableName, normalizeRows } from './utils/sql-utils';
-import { DataStoreRow } from '@n8n/api-types/src/schemas/data-store.schema';
 
 @Service()
 export class DataStoreService {

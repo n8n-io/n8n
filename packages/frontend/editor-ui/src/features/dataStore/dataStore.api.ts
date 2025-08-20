@@ -98,6 +98,36 @@ export const addDataStoreColumnApi = async (
 	);
 };
 
+export const deleteDataStoreColumnApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	projectId: string,
+	columnId: string,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/data-stores/${dataStoreId}/columns/${columnId}`,
+	);
+};
+
+export const moveDataStoreColumnApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	projectId: string,
+	columnId: string,
+	targetIndex: number,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-stores/${dataStoreId}/columns/${columnId}/move`,
+		{
+			targetIndex,
+		},
+	);
+};
+
 export const getDataStoreRowsApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
