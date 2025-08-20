@@ -16,6 +16,7 @@ import type {
 	ValueGetterParams,
 	RowSelectionOptions,
 	CellValueChangedEvent,
+	GetRowIdParams,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -46,6 +47,7 @@ import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
+import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -298,7 +300,7 @@ const initColumnDefinitions = () => {
 };
 
 const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) => {
-	const { data, api, oldValue, value } = params;
+	const { data, api, oldValue, value, colDef } = params;
 
 	if (value === oldValue) {
 		return;
@@ -309,7 +311,12 @@ const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) =
 		await dataStoreStore.upsertRow(props.dataStore.id, props.dataStore.projectId, data);
 	} catch (error) {
 		// Revert cell to original value if the update fails
-		api.undoCellEditing();
+		const fieldName = String(colDef.field);
+		const validOldValue = isDataStoreValue(oldValue) ? oldValue : null;
+		const revertedData: DataStoreRow = { ...data, [fieldName]: validOldValue };
+		api.applyTransaction({
+			update: [revertedData],
+		});
 		toast.showError(error, i18n.baseText('dataStore.updateRow.error'));
 	} finally {
 		emit('toggleSave', false);
@@ -368,7 +375,7 @@ onMounted(async () => {
 				:suppress-drag-leave-hides-columns="true"
 				:loading="contentLoading"
 				:row-selection="rowSelection"
-				:get-row-id="(params) => String(params.data.id)"
+				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
 				:single-click-edit="true"
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
