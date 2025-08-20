@@ -9,7 +9,9 @@ import type {
 
 export class OpenAiApi implements ICredentialType {
 	name = 'openAiApi';
+
 	displayName = 'OpenAi';
+
 	documentationUrl = 'openAi';
 
 	properties: INodeProperties[] = [
@@ -69,16 +71,6 @@ export class OpenAiApi implements ICredentialType {
 			default: '',
 		},
 	];
-
-	// authenticate: IAuthenticateGeneric = {
-	// 	type: 'generic',
-	// 	properties: {
-	// 		headers: {
-	// 			Authorization: '=Bearer {{$credentials.apiKey}}',
-	// 			'OpenAI-Organization': '={{$credentials.organizationId}}',
-	// 		},
-	// 	},
-	// };
 
 	test: ICredentialTestRequest = {
 		request: {
