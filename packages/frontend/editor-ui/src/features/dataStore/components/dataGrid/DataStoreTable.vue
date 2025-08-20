@@ -192,6 +192,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		headerName: col.name,
 		editable: true,
 		resizable: true,
+		lockPinned: true,
 		headerComponent: ColumnHeader,
 		headerComponentParams: { onDelete: onDeleteColumn },
 		...extraProps,
