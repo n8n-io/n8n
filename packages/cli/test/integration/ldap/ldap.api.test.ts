@@ -455,7 +455,7 @@ describe('POST /ldap/sync', () => {
 
 			const ldapUsers = [validLdapUser, invalidLdapUser];
 
-			const loggerSpy = jest.spyOn(Container.get(LdapService)['logger'], 'error');
+			const loggerSpy = jest.spyOn(Container.get(LdapService)['logger'], 'warn');
 
 			const synchronization = await runTest(ldapUsers);
 
@@ -466,6 +466,9 @@ describe('POST /ldap/sync', () => {
 			expect(loggerSpy).toHaveBeenCalledWith(
 				expect.stringContaining(`LDAP - Invalid email format for user ${invalidLdapUser.uid}`),
 			);
+
+			loggerSpy.mockReset();
+			loggerSpy.mockRestore();
 
 			// Verify only valid user was created
 			const allUsers = await getAllUsers();
@@ -499,7 +502,7 @@ describe('POST /ldap/sync', () => {
 				uid: originalUserId,
 			};
 
-			const loggerSpy = jest.spyOn(Container.get(LdapService)['logger'], 'error');
+			const loggerSpy = jest.spyOn(Container.get(LdapService)['logger'], 'warn');
 
 			const synchronization = await runTest([invalidLdapUser]);
 
@@ -510,6 +513,9 @@ describe('POST /ldap/sync', () => {
 			expect(loggerSpy).toHaveBeenCalledWith(
 				expect.stringContaining(`LDAP - Invalid email format for user ${originalUserId}`),
 			);
+
+			loggerSpy.mockReset();
+			loggerSpy.mockRestore();
 
 			// Verify user still has original email
 			const localLdapIdentities = await getLdapIdentities();
