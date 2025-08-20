@@ -213,7 +213,7 @@ export class DataStoreService {
 			case 'boolean':
 				if (typeof cell !== 'boolean') {
 					throw new DataStoreValidationError(
-						`value '${cell.toString()}' does not match column type 'boolean'`,
+						`value '${String(cell)}' does not match column type 'boolean'`,
 					);
 				}
 				break;
@@ -233,14 +233,14 @@ export class DataStoreService {
 			case 'string':
 				if (typeof cell !== 'string') {
 					throw new DataStoreValidationError(
-						`value '${cell.toString()}' does not match column type 'string'`,
+						`value '${String(cell)}' does not match column type 'string'`,
 					);
 				}
 				break;
 			case 'number':
 				if (typeof cell !== 'number') {
 					throw new DataStoreValidationError(
-						`value '${cell.toString()}' does not match column type 'number'`,
+						`value '${String(cell)}' does not match column type 'number'`,
 					);
 				}
 				break;
