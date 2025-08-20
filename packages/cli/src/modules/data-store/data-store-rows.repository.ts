@@ -25,7 +25,7 @@ import {
 	toDslColumns,
 	toTableName,
 } from './utils/sql-utils';
-import { DataStoreRows } from 'n8n-workflow';
+import { DataStoreRows, UnexpectedError } from 'n8n-workflow';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
@@ -72,7 +72,11 @@ export class DataStoreRowsRepository {
 				.values(row)
 				.execute();
 
-			insertedIds.push(result.raw as number);
+			if (typeof result.raw !== 'number') {
+				throw new UnexpectedError('Result of INSERT INTO operation was not a number');
+			}
+
+			insertedIds.push(result.raw);
 		}
 
 		return insertedIds;
