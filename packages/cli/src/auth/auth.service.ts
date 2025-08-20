@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
@@ -134,7 +134,7 @@ export class AuthService {
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 		if (
 			config.getEnv('userManagement.isInstanceOwnerSetUp') &&
-			user.role.slug !== 'global:owner' &&
+			user.role.slug !== GLOBAL_OWNER_ROLE.slug &&
 			!isWithinUsersLimit
 		) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);

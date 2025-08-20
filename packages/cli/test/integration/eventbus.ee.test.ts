@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
 import type {
