@@ -1,6 +1,6 @@
 import type { DeepMockProxy } from 'jest-mock-extended';
 import { mock, mockDeep } from 'jest-mock-extended';
-import { constructExecutionMetaData, sandboxHtmlResponse } from 'n8n-core';
+import { constructExecutionMetaData } from 'n8n-core';
 import {
 	BINARY_ENCODING,
 	WAIT_NODE_TYPE,
@@ -236,7 +236,7 @@ describe('RespondToWebhook Node', () => {
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-				body: sandboxHtmlResponse('responseBody'),
+				body: 'responseBody',
 				headers: {},
 				statusCode: 200,
 			});
@@ -360,7 +360,7 @@ describe('RespondToWebhook Node', () => {
 
 				const result = await respondToWebhook.execute.call(mockExecuteFunctions);
 				expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
-					body: sandboxHtmlResponse(JSON.stringify(inputItems.map((item) => item.json))),
+					body: JSON.stringify(inputItems.map((item) => item.json)),
 					headers: { 'content-type': 'application/xhtml+xml' },
 					statusCode: 200,
 				});
