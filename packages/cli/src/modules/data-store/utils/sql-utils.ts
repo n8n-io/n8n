@@ -7,9 +7,9 @@ import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import { UnexpectedError, type DataStoreRows } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
 import type { DataStoreUserTableName } from '../data-store.types';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -208,10 +208,6 @@ export function quoteIdentifier(name: string, dbType: DataSourceOptions['type'])
 		default:
 			return `"${name}"`;
 	}
-}
-
-export function toTableName(dataStoreId: string): DataStoreUserTableName {
-	return `data_store_user_${dataStoreId}`;
 }
 
 export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {

@@ -10,6 +10,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
@@ -18,8 +19,7 @@ import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-fou
 import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
-import { toTableName, normalizeRows } from './utils/sql-utils';
-import { DataStoreRows } from 'n8n-workflow';
+import { normalizeRows } from './utils/sql-utils';
 
 @Service()
 export class DataStoreService {
@@ -111,10 +111,7 @@ export class DataStoreService {
 		// a renamed/removed column appearing here (or added column missing) if the store was
 		// modified between when the frontend sent the request and we received it
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		const result = await this.dataStoreRowsRepository.getManyAndCount(
-			toTableName(dataStoreId),
-			dto,
-		);
+		const result = await this.dataStoreRowsRepository.getManyAndCount(dataStoreId, dto);
 		return {
 			count: result.count,
 			data: normalizeRows(result.data, columns),
@@ -132,7 +129,7 @@ export class DataStoreService {
 		await this.validateRows(dataStoreId, rows);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		return await this.dataStoreRowsRepository.insertRows(toTableName(dataStoreId), rows, columns);
+		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns);
 	}
 
 	async upsertRows(dataStoreId: string, projectId: string, dto: UpsertDataStoreRowsDto) {
@@ -141,13 +138,13 @@ export class DataStoreService {
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 
-		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto, columns);
+		return await this.dataStoreRowsRepository.upsertRows(dataStoreId, dto, columns);
 	}
 
 	async deleteRows(dataStoreId: string, projectId: string, ids: number[]) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
-		return await this.dataStoreRowsRepository.deleteRows(toTableName(dataStoreId), ids);
+		return await this.dataStoreRowsRepository.deleteRows(dataStoreId, ids);
 	}
 
 	private async validateRows(dataStoreId: string, rows: DataStoreRows): Promise<void> {
