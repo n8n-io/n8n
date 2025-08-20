@@ -14,6 +14,7 @@ import {
 	QueryRunner,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
+import { DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
 import {
@@ -28,7 +29,6 @@ import {
 	toDslColumns,
 	toTableName,
 } from './utils/sql-utils';
-import { DataStoreRows } from 'n8n-workflow';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
