@@ -143,6 +143,10 @@ export async function getMongoClient(context: any) {
 		mongoConfig.connectionString = connectionString;
 		mongoConfig.client = new MongoClient(connectionString, {
 			appName: 'devrel.integration.n8n_vector_integ',
+			driverInfo: {
+				name: 'n8n_vector',
+				version: process.env.N8N_VERSION ?? 'unknown',
+			},
 		});
 		await mongoConfig.client.connect();
 	}

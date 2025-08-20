@@ -1,4 +1,5 @@
-import { prepareItems } from './GenericFunctions';
+import { MongoClient } from 'mongodb';
+import { createMongoClient, prepareItems } from './GenericFunctions';
 
 describe('MongoDB Node: Generic Functions', () => {
 	describe('prepareItems', () => {
@@ -75,6 +76,22 @@ describe('MongoDB Node: Generic Functions', () => {
 				isUpdate,
 			});
 			expect(result).toEqual([{ 'user.name': 'John' }, { 'user.name': 'Jane' }]);
+		});
+	});
+
+	describe('createMongoClient', () => {
+		const mockClient = {};
+		const MockMongoClient = MongoClient as jest.MockedClass<typeof MongoClient>;
+
+		it('adds the driver info to the client', () => {
+			MockMongoClient.mockImplementation(() => mockClient as MongoClient);
+			createMongoClient('mongodb://localhost:27017');
+			expect(MockMongoClient).toHaveBeenCalledWith('mongodb://localhost:27017', {
+				driverInfo: {
+					name: 'n8n_crud',
+					version: process.env.N8N_VERSION ?? 'unknown',
+				},
+			});
 		});
 	});
 });

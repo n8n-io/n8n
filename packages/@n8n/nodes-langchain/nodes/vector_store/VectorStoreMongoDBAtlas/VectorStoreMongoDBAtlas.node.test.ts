@@ -58,6 +58,10 @@ describe('VectorStoreMongoDBAtlas', () => {
 			expect(MockMongoClient).toHaveBeenCalledTimes(1);
 			expect(MockMongoClient).toHaveBeenCalledWith('mongodb://localhost:27017', {
 				appName: 'devrel.integration.n8n_vector_integ',
+				driverInfo: {
+					name: 'n8n_vector',
+					version: process.env.N8N_VERSION ?? 'unknown',
+				},
 			});
 			expect(mockClient1.connect).toHaveBeenCalledTimes(1);
 			expect(mockClient1.close).not.toHaveBeenCalled();
@@ -84,9 +88,17 @@ describe('VectorStoreMongoDBAtlas', () => {
 			expect(MockMongoClient).toHaveBeenCalledTimes(2);
 			expect(MockMongoClient).toHaveBeenNthCalledWith(1, 'mongodb://localhost:27017', {
 				appName: 'devrel.integration.n8n_vector_integ',
+				driverInfo: {
+					name: 'n8n_vector',
+					version: process.env.N8N_VERSION ?? 'unknown',
+				},
 			});
 			expect(MockMongoClient).toHaveBeenNthCalledWith(2, 'mongodb://different-host:27017', {
 				appName: 'devrel.integration.n8n_vector_integ',
+				driverInfo: {
+					name: 'n8n_vector',
+					version: process.env.N8N_VERSION ?? 'unknown',
+				},
 			});
 			expect(mockClient1.connect).toHaveBeenCalledTimes(1);
 			expect(mockClient1.close).toHaveBeenCalledTimes(1);
