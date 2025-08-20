@@ -2,6 +2,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
+	IDisplayOptions,
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -37,67 +38,47 @@ export class OpenAiApi implements ICredentialType {
 			description: 'Override the default base URL for the API',
 		},
 		{
-			displayName: 'Add Custom Headers',
-			name: 'useCustomHeaders',
+			displayName: 'Add Custom Header',
+			name: 'header',
 			type: 'boolean',
 			default: false,
-			description: 'Whether to add custom headers to the requests',
 		},
 		{
-			displayName: 'Custom Headers (JSON)',
-			name: 'customHeaders',
-			type: 'json',
+			displayName: 'Header Name',
+			name: 'headerName',
+			type: 'string',
 			displayOptions: {
 				show: {
-					useCustomHeaders: [true],
+					header: [true],
 				},
+			} as IDisplayOptions,
+			default: '',
+		},
+		{
+			displayName: 'Header Value',
+			name: 'headerValue',
+			type: 'string',
+			typeOptions: {
+				password: true,
 			},
-			default: '{}',
-			description:
-				'Custom headers to add to requests. Format: {"Header-Name": "value", "Another-Header": "value2"}',
-			placeholder: '{\n  "X-Custom-Header": "value",\n  "X-Another-Header": "value2"\n}',
+			displayOptions: {
+				show: {
+					header: [true],
+				},
+			} as IDisplayOptions,
+			default: '',
 		},
 	];
 
-	async authenticate(
-		credentials: ICredentialDataDecryptedObject,
-		requestOptions: IHttpRequestOptions,
-	): Promise<IHttpRequestOptions> {
-		// Initialize headers with the Authorization
-		requestOptions.headers = {
-			Authorization: `Bearer ${credentials.apiKey}`,
-		};
-
-		// Add Organization ID if provided
-		if (credentials.organizationId) {
-			requestOptions.headers['OpenAI-Organization'] = credentials.organizationId as string;
-		}
-
-		// Only add custom headers if the toggle is enabled
-		if (credentials.useCustomHeaders && credentials.customHeaders) {
-			try {
-				let customHeaders: Record<string, string>;
-
-				// Handle if customHeaders is already an object or needs parsing
-				if (typeof credentials.customHeaders === 'string') {
-					customHeaders = JSON.parse(credentials.customHeaders);
-				} else {
-					customHeaders = credentials.customHeaders as Record<string, string>;
-				}
-
-				// Add each custom header to the request
-				Object.entries(customHeaders).forEach(([name, value]) => {
-					if (name && value) {
-						requestOptions.headers![name] = value;
-					}
-				});
-			} catch (error) {
-				console.error('Failed to parse custom headers:', error);
-			}
-		}
-
-		return requestOptions;
-	}
+	// authenticate: IAuthenticateGeneric = {
+	// 	type: 'generic',
+	// 	properties: {
+	// 		headers: {
+	// 			Authorization: '=Bearer {{$credentials.apiKey}}',
+	// 			'OpenAI-Organization': '={{$credentials.organizationId}}',
+	// 		},
+	// 	},
+	// };
 
 	test: ICredentialTestRequest = {
 		request: {
@@ -105,4 +86,24 @@ export class OpenAiApi implements ICredentialType {
 			url: '/models',
 		},
 	};
+
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		requestOptions.headers = {
+			Authorization: 'Bearer ' + credentials.apiKey,
+			'OpenAI-Organization': credentials.organizationId,
+		};
+		if (credentials.header) {
+			requestOptions.headers[credentials.headerName as string] = credentials.headerValue;
+			if (credentials.header2Name) {
+				requestOptions.headers[credentials.header2Name as string] = credentials.header2Value;
+			}
+			if (credentials.header3Name) {
+				requestOptions.headers[credentials.header3Name as string] = credentials.header3Value;
+			}
+		}
+		return requestOptions;
+	}
 }

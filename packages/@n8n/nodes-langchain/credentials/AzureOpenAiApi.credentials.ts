@@ -1,6 +1,7 @@
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
+	IDisplayOptions,
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -40,25 +41,35 @@ export class AzureOpenAiApi implements ICredentialType {
 			placeholder: 'https://westeurope.api.cognitive.microsoft.com',
 		},
 		{
-			displayName: 'Add Custom Headers',
-			name: 'useCustomHeaders',
+			displayName: 'Add Custom Header',
+			name: 'header',
 			type: 'boolean',
 			default: false,
-			description: 'Whether to add custom headers to the requests',
 		},
 		{
-			displayName: 'Custom Headers (JSON)',
-			name: 'customHeaders',
-			type: 'json',
+			displayName: 'Header Name',
+			name: 'headerName',
+			type: 'string',
 			displayOptions: {
 				show: {
-					useCustomHeaders: [true],
+					header: [true],
 				},
+			} as IDisplayOptions,
+			default: '',
+		},
+		{
+			displayName: 'Header Value',
+			name: 'headerValue',
+			type: 'string',
+			typeOptions: {
+				password: true,
 			},
-			default: '{}',
-			description:
-				'Custom headers to add to requests. Format: {"Header-Name": "value", "Another-Header": "value2"}',
-			placeholder: '{\n  "X-Custom-Header": "value",\n  "X-Another-Header": "value2"\n}',
+			displayOptions: {
+				show: {
+					header: [true],
+				},
+			} as IDisplayOptions,
+			default: '',
 		},
 	];
 
@@ -66,33 +77,13 @@ export class AzureOpenAiApi implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		// Initialize headers with the API key
 		requestOptions.headers = { 'api-key': credentials.apiKey };
-
-		// Only add custom headers if the toggle is enabled
-		if (credentials.useCustomHeaders && credentials.customHeaders) {
-			try {
-				let customHeaders: Record<string, string>;
-
-				// Handle if customHeaders is already an object or needs parsing
-				if (typeof credentials.customHeaders === 'string') {
-					customHeaders = JSON.parse(credentials.customHeaders);
-				} else {
-					customHeaders = credentials.customHeaders as Record<string, string>;
-				}
-
-				// Add each custom header to the request
-				Object.entries(customHeaders).forEach(([name, value]) => {
-					if (name && value) {
-						requestOptions.headers![name] = value;
-					}
-				});
-			} catch (error) {
-				console.error('Failed to parse custom headers:', error);
-				// Continue without custom headers if parsing fails
-			}
+		if (credentials.header) {
+			requestOptions.headers = {
+				'api-key': credentials.apiKey,
+				[credentials.headerName as string]: credentials.headerValue,
+			};
 		}
-
 		return requestOptions;
 	}
 }
