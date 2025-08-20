@@ -19,11 +19,14 @@ import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
+import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
+import type { ApiHelpers } from '../services/api-helper';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export class n8nPage {
 	readonly page: Page;
+	readonly api: ApiHelpers;
 
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
@@ -51,9 +54,11 @@ export class n8nPage {
 	readonly workflowComposer: WorkflowComposer;
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
+	readonly start: TestEntryComposer;
 
-	constructor(page: Page) {
+	constructor(page: Page, api: ApiHelpers) {
 		this.page = page;
+		this.api = api;
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
@@ -81,6 +86,7 @@ export class n8nPage {
 		this.workflowComposer = new WorkflowComposer(this);
 		this.projectComposer = new ProjectComposer(this);
 		this.canvasComposer = new CanvasComposer(this);
+		this.start = new TestEntryComposer(this);
 	}
 
 	async goHome() {
