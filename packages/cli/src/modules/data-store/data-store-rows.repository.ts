@@ -21,7 +21,7 @@ import {
 	addColumnQuery,
 	buildInsertQuery,
 	buildUpdateQuery,
-	buildUpdateRow,
+	buildUpdateQueryWithMatchFields,
 	deleteColumnQuery,
 	getPlaceholder,
 	quoteIdentifier,
@@ -92,7 +92,13 @@ export class DataStoreRowsRepository {
 		if (rowsToUpdate.length > 0) {
 			for (const row of rowsToUpdate) {
 				// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
-				const [query, parameters] = buildUpdateQuery(tableName, row, columns, matchFields, dbType);
+				const [query, parameters] = buildUpdateQueryWithMatchFields(
+					tableName,
+					row,
+					columns,
+					matchFields,
+					dbType,
+				);
 				await this.dataSource.query(query, parameters);
 			}
 		}
@@ -106,7 +112,7 @@ export class DataStoreRowsRepository {
 		columns: DataStoreColumn[],
 	) {
 		const dbType = this.dataSource.options.type;
-		const [query, parameters] = buildUpdateRow(tableName, dto.data, dto.filter, columns, dbType);
+		const [query, parameters] = buildUpdateQuery(tableName, dto.data, dto.filter, columns, dbType);
 
 		if (query === '') {
 			return false;

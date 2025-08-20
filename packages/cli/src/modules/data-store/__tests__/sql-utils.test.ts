@@ -4,7 +4,7 @@ import {
 	addColumnQuery,
 	deleteColumnQuery,
 	buildInsertQuery,
-	buildUpdateQuery,
+	buildUpdateQueryWithMatchFields,
 	splitRowsByExistence,
 } from '../utils/sql-utils';
 
@@ -113,7 +113,7 @@ describe('sql-utils', () => {
 		});
 	});
 
-	describe('buildUpdateQuery', () => {
+	describe('buildUpdateQueryWithMatchFields', () => {
 		it('should generate a valid SQL update query with one match field', () => {
 			const tableName = 'data_store_user_abc';
 			const row = { name: 'Alice', age: 30, city: 'Paris' };
@@ -124,7 +124,12 @@ describe('sql-utils', () => {
 			];
 			const matchFields = ['name'];
 
-			const [query, parameters] = buildUpdateQuery(tableName, row, columns, matchFields);
+			const [query, parameters] = buildUpdateQueryWithMatchFields(
+				tableName,
+				row,
+				columns,
+				matchFields,
+			);
 
 			expect(query).toBe('UPDATE "data_store_user_abc" SET "age" = ?, "city" = ? WHERE "name" = ?');
 			expect(parameters).toEqual([30, 'Paris', 'Alice']);
@@ -140,7 +145,12 @@ describe('sql-utils', () => {
 			];
 			const matchFields = ['name', 'city'];
 
-			const [query, parameters] = buildUpdateQuery(tableName, row, columns, matchFields);
+			const [query, parameters] = buildUpdateQueryWithMatchFields(
+				tableName,
+				row,
+				columns,
+				matchFields,
+			);
 
 			expect(query).toBe(
 				'UPDATE "data_store_user_abc" SET "age" = ? WHERE "name" = ? AND "city" = ?',
@@ -153,7 +163,7 @@ describe('sql-utils', () => {
 			const row = {};
 			const matchFields = ['id'];
 
-			const [query, parameters] = buildUpdateQuery(tableName, row, [], matchFields);
+			const [query, parameters] = buildUpdateQueryWithMatchFields(tableName, row, [], matchFields);
 
 			expect(query).toBe('');
 			expect(parameters).toEqual([]);
@@ -168,7 +178,12 @@ describe('sql-utils', () => {
 			];
 			const matchFields: string[] = [];
 
-			const [query, parameters] = buildUpdateQuery(tableName, row, columns, matchFields);
+			const [query, parameters] = buildUpdateQueryWithMatchFields(
+				tableName,
+				row,
+				columns,
+				matchFields,
+			);
 
 			expect(query).toBe('');
 			expect(parameters).toEqual([]);
@@ -179,7 +194,7 @@ describe('sql-utils', () => {
 			const row = { id: 1 };
 			const matchFields = ['id'];
 
-			const [query, parameters] = buildUpdateQuery(tableName, row, [], matchFields);
+			const [query, parameters] = buildUpdateQueryWithMatchFields(tableName, row, [], matchFields);
 
 			expect(query).toBe('');
 			expect(parameters).toEqual([]);

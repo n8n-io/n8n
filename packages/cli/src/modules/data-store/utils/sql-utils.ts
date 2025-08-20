@@ -129,7 +129,7 @@ export function buildInsertQuery(
 	return [query, parameters];
 }
 
-function buildUpdateQueryCommon(
+export function buildUpdateQuery(
 	tableName: DataStoreUserTableName,
 	setData: Record<string, unknown>,
 	whereData: Record<string, unknown>,
@@ -166,7 +166,7 @@ function buildUpdateQueryCommon(
 	return [query, parameters];
 }
 
-export function buildUpdateQuery(
+export function buildUpdateQueryWithMatchFields(
 	tableName: DataStoreUserTableName,
 	row: Record<string, unknown>,
 	columns: Array<{ name: string; type: string }>,
@@ -185,17 +185,7 @@ export function buildUpdateQuery(
 	const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
 	const whereData = Object.fromEntries(matchFields.map((key) => [key, row[key]]));
 
-	return buildUpdateQueryCommon(tableName, setData, whereData, columns, dbType);
-}
-
-export function buildUpdateRow(
-	tableName: DataStoreUserTableName,
-	data: Record<string, unknown>,
-	filterColumns: Record<string, unknown>,
-	columns: Array<{ name: string; type: string }>,
-	dbType: DataSourceOptions['type'] = 'sqlite',
-): [string, unknown[]] {
-	return buildUpdateQueryCommon(tableName, data, filterColumns, columns, dbType);
+	return buildUpdateQuery(tableName, setData, whereData, columns, dbType);
 }
 
 export function splitRowsByExistence(
