@@ -1,3 +1,12 @@
+## [1.108.1](https://github.com/n8n-io/n8n/compare/n8n@1.108.0...n8n@1.108.1) (2025-08-20)
+
+
+### Bug Fixes
+
+* **core:** Dynamically import `@sentry/node-native` ([#18586](https://github.com/n8n-io/n8n/issues/18586)) ([4312ff2](https://github.com/n8n-io/n8n/commit/4312ff24d84cce88d01eb345e721ccb68b2a4fb5))
+
+
+
 # [1.108.0](https://github.com/n8n-io/n8n/compare/n8n@1.107.0...n8n@1.108.0) (2025-08-18)
 
 
