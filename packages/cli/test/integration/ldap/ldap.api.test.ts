@@ -467,6 +467,9 @@ describe('POST /ldap/sync', () => {
 				expect.stringContaining(`LDAP - Invalid email format for user ${invalidLdapUser.uid}`),
 			);
 
+			loggerSpy.mockReset();
+			loggerSpy.mockRestore();
+
 			// Verify only valid user was created
 			const allUsers = await getAllUsers();
 			expect(allUsers.length).toBe(2); // owner + valid user
@@ -510,6 +513,9 @@ describe('POST /ldap/sync', () => {
 			expect(loggerSpy).toHaveBeenCalledWith(
 				expect.stringContaining(`LDAP - Invalid email format for user ${originalUserId}`),
 			);
+
+			loggerSpy.mockReset();
+			loggerSpy.mockRestore();
 
 			// Verify user still has original email
 			const localLdapIdentities = await getLdapIdentities();

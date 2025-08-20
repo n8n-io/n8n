@@ -351,7 +351,7 @@ export class LdapService {
 
 		const filteredUsersToCreate = usersToCreate.filter(([id, user]) => {
 			if (!isValidEmail(user.email)) {
-				this.logger.error(`LDAP - Invalid email format for user ${id}`);
+				this.logger.warn(`LDAP - Invalid email format for user ${id}`);
 				return false;
 			}
 			return true;
@@ -359,7 +359,7 @@ export class LdapService {
 
 		const filteredUsersToUpdate = usersToUpdate.filter(([id, user]) => {
 			if (!isValidEmail(user.email)) {
-				this.logger.error(`LDAP - Invalid email format for user ${id}`);
+				this.logger.warn(`LDAP - Invalid email format for user ${id}`);
 				return false;
 			}
 			return true;
