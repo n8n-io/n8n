@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import orderBy from 'lodash/orderBy';
 import type {
 	DataStore,
@@ -38,11 +38,7 @@ import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumn
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import {
-	DEFAULT_ID_COLUMN_NAME,
-	DEFAULT_ID_COLUMN_WIDTH,
-	NO_TABLE_YET_MESSAGE,
-} from '@/features/dataStore/constants';
+import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
@@ -109,16 +105,6 @@ const totalItems = ref(0);
 
 // Data store content
 const rows = ref<DataStoreRow[]>([]);
-
-const noUserColumns = computed(() => {
-	return props.dataStore.columns.length === 0;
-});
-
-const addRowButtonTooltip = computed(() => {
-	return noUserColumns.value
-		? i18n.baseText('dataStore.addRow.disabled.tooltip')
-		: i18n.baseText('dataStore.addRow.label');
-});
 
 const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
@@ -226,11 +212,6 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 			return params.data?.[col.name];
 		},
 	};
-	// Make id column narrower
-	if (col.name === DEFAULT_ID_COLUMN_NAME) {
-		columnDef.width = DEFAULT_ID_COLUMN_WIDTH;
-		columnDef.flex = 0;
-	}
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
 		columnDef.cellEditor = 'agLargeTextCellEditor';
@@ -348,11 +329,7 @@ const fetchDataStoreContent = async () => {
 		totalItems.value = fetchedRows.count;
 		rowData.value = rows.value;
 	} catch (error) {
-		// TODO: We currently don't create user tables until user columns or rows are added
-		// so we need to ignore NO_TABLE_YET_MESSAGE error here
-		if ('message' in error && !error.message.includes(NO_TABLE_YET_MESSAGE)) {
-			toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));
-		}
+		toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));
 	} finally {
 		contentLoading.value = false;
 		if (gridApi.value) {
@@ -402,13 +379,12 @@ onMounted(async () => {
 			/>
 		</div>
 		<div :class="$style.footer">
-			<n8n-tooltip :content="addRowButtonTooltip">
+			<n8n-tooltip :content="i18n.baseText('dataStore.addRow.label')">
 				<n8n-icon-button
 					data-test-id="data-store-add-row-button"
 					icon="plus"
 					class="mb-xl"
 					type="secondary"
-					:disabled="noUserColumns"
 					@click="onAddRowClick"
 				/>
 			</n8n-tooltip>
