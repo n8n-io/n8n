@@ -2,8 +2,11 @@ import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n
 
 export class AzureOpenAiApi implements ICredentialType {
 	name = 'azureOpenAiApi';
+
 	displayName = 'Azure Open AI';
+
 	documentationUrl = 'azureopenai';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
