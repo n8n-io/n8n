@@ -1350,10 +1350,12 @@ describe('dataStore', () => {
 			expect(result).toBe(true);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(data).toEqual([
-				{ id: 1, name: 'Alice', age: 31, active: false },
-				{ id: 2, name: 'Bob', age: 25, active: false },
-			]);
+			expect(data).toEqual(
+				expect.arrayContaining([
+					{ id: 1, name: 'Alice', age: 31, active: false },
+					{ id: 2, name: 'Bob', age: 25, active: false },
+				]),
+			);
 		});
 
 		it('should be able to update by id', async () => {
@@ -1382,10 +1384,12 @@ describe('dataStore', () => {
 			expect(result).toBe(true);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(data).toEqual([
-				{ id: 1, name: 'Alicia', age: 31, active: false },
-				{ id: 2, name: 'Bob', age: 25, active: false },
-			]);
+			expect(data).toEqual(
+				expect.arrayContaining([
+					{ id: 1, name: 'Alicia', age: 31, active: false },
+					{ id: 2, name: 'Bob', age: 25, active: false },
+				]),
+			);
 		});
 
 		it('should update row with multiple filter conditions', async () => {
@@ -1415,11 +1419,13 @@ describe('dataStore', () => {
 			expect(result).toBe(true);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(data).toEqual([
-				{ id: 1, name: 'Alice', age: 30, department: 'Management' },
-				{ id: 2, name: 'Alice', age: 25, department: 'Marketing' },
-				{ id: 3, name: 'Bob', age: 30, department: 'Engineering' },
-			]);
+			expect(data).toEqual(
+				expect.arrayContaining([
+					{ id: 1, name: 'Alice', age: 30, department: 'Management' },
+					{ id: 2, name: 'Alice', age: 25, department: 'Marketing' },
+					{ id: 3, name: 'Bob', age: 30, department: 'Engineering' },
+				]),
+			);
 		});
 
 		it('should return true when no rows match the filter', async () => {

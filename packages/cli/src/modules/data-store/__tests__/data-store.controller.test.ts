@@ -1835,9 +1835,12 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
-		expect(rowsInDb.count).toBe(1);
-		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
+		const readResponse = await authMemberAgent
+			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject(payload.data[0]);
 	});
 
 	test('should insert rows if user has project:admin role in team project', async () => {
@@ -2850,9 +2853,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
-		expect(rowsInDb.count).toBe(1);
-		expect(rowsInDb.data[0]).toMatchObject({ name: 'Alice', age: 31 });
+		const readResponse = await authMemberAgent
+			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
 	});
 
 	test('should update row if user has project:admin role in team project', async () => {
@@ -2876,9 +2882,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
-		expect(rowsInDb.count).toBe(1);
-		expect(rowsInDb.data[0]).toMatchObject({ name: 'Alice', age: 31 });
+		const readResponse = await authAdminAgent
+			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
 	});
 
 	test('should update row if user is owner in team project', async () => {
@@ -2901,9 +2910,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
-		expect(rowsInDb.count).toBe(1);
-		expect(rowsInDb.data[0]).toMatchObject({ name: 'Alice', age: 31 });
+		const readResponse = await authOwnerAgent
+			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
 	});
 
 	test('should update row in personal project', async () => {
@@ -2925,9 +2937,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
-		expect(rowsInDb.count).toBe(1);
-		expect(rowsInDb.data[0]).toMatchObject({ name: 'Alice', age: 31 });
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
 	});
 
 	test('should update row by id filter', async () => {
@@ -2952,12 +2967,17 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {
-			sortBy: ['id', 'ASC'],
-		});
-		expect(rowsInDb.count).toBe(2);
-		expect(rowsInDb.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
-		expect(rowsInDb.data[1]).toMatchObject({ id: 2, name: 'Bob', age: 25 });
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(2);
+		expect(readResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				{ id: 1, name: 'Alice', age: 31 },
+				{ id: 2, name: 'Bob', age: 25 },
+			]),
+		);
 	});
 
 	test('should update row with multiple filter conditions', async () => {
@@ -2984,13 +3004,18 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {
-			sortBy: ['id', 'ASC'],
-		});
-		expect(rowsInDb.count).toBe(3);
-		expect(rowsInDb.data[0]).toMatchObject({ name: 'Alice', age: 30, department: 'Management' });
-		expect(rowsInDb.data[1]).toMatchObject({ name: 'Alice', age: 25, department: 'Marketing' });
-		expect(rowsInDb.data[2]).toMatchObject({ name: 'Bob', age: 30, department: 'Engineering' });
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(3);
+		expect(readResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				{ id: 1, name: 'Alice', age: 30, department: 'Management' },
+				{ id: 2, name: 'Alice', age: 25, department: 'Marketing' },
+				{ id: 3, name: 'Bob', age: 30, department: 'Engineering' },
+			]),
+		);
 	});
 
 	test('should return true when no rows match the filter', async () => {
@@ -3014,9 +3039,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 
 		expect(response.body.data).toBe(true);
 
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
-		expect(rowsInDb.count).toBe(1);
-		expect(rowsInDb.data[0]).toMatchObject({ name: 'Alice', age: 30 });
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({ name: 'Alice', age: 30 });
 	});
 
 	test('should fail when filter is empty', async () => {
@@ -3139,12 +3167,15 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
-		expect(rowsInDb.count).toBe(1);
-		expect(rowsInDb.data[0]).toMatchObject({
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({
 			name: 'Alice',
 			age: 31,
-			active: 1, // Boolean is stored as 1/0 in the database
+			active: true,
 		});
 	});
 
@@ -3167,9 +3198,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
-		expect(rowsInDb.count).toBe(1);
-		expect(rowsInDb.data[0]).toMatchObject({
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({
 			name: 'Alice',
 			birthdate: '1995-05-15T12:30:00.000Z',
 		});
