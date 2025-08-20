@@ -121,13 +121,13 @@ Violations are categorized by severity:
 
 ```bash
 # Run with default settings
-pnpm evaluate
+pnpm eval
 
 # With additional generated test cases
-GENERATE_TEST_CASES=true pnpm evaluate
+GENERATE_TEST_CASES=true pnpm eval
 
 # With custom concurrency
-EVALUATION_CONCURRENCY=10 pnpm evaluate
+EVALUATION_CONCURRENCY=10 pnpm eval
 ```
 
 ### Langsmith Evaluation
@@ -135,13 +135,11 @@ EVALUATION_CONCURRENCY=10 pnpm evaluate
 ```bash
 # Set required environment variables
 export LANGSMITH_API_KEY=your_api_key
-export USE_LANGSMITH_EVAL=true
-
 # Optionally specify dataset
 export LANGSMITH_DATASET_NAME=your_dataset_name
 
 # Run evaluation
-pnpm evaluate
+pnpm eval:langsmith
 ```
 
 ## Configuration

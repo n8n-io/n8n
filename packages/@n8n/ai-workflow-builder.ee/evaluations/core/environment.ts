@@ -127,5 +127,5 @@ export function howManyTestCasesToGenerate(): number {
 			return parsed;
 		}
 	}
-	return 10; // Default to 5 if not specified
+	return 10; // Default to 10 if not specified
 }
