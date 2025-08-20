@@ -284,6 +284,7 @@ const onAddRowClick = async () => {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 	} finally {
 		emit('toggleSave', false);
+		contentLoading.value = false;
 	}
 };
 
