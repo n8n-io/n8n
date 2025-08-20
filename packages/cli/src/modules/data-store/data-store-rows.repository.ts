@@ -2,7 +2,6 @@ import type {
 	ListDataStoreContentQueryDto,
 	ListDataStoreContentFilter,
 	DataStoreUserTableName,
-	DataStoreRows,
 	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
 import { CreateTable, DslColumn } from '@n8n/db';
@@ -27,6 +26,7 @@ import {
 	toDslColumns,
 	toTableName,
 } from './utils/sql-utils';
+import { DataStoreRows } from 'n8n-workflow';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
@@ -37,7 +37,7 @@ function getConditionAndParams(
 	dbType: DataSourceOptions['type'],
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
-	const column = `dataStore.${quoteIdentifier(filter.columnName, dbType)}`;
+	const column = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(filter.columnName, dbType)}`;
 
 	switch (filter.condition) {
 		case 'eq':
@@ -98,6 +98,20 @@ export class DataStoreRowsRepository {
 		return true;
 	}
 
+	async deleteRows(tableName: DataStoreUserTableName, ids: number[]) {
+		if (ids.length === 0) {
+			return true;
+		}
+
+		const dbType = this.dataSource.options.type;
+		const quotedTableName = quoteIdentifier(tableName, dbType);
+		const placeholders = ids.map((_, index) => getPlaceholder(index + 1, dbType)).join(', ');
+		const query = `DELETE FROM ${quotedTableName} WHERE id IN (${placeholders})`;
+
+		await this.dataSource.query(query, ids);
+		return true;
+	}
+
 	async createTableWithColumns(
 		tableName: string,
 		columns: DataStoreColumn[],
@@ -109,19 +123,14 @@ export class DataStoreRowsRepository {
 		await createTable.execute(queryRunner);
 	}
 
-	async ensureTableAndAddColumn(
+	async addColumn(
 		dataStoreId: string,
 		column: DataStoreColumn,
 		queryRunner: QueryRunner,
 		dbType: DataSourceOptions['type'],
 	) {
 		const tableName = toTableName(dataStoreId);
-		const tableExists = await queryRunner.hasTable(tableName);
-		if (!tableExists) {
-			await this.createTableWithColumns(tableName, [column], queryRunner);
-		} else {
-			await queryRunner.manager.query(addColumnQuery(tableName, column, dbType));
-		}
+		await queryRunner.manager.query(addColumnQuery(tableName, column, dbType));
 	}
 
 	async dropColumnFromTable(
@@ -135,7 +144,7 @@ export class DataStoreRowsRepository {
 
 	async getManyAndCount(dataStoreId: DataStoreUserTableName, dto: ListDataStoreContentQueryDto) {
 		const [countQuery, query] = this.getManyQuery(dataStoreId, dto);
-		const data: Array<Record<string, unknown>> = await query.select('*').getRawMany();
+		const data: DataStoreRows = await query.select('*').getRawMany();
 		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 			count: number | string | null;
 		}>();
@@ -185,7 +194,6 @@ export class DataStoreRowsRepository {
 
 	private applySorting(query: QueryBuilder, dto: ListDataStoreContentQueryDto): void {
 		if (!dto.sortBy) {
-			// query.orderBy('dataStore.', 'DESC');
 			return;
 		}
 
@@ -195,7 +203,7 @@ export class DataStoreRowsRepository {
 
 	private applySortingByField(query: QueryBuilder, field: string, direction: 'DESC' | 'ASC'): void {
 		const dbType = this.dataSource.options.type;
-		const quotedField = `dataStore.${quoteIdentifier(field, dbType)}`;
+		const quotedField = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(field, dbType)}`;
 		query.orderBy(quotedField, direction);
 	}
 

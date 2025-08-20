@@ -1,5 +1,4 @@
-import type { AuthPrincipal } from '@n8n/permissions';
-import { GlobalRole } from '@n8n/permissions';
+import type { AuthPrincipal, GlobalRole } from '@n8n/permissions';
 import {
 	AfterLoad,
 	AfterUpdate,

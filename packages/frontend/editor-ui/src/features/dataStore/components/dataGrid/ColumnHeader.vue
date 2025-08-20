@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import type { IHeaderParams } from 'ag-grid-community';
-import {
-	mapToDataStoreColumnType,
-	useDataStoreTypes,
-} from '@/features/dataStore/composables/useDataStoreTypes';
-import type { AGGridCellType } from '@/features/dataStore/datastore.types';
+import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { ref, computed } from 'vue';
+import { useI18n } from '@n8n/i18n';
+import { isAGGridCellType } from '@/features/dataStore/typeGuards';
 
 type HeaderParamsWithDelete = IHeaderParams & {
 	onDelete: (columnId: string) => void;
@@ -15,7 +13,8 @@ const props = defineProps<{
 	params: HeaderParamsWithDelete;
 }>();
 
-const { getIconForType } = useDataStoreTypes();
+const { getIconForType, mapToDataStoreColumnType } = useDataStoreTypes();
+const i18n = useI18n();
 
 const isHovered = ref(false);
 const isDropdownOpen = ref(false);
@@ -45,6 +44,23 @@ const onDropdownVisibleChange = (visible: boolean) => {
 const isDropdownVisible = computed(() => {
 	return isHovered.value || isDropdownOpen.value;
 });
+
+const typeIcon = computed(() => {
+	const cellDataType = props.params.column.getColDef().cellDataType;
+	if (!isAGGridCellType(cellDataType)) {
+		return null;
+	}
+	return getIconForType(mapToDataStoreColumnType(cellDataType));
+});
+
+const columnActionItems = [
+	{
+		id: ItemAction.Delete,
+		label: i18n.baseText('dataStore.deleteColumn.confirm.title'),
+		icon: 'trash-2',
+		customClass: 'data-store-column-header-action-item',
+	} as const,
+];
 </script>
 <template>
 	<div
@@ -54,15 +70,7 @@ const isDropdownVisible = computed(() => {
 		@mouseleave="onMouseLeave"
 	>
 		<div class="data-store-column-header-icon-wrapper">
-			<N8nIcon
-				:icon="
-					getIconForType(
-						mapToDataStoreColumnType(
-							props.params.column.getColDef().cellDataType as AGGridCellType,
-						),
-					)
-				"
-			/>
+			<N8nIcon v-if="typeIcon" :icon="typeIcon" />
 			<span class="ag-header-cell-text" data-test-id="data-store-column-header-text">{{
 				props.params.displayName
 			}}</span>
@@ -70,14 +78,7 @@ const isDropdownVisible = computed(() => {
 		<N8nActionDropdown
 			v-show="isDropdownVisible"
 			data-test-id="data-store-column-header-actions"
-			:items="[
-				{
-					id: ItemAction.Delete,
-					label: 'Delete column',
-					icon: 'trash-2',
-					customClass: 'data-store-column-header-action-item',
-				},
-			]"
+			:items="columnActionItems"
 			:placement="'bottom-start'"
 			:activator-icon="'ellipsis'"
 			@select="onItemClick"

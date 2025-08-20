@@ -51,6 +51,11 @@ export type DataStoreListOptions = Partial<ListDataStoreQueryDto> & {
 	filter: { projectId: string };
 };
 
-export type DataStoreColumnJsType = string | number | boolean | Date;
+export const dateTimeSchema = z
+	.string()
+	.datetime({ offset: true })
+	.transform((s) => new Date(s))
+	.pipe(z.date());
 
-export type DataStoreRows = Array<Record<string, DataStoreColumnJsType | null>>;
+// Dates are received as date strings and validated before insertion
+export const dataStoreColumnValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
