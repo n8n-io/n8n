@@ -56,7 +56,7 @@ const onRename = () => {
 				</template>
 				<template #header>
 					<div :class="$style['card-header']" @click.prevent>
-						<n8n-text tag="h2" bold class="$style['card-name']" data-test-id="data-store-card-name">
+						<n8n-text tag="h2" bold data-test-id="data-store-card-name">
 							{{ props.dataStore.name }}
 						</n8n-text>
 						<N8nBadge v-if="props.readOnly" class="ml-3xs" theme="tertiary" bold>
@@ -132,12 +132,6 @@ const onRename = () => {
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
 	}
-}
-
-.card-name {
-	color: $custom-font-dark;
-	font-size: var(--font-size-m);
-	margin-bottom: var(--spacing-5xs);
 }
 
 .card-icon {
