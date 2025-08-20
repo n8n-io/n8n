@@ -1,12 +1,11 @@
 import {
 	DATA_STORE_COLUMN_REGEX,
-	type DataStoreRows,
 	type DataStoreCreateColumnSchema,
 	type DataStoreColumn,
 } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, type DataStoreRows } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
