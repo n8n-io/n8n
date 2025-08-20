@@ -109,6 +109,38 @@ describe('RunDataTable.vue', () => {
 		});
 	});
 
+	it('renders null values in italics', () => {
+		const inputData = [
+			{
+				json: { emptyObject: {} },
+			},
+			{
+				json: { emptyString: '' },
+			},
+			{
+				json: { null: null },
+			},
+			{
+				json: { nullArray: [null] },
+			},
+			{
+				json: { arrayWithNull: [1, 2, null, 'b'] },
+			},
+			{
+				json: { objectWithNull: { a: 1, b: null, c: 'boo' } },
+			},
+		];
+
+		const { getAllByText } = renderComponent({
+			props: { inputData },
+		});
+
+		const nullValues = getAllByText(/null|empty/i); // returns HTML span elements that do not have the style applied!
+		getAllByText(/null|empty/i).forEach((element) => {
+			expect(element).toHaveStyle('font-style: italic;');
+		});
+	});
+
 	it('inserts col elements in DOM to specify column widths when collapsing column name is specified', async () => {
 		const inputData = { json: { firstName: 'John', lastName: 'Doe' } };
 		const rendered = renderComponent({
