@@ -18,7 +18,19 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const dataStoreProxy = await getDataStoreProxy(this, index);
-	// todo: pagination
-	const response = await dataStoreProxy.getManyRowsAndCount({});
-	return response.data.map((json) => ({ json }));
+	let take = 1000;
+	const result: INodeExecutionData[] = [];
+	do {
+		const response = await dataStoreProxy.getManyRowsAndCount({ skip: result.length, take });
+		const data = response.data.map((json) => ({ json }));
+
+		// Optimize common path of <1000 results
+		if (response.count === response.data.length) {
+			return response.data.map((json) => ({ json }));
+		}
+
+		result.push.apply(result, data);
+		take = Math.min(response.count - result.length, take);
+	} while (take > 0);
+	return result;
 }
