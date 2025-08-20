@@ -13,6 +13,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { CanvasNodeData } from '@/types';
 import { N8nButton, N8nHeading, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
@@ -374,6 +375,16 @@ const modifiers = [
 		},
 	},
 ];
+
+// prevent the current execution from leaking into the workflowDiff
+const defaultState: Partial<CanvasNodeData> = {
+	issues: { items: [], visible: false },
+	pinnedData: { count: 0, visible: false },
+	execution: {
+		running: false,
+	},
+	runData: { iterations: 0, outputMap: {}, visible: false },
+};
 </script>
 
 <template>
@@ -582,7 +593,11 @@ const modifiers = [
 									:connections="source.connections"
 								>
 									<template #node="{ nodeProps }">
-										<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
+										<Node
+											v-bind="nodeProps"
+											:data="{ ...nodeProps.data, ...defaultState }"
+											:class="{ [getNodeStatusClass(nodeProps.id)]: true }"
+										>
 											<template #toolbar />
 										</Node>
 									</template>
@@ -635,7 +650,11 @@ const modifiers = [
 									:connections="target.connections"
 								>
 									<template #node="{ nodeProps }">
-										<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
+										<Node
+											v-bind="nodeProps"
+											:data="{ ...nodeProps.data, ...defaultState }"
+											:class="{ [getNodeStatusClass(nodeProps.id)]: true }"
+										>
 											<template #toolbar />
 										</Node>
 									</template>
