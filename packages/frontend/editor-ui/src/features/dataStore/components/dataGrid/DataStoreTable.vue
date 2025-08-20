@@ -160,8 +160,8 @@ const onDeleteColumn = async (columnId: string) => {
 			props.dataStore.projectId,
 			columnId,
 		);
-	} catch (error: unknown) {
-		toast.showError(error as Error, i18n.baseText('dataStore.deleteColumn.error'));
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.deleteColumn.error'));
 		colDefs.value.splice(columnToDeleteIndex, 0, columnToDelete);
 		rowData.value = rowDataOldValue;
 		refreshGridData();

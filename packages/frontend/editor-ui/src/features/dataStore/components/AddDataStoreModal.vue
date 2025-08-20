@@ -43,11 +43,10 @@ const onSubmit = async () => {
 				id: newDataStore.id,
 			},
 		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('dataStore.add.error'));
-	} finally {
 		dataStoreName.value = '';
 		uiStore.closeModal(props.modalName);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.add.error'));
 	}
 };
 
@@ -57,6 +56,7 @@ const onCancel = () => {
 };
 
 const redirectToDataStores = () => {
+	console.log('before close');
 	void router.replace({ name: PROJECT_DATA_STORES });
 };
 </script>
