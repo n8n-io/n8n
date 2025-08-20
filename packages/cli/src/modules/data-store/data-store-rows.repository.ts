@@ -58,11 +58,10 @@ export class DataStoreRowsRepository {
 		columns: DataStoreColumn[],
 	) {
 		const dbType = this.dataSource.options.type;
-		await this.dataSource.query.apply(
+		return (await this.dataSource.query.apply(
 			this.dataSource,
 			buildInsertQuery(tableName, rows, columns, dbType),
-		);
-		return true;
+		)) as number;
 	}
 
 	async upsertRows(
