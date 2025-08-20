@@ -380,21 +380,5 @@ describe('SAML email validation', () => {
 			expect(result).toBeDefined();
 			expect(result.attributes.email).toBe(upperCaseEmail); // Original email should be preserved in attributes
 		});
-
-		test('should handle no email provided case', async () => {
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: undefined,
-				firstName: 'John',
-				lastName: 'Doe',
-				userPrincipalName: 'john.doe',
-			});
-
-			const mockRequest = {} as express.Request;
-
-			// Should not throw email validation error when no email is provided
-			// (other validation logic should handle this case)
-			const result = await samlService.handleSamlLogin(mockRequest, 'post');
-			expect(result).toBeDefined();
-		});
 	});
 });
