@@ -1,0 +1,59 @@
+import type { INodeProperties } from 'n8n-workflow';
+
+import * as get from './get.operation';
+import * as insert from './insert.operation';
+
+export { insert, get };
+
+export const description: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				resource: ['row'],
+			},
+		},
+		options: [
+			// 	{
+			// 		name: 'Create or Update',
+			// 		value: 'upsert',
+			// 		description: 'Create a new record, or update the current one if it already exists (upsert)',
+			// 		action: 'Create or update a row',
+			// 	},
+			// 	{
+			// 		name: 'Delete',
+			// 		value: 'delete',
+			// 		description: 'Delete a row',
+			// 		action: 'Delete a row',
+			// 	},
+			{
+				name: 'Get',
+				value: get.FIELD,
+				description: 'Get a row',
+				action: 'Get a row',
+			},
+			// 	{
+			// 		name: 'Get Many',
+			// 		value: 'getAll',
+			// 		description: 'Get many rows',
+			// 		action: 'Get many rows',
+			// 	},
+			{
+				name: 'Insert',
+				value: insert.FIELD,
+				description: 'Insert a new row',
+				action: 'Insert a row',
+			},
+		],
+		default: 'insert',
+	},
+
+	...insert.description,
+	...get.description,
+	// ...getMany.description,
+	// ...load.description,
+	// ...upload.description,
+];

@@ -1,18 +1,17 @@
 import type {
-	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	INodeExecutionData,
 	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { rowOperations, rowFields } from './RowDescription';
+import { router } from './actions/router';
+import * as row from './actions/row/Row.resource';
+import { DATA_STORE_ID_FIELD } from './common/fields';
 
 // TODO: hide this node
 export class DataStore implements INodeType {
@@ -45,8 +44,7 @@ export class DataStore implements INodeType {
 				],
 				default: 'row',
 			},
-			...rowOperations,
-			...rowFields,
+			...row.description,
 		],
 	};
 
@@ -56,7 +54,7 @@ export class DataStore implements INodeType {
 				if (this.helpers.getDataStoreAggregateProxy === undefined) return { results: [] };
 
 				const proxy = await this.helpers.getDataStoreAggregateProxy();
-				const result = await proxy.getManyAndCount({ take: 10000 });
+				const result = await proxy.getManyAndCount({ take: 1000000 });
 
 				const results = result.data.map((row) => {
 					return {
@@ -74,7 +72,9 @@ export class DataStore implements INodeType {
 			async getColumns(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 				if (this.helpers.getDataStoreProxy === undefined) return { fields: [] };
 
-				const dataStoreId = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
+				const dataStoreId = this.getNodeParameter(DATA_STORE_ID_FIELD, '', {
+					extractValue: true,
+				}) as string;
 				const proxy = await this.helpers.getDataStoreProxy(dataStoreId);
 				const result = await proxy.getColumns();
 
@@ -101,64 +101,6 @@ export class DataStore implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		const items = this.getInputData();
-		if (this.helpers.getDataStoreProxy === undefined) return [items];
-
-		const returnData: INodeExecutionData[] = [];
-		const length = items.length;
-		const resource = this.getNodeParameter('resource', 0, 'table');
-		const operation = this.getNodeParameter('operation', 0, 'create');
-
-		for (let i = 0; i < length; i++) {
-			try {
-				if (resource === 'row') {
-					const tableId = this.getNodeParameter('tableId', i, '', {
-						extractValue: true,
-					}) as string;
-					const dataStoreProxy = await this.helpers.getDataStoreProxy(tableId);
-					if (operation === 'insert') {
-						const dataMode = this.getNodeParameter('columns.mappingMode', 0) as string;
-
-						let data: IDataObject;
-
-						if (dataMode === 'autoMapInputData') {
-							data = items[i].json;
-						} else {
-							const fields = this.getNodeParameter('columns.value', i, {}) as IDataObject;
-
-							data = fields;
-						}
-						const response = await dataStoreProxy.insertRows([data as never]);
-						if (response)
-							returnData.push({
-								json: data,
-							});
-					}
-					if (operation === 'get') {
-						const response = await dataStoreProxy.getManyRowsAndCount({});
-
-						(response?.data ?? []).forEach((item) => {
-							returnData.push({
-								json: item,
-							});
-						});
-					}
-				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({
-						json: {
-							error: (error as JsonObject).message,
-						},
-						pairedItem: {
-							item: i,
-						},
-					});
-					continue;
-				}
-				throw error;
-			}
-		}
-		return [returnData];
+		return await router.call(this);
 	}
 }
