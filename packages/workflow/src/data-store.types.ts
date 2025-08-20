@@ -101,7 +101,7 @@ export interface IDataStoreProjectService {
 		dto: Partial<ListDataStoreRowsOptions>,
 	): Promise<{ count: number; data: DataStoreRows }>;
 
-	insertRows(rows: DataStoreRows): Promise<boolean>;
+	insertRows(rows: DataStoreRows): Promise<number[]>;
 
 	upsertRows(options: UpsertDataStoreRowsOptions): Promise<boolean>;
 }
