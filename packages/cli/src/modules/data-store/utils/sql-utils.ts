@@ -120,6 +120,43 @@ export function buildInsertQuery(
 	return [query, parameters];
 }
 
+function buildUpdateQueryCommon(
+	tableName: DataStoreUserTableName,
+	setData: Record<string, unknown>,
+	whereData: Record<string, unknown>,
+	columns: Array<{ name: string; type: string }>,
+	dbType: DataSourceOptions['type'],
+): [string, unknown[]] {
+	if (Object.keys(setData).length === 0 || Object.keys(whereData).length === 0) {
+		return ['', []];
+	}
+
+	const quotedTableName = quoteIdentifier(tableName, dbType);
+	const columnTypeMap = buildColumnTypeMap(columns);
+
+	const parameters: unknown[] = [];
+	let placeholderIndex = 1;
+
+	const setClause = Object.keys(setData)
+		.map((key) => {
+			const value = normalizeValue(setData[key], columnTypeMap[key], dbType);
+			parameters.push(value);
+			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
+		})
+		.join(', ');
+
+	const whereClause = Object.keys(whereData)
+		.map((key) => {
+			const value = normalizeValue(whereData[key], columnTypeMap[key], dbType);
+			parameters.push(value);
+			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
+		})
+		.join(' AND ');
+
+	const query = `UPDATE ${quotedTableName} SET ${setClause} WHERE ${whereClause}`;
+	return [query, parameters];
+}
+
 export function buildUpdateQuery(
 	tableName: DataStoreUserTableName,
 	row: Record<string, unknown>,
@@ -136,30 +173,20 @@ export function buildUpdateQuery(
 		return ['', []];
 	}
 
-	const quotedTableName = quoteIdentifier(tableName, dbType);
-	const columnTypeMap = buildColumnTypeMap(columns);
+	const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
+	const whereData = Object.fromEntries(matchFields.map((key) => [key, row[key]]));
 
-	const parameters: unknown[] = [];
-	let placeholderIndex = 1;
+	return buildUpdateQueryCommon(tableName, setData, whereData, columns, dbType);
+}
 
-	const setClause = updateKeys
-		.map((key) => {
-			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
-			parameters.push(value);
-			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
-		})
-		.join(', ');
-
-	const whereClause = matchFields
-		.map((key) => {
-			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
-			parameters.push(value);
-			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
-		})
-		.join(' AND ');
-
-	const query = `UPDATE ${quotedTableName} SET ${setClause} WHERE ${whereClause}`;
-	return [query, parameters];
+export function buildUpdateRow(
+	tableName: DataStoreUserTableName,
+	data: Record<string, unknown>,
+	filterColumns: Record<string, unknown>,
+	columns: Array<{ name: string; type: string }>,
+	dbType: DataSourceOptions['type'] = 'sqlite',
+): [string, unknown[]] {
+	return buildUpdateQueryCommon(tableName, data, filterColumns, columns, dbType);
 }
 
 export function splitRowsByExistence(
@@ -273,7 +300,7 @@ export function getPlaceholder(index: number, dbType: DataSourceOptions['type'])
 	return dbType.includes('postgres') ? `$${index}` : '?';
 }
 
-function buildColumnTypeMap(
+export function buildColumnTypeMap(
 	columns: Array<{ name: string; type: string }>,
 ): Record<string, string> {
 	return Object.fromEntries(columns.map((col) => [col.name, col.type]));

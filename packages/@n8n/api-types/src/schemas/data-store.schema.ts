@@ -62,4 +62,6 @@ export const dataStoreColumnValueSchema = z.union([z.string(), z.number(), z.boo
 
 export type DataStoreColumnJsType = string | number | boolean | Date;
 
-export type DataStoreRows = Array<Record<string, DataStoreColumnJsType | null>>;
+export type DataStoreRow = Record<string, DataStoreColumnJsType | null>;
+
+export type DataStoreRows = DataStoreRow[];

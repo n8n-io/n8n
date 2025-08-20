@@ -8,6 +8,7 @@ import type {
 	DataStoreRows,
 	UpsertDataStoreRowsDto,
 	UpdateDataStoreDto,
+	UpdateDataStoreRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -20,6 +21,7 @@ import { DataStoreNameConflictError } from './errors/data-store-name-conflict.er
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { toTableName, normalizeRows } from './utils/sql-utils';
+import { DataStoreRow } from '@n8n/api-types/src/schemas/data-store.schema';
 
 @Service()
 export class DataStoreService {
@@ -144,13 +146,55 @@ export class DataStoreService {
 		return await this.dataStoreRowsRepository.upsertRows(toTableName(dataStoreId), dto, columns);
 	}
 
+	async updateRow(dataStoreId: string, projectId: string, dto: UpdateDataStoreRowDto) {
+		await this.validateDataStoreExists(dataStoreId, projectId);
+
+		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+
+		this.validateRowsWithColumns([dto.filter], columns, true, true);
+		this.validateRowsWithColumns([dto.data], columns, true, false);
+
+		return await this.dataStoreRowsRepository.updateRow(toTableName(dataStoreId), dto, columns);
+	}
+
 	async deleteRows(dataStoreId: string, projectId: string, ids: number[]) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
 		return await this.dataStoreRowsRepository.deleteRows(toTableName(dataStoreId), ids);
 	}
 
-	private async validateRows(dataStoreId: string, rows: DataStoreRows): Promise<void> {
+	private validateRowsWithColumns(
+		rows: DataStoreRows,
+		columns: Array<{ name: string; type: string }>,
+		allowPartial = false,
+		includeSystemColumns = false,
+	): void {
+		// Include system columns like 'id' if requested
+		const allColumns = includeSystemColumns
+			? [{ name: 'id', type: 'number' }, ...columns]
+			: columns;
+		const columnNames = new Set(allColumns.map((x) => x.name));
+		const columnTypeMap = new Map(allColumns.map((x) => [x.name, x.type]));
+		for (const row of rows) {
+			const keys = Object.keys(row);
+			if (!allowPartial && columnNames.size !== keys.length) {
+				throw new DataStoreValidationError('mismatched key count');
+			}
+			for (const key of keys) {
+				if (!columnNames.has(key)) {
+					throw new DataStoreValidationError('unknown column name');
+				}
+				this.validateCell(row, key, columnTypeMap);
+			}
+		}
+	}
+
+	private async validateRows(
+		dataStoreId: string,
+		rows: DataStoreRows,
+		allowPartial = false,
+		includeSystemColumns = false,
+	): Promise<void> {
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 		if (columns.length === 0) {
 			throw new DataStoreValidationError(
@@ -158,56 +202,49 @@ export class DataStoreService {
 			);
 		}
 
-		const columnNames = new Set(columns.map((x) => x.name));
-		const columnTypeMap = new Map(columns.map((x) => [x.name, x.type]));
-		for (const row of rows) {
-			const keys = Object.keys(row);
-			if (columns.length !== keys.length) {
-				throw new DataStoreValidationError('mismatched key count');
-			}
-			for (const key of keys) {
-				if (!columnNames.has(key)) {
-					throw new DataStoreValidationError('unknown column name');
-				}
-				const cell = row[key];
-				if (cell === null) continue;
-				switch (columnTypeMap.get(key)) {
-					case 'boolean':
-						if (typeof cell !== 'boolean') {
-							throw new DataStoreValidationError(
-								`value '${cell.toString()}' does not match column type 'boolean'`,
-							);
-						}
-						break;
-					case 'date':
-						if (typeof cell === 'string') {
-							const validated = dateTimeSchema.safeParse(cell);
-							if (validated.success) {
-								row[key] = validated.data.toISOString();
-								break;
-							}
-						} else if (cell instanceof Date) {
-							row[key] = cell.toISOString();
-							break;
-						}
+		this.validateRowsWithColumns(rows, columns, allowPartial, includeSystemColumns);
+	}
 
-						throw new DataStoreValidationError(`value '${cell}' does not match column type 'date'`);
-					case 'string':
-						if (typeof cell !== 'string') {
-							throw new DataStoreValidationError(
-								`value '${cell.toString()}' does not match column type 'string'`,
-							);
-						}
-						break;
-					case 'number':
-						if (typeof cell !== 'number') {
-							throw new DataStoreValidationError(
-								`value '${cell.toString()}' does not match column type 'number'`,
-							);
-						}
-						break;
+	private validateCell(row: DataStoreRow, key: string, columnTypeMap: Map<string, string>) {
+		const cell = row[key];
+		if (cell === null) return;
+
+		const columnType = columnTypeMap.get(key);
+		switch (columnType) {
+			case 'boolean':
+				if (typeof cell !== 'boolean') {
+					throw new DataStoreValidationError(
+						`value '${cell.toString()}' does not match column type 'boolean'`,
+					);
 				}
-			}
+				break;
+			case 'date':
+				if (typeof cell === 'string') {
+					const validated = dateTimeSchema.safeParse(cell);
+					if (validated.success) {
+						row[key] = validated.data.toISOString();
+						break;
+					}
+				} else if (cell instanceof Date) {
+					row[key] = cell.toISOString();
+					break;
+				}
+
+				throw new DataStoreValidationError(`value '${cell}' does not match column type 'date'`);
+			case 'string':
+				if (typeof cell !== 'string') {
+					throw new DataStoreValidationError(
+						`value '${cell.toString()}' does not match column type 'string'`,
+					);
+				}
+				break;
+			case 'number':
+				if (typeof cell !== 'number') {
+					throw new DataStoreValidationError(
+						`value '${cell.toString()}' does not match column type 'number'`,
+					);
+				}
+				break;
 		}
 	}
 

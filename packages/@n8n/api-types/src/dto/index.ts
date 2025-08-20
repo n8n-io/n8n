@@ -82,6 +82,7 @@ export { OidcConfigDto } from './oidc/config.dto';
 
 export { CreateDataStoreDto } from './data-store/create-data-store.dto';
 export { UpdateDataStoreDto } from './data-store/update-data-store.dto';
+export { UpdateDataStoreRowDto } from './data-store/update-data-store-row.dto';
 export { UpsertDataStoreRowsDto } from './data-store/upsert-data-store-rows.dto';
 export { ListDataStoreQueryDto } from './data-store/list-data-store-query.dto';
 export { ListDataStoreContentQueryDto } from './data-store/list-data-store-content-query.dto';

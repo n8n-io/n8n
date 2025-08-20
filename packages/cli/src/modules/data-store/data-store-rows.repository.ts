@@ -4,6 +4,7 @@ import type {
 	DataStoreUserTableName,
 	DataStoreRows,
 	UpsertDataStoreRowsDto,
+	UpdateDataStoreRowDto,
 } from '@n8n/api-types';
 import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -20,6 +21,7 @@ import {
 	addColumnQuery,
 	buildInsertQuery,
 	buildUpdateQuery,
+	buildUpdateRow,
 	deleteColumnQuery,
 	getPlaceholder,
 	quoteIdentifier,
@@ -95,6 +97,22 @@ export class DataStoreRowsRepository {
 			}
 		}
 
+		return true;
+	}
+
+	async updateRow(
+		tableName: DataStoreUserTableName,
+		dto: UpdateDataStoreRowDto,
+		columns: DataStoreColumn[],
+	) {
+		const dbType = this.dataSource.options.type;
+		const [query, parameters] = buildUpdateRow(tableName, dto.data, dto.filter, columns, dbType);
+
+		if (query === '') {
+			return false;
+		}
+
+		await this.dataSource.query(query, parameters);
 		return true;
 	}
 
