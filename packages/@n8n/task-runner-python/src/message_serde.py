@@ -27,27 +27,60 @@ NODE_MODE_MAP = {
 }
 
 
+def _get_node_mode(node_mode_str: str) -> NodeMode:
+    if node_mode_str not in NODE_MODE_MAP:
+        raise ValueError(f"Unknown nodeMode: {node_mode_str}")
+    return cast(NodeMode, NODE_MODE_MAP[node_mode_str])
+
+
+def _parse_task_settings(d: dict) -> BrokerTaskSettings:
+    try:
+        task_id = d["taskId"]
+        settings_dict = d["settings"]
+        code = settings_dict["code"]
+        node_mode = _get_node_mode(settings_dict["nodeMode"])
+        continue_on_fail = settings_dict.get("continueOnFail", False)
+        items = settings_dict["items"]
+    except KeyError as e:
+        raise ValueError(f"Missing or unexpected task settings field: {e}")
+
+    return BrokerTaskSettings(
+        task_id=task_id,
+        settings=TaskSettings(
+            code=code,
+            node_mode=node_mode,
+            continue_on_fail=continue_on_fail,
+            items=items,
+        ),
+    )
+
+
+def _parse_task_offer_accept(d: dict) -> BrokerTaskOfferAccept:
+    try:
+        task_id = d["taskId"]
+        offer_id = d["offerId"]
+    except KeyError as e:
+        raise ValueError(f"Missing required field: {e}")
+
+    return BrokerTaskOfferAccept(task_id=task_id, offer_id=offer_id)
+
+
+def _parse_task_cancel(d: dict) -> BrokerTaskCancel:
+    try:
+        task_id = d["taskId"]
+        reason = d["reason"]
+    except KeyError as e:
+        raise ValueError(f"Missing required field: {e}")
+
+    return BrokerTaskCancel(task_id=task_id, reason=reason)
+
+
 MESSAGE_TYPE_MAP = {
     BROKER_INFO_REQUEST: lambda _: BrokerInfoRequest(),
     BROKER_RUNNER_REGISTERED: lambda _: BrokerRunnerRegistered(),
-    BROKER_TASK_OFFER_ACCEPT: lambda d: BrokerTaskOfferAccept(
-        task_id=d["taskId"], offer_id=d["offerId"]
-    ),
-    BROKER_TASK_SETTINGS: lambda d: BrokerTaskSettings(
-        task_id=d["taskId"],
-        settings=TaskSettings(
-            code=d["settings"]["code"],
-            node_mode=cast(
-                NodeMode,
-                NODE_MODE_MAP.get(d["settings"]["nodeMode"]),
-            ),
-            continue_on_fail=d["settings"]["continueOnFail"],
-            items=d["settings"]["items"],
-        ),
-    ),
-    BROKER_TASK_CANCEL: lambda d: BrokerTaskCancel(
-        task_id=d["taskId"], reason=d["reason"]
-    ),
+    BROKER_TASK_OFFER_ACCEPT: _parse_task_offer_accept,
+    BROKER_TASK_SETTINGS: _parse_task_settings,
+    BROKER_TASK_CANCEL: _parse_task_cancel,
 }
 
 

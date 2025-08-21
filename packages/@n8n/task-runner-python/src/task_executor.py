@@ -34,7 +34,7 @@ class TaskExecutor:
         process: multiprocessing.Process,
         queue: multiprocessing.Queue,
         task_timeout: int,
-        continue_on_fail: bool = False,
+        continue_on_fail: bool,
     ):
         """Execute a subprocess for a Python code task."""
 
