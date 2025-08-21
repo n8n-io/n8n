@@ -10,7 +10,6 @@ import {
 	PrimaryGeneratedColumn,
 	BeforeInsert,
 } from '@n8n/typeorm';
-import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
 
 import { JsonColumn, WithTimestamps } from './abstract-entity';
@@ -20,9 +19,8 @@ import type { ProjectRelation } from './project-relation';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 import type { IPersonalizationSurveyAnswers } from './types-db';
+import { isValidEmail } from '../utils/is-valid-email';
 import { lowerCaser, objectRetriever } from '../utils/transformers';
-import { NoUrl } from '../utils/validators/no-url.validator';
-import { NoXss } from '../utils/validators/no-xss.validator';
 
 @Entity()
 export class User extends WithTimestamps implements IUser, AuthPrincipal {
@@ -35,25 +33,15 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 		transformer: lowerCaser,
 	})
 	@Index({ unique: true })
-	@IsEmail()
 	email: string;
 
 	@Column({ length: 32, nullable: true })
-	@NoXss()
-	@NoUrl()
-	@IsString({ message: 'First name must be of type string.' })
-	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
 	firstName: string;
 
 	@Column({ length: 32, nullable: true })
-	@NoXss()
-	@NoUrl()
-	@IsString({ message: 'Last name must be of type string.' })
-	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
 
 	@Column({ type: String, nullable: true })
-	@IsString({ message: 'Password must be of type string.' })
 	password: string | null;
 
 	@JsonColumn({
@@ -90,6 +78,14 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@BeforeUpdate()
 	preUpsertHook(): void {
 		this.email = this.email?.toLowerCase() ?? null;
+
+		// Validate email if present (including empty strings)
+		if (this.email !== null && this.email !== undefined) {
+			const result = isValidEmail(this.email);
+			if (!result) {
+				throw new Error(`Cannot save user <${this.email}>: Provided email is invalid`);
+			}
+		}
 	}
 
 	@Column({ type: Boolean, default: false })

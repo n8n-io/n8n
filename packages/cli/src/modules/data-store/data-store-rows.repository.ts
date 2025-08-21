@@ -7,16 +7,17 @@ import { GlobalConfig } from '@n8n/config';
 import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, DataSourceOptions, QueryRunner, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataStoreRows } from 'n8n-workflow';
+import { DataStoreColumnJsType, DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreUserTableName } from './data-store.types';
 import {
 	addColumnQuery,
-	buildInsertQuery,
-	buildUpdateQuery,
+	buildColumnTypeMap,
 	deleteColumnQuery,
+	extractInsertedIds,
 	getPlaceholder,
+	normalizeValue,
 	quoteIdentifier,
 	splitRowsByExistence,
 	toDslColumns,
@@ -53,23 +54,44 @@ export class DataStoreRowsRepository {
 		return `${tablePrefix}data_store_user_${dataStoreId}`;
 	}
 
-	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
 	async insertRows(dataStoreId: string, rows: DataStoreRows, columns: DataStoreColumn[]) {
-		const dbType = this.dataSource.options.type;
-		await this.dataSource.query.apply(
-			this.dataSource,
-			buildInsertQuery(this.toTableName(dataStoreId), rows, columns, dbType),
-		);
-		return true;
+		const insertedIds: number[] = [];
+
+		// We insert one by one as the default behavior of returning the last inserted ID
+		// is consistent, whereas getting all inserted IDs when inserting multiple values is
+		// surprisingly awkward without Entities, e.g. `RETURNING id` explicitly does not aggregate
+		// and the `identifiers` array output of `execute()` is empty
+		for (const row of rows) {
+			const dbType = this.dataSource.options.type;
+
+			for (const column of columns) {
+				row[column.name] = normalizeValue(row[column.name], column.type, dbType);
+			}
+
+			const query = this.dataSource
+				.createQueryBuilder()
+				.insert()
+				.into(
+					this.toTableName(dataStoreId),
+					columns.map((c) => c.name),
+				)
+				.values(row);
+
+			if (dbType === 'postgres' || dbType === 'mariadb') {
+				query.returning('id');
+			}
+
+			const result = await query.execute();
+
+			insertedIds.push(...extractInsertedIds(result.raw, dbType));
+		}
+
+		return insertedIds;
 	}
 
+	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
 	async upsertRows(dataStoreId: string, dto: UpsertDataStoreRowsDto, columns: DataStoreColumn[]) {
-		const dbType = this.dataSource.options.type;
 		const { rows, matchFields } = dto;
-
-		if (rows.length === 0) {
-			return false;
-		}
 
 		const { rowsToInsert, rowsToUpdate } = await this.fetchAndSplitRowsByExistence(
 			dataStoreId,
@@ -83,19 +105,46 @@ export class DataStoreRowsRepository {
 
 		if (rowsToUpdate.length > 0) {
 			for (const row of rowsToUpdate) {
-				// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
-				const [query, parameters] = buildUpdateQuery(
-					this.toTableName(dataStoreId),
-					row,
-					columns,
-					matchFields,
-					dbType,
-				);
-				await this.dataSource.query(query, parameters);
+				const updateKeys = Object.keys(row).filter((key) => !matchFields.includes(key));
+				if (updateKeys.length === 0) {
+					return true;
+				}
+
+				const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
+				const whereData = Object.fromEntries(matchFields.map((key) => [key, row[key]]));
+
+				await this.updateRow(dataStoreId, setData, whereData, columns);
 			}
 		}
 
 		return true;
+	}
+
+	async updateRow(
+		dataStoreId: string,
+		setData: Record<string, DataStoreColumnJsType | null>,
+		whereData: Record<string, DataStoreColumnJsType | null>,
+		columns: DataStoreColumn[],
+	) {
+		const dbType = this.dataSource.options.type;
+		const columnTypeMap = buildColumnTypeMap(columns);
+
+		const queryBuilder = this.dataSource.createQueryBuilder().update(this.toTableName(dataStoreId));
+
+		const setValues: Record<string, DataStoreColumnJsType | null> = {};
+		for (const [key, value] of Object.entries(setData)) {
+			setValues[key] = normalizeValue(value, columnTypeMap[key], dbType);
+		}
+
+		queryBuilder.set(setValues);
+
+		const normalizedWhereData: Record<string, DataStoreColumnJsType | null> = {};
+		for (const [field, value] of Object.entries(whereData)) {
+			normalizedWhereData[field] = normalizeValue(value, columnTypeMap[field], dbType);
+		}
+		queryBuilder.where(normalizedWhereData);
+
+		await queryBuilder.execute();
 	}
 
 	async deleteRows(dataStoreId: string, ids: number[]) {

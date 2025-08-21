@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "_creator": {
+            "type": "string"
+        },
+        "_ctime": {
+            "type": "string"
+        },
+        "_id": {
+            "type": "string"
+        },
+        "_last_modifier": {
+            "type": "string"
+        },
+        "_mtime": {
+            "type": "string"
+        },
+        "0000": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
