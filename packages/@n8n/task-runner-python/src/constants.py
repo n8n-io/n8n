@@ -11,7 +11,7 @@ RUNNER_TASK_ACCEPTED = "runner:taskaccepted"
 RUNNER_TASK_REJECTED = "runner:taskrejected"
 RUNNER_TASK_DONE = "runner:taskdone"
 RUNNER_TASK_ERROR = "runner:taskerror"
-RUNNER_RPC = "runner:rpc"
+RUNNER_RPC_CALL = "runner:rpc"
 
 # Runner
 TASK_TYPE_PYTHON = "python"

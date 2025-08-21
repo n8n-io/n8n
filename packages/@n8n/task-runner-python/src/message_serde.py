@@ -19,7 +19,7 @@ from .message_types import (
     BrokerTaskOfferAccept,
     BrokerTaskSettings,
     BrokerTaskCancel,
-    BrokerRPCResponse,
+    BrokerRpcResponse,
 )
 
 
@@ -77,7 +77,7 @@ def _parse_task_cancel(d: dict) -> BrokerTaskCancel:
     return BrokerTaskCancel(task_id=task_id, reason=reason)
 
 
-def _parse_rpc_response(d: dict) -> BrokerRPCResponse:
+def _parse_rpc_response(d: dict) -> BrokerRpcResponse:
     try:
         call_id = d["callId"]
         task_id = d["taskId"]
@@ -85,7 +85,7 @@ def _parse_rpc_response(d: dict) -> BrokerRPCResponse:
     except KeyError as e:
         raise ValueError(f"Missing field in RPC response message: {e}")
 
-    return BrokerRPCResponse(call_id, task_id, status)
+    return BrokerRpcResponse(call_id, task_id, status)
 
 
 MESSAGE_TYPE_MAP = {

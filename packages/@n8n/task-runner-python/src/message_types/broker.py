@@ -56,7 +56,7 @@ class BrokerTaskCancel:
 
 
 @dataclass
-class BrokerRPCResponse:
+class BrokerRpcResponse:
     call_id: str
     task_id: str
     status: str
@@ -69,5 +69,5 @@ BrokerMessage = Union[
     BrokerTaskOfferAccept,
     BrokerTaskSettings,
     BrokerTaskCancel,
-    BrokerRPCResponse,
+    BrokerRpcResponse,
 ]

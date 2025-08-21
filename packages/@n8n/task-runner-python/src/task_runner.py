@@ -32,14 +32,14 @@ from .message_types import (
     BrokerTaskOfferAccept,
     BrokerTaskSettings,
     BrokerTaskCancel,
-    BrokerRPCResponse,
+    BrokerRpcResponse,
     RunnerInfo,
     RunnerTaskOffer,
     RunnerTaskAccepted,
     RunnerTaskRejected,
     RunnerTaskDone,
     RunnerTaskError,
-    RunnerRPC,
+    RunnerRpcCall,
 )
 from .message_serde import MessageSerde
 from .task_state import TaskState, TaskStatus
@@ -143,7 +143,7 @@ class TaskRunner:
                 await self._handle_task_settings(message)
             case BrokerTaskCancel():
                 await self._handle_task_cancel(message)
-            case BrokerRPCResponse():
+            case BrokerRpcResponse():
                 pass  # only logging is implemented, handled by browser
             case _:
                 self.logger.warning(f"Unhandled message type: {type(message)}")
@@ -252,7 +252,7 @@ class TaskRunner:
             self.executor.stop_process(task_state.process)
 
     async def _send_rpc_message(self, task_id: str, method_name: str, params: list):
-        message = RunnerRPC(
+        message = RunnerRpcCall(
             call_id=nanoid(), task_id=task_id, name=method_name, params=params
         )
 
