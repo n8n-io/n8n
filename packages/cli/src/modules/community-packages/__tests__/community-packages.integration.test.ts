@@ -6,10 +6,15 @@ import { CommunityPackagesService } from '@/modules/community-packages/community
 import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 
-import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
-import { createOwner } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import { setupTestServer, mockPackage, mockNode, mockPackageName } from './shared/utils';
+import { COMMUNITY_PACKAGE_VERSION } from '../../../../test/integration/shared/constants';
+import { createOwner } from '../../../../test/integration/shared/db/users';
+import type { SuperAgentTest } from '../../../../test/integration/shared/types';
+import {
+	setupTestServer,
+	mockPackage,
+	mockNode,
+	mockPackageName,
+} from '../../../../test/integration/shared/utils';
 
 const communityPackagesService = mockInstance(CommunityPackagesService, {
 	hasMissingPackages: false,
