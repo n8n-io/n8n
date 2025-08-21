@@ -1174,24 +1174,6 @@ describe('dataStore', () => {
 			await expect(result).rejects.toThrow(DataStoreNotFoundError);
 		});
 
-		it('rejects on empty column list', async () => {
-			// ARRANGE
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
-				name: 'dataStore',
-				columns: [],
-			});
-
-			// ACT
-			const result = dataStoreService.insertRows(dataStoreId, project1.id, [{}, {}]);
-
-			// ASSERT
-			await expect(result).rejects.toThrow(
-				new DataStoreValidationError(
-					'No columns found for this data store or data store not found',
-				),
-			);
-		});
-
 		it('fails on type mismatch', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
@@ -1209,6 +1191,29 @@ describe('dataStore', () => {
 			await expect(result).rejects.toThrow(
 				new DataStoreValidationError("value 'true' does not match column type 'number'"),
 			);
+		});
+
+		it('inserts rows into an existing table with no columns', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [],
+			});
+
+			// ACT
+			const rows = [{}, {}, {}];
+			const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows);
+
+			// ASSERT
+			expect(result).toEqual([1, 2, 3]);
+
+			const { count, data } = await dataStoreService.getManyRowsAndCount(
+				dataStoreId,
+				project1.id,
+				{},
+			);
+			expect(count).toEqual(3);
+			expect(data).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
 		});
 	});
 

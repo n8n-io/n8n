@@ -210,12 +210,6 @@ export class DataStoreService {
 		includeSystemColumns = false,
 	): Promise<void> {
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		if (columns.length === 0) {
-			throw new DataStoreValidationError(
-				'No columns found for this data store or data store not found',
-			);
-		}
-
 		this.validateRowsWithColumns(rows, columns, allowPartial, includeSystemColumns);
 	}
 
