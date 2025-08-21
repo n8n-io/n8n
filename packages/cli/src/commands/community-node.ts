@@ -1,11 +1,16 @@
-import { type InstalledNodes, type InstalledPackages, type User } from '@n8n/db';
-import { CredentialsRepository, InstalledNodesRepository, UserRepository } from '@n8n/db';
+// @TODO: Move file to community-packages module
+
+import type { User } from '@n8n/db';
+import { CredentialsRepository, UserRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { CommunityPackagesService } from '@/community-packages/community-packages.service';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
+import { InstalledNodesRepository } from '@/modules/community-packages/installed-nodes.repository';
+import { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 
 import { BaseCommand } from './base-command';
 

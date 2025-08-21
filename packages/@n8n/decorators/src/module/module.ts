@@ -36,7 +36,7 @@ export interface ModuleInterface {
 	 * @returns Path to a dir to load nodes and credentials from.
 	 * @example '/Users/nathan/.n8n/nodes/node_modules'
 	 */
-	loadDir?(): string;
+	loadDir?(): Promise<string | null>;
 }
 
 export type ModuleClass = Constructable<ModuleInterface>;
