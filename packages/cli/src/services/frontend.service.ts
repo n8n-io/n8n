@@ -60,7 +60,7 @@ export class FrontendService {
 
 		this.initSettings();
 
-		// @TODO: Move to module
+		// @TODO: Move to community-packages module
 		if (Container.get(CommunityPackagesConfig).enabled) {
 			void import('@/modules/community-packages/community-packages.service').then(
 				({ CommunityPackagesService }) => {
@@ -202,7 +202,7 @@ export class FrontendService {
 			isMultiMain: this.instanceSettings.isMultiMain,
 			pushBackend: this.pushConfig.backend,
 
-			// @TODO: Move to module
+			// @TODO: Move to community-packages module
 			communityNodesEnabled: Container.get(CommunityPackagesConfig).enabled,
 			unverifiedCommunityNodesEnabled: Container.get(CommunityPackagesConfig).unverifiedEnabled,
 
