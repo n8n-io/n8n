@@ -17,6 +17,7 @@ import type {
 	RowSelectionOptions,
 	CellValueChangedEvent,
 	GetRowIdParams,
+	ICellRendererParams,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -38,7 +39,7 @@ import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumn
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { DEFAULT_ID_COLUMN_NAME } from '@/features/dataStore/constants';
+import { DEFAULT_ID_COLUMN_NAME, EMPTY_VALUE, NULL_VALUE } from '@/features/dataStore/constants';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
@@ -206,16 +207,29 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 			if (col.type === 'date') {
 				const value = params.data?.[col.name];
 				if (typeof value === 'string') {
-					return new Date(value);
+					return new Date(value).toLocaleDateString();
 				}
 			}
 			return params.data?.[col.name];
+		},
+		cellRenderer: (params: ICellRendererParams) => {
+			if (params.value === null) {
+				return `<i class="n8n-empty-value">${NULL_VALUE}</i>`;
+			}
+			if (params.value === '') {
+				return `<i class="n8n-empty-value">${EMPTY_VALUE}</i>`;
+			}
+			return params.value.toString();
 		},
 	};
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
 		columnDef.cellEditor = 'agLargeTextCellEditor';
-		columnDef.cellEditorPopup = true;
+		columnDef.cellEditorPopup = false;
+		// Provide initial value for the editor, otherwise agLargeTextCellEditor breaks
+		columnDef.cellEditorParams = (params: ValueGetterParams<DataStoreRow>) => ({
+			value: params.value ?? '',
+		});
 	}
 	// Setup date editor
 	if (col.type === 'date') {
@@ -365,7 +379,6 @@ onMounted(async () => {
 				:loading="contentLoading"
 				:row-selection="rowSelection"
 				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
-				:single-click-edit="true"
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
 				@grid-ready="onGridReady"
@@ -447,6 +460,11 @@ onMounted(async () => {
 
 	:global(.ag-cell[col-id='ag-Grid-SelectionColumn'].ag-cell-focus) {
 		outline: none;
+	}
+
+	:global(.n8n-empty-value) {
+		font-style: italic;
+		color: var(--color-text-lighter);
 	}
 }
 

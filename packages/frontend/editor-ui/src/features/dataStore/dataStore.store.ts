@@ -185,8 +185,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const insertEmptyRow = async (dataStore: DataStore) => {
 		const emptyRow: DataStoreRow = {};
 		dataStore.columns.forEach((column) => {
-			// Set default values based on column type
-			emptyRow[column.name] = dataStoreTypes.getDefaultValueForType(column.type);
+			emptyRow[column.name] = null;
 		});
 		return await insertDataStoreRowApi(
 			rootStore.restApiContext,

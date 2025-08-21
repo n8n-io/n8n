@@ -23,3 +23,6 @@ export const MAX_COLUMN_NAME_LENGTH = 128;
 export const COLUMN_NAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9-]*$/;
 
 export const MIN_LOADING_TIME = 500; // ms
+
+export const NULL_VALUE = 'NULL';
+export const EMPTY_VALUE = 'EMPTY';
