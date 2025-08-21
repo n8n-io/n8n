@@ -106,7 +106,7 @@ export class DeprecationService {
 		{
 			envVar: 'N8N_BLOCK_ENV_ACCESS_IN_NODE',
 			message:
-				'The default value of N8N_BLOCK_ENV_ACCESS_IN_NODE will be changed from false to true. If you need to access environment variables from the Code Node or from expressions, please set N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/',
+				'The default value of N8N_BLOCK_ENV_ACCESS_IN_NODE will be changed from false to true in a future version. If you need to access environment variables from the Code Node or from expressions, please set N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/',
 			checkValue: (value: string | undefined) => value === undefined || value === '',
 		},
 	];
