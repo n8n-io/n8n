@@ -1,6 +1,5 @@
 from queue import Empty
 import multiprocessing
-import logging
 import traceback
 import textwrap
 
@@ -14,12 +13,13 @@ from .errors import (
 from .message_types.broker import NodeMode, Items
 from .constants import EXECUTOR_USER_OUTPUT_KEY
 
+from multiprocessing.context import SpawnProcess
+
+MULTIPROCESSING_CONTEXT = multiprocessing.get_context("spawn")
+
 
 class TaskExecutor:
     """Responsible for executing Python code tasks in isolated subprocesses."""
-
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
 
     @staticmethod
     def create_process(code: str, node_mode: NodeMode, items: Items):
@@ -31,14 +31,14 @@ class TaskExecutor:
             else TaskExecutor._per_item
         )
 
-        queue = multiprocessing.Queue()
-        process = multiprocessing.Process(target=fn, args=(code, items, queue))
+        queue = MULTIPROCESSING_CONTEXT.Queue()
+        process = MULTIPROCESSING_CONTEXT.Process(target=fn, args=(code, items, queue))
 
         return process, queue
 
     @staticmethod
     def execute_process(
-        process: multiprocessing.Process,
+        process: SpawnProcess,
         queue: multiprocessing.Queue,
         task_timeout: int,
         continue_on_fail: bool,
@@ -73,7 +73,7 @@ class TaskExecutor:
             raise
 
     @staticmethod
-    def stop_process(process: multiprocessing.Process | None):
+    def stop_process(process: SpawnProcess | None):
         """Stop a running subprocess, gracefully else force-killing."""
 
         if process is None or not process.is_alive():
