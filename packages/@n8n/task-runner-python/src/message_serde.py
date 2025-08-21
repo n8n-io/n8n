@@ -42,7 +42,7 @@ def _parse_task_settings(d: dict) -> BrokerTaskSettings:
         continue_on_fail = settings_dict.get("continueOnFail", False)
         items = settings_dict["items"]
     except KeyError as e:
-        raise ValueError(f"Missing or unexpected task settings field: {e}")
+        raise ValueError(f"Missing field in task settings message: {e}")
 
     return BrokerTaskSettings(
         task_id=task_id,
@@ -60,7 +60,7 @@ def _parse_task_offer_accept(d: dict) -> BrokerTaskOfferAccept:
         task_id = d["taskId"]
         offer_id = d["offerId"]
     except KeyError as e:
-        raise ValueError(f"Missing required field: {e}")
+        raise ValueError(f"Missing field in task offer acceptance message: {e}")
 
     return BrokerTaskOfferAccept(task_id=task_id, offer_id=offer_id)
 
@@ -70,7 +70,7 @@ def _parse_task_cancel(d: dict) -> BrokerTaskCancel:
         task_id = d["taskId"]
         reason = d["reason"]
     except KeyError as e:
-        raise ValueError(f"Missing required field: {e}")
+        raise ValueError(f"Missing field in task cancel message: {e}")
 
     return BrokerTaskCancel(task_id=task_id, reason=reason)
 
