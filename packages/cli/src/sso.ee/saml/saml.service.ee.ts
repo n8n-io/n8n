@@ -1,7 +1,7 @@
 import type { SamlPreferences } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { Settings, User } from '@n8n/db';
-import { SettingsRepository, UserRepository } from '@n8n/db';
+import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import axios from 'axios';
 import type express from 'express';
@@ -197,6 +197,11 @@ export class SamlService {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
+
+			if (!isValidEmail(lowerCasedEmail)) {
+				throw new BadRequestError('Invalid email format');
+			}
+
 			const user = await this.userRepository.findOne({
 				where: { email: lowerCasedEmail },
 				relations: ['authIdentities'],

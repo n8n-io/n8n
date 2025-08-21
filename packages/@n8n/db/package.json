@@ -38,7 +38,8 @@
     "p-lazy": "3.1.0",
     "reflect-metadata": "catalog:",
     "uuid": "catalog:",
-    "xss": "catalog:"
+    "xss": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
