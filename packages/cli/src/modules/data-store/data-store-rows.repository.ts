@@ -22,6 +22,7 @@ import {
 	deleteColumnQuery,
 	extractInsertedIds,
 	getPlaceholder,
+	normalizeValue,
 	quoteIdentifier,
 	splitRowsByExistence,
 	toDslColumns,
@@ -65,6 +66,11 @@ export class DataStoreRowsRepository {
 		// and the `identifiers` array output of `execute()` is empty
 		for (const row of rows) {
 			const dbType = this.dataSource.options.type;
+
+			for (const column of columns) {
+				row[column.name] = normalizeValue(row[column.name], column.type, dbType);
+			}
+
 			const query = this.dataSource
 				.createQueryBuilder()
 				.insert()

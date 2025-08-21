@@ -5,7 +5,8 @@ import {
 } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import { UnexpectedError, type DataStoreRows } from 'n8n-workflow';
+import type { DataStoreColumnJsType, DataStoreRows } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -89,7 +90,7 @@ export function deleteColumnQuery(
 
 export function buildUpdateQuery(
 	tableName: DataStoreUserTableName,
-	row: Record<string, unknown>,
+	row: Record<string, DataStoreColumnJsType | null>,
 	columns: Array<{ name: string; type: string }>,
 	matchFields: string[],
 	dbType: DataSourceOptions['type'] = 'sqlite',
@@ -256,31 +257,25 @@ export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 	});
 }
 
-function normalizeValue(
-	value: unknown,
+export function normalizeValue(
+	value: DataStoreColumnJsType | null,
 	columnType: string | undefined,
 	dbType: DataSourceOptions['type'],
-): unknown {
+): DataStoreColumnJsType | null {
 	if (['mysql', 'mariadb'].includes(dbType)) {
 		if (columnType === 'date') {
-			if (
-				value instanceof Date ||
-				(typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/))
-			) {
-				return toMySQLDateTimeString(value);
+			if (value instanceof Date) {
+				return value;
+			} else if (typeof value === 'string') {
+				const date = new Date(value);
+				if (!isNaN(date.getTime())) {
+					return date;
+				}
 			}
 		}
 	}
-	return value;
-}
 
-function toMySQLDateTimeString(date: Date | string, convertFromDate = true): string {
-	const dateString = convertFromDate
-		? date instanceof Date
-			? date.toISOString()
-			: date
-		: (date as string);
-	return dateString.replace('T', ' ').replace('Z', '');
+	return value;
 }
 
 export function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
