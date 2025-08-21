@@ -16,6 +16,7 @@ import type {
 	ValueGetterParams,
 	RowSelectionOptions,
 	CellValueChangedEvent,
+	ICellRendererParams,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -44,9 +45,12 @@ import {
 	DATA_STORE_ID_COLUMN_WIDTH,
 	DEFAULT_ID_COLUMN_NAME,
 	NO_TABLE_YET_MESSAGE,
+	DATA_STORE_HEADER_HEIGHT,
+	DATA_STORE_ROW_HEIGHT,
 } from '@/features/dataStore/constants';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import AddColumnHeaderComponent from '@/features/dataStore/components/dataGrid/AddColumnHeaderComponent.vue';
+import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.vue';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -100,9 +104,6 @@ const currentPage = ref(1);
 const pageSize = ref(20);
 const totalItems = ref(0);
 
-// Data store content
-const rows = ref<DataStoreRow[]>([]);
-
 const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
 };
@@ -110,7 +111,12 @@ const onGridReady = (params: GridReadyEvent) => {
 const refreshGridData = () => {
 	if (gridApi.value) {
 		gridApi.value.setGridOption('columnDefs', colDefs.value);
-		gridApi.value.setGridOption('rowData', rowData.value);
+		gridApi.value.setGridOption('rowData', [
+			...rowData.value,
+			{
+				id: 'add-row',
+			},
+		]);
 	}
 };
 
@@ -297,6 +303,17 @@ const initColumnDefinitions = () => {
 				minWidth: DATA_STORE_ID_COLUMN_WIDTH,
 				maxWidth: DATA_STORE_ID_COLUMN_WIDTH,
 				resizable: false,
+				cellRendererSelector: (params: ICellRendererParams) => {
+					if (params.value === 'add-row') {
+						return {
+							component: AddRowButton,
+							params: {
+								onClick: onAddRowClick,
+							},
+						};
+					}
+					return params.value;
+				},
 			},
 		),
 		// Append other columns
@@ -345,9 +362,9 @@ const fetchDataStoreContent = async () => {
 			currentPage.value,
 			pageSize.value,
 		);
-		rows.value = fetchedRows.data;
+		rowData.value = fetchedRows.data;
 		totalItems.value = fetchedRows.count;
-		rowData.value = rows.value;
+		refreshGridData();
 	} catch (error) {
 		// TODO: We currently don't create user tables until user columns or rows are added
 		// so we need to ignore NO_TABLE_YET_MESSAGE error here
@@ -379,8 +396,8 @@ onMounted(async () => {
 			<AgGridVue
 				style="width: 100%"
 				:dom-layout="'autoHeight'"
-				:row-height="36"
-				:header-height="36"
+				:row-height="DATA_STORE_ROW_HEIGHT"
+				:header-height="DATA_STORE_HEADER_HEIGHT"
 				:animate-rows="false"
 				:theme="n8nTheme"
 				:suppress-drag-leave-hides-columns="true"
@@ -396,15 +413,6 @@ onMounted(async () => {
 			/>
 		</div>
 		<div :class="$style.footer">
-			<n8n-tooltip :content="i18n.baseText('dataStore.addRow.label')">
-				<n8n-icon-button
-					data-test-id="data-store-add-row-button"
-					icon="plus"
-					class="mb-xl"
-					type="secondary"
-					@click="onAddRowClick"
-				/>
-			</n8n-tooltip>
 			<el-pagination
 				v-model:current-page="currentPage"
 				v-model:page-size="pageSize"
@@ -476,7 +484,7 @@ onMounted(async () => {
 .footer {
 	display: flex;
 	width: 100%;
-	justify-content: space-between;
+	justify-content: flex-end;
 	margin-bottom: var(--spacing-l);
 	padding-right: var(--spacing-xl);
 
