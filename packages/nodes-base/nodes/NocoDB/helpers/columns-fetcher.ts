@@ -132,7 +132,6 @@ export class ColumnsFetcher {
 
 	async fetch({
 		version,
-		workspaceId,
 		baseId,
 		tableId,
 	}: {
