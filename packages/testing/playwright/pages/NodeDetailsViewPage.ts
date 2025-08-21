@@ -379,9 +379,10 @@ export class NodeDetailsViewPage extends BasePage {
 	): Promise<void> {
 		for (const [parameterName, value] of Object.entries(parameters)) {
 			if (typeof value === 'string') {
-				try {
+				const parameterType = await this.setupHelper.detectParameterType(parameterName);
+				if (parameterType === 'dropdown') {
 					await this.setParameterDropdown(parameterName, value);
-				} catch {
+				} else {
 					await this.setParameterInput(parameterName, value);
 				}
 			} else if (typeof value === 'boolean') {
@@ -393,16 +394,45 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async getParameterValue(parameterName: string): Promise<string> {
-		try {
-			return await this.getParameterInputField(parameterName).inputValue();
-		} catch {
-			try {
-				const hiddenInput = this.getParameterInput(parameterName).locator('input').first();
-				return await hiddenInput.inputValue();
-			} catch {
+		const parameterType = await this.setupHelper.detectParameterType(parameterName);
+
+		switch (parameterType) {
+			case 'text':
+				return await this.getTextParameterValue(parameterName);
+			case 'dropdown':
+				return await this.getDropdownParameterValue(parameterName);
+			case 'switch':
+				return await this.getSwitchParameterValue(parameterName);
+			default:
+				// Fallback for unknown types
 				return (await this.getParameterInput(parameterName).textContent()) ?? '';
-			}
 		}
+	}
+
+	/**
+	 * Get value from a text parameter - simplified approach
+	 */
+	private async getTextParameterValue(parameterName: string): Promise<string> {
+		const parameterContainer = this.getParameterInput(parameterName);
+		const input = parameterContainer.locator('input').first();
+		return await input.inputValue();
+	}
+
+	/**
+	 * Get value from a dropdown parameter
+	 */
+	private async getDropdownParameterValue(parameterName: string): Promise<string> {
+		const selectedOption = this.getParameterInput(parameterName).locator('.el-select__tags-text');
+		return (await selectedOption.textContent()) ?? '';
+	}
+
+	/**
+	 * Get value from a switch parameter
+	 */
+	private async getSwitchParameterValue(parameterName: string): Promise<string> {
+		const switchElement = this.getParameterInput(parameterName).locator('.el-switch');
+		const isEnabled = (await switchElement.getAttribute('aria-checked')) === 'true';
+		return isEnabled ? 'true' : 'false';
 	}
 
 	async validateParameter(parameterName: string, expectedValue: string): Promise<void> {

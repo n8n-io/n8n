@@ -12,9 +12,7 @@ export class NodeParameterHelper {
 	 * @param parameterName - The parameter name to check
 	 * @returns The detected parameter type
 	 */
-	private async detectParameterType(
-		parameterName: string,
-	): Promise<'dropdown' | 'text' | 'switch'> {
+	async detectParameterType(parameterName: string): Promise<'dropdown' | 'text' | 'switch'> {
 		const parameterContainer = this.ndv.getParameterInput(parameterName);
 		const [hasSwitch, hasSelect, hasSelectCaret] = await Promise.all([
 			parameterContainer
@@ -73,11 +71,12 @@ export class NodeParameterHelper {
 		authentication?: string;
 		responseMode?: string;
 	}): Promise<void> {
-		if (config.httpMethod) await this.setParameter('httpMethod', config.httpMethod, 'dropdown');
-		if (config.path) await this.setParameter('path', config.path, 'text');
-		if (config.authentication)
+		if (config.httpMethod !== undefined)
+			await this.setParameter('httpMethod', config.httpMethod, 'dropdown');
+		if (config.path !== undefined) await this.setParameter('path', config.path, 'text');
+		if (config.authentication !== undefined)
 			await this.setParameter('authentication', config.authentication, 'dropdown');
-		if (config.responseMode)
+		if (config.responseMode !== undefined)
 			await this.setParameter('responseMode', config.responseMode, 'dropdown');
 	}
 
@@ -93,12 +92,15 @@ export class NodeParameterHelper {
 		sendHeaders?: boolean;
 		sendBody?: boolean;
 	}): Promise<void> {
-		if (config.method) await this.setParameter('method', config.method, 'dropdown');
-		if (config.url) await this.setParameter('url', config.url, 'text');
-		if (config.authentication)
+		if (config.method !== undefined) await this.setParameter('method', config.method, 'dropdown');
+		if (config.url !== undefined) await this.setParameter('url', config.url, 'text');
+		if (config.authentication !== undefined)
 			await this.setParameter('authentication', config.authentication, 'dropdown');
-		if (config.sendQuery) await this.setParameter('sendQuery', config.sendQuery, 'switch');
-		if (config.sendHeaders) await this.setParameter('sendHeaders', config.sendHeaders, 'switch');
-		if (config.sendBody) await this.setParameter('sendBody', config.sendBody, 'switch');
+		if (config.sendQuery !== undefined)
+			await this.setParameter('sendQuery', config.sendQuery, 'switch');
+		if (config.sendHeaders !== undefined)
+			await this.setParameter('sendHeaders', config.sendHeaders, 'switch');
+		if (config.sendBody !== undefined)
+			await this.setParameter('sendBody', config.sendBody, 'switch');
 	}
 }
