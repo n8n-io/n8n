@@ -237,8 +237,6 @@ describe('DeprecationService', () => {
 
 	describe('N8N_BLOCK_ENV_ACCESS_IN_NODE', () => {
 		beforeEach(() => {
-			// Ignore environment variables coming in from the environment when running
-			// this test suite.
 			process.env = {
 				N8N_RUNNERS_ENABLED: 'true',
 			};
