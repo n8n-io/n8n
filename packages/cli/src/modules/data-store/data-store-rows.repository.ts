@@ -118,15 +118,13 @@ export class DataStoreRowsRepository {
 
 		queryBuilder.set(setValues);
 
+		const normalizedWhereData: Record<string, unknown> = {};
 		for (const [field, value] of Object.entries(whereData)) {
-			const normalizedValue = normalizeValue(value, columnTypeMap[field], dbType);
-			queryBuilder.andWhere(`${quoteIdentifier(field, dbType)} = :${field}`, {
-				[field]: normalizedValue,
-			});
+			normalizedWhereData[field] = normalizeValue(value, columnTypeMap[field], dbType);
 		}
+		queryBuilder.where(normalizedWhereData);
 
 		await queryBuilder.execute();
-		return true;
 	}
 
 	async deleteRows(tableName: DataStoreUserTableName, ids: number[]) {
