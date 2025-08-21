@@ -7,7 +7,7 @@ import {
 } from '../../schemas/data-store.schema';
 
 const upsertDataStoreRowsShape = {
-	rows: z.array(z.record(dataStoreColumnValueSchema)),
+	rows: z.array(z.record(dataStoreColumnNameSchema, dataStoreColumnValueSchema)),
 	matchFields: z.array(dataStoreColumnNameSchema).min(1),
 };
 
