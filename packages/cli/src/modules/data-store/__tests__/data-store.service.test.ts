@@ -457,11 +457,13 @@ describe('dataStore', () => {
 				],
 			});
 
-			await dataStoreService.insertRows(dataStoreId, project1.id, [
+			const results = await dataStoreService.insertRows(dataStoreId, project1.id, [
 				{ name: 'Alice', age: 30 },
 				{ name: 'Bob', age: 25 },
 				{ name: 'Charlie', age: 35 },
 			]);
+
+			expect(results).toEqual([1, 2, 3]);
 
 			// ACT
 			const newColumn = await dataStoreService.addColumn(dataStoreId, project1.id, {
@@ -487,9 +489,10 @@ describe('dataStore', () => {
 			]);
 
 			// Verify we can insert new rows with the new column
-			await dataStoreService.insertRows(dataStoreId, project1.id, [
+			const newRow = await dataStoreService.insertRows(dataStoreId, project1.id, [
 				{ name: 'David', age: 28, email: 'david@example.com' },
 			]);
+			expect(newRow).toEqual([4]);
 
 			const finalData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(finalData.count).toBe(4);
@@ -973,7 +976,7 @@ describe('dataStore', () => {
 			const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows);
 
 			// ASSERT
-			expect(result).toBe(true);
+			expect(result).toEqual([1, 2, 3, 4]);
 
 			const { count, data } = await dataStoreService.getManyRowsAndCount(
 				dataStoreId,
@@ -1004,7 +1007,10 @@ describe('dataStore', () => {
 			});
 
 			// Insert initial row
-			await dataStoreService.insertRows(dataStoreId, project1.id, [{ c1: 1, c2: 'foo' }]);
+			const initial = await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ c1: 1, c2: 'foo' },
+			]);
+			expect(initial).toEqual([1]);
 
 			// Attempt to insert a row with the same primary key
 			const result = await dataStoreService.insertRows(dataStoreId, project1.id, [
@@ -1012,7 +1018,7 @@ describe('dataStore', () => {
 			]);
 
 			// ASSERT
-			expect(result).toBe(true);
+			expect(result).toEqual([2]);
 
 			const { count, data } = await dataStoreRowsRepository.getManyAndCount(
 				toTableName(dataStoreId),
@@ -1023,6 +1029,47 @@ describe('dataStore', () => {
 			expect(data).toEqual([
 				{ c1: 1, c2: 'foo', id: 1 },
 				{ c1: 1, c2: 'foo', id: 2 },
+			]);
+		});
+
+		it('return correct IDs even after deletions', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'myDataStore',
+				columns: [
+					{ name: 'c1', type: 'number' },
+					{ name: 'c2', type: 'string' },
+				],
+			});
+
+			// Insert initial row
+			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ c1: 1, c2: 'foo' },
+				{ c1: 2, c2: 'bar' },
+			]);
+			expect(ids).toEqual([1, 2]);
+
+			await dataStoreService.deleteRows(dataStoreId, project1.id, [ids[0]]);
+
+			// Insert a new row
+			const result = await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ c1: 1, c2: 'baz' },
+				{ c1: 2, c2: 'faz' },
+			]);
+
+			// ASSERT
+			expect(result).toEqual([3, 4]);
+
+			const { count, data } = await dataStoreRowsRepository.getManyAndCount(
+				toTableName(dataStoreId),
+				{},
+			);
+
+			expect(count).toEqual(3);
+			expect(data).toEqual([
+				{ c1: 2, c2: 'bar', id: 2 },
+				{ c1: 1, c2: 'baz', id: 3 },
+				{ c1: 2, c2: 'faz', id: 4 },
 			]);
 		});
 
@@ -1185,9 +1232,10 @@ describe('dataStore', () => {
 			});
 
 			// Insert initial row
-			await dataStoreService.insertRows(dataStoreId, project1.id, [
+			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, [
 				{ pid: '1995-111a', fullName: 'Alice', age: 30 },
 			]);
+			expect(ids).toEqual([1]);
 
 			// ACT
 			const result = await dataStoreService.upsertRows(dataStoreId, project1.id, {
@@ -1219,9 +1267,10 @@ describe('dataStore', () => {
 			});
 
 			// Insert initial row
-			await dataStoreService.insertRows(dataStoreId, project1.id, [
+			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, [
 				{ pid: '1995-111a', fullName: 'Alice', age: 30 },
 			]);
+			expect(ids).toEqual([1]);
 
 			// ACT
 			const result = await dataStoreService.upsertRows(dataStoreId, project1.id, {
@@ -1258,11 +1307,12 @@ describe('dataStore', () => {
 			const { id: dataStoreId } = dataStore;
 
 			// Insert test rows
-			await dataStoreService.insertRows(dataStoreId, project1.id, [
+			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, [
 				{ name: 'Alice', age: 30 },
 				{ name: 'Bob', age: 25 },
 				{ name: 'Charlie', age: 35 },
 			]);
+			expect(ids).toEqual([1, 2, 3]);
 
 			// Get initial data to find row IDs
 			const initialData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
@@ -1310,7 +1360,8 @@ describe('dataStore', () => {
 			const { id: dataStoreId } = dataStore;
 
 			// Insert one row
-			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }]);
+			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }]);
+			expect(ids).toEqual([1]);
 
 			// ACT - Try to delete existing and non-existing IDs
 			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, [1, 999, 1000]);
@@ -1651,7 +1702,8 @@ describe('dataStore', () => {
 				{ c1: 5, c2: true, c3: new Date(2), c4: 'hello.' },
 			];
 
-			await dataStoreService.insertRows(dataStoreId, project1.id, rows);
+			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, rows);
+			expect(ids).toEqual([1, 2, 3]);
 
 			// ACT
 			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});

@@ -1,11 +1,6 @@
 import type { DataStoreRows } from 'n8n-workflow';
 
-import {
-	addColumnQuery,
-	deleteColumnQuery,
-	buildInsertQuery,
-	splitRowsByExistence,
-} from '../utils/sql-utils';
+import { addColumnQuery, deleteColumnQuery, splitRowsByExistence } from '../utils/sql-utils';
 
 describe('sql-utils', () => {
 	describe('addColumnQuery', () => {
@@ -54,61 +49,6 @@ describe('sql-utils', () => {
 			const query = deleteColumnQuery(tableName, column, 'sqlite');
 
 			expect(query).toBe('ALTER TABLE "data_store_user_abc" DROP COLUMN "email"');
-		});
-	});
-
-	describe('buildInsertQuery', () => {
-		it('should generate a valid SQL query for inserting rows into a table', () => {
-			const tableName = 'data_store_user_abc';
-			const columns = [
-				{ name: 'name', type: 'string' },
-				{ name: 'age', type: 'number' },
-			];
-			const rows = [
-				{ name: 'Alice', age: 30 },
-				{ name: 'Bob', age: 25 },
-			];
-
-			const [query, parameters] = buildInsertQuery(tableName, rows, columns, 'postgres');
-
-			expect(query).toBe(
-				'INSERT INTO "data_store_user_abc" ("name", "age") VALUES ($1, $2), ($3, $4)',
-			);
-			expect(parameters).toEqual(['Alice', 30, 'Bob', 25]);
-		});
-
-		it('should return an empty query and parameters when rows are empty', () => {
-			const tableName = 'data_store_user_abc';
-			const rows: [] = [];
-
-			const [query, parameters] = buildInsertQuery(tableName, rows, []);
-
-			expect(query).toBe('');
-			expect(parameters).toEqual([]);
-		});
-
-		it('should return an empty query and parameters when rows have no keys', () => {
-			const tableName = 'data_store_user_abc';
-			const rows = [{}];
-
-			const [query, parameters] = buildInsertQuery(tableName, rows, []);
-
-			expect(query).toBe('');
-			expect(parameters).toEqual([]);
-		});
-
-		it('should replace T and Z for MySQL', () => {
-			const tableName = 'data_store_user_abc';
-			const columns = [{ name: 'participatedAt', type: 'date' }];
-			const rows = [
-				{ participatedAt: new Date('2021-01-01') },
-				{ participatedAt: new Date('2021-01-02') },
-			];
-
-			const [query, parameters] = buildInsertQuery(tableName, rows, columns, 'mysql');
-
-			expect(query).toBe('INSERT INTO `data_store_user_abc` (`participatedAt`) VALUES (?), (?)');
-			expect(parameters).toEqual(['2021-01-01 00:00:00.000', '2021-01-02 00:00:00.000']);
 		});
 	});
 

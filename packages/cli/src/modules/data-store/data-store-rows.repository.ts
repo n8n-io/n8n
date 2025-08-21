@@ -13,14 +13,14 @@ import {
 	QueryRunner,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
-import { DataStoreRows } from 'n8n-workflow';
+import { DataStoreColumnJsType, DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
 import {
 	addColumnQuery,
 	buildColumnTypeMap,
-	buildInsertQuery,
 	deleteColumnQuery,
+	extractInsertedIds,
 	getPlaceholder,
 	normalizeValue,
 	quoteIdentifier,
@@ -58,12 +58,38 @@ export class DataStoreRowsRepository {
 		rows: DataStoreRows,
 		columns: DataStoreColumn[],
 	) {
-		const dbType = this.dataSource.options.type;
-		await this.dataSource.query.apply(
-			this.dataSource,
-			buildInsertQuery(tableName, rows, columns, dbType),
-		);
-		return true;
+		const insertedIds: number[] = [];
+
+		// We insert one by one as the default behavior of returning the last inserted ID
+		// is consistent, whereas getting all inserted IDs when inserting multiple values is
+		// surprisingly awkward without Entities, e.g. `RETURNING id` explicitly does not aggregate
+		// and the `identifiers` array output of `execute()` is empty
+		for (const row of rows) {
+			const dbType = this.dataSource.options.type;
+
+			for (const column of columns) {
+				row[column.name] = normalizeValue(row[column.name], column.type, dbType);
+			}
+
+			const query = this.dataSource
+				.createQueryBuilder()
+				.insert()
+				.into(
+					tableName,
+					columns.map((c) => c.name),
+				)
+				.values(row);
+
+			if (dbType === 'postgres' || dbType === 'mariadb') {
+				query.returning('id');
+			}
+
+			const result = await query.execute();
+
+			insertedIds.push(...extractInsertedIds(result.raw, dbType));
+		}
+
+		return insertedIds;
 	}
 
 	async upsertRows(
@@ -102,8 +128,8 @@ export class DataStoreRowsRepository {
 
 	async updateRow(
 		tableName: DataStoreUserTableName,
-		setData: Record<string, unknown>,
-		whereData: Record<string, unknown>,
+		setData: Record<string, DataStoreColumnJsType | null>,
+		whereData: Record<string, DataStoreColumnJsType | null>,
 		columns: DataStoreColumn[],
 	) {
 		const dbType = this.dataSource.options.type;
@@ -111,14 +137,14 @@ export class DataStoreRowsRepository {
 
 		const queryBuilder = this.dataSource.createQueryBuilder().update(tableName);
 
-		const setValues: Record<string, unknown> = {};
+		const setValues: Record<string, DataStoreColumnJsType | null> = {};
 		for (const [key, value] of Object.entries(setData)) {
 			setValues[key] = normalizeValue(value, columnTypeMap[key], dbType);
 		}
 
 		queryBuilder.set(setValues);
 
-		const normalizedWhereData: Record<string, unknown> = {};
+		const normalizedWhereData: Record<string, DataStoreColumnJsType | null> = {};
 		for (const [field, value] of Object.entries(whereData)) {
 			normalizedWhereData[field] = normalizeValue(value, columnTypeMap[field], dbType);
 		}

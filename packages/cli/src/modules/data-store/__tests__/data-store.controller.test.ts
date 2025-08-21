@@ -1830,17 +1830,18 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			],
 		};
 
-		await authMemberAgent
+		const response = await authMemberAgent
 			.post(`/projects/${project.id}/data-stores/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
 
-		const readResponse = await authMemberAgent
-			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
-			.expect(200);
+		expect(response.body).toEqual({
+			data: [1],
+		});
 
-		expect(readResponse.body.data.count).toBe(1);
-		expect(readResponse.body.data.data[0]).toMatchObject(payload.data[0]);
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
+		expect(rowsInDb.count).toBe(1);
+		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
 
 	test('should insert rows if user has project:admin role in team project', async () => {
@@ -1869,10 +1870,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			],
 		};
 
-		await authAdminAgent
+		const response = await authAdminAgent
 			.post(`/projects/${project.id}/data-stores/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
+
+		expect(response.body).toEqual({
+			data: [1],
+		});
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
 		expect(rowsInDb.count).toBe(1);
@@ -1902,10 +1907,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			],
 		};
 
-		await authMemberAgent
+		const response = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
+
+		expect(response.body).toEqual({
+			data: [1],
+		});
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
 		expect(rowsInDb.count).toBe(1);
@@ -1968,10 +1977,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			],
 		};
 
-		await authMemberAgent
+		const response = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
+
+		expect(response.body).toEqual({
+			data: [1],
+		});
 
 		const readResponse = await authMemberAgent
 			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
@@ -2012,10 +2025,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			],
 		};
 
-		await authMemberAgent
+		const response = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
+
+		expect(response.body).toEqual({
+			data: [1],
+		});
 
 		const readResponse = await authMemberAgent
 			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
@@ -2048,10 +2065,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			],
 		};
 
-		await authMemberAgent
+		const response = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
+
+		expect(response.body).toEqual({
+			data: [1],
+		});
 
 		const readResponse = await authMemberAgent
 			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
@@ -2099,10 +2120,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			],
 		};
 
-		await authMemberAgent
+		const response = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
+
+		expect(response.body).toEqual({
+			data: [1],
+		});
 
 		const readResponse = await authMemberAgent
 			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
@@ -2145,10 +2170,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			],
 		};
 
-		await authMemberAgent
+		const response = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
+
+		expect(response.body).toEqual({
+			data: [1],
+		});
 
 		const readResponse = await authMemberAgent
 			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
@@ -2156,6 +2185,63 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 
 		expect(readResponse.body.data.count).toBe(1);
 		expect(readResponse.body.data.data[0]).toMatchObject(payload.data[0]);
+	});
+
+	test('should insert multiple rows', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'a',
+					type: 'string',
+				},
+				{
+					name: 'b',
+					type: 'number',
+				},
+			],
+		});
+
+		const payload = {
+			data: [
+				{
+					a: 'first',
+					b: 1,
+				},
+				{
+					a: 'second',
+					b: 2,
+				},
+				{
+					a: 'third',
+					b: 3,
+				},
+			],
+		};
+
+		const first = await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(200);
+
+		expect(first.body).toEqual({
+			data: [1, 2, 3],
+		});
+
+		const second = await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(200);
+
+		expect(second.body).toEqual({
+			data: [4, 5, 6],
+		});
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(6);
+		expect(readResponse.body.data.data).toMatchObject([...payload.data, ...payload.data]);
 	});
 });
 
