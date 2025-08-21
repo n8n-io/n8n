@@ -297,11 +297,13 @@ const onAddRowClick = async () => {
 		}
 		contentLoading.value = true;
 		emit('toggleSave', true);
-		const inserted = await dataStoreStore.insertEmptyRow(props.dataStore);
-		if (!inserted) {
-			throw new Error(i18n.baseText('generic.unknownError'));
-		}
-		await fetchDataStoreContent();
+		const newRowId = await dataStoreStore.insertEmptyRow(props.dataStore);
+		const newRow: DataStoreRow = { id: newRowId };
+		// Add nulls for the rest of the columns
+		props.dataStore.columns.forEach((col) => {
+			newRow[col.name] = null;
+		});
+		rows.value.push(newRow);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 	} finally {

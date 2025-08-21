@@ -184,12 +184,13 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		dataStore.columns.forEach((column) => {
 			emptyRow[column.name] = null;
 		});
-		return await insertDataStoreRowApi(
+		const inserted = await insertDataStoreRowApi(
 			rootStore.restApiContext,
 			dataStore.id,
 			emptyRow,
 			dataStore.projectId,
 		);
+		return inserted[0];
 	};
 
 	const updateRow = async (
