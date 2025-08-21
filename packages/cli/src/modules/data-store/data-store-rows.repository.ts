@@ -73,10 +73,6 @@ export class DataStoreRowsRepository {
 	) {
 		const { rows, matchFields } = dto;
 
-		if (rows.length === 0) {
-			return false;
-		}
-
 		const { rowsToInsert, rowsToUpdate } = await this.fetchAndSplitRowsByExistence(
 			tableName,
 			matchFields,
@@ -91,7 +87,7 @@ export class DataStoreRowsRepository {
 			for (const row of rowsToUpdate) {
 				const updateKeys = Object.keys(row).filter((key) => !matchFields.includes(key));
 				if (updateKeys.length === 0) {
-					return;
+					return true;
 				}
 
 				const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
