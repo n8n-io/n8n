@@ -33,8 +33,8 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: get.FIELD,
-				description: 'Get a row',
-				action: 'Get a row',
+				description: 'Get row(s)',
+				action: 'Get row(s)',
 			},
 			// 	{
 			// 		name: 'Get Many',
@@ -46,7 +46,7 @@ export const description: INodeProperties[] = [
 				name: 'Insert',
 				value: insert.FIELD,
 				description: 'Insert a new row',
-				action: 'Insert a row',
+				action: 'Insert row',
 			},
 		],
 		default: 'insert',
