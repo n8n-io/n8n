@@ -1,6 +1,17 @@
-import { BasePage } from './BasePage';
+import type { Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 
-export class NodeDisplayViewPage extends BasePage {
+import { BasePage } from './BasePage';
+import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
+
+export class NodeDetailsViewPage extends BasePage {
+	readonly setupHelper: NodeParameterHelper;
+
+	constructor(page: Page) {
+		super(page);
+		this.setupHelper = new NodeParameterHelper(this);
+	}
+
 	async clickBackToCanvasButton() {
 		await this.clickByTestId('back-to-canvas');
 	}
@@ -187,14 +198,80 @@ export class NodeDisplayViewPage extends BasePage {
 	}
 
 	/**
-	 * Select option in parameter dropdown
+	 * Get parameter input field
+	 * @param parameterName - The name of the parameter
+	 */
+	getParameterInputField(parameterName: string) {
+		return this.getParameterInput(parameterName).getByTestId('parameter-input-field');
+	}
+
+	/**
+	 * Select option in parameter dropdown (improved with Playwright best practices)
 	 * @param parameterName - The parameter name
 	 * @param optionText - The text of the option to select
 	 */
 	async selectOptionInParameterDropdown(parameterName: string, optionText: string) {
 		const dropdown = this.getParameterInput(parameterName);
 		await dropdown.click();
+
+		// Wait for dropdown to be visible and select option - following Playwright best practices
 		await this.page.getByRole('option', { name: optionText }).click();
+	}
+
+	/**
+	 * Click parameter dropdown by name (test-id based selector)
+	 * @param parameterName - The parameter name e.g 'httpMethod', 'authentication'
+	 */
+	async clickParameterDropdown(parameterName: string): Promise<void> {
+		await this.clickByTestId(`parameter-input-${parameterName}`);
+	}
+
+	/**
+	 * Select option from visible dropdown using Playwright role-based selectors
+	 * This follows the pattern used in working n8n tests
+	 * @param optionText - The text of the option to select
+	 */
+	async selectFromVisibleDropdown(optionText: string): Promise<void> {
+		// Use Playwright's role-based selector - this is more reliable than CSS selectors
+		await this.page.getByRole('option', { name: optionText }).click();
+	}
+
+	/**
+	 * Fill parameter input field by parameter name
+	 * @param parameterName - The parameter name e.g 'path', 'url'
+	 * @param value - The value to fill
+	 */
+	async fillParameterInputByName(parameterName: string, value: string): Promise<void> {
+		const input = this.getParameterInputField(parameterName);
+		await input.click();
+		await input.fill(value);
+	}
+
+	/**
+	 * Click parameter options expansion (e.g. for Response Code)
+	 */
+	async clickParameterOptions(): Promise<void> {
+		await this.page.locator('.param-options').click();
+	}
+
+	/**
+	 * Get visible Element UI popper (dropdown/popover)
+	 * Ported from Cypress pattern with Playwright selectors
+	 */
+	getVisiblePopper() {
+		return this.page
+			.locator('.el-popper')
+			.filter({ hasNot: this.page.locator('[aria-hidden="true"]') });
+	}
+
+	/**
+	 * Wait for parameter dropdown to be visible and ready for interaction
+	 * @param parameterName - The parameter name
+	 */
+	async waitForParameterDropdown(parameterName: string): Promise<void> {
+		const dropdown = this.getParameterInput(parameterName);
+		await dropdown.waitFor({ state: 'visible' });
+		await expect(dropdown).toBeEnabled();
 	}
 
 	/**
@@ -278,5 +355,92 @@ export class NodeDisplayViewPage extends BasePage {
 
 	getErrorMessageText(message: string) {
 		return this.page.locator(`text=${message}`);
+	}
+
+	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {
+		await this.getParameterInput(parameterName).click();
+		await this.page.getByRole('option', { name: optionText }).click();
+	}
+
+	async setParameterInput(parameterName: string, value: string): Promise<void> {
+		await this.fillParameterInputByName(parameterName, value);
+	}
+
+	async setParameterSwitch(parameterName: string, enabled: boolean): Promise<void> {
+		const switchElement = this.getParameterInput(parameterName).locator('.el-switch');
+		const isCurrentlyEnabled = (await switchElement.getAttribute('aria-checked')) === 'true';
+		if (isCurrentlyEnabled !== enabled) {
+			await switchElement.click();
+		}
+	}
+
+	async setMultipleParameters(
+		parameters: Record<string, string | number | boolean>,
+	): Promise<void> {
+		for (const [parameterName, value] of Object.entries(parameters)) {
+			if (typeof value === 'string') {
+				const parameterType = await this.setupHelper.detectParameterType(parameterName);
+				if (parameterType === 'dropdown') {
+					await this.setParameterDropdown(parameterName, value);
+				} else {
+					await this.setParameterInput(parameterName, value);
+				}
+			} else if (typeof value === 'boolean') {
+				await this.setParameterSwitch(parameterName, value);
+			} else if (typeof value === 'number') {
+				await this.setParameterInput(parameterName, value.toString());
+			}
+		}
+	}
+
+	async getParameterValue(parameterName: string): Promise<string> {
+		const parameterType = await this.setupHelper.detectParameterType(parameterName);
+
+		switch (parameterType) {
+			case 'text':
+				return await this.getTextParameterValue(parameterName);
+			case 'dropdown':
+				return await this.getDropdownParameterValue(parameterName);
+			case 'switch':
+				return await this.getSwitchParameterValue(parameterName);
+			default:
+				// Fallback for unknown types
+				return (await this.getParameterInput(parameterName).textContent()) ?? '';
+		}
+	}
+
+	/**
+	 * Get value from a text parameter - simplified approach
+	 */
+	private async getTextParameterValue(parameterName: string): Promise<string> {
+		const parameterContainer = this.getParameterInput(parameterName);
+		const input = parameterContainer.locator('input').first();
+		return await input.inputValue();
+	}
+
+	/**
+	 * Get value from a dropdown parameter
+	 */
+	private async getDropdownParameterValue(parameterName: string): Promise<string> {
+		const selectedOption = this.getParameterInput(parameterName).locator('.el-select__tags-text');
+		return (await selectedOption.textContent()) ?? '';
+	}
+
+	/**
+	 * Get value from a switch parameter
+	 */
+	private async getSwitchParameterValue(parameterName: string): Promise<string> {
+		const switchElement = this.getParameterInput(parameterName).locator('.el-switch');
+		const isEnabled = (await switchElement.getAttribute('aria-checked')) === 'true';
+		return isEnabled ? 'true' : 'false';
+	}
+
+	async validateParameter(parameterName: string, expectedValue: string): Promise<void> {
+		const actualValue = await this.getParameterValue(parameterName);
+		if (actualValue !== expectedValue) {
+			throw new Error(
+				`Parameter ${parameterName} has value "${actualValue}", expected "${expectedValue}"`,
+			);
+		}
 	}
 }

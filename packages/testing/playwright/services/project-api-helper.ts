@@ -27,4 +27,19 @@ export class ProjectApiHelper {
 		const result = await response.json();
 		return result.data ?? result;
 	}
+
+	/**
+	 * Delete a project
+	 * @param projectId The ID of the project to delete
+	 * @returns True if deletion was successful
+	 */
+	async deleteProject(projectId: string): Promise<boolean> {
+		const response = await this.api.request.delete(`/rest/projects/${projectId}`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to delete project: ${await response.text()}`);
+		}
+
+		return true;
+	}
 }
