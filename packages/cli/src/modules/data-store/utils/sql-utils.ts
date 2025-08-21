@@ -155,6 +155,16 @@ function hasRowId(data: unknown): data is WithRowId {
 	return typeof data === 'object' && data !== null && 'id' in data && isNumber(data.id);
 }
 
+export function extractReturningData(raw: unknown): DataStoreRows {
+	if (!isArrayOf(raw, hasRowId)) {
+		throw new UnexpectedError(
+			'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+		);
+	}
+
+	return raw;
+}
+
 export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type']): number[] {
 	switch (dbType) {
 		case 'postgres':
