@@ -161,20 +161,20 @@ export const insertDataStoreRowApi = async (
 	);
 };
 
-export const upsertDataStoreRowsApi = async (
+export const updateDataStoreRowsApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
-	rows: DataStoreRow[],
+	rowId: string,
+	rowData: DataStoreRow,
 	projectId: string,
-	matchFields: string[] = ['id'],
 ) => {
 	return await makeRestApiRequest<boolean>(
 		context,
-		'POST',
-		`/projects/${projectId}/data-stores/${dataStoreId}/upsert`,
+		'PATCH',
+		`/projects/${projectId}/data-stores/${dataStoreId}/rows`,
 		{
-			rows,
-			matchFields,
+			filter: { id: rowId },
+			data: rowData,
 		},
 	);
 };

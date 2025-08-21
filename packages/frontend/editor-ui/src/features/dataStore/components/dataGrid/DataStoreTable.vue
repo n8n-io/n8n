@@ -321,12 +321,16 @@ const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) =
 		return;
 	}
 
+	const fieldName = String(colDef.field);
+	const id = String(data.id);
+
 	try {
 		emit('toggleSave', true);
-		await dataStoreStore.upsertRow(props.dataStore.id, props.dataStore.projectId, data);
+		await dataStoreStore.updateRow(props.dataStore.id, props.dataStore.projectId, id, {
+			[fieldName]: value,
+		});
 	} catch (error) {
 		// Revert cell to original value if the update fails
-		const fieldName = String(colDef.field);
 		const validOldValue = isDataStoreValue(oldValue) ? oldValue : null;
 		const revertedData: DataStoreRow = { ...data, [fieldName]: validOldValue };
 		api.applyTransaction({

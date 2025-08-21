@@ -12,7 +12,7 @@ import {
 	moveDataStoreColumnApi,
 	getDataStoreRowsApi,
 	insertDataStoreRowApi,
-	upsertDataStoreRowsApi,
+	updateDataStoreRowsApi,
 } from '@/features/dataStore/dataStore.api';
 import type {
 	DataStore,
@@ -195,8 +195,19 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		);
 	};
 
-	const upsertRow = async (dataStoreId: string, projectId: string, row: DataStoreRow) => {
-		return await upsertDataStoreRowsApi(rootStore.restApiContext, dataStoreId, [row], projectId);
+	const updateRow = async (
+		dataStoreId: string,
+		projectId: string,
+		rowId: string,
+		rowData: DataStoreRow,
+	) => {
+		return await updateDataStoreRowsApi(
+			rootStore.restApiContext,
+			dataStoreId,
+			rowId,
+			rowData,
+			projectId,
+		);
 	};
 
 	return {
@@ -213,6 +224,6 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		moveDataStoreColumn,
 		fetchDataStoreContent,
 		insertEmptyRow,
-		upsertRow,
+		updateRow,
 	};
 });
