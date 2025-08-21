@@ -1,20 +1,21 @@
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeProperties,
+import type {
+	IDisplayOptions,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
 } from 'n8n-workflow';
 
 import { getSelectFields, getSelectFilter } from '../../common/selectMany';
 import { getDataStoreProxyExecute } from '../../common/utils';
 
-const displayOptions = {
+export const FIELD: string = 'get';
+
+const displayOptions: IDisplayOptions = {
 	show: {
 		resource: ['row'],
-		operation: ['get'],
+		operation: [FIELD],
 	},
 };
-
-export const FIELD: string = 'get';
 
 export const description: INodeProperties[] = [...getSelectFields(displayOptions)];
 

@@ -9,14 +9,14 @@ import {
 import { COLUMNS } from '../../common/fields';
 import { getDataStoreProxyExecute } from '../../common/utils';
 
+export const FIELD: string = 'insert';
+
 const displayOptions: IDisplayOptions = {
 	show: {
 		resource: ['row'],
-		operation: ['insert'],
+		operation: [FIELD],
 	},
 };
-
-export const FIELD: string = 'insert';
 
 export const description: INodeProperties[] = [
 	{
