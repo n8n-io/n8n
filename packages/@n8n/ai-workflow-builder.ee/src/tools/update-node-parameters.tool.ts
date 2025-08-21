@@ -74,7 +74,6 @@ async function processParameterUpdates(
 			nodeType: node.type,
 			nodeDefinition: nodeType,
 			requestedChanges: changes,
-			instanceUrl,
 		},
 		logger,
 	);
