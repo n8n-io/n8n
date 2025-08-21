@@ -4,12 +4,14 @@ BROKER_RUNNER_REGISTERED = "broker:runnerregistered"
 BROKER_TASK_OFFER_ACCEPT = "broker:taskofferaccept"
 BROKER_TASK_SETTINGS = "broker:tasksettings"
 BROKER_TASK_CANCEL = "broker:taskcancel"
+BROKER_RPC_RESPONSE = "broker:rpcresponse"
 RUNNER_INFO = "runner:info"
 RUNNER_TASK_OFFER = "runner:taskoffer"
 RUNNER_TASK_ACCEPTED = "runner:taskaccepted"
 RUNNER_TASK_REJECTED = "runner:taskrejected"
 RUNNER_TASK_DONE = "runner:taskdone"
 RUNNER_TASK_ERROR = "runner:taskerror"
+RUNNER_RPC = "runner:rpc"
 
 # Runner
 TASK_TYPE_PYTHON = "python"
@@ -40,6 +42,10 @@ ENV_HIDE_TASK_OFFER_LOGS = "N8N_RUNNERS_HIDE_TASK_OFFER_LOGS"
 # Logging
 LOG_FORMAT = "%(asctime)s.%(msecs)03d\t%(levelname)s\t%(message)s"
 LOG_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+
+# RPC
+RPC_BROWSER_CONSOLE_LOG_METHOD = "logNodeOutput"
 
 # Rejection reasons
 TASK_REJECTED_REASON_OFFER_EXPIRED = (

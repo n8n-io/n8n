@@ -65,7 +65,10 @@ class TaskExecutor:
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
 
-            return returned["result"] or []
+            result = returned.get("result", [])
+            print_logs = returned.get("print_logs", [])
+
+            return result, print_logs
 
         except Exception as e:
             if continue_on_fail:
@@ -91,9 +94,19 @@ class TaskExecutor:
 
         try:
             code = TaskExecutor._wrap_code(raw_code)
-            globals = {"__builtins__": __builtins__, "_items": items}
+            print_logs = []
+
+            globals = {
+                "__builtins__": __builtins__,
+                "_items": items,
+                "print": TaskExecutor._create_custom_print(print_logs),
+            }
+
             exec(code, globals)
-            queue.put({"result": globals[EXECUTOR_USER_OUTPUT_KEY]})
+
+            queue.put(
+                {"result": globals[EXECUTOR_USER_OUTPUT_KEY], "print_logs": print_logs}
+            )
 
         except Exception as e:
             TaskExecutor._put_error(queue, e)
@@ -105,11 +118,18 @@ class TaskExecutor:
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
             compiled_code = compile(wrapped_code, "<per_item_task_execution>", "exec")
+            print_logs = []
 
             result = []
             for index, item in enumerate(items):
-                globals = {"__builtins__": __builtins__, "_item": item}
+                globals = {
+                    "__builtins__": __builtins__,
+                    "_item": item,
+                    "print": TaskExecutor._create_custom_print(print_logs),
+                }
+
                 exec(compiled_code, globals)
+
                 user_output = globals[EXECUTOR_USER_OUTPUT_KEY]
 
                 if user_output is None:
@@ -118,7 +138,7 @@ class TaskExecutor:
                 user_output["pairedItem"] = {"item": index}
                 result.append(user_output)
 
-            queue.put({"result": result})
+            queue.put({"result": result, "print_logs": print_logs})
 
         except Exception as e:
             TaskExecutor._put_error(queue, e)
@@ -131,3 +151,13 @@ class TaskExecutor:
     @staticmethod
     def _put_error(queue: multiprocessing.Queue, e: Exception):
         queue.put({"error": {"message": str(e), "stack": traceback.format_exc()}})
+
+    @staticmethod
+    def _create_custom_print(print_logs: list):
+        """Create a custom print function that captures output to the given list."""
+
+        def custom_print(*args):
+            log = " ".join(str(arg) for arg in args)
+            print_logs.append(log)
+
+        return custom_print
