@@ -4,6 +4,7 @@ import type {
 	DataStoreColumnType,
 	DataStoreValue,
 } from '@/features/dataStore/datastore.types';
+import { isAGGridCellType } from '@/features/dataStore/typeGuards';
 
 /* eslint-disable id-denylist */
 const COLUMN_TYPE_ICONS: Record<DataStoreColumnType, IconName> = {
@@ -31,6 +32,16 @@ export const useDataStoreTypes = () => {
 		return colType;
 	};
 
+	const mapToDataStoreColumnType = (colType: AGGridCellType): DataStoreColumnType => {
+		if (!isAGGridCellType(colType)) {
+			return 'string';
+		}
+		if (colType === 'text') {
+			return 'string';
+		}
+		return colType as DataStoreColumnType;
+	};
+
 	const getDefaultValueForType = (colType: DataStoreColumnType): DataStoreValue => {
 		switch (colType) {
 			case 'string':
@@ -49,6 +60,7 @@ export const useDataStoreTypes = () => {
 	return {
 		getIconForType,
 		mapToAGCellType,
+		mapToDataStoreColumnType,
 		getDefaultValueForType,
 	};
 };

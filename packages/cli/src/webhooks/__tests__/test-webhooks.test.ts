@@ -1,3 +1,4 @@
+import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
 import { mock } from 'jest-mock-extended';
@@ -7,6 +8,7 @@ import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -195,17 +197,71 @@ describe('TestWebhooks', () => {
 	});
 
 	describe('getWebhookMethods()', () => {
+		beforeEach(() => {
+			registrations.toKey.mockImplementation(
+				(webhook: Pick<IWebhookData, 'webhookId' | 'httpMethod' | 'path'>) => {
+					const { webhookId, httpMethod, path: webhookPath } = webhook;
+					if (!webhookId) return [httpMethod, webhookPath].join('|');
+
+					let path = webhookPath;
+					if (path.startsWith(webhookId)) {
+						const cutFromIndex = path.indexOf('/') + 1;
+
+						path = path.slice(cutFromIndex);
+					}
+					return [httpMethod, webhookId, path.split('/').length].join('|');
+				},
+			);
+		});
+
 		test('should normalize trailing slash', async () => {
 			const METHOD = 'POST';
 			const PATH_WITH_SLASH = 'register/';
 			const PATH_WITHOUT_SLASH = 'register';
-			registrations.getAllKeys.mockResolvedValue([`${METHOD}|${PATH_WITHOUT_SLASH}`]);
+			const webhookData = {
+				httpMethod: METHOD as IHttpRequestMethods,
+				path: PATH_WITHOUT_SLASH,
+			} as IWebhookData;
+
+			registrations.getRegistrationsHash.mockImplementation(async () => {
+				return {
+					[registrations.toKey(webhookData)]: {
+						workflowEntity: mock<WorkflowEntity>(),
+						webhook: webhookData,
+					},
+				};
+			});
 
 			const resultWithSlash = await testWebhooks.getWebhookMethods(PATH_WITH_SLASH);
 			const resultWithoutSlash = await testWebhooks.getWebhookMethods(PATH_WITHOUT_SLASH);
 
 			expect(resultWithSlash).toEqual([METHOD]);
 			expect(resultWithoutSlash).toEqual([METHOD]);
+		});
+
+		test('should return methods for webhooks with dynamic paths', async () => {
+			const METHOD = 'POST';
+			const PATH = '12345/register/:id';
+
+			const webhookData = {
+				webhookId: '12345',
+				httpMethod: METHOD as IHttpRequestMethods,
+				// Path for dynamic webhook does not contain webhookId
+				path: 'register/:id',
+			};
+
+			registrations.getRegistrationsHash.mockImplementation(async () => {
+				return {
+					[registrations.toKey(webhookData)]: {
+						workflowEntity: mock<WorkflowEntity>(),
+						webhook: webhookData as IWebhookData,
+					},
+				};
+			});
+
+			const result = await testWebhooks.getWebhookMethods(PATH);
+
+			expect(result).toEqual([METHOD]);
 		});
 	});
 });
