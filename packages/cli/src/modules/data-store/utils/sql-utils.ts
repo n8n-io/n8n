@@ -17,7 +17,7 @@ export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[
 
 		switch (col.type) {
 			case 'number':
-				return name.int;
+				return name.double;
 			case 'boolean':
 				return name.bool;
 			case 'string':
@@ -38,7 +38,17 @@ function dataStoreColumnTypeToSql(
 		case 'string':
 			return 'TEXT';
 		case 'number':
-			return 'FLOAT';
+			switch (dbType) {
+				case 'postgres':
+					return 'DOUBLE PRECISION';
+				case 'mysql':
+				case 'mariadb':
+					return 'DOUBLE';
+				case 'sqlite':
+					return 'REAL';
+				default:
+					return 'DOUBLE';
+			}
 		case 'boolean':
 			return 'BOOLEAN';
 		case 'date':

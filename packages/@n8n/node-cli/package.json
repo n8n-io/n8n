@@ -1,5 +1,5 @@
 {
-  "private": true,
+  "private": false,
   "name": "@n8n/node-cli",
   "version": "0.1.0",
   "description": "Official CLI for developing community nodes for n8n",
