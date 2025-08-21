@@ -1,12 +1,11 @@
 import {
 	DATA_STORE_COLUMN_REGEX,
-	type DataStoreRows,
 	type DataStoreCreateColumnSchema,
 	type DataStoreColumn,
 } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, type DataStoreRows } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -18,7 +17,7 @@ export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[
 
 		switch (col.type) {
 			case 'number':
-				return name.int;
+				return name.double;
 			case 'boolean':
 				return name.bool;
 			case 'string':
@@ -39,7 +38,17 @@ function dataStoreColumnTypeToSql(
 		case 'string':
 			return 'TEXT';
 		case 'number':
-			return 'FLOAT';
+			switch (dbType) {
+				case 'postgres':
+					return 'DOUBLE PRECISION';
+				case 'mysql':
+				case 'mariadb':
+					return 'DOUBLE';
+				case 'sqlite':
+					return 'REAL';
+				default:
+					return 'DOUBLE';
+			}
 		case 'boolean':
 			return 'BOOLEAN';
 		case 'date':

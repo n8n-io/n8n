@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { useUIStore } from '@/stores/ui.store';
 import { CodeDiff } from 'v-code-diff';
+
+const uiStore = useUIStore();
+
 const props = withDefaults(
 	defineProps<{
 		oldString: string;
@@ -10,136 +14,51 @@ const props = withDefaults(
 		hideHeader?: boolean;
 		forceInlineComparison?: boolean;
 		diffStyle?: 'word' | 'char';
+		theme?: 'light' | 'dark';
 	}>(),
 	{
 		outputFormat: 'line-by-line',
 		language: 'json',
 		hideHeader: true,
 		diffStyle: 'word',
+		theme: undefined,
 	},
 );
 </script>
 
 <template>
-	<CodeDiff v-bind="props" class="code-diff" />
+	<CodeDiff v-bind="props" :class="$style.codeDiff" :theme="props.theme || uiStore.appliedTheme" />
 </template>
 
-<style lang="scss">
+<style lang="scss" module>
 /* Diff colors are now centralized in @n8n/design-system tokens */
 
-.code-diff {
-	height: 100%;
-	margin: 0;
-	border: none;
-	border-radius: 0;
+.codeDiff {
+	&:global(.code-diff-view) {
+		height: 100%;
+		margin: 0;
+		border: none;
+		border-radius: 0;
 
-	// Dark theme support for v-code-diff
-	[data-theme='dark'] & {
-		// Main container and wrapper (primary background)
-		background: var(--color-background-light) !important; // Dark background in dark theme
-		color: var(--color-text-dark) !important; // In dark theme: light text
+		&:global([theme='dark']) {
+			--fgColor-default: var(--color-text-dark);
+			--bgColor-default: var(--color-background-light);
+			--color-fg-subtle: var(--color-text-light); // Muted text
 
-		// Target all possible wrapper elements
-		> div,
-		.v-code-diff,
-		.v-code-diff-wrapper,
-		.code-diff-wrapper,
-		.diff-wrapper {
-			background: var(--color-background-light) !important;
-		}
+			// deletions
+			--color-diff-blob-deletion-num-bg: var(--diff-del-light);
+			--color-diff-blob-deletion-num-text: var(--color-text-xlight);
+			--color-danger-emphasis: var(--diff-del);
 
-		// Code diff view wrapper
-		.code-diff-view {
-			background: var(--color-background-light) !important; // Dark background
-			color: var(--color-text-dark) !important;
-		}
+			// insertions
+			--color-diff-blob-addition-num-text: var(--color-text-xlight);
+			--color-diff-blob-addition-num-bg: var(--diff-new-light);
+			--color-success-emphasis: var(--diff-new);
 
-		// Main table wrapper
-		.diff-table {
-			background: var(--color-background-light) !important; // Dark background
-			color: var(--color-text-dark) !important;
-		}
-
-		// Line numbers (slightly emphasized background)
-		.blob-num {
-			background: var(--color-background-darker) !important; // In dark theme: even lighter gray
-			color: var(--color-text-light) !important; // Muted text
-			border-color: var(--color-foreground-base) !important;
-		}
-
-		// Context lines (unchanged code - dark background for better contrast)
-		.blob-num-context {
-			background: var(--color-background-light) !important; // Dark background in dark theme
-			color: var(--color-text-light) !important; // Muted text
-		}
-
-		.blob-code-context {
-			background: var(--color-background-light) !important; // Dark background in dark theme
-			color: var(--color-text-dark) !important; // Primary text
-		}
-
-		// Added lines (insertions)
-		.blob-num-addition {
-			background: var(--diff-new-light) !important;
-			color: var(--color-text-xlight) !important;
-			border-color: var(--diff-new) !important;
-		}
-
-		.blob-code-addition {
-			background: var(--diff-new-faint) !important;
-			color: var(--color-text-xlight) !important;
-		}
-
-		// Deleted lines
-		.blob-num-deletion {
-			background: var(--diff-del-light) !important;
-			color: var(--color-text-xlight) !important;
-			border-color: var(--diff-del) !important;
-		}
-
-		.blob-code-deletion {
-			background: var(--diff-del-faint) !important;
-			color: var(--color-text-xlight) !important;
-		}
-
-		// Hunk headers
-		.blob-num-hunk,
-		.blob-code-hunk {
-			background: var(--color-background-medium) !important;
-			color: var(--color-text-base) !important;
-		}
-
-		// Code markers and inner content
-		.blob-code-inner {
-			color: var(--color-text-dark) !important;
-		}
-
-		// Syntax highlighting overrides for dark theme
-		.hljs-attr {
-			color: #79c0ff !important;
-		}
-
-		.hljs-string {
-			color: #a5d6ff !important;
-		}
-
-		.hljs-number {
-			color: #79c0ff !important;
-		}
-
-		.hljs-punctuation {
-			color: var(--color-text-light) !important;
-		}
-
-		.hljs-keyword,
-		.hljs-literal {
-			color: #ff7b72 !important;
-		}
-
-		// Character-level diff highlighting
-		.x {
-			background: rgba(255, 255, 255, 0.1) !important;
-			color: inherit !important;
+			--color-diff-blob-hunk-num-bg: var(--color-background-medium);
+			:global(.blob-code-hunk) {
+				background-color: var(--color-diff-blob-hunk-num-bg);
+			}
 		}
 	}
 }

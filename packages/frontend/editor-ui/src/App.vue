@@ -23,6 +23,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
+import { useWorkflowDiffRouting } from '@/composables/useWorkflowDiffRouting';
 import { useStyles } from './composables/useStyles';
 import { locale } from '@n8n/design-system';
 import axios from 'axios';
@@ -39,6 +40,9 @@ const { setAppZIndexes } = useStyles();
 
 // Initialize undo/redo
 useHistoryHelper(route);
+
+// Initialize workflow diff routing management
+useWorkflowDiffRouting();
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
