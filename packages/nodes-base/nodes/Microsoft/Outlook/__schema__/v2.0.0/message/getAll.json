@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.etag": {
-            "type": "string"
-        },
         "bodyPreview": {
             "type": "string"
         },
@@ -23,5 +20,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }
