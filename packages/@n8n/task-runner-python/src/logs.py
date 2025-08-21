@@ -14,8 +14,15 @@ RESET = "\033[0m"
 
 
 class ColorFormatter(logging.Formatter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.use_colors = os.getenv("NO_COLOR") is None
+
     def format(self, record):
         formatted = super().format(record)
+
+        if not self.use_colors:
+            return formatted
 
         parts = formatted.split("\t")
 
