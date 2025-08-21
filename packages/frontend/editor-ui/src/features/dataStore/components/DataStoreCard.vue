@@ -2,7 +2,7 @@
 import type { DataStoreResource } from '@/features/dataStore/types';
 import { DATA_STORE_DETAILS } from '@/features/dataStore/constants';
 import { useI18n } from '@n8n/i18n';
-import { computed, useTemplateRef } from 'vue';
+import { computed } from 'vue';
 import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
 
 type Props = {
