@@ -16,13 +16,13 @@ function buildApiKeyScopes() {
 		...operations.map((op) => `${resource}:${op}` as const),
 	]) as ApiKeyScope[];
 
-	return apiKeyScopes;
+	return new Set(apiKeyScopes);
 }
 
 export const ALL_SCOPES = buildResourceScopes();
 
 // Keep the type of Scope[] to ensure that ApiKeyScopes are a subset of Scopes!
-export const ALL_API_KEY_SCOPES: Scope[] = buildApiKeyScopes();
+export const ALL_API_KEY_SCOPES = buildApiKeyScopes();
 
 export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'annotationTag:create': {

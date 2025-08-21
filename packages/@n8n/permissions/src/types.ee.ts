@@ -112,7 +112,8 @@ type AllApiKeyScopesObject = {
 export type ApiKeyScope = AllApiKeyScopesObject[PublicApiKeyResources];
 
 export function isApiKeyScope(scope: Scope): scope is ApiKeyScope {
-	return ALL_API_KEY_SCOPES.includes(scope);
+	// We are casting with as for runtime type checking
+	return ALL_API_KEY_SCOPES.has(scope as ApiKeyScope);
 }
 
 // #endregion
