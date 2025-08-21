@@ -1,6 +1,6 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Core UI Patterns - Building Blocks', () => {
+test.describe('01 - UI Test Entry Points', () => {
 	test.describe('Entry Point: Home Page', () => {
 		test('should navigate from home', async ({ n8n }) => {
 			await n8n.start.fromHome();
