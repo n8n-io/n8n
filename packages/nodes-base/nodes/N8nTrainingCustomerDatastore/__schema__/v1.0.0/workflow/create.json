@@ -10,6 +10,9 @@
         "id": {
             "type": "string"
         },
+        "isArchived": {
+            "type": "boolean"
+        },
         "meta": {
             "type": "null"
         },
@@ -26,6 +29,12 @@
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "position": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
                     },
                     "type": {
                         "type": "string"
@@ -46,5 +55,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
