@@ -343,6 +343,8 @@ async function initializeData() {
 
 	try {
 		await Promise.all(loadPromises);
+		//We don't need to await this as community node previews are not critical and needed only in nodes search panel
+		void nodeTypesStore.fetchCommunityNodePreviews();
 	} catch (error) {
 		toast.showError(
 			error,
