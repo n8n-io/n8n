@@ -200,6 +200,18 @@ ${cssVariables}
 `.trim(),
 		description: 'Override default styling of the public chat interface with CSS',
 	},
+	{
+		displayName: 'Include Request Headers',
+		name: 'includeRequestHeaders',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to include request headers in the response',
+		displayOptions: {
+			show: {
+				'/mode': ['hostedChat', 'webhook'],
+			},
+		},
+	},
 ];
 
 export class ChatTrigger extends Node {
@@ -458,11 +470,12 @@ export class ChatTrigger extends Node {
 		const { data, files } = req.body;
 
 		const returnItem: INodeExecutionData = {
-			json: {
-				...data,
-				headers: context.getHeaderData(),
-			},
+			json: data,
 		};
+
+		if (options.includeRequestHeaders) {
+			returnItem.json.headers = context.getHeaderData();
+		}
 
 		if (files && Object.keys(files).length) {
 			returnItem.json.files = [] as Array<Omit<IBinaryData, 'data'>>;
@@ -539,6 +552,7 @@ export class ChatTrigger extends Node {
 			allowFileUploads?: boolean;
 			allowedFilesMimeTypes?: string;
 			customCss?: string;
+			includeRequestHeaders?: boolean;
 		};
 
 		const responseMode = ctx.getNodeParameter('options.responseMode', 'lastNode') as string;
@@ -646,7 +660,7 @@ export class ChatTrigger extends Node {
 					{
 						json: {
 							...bodyData,
-							headers: ctx.getHeaderData(),
+							...(options.includeRequestHeaders ? { headers: ctx.getHeaderData() } : {}),
 						},
 					},
 				];
@@ -669,7 +683,7 @@ export class ChatTrigger extends Node {
 				{
 					json: {
 						...bodyData,
-						headers: ctx.getHeaderData(),
+						...(options.includeRequestHeaders ? { headers: ctx.getHeaderData() } : {}),
 					},
 				},
 			];
