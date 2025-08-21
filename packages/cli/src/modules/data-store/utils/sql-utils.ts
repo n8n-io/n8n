@@ -129,48 +129,6 @@ export function buildInsertQuery(
 	return [query, parameters];
 }
 
-export function buildUpdateQuery(
-	tableName: DataStoreUserTableName,
-	row: Record<string, unknown>,
-	columns: Array<{ name: string; type: string }>,
-	matchFields: string[],
-	dbType: DataSourceOptions['type'] = 'sqlite',
-): [string, unknown[]] {
-	if (Object.keys(row).length === 0 || matchFields.length === 0) {
-		return ['', []];
-	}
-
-	const updateKeys = Object.keys(row).filter((key) => !matchFields.includes(key));
-	if (updateKeys.length === 0) {
-		return ['', []];
-	}
-
-	const quotedTableName = quoteIdentifier(tableName, dbType);
-	const columnTypeMap = buildColumnTypeMap(columns);
-
-	const parameters: unknown[] = [];
-	let placeholderIndex = 1;
-
-	const setClause = updateKeys
-		.map((key) => {
-			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
-			parameters.push(value);
-			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
-		})
-		.join(', ');
-
-	const whereClause = matchFields
-		.map((key) => {
-			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
-			parameters.push(value);
-			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
-		})
-		.join(' AND ');
-
-	const query = `UPDATE ${quotedTableName} SET ${setClause} WHERE ${whereClause}`;
-	return [query, parameters];
-}
-
 export function splitRowsByExistence(
 	existing: Array<Record<string, unknown>>,
 	matchFields: string[],
@@ -251,7 +209,7 @@ export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 	});
 }
 
-function normalizeValue(
+export function normalizeValue(
 	value: unknown,
 	columnType: string | undefined,
 	dbType: DataSourceOptions['type'],
@@ -282,7 +240,7 @@ export function getPlaceholder(index: number, dbType: DataSourceOptions['type'])
 	return dbType.includes('postgres') ? `$${index}` : '?';
 }
 
-function buildColumnTypeMap(
+export function buildColumnTypeMap(
 	columns: Array<{ name: string; type: string }>,
 ): Record<string, string> {
 	return Object.fromEntries(columns.map((col) => [col.name, col.type]));

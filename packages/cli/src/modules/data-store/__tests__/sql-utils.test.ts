@@ -4,7 +4,6 @@ import {
 	addColumnQuery,
 	deleteColumnQuery,
 	buildInsertQuery,
-	buildUpdateQuery,
 	splitRowsByExistence,
 } from '../utils/sql-utils';
 
@@ -110,79 +109,6 @@ describe('sql-utils', () => {
 
 			expect(query).toBe('INSERT INTO `data_store_user_abc` (`participatedAt`) VALUES (?), (?)');
 			expect(parameters).toEqual(['2021-01-01 00:00:00.000', '2021-01-02 00:00:00.000']);
-		});
-	});
-
-	describe('buildUpdateQuery', () => {
-		it('should generate a valid SQL update query with one match field', () => {
-			const tableName = 'data_store_user_abc';
-			const row = { name: 'Alice', age: 30, city: 'Paris' };
-			const columns = [
-				{ id: 1, name: 'name', type: 'string' },
-				{ id: 2, name: 'age', type: 'number' },
-				{ id: 3, name: 'city', type: 'string' },
-			];
-			const matchFields = ['name'];
-
-			const [query, parameters] = buildUpdateQuery(tableName, row, columns, matchFields);
-
-			expect(query).toBe('UPDATE "data_store_user_abc" SET "age" = ?, "city" = ? WHERE "name" = ?');
-			expect(parameters).toEqual([30, 'Paris', 'Alice']);
-		});
-
-		it('should generate a valid SQL update query with multiple match fields', () => {
-			const tableName = 'data_store_user_abc';
-			const row = { name: 'Alice', age: 30, city: 'Paris' };
-			const columns = [
-				{ id: 1, name: 'name', type: 'string' },
-				{ id: 2, name: 'age', type: 'number' },
-				{ id: 3, name: 'city', type: 'string' },
-			];
-			const matchFields = ['name', 'city'];
-
-			const [query, parameters] = buildUpdateQuery(tableName, row, columns, matchFields);
-
-			expect(query).toBe(
-				'UPDATE "data_store_user_abc" SET "age" = ? WHERE "name" = ? AND "city" = ?',
-			);
-			expect(parameters).toEqual([30, 'Alice', 'Paris']);
-		});
-
-		it('should return empty query and parameters if row is empty', () => {
-			const tableName = 'data_store_user_abc';
-			const row = {};
-			const matchFields = ['id'];
-
-			const [query, parameters] = buildUpdateQuery(tableName, row, [], matchFields);
-
-			expect(query).toBe('');
-			expect(parameters).toEqual([]);
-		});
-
-		it('should return empty query and parameters if matchFields is empty', () => {
-			const tableName = 'data_store_user_abc';
-			const row = { name: 'Alice', age: 30 };
-			const columns = [
-				{ id: 1, name: 'name', type: 'string' },
-				{ id: 2, name: 'age', type: 'number' },
-			];
-			const matchFields: string[] = [];
-
-			const [query, parameters] = buildUpdateQuery(tableName, row, columns, matchFields);
-
-			expect(query).toBe('');
-			expect(parameters).toEqual([]);
-		});
-
-		it('should return empty query and parameters if only matchFields are present in row', () => {
-			const tableName = 'data_store_user_abc';
-			const row = { id: 1 };
-			const matchFields = ['id'];
-
-			const [query, parameters] = buildUpdateQuery(tableName, row, [], matchFields);
-
-			expect(query).toBe('');
-			expect(parameters).toEqual([]);
 		});
 	});
 
