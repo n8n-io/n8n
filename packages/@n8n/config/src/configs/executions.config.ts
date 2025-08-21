@@ -27,6 +27,17 @@ class ConcurrencyConfig {
 }
 
 @Config
+class QueueRecoveryConfig {
+	/** How often (minutes) to check for queue recovery. */
+	@Env('N8N_EXECUTIONS_QUEUE_RECOVERY_INTERVAL')
+	interval: number = 180;
+
+	/** Size of batch of executions to check for queue recovery. */
+	@Env('N8N_EXECUTIONS_QUEUE_RECOVERY_BATCH')
+	batchSize: number = 100;
+}
+
+@Config
 export class ExecutionsConfig {
 	/** Whether to delete past executions on a rolling basis. */
 	@Env('EXECUTIONS_DATA_PRUNE')
@@ -56,4 +67,23 @@ export class ExecutionsConfig {
 
 	@Nested
 	concurrency: ConcurrencyConfig;
+
+	@Nested
+	queueRecovery: QueueRecoveryConfig;
+
+	/** Whether to save execution data for failed production executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_ERROR')
+	saveDataOnError: 'all' | 'none' = 'all';
+
+	/** Whether to save execution data for successful production executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_SUCCESS')
+	saveDataOnSuccess: 'all' | 'none' = 'all';
+
+	/** Whether to save execution data as each node executes. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_PROGRESS')
+	saveExecutionProgress: boolean = false;
+
+	/** Whether to save execution data for manual executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
+	saveDataManualExecutions: boolean = true;
 }
