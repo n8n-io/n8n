@@ -16,7 +16,10 @@ const communityPackagesService = mockInstance(CommunityPackagesService, {
 });
 mockInstance(LoadNodesAndCredentials);
 
-const testServer = setupTestServer({ endpointGroups: ['community-packages'] });
+const testServer = setupTestServer({
+	endpointGroups: ['community-packages'],
+	modules: ['community-packages'],
+});
 
 const commonUpdatesProps = {
 	createdAt: new Date(),
