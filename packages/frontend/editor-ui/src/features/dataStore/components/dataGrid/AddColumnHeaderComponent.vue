@@ -132,7 +132,7 @@ const onInput = debounce(validateName, { debounceTime: 300 });
 									@visible-change="isSelectOpen = $event"
 								>
 									<N8nOption v-for="type in columnTypes" :key="type" :value="type">
-										<div class="option-content">
+										<div class="add-column-option-content">
 											<N8nIcon :icon="getIconForType(type)" />
 											<N8nText>{{ type }}</N8nText>
 										</div>
@@ -175,12 +175,6 @@ const onInput = debounce(validateName, { debounceTime: 300 });
 		gap: var(--spacing-xs);
 	}
 
-	.option-content {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-xs);
-	}
-
 	.error-message {
 		display: flex;
 		align-items: center;
@@ -191,5 +185,10 @@ const onInput = debounce(validateName, { debounceTime: 300 });
 	.error-tooltip {
 		cursor: pointer;
 	}
+}
+.add-column-option-content {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-xs);
 }
 </style>
