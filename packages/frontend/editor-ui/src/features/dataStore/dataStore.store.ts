@@ -20,13 +20,10 @@ import type {
 	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const rootStore = useRootStore();
 	const projectStore = useProjectsStore();
-
-	const dataStoreTypes = useDataStoreTypes();
 
 	const dataStores = ref<DataStore[]>([]);
 	const totalCount = ref(0);
