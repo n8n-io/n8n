@@ -40,6 +40,7 @@ export interface WorkflowBuilderAgentConfig {
 	checkpointer?: MemorySaver;
 	tracer?: LangChainTracer;
 	autoCompactThresholdTokens?: number;
+	instanceUrl?: string;
 }
 
 export interface ChatPayload {
@@ -59,6 +60,7 @@ export class WorkflowBuilderAgent {
 	private logger?: Logger;
 	private tracer?: LangChainTracer;
 	private autoCompactThresholdTokens: number;
+	private instanceUrl?: string;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -69,6 +71,7 @@ export class WorkflowBuilderAgent {
 		this.tracer = config.tracer;
 		this.autoCompactThresholdTokens =
 			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
+		this.instanceUrl = config.instanceUrl;
 	}
 
 	private createWorkflow() {
@@ -78,7 +81,12 @@ export class WorkflowBuilderAgent {
 			createAddNodeTool(this.parsedNodeTypes),
 			createConnectNodesTool(this.parsedNodeTypes, this.logger),
 			createRemoveNodeTool(this.logger),
-			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask, this.logger),
+			createUpdateNodeParametersTool(
+				this.parsedNodeTypes,
+				this.llmComplexTask,
+				this.logger,
+				this.instanceUrl,
+			),
 		];
 
 		// Create a map for quick tool lookup
@@ -98,6 +106,7 @@ export class WorkflowBuilderAgent {
 				...state,
 				executionData: state.workflowContext?.executionData ?? {},
 				executionSchema: state.workflowContext?.executionSchema ?? [],
+				instanceUrl: this.instanceUrl,
 			});
 			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
 
