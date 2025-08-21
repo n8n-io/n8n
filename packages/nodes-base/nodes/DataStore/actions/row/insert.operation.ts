@@ -4,11 +4,10 @@ import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeProperties,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { COLUMNS } from '../../common/fields';
-import { getDataStoreProxy } from '../../common/utils';
+import { getDataStoreProxyExecute } from '../../common/utils';
 
 const displayOptions: IDisplayOptions = {
 	show: {
@@ -32,7 +31,7 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 
-	const dataStoreProxy = await getDataStoreProxy(this, index);
+	const dataStoreProxy = await getDataStoreProxyExecute(this, index);
 	const dataMode = this.getNodeParameter('columns.mappingMode', index) as string;
 
 	let data: IDataObject;
@@ -44,12 +43,7 @@ export async function execute(
 
 		data = fields;
 	}
-	// Todo: insertRows should return the inserted rows including the id
-	const success = await dataStoreProxy.insertRows([data as never]);
 
-	if (!success) {
-		throw new NodeOperationError(this.getNode(), 'Failed to insert record into data store');
-	}
-
-	return [{ json: data }];
+	const insertedRowIds = (await dataStoreProxy.insertRows([data as never])) as never as number[];
+	return insertedRowIds.map((x) => ({ json: { id: x } }));
 }

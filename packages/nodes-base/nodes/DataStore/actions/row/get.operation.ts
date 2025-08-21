@@ -1,27 +1,40 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import {
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeProperties,
+} from 'n8n-workflow';
 
-import { getDataStoreProxy } from '../../common/utils';
+import { getSelectFields, getSelectFilter } from '../../common/selectMany';
+import { getDataStoreProxyExecute } from '../../common/utils';
 
-// const displayOptions = {
-// 	show: {
-// 		resource: ['row'],
-// 		operation: ['get'],
-// 	},
-// };
+const displayOptions = {
+	show: {
+		resource: ['row'],
+		operation: ['get'],
+	},
+};
 
 export const FIELD: string = 'get';
 
-export const description: INodeProperties[] = [];
+export const description: INodeProperties[] = [...getSelectFields(displayOptions)];
 
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const dataStoreProxy = await getDataStoreProxy(this, index);
+	const dataStoreProxy = await getDataStoreProxyExecute(this, index);
+
 	let take = 1000;
 	const result: INodeExecutionData[] = [];
+
+	const filter = getSelectFilter(this, index);
+
 	do {
-		const response = await dataStoreProxy.getManyRowsAndCount({ skip: result.length, take });
+		const response = await dataStoreProxy.getManyRowsAndCount({
+			skip: result.length,
+			take,
+			filter,
+		});
 		const data = response.data.map((json) => ({ json }));
 
 		// Optimize common path of <1000 results

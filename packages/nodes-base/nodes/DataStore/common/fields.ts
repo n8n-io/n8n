@@ -15,7 +15,7 @@ export const COLUMNS: INodeProperties = {
 	typeOptions: {
 		loadOptionsDependsOn: [`${DATA_STORE_ID_FIELD}.value`],
 		resourceMapper: {
-			resourceMapperMethod: 'getColumns',
+			resourceMapperMethod: 'getDataStores',
 			mode: 'add',
 			fieldWords: {
 				singular: 'column',
