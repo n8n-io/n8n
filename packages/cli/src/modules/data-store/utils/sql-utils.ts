@@ -208,14 +208,12 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 			}
 			return [raw.insertId];
 		}
-		case 'sqlite': {
+		case 'sqlite':
+		default: {
 			if (!isNumber(raw)) {
 				throw new UnexpectedError('Expected INSERT INTO raw to be a number for SQLite');
 			}
 			return [raw];
-		}
-		default: {
-			throw new UnexpectedError(`Unsupported dbType: ${dbType}`);
 		}
 	}
 }
