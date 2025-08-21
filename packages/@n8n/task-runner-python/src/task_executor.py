@@ -5,6 +5,7 @@ import textwrap
 
 from .errors import TaskExecutionError, TaskTimeoutError
 from .message_types.broker import NodeMode, Items
+from .constants import EXECUTOR_USER_OUTPUT_KEY
 
 
 class TaskExecutor:
@@ -78,7 +79,7 @@ class TaskExecutor:
             code = TaskExecutor._wrap_code(raw_code)
             globals = {"__builtins__": __builtins__, "_items": items}
             exec(code, globals)
-            queue.put({"result": globals["user_output"]})
+            queue.put({"result": globals[EXECUTOR_USER_OUTPUT_KEY]})
 
         except Exception as e:
             TaskExecutor._put_error(queue, e)
@@ -93,7 +94,7 @@ class TaskExecutor:
                 code = TaskExecutor._wrap_code(raw_code)
                 globals = {"__builtins__": __builtins__, "_item": item}
                 exec(code, globals)
-                user_output = globals["user_output"]
+                user_output = globals[EXECUTOR_USER_OUTPUT_KEY]
 
                 if user_output is None:
                     continue
@@ -109,9 +110,7 @@ class TaskExecutor:
     @staticmethod
     def _wrap_code(raw_code: str) -> str:
         indented_code = textwrap.indent(raw_code, "    ")
-        return (
-            f"def _user_function():\n{indented_code}\n\nuser_output = _user_function()"
-        )
+        return f"def _user_function():\n{indented_code}\n\n{EXECUTOR_USER_OUTPUT_KEY} = _user_function()"
 
     @staticmethod
     def _put_error(queue: multiprocessing.Queue, e: Exception):

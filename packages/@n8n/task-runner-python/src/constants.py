@@ -22,6 +22,9 @@ OFFER_VALIDITY = 5000  # ms
 OFFER_VALIDITY_MAX_JITTER = 500  # ms
 OFFER_VALIDITY_LATENCY_BUFFER = 0.1  # 100ms
 
+# Executor
+EXECUTOR_USER_OUTPUT_KEY = "__n8n_internal_user_output__"
+
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
 TASK_BROKER_WS_PATH = "/runners/_ws"
