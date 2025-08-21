@@ -1,0 +1,136 @@
+{
+	"name": "PinData Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0a60e507-7f34-41c0-a0f9-697d852033b6",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [780, 320]
+		},
+		{
+			"parameters": {
+				"path": "b0d79ddb-df2d-49b1-8555-9fa2b482608f",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"id": "66425ce3-450d-4aa6-a53b-a701ab89c2de",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 1.1,
+			"position": [780, 540],
+			"webhookId": "b0d79ddb-df2d-49b1-8555-9fa2b482608f"
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "nodeData",
+							"stringValue": "init"
+						}
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "3211b3c5-49e9-4694-8f86-7a5783bc653a",
+			"name": "Init Data",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1000, 320]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "nodeData",
+							"stringValue": "pin"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "97b31120-4720-4632-9d35-356f345119f7",
+			"name": "Pin Data",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1240, 320]
+		},
+		{
+			"parameters": {},
+			"id": "1ee7be4f-7006-43bf-bb0c-29db3058a399",
+			"name": "End",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1460, 320]
+		}
+	],
+	"pinData": {
+		"Pin Data": [
+			{
+				"json": {
+					"nodeData": "pin-overwritten"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Init Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Init Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Init Data": {
+			"main": [
+				[
+					{
+						"node": "Pin Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pin Data": {
+			"main": [
+				[
+					{
+						"node": "End",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "ded8577a-3ed2-4611-842c-a7922ec58b98",
+	"id": "weofVLZo0ssmPDrV",
+	"meta": {
+		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+	},
+	"tags": []
+}

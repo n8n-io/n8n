@@ -314,6 +314,14 @@ describe('GlobalConfig', () => {
 				productionLimit: -1,
 				evaluationLimit: -1,
 			},
+			queueRecovery: {
+				interval: 180,
+				batchSize: 100,
+			},
+			saveDataOnError: 'all',
+			saveDataOnSuccess: 'all',
+			saveExecutionProgress: false,
+			saveDataManualExecutions: true,
 		},
 		diagnostics: {
 			enabled: true,

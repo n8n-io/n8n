@@ -29,8 +29,12 @@ export const useReadyToRunWorkflowsStore = defineStore(
 
 		const isFeatureEnabled = computed(() => {
 			return (
-				posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name) ===
-					BATCH_11AUG_EXPERIMENT.variantReadyToRun && cloudPlanStore.userIsTrialing
+				[
+					BATCH_11AUG_EXPERIMENT.variantReadyToRun,
+					BATCH_11AUG_EXPERIMENT.variantReadyToRun2,
+					BATCH_11AUG_EXPERIMENT.variantReadyToRun3,
+				].includes(posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name)?.toString() ?? '') &&
+				cloudPlanStore.userIsTrialing
 			);
 		});
 
@@ -63,6 +67,36 @@ export const useReadyToRunWorkflowsStore = defineStore(
 				status,
 			});
 		};
+
+		function getCardText() {
+			const variant = posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name);
+
+			switch (variant) {
+				case BATCH_11AUG_EXPERIMENT.variantReadyToRun:
+					return i18n.baseText('workflows.readyToRunWorkflows.card');
+				case BATCH_11AUG_EXPERIMENT.variantReadyToRun2:
+					return i18n.baseText('workflows.readyToRunWorkflows.card2');
+				case BATCH_11AUG_EXPERIMENT.variantReadyToRun3:
+					return i18n.baseText('workflows.readyToRunWorkflows.card3');
+				default:
+					return '';
+			}
+		}
+
+		function getCalloutText() {
+			const variant = posthogStore.getVariant(BATCH_11AUG_EXPERIMENT.name);
+
+			switch (variant) {
+				case BATCH_11AUG_EXPERIMENT.variantReadyToRun:
+					return i18n.baseText('workflows.readyToRunWorkflows.callout');
+				case BATCH_11AUG_EXPERIMENT.variantReadyToRun2:
+					return i18n.baseText('workflows.readyToRunWorkflows.callout2');
+				case BATCH_11AUG_EXPERIMENT.variantReadyToRun3:
+					return i18n.baseText('workflows.readyToRunWorkflows.callout3');
+				default:
+					return '';
+			}
+		}
 
 		const createWorkflows = async (projectId: string, parentFolderId?: string) => {
 			const collectionFolder = await foldersStore.createFolder(
@@ -104,6 +138,8 @@ export const useReadyToRunWorkflowsStore = defineStore(
 			trackDismissCallout,
 			trackOpenWorkflow,
 			trackExecuteWorkflow,
+			getCardText,
+			getCalloutText,
 		};
 	},
 );

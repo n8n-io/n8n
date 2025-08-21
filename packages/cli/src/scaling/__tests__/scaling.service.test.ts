@@ -44,6 +44,12 @@ describe('ScalingService', () => {
 				queueMetricsInterval: 20,
 			},
 		},
+		executions: {
+			queueRecovery: {
+				interval: 180,
+				batchSize: 100,
+			},
+		},
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);
@@ -112,7 +118,7 @@ describe('ScalingService', () => {
 				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
 				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
-				expect(scheduleQueueRecoverySpy).toHaveBeenCalled();
+				expect(scheduleQueueRecoverySpy).toHaveBeenCalledWith(0);
 			});
 		});
 
