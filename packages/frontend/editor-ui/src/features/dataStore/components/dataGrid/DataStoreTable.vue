@@ -206,12 +206,13 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		field: col.name,
 		headerName: col.name,
 		flex: 1,
-		editable: true,
+		editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 		resizable: true,
 		lockPinned: true,
 		headerComponent: ColumnHeader,
 		headerComponentParams: { onDelete: onDeleteColumn },
 		cellDataType: mapToAGCellType(col.type),
+		cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : ''),
 		valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
 			// If the value is null, return null to show empty cell
 			if (params.data?.[col.name] === null || params.data?.[col.name] === undefined) {
