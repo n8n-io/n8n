@@ -87,38 +87,6 @@ export function deleteColumnQuery(
 	return `ALTER TABLE ${quotedTableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
 }
 
-export function buildInsertQuery(
-	tableName: DataStoreUserTableName,
-	rows: DataStoreRows,
-	columns: Array<{ name: string; type: string }>,
-	dbType: DataSourceOptions['type'] = 'sqlite',
-): [string, unknown[]] {
-	if (rows.length === 0 || Object.keys(rows[0]).length === 0) {
-		return ['', []];
-	}
-
-	const keys = Object.keys(rows[0]);
-	const quotedKeys = keys.map((key) => quoteIdentifier(key, dbType)).join(', ');
-	const quotedTableName = quoteIdentifier(tableName, dbType);
-
-	const columnTypeMap = buildColumnTypeMap(columns);
-	const parameters: unknown[] = [];
-	const valuePlaceholders: string[] = [];
-	let placeholderIndex = 1;
-
-	for (const row of rows) {
-		const rowPlaceholders = keys.map((key) => {
-			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
-			parameters.push(value);
-			return getPlaceholder(placeholderIndex++, dbType);
-		});
-		valuePlaceholders.push(`(${rowPlaceholders.join(', ')})`);
-	}
-
-	const query = `INSERT INTO ${quotedTableName} (${quotedKeys}) VALUES ${valuePlaceholders.join(', ')}`;
-	return [query, parameters];
-}
-
 export function buildUpdateQuery(
 	tableName: DataStoreUserTableName,
 	row: Record<string, unknown>,
