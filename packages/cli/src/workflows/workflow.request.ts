@@ -52,6 +52,7 @@ export declare namespace WorkflowRequest {
 			includeScopes?: string;
 			includeFolders?: string;
 			onlySharedWithMe?: string;
+			availableInMCP?: string;
 		}
 	> & {
 		listQueryOptions: ListQuery.Options;
