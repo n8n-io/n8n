@@ -3,7 +3,6 @@ import type {
 	ListDataStoreContentFilter,
 	DataStoreUserTableName,
 	UpsertDataStoreRowsDto,
-	UpdateDataStoreRowDto,
 } from '@n8n/api-types';
 import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,11 +18,11 @@ import { DataStoreRows } from 'n8n-workflow';
 import { DataStoreColumn } from './data-store-column.entity';
 import {
 	addColumnQuery,
+	buildColumnTypeMap,
 	buildInsertQuery,
-	buildUpdateQuery,
-	buildUpdateQueryWithMatchFields,
 	deleteColumnQuery,
 	getPlaceholder,
+	normalizeValue,
 	quoteIdentifier,
 	splitRowsByExistence,
 	toDslColumns,
@@ -72,7 +71,6 @@ export class DataStoreRowsRepository {
 		dto: UpsertDataStoreRowsDto,
 		columns: DataStoreColumn[],
 	) {
-		const dbType = this.dataSource.options.type;
 		const { rows, matchFields } = dto;
 
 		if (rows.length === 0) {
@@ -91,15 +89,15 @@ export class DataStoreRowsRepository {
 
 		if (rowsToUpdate.length > 0) {
 			for (const row of rowsToUpdate) {
-				// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
-				const [query, parameters] = buildUpdateQueryWithMatchFields(
-					tableName,
-					row,
-					columns,
-					matchFields,
-					dbType,
-				);
-				await this.dataSource.query(query, parameters);
+				const updateKeys = Object.keys(row).filter((key) => !matchFields.includes(key));
+				if (updateKeys.length === 0) {
+					return;
+				}
+
+				const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
+				const whereData = Object.fromEntries(matchFields.map((key) => [key, row[key]]));
+
+				await this.updateRow(tableName, setData, whereData, columns);
 			}
 		}
 
@@ -108,17 +106,30 @@ export class DataStoreRowsRepository {
 
 	async updateRow(
 		tableName: DataStoreUserTableName,
-		dto: UpdateDataStoreRowDto,
+		setData: Record<string, unknown>,
+		whereData: Record<string, unknown>,
 		columns: DataStoreColumn[],
 	) {
 		const dbType = this.dataSource.options.type;
-		const [query, parameters] = buildUpdateQuery(tableName, dto.data, dto.filter, columns, dbType);
+		const columnTypeMap = buildColumnTypeMap(columns);
 
-		if (query === '') {
-			return false;
+		const queryBuilder = this.dataSource.createQueryBuilder().update(tableName);
+
+		const setValues: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(setData)) {
+			setValues[key] = normalizeValue(value, columnTypeMap[key], dbType);
 		}
 
-		await this.dataSource.query(query, parameters);
+		queryBuilder.set(setValues);
+
+		for (const [field, value] of Object.entries(whereData)) {
+			const normalizedValue = normalizeValue(value, columnTypeMap[field], dbType);
+			queryBuilder.andWhere(`${quoteIdentifier(field, dbType)} = :${field}`, {
+				[field]: normalizedValue,
+			});
+		}
+
+		await queryBuilder.execute();
 		return true;
 	}
 

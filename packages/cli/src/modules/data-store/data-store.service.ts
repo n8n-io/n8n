@@ -166,7 +166,12 @@ export class DataStoreService {
 		this.validateRowsWithColumns([filter], columns, true, true);
 		this.validateRowsWithColumns([data], columns, true, false);
 
-		return await this.dataStoreRowsRepository.updateRow(toTableName(dataStoreId), dto, columns);
+		return await this.dataStoreRowsRepository.updateRow(
+			toTableName(dataStoreId),
+			data,
+			filter,
+			columns,
+		);
 	}
 
 	async deleteRows(dataStoreId: string, projectId: string, ids: number[]) {

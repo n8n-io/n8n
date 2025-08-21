@@ -129,65 +129,6 @@ export function buildInsertQuery(
 	return [query, parameters];
 }
 
-export function buildUpdateQuery(
-	tableName: DataStoreUserTableName,
-	setData: Record<string, unknown>,
-	whereData: Record<string, unknown>,
-	columns: Array<{ name: string; type: string }>,
-	dbType: DataSourceOptions['type'],
-): [string, unknown[]] {
-	if (Object.keys(setData).length === 0 || Object.keys(whereData).length === 0) {
-		return ['', []];
-	}
-
-	const quotedTableName = quoteIdentifier(tableName, dbType);
-	const columnTypeMap = buildColumnTypeMap(columns);
-
-	const parameters: unknown[] = [];
-	let placeholderIndex = 1;
-
-	const setClause = Object.keys(setData)
-		.map((key) => {
-			const value = normalizeValue(setData[key], columnTypeMap[key], dbType);
-			parameters.push(value);
-			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
-		})
-		.join(', ');
-
-	const whereClause = Object.keys(whereData)
-		.map((key) => {
-			const value = normalizeValue(whereData[key], columnTypeMap[key], dbType);
-			parameters.push(value);
-			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
-		})
-		.join(' AND ');
-
-	const query = `UPDATE ${quotedTableName} SET ${setClause} WHERE ${whereClause}`;
-	return [query, parameters];
-}
-
-export function buildUpdateQueryWithMatchFields(
-	tableName: DataStoreUserTableName,
-	row: Record<string, unknown>,
-	columns: Array<{ name: string; type: string }>,
-	matchFields: string[],
-	dbType: DataSourceOptions['type'] = 'sqlite',
-): [string, unknown[]] {
-	if (Object.keys(row).length === 0 || matchFields.length === 0) {
-		return ['', []];
-	}
-
-	const updateKeys = Object.keys(row).filter((key) => !matchFields.includes(key));
-	if (updateKeys.length === 0) {
-		return ['', []];
-	}
-
-	const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
-	const whereData = Object.fromEntries(matchFields.map((key) => [key, row[key]]));
-
-	return buildUpdateQuery(tableName, setData, whereData, columns, dbType);
-}
-
 export function splitRowsByExistence(
 	existing: Array<Record<string, unknown>>,
 	matchFields: string[],
@@ -268,7 +209,7 @@ export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 	});
 }
 
-function normalizeValue(
+export function normalizeValue(
 	value: unknown,
 	columnType: string | undefined,
 	dbType: DataSourceOptions['type'],
