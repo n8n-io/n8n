@@ -117,15 +117,11 @@ onMounted(async () => {
 	flex-direction: column;
 	height: 100%;
 	width: 100%;
-	max-width: var(--content-container-width);
 	box-sizing: border-box;
 	align-content: start;
-	padding: var(--spacing-l) var(--spacing-2xl) 0;
 }
 
 .header-loading {
-	margin-bottom: var(--spacing-2xl);
-
 	div {
 		height: 2em;
 	}
@@ -135,7 +131,11 @@ onMounted(async () => {
 	display: flex;
 	gap: var(--spacing-l);
 	align-items: center;
-	margin-bottom: var(--spacing-xl);
+}
+
+.header,
+.header-loading {
+	padding: var(--spacing-s);
 }
 
 .saving {

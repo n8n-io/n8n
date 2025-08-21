@@ -31,17 +31,22 @@ import {
 	ClientSideRowModelApiModule,
 	ValidationModule,
 	UndoRedoEditModule,
+	CellStyleModule,
 } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
-import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumnPopover.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
-import { DEFAULT_ID_COLUMN_NAME, NO_TABLE_YET_MESSAGE } from '@/features/dataStore/constants';
+import {
+	DATA_STORE_ID_COLUMN_WIDTH,
+	DEFAULT_ID_COLUMN_NAME,
+	NO_TABLE_YET_MESSAGE,
+} from '@/features/dataStore/constants';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
+import AddColumnHeaderComponent from '@/features/dataStore/components/dataGrid/AddColumnHeaderComponent.vue';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -57,6 +62,7 @@ ModuleRegistry.registerModules([
 	DateEditorModule,
 	ClientSideRowModelApiModule,
 	UndoRedoEditModule,
+	CellStyleModule,
 ]);
 
 type Props = {
@@ -87,13 +93,6 @@ const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
 };
 
 const contentLoading = ref(false);
-
-// Shared config for all columns
-const defaultColumnDef = {
-	flex: 1,
-	sortable: false,
-	filter: false,
-};
 
 // Pagination
 const pageSizeOptions = [10, 20, 50];
@@ -168,7 +167,7 @@ const onDeleteColumn = async (columnId: string) => {
 	}
 };
 
-const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload }) => {
+const onAddColumn = async (column: DataStoreColumnCreatePayload) => {
 	try {
 		// todo: api call should be last
 		const newColumn = await dataStoreStore.addDataStoreColumn(
@@ -179,7 +178,11 @@ const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload })
 		if (!newColumn) {
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
-		colDefs.value = [...colDefs.value, createColumnDef(newColumn)];
+		colDefs.value = [
+			...colDefs.value.slice(0, -1),
+			createColumnDef(newColumn),
+			...colDefs.value.slice(-1),
+		];
 		rowData.value = rowData.value.map((row) => {
 			return { ...row, [newColumn.name]: getDefaultValueForType(newColumn.type) };
 		});
@@ -194,6 +197,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		colId: col.id,
 		field: col.name,
 		headerName: col.name,
+		flex: 1,
 		editable: true,
 		resizable: true,
 		lockPinned: true,
@@ -266,6 +270,7 @@ const onAddRowClick = async () => {
 		}
 		emit('toggleSave', true);
 		await fetchDataStoreContent();
+		refreshGridData();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 	} finally {
@@ -289,10 +294,30 @@ const initColumnDefinitions = () => {
 				suppressMovable: true,
 				headerComponent: null,
 				lockPosition: true,
+				minWidth: DATA_STORE_ID_COLUMN_WIDTH,
+				maxWidth: DATA_STORE_ID_COLUMN_WIDTH,
+				resizable: false,
 			},
 		),
 		// Append other columns
 		...orderBy(props.dataStore.columns, 'index').map((col) => createColumnDef(col)),
+		createColumnDef(
+			{
+				index: props.dataStore.columns.length + 1,
+				id: 'add-column',
+				name: 'Add Column',
+				type: 'string',
+			},
+			{
+				editable: false,
+				suppressMovable: true,
+				lockPinned: true,
+				lockPosition: 'right',
+				resizable: false,
+				headerComponent: AddColumnHeaderComponent,
+				headerComponentParams: { onAddColumn },
+			},
+		),
 	];
 };
 
@@ -340,6 +365,7 @@ const fetchDataStoreContent = async () => {
 const initialize = async () => {
 	initColumnDefinitions();
 	await fetchDataStoreContent();
+	refreshGridData();
 };
 
 onMounted(async () => {
@@ -352,9 +378,6 @@ onMounted(async () => {
 		<div :class="$style['grid-container']" data-test-id="data-store-grid">
 			<AgGridVue
 				style="width: 100%"
-				:row-data="rowData"
-				:column-defs="colDefs"
-				:default-col-def="defaultColumnDef"
 				:dom-layout="'autoHeight'"
 				:row-height="36"
 				:header-height="36"
@@ -370,11 +393,6 @@ onMounted(async () => {
 				@grid-ready="onGridReady"
 				@cell-value-changed="onCellValueChanged"
 				@column-moved="onColumnMoved"
-			/>
-			<AddColumnPopover
-				:data-store="props.dataStore"
-				:class="$style['add-column-popover']"
-				@add-column="onAddColumn"
 			/>
 		</div>
 		<div :class="$style.footer">
@@ -407,7 +425,6 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-m);
-	width: calc(100% - var(--spacing-m) * 2);
 	align-items: center;
 }
 
@@ -418,7 +435,8 @@ onMounted(async () => {
 
 	// AG Grid style overrides
 	--ag-foreground-color: var(--color-text-base);
-	--ag-accent-color: var(--color-primary);
+	--ag-cell-text-color: var(--color-text-dark);
+	--ag-accent-color: var(--color-secondary);
 	--ag-background-color: var(--color-background-xlight);
 	--ag-border-color: var(--border-color-base);
 	--ag-border-radius: var(--border-radius-base);
@@ -431,21 +449,28 @@ onMounted(async () => {
 	--ag-header-font-weight: var(--font-weight-bold);
 	--ag-header-foreground-color: var(--color-text-dark);
 	--ag-cell-horizontal-padding: var(--spacing-2xs);
-	--ag-header-column-resize-handle-color: var(--color-foreground-base);
-	--ag-header-column-resize-handle-height: 100%;
 	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);
+	--ag-header-column-border-height: 100%;
 
 	:global(.ag-header-cell-resize) {
 		width: var(--spacing-xs);
 		// this is needed so that we compensate for the width
 		right: -7px;
 	}
-}
 
-.add-column-popover {
-	display: flex;
-	position: absolute;
-	right: -47px;
+	:global(.ag-root-wrapper) {
+		border-left: none;
+	}
+
+	:global(.id-column) {
+		color: var(--color-text-light);
+	}
+
+	:global(.ag-header-cell[col-id='add-column']) {
+		&:after {
+			display: none;
+		}
+	}
 }
 
 .footer {

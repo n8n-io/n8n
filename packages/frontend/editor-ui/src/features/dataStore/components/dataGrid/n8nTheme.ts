@@ -6,4 +6,6 @@ export const n8nTheme = themeQuartz.withPart(iconSetAlpine).withParams({
 	rowVerticalPaddingScale: 0.8,
 	sidePanelBorder: true,
 	wrapperBorder: true,
+	headerColumnBorder: { color: 'var(--color-foreground-base)' },
+	headerColumnBorderHeight: '100%',
 });

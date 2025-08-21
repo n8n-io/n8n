@@ -6,6 +6,8 @@ export const DATA_STORE_STORE = 'dataStoreStore';
 
 export const DEFAULT_DATA_STORE_PAGE_SIZE = 10;
 
+export const DATA_STORE_ID_COLUMN_WIDTH = 46;
+
 export const DATA_STORE_CARD_ACTIONS = {
 	RENAME: 'rename',
 	DELETE: 'delete',
