@@ -1,21 +1,43 @@
 import type { DataStoreRows } from 'n8n-workflow';
 
-import {
-	addColumnQuery,
-	deleteColumnQuery,
-	buildUpdateQuery,
-	splitRowsByExistence,
-} from '../utils/sql-utils';
+import { addColumnQuery, deleteColumnQuery, splitRowsByExistence } from '../utils/sql-utils';
 
 describe('sql-utils', () => {
 	describe('addColumnQuery', () => {
-		it('should generate a valid SQL query for adding columns to a table', () => {
+		it('should generate a valid SQL query for adding columns to a table, sqlite', () => {
 			const tableName = 'data_store_user_abc';
 			const column = { name: 'email', type: 'number' as const };
 
 			const query = addColumnQuery(tableName, column, 'sqlite');
 
-			expect(query).toBe('ALTER TABLE "data_store_user_abc" ADD "email" FLOAT');
+			expect(query).toBe('ALTER TABLE "data_store_user_abc" ADD "email" REAL');
+		});
+
+		it('should generate a valid SQL query for adding columns to a table, postgres', () => {
+			const tableName = 'data_store_user_abc';
+			const column = { name: 'email', type: 'number' as const };
+
+			const query = addColumnQuery(tableName, column, 'postgres');
+
+			expect(query).toBe('ALTER TABLE "data_store_user_abc" ADD "email" DOUBLE PRECISION');
+		});
+
+		it('should generate a valid SQL query for adding columns to a table, mysql', () => {
+			const tableName = 'data_store_user_abc';
+			const column = { name: 'email', type: 'number' as const };
+
+			const query = addColumnQuery(tableName, column, 'mysql');
+
+			expect(query).toBe('ALTER TABLE `data_store_user_abc` ADD `email` DOUBLE');
+		});
+
+		it('should generate a valid SQL query for adding columns to a table, mariadb', () => {
+			const tableName = 'data_store_user_abc';
+			const column = { name: 'email', type: 'number' as const };
+
+			const query = addColumnQuery(tableName, column, 'mariadb');
+
+			expect(query).toBe('ALTER TABLE `data_store_user_abc` ADD `email` DOUBLE');
 		});
 	});
 
@@ -27,79 +49,6 @@ describe('sql-utils', () => {
 			const query = deleteColumnQuery(tableName, column, 'sqlite');
 
 			expect(query).toBe('ALTER TABLE "data_store_user_abc" DROP COLUMN "email"');
-		});
-	});
-
-	describe('buildUpdateQuery', () => {
-		it('should generate a valid SQL update query with one match field', () => {
-			const tableName = 'data_store_user_abc';
-			const row = { name: 'Alice', age: 30, city: 'Paris' };
-			const columns = [
-				{ id: 1, name: 'name', type: 'string' },
-				{ id: 2, name: 'age', type: 'number' },
-				{ id: 3, name: 'city', type: 'string' },
-			];
-			const matchFields = ['name'];
-
-			const [query, parameters] = buildUpdateQuery(tableName, row, columns, matchFields);
-
-			expect(query).toBe('UPDATE "data_store_user_abc" SET "age" = ?, "city" = ? WHERE "name" = ?');
-			expect(parameters).toEqual([30, 'Paris', 'Alice']);
-		});
-
-		it('should generate a valid SQL update query with multiple match fields', () => {
-			const tableName = 'data_store_user_abc';
-			const row = { name: 'Alice', age: 30, city: 'Paris' };
-			const columns = [
-				{ id: 1, name: 'name', type: 'string' },
-				{ id: 2, name: 'age', type: 'number' },
-				{ id: 3, name: 'city', type: 'string' },
-			];
-			const matchFields = ['name', 'city'];
-
-			const [query, parameters] = buildUpdateQuery(tableName, row, columns, matchFields);
-
-			expect(query).toBe(
-				'UPDATE "data_store_user_abc" SET "age" = ? WHERE "name" = ? AND "city" = ?',
-			);
-			expect(parameters).toEqual([30, 'Alice', 'Paris']);
-		});
-
-		it('should return empty query and parameters if row is empty', () => {
-			const tableName = 'data_store_user_abc';
-			const row = {};
-			const matchFields = ['id'];
-
-			const [query, parameters] = buildUpdateQuery(tableName, row, [], matchFields);
-
-			expect(query).toBe('');
-			expect(parameters).toEqual([]);
-		});
-
-		it('should return empty query and parameters if matchFields is empty', () => {
-			const tableName = 'data_store_user_abc';
-			const row = { name: 'Alice', age: 30 };
-			const columns = [
-				{ id: 1, name: 'name', type: 'string' },
-				{ id: 2, name: 'age', type: 'number' },
-			];
-			const matchFields: string[] = [];
-
-			const [query, parameters] = buildUpdateQuery(tableName, row, columns, matchFields);
-
-			expect(query).toBe('');
-			expect(parameters).toEqual([]);
-		});
-
-		it('should return empty query and parameters if only matchFields are present in row', () => {
-			const tableName = 'data_store_user_abc';
-			const row = { id: 1 };
-			const matchFields = ['id'];
-
-			const [query, parameters] = buildUpdateQuery(tableName, row, [], matchFields);
-
-			expect(query).toBe('');
-			expect(parameters).toEqual([]);
 		});
 	});
 

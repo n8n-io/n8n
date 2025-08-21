@@ -18,7 +18,7 @@ export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[
 
 		switch (col.type) {
 			case 'number':
-				return name.int;
+				return name.double;
 			case 'boolean':
 				return name.bool;
 			case 'string':
@@ -39,7 +39,17 @@ function dataStoreColumnTypeToSql(
 		case 'string':
 			return 'TEXT';
 		case 'number':
-			return 'FLOAT';
+			switch (dbType) {
+				case 'postgres':
+					return 'DOUBLE PRECISION';
+				case 'mysql':
+				case 'mariadb':
+					return 'DOUBLE';
+				case 'sqlite':
+					return 'REAL';
+				default:
+					return 'DOUBLE';
+			}
 		case 'boolean':
 			return 'BOOLEAN';
 		case 'date':
@@ -86,48 +96,6 @@ export function deleteColumnQuery(
 ): string {
 	const quotedTableName = quoteIdentifier(tableName, dbType);
 	return `ALTER TABLE ${quotedTableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
-}
-
-export function buildUpdateQuery(
-	tableName: DataStoreUserTableName,
-	row: Record<string, DataStoreColumnJsType | null>,
-	columns: Array<{ name: string; type: string }>,
-	matchFields: string[],
-	dbType: DataSourceOptions['type'] = 'sqlite',
-): [string, unknown[]] {
-	if (Object.keys(row).length === 0 || matchFields.length === 0) {
-		return ['', []];
-	}
-
-	const updateKeys = Object.keys(row).filter((key) => !matchFields.includes(key));
-	if (updateKeys.length === 0) {
-		return ['', []];
-	}
-
-	const quotedTableName = quoteIdentifier(tableName, dbType);
-	const columnTypeMap = buildColumnTypeMap(columns);
-
-	const parameters: unknown[] = [];
-	let placeholderIndex = 1;
-
-	const setClause = updateKeys
-		.map((key) => {
-			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
-			parameters.push(value);
-			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
-		})
-		.join(', ');
-
-	const whereClause = matchFields
-		.map((key) => {
-			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
-			parameters.push(value);
-			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
-		})
-		.join(' AND ');
-
-	const query = `UPDATE ${quotedTableName} SET ${setClause} WHERE ${whereClause}`;
-	return [query, parameters];
 }
 
 export function splitRowsByExistence(
@@ -280,7 +248,7 @@ export function getPlaceholder(index: number, dbType: DataSourceOptions['type'])
 	return dbType.includes('postgres') ? `$${index}` : '?';
 }
 
-function buildColumnTypeMap(
+export function buildColumnTypeMap(
 	columns: Array<{ name: string; type: string }>,
 ): Record<string, string> {
 	return Object.fromEntries(columns.map((col) => [col.name, col.type]));
