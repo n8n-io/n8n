@@ -1,9 +1,8 @@
 import type { CredentialsEntity, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
+import { CommunityNode } from '@/modules/community-packages/community-node.command';
 import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
-
-import { CommunityNode } from '../community-node';
 
 describe('uninstallCredential', () => {
 	const userId = '1234';

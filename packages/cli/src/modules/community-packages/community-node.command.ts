@@ -1,18 +1,16 @@
-// @TODO: Move file to community-packages module
-
 import type { User } from '@n8n/db';
 import { CredentialsRepository, UserRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
+import { BaseCommand } from '@/commands/base-command';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
-import { InstalledNodesRepository } from '@/modules/community-packages/installed-nodes.repository';
-import { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 
-import { BaseCommand } from './base-command';
+import { CommunityPackagesService } from './community-packages.service';
+import { InstalledNodes } from './installed-nodes.entity';
+import { InstalledNodesRepository } from './installed-nodes.repository';
+import { InstalledPackages } from './installed-packages.entity';
 
 const flagsSchema = z.object({
 	uninstall: z.boolean().describe('Uninstalls the node').optional(),
