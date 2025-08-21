@@ -87,6 +87,7 @@ describe('OwnerController', () => {
 
 			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
 				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				relations: ['role'],
 			});
 			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, false, browserId);

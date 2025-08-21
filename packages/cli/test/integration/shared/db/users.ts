@@ -157,7 +157,7 @@ export async function createAdmin() {
 export async function createUserShell(role: Role): Promise<User> {
 	const shell: DeepPartial<User> = { role };
 
-	if (role.slug !== 'global:owner') {
+	if (role.slug !== GLOBAL_OWNER_ROLE.slug) {
 		shell.email = randomEmail();
 	}
 
@@ -185,13 +185,13 @@ export async function createManyUsers(
 
 export const getAllUsers = async () =>
 	await Container.get(UserRepository).find({
-		relations: ['authIdentities'],
+		relations: ['authIdentities', 'role'],
 	});
 
 export const getUserById = async (id: string) =>
 	await Container.get(UserRepository).findOneOrFail({
 		where: { id },
-		relations: ['authIdentities'],
+		relations: ['authIdentities', 'role'],
 	});
 
 export const getLdapIdentities = async () =>
@@ -201,7 +201,8 @@ export const getLdapIdentities = async () =>
 	});
 
 export async function getGlobalOwner() {
-	return await Container.get(UserRepository).findOneByOrFail({
-		role: { slug: GLOBAL_OWNER_ROLE.slug },
+	return await Container.get(UserRepository).findOneOrFail({
+		where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+		relations: ['role'],
 	});
 }

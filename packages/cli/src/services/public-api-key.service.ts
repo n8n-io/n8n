@@ -79,18 +79,14 @@ export class PublicApiKeyService {
 	}
 
 	private async getUserForApiKey(apiKey: string) {
-		return await this.userRepository.findOneBy({
-			apiKeys: {
-				apiKey,
+		return await this.userRepository.findOne({
+			where: {
+				apiKeys: {
+					apiKey,
+				},
 			},
+			relations: ['role'],
 		});
-
-		// .createQueryBuilder('user')
-		// .innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')
-		// .where('apiKey.apiKey = :apiKey', { apiKey })
-		// .select('user')
-		// .
-		// .getOne();
 	}
 
 	/**

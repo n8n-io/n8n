@@ -55,7 +55,7 @@ export class UserRepository extends Repository<User> {
 				email,
 				password: Not(IsNull()),
 			},
-			relations: ['authIdentities'],
+			relations: ['authIdentities', 'role'],
 		});
 	}
 
@@ -92,20 +92,25 @@ export class UserRepository extends Repository<User> {
 		const createInner = async (entityManager: EntityManager) => {
 			const newUser = entityManager.create(User, user);
 			const savedUser = await entityManager.save<User>(newUser);
+			const userWithRole = await entityManager.findOne(User, {
+				where: { id: savedUser.id },
+				relations: ['role'],
+			});
+			if (!userWithRole) throw new Error('Failed to create user!');
 			const savedProject = await entityManager.save<Project>(
 				entityManager.create(Project, {
 					type: 'personal',
-					name: savedUser.createPersonalProjectName(),
+					name: userWithRole.createPersonalProjectName(),
 				}),
 			);
 			await entityManager.save<ProjectRelation>(
 				entityManager.create(ProjectRelation, {
 					projectId: savedProject.id,
-					userId: savedUser.id,
+					userId: userWithRole.id,
 					role: 'project:personalOwner',
 				}),
 			);
-			return { user: savedUser, project: savedProject };
+			return { user: userWithRole, project: savedProject };
 		};
 		if (transactionManager) {
 			return await createInner(transactionManager);
@@ -128,6 +133,7 @@ export class UserRepository extends Repository<User> {
 					project: { sharedWorkflows: { workflowId, role: 'workflow:owner' } },
 				},
 			},
+			relations: ['role'],
 		});
 	}
 
@@ -144,6 +150,7 @@ export class UserRepository extends Repository<User> {
 					projectId,
 				},
 			},
+			relations: ['role'],
 		});
 	}
 

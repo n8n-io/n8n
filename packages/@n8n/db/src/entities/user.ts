@@ -22,6 +22,7 @@ import { Role } from './role';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 import type { IPersonalizationSurveyAnswers } from './types-db';
+import { GLOBAL_OWNER_ROLE } from '../constants';
 import { isValidEmail } from '../utils/is-valid-email';
 import { lowerCaser, objectRetriever } from '../utils/transformers';
 
@@ -56,7 +57,7 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@JsonColumn({ nullable: true })
 	settings: IUserSettings | null;
 
-	@OneToOne(() => Role, { eager: true })
+	@OneToOne(() => Role)
 	@JoinColumn({ name: 'roleSlug', referencedColumnName: 'slug' })
 	role: Role;
 
@@ -112,7 +113,7 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@AfterLoad()
 	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending = this.password === null && this.role?.slug !== 'global:owner';
+		this.isPending = this.password === null && this.role?.slug !== GLOBAL_OWNER_ROLE.slug;
 	}
 
 	toJSON() {

@@ -28,6 +28,11 @@ export function getRoleScopes(role: AllRoleTypes, filters?: Resource[]): Scope[]
  * @returns Array of matching scopes
  */
 export function getAuthPrincipalScopes(user: AuthPrincipal, filters?: Resource[]): Scope[] {
+	if (!user.role) {
+		const e = new Error('AuthPrincipal does not have a role defined');
+		console.error('AuthPrincipal does not have a role defined', e);
+		throw e;
+	}
 	let scopes = user.role.scopes.map((s) => s.slug);
 	if (filters) {
 		scopes = scopes.filter((s) => filters.includes(s.split(':')[0] as Resource));

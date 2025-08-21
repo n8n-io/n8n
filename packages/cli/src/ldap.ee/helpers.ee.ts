@@ -97,10 +97,13 @@ export const getAuthIdentityByLdapId = async (
  * @param idAttributeValue - LDAP ID value
  */
 export const getUserByLdapId = async (idAttributeValue: string) => {
-	return await Container.get(UserRepository).findOneBy({
-		authIdentities: {
-			providerId: idAttributeValue,
-			providerType: 'ldap',
+	return await Container.get(UserRepository).findOne({
+		relations: { role: true },
+		where: {
+			authIdentities: {
+				providerId: idAttributeValue,
+				providerType: 'ldap',
+			},
 		},
 	});
 };
