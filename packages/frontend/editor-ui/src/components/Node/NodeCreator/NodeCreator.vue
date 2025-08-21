@@ -16,6 +16,7 @@ import { useAssistantStore } from '@/stores/assistant.store';
 import N8nIconButton from '@n8n/design-system/components/N8nIconButton/IconButton.vue';
 import { useBuilderStore } from '@/stores/builder.store';
 import type { NodeTypeSelectedPayload } from '@/Interface';
+import { onClickOutside } from '@vueuse/core';
 
 export interface Props {
 	active?: boolean;
@@ -151,6 +152,8 @@ const { nodeCreator } = toRefs(state);
 onBeforeUnmount(() => {
 	unBindOnMouseUpOutside();
 });
+
+onClickOutside(nodeCreator, () => emit('closeNodeCreator'));
 </script>
 
 <template>

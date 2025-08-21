@@ -117,11 +117,24 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 		}))
 		.filter(({ runIndex }) => runIndex !== -1);
 
-	// If outputIndex is specified, only use data from that specific output branch
-	const filteredOutputsWithData =
-		props.outputIndex !== undefined
-			? connectedOutputsWithData.filter(({ outputIndex }) => outputIndex === props.outputIndex)
-			: connectedOutputsWithData;
+	// For connected nodes with multiple outputs that connect to the current node,
+	// filter by outputIndex if it's specified and matches one of the connected outputs
+	// This ensures we show the correct branch when viewing multi-output nodes like SplitInBatches
+	let filteredOutputsWithData = connectedOutputsWithData;
+
+	// Only apply outputIndex filtering if:
+	// 1. outputIndex is specified
+	// 2. The node has multiple connected outputs
+	// 3. The specified outputIndex is one of the connected outputs
+	if (
+		props.outputIndex !== undefined &&
+		connectedOutputIndexes.length > 1 &&
+		connectedOutputIndexes.includes(props.outputIndex)
+	) {
+		filteredOutputsWithData = connectedOutputsWithData.filter(
+			({ outputIndex }) => outputIndex === props.outputIndex,
+		);
+	}
 
 	const nodeData = filteredOutputsWithData
 		.map(({ outputIndex, runIndex }) =>
@@ -570,9 +583,6 @@ const onDragEnd = (el: HTMLElement) => {
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
-}
-
-.notice {
 	margin-left: calc(var(--spacing-l) * var(--schema-level));
 }
 

@@ -7,11 +7,13 @@ on:
   pull_request:
     paths:
       - packages/cli/src/databases/**
-      - packages/@n8n/db/**
       - packages/cli/src/modules/*/database/**
+      - packages/cli/src/modules/**/*.entity.ts
+      - packages/cli/src/modules/**/*.repository.ts
       - packages/cli/test/integration/**
       - packages/cli/test/shared/db/**
       - packages/@n8n/db/**
+      - packages/cli/**/__tests__/**
       - .github/workflows/ci-postgres-mysql.yml
       - .github/docker-compose.yml
   pull_request_review:
@@ -21,41 +23,24 @@ concurrency:
   group: db-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
+env:
+  NODE_OPTIONS: '--max-old-space-size=3072'
+
 jobs:
   build:
     name: Install & Build
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@439abec0d28d21b192fa8817b744ffdf1ee5ac0d # v1.5
-
-      - name: Build
-        run: pnpm build
-
-      - name: Cache build artifacts
-        uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}:db-tests
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
   sqlite-pooled:
     name: SQLite Pooled
-    runs-on: ubuntu-latest
     needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
       DB_TYPE: sqlite
@@ -63,25 +48,8 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@439abec0d28d21b192fa8817b744ffdf1ee5ac0d # v1.5
-
-      - name: Restore cached build artifacts
-        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}:db-tests
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
       - name: Test SQLite Pooled
         working-directory: packages/cli
@@ -89,33 +57,16 @@ jobs:
 
   mariadb:
     name: MariaDB
-    runs-on: ubuntu-latest
     needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
       DB_MYSQLDB_PASSWORD: password
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@439abec0d28d21b192fa8817b744ffdf1ee5ac0d # v1.5
-
-      - name: Restore cached build artifacts
-        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}:db-tests
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
       - name: Start MariaDB
         uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
@@ -130,8 +81,8 @@ jobs:
 
   mysql:
     name: MySQL (${{ matrix.service-name }})
-    runs-on: ubuntu-latest
     needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
     strategy:
       matrix:
@@ -141,25 +92,8 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@439abec0d28d21b192fa8817b744ffdf1ee5ac0d # v1.5
-
-      - name: Restore cached build artifacts
-        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}:db-tests
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
       - name: Start MySQL
         uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
@@ -174,8 +108,8 @@ jobs:
 
   postgres:
     name: Postgres
-    runs-on: ubuntu-latest
     needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
       DB_POSTGRESDB_PASSWORD: password
@@ -183,25 +117,8 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Setup build cache
-        uses: rharkor/caching-for-turbo@439abec0d28d21b192fa8817b744ffdf1ee5ac0d # v1.5
-
-      - name: Restore cached build artifacts
-        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}:db-tests
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
       - name: Start Postgres
         uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0

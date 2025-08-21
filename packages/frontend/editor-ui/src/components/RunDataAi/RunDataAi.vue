@@ -21,7 +21,7 @@ export interface Props {
 	node: INodeUi;
 	runIndex?: number;
 	slim?: boolean;
-	workflow: Workflow;
+	workflowObject: Workflow;
 }
 const props = withDefaults(defineProps<Props>(), { runIndex: 0 });
 const workflowsStore = useWorkflowsStore();
@@ -31,11 +31,20 @@ const selectedRun: Ref<IAiData[]> = ref([]);
 const i18n = useI18n();
 
 const aiData = computed<AIResult[]>(() =>
-	createAiData(props.node.name, props.workflow, workflowsStore.getWorkflowResultDataByNodeName),
+	createAiData(
+		props.node.name,
+		props.workflowObject.connectionsBySourceNode,
+		workflowsStore.getWorkflowResultDataByNodeName,
+	),
 );
 
 const executionTree = computed<TreeNode[]>(() =>
-	getTreeNodeData(props.node.name, props.workflow, aiData.value, props.runIndex),
+	getTreeNodeData(
+		props.node.name,
+		props.workflowObject.connectionsBySourceNode,
+		aiData.value,
+		props.runIndex,
+	),
 );
 
 function isTreeNodeSelected(node: TreeNode) {

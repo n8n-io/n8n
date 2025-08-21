@@ -5,13 +5,15 @@ on:
     branches:
       - '**'
       - '!release/*'
+    paths-ignore:
+      - packages/@n8n/task-runner-python/**
 
 jobs:
   install-and-build:
     name: Install & Build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     env:
-      NODE_OPTIONS: '--max-old-space-size=4096'
+      NODE_OPTIONS: '--max-old-space-size=3072'
     outputs:
       frontend_changed: ${{ steps.paths-filter.outputs.frontend == 'true' }}
     steps:
@@ -31,14 +33,10 @@ jobs:
               - packages/@n8n/codemirror-lang/**
               - .bundlemonrc.json
               - .github/workflows/ci-pull-requests.yml
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
-      - name: Setup Environment and Build Project
-        uses: ./.github/actions/setup-and-build
-        with:
-          node-version: 22.x
-          enable-caching: true
-
-      - name: Run formatcheck
+      - name: Run format check
         run: pnpm format:check
 
       - name: Run typecheck
@@ -89,7 +87,6 @@ jobs:
     needs: install-and-build
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
-      cacheKey: ${{ github.sha }}-base:build
       collectCoverage: true
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -100,4 +97,3 @@ jobs:
     needs: install-and-build
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
-      cacheKey: ${{ github.sha }}-base:build

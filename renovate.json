@@ -1,0 +1,95 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": [
+		"config:recommended",
+		":dependencyDashboard",
+		":semanticCommits",
+		":separateMajorReleases",
+		":enableVulnerabilityAlertsWithLabel(security)"
+	],
+	"schedule": ["after 2am and before 4am"],
+	"timezone": "UTC",
+	"prConcurrentLimit": 3,
+	"prHourlyLimit": 1,
+	"packageRules": [
+		{
+			"description": "Use pnpm catalog for shared dependencies",
+			"matchFileNames": ["pnpm-workspace.yaml"],
+			"matchManagers": ["npm"],
+			"enabled": true
+		},
+		{
+			"description": "Group all catalog updates together",
+			"matchFileNames": ["pnpm-workspace.yaml"],
+			"groupName": "pnpm catalog",
+			"commitMessageTopic": "pnpm catalog"
+		},
+		{
+			"description": "Dev dependencies",
+			"matchDepTypes": ["devDependencies"],
+			"matchUpdateTypes": ["patch", "minor"],
+			"automerge": false
+		},
+		{
+			"description": "Patch updates",
+			"matchUpdateTypes": ["patch", "pin", "digest"],
+			"automerge": false
+		},
+		{
+			"description": "TypeScript types",
+			"matchPackageNames": ["@types/**"],
+			"automerge": false
+		},
+		{
+			"description": "Require approval for major updates",
+			"matchUpdateTypes": ["major"],
+			"dependencyDashboardApproval": true
+		},
+		{
+			"description": "Group ESLint related packages",
+			"matchPackageNames": ["*eslint*"],
+			"groupName": "ESLint"
+		},
+		{
+			"description": "Group Vue ecosystem packages",
+			"matchPackageNames": ["*vue*", "@vue/**", "@vueuse/**"],
+			"groupName": "Vue ecosystem"
+		},
+		{
+			"description": "Group testing packages",
+			"matchPackageNames": [
+				"*vitest*",
+				"*playwright*",
+				"*cypress*",
+				"@testing-library/**",
+				"*jest*"
+			],
+			"groupName": "testing packages"
+		},
+		{
+			"description": "Group TypeScript packages",
+			"matchPackageNames": ["typescript", "*tsx*", "*tsup*"],
+			"groupName": "TypeScript"
+		}
+	],
+	"lockFileMaintenance": {
+		"enabled": true,
+		"schedule": ["before 6am on monday"]
+	},
+	"vulnerabilityAlerts": {
+		"enabled": true,
+		"labels": ["security", "vulnerability"]
+	},
+	"osvVulnerabilityAlerts": true,
+	"labels": ["dependencies"],
+	"branchPrefix": "renovate/",
+	"commitMessagePrefix": "chore: ",
+	"commitMessageTopic": "{{depName}}",
+	"commitMessageExtra": "to {{newVersion}}",
+	"commitMessageAction": "Update",
+	"ignoreDeps": [],
+	"ignorePaths": ["**/node_modules/**", "**/dist/**", "**/build/**"],
+	"enabledManagers": ["npm", "dockerfile", "github-actions"],
+	"npmrc": "auto-detect",
+	"updateNotScheduled": false
+}

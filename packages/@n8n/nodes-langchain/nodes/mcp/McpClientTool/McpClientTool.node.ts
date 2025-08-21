@@ -1,3 +1,5 @@
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -7,11 +9,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
 import { getTools } from './loadOptions';
-import type { McpAuthenticationOption, McpToolIncludeMode } from './types';
+import type { McpServerTransport, McpAuthenticationOption, McpToolIncludeMode } from './types';
 import {
 	connectMcpClient,
 	createCallTool,
@@ -31,7 +30,7 @@ export class McpClientTool implements INodeType {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Connect tools from an MCP Server',
 		defaults: {
 			name: 'MCP Client',
@@ -83,6 +82,47 @@ export class McpClientTool implements INodeType {
 				placeholder: 'e.g. https://my-mcp-server.ai/sse',
 				default: '',
 				required: true,
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Endpoint',
+				name: 'endpointUrl',
+				type: 'string',
+				description: 'Endpoint of your MCP server',
+				placeholder: 'e.g. https://my-mcp-server.ai/mcp',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Server Transport',
+				name: 'serverTransport',
+				type: 'options',
+				options: [
+					{
+						name: 'Server Sent Events (Deprecated)',
+						value: 'sse',
+					},
+					{
+						name: 'HTTP Streamable',
+						value: 'httpStreamable',
+					},
+				],
+				default: 'sse',
+				description: 'The transport used by your endpoint',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Authentication',
@@ -103,7 +143,7 @@ export class McpClientTool implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'The way to authenticate with your SSE endpoint',
+				description: 'The way to authenticate with your endpoint',
 			},
 			{
 				displayName: 'Credentials',
@@ -173,6 +213,26 @@ export class McpClientTool implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				placeholder: 'Add Option',
+				description: 'Additional options to add',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
+						default: 60000,
+						description: 'Time in ms to wait for tool calls to finish',
+					},
+				],
+			},
 		],
 	};
 
@@ -187,11 +247,23 @@ export class McpClientTool implements INodeType {
 			'authentication',
 			itemIndex,
 		) as McpAuthenticationOption;
-		const sseEndpoint = this.getNodeParameter('sseEndpoint', itemIndex) as string;
 		const node = this.getNode();
+		const timeout = this.getNodeParameter('options.timeout', itemIndex, 60000) as number;
+
+		let serverTransport: McpServerTransport;
+		let endpointUrl: string;
+		if (node.typeVersion === 1) {
+			serverTransport = 'sse';
+			endpointUrl = this.getNodeParameter('sseEndpoint', itemIndex) as string;
+		} else {
+			serverTransport = this.getNodeParameter('serverTransport', itemIndex) as McpServerTransport;
+			endpointUrl = this.getNodeParameter('endpointUrl', itemIndex) as string;
+		}
+
 		const { headers } = await getAuthHeaders(this, authentication);
 		const client = await connectMcpClient({
-			sseEndpoint,
+			serverTransport,
+			endpointUrl,
 			headers,
 			name: node.type,
 			version: node.typeVersion,
@@ -242,11 +314,10 @@ export class McpClientTool implements INodeType {
 			logWrapper(
 				mcpToolToDynamicTool(
 					tool,
-					createCallTool(tool.name, client.result, (error) => {
+					createCallTool(tool.name, client.result, timeout, (errorMessage) => {
+						const error = new NodeOperationError(node, errorMessage, { itemIndex });
+						void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
 						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
-						throw new NodeOperationError(node, `Failed to execute tool "${tool.name}"`, {
-							description: error,
-						});
 					}),
 				),
 				this,

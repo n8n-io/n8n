@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ExecutionRepository, SettingsRepository } from '@n8n/db';
+import { AuthRolesService, ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import glob from 'fast-glob';
@@ -43,12 +43,6 @@ const flagsSchema = z.object({
 		.boolean()
 		.describe(
 			'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
-		)
-		.optional(),
-	reinstallMissingPackages: z
-		.boolean()
-		.describe(
-			'Attempts to self heal n8n if packages with nodes are missing. Might drastically increase startup times.',
 		)
 		.optional(),
 });
@@ -126,7 +120,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = this.globalConfig.path;
-		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
+		const hooksUrls = this.globalConfig.externalFrontendHooksUrls;
 
 		let scriptsString = '';
 		if (hooksUrls) {
@@ -147,7 +141,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, { ignoreCase: false }),
-					replaceStream('/static/', n8nPath + 'static/', { ignoreCase: false }),
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
@@ -178,27 +171,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 		}
 
-		const { flags } = this;
-		const { communityPackages } = this.globalConfig.nodes;
-		// cli flag overrides the config env variable
-		if (flags.reinstallMissingPackages) {
-			if (communityPackages.enabled) {
-				this.logger.warn(
-					'`--reinstallMissingPackages` is deprecated: Please use the env variable `N8N_REINSTALL_MISSING_PACKAGES` instead',
-				);
-				communityPackages.reinstallMissing = true;
-			} else {
-				this.logger.warn(
-					'`--reinstallMissingPackages` was passed, but community packages are disabled',
-				);
-			}
-		}
-
-		if (process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true') {
-			this.needsTaskRunner = false;
-		}
-
 		await super.init();
+
+		await Container.get(AuthRolesService).init();
+
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 		const isMultiMainEnabled =
@@ -248,6 +224,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.moduleRegistry.initModules();
 
 		if (this.instanceSettings.isMultiMain) {
+			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
+			if (this.globalConfig.endpoints.metrics.enable) {
+				const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
+				Container.get(PrometheusMetricsService);
+			}
+
 			Container.get(MultiMainSetup).registerEventHandlers();
 		}
 	}
@@ -313,6 +295,15 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			this.log(
 				'IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!',
 			);
+		}
+
+		if (this.globalConfig.database.isLegacySqlite) {
+			// Employ lazy loading to avoid unnecessary imports in the CLI
+			// and to ensure that the legacy recovery service is only used when needed.
+			const { LegacySqliteExecutionRecoveryService } = await import(
+				'@/executions/legacy-sqlite-execution-recovery.service'
+			);
+			await Container.get(LegacySqliteExecutionRecoveryService).cleanupWorkflowExecutions();
 		}
 
 		await this.server.start();

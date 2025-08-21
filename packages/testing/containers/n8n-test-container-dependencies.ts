@@ -1,10 +1,10 @@
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
+import { setTimeout as wait } from 'node:timers/promises';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from './n8n-test-container-utils';
-import { setTimeout as wait } from 'node:timers/promises';
 
 export async function setupRedis({
 	redisImage,

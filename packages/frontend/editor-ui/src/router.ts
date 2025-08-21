@@ -18,7 +18,6 @@ import type { RouterMiddleware } from '@/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
-import { insightsRoutes } from '@/features/insights/insights.router';
 import TestRunDetailView from '@/views/Evaluations.ee/TestRunDetailView.vue';
 import { MfaRequiredError } from '@n8n/rest-api-client';
 
@@ -719,7 +718,6 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	...projectsRoutes,
-	...insightsRoutes,
 	{
 		path: '/entity-not-found/:entityType(credential|workflow)',
 		props: true,
@@ -790,7 +788,8 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		 */
 
 		await initializeCore();
-		await initializeAuthenticatedFeatures();
+		// Pass undefined for first param to use default
+		await initializeAuthenticatedFeatures(undefined, to.name as string);
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once

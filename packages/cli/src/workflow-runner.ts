@@ -80,7 +80,7 @@ export class WorkflowRunner {
 		if (
 			error instanceof ExecutionNotFoundError ||
 			error instanceof ExecutionCancelledError ||
-			error.message.includes('cancelled')
+			(typeof error.message === 'string' && error.message.includes('cancelled'))
 		) {
 			return;
 		}
@@ -268,12 +268,10 @@ export class WorkflowRunner {
 			});
 
 			if (data.streamingEnabled) {
-				if (data.executionMode !== 'manual') {
-					lifecycleHooks.addHandler('sendChunk', (chunk) => {
-						data.httpResponse?.write(JSON.stringify(chunk) + '\n');
-						data.httpResponse?.flush?.();
-					});
-				}
+				lifecycleHooks.addHandler('sendChunk', (chunk) => {
+					data.httpResponse?.write(JSON.stringify(chunk) + '\n');
+					data.httpResponse?.flush?.();
+				});
 			}
 
 			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
@@ -424,6 +422,7 @@ export class WorkflowRunner {
 				} catch (error) {
 					if (
 						error instanceof Error &&
+						typeof error.message === 'string' &&
 						error.message.includes('job stalled more than maxStalledCount')
 					) {
 						error = new MaxStalledCountError(error);

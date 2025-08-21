@@ -99,6 +99,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						'@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
 						'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
 						'@n8n/n8n-nodes-langchain.modelSelector',
 					],
@@ -131,6 +132,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						'@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
 						'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
 					],
 				},
@@ -309,6 +311,20 @@ export class AgentV1 implements INodeType {
 							agent: ['conversationalAgent', 'toolsAgent'],
 						},
 					},
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					displayName: 'Get started faster with our',
+					name: 'preBuiltAgentsCallout',
+					type: 'callout',
+					typeOptions: {
+						calloutAction: {
+							label: 'pre-built agents',
+							icon: 'bot',
+							type: 'openPreBuiltAgentsCollection',
+						},
+					},
+					default: '',
 				},
 				{
 					displayName:

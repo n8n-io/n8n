@@ -28,6 +28,18 @@ describe('isJsonCompatible', () => {
 			errorMessage: 'has non-plain prototype (Date)',
 		},
 		{
+			name: 'a RegExp',
+			value: { regexp: new RegExp('') },
+			errorPath: 'value.regexp',
+			errorMessage: 'has non-plain prototype (RegExp)',
+		},
+		{
+			name: 'a Buffer',
+			value: { buffer: Buffer.from('') },
+			errorPath: 'value.buffer',
+			errorMessage: 'has non-plain prototype (Buffer)',
+		},
+		{
 			name: 'a function',
 			value: { fn: () => {} },
 			errorPath: 'value.fn',
@@ -88,12 +100,6 @@ describe('isJsonCompatible', () => {
 			errorMessage: 'is NaN, which is not JSON-compatible',
 		},
 		{
-			name: 'undefined',
-			value: { undefined },
-			errorPath: 'value.undefined',
-			errorMessage: 'is of unknown type (undefined) with value undefined',
-		},
-		{
 			name: 'an object with symbol keys',
 			value: { [Symbol.for('key')]: 1 },
 			errorPath: 'value.Symbol(key)',
@@ -113,6 +119,7 @@ describe('isJsonCompatible', () => {
 	const objectRef = {};
 	test.each([
 		{ name: 'null', value: { null: null } },
+		{ name: 'undefined', value: { noValue: undefined } },
 		{ name: 'an array of primitives', value: { array: [1, 'string', true, false] } },
 		{
 			name: 'an object without a prototype chain',
@@ -128,6 +135,16 @@ describe('isJsonCompatible', () => {
 		},
 	])('returns valid for "$name"', ({ value }) => {
 		const result = isJsonCompatible(value);
+
+		expect(result.isValid).toBe(true);
+	});
+
+	test('skip keys that are in the keysToIgnore set', () => {
+		const value = {
+			invalidObject: { invalidBecauseUndefined: undefined },
+			validObject: { key: 'value' },
+		};
+		const result = isJsonCompatible(value, new Set(['invalidObject']));
 
 		expect(result.isValid).toBe(true);
 	});

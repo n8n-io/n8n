@@ -243,6 +243,30 @@ describe('OAuth2CredentialController', () => {
 			});
 		});
 
+		it('should render the error page when code exchange fails, and the server responses with html', async () => {
+			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+			nock('https://example.domain')
+				.post(
+					'/token',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+				)
+				.reply(403, '<html><body>Code could not be exchanged</body></html>', {
+					'Content-Type': 'text/html',
+				});
+
+			await controller.handleCallback(req, res);
+
+			expect(externalHooks.run).toHaveBeenCalled();
+			expect(res.render).toHaveBeenCalledWith('oauth-error-callback', {
+				error: {
+					message: 'Unsupported content type: text/html',
+					reason: '"<html><body>Code could not be exchanged</body></html>"',
+				},
+			});
+		});
+
 		it('should exchange the code for a valid token, and save it to DB', async () => {
 			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
 			credentialsHelper.getDecrypted.mockResolvedValueOnce({ csrfSecret });

@@ -1,0 +1,70 @@
+{
+  "private": false,
+  "name": "@n8n/node-cli",
+  "version": "0.1.0",
+  "description": "Official CLI for developing community nodes for n8n",
+  "bin": {
+    "n8n-node": "./bin/n8n-node.mjs"
+  },
+  "exports": {
+    "./eslint": {
+      "types": "./dist/configs/eslint.d.js",
+      "default": "./dist/configs/eslint.js"
+    }
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "copy-templates": "./scripts/copy-templates.mjs",
+    "dev": "tsc -p tsconfig.build.json -w --onCompilationComplete \"pnpm copy-templates\"",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "lint": "eslint src --quiet",
+    "lintfix": "eslint src --fix",
+    "build": "tsc -p tsconfig.build.json && pnpm copy-templates",
+    "publish:dry": "pnpm run build && pnpm pub --dry-run",
+    "test": "vitest run",
+    "test:dev": "vitest --silent=false",
+    "start": "./bin/n8n-node.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/n8n-io/n8n"
+  },
+  "oclif": {
+    "bin": "n8n-node",
+    "commands": {
+      "strategy": "explicit",
+      "target": "./dist/index.js",
+      "identifier": "commands"
+    },
+    "topicSeparator": " "
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "@oclif/core": "^4.5.2",
+    "change-case": "^5.4.4",
+    "handlebars": "4.7.8",
+    "picocolors": "catalog:",
+    "prompts": "^2.4.2",
+    "ts-morph": "^26.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.29.0",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@oclif/test": "^4.1.13",
+    "eslint-import-resolver-typescript": "^4.4.3",
+    "eslint-plugin-import-x": "^4.15.2",
+    "eslint-plugin-n8n-nodes-base": "1.16.3",
+    "n8n-workflow": "workspace:*",
+    "rimraf": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "^8.35.0",
+    "vitest-mock-extended": "catalog:"
+  }
+}

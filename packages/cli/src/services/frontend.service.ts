@@ -10,6 +10,8 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
+import type { CommunityPackagesService } from '@/community-packages/community-packages.service';
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
@@ -20,7 +22,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
-import type { CommunityPackagesService } from '@/services/community-packages.service';
 import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
@@ -59,10 +60,12 @@ export class FrontendService {
 
 		this.initSettings();
 
-		if (this.globalConfig.nodes.communityPackages.enabled) {
-			void import('@/services/community-packages.service').then(({ CommunityPackagesService }) => {
-				this.communityPackagesService = Container.get(CommunityPackagesService);
-			});
+		if (Container.get(CommunityPackagesConfig).enabled) {
+			void import('@/community-packages/community-packages.service').then(
+				({ CommunityPackagesService }) => {
+					this.communityPackagesService = Container.get(CommunityPackagesService);
+				},
+			);
 		}
 	}
 
@@ -89,13 +92,15 @@ export class FrontendService {
 		if (telemetrySettings.enabled) {
 			const conf = this.globalConfig.diagnostics.frontendConfig;
 			const [key, url] = conf.split(';');
+			const proxy = `${instanceBaseUrl}/${restEndpoint}/telemetry/proxy`;
+			const sourceConfig = `${instanceBaseUrl}/${restEndpoint}/telemetry/rudderstack`;
 
 			if (!key || !url) {
 				this.logger.warn('Diagnostics frontend config is invalid');
 				telemetrySettings.enabled = false;
 			}
 
-			telemetrySettings.config = { key, url };
+			telemetrySettings.config = { key, url, proxy, sourceConfig };
 		}
 
 		this.settings = {
@@ -111,10 +116,10 @@ export class FrontendService {
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
-			saveDataErrorExecution: config.getEnv('executions.saveDataOnError'),
-			saveDataSuccessExecution: config.getEnv('executions.saveDataOnSuccess'),
-			saveManualExecutions: config.getEnv('executions.saveDataManualExecutions'),
-			saveExecutionProgress: config.getEnv('executions.saveExecutionProgress'),
+			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
+			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
+			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
+			saveExecutionProgress: this.globalConfig.executions.saveExecutionProgress,
 			executionTimeout: config.getEnv('executions.timeout'),
 			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
 			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
@@ -124,7 +129,7 @@ export class FrontendService {
 			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
 			versionCli: N8N_VERSION,
-			concurrency: config.getEnv('executions.concurrency.productionLimit'),
+			concurrency: this.globalConfig.executions.concurrency.productionLimit,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -195,8 +200,8 @@ export class FrontendService {
 			executionMode: config.getEnv('executions.mode'),
 			isMultiMain: this.instanceSettings.isMultiMain,
 			pushBackend: this.pushConfig.backend,
-			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
-			unverifiedCommunityNodesEnabled: this.globalConfig.nodes.communityPackages.unverifiedEnabled,
+			communityNodesEnabled: Container.get(CommunityPackagesConfig).enabled,
+			unverifiedCommunityNodesEnabled: Container.get(CommunityPackagesConfig).unverifiedEnabled,
 			deployment: {
 				type: this.globalConfig.deployment.type,
 			},
@@ -223,6 +228,7 @@ export class FrontendService {
 				workerView: false,
 				advancedPermissions: false,
 				apiKeyScopes: false,
+				workflowDiffs: false,
 				projects: {
 					team: {
 						limit: 0,
@@ -351,6 +357,7 @@ export class FrontendService {
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
+			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {

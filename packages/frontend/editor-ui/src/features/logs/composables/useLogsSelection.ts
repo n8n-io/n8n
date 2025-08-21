@@ -15,7 +15,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { shallowRef, watch } from 'vue';
 import { computed, type ComputedRef } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 export function useLogsSelection(
 	execution: ComputedRef<IExecutionResponse | undefined>,
@@ -34,19 +33,13 @@ export function useLogsSelection(
 	const uiStore = useUIStore();
 	const canvasStore = useCanvasStore();
 	const workflowsStore = useWorkflowsStore();
-	const experimentalNdvStore = useExperimentalNdvStore();
 
 	function syncSelectionToCanvasIfEnabled(value: LogEntry) {
 		if (!logsStore.isLogSelectionSyncedWithCanvas) {
 			return;
 		}
 
-		if (experimentalNdvStore.isEnabled) {
-			canvasEventBus.emit('nodes:select', { ids: [value.node.id], panIntoView: false });
-			experimentalNdvStore.focusNode(value.node.id);
-		} else {
-			canvasEventBus.emit('nodes:select', { ids: [value.node.id], panIntoView: true });
-		}
+		canvasEventBus.emit('nodes:select', { ids: [value.node.id], panIntoView: true });
 	}
 
 	function select(value: LogEntry | undefined) {

@@ -112,3 +112,8 @@ Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
 	writable: true,
 	value: vi.fn(),
 });
+
+Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+	writable: true,
+	value: vi.fn(),
+});

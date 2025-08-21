@@ -12,7 +12,73 @@
         },
         "portalId": {
             "type": "integer"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "object",
+                    "properties": {
+                        "isEncrypted": {
+                            "type": "boolean"
+                        },
+                        "persistenceTimestamp": {
+                            "type": "integer"
+                        },
+                        "requestId": {
+                            "type": "string"
+                        },
+                        "sensitivityLevel": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "persistenceTimestamp": {
+                                        "type": "integer"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceUpstreamDeployable": {
+                                        "type": "string"
+                                    },
+                                    "sourceVid": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
-    "version": 4
+    "version": 5
 }

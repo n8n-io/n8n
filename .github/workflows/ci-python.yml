@@ -1,0 +1,40 @@
+name: Python CI
+
+on:
+  pull_request:
+    paths:
+      - packages/@n8n/task-runner-python/**
+      - .github/workflows/ci-python.yml
+  push:
+    paths:
+      - packages/@n8n/task-runner-python/**
+
+jobs:
+  python-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/@n8n/task-runner-python
+    steps:
+      - name: Check out project
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1 # 6.5.0
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.13
+
+      - name: Install project dependencies
+        run: uv sync
+
+      - name: Format check
+        run: uv run ruff format --check
+
+      - name: Typecheck
+        run: uv run ty check src/
+
+      - name: Lint
+        run: uv run ruff check
