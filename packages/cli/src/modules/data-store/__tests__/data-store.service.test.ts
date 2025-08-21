@@ -11,7 +11,6 @@ import { DataStoreColumnNotFoundError } from '../errors/data-store-column-not-fo
 import { DataStoreNameConflictError } from '../errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from '../errors/data-store-not-found.error';
 import { DataStoreValidationError } from '../errors/data-store-validation.error';
-import { toTableName } from '../utils/sql-utils';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-store']);
@@ -73,7 +72,7 @@ describe('dataStore', () => {
 			]);
 
 			// Select the column from user table to check for its existence
-			const userTableName = toTableName(dataStoreId);
+			const userTableName = dataStoreRowsRepository.toTableName(dataStoreId);
 			const rows = await dataStoreRepository.manager
 				.createQueryBuilder()
 				.select('foo')
@@ -96,7 +95,7 @@ describe('dataStore', () => {
 
 			await expect(dataStoreService.getColumns(dataStoreId, project1.id)).resolves.toEqual([]);
 
-			const userTableName = toTableName(dataStoreId);
+			const userTableName = dataStoreRowsRepository.toTableName(dataStoreId);
 			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
 			try {
 				const table = await queryRunner.getTable(userTableName);
@@ -225,7 +224,7 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.deleteDataStore(dataStoreId, project1.id);
-			const userTableName = toTableName(dataStoreId);
+			const userTableName = dataStoreRowsRepository.toTableName(dataStoreId);
 
 			// ASSERT
 			expect(result).toEqual(true);
@@ -335,7 +334,7 @@ describe('dataStore', () => {
 				},
 			]);
 
-			const userTableName = toTableName(dataStoreId);
+			const userTableName = dataStoreRowsRepository.toTableName(dataStoreId);
 			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
 			try {
 				const table = await queryRunner.getTable(userTableName);
@@ -402,7 +401,7 @@ describe('dataStore', () => {
 				},
 			]);
 
-			const userTableName = toTableName(dataStoreId);
+			const userTableName = dataStoreRowsRepository.toTableName(dataStoreId);
 			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
 			try {
 				const table = await queryRunner.getTable(userTableName);
@@ -1020,10 +1019,7 @@ describe('dataStore', () => {
 			// ASSERT
 			expect(result).toEqual([2]);
 
-			const { count, data } = await dataStoreRowsRepository.getManyAndCount(
-				toTableName(dataStoreId),
-				{},
-			);
+			const { count, data } = await dataStoreRowsRepository.getManyAndCount(dataStoreId, {});
 
 			expect(count).toEqual(2);
 			expect(data).toEqual([
@@ -1060,10 +1056,7 @@ describe('dataStore', () => {
 			// ASSERT
 			expect(result).toEqual([3, 4]);
 
-			const { count, data } = await dataStoreRowsRepository.getManyAndCount(
-				toTableName(dataStoreId),
-				{},
-			);
+			const { count, data } = await dataStoreRowsRepository.getManyAndCount(dataStoreId, {});
 
 			expect(count).toEqual(3);
 			expect(data).toEqual([
@@ -1246,10 +1239,7 @@ describe('dataStore', () => {
 			// ASSERT
 			expect(result).toBe(true);
 
-			const { count, data } = await dataStoreRowsRepository.getManyAndCount(
-				toTableName(dataStoreId),
-				{},
-			);
+			const { count, data } = await dataStoreRowsRepository.getManyAndCount(dataStoreId, {});
 
 			expect(count).toEqual(1);
 			expect(data).toEqual([{ fullName: 'Alicia', age: 31, id: 1, pid: '1995-111a' }]);
@@ -1281,10 +1271,7 @@ describe('dataStore', () => {
 			// ASSERT
 			expect(result).toBe(true);
 
-			const { count, data } = await dataStoreRowsRepository.getManyAndCount(
-				toTableName(dataStoreId),
-				{},
-			);
+			const { count, data } = await dataStoreRowsRepository.getManyAndCount(dataStoreId, {});
 
 			expect(count).toEqual(2);
 			expect(data).toEqual([

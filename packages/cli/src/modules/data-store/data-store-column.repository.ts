@@ -76,10 +76,16 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 	async deleteColumn(dataStoreId: string, column: DataStoreColumn) {
 		await this.manager.transaction(async (em) => {
 			await em.remove(DataStoreColumn, column);
+
+			const queryRunner = em.queryRunner;
+			if (!queryRunner) {
+				throw new UnexpectedError('QueryRunner is not available');
+			}
+
 			await this.dataStoreRowsRepository.dropColumnFromTable(
 				dataStoreId,
 				column.name,
-				em,
+				queryRunner,
 				em.connection.options.type,
 			);
 			await this.shiftColumns(dataStoreId, column.index, -1, em);
