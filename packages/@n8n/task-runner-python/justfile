@@ -1,3 +1,8 @@
+check:
+    just lint
+    just format-check
+    just typecheck
+
 run:
     uv run python -m src.main
 
@@ -12,6 +17,9 @@ lintfix:
 
 format:
     uv run ruff format
+
+format-check:
+    uv run ruff format --check
 
 test:
     @echo "No tests yet"
