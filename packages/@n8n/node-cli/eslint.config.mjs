@@ -5,12 +5,9 @@ export default defineConfig(
 	globalIgnores(['src/template/templates/**/template', 'src/template/templates/shared']),
 	nodeConfig,
 	{
-		ignores: ['**/*.test.ts', 'src/configs/eslint.ts'],
+		ignores: ['**/*.test.ts'],
 		rules: {
-			'import-x/no-extraneous-dependencies': [
-				'error',
-				{ devDependencies: false, optionalDependencies: false, peerDependencies: false },
-			],
+			'import-x/no-extraneous-dependencies': ['error', { devDependencies: false }],
 		},
 	},
 	{
