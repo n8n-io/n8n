@@ -370,12 +370,12 @@ export const messagePostDescription: MessageProperties = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Root Post ID',
+				displayName: 'Parent Post ID',
 				name: 'root_id',
 				type: 'string',
 				default: '',
 				description:
-					'If set, the created message will be a threaded reply to the specified root post ID ',
+					'If set, the created message will be a threaded reply to the specified parent post ID',
 			},
 		],
 	},
