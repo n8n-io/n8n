@@ -198,7 +198,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const updateRow = async (
 		dataStoreId: string,
 		projectId: string,
-		rowId: string,
+		rowId: number,
 		rowData: DataStoreRow,
 	) => {
 		return await updateDataStoreRowsApi(

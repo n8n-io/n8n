@@ -164,7 +164,7 @@ export const insertDataStoreRowApi = async (
 export const updateDataStoreRowsApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
-	rowId: string,
+	rowId: number,
 	rowData: DataStoreRow,
 	projectId: string,
 ) => {

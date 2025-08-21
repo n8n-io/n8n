@@ -20,6 +20,7 @@ import type {
 	ICellRendererParams,
 	CellEditRequestEvent,
 	CellClickedEvent,
+	ValueSetterParams,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -237,7 +238,24 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		// Provide initial value for the editor, otherwise agLargeTextCellEditor breaks
 		columnDef.cellEditorParams = (params: CellEditRequestEvent<DataStoreRow>) => ({
 			value: params.value ?? '',
+			// Track if the original value was null to handle it properly on save
+			maxLength: 100000,
 		});
+		// With the workaround above, we need to ensure not to convert values to empty
+		// string if users had not typed anything
+		columnDef.valueSetter = (params: ValueSetterParams<DataStoreRow>) => {
+			const originalValue = params.data[col.name];
+			const newValue = params.newValue;
+
+			// If original was null and new value is empty string, keep it as null
+			if (originalValue === null && newValue === '') {
+				return false; // No change
+			}
+
+			// Otherwise update the value
+			params.data[col.name] = newValue;
+			return true;
+		};
 	}
 	// Setup date editor
 	if (col.type === 'date') {
@@ -321,8 +339,11 @@ const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) =
 		return;
 	}
 
+	if (typeof data.id !== 'number') {
+		throw new Error('Expected row id to be a number');
+	}
 	const fieldName = String(colDef.field);
-	const id = String(data.id);
+	const id = data.id;
 
 	try {
 		emit('toggleSave', true);
