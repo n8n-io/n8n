@@ -15,6 +15,7 @@ const _rowsOptions: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['row'],
+				version: [4],
 			},
 		},
 		options: [
@@ -29,6 +30,51 @@ const _rowsOptions: INodeProperties[] = [
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
 				action: 'Create or update a row',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a row',
+				action: 'Delete a row',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Retrieve a row',
+				action: 'Get a row',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Retrieve many rows',
+				action: 'Get many rows',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a row',
+				action: 'Update a row',
+			},
+		],
+		default: 'get',
+	},
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				resource: ['row'],
+				version: [3],
+			},
+		},
+		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a row',
+				action: 'Create a row',
 			},
 			{
 				name: 'Delete',
