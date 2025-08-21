@@ -641,15 +641,30 @@ function goToWorkflowHistoryUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 }
 
+function getPersonalProjectToastContent() {
+	const title = locale.baseText('workflows.create.personal.toast.title');
+	if (!props.currentFolder) {
+		return { title };
+	}
+
+	const toastMessage = locale.baseText('workflows.create.folder.toast.title', {
+		interpolate: {
+			projectName: 'Personal',
+			folderName: props.currentFolder.name,
+		},
+	});
+
+	return { title, toastMessage };
+}
+
 function getToastContent() {
 	const currentProject = projectsStore.currentProject;
-	const isPersonalProject = currentProject?.id === projectsStore.personalProject?.id;
+	const isPersonalProject =
+		!projectsStore.currentProject || currentProject?.id === projectsStore.personalProject?.id;
 	const projectName = currentProjectName.value ?? '';
 
-	if (!currentProject || isPersonalProject) {
-		return {
-			title: locale.baseText('workflows.create.personal.toast.title'),
-		};
+	if (isPersonalProject) {
+		return getPersonalProjectToastContent();
 	}
 
 	const titleKey = props.currentFolder
