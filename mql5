@@ -1,0 +1,1092 @@
+//+------------------------------------------------------------------+
+//|                                    Lion_Fury_AI_Elite_Final.mq5   |
+//|                                  Copyright 2024, MetaQuotes Ltd. |
+//|                                             https://www.mql5.com |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2024, MetaQuotes Ltd."
+#property link      "https://www.mql5.com"
+#property version   "7.2"
+#property description "Lion's Fury AI Elite - Advanced Neural Network Trading System (Final)"
+
+#include <Trade\Trade.mqh>
+#include <Trade\PositionInfo.mqh>
+#include <Trade\OrderInfo.mqh>
+
+//--- Global Variables
+CTrade trade;
+CPositionInfo position;
+COrderInfo order;
+
+//--- AI Neural Network Variables
+double neural_weights[10][10];
+double market_memory[100];
+double ai_confidence = 0.0;
+double profit_optimizer = 1.0;
+
+//--- Advanced Analysis Variables
+double liquidity_score = 0.0;
+double momentum_score = 0.0;
+double volatility_score = 0.0;
+double trend_strength = 0.0;
+double market_regime = 0.0;
+
+//--- Multi-Timeframe Analysis
+ENUM_TIMEFRAMES timeframe_array[5] = {PERIOD_M1, PERIOD_M5, PERIOD_M15, PERIOD_H1, PERIOD_H4};
+double mtf_signals[5];
+
+//--- Smart Money Concepts
+struct OrderBlock {
+    double price;
+    double volume;
+    datetime time;
+    bool valid;
+};
+OrderBlock order_blocks[10];
+double liquidity_levels[20];
+int ob_count = 0;
+int liq_count = 0;
+
+//--- Advanced Risk Management
+double dynamic_risk = 1.0;
+double market_volatility = 0.0;
+double correlation_factor = 0.0;
+
+//--- Trading Statistics
+int consecutive_wins = 0;
+int consecutive_losses = 0;
+datetime last_trade_time = 0;
+
+//--- Capital Protection Variables (NEW)
+input double          InpProtectionPercent    = 85.0;      // نسبة الحفاظ على رأس المال (بالمئوية)
+input int             InpProtectionLockHours  = 24;        // عدد ساعات الانتظار قبل قفل النسبة
+
+double protected_amount = 0.0;            // المبلغ المحفوظ (يتحدَّث مع كل ربح)
+double protection_locked_amount = 0.0;     // المبلغ المحفوظ بعد القفل
+bool protection_locked = false;           // هل تم قفل الحماية بعد مرور الوقت؟
+datetime protection_update_time = 0;       // وقت آخر تحديث للحماية
+double last_equity_checkpoint = 0.0;       // نقطة مرجعية لقياس زيادة الـ equity
+
+//--- Input Parameters
+input group "=== AI ELITE CORE SETTINGS ==="
+input ENUM_TIMEFRAMES InpMainTimeframe     = PERIOD_M5;
+input ENUM_TIMEFRAMES InpTrendTimeframe    = PERIOD_M15;
+input ENUM_TIMEFRAMES InpHigherTimeframe   = PERIOD_H1;
+
+input group "=== AI NEURAL NETWORK SETTINGS ==="
+input int             InpNeuralLayers      = 3;
+input int             InpMemorySize        = 100;
+input double          InpLearningRate      = 0.01;
+input double          InpConfidenceThreshold = 0.75;
+
+input group "=== ADVANCED INDICATOR SETTINGS ==="
+input int             InpMA_Fast           = 8;
+input int             InpMA_Slow           = 21;
+input int             InpMA_Trend          = 50;
+input int             InpADX_Period        = 14;
+input int             InpRSI_Period        = 14;
+input int             InpBB_Period         = 20;
+input double          InpBB_Deviation      = 2.0;
+input int             InpATR_Period        = 14;
+
+input group "=== RISK MANAGEMENT ==="
+input double          InpBaseRiskPerTrade  = 1.0;
+input double          InpMaxRiskPerTrade   = 3.0;
+input double          InpDynamicRiskMultiplier = 1.5;
+input double          InpVolatilityAdjustment = 0.5;
+input double          InpCorrelationThreshold = 0.7;
+
+input group "=== PROFIT OPTIMIZATION ==="
+input double          InpATR_StopLoss_Factor = 2.0;
+input double          InpTakeProfit_RR_Ratio = 2.5;
+input double          InpPartialClose_Level1 = 25.0;
+input double          InpPartialClose_Level2 = 50.0;
+input double          InpPartialClose_Level3 = 75.0;
+input double          InpTrailingStart      = 50;
+input double          InpTrailingDistance   = 30;
+input double          InpBreakevenTrigger   = 25;
+
+input group "=== SMART MONEY CONCEPTS ==="
+input bool            InpUseOrderBlocks    = true;
+input bool            InpUseLiquidityLevels = true;
+input bool            InpUseMarketStructure = true;
+input int             InpOrderBlockLookback = 50;
+input int             InpLiquidityLookback = 100;
+
+input group "=== MARKET REGIME DETECTION ==="
+input bool            InpUseMarketRegime   = true;
+input bool            InpUseVolatilityRegime = true;
+input bool            InpUseCorrelationAnalysis = true;
+input int             InpRegimePeriod      = 20;
+
+input group "=== ADVANCED FILTERS ==="
+input bool            InpUseNewsFilter     = true;
+input bool            InpUseTimeFilter     = true;
+input bool            InpUseSpreadFilter   = true;
+input double          InpMaxSpread         = 3.0;
+input int             InpMinVolume         = 100;
+
+input group "=== SPECIAL FEATURES ==="
+input bool            InpUseGridScalping   = false;
+input bool            InpUseAntiMartingale = true;
+input int             InpGridLevels        = 3;
+input double          InpGridDistance      = 20;
+input int             InpMagicNumber       = 123456;
+
+//--- Indicator Handles
+int h_ma_fast = INVALID_HANDLE;
+int h_ma_slow = INVALID_HANDLE;
+int h_ma_trend = INVALID_HANDLE;
+int h_adx = INVALID_HANDLE;
+int h_rsi = INVALID_HANDLE;
+int h_bb = INVALID_HANDLE;
+int h_atr = INVALID_HANDLE;
+
+//--- Function Declarations
+bool IsTradeAllowed();
+void UpdateMarketMemory(double new_value);
+bool IsDataReady();
+void PrintPerformanceStats();
+
+//--- Capital Protection Helpers (NEW)
+void UpdateCapitalProtectionOnProfit(double new_equity)
+{
+    // Only update when equity increased beyond last checkpoint
+    if(new_equity > last_equity_checkpoint + 0.0001)
+    {
+        double account_balance = AccountInfoDouble(ACCOUNT_BALANCE);
+        protected_amount = account_balance * (InpProtectionPercent / 100.0);
+        protection_update_time = TimeCurrent();
+        protection_locked = false;
+        last_equity_checkpoint = new_equity;
+        Print("🔐 Capital protection updated: ", DoubleToString(protected_amount,2), " (", DoubleToString(InpProtectionPercent,1),"%) at ", TimeToString(protection_update_time, TIME_DATE|TIME_SECONDS));
+    }
+}
+
+void CheckAndLockProtection()
+{
+    if(!protection_locked && protection_update_time > 0)
+    {
+        // حساب الوقت المنقضي بطريقة آمنة لتفادي اختلاف أنواع الإشارات
+        long elapsed = TimeCurrent() - protection_update_time;
+        long lock_seconds = (long)InpProtectionLockHours * 3600;
+        if(elapsed >= lock_seconds)
+        {
+            protection_locked = true;
+            protection_locked_amount = protected_amount;
+            Print("🔒 Capital protection LOCKED: ", DoubleToString(protection_locked_amount,2), " (will be preserved)");
+        }
+    }
+}
+
+//--- Neural Network Functions
+void InitializeNeuralNetwork()
+{
+    MathSrand((int)TimeLocal());
+    
+    for(int i = 0; i < 10; i++) {
+        for(int j = 0; j < 10; j++) {
+            neural_weights[i][j] = (MathRand() / 32768.0) - 0.5;
+        }
+    }
+    
+    for(int k = 0; k < 100; k++) {
+        market_memory[k] = 0.0;
+    }
+    
+    // Initialize order blocks
+    for(int i = 0; i < 10; i++) {
+        order_blocks[i].valid = false;
+    }
+    
+    Print("🧠 AI Neural Network Initialized");
+}
+
+double CalculateNeuralOutput(double &inputs[])
+{
+    double output = 0.0;
+    
+    for(int i = 0; i < 10; i++) {
+        for(int j = 0; j < 10; j++) {
+            output += inputs[i] * neural_weights[i][j];
+        }
+    }
+    // Apply sigmoid activation function
+    output = 1.0 / (1.0 + MathExp(-output));
+    
+    return output;
+}
+
+void UpdateNeuralNetwork(double actual_result)
+{
+    double learning_rate = InpLearningRate;
+    
+    for(int i = 0; i < 10; i++) {
+        for(int j = 0; j < 10; j++) {
+            neural_weights[i][j] += learning_rate * (actual_result - neural_weights[i][j]) * 0.1;
+        }
+    }
+}
+
+//--- Market Analysis Functions
+double CalculateMarketRegime()
+{
+    if(h_ma_fast == INVALID_HANDLE || h_ma_slow == INVALID_HANDLE) return 1.0;
+    
+    double regime_score = 0.0;
+    double ma_fast[1], ma_slow[1];
+    
+    if(CopyBuffer(h_ma_fast, 0, 1, 1, ma_fast) > 0 &&
+       CopyBuffer(h_ma_slow, 0, 1, 1, ma_slow) > 0) {
+        
+        if(ma_fast[0] > ma_slow[0]) {
+            regime_score = 0.0; // Bullish
+        } else {
+            regime_score = 1.0; // Bearish
+        }
+    } else {
+        regime_score = 2.0; // Sideways (default when data unavailable)
+    }
+    
+    return regime_score;
+}
+
+double CalculateVolatilityRegime()
+{
+    if(h_atr == INVALID_HANDLE) return 1.0;
+    
+    double atr_current[1];
+    if(CopyBuffer(h_atr, 0, 1, 1, atr_current) <= 0) return 1.0;
+    
+    double atr_history[20];
+    if(CopyBuffer(h_atr, 0, 1, 20, atr_history) <= 0) return 1.0;
+    
+    double avg_atr = 0.0;
+    for(int i = 0; i < 20; i++) {
+        avg_atr += atr_history[i];
+    }
+    avg_atr /= 20.0;
+    
+    if(atr_current[0] < avg_atr * 0.8) return 0.0; // Low volatility
+    else if(atr_current[0] > avg_atr * 1.2) return 2.0; // High volatility
+    else return 1.0; // Medium volatility
+}
+
+//--- Smart Money Concepts
+void DetectOrderBlocks()
+{
+    if(!InpUseOrderBlocks) return;
+    
+    ob_count = 0;
+    
+    for(int i = 1; i < InpOrderBlockLookback && i < Bars(_Symbol, PERIOD_CURRENT); i++) {
+        double high[1], low[1], close[1];
+        long volume[1];
+        
+        if(CopyHigh(_Symbol, PERIOD_CURRENT, i, 1, high) > 0 &&
+           CopyLow(_Symbol, PERIOD_CURRENT, i, 1, low) > 0 &&
+           CopyClose(_Symbol, PERIOD_CURRENT, i, 1, close) > 0 &&
+           CopyTickVolume(_Symbol, PERIOD_CURRENT, i, 1, volume) > 0) {
+            
+            if(volume[0] > InpMinVolume && ob_count < 10) {
+                order_blocks[ob_count].price = (high[0] + low[0]) / 2.0;
+                order_blocks[ob_count].volume = (double)volume[0];
+                order_blocks[ob_count].time = iTime(_Symbol, PERIOD_CURRENT, i);
+                order_blocks[ob_count].valid = true;
+                ob_count++;
+            }
+        }
+    }
+}
+
+void DetectLiquidityLevels()
+{
+    if(!InpUseLiquidityLevels) return;
+    
+    liq_count = 0;
+    
+    for(int i = 1; i < InpLiquidityLookback && i < Bars(_Symbol, PERIOD_CURRENT); i++) {
+        double high[1], low[1];
+        long volume[1];
+        
+        if(CopyHigh(_Symbol, PERIOD_CURRENT, i, 1, high) > 0 &&
+           CopyLow(_Symbol, PERIOD_CURRENT, i, 1, low) > 0 &&
+           CopyTickVolume(_Symbol, PERIOD_CURRENT, i, 1, volume) > 0) {
+            
+            if(volume[0] > InpMinVolume * 2 && liq_count < 20) {
+                liquidity_levels[liq_count] = (high[0] + low[0]) / 2.0;
+                liq_count++;
+            }
+        }
+    }
+}
+
+//--- Signal Generation
+int GetAISignal()
+{
+    double inputs[10];
+    
+    // Initialize inputs with default values
+    for(int i = 0; i < 10; i++) {
+        inputs[i] = 0.0;
+    }
+    
+    // Get indicator data with error checking
+    double ma_fast[1], ma_slow[1], adx[1], rsi[1], bb_upper[1], bb_lower[1], atr[1];
+    
+    bool data_valid = true;
+    
+    if(CopyBuffer(h_ma_fast, 0, 1, 1, ma_fast) <= 0) data_valid = false;
+    if(CopyBuffer(h_ma_slow, 0, 1, 1, ma_slow) <= 0) data_valid = false;
+    if(CopyBuffer(h_adx, 0, 1, 1, adx) <= 0) data_valid = false;
+    if(CopyBuffer(h_rsi, 0, 1, 1, rsi) <= 0) data_valid = false;
+    if(CopyBuffer(h_bb, 1, 1, 1, bb_upper) <= 0) data_valid = false;
+    if(CopyBuffer(h_bb, 2, 1, 1, bb_lower) <= 0) data_valid = false;
+    if(CopyBuffer(h_atr, 0, 1, 1, atr) <= 0) data_valid = false;
+    
+    if(!data_valid) {
+        Print("Warning: Indicator data unavailable");
+        return 0;
+    }
+    
+    // Prepare neural network inputs
+    inputs[0] = (ma_fast[0] > ma_slow[0]) ? 1.0 : -1.0;
+    inputs[1] = (adx[0] > 25) ? 1.0 : 0.0;
+    inputs[2] = (rsi[0] < 30) ? 1.0 : (rsi[0] > 70) ? -1.0 : 0.0;
+    inputs[3] = market_regime;
+    inputs[4] = CalculateVolatilityRegime();
+    inputs[5] = liquidity_score;
+    inputs[6] = momentum_score;
+    inputs[7] = volatility_score;
+    inputs[8] = trend_strength;
+    inputs[9] = ai_confidence;
+    
+    // Calculate neural network output
+    double neural_output = CalculateNeuralOutput(inputs);
+    
+    // Update AI confidence
+    ai_confidence = neural_output;
+    
+    // Generate signal based on AI confidence
+    if(neural_output > InpConfidenceThreshold) {
+        return 1; // Buy signal
+    } else if(neural_output < (1.0 - InpConfidenceThreshold)) {
+        return -1; // Sell signal
+    }
+    
+    return 0; // No signal
+}
+
+//--- Trade Allowed Check
+bool IsTradeAllowed()
+{
+    // Check if trading is allowed
+    if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED)) {
+        return false;
+    }
+    
+    // Check if EA trading is allowed
+    if(!MQLInfoInteger(MQL_TRADE_ALLOWED)) {
+        return false;
+    }
+    
+    // Check if symbol is tradeable
+    ENUM_SYMBOL_TRADE_MODE trade_mode = (ENUM_SYMBOL_TRADE_MODE)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_MODE);
+    if(trade_mode == SYMBOL_TRADE_MODE_DISABLED) {
+        return false;
+    }
+    
+    return true;
+}
+
+//--- Risk Management
+double CalculateDynamicRisk()
+{
+    double base_risk = InpBaseRiskPerTrade;
+    
+    // Adjust based on market regime
+    if(market_regime == 0.0) { // Bullish
+        base_risk *= 1.2;
+    } else if(market_regime == 1.0) { // Bearish
+        base_risk *= 0.8;
+    }
+    
+    // Adjust based on volatility
+    double volatility_regime = CalculateVolatilityRegime();
+    if(volatility_regime == 0.0) { // Low volatility
+        base_risk *= 1.3;
+    } else if(volatility_regime == 2.0) { // High volatility
+        base_risk *= 0.7;
+    }
+    
+    // Adjust based on AI confidence
+    base_risk *= ai_confidence;
+    
+    // Apply consecutive loss protection
+    if(consecutive_losses > 2) {
+        base_risk *= 0.5;
+    }
+    
+    // Ensure within limits
+    base_risk = MathMax(0.1, MathMin(InpMaxRiskPerTrade, base_risk));
+    
+    return base_risk;
+}
+
+//--- Position Management
+void ManageAIPositions()
+{
+    for(int i = PositionsTotal() - 1; i >= 0; i--) {
+        ulong ticket = PositionGetTicket(i);
+        if(ticket == 0) continue;
+        
+        if(PositionSelectByTicket(ticket)) {
+            if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
+            if(PositionGetInteger(POSITION_MAGIC) != InpMagicNumber) continue;
+            
+            double position_profit = PositionGetDouble(POSITION_PROFIT);
+            double position_volume = PositionGetDouble(POSITION_VOLUME);
+            ENUM_POSITION_TYPE position_type = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+            
+            // Partial close logic
+            if(position_profit > 10 && ai_confidence > 0.8) {
+                double close_volume = NormalizeDouble(position_volume * 0.3, 2);
+                if(close_volume >= SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN)) {
+                    if(trade.PositionClosePartial(ticket, close_volume)) {
+                        Print("🤖 AI Partial Close: ", close_volume, " lots");
+                    }
+                }
+            }
+            
+            // Trailing stop logic
+            UpdateTrailingStop(ticket, position_type);
+        }
+    }
+}
+
+void UpdateTrailingStop(ulong ticket, ENUM_POSITION_TYPE pos_type)
+{
+    if(h_atr == INVALID_HANDLE) return;
+    
+    double atr_array[1];
+    if(CopyBuffer(h_atr, 0, 1, 1, atr_array) <= 0) return;
+    
+    double current_price = (pos_type == POSITION_TYPE_BUY) ? 
+                          SymbolInfoDouble(_Symbol, SYMBOL_BID) : 
+                          SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+    
+    double open_price = PositionGetDouble(POSITION_PRICE_OPEN);
+    double stop_loss = PositionGetDouble(POSITION_SL);
+    
+    double atr_value = atr_array[0];
+    double trailing_distance = atr_value * InpATR_StopLoss_Factor;
+    
+    double new_sl = 0.0;
+    bool modify = false;
+    
+    if(pos_type == POSITION_TYPE_BUY) {
+        new_sl = current_price - trailing_distance;
+        if(new_sl > stop_loss && new_sl < current_price) {
+            modify = true;
+        }
+    } else {
+        new_sl = current_price + trailing_distance;
+        if((stop_loss == 0.0 || new_sl < stop_loss) && new_sl > current_price) {
+            modify = true;
+        }
+    }
+    
+    if(modify) {
+        new_sl = NormalizeDouble(new_sl, _Digits);
+        trade.PositionModify(ticket, new_sl, 0);
+    }
+}
+
+//--- Trading Execution
+void ExecuteAITrade(int signal)
+{
+    if(signal == 0) return;
+    if(!IsTradeAllowed()) return;
+    
+    // Prevent too frequent trading
+    if(TimeCurrent() - last_trade_time < 300) return; // 5 minutes minimum
+    
+    double risk_percent = CalculateDynamicRisk();
+    
+    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+    
+    if(ask == 0.0 || bid == 0.0) {
+        Print("Error: Invalid price data");
+        return;
+    }
+    
+    // Calculate stop loss and take profit
+    double atr_array[1];
+    if(CopyBuffer(h_atr, 0, 1, 1, atr_array) <= 0) return;
+    
+    double atr_value = atr_array[0];
+    double stop_loss_distance = atr_value * InpATR_StopLoss_Factor;
+    double take_profit_distance = stop_loss_distance * InpTakeProfit_RR_Ratio;
+    
+    // Capital protection: calculate available amount for risking
+    double account_balance = AccountInfoDouble(ACCOUNT_BALANCE);
+    double protection_reference = protection_locked ? protection_locked_amount : protected_amount;
+    double available_for_risk = MathMax(0.0, account_balance - protection_reference);
+    
+    if(available_for_risk <= 0.0) {
+        Print("🔒 Capital protection active - no available capital to risk. Skipping trade.");
+        return;
+    }
+    
+    // Calculate tick value
+    double tick_value = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+    
+    if(tick_value == 0.0) {
+        Print("Error: Invalid tick value");
+        return;
+    }
+    
+    // Calculate risk amount but never exceed available_for_risk
+    double desired_risk_amount = account_balance * risk_percent / 100.0;
+    double risk_amount = MathMin(desired_risk_amount, available_for_risk);
+    
+    double lot_size = risk_amount / (stop_loss_distance * tick_value);
+    
+    // Normalize lot size
+    double min_lot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+    double max_lot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+    double lot_step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+    
+    lot_size = MathMax(min_lot, MathMin(max_lot, lot_size));
+    lot_size = NormalizeDouble(MathRound(lot_size / lot_step) * lot_step, 2);
+    
+    if(lot_size < min_lot) {
+        Print("Error: Calculated lot size too small");
+        return;
+    }
+    
+    // Execute trade
+    bool result = false;
+    
+    if(signal == 1) { // Buy
+        double sl = NormalizeDouble(ask - stop_loss_distance, _Digits);
+        double tp = NormalizeDouble(ask + take_profit_distance, _Digits);
+        
+        result = trade.Buy(lot_size, _Symbol, ask, sl, tp, "AI Elite Buy");
+        if(result) {
+            Print("🚀 AI Elite BUY: ", lot_size, " lots at ", ask);
+            consecutive_losses = 0;
+        }
+    } else if(signal == -1) { // Sell
+        double sl = NormalizeDouble(bid + stop_loss_distance, _Digits);
+        double tp = NormalizeDouble(bid - take_profit_distance, _Digits);
+        
+        result = trade.Sell(lot_size, _Symbol, bid, sl, tp, "AI Elite Sell");
+        if(result) {
+            Print("🚀 AI Elite SELL: ", lot_size, " lots at ", bid);
+            consecutive_losses = 0;
+        }
+    }
+    
+    if(result) {
+        last_trade_time = TimeCurrent();
+        Print("🧠 AI Confidence: ", DoubleToString(ai_confidence, 3));
+    } else {
+        if(!result) Print("❌ Trade execution failed: ", trade.ResultRetcode());
+    }
+}
+
+//--- Filter Functions
+bool CheckNewsFilter()
+{
+    if(!InpUseNewsFilter) return true;
+    
+    MqlDateTime dt;
+    TimeToStruct(TimeCurrent(), dt);
+    
+    // Avoid major news hours (simplified)
+    if(dt.hour == 8 || dt.hour == 14 || dt.hour == 20) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool CheckTimeFilter()
+{
+    if(!InpUseTimeFilter) return true;
+    
+    MqlDateTime dt;
+    TimeToStruct(TimeCurrent(), dt);
+    
+    // Avoid weekend and low liquidity hours
+    if(dt.day_of_week == 0 || dt.day_of_week == 6) return false;
+    if(dt.hour < 2 || dt.hour > 22) return false;
+    
+    return true;
+}
+
+bool CheckSpreadFilter()
+{
+    if(!InpUseSpreadFilter) return true;
+    
+    long current_spread = SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+    long max_spread = (long)(InpMaxSpread * 10);
+    
+    return (current_spread <= max_spread);
+}
+
+bool ValidateSignal(int signal)
+{
+    if(!CheckNewsFilter() || !CheckTimeFilter() || !CheckSpreadFilter()) {
+        return false;
+    }
+    
+    if(market_regime == 2.0 && MathAbs(signal) == 1) { // Sideways market
+        return false;
+    }
+    
+    if(ai_confidence < InpConfidenceThreshold) {
+        return false;
+    }
+    
+    return true;
+}
+
+//--- Advanced Market Structure Analysis
+bool IsMarketStructureValid(int signal)
+{
+    if(!InpUseMarketStructure || h_ma_trend == INVALID_HANDLE) return true;
+    
+    double ma_trend[1];
+    if(CopyBuffer(h_ma_trend, 0, 1, 1, ma_trend) <= 0) return true;
+    
+    double current_price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+    if(current_price == 0.0) return true;
+    
+    // Check if signal aligns with higher timeframe trend
+    if(signal == 1 && current_price < ma_trend[0]) return false; // Buy against downtrend
+    if(signal == -1 && current_price > ma_trend[0]) return false; // Sell against uptrend
+    
+    return true;
+}
+
+//--- Enhanced Breakeven Management
+void ApplyBreakevenStop()
+{
+    if(InpBreakevenTrigger <= 0) return;
+    
+    for(int i = PositionsTotal() - 1; i >= 0; i--) {
+        ulong ticket = PositionGetTicket(i);
+        if(ticket == 0) continue;
+        
+        if(PositionSelectByTicket(ticket)) {
+            if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
+            if(PositionGetInteger(POSITION_MAGIC) != InpMagicNumber) continue;
+            
+            double open_price = PositionGetDouble(POSITION_PRICE_OPEN);
+            double current_sl = PositionGetDouble(POSITION_SL);
+            ENUM_POSITION_TYPE pos_type = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+            
+            double current_price = (pos_type == POSITION_TYPE_BUY) ?
+                                  SymbolInfoDouble(_Symbol, SYMBOL_BID) :
+                                  SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+            
+            double profit_pips = 0.0;
+            bool should_modify = false;
+            
+            if(pos_type == POSITION_TYPE_BUY) {
+                profit_pips = (current_price - open_price) / _Point;
+                should_modify = (profit_pips >= InpBreakevenTrigger && 
+                               (current_sl == 0.0 || current_sl < open_price));
+            } else {
+                profit_pips = (open_price - current_price) / _Point;
+                should_modify = (profit_pips >= InpBreakevenTrigger && 
+                               (current_sl == 0.0 || current_sl > open_price));
+            }
+            
+            if(should_modify) {
+                double new_sl = NormalizeDouble(open_price, _Digits);
+                if(trade.PositionModify(ticket, new_sl, 0)) {
+                    Print("🎯 Breakeven Stop Applied for ticket: ", ticket);
+                }
+            }
+        }
+    }
+}
+
+//--- Enhanced Multi-Timeframe Analysis
+void CalculateMultiTimeframeSignals()
+{
+    for(int i = 0; i < ArraySize(timeframe_array); i++) {
+        int handle_fast = iMA(_Symbol, timeframe_array[i], InpMA_Fast, 0, MODE_EMA, PRICE_CLOSE);
+        int handle_slow = iMA(_Symbol, timeframe_array[i], InpMA_Slow, 0, MODE_EMA, PRICE_CLOSE);
+        
+        if(handle_fast != INVALID_HANDLE && handle_slow != INVALID_HANDLE) {
+            double ma_fast[1], ma_slow[1];
+            
+            if(CopyBuffer(handle_fast, 0, 1, 1, ma_fast) > 0 &&
+               CopyBuffer(handle_slow, 0, 1, 1, ma_slow) > 0) {
+                
+                mtf_signals[i] = (ma_fast[0] > ma_slow[0]) ? 1.0 : -1.0;
+            } else {
+                mtf_signals[i] = 0.0;
+            }
+            
+            IndicatorRelease(handle_fast);
+            IndicatorRelease(handle_slow);
+        } else {
+            mtf_signals[i] = 0.0;
+        }
+    }
+}
+
+//--- Utility Functions
+double GetTotalProfit()
+{
+    double total_profit = 0.0;
+    for(int i = 0; i < PositionsTotal(); i++) {
+        ulong ticket = PositionGetTicket(i);
+        if(PositionSelectByTicket(ticket)) {
+            if(PositionGetString(POSITION_SYMBOL) == _Symbol &&
+               PositionGetInteger(POSITION_MAGIC) == InpMagicNumber) {
+                total_profit += PositionGetDouble(POSITION_PROFIT);
+            }
+        }
+    }
+    return total_profit;
+}
+
+double GetAIConfidence()
+{
+    return ai_confidence;
+}
+
+double GetMarketRegime()
+{
+    return market_regime;
+}
+
+int GetActivePositions()
+{
+    int active_positions = 0;
+    for(int i = 0; i < PositionsTotal(); i++) {
+        ulong ticket = PositionGetTicket(i);
+        if(PositionSelectByTicket(ticket)) {
+            if(PositionGetString(POSITION_SYMBOL) == _Symbol &&
+               PositionGetInteger(POSITION_MAGIC) == InpMagicNumber) {
+                active_positions++;
+            }
+        }
+    }
+    return active_positions;
+}
+
+//--- Memory Management for Market Memory
+void UpdateMarketMemory(double new_value)
+{
+    // Shift array elements
+    for(int i = ArraySize(market_memory) - 1; i > 0; i--) {
+        market_memory[i] = market_memory[i - 1];
+    }
+    
+    // Add new value
+    market_memory[0] = new_value;
+}
+
+//--- Advanced Error Handling
+bool IsDataReady()
+{
+    // Check if we have enough bars
+    if(Bars(_Symbol, PERIOD_CURRENT) < 100) {
+        return false;
+    }
+    
+    // Check if indicators are ready
+    if(h_ma_fast == INVALID_HANDLE || h_ma_slow == INVALID_HANDLE ||
+       h_adx == INVALID_HANDLE || h_rsi == INVALID_HANDLE ||
+       h_bb == INVALID_HANDLE || h_atr == INVALID_HANDLE) {
+        return false;
+    }
+    
+    // Test if we can get data from indicators
+    double test_data[1];
+    if(CopyBuffer(h_ma_fast, 0, 1, 1, test_data) <= 0) return false;
+    if(CopyBuffer(h_ma_slow, 0, 1, 1, test_data) <= 0) return false;
+    if(CopyBuffer(h_atr, 0, 1, 1, test_data) <= 0) return false;
+    
+    return true;
+}
+
+//--- Performance Monitoring
+void PrintPerformanceStats()
+{
+    static datetime last_print = 0;
+    
+    // Print stats every hour
+    if(TimeCurrent() - last_print < 3600) return;
+    
+    double total_profit = GetTotalProfit();
+    int active_positions = GetActivePositions();
+    
+    Print("📊 Performance Stats:");
+    Print("   Active Positions: ", active_positions);
+    Print("   Total Floating P&L: $", DoubleToString(total_profit, 2));
+    Print("   AI Confidence: ", DoubleToString(ai_confidence * 100, 1), "%");
+    Print("   Market Regime: ", (market_regime == 0.0) ? "Bullish" : 
+                                (market_regime == 1.0) ? "Bearish" : "Sideways");
+    Print("   Consecutive Wins: ", consecutive_wins);
+    Print("   Consecutive Losses: ", consecutive_losses);
+    
+    // Print capital protection status
+    Print("   Capital Protection: ", DoubleToString(protected_amount,2), " (locked: ", protection_locked ? "YES":"NO", ")");
+    if(protection_locked) Print("   Locked Amount: ", DoubleToString(protection_locked_amount,2));
+    
+    last_print = TimeCurrent();
+}
+
+//--- Grid Trading Functions (Improved)
+void ExecuteGridTrade(int direction)
+{
+    if(!InpUseGridScalping || direction == 0) return;
+    
+    double current_price = (direction == 1) ? 
+                          SymbolInfoDouble(_Symbol, SYMBOL_ASK) : 
+                          SymbolInfoDouble(_Symbol, SYMBOL_BID);
+    
+    if(current_price == 0.0) return;
+    
+    double min_lot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+    double lot_step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+    double grid_lot = NormalizeDouble(min_lot, 2);
+    
+    for(int i = 0; i < InpGridLevels; i++) {
+        double grid_distance = InpGridDistance * _Point * (i + 1);
+        double grid_price = current_price + (direction * grid_distance);
+        
+        // Normalize price
+        grid_price = NormalizeDouble(grid_price, _Digits);
+        
+        string comment = StringFormat("Grid_%s_%d", (direction == 1) ? "Buy" : "Sell", i);
+        
+        if(direction == 1) {
+            if(!trade.Buy(grid_lot, _Symbol, grid_price, 0, 0, comment)) {
+                Print("Grid Buy failed: ", trade.ResultRetcode());
+            }
+        } else {
+            if(!trade.Sell(grid_lot, _Symbol, grid_price, 0, 0, comment)) {
+                Print("Grid Sell failed: ", trade.ResultRetcode());
+            }
+        }
+    }
+}
+
+//--- Anti-Martingale Position Sizing
+double CalculateAntiMartingaleLotSize(double base_lot)
+{
+    if(!InpUseAntiMartingale) return base_lot;
+    
+    double multiplier = 1.0 + (consecutive_wins * 0.1);
+    multiplier = MathMin(multiplier, 3.0); // Cap at 3x
+    
+    return NormalizeDouble(base_lot * multiplier, 2);
+}
+
+//--- Correlation Analysis
+double CalculateCorrelationFactor()
+{
+    if(!InpUseCorrelationAnalysis) return 0.0;
+    
+    // Simplified correlation calculation
+    string major_pairs[] = {"EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD"};
+    double correlation_sum = 0.0;
+    int valid_pairs = 0;
+    
+    double current_price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+    if(current_price == 0.0) return 0.0;
+    
+    for(int i = 0; i < ArraySize(major_pairs); i++) {
+        if(major_pairs[i] != _Symbol) {
+            double pair_price = SymbolInfoDouble(major_pairs[i], SYMBOL_BID);
+            
+            if(pair_price > 0) {
+                // Simplified correlation measure
+                correlation_sum += MathAbs(current_price - pair_price) / pair_price;
+                valid_pairs++;
+            }
+        }
+    }
+    
+    return (valid_pairs > 0) ? correlation_sum / valid_pairs : 0.0;
+}
+
+//--- EA Main Functions
+int OnInit()
+{
+    // Initialize trade object
+    trade.SetExpertMagicNumber(InpMagicNumber);
+    trade.SetDeviationInPoints(10);
+    trade.SetTypeFilling(ORDER_FILLING_FOK);
+    
+    // Initialize indicators
+    h_ma_fast = iMA(_Symbol, InpMainTimeframe, InpMA_Fast, 0, MODE_EMA, PRICE_CLOSE);
+    h_ma_slow = iMA(_Symbol, InpMainTimeframe, InpMA_Slow, 0, MODE_EMA, PRICE_CLOSE);
+    h_ma_trend = iMA(_Symbol, InpTrendTimeframe, InpMA_Trend, 0, MODE_SMA, PRICE_CLOSE);
+    h_adx = iADX(_Symbol, InpMainTimeframe, InpADX_Period);
+    h_rsi = iRSI(_Symbol, InpMainTimeframe, InpRSI_Period, PRICE_CLOSE);
+    h_bb = iBands(_Symbol, InpMainTimeframe, InpBB_Period, 0, InpBB_Deviation, PRICE_CLOSE);
+    h_atr = iATR(_Symbol, InpMainTimeframe, InpATR_Period);
+    
+    // Check indicator handles
+    if(h_ma_fast == INVALID_HANDLE || h_ma_slow == INVALID_HANDLE || 
+       h_ma_trend == INVALID_HANDLE || h_adx == INVALID_HANDLE ||
+       h_rsi == INVALID_HANDLE || h_bb == INVALID_HANDLE || h_atr == INVALID_HANDLE) {
+        Print("❌ Failed to create indicator handles");
+        return INIT_FAILED;
+    }
+    
+    // Wait for indicator data
+    Sleep(1000);
+    
+    // Initialize AI Neural Network
+    InitializeNeuralNetwork();
+    
+    // Initialize capital protection
+    double init_balance = AccountInfoDouble(ACCOUNT_BALANCE);
+    protected_amount = init_balance * (InpProtectionPercent / 100.0);
+    protection_locked = false;
+    protection_locked_amount = 0.0;
+    protection_update_time = 0;
+    last_equity_checkpoint = AccountInfoDouble(ACCOUNT_EQUITY);
+    
+    Print("🤖 Lion's Fury AI Elite v7.2 Initialized Successfully");
+    Print("🧠 Neural Network: ", InpNeuralLayers, " layers");
+    Print("💡 AI Confidence Threshold: ", InpConfidenceThreshold);
+    Print("🎯 Risk Management: ", InpBaseRiskPerTrade, "% - ", InpMaxRiskPerTrade, "%");
+    Print("🔒 Initial Capital Protection: ", DoubleToString(protected_amount,2), " (", DoubleToString(InpProtectionPercent,1),"%)");
+    Print("🔒 Protection will lock after ", InpProtectionLockHours, " hours of no-downward change.");
+    Print("🔒 Initial Equity Checkpoint: ", DoubleToString(last_equity_checkpoint,2));
+    
+    return INIT_SUCCEEDED;
+}
+
+void OnDeinit(const int reason)
+{
+    // Release indicator handles
+    if(h_ma_fast != INVALID_HANDLE) IndicatorRelease(h_ma_fast);
+    if(h_ma_slow != INVALID_HANDLE) IndicatorRelease(h_ma_slow);
+    if(h_ma_trend != INVALID_HANDLE) IndicatorRelease(h_ma_trend);
+    if(h_adx != INVALID_HANDLE) IndicatorRelease(h_adx);
+    if(h_rsi != INVALID_HANDLE) IndicatorRelease(h_rsi);
+    if(h_bb != INVALID_HANDLE) IndicatorRelease(h_bb);
+    if(h_atr != INVALID_HANDLE) IndicatorRelease(h_atr);
+    
+    Print("🤖 Lion's Fury AI Elite Deinitialized - Reason: ", reason);
+}
+
+void OnTick()
+{
+    // Skip if not enough bars
+    if(Bars(_Symbol, PERIOD_CURRENT) < 100) return;
+    
+    // Check if data is ready
+    if(!IsDataReady()) {
+        static int data_wait_counter = 0;
+        data_wait_counter++;
+        if(data_wait_counter % 100 == 0) {
+            Print("⏳ Waiting for indicator data...");
+        }
+        return;
+    }
+    
+    // Update market analysis
+    market_regime = CalculateMarketRegime();
+    CalculateMultiTimeframeSignals();
+    
+    // Detect Smart Money Concepts
+    DetectOrderBlocks();
+    DetectLiquidityLevels();
+    
+    // Calculate advanced scores
+    liquidity_score = (liq_count > 0) ? (double)liq_count / 20.0 : 0.0;
+    momentum_score = MathAbs(market_regime - 1.0);
+    volatility_score = CalculateVolatilityRegime() / 2.0;
+    trend_strength = MathAbs(market_regime - 1.0);
+    
+    // Update market memory
+    UpdateMarketMemory(SymbolInfoDouble(_Symbol, SYMBOL_BID));
+    
+    // Capital protection check: lock if 24 hours passed since last update
+    CheckAndLockProtection();
+    
+    // Get AI signal
+    int ai_signal = GetAISignal();
+    
+    // Validate signal with all filters
+    if(!ValidateSignal(ai_signal) || !IsMarketStructureValid(ai_signal)) {
+        ai_signal = 0;
+    }
+    
+    // Manage existing positions
+    ManageAIPositions();
+    ApplyBreakevenStop();
+    
+    // Execute new trades
+    if(GetActivePositions() == 0) {
+        ExecuteAITrade(ai_signal);
+    }
+    
+    // Grid trading logic (if enabled and signal exists)
+    if(InpUseGridScalping && ai_signal != 0 && GetActivePositions() < InpGridLevels) {
+        ExecuteGridTrade(ai_signal);
+    }
+    
+    // Print performance stats
+    PrintPerformanceStats();
+    
+    // Print status periodically
+    static int tick_counter = 0;
+    tick_counter++;
+    if(tick_counter % 500 == 0) {
+        Print("🤖 AI Status - Confidence: ", DoubleToString(ai_confidence, 3), 
+              " | Regime: ", DoubleToString(market_regime, 1),
+              " | Positions: ", GetActivePositions());
+    }
+}
+
+void OnTradeTransaction(const MqlTradeTransaction &trans,
+                       const MqlTradeRequest &request,
+                       const MqlTradeResult &result)
+{
+    if(trans.symbol == _Symbol && trans.type == TRADE_TRANSACTION_DEAL_ADD) {
+        
+        // Update trading statistics
+        if(trans.deal > 0) {
+            double deal_profit = 0.0;
+            if(HistoryDealSelect(trans.deal)) {
+                deal_profit = HistoryDealGetDouble(trans.deal, DEAL_PROFIT);
+                
+                if(deal_profit > 0) {
+                    consecutive_wins++;
+                    consecutive_losses = 0;
+                } else if(deal_profit < 0) {
+                    consecutive_losses++;
+                    consecutive_wins = 0;
+                }
+                
+                // Update neural network based on result
+                UpdateNeuralNetwork(deal_profit > 0 ? 1.0 : 0.0);
+
+                // --- CAPITAL PROTECTION: update on profit ---
+                if(deal_profit > 0)
+                {
+                    double current_equity = AccountInfoDouble(ACCOUNT_EQUITY);
+                    UpdateCapitalProtectionOnProfit(current_equity);
+                }
+            }
+        }
+        
+        Print("💰 Trade Transaction: Deal ", trans.deal, " | Type: ", EnumToString(trans.order_type));
+    }
+}
+
