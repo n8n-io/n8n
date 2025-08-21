@@ -19,6 +19,7 @@ import type {
 	GetRowIdParams,
 	ICellRendererParams,
 	CellEditRequestEvent,
+	CellClickedEvent,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -92,6 +93,9 @@ const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
 };
 
 const contentLoading = ref(false);
+
+// Track the last focused cell so we can start editing when users click on it
+const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
 
 // Shared config for all columns
 const defaultColumnDef: ColDef = {
@@ -215,12 +219,14 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 			return params.data?.[col.name];
 		},
 		cellRendererSelector: (params: ICellRendererParams) => {
+			// Custom renderer for null or empty values
 			if (params.value === null) {
 				return { component: 'NullEmptyCellRenderer', params: { value: NULL_VALUE } };
 			}
 			if (params.value === '') {
 				return { component: 'NullEmptyCellRenderer', params: { value: EMPTY_VALUE } };
 			}
+			// Fallback to default cell renderer
 			return undefined;
 		},
 	};
@@ -332,6 +338,35 @@ const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) =
 	}
 };
 
+// Start editing when users click on already focused cells
+const onCellClicked = (params: CellClickedEvent<DataStoreRow>) => {
+	const clickedCellColumn = params.column.getColId();
+	const clickedCellRow = params.rowIndex;
+
+	// Skip if rowIndex is null
+	if (clickedCellRow === null) return;
+
+	// Check if this is the same cell that was focused before this click
+	const wasAlreadyFocused =
+		lastFocusedCell.value &&
+		lastFocusedCell.value.rowIndex === clickedCellRow &&
+		lastFocusedCell.value.colId === clickedCellColumn;
+
+	if (wasAlreadyFocused && params.column.getColDef()?.editable) {
+		// Cell was already selected, start editing
+		params.api.startEditingCell({
+			rowIndex: clickedCellRow,
+			colKey: clickedCellColumn,
+		});
+	}
+
+	// Update the last focused cell for next click
+	lastFocusedCell.value = {
+		rowIndex: clickedCellRow,
+		colId: clickedCellColumn,
+	};
+};
+
 const fetchDataStoreContent = async () => {
 	try {
 		contentLoading.value = true;
@@ -391,6 +426,7 @@ defineExpose({
 				@grid-ready="onGridReady"
 				@cell-value-changed="onCellValueChanged"
 				@column-moved="onColumnMoved"
+				@cell-clicked="onCellClicked"
 			/>
 			<AddColumnPopover
 				:data-store="props.dataStore"
