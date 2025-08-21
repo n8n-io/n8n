@@ -548,7 +548,6 @@ export class ChatTrigger extends Node {
 		const webhookName = ctx.getWebhookName();
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 		const bodyData = ctx.getBodyData() ?? {};
-		bodyData.headers = ctx.getHeaderData();
 
 		try {
 			await validateAuth(ctx);
@@ -643,7 +642,14 @@ export class ChatTrigger extends Node {
 			if (req.contentType === 'multipart/form-data') {
 				returnData = [await this.handleFormData(ctx)];
 			} else {
-				returnData = [{ json: bodyData }];
+				returnData = [
+					{
+						json: {
+							...bodyData,
+							headers: ctx.getHeaderData(),
+						},
+					},
+				];
 			}
 
 			return {
@@ -659,7 +665,14 @@ export class ChatTrigger extends Node {
 				workflowData: [returnData],
 			};
 		} else {
-			returnData = [{ json: bodyData }];
+			returnData = [
+				{
+					json: {
+						...bodyData,
+						headers: ctx.getHeaderData(),
+					},
+				},
+			];
 		}
 
 		return {
