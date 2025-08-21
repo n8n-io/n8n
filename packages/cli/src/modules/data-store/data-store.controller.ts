@@ -7,6 +7,7 @@ import {
 	ListDataStoreQueryDto,
 	MoveDataStoreColumnDto,
 	UpdateDataStoreDto,
+	UpdateDataStoreRowDto,
 	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -22,17 +23,17 @@ import {
 	RestController,
 } from '@n8n/decorators';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import { DataStoreService } from './data-store.service';
 import { DataStoreColumnNameConflictError } from './errors/data-store-column-name-conflict.error';
 import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-found.error';
 import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @RestController('/projects/:projectId/data-stores')
 export class DataStoreController {
@@ -233,6 +234,9 @@ export class DataStoreController {
 		}
 	}
 
+	/**
+	 * @returns the IDs of the inserted rows
+	 */
 	@Post('/:dataStoreId/insert')
 	@ProjectScope('dataStore:writeRow')
 	async appendDataStoreRows(
@@ -266,6 +270,29 @@ export class DataStoreController {
 	) {
 		try {
 			return await this.dataStoreService.upsertRows(dataStoreId, req.params.projectId, dto);
+		} catch (e: unknown) {
+			if (e instanceof DataStoreNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof DataStoreValidationError) {
+				throw new BadRequestError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
+	}
+
+	@Patch('/:dataStoreId/rows')
+	@ProjectScope('dataStore:writeRow')
+	async updateDataStoreRow(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataStoreId') dataStoreId: string,
+		@Body dto: UpdateDataStoreRowDto,
+	) {
+		try {
+			return await this.dataStoreService.updateRow(dataStoreId, req.params.projectId, dto);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
 				throw new NotFoundError(e.message);

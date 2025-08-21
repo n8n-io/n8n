@@ -788,7 +788,8 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		 */
 
 		await initializeCore();
-		await initializeAuthenticatedFeatures();
+		// Pass undefined for first param to use default
+		await initializeAuthenticatedFeatures(undefined, to.name as string);
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once
