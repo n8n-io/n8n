@@ -5,6 +5,15 @@ export default defineConfig(
 	globalIgnores(['src/template/templates/**/template', 'src/template/templates/shared']),
 	nodeConfig,
 	{
+		ignores: ['**/*.test.ts', 'src/configs/eslint.ts'],
+		rules: {
+			'import-x/no-extraneous-dependencies': [
+				'error',
+				{ devDependencies: false, optionalDependencies: false, peerDependencies: false },
+			],
+		},
+	},
+	{
 		files: ['src/commands/**/*.ts', 'src/modules.d.ts', 'src/configs/eslint.ts'],
 		rules: { 'import-x/no-default-export': 'off', '@typescript-eslint/naming-convention': 'off' },
 	},

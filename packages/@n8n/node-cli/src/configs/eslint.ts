@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import eslint from '@eslint/js';
 import { globalIgnores } from 'eslint/config';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
