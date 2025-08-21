@@ -205,9 +205,12 @@ class ExtendedPGVectorStore extends PGVectorStore {
 		const postgresqlVectorStore = new this(embeddings, rest);
 
 		await postgresqlVectorStore._initializeClient();
-		await postgresqlVectorStore.ensureTableInDatabase(dimensions);
-		if (postgresqlVectorStore.collectionTableName) {
-			await postgresqlVectorStore.ensureCollectionTableInDatabase();
+
+		if (!args.skipInitializationCheck) {
+			await postgresqlVectorStore.ensureTableInDatabase(dimensions);
+			if (postgresqlVectorStore.collectionTableName) {
+				await postgresqlVectorStore.ensureCollectionTableInDatabase();
+			}
 		}
 
 		return postgresqlVectorStore;
