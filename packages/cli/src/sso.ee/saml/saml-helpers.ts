@@ -118,8 +118,14 @@ export async function updateUserFromSamlAttributes(
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
 	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
-	if (!resultUser) throw new AuthError('Could not create User');
-	return resultUser;
+	if (!resultUser) throw new AuthError('Could not update User');
+	const userWithRole = await Container.get(UserRepository).findOne({
+		where: { id: resultUser.id },
+		relations: ['role'],
+		transaction: false,
+	});
+	if (!userWithRole) throw new AuthError('Failed to fetch user!');
+	return userWithRole;
 }
 
 type GetMappedSamlReturn = {

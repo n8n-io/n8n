@@ -174,6 +174,7 @@ export class AuthService {
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
 		const user = await this.userRepository.findOne({
 			where: { id: jwtPayload.id },
+			relations: ['role'],
 		});
 
 		if (
@@ -237,7 +238,7 @@ export class AuthService {
 
 		const user = await this.userRepository.findOne({
 			where: { id: decodedToken.sub },
-			relations: ['authIdentities'],
+			relations: ['authIdentities', 'role'],
 		});
 
 		if (!user) {

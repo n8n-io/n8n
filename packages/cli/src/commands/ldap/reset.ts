@@ -170,8 +170,9 @@ export class Reset extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	private async getOwner() {
-		const owner = await Container.get(UserRepository).findOneBy({
-			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		const owner = await Container.get(UserRepository).findOne({
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			relations: ['role'],
 		});
 		if (!owner) {
 			throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);

@@ -2165,6 +2165,8 @@ describe('PATCH /workflows/:workflowId', () => {
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
+		console.log(response.body);
+
 		const {
 			data: { id },
 		} = response.body;

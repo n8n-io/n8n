@@ -50,6 +50,7 @@ export class OwnerController {
 
 		let owner = await this.userRepository.findOneOrFail({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			relations: ['role'],
 		});
 		owner.email = email;
 		owner.firstName = firstName;
