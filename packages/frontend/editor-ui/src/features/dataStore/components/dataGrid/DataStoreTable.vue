@@ -47,6 +47,7 @@ import {
 	NO_TABLE_YET_MESSAGE,
 	DATA_STORE_HEADER_HEIGHT,
 	DATA_STORE_ROW_HEIGHT,
+	ADD_ROW_ROW_ID,
 } from '@/features/dataStore/constants';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import AddColumnHeaderComponent from '@/features/dataStore/components/dataGrid/AddColumnHeaderComponent.vue';
@@ -94,6 +95,7 @@ const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
 	mode: 'singleRow',
 	enableClickSelection: true,
 	checkboxes: false,
+	isRowSelectable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 };
 
 const contentLoading = ref(false);
@@ -114,7 +116,7 @@ const refreshGridData = () => {
 		gridApi.value.setGridOption('rowData', [
 			...rowData.value,
 			{
-				id: 'add-row',
+				id: ADD_ROW_ROW_ID,
 			},
 		]);
 	}
@@ -303,8 +305,9 @@ const initColumnDefinitions = () => {
 				minWidth: DATA_STORE_ID_COLUMN_WIDTH,
 				maxWidth: DATA_STORE_ID_COLUMN_WIDTH,
 				resizable: false,
+				cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'id-column'),
 				cellRendererSelector: (params: ICellRendererParams) => {
-					if (params.value === 'add-row') {
+					if (params.value === ADD_ROW_ROW_ID) {
 						return {
 							component: AddRowButton,
 							params: {
@@ -460,6 +463,11 @@ onMounted(async () => {
 	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 	--ag-header-column-border-height: 100%;
 
+	:global(.ag-cell) {
+		display: flex;
+		align-items: center;
+	}
+
 	:global(.ag-header-cell-resize) {
 		width: var(--spacing-xs);
 		// this is needed so that we compensate for the width
@@ -472,6 +480,11 @@ onMounted(async () => {
 
 	:global(.id-column) {
 		color: var(--color-text-light);
+	}
+
+	:global(.add-row-cell) {
+		border: none !important;
+		outline: none !important;
 	}
 
 	:global(.ag-header-cell[col-id='add-column']) {
