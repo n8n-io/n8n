@@ -4,6 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	AuthIdentity,
 	AuthIdentityRepository,
+	isValidEmail,
 	SettingsRepository,
 	type User,
 	UserRepository,
@@ -102,6 +103,10 @@ export class OidcService {
 
 		if (!userInfo.email) {
 			throw new BadRequestError('An email is required');
+		}
+
+		if (!isValidEmail(userInfo.email)) {
+			throw new BadRequestError('Invalid email format');
 		}
 
 		const openidUser = await this.authIdentityRepository.findOne({

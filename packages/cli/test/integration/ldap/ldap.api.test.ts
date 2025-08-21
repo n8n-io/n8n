@@ -435,6 +435,94 @@ describe('POST /ldap/sync', () => {
 			const response = await testServer.authAgentFor(member).get('/login');
 			expect(response.status).toBe(401);
 		});
+
+		test('should filter out users with invalid email addresses during sync', async () => {
+			const validLdapUser = {
+				mail: randomEmail(),
+				dn: '',
+				sn: randomName(),
+				givenName: randomName(),
+				uid: uniqueId(),
+			};
+
+			const invalidLdapUser = {
+				mail: 'invalid-email',
+				dn: '',
+				sn: randomName(),
+				givenName: randomName(),
+				uid: uniqueId(),
+			};
+
+			const ldapUsers = [validLdapUser, invalidLdapUser];
+
+			const loggerSpy = jest.spyOn(Container.get(LdapService)['logger'], 'warn');
+
+			const synchronization = await runTest(ldapUsers);
+
+			// Should only create 1 user (the valid one)
+			expect(synchronization.created).toBe(1);
+
+			// Should log error for invalid email
+			expect(loggerSpy).toHaveBeenCalledWith(
+				expect.stringContaining(`LDAP - Invalid email format for user ${invalidLdapUser.uid}`),
+			);
+
+			loggerSpy.mockReset();
+			loggerSpy.mockRestore();
+
+			// Verify only valid user was created
+			const allUsers = await getAllUsers();
+			expect(allUsers.length).toBe(2); // owner + valid user
+
+			const memberUser = allUsers.find((u) => u.email !== owner.email)!;
+			expect(memberUser.email).toBe(validLdapUser.mail);
+		});
+
+		test('should filter out users with invalid email addresses during update', async () => {
+			const originalEmail = randomEmail();
+			const originalUserId = uniqueId();
+
+			// Create user with valid email first
+			await createLdapUser(
+				{
+					role: 'global:member',
+					email: originalEmail,
+					firstName: randomName(),
+					lastName: randomName(),
+				},
+				originalUserId,
+			);
+
+			// Now try to update with invalid email
+			const invalidLdapUser = {
+				mail: 'not-an-email',
+				dn: '',
+				sn: randomName(),
+				givenName: randomName(),
+				uid: originalUserId,
+			};
+
+			const loggerSpy = jest.spyOn(Container.get(LdapService)['logger'], 'warn');
+
+			const synchronization = await runTest([invalidLdapUser]);
+
+			// Should not update any users
+			expect(synchronization.updated).toBe(0);
+
+			// Should log error for invalid email
+			expect(loggerSpy).toHaveBeenCalledWith(
+				expect.stringContaining(`LDAP - Invalid email format for user ${originalUserId}`),
+			);
+
+			loggerSpy.mockReset();
+			loggerSpy.mockRestore();
+
+			// Verify user still has original email
+			const localLdapIdentities = await getLdapIdentities();
+			const localLdapUsers = localLdapIdentities.map(({ user }) => user);
+			expect(localLdapUsers.length).toBe(1);
+			expect(localLdapUsers[0].email).toBe(originalEmail);
+		});
 	});
 });
 

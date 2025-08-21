@@ -1,1 +1,1 @@
-export type DataStoreUserTableName = `data_store_user_${string}`;
+export type DataStoreUserTableName = `${string}data_store_user_${string}`;

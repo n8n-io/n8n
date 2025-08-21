@@ -72,7 +72,8 @@ export type AddDataStoreColumnOptions = Pick<DataStoreColumn, 'name' | 'type'> &
 
 export type DataStoreColumnJsType = string | number | boolean | Date;
 
-export type DataStoreRows = Array<Record<string, DataStoreColumnJsType | null>>;
+export type DataStoreRow = Record<string, DataStoreColumnJsType | null>;
+export type DataStoreRows = DataStoreRow[];
 
 // APIs for a data store service operating on a specific projectId
 export interface IDataStoreProjectAggregateService {
@@ -100,7 +101,7 @@ export interface IDataStoreProjectService {
 		dto: Partial<ListDataStoreRowsOptions>,
 	): Promise<{ count: number; data: DataStoreRows }>;
 
-	insertRows(rows: DataStoreRows): Promise<boolean>;
+	insertRows(rows: DataStoreRows): Promise<number[]>;
 
 	upsertRows(options: UpsertDataStoreRowsOptions): Promise<boolean>;
 }
