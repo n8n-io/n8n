@@ -316,8 +316,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const getNodeTypes = async () => {
 		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
 
-		await fetchCommunityNodePreviews();
-
 		if (nodeTypes.length) {
 			setNodeTypes(nodeTypes);
 		}
@@ -417,6 +415,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		isConfigurableNode,
 		communityNodesAndActions,
 		communityNodeType,
+		fetchCommunityNodePreviews,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
 		getNodeParameterActionResult,
