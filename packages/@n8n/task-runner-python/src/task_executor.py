@@ -1,9 +1,16 @@
+from queue import Empty
 import multiprocessing
 import logging
 import traceback
 import textwrap
 
-from .errors import TaskExecutionError, TaskTimeoutError
+from .errors import (
+    TaskResultMissingError,
+    TaskRuntimeError,
+    TaskTimeoutError,
+    TaskProcessExitError,
+)
+
 from .message_types.broker import NodeMode, Items
 from .constants import EXECUTOR_USER_OUTPUT_KEY
 
@@ -46,10 +53,17 @@ class TaskExecutor:
                 TaskExecutor.stop_process(process)
                 raise TaskTimeoutError(task_timeout)
 
-            returned = queue.get()
+            if process.exitcode != 0:
+                assert process.exitcode is not None
+                raise TaskProcessExitError(process.exitcode)
+
+            try:
+                returned = queue.get_nowait()
+            except Empty:
+                raise TaskResultMissingError()
 
             if "error" in returned:
-                raise TaskExecutionError(returned["error"])
+                raise TaskRuntimeError(returned["error"])
 
             return returned["result"] or []
 
