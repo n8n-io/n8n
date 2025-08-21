@@ -1,78 +1,28 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="ResourceType extends Resource = Resource">
 import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue';
 
-import { type ProjectSharingData } from '@/types/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { useUsersStore } from '@/stores/users.store';
 import type { DatatableColumn } from '@n8n/design-system';
-import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
 
-import type { BaseTextKey } from '@/plugins/i18n';
-import type { Scope } from '@n8n/permissions';
-import type { BaseFolderItem, BaseResource, ITag, ResourceParentFolder } from '@/Interface';
+import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import { useN8nLocalStorage } from '@/composables/useN8nLocalStorage';
+import { useResourcesListI18n } from '@/composables/useResourcesListI18n';
 
-type ResourceKeyType = 'credentials' | 'workflows' | 'variables' | 'folders';
-
-export type FolderResource = BaseFolderItem & {
-	resourceType: 'folder';
-};
-
-export type WorkflowResource = BaseResource & {
-	resourceType: 'workflow';
-	updatedAt: string;
-	createdAt: string;
-	active: boolean;
-	isArchived: boolean;
-	homeProject?: ProjectSharingData;
-	scopes?: Scope[];
-	tags?: ITag[] | string[];
-	sharedWithProjects?: ProjectSharingData[];
-	readOnly: boolean;
-	parentFolder?: ResourceParentFolder;
-};
-
-export type VariableResource = BaseResource & {
-	resourceType: 'variable';
-	key?: string;
-	value?: string;
-};
-
-export type CredentialsResource = BaseResource & {
-	resourceType: 'credential';
-	updatedAt: string;
-	createdAt: string;
-	type: string;
-	homeProject?: ProjectSharingData;
-	scopes?: Scope[];
-	sharedWithProjects?: ProjectSharingData[];
-	readOnly: boolean;
-	needsSetup: boolean;
-};
-
-export type Resource = WorkflowResource | FolderResource | CredentialsResource | VariableResource;
-
-export type BaseFilters = {
-	search: string;
-	homeProject: string;
-	[key: string]: boolean | string | string[];
-};
-
-export type SortingAndPaginationUpdates = {
-	page?: number;
-	pageSize?: number;
-	sort?: string;
+type UIConfig = {
+	searchEnabled: boolean;
+	showFiltersDropdown: boolean;
+	sortEnabled: boolean;
 };
 
 const route = useRoute();
 const router = useRouter();
-const i18n = useI18n();
 const { callDebounced } = useDebounce();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
@@ -80,20 +30,19 @@ const n8nLocalStorage = useN8nLocalStorage();
 
 const props = withDefaults(
 	defineProps<{
-		resourceKey: ResourceKeyType;
-		displayName?: (resource: Resource) => string;
-		resources: Resource[];
+		resourceKey: string;
+		displayName?: (resource: ResourceType) => string;
+		resources: ResourceType[];
 		disabled: boolean;
 		initialize?: () => Promise<void>;
 		filters?: BaseFilters;
 		additionalFiltersHandler?: (
-			resource: Resource,
+			resource: ResourceType,
 			filters: BaseFilters,
 			matches: boolean,
 		) => boolean;
 		shareable?: boolean;
-		showFiltersDropdown?: boolean;
-		sortFns?: Record<string, (a: Resource, b: Resource) => number>;
+		sortFns?: Record<string, (a: ResourceType, b: ResourceType) => number>;
 		sortOptions?: string[];
 		type?: 'datatable' | 'list-full' | 'list-paginated';
 		typeProps: { itemSize: number } | { columns: DatatableColumn[] };
@@ -105,9 +54,10 @@ const props = withDefaults(
 		// Set to true if sorting and filtering is done outside of the component
 		dontPerformSortingAndFiltering?: boolean;
 		hasEmptyState?: boolean;
+		uiConfig?: UIConfig;
 	}>(),
 	{
-		displayName: (resource: Resource) => resource.name || '',
+		displayName: (resource: ResourceType) => resource.name || '',
 		initialize: async () => {},
 		filters: () => ({ search: '', homeProject: '' }),
 		sortFns: () => ({}),
@@ -116,7 +66,6 @@ const props = withDefaults(
 		typeProps: () => ({ itemSize: 80 }),
 		loading: true,
 		additionalFiltersHandler: undefined,
-		showFiltersDropdown: true,
 		shareable: true,
 		customPageSize: 25,
 		availablePageSizeOptions: () => [10, 25, 50, 100],
@@ -124,8 +73,15 @@ const props = withDefaults(
 		dontPerformSortingAndFiltering: false,
 		resourcesRefreshing: false,
 		hasEmptyState: true,
+		uiConfig: () => ({
+			searchEnabled: true,
+			showFiltersDropdown: true,
+			sortEnabled: true,
+		}),
 	},
 );
+
+const { getResourceText } = useResourcesListI18n(props.resourceKey);
 
 const sortBy = ref(props.sortOptions[0]);
 const hasFilters = ref(false);
@@ -189,7 +145,7 @@ const filterKeys = computed(() => {
 	return Object.keys(filtersModel.value);
 });
 
-const filteredAndSortedResources = computed(() => {
+const filteredAndSortedResources = computed((): ResourceType[] => {
 	if (props.dontPerformSortingAndFiltering) {
 		return props.resources;
 	}
@@ -199,7 +155,11 @@ const filteredAndSortedResources = computed(() => {
 		if (filtersModel.value.homeProject && isSharedResource(resource)) {
 			matches =
 				matches &&
-				!!(resource.homeProject && resource.homeProject.id === filtersModel.value.homeProject);
+				!!(
+					'homeProject' in resource &&
+					resource.homeProject &&
+					resource.homeProject.id === filtersModel.value.homeProject
+				);
 		}
 
 		if (filtersModel.value.search) {
@@ -221,16 +181,27 @@ const filteredAndSortedResources = computed(() => {
 				if (!sortableByDate) {
 					return 0;
 				}
-				return props.sortFns.lastUpdated
-					? props.sortFns.lastUpdated(a, b)
-					: new Date(b.updatedAt ?? '').valueOf() - new Date(a.updatedAt ?? '').valueOf();
+
+				if ('updatedAt' in a && 'updatedAt' in b) {
+					return props.sortFns.lastUpdated
+						? props.sortFns.lastUpdated(a, b)
+						: new Date(b.updatedAt ?? '').valueOf() - new Date(a.updatedAt ?? '').valueOf();
+				}
+
+				return 0;
+
 			case 'lastCreated':
 				if (!sortableByDate) {
 					return 0;
 				}
-				return props.sortFns.lastCreated
-					? props.sortFns.lastCreated(a, b)
-					: new Date(b.createdAt ?? '').valueOf() - new Date(a.createdAt ?? '').valueOf();
+
+				if ('createdAt' in a && 'createdAt' in b) {
+					return props.sortFns.lastCreated
+						? props.sortFns.lastCreated(a, b)
+						: new Date(b.createdAt ?? '').valueOf() - new Date(a.createdAt ?? '').valueOf();
+				}
+
+				return 0;
 			case 'nameAsc':
 				return props.sortFns.nameAsc
 					? props.sortFns.nameAsc(a, b)
@@ -601,23 +572,20 @@ defineExpose({
 						data-test-id="empty-resources-list"
 						emoji="👋"
 						:heading="
-							i18n.baseText(
-								usersStore.currentUser?.firstName
-									? (`${resourceKey}.empty.heading` as BaseTextKey)
-									: (`${resourceKey}.empty.heading.userNotSetup` as BaseTextKey),
-								{
-									interpolate: { name: usersStore.currentUser?.firstName ?? '' },
-								},
+							getResourceText(
+								usersStore.currentUser?.firstName ? 'empty.heading' : 'empty.heading.userNotSetup',
+								usersStore.currentUser?.firstName ? 'empty.heading' : 'empty.heading.userNotSetup',
+								{ name: usersStore.currentUser?.firstName ?? '' },
 							)
 						"
-						:description="i18n.baseText(`${resourceKey}.empty.description` as BaseTextKey)"
-						:button-text="i18n.baseText(`${resourceKey}.empty.button` as BaseTextKey)"
+						:description="getResourceText('empty.description')"
+						:button-text="getResourceText('empty.button')"
 						button-type="secondary"
 						:button-disabled="disabled"
 						@click:button="onAddButtonClick"
 					>
 						<template #disabledButtonTooltip>
-							{{ i18n.baseText(`${resourceKey}.empty.button.disabled.tooltip` as BaseTextKey) }}
+							{{ getResourceText('empty.button.disabled.tooltip') }}
 						</template>
 					</n8n-action-box>
 				</slot>
@@ -628,10 +596,11 @@ defineExpose({
 						<div :class="$style.filters">
 							<slot name="breadcrumbs"></slot>
 							<n8n-input
+								v-if="props.uiConfig.searchEnabled"
 								ref="search"
 								:model-value="filtersModel.search"
 								:class="$style.search"
-								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder` as BaseTextKey)"
+								:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
 								size="small"
 								clearable
 								data-test-id="resources-list-search"
@@ -641,7 +610,7 @@ defineExpose({
 									<n8n-icon icon="search" />
 								</template>
 							</n8n-input>
-							<div :class="$style['sort-and-filter']">
+							<div v-if="props.uiConfig.sortEnabled" :class="$style['sort-and-filter']">
 								<n8n-select
 									v-model="sortBy"
 									size="small"
@@ -653,13 +622,12 @@ defineExpose({
 										:key="sortOption"
 										data-test-id="resources-list-sort-item"
 										:value="sortOption"
-										:label="i18n.baseText(`${resourceKey}.sort.${sortOption}` as BaseTextKey)"
+										:label="getResourceText(`sort.${sortOption}`, `sort.${sortOption}`)"
 									/>
 								</n8n-select>
 							</div>
-							<div :class="$style['sort-and-filter']">
+							<div v-if="props.uiConfig.showFiltersDropdown" :class="$style['sort-and-filter']">
 								<ResourceFiltersDropdown
-									v-if="showFiltersDropdown"
 									:keys="filterKeys"
 									:reset="resetFilters"
 									:model-value="filtersModel"
@@ -680,7 +648,7 @@ defineExpose({
 					<slot name="callout"></slot>
 
 					<div
-						v-if="showFiltersDropdown"
+						v-if="props.uiConfig.showFiltersDropdown"
 						v-show="hasFilters"
 						class="mt-xs"
 						data-test-id="resources-list-filters-applied-info"
@@ -688,11 +656,11 @@ defineExpose({
 						<n8n-info-tip :bold="false">
 							{{
 								hasOnlyFiltersThatShowMoreResults
-									? i18n.baseText(`${resourceKey}.filters.active.shortText` as BaseTextKey)
-									: i18n.baseText(`${resourceKey}.filters.active` as BaseTextKey)
+									? getResourceText('filters.active.shortText', 'filters.active.shortText')
+									: getResourceText('filters.active', 'filters.active')
 							}}
 							<n8n-link data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
-								{{ i18n.baseText(`${resourceKey}.filters.active.reset` as BaseTextKey) }}
+								{{ getResourceText('filters.active.reset', 'filters.active.reset') }}
 							</n8n-link>
 						</n8n-info-tip>
 					</div>
@@ -717,7 +685,7 @@ defineExpose({
 						data-test-id="resources-list"
 						:items="filteredAndSortedResources"
 						:item-size="itemSize()"
-						item-key="id"
+						:item-key="'id'"
 					>
 						<template #default="{ item, updateItemSize }">
 							<slot :data="item" :update-item-size="updateItemSize" />
@@ -774,7 +742,7 @@ defineExpose({
 					size="medium"
 					data-test-id="resources-list-empty"
 				>
-					{{ i18n.baseText(`${resourceKey}.noResults` as BaseTextKey) }}
+					{{ getResourceText('noResults', 'noResults') }}
 				</n8n-text>
 
 				<slot name="postamble" />
@@ -822,9 +790,7 @@ defineExpose({
 	input {
 		height: 30px;
 	}
-}
 
-.search {
 	@include mixins.breakpoint('sm-and-down') {
 		max-width: 100%;
 	}

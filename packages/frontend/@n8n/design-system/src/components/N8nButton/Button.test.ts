@@ -39,7 +39,7 @@ describe('components', () => {
 				it('should render icon button', () => {
 					const wrapper = render(N8nButton, {
 						props: {
-							icon: 'plus-circle',
+							icon: 'circle-plus',
 						},
 						slots,
 						global: {
@@ -61,6 +61,23 @@ describe('components', () => {
 							stubs,
 						},
 					});
+					expect(wrapper.html()).toMatchSnapshot();
+				});
+			});
+
+			describe('type', () => {
+				it('should render highlight button', () => {
+					const wrapper = render(N8nButton, {
+						props: {
+							type: 'highlight',
+						},
+						slots,
+						global: {
+							stubs,
+						},
+					});
+					const button = wrapper.container.querySelector('button');
+					expect(button?.className).toContain('highlight');
 					expect(wrapper.html()).toMatchSnapshot();
 				});
 			});

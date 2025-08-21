@@ -1,3 +1,5 @@
+import { LicenseState } from '@n8n/backend-common';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -7,10 +9,13 @@ import type { IDataObject } from 'n8n-workflow';
 import config from '@/config';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { EventService } from '@/events/event.service';
-import { ExternalSecretsManager } from '@/external-secrets.ee/external-secrets-manager.ee';
-import { ExternalSecretsProviders } from '@/external-secrets.ee/external-secrets-providers.ee';
-import type { ExternalSecretsSettings, SecretsProviderState } from '@/external-secrets.ee/types';
 import { License } from '@/license';
+import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
+import type {
+	ExternalSecretsSettings,
+	SecretsProviderState,
+} from '@/modules/external-secrets.ee/types';
 
 import {
 	DummyProvider,
@@ -18,7 +23,6 @@ import {
 	MockProviders,
 	TestFailProvider,
 } from '../../shared/external-secrets/utils';
-import { mockInstance, mockLogger } from '../../shared/mocking';
 import { createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
@@ -28,10 +32,14 @@ let authMemberAgent: SuperAgentTest;
 
 const mockProvidersInstance = new MockProviders();
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);
+const licenseMock = mock<LicenseState>();
+licenseMock.isLicensed.mockReturnValue(true);
+Container.set(LicenseState, licenseMock);
 
 const testServer = setupTestServer({
 	endpointGroups: ['externalSecrets'],
 	enabledFeatures: ['feat:externalSecrets'],
+	modules: ['external-secrets'],
 });
 
 const connectedDate = '2023-08-01T12:32:29.000Z';

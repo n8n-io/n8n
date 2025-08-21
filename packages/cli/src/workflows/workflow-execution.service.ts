@@ -1,8 +1,9 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User, CreateExecutionPayload } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ErrorReporter, Logger } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import type {
 	IDeferredPromise,
 	IExecuteData,
@@ -319,6 +320,14 @@ export class WorkflowExecutionService {
 				return;
 			}
 
+			const parentExecution =
+				workflowErrorData.execution?.id && workflowErrorData.workflow?.id
+					? {
+							executionId: workflowErrorData.execution.id,
+							workflowId: workflowErrorData.workflow.id,
+						}
+					: undefined;
+
 			// Can execute without webhook so go on
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
@@ -334,6 +343,11 @@ export class WorkflowExecutionService {
 					],
 				},
 				source: null,
+				...(parentExecution && {
+					metadata: {
+						parentExecution,
+					},
+				}),
 			});
 
 			const runExecutionData: IRunExecutionData = {

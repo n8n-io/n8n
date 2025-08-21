@@ -14,14 +14,10 @@ import {
 	TEST_ISSUE,
 } from './ParameterInputList.test.constants';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { Workflow } from 'n8n-workflow';
 import type { INodeUi } from '../Interface';
 import type { MockInstance } from 'vitest';
-
-vi.mock('@/composables/useWorkflowHelpers', () => ({
-	useWorkflowHelpers: vi.fn().mockReturnValue({
-		getCurrentWorkflow: vi.fn(),
-	}),
-}));
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -40,6 +36,7 @@ vi.mock('vue-router', async () => {
 });
 
 let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+let workflowStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 
 const renderComponent = createComponentRenderer(ParameterInputList, {
 	props: {
@@ -59,6 +56,7 @@ describe('ParameterInputList', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		ndvStore = mockedStore(useNDVStore);
+		workflowStore = mockedStore(useWorkflowsStore);
 	});
 
 	it('renders', () => {
@@ -83,9 +81,10 @@ describe('ParameterInputList', () => {
 		});
 
 		// Should render labels for all parameters
-		TEST_PARAMETERS.forEach((parameter) => {
+		FIXED_COLLECTION_PARAMETERS.forEach((parameter) => {
 			expect(getByText(parameter.displayName)).toBeInTheDocument();
 		});
+
 		// Should render input placeholders for all fixed collection parameters
 		expect(getAllByTestId('suspense-stub')).toHaveLength(FIXED_COLLECTION_PARAMETERS.length);
 	});
@@ -100,7 +99,7 @@ describe('ParameterInputList', () => {
 		});
 
 		// Should render labels for all parameters
-		TEST_PARAMETERS.forEach((parameter) => {
+		FIXED_COLLECTION_PARAMETERS.forEach((parameter) => {
 			expect(getByText(parameter.displayName)).toBeInTheDocument();
 		});
 		// Should render error message for fixed collection parameter
@@ -108,6 +107,35 @@ describe('ParameterInputList', () => {
 			getByTestId(`${FIXED_COLLECTION_PARAMETERS[0].name}-parameter-input-issues-container`),
 		).toBeInTheDocument();
 		expect(getByText(TEST_ISSUE)).toBeInTheDocument();
+	});
+
+	it('renders notice correctly', () => {
+		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+		const { getByText } = renderComponent({
+			props: {
+				parameters: TEST_PARAMETERS,
+				nodeValues: TEST_NODE_VALUES,
+			},
+		});
+		expect(getByText('Note: This is a notice with')).toBeInTheDocument();
+		expect(getByText('notice link')).toBeInTheDocument();
+		expect(getByText('notice link').getAttribute('href')).toEqual('notice.n8n.io');
+	});
+
+	it('renders callout correctly', () => {
+		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+		const { getByTestId, getByText } = renderComponent({
+			props: {
+				parameters: TEST_PARAMETERS,
+				nodeValues: TEST_NODE_VALUES,
+			},
+		});
+
+		expect(getByText('Tip: This is a callout with')).toBeInTheDocument();
+		expect(getByText('callout link')).toBeInTheDocument();
+		expect(getByText('callout link').getAttribute('href')).toEqual('callout.n8n.io');
+		expect(getByText('and action!')).toBeInTheDocument();
+		expect(getByTestId('callout-dismiss-icon')).toBeInTheDocument();
 	});
 
 	describe('updateFormParameters', () => {
@@ -149,20 +177,15 @@ describe('ParameterInputList', () => {
 
 		it('should not show triggerNotice if Form Trigger is connected', () => {
 			ndvStore.activeNode = { name: 'From', type: FORM_NODE_TYPE, parameters: {} } as INodeUi;
-
-			workflowHelpersMock.mockReturnValue({
-				getCurrentWorkflow: vi.fn(() => {
-					return {
-						getParentNodes: vi.fn(() => ['Form Trigger']),
-						nodes: {
-							'Form Trigger': {
-								type: FORM_TRIGGER_NODE_TYPE,
-								parameters: {},
-							},
-						},
-					};
-				}),
-			});
+			workflowStore.workflowObject = {
+				getParentNodes: vi.fn(() => ['Form Trigger']),
+				nodes: {
+					'Form Trigger': {
+						type: FORM_TRIGGER_NODE_TYPE,
+						parameters: {},
+					},
+				},
+			} as unknown as Workflow;
 
 			const { queryByText } = renderComponent({
 				props: {

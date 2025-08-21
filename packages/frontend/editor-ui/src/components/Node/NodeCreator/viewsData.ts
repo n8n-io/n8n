@@ -57,19 +57,20 @@ import {
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
-	EVALUATION_TRIGGER,
+	TEMPLATE_CATEGORY_AI,
 } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
-import type { INodeTypeDescription, Themed } from 'n8n-workflow';
+import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
-import type { NodeConnectionType } from 'n8n-workflow';
 import { useTemplatesStore } from '@/stores/templates.store';
-import type { BaseTextKey } from '@/plugins/i18n';
-import { camelCase } from 'lodash-es';
+import type { BaseTextKey } from '@n8n/i18n';
+import camelCase from 'lodash/camelCase';
 import { useSettingsStore } from '@/stores/settings.store';
-import { usePostHog } from '@/stores/posthog.store';
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
+import { getAiTemplatesCallout, getPreBuiltAgentsCalloutWithDivider } from './utils';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -81,6 +82,7 @@ export interface NodeViewItem {
 	key: string;
 	type: string;
 	properties: {
+		key?: string;
 		name?: string;
 		title?: string;
 		icon?: Themed<string>;
@@ -96,7 +98,7 @@ export interface NodeViewItem {
 		description?: string;
 		displayName?: string;
 		tag?: {
-			type: string;
+			type?: string;
 			text: string;
 		};
 		forceIncludeNodes?: string[];
@@ -169,47 +171,36 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
 	const templatesStore = useTemplatesStore();
-	const posthogStore = usePostHog();
+	const evaluationStore = useEvaluationStore();
+	const calloutHelpers = useCalloutHelpers();
+	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
 
-	const isEvaluationVariantEnabled = posthogStore.isVariantEnabled(
-		EVALUATION_TRIGGER.name,
-		EVALUATION_TRIGGER.variant,
-	);
-
-	const evaluationNode = getEvaluationNode(nodeTypesStore, isEvaluationVariantEnabled);
+	const evaluationNode = getEvaluationNode(nodeTypesStore, isEvaluationEnabled);
 
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
 
 	const websiteCategoryURLParams = templatesStore.websiteTemplateRepositoryParameters;
 	websiteCategoryURLParams.append('utm_user_role', 'AdvancedAI');
-	const websiteCategoryURL =
-		templatesStore.constructTemplateRepositoryURL(websiteCategoryURLParams);
+	const aiTemplatesURL = templatesStore.constructTemplateRepositoryURL(
+		websiteCategoryURLParams,
+		TEMPLATE_CATEGORY_AI,
+	);
 
 	const askAiEnabled = useSettingsStore().isAskAiEnabled;
 	const aiTransformNode = nodeTypesStore.getNodeType(AI_TRANSFORM_NODE_TYPE);
 	const transformNode = askAiEnabled && aiTransformNode ? [getNodeView(aiTransformNode)] : [];
+
+	const callouts: NodeViewItem[] = !calloutHelpers.isPreBuiltAgentsCalloutVisible.value
+		? [getAiTemplatesCallout(aiTemplatesURL)]
+		: [getPreBuiltAgentsCalloutWithDivider()];
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		items: [
-			{
-				key: 'ai_templates_root',
-				type: 'link',
-				properties: {
-					title: i18n.baseText('nodeCreator.aiPanel.linkItem.title'),
-					icon: 'box-open',
-					description: i18n.baseText('nodeCreator.aiPanel.linkItem.description'),
-					name: 'ai_templates_root',
-					url: websiteCategoryURL,
-					tag: {
-						type: 'info',
-						text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
-					},
-				},
-			},
+			...callouts,
 			...agentNodes,
 			...chainNodes,
 			...transformNode,
@@ -262,7 +253,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_DOCUMENT_LOADERS,
 					info: getSubcategoryInfo(AI_CATEGORY_DOCUMENT_LOADERS),
-					icon: 'file-import',
+					icon: 'file-input',
 					...getAISubcategoryProperties(NodeConnectionTypes.AiDocument),
 				},
 			},
@@ -350,7 +341,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_VECTOR_STORES,
 					info: getSubcategoryInfo(AI_CATEGORY_VECTOR_STORES),
-					icon: 'project-diagram',
+					icon: 'waypoints',
 					...getAISubcategoryProperties(NodeConnectionTypes.AiVectorStore),
 				},
 			},
@@ -368,13 +359,10 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 
 export function TriggerView() {
 	const i18n = useI18n();
-	const posthogStore = usePostHog();
-	const isEvaluationVariantEnabled = posthogStore.isVariantEnabled(
-		EVALUATION_TRIGGER.name,
-		EVALUATION_TRIGGER.variant,
-	);
+	const evaluationStore = useEvaluationStore();
+	const isEvaluationEnabled = evaluationStore.isEvaluationEnabled;
 
-	const evaluationTriggerNode = isEvaluationVariantEnabled
+	const evaluationTriggerNode = isEvaluationEnabled
 		? {
 				key: EVALUATION_TRIGGER_NODE_TYPE,
 				type: 'node',
@@ -581,7 +569,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					title: FLOWS_CONTROL_SUBCATEGORY,
-					icon: 'code-branch',
+					icon: 'git-branch',
 					sections: [
 						{
 							key: 'popular',
@@ -649,7 +637,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		type: 'view',
 		properties: {
 			title: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
-			icon: 'bolt',
+			icon: 'bolt-filled',
 			description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
 		},
 	});

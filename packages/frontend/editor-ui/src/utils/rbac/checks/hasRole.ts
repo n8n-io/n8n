@@ -1,7 +1,6 @@
 import { useUsersStore } from '@/stores/users.store';
 import type { RBACPermissionCheck, RolePermissionOptions } from '@/types/rbac';
-import { ROLE } from '@/constants';
-import type { IRole } from '@/Interface';
+import { ROLE, type Role } from '@n8n/api-types';
 
 export const hasRole: RBACPermissionCheck<RolePermissionOptions> = (checkRoles) => {
 	const usersStore = useUsersStore();
@@ -9,7 +8,7 @@ export const hasRole: RBACPermissionCheck<RolePermissionOptions> = (checkRoles) 
 
 	if (currentUser && checkRoles) {
 		const userRole = currentUser.isDefaultUser ? ROLE.Default : currentUser.role;
-		return checkRoles.includes(userRole as IRole);
+		return checkRoles.includes(userRole as Role);
 	}
 
 	return false;

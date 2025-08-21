@@ -4,7 +4,13 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to fill out this bug report!
+        > ⚠️ This form is for reporting bugs only.
+        > ❌ Please do not use this form for general support, feature requests, or questions.
+        > 💬 For help and general inquiries, visit our [community support forum](https://community.n8n.io).
+        > ☁️ If you're experiencing issues with cloud instances not starting or license-related problems, contact [n8n support directly](mailto:help@n8n.io).
+        ---
+        Thank you for helping us improve n8n!
+        To ensure we can address your report efficiently, please fill out all sections in English and provide as much detail as possible.
   - type: textarea
     id: description
     attributes:
@@ -32,6 +38,13 @@ body:
       description: A clear and concise description of what you expected to happen
     validations:
       required: true
+  - type: textarea
+    id: debug-info
+    attributes:
+      label: Debug Info
+      description: This can be found under Help > About n8n > Copy debug information
+    validations:
+      required: true
   - type: markdown
     attributes:
       value: '## Environment'
@@ -53,7 +66,7 @@ body:
     id: nodejs-version
     attributes:
       label: Node.js Version
-      placeholder: ex. 18.16.0
+      placeholder: ex. 22.16.0
     validations:
       required: true
   - type: dropdown
@@ -77,6 +90,16 @@ body:
         - main (default)
         - queue
         - own (deprecated)
+      default: 0
+    validations:
+      required: true
+  - type: dropdown
+    id: hosting
+    attributes:
+      label: Hosting
+      options:
+        - n8n cloud
+        - self hosted
       default: 0
     validations:
       required: true

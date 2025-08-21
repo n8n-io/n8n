@@ -42,6 +42,9 @@
                 "id": {
                     "type": "integer"
                 },
+                "last_name": {
+                    "type": "string"
+                },
                 "max_reaction_count": {
                     "type": "integer"
                 },
@@ -54,5 +57,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }

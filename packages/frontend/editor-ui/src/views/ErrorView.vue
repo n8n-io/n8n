@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 const router = useRouter();
 
 const props = defineProps<{
@@ -21,7 +21,7 @@ function onButtonClick() {
 
 <template>
 	<div :class="$style.container">
-		<font-awesome-icon icon="exclamation-triangle" :class="$style.icon" />
+		<n8n-icon icon="triangle-alert" :class="$style.icon" />
 		<div :class="$style.message">
 			<div>
 				<n8n-heading size="2xlarge">

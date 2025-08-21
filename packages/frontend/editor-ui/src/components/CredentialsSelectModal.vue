@@ -9,7 +9,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { onMounted, ref } from 'vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import Modal from './Modal.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
@@ -89,7 +89,7 @@ function openCredentialType() {
 					@update:model-value="onSelect"
 				>
 					<template #prefix>
-						<font-awesome-icon icon="search" />
+						<n8n-icon icon="search" />
 					</template>
 					<N8nOption
 						v-for="credential in credentialsStore.allCredentialTypes"

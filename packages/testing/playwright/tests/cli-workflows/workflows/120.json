@@ -1,0 +1,209 @@
+{
+	"createdAt": "2021-03-10T15:35:11.016Z",
+	"updatedAt": "2021-03-10T15:36:00.949Z",
+	"id": "120",
+	"name": "MySQL:insert update executeQuery",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "5b615e13-07d6-4c71-af21-318ec21ec4a0"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "name",
+							"value": "=Name{{Date.now()}}"
+						}
+					],
+					"number": [
+						{
+							"name": "id",
+							"value": "={{Math.round(Math.random()*100000)}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"id": "7fb26b4f-a2aa-4cb9-aa75-8514d7095189"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "name",
+							"value": "=UpdatedName{{Date.now()}}"
+						}
+					],
+					"number": [
+						{
+							"name": "id",
+							"value": "={{$node[\"Set\"].json[\"id\"]}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [850, 300],
+			"id": "2494e933-9a78-418a-afe2-ada2340d2f56"
+		},
+		{
+			"parameters": {
+				"table": "TestTable",
+				"columns": "id,name"
+			},
+			"name": "MySQL",
+			"type": "n8n-nodes-base.mySql",
+			"typeVersion": 1,
+			"position": [650, 300],
+			"credentials": {
+				"mySql": {
+					"id": "87",
+					"name": "MySQL creds"
+				}
+			},
+			"id": "3a942f01-b88b-4b01-bfe6-355be41e0ce9"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"table": "TestTable",
+				"columns": "id,name"
+			},
+			"name": "MySQL1",
+			"type": "n8n-nodes-base.mySql",
+			"typeVersion": 1,
+			"position": [1050, 300],
+			"credentials": {
+				"mySql": {
+					"id": "87",
+					"name": "MySQL creds"
+				}
+			},
+			"id": "6bf22c0c-7a5a-47d6-98e7-129eb92b2825"
+		},
+		{
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "=SELECT * FROM TestTable LIMIT 1;"
+			},
+			"name": "MySQL2",
+			"type": "n8n-nodes-base.mySql",
+			"typeVersion": 1,
+			"position": [1250, 300],
+			"credentials": {
+				"mySql": {
+					"id": "87",
+					"name": "MySQL creds"
+				}
+			},
+			"id": "d984d201-7a77-423b-85a3-fc6a59417488"
+		},
+		{
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "=DELETE FROM TestTable WHERE id={{$node[\"Set1\"].json[\"id\"]}};"
+			},
+			"name": "MySQL3",
+			"type": "n8n-nodes-base.mySql",
+			"typeVersion": 1,
+			"position": [1450, 300],
+			"credentials": {
+				"mySql": {
+					"id": "87",
+					"name": "MySQL creds"
+				}
+			},
+			"id": "c19d0fc0-2e2d-4bbf-a7dd-a2e625dc7984"
+		}
+	],
+	"connections": {
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "MySQL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set1": {
+			"main": [
+				[
+					{
+						"node": "MySQL1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MySQL": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MySQL1": {
+			"main": [
+				[
+					{
+						"node": "MySQL2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MySQL2": {
+			"main": [
+				[
+					{
+						"node": "MySQL3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

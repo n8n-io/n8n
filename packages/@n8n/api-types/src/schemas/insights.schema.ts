@@ -48,9 +48,11 @@ export const insightsByWorkflowDataSchemas = {
 	data: z.array(
 		z
 			.object({
-				workflowId: z.string(),
+				// Workflow id will be null if the workflow has been deleted
+				workflowId: z.string().nullable(),
 				workflowName: z.string(),
-				projectId: z.string(),
+				// Project id will be null if the project has been deleted
+				projectId: z.string().nullable(),
 				projectName: z.string(),
 				total: z.number(),
 				succeeded: z.number(),
@@ -85,18 +87,22 @@ export const insightsByTimeDataSchemas = {
 export const insightsByTimeSchema = z.object(insightsByTimeDataSchemas).strict();
 export type InsightsByTime = z.infer<typeof insightsByTimeSchema>;
 
-export const INSIGHTS_DATE_RANGE_KEYS = [
-	'day',
-	'week',
-	'2weeks',
-	'month',
-	'quarter',
-	'6months',
-	'year',
-] as const;
+export const restrictedInsightsByTimeDataSchema = {
+	date: z.string().refine((val) => !isNaN(Date.parse(val)) && new Date(val).toISOString() === val, {
+		message: 'Invalid date format, must be ISO 8601 format',
+	}),
+	values: z
+		.object({
+			timeSaved: z.number(),
+		})
+		.strict(),
+} as const;
+export const restrictedInsightsByTimeSchema = z.object(restrictedInsightsByTimeDataSchema).strict();
+export type RestrictedInsightsByTime = z.infer<typeof restrictedInsightsByTimeSchema>;
+
 export const insightsDateRangeSchema = z
 	.object({
-		key: z.enum(INSIGHTS_DATE_RANGE_KEYS),
+		key: z.enum(['day', 'week', '2weeks', 'month', 'quarter', '6months', 'year']),
 		licensed: z.boolean(),
 		granularity: z.enum(['hour', 'day', 'week']),
 	})

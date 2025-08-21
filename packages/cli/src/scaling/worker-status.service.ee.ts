@@ -1,20 +1,51 @@
-import type { WorkerStatus } from '@n8n/api-types';
+import { WorkerStatus } from '@n8n/api-types';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import os from 'node:os';
 
 import { N8N_VERSION } from '@/constants';
+import { Push } from '@/push';
 
 import { JobProcessor } from './job-processor';
+import { Publisher } from './pubsub/publisher.service';
 
 @Service()
 export class WorkerStatusService {
 	constructor(
 		private readonly jobProcessor: JobProcessor,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly publisher: Publisher,
+		private readonly push: Push,
 	) {}
 
-	generateStatus(): WorkerStatus {
+	async requestWorkerStatus() {
+		if (this.instanceSettings.instanceType !== 'main') return;
+
+		return await this.publisher.publishCommand({ command: 'get-worker-status' });
+	}
+
+	@OnPubSubEvent('response-to-get-worker-status', { instanceType: 'main' })
+	handleWorkerStatusResponse(payload: WorkerStatus) {
+		this.push.broadcast({
+			type: 'sendWorkerStatusMessage',
+			data: {
+				workerId: payload.senderId,
+				status: payload,
+			},
+		});
+	}
+
+	@OnPubSubEvent('get-worker-status', { instanceType: 'worker' })
+	async publishWorkerResponse() {
+		await this.publisher.publishWorkerResponse({
+			senderId: this.instanceSettings.hostId,
+			response: 'response-to-get-worker-status',
+			payload: this.generateStatus(),
+		});
+	}
+
+	private generateStatus(): WorkerStatus {
 		return {
 			senderId: this.instanceSettings.hostId,
 			runningJobsSummary: this.jobProcessor.getRunningJobsSummary(),

@@ -4,14 +4,14 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
-import { useI18n } from './useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePinnedData } from './usePinnedData';
 import { isPresent } from '../utils/typesUtils';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 
 export type ContextMenuTarget =
 	| { source: 'canvas'; nodeIds: string[]; nodeId?: string }
@@ -34,7 +34,8 @@ export type ContextMenuAction =
 	| 'add_sticky'
 	| 'change_color'
 	| 'open_sub_workflow'
-	| 'tidy_up';
+	| 'tidy_up'
+	| 'extract_sub_workflow';
 
 const position = ref<XYPosition>([0, 0]);
 const isOpen = ref(false);
@@ -47,8 +48,9 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const sourceControlStore = useSourceControlStore();
-
 	const i18n = useI18n();
+
+	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	const workflowPermissions = computed(
 		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
@@ -108,13 +110,12 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	};
 
 	const isExecutable = (node: INodeUi) => {
-		const currentWorkflow = workflowsStore.getCurrentWorkflow();
-		const workflowNode = currentWorkflow.getNode(node.name) as INode;
+		const workflowNode = workflowObject.value.getNode(node.name) as INode;
 		const nodeType = nodeTypesStore.getNodeType(
 			workflowNode.type,
 			workflowNode.typeVersion,
 		) as INodeTypeDescription;
-		return NodeHelpers.isExecutable(currentWorkflow, workflowNode, nodeType);
+		return NodeHelpers.isExecutable(workflowObject.value, workflowNode, nodeType);
 	};
 
 	const open = (event: MouseEvent, menuTarget: ContextMenuTarget) => {
@@ -161,6 +162,16 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				id: 'deselect_all',
 				label: i18n.baseText('contextMenu.deselectAll'),
 				disabled: nodes.length === 0,
+			},
+		];
+
+		const extractionActions: ActionDropdownItem[] = [
+			{
+				id: 'extract_sub_workflow',
+				divided: true,
+				label: i18n.baseText('contextMenu.extract', { adjustToNumber: nodes.length }),
+				shortcut: { altKey: true, keys: ['X'] },
+				disabled: isReadOnly.value,
 			},
 		];
 
@@ -222,6 +233,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 					disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 				},
 				...layoutActions,
+				...extractionActions,
 				...selectionActions,
 				{
 					id: 'delete',

@@ -1,7 +1,7 @@
 import type { Completion } from '@codemirror/autocomplete';
 import type { DocMetadata, DocMetadataArgument, DocMetadataExample } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 const shouldHighlightArgument = (
 	arg: DocMetadataArgument,

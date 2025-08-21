@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity, ListQueryDb, WorkflowFolderUnionFull } from '@n8n/db';
 import {
@@ -17,7 +18,7 @@ import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
-import { BinaryDataService, Logger } from 'n8n-core';
+import { BinaryDataService } from 'n8n-core';
 import { NodeApiError, PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -32,7 +33,7 @@ import { validateEntity } from '@/generic-helpers';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { OwnershipService } from '@/services/ownership.service';
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
@@ -555,5 +556,26 @@ export class WorkflowService {
 				role: sw.role,
 			})),
 		);
+	}
+
+	async getWorkflowsWithNodesIncluded(user: User, nodeTypes: string[]) {
+		const foundWorkflows = await this.workflowRepository.findWorkflowsWithNodeType(nodeTypes);
+
+		let { workflows } = await this.workflowRepository.getManyAndCount(
+			foundWorkflows.map((w) => w.id),
+		);
+
+		if (hasSharing(workflows)) {
+			workflows = await this.processSharedWorkflows(workflows);
+		}
+
+		workflows = await this.addUserScopes(workflows, user);
+
+		this.cleanupSharedField(workflows);
+
+		return workflows.map((workflow) => ({
+			resourceType: 'workflow',
+			...workflow,
+		}));
 	}
 }

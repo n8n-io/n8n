@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useStyles } from '@/composables/useStyles';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useLogsStore } from '@/stores/logs.store';
@@ -38,7 +38,11 @@ const onClick = () => {
 
 <template>
 	<div
-		v-if="assistantStore.canShowAssistantButtonsOnCanvas && !assistantStore.isAssistantOpen"
+		v-if="
+			assistantStore.canShowAssistantButtonsOnCanvas &&
+			!assistantStore.isAssistantOpen &&
+			!assistantStore.hideAssistantFloatingButton
+		"
 		:class="$style.container"
 		data-test-id="ask-assistant-floating-button"
 		:style="{ '--canvas-panel-height-offset': `${logsStore.height}px` }"
@@ -64,7 +68,7 @@ const onClick = () => {
 <style lang="scss" module>
 .container {
 	position: absolute;
-	bottom: calc(var(--canvas-panel-height-offset, 0px) + var(--spacing-s));
+	bottom: var(--spacing-2xl);
 	right: var(--spacing-s);
 	z-index: var(--z-index-ask-assistant-floating-button);
 }

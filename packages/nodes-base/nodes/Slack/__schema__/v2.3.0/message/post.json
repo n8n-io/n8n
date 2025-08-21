@@ -97,9 +97,6 @@
                         },
                         "updated": {
                             "type": "integer"
-                        },
-                        "user_id": {
-                            "type": "string"
                         }
                     }
                 },
@@ -127,5 +124,5 @@
             "type": "boolean"
         }
     },
-    "version": 2
+    "version": 3
 }

@@ -1,10 +1,9 @@
-import { inTest } from '@n8n/backend-common';
+import { inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
-import { Logger } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { ServerResponse, type Server, createServer as createHttpServer } from 'node:http';

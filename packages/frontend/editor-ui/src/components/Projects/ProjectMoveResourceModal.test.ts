@@ -235,6 +235,7 @@ describe('ProjectMoveResourceModal', () => {
 			'workflow',
 			movedWorkflow.id,
 			destinationProject.id,
+			undefined,
 			['1', '2'],
 		);
 	});

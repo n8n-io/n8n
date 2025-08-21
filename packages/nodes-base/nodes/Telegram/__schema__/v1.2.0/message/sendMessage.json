@@ -21,6 +21,9 @@
                         },
                         "type": {
                             "type": "string"
+                        },
+                        "username": {
+                            "type": "string"
                         }
                     }
                 },
@@ -64,6 +67,14 @@
                         }
                     }
                 },
+                "link_preview_options": {
+                    "type": "object",
+                    "properties": {
+                        "is_disabled": {
+                            "type": "boolean"
+                        }
+                    }
+                },
                 "message_id": {
                     "type": "integer"
                 },
@@ -73,5 +84,5 @@
             }
         }
     },
-    "version": 2
+    "version": 4
 }

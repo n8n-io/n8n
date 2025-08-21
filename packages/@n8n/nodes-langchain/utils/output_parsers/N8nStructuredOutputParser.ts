@@ -31,6 +31,7 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 		const { index } = this.context.addInputData(NodeConnectionTypes.AiOutputParser, [
 			[{ json: { action: 'parse', text } }],
 		]);
+
 		try {
 			const jsonString = text.includes('```') ? text.split(/```(?:json)?/)[1] : text;
 			const json = JSON.parse(jsonString.trim());
@@ -60,6 +61,24 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 						"To continue the execution when this happens, change the 'On Error' parameter in the root node's settings",
 				},
 			);
+
+			// Add additional context to the error
+			if (e instanceof SyntaxError) {
+				nodeError.context.outputParserFailReason = 'Invalid JSON in model output';
+			} else if (
+				(typeof text === 'string' && text.trim() === '{}') ||
+				(e instanceof z.ZodError &&
+					e.issues?.[0] &&
+					e.issues?.[0].code === 'invalid_type' &&
+					e.issues?.[0].path?.[0] === 'output' &&
+					e.issues?.[0].expected === 'object' &&
+					e.issues?.[0].received === 'undefined')
+			) {
+				nodeError.context.outputParserFailReason = 'Model output wrapper is an empty object';
+			} else if (e instanceof z.ZodError) {
+				nodeError.context.outputParserFailReason =
+					'Model output does not match the expected schema';
+			}
 
 			logAiEvent(this.context, 'ai-output-parsed', {
 				text,
@@ -106,9 +125,13 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 						},
 					),
 			});
-		} else {
+		} else if (nodeVersion < 1.3) {
 			returnSchema = z.object({
 				output: zodSchema.optional(),
+			});
+		} else {
+			returnSchema = z.object({
+				output: zodSchema,
 			});
 		}
 

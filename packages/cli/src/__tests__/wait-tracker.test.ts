@@ -1,6 +1,5 @@
-import type { Project } from '@n8n/db';
-import type { IExecutionResponse } from '@n8n/db';
-import type { ExecutionRepository } from '@n8n/db';
+import { mockLogger } from '@n8n/backend-test-utils';
+import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { IRun, IWorkflowBase } from 'n8n-workflow';
@@ -11,7 +10,6 @@ import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
-import { mockLogger } from '@test/mocking';
 
 jest.useFakeTimers({ advanceTimers: true });
 
@@ -33,6 +31,7 @@ describe('WaitTracker', () => {
 			pushRef: 'push_ref',
 			parentExecution: undefined,
 		}),
+		startedAt: undefined,
 	});
 	execution.workflowData = mock<IWorkflowBase>({ id: 'abcd' });
 
@@ -198,6 +197,7 @@ describe('WaitTracker', () => {
 					workflowData: parentExecution.workflowData,
 					projectId: project.id,
 					pushRef: parentExecution.data.pushRef,
+					startedAt: parentExecution.startedAt,
 				},
 				false,
 				false,

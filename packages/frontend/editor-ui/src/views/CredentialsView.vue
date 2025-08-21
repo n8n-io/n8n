@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import CredentialCard from '@/components/CredentialCard.vue';
-import ResourcesListLayout, {
-	type BaseFilters,
-	type Resource,
-} from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import type { BaseFilters, Resource, ICredentialTypeMap } from '@/Interface';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@/composables/useI18n';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
@@ -17,8 +14,7 @@ import {
 } from '@/constants';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/insights/insights.store';
-import type { ICredentialTypeMap } from '@/Interface';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
@@ -31,7 +27,8 @@ import { useUsersStore } from '@/stores/users.store';
 import type { Project } from '@/types/projects.types';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { N8nCheckbox } from '@n8n/design-system';
-import { pickBy } from 'lodash-es';
+import { useI18n } from '@n8n/i18n';
+import pickBy from 'lodash/pickBy';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -169,15 +166,26 @@ const maybeCreateCredential = () => {
 	}
 };
 
-const maybeEditCredential = () => {
+const maybeEditCredential = async () => {
 	if (!!props.credentialId && props.credentialId !== 'create') {
 		const credential = credentialsStore.getCredentialById(props.credentialId);
 		const credentialPermissions = getResourcePermissions(credential?.scopes).credential;
-		if (credential && (credentialPermissions.update || credentialPermissions.read)) {
-			uiStore.openExistingCredential(props.credentialId);
-		} else {
-			void router.replace({ name: VIEWS.HOMEPAGE });
+		if (!credential) {
+			return await router.replace({
+				name: VIEWS.ENTITY_NOT_FOUND,
+				params: { entityType: 'credential' },
+			});
 		}
+
+		if (credentialPermissions.update || credentialPermissions.read) {
+			uiStore.openExistingCredential(props.credentialId);
+			return;
+		}
+
+		return await router.replace({
+			name: VIEWS.ENTITY_UNAUTHORIZED,
+			params: { entityType: 'credential' },
+		});
 	}
 };
 
@@ -200,7 +208,7 @@ const initialize = async () => {
 
 	await Promise.all(loadPromises);
 	maybeCreateCredential();
-	maybeEditCredential();
+	await maybeEditCredential();
 	loading.value = false;
 };
 
@@ -225,7 +233,7 @@ watch(
 	() => props.credentialId,
 	() => {
 		maybeCreateCredential();
-		maybeEditCredential();
+		void maybeEditCredential();
 	},
 );
 

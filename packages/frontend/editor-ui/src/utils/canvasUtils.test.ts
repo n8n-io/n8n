@@ -15,6 +15,7 @@ import { CanvasConnectionMode } from '@/types';
 import type { INodeUi } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
 import { createTestNode } from '@/__tests__/mocks';
+import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/constants';
 
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'mock-uuid'),
@@ -990,48 +991,51 @@ describe('insertSpacersBetweenEndpoints', () => {
 	it('should insert spacers when there are less than min endpoints count', () => {
 		const endpoints = [{ index: 0, required: true }];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
 		expect(result).toEqual([{ index: 0, required: true }, null, null, null]);
 	});
 
 	it('should not insert spacers when there are at least min endpoints count', () => {
-		const endpoints = [{ index: 0, required: true }, { index: 1 }, { index: 2 }, { index: 3 }];
+		const endpoints = [
+			{ index: 0, required: true },
+			{ index: 1 },
+			{ index: 2 },
+			{ index: 3 },
+			{ index: 4 },
+		];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
 		expect(result).toEqual(endpoints);
 	});
 
 	it('should handle zero required endpoints', () => {
 		const endpoints = [{ index: 0, required: false }];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
 		expect(result).toEqual([null, null, null, { index: 0, required: false }]);
 	});
 
 	it('should handle no endpoints', () => {
 		const endpoints: Array<{ index: number; required: boolean }> = [];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
 		expect(result).toEqual([null, null, null, null]);
 	});
 
-	it('should handle required endpoints greater than min endpoints count', () => {
-		const endpoints = [
-			{ index: 0, required: true },
-			{ index: 1, required: true },
-			{ index: 2, required: true },
-			{ index: 3, required: true },
-			{ index: 4, required: true },
-		];
+	it('should handle required endpoints greater than NODE_MIN_INPUT_ITEMS_COUNT', () => {
+		const endpoints = Array.from({ length: NODE_MIN_INPUT_ITEMS_COUNT + 1 }).map((_, index) => ({
+			index,
+			required: true,
+		}));
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
 		expect(result).toEqual(endpoints);
 	});
 
 	it('should insert spacers between required and optional endpoints', () => {
 		const endpoints = [{ index: 0, required: true }, { index: 1, required: true }, { index: 2 }];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
 		expect(result).toEqual([
 			{ index: 0, required: true },
 			{ index: 1, required: true },
@@ -1043,14 +1047,7 @@ describe('insertSpacersBetweenEndpoints', () => {
 	it('should handle required endpoints count greater than endpoints length', () => {
 		const endpoints = [{ index: 0, required: true }];
 		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 4);
+		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount);
 		expect(result).toEqual([{ index: 0, required: true }, null, null, null]);
-	});
-
-	it('should handle min endpoints count less than required endpoints count', () => {
-		const endpoints = [{ index: 0, required: false }];
-		const requiredEndpointsCount = endpoints.filter((endpoint) => endpoint.required).length;
-		const result = insertSpacersBetweenEndpoints(endpoints, requiredEndpointsCount, 0);
-		expect(result).toEqual([{ index: 0, required: false }]);
 	});
 });

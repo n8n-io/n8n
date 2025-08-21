@@ -22,7 +22,7 @@ export interface Props {
 	expanded?: boolean;
 }
 
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
@@ -113,7 +113,7 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 		>
 			<span v-if="mouseOverTooltip" :class="$style.mouseOverTooltip">
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="question-circle" size="small" />
+					<n8n-icon icon="circle-help" size="small" />
 					<template #content>
 						<div v-n8n-html="mouseOverTooltip" />
 					</template>

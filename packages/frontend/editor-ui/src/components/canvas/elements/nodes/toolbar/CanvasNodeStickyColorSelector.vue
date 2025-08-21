@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '@/types';
 
@@ -72,7 +72,7 @@ onBeforeUnmount(() => {
 				data-test-id="change-sticky-color"
 				:title="i18n.baseText('node.changeColor')"
 			>
-				<FontAwesomeIcon icon="palette" />
+				<N8nIcon icon="palette" />
 			</div>
 		</template>
 		<div :class="$style.content">

@@ -3,17 +3,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { isObjectLiteral } from '@n8n/backend-common';
+import { Logger, isObjectLiteral } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import get from 'lodash/get';
-import {
-	CredentialTestContext,
-	ErrorReporter,
-	ExecuteContext,
-	Logger,
-	RoutingNode,
-} from 'n8n-core';
+import { CredentialTestContext, ErrorReporter, ExecuteContext, RoutingNode } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunction,
@@ -37,6 +31,7 @@ import { VersionedNodeType, NodeHelpers, Workflow, UnexpectedError } from 'n8n-w
 
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
+import { getAllKeyPaths } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
@@ -108,7 +103,7 @@ export class CredentialsTester {
 			const allNodeTypes: INodeType[] = [];
 			if (node instanceof VersionedNodeType) {
 				// Node is versioned
-				allNodeTypes.push(...Object.values(node.nodeVersions));
+				allNodeTypes.push.apply(allNodeTypes, Object.values(node.nodeVersions));
 			} else {
 				// Node is not versioned
 				allNodeTypes.push(node as INodeType);
@@ -170,6 +165,24 @@ export class CredentialsTester {
 		return undefined;
 	}
 
+	private redactSecrets(
+		message: string,
+		credentialsData: ICredentialsDecrypted['data'],
+		secretPaths: string[],
+	): string {
+		if (secretPaths.length === 0) {
+			return message;
+		}
+		const updatedSecrets = secretPaths
+			.map((path) => get(credentialsData, path))
+			.filter((value) => value !== undefined);
+
+		updatedSecrets.forEach((value) => {
+			message = message.replaceAll(value.toString(), `*****${value.toString().slice(-3)}`);
+		});
+		return message;
+	}
+
 	// eslint-disable-next-line complexity
 	async testCredentials(
 		userId: User['id'],
@@ -184,9 +197,15 @@ export class CredentialsTester {
 			};
 		}
 
+		let credentialsDataSecretKeys: string[] = [];
 		if (credentialsDecrypted.data) {
 			try {
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(userId);
+
+				// Keep all credentials data keys which have a secret value
+				credentialsDataSecretKeys = getAllKeyPaths(credentialsDecrypted.data, '', [], (value) =>
+					value.includes('$secrets.'),
+				);
 				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
 					additionalData,
 					credentialsDecrypted.data,
@@ -208,7 +227,20 @@ export class CredentialsTester {
 		if (typeof credentialTestFunction === 'function') {
 			// The credentials get tested via a function that is defined on the node
 			const context = new CredentialTestContext();
-			return credentialTestFunction.call(context, credentialsDecrypted);
+			const functionResult = credentialTestFunction.call(context, credentialsDecrypted);
+			if (functionResult instanceof Promise) {
+				const result = await functionResult;
+				if (typeof result?.message === 'string') {
+					// Anonymize secret values in the error message
+					result.message = this.redactSecrets(
+						result.message,
+						credentialsDecrypted.data,
+						credentialsDataSecretKeys,
+					);
+				}
+				return result;
+			}
+			return functionResult;
 		}
 
 		// Credentials get tested via request instructions

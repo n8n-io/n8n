@@ -24,7 +24,7 @@ export class OutputParserAutofixing implements INodeType {
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
-		description: 'Automatically fix the output if it is not in the correct format',
+		description: 'Deprecated, use structured output parser',
 		defaults: {
 			name: 'Auto-fixing Output Parser',
 		},
@@ -42,7 +42,7 @@ export class OutputParserAutofixing implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			{
 				displayName: 'Model',
@@ -57,7 +57,7 @@ export class OutputParserAutofixing implements INodeType {
 				type: NodeConnectionTypes.AiOutputParser,
 			},
 		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [

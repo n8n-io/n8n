@@ -52,7 +52,6 @@ const properties: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				name: 'Use memory connector',
 				value: 'connector',
 				description: 'Connect one of the supported memory nodes',
@@ -282,10 +281,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			await memory.saveContext({ input }, { output: response.output });
 
 			if (response.threadId && response.runId) {
-				const threadRun = await client.beta.threads.runs.retrieve(
-					response.threadId,
-					response.runId,
-				);
+				const threadRun = await client.beta.threads.runs.retrieve(response.runId, {
+					thread_id: response.threadId,
+				});
 				response.usage = threadRun.usage;
 			}
 		}

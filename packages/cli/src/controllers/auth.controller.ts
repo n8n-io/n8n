@@ -1,12 +1,13 @@
 import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User, PublicUser } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { UserRepository, AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { isEmail } from 'class-validator';
 import { Response } from 'express';
-import { Logger } from 'n8n-core';
 
-import { handleEmailLogin, handleLdapLogin } from '@/auth';
+import { handleEmailLogin } from '@/auth';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -16,7 +17,7 @@ import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';
-import { AuthenticatedRequest, AuthlessRequest } from '@/requests';
+import { AuthlessRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 import {
 	getCurrentAuthenticationMethod,
@@ -73,7 +74,8 @@ export class AuthController {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
-				user = await handleLdapLogin(emailOrLdapLoginId, password);
+				const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
+				user = await Container.get(LdapService).handleLdapLogin(emailOrLdapLoginId, password);
 			}
 		} else {
 			user = await handleEmailLogin(emailOrLdapLoginId, password);
@@ -95,14 +97,19 @@ export class AuthController {
 				}
 			}
 
-			this.authService.issueCookie(res, user, req.browserId);
+			// If user.mfaEnabled is enabled we checked for the MFA code, therefore it was used during this login execution
+			this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
 
 			this.eventService.emit('user-logged-in', {
 				user,
 				authenticationMethod: usedAuthenticationMethod,
 			});
 
-			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
+			return await this.userService.toPublic(user, {
+				posthog: this.postHog,
+				withScopes: true,
+				mfaAuthenticated: user.mfaEnabled,
+			});
 		}
 		this.eventService.emit('user-login-failed', {
 			authenticationMethod: usedAuthenticationMethod,
@@ -113,11 +120,14 @@ export class AuthController {
 	}
 
 	/** Check if the user is already logged in */
-	@Get('/login')
+	@Get('/login', {
+		allowSkipMFA: true,
+	})
 	async currentUser(req: AuthenticatedRequest): Promise<PublicUser> {
 		return await this.userService.toPublic(req.user, {
 			posthog: this.postHog,
 			withScopes: true,
+			mfaAuthenticated: req.authInfo?.usedMfa,
 		});
 	}
 

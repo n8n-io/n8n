@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { type RouteLocationRaw } from 'vue-router';
+import { RouterLink, type RouteLocationRaw } from 'vue-router';
 
 interface RouteProps {
 	to?: RouteLocationRaw | string;
 	newWindow?: boolean;
+	title?: string;
 }
 
 defineOptions({ name: 'N8nRoute' });
@@ -27,14 +28,15 @@ const openNewWindow = computed(() => !useRouterLink.value);
 </script>
 
 <template>
-	<router-link v-if="useRouterLink && to" :to="to" v-bind="$attrs">
+	<RouterLink v-if="useRouterLink && to" :to="to" role="link" v-bind="$attrs">
 		<slot></slot>
-	</router-link>
+	</RouterLink>
 	<a
 		v-else
 		:href="to ? `${to}` : undefined"
 		:target="openNewWindow ? '_blank' : '_self'"
 		v-bind="$attrs"
+		:title="title"
 	>
 		<slot></slot>
 	</a>

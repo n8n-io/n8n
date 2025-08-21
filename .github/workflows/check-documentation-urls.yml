@@ -16,20 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+      - name: Setup Node.js
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
         with:
-          node-version: 20.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.31
-          corepack enable
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build relevant packages
-        run: pnpm build:nodes
+          build-command: turbo build --filter=*nodes*
 
       - run: npm install --prefix=.github/scripts --no-package-lock
 
@@ -37,7 +27,7 @@ jobs:
         run: node .github/scripts/validate-docs-links.js
 
       - name: Notify Slack on failure
-        uses: act10ns/slack@ed1309ab9862e57e9e583e51c7889486b9a00b0f # v2.0.0
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         if: failure()
         with:
           status: ${{ job.status }}

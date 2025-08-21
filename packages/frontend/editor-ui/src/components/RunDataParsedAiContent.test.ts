@@ -46,6 +46,29 @@ describe('RunDataParsedAiContent', () => {
 		expect(rendered.getByText('markdown', { selector: 'em' })).toBeInTheDocument();
 	});
 
+	it('highlight matches to the search keyword in markdown', () => {
+		const rendered = renderComponent({
+			renderType: 'rendered',
+			content: [
+				{
+					raw: {},
+					parsedContent: {
+						type: 'markdown',
+						data: 'The **quick** brown fox jumps over the ~~lazy~~ dog',
+						parsed: true,
+					},
+				},
+			],
+			search: 'the',
+		});
+
+		const marks = rendered.container.querySelectorAll('mark');
+
+		expect(marks).toHaveLength(2);
+		expect(marks[0]).toHaveTextContent('The');
+		expect(marks[1]).toHaveTextContent('the');
+	});
+
 	it('renders AI content parsed as JSON', () => {
 		const rendered = renderComponent({
 			renderType: 'rendered',
@@ -70,5 +93,84 @@ describe('RunDataParsedAiContent', () => {
 		expect(
 			rendered.getByText('{ "key": "value" }', { selector: 'code', exact: false }),
 		).toBeInTheDocument();
+	});
+
+	it('highlight matches to the search keyword in inline code in markdown', () => {
+		const rendered = renderComponent({
+			renderType: 'rendered',
+			content: [
+				{
+					raw: {},
+					parsedContent: {
+						type: 'markdown',
+						data: 'The `quick brown fox` jumps over the lazy dog',
+						parsed: true,
+					},
+				},
+			],
+			search: 'fox',
+		});
+
+		const marks = rendered.container.querySelectorAll('mark');
+
+		expect(marks).toHaveLength(1);
+		expect(marks[0]).toHaveTextContent('fox');
+	});
+
+	it('highlight matches to the search keyword in a code block in markdown', () => {
+		const rendered = renderComponent({
+			renderType: 'rendered',
+			content: [
+				{
+					raw: {},
+					parsedContent: {
+						type: 'markdown',
+						data: 'Code:\n\n    quickFox.jump({ over: lazyDog });\n',
+						parsed: true,
+					},
+				},
+			],
+			search: 'fox',
+		});
+
+		const marks = rendered.container.querySelectorAll('mark');
+
+		expect(marks).toHaveLength(1);
+		expect(marks[0]).toHaveTextContent('Fox');
+	});
+
+	it('highlight matches to the search keyword in fence syntax in markdown', () => {
+		const rendered = renderComponent({
+			renderType: 'rendered',
+			content: [
+				{
+					raw: {},
+					parsedContent: {
+						type: 'markdown',
+						data: '```\nquickFox.jump({ over: lazyDog });\n```',
+						parsed: true,
+					},
+				},
+			],
+			search: 'fox',
+		});
+
+		const marks = rendered.container.querySelectorAll('mark');
+
+		expect(marks).toHaveLength(1);
+		expect(marks[0]).toHaveTextContent('Fox');
+	});
+
+	it('highlight matches to the search keyword in raw data', () => {
+		const rendered = renderComponent({
+			renderType: 'rendered',
+			content: [{ raw: { key: 'value' }, parsedContent: null }],
+			search: 'key',
+		});
+
+		const marks = rendered.container.querySelectorAll('mark');
+
+		expect(marks).toHaveLength(1);
+		expect(marks[0]).toHaveTextContent('key');
 	});
 });

@@ -11,7 +11,7 @@ import type {
 import type { IUpdateInformation } from '@/Interface';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n, addCredentialTranslation } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import {
 	BUILTIN_CREDENTIALS_DOCS_URL,
@@ -19,8 +19,7 @@ import {
 	EnterpriseEditionFeature,
 	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/constants';
-import type { PermissionsRecord } from '@/permissions';
-import { addCredentialTranslation } from '@/plugins/i18n';
+import type { PermissionsRecord } from '@n8n/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -225,7 +224,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 </script>
 
 <template>
-	<n8n-callout v-if="isManaged" theme="warning" icon="exclamation-triangle">
+	<n8n-callout v-if="isManaged" theme="warning" icon="triangle-alert">
 		{{ i18n.baseText('freeAi.credits.credentials.edit') }}
 	</n8n-callout>
 	<div v-else>

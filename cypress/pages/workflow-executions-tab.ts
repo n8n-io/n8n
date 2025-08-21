@@ -38,12 +38,7 @@ export class WorkflowExecutionsTab extends BasePage {
 
 	actions = {
 		toggleNodeEnabled: (nodeName: string) => {
-			cy.ifCanvasVersion(
-				() => {},
-				() => {
-					cy.get('body').click(); // Cancel selection if it exists
-				},
-			);
+			cy.get('body').click(); // Cancel selection if it exists
 			workflowPage.getters.canvasNodeByName(nodeName).click();
 			cy.get('body').type('d', { force: true });
 		},

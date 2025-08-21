@@ -4,7 +4,7 @@ import { useViewStacks } from '../composables/useViewStacks';
 import { useUsersStore } from '@/stores/users.store';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useToast } from '@/composables/useToast';
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -16,7 +16,13 @@ import { prepareCommunityNodeDetailsViewStack, removePreviewToken } from '../uti
 
 import { N8nText } from '@n8n/design-system';
 
-const { activeViewStack, pushViewStack, popViewStack, getAllNodeCreateElements } = useViewStacks();
+const {
+	activeViewStack,
+	pushViewStack,
+	popViewStack,
+	getAllNodeCreateElements,
+	updateCurrentViewStack,
+} = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;
 
@@ -37,6 +43,8 @@ const updateViewStack = (key: string) => {
 
 		popViewStack();
 
+		updateCurrentViewStack({ searchItems: nodeCreatorStore.mergedNodes });
+
 		const viewStack = prepareCommunityNodeDetailsViewStack(
 			installedNode,
 			getNodeIconSource(installedNode.properties),
@@ -45,7 +53,6 @@ const updateViewStack = (key: string) => {
 		);
 
 		pushViewStack(viewStack, {
-			resetStacks: true,
 			transitionDirection: 'none',
 		});
 	} else {
@@ -123,11 +130,7 @@ const onInstall = async () => {
 			</div>
 			<div>
 				<div v-if="communityNodeDetails.installed" :class="$style.installed">
-					<FontAwesomeIcon
-						v-if="!communityNodeDetails.official"
-						:class="$style.installedIcon"
-						icon="cube"
-					/>
+					<N8nIcon v-if="!communityNodeDetails.official" :class="$style.installedIcon" icon="box" />
 					<N8nText color="text-light" size="small" bold>
 						{{ i18n.baseText('communityNodeDetails.installed') }}
 					</N8nText>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { FIELDS_SECTION } from '@/plugins/codemirror/completions/constants';
 import { datatypeCompletions } from '@/plugins/codemirror/completions/datatype.completions';
 import { isCompletionSection } from '@/plugins/codemirror/completions/utils';
@@ -163,9 +163,10 @@ watchDebounced(
 }
 
 .tipText {
-	display: inline;
 	color: var(--color-text-dark);
 	font-weight: var(--font-weight-bold);
+	white-space: nowrap;
+	align-self: flex-start;
 }
 
 .drag .tipText {

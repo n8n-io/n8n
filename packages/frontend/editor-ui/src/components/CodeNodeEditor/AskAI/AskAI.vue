@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { snakeCase } from 'lodash-es';
+import snakeCase from 'lodash/snakeCase';
 import { useSessionStorage } from '@vueuse/core';
 
 import { N8nButton, N8nInput, N8nTooltip } from '@n8n/design-system/components';
 import { randomInt } from 'n8n-workflow';
 import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 
-import type { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import type { INodeUi, Schema } from '@/Interface';
 import { generateCodeForPrompt } from '@/api/ai';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDataSchema } from '@/composables/useDataSchema';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -33,9 +33,15 @@ const emit = defineEmits<{
 	finishedLoading: [];
 }>();
 
-const props = defineProps<{
-	hasChanges: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		hasChanges: boolean;
+		isReadOnly?: boolean;
+	}>(),
+	{
+		isReadOnly: false,
+	},
+);
 
 const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 const i18n = useI18n();
@@ -66,12 +72,18 @@ const isEachItemMode = computed(() => {
 	return mode === 'runOnceForEachItem';
 });
 
-function getErrorMessageByStatusCode(statusCode: number) {
+function getErrorMessageByStatusCode(statusCode: number, message: string | undefined): string {
 	const errorMessages: Record<number, string> = {
-		400: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
-		413: i18n.baseText('codeNodeEditor.askAi.generationFailedTooLarge'),
-		429: i18n.baseText('codeNodeEditor.askAi.generationFailedRate'),
-		500: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
+		[413]: i18n.baseText('codeNodeEditor.askAi.generationFailedTooLarge'),
+		[400]: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
+		[429]: i18n.baseText('codeNodeEditor.askAi.generationFailedRate'),
+		[500]: message
+			? i18n.baseText('codeNodeEditor.askAi.generationFailedWithReason', {
+					interpolate: {
+						error: message,
+					},
+				})
+			: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
 	};
 
 	return errorMessages[statusCode] || i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown');
@@ -79,12 +91,11 @@ function getErrorMessageByStatusCode(statusCode: number) {
 
 function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
-	const { getCurrentWorkflow, getNodeByName } = useWorkflowsStore();
-	const workflow = getCurrentWorkflow();
+	const { workflowObject, getNodeByName } = useWorkflowsStore();
 
-	if (!activeNode || !workflow) return [];
+	if (!activeNode || !workflowObject) return [];
 
-	return workflow
+	return workflowObject
 		.getParentNodesByDepth(activeNode?.name)
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
@@ -189,7 +200,10 @@ async function onSubmit() {
 		showMessage({
 			type: 'error',
 			title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
-			message: getErrorMessageByStatusCode(error.httpStatusCode || error?.response.status),
+			message: getErrorMessageByStatusCode(
+				error.httpStatusCode || error?.response.status,
+				error?.message,
+			),
 		});
 		stopLoading();
 		useTelemetry().trackAskAI('askAi.generationFinished', {
@@ -256,7 +270,7 @@ onMounted(() => {
 					v-text="`${prompt.length} / ${ASK_AI_MAX_PROMPT_LENGTH}`"
 				/>
 				<a href="https://docs.n8n.io/code-examples/ai-code" target="_blank" :class="$style.help">
-					<n8n-icon icon="question-circle" color="text-light" size="large" />{{
+					<n8n-icon icon="circle-help" color="text-light" size="large" />{{
 						i18n.baseText('codeNodeEditor.askAi.help')
 					}}
 				</a>
@@ -269,6 +283,7 @@ onMounted(() => {
 				:maxlength="ASK_AI_MAX_PROMPT_LENGTH"
 				:placeholder="i18n.baseText('codeNodeEditor.askAi.placeholder')"
 				data-test-id="ask-ai-prompt-input"
+				:readonly="props.isReadOnly"
 				@input="onPromptInput"
 			/>
 		</div>

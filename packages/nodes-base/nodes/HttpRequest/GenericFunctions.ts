@@ -83,7 +83,6 @@ export function sanitizeUiMessage(
 		sendRequest = {
 			...sendRequest,
 			[requestProperty]: Object.keys(sendRequest[requestProperty] as object).reduce(
-				// eslint-disable-next-line @typescript-eslint/no-loop-func
 				(acc: IDataObject, curr) => {
 					acc[curr] = authDataKeys[requestProperty].includes(curr)
 						? REDACTED

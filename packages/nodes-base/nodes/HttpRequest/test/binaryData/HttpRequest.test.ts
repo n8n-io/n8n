@@ -12,6 +12,11 @@ describe('Test Binary Data Download', () => {
 
 		nock(baseUrl)
 			.persist()
+			.get('/path/to/text.txt')
+			.reply(200, Buffer.from('test'), { 'content-type': 'text/plain; charset=utf-8' });
+
+		nock(baseUrl)
+			.persist()
 			.get('/redirect-to-image')
 			.reply(302, {}, { location: baseUrl + '/path/to/image.png' });
 

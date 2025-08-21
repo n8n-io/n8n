@@ -1,8 +1,10 @@
+import { IWorkflowToImport } from '@/interfaces';
 import type {
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import {
 	type Variables,
 	type TagEntity,
@@ -13,19 +15,15 @@ import {
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { writeFileSync } from 'fs';
-import { Logger } from 'n8n-core';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
 import path from 'path';
 import type { PushResult } from 'simple-git';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
 
 import {
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
+	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import { SourceControlExportService } from './source-control-export.service.ee';
 import { SourceControlGitService } from './source-control-git.service.ee';
@@ -42,13 +40,18 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
-import type { ExportableCredential } from './types/exportable-credential';
+import { SourceControlScopedService } from './source-control-scoped.service';
+import type { StatusExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ImportResult } from './types/import-result';
 import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class SourceControlService {
@@ -65,6 +68,7 @@ export class SourceControlService {
 		private sourceControlPreferencesService: SourceControlPreferencesService,
 		private sourceControlExportService: SourceControlExportService,
 		private sourceControlImportService: SourceControlImportService,
+		private sourceControlScopedService: SourceControlScopedService,
 		private tagRepository: TagRepository,
 		private folderRepository: FolderRepository,
 		private readonly eventService: EventService,
@@ -233,7 +237,9 @@ export class SourceControlService {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 
-		const filesToPush = options.fileNames.map((file) => {
+		const context = new SourceControlContext(user);
+
+		let filesToPush = options.fileNames.map((file) => {
 			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
 				this.gitFolder,
 				file.file,
@@ -245,23 +251,39 @@ export class SourceControlService {
 			};
 		});
 
-		// only determine file status if not provided by the frontend
-		let statusResult: SourceControlledFile[] = filesToPush;
-		if (statusResult.length === 0) {
-			statusResult = (await this.getStatus(user, {
-				direction: 'push',
-				verbose: false,
-				preferLocalVersion: true,
-			})) as SourceControlledFile[];
+		const allowedResources = (await this.getStatus(user, {
+			direction: 'push',
+			verbose: false,
+			preferLocalVersion: true,
+		})) as SourceControlledFile[];
+
+		// Fallback to all allowed resources if no fileNames are provided
+		if (!filesToPush.length) {
+			filesToPush = allowedResources;
 		}
 
+		// If fileNames are provided, we need to check if they are allowed
+		if (
+			filesToPush !== allowedResources &&
+			filesToPush.some(
+				(file) =>
+					!allowedResources.some((allowed) => {
+						return allowed.id === file.id && allowed.type === file.type;
+					}),
+			)
+		) {
+			throw new ForbiddenError('You are not allowed to push these changes');
+		}
+
+		let statusResult: SourceControlledFile[] = filesToPush;
+
 		if (!options.force) {
-			const possibleConflicts = statusResult?.filter((file) => file.conflict);
+			const possibleConflicts = filesToPush?.filter((file) => file.conflict);
 			if (possibleConflicts?.length > 0) {
 				return {
 					statusCode: 409,
 					pushResult: undefined,
-					statusResult,
+					statusResult: filesToPush,
 				};
 			}
 		}
@@ -307,13 +329,13 @@ export class SourceControlService {
 		const tagChanges = filesToPush.find((e) => e.type === 'tags');
 		if (tagChanges) {
 			filesToBePushed.add(tagChanges.file);
-			await this.sourceControlExportService.exportTagsToWorkFolder();
+			await this.sourceControlExportService.exportTagsToWorkFolder(context);
 		}
 
 		const folderChanges = filesToPush.find((e) => e.type === 'folders');
 		if (folderChanges) {
 			filesToBePushed.add(folderChanges.file);
-			await this.sourceControlExportService.exportFoldersToWorkFolder();
+			await this.sourceControlExportService.exportFoldersToWorkFolder(context);
 		}
 
 		const variablesChanges = filesToPush.find((e) => e.type === 'variables');
@@ -324,12 +346,8 @@ export class SourceControlService {
 
 		await this.gitService.stage(filesToBePushed, filesToBeDeleted);
 
-		for (let i = 0; i < statusResult.length; i++) {
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
-			if (filesToPush.find((file) => file.file === statusResult[i].file)) {
-				statusResult[i].pushed = true;
-			}
-		}
+		// Set all results as pushed
+		statusResult.forEach((result) => (result.pushed = true));
 
 		await this.gitService.commit(options.commitMessage ?? 'Updated Workfolder');
 
@@ -649,6 +667,7 @@ export class SourceControlService {
 				conflict: false,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
+				owner: item.owner,
 			});
 		});
 
@@ -662,6 +681,7 @@ export class SourceControlService {
 				conflict: options.direction === 'push' ? false : true,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
+				owner: item.owner,
 			});
 		});
 
@@ -675,6 +695,7 @@ export class SourceControlService {
 				conflict: true,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
+				owner: item.owner,
 			});
 		});
 
@@ -705,11 +726,7 @@ export class SourceControlService {
 		);
 
 		// only compares the name, since that is the only change synced for credentials
-		const credModifiedInEither: Array<
-			ExportableCredential & {
-				filename: string;
-			}
-		> = [];
+		const credModifiedInEither: StatusExportableCredential[] = [];
 		credLocalIds.forEach((local) => {
 			const mismatchingCreds = credRemoteIds.find((remote) => {
 				return remote.id === local.id && (remote.name !== local.name || remote.type !== local.type);
@@ -732,6 +749,7 @@ export class SourceControlService {
 				conflict: false,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy,
 			});
 		});
 
@@ -745,6 +763,7 @@ export class SourceControlService {
 				conflict: options.direction === 'push' ? false : true,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy,
 			});
 		});
 
@@ -758,6 +777,7 @@ export class SourceControlService {
 				conflict: true,
 				file: item.filename,
 				updatedAt: new Date().toISOString(),
+				owner: item.ownedBy,
 			});
 		});
 		return {
@@ -853,6 +873,8 @@ export class SourceControlService {
 			select: ['updatedAt'],
 		});
 
+		const lastUpdatedDate = lastUpdatedTag[0]?.updatedAt ?? new Date();
+
 		const tagMappingsRemote =
 			await this.sourceControlImportService.getRemoteTagsAndMappingsFromFile(context);
 		const tagMappingsLocal =
@@ -900,7 +922,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: false,
 				file: getTagsPath(this.gitFolder),
-				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 		tagsMissingInRemote.forEach((item) => {
@@ -912,7 +934,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: options.direction === 'push' ? false : true,
 				file: getTagsPath(this.gitFolder),
-				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 
@@ -925,7 +947,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: true,
 				file: getTagsPath(this.gitFolder),
-				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 
@@ -948,6 +970,8 @@ export class SourceControlService {
 			take: 1,
 			select: ['updatedAt'],
 		});
+
+		const lastUpdatedDate = lastUpdatedFolder[0]?.updatedAt ?? new Date();
 
 		const foldersMappingsRemote =
 			await this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile(context);
@@ -985,7 +1009,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: false,
 				file: getFoldersPath(this.gitFolder),
-				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 		foldersMissingInRemote.forEach((item) => {
@@ -997,7 +1021,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: options.direction === 'push' ? false : true,
 				file: getFoldersPath(this.gitFolder),
-				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 
@@ -1010,7 +1034,7 @@ export class SourceControlService {
 				location: options.direction === 'push' ? 'local' : 'remote',
 				conflict: true,
 				file: getFoldersPath(this.gitFolder),
-				updatedAt: lastUpdatedFolder[0]?.updatedAt.toISOString(),
+				updatedAt: lastUpdatedDate.toISOString(),
 			});
 		});
 
@@ -1027,5 +1051,40 @@ export class SourceControlService {
 	): Promise<void> {
 		await this.sanityCheck();
 		await this.gitService.setGitUserDetails(name, email);
+	}
+
+	async getRemoteFileEntity({
+		user,
+		type,
+		id,
+		commit = 'HEAD',
+	}: {
+		user: User;
+		type: SourceControlledFile['type'];
+		id?: string;
+		commit?: string;
+	}): Promise<IWorkflowToImport> {
+		await this.sanityCheck();
+		const context = new SourceControlContext(user);
+		switch (type) {
+			case 'workflow': {
+				if (typeof id === 'undefined') {
+					throw new BadRequestError('Workflow ID is required to fetch workflow content');
+				}
+
+				const authorizedWorkflows =
+					await this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContext(context, id);
+				if (authorizedWorkflows && authorizedWorkflows.length === 0) {
+					throw new ForbiddenError(`You are not allowed to access workflow with id ${id}`);
+				}
+				const content = await this.gitService.getFileContent(
+					`${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${id}.json`,
+					commit,
+				);
+				return jsonParse<IWorkflowToImport>(content);
+			}
+			default:
+				throw new BadRequestError(`Unsupported file type: ${type}`);
+		}
 	}
 }

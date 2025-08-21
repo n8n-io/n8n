@@ -7,8 +7,14 @@ import type {
 	globalRoleSchema,
 	projectRoleSchema,
 	roleNamespaceSchema,
+	teamRoleSchema,
 	workflowSharingRoleSchema,
 } from './schemas.ee';
+
+export type ScopeInformation = {
+	displayName: string;
+	description?: string | null;
+};
 
 /** Represents a resource that can have permissions applied to it */
 export type Resource = keyof typeof RESOURCES;
@@ -49,6 +55,7 @@ export type GlobalRole = z.infer<typeof globalRoleSchema>;
 export type AssignableGlobalRole = z.infer<typeof assignableGlobalRoleSchema>;
 export type CredentialSharingRole = z.infer<typeof credentialSharingRoleSchema>;
 export type WorkflowSharingRole = z.infer<typeof workflowSharingRoleSchema>;
+export type TeamProjectRole = z.infer<typeof teamRoleSchema>;
 export type ProjectRole = z.infer<typeof projectRoleSchema>;
 
 /** Union of all possible role types in the system */
@@ -57,6 +64,7 @@ export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | Cred
 type RoleObject<T extends AllRoleTypes> = {
 	role: T;
 	name: string;
+	description?: string | null;
 	scopes: Scope[];
 	licensed: boolean;
 };

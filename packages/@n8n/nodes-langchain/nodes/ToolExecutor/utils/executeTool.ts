@@ -1,12 +1,9 @@
-import type { StructuredTool } from 'langchain/tools';
+import type { Tool } from '@langchain/core/tools';
 import { type IDataObject, type INodeExecutionData } from 'n8n-workflow';
 
 import { convertObjectBySchema } from './convertToSchema';
 
-export async function executeTool(
-	tool: StructuredTool,
-	query: string | object,
-): Promise<INodeExecutionData> {
+export async function executeTool(tool: Tool, query: string | object): Promise<INodeExecutionData> {
 	let convertedQuery: string | object = query;
 	if ('schema' in tool && tool.schema) {
 		convertedQuery = convertObjectBySchema(query, tool.schema);

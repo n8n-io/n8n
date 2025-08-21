@@ -1,5 +1,4 @@
-import type { LicenseMetricsRepository } from '@n8n/db';
-import type { WorkflowRepository } from '@n8n/db';
+import type { LicenseMetricsRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
@@ -37,7 +36,11 @@ describe('LicenseMetricsService', () => {
 	describe('collectUsageMetrics', () => {
 		test('should return an array of expected usage metrics', async () => {
 			const mockActiveTriggerCount = 1234;
+			const mockWorkflowsWithEvaluationsCount = 5;
 			workflowRepository.getActiveTriggerCount.mockResolvedValue(mockActiveTriggerCount);
+			workflowRepository.getWorkflowsWithEvaluationCount.mockResolvedValue(
+				mockWorkflowsWithEvaluationsCount,
+			);
 
 			const mockRenewalMetrics = {
 				activeWorkflows: 100,
@@ -48,6 +51,7 @@ describe('LicenseMetricsService', () => {
 				productionExecutions: 600,
 				productionRootExecutions: 550,
 				manualExecutions: 700,
+				evaluations: 5,
 			};
 
 			licenseMetricsRespository.getLicenseRenewalMetrics.mockResolvedValue(mockRenewalMetrics);
@@ -67,6 +71,7 @@ describe('LicenseMetricsService', () => {
 				},
 				{ name: 'manualExecutions', value: mockRenewalMetrics.manualExecutions },
 				{ name: 'activeWorkflowTriggers', value: mockActiveTriggerCount },
+				{ name: 'evaluations', value: mockRenewalMetrics.evaluations },
 			]);
 		});
 	});

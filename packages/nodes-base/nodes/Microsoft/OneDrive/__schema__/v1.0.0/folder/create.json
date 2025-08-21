@@ -75,20 +75,6 @@
             "properties": {
                 "childCount": {
                     "type": "integer"
-                },
-                "view": {
-                    "type": "object",
-                    "properties": {
-                        "sortBy": {
-                            "type": "string"
-                        },
-                        "sortOrder": {
-                            "type": "string"
-                        },
-                        "viewType": {
-                            "type": "string"
-                        }
-                    }
                 }
             }
         },
@@ -178,5 +164,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

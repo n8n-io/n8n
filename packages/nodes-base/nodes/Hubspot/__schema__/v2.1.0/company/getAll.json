@@ -33,9 +33,6 @@
                                     "name": {
                                         "type": "string"
                                     },
-                                    "requestId": {
-                                        "type": "string"
-                                    },
                                     "source": {
                                         "type": "string"
                                     },
@@ -43,9 +40,6 @@
                                         "type": "string"
                                     },
                                     "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "updatedByUserId": {
                                         "type": "integer"
                                     },
                                     "useTimestampAsPersistenceTimestamp": {
@@ -60,21 +54,7 @@
                     }
                 }
             }
-        },
-        "stateChanges": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "changeFlag": {
-                        "type": "string"
-                    },
-                    "timestamp": {
-                        "type": "integer"
-                    }
-                }
-            }
         }
     },
-    "version": 3
+    "version": 5
 }

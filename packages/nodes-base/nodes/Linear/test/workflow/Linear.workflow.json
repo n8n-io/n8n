@@ -1,0 +1,525 @@
+{
+	"name": "Linear Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-80, 260],
+			"id": "4dbe018c-edec-46d3-b18d-f4517435e1f8",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, -400],
+			"id": "512f2fec-df9f-46ac-8df3-e84fd352f7ff",
+			"name": "Create Comment - Output"
+		},
+		{
+			"parameters": {
+				"resource": "comment",
+				"issueId": "test-17",
+				"comment": "test",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.linear",
+			"typeVersion": 1,
+			"position": [200, -400],
+			"id": "be60984b-28a5-4c5a-8926-87824300e63e",
+			"name": "Add Comment",
+			"credentials": {
+				"linearApi": {
+					"id": "6bJTI5tzXOk9m6cv",
+					"name": "86-88"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "comment",
+				"issueId": "test-17",
+				"comment": "Add to parent",
+				"additionalFields": {
+					"parentId": "ff12069e-fac8-4b18-8455-cc6b29fa1e77"
+				}
+			},
+			"type": "n8n-nodes-base.linear",
+			"typeVersion": 1,
+			"position": [200, -220],
+			"id": "328939ed-41ac-442e-819c-f470ce0986b4",
+			"name": "Add Comment - with parent",
+			"credentials": {
+				"linearApi": {
+					"id": "6bJTI5tzXOk9m6cv",
+					"name": "86-88"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, -220],
+			"id": "d28e9fe2-4a7b-4714-aa15-a6c6732c4e0d",
+			"name": "Create Comment with Parent"
+		},
+		{
+			"parameters": {
+				"operation": "addLink",
+				"issueId": "test-17",
+				"link": "https://n8n.io"
+			},
+			"type": "n8n-nodes-base.linear",
+			"typeVersion": 1,
+			"position": [200, -20],
+			"id": "6ec9fdbc-eed8-4e9a-850b-973f72f6f3a5",
+			"name": "Add link to issue",
+			"credentials": {
+				"linearApi": {
+					"id": "6bJTI5tzXOk9m6cv",
+					"name": "86-88"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, -20],
+			"id": "229e5b09-8867-44f5-a71c-da31d97ab1b5",
+			"name": "Add Link output"
+		},
+		{
+			"parameters": {
+				"teamId": "0a2994c1-5d99-48aa-ab22-8b5ba4711ebc",
+				"title": "This is a test issue",
+				"additionalFields": {
+					"assigneeId": "1c51f0c4-c552-4614-a534-8de1752ba7d7",
+					"description": "test description",
+					"priorityId": 3,
+					"stateId": "65a87a3a-5729-4d82-96bf-badccbeb49af"
+				}
+			},
+			"type": "n8n-nodes-base.linear",
+			"typeVersion": 1,
+			"position": [200, 160],
+			"id": "3262089e-902a-4922-b5e9-1bd2dae4915f",
+			"name": "Create Issue",
+			"credentials": {
+				"linearApi": {
+					"id": "6bJTI5tzXOk9m6cv",
+					"name": "86-88"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 160],
+			"id": "3515db04-1fb9-4c15-904b-1a34c7bd63fb",
+			"name": "Create Issue Response"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 1
+			},
+			"type": "n8n-nodes-base.linear",
+			"typeVersion": 1,
+			"position": [200, 520],
+			"id": "912a5680-2d83-4d24-921b-f622cc8be0be",
+			"name": "Issue Get Many",
+			"credentials": {
+				"linearApi": {
+					"id": "6bJTI5tzXOk9m6cv",
+					"name": "86-88"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"issueId": "test-18"
+			},
+			"type": "n8n-nodes-base.linear",
+			"typeVersion": 1,
+			"position": [200, 340],
+			"id": "8604ce38-89aa-4793-bd2d-13c7d4fce215",
+			"name": "Get Issue",
+			"credentials": {
+				"linearApi": {
+					"id": "6bJTI5tzXOk9m6cv",
+					"name": "86-88"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 520],
+			"id": "d01f72ce-4f5f-4a3f-9805-7975e67d041d",
+			"name": "Get Many Issues"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 340],
+			"id": "a2ad027f-8507-4488-84f5-f339ad826120",
+			"name": "Get Issue Output"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"issueId": "test-18",
+				"updateFields": {
+					"assigneeId": "1c51f0c4-c552-4614-a534-8de1752ba7d7",
+					"description": "New Description",
+					"priorityId": 3,
+					"stateId": "622493c0-f4ee-456d-af65-49a7611ede7a",
+					"teamId": "0a2994c1-5d99-48aa-ab22-8b5ba4711ebc",
+					"title": "New Title"
+				}
+			},
+			"type": "n8n-nodes-base.linear",
+			"typeVersion": 1,
+			"position": [200, 700],
+			"id": "141d4f10-6812-40b4-a146-fa9cf929f86a",
+			"name": "Update Issue",
+			"credentials": {
+				"linearApi": {
+					"id": "6bJTI5tzXOk9m6cv",
+					"name": "86-88"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 700],
+			"id": "b08bba99-9d96-43be-8875-c72c7b51f734",
+			"name": "Update Issue Response"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"issueId": "test-18"
+			},
+			"type": "n8n-nodes-base.linear",
+			"typeVersion": 1,
+			"position": [200, 880],
+			"id": "d30a2ff2-f8cd-4277-b5c1-6f2df7985872",
+			"name": "Delete Issue",
+			"credentials": {
+				"linearApi": {
+					"id": "6bJTI5tzXOk9m6cv",
+					"name": "86-88"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 880],
+			"id": "8769421e-01ea-41ee-9e35-432408879869",
+			"name": "Delete Issue Response"
+		}
+	],
+	"pinData": {
+		"Create Comment - Output": [
+			{
+				"json": {
+					"success": true,
+					"comment": {
+						"id": "ff12069e-fac8-4b18-8455-cc6b29fa1e77"
+					}
+				}
+			}
+		],
+		"Create Comment with Parent": [
+			{
+				"json": {
+					"success": true,
+					"comment": {
+						"id": "bd0e4d70-7964-4877-aa30-d81534027f44"
+					}
+				}
+			}
+		],
+		"Add Link output": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Create Issue Response": [
+			{
+				"json": {
+					"id": "3c7316e3-4224-424d-8cc8-1dd3b96764b8",
+					"identifier": "TEST-18",
+					"title": "This is a test issue",
+					"priority": 3,
+					"archivedAt": null,
+					"assignee": {
+						"id": "1c51f0c4-c552-4614-a534-8de1752ba7d7",
+						"displayName": "nathan"
+					},
+					"state": {
+						"id": "65a87a3a-5729-4d82-96bf-badccbeb49af",
+						"name": "Backlog"
+					},
+					"createdAt": "2025-06-12T10:38:35.296Z",
+					"creator": {
+						"id": "1c51f0c4-c552-4614-a534-8de1752ba7d7",
+						"displayName": "nathan"
+					},
+					"description": "test description",
+					"dueDate": null,
+					"cycle": null
+				}
+			}
+		],
+		"Get Issue Output": [
+			{
+				"json": {
+					"id": "3c7316e3-4224-424d-8cc8-1dd3b96764b8",
+					"identifier": "TEST-18",
+					"title": "This is a test issue",
+					"priority": 3,
+					"archivedAt": null,
+					"assignee": {
+						"id": "1c51f0c4-c552-4614-a534-8de1752ba7d7",
+						"displayName": "nathan"
+					},
+					"state": {
+						"id": "65a87a3a-5729-4d82-96bf-badccbeb49af",
+						"name": "Backlog"
+					},
+					"createdAt": "2025-06-12T10:38:35.296Z",
+					"creator": {
+						"id": "1c51f0c4-c552-4614-a534-8de1752ba7d7",
+						"displayName": "nathan"
+					},
+					"description": "test description",
+					"dueDate": null,
+					"cycle": null
+				}
+			}
+		],
+		"Get Many Issues": [
+			{
+				"json": {
+					"id": "3c7316e3-4224-424d-8cc8-1dd3b96764b8",
+					"identifier": "TEST-18",
+					"title": "This is a test issue",
+					"priority": 3,
+					"archivedAt": null,
+					"assignee": {
+						"id": "1c51f0c4-c552-4614-a534-8de1752ba7d7",
+						"displayName": "nathan"
+					},
+					"state": {
+						"id": "65a87a3a-5729-4d82-96bf-badccbeb49af",
+						"name": "Backlog"
+					},
+					"createdAt": "2025-06-12T10:38:35.296Z",
+					"creator": {
+						"id": "1c51f0c4-c552-4614-a534-8de1752ba7d7",
+						"displayName": "nathan"
+					},
+					"description": "test description",
+					"dueDate": null,
+					"cycle": null
+				}
+			}
+		],
+		"Update Issue Response": [
+			{
+				"json": {
+					"id": "3c7316e3-4224-424d-8cc8-1dd3b96764b8",
+					"identifier": "TEST-18",
+					"title": "New Title",
+					"priority": 3,
+					"archivedAt": null,
+					"assignee": {
+						"id": "1c51f0c4-c552-4614-a534-8de1752ba7d7",
+						"displayName": "nathan"
+					},
+					"state": {
+						"id": "622493c0-f4ee-456d-af65-49a7611ede7a",
+						"name": "Canceled"
+					},
+					"createdAt": "2025-06-12T10:38:35.296Z",
+					"creator": {
+						"id": "1c51f0c4-c552-4614-a534-8de1752ba7d7",
+						"displayName": "nathan"
+					},
+					"description": "New Description",
+					"dueDate": null,
+					"cycle": null
+				}
+			}
+		],
+		"Delete Issue Response": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Add Comment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Add Comment - with parent",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Add link to issue",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Issue",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Issue",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Issue Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Issue",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Issue",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add Comment": {
+			"main": [
+				[
+					{
+						"node": "Create Comment - Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add Comment - with parent": {
+			"main": [
+				[
+					{
+						"node": "Create Comment with Parent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add link to issue": {
+			"main": [
+				[
+					{
+						"node": "Add Link output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Issue": {
+			"main": [
+				[
+					{
+						"node": "Create Issue Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Issue": {
+			"main": [
+				[
+					{
+						"node": "Get Issue Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Issue Get Many": {
+			"main": [
+				[
+					{
+						"node": "Get Many Issues",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Issue": {
+			"main": [
+				[
+					{
+						"node": "Update Issue Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete Issue": {
+			"main": [
+				[
+					{
+						"node": "Delete Issue Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "2cc012ac-e157-4f3e-97d8-15fb2da556ef",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
+	},
+	"id": "6FHfNEY4tcmoXVeg",
+	"tags": []
+}

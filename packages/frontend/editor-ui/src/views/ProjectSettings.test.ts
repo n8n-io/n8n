@@ -53,6 +53,7 @@ describe('ProjectSettings', () => {
 		vi.spyOn(usersStore, 'fetchUsers').mockImplementation(async () => await Promise.resolve());
 		vi.spyOn(projectsStore, 'getAvailableProjects').mockImplementation(async () => {});
 		vi.spyOn(projectsStore, 'availableProjects', 'get').mockReturnValue(projects);
+		vi.spyOn(projectsStore, 'isProjectEmpty').mockResolvedValue(false);
 		vi.spyOn(settingsStore, 'settings', 'get').mockReturnValue({
 			enterprise: {
 				projects: {
@@ -82,12 +83,12 @@ describe('ProjectSettings', () => {
 			.spyOn(projectsStore, 'deleteProject')
 			.mockImplementation(async () => {});
 
-		const { getByTestId, getByRole } = renderComponent();
+		const { getByTestId, findByRole } = renderComponent();
 		const deleteButton = getByTestId('project-settings-delete-button');
 
 		await userEvent.click(deleteButton);
 		expect(deleteProjectSpy).not.toHaveBeenCalled();
-		const modal = getByRole('dialog');
+		const modal = await findByRole('dialog');
 		expect(modal).toBeVisible();
 		const confirmButton = getByTestId('project-settings-delete-confirm-button');
 		expect(confirmButton).toBeDisabled();
@@ -108,12 +109,12 @@ describe('ProjectSettings', () => {
 			.spyOn(projectsStore, 'deleteProject')
 			.mockImplementation(async () => {});
 
-		const { getByTestId, getByRole } = renderComponent();
+		const { getByTestId, findByRole } = renderComponent();
 		const deleteButton = getByTestId('project-settings-delete-button');
 
 		await userEvent.click(deleteButton);
 		expect(deleteProjectSpy).not.toHaveBeenCalled();
-		const modal = getByRole('dialog');
+		const modal = await findByRole('dialog');
 		expect(modal).toBeVisible();
 		const confirmButton = getByTestId('project-settings-delete-confirm-button');
 		expect(confirmButton).toBeDisabled();

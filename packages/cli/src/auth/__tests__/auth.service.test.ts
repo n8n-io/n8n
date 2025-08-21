@@ -1,21 +1,22 @@
 import type { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import type { InvalidAuthTokenRepository } from '@n8n/db';
-import type { UserRepository } from '@n8n/db';
+import { Time } from '@n8n/constants';
+import type {
+	AuthenticatedRequest,
+	User,
+	InvalidAuthTokenRepository,
+	UserRepository,
+} from '@n8n/db';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
-import { AUTH_COOKIE_NAME, Time } from '@/constants';
-import type { AuthenticatedRequest } from '@/requests';
+import { AUTH_COOKIE_NAME } from '@/constants';
+import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
 
 describe('AuthService', () => {
-	config.set('userManagement.jwtSecret', 'random-secret');
-
 	const browserId = 'test-browser-id';
 	const userData = {
 		id: '123',
@@ -25,11 +26,15 @@ describe('AuthService', () => {
 		mfaEnabled: false,
 	};
 	const user = mock<User>(userData);
-	const globalConfig = mock<GlobalConfig>({ auth: { cookie: { secure: true, samesite: 'lax' } } });
-	const jwtService = new JwtService(mock());
+	const globalConfig = mock<GlobalConfig>({
+		auth: { cookie: { secure: true, samesite: 'lax' } },
+		userManagement: { jwtSecret: 'random-secret' },
+	});
+	const jwtService = new JwtService(mock(), globalConfig);
 	const urlService = mock<UrlService>();
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
+	const mfaService = mock<MfaService>();
 	const authService = new AuthService(
 		globalConfig,
 		mock(),
@@ -38,19 +43,23 @@ describe('AuthService', () => {
 		urlService,
 		userRepository,
 		invalidAuthTokenRepository,
+		mfaService,
 	);
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
 	jest.useFakeTimers({ now });
 
 	const validToken =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.YE-ZGGIQRNQ4DzUe9rjXvOOFFN9ufU34WibsCxAsc4o'; // Generated using `authService.issueJWT(user, browserId)`
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjpmYWxzZSwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjV9.N7JgwETmO41o4FUDVb4pA1HM3Clj4jyjDK-lE8Fa1Zw'; // Generated using `authService.issueJWT(user, false, browserId)`
+
+	const validTokenWithMfa =
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjp0cnVlLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.9kTTue-ZdBQ0CblH0IrqW9K-k0WWfxfsWTglyPB10ko'; // Generated using `authService.issueJWT(user, true, browserId)`
 
 	beforeEach(() => {
 		jest.resetAllMocks();
 		jest.setSystemTime(now);
-		config.set('userManagement.jwtSessionDurationHours', 168);
-		config.set('userManagement.jwtRefreshTimeoutHours', 0);
+		globalConfig.userManagement.jwtSessionDurationHours = 168;
+		globalConfig.userManagement.jwtRefreshTimeoutHours = 0;
 		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
 	});
 
@@ -106,7 +115,9 @@ describe('AuthService', () => {
 		it('should 401 if no cookie is set', async () => {
 			req.cookies[AUTH_COOKIE_NAME] = undefined;
 
-			await authService.authMiddleware(req, res, next);
+			const middleware = authService.createAuthMiddleware(true);
+
+			await middleware(req, res, next);
 
 			expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
@@ -118,7 +129,9 @@ describe('AuthService', () => {
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
-			await authService.authMiddleware(req, res, next);
+			const middleware = authService.createAuthMiddleware(true);
+
+			await middleware(req, res, next);
 
 			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
 			expect(userRepository.findOne).not.toHaveBeenCalled();
@@ -131,7 +144,9 @@ describe('AuthService', () => {
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
 
-			await authService.authMiddleware(req, res, next);
+			const middleware = authService.createAuthMiddleware(true);
+
+			await middleware(req, res, next);
 
 			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
 			expect(userRepository.findOne).not.toHaveBeenCalled();
@@ -140,13 +155,34 @@ describe('AuthService', () => {
 			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
 		});
 
+		it('should 401 but not clear the cookie if 2FA is enforced and not configured for the user', async () => {
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			userRepository.findOne.mockResolvedValue(user);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			mfaService.isMFAEnforced.mockImplementation(() => {
+				return true;
+			});
+
+			const middleware = authService.createAuthMiddleware(false);
+
+			await middleware(req, res, next);
+
+			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+			expect(userRepository.findOne).toHaveBeenCalled();
+			expect(next).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.clearCookie).not.toHaveBeenCalledWith();
+		});
+
 		it('should refresh the cookie before it expires', async () => {
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			userRepository.findOne.mockResolvedValue(user);
 
-			await authService.authMiddleware(req, res, next);
+			const middleware = authService.createAuthMiddleware(true);
+
+			await middleware(req, res, next);
 
 			expect(next).toHaveBeenCalled();
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
@@ -161,9 +197,20 @@ describe('AuthService', () => {
 	describe('issueCookie', () => {
 		const res = mock<Response>();
 		it('should issue a cookie with the correct options', () => {
-			authService.issueCookie(res, user, browserId);
+			authService.issueCookie(res, user, false, browserId);
 
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+				httpOnly: true,
+				maxAge: 604800000,
+				sameSite: 'lax',
+				secure: true,
+			});
+		});
+
+		it('should issue a cookie with the correct options, when 2FA was used', () => {
+			authService.issueCookie(res, user, true, browserId);
+
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validTokenWithMfa, {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
@@ -174,7 +221,7 @@ describe('AuthService', () => {
 		it('should allow changing cookie options', () => {
 			globalConfig.auth.cookie = { secure: false, samesite: 'none' };
 
-			authService.issueCookie(res, user, browserId);
+			authService.issueCookie(res, user, false, browserId);
 
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
 				httpOnly: true,
@@ -189,7 +236,7 @@ describe('AuthService', () => {
 		describe('when not setting userManagement.jwtSessionDuration', () => {
 			it('should default to expire in 7 days', () => {
 				const defaultInSeconds = 7 * Time.days.toSeconds;
-				const token = authService.issueJWT(user, browserId);
+				const token = authService.issueJWT(user, false, browserId);
 
 				expect(authService.jwtExpiration).toBe(defaultInSeconds);
 				const decodedToken = jwtService.verify(token);
@@ -206,8 +253,8 @@ describe('AuthService', () => {
 			const testDurationSeconds = testDurationHours * Time.hours.toSeconds;
 
 			it('should apply it to tokens', () => {
-				config.set('userManagement.jwtSessionDurationHours', testDurationHours);
-				const token = authService.issueJWT(user, browserId);
+				globalConfig.userManagement.jwtSessionDurationHours = testDurationHours;
+				const token = authService.issueJWT(user, false, browserId);
 
 				const decodedToken = jwtService.verify(token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
@@ -279,11 +326,17 @@ describe('AuthService', () => {
 
 		it('should refresh the cookie before it expires', async () => {
 			userRepository.findOne.mockResolvedValue(user);
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds); // 6 Days
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
@@ -293,7 +346,7 @@ describe('AuthService', () => {
 
 			const newToken = res.cookie.mock.calls[0].at(1);
 			expect(newToken).not.toBe(validToken);
-			expect(await authService.resolveJwt(newToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(newToken, req, res)).toEqual([user, { usedMfa: false }]);
 			expect((jwt.decode(newToken) as jwt.JwtPayload).browserId).toEqual(
 				(jwt.decode(validToken) as jwt.JwtPayload).browserId,
 			);
@@ -301,27 +354,42 @@ describe('AuthService', () => {
 
 		it('should refresh the cookie only if less than 1/4th of time is left', async () => {
 			userRepository.findOne.mockResolvedValue(user);
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(5 * Time.days.toMilliseconds);
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(1 * Time.days.toMilliseconds);
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).toHaveBeenCalled();
 		});
 
 		it('should not refresh the cookie if jwtRefreshTimeoutHours is set to -1', async () => {
-			config.set('userManagement.jwtRefreshTimeoutHours', -1);
+			globalConfig.userManagement.jwtRefreshTimeoutHours = -1;
 
 			userRepository.findOne.mockResolvedValue(user);
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds); // 6 Days
-			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
+				user,
+				{ usedMfa: false },
+			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 	});

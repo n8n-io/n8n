@@ -21,7 +21,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { isTriggerPanelObject } from '@/utils/typeGuards';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 const props = withDefaults(
@@ -45,7 +45,7 @@ const workflowsStore = useWorkflowsStore();
 const ndvStore = useNDVStore();
 
 const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
@@ -78,9 +78,12 @@ const hideContent = computed(() => {
 	}
 
 	if (node.value) {
-		const hideContentValue = workflowHelpers
-			.getCurrentWorkflow()
-			.expression.getSimpleParameterValue(node.value, hideContent, 'internal', {});
+		const hideContentValue = workflowsStore.workflowObject.expression.getSimpleParameterValue(
+			node.value,
+			hideContent,
+			'internal',
+			{},
+		);
 
 		if (typeof hideContentValue === 'boolean') {
 			return hideContentValue;
@@ -477,7 +480,7 @@ const onNodeExecute = () => {
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-background-base);
+	background-color: var(--color-run-data-background);
 	display: flex;
 	flex-direction: column;
 

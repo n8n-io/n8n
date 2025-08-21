@@ -1,15 +1,16 @@
-import type { ExecutionEntity } from '@n8n/db';
-import type { ExecutionData } from '@n8n/db';
-import { ExecutionDataRepository } from '@n8n/db';
-import { ExecutionMetadataRepository } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
-import { AnnotationTagRepository } from '@n8n/db';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { ExecutionEntity, ExecutionData } from '@n8n/db';
+import {
+	ExecutionDataRepository,
+	ExecutionMetadataRepository,
+	ExecutionRepository,
+	AnnotationTagRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AnnotationVote, IWorkflowBase } from 'n8n-workflow';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { Telemetry } from '@/telemetry';
-import { mockInstance } from '@test/mocking';
 
 mockInstance(Telemetry);
 
@@ -32,13 +33,23 @@ export async function createExecution(
 	>,
 	workflow: IWorkflowBase,
 ) {
-	const { data, finished, mode, startedAt, stoppedAt, waitTill, status, deletedAt, metadata } =
-		attributes;
+	const {
+		data,
+		finished,
+		mode,
+		startedAt,
+		stoppedAt,
+		waitTill,
+		status,
+		deletedAt,
+		metadata,
+		createdAt,
+	} = attributes;
 
 	const execution = await Container.get(ExecutionRepository).save({
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
-		createdAt: new Date(),
+		createdAt: createdAt ?? new Date(),
 		startedAt: startedAt === undefined ? new Date() : startedAt,
 		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),

@@ -15,9 +15,9 @@
         "Id": {
             "type": "string"
         },
-        "Probability": {
-            "type": "integer"
+        "StageName": {
+            "type": "string"
         }
     },
-    "version": 3
+    "version": 5
 }

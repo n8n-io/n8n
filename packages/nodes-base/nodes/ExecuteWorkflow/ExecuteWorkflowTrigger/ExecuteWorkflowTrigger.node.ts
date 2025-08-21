@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import pickBy from 'lodash/pickBy';
 import {
 	type INodeExecutionData,
 	NodeConnectionTypes,
@@ -217,7 +217,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 					...Object.fromEntries(newParams.fields.map((x) => [x.name, FALLBACK_DEFAULT_VALUE])),
 					// Need to trim to the expected schema to support legacy Execute Workflow callers passing through all their data
 					// which we do not want to expose past this node.
-					..._.pickBy(json, (_value, key) => newKeys.has(key)),
+					...pickBy(json, (_value, key) => newKeys.has(key)),
 				},
 				index,
 				binary,

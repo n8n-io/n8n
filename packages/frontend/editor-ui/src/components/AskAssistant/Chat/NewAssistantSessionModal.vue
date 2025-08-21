@@ -3,7 +3,7 @@ import { NEW_ASSISTANT_SESSION_MODAL } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import AssistantIcon from '@n8n/design-system/components/AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '@n8n/design-system/components/AskAssistantText/AssistantText.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import { useAssistantStore } from '@/stores/assistant.store';

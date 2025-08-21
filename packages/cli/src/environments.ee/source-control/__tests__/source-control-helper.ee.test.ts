@@ -313,3 +313,44 @@ describe('isWorkflowModified', () => {
 		expect(isWorkflowModified(local, remote)).toBe(false);
 	});
 });
+
+describe('readTagAndMappingsFromSourceControlFile', () => {
+	beforeEach(() => {
+		// Reset module registry so we can unmock properly
+		jest.resetModules();
+		jest.unmock('node:fs/promises');
+	});
+
+	it('should return default mapping if the file path is not valid', async () => {
+		const filePath = 'invalid/path/tags-and-mappings.json';
+		// Import the function after resetting modules
+		const { readTagAndMappingsFromSourceControlFile } = await import(
+			'@/environments.ee/source-control/source-control-helper.ee'
+		);
+		const result = await readTagAndMappingsFromSourceControlFile(filePath);
+		expect(result).toEqual({
+			tags: [],
+			mappings: [],
+		});
+	});
+});
+
+describe('readFoldersFromSourceControlFile', () => {
+	beforeEach(() => {
+		// Reset module registry so we can unmock properly
+		jest.resetModules();
+		jest.unmock('node:fs/promises');
+	});
+
+	it('should return default folders if the file path is not valid', async () => {
+		const filePath = 'invalid/path/folders.json';
+		// Import the function after resetting modules
+		const { readFoldersFromSourceControlFile } = await import(
+			'@/environments.ee/source-control/source-control-helper.ee'
+		);
+		const result = await readFoldersFromSourceControlFile(filePath);
+		expect(result).toEqual({
+			folders: [],
+		});
+	});
+});

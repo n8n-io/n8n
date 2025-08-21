@@ -15,6 +15,7 @@ export const setupMessages = (executionId: string, workflowName: string): EventM
 				workflowName,
 				nodeName: 'When clicking "Execute workflow"',
 				nodeType: 'n8n-nodes-base.manualTrigger',
+				nodeId: '123',
 			},
 		}),
 		new EventMessageNode({
@@ -24,6 +25,7 @@ export const setupMessages = (executionId: string, workflowName: string): EventM
 				workflowName,
 				nodeName: 'When clicking "Execute workflow"',
 				nodeType: 'n8n-nodes-base.manualTrigger',
+				nodeId: '123',
 			},
 		}),
 		new EventMessageNode({
@@ -33,6 +35,7 @@ export const setupMessages = (executionId: string, workflowName: string): EventM
 				workflowName,
 				nodeName: 'DebugHelper',
 				nodeType: 'n8n-nodes-base.debugHelper',
+				nodeId: '123',
 			},
 		}),
 	];

@@ -1,11 +1,11 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { TaskRunnersConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
-import { Logger } from 'n8n-core';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 
 import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
 import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
-import { mockInstance } from '@test/mocking';
 
 import type { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events';
 
@@ -26,6 +26,7 @@ describe('TaskRunnerProcess', () => {
 	const runnerConfig = mockInstance(TaskRunnersConfig);
 	runnerConfig.enabled = true;
 	runnerConfig.mode = 'internal';
+	runnerConfig.insecureMode = false;
 	const authService = mock<TaskBrokerAuthService>();
 	let taskRunnerProcess = new TaskRunnerProcess(logger, runnerConfig, authService, mock());
 
@@ -78,7 +79,7 @@ describe('TaskRunnerProcess', () => {
 			'DEPLOYMENT_NAME',
 			'NODE_PATH',
 			'GENERIC_TIMEZONE',
-			'N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION',
+			'N8N_RUNNERS_INSECURE_MODE',
 		])('should propagate %s from env as is', async (envVar) => {
 			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
 			process.env[envVar] = 'custom value';
@@ -150,7 +151,7 @@ describe('TaskRunnerProcess', () => {
 			);
 		});
 
-		it('should use --disallow-code-generation-from-strings and --disable-proto=delete flags', async () => {
+		it('on secure mode, should use --disallow-code-generation-from-strings and --disable-proto=delete flags', async () => {
 			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
 
 			await taskRunnerProcess.start();
@@ -158,6 +159,23 @@ describe('TaskRunnerProcess', () => {
 			expect(spawnMock.mock.calls[0].at(1)).toEqual([
 				'--disallow-code-generation-from-strings',
 				'--disable-proto=delete',
+				expect.stringContaining('/packages/@n8n/task-runner/dist/start.js'),
+			]);
+		});
+
+		it('on insecure mode, should not use --disallow-code-generation-from-strings and --disable-proto=delete flags', async () => {
+			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			runnerConfig.insecureMode = true;
+			const insecureTaskRunnerProcess = new TaskRunnerProcess(
+				logger,
+				runnerConfig,
+				authService,
+				mock(),
+			);
+
+			await insecureTaskRunnerProcess.start();
+
+			expect(spawnMock.mock.calls[0].at(1)).toEqual([
 				expect.stringContaining('/packages/@n8n/task-runner/dist/start.js'),
 			]);
 		});

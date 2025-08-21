@@ -15,6 +15,9 @@
                 }
             }
         },
+        "description": {
+            "type": "string"
+        },
         "end": {
             "type": "object",
             "properties": {
@@ -47,9 +50,6 @@
         "organizer": {
             "type": "object",
             "properties": {
-                "displayName": {
-                    "type": "string"
-                },
                 "email": {
                     "type": "string"
                 },
@@ -90,5 +90,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 5
 }

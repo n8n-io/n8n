@@ -4,10 +4,10 @@ import {
 	AI_CATEGORY_TOOLS,
 	AI_SUBCATEGORY,
 	CUSTOM_API_CALL_KEY,
-	EVALUATION_TRIGGER,
 	HTTP_REQUEST_NODE_TYPE,
 } from '@/constants';
-import { memoize, startCase } from 'lodash-es';
+import memoize from 'lodash/memoize';
+import startCase from 'lodash/startCase';
 import type {
 	ICredentialType,
 	INodeProperties,
@@ -16,11 +16,11 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { i18n } from '@/plugins/i18n';
+import { i18n } from '@n8n/i18n';
 
 import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../utils';
-import { usePostHog } from '@/stores/posthog.store';
+import { useEvaluationStore } from '@/stores/evaluation.store.ee';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -77,7 +77,7 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: stri
 }
 
 function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription[] {
-	if (!!nodeTypeDescription.properties.find((property) => property.name === 'resource')) return [];
+	if (nodeTypeDescription.properties.find((property) => property.name === 'resource')) return [];
 
 	const matchedProperty = nodeTypeDescription.properties.find(
 		(property) => property.name?.toLowerCase() === 'operation',
@@ -332,15 +332,10 @@ export function useActionsGenerator() {
 		nodeTypes: INodeTypeDescription[],
 		httpOnlyCredentials: ICredentialType[],
 	) {
-		const posthogStore = usePostHog();
-
-		const isEvaluationVariantEnabled = posthogStore.isVariantEnabled(
-			EVALUATION_TRIGGER.name,
-			EVALUATION_TRIGGER.variant,
-		);
+		const evaluationStore = useEvaluationStore();
 
 		const visibleNodeTypes = nodeTypes.filter((node) => {
-			if (isEvaluationVariantEnabled) {
+			if (evaluationStore.isEvaluationEnabled) {
 				return true;
 			}
 			return (

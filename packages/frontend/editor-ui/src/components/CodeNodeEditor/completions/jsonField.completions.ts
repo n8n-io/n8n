@@ -3,7 +3,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { isAllowedInDotNotation } from '@/plugins/codemirror/completions/utils';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { IPinData, IRunData, IDataObject } from 'n8n-workflow';
 
 function useJsonFieldCompletions() {
@@ -174,8 +174,7 @@ function useJsonFieldCompletions() {
 		try {
 			const activeNode = ndvStore.activeNode;
 			if (activeNode) {
-				const workflow = workflowsStore.getCurrentWorkflow();
-				const input = workflow.connectionsByDestinationNode[activeNode.name];
+				const input = workflowsStore.connectionsByDestinationNode[activeNode.name];
 				return input.main[0] ? input.main[0][0].node : null;
 			}
 		} catch (e) {

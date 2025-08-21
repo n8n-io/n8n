@@ -12,7 +12,7 @@ import {
 	type SchemaNode,
 } from '@/composables/useDataSchema';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -42,9 +42,10 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { isEmpty } from '@/utils/typesUtils';
 import { asyncComputed } from '@vueuse/core';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import { pick } from 'lodash-es';
+import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import { I18nT } from 'vue-i18n';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -116,11 +117,24 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 		}))
 		.filter(({ runIndex }) => runIndex !== -1);
 
-	// If outputIndex is specified, only use data from that specific output branch
-	const filteredOutputsWithData =
-		props.outputIndex !== undefined
-			? connectedOutputsWithData.filter(({ outputIndex }) => outputIndex === props.outputIndex)
-			: connectedOutputsWithData;
+	// For connected nodes with multiple outputs that connect to the current node,
+	// filter by outputIndex if it's specified and matches one of the connected outputs
+	// This ensures we show the correct branch when viewing multi-output nodes like SplitInBatches
+	let filteredOutputsWithData = connectedOutputsWithData;
+
+	// Only apply outputIndex filtering if:
+	// 1. outputIndex is specified
+	// 2. The node has multiple connected outputs
+	// 3. The specified outputIndex is one of the connected outputs
+	if (
+		props.outputIndex !== undefined &&
+		connectedOutputIndexes.length > 1 &&
+		connectedOutputIndexes.includes(props.outputIndex)
+	) {
+		filteredOutputsWithData = connectedOutputsWithData.filter(
+			({ outputIndex }) => outputIndex === props.outputIndex,
+		);
+	}
 
 	const nodeData = filteredOutputsWithData
 		.map(({ outputIndex, runIndex }) =>
@@ -193,7 +207,8 @@ const contextItems = computed(() => {
 		return [];
 	}
 
-	const fields: Renders[] = flattenSchema({ schema, depth: 1 }).flatMap((renderItem) => {
+	const flatSchema = flattenSchema({ schema, depth: 1, isDataEmpty: false });
+	const fields: Renders[] = flatSchema.flatMap((renderItem) => {
 		const isVars =
 			renderItem.type === 'item' && renderItem.depth === 1 && renderItem.title === '$vars';
 
@@ -320,7 +335,14 @@ const flattenedNodes = computed(() =>
 );
 
 const flattenNodeSchema = computed(() =>
-	nodeSchema.value ? flattenSchema({ schema: nodeSchema.value, depth: 0, level: -1 }) : [],
+	nodeSchema.value
+		? flattenSchema({
+				schema: nodeSchema.value,
+				depth: 0,
+				level: -1,
+				isDataEmpty: props.data.length === 0,
+			})
+		: [],
 );
 
 /**
@@ -337,7 +359,7 @@ const items = computed(() => {
 });
 
 const noSearchResults = computed(() => {
-	return Boolean(props.search.trim()) && !Boolean(items.value.length);
+	return Boolean(props.search.trim()) && !items.value.length;
 });
 
 watch(
@@ -399,7 +421,7 @@ const onDragEnd = (el: HTMLElement) => {
 
 		void useExternalHooks().run('runDataJson.onDragEnd', telemetryPayload);
 
-		telemetry.track('User dragged data for mapping', telemetryPayload, { withPostHog: true });
+		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 250); // ensure dest data gets set if drop
 };
 </script>
@@ -409,13 +431,13 @@ const onDragEnd = (el: HTMLElement) => {
 		<div v-if="noSearchResults" class="no-results">
 			<N8nText tag="h3" size="large">{{ i18n.baseText('ndv.search.noNodeMatch.title') }}</N8nText>
 			<N8nText>
-				<i18n-t keypath="ndv.search.noMatchSchema.description" tag="span">
+				<I18nT keypath="ndv.search.noMatchSchema.description" tag="span" scope="global">
 					<template #link>
 						<a href="#" @click="emit('clear:search')">
 							{{ i18n.baseText('ndv.search.noMatchSchema.description.link') }}
 						</a>
 					</template>
-				</i18n-t>
+				</I18nT>
 			</N8nText>
 		</div>
 
@@ -465,7 +487,7 @@ const onDragEnd = (el: HTMLElement) => {
 						</VirtualSchemaItem>
 
 						<N8nTooltip v-else-if="item.type === 'icon'" :content="item.tooltip" placement="top">
-							<N8nIcon :size="14" :icon="item.icon" class="icon" />
+							<N8nIcon size="small" :icon="item.icon" class="icon" />
 						</N8nTooltip>
 
 						<div
@@ -480,10 +502,11 @@ const onDragEnd = (el: HTMLElement) => {
 							:style="{ '--schema-level': item.level }"
 						>
 							<N8nText tag="div" size="small">
-								<i18n-t
+								<I18nT
 									v-if="item.key === 'executeSchema'"
 									tag="span"
 									keypath="dataMapping.schemaView.executeSchema"
+									scope="global"
 								>
 									<template #link>
 										<NodeExecuteButton
@@ -497,8 +520,13 @@ const onDragEnd = (el: HTMLElement) => {
 											:class="$style.executeButton"
 										/>
 									</template>
-								</i18n-t>
-								<i18n-t v-else tag="span" :keypath="`dataMapping.schemaView.${item.key}`" />
+								</I18nT>
+								<I18nT
+									v-else
+									tag="span"
+									:keypath="`dataMapping.schemaView.${item.key}`"
+									scope="global"
+								/>
 							</N8nText>
 						</div>
 					</DynamicScrollerItem>
@@ -524,7 +552,7 @@ const onDragEnd = (el: HTMLElement) => {
 }
 
 .scroller {
-	padding: 0 var(--spacing-s);
+	padding: 0 var(--ndv-spacing);
 	padding-bottom: var(--spacing-2xl);
 
 	.compact & {
@@ -540,14 +568,14 @@ const onDragEnd = (el: HTMLElement) => {
 	text-align: center;
 	height: 100%;
 	gap: var(--spacing-2xs);
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-xl) var(--spacing-s);
+	padding: var(--ndv-spacing) var(--ndv-spacing) var(--spacing-xl) var(--ndv-spacing);
 }
 
 .icon {
 	display: inline-flex;
 	margin-left: var(--spacing-xl);
 	color: var(--color-text-light);
-	margin-bottom: var(--spacing-s);
+	margin-bottom: var(--ndv-spacing);
 }
 
 .notice {
@@ -555,9 +583,6 @@ const onDragEnd = (el: HTMLElement) => {
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
-}
-
-.notice {
 	margin-left: calc(var(--spacing-l) * var(--schema-level));
 }
 

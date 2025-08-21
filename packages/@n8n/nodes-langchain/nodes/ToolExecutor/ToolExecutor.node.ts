@@ -75,8 +75,8 @@ export class ToolExecutor implements INodeType {
 					}
 				} else {
 					// Handle single tool
-					if (!toolName || toolName === (tool as Tool).name) {
-						const result = await executeTool(tool as Tool, parsedQuery);
+					if (!toolName || toolName === tool.name) {
+						const result = await executeTool(tool, parsedQuery);
 						resultData.push(result);
 					}
 				}

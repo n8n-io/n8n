@@ -29,9 +29,10 @@ import {
 } from './utils/binary-helper-functions';
 import { constructExecutionMetaData } from './utils/construct-execution-metadata';
 import { copyInputItems } from './utils/copy-input-items';
+import { getDataStoreHelperFunctions } from './utils/data-store-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
-// eslint-disable-next-line import/no-cycle
+// eslint-disable-next-line import-x/no-cycle
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { normalizeItems } from './utils/normalize-items';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
@@ -88,6 +89,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getDataStoreHelperFunctions(additionalData, workflow, node),
 			...getDeduplicationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
@@ -176,6 +178,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	addInputData(
 		connectionType: AINodeConnectionType,
 		data: INodeExecutionData[][],
+		runIndex?: number,
 	): { index: number } {
 		const nodeName = this.node.name;
 		const currentNodeRunIndex = this.getNextRunIndex();
@@ -186,6 +189,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			connectionType,
 			nodeName,
 			currentNodeRunIndex,
+			undefined,
+			runIndex,
 		).catch((error) => {
 			this.logger.warn(
 				`There was a problem logging input data of node "${nodeName}": ${
@@ -204,6 +209,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		currentNodeRunIndex: number,
 		data: INodeExecutionData[][] | ExecutionBaseError,
 		metadata?: ITaskMetadata,
+		sourceNodeRunIndex?: number,
 	): void {
 		const nodeName = this.node.name;
 		this.addExecutionDataFunctions(
@@ -213,6 +219,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			nodeName,
 			currentNodeRunIndex,
 			metadata,
+			sourceNodeRunIndex,
 		).catch((error) => {
 			this.logger.warn(
 				`There was a problem logging output data of node "${nodeName}": ${
@@ -230,17 +237,23 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		sourceNodeName: string,
 		currentNodeRunIndex: number,
 		metadata?: ITaskMetadata,
+		sourceNodeRunIndex?: number,
 	): Promise<void> {
 		const {
 			additionalData,
 			runExecutionData,
-			runIndex: sourceNodeRunIndex,
+			runIndex: currentRunIndex,
 			node: { name: nodeName },
 		} = this;
 
 		let taskData: ITaskData | undefined;
 		const source: ISourceData[] = this.parentNode
-			? [{ previousNode: this.parentNode.name, previousNodeRun: sourceNodeRunIndex }]
+			? [
+					{
+						previousNode: this.parentNode.name,
+						previousNodeRun: sourceNodeRunIndex ?? currentRunIndex,
+					},
+				]
 			: [];
 
 		if (type === 'input') {
@@ -313,14 +326,13 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				runExecutionData.executionData!.metadata[sourceNodeName] = [];
 				sourceTaskData = runExecutionData.executionData!.metadata[sourceNodeName];
 			}
-
-			if (!sourceTaskData[sourceNodeRunIndex]) {
-				sourceTaskData[sourceNodeRunIndex] = {
+			if (!sourceTaskData[currentNodeRunIndex]) {
+				sourceTaskData[currentNodeRunIndex] = {
 					subRun: [],
 				};
 			}
 
-			sourceTaskData[sourceNodeRunIndex].subRun!.push({
+			sourceTaskData[currentNodeRunIndex].subRun!.push({
 				node: nodeName,
 				runIndex: currentNodeRunIndex,
 			});

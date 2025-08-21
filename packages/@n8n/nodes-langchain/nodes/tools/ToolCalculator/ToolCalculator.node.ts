@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { Calculator } from '@langchain/community/tools/calculator';
 import {
 	NodeConnectionTypes,
@@ -37,9 +36,9 @@ export class ToolCalculator implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		properties: [getConnectionHintNoticeField([NodeConnectionTypes.AiAgent])],

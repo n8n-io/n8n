@@ -1,30 +1,51 @@
-import { createComponentRenderer } from '@/__tests__/render';
-
-import NodeErrorView from '@/components/Error/NodeErrorView.vue';
-
+import { reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 import type { NodeError } from 'n8n-workflow';
+import { mockedStore } from '@/__tests__/utils';
+import { createComponentRenderer } from '@/__tests__/render';
+import type { IExecutionResponse } from '@/Interface';
+import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { mockedStore } from '@/__tests__/utils';
-import userEvent from '@testing-library/user-event';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
-const renderComponent = createComponentRenderer(NodeErrorView);
+const mockRouterResolve = vi.fn(() => ({
+	href: '',
+}));
+
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		resolve: mockRouterResolve,
+	}),
+	useRoute: () => reactive({ meta: {} }),
+	RouterLink: vi.fn(),
+}));
+
+// Mock window.open
+Object.defineProperty(window, 'open', {
+	value: vi.fn(),
+	writable: true,
+});
 
 let mockAiAssistantStore: ReturnType<typeof mockedStore<typeof useAssistantStore>>;
 let mockNodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
-let mockNdvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+let mockNDVStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+let mockWorkflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+
+const renderComponent = createComponentRenderer(NodeErrorView);
 
 describe('NodeErrorView.vue', () => {
 	let error: NodeError;
 
 	beforeEach(() => {
 		createTestingPinia();
-
 		mockAiAssistantStore = mockedStore(useAssistantStore);
 		mockNodeTypeStore = mockedStore(useNodeTypesStore);
-		mockNdvStore = mockedStore(useNDVStore);
+		mockNDVStore = mockedStore(useNDVStore);
+		mockWorkflowsStore = mockedStore(useWorkflowsStore);
+
 		//@ts-expect-error
 		error = {
 			name: 'NodeOperationError',
@@ -59,7 +80,7 @@ describe('NodeErrorView.vue', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders an Error with a messages array', async () => {
+	it('renders an Error with a messages array', () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				error: {
@@ -74,7 +95,7 @@ describe('NodeErrorView.vue', () => {
 		expect(errorMessage).toHaveTextContent('Unexpected identifier [line 1]');
 	});
 
-	it('renders an Error with a message string', async () => {
+	it('renders an Error with a message string', () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				error: {
@@ -89,8 +110,8 @@ describe('NodeErrorView.vue', () => {
 		expect(errorMessage).toHaveTextContent('Unexpected identifier [line 1]');
 	});
 
-	it('should not render AI assistant button when error happens in deprecated function node', async () => {
-		//@ts-expect-error
+	it('should not render AI assistant button when error happens in deprecated function node', () => {
+		// @ts-expect-error - Mock node type store method
 		mockNodeTypeStore.getNodeType = vi.fn(() => ({
 			type: 'n8n-nodes-base.function',
 			typeVersion: 1,
@@ -168,20 +189,111 @@ describe('NodeErrorView.vue', () => {
 		expect(getByTestId('ask-assistant-button')).toBeInTheDocument();
 	});
 
-	it('open error node details when open error node is clicked', async () => {
-		const { getByTestId, emitted } = renderComponent({
-			props: {
-				error: {
-					...error,
-					name: 'NodeOperationError',
-					functionality: 'configuration-node',
+	describe('onOpenErrorNodeDetailClick', () => {
+		it('does nothing when error has no node', async () => {
+			const errorWithoutNode = {
+				name: 'NodeOperationError',
+				functionality: 'configuration-node',
+				message: 'Error without node',
+				node: undefined,
+			};
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					error: errorWithoutNode,
 				},
-			},
+			});
+
+			const button = queryByTestId('node-error-view-open-node-button');
+
+			// If there's no node, button should not render or if it does, clicking it should do nothing
+			if (button) {
+				await userEvent.click(button);
+			}
+
+			expect(window.open).not.toHaveBeenCalled();
+			expect(mockNDVStore.activeNodeName).toBeNull();
 		});
 
-		await userEvent.click(getByTestId('node-error-view-open-node-button'));
+		it('opens new window when error has different workflow and execution IDs', async () => {
+			mockWorkflowsStore.workflowId = 'current-workflow-id';
+			mockWorkflowsStore.getWorkflowExecution = {
+				id: 'current-execution-id',
+			} as IExecutionResponse;
 
-		expect(emitted().click).toHaveLength(1);
-		expect(mockNdvStore.activeNodeName).toBe(error.node.name);
+			const testError = {
+				...error,
+				name: 'NodeOperationError',
+				functionality: 'configuration-node',
+				workflowId: 'different-workflow-id',
+				executionId: 'different-execution-id',
+			};
+
+			const { getByTestId } = renderComponent({
+				props: {
+					error: testError,
+				},
+			});
+
+			const button = getByTestId('node-error-view-open-node-button');
+			await userEvent.click(button);
+
+			expect(mockRouterResolve).toHaveBeenCalledWith({
+				name: 'ExecutionPreview',
+				params: {
+					name: 'different-workflow-id',
+					executionId: 'different-execution-id',
+					nodeId: 'd1ce5dc9-f9ae-4ac6-84e5-0696ba175dd9',
+				},
+			});
+			expect(window.open).toHaveBeenCalled();
+		});
+
+		it('sets active node name when error is in current workflow/execution', async () => {
+			mockWorkflowsStore.workflowId = 'current-workflow-id';
+			mockWorkflowsStore.getWorkflowExecution = {
+				id: 'current-execution-id',
+			} as IExecutionResponse;
+
+			const testError = {
+				...error,
+				name: 'NodeOperationError',
+				functionality: 'configuration-node',
+				workflowId: 'current-workflow-id',
+				executionId: 'current-execution-id',
+			};
+
+			const { getByTestId } = renderComponent({
+				props: {
+					error: testError,
+				},
+			});
+
+			const button = getByTestId('node-error-view-open-node-button');
+			await userEvent.click(button);
+
+			expect(window.open).not.toHaveBeenCalled();
+			expect(mockNDVStore.activeNodeName).toBe('ErrorCode');
+		});
+
+		it('sets active node name when error has no workflow/execution IDs', async () => {
+			const testError = {
+				...error,
+				name: 'NodeOperationError',
+				functionality: 'configuration-node',
+			};
+
+			const { getByTestId } = renderComponent({
+				props: {
+					error: testError,
+				},
+			});
+
+			const button = getByTestId('node-error-view-open-node-button');
+			await userEvent.click(button);
+
+			expect(window.open).not.toHaveBeenCalled();
+			expect(mockNDVStore.activeNodeName).toBe('ErrorCode');
+		});
 	});
 });

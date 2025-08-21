@@ -1,4 +1,4 @@
-import { ShutdownRegistryMetadata } from '@n8n/decorators';
+import { ShutdownMetadata } from '@n8n/decorators';
 import type { ShutdownServiceClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -16,11 +16,11 @@ describe('ShutdownService', () => {
 	let mockComponent: MockComponent;
 	let onShutdownSpy: jest.SpyInstance;
 	const errorReporter = mock<ErrorReporter>();
-	const shutdownRegistryMetadata = Container.get(ShutdownRegistryMetadata);
+	const shutdownMetadata = Container.get(ShutdownMetadata);
 
 	beforeEach(() => {
-		shutdownRegistryMetadata.clear();
-		shutdownService = new ShutdownService(mock(), errorReporter, shutdownRegistryMetadata);
+		shutdownMetadata.clear();
+		shutdownService = new ShutdownService(mock(), errorReporter, shutdownMetadata);
 		mockComponent = new MockComponent();
 		Container.set(MockComponent, mockComponent);
 		onShutdownSpy = jest.spyOn(mockComponent, 'onShutdown');

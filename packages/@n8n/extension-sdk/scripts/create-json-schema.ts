@@ -3,7 +3,7 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 import { writeFile } from 'fs/promises';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { format } from 'prettier';
+import { format, resolveConfig } from 'prettier';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, '..');
@@ -15,7 +15,8 @@ const jsonSchema = zodToJsonSchema(extensionManifestSchema, {
 
 (async () => {
 	const filepath = 'schema.json';
-	const schema = JSON.stringify(jsonSchema, null, 2);
-	const formattedSchema = await format(schema, { filepath: filepath });
+	const schema = JSON.stringify(jsonSchema);
+	const config = await resolveConfig(filepath);
+	const formattedSchema = await format(schema, { ...config, filepath });
 	await writeFile(resolve(rootDir, filepath), formattedSchema);
 })();

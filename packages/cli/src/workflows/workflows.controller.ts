@@ -1,8 +1,10 @@
 import {
 	ImportWorkflowFromUrlDto,
 	ManualRunQueryDto,
+	ROLE,
 	TransferWorkflowBodyDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import {
@@ -13,6 +15,7 @@ import {
 	TagRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	AuthenticatedRequest,
 } from '@n8n/db';
 import {
 	Body,
@@ -31,7 +34,6 @@ import {
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios from 'axios';
 import express from 'express';
-import { Logger } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -45,7 +47,6 @@ import { validateEntity } from '@/generic-helpers';
 import type { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
-import { AuthenticatedRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import { FolderService } from '@/services/folder.service';
 import { NamingService } from '@/services/naming.service';
@@ -169,6 +170,7 @@ export class WorkflowsController {
 						project.id,
 						transactionManager,
 					);
+					// @ts-ignore CAT-957
 					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
 				} catch {}
 			}
@@ -557,5 +559,32 @@ export class WorkflowsController {
 			body.shareCredentials,
 			body.destinationParentFolderId,
 		);
+	}
+
+	@Post('/with-node-types')
+	async getWorkflowsWithNodesIncluded(req: AuthenticatedRequest, res: express.Response) {
+		try {
+			const hasPermission = req.user.role === ROLE.Owner || req.user.role === ROLE.Admin;
+
+			if (!hasPermission) {
+				res.json({ data: [], count: 0 });
+				return;
+			}
+
+			const { nodeTypes } = req.body as { nodeTypes: string[] };
+			const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(
+				req.user,
+				nodeTypes,
+			);
+
+			res.json({
+				data: workflows,
+				count: workflows.length,
+			});
+		} catch (maybeError) {
+			const error = utils.toError(maybeError);
+			ResponseHelper.reportError(error);
+			ResponseHelper.sendErrorResponse(res, error);
+		}
 	}
 }

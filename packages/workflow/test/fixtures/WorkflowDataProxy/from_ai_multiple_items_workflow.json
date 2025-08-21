@@ -69,7 +69,7 @@
 		},
 		{
 			"parameters": {
-				"notice_tip": "",
+				"aiAgentStarterCallout": "",
 				"agent": "toolsAgent",
 				"promptType": "define",
 				"text": "=Add this user to my Users sheet:\n{{ $json.toJsonString() }}",

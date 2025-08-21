@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import callsites from 'callsites';
 import glob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 import type {
 	ICredentialDataDecryptedObject,
 	IRun,
@@ -210,6 +210,8 @@ export class NodeTestHarness {
 		hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
 
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({
+			executionId: '1',
+			webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
 			hooks,
 			// Get from node.parameters
 			currentNodeParameters: undefined,

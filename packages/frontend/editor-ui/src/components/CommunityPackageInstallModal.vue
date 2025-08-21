@@ -11,7 +11,7 @@ import { useToast } from '@/composables/useToast';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const communityNodesStore = useCommunityNodesStore();
@@ -110,7 +110,7 @@ const onLearnMoreLinkClick = () => {
 				</div>
 				<n8n-button
 					:label="i18n.baseText('settings.communityNodes.browseButton.label')"
-					icon="external-link-alt"
+					icon="external-link"
 					:class="$style.browseButton"
 					@click="openNPMPage"
 				/>

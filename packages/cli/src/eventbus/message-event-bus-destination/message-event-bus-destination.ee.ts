@@ -1,6 +1,6 @@
+import { Logger } from '@n8n/backend-common';
 import { EventDestinationsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Logger } from 'n8n-core';
 import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';

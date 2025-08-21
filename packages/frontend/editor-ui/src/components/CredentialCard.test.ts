@@ -63,7 +63,7 @@ describe('CredentialCard', () => {
 		expect(badge).toHaveTextContent('John Doe');
 	});
 
-	it('should show Move action only if there is resource permission and not on community plan', async () => {
+	it('should show Change owner action only if there is resource permission and not on community plan', async () => {
 		vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
 
 		const data = createCredential({
@@ -84,7 +84,7 @@ describe('CredentialCard', () => {
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		expect(actions).toHaveTextContent('Move');
+		expect(actions).toHaveTextContent('Change owner');
 	});
 
 	it('should set readOnly variant based on prop', () => {

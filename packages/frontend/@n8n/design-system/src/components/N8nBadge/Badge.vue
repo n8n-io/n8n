@@ -1,20 +1,10 @@
 <script lang="ts" setup>
-import type { TextSize } from '@n8n/design-system/types/text';
+import type { TextSize, BadgeTheme } from '@n8n/design-system/types/';
 
 import N8nText from '../N8nText';
 
-const THEME = [
-	'default',
-	'success',
-	'warning',
-	'danger',
-	'primary',
-	'secondary',
-	'tertiary',
-] as const;
-
 interface BadgeProps {
-	theme?: (typeof THEME)[number];
+	theme?: BadgeTheme;
 	size?: TextSize;
 	bold?: boolean;
 	showBorder?: boolean;

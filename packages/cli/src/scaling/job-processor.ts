@@ -1,12 +1,14 @@
 import type { RunningJobSummary } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { WorkflowHasIssuesError, InstanceSettings, WorkflowExecute, Logger } from 'n8n-core';
+import { WorkflowHasIssuesError, InstanceSettings, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionStatus,
 	IExecuteResponsePromiseData,
 	IRun,
 	IWorkflowExecutionDataProcess,
+	StructuredChunk,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -24,6 +26,7 @@ import type {
 	JobResult,
 	RespondToWebhookMessage,
 	RunningJob,
+	SendChunkMessage,
 } from './scaling.types';
 
 /**
@@ -69,6 +72,7 @@ export class JobProcessor {
 
 		this.logger.info(`Worker started execution ${executionId} (job ${job.id})`, {
 			executionId,
+			workflowId,
 			jobId: job.id,
 		});
 
@@ -118,6 +122,7 @@ export class JobProcessor {
 			undefined,
 			executionTimeoutTimestamp,
 		);
+		additionalData.streamingEnabled = job.data.streamingEnabled;
 
 		const { pushRef } = job.data;
 
@@ -148,12 +153,28 @@ export class JobProcessor {
 			await job.progress(msg);
 		});
 
+		lifecycleHooks.addHandler('sendChunk', async (chunk: StructuredChunk): Promise<void> => {
+			const msg: SendChunkMessage = {
+				kind: 'send-chunk',
+				executionId,
+				chunkText: chunk,
+				workerId: this.instanceSettings.hostId,
+			};
+
+			await job.progress(msg);
+		});
+
 		additionalData.executionId = executionId;
 
 		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
 			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
 			this.logger.debug(
 				`Queued worker execution status for execution ${executionId} (job ${job.id}) is "${status}"`,
+				{
+					executionId,
+					workflowId,
+					jobId: job.id,
+				},
 			);
 		};
 
@@ -227,6 +248,7 @@ export class JobProcessor {
 
 		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
 			executionId,
+			workflowId,
 			jobId: job.id,
 		});
 

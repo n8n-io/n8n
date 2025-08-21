@@ -1,7 +1,13 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import CanvasStopCurrentExecutionButton from './CanvasStopCurrentExecutionButton.vue';
 
-const renderComponent = createComponentRenderer(CanvasStopCurrentExecutionButton);
+const renderComponent = createComponentRenderer(CanvasStopCurrentExecutionButton, {
+	global: {
+		stubs: {
+			N8nIconButton: true,
+		},
+	},
+});
 
 describe('CanvasStopCurrentExecutionButton', () => {
 	it('should render correctly', () => {

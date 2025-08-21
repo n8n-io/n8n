@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { sortBy } from 'lodash-es';
+import sortBy from 'lodash/sortBy';
 import type { Router } from 'vue-router';
 import { VIEWS } from '@/constants';
 

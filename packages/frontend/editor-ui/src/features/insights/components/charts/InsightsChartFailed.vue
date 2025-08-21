@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { generateBarChartOptions } from '@/features/insights/chartjs.utils';
 import { GRANULARITY_DATE_FORMAT_MASK } from '@/features/insights/insights.constants';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
@@ -53,7 +53,5 @@ const chartData = computed<ChartData<'bar'>>(() => {
 </script>
 
 <template>
-	<Bar :data="chartData" :options="chartOptions" />
+	<Bar data-test-id="insights-chart-failed" :data="chartData" :options="chartOptions" />
 </template>
-
-<style lang="scss" module></style>

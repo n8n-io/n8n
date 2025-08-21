@@ -28,8 +28,29 @@ export async function LoadPyodide(packageCacheDir: string): Promise<PyodideInter
 		)) as PyodideInterface;
 
 		await pyodideInstance.runPythonAsync(`
+import os
+
+def blocked_function(*args, **kwargs):
+    raise RuntimeError("Blocked for security reasons")
+
+os.system = blocked_function
+
+from importlib.abc import MetaPathFinder
+from importlib.machinery import ModuleSpec
+from types import ModuleType
+from typing import Sequence, Optional
+
 from _pyodide_core import jsproxy_typedict
 from js import Object
+
+Object.constructor.constructor = blocked_function
+
+import sys
+class blocked_module:
+    def __getattr__(self, name):
+        blocked_function()
+
+sys.modules['js'] = blocked_module()
 `);
 	}
 

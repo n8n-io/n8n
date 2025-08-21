@@ -1,6 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { BinaryData } from 'n8n-core';
-import { BinaryDataConfig, BinaryDataService, Logger } from 'n8n-core';
+import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
 import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
 /**
@@ -57,7 +58,7 @@ export async function restoreBinaryDataId(
 		const error = e instanceof Error ? e : new Error(`${e}`);
 		const logger = Container.get(Logger);
 
-		if (error.message.includes('ENOENT')) {
+		if (typeof error.message === 'string' && error.message.includes('ENOENT')) {
 			logger.warn('Failed to restore binary data ID - No such file or dir', {
 				executionId,
 				error,

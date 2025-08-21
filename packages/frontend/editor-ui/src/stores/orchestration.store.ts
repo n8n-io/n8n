@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import type { WorkerStatus } from '@n8n/api-types';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { sendGetWorkerStatus } from '../api/orchestration';
+import { sendGetWorkerStatus } from '@n8n/rest-api-client/api/orchestration';
 
 export const WORKER_HISTORY_LENGTH = 100;
 const STALE_SECONDS = 120 * 1000;
@@ -14,7 +14,7 @@ export interface IOrchestrationStoreState {
 		[id: string]: IWorkerHistoryItem[];
 	};
 	workersLastUpdated: { [id: string]: number };
-	statusInterval: NodeJS.Timer | null;
+	statusInterval: NodeJS.Timeout | null;
 }
 
 export interface IWorkerHistoryItem {

@@ -4,8 +4,8 @@ import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import type { ITagRow } from '@/Interface';
 import { onMounted, ref, watch } from 'vue';
 import { N8nInput } from '@n8n/design-system';
-import type { BaseTextKey } from '@/plugins/i18n';
-import { useI18n } from '@/composables/useI18n';
+import type { BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 
 interface Props {
 	rows: ITagRow[];
@@ -118,7 +118,7 @@ const focusOnCreate = (): void => {
 watch(
 	() => props.rows,
 	(newValue: ITagRow[] | undefined) => {
-		if (newValue?.[0] && newValue[0].create) {
+		if (newValue?.[0]?.create) {
 			focusOnCreate();
 		}
 	},
@@ -229,7 +229,7 @@ onMounted(() => {
 						<n8n-icon-button
 							v-if="scope.row.canDelete"
 							:title="i18n.baseText('tagsTable.deleteTag')"
-							icon="trash"
+							icon="trash-2"
 							data-test-id="delete-tag-button"
 							@click.stop="enableDelete(scope.row)"
 						/>

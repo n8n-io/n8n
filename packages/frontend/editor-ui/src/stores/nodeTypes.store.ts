@@ -5,11 +5,15 @@ import type {
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
-import * as nodeTypesApi from '@/api/nodeTypes';
-import { HTTP_REQUEST_NODE_TYPE, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
+import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
+import {
+	HTTP_REQUEST_NODE_TYPE,
+	CREDENTIAL_ONLY_HTTP_NODE_VERSION,
+	MODULE_ENABLED_NODES,
+} from '@/constants';
 import { STORES } from '@n8n/stores';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
-import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
+import { addHeaders, addNodeTranslation } from '@n8n/i18n';
 import { omit } from '@/utils/typesUtils';
 import type {
 	INode,
@@ -85,6 +89,24 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			.filter(Boolean);
 	});
 
+	// Nodes defined with `hidden: true` that are still shown if their modules are enabled
+	const moduleEnabledNodeTypes = computed<INodeTypeDescription[]>(() => {
+		return MODULE_ENABLED_NODES.flatMap((node) => {
+			const nodeVersions = nodeTypes.value[node.nodeType] ?? {};
+			const versionNumbers = Object.keys(nodeVersions).map(Number);
+			const latest = nodeVersions[Math.max(...versionNumbers)];
+
+			if (latest?.hidden && settingsStore.isModuleActive(node.module)) {
+				return {
+					...latest,
+					hidden: undefined,
+				};
+			}
+
+			return [];
+		});
+	});
+
 	const getNodeType = computed(() => {
 		return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
 			if (utils.isCredentialOnlyNodeType(nodeTypeName)) {
@@ -155,7 +177,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 				return outputTypes.includes(NodeConnectionTypes.AiTool);
 			} else {
-				return nodeType?.outputs.includes(NodeConnectionTypes.AiTool);
+				return nodeType?.outputs.includes(NodeConnectionTypes.AiTool) ?? false;
 			}
 		};
 	});
@@ -169,6 +191,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	const visibleNodeTypes = computed(() => {
 		return allLatestNodeTypes.value
 			.concat(officialCommunityNodeTypes.value)
+			.concat(moduleEnabledNodeTypes.value)
 			.filter((nodeType) => !nodeType.hidden);
 	});
 
@@ -366,7 +389,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	};
 
 	const fetchCommunityNodePreviews = async () => {
-		if (!settingsStore.isCommunityNodesFeatureEnabled) {
+		if (!settingsStore.isCommunityNodesFeatureEnabled || settingsStore.isPreviewMode) {
 			return;
 		}
 		try {

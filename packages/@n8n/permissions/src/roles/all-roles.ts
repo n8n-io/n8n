@@ -5,7 +5,7 @@ import {
 	WORKFLOW_SHARING_SCOPE_MAP,
 } from './role-maps.ee';
 import type { AllRolesMap, AllRoleTypes, Scope } from '../types.ee';
-import { getRoleScopes } from '../utilities/getRoleScopes.ee';
+import { getRoleScopes } from '../utilities/get-role-scopes.ee';
 
 const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	'global:owner': 'Owner',
@@ -26,6 +26,7 @@ const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(roles: Record<T, Sco
 		role,
 		name: ROLE_NAMES[role],
 		scopes: getRoleScopes(role),
+		description: ROLE_NAMES[role],
 		licensed: false,
 	}));
 

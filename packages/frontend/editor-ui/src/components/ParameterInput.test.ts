@@ -14,12 +14,8 @@ import { createMockEnterpriseSettings } from '@/__tests__/mocks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
 
-let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
-let mockNodeTypesState: Partial<ReturnType<typeof useNodeTypesStore>>;
-let mockCompletionResult: Partial<CompletionResult>;
-
-beforeEach(() => {
-	mockNdvState = {
+function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
+	return {
 		hasInputData: true,
 		activeNode: {
 			id: faker.string.uuid(),
@@ -31,10 +27,27 @@ beforeEach(() => {
 		},
 		isInputPanelEmpty: false,
 		isOutputPanelEmpty: false,
+		ndvInputDataWithPinnedData: [],
+		getHoveringItem: undefined,
+		expressionOutputItemIndex: 0,
+		isTableHoverOnboarded: false,
+		setHighlightDraggables: vi.fn(),
 	};
-	mockNodeTypesState = {
+}
+
+function getNodeTypesStateMock(): Partial<ReturnType<typeof useNodeTypesStore>> {
+	return {
 		allNodeTypes: [],
 	};
+}
+
+let mockNdvState = getNdvStateMock();
+let mockNodeTypesState = getNodeTypesStateMock();
+let mockCompletionResult: Partial<CompletionResult> = {};
+
+beforeEach(() => {
+	mockNdvState = getNdvStateMock();
+	mockNodeTypesState = getNodeTypesStateMock();
 	mockCompletionResult = {};
 	createAppModals();
 });
@@ -92,6 +105,11 @@ describe('ParameterInput.vue', () => {
 			},
 			isInputPanelEmpty: false,
 			isOutputPanelEmpty: false,
+			ndvInputDataWithPinnedData: [],
+			getHoveringItem: undefined,
+			expressionOutputItemIndex: 0,
+			isTableHoverOnboarded: false,
+			setHighlightDraggables: vi.fn(),
 		};
 		mockNodeTypesState = {
 			allNodeTypes: [],
@@ -224,39 +242,65 @@ describe('ParameterInput.vue', () => {
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
 	});
 
-	test('should correctly handle paste events', async () => {
-		const { container, emitted } = renderComponent({
-			props: {
-				path: 'tag',
-				parameter: {
-					displayName: 'Tag',
-					name: 'tag',
-					type: 'string',
-				},
-				modelValue: '',
-			},
-		});
-		const input = container.querySelector('input') as HTMLInputElement;
-		expect(input).toBeInTheDocument();
-		await userEvent.click(input);
-
-		async function paste(text: string) {
+	describe('paste events', () => {
+		async function paste(input: HTMLInputElement, text: string) {
 			const expression = new DataTransfer();
 			expression.setData('text', text);
 			await userEvent.clear(input);
 			await userEvent.paste(expression);
 		}
 
-		await paste('foo');
-		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
+		test('should handle pasting into a string parameter', async () => {
+			const { container, emitted } = renderComponent({
+				props: {
+					path: 'tag',
+					parameter: {
+						displayName: 'Tag',
+						name: 'tag',
+						type: 'string',
+					},
+					modelValue: '',
+				},
+			});
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeInTheDocument();
+			await userEvent.click(input);
 
-		await paste('={{ $json.foo }}');
-		expect(emitted('update')).toContainEqual([
-			expect.objectContaining({ value: '={{ $json.foo }}' }),
-		]);
+			await paste(input, 'foo');
+			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]);
 
-		await paste('=flDvzj%y1nP');
-		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: '==flDvzj%y1nP' })]);
+			await paste(input, '={{ $json.foo }}');
+			expect(emitted('update')).toContainEqual([
+				expect.objectContaining({ value: '={{ $json.foo }}' }),
+			]);
+
+			await paste(input, '=flDvzj%y1nP');
+			expect(emitted('update')).toContainEqual([
+				expect.objectContaining({ value: '==flDvzj%y1nP' }),
+			]);
+		});
+
+		test('should handle pasting an expression into a number parameter', async () => {
+			const { container, emitted } = renderComponent({
+				props: {
+					path: 'percentage',
+					parameter: {
+						displayName: 'Percentage',
+						name: 'percentage',
+						type: 'number',
+					},
+					modelValue: 1,
+				},
+			});
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeInTheDocument();
+			await userEvent.click(input);
+
+			await paste(input, '{{ $json.foo }}');
+			expect(emitted('update')).toContainEqual([
+				expect.objectContaining({ value: '={{ $json.foo }}' }),
+			]);
+		});
 	});
 
 	test('should not reset the value of a multi-select with loadOptionsMethod on load', async () => {

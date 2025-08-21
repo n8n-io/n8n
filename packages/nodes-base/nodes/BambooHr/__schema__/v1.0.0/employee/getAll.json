@@ -22,9 +22,9 @@
         "photoUrl": {
             "type": "string"
         },
-        "pronouns": {
-            "type": "null"
+        "supervisor": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

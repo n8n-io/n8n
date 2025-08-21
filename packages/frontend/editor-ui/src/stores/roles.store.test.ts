@@ -1,5 +1,5 @@
 import { useRolesStore } from '@/stores/roles.store';
-import * as rolesApi from '@/api/roles.api';
+import * as rolesApi from '@n8n/rest-api-client/api/roles';
 import { createPinia, setActivePinia } from 'pinia';
 
 let rolesStore: ReturnType<typeof useRolesStore>;
@@ -19,6 +19,7 @@ describe('roles store', () => {
 				{
 					name: 'Project Admin',
 					role: 'project:admin',
+					description: 'Project Admin',
 					scopes: [
 						'workflow:create',
 						'workflow:read',
@@ -43,6 +44,7 @@ describe('roles store', () => {
 				{
 					name: 'Project Owner',
 					role: 'project:personalOwner',
+					description: 'Project Owner',
 					scopes: [
 						'workflow:create',
 						'workflow:read',
@@ -67,6 +69,7 @@ describe('roles store', () => {
 				{
 					name: 'Project Editor',
 					role: 'project:editor',
+					description: 'Project Editor',
 					scopes: [
 						'workflow:create',
 						'workflow:read',
@@ -87,6 +90,7 @@ describe('roles store', () => {
 				{
 					name: 'Project Viewer',
 					role: 'project:viewer',
+					description: 'Project Viewer',
 					scopes: [
 						'credential:list',
 						'credential:read',

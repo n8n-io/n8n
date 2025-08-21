@@ -10,6 +10,9 @@
         "campaignName": {
             "type": "string"
         },
+        "companyName": {
+            "type": "string"
+        },
         "email": {
             "type": "string"
         },
@@ -21,10 +24,7 @@
         },
         "lastName": {
             "type": "string"
-        },
-        "linkedinUrl": {
-            "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

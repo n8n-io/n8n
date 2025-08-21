@@ -206,6 +206,14 @@ export function getMoveToFolderInput() {
 	return getMoveToFolderDropdown().find('input');
 }
 
+export function getProjectSharingInput() {
+	return cy.getByTestId('project-sharing-select');
+}
+
+export function getProjectSharingOption(name: string) {
+	return cy.getByTestId('project-sharing-info').contains(name);
+}
+
 export function getEmptyFolderDropdownMessage(text: string) {
 	return cy.get('.el-select-dropdown__empty').contains(text);
 }
@@ -317,7 +325,7 @@ export function renameFolderFromListActions(folderName: string, newName: string)
 	getListActionsToggle().click();
 	getListActionItem('rename').click();
 	getInlineEditInput().should('be.visible');
-	getInlineEditInput().type(newName, { delay: 50 });
+	getInlineEditInput().type(`${newName}{enter}`, { delay: 50 });
 	successToast().should('exist');
 }
 
@@ -500,7 +508,12 @@ function deleteFolderAndMoveContents(folderName: string, destinationName: string
 function moveFolder(folderName: string, destinationName: string) {
 	cy.intercept('PATCH', '/rest/projects/**').as('moveFolder');
 	getMoveFolderModal().should('be.visible');
-	getMoveFolderModal().find('h1').first().contains(`Move "${folderName}" to another folder`);
+	getMoveFolderModal().find('h1').first().contains(`Move folder ${folderName}`);
+
+	// The dropdown focuses after a small delay (once modal's slide in animation is done).
+	// On the component we listen for an event, but here the wait should be very predictable.
+	cy.wait(500);
+
 	// Try to find current folder in the dropdown
 	// This tests that auto-focus worked as expected
 	cy.focused().type(folderName, { delay: 50 });
@@ -513,4 +526,28 @@ function moveFolder(folderName: string, destinationName: string) {
 	getMoveToFolderOption(destinationName).should('be.visible').click();
 	getMoveFolderConfirmButton().should('be.enabled').click();
 	cy.wait('@moveFolder');
+}
+
+export function transferWorkflow(
+	workflowName: string,
+	projectName: string,
+	destinationFolder?: string,
+) {
+	getMoveFolderModal().should('be.visible');
+	getMoveFolderModal().find('h1').first().contains(`Move workflow ${workflowName}`);
+
+	cy.wait(500);
+
+	getProjectSharingInput().should('be.visible').click();
+	cy.focused().type(projectName, { delay: 50 });
+	getProjectSharingOption(projectName).should('be.visible').click();
+
+	if (destinationFolder) {
+		getMoveToFolderInput().click();
+		// Select destination folder
+		cy.focused().type(destinationFolder, { delay: 50 });
+		getMoveToFolderOption(destinationFolder).should('be.visible').click();
+	}
+
+	getMoveFolderConfirmButton().should('be.enabled').click();
 }

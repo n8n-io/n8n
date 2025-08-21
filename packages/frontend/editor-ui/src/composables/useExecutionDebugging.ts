@@ -1,6 +1,6 @@
 import { h, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import {
@@ -38,7 +38,7 @@ export const useExecutionDebugging = () => {
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
 		const execution = await workflowsStore.getExecution(executionId);
-		const workflow = workflowsStore.getCurrentWorkflow();
+		const workflowObject = workflowsStore.workflowObject;
 		const workflowNodes = workflowsStore.getNodes();
 
 		if (!execution?.data?.resultData) {
@@ -91,18 +91,19 @@ export const useExecutionDebugging = () => {
 			} else {
 				await router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: workflow.id, executionId },
+					params: { name: workflowObject.id, executionId },
 				});
 				return;
 			}
 		}
 
 		// Set execution data
+		workflowsStore.resetAllNodesIssues();
 		workflowsStore.setWorkflowExecutionData(execution);
 
 		// Pin data of all nodes which do not have a parent node
 		const pinnableNodes = workflowNodes.filter(
-			(node: INodeUi) => !workflow.getParentNodes(node.name).length,
+			(node: INodeUi) => !workflowObject.getParentNodes(node.name).length,
 		);
 
 		let pinnings = 0;
@@ -147,7 +148,7 @@ export const useExecutionDebugging = () => {
 			uiStore.openModalWithData({
 				name: DEBUG_PAYWALL_MODAL_KEY,
 				data: {
-					title: i18n.baseText(uiStore.contextBasedTranslationKeys.feature.unavailable.title),
+					title: i18n.baseText('executionsList.debug.paywall.title'),
 					footerButtonAction: () => {
 						uiStore.closeModal(DEBUG_PAYWALL_MODAL_KEY);
 						void pageRedirectionHelper.goToUpgrade('debug', 'upgrade-debug');

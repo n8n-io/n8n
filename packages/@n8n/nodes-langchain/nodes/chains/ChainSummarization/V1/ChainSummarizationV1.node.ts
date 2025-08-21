@@ -29,7 +29,7 @@ export class ChainSummarizationV1 implements INodeType {
 				name: 'Summarization Chain',
 				color: '#909298',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 			inputs: [
 				NodeConnectionTypes.Main,
 				{

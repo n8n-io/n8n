@@ -81,12 +81,9 @@
                 }
             }
         },
-        "subject": {
-            "type": "string"
-        },
         "webLink": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

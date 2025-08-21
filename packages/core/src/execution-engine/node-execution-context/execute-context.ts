@@ -1,7 +1,9 @@
 import type {
 	AINodeConnectionType,
 	CallbackManager,
+	ChunkType,
 	CloseFunction,
+	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -13,6 +15,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionHint,
 	Result,
+	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -34,6 +37,7 @@ import {
 } from './utils/binary-helper-functions';
 import { constructExecutionMetaData } from './utils/construct-execution-metadata';
 import { copyInputItems } from './utils/copy-input-items';
+import { getDataStoreHelperFunctions } from './utils/data-store-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
@@ -91,6 +95,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				connectionInputData,
 			),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
+			...getDataStoreHelperFunctions(additionalData, workflow, node),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
 			...getDeduplicationHelperFunctions(workflow, node),
@@ -126,6 +131,46 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				fallbackValue,
 				options,
 			)) as IExecuteFunctions['getNodeParameter'];
+	}
+
+	isStreaming(): boolean {
+		// Check if we have sendChunk handlers
+		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
+		const hasHandlers = handlers !== undefined && handlers > 0;
+
+		// Check if streaming was enabled for this execution
+		const streamingEnabled = this.additionalData.streamingEnabled === true;
+
+		// Check current execution mode supports streaming
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated'];
+		const isStreamingMode = executionModeSupportsStreaming.includes(this.mode);
+
+		return hasHandlers && isStreamingMode && streamingEnabled;
+	}
+
+	async sendChunk(
+		type: ChunkType,
+		itemIndex: number,
+		content?: IDataObject | string,
+	): Promise<void> {
+		const node = this.getNode();
+		const metadata = {
+			nodeId: node.id,
+			nodeName: node.name,
+			itemIndex,
+			runIndex: this.runIndex,
+			timestamp: Date.now(),
+		};
+
+		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);
+
+		const message: StructuredChunk = {
+			type,
+			content: parsedContent,
+			metadata,
+		};
+
+		await this.additionalData.hooks?.runHook('sendChunk', [message]);
 	}
 
 	async startJob<T = unknown, E = unknown>(

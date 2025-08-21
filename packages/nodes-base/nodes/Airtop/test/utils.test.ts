@@ -1,6 +1,5 @@
 import { NodeApiError } from 'n8n-workflow';
 
-import { createMockExecuteFunction } from './node/helpers';
 import { ERROR_MESSAGES, SESSION_STATUS } from '../constants';
 import {
 	createSession,
@@ -18,6 +17,7 @@ import {
 	convertScreenshotToBinary,
 } from '../GenericFunctions';
 import type * as transport from '../transport';
+import { createMockExecuteFunction } from './node/helpers';
 
 const mockCreatedSession = {
 	data: { id: 'new-session-123', status: SESSION_STATUS.RUNNING },
@@ -485,7 +485,10 @@ describe('Test Airtop utils', () => {
 	describe('createSession', () => {
 		it('should create a session and return the session ID', async () => {
 			const result = await createSession.call(createMockExecuteFunction({}), {});
-			expect(result).toEqual({ sessionId: 'new-session-123' });
+			expect(result).toEqual({
+				sessionId: 'new-session-123',
+				data: { ...mockCreatedSession },
+			});
 		});
 
 		it('should throw an error if no session ID is returned', async () => {

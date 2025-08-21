@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const i18n = useI18n();
 
@@ -32,7 +32,7 @@ const emit = defineEmits<{
 .overrideButton {
 	display: flex;
 	justify-content: center;
-	border: 0px;
+	border: 0;
 	height: 30px;
 	width: 30px;
 	background-color: var(--color-foreground-base);
@@ -44,7 +44,7 @@ const emit = defineEmits<{
 
 		svg {
 			// ensure enough contrast in both light and dark mode
-			color: var(--prim-gray-200);
+			color: var(--p-gray-200);
 		}
 	}
 }

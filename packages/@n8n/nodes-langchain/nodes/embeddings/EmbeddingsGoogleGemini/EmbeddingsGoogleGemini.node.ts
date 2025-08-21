@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import {
 	NodeConnectionTypes,
@@ -45,9 +44,9 @@ export class EmbeddingsGoogleGemini implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
@@ -111,7 +110,7 @@ export class EmbeddingsGoogleGemini implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'textembedding-gecko-multilingual@latest',
+				default: 'models/text-embedding-004',
 			},
 		],
 	};
@@ -121,12 +120,13 @@ export class EmbeddingsGoogleGemini implements INodeType {
 		const modelName = this.getNodeParameter(
 			'modelName',
 			itemIndex,
-			'textembedding-gecko-multilingual@latest',
+			'models/text-embedding-004',
 		) as string;
 		const credentials = await this.getCredentials('googlePalmApi');
 		const embeddings = new GoogleGenerativeAIEmbeddings({
 			apiKey: credentials.apiKey as string,
-			modelName,
+			baseUrl: credentials.host as string,
+			model: modelName,
 		});
 
 		return {
