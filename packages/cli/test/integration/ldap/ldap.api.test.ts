@@ -490,7 +490,7 @@ describe('POST /ldap/sync', () => {
 			// Create user with valid email first
 			await createLdapUser(
 				{
-					role: 'global:member',
+					role: GLOBAL_MEMBER_ROLE,
 					email: originalEmail,
 					firstName: randomName(),
 					lastName: randomName(),
