@@ -24,5 +24,5 @@ export const COLUMN_NAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9-]*$/;
 
 export const MIN_LOADING_TIME = 500; // ms
 
-export const NULL_VALUE = 'NULL';
-export const EMPTY_VALUE = 'EMPTY';
+export const NULL_VALUE = 'Null';
+export const EMPTY_VALUE = 'Empty';

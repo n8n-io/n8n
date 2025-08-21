@@ -18,6 +18,7 @@ import type {
 	CellValueChangedEvent,
 	GetRowIdParams,
 	ICellRendererParams,
+	CellEditRequestEvent,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -45,6 +46,7 @@ import { MODAL_CONFIRM } from '@/constants';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
+import NullEmptyCellRenderer from './NullEmptyCellRenderer.vue';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -207,19 +209,19 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 			if (col.type === 'date') {
 				const value = params.data?.[col.name];
 				if (typeof value === 'string') {
-					return new Date(value).toLocaleDateString();
+					return new Date(value);
 				}
 			}
 			return params.data?.[col.name];
 		},
-		cellRenderer: (params: ICellRendererParams) => {
+		cellRendererSelector: (params: ICellRendererParams) => {
 			if (params.value === null) {
-				return `<i class="n8n-empty-value">${NULL_VALUE}</i>`;
+				return { component: 'NullEmptyCellRenderer', params: { value: NULL_VALUE } };
 			}
 			if (params.value === '') {
-				return `<i class="n8n-empty-value">${EMPTY_VALUE}</i>`;
+				return { component: 'NullEmptyCellRenderer', params: { value: EMPTY_VALUE } };
 			}
-			return params.value.toString();
+			return undefined;
 		},
 	};
 	// Enable large text editor for text columns
@@ -227,7 +229,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		columnDef.cellEditor = 'agLargeTextCellEditor';
 		columnDef.cellEditorPopup = false;
 		// Provide initial value for the editor, otherwise agLargeTextCellEditor breaks
-		columnDef.cellEditorParams = (params: ValueGetterParams<DataStoreRow>) => ({
+		columnDef.cellEditorParams = (params: CellEditRequestEvent<DataStoreRow>) => ({
 			value: params.value ?? '',
 		});
 	}
@@ -360,6 +362,11 @@ const initialize = async () => {
 onMounted(async () => {
 	await initialize();
 });
+
+// Register custom components
+defineExpose({
+	NullEmptyCellRenderer,
+});
 </script>
 
 <template>
@@ -460,11 +467,6 @@ onMounted(async () => {
 
 	:global(.ag-cell[col-id='ag-Grid-SelectionColumn'].ag-cell-focus) {
 		outline: none;
-	}
-
-	:global(.n8n-empty-value) {
-		font-style: italic;
-		color: var(--color-text-lighter);
 	}
 }
 
