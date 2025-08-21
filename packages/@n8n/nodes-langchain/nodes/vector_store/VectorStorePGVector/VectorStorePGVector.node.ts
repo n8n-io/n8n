@@ -255,14 +255,17 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			'skipInitializationCheck',
 			0,
 			false,
-		) as boolean;
+		);
 
 		const config: PGVectorStoreArgs = {
 			pool,
 			tableName,
 			filter,
-			skipInitializationCheck: skipTableValidationAndCreation,
 		};
+
+		if (skipTableValidationAndCreation && typeof skipTableValidationAndCreation == 'boolean') {
+			config.skipInitializationCheck = skipTableValidationAndCreation;
+		}
 
 		const collectionOptions = context.getNodeParameter(
 			'options.collection.values',
@@ -305,13 +308,16 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			'skipInitializationCheck',
 			0,
 			false,
-		) as boolean;
+		);
 
 		const config: PGVectorStoreArgs = {
 			pool,
 			tableName,
-			skipInitializationCheck: skipTableValidationAndCreation,
 		};
+
+		if (skipTableValidationAndCreation && typeof skipTableValidationAndCreation == 'boolean') {
+			config.skipInitializationCheck = skipTableValidationAndCreation;
+		}
 
 		const collectionOptions = context.getNodeParameter(
 			'options.collection.values',
