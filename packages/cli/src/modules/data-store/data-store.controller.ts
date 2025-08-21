@@ -234,6 +234,9 @@ export class DataStoreController {
 		}
 	}
 
+	/**
+	 * @returns the IDs of the inserted rows
+	 */
 	@Post('/:dataStoreId/insert')
 	@ProjectScope('dataStore:writeRow')
 	async appendDataStoreRows(
