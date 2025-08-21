@@ -194,6 +194,7 @@ const onDeleteColumn = async (columnId: string) => {
 	}
 };
 
+// TODO: Split this up to create column def based on type
 const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {}) => {
 	const columnDef: ColDef = {
 		colId: col.id,
@@ -202,6 +203,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		editable: true,
 		resizable: true,
 		headerComponent: ColumnHeader,
+		cellEditorPopup: true,
 		headerComponentParams: { onDelete: onDeleteColumn },
 		...extraProps,
 		cellDataType: dataStoreTypes.mapToAGCellType(col.type),
@@ -234,7 +236,6 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
 		columnDef.cellEditor = 'agLargeTextCellEditor';
-		columnDef.cellEditorPopup = false;
 		// Provide initial value for the editor, otherwise agLargeTextCellEditor breaks
 		columnDef.cellEditorParams = (params: CellEditRequestEvent<DataStoreRow>) => ({
 			value: params.value ?? '',
