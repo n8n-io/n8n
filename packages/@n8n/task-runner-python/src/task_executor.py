@@ -89,11 +89,13 @@ class TaskExecutor:
         """Execute a Python code task in per-item mode."""
 
         try:
+            wrapped_code = TaskExecutor._wrap_code(raw_code)
+            compiled_code = compile(wrapped_code, "<per_item_task_execution>", "exec")
+
             result = []
             for index, item in enumerate(items):
-                code = TaskExecutor._wrap_code(raw_code)
                 globals = {"__builtins__": __builtins__, "_item": item}
-                exec(code, globals)
+                exec(compiled_code, globals)
                 user_output = globals[EXECUTOR_USER_OUTPUT_KEY]
 
                 if user_output is None:
