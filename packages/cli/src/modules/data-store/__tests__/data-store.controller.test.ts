@@ -3065,6 +3065,24 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		expect(response.body.message).toContain('filter must not be empty');
 	});
 
+	test('should fail when data is empty', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		const payload = {
+			filter: { name: 'Alice' },
+			data: {},
+		};
+
+		const response = await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toContain('data must not be empty');
+	});
+
 	test('should fail when data contains invalid column names', async () => {
 		const dataStore = await createDataStore(memberProject, {
 			columns: [{ name: 'name', type: 'string' }],
