@@ -67,10 +67,7 @@ export class Telemetry {
 		this.identify(instanceId, userId, versionCli, projectId);
 
 		this.flushPageEvents();
-		const sessionProperties: ITelemetryTrackProperties = {
-			session_id: rootStore.pushRef,
-			instance_id: instanceId,
-		};
+
 		this.track('Session started', { session_id: rootStore.pushRef, instance_id: instanceId });
 	}
 
