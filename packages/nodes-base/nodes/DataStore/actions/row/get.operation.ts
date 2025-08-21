@@ -40,11 +40,11 @@ export async function execute(
 
 		// Optimize common path of <1000 results
 		if (response.count === response.data.length) {
-			return response.data.map((json) => ({ json }));
+			return data;
 		}
 
 		result.push.apply(result, data);
-		take = Math.min(response.count - result.length, take);
+		take = Math.min(take, response.count - result.length);
 	} while (take > 0);
 	return result;
 }
