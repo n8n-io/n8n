@@ -16,8 +16,6 @@ export const ADD_DATA_STORE_MODAL_KEY = 'addDataStoreModal';
 
 export const DEFAULT_ID_COLUMN_NAME = 'id';
 
-export const DEFAULT_ID_COLUMN_WIDTH = 80;
-
 export const MAX_COLUMN_NAME_LENGTH = 128;
 
 export const COLUMN_NAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9-]*$/;

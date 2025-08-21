@@ -19,8 +19,6 @@ const props = withDefaults(defineProps<Props>(), {
 	showOwnershipBadge: false,
 });
 
-const renameInput = useTemplateRef<{ forceFocus?: () => void }>('renameInput');
-
 const dataStoreRoute = computed(() => {
 	return {
 		name: DATA_STORE_DETAILS,
@@ -30,16 +28,6 @@ const dataStoreRoute = computed(() => {
 		},
 	};
 });
-
-const onRename = () => {
-	// Focus rename input if the action is rename
-	// We need this timeout to ensure action toggle is closed before focusing
-	if (renameInput.value && typeof renameInput.value.forceFocus === 'function') {
-		setTimeout(() => {
-			renameInput.value?.forceFocus?.();
-		}, 100);
-	}
-};
 </script>
 <template>
 	<div data-test-id="data-store-card">
@@ -115,7 +103,7 @@ const onRename = () => {
 						<DataStoreActions
 							:data-store="props.dataStore"
 							:is-read-only="props.readOnly"
-							@rename="onRename"
+							location="card"
 						/>
 					</div>
 				</template>
