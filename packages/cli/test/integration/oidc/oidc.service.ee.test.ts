@@ -388,7 +388,13 @@ describe('OIDC service', () => {
 			expect(error.message).toBe('Invalid email format');
 		});
 
-		it('should handle multiple invalid email formats', async () => {
+		it.each([
+			['not-an-email'],
+			['@missinglocal.com'],
+			['missing@.com'],
+			['spaces in@email.com'],
+			['double@@domain.com'],
+		])('should throw `BadRequestError` for invalid email <%s>', async (invalidEmail) => {
 			const callbackUrl = new URL(
 				'http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=valid-state',
 			);
@@ -411,23 +417,13 @@ describe('OIDC service', () => {
 			} as mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers;
 
-			const invalidEmails = [
-				'not-an-email',
-				'@missinglocal.com',
-				'missing@.com',
-				'spaces in@email.com',
-				'double@@domain.com',
-			];
+			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+			fetchUserInfoMock.mockResolvedValueOnce({
+				email_verified: true,
+				email: invalidEmail,
+			});
 
-			for (const invalidEmail of invalidEmails) {
-				authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
-				fetchUserInfoMock.mockResolvedValueOnce({
-					email_verified: true,
-					email: invalidEmail,
-				});
-
-				await expect(oidcService.loginUser(callbackUrl)).rejects.toThrowError(BadRequestError);
-			}
+			await expect(oidcService.loginUser(callbackUrl)).rejects.toThrowError(BadRequestError);
 		});
 
 		it('should throw `ForbiddenError` if OIDC token does not provide claims', async () => {

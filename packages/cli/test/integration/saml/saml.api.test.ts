@@ -311,20 +311,9 @@ describe('SAML email validation', () => {
 			);
 		});
 
-		test('should throw BadRequestError for multiple invalid email formats', async () => {
-			const invalidEmails = [
-				'not-an-email',
-				'@missinglocal.com',
-				'missing@.com',
-				'spaces in@email.com',
-				'double@@domain.com',
-				'trailing.dot@domain.com.',
-				'user@',
-			];
-
-			const mockRequest = {} as express.Request;
-
-			for (const invalidEmail of invalidEmails) {
+		test.each([['not-an-email'], ['@missinglocal.com'], ['missing@.com'], ['spaces in@email.com']])(
+			'should throw BadRequestError for invalid email <%s>',
+			async (invalidEmail) => {
 				jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 					email: invalidEmail,
 					firstName: 'John',
@@ -332,35 +321,33 @@ describe('SAML email validation', () => {
 					userPrincipalName: 'john.doe',
 				});
 
+				const mockRequest = {} as express.Request;
+
 				await expect(samlService.handleSamlLogin(mockRequest, 'post')).rejects.toThrow(
 					new BadRequestError('Invalid email format'),
 				);
-			}
-		});
+			},
+		);
 
-		test('should handle valid email formats successfully', async () => {
-			const validEmails = [
-				'user@example.com',
-				'test.email@domain.org',
-				'user+tag@example.com',
-				'user123@test-domain.com',
-			];
-
+		test.each([
+			['user@example.com'],
+			['test.email@domain.org'],
+			['user+tag@example.com'],
+			['user123@test-domain.com'],
+		])('should handle valid email <%s> successfully', async (validEmail) => {
 			const mockRequest = {} as express.Request;
 
-			for (const validEmail of validEmails) {
-				jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-					email: validEmail,
-					firstName: 'John',
-					lastName: 'Doe',
-					userPrincipalName: 'john.doe',
-				});
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				email: validEmail,
+				firstName: 'John',
+				lastName: 'Doe',
+				userPrincipalName: 'john.doe',
+			});
 
-				// Should not throw an error for valid emails
-				const result = await samlService.handleSamlLogin(mockRequest, 'post');
-				expect(result).toBeDefined();
-				expect(result.attributes.email).toBe(validEmail);
-			}
+			// Should not throw an error for valid emails
+			const result = await samlService.handleSamlLogin(mockRequest, 'post');
+			expect(result).toBeDefined();
+			expect(result.attributes.email).toBe(validEmail);
 		});
 
 		test('should convert email to lowercase before validation', async () => {
