@@ -13,20 +13,21 @@ import {
 	QueryRunner,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
+import { DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
 import {
 	addColumnQuery,
+	buildColumnTypeMap,
 	buildInsertQuery,
-	buildUpdateQuery,
 	deleteColumnQuery,
 	getPlaceholder,
+	normalizeValue,
 	quoteIdentifier,
 	splitRowsByExistence,
 	toDslColumns,
 	toTableName,
 } from './utils/sql-utils';
-import { DataStoreRows } from 'n8n-workflow';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
@@ -70,12 +71,7 @@ export class DataStoreRowsRepository {
 		dto: UpsertDataStoreRowsDto,
 		columns: DataStoreColumn[],
 	) {
-		const dbType = this.dataSource.options.type;
 		const { rows, matchFields } = dto;
-
-		if (rows.length === 0) {
-			return false;
-		}
 
 		const { rowsToInsert, rowsToUpdate } = await this.fetchAndSplitRowsByExistence(
 			tableName,
@@ -89,13 +85,46 @@ export class DataStoreRowsRepository {
 
 		if (rowsToUpdate.length > 0) {
 			for (const row of rowsToUpdate) {
-				// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
-				const [query, parameters] = buildUpdateQuery(tableName, row, columns, matchFields, dbType);
-				await this.dataSource.query(query, parameters);
+				const updateKeys = Object.keys(row).filter((key) => !matchFields.includes(key));
+				if (updateKeys.length === 0) {
+					return true;
+				}
+
+				const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
+				const whereData = Object.fromEntries(matchFields.map((key) => [key, row[key]]));
+
+				await this.updateRow(tableName, setData, whereData, columns);
 			}
 		}
 
 		return true;
+	}
+
+	async updateRow(
+		tableName: DataStoreUserTableName,
+		setData: Record<string, unknown>,
+		whereData: Record<string, unknown>,
+		columns: DataStoreColumn[],
+	) {
+		const dbType = this.dataSource.options.type;
+		const columnTypeMap = buildColumnTypeMap(columns);
+
+		const queryBuilder = this.dataSource.createQueryBuilder().update(tableName);
+
+		const setValues: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(setData)) {
+			setValues[key] = normalizeValue(value, columnTypeMap[key], dbType);
+		}
+
+		queryBuilder.set(setValues);
+
+		const normalizedWhereData: Record<string, unknown> = {};
+		for (const [field, value] of Object.entries(whereData)) {
+			normalizedWhereData[field] = normalizeValue(value, columnTypeMap[field], dbType);
+		}
+		queryBuilder.where(normalizedWhereData);
+
+		await queryBuilder.execute();
 	}
 
 	async deleteRows(tableName: DataStoreUserTableName, ids: number[]) {

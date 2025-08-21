@@ -8,11 +8,12 @@ import {
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository, QueryFailedError } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DateTime } from 'luxon';
+
 import { createDataStore } from '@test-integration/db/data-stores';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
-import { DateTime } from 'luxon';
 
 import { DataStoreColumnRepository } from '../data-store-column.repository';
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
@@ -1834,9 +1835,12 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(toTableName(dataStore.id), {});
-		expect(rowsInDb.count).toBe(1);
-		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
+		const readResponse = await authMemberAgent
+			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject(payload.data[0]);
 	});
 
 	test('should insert rows if user has project:admin role in team project', async () => {
@@ -2757,5 +2761,469 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
 		expect(rowsInDb.data[1]).toMatchObject(payload.rows[0]);
 		expect(rowsInDb.data[2]).toMatchObject(payload.rows[1]);
+	});
+});
+
+describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
+	test('should not update row when project does not exist', async () => {
+		const payload = {
+			filter: { name: 'Alice' },
+			data: { age: 31 },
+		};
+
+		await authOwnerAgent
+			.patch('/projects/non-existing-id/data-stores/some-data-store-id/rows')
+			.send(payload)
+			.expect(403);
+	});
+
+	test('should not update row when data store does not exist', async () => {
+		const project = await createTeamProject('test project', owner);
+		const payload = {
+			filter: { name: 'Alice' },
+			data: { age: 31 },
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${project.id}/data-stores/non-existing-id/rows`)
+			.send(payload)
+			.expect(404);
+	});
+
+	test("should not update row in another user's personal project data store", async () => {
+		const dataStore = await createDataStore(ownerProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+			data: [{ name: 'Alice', age: 30 }],
+		});
+
+		const payload = {
+			filter: { name: 'Alice' },
+			data: { age: 31 },
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(403);
+	});
+
+	test('should not update row if user has project:viewer role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+			data: [{ name: 'Alice', age: 30 }],
+		});
+
+		const payload = {
+			filter: { name: 'Alice' },
+			data: { age: 31 },
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(403);
+	});
+
+	test('should update row if user has project:editor role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(member, project, 'project:editor');
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+			data: [{ name: 'Alice', age: 30 }],
+		});
+
+		const payload = {
+			filter: { name: 'Alice' },
+			data: { age: 31 },
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
+	});
+
+	test('should update row if user has project:admin role in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		await linkUserToProject(admin, project, 'project:admin');
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+			data: [{ name: 'Alice', age: 30 }],
+		});
+
+		const payload = {
+			filter: { name: 'Alice' },
+			data: { age: 31 },
+		};
+
+		await authAdminAgent
+			.patch(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authAdminAgent
+			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
+	});
+
+	test('should update row if user is owner in team project', async () => {
+		const project = await createTeamProject('test project', owner);
+		const dataStore = await createDataStore(project, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+			data: [{ name: 'Alice', age: 30 }],
+		});
+
+		const payload = {
+			filter: { name: 'Alice' },
+			data: { age: 31 },
+		};
+
+		await authOwnerAgent
+			.patch(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authOwnerAgent
+			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
+	});
+
+	test('should update row in personal project', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+			data: [{ name: 'Alice', age: 30 }],
+		});
+
+		const payload = {
+			filter: { name: 'Alice' },
+			data: { age: 31 },
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
+	});
+
+	test('should update row by id filter', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+			data: [
+				{ name: 'Alice', age: 30 },
+				{ name: 'Bob', age: 25 },
+			],
+		});
+
+		const payload = {
+			filter: { id: 1 },
+			data: { age: 31 },
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(2);
+		expect(readResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				{ id: 1, name: 'Alice', age: 31 },
+				{ id: 2, name: 'Bob', age: 25 },
+			]),
+		);
+	});
+
+	test('should update row with multiple filter conditions', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'department', type: 'string' },
+			],
+			data: [
+				{ name: 'Alice', age: 30, department: 'Engineering' },
+				{ name: 'Alice', age: 25, department: 'Marketing' },
+				{ name: 'Bob', age: 30, department: 'Engineering' },
+			],
+		});
+
+		const payload = {
+			filter: { name: 'Alice', age: 30 },
+			data: { department: 'Management' },
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(3);
+		expect(readResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				{ id: 1, name: 'Alice', age: 30, department: 'Management' },
+				{ id: 2, name: 'Alice', age: 25, department: 'Marketing' },
+				{ id: 3, name: 'Bob', age: 30, department: 'Engineering' },
+			]),
+		);
+	});
+
+	test('should return true when no rows match the filter', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+			data: [{ name: 'Alice', age: 30 }],
+		});
+
+		const payload = {
+			filter: { name: 'Charlie' },
+			data: { age: 25 },
+		};
+
+		const response = await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		expect(response.body.data).toBe(true);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({ name: 'Alice', age: 30 });
+	});
+
+	test('should fail when filter is empty', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		const payload = {
+			filter: {},
+			data: { name: 'Updated' },
+		};
+
+		const response = await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toContain('filter must not be empty');
+	});
+
+	test('should fail when data is empty', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		const payload = {
+			filter: { name: 'Alice' },
+			data: {},
+		};
+
+		const response = await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toContain('data must not be empty');
+	});
+
+	test('should fail when data contains invalid column names', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [{ name: 'name', type: 'string' }],
+			data: [{ name: 'Alice' }],
+		});
+
+		const payload = {
+			filter: { name: 'Alice' },
+			data: { invalidColumn: 'value' },
+		};
+
+		const response = await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toContain('unknown column');
+	});
+
+	test('should fail when filter contains invalid column names', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [{ name: 'name', type: 'string' }],
+			data: [{ name: 'Alice' }],
+		});
+
+		const payload = {
+			filter: { invalidColumn: 'Alice' },
+			data: { name: 'Updated' },
+		};
+
+		const response = await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toContain('unknown column');
+	});
+
+	test('should validate data types in filter', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+			data: [{ name: 'Alice', age: 30 }],
+		});
+
+		const payload = {
+			filter: { age: 'invalid_number' },
+			data: { name: 'Updated' },
+		};
+
+		const response = await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toContain('does not match column type');
+	});
+
+	test('should validate data types in data', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+			data: [{ name: 'Alice', age: 30 }],
+		});
+
+		const payload = {
+			filter: { name: 'Alice' },
+			data: { age: 'invalid_number' },
+		};
+
+		const response = await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(400);
+
+		expect(response.body.message).toContain('does not match column type');
+	});
+
+	test('should allow partial updates', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'active', type: 'boolean' },
+			],
+			data: [{ name: 'Alice', age: 30, active: true }],
+		});
+
+		const payload = {
+			filter: { name: 'Alice' },
+			data: { age: 31 }, // Only updating age, not name or active
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({
+			name: 'Alice',
+			age: 31,
+			active: true,
+		});
+	});
+
+	test('should handle date values in updates', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'birthdate', type: 'date' },
+			],
+			data: [{ name: 'Alice', birthdate: '2000-01-01T00:00:00.000Z' }],
+		});
+
+		const payload = {
+			filter: { name: 'Alice' },
+			data: { birthdate: '1995-05-15T12:30:00.000Z' },
+		};
+
+		await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		const readResponse = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.expect(200);
+
+		expect(readResponse.body.data.count).toBe(1);
+		expect(readResponse.body.data.data[0]).toMatchObject({
+			name: 'Alice',
+			birthdate: '1995-05-15T12:30:00.000Z',
+		});
 	});
 });
