@@ -26,13 +26,11 @@ async def main():
 
     logger.info("Starting runner...")
 
-    grant_token = os.getenv(ENV_GRANT_TOKEN)
+    grant_token = os.getenv(ENV_GRANT_TOKEN, "")
 
-    if grant_token is None:
+    if not grant_token:
         logger.error(f"{ENV_GRANT_TOKEN} environment variable is required")
         sys.exit(1)
-
-    assert grant_token is not None
 
     opts = TaskRunnerOpts(
         grant_token,
