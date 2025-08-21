@@ -172,6 +172,53 @@ export function toTableName(dataStoreId: string): DataStoreUserTableName {
 	return `data_store_user_${dataStoreId}`;
 }
 
+type WithInsertId = { insertId: number };
+type WithRowId = { id: number };
+
+const isArrayOf = <T>(data: unknown, itemGuard: (x: unknown) => x is T): data is T[] =>
+	Array.isArray(data) && data.every(itemGuard);
+
+const isNumber = (value: unknown): value is number => {
+	return typeof value === 'number' && Number.isFinite(value);
+};
+
+function hasInsertId(data: unknown): data is WithInsertId {
+	return typeof data === 'object' && data !== null && 'insertId' in data && isNumber(data.insertId);
+}
+
+function hasRowId(data: unknown): data is WithRowId {
+	return typeof data === 'object' && data !== null && 'id' in data && isNumber(data.id);
+}
+
+export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type']): number[] {
+	switch (dbType) {
+		case 'postgres':
+		case 'mariadb': {
+			if (!isArrayOf(raw, hasRowId)) {
+				throw new UnexpectedError(
+					'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+				);
+			}
+			return raw.map((r) => r.id);
+		}
+		case 'mysql': {
+			if (!hasInsertId(raw)) {
+				throw new UnexpectedError('Expected INSERT INTO raw.insertId: number for MySQL');
+			}
+			return [raw.insertId];
+		}
+		case 'sqlite': {
+			if (!isNumber(raw)) {
+				throw new UnexpectedError('Expected INSERT INTO raw to be a number for SQLite');
+			}
+			return [raw];
+		}
+		default: {
+			throw new UnexpectedError(`Unsupported dbType: ${dbType}`);
+		}
+	}
+}
+
 export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 	const typeMap = new Map(columns.map((col) => [col.name, col.type]));
 	return rows.map((row) => {

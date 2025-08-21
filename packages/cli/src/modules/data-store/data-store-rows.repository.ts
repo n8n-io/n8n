@@ -13,19 +13,20 @@ import {
 	QueryRunner,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
+import { DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
 import {
 	addColumnQuery,
 	buildUpdateQuery,
 	deleteColumnQuery,
+	extractInsertedIds,
 	getPlaceholder,
 	quoteIdentifier,
 	splitRowsByExistence,
 	toDslColumns,
 	toTableName,
 } from './utils/sql-utils';
-import { DataStoreRows, UnexpectedError } from 'n8n-workflow';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
@@ -56,27 +57,30 @@ export class DataStoreRowsRepository {
 		rows: DataStoreRows,
 		columns: DataStoreColumn[],
 	) {
-		const insertedIds = [];
+		const insertedIds: number[] = [];
+
 		// We insert one by one as the default behavior of returning the last inserted ID
 		// is consistent, whereas getting all inserted IDs when inserting multiple values is
 		// surprisingly awkward without Entities, e.g. `RETURNING id` explicitly does not aggregate
 		// and the `identifiers` array output of `execute()` is empty
 		for (const row of rows) {
-			const result = await this.dataSource
+			const dbType = this.dataSource.options.type;
+			const query = this.dataSource
 				.createQueryBuilder()
 				.insert()
 				.into(
 					tableName,
-					columns.map((x) => x.name),
+					columns.map((c) => c.name),
 				)
-				.values(row)
-				.execute();
+				.values(row);
 
-			if (typeof result.raw !== 'number') {
-				throw new UnexpectedError('Result of INSERT INTO operation was not a number');
+			if (dbType === 'postgres' || dbType === 'mariadb') {
+				query.returning('id');
 			}
 
-			insertedIds.push(result.raw);
+			const result = await query.execute();
+
+			insertedIds.push(...extractInsertedIds(result.raw, dbType));
 		}
 
 		return insertedIds;
