@@ -336,14 +336,47 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
-	const getNodeTypes = async () => {
-		const nodeTypes = await nodeTypesApi.getNodeTypes(rootStore.baseUrl);
-
-		await fetchCommunityNodePreviews();
-
-		if (nodeTypes.length) {
-			setNodeTypes(nodeTypes);
+	const fetchCommunityNodePreviews = async () => {
+		if (!settingsStore.isCommunityNodesFeatureEnabled || settingsStore.isPreviewMode) {
+			return;
 		}
+		try {
+			const communityNodeTypes = await nodeTypesApi.fetchCommunityNodeTypes(
+				rootStore.restApiContext,
+			);
+
+			vettedCommunityNodeTypes.value = new Map(
+				communityNodeTypes.map((nodeType) => [nodeType.name, nodeType]),
+			);
+		} catch (error) {
+			vettedCommunityNodeTypes.value = new Map();
+		}
+	};
+
+	const nodeTypesRequestInProgress = ref<Promise<void> | null>(null);
+
+	const getNodeTypes = async () => {
+		if (nodeTypesRequestInProgress.value) {
+			// Return the existing promise if a request is in progress
+			return await nodeTypesRequestInProgress.value;
+		}
+
+		nodeTypesRequestInProgress.value = (async () => {
+			try {
+				const [fetchedNodeTypes, _] = await Promise.all([
+					nodeTypesApi.getNodeTypes(rootStore.baseUrl),
+					fetchCommunityNodePreviews(),
+				]);
+
+				if (fetchedNodeTypes.length) {
+					setNodeTypes(fetchedNodeTypes);
+				}
+			} finally {
+				nodeTypesRequestInProgress.value = null;
+			}
+		})();
+
+		return await nodeTypesRequestInProgress.value;
 	};
 
 	const loadNodeTypesIfNotLoaded = async () => {
@@ -386,23 +419,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const getNodeParameterActionResult = async (sendData: ActionResultRequestDto) => {
 		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
-	};
-
-	const fetchCommunityNodePreviews = async () => {
-		if (!settingsStore.isCommunityNodesFeatureEnabled || settingsStore.isPreviewMode) {
-			return;
-		}
-		try {
-			const communityNodeTypes = await nodeTypesApi.fetchCommunityNodeTypes(
-				rootStore.restApiContext,
-			);
-
-			vettedCommunityNodeTypes.value = new Map(
-				communityNodeTypes.map((nodeType) => [nodeType.name, nodeType]),
-			);
-		} catch (error) {
-			vettedCommunityNodeTypes.value = new Map();
-		}
 	};
 
 	const getCommunityNodeAttributes = async (nodeName: string) => {
