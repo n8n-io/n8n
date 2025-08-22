@@ -90,6 +90,7 @@ import { AddRolesTables1750252139167 } from '../common/1750252139167-AddRolesTab
 import { LinkRoleToUserTable1750252139168 } from '../common/1750252139168-LinkRoleToUserTable';
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
 import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
+import { ReplaceDataTableTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTable';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -185,6 +186,7 @@ const sqliteMigrations: Migration[] = [
 	LinkRoleToUserTable1750252139168,
 	AddInputsOutputsToTestCaseExecution1752669793000,
 	CreateDataStoreTables1754475614601,
+	ReplaceDataTableTables1754475614602,
 ];
 
 export { sqliteMigrations };

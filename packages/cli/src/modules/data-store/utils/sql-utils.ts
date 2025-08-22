@@ -1,14 +1,11 @@
-import {
-	DATA_STORE_COLUMN_REGEX,
-	type DataStoreCreateColumnSchema,
-	type DataStoreColumn,
-} from '@n8n/api-types';
+import { DATA_STORE_COLUMN_REGEX, type DataStoreCreateColumnSchema } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import type { DataStoreColumnJsType, DataStoreRows } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { DataStoreUserTableName } from '../data-store.types';
+import type { DataTableColumn } from '../data-table-column.entity';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -182,7 +179,7 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 	}
 }
 
-export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
+export function normalizeRows(rows: DataStoreRows, columns: DataTableColumn[]) {
 	const typeMap = new Map(columns.map((col) => [col.name, col.type]));
 	return rows.map((row) => {
 		const normalized = { ...row };

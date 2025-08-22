@@ -9,8 +9,8 @@ import { Service } from '@n8n/di';
 import { DataSource, DataSourceOptions, QueryRunner, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataStoreColumnJsType, DataStoreRows } from 'n8n-workflow';
 
-import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreUserTableName } from './data-store.types';
+import { DataTableColumn } from './data-table-column.entity';
 import {
 	addColumnQuery,
 	buildColumnTypeMap,
@@ -54,7 +54,7 @@ export class DataStoreRowsRepository {
 		return `${tablePrefix}data_store_user_${dataStoreId}`;
 	}
 
-	async insertRows(dataStoreId: string, rows: DataStoreRows, columns: DataStoreColumn[]) {
+	async insertRows(dataStoreId: string, rows: DataStoreRows, columns: DataTableColumn[]) {
 		const insertedIds: number[] = [];
 
 		// We insert one by one as the default behavior of returning the last inserted ID
@@ -90,7 +90,7 @@ export class DataStoreRowsRepository {
 	}
 
 	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
-	async upsertRows(dataStoreId: string, dto: UpsertDataStoreRowsDto, columns: DataStoreColumn[]) {
+	async upsertRows(dataStoreId: string, dto: UpsertDataStoreRowsDto, columns: DataTableColumn[]) {
 		const { rows, matchFields } = dto;
 
 		const { rowsToInsert, rowsToUpdate } = await this.fetchAndSplitRowsByExistence(
@@ -124,7 +124,7 @@ export class DataStoreRowsRepository {
 		dataStoreId: string,
 		setData: Record<string, DataStoreColumnJsType | null>,
 		whereData: Record<string, DataStoreColumnJsType | null>,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 	) {
 		const dbType = this.dataSource.options.type;
 		const columnTypeMap = buildColumnTypeMap(columns);
@@ -163,7 +163,7 @@ export class DataStoreRowsRepository {
 
 	async createTableWithColumns(
 		dataStoreId: string,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		queryRunner: QueryRunner,
 	) {
 		const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
@@ -179,7 +179,7 @@ export class DataStoreRowsRepository {
 
 	async addColumn(
 		dataStoreId: string,
-		column: DataStoreColumn,
+		column: DataTableColumn,
 		queryRunner: QueryRunner,
 		dbType: DataSourceOptions['type'],
 	) {
