@@ -15,8 +15,8 @@ beforeEach(() => {
 
 describe('eligibleModules', () => {
 	it('should consider all default modules eligible', () => {
-		// 'data-store' isn't (yet) eligible module by default
-		const expectedModules = MODULE_NAMES.filter((name) => name !== 'data-store');
+		// 'data-table' isn't (yet) eligible module by default
+		const expectedModules = MODULE_NAMES.filter((name) => name !== 'data-table');
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(expectedModules);
 	});
 
@@ -29,12 +29,12 @@ describe('eligibleModules', () => {
 	});
 
 	it('should consider a module eligible if it was enabled via env var', () => {
-		process.env.N8N_ENABLED_MODULES = 'data-store';
+		process.env.N8N_ENABLED_MODULES = 'data-table';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'insights',
 			'external-secrets',
 			'community-packages',
-			'data-store',
+			'data-table',
 		]);
 	});
 

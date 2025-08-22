@@ -29,8 +29,8 @@ let ownerProject: Project;
 let memberProject: Project;
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['data-store'],
-	modules: ['data-store'],
+	endpointGroups: ['data-table'],
+	modules: ['data-table'],
 });
 let projectRepository: ProjectRepository;
 let dataStoreRepository: DataStoreRepository;

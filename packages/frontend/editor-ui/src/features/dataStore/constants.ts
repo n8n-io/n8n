@@ -24,4 +24,4 @@ export const NO_TABLE_YET_MESSAGE = 'SQLITE_ERROR: no such table:';
 
 export const MIN_LOADING_TIME = 500; // ms
 
-export const DATA_STORE_MODULE_NAME = 'data-store';
+export const DATA_STORE_MODULE_NAME = 'data-table';

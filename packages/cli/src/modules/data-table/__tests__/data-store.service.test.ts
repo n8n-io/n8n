@@ -13,7 +13,7 @@ import { DataStoreNotFoundError } from '../errors/data-store-not-found.error';
 import { DataStoreValidationError } from '../errors/data-store-validation.error';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-store']);
+	await testModules.loadModules(['data-table']);
 	await testDb.init();
 });
 
