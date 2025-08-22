@@ -7,6 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
@@ -153,6 +154,11 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			azureOpenAIBasePath: credentials.endpoint
 				? `${credentials.endpoint}/openai/deployments`
 				: undefined,
+			configuration: {
+				fetchOptions: {
+					dispatcher: getProxyAgent(),
+				},
+			},
 			...options,
 		});
 
