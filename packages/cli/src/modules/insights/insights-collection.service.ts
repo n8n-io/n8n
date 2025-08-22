@@ -142,9 +142,7 @@ export class InsightsCollectionService {
 		if (ctx.runData.stoppedAt) {
 			const runtimeMs = ctx.runData.stoppedAt.getTime() - ctx.runData.startedAt.getTime();
 			if (runtimeMs < MIN_RUNTIME || runtimeMs > MAX_RUNTIME) {
-				this.logger.warn(
-					`Invalid runtime detected: ${runtimeMs}ms, clamping to safe range`,
-				);
+				this.logger.warn(`Invalid runtime detected: ${runtimeMs}ms, clamping to safe range`);
 			}
 			const value = Math.min(Math.max(runtimeMs, MIN_RUNTIME), MAX_RUNTIME);
 			this.bufferedInsights.add({
