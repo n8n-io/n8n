@@ -208,8 +208,9 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 	) {
 		const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
-		const createTable = new CreateTable(this.toTableName(dataStoreId), '', queryRunner);
-		createTable.withColumns.apply(createTable, dslColumns);
+		const createTable = new CreateTable(this.toTableName(dataStoreId), '', queryRunner).withColumns(
+			...dslColumns,
+		).withTimestamps;
 
 		await createTable.execute(queryRunner);
 	}
