@@ -25,11 +25,11 @@ export class DataStoreRepository extends Repository<DataTable> {
 			throw new UnexpectedError('bad column name');
 		}
 
-		let dataStoreId: string | undefined;
+		let dataTableId: string | undefined;
 		await this.manager.transaction(async (em) => {
 			const dataStore = em.create(DataTable, { name, columns, projectId });
 			await em.insert(DataTable, dataStore);
-			dataStoreId = dataStore.id;
+			dataTableId = dataStore.id;
 
 			const queryRunner = em.queryRunner;
 			if (!queryRunner) {
@@ -39,7 +39,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 			// insert columns
 			const columnEntities = columns.map((col, index) =>
 				em.create(DataTableColumn, {
-					dataStoreId,
+					dataTableId,
 					name: col.name,
 					type: col.type,
 					index: col.index ?? index,
@@ -52,18 +52,18 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 			// create user table (will create empty table with just id column if no columns)
 			await this.dataStoreRowsRepository.createTableWithColumns(
-				dataStoreId,
+				dataTableId,
 				columnEntities,
 				queryRunner,
 			);
 		});
 
-		if (!dataStoreId) {
+		if (!dataTableId) {
 			throw new UnexpectedError('Data store creation failed');
 		}
 
 		const createdDataStore = await this.findOneOrFail({
-			where: { id: dataStoreId },
+			where: { id: dataTableId },
 			relations: ['project', 'columns'],
 		});
 
