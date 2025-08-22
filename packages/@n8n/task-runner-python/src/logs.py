@@ -89,11 +89,6 @@ def format_print_args(*args) -> list[str]:
             formatted_args.append(f"'{arg}'")
         elif isinstance(arg, (int, float, bool)) or arg is None:
             formatted_args.append(str(arg))
-        elif isinstance(arg, (list, tuple)):
-            try:
-                formatted_args.append(json.dumps(arg, default=str, ensure_ascii=False))
-            except (RecursionError, ValueError, TypeError):
-                formatted_args.append(f"[Circular {type(arg).__name__}]")
         else:
             try:
                 formatted_args.append(json.dumps(arg, default=str, ensure_ascii=False))
