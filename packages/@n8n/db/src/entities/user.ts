@@ -9,8 +9,8 @@ import {
 	OneToMany,
 	PrimaryGeneratedColumn,
 	BeforeInsert,
-	OneToOne,
 	JoinColumn,
+	ManyToOne,
 } from '@n8n/typeorm';
 import type { IUser, IUserSettings } from 'n8n-workflow';
 
@@ -57,7 +57,7 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@JsonColumn({ nullable: true })
 	settings: IUserSettings | null;
 
-	@OneToOne(() => Role)
+	@ManyToOne(() => Role)
 	@JoinColumn({ name: 'roleSlug', referencedColumnName: 'slug' })
 	role: Role;
 
