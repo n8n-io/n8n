@@ -50,7 +50,7 @@ import { MODAL_CONFIRM } from '@/constants';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
-import NullEmptyCellRenderer from './NullEmptyCellRenderer.vue';
+import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -226,13 +226,13 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		},
 		cellRendererSelector: (params: ICellRendererParams) => {
 			const field = params.colDef?.field;
-			const rowValue = field !== undefined ? params.data[field] : undefined;
+			const rowValue = field ? params.data?.[field] : undefined;
 			// Custom renderer for null or empty values
 			if (rowValue === null) {
-				return { component: 'NullEmptyCellRenderer', params: { value: NULL_VALUE } };
+				return { component: NullEmptyCellRenderer, params: { value: NULL_VALUE } };
 			}
 			if (rowValue === '') {
-				return { component: 'NullEmptyCellRenderer', params: { value: EMPTY_VALUE } };
+				return { component: NullEmptyCellRenderer, params: { value: EMPTY_VALUE } };
 			}
 			// Fallback to default cell renderer
 			return undefined;
@@ -450,11 +450,6 @@ const onCellEditingStopped = (params: CellEditingStoppedEvent<DataStoreRow>) => 
 		isTextEditorOpen.value = false;
 	}
 };
-
-// Register custom components
-defineExpose({
-	NullEmptyCellRenderer,
-});
 </script>
 
 <template>
