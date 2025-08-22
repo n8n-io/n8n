@@ -21,6 +21,8 @@ import type {
 	CellEditRequestEvent,
 	CellClickedEvent,
 	ValueSetterParams,
+	CellEditingStartedEvent,
+	CellEditingStoppedEvent,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -97,6 +99,7 @@ const contentLoading = ref(false);
 
 // Track the last focused cell so we can start editing when users click on it
 const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
+const isTextEditorOpen = ref(false);
 
 // Shared config for all columns
 const defaultColumnDef: ColDef = {
@@ -222,11 +225,13 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 			return params.data?.[col.name];
 		},
 		cellRendererSelector: (params: ICellRendererParams) => {
+			const field = params.colDef?.field;
+			const rowValue = field !== undefined ? params.data[field] : undefined;
 			// Custom renderer for null or empty values
-			if (params.value === null) {
+			if (rowValue === null) {
 				return { component: 'NullEmptyCellRenderer', params: { value: NULL_VALUE } };
 			}
-			if (params.value === '') {
+			if (rowValue === '') {
 				return { component: 'NullEmptyCellRenderer', params: { value: EMPTY_VALUE } };
 			}
 			// Fallback to default cell renderer
@@ -251,6 +256,11 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 			// If original was null and new value is empty string, keep it as null
 			if (originalValue === null && newValue === '') {
 				return false; // No change
+			}
+
+			if (isTextEditorOpen.value && newValue === null) {
+				params.data[col.name] = '';
+				return true;
 			}
 
 			// Otherwise update the value
@@ -336,7 +346,8 @@ const initColumnDefinitions = () => {
 };
 
 const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) => {
-	const { data, api, oldValue, value, colDef } = params;
+	const { data, api, oldValue, colDef } = params;
+	const value = params.data[colDef.field!];
 
 	if (value === oldValue) {
 		return;
@@ -426,6 +437,20 @@ onMounted(async () => {
 	await initialize();
 });
 
+const onCellEditingStarted = (params: CellEditingStartedEvent<DataStoreRow>) => {
+	if (params.column.getColDef().cellDataType === 'text') {
+		isTextEditorOpen.value = true;
+	} else {
+		isTextEditorOpen.value = false;
+	}
+};
+
+const onCellEditingStopped = (params: CellEditingStoppedEvent<DataStoreRow>) => {
+	if (params.column.getColDef().cellDataType === 'text') {
+		isTextEditorOpen.value = false;
+	}
+};
+
 // Register custom components
 defineExpose({
 	NullEmptyCellRenderer,
@@ -455,6 +480,8 @@ defineExpose({
 				@cell-value-changed="onCellValueChanged"
 				@column-moved="onColumnMoved"
 				@cell-clicked="onCellClicked"
+				@cell-editing-started="onCellEditingStarted"
+				@cell-editing-stopped="onCellEditingStopped"
 			/>
 			<AddColumnPopover
 				:data-store="props.dataStore"
