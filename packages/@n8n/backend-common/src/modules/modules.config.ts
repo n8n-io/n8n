@@ -2,7 +2,12 @@ import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
 
 import { UnknownModuleError } from './errors/unknown-module.error';
 
-export const MODULE_NAMES = ['insights', 'external-secrets', 'data-store'] as const;
+export const MODULE_NAMES = [
+	'insights',
+	'external-secrets',
+	'community-packages',
+	'data-store',
+] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];
 
