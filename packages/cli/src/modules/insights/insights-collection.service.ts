@@ -138,7 +138,7 @@ export class InsightsCollectionService {
 			value: 1,
 		});
 
-				// run time event
+		// run time event
 		if (ctx.runData.stoppedAt) {
 			const runtimeMs = ctx.runData.stoppedAt.getTime() - ctx.runData.startedAt.getTime();
 			if (runtimeMs < MIN_RUNTIME || runtimeMs > MAX_RUNTIME) {
