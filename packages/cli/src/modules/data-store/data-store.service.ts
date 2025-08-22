@@ -151,7 +151,12 @@ export class DataStoreService {
 		return await this.dataStoreRowsRepository.upsertRows(dataStoreId, dto, columns);
 	}
 
-	async updateRow(dataStoreId: string, projectId: string, dto: UpdateDataStoreRowDto) {
+	async updateRow(
+		dataStoreId: string,
+		projectId: string,
+		dto: UpdateDataStoreRowDto,
+		returnData: boolean = false,
+	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
@@ -172,8 +177,13 @@ export class DataStoreService {
 		this.validateRowsWithColumns([filter], columns, true, true);
 		this.validateRowsWithColumns([data], columns, true, false);
 
-		await this.dataStoreRowsRepository.updateRow(dataStoreId, data, filter, columns);
-		return true;
+		return await this.dataStoreRowsRepository.updateRow(
+			dataStoreId,
+			data,
+			filter,
+			columns,
+			returnData,
+		);
 	}
 
 	async deleteRows(dataStoreId: string, projectId: string, ids: number[]) {

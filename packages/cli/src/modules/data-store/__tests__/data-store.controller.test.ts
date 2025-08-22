@@ -3156,7 +3156,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		);
 	});
 
-	test('should return true when no rows match the filter', async () => {
+	test('should return empty array when no rows match the filter', async () => {
 		const dataStore = await createDataStore(memberProject, {
 			columns: [
 				{ name: 'name', type: 'string' },
@@ -3175,7 +3175,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		expect(response.body.data).toBe(true);
+		expect(response.body.data).toEqual([]);
 
 		const readResponse = await authMemberAgent
 			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
