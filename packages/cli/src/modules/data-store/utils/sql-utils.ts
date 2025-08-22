@@ -8,9 +8,9 @@ import type { DataSourceOptions } from '@n8n/typeorm';
 import type { DataStoreColumnJsType, DataStoreRows } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { DataStoreUserTableName } from '../data-store.types';
-
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import type { DataStoreUserTableName } from '../data-store.types';
 
 export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
