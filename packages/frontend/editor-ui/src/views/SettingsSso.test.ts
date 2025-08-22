@@ -80,9 +80,9 @@ describe('SettingsSso View', () => {
 
 			const pageRedirectionHelper = usePageRedirectionHelper();
 
-			const { getByTestId } = renderView();
+			const { getByTestId, queryByTestId } = renderView();
 
-			expect(() => getByTestId('sso-auth-protocol-select')).toThrow('Unable to find an element by');
+			expect(queryByTestId('sso-auth-protocol-select')).not.toBeInTheDocument();
 
 			const actionBox = getByTestId('sso-content-unlicensed');
 			expect(actionBox).toBeInTheDocument();
