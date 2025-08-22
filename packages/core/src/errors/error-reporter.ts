@@ -126,7 +126,7 @@ export class ErrorReporter {
 			'ContextLines',
 		];
 
-		const eventLoopBlockIntegration = await this.getEventLoopBlockIntegration();
+		const eventLoopBlockIntegration = await this.getEventLoopBlockIntegration(serverType);
 
 		init({
 			dsn,
@@ -255,7 +255,9 @@ export class ErrorReporter {
 		if (tags) event.tags = { ...event.tags, ...tags };
 	}
 
-	private async getEventLoopBlockIntegration() {
+	private async getEventLoopBlockIntegration(serverType: string) {
+		if (serverType === 'task_runner') return []; // user code blocking the event loop is not actionable
+
 		try {
 			const { eventLoopBlockIntegration } = await import('@sentry/node-native');
 			return [eventLoopBlockIntegration()];
