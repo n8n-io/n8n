@@ -25,7 +25,7 @@ type ColumnOptions = {
 };
 
 const skipTableCreation: INodeProperties = {
-	displayName: 'Skip table validation & creation',
+	displayName: 'Skip Table Validation & Creation',
 	name: 'skipInitializationCheck',
 	type: 'boolean',
 	default: false,
@@ -264,7 +264,7 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			filter,
 		};
 
-		if (skipTableValidationAndCreation && typeof skipTableValidationAndCreation == 'boolean') {
+		if (skipTableValidationAndCreation && typeof skipTableValidationAndCreation === 'boolean') {
 			config.skipInitializationCheck = skipTableValidationAndCreation;
 		}
 
@@ -316,7 +316,7 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			tableName,
 		};
 
-		if (skipTableValidationAndCreation && typeof skipTableValidationAndCreation == 'boolean') {
+		if (skipTableValidationAndCreation && typeof skipTableValidationAndCreation === 'boolean') {
 			config.skipInitializationCheck = skipTableValidationAndCreation;
 		}
 

@@ -1,5 +1,7 @@
-import { VectorStorePGVector } from '../VectorStorePGVector/VectorStorePGVector.node';
+import * as pgModule from '@langchain/community/vectorstores/pgvector'; // <- added
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
+
+import { VectorStorePGVector } from '../VectorStorePGVector/VectorStorePGVector.node';
 
 // Mock configurePostgres
 jest.mock('n8n-nodes-base/dist/nodes/Postgres/transport/index', () => ({
@@ -21,7 +23,7 @@ jest.mock('../../vector_store/shared/createVectorStoreNode/operations', () => {
 		handleInsertOperation: jest.fn(async (ctx: any, args: any, embeddings: any) => {
 			// Simulate creation of documents and call the node's populateVectorStore function
 			const documents = [{ id: '1', pageContent: 'hello' }];
-			await (args as any).populateVectorStore(ctx, embeddings, documents, 0);
+			await args.populateVectorStore(ctx, embeddings, documents, 0);
 			return [];
 		}),
 		handleUpdateOperation: jest.fn(),
@@ -112,16 +114,18 @@ describe('VectorStorePGVector -> execute (load) triggers ----', () => {
 		};
 	};
 
-	const pgModule = require('@langchain/community/vectorstores/pgvector');
-
 	beforeEach(() => {
 		jest.resetAllMocks();
 
 		// configurePostgres returns an object with db.$pool
 		(configurePostgres as jest.Mock).mockResolvedValue({ db: { $pool: mockPool } });
 
-		pgModule.PGVectorStore.prototype.ensureTableInDatabase.mockResolvedValue(undefined);
-		pgModule.PGVectorStore.prototype.ensureCollectionTableInDatabase.mockResolvedValue(undefined);
+		(pgModule.PGVectorStore.prototype.ensureTableInDatabase as jest.Mock).mockResolvedValue(
+			undefined,
+		);
+		(
+			pgModule.PGVectorStore.prototype.ensureCollectionTableInDatabase as jest.Mock
+		).mockResolvedValue(undefined);
 
 		// The node expects embeddings from input connection; return a dummy object
 		const mockEmbeddings = {
