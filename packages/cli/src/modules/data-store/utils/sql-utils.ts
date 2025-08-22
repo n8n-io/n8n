@@ -5,7 +5,7 @@ import {
 } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import type { DataStoreColumnJsType, DataStoreRows } from 'n8n-workflow';
+import type { DataStoreColumnJsType, DataStoreRows, DataStoreRowWithId } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -155,7 +155,7 @@ function hasRowId(data: unknown): data is WithRowId {
 	return typeof data === 'object' && data !== null && 'id' in data && isNumber(data.id);
 }
 
-export function extractReturningData(raw: unknown): DataStoreRows {
+export function extractReturningData(raw: unknown): DataStoreRowWithId[] {
 	if (!isArrayOf(raw, hasRowId)) {
 		throw new UnexpectedError(
 			'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',

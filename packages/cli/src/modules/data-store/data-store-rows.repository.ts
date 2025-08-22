@@ -97,7 +97,7 @@ export class DataStoreRowsRepository {
 			const result = await query.execute();
 
 			if (useReturning) {
-				const returned = extractReturningData(result.raw) as DataStoreRowWithId[];
+				const returned = extractReturningData(result.raw);
 				inserted.push.apply(inserted, returned);
 				continue;
 			}
