@@ -1,3 +1,8 @@
+check:
+    just lint
+    just format-check
+    just typecheck
+
 run:
     uv run python -m src.main
 
@@ -13,8 +18,15 @@ lintfix:
 format:
     uv run ruff format
 
+format-check:
+    uv run ruff format --check
+
 test:
     @echo "No tests yet"
 
 typecheck:
     uv run ty check src/
+
+# For debugging only, start the runner with a manually fetched grant token.
+debug:
+    GRANT_TOKEN=$(curl -s -X POST http://127.0.0.1:5679/runners/auth -H "Content-Type: application/json" -d '{"token":"test"}' | jq -r '.data.token') && N8N_RUNNERS_GRANT_TOKEN="$GRANT_TOKEN" N8N_RUNNERS_HIDE_TASK_OFFER_LOGS=true just run
