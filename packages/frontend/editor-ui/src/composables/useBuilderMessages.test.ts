@@ -1,7 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useBuilderMessages } from '@/composables/useBuilderMessages';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '@/types/assistant.types';
+
+// Mock useI18n to return the keys instead of translations
+vi.mock('@n8n/i18n', () => ({
+	useI18n: () => ({
+		baseText: (key: string) => key,
+	}),
+}));
 
 describe('useBuilderMessages', () => {
 	let builderMessages: ReturnType<typeof useBuilderMessages>;
@@ -282,7 +289,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.thinkingMessage).toBe('Running tools...');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 			expect(result.shouldClearThinking).toBe(false);
 		});
 
@@ -309,7 +316,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.thinkingMessage).toBe('Processing results...');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
 			expect(result.shouldClearThinking).toBe(false);
 		});
 
@@ -382,8 +389,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should show "Running tools..." for the new running tool, not "Processing results..."
-			expect(result.thinkingMessage).toBe('Running tools...');
+			// Should show "aiAssistant.thinkingSteps.runningTools" for the new running tool, not "aiAssistant.thinkingSteps.processingResults"
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 		});
 
 		it('should show processing message when second tool completes', () => {
@@ -419,7 +426,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			expect(result.thinkingMessage).toBe('Processing results...');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
 		});
 
 		it('should keep showing running tools message when parallel tools complete one by one', () => {
@@ -466,8 +473,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should still show "Running tools..." because call-456 is still running
-			expect(result.thinkingMessage).toBe('Running tools...');
+			// Should still show "aiAssistant.thinkingSteps.runningTools" because call-456 is still running
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 
 			// Verify first tool is now completed
 			const firstTool = result.messages.find(
@@ -526,8 +533,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should now show "Processing results..." because all tools are completed
-			expect(result.thinkingMessage).toBe('Processing results...');
+			// Should now show "aiAssistant.thinkingSteps.processingResults" because all tools are completed
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
 		});
 
 		it('should keep processing message when workflow-updated arrives after tools complete', () => {
@@ -561,8 +568,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should still show "Processing results..." because workflow-updated is not a text response
-			expect(result.thinkingMessage).toBe('Processing results...');
+			// Should still show "aiAssistant.thinkingSteps.processingResults" because workflow-updated is not a text response
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
 			// Should NOT clear thinking for workflow updates
 			expect(result.shouldClearThinking).toBe(false);
 		});
@@ -1256,7 +1263,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			let result = builderMessages.processAssistantMessages(currentMessages, batch1, 'batch-1');
-			expect(result.thinkingMessage).toBe('Running tools...');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
 			currentMessages = result.messages;
 
 			// Second batch: tool completes
@@ -1272,7 +1279,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			result = builderMessages.processAssistantMessages(currentMessages, batch2, 'batch-2');
-			expect(result.thinkingMessage).toBe('Processing results...');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
 			currentMessages = result.messages;
 
 			// Third batch: workflow updated
@@ -1285,7 +1292,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			result = builderMessages.processAssistantMessages(currentMessages, batch3, 'batch-3');
-			expect(result.thinkingMessage).toBe('Processing results...');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
 			currentMessages = result.messages;
 
 			// Fourth batch: final text response
@@ -1306,6 +1313,700 @@ describe('useBuilderMessages', () => {
 			expect(result.messages.find((m) => m.type === 'tool')).toBeTruthy();
 			expect(result.messages.find((m) => m.type === 'workflow-updated')).toBeTruthy();
 			expect(result.messages.find((m) => m.type === 'text')).toBeTruthy();
+		});
+	});
+
+	describe('clearRatingLogic', () => {
+		it('should remove showRating and ratingStyle properties from text messages', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Hello there!',
+					showRating: true,
+					ratingStyle: 'regular',
+					read: false,
+				},
+				{
+					id: 'msg-2',
+					role: 'assistant',
+					type: 'text',
+					content: 'How can I help?',
+					showRating: false,
+					ratingStyle: 'minimal',
+					read: false,
+				},
+			];
+
+			const result = builderMessages.clearRatingLogic(messages);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toMatchObject({
+				id: 'msg-1',
+				role: 'assistant',
+				type: 'text',
+				content: 'Hello there!',
+				read: false,
+			});
+			expect(result[0]).not.toHaveProperty('showRating');
+			expect(result[0]).not.toHaveProperty('ratingStyle');
+
+			expect(result[1]).toMatchObject({
+				id: 'msg-2',
+				role: 'assistant',
+				type: 'text',
+				content: 'How can I help?',
+				read: false,
+			});
+			expect(result[1]).not.toHaveProperty('showRating');
+			expect(result[1]).not.toHaveProperty('ratingStyle');
+		});
+
+		it('should leave non-text messages unchanged', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'tool-1',
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'add_nodes',
+					toolCallId: 'call-1',
+					status: 'completed',
+					updates: [],
+					read: false,
+				},
+				{
+					id: 'workflow-1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+					read: false,
+				},
+			];
+
+			const result = builderMessages.clearRatingLogic(messages);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toEqual(messages[0]);
+			expect(result[1]).toEqual(messages[1]);
+		});
+
+		it('should handle text messages without rating properties', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'No rating here',
+					read: false,
+				},
+			];
+
+			const result = builderMessages.clearRatingLogic(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual(messages[0]);
+		});
+
+		it('should handle empty message array', () => {
+			const result = builderMessages.clearRatingLogic([]);
+			expect(result).toHaveLength(0);
+		});
+
+		it('should handle mixed message types with some having rating properties', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'With rating',
+					showRating: true,
+					ratingStyle: 'regular',
+					read: false,
+				},
+				{
+					id: 'tool-1',
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'test_tool',
+					toolCallId: 'call-1',
+					status: 'completed',
+					updates: [],
+					read: false,
+				},
+				{
+					id: 'msg-2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Without rating',
+					read: false,
+				},
+			];
+
+			const result = builderMessages.clearRatingLogic(messages);
+
+			expect(result).toHaveLength(3);
+			expect(result[0]).not.toHaveProperty('showRating');
+			expect(result[0]).not.toHaveProperty('ratingStyle');
+			expect(result[1]).toEqual(messages[1]); // tool message unchanged
+			expect(result[2]).toEqual(messages[2]); // text without rating unchanged
+		});
+	});
+
+	describe('error message handling with retry', () => {
+		it('should pass retry function to error messages from processAssistantMessages', () => {
+			const retryFn = vi.fn(async () => {});
+			const currentMessages: ChatUI.AssistantMessage[] = [];
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'Something went wrong',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				retryFn,
+			);
+
+			expect(result.messages).toHaveLength(1);
+			const errorMessage = result.messages[0] as ChatUI.ErrorMessage;
+			expect(errorMessage).toMatchObject({
+				id: 'test-id-0',
+				role: 'assistant',
+				type: 'error',
+				content: 'Something went wrong',
+				read: false,
+			});
+			expect(errorMessage.retry).toBe(retryFn);
+		});
+
+		it('should not pass retry function to non-error messages', () => {
+			const retryFn = vi.fn(async () => {});
+			const currentMessages: ChatUI.AssistantMessage[] = [];
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'message',
+					role: 'assistant',
+					text: 'This is a normal text message',
+				},
+				{
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'add_nodes',
+					toolCallId: 'call-1',
+					status: 'running',
+					updates: [],
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				retryFn,
+			);
+
+			expect(result.messages).toHaveLength(2);
+
+			const textMessage = result.messages[0] as ChatUI.TextMessage;
+			expect(textMessage.type).toBe('text');
+			expect('retry' in textMessage).toBe(false);
+
+			const toolMessage = result.messages[1] as ChatUI.ToolMessage;
+			expect(toolMessage.type).toBe('tool');
+			expect('retry' in toolMessage).toBe(false);
+		});
+
+		it('should clear retry from previous error messages when processing new messages', () => {
+			const oldRetryFn = vi.fn(async () => {});
+			const newRetryFn = vi.fn(async () => {});
+
+			const currentMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'error-1',
+					role: 'assistant',
+					type: 'error',
+					content: 'First error',
+					retry: oldRetryFn,
+					read: false,
+				} as ChatUI.ErrorMessage,
+				{
+					id: 'error-2',
+					role: 'assistant',
+					type: 'error',
+					content: 'Second error',
+					retry: oldRetryFn,
+					read: false,
+				} as ChatUI.ErrorMessage,
+			];
+
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'New error',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				newRetryFn,
+			);
+
+			expect(result.messages).toHaveLength(3);
+
+			// First error should have retry removed
+			const firstError = result.messages[0] as ChatUI.ErrorMessage;
+			expect(firstError.content).toBe('First error');
+			expect('retry' in firstError).toBe(false);
+
+			// Second error should have retry removed
+			const secondError = result.messages[1] as ChatUI.ErrorMessage;
+			expect(secondError.content).toBe('Second error');
+			expect('retry' in secondError).toBe(false);
+
+			// New error should have the new retry function
+			const newError = result.messages[2] as ChatUI.ErrorMessage;
+			expect(newError.content).toBe('New error');
+			expect(newError.retry).toBe(newRetryFn);
+		});
+
+		it('should only keep retry on the last error message when multiple errors exist', () => {
+			const retryFn = vi.fn(async () => {});
+			const currentMessages: ChatUI.AssistantMessage[] = [];
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'First error in batch',
+				},
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'Second error in batch',
+				},
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'Third error in batch',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				retryFn,
+			);
+
+			expect(result.messages).toHaveLength(3);
+
+			// First error should not have retry
+			const firstError = result.messages[0] as ChatUI.ErrorMessage;
+			expect(firstError.content).toBe('First error in batch');
+			expect('retry' in firstError).toBe(false);
+
+			// Second error should not have retry
+			const secondError = result.messages[1] as ChatUI.ErrorMessage;
+			expect(secondError.content).toBe('Second error in batch');
+			expect('retry' in secondError).toBe(false);
+
+			// Only the last error should have retry
+			const lastError = result.messages[2] as ChatUI.ErrorMessage;
+			expect(lastError.content).toBe('Third error in batch');
+			expect(lastError.retry).toBe(retryFn);
+		});
+
+		it('should handle mixed message types and only affect error messages with retry logic', () => {
+			const retryFn = vi.fn(async () => {});
+			const currentMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Normal message',
+					read: false,
+				},
+				{
+					id: 'error-1',
+					role: 'assistant',
+					type: 'error',
+					content: 'Old error',
+					retry: retryFn,
+					read: false,
+				} as ChatUI.ErrorMessage,
+			];
+
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'message',
+					role: 'assistant',
+					text: 'New text message',
+				},
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'New error message',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				retryFn,
+			);
+
+			expect(result.messages).toHaveLength(4);
+
+			// Normal text message should be unchanged
+			expect(result.messages[0]).toMatchObject({
+				type: 'text',
+				content: 'Normal message',
+			});
+			expect('retry' in result.messages[0]).toBe(false);
+
+			// Old error should have retry removed
+			const oldError = result.messages[1] as ChatUI.ErrorMessage;
+			expect(oldError.content).toBe('Old error');
+			expect('retry' in oldError).toBe(false);
+
+			// New text message should not have retry
+			expect(result.messages[2]).toMatchObject({
+				type: 'text',
+				content: 'New text message',
+			});
+			expect('retry' in result.messages[2]).toBe(false);
+
+			// Only the new error should have retry
+			const newError = result.messages[3] as ChatUI.ErrorMessage;
+			expect(newError.content).toBe('New error message');
+			expect(newError.retry).toBe(retryFn);
+		});
+	});
+
+	describe('applyRatingLogic', () => {
+		it('should apply rating to the last assistant text message after workflow-updated when no tools are running', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Starting process...',
+					read: false,
+				},
+				{
+					id: 'workflow-1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{"nodes": [], "connections": {}}',
+					read: false,
+				},
+				{
+					id: 'msg-2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Process completed!',
+					read: false,
+				},
+			];
+
+			const result = builderMessages.applyRatingLogic(messages);
+
+			expect(result).toHaveLength(3);
+			expect(result[0].showRating).toBeUndefined();
+			expect(result[1].showRating).toBeUndefined();
+			expect(result[1].type).toBe('workflow-updated');
+			expect(result[2]).toMatchObject({
+				id: 'msg-2',
+				content: 'Process completed!',
+				showRating: true,
+				ratingStyle: 'regular',
+			});
+		});
+
+		it('should not apply rating when tools are still running', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'workflow-1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+					read: false,
+				},
+				{
+					id: 'tool-1',
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'add_nodes',
+					toolCallId: 'call-1',
+					status: 'running',
+					updates: [],
+					read: false,
+				},
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Working on it...',
+					read: false,
+				},
+			];
+
+			const result = builderMessages.applyRatingLogic(messages);
+
+			expect(result).toHaveLength(3);
+			result.forEach((message) => {
+				expect(message.showRating).toBeUndefined();
+			});
+		});
+
+		it('should not apply rating when still thinking (tools completed but no text response)', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'workflow-1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+					read: false,
+				},
+				{
+					id: 'tool-1',
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'add_nodes',
+					toolCallId: 'call-1',
+					status: 'completed',
+					updates: [],
+					read: false,
+				},
+			];
+
+			const result = builderMessages.applyRatingLogic(messages);
+
+			expect(result).toHaveLength(2);
+			result.forEach((message) => {
+				expect(message.showRating).toBeUndefined();
+			});
+		});
+
+		it('should not apply rating when no workflow-updated message exists', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Hello there!',
+					read: false,
+				},
+				{
+					id: 'msg-2',
+					role: 'assistant',
+					type: 'text',
+					content: 'How can I help?',
+					read: false,
+				},
+			];
+
+			const result = builderMessages.applyRatingLogic(messages);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].showRating).toBeUndefined();
+			expect(result[1].showRating).toBeUndefined();
+		});
+
+		it('should remove existing ratings when tools are running', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Previous message',
+					showRating: true,
+					ratingStyle: 'regular',
+					read: false,
+				},
+				{
+					id: 'tool-1',
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'add_nodes',
+					toolCallId: 'call-1',
+					status: 'running',
+					updates: [],
+					read: false,
+				},
+			];
+
+			const result = builderMessages.applyRatingLogic(messages);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).not.toHaveProperty('showRating');
+			expect(result[0]).not.toHaveProperty('ratingStyle');
+		});
+
+		it('should remove ratings from non-target messages when applying rating to target message', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Earlier message',
+					showRating: true,
+					ratingStyle: 'minimal',
+					read: false,
+				},
+				{
+					id: 'workflow-1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+					read: false,
+				},
+				{
+					id: 'msg-2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Target message',
+					read: false,
+				},
+			];
+
+			const result = builderMessages.applyRatingLogic(messages);
+
+			expect(result).toHaveLength(3);
+			expect(result[0]).not.toHaveProperty('showRating');
+			expect(result[0]).not.toHaveProperty('ratingStyle');
+			expect(result[2]).toMatchObject({
+				showRating: true,
+				ratingStyle: 'regular',
+			});
+		});
+
+		it('should handle multiple workflow-updated messages and apply rating after the last one', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'workflow-1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{"nodes": []}',
+					read: false,
+				},
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'First update done',
+					read: false,
+				},
+				{
+					id: 'workflow-2',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{"nodes": [{"name": "HTTP"}]}',
+					read: false,
+				},
+				{
+					id: 'msg-2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Final update complete',
+					read: false,
+				},
+			];
+
+			const result = builderMessages.applyRatingLogic(messages);
+
+			expect(result).toHaveLength(4);
+			expect(result[1].showRating).toBeUndefined(); // First text message
+			expect(result[3]).toMatchObject({
+				content: 'Final update complete',
+				showRating: true,
+				ratingStyle: 'regular',
+			});
+		});
+
+		it('should handle user messages mixed with assistant messages', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'user-1',
+					role: 'user',
+					type: 'text',
+					content: 'Create a workflow',
+					read: true,
+				},
+				{
+					id: 'workflow-1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+					read: false,
+				},
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Workflow created!',
+					read: false,
+				},
+			];
+
+			const result = builderMessages.applyRatingLogic(messages);
+
+			expect(result).toHaveLength(3);
+			expect(result[0].showRating).toBeUndefined(); // User message
+			expect(result[2]).toMatchObject({
+				content: 'Workflow created!',
+				showRating: true,
+				ratingStyle: 'regular',
+			});
+		});
+
+		it('should handle empty message array', () => {
+			const result = builderMessages.applyRatingLogic([]);
+			expect(result).toHaveLength(0);
+		});
+
+		it('should apply rating only to assistant text messages, not user text messages', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'workflow-1',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '{}',
+					read: false,
+				},
+				{
+					id: 'user-1',
+					role: 'user',
+					type: 'text',
+					content: 'Thanks!',
+					read: true,
+				},
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'You are welcome!',
+					read: false,
+				},
+			];
+
+			const result = builderMessages.applyRatingLogic(messages);
+
+			expect(result).toHaveLength(3);
+			expect(result[1].showRating).toBeUndefined(); // User message should not have rating
+			expect(result[2]).toMatchObject({
+				content: 'You are welcome!',
+				showRating: true,
+				ratingStyle: 'regular',
+			});
 		});
 	});
 });

@@ -93,20 +93,6 @@ if (!inE2ETests && !inTest) {
 	});
 }
 
-// Validate Configuration
-config.validate({
-	allowed: 'strict',
-});
-const userManagement = config.get('userManagement');
-if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHours) {
-	if (!inTest)
-		logger.warn(
-			'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0 for now.',
-		);
-
-	config.set('userManagement.jwtRefreshTimeoutHours', 0);
-}
-
 setGlobalState({
 	defaultTimezone: globalConfig.generic.timezone,
 });

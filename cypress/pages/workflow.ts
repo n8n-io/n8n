@@ -390,6 +390,9 @@ export class WorkflowPage extends BasePage {
 		hitDisableNodeShortcut: () => {
 			cy.get('body').type('d');
 		},
+		hitOpenAbout: () => {
+			cy.get('body').type(`{alt}{${META_KEY}}o`);
+		},
 		hitCopy: () => {
 			this.actions.hitComboShortcut(`{${META_KEY}}`, 'c');
 		},

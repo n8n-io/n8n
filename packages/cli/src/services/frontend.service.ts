@@ -116,10 +116,10 @@ export class FrontendService {
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
-			saveDataErrorExecution: config.getEnv('executions.saveDataOnError'),
-			saveDataSuccessExecution: config.getEnv('executions.saveDataOnSuccess'),
-			saveManualExecutions: config.getEnv('executions.saveDataManualExecutions'),
-			saveExecutionProgress: config.getEnv('executions.saveExecutionProgress'),
+			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
+			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
+			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
+			saveExecutionProgress: this.globalConfig.executions.saveExecutionProgress,
 			executionTimeout: config.getEnv('executions.timeout'),
 			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
 			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
@@ -129,7 +129,7 @@ export class FrontendService {
 			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
 			versionCli: N8N_VERSION,
-			concurrency: config.getEnv('executions.concurrency.productionLimit'),
+			concurrency: this.globalConfig.executions.concurrency.productionLimit,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -228,6 +228,7 @@ export class FrontendService {
 				workerView: false,
 				advancedPermissions: false,
 				apiKeyScopes: false,
+				workflowDiffs: false,
 				projects: {
 					team: {
 						limit: 0,
@@ -356,6 +357,7 @@ export class FrontendService {
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
+			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {

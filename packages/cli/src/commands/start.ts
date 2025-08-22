@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ExecutionRepository, SettingsRepository } from '@n8n/db';
+import { AuthRolesService, ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import glob from 'fast-glob';
@@ -171,11 +171,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 		}
 
-		if (process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true') {
-			this.needsTaskRunner = false;
-		}
-
 		await super.init();
+
+		await Container.get(AuthRolesService).init();
+
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 		const isMultiMainEnabled =
@@ -225,6 +224,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.moduleRegistry.initModules();
 
 		if (this.instanceSettings.isMultiMain) {
+			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
+			if (this.globalConfig.endpoints.metrics.enable) {
+				const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
+				Container.get(PrometheusMetricsService);
+			}
+
 			Container.get(MultiMainSetup).registerEventHandlers();
 		}
 	}

@@ -52,15 +52,50 @@
         "id": {
             "type": "string"
         },
-        "sentDateTime": {
+        "isRead": {
+            "type": "boolean"
+        },
+        "receivedDateTime": {
             "type": "string"
+        },
+        "sender": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         },
         "subject": {
             "type": "string"
         },
-        "webLink": {
-            "type": "string"
+        "toRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
-    "version": 4
+    "version": 5
 }
