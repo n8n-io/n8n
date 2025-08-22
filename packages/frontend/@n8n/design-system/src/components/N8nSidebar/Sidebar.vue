@@ -9,15 +9,15 @@ import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue'
 import { useSidebarLayout } from './useSidebarLayout';
 import { IMenuItem, IMenuElement, isCustomMenuItem } from '@n8n/design-system/types';
 import SidebarSubMenu from './SidebarSubMenu.vue';
-import { TreeItem, TreeItemToggleEvent, TreeRoot, TreeVirtualizer } from 'reka-ui';
 import SidebarProjectsEmpty from './SidebarProjectsEmpty.vue';
+import SidebarTree from './SidebarTree.vue';
 
 const props = defineProps<{
-	items: IMenuElement[];
-	projectsEmptyState?: {
-		visible: boolean;
-		canCreate: boolean;
-	};
+	topItems: IMenuElement[];
+	projectItems: IMenuElement[];
+	canCreateProject: boolean;
+	openProject: (id: string) => Promise<void>;
+	showProjects: boolean;
 	bottomItems?: IMenuElement[];
 	userName: string;
 	releaseChannel: 'stable' | 'dev' | 'beta' | 'nightly';
@@ -59,14 +59,6 @@ onMounted(() => {
 onUnmounted(() => {
 	window.removeEventListener('keydown', togglePeak);
 });
-
-function preventDefault<T>(event: TreeItemToggleEvent<T>) {
-	if (event.detail.originalEvent.type === 'click') {
-		event.detail.originalEvent.preventDefault();
-	}
-}
-
-console.log(props.projectsEmptyState);
 </script>
 
 <template>
@@ -118,55 +110,14 @@ console.log(props.projectsEmptyState);
 					/>
 				</N8nTooltip>
 			</header>
-			<TreeRoot :items :get-key="(item: IMenuElement) => item.id">
-				<TreeVirtualizer v-slot="{ item }" :text-content="(opt) => opt.name">
-					<TreeItem
-						as-child
-						:key="item.value.id"
-						v-slot="{ isExpanded, handleToggle }"
-						@toggle="preventDefault"
-						@select="preventDefault"
-						@click="preventDefault"
-						class="item"
-						v-bind="item.bind"
-					>
-						<div v-if="item.value.type === 'subtitle'">
-							<N8nText class="sidebarSubheader" size="small" color="text-light" bold>
-								{{ item.value.label }}
-							</N8nText>
-						</div>
-						<div v-else-if="item.value.type === 'empty'">
-							<span
-								class="itemIdent"
-								v-for="level in new Array((item.level || 1) - 1)"
-								:key="level"
-							/>
-							<N8nText size="small" color="text-light" class="sidebarEmptyState">
-								{{ item.value.label }}
-							</N8nText>
-						</div>
-						<component
-							v-else-if="isCustomMenuItem(item.value as IMenuElement)"
-							:is="item.value.component"
-							class="component"
-							v-bind="item.value.props || {}"
-						/>
-						<SidebarItem
-							v-else
-							:key="item.value.id"
-							:click="handleToggle"
-							:open="isExpanded"
-							:level="item.level"
-							:ariaLabel="`Open ${item.value.label}`"
-							:item="item.value as IMenuItem"
-						/>
-					</TreeItem>
-				</TreeVirtualizer>
-			</TreeRoot>
-			<SidebarProjectsEmpty
-				v-if="projectsEmptyState?.visible"
-				:can-create="projectsEmptyState.canCreate"
-			/>
+			<SidebarTree :items="props.topItems" />
+			<template v-if="props.showProjects">
+				<SidebarProjectsEmpty v-if="projectItems.length === 0" :can-create="canCreateProject" />
+				<template v-else>
+					<N8nText size="small" color="text-light" class="sidebarSubheader" bold>Projects</N8nText>
+					<SidebarTree :items="props.projectItems" />
+				</template>
+			</template>
 			<div v-if="bottomItems?.length" class="sidebarBottomItems">
 				<SidebarItem
 					v-for="item in bottomItems"
@@ -177,7 +128,6 @@ console.log(props.projectsEmptyState);
 				/>
 			</div>
 		</nav>
-
 		<slot name="creatorCallout" />
 		<slot name="sourceControl" />
 		<div class="sidebarUserArea">
@@ -342,8 +292,9 @@ console.log(props.projectsEmptyState);
 
 .sidebarSubheader {
 	display: block;
-	padding-top: var(--spacing-xs);
-	padding-bottom: var(--spacing-xs);
+	padding-top: var(--spacing-s);
+	padding-bottom: var(--spacing-3xs);
+	padding-left: var(--spacing-4xs);
 }
 
 .sidebarFooter {
@@ -351,10 +302,6 @@ console.log(props.projectsEmptyState);
 	position: sticky;
 	top: 100%;
 	margin-top: auto;
-}
-
-.sidebarEmptyState {
-	padding: var(--spacing-3xs) var(--spacing-3xs);
 }
 
 .interactiveArea {
@@ -394,39 +341,7 @@ console.log(props.projectsEmptyState);
 	display: block;
 }
 
-.item {
-	position: relative;
-	display: flex;
-	align-items: center;
-	max-width: 100%;
-	overflow: hidden;
-}
-
-.itemIdent {
-	display: block;
-	position: relative;
-	width: 0.5rem;
-	min-width: 0.5rem;
-	align-self: stretch;
-	margin-left: 0.75rem;
-	border-left: 1px solid var(--color-foreground-light);
-}
-
-.itemIdent::before {
-	content: '';
-	position: absolute;
-	bottom: -1px;
-	left: -1px;
-	width: 1px;
-	height: 1px;
-	background-color: var(--color-foreground-light);
-}
-
 .sidebarBottomItems {
 	margin-top: auto;
-}
-
-.component * {
-	width: 100%;
 }
 </style>

@@ -75,6 +75,7 @@ const to = computed(() => {
 	position: relative;
 	width: 100%;
 	max-width: 100%;
+	margin-bottom: 1px;
 }
 
 .router-link-active {
