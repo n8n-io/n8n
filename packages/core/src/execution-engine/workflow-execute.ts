@@ -2622,7 +2622,7 @@ export class WorkflowExecute {
 								item: 0,
 							};
 						} else if (isSameNumberOfItems) {
-							// The number of oncoming and outcoming items is identical so we can
+							// The number of incoming and outgoing items is identical so we can
 							// make the reasonable assumption that each of the input items
 							// is the origin of the corresponding output items
 							item.pairedItem = {
