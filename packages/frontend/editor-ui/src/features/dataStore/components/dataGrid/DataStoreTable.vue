@@ -210,7 +210,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		editable: true,
 		resizable: true,
 		headerComponent: ColumnHeader,
-		cellEditorPopup: true,
+		cellEditorPopup: false,
 		headerComponentParams: { onDelete: onDeleteColumn },
 		...extraProps,
 		cellDataType: dataStoreTypes.mapToAGCellType(col.type),
@@ -275,6 +275,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 	// Setup date editor
 	if (col.type === 'date') {
 		columnDef.cellEditor = 'agDateCellEditor';
+		columnDef.cellEditorPopup = true;
 	}
 	return columnDef;
 };
@@ -353,7 +354,7 @@ const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) =
 	const { data, api, oldValue, colDef } = params;
 	const value = params.data[colDef.field!];
 
-	if (value === oldValue) {
+	if (value === undefined || value === oldValue) {
 		return;
 	}
 
