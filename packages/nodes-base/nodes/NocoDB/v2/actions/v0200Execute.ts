@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,18 +7,16 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../GenericFunctions';
+import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../transport';
 
-export const V0200Execute = async (
-	workflowNode: IExecuteFunctions,
-): Promise<INodeExecutionData[][]> => {
-	const items = workflowNode.getInputData();
+export async function v0200Execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	const items = this.getInputData();
 	const returnData: IDataObject[] = [];
 	let responseData;
 
-	const version = workflowNode.getNodeParameter('version', 0) as number;
-	const resource = workflowNode.getNodeParameter('resource', 0);
-	const operation = workflowNode.getNodeParameter('operation', 0);
+	const version = this.getNodeParameter('version', 0) as number;
+	const resource = this.getNodeParameter('resource', 0);
+	const operation = this.getNodeParameter('operation', 0);
 
 	let returnAll = false;
 	let requestMethod: IHttpRequestMethods = 'GET';
@@ -28,16 +25,12 @@ export const V0200Execute = async (
 
 	let endPoint = '';
 
-	const baseId = workflowNode.getNodeParameter('projectId', 0, undefined, {
+	const baseId = this.getNodeParameter('projectId', 0, undefined, {
 		extractValue: true,
 	}) as string;
-	const table = workflowNode.getNodeParameter('table', 0, undefined, {
+	const table = this.getNodeParameter('table', 0, undefined, {
 		extractValue: true,
 	}) as string;
-	// TODO: use viewId;
-	// const _viewId = workflowNode.getNodeParameter('viewId', 0, undefined, {
-	// 	extractValue: true,
-	// }) as string;
 
 	if (resource === 'row') {
 		if (operation === 'create') {
@@ -55,20 +48,20 @@ export const V0200Execute = async (
 
 			for (let i = 0; i < items.length; i++) {
 				const newItem: IDataObject = {};
-				const dataToSend = workflowNode.getNodeParameter('dataToSend', i) as
+				const dataToSend = this.getNodeParameter('dataToSend', i) as
 					| 'defineBelow'
 					| 'autoMapInputData';
 
 				if (dataToSend === 'autoMapInputData') {
 					const incomingKeys = Object.keys(items[i].json);
-					const rawInputsToIgnore = workflowNode.getNodeParameter('inputsToIgnore', i) as string;
+					const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
 					const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
 					for (const key of incomingKeys) {
 						if (inputDataToIgnore.includes(key)) continue;
 						newItem[key] = items[i].json[key];
 					}
 				} else {
-					const fields = workflowNode.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
+					const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
 						fieldName: string;
 						binaryData: boolean;
 						fieldValue?: string;
@@ -80,11 +73,8 @@ export const V0200Execute = async (
 							newItem[field.fieldName] = field.fieldValue;
 						} else if (field.binaryProperty) {
 							const binaryPropertyName = field.binaryProperty;
-							const binaryData = workflowNode.helpers.assertBinaryData(i, binaryPropertyName);
-							const dataBuffer = await workflowNode.helpers.getBinaryDataBuffer(
-								i,
-								binaryPropertyName,
-							);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							const formData = {
 								file: {
@@ -112,7 +102,7 @@ export const V0200Execute = async (
 							}
 
 							responseData = await apiRequest.call(
-								workflowNode,
+								this,
 								'POST',
 								postUrl,
 								{},
@@ -131,14 +121,14 @@ export const V0200Execute = async (
 				body.push(newItem);
 			}
 			try {
-				responseData = await apiRequest.call(workflowNode, requestMethod, endPoint, body, qs);
+				responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
 
 				if (version === 3) {
 					for (let i = body.length - 1; i >= 0; i--) {
 						body[i] = { ...body[i], ...responseData[i] };
 					}
 
-					returnData.push(...body);
+					returnData.push.apply(returnData, body);
 				} else {
 					// Calculate ID manually and add to return data
 					let id = responseData[0];
@@ -146,13 +136,13 @@ export const V0200Execute = async (
 						body[i].id = id--;
 					}
 
-					returnData.push(...body);
+					returnData.push.apply(returnData, body);
 				}
 			} catch (error) {
-				if (workflowNode.continueOnFail()) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.toString() });
 				}
-				throw new NodeApiError(workflowNode.getNode(), error as JsonObject);
+				throw new NodeApiError(this.getNode(), error as JsonObject);
 			}
 		}
 
@@ -165,46 +155,44 @@ export const V0200Execute = async (
 			} else if (version === 2) {
 				endPoint = `/api/v1/db/data/bulk/noco/${baseId}/${table}`;
 
-				primaryKey = workflowNode.getNodeParameter('primaryKey', 0) as string;
+				primaryKey = this.getNodeParameter('primaryKey', 0) as string;
 				if (primaryKey === 'custom') {
-					primaryKey = workflowNode.getNodeParameter('customPrimaryKey', 0) as string;
+					primaryKey = this.getNodeParameter('customPrimaryKey', 0) as string;
 				}
 			} else if (version === 3) {
 				endPoint = `/api/v2/tables/${table}/records`;
 
-				primaryKey = workflowNode.getNodeParameter('primaryKey', 0) as string;
+				primaryKey = this.getNodeParameter('primaryKey', 0) as string;
 				if (primaryKey === 'custom') {
-					primaryKey = workflowNode.getNodeParameter('customPrimaryKey', 0) as string;
+					primaryKey = this.getNodeParameter('customPrimaryKey', 0) as string;
 				}
 			}
 
 			const body: IDataObject[] = [];
 
 			for (let i = 0; i < items.length; i++) {
-				const id = workflowNode.getNodeParameter('id', i) as string;
+				const id = this.getNodeParameter('id', i) as string;
 				body.push({ [primaryKey]: id });
 			}
 
 			try {
-				responseData = (await apiRequest.call(
-					workflowNode,
-					requestMethod,
-					endPoint,
-					body,
-					qs,
-				)) as any[];
+				responseData = (await apiRequest.call(this, requestMethod, endPoint, body, qs)) as any[];
 				if (version === 1) {
-					returnData.push(...items.map((item) => item.json));
+					returnData.push.apply(
+						returnData,
+						items.map((item) => item.json),
+					);
 				} else if (version === 2) {
-					returnData.push(
-						...responseData.map((result: number, index: number) => {
+					returnData.push.apply(
+						returnData,
+						responseData.map((result: number, index: number) => {
 							if (result === 0) {
 								const errorMessage = `The row with the ID "${body[index].id}" could not be deleted. It probably doesn't exist.`;
-								if (workflowNode.continueOnFail()) {
+								if (this.continueOnFail()) {
 									return { error: errorMessage };
 								}
 								throw new NodeApiError(
-									workflowNode.getNode(),
+									this.getNode(),
 									{ message: errorMessage },
 									{ message: errorMessage, itemIndex: index },
 								);
@@ -215,22 +203,19 @@ export const V0200Execute = async (
 						}),
 					);
 				} else if (version === 3) {
-					returnData.push(...responseData);
+					returnData.push.apply(returnData, responseData);
 				}
 			} catch (error) {
-				if (workflowNode.continueOnFail()) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.toString() });
 				}
-				throw new NodeApiError(workflowNode.getNode(), error as JsonObject);
+				throw new NodeApiError(this.getNode(), error as JsonObject);
 			}
 		}
 
 		if (operation === 'getAll') {
-			const data = [];
-			const downloadAttachments = workflowNode.getNodeParameter(
-				'downloadAttachments',
-				0,
-			) as boolean;
+			const data: any[] = [];
+			const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 			try {
 				for (let i = 0; i < items.length; i++) {
 					requestMethod = 'GET';
@@ -243,8 +228,8 @@ export const V0200Execute = async (
 						endPoint = `/api/v2/tables/${table}/records`;
 					}
 
-					returnAll = workflowNode.getNodeParameter('returnAll', 0);
-					qs = workflowNode.getNodeParameter('options', i, {});
+					returnAll = this.getNodeParameter('returnAll', 0);
+					qs = this.getNodeParameter('options', i, {});
 
 					if (qs.sort) {
 						const properties = (qs.sort as IDataObject).property as Array<{
@@ -261,38 +246,32 @@ export const V0200Execute = async (
 					}
 
 					if (returnAll) {
-						responseData = await apiRequestAllItems.call(
-							workflowNode,
-							requestMethod,
-							endPoint,
-							{},
-							qs,
-						);
+						responseData = await apiRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
 					} else {
-						qs.limit = workflowNode.getNodeParameter('limit', 0);
-						responseData = await apiRequest.call(workflowNode, requestMethod, endPoint, {}, qs);
+						qs.limit = this.getNodeParameter('limit', 0);
+						responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
 						if (version === 2 || version === 3) {
 							responseData = responseData.list;
 						}
 					}
 
-					const executionData = workflowNode.helpers.constructExecutionMetaData(
-						workflowNode.helpers.returnJsonArray(responseData as IDataObject),
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 
 					if (downloadAttachments) {
 						const downloadFieldNames = (
-							workflowNode.getNodeParameter('downloadFieldNames', 0) as string
+							this.getNodeParameter('downloadFieldNames', 0) as string
 						).split(',');
 						const response = await downloadRecordAttachments.call(
-							workflowNode,
+							this,
 							responseData as IDataObject[],
 							downloadFieldNames,
 							[{ item: i }],
 						);
-						data.push(...response);
+						data.push.apply(data, response);
 					}
 				}
 
@@ -300,7 +279,7 @@ export const V0200Execute = async (
 					return [data];
 				}
 			} catch (error) {
-				if (workflowNode.continueOnFail()) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.toString() } });
 				} else {
 					throw error;
@@ -316,7 +295,7 @@ export const V0200Execute = async (
 
 			for (let i = 0; i < items.length; i++) {
 				try {
-					const id = workflowNode.getNodeParameter('id', i) as string;
+					const id = this.getNodeParameter('id', i) as string;
 
 					if (version === 1) {
 						endPoint = `/nc/${baseId}/api/v1/${table}/${id}`;
@@ -326,35 +305,32 @@ export const V0200Execute = async (
 						endPoint = `/api/v2/tables/${table}/records/${id}`;
 					}
 
-					responseData = await apiRequest.call(workflowNode, requestMethod, endPoint, {}, qs);
+					responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
 
 					if (version === 2) {
 						if (Object.keys(responseData as IDataObject).length === 0) {
 							// Get did fail
 							const errorMessage = `The row with the ID "${id}" could not be queried. It probably doesn't exist.`;
-							if (workflowNode.continueOnFail()) {
+							if (this.continueOnFail()) {
 								newItems.push({ json: { error: errorMessage } });
 								continue;
 							}
 							throw new NodeApiError(
-								workflowNode.getNode(),
+								this.getNode(),
 								{ message: errorMessage },
 								{ message: errorMessage, itemIndex: i },
 							);
 						}
 					}
 
-					const downloadAttachments = workflowNode.getNodeParameter(
-						'downloadAttachments',
-						i,
-					) as boolean;
+					const downloadAttachments = this.getNodeParameter('downloadAttachments', i) as boolean;
 
 					if (downloadAttachments) {
 						const downloadFieldNames = (
-							workflowNode.getNodeParameter('downloadFieldNames', i) as string
+							this.getNodeParameter('downloadFieldNames', i) as string
 						).split(',');
 						const data = await downloadRecordAttachments.call(
-							workflowNode,
+							this,
 							[responseData as IDataObject],
 							downloadFieldNames,
 							[{ item: i }],
@@ -364,31 +340,31 @@ export const V0200Execute = async (
 							json: {},
 						};
 
-						const executionData = workflowNode.helpers.constructExecutionMetaData(
+						const executionData = this.helpers.constructExecutionMetaData(
 							[newItem] as INodeExecutionData[],
 							{ itemData: { item: i } },
 						);
 
-						newItems.push(...executionData);
+						newItems.push.apply(newItems, executionData);
 					} else {
-						const executionData = workflowNode.helpers.constructExecutionMetaData(
-							workflowNode.helpers.returnJsonArray(responseData as IDataObject),
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
-						newItems.push(...executionData);
+						newItems.push.apply(newItems, executionData);
 					}
 				} catch (error) {
-					if (workflowNode.continueOnFail()) {
-						const executionData = workflowNode.helpers.constructExecutionMetaData(
-							workflowNode.helpers.returnJsonArray({ error: error.toString() }),
+					if (this.continueOnFail()) {
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.toString() }),
 							{ itemData: { item: i } },
 						);
 
-						newItems.push(...executionData);
+						newItems.push.apply(newItems, executionData);
 						continue;
 					}
-					throw new NodeApiError(workflowNode.getNode(), error as JsonObject, { itemIndex: i });
+					throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 				}
 			}
 			return [newItems];
@@ -404,9 +380,9 @@ export const V0200Execute = async (
 			} else if (version === 2) {
 				endPoint = `/api/v1/db/data/bulk/noco/${baseId}/${table}`;
 
-				primaryKey = workflowNode.getNodeParameter('primaryKey', 0) as string;
+				primaryKey = this.getNodeParameter('primaryKey', 0) as string;
 				if (primaryKey === 'custom') {
-					primaryKey = workflowNode.getNodeParameter('customPrimaryKey', 0) as string;
+					primaryKey = this.getNodeParameter('customPrimaryKey', 0) as string;
 				}
 			} else if (version === 3) {
 				endPoint = `/api/v2/tables/${table}/records`;
@@ -415,22 +391,22 @@ export const V0200Execute = async (
 			const body: IDataObject[] = [];
 
 			for (let i = 0; i < items.length; i++) {
-				const id = version === 3 ? null : (workflowNode.getNodeParameter('id', i) as string);
+				const id = version === 3 ? null : (this.getNodeParameter('id', i) as string);
 				const newItem: IDataObject = version === 3 ? {} : { [primaryKey]: id };
-				const dataToSend = workflowNode.getNodeParameter('dataToSend', i) as
+				const dataToSend = this.getNodeParameter('dataToSend', i) as
 					| 'defineBelow'
 					| 'autoMapInputData';
 
 				if (dataToSend === 'autoMapInputData') {
 					const incomingKeys = Object.keys(items[i].json);
-					const rawInputsToIgnore = workflowNode.getNodeParameter('inputsToIgnore', i) as string;
+					const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
 					const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
 					for (const key of incomingKeys) {
 						if (inputDataToIgnore.includes(key)) continue;
 						newItem[key] = items[i].json[key];
 					}
 				} else {
-					const fields = workflowNode.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
+					const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as Array<{
 						fieldName: string;
 						binaryData: boolean;
 						fieldValue?: string;
@@ -442,11 +418,8 @@ export const V0200Execute = async (
 							newItem[field.fieldName] = field.fieldValue;
 						} else if (field.binaryProperty) {
 							const binaryPropertyName = field.binaryProperty;
-							const binaryData = workflowNode.helpers.assertBinaryData(i, binaryPropertyName);
-							const dataBuffer = await workflowNode.helpers.getBinaryDataBuffer(
-								i,
-								binaryPropertyName,
-							);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							const formData = {
 								file: {
@@ -473,7 +446,7 @@ export const V0200Execute = async (
 							}
 
 							responseData = await apiRequest.call(
-								workflowNode,
+								this,
 								'POST',
 								postUrl,
 								{},
@@ -493,26 +466,21 @@ export const V0200Execute = async (
 			}
 
 			try {
-				responseData = (await apiRequest.call(
-					workflowNode,
-					requestMethod,
-					endPoint,
-					body,
-					qs,
-				)) as any[];
+				responseData = (await apiRequest.call(this, requestMethod, endPoint, body, qs)) as any[];
 
 				if (version === 1) {
-					returnData.push(...body);
+					returnData.push.apply(returnData, body);
 				} else if (version === 2) {
-					returnData.push(
-						...responseData.map((result: number, index: number) => {
+					returnData.push.apply(
+						returnData,
+						responseData.map((result: number, index: number) => {
 							if (result === 0) {
 								const errorMessage = `The row with the ID "${body[index].id}" could not be updated. It probably doesn't exist.`;
-								if (workflowNode.continueOnFail()) {
+								if (this.continueOnFail()) {
 									return { error: errorMessage };
 								}
 								throw new NodeApiError(
-									workflowNode.getNode(),
+									this.getNode(),
 									{ message: errorMessage },
 									{ message: errorMessage, itemIndex: index },
 								);
@@ -527,15 +495,15 @@ export const V0200Execute = async (
 						body[i] = { ...body[i], ...responseData[i] };
 					}
 
-					returnData.push(...body);
+					returnData.push.apply(returnData, body);
 				}
 			} catch (error) {
-				if (workflowNode.continueOnFail()) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.toString() });
 				}
-				throw new NodeApiError(workflowNode.getNode(), error as JsonObject);
+				throw new NodeApiError(this.getNode(), error as JsonObject);
 			}
 		}
 	}
-	return [workflowNode.helpers.returnJsonArray(returnData)];
-};
+	return [this.helpers.returnJsonArray(returnData)];
+}

@@ -1,6 +1,8 @@
-import { IDataObject, ILoadOptionsFunctions, NodeOperationError } from 'n8n-workflow';
-import { ColumnsFetcher } from './columns-fetcher';
-import { apiRequest } from '../GenericFunctions';
+import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+
+import { ColumnsFetcher } from '../helpers/columns-fetcher';
+import { apiRequest } from '../transport';
 
 export async function getApiVersions(this: ILoadOptionsFunctions) {
 	const operation = this.getNodeParameter('operation', 0) as string;
@@ -65,7 +67,7 @@ export async function getViews(this: ILoadOptionsFunctions) {
 			);
 		}
 	} else {
-		throw new NodeOperationError(this.getNode(), `No table selected!`, {
+		throw new NodeOperationError(this.getNode(), 'No table selected!', {
 			level: 'warning',
 		});
 	}
