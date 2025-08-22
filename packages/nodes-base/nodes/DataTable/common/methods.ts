@@ -40,7 +40,7 @@ export async function tableSearch(
 	};
 }
 
-export async function getDataStoreColumns(this: ILoadOptionsFunctions) {
+export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
 	const returnData: INodePropertyOptions[] = [{ name: 'id - (string)', value: 'id' }];
 	const proxy = await getDataStoreProxyLoadOptions(this);
@@ -54,7 +54,7 @@ export async function getDataStoreColumns(this: ILoadOptionsFunctions) {
 	return returnData;
 }
 
-export async function getDataStores(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
+export async function getDataTables(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 	const proxy = await getDataStoreProxyLoadOptions(this);
 	const result = await proxy.getColumns();
 

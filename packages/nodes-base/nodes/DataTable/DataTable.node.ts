@@ -3,13 +3,13 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { router } from './actions/router';
 import * as row from './actions/row/Row.resource';
-import { getDataStoreColumns, getDataStores, tableSearch } from './common/methods';
+import { getDataTableColumns, getDataTables, tableSearch } from './common/methods';
 
 // TODO: hide this node
 export class DataStore implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Data Store',
-		name: 'dataStore',
+		displayName: 'Data Table',
+		name: 'dataTable',
 		icon: 'fa:table',
 		iconColor: 'orange',
 		group: ['transform'], // ?
@@ -17,7 +17,7 @@ export class DataStore implements INodeType {
 		subtitle: '={{$parameter["action"]}}',
 		description: 'Save data across workflow executions in a table',
 		defaults: {
-			name: 'Data Store',
+			name: 'Data Table',
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
@@ -45,10 +45,10 @@ export class DataStore implements INodeType {
 			tableSearch,
 		},
 		loadOptions: {
-			getDataStoreColumns,
+			getDataTableColumns,
 		},
 		resourceMapping: {
-			getDataStores,
+			getDataTables,
 		},
 	};
 
