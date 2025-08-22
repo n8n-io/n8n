@@ -646,4 +646,25 @@ export class NodeDetailsViewPage extends BasePage {
 			return false;
 		}
 	}
+
+	async waitForListeningForTestEvent() {
+		await this.getContainer().getByText('Listening for test event').waitFor({ state: 'visible' });
+	}
+
+	async clickAddOptionCombobox(): Promise<void> {
+		await this.page.getByRole('combobox', { name: 'Add option' }).click();
+	}
+
+	async selectResponseCodeOption(): Promise<void> {
+		await this.page.getByText('Response Code').click();
+	}
+
+	async selectCredential(credentialName: string): Promise<void> {
+		await this.clickByTestId('node-credentials-select');
+		await this.page.getByText(credentialName).click();
+	}
+
+	async clickCredentialsSelect(): Promise<void> {
+		await this.clickByTestId('node-credentials-select');
+	}
 }

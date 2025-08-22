@@ -446,4 +446,8 @@ export class CanvasPage extends BasePage {
 
 		await this.page.goto('/workflow/new');
 	}
+
+	async waitForTriggerEvent(): Promise<void> {
+		await this.page.getByText('Waiting for trigger event').waitFor({ state: 'visible' });
+	}
 }

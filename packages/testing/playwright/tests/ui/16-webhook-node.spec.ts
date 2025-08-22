@@ -1,6 +1,27 @@
 import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../fixtures/base';
+import type { n8nPage } from '../../pages/n8nPage';
+
+async function executeCanvasWebhookTest(n8n: n8nPage, httpMethod: string) {
+	const webhookPath = nanoid();
+	await n8n.workflows.clickAddWorkflowButton();
+	await n8n.canvas.addNode('Webhook');
+
+	await n8n.ndv.setupHelper.webhook({
+		httpMethod,
+		path: webhookPath,
+	});
+
+	await n8n.ndv.execute();
+
+	await n8n.ndv.waitForListeningForTestEvent();
+
+	const response = await n8n.page.request.fetch(`/webhook-test/${webhookPath}`, {
+		method: httpMethod,
+	});
+	return response;
+}
 
 test.describe
 	.serial('Webhook Trigger node', () => {
@@ -8,174 +29,15 @@ test.describe
 			await n8n.goHome();
 		});
 
-		// Basic HTTP method tests - using existing helpers
-		test('should listen for a GET request', async ({ n8n }) => {
-			const webhookPath = nanoid();
+		const httpMethods = ['GET', 'POST', 'DELETE', 'PATCH', 'PUT', 'HEAD'];
 
-			await n8n.workflows.clickAddWorkflowButton();
-			await n8n.canvas.addNode('Webhook');
-
-			// Configure webhook using existing helper
-			await n8n.ndv.setupHelper.webhook({
-				httpMethod: 'GET',
-				path: webhookPath,
+		for (const httpMethod of httpMethods) {
+			test(`should listen for a ${httpMethod} request`, async ({ n8n }) => {
+				const response = await executeCanvasWebhookTest(n8n, httpMethod);
+				expect(response.status()).toBe(200);
 			});
+		}
 
-			// Execute the webhook node
-			await n8n.ndv.execute();
-
-			// Wait for webhook to be ready
-			await n8n.ndv
-				.getContainer()
-				.getByText('Listening for test event')
-				.waitFor({ state: 'visible' });
-
-			// Test the webhook
-			const response = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`);
-			expect(response.status()).toBe(200);
-
-			// Verify execution occurred in the UI
-			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
-			await expect(n8n.ndv.getOutputPanel()).toContainText('headers');
-		});
-
-		test('should listen for a POST request', async ({ n8n }) => {
-			const webhookPath = nanoid();
-
-			await n8n.workflows.clickAddWorkflowButton();
-			await n8n.canvas.addNode('Webhook');
-
-			await n8n.ndv.setupHelper.webhook({
-				httpMethod: 'POST',
-				path: webhookPath,
-			});
-
-			await n8n.ndv.execute();
-
-			// Wait for webhook to be ready
-			await n8n.ndv
-				.getContainer()
-				.getByText('Listening for test event')
-				.waitFor({ state: 'visible' });
-
-			const response = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`, {
-				method: 'POST',
-			});
-			expect(response.status()).toBe(200);
-
-			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
-			await expect(n8n.ndv.getOutputPanel()).toContainText('headers');
-		});
-
-		test('should listen for a DELETE request', async ({ n8n }) => {
-			const webhookPath = nanoid();
-
-			await n8n.workflows.clickAddWorkflowButton();
-			await n8n.canvas.addNode('Webhook');
-
-			await n8n.ndv.setupHelper.webhook({
-				httpMethod: 'DELETE',
-				path: webhookPath,
-			});
-
-			await n8n.ndv.execute();
-
-			// Wait for webhook to be ready
-			await n8n.ndv
-				.getContainer()
-				.getByText('Listening for test event')
-				.waitFor({ state: 'visible' });
-
-			const response = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`, {
-				method: 'DELETE',
-			});
-			expect(response.status()).toBe(200);
-
-			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
-		});
-
-		test('should listen for a HEAD request', async ({ n8n }) => {
-			const webhookPath = nanoid();
-
-			await n8n.workflows.clickAddWorkflowButton();
-			await n8n.canvas.addNode('Webhook');
-
-			await n8n.ndv.setupHelper.webhook({
-				httpMethod: 'HEAD',
-				path: webhookPath,
-			});
-
-			await n8n.ndv.execute();
-
-			// Wait for webhook to be ready
-			await n8n.ndv
-				.getContainer()
-				.getByText('Listening for test event')
-				.waitFor({ state: 'visible' });
-
-			const response = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`, {
-				method: 'HEAD',
-			});
-			expect(response.status()).toBe(200);
-
-			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
-		});
-
-		test('should listen for a PATCH request', async ({ n8n }) => {
-			const webhookPath = nanoid();
-
-			await n8n.workflows.clickAddWorkflowButton();
-			await n8n.canvas.addNode('Webhook');
-
-			await n8n.ndv.setupHelper.webhook({
-				httpMethod: 'PATCH',
-				path: webhookPath,
-			});
-
-			await n8n.ndv.execute();
-
-			// Wait for webhook to be ready
-			await n8n.ndv
-				.getContainer()
-				.getByText('Listening for test event')
-				.waitFor({ state: 'visible' });
-
-			const response = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`, {
-				method: 'PATCH',
-			});
-			expect(response.status()).toBe(200);
-
-			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
-		});
-
-		test('should listen for a PUT request', async ({ n8n }) => {
-			const webhookPath = nanoid();
-
-			await n8n.workflows.clickAddWorkflowButton();
-			await n8n.canvas.addNode('Webhook');
-
-			await n8n.ndv.setupHelper.webhook({
-				httpMethod: 'PUT',
-				path: webhookPath,
-			});
-
-			await n8n.ndv.execute();
-
-			// Wait for webhook to be ready
-			await n8n.ndv
-				.getContainer()
-				.getByText('Listening for test event')
-				.waitFor({ state: 'visible' });
-
-			const response = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`, {
-				method: 'PUT',
-			});
-			expect(response.status()).toBe(200);
-
-			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
-		});
-
-		// Response handling tests - will need workflow fixtures or enhanced helpers
 		test('should listen for a GET request and respond with Respond to Webhook node', async ({
 			n8n,
 		}) => {
@@ -184,7 +46,6 @@ test.describe
 			await n8n.workflows.clickAddWorkflowButton();
 			await n8n.canvas.addNode('Webhook');
 
-			// Configure webhook to use Respond to Webhook node
 			await n8n.ndv.setupHelper.webhook({
 				httpMethod: 'GET',
 				path: webhookPath,
@@ -193,10 +54,8 @@ test.describe
 
 			await n8n.ndv.close();
 
-			// Add Edit Fields node
 			await n8n.canvas.addNode('Edit Fields (Set)');
 
-			// Configure Edit Fields to add MyValue: 1234
 			await n8n.ndv.setEditFieldsValues([
 				{
 					name: 'MyValue',
@@ -206,17 +65,13 @@ test.describe
 			]);
 
 			await n8n.ndv.close();
-
-			// Add Respond to Webhook node
 			await n8n.canvas.addNode('Respond to Webhook');
-
 			await n8n.ndv.close();
-
 			await n8n.canvas.clickExecuteWorkflowButton();
 
-			await n8n.page.getByText('Waiting for trigger event').waitFor({ state: 'visible' });
+			await n8n.canvas.waitForTriggerEvent();
 
-			const response = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`, {
+			const response = await n8n.page.request.fetch(`/webhook-test/${webhookPath}`, {
 				method: 'GET',
 			});
 
@@ -236,14 +91,13 @@ test.describe
 
 			await n8n.ndv.clickParameterOptions();
 
-			// Configure webhook with custom status code
 			await n8n.ndv.setupHelper.webhook({
 				httpMethod: 'GET',
 				path: webhookPath,
 			});
 
-			await n8n.page.getByRole('combobox', { name: 'Add option' }).click();
-			await n8n.page.getByText('Response Code').click();
+			await n8n.ndv.clickAddOptionCombobox();
+			await n8n.ndv.selectResponseCodeOption();
 
 			await n8n.ndv.setParameterDropdown('responseCode', '201');
 
@@ -251,9 +105,9 @@ test.describe
 
 			await n8n.canvas.clickExecuteWorkflowButton();
 
-			await n8n.page.getByText('Waiting for trigger event').waitFor({ state: 'visible' });
+			await n8n.canvas.waitForTriggerEvent();
 
-			const response = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`);
+			const response = await n8n.page.request.fetch(`/webhook-test/${webhookPath}`);
 			expect(response.status()).toBe(201);
 		});
 
@@ -263,7 +117,6 @@ test.describe
 			await n8n.workflows.clickAddWorkflowButton();
 			await n8n.canvas.addNode('Webhook');
 
-			// Configure webhook to respond with last node
 			await n8n.ndv.setupHelper.webhook({
 				httpMethod: 'GET',
 				path: webhookPath,
@@ -271,11 +124,7 @@ test.describe
 			});
 
 			await n8n.ndv.close();
-
-			// Add Edit Fields node
 			await n8n.canvas.addNode('Edit Fields (Set)');
-
-			// Configure Edit Fields to add MyValue: 1234
 			await n8n.ndv.setEditFieldsValues([
 				{
 					name: 'MyValue',
@@ -285,12 +134,10 @@ test.describe
 			]);
 
 			await n8n.ndv.close();
-
 			await n8n.canvas.clickExecuteWorkflowButton();
+			await n8n.canvas.waitForTriggerEvent();
 
-			await n8n.page.getByText('Waiting for trigger event').waitFor({ state: 'visible' });
-
-			const response = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`);
+			const response = await n8n.page.request.fetch(`/webhook-test/${webhookPath}`);
 			expect(response.status()).toBe(200);
 
 			const responseData = await response.json();
@@ -307,19 +154,15 @@ test.describe
 			await n8n.workflows.clickAddWorkflowButton();
 			await n8n.canvas.addNode('Webhook');
 
-			// Configure webhook to respond with last node binary data
 			await n8n.ndv.setupHelper.webhook({
 				httpMethod: 'GET',
 				path: webhookPath,
 				responseMode: 'When Last Node Finishes',
+				responseData: 'First Entry Binary',
 			});
-
-			// Set response data to binary
-			await n8n.ndv.setParameterDropdown('responseData', 'First Entry Binary');
 
 			await n8n.ndv.close();
 
-			// Add Edit Fields node to set binary data
 			await n8n.canvas.addNode('Edit Fields (Set)');
 
 			await n8n.ndv.setEditFieldsValues([
@@ -332,10 +175,8 @@ test.describe
 
 			await n8n.ndv.close();
 
-			// Add Convert to File node
 			await n8n.canvas.addNodeWithSubItem('Convert to File', 'Convert to JSON');
 
-			// Configure Convert to File node
 			await n8n.ndv.setParameterDropdown('operation', 'Convert to JSON');
 			await n8n.ndv.setParameterDropdown('mode', 'Each Item to Separate File');
 
@@ -343,9 +184,9 @@ test.describe
 
 			await n8n.canvas.clickExecuteWorkflowButton();
 
-			await n8n.page.getByText('Waiting for trigger event').waitFor({ state: 'visible' });
+			await n8n.canvas.waitForTriggerEvent();
 
-			const response = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`);
+			const response = await n8n.page.request.fetch(`/webhook-test/${webhookPath}`);
 			expect(response.status()).toBe(200);
 
 			const responseData = await response.json();
@@ -358,37 +199,27 @@ test.describe
 			await n8n.workflows.clickAddWorkflowButton();
 			await n8n.canvas.addNode('Webhook');
 
-			// Configure webhook with empty response body
 			await n8n.ndv.setupHelper.webhook({
 				httpMethod: 'GET',
 				path: webhookPath,
 				responseMode: 'When Last Node Finishes',
+				responseData: 'No Response Body',
 			});
-
-			// Set response data to No Response Body
-			await n8n.ndv.setParameterDropdown('responseData', 'No Response Body');
 
 			await n8n.ndv.execute();
 
-			// Wait for webhook to be ready
-			await n8n.ndv
-				.getContainer()
-				.getByText('Listening for test event')
-				.waitFor({ state: 'visible' });
+			await n8n.canvas.waitForTriggerEvent();
 
-			const response = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`);
+			const response = await n8n.page.request.fetch(`/webhook-test/${webhookPath}`);
 			expect(response.status()).toBe(200);
 
-			// Check that response body is empty or minimal
 			const responseText = await response.text();
 			expect(responseText).toBe('');
 		});
 
-		// Authentication tests - using credential API helper
 		test('should listen for a GET request with Basic Authentication', async ({ n8n, api }) => {
 			const webhookPath = nanoid();
 
-			// Create Basic Auth credentials via API
 			const { createdCredential } = await api.credentialApi.createCredentialFromDefinition({
 				name: 'Test Basic Auth',
 				type: 'httpBasicAuth',
@@ -401,35 +232,30 @@ test.describe
 			await n8n.workflows.clickAddWorkflowButton();
 			await n8n.canvas.addNode('Webhook');
 
-			// Configure webhook with Basic Auth
 			await n8n.ndv.setupHelper.webhook({
 				httpMethod: 'GET',
 				path: webhookPath,
-				authentication: 'Basic Auth', // Use the display name for the helper
+				authentication: 'Basic Auth',
 			});
 
-			// Select the credential we created
-			await n8n.page.getByTestId('node-credentials-select').click();
-			await n8n.page.getByText(createdCredential.name).click();
+			await n8n.ndv.selectCredential(createdCredential.name);
 
 			await n8n.ndv.execute();
 
-			// Wait for webhook to be ready
-			await n8n.ndv
-				.getContainer()
-				.getByText('Listening for test event')
-				.waitFor({ state: 'visible' });
+			await n8n.ndv.waitForListeningForTestEvent();
 
-			// Test with wrong credentials - should get 403
-			const wrongAuthResponse = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`, {
-				auth: { user: 'username', pass: 'password' },
+			const wrongAuthResponse = await n8n.page.request.fetch(`/webhook-test/${webhookPath}`, {
+				headers: {
+					Authorization: `Basic ${Buffer.from('username:password').toString('base64')}`,
+				},
 				failOnStatusCode: false,
 			});
 			expect(wrongAuthResponse.status()).toBe(403);
 
-			// Test with correct credentials - should get 200
-			const correctAuthResponse = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`, {
-				auth: { user: 'test', pass: 'test' },
+			const correctAuthResponse = await n8n.page.request.fetch(`/webhook-test/${webhookPath}`, {
+				headers: {
+					Authorization: `Basic ${Buffer.from('test:test').toString('base64')}`,
+				},
 			});
 			expect(correctAuthResponse.status()).toBe(200);
 		});
@@ -437,7 +263,6 @@ test.describe
 		test('should listen for a GET request with Header Authentication', async ({ n8n, api }) => {
 			const webhookPath = nanoid();
 
-			// Create Header Auth credentials via API
 			const { createdCredential } = await api.credentialApi.createCredentialFromDefinition({
 				name: 'Test Header Auth',
 				type: 'httpHeaderAuth',
@@ -450,39 +275,27 @@ test.describe
 			await n8n.workflows.clickAddWorkflowButton();
 			await n8n.canvas.addNode('Webhook');
 
-			// Configure webhook with Header Auth
 			await n8n.ndv.setupHelper.webhook({
 				httpMethod: 'GET',
 				path: webhookPath,
-				authentication: 'Header Auth', // Use the display name for the helper
+				authentication: 'Header Auth',
 			});
 
-			// Select the credential we created
-			await n8n.page.getByTestId('node-credentials-select').click();
-			await n8n.page.getByText(createdCredential.name).click();
+			await n8n.ndv.selectCredential(createdCredential.name);
 
 			await n8n.ndv.execute();
 
-			// Wait for webhook to be ready
-			await n8n.ndv
-				.getContainer()
-				.getByText('Listening for test event')
-				.waitFor({ state: 'visible' });
+			await n8n.ndv.waitForListeningForTestEvent();
 
-			// Test with wrong header - should get 403
-			const wrongHeaderResponse = await n8n.ndv.makeWebhookRequest(`/webhook-test/${webhookPath}`, {
+			const wrongHeaderResponse = await n8n.page.request.fetch(`/webhook-test/${webhookPath}`, {
 				headers: { test: 'wrong' },
 				failOnStatusCode: false,
 			});
 			expect(wrongHeaderResponse.status()).toBe(403);
 
-			// Test with correct header - should get 200
-			const correctHeaderResponse = await n8n.ndv.makeWebhookRequest(
-				`/webhook-test/${webhookPath}`,
-				{
-					headers: { test: 'test' },
-				},
-			);
+			const correctHeaderResponse = await n8n.page.request.fetch(`/webhook-test/${webhookPath}`, {
+				headers: { test: 'test' },
+			});
 			expect(correctHeaderResponse.status()).toBe(200);
 		});
 	});

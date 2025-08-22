@@ -219,6 +219,7 @@ export class ApiHelpers {
 				emailOrLdapLoginId: credentials.email,
 				password: credentials.password,
 			},
+			maxRetries: 3, // This allows for retries in case of network issues, which can happen when running tests in parallel due to high load. Alternative is reduce worker count from 6 to 4.
 		});
 
 		if (!response.ok()) {

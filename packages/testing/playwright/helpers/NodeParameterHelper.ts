@@ -70,6 +70,7 @@ export class NodeParameterHelper {
 		path?: string;
 		authentication?: string;
 		responseMode?: string;
+		responseData?: string;
 	}): Promise<void> {
 		if (config.httpMethod !== undefined)
 			await this.setParameter('httpMethod', config.httpMethod, 'dropdown');
@@ -78,6 +79,8 @@ export class NodeParameterHelper {
 			await this.setParameter('authentication', config.authentication, 'dropdown');
 		if (config.responseMode !== undefined)
 			await this.setParameter('responseMode', config.responseMode, 'dropdown');
+		if (config.responseData !== undefined)
+			await this.setParameter('responseData', config.responseData, 'dropdown');
 	}
 
 	/**
