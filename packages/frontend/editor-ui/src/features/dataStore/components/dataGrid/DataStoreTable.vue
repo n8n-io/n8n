@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, useTemplateRef } from 'vue';
 import orderBy from 'lodash/orderBy';
 import type {
 	DataStore,
@@ -51,6 +51,7 @@ import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue';
+import { onClickOutside } from '@vueuse/core';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -98,8 +99,11 @@ const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
 const contentLoading = ref(false);
 
 // Track the last focused cell so we can start editing when users click on it
+// AG Grid doesn't provide cell blur event so we need to reset this manually
 const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
 const isTextEditorOpen = ref(false);
+
+const gridContainer = useTemplateRef('gridContainer');
 
 // Shared config for all columns
 const defaultColumnDef: ColDef = {
@@ -428,6 +432,14 @@ const fetchDataStoreContent = async () => {
 	}
 };
 
+onClickOutside(gridContainer, () => {
+	resetLastFocusedCell();
+});
+
+const resetLastFocusedCell = () => {
+	lastFocusedCell.value = null;
+};
+
 const initialize = async () => {
 	initColumnDefinitions();
 	await fetchDataStoreContent();
@@ -454,7 +466,7 @@ const onCellEditingStopped = (params: CellEditingStoppedEvent<DataStoreRow>) => 
 
 <template>
 	<div :class="$style.wrapper">
-		<div :class="$style['grid-container']" data-test-id="data-store-grid">
+		<div ref="gridContainer" :class="$style['grid-container']" data-test-id="data-store-grid">
 			<AgGridVue
 				style="width: 100%"
 				:row-data="rowData"
@@ -477,6 +489,8 @@ const onCellEditingStopped = (params: CellEditingStoppedEvent<DataStoreRow>) => 
 				@cell-clicked="onCellClicked"
 				@cell-editing-started="onCellEditingStarted"
 				@cell-editing-stopped="onCellEditingStopped"
+				@column-header-clicked="resetLastFocusedCell"
+				@selection-changed="resetLastFocusedCell"
 			/>
 			<AddColumnPopover
 				:data-store="props.dataStore"
