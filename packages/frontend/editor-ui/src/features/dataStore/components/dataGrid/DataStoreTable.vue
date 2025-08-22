@@ -229,8 +229,12 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 			return params.data?.[col.name];
 		},
 		cellRendererSelector: (params: ICellRendererParams) => {
-			const field = params.colDef?.field;
-			const rowValue = field ? params.data?.[field] : undefined;
+			let rowValue = params.data?.[col.name];
+			// When adding new column, rowValue is undefined (same below, in string cell editor)
+			if (rowValue === undefined) {
+				rowValue = null;
+			}
+
 			// Custom renderer for null or empty values
 			if (rowValue === null) {
 				return { component: NullEmptyCellRenderer, params: { value: NULL_VALUE } };
@@ -250,7 +254,10 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 			value: params.value ?? '',
 		});
 		columnDef.valueSetter = (params: ValueSetterParams<DataStoreRow>) => {
-			const originalValue = params.data[col.name];
+			let originalValue = params.data[col.name];
+			if (originalValue === undefined) {
+				originalValue = null;
+			}
 			let newValue = params.newValue;
 
 			if (!isDataStoreValue(newValue)) {
