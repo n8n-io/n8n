@@ -2,8 +2,9 @@ import { test, expect } from '../../fixtures/base';
 import type { TestRequirements } from '../../Types';
 
 const requirements: TestRequirements = {
-	workflow: {
-		'Switch_node_with_null_connection.json': 'Switch Node with Null Connection',
+	entry: {
+		type: 'imported-workflow',
+		workflow: 'Switch_node_with_null_connection.json',
 	},
 };
 

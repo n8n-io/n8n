@@ -103,6 +103,7 @@ export class WorkflowApiHelper {
 	/**
 	 * Import a workflow from file and make it unique for testing.
 	 * The workflow will be created with its original active state from the JSON file.
+	 * Automatically adds name and active properties if missing.
 	 * Returns detailed information about what was imported, including webhook info if present.
 	 */
 	async importWorkflow(
@@ -112,6 +113,16 @@ export class WorkflowApiHelper {
 		const workflowDefinition: IWorkflowBase = JSON.parse(
 			readFileSync(resolveFromRoot('workflows', fileName), 'utf8'),
 		);
+
+		// Ensure workflow has required properties for proper import
+		if (!workflowDefinition.name) {
+			// Extract name from filename (remove .json extension)
+			const baseName = fileName.replace(/\.json$/, '');
+			workflowDefinition.name = baseName;
+		}
+
+		// Ensure active property is explicitly set (defaults to false for safety)
+		workflowDefinition.active ??= false;
 
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
 

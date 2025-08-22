@@ -8,25 +8,25 @@ export class TestError extends Error {
 }
 
 /**
- * Test requirements for Playwright tests.
+ * Test requirements for modern Playwright tests using hybrid API+UI approach.
  *
- * This interface allows you to declaratively specify all test setup requirements
- * in one place, making tests more readable and maintainable.
- * If a workflow is specified, the starting point for the test is now the canvas after the workflow is imported.
+ * This interface allows you to declaratively specify test setup with API-driven data creation
+ * and UI-focused entry points, making tests faster, more reliable, and maintainable.
  *
- * @example
+ * @example Basic usage
  * ```typescript
  * const requirements: TestRequirements = {
- *   config: {
- *     features: {
- *       aiAssistant: true,
- *       debugInEditor: true,
- *       sharing: true
- *     },
- *     settings: { telemetry: { enabled: false } }
+ *   setup: {
+ *     projects: [{ name: 'Test Project', role: 'editor' }],
+ *     credentials: [{ name: 'API Key', type: 'httpBasicAuth', data: { user: 'test', password: 'secret' } }]
  *   },
- *   workflow: {
- *     'ai_assistant_test_workflow.json': 'AI Assistant Test Workflow'
+ *   entry: {
+ *     type: 'imported-workflow',
+ *     workflow: 'ai_assistant_test_workflow.json'
+ *   },
+ *   config: {
+ *     features: { aiAssistant: true, sharing: true },
+ *     settings: { telemetry: { enabled: false } }
  *   },
  *   intercepts: {
  *     'ai-chat': {
@@ -39,8 +39,59 @@ export class TestError extends Error {
  *   }
  * };
  * ```
+ *
+ * @example Webhook testing with import result
+ * ```typescript
+ * const result = await setupRequirements({
+ *   entry: { type: 'imported-workflow', workflow: 'webhook_test.json' }
+ * });
+ * // result contains { webhookId, webhookPath, workflowId } for webhook testing
+ * const webhookUrl = `/webhook/${result?.webhookPath}`;
+ * ```
  */
 export interface TestRequirements {
+	/**
+	 * API-driven setup performed before UI navigation (fast and reliable)
+	 */
+	setup?: {
+		/** Workflows to create via API */
+		workflows?: Array<{
+			name: string;
+			nodes?: unknown[];
+			connections?: unknown;
+			settings?: unknown;
+			tags?: string[];
+		}>;
+
+		/** Credentials to create via API */
+		credentials?: Array<{
+			name: string;
+			type: string;
+			data: Record<string, unknown>;
+		}>;
+
+		/** Projects to create via API */
+		projects?: Array<{
+			name: string;
+			role?: 'admin' | 'editor' | 'viewer';
+		}>;
+	};
+
+	/**
+	 * UI entry point for the test (replaces old workflow import pattern)
+	 *
+	 * When using 'imported-workflow' type, setupRequirements returns workflow import details
+	 * including webhookId, webhookPath, and workflowId for use in webhook testing.
+	 */
+	entry?: {
+		/** Type of entry point */
+		type: 'home' | 'blank-canvas' | 'new-project' | 'imported-workflow';
+		/** Workflow file to import (required for imported-workflow type) */
+		workflow?: string;
+		/** Project configuration (for new-project type) */
+		projectId?: string;
+	};
+
 	/**
 	 * Configuration settings for the test environment
 	 */
@@ -77,23 +128,6 @@ export interface TestRequirements {
 	 * ```
 	 */
 	intercepts?: Record<string, InterceptConfig>;
-
-	/**
-	 * Single workflow to import for the test
-	 *
-	 * Key: Import file location (relative to workflows folder)
-	 * Value: Name to give the workflow when imported
-	 *
-	 * Note: Only one workflow is supported. Multiple workflows will throw an error.
-	 *
-	 * @example
-	 * ```typescript
-	 * workflow: {
-	 *   'ai_assistant_test_workflow.json': 'AI Assistant Test Workflow'
-	 * }
-	 * ```
-	 */
-	workflow?: Record<string, string>;
 
 	/**
 	 * Browser storage values to set before the test

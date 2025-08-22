@@ -13,14 +13,16 @@ const NODES = {
 };
 
 const webhookTestRequirements: TestRequirements = {
-	workflow: {
-		'Test_workflow_webhook_with_pin_data.json': 'Test',
+	entry: {
+		type: 'imported-workflow',
+		workflow: 'Test_workflow_webhook_with_pin_data.json',
 	},
 };
 
 const pinnedWebhookRequirements: TestRequirements = {
-	workflow: {
-		'Pinned_webhook_node.json': 'Test',
+	entry: {
+		type: 'imported-workflow',
+		workflow: 'Pinned_webhook_node.json',
 	},
 };
 
@@ -190,13 +192,13 @@ test.describe('Data pinning', () => {
 		});
 
 		test('should use pin data in manual webhook executions', async ({ n8n, setupRequirements }) => {
-			await setupRequirements(webhookTestRequirements);
+			const result = await setupRequirements(webhookTestRequirements);
 			await n8n.canvas.clickExecuteWorkflowButton();
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toHaveText(
 				'Waiting for trigger event from Webhook',
 			);
 
-			const webhookPath = '/webhook-test/b0d79ddb-df2d-49b1-8555-9fa2b482608f';
+			const webhookPath = `/webhook-test/${result?.webhookPath}`;
 			const response = await n8n.ndv.makeWebhookRequest(webhookPath);
 			expect(response.status()).toBe(200);
 
@@ -206,22 +208,20 @@ test.describe('Data pinning', () => {
 			await expect(n8n.ndv.getOutputTableRow(1)).toContainText('pin-overwritten');
 		});
 
-		test('should not use pin data in production webhook executions', async ({
-			n8n,
-			setupRequirements,
-		}) => {
-			await setupRequirements(webhookTestRequirements);
-			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
-			await n8n.page.waitForTimeout(500);
-			await n8n.canvas.activateWorkflow();
-			await n8n.page.waitForTimeout(500);
+		test('should not use pin data in production webhook executions', async ({ api }) => {
+			const { webhookPath, workflowId } = await api.workflowApi.importWorkflow(
+				'Test_workflow_webhook_with_pin_data.json',
+			);
 
-			const webhookUrl = '/webhook/b0d79ddb-df2d-49b1-8555-9fa2b482608f';
-			const response = await n8n.ndv.makeWebhookRequest(webhookUrl);
-			expect(response.status(), 'Webhook response is: ' + (await response.text())).toBe(200);
+			const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
 
-			const responseBody = await response.json();
-			expect(responseBody).toEqual({ nodeData: 'pin' });
+			expect(webhookResponse.ok()).toBe(true);
+
+			const execution = await api.workflowApi.waitForExecution(workflowId, 5000);
+			expect(execution.status).toBe('success');
+
+			const executionDetails = await api.workflowApi.getExecution(execution.id);
+			expect(executionDetails.data).not.toContain('pin-overwritten');
 		});
 
 		test('should not show pinned data tooltip', async ({ n8n, setupRequirements }) => {

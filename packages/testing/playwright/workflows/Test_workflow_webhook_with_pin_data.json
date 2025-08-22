@@ -1,5 +1,6 @@
 {
 	"name": "PinData Test",
+	"active": true,
 	"nodes": [
 		{
 			"parameters": {},
@@ -123,7 +124,6 @@
 			]
 		}
 	},
-	"active": false,
 	"settings": {
 		"executionOrder": "v1"
 	},

@@ -2,8 +2,9 @@ import { test, expect } from '../../fixtures/base';
 import type { TestRequirements } from '../../Types';
 
 const requirements: TestRequirements = {
-	workflow: {
-		'Test_ado_1338.json': 'Test Workflow ADO-1338',
+	entry: {
+		type: 'imported-workflow',
+		workflow: 'Test_ado_1338.json',
 	},
 };
 
@@ -14,7 +15,7 @@ test.describe('ADO-1338-ndv-missing-input-panel', () => {
 	}) => {
 		await setupRequirements(requirements);
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
-			'Workflow successfully executed',
+			'Workflow executed successfully',
 		);
 
 		await n8n.canvas.openNode('Discourse1');

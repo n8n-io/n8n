@@ -13,7 +13,9 @@ type TestFixtures = {
 	n8n: n8nPage;
 	api: ApiHelpers;
 	baseURL: string;
-	setupRequirements: (requirements: TestRequirements) => Promise<void>;
+	setupRequirements: (
+		requirements: TestRequirements,
+	) => Promise<{ webhookPath?: string; webhookId?: string; workflowId?: string } | void>;
 };
 
 type WorkerFixtures = {
@@ -152,8 +154,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 	},
 
 	setupRequirements: async ({ page, context }, use) => {
-		const setupFunction = async (requirements: TestRequirements): Promise<void> => {
-			await setupTestRequirements(page, context, requirements);
+		const setupFunction = async (requirements: TestRequirements) => {
+			return await setupTestRequirements(page, context, requirements);
 		};
 
 		await use(setupFunction);

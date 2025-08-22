@@ -149,12 +149,6 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-collection-drop-area');
 	}
 
-	getAssignmentValue(paramName: string) {
-		return this.page
-			.getByTestId(`assignment-collection-${paramName}`)
-			.getByTestId('assignment-value');
-	}
-
 	getInlineExpressionEditorInput() {
 		return this.page.getByTestId('inline-expression-editor-input');
 	}
@@ -167,8 +161,36 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('parameter-input-hint');
 	}
 
-	async makeWebhookRequest(path: string) {
-		return await this.page.request.get(path);
+	async makeWebhookRequest(
+		path: string,
+		options?: {
+			method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
+			data?: unknown;
+			headers?: Record<string, string>;
+			auth?: { user: string; pass: string };
+			failOnStatusCode?: boolean;
+		},
+	) {
+		const { method = 'GET', data, headers, auth, failOnStatusCode = true } = options ?? {};
+
+		const requestOptions: Parameters<typeof this.page.request.fetch>[1] = {
+			method,
+			headers,
+			failOnStatusCode,
+		};
+
+		if (data) {
+			requestOptions.data = data;
+		}
+
+		if (auth) {
+			requestOptions.headers = {
+				...requestOptions.headers,
+				Authorization: `Basic ${Buffer.from(`${auth.user}:${auth.pass}`).toString('base64')}`,
+			};
+		}
+
+		return await this.page.request.fetch(path, requestOptions);
 	}
 
 	getVisiblePoppers() {
@@ -441,6 +463,187 @@ export class NodeDetailsViewPage extends BasePage {
 			throw new Error(
 				`Parameter ${parameterName} has value "${actualValue}", expected "${expectedValue}"`,
 			);
+		}
+	}
+
+	// ===== EDIT FIELDS HELPER METHODS =====
+
+	// Basic selectors
+	getAssignmentCollectionContainer(paramName: string) {
+		return this.page.getByTestId(`assignment-collection-${paramName}`);
+	}
+
+	getAssignmentCollectionAddButton(paramName: string) {
+		return this.getAssignmentCollectionContainer(paramName).getByTestId(
+			'assignment-collection-drop-area',
+		);
+	}
+
+	getAssignment(paramName: string, index = 0) {
+		return this.getAssignmentCollectionContainer(paramName).getByTestId('assignment').nth(index);
+	}
+
+	getAssignmentName(paramName: string, index = 0) {
+		return this.getAssignment(paramName, index).getByTestId('assignment-name');
+	}
+
+	getAssignmentType(paramName: string, index = 0) {
+		return this.getAssignment(paramName, index).getByTestId('assignment-type-select');
+	}
+
+	getAssignmentValue(paramName: string, index = 0) {
+		return this.getAssignment(paramName, index).getByTestId('assignment-value');
+	}
+
+	// Main configuration methods
+	/**
+	 * Sets multiple fields in Edit Fields node
+	 * @param fields Array of field configurations with name, type, and value
+	 * @param paramName Parameter name for the assignment collection (default: 'assignments')
+	 */
+	async setEditFieldsValues(
+		fields: Array<{
+			name: string;
+			type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+			value: string | number | boolean;
+		}>,
+		paramName = 'assignments',
+	): Promise<void> {
+		for (let i = 0; i < fields.length; i++) {
+			const field = fields[i];
+
+			// Add a new field if this isn't the first one
+			if (i > 0) {
+				await this.getAssignmentCollectionAddButton(paramName).click();
+			} else {
+				// For the first field, ensure we have at least one field
+				const existingFields = await this.getAssignmentCollectionContainer(paramName)
+					.getByTestId('assignment')
+					.count();
+				if (existingFields === 0) {
+					await this.getAssignmentCollectionAddButton(paramName).click();
+				}
+			}
+
+			// Set field name
+			const nameInput = this.getAssignmentName(paramName, i).locator('input');
+			await nameInput.fill(field.name);
+			await nameInput.blur();
+
+			// Set field type
+			await this.getAssignmentType(paramName, i).click();
+			const typeOptionText = this.getTypeOptionText(field.type);
+			await this.page.getByRole('option', { name: typeOptionText }).click();
+
+			// Set field value based on type
+			await this.setFieldValue(paramName, i, field.type, field.value);
+		}
+	}
+
+	async setEditFieldValue(
+		name: string,
+		type: 'string' | 'number' | 'boolean' | 'array' | 'object',
+		value: string | number | boolean,
+		paramName = 'assignments',
+	): Promise<void> {
+		await this.setEditFieldsValues([{ name, type, value }], paramName);
+	}
+
+	// Private helper methods
+	private getTypeOptionText(type: string): string {
+		const typeMap: Record<string, string> = {
+			string: 'String',
+			number: 'Number',
+			boolean: 'Boolean',
+			array: 'Array',
+			object: 'Object',
+		};
+		return typeMap[type] || 'String';
+	}
+
+	private async setFieldValue(
+		paramName: string,
+		index: number,
+		type: string,
+		value: string | number | boolean,
+	): Promise<void> {
+		const valueContainer = this.getAssignmentValue(paramName, index);
+
+		switch (type) {
+			case 'string':
+			case 'number':
+			case 'array':
+			case 'object': {
+				const input = valueContainer.locator('input, textarea, [contenteditable]').first();
+				await input.fill(String(value));
+				break;
+			}
+			case 'boolean': {
+				await valueContainer.click();
+				const booleanValue = value ? 'True' : 'False';
+				await this.page.getByRole('option', { name: booleanValue }).click();
+				break;
+			}
+		}
+	}
+
+	// Advanced selectors by field name
+	/**
+	 * Finds assignment element by field name instead of index
+	 * Loops through all assignments to find one with matching field name
+	 * @throws Error if field name is not found
+	 */
+	async getAssignmentByFieldName(paramName = 'assignments', fieldName: string) {
+		const assignments = this.getAssignmentCollectionContainer(paramName).getByTestId('assignment');
+		const count = await assignments.count();
+
+		for (let i = 0; i < count; i++) {
+			const nameInput = this.getAssignmentName(paramName, i).locator('input');
+			const currentValue = await nameInput.inputValue();
+			if (currentValue === fieldName) {
+				return this.getAssignment(paramName, i);
+			}
+		}
+
+		throw new Error(`Field with name "${fieldName}" not found in assignments`);
+	}
+
+	async getAssignmentNameByFieldName(paramName = 'assignments', fieldName: string) {
+		const assignment = await this.getAssignmentByFieldName(paramName, fieldName);
+		return assignment.getByTestId('assignment-name');
+	}
+
+	async getAssignmentTypeByFieldName(paramName = 'assignments', fieldName: string) {
+		const assignment = await this.getAssignmentByFieldName(paramName, fieldName);
+		return assignment.getByTestId('assignment-type-select');
+	}
+
+	async getAssignmentValueByFieldName(paramName = 'assignments', fieldName: string) {
+		const assignment = await this.getAssignmentByFieldName(paramName, fieldName);
+		return assignment.getByTestId('assignment-value');
+	}
+
+	// Utility methods
+	async getAssignmentFieldNames(paramName = 'assignments'): Promise<string[]> {
+		const assignments = this.getAssignmentCollectionContainer(paramName).getByTestId('assignment');
+		const count = await assignments.count();
+		const fieldNames: string[] = [];
+
+		for (let i = 0; i < count; i++) {
+			const nameInput = this.getAssignmentName(paramName, i).locator('input');
+			const value = await nameInput.inputValue();
+			fieldNames.push(value);
+		}
+
+		return fieldNames;
+	}
+
+	async hasAssignmentField(paramName = 'assignments', fieldName: string): Promise<boolean> {
+		try {
+			await this.getAssignmentByFieldName(paramName, fieldName);
+			return true;
+		} catch {
+			return false;
 		}
 	}
 }

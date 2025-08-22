@@ -47,4 +47,44 @@ test.describe('03 - Node Details Configuration', () => {
 
 		await expect(n8n.ndv.getParameterInputField('path')).toHaveValue('explicit-types');
 	});
+
+	test('should configure Edit Fields node with single field', async ({ n8n }) => {
+		await n8n.canvas.addNode('Edit Fields (Set)');
+
+		await n8n.ndv.setEditFieldValue('testField', 'string', 'Hello World');
+
+		const nameInput = n8n.ndv.getAssignmentName('assignments', 0).locator('input');
+		await expect(nameInput).toHaveValue('testField');
+	});
+
+	test('should configure Edit Fields node with multiple fields', async ({ n8n }) => {
+		await n8n.canvas.addNode('Edit Fields (Set)');
+
+		await n8n.ndv.setEditFieldsValues([
+			{ name: 'stringField', type: 'string', value: 'Test String' },
+			{ name: 'numberField', type: 'number', value: 123 },
+			{ name: 'booleanField', type: 'boolean', value: true },
+		]);
+
+		await expect(
+			n8n.ndv.getAssignmentCollectionContainer('assignments').getByTestId('assignment'),
+		).toHaveCount(3);
+
+		const fieldNames = await n8n.ndv.getAssignmentFieldNames('assignments');
+		expect(fieldNames).toEqual(['stringField', 'numberField', 'booleanField']);
+	});
+
+	test('should configure Edit Fields node with all field types', async ({ n8n }) => {
+		await n8n.canvas.addNode('Edit Fields (Set)');
+
+		await n8n.ndv.setEditFieldsValues([
+			{ name: 'myString', type: 'string', value: 'Hello' },
+			{ name: 'myNumber', type: 'number', value: 42 },
+			{ name: 'myBoolean', type: 'boolean', value: false },
+			{ name: 'myArray', type: 'array', value: '["item1", "item2"]' },
+		]);
+
+		expect(await n8n.ndv.hasAssignmentField('assignments', 'myString')).toBe(true);
+		expect(await n8n.ndv.hasAssignmentField('assignments', 'nonexistent')).toBe(false);
+	});
 });

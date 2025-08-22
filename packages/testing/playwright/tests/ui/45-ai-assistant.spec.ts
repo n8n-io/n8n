@@ -17,8 +17,9 @@ const aiEnabledWithWorkflowRequirements: TestRequirements = {
 	config: {
 		features: { aiAssistant: true },
 	},
-	workflow: {
-		'ai_assistant_test_workflow.json': 'AI_Assistant_Test_Workflow',
+	entry: {
+		type: 'imported-workflow',
+		workflow: 'ai_assistant_test_workflow.json',
 	},
 	intercepts: {
 		aiChat: {
@@ -41,8 +42,9 @@ const aiEnabledWithQuickRepliesRequirements: TestRequirements = {
 	config: {
 		features: { aiAssistant: true },
 	},
-	workflow: {
-		'ai_assistant_test_workflow.json': 'AI_Assistant_Test_Workflow',
+	entry: {
+		type: 'imported-workflow',
+		workflow: 'ai_assistant_test_workflow.json',
 	},
 	intercepts: {
 		aiChat: {
@@ -75,8 +77,9 @@ const aiEnabledWithEndSessionRequirements: TestRequirements = {
 	config: {
 		features: { aiAssistant: true },
 	},
-	workflow: {
-		'ai_assistant_test_workflow.json': 'AI_Assistant_Test_Workflow',
+	entry: {
+		type: 'imported-workflow',
+		workflow: 'ai_assistant_test_workflow.json',
 	},
 	intercepts: {
 		aiChat: {

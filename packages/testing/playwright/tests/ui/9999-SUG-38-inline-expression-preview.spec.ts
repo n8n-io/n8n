@@ -2,8 +2,9 @@ import { test, expect } from '../../fixtures/base';
 import type { TestRequirements } from '../../Types';
 
 const requirements: TestRequirements = {
-	workflow: {
-		'Test_9999_SUG_38.json': 'SUG_38_Test_Workflow',
+	entry: {
+		type: 'imported-workflow',
+		workflow: 'Test_9999_SUG_38.json',
 	},
 };
 
