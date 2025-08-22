@@ -1,12 +1,13 @@
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
-	NodeOperationError,
 } from 'n8n-workflow';
-import { apiRequest } from '../GenericFunctions';
-import { ColumnsFetcher } from './columns-fetcher';
+import { NodeOperationError } from 'n8n-workflow';
+
+import { ColumnsFetcher } from '../helpers/columns-fetcher';
+import { apiRequest } from '../transport';
 
 export async function getWorkspaces(
 	this: ILoadOptionsFunctions,
@@ -163,7 +164,7 @@ export async function getTriggerFields(this: ILoadOptionsFunctions, filter?: str
 			);
 		}
 	} else {
-		throw new NodeOperationError(this.getNode(), `No table selected!`, {
+		throw new NodeOperationError(this.getNode(), 'No table selected!', {
 			level: 'warning',
 		});
 	}
