@@ -162,7 +162,7 @@ class TaskExecutor:
 
                     pickle.dumps(arg)
                     safe_args.append(arg)
-                except:
+                except Exception as _:
                     # Non-picklable (e.g. custom self-referential) objects cannot be passed back through the queue.
                     safe_args.append(
                         {
