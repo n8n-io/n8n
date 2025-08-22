@@ -82,6 +82,8 @@ describe('SettingsSso View', () => {
 
 			const { getByTestId } = renderView();
 
+			expect(() => getByTestId('sso-auth-protocol-select')).toThrow('Unable to find an element by');
+
 			const actionBox = getByTestId('sso-content-unlicensed');
 			expect(actionBox).toBeInTheDocument();
 
@@ -95,7 +97,10 @@ describe('SettingsSso View', () => {
 
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 
-			const { getAllByTestId } = renderView();
+			const { getAllByTestId, getByTestId } = renderView();
+
+			const authProtocolSelect = getByTestId('sso-auth-protocol-select');
+			expect(authProtocolSelect).toBeInTheDocument();
 
 			expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(1);
 
