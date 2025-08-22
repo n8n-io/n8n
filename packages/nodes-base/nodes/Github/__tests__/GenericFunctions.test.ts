@@ -126,6 +126,41 @@ describe('GenericFunctions', () => {
 				getFileSha.call(mockExecuteHookFunctions, owner, repository, filePath),
 			).rejects.toThrow(NodeOperationError);
 		});
+
+		it('should properly encode file path with special characters', async () => {
+			const owner = 'test-owner';
+			const repository = 'test-repo';
+			const filePath = 'docs/##section-1/example.md';
+			const branch = 'main';
+			const responseData = { sha: 'abc123' };
+
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				responseData,
+			);
+
+			const result = await getFileSha.call(
+				mockExecuteHookFunctions,
+				owner,
+				repository,
+				filePath,
+				branch,
+			);
+
+			expect(result).toBe('abc123');
+			expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubApi',
+				{
+					method: 'GET',
+					headers: { 'User-Agent': 'n8n' },
+					body: {},
+					qs: { ref: 'main' },
+					// Verify that the file path is properly encoded with encodeURIComponent
+					// ## should become %23%23, / should become %2F
+					uri: 'https://api.github.com/repos/test-owner/test-repo/contents/docs%2F%23%23section-1%2Fexample.md',
+					json: true,
+				},
+			);
+		});
 	});
 
 	describe('githubApiRequestAllItems', () => {
