@@ -90,6 +90,7 @@ export abstract class BaseCommand<F = never> {
 			release: `n8n@${N8N_VERSION}`,
 			serverName: deploymentName,
 			releaseDate: N8N_RELEASE_DATE,
+			withEventLoopBlockDetection: true,
 		});
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
