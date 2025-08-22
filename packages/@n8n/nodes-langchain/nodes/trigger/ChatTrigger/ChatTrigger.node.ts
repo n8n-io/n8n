@@ -215,7 +215,8 @@ ${cssVariables}
 		name: 'includeRequestHeaders',
 		type: 'boolean',
 		default: false,
-		description: 'Whether to include request headers in the response',
+		description:
+			'Whether to include request headers. Headers are only available in public chat mode.',
 		displayOptions: {
 			show: {
 				'/mode': ['hostedChat', 'webhook'],
