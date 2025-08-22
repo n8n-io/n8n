@@ -114,16 +114,6 @@ const statusColor = computed(() => {
 	width: 100%;
 }
 
-.header {
-	padding: var(--spacing-xs);
-	border-radius: var(--border-radius-base);
-	background-color: var(--color-background-light);
-
-	&:hover {
-		background-color: var(--color-background-base);
-	}
-}
-
 .titleRow {
 	display: flex;
 	align-items: center;

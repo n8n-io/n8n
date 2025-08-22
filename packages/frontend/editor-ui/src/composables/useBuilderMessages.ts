@@ -237,10 +237,8 @@ export function useBuilderMessages() {
 	function determineThinkingMessage(messages: ChatUI.AssistantMessage[]): string | undefined {
 		const { hasAnyRunningTools, isStillThinking } = getThinkingState(messages);
 
-		if (hasAnyRunningTools) {
-			return locale.baseText('aiAssistant.thinkingSteps.runningTools');
-		} else if (isStillThinking) {
-			return locale.baseText('aiAssistant.thinkingSteps.processingResults');
+		if (hasAnyRunningTools || isStillThinking) {
+			return locale.baseText('aiAssistant.thinkingSteps.thinking');
 		}
 
 		return undefined;
