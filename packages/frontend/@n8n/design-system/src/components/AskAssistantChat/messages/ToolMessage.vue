@@ -85,7 +85,7 @@ const statusColor = computed(() => {
 								:color="statusColor"
 								size="large"
 							/>
-							<N8nIcon v-else icon="circle-check" :color="statusColor" />
+							<N8nIcon v-else icon="circle-check" :color="statusColor" size="large" />
 						</N8nTooltip>
 					</div>
 					<N8nText
@@ -100,7 +100,6 @@ const statusColor = computed(() => {
 			<div :class="$style.content">
 				<!-- Error -->
 				<div v-if="latestError" :class="$style.section">
-					<div :class="$style.sectionTitle">Error</div>
 					<div :class="$style.errorContent">
 						{{ latestError.message || latestError }}
 					</div>
@@ -155,18 +154,8 @@ const statusColor = computed(() => {
 }
 
 .content {
-	margin-top: var(--spacing-xs);
-	padding: var(--spacing-xs);
-	background-color: var(--color-background-xlight);
+	padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-xs);
 	border-radius: var(--border-radius-base);
-}
-
-.section {
-	margin-bottom: var(--spacing-s);
-
-	&:last-child {
-		margin-bottom: 0;
-	}
 }
 
 .sectionTitle {

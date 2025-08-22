@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import AssistantAvatar from '../AskAssistantAvatar/AssistantAvatar.vue';
-
 withDefaults(
 	defineProps<{
 		message: string;
@@ -14,9 +12,6 @@ withDefaults(
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.avatar">
-			<AssistantAvatar size="mini" />
-		</div>
 		<div :class="$style['message-container']">
 			<transition :name="animationType" mode="out-in">
 				<span v-if="message" :key="message" :class="$style.message">{{ message }}</span>
@@ -31,12 +26,6 @@ withDefaults(
 	align-items: center;
 	gap: var(--spacing-3xs);
 	user-select: none;
-}
-
-.avatar {
-	height: var(--spacing-m);
-	animation: pulse 1.5s infinite;
-	position: relative;
 }
 
 .message-container {
@@ -54,21 +43,6 @@ withDefaults(
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-base);
 	text-align: left;
-}
-
-@keyframes pulse {
-	0% {
-		transform: scale(1);
-		opacity: 0.7;
-	}
-	50% {
-		transform: scale(1.2);
-		opacity: 1;
-	}
-	100% {
-		transform: scale(1);
-		opacity: 0.7;
-	}
 }
 </style>
 
