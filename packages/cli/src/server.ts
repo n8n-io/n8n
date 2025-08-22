@@ -14,6 +14,7 @@ import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
+import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -382,6 +383,19 @@ export class Server extends AbstractServer {
 					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
 				},
 			);
+			const authService = Container.get(AuthService);
+			const protectedTypeFiles = ['/types/nodes.json', '/types/credentials.json'];
+			protectedTypeFiles.forEach((path) => {
+				this.app.get(
+					path,
+					authService.createAuthMiddleware(true),
+					async (_, res: express.Response) => {
+						res.sendFile(path.substring(1), {
+							root: staticCacheDir,
+						});
+					},
+				);
+			});
 			const cspReportOnly = Container.get(SecurityConfig).contentSecurityPolicyReportOnly;
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: isEmpty(cspDirectives)
