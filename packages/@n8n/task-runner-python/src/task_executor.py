@@ -65,7 +65,7 @@ class TaskExecutor:
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
 
-            result = returned.get("result", [])
+            result = returned.get("result") or []
             print_logs = returned.get("print_logs", [])
 
             return result, print_logs
