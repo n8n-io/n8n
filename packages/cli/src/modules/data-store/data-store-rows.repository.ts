@@ -270,29 +270,22 @@ export class DataStoreRowsRepository {
 		matchFields: string[],
 		rows: DataStoreRows,
 	): Promise<{ rowsToInsert: DataStoreRows; rowsToUpdate: DataStoreRows }> {
-		const dbType = this.dataSource.options.type;
-		const whereClauses: string[] = [];
-		const params: unknown[] = [];
+		const queryBuilder = this.dataSource
+			.createQueryBuilder()
+			.select(matchFields)
+			.from(this.toTableName(dataStoreId), 'datastore');
 
-		for (const row of rows) {
-			const clause = matchFields
-				.map((field) => {
-					params.push(row[field]);
-					return `${quoteIdentifier(field, dbType)} = ${getPlaceholder(params.length, dbType)}`;
-				})
-				.join(' AND ');
-			whereClauses.push(`(${clause})`);
-		}
+		rows.forEach((row, index) => {
+			const matchData = Object.fromEntries(matchFields.map((field) => [field, row[field]]));
+			if (index === 0) {
+				queryBuilder.where(matchData);
+			} else {
+				queryBuilder.orWhere(matchData);
+			}
+		});
 
-		const quotedFields = matchFields.map((field) => quoteIdentifier(field, dbType)).join(', ');
-		const quotedTableName = quoteIdentifier(this.toTableName(dataStoreId), dbType);
-
-		const query = `
-        SELECT ${quotedFields}
-        FROM ${quotedTableName}
-        WHERE ${whereClauses.join(' OR ')}
-    `;
-		const existing: Array<Record<string, unknown>> = await this.dataSource.query(query, params);
+		const existing: Array<Record<string, DataStoreColumnJsType | null>> =
+			await queryBuilder.getRawMany();
 
 		return splitRowsByExistence(existing, matchFields, rows);
 	}

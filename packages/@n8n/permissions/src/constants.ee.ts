@@ -22,11 +22,13 @@ export const RESOURCES = {
 	user: ['resetPassword', 'changeRole', 'enforceMfa', ...DEFAULT_OPERATIONS] as const,
 	variable: [...DEFAULT_OPERATIONS] as const,
 	workersView: ['manage'] as const,
-	workflow: ['share', 'execute', 'move', ...DEFAULT_OPERATIONS] as const,
+	workflow: ['share', 'execute', 'move', 'activate', 'deactivate', ...DEFAULT_OPERATIONS] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list'] as const,
 	oidc: ['manage'] as const,
 	dataStore: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
+	execution: ['delete', 'read', 'list', 'get'] as const,
+	workflowTags: ['update', 'list'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
