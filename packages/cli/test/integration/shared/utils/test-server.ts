@@ -232,7 +232,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'community-packages':
-						await import('@/community-packages/community-packages.controller');
+						await import('@/modules/community-packages/community-packages.controller');
 						break;
 
 					case 'me':

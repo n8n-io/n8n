@@ -11,8 +11,6 @@ import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
-import { InstalledNodes } from './installed-nodes';
-import { InstalledPackages } from './installed-packages';
 import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
@@ -35,8 +33,6 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
 	EventDestinations,
-	InstalledNodes,
-	InstalledPackages,
 	InvalidAuthToken,
 	ProcessedData,
 	Settings,
@@ -72,8 +68,6 @@ export {
 
 export const entities = {
 	EventDestinations,
-	InstalledNodes,
-	InstalledPackages,
 	InvalidAuthToken,
 	ProcessedData,
 	Settings,

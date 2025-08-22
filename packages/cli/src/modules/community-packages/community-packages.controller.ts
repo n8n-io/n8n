@@ -1,20 +1,20 @@
+import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
+
 import {
 	RESPONSE_ERROR_MESSAGES,
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import type { InstalledPackages } from '@n8n/db';
-import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
-
-import type { CommunityPackages } from './community-packages.types';
-import { CommunityNodeTypesService } from './community-node-types.service';
-
-import { CommunityPackagesService } from '@/community-packages/community-packages.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import { Push } from '@/push';
 import { NodeRequest } from '@/requests';
+
+import { CommunityNodeTypesService } from './community-node-types.service';
+import { CommunityPackagesService } from './community-packages.service';
+import type { CommunityPackages } from './community-packages.types';
+import { InstalledPackages } from './installed-packages.entity';
 
 const {
 	PACKAGE_NOT_INSTALLED,

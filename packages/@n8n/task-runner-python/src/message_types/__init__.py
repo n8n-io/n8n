@@ -3,6 +3,8 @@ from .broker import (
     BrokerInfoRequest,
     BrokerRunnerRegistered,
     BrokerTaskOfferAccept,
+    BrokerTaskSettings,
+    BrokerTaskCancel,
 )
 from .runner import (
     RunnerMessage,
@@ -10,6 +12,8 @@ from .runner import (
     RunnerTaskOffer,
     RunnerTaskAccepted,
     RunnerTaskRejected,
+    RunnerTaskDone,
+    RunnerTaskError,
 )
 
 __all__ = [
@@ -17,9 +21,13 @@ __all__ = [
     "BrokerInfoRequest",
     "BrokerRunnerRegistered",
     "BrokerTaskOfferAccept",
+    "BrokerTaskSettings",
+    "BrokerTaskCancel",
     "RunnerMessage",
     "RunnerInfo",
     "RunnerTaskOffer",
     "RunnerTaskAccepted",
     "RunnerTaskRejected",
+    "RunnerTaskDone",
+    "RunnerTaskError",
 ]

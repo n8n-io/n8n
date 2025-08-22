@@ -10,6 +10,7 @@ import type {
 	teamRoleSchema,
 	workflowSharingRoleSchema,
 } from './schemas.ee';
+import { ALL_API_KEY_SCOPES } from './scope-information';
 
 export type ScopeInformation = {
 	displayName: string;
@@ -76,12 +77,21 @@ export type AllRolesMap = {
 	workflow: Array<RoleObject<WorkflowSharingRole>>;
 };
 
+export type DbScope = {
+	slug: Scope;
+};
+
+export type DbRole = {
+	slug: string;
+	scopes: DbScope[];
+};
+
 /**
  * Represents an authenticated entity in the system that can have specific permissions via a role.
  * @property role - The global role this principal has
  */
 export type AuthPrincipal = {
-	role: GlobalRole;
+	role: DbRole;
 };
 
 // #region Public API
@@ -100,5 +110,10 @@ type AllApiKeyScopesObject = {
 };
 
 export type ApiKeyScope = AllApiKeyScopesObject[PublicApiKeyResources];
+
+export function isApiKeyScope(scope: Scope): scope is ApiKeyScope {
+	// We are casting with as for runtime type checking
+	return ALL_API_KEY_SCOPES.has(scope as ApiKeyScope);
+}
 
 // #endregion

@@ -3,9 +3,8 @@ import { Logger, inProduction } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from 'n8n-workflow';
 
-import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
-
 import { getCommunityNodeTypes, StrapiCommunityNodeType } from './community-node-types-utils';
+import { CommunityPackagesConfig } from './community-packages.config';
 import { CommunityPackagesService } from './community-packages.service';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;

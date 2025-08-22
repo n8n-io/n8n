@@ -1,4 +1,4 @@
-import { SharedCredentials } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, SharedCredentials } from '@n8n/db';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
@@ -16,10 +16,10 @@ describe('CredentialsFinderService', () => {
 		const sharedCredential = mock<SharedCredentials>();
 		sharedCredential.credentials = mock<CredentialsEntity>({ id: credentialsId });
 		const owner = mock<User>({
-			role: 'global:owner',
+			role: GLOBAL_OWNER_ROLE,
 		});
 		const member = mock<User>({
-			role: 'global:member',
+			role: GLOBAL_MEMBER_ROLE,
 			id: 'test',
 		});
 
