@@ -51,7 +51,7 @@ export class DataStoreRowsRepository {
 
 	toTableName(dataStoreId: string): DataStoreUserTableName {
 		const { tablePrefix } = this.globalConfig.database;
-		return `${tablePrefix}data_store_user_${dataStoreId}`;
+		return `${tablePrefix}data_table_user_${dataStoreId}`;
 	}
 
 	async insertRows(dataStoreId: string, rows: DataStoreRows, columns: DataTableColumn[]) {

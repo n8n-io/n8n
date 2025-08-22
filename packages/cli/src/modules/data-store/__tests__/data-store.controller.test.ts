@@ -8,12 +8,11 @@ import {
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository, QueryFailedError } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DateTime } from 'luxon';
-
 import { createDataStore } from '@test-integration/db/data-stores';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
+import { DateTime } from 'luxon';
 
 import { DataStoreColumnRepository } from '../data-store-column.repository';
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
@@ -755,7 +754,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		expect(dataStoreInDb).toBeNull();
 	});
 
-	test("should delete data from 'data_store', 'data_store_column' tables and drop 'data_store_user_<id>' table", async () => {
+	test("should delete data from 'data_store', 'data_store_column' tables and drop 'data_table_user_<id>' table", async () => {
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const dataStore = await createDataStore(personalProject, {
 			name: 'Test Data Store',
