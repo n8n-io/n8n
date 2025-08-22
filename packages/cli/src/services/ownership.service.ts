@@ -1,5 +1,6 @@
 import type { Project, User, ListQueryDb } from '@n8n/db';
 import {
+	GLOBAL_OWNER_ROLE,
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
@@ -106,7 +107,7 @@ export class OwnershipService {
 
 	async getInstanceOwner() {
 		return await this.userRepository.findOneOrFail({
-			where: { role: 'global:owner' },
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 		});
 	}
 }
