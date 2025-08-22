@@ -6,10 +6,7 @@
         },
         "_name": {
             "type": "string"
-        },
-        "_updateTime": {
-            "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

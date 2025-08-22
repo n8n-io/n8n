@@ -28,7 +28,11 @@ export class ModuleRegistry {
 		private readonly modulesConfig: ModulesConfig,
 	) {}
 
-	private readonly defaultModules: ModuleName[] = ['insights', 'external-secrets'];
+	private readonly defaultModules: ModuleName[] = [
+		'insights',
+		'external-secrets',
+		'community-packages',
+	];
 
 	private readonly activeModules: string[] = [];
 
@@ -85,7 +89,7 @@ export class ModuleRegistry {
 
 			if (entities?.length) this.entities.push(...entities);
 
-			const loadDir = Container.get(ModuleClass).loadDir?.();
+			const loadDir = await Container.get(ModuleClass).loadDir?.();
 
 			if (loadDir) this.loadDirs.push(loadDir);
 		}

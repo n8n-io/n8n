@@ -22,7 +22,10 @@ describe('eligibleModules', () => {
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(['external-secrets']);
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'external-secrets',
+			'community-packages',
+		]);
 	});
 
 	it('should consider a module eligible if it was enabled via env var', () => {
@@ -30,6 +33,7 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'insights',
 			'external-secrets',
+			'community-packages',
 			'data-store',
 		]);
 	});

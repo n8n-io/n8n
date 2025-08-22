@@ -27,7 +27,9 @@ export default defineConfig({
 	retries: IS_CI ? 2 : 0,
 	workers: WORKERS,
 	timeout: 60000,
-
+	expect: {
+		timeout: 10000,
+	},
 	projects: getProjects(),
 
 	// We use this if an n8n url is passed in. If the server is already running, we reuse it.

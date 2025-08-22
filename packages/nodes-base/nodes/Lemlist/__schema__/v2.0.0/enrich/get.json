@@ -7,11 +7,8 @@
                 "email": {
                     "type": "object",
                     "properties": {
-                        "email": {
+                        "status": {
                             "type": "string"
-                        },
-                        "notFound": {
-                            "type": "boolean"
                         }
                     }
                 }
@@ -26,23 +23,11 @@
         "input": {
             "type": "object",
             "properties": {
-                "companyDomain": {
-                    "type": "string"
-                },
-                "companyName": {
-                    "type": "string"
-                },
-                "firstName": {
-                    "type": "string"
-                },
-                "lastName": {
-                    "type": "string"
-                },
-                "linkedinUrl": {
+                "email": {
                     "type": "string"
                 }
             }
         }
     },
-    "version": 1
+    "version": 2
 }

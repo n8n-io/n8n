@@ -77,6 +77,18 @@ export class CanvasPage extends BasePage {
 		await this.nodeCreatorSubItem(subItemText).click();
 	}
 
+	async addActionNode(searchText: string, subItemText: string): Promise<void> {
+		await this.addNode(searchText);
+		await this.page.getByText('Actions').click();
+		await this.nodeCreatorSubItem(subItemText).click();
+	}
+
+	async addTriggerNode(searchText: string, subItemText: string): Promise<void> {
+		await this.addNode(searchText);
+		await this.page.getByText('Triggers').click();
+		await this.nodeCreatorSubItem(subItemText).click();
+	}
+
 	async deleteNodeByName(nodeName: string): Promise<void> {
 		await this.nodeDeleteButton(nodeName).click();
 	}
