@@ -6,7 +6,7 @@ const DATA_STORE_COLUMN_TABLE_NAME = 'data_store_column';
 const DATA_TABLE_TABLE_NAME = 'data_table';
 const DATA_TABLE_COLUMN_TABLE_NAME = 'data_table_column';
 
-export class ReplaceDataTableTables1754475614602 implements ReversibleMigration {
+export class ReplaceDataStoreTablesWithDataTables1754475614602 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column, dropTable } }: MigrationContext) {
 		await dropTable(DATA_STORE_COLUMN_TABLE_NAME);
 		await dropTable(DATA_STORE_TABLE_NAME);

@@ -755,7 +755,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		expect(dataStoreInDb).toBeNull();
 	});
 
-	test("should delete data from 'data_store', 'data_store_column' tables and drop 'data_table_user_<id>' table", async () => {
+	test("should delete data from 'data_table', 'data_table_column' tables and drop 'data_table_user_<id>' table", async () => {
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const dataStore = await createDataStore(personalProject, {
 			name: 'Test Data Store',
