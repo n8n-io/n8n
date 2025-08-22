@@ -43,6 +43,7 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 };
 
 const MIN_RUNTIME = 0;
+
 // PostgreSQL INTEGER max (signed 32-bit)
 const MAX_RUNTIME = 2 ** 31 - 1;
 
