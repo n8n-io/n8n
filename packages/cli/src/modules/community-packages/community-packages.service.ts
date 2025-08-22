@@ -1,17 +1,15 @@
 import { Logger } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import type { InstalledPackages } from '@n8n/db';
-import { InstalledPackagesRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import axios from 'axios';
-import { exec } from 'child_process';
-import { access, constants, mkdir, readFile, rm, writeFile } from 'fs/promises';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
-import { join } from 'path';
-import { promisify } from 'util';
+import { exec } from 'node:child_process';
+import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { promisify } from 'node:util';
 
 import {
 	NODE_PACKAGE_PREFIX,
@@ -28,6 +26,8 @@ import { toError } from '@/utils';
 
 import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
+import { InstalledPackages } from './installed-packages.entity';
+import { InstalledPackagesRepository } from './installed-packages.repository';
 import { isVersionExists, verifyIntegrity } from './npm-utils';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';

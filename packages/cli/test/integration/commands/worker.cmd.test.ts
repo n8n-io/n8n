@@ -12,11 +12,11 @@ import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-rela
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
-import { CommunityPackagesService } from '@/community-packages/community-packages.service';
 import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
 import { TaskRunnerProcess } from '@/task-runners/task-runner-process';
 import { Telemetry } from '@/telemetry';
