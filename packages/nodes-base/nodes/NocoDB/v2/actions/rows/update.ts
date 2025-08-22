@@ -3,22 +3,91 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestMethods,
 	INodeExecutionData,
+	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
-import { apiRequest } from '../../GenericFunctions';
+import { DataToSendOption, RowCreateUpdateOptions } from './create_update.options';
+import { apiRequest } from '../../transport';
 
-export async function execute_V_0240_rows_update(
-	this: IExecuteFunctions,
-): Promise<INodeExecutionData[][]> {
+export const description: INodeProperties[] = updateDisplayOptions(
+	{
+		show: {
+			operation: ['update'],
+		},
+	},
+	[
+		...DataToSendOption,
+		{
+			displayName: 'This operation requires the primary key to be included for each row.',
+			name: 'info',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					dataToSend: ['autoMapInputData', 'defineBelow'],
+					version: [3],
+				},
+			},
+		},
+		{
+			displayName: 'Row ID Value',
+			name: 'id',
+			type: 'string',
+			default: '',
+			required: true,
+			description: 'The value of the ID field',
+			displayOptions: {
+				show: {
+					version: [4],
+				},
+			},
+		},
+
+		...RowCreateUpdateOptions,
+
+		{
+			displayName: 'Fields to Send',
+			name: 'fieldsMapper',
+			type: 'resourceMapper',
+			default: {
+				mappingMode: 'defineBelow',
+				value: null,
+			},
+			displayOptions: {
+				show: {
+					dataToSend: ['mapWithFields'],
+				},
+			},
+
+			required: true,
+			noDataExpression: true,
+			typeOptions: {
+				loadOptionsDependsOn: ['table.value'],
+				resourceMapper: {
+					resourceMapperMethod: 'getResouceMapperFields',
+					mode: 'add',
+					fieldWords: {
+						singular: 'column',
+						plural: 'columns',
+					},
+					addAllFields: true,
+					supportAutoMap: false,
+				},
+			},
+		},
+	],
+);
+
+export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const returnData: IDataObject[] = [];
 	let responseData;
 
 	let requestMethod: IHttpRequestMethods;
 	let endPoint = '';
-	let qs: IDataObject = {};
+	const qs: IDataObject = {};
 
 	const baseId = this.getNodeParameter('projectId', 0, undefined, {
 		extractValue: true,
@@ -62,7 +131,7 @@ export async function execute_V_0240_rows_update(
 			body = [newItem]; // NocoDB v2/v3 create expects an array of objects
 
 			responseData = await apiRequest.call(this, requestMethod, endPoint, body, qs);
-			returnData.push(...(responseData.records as IDataObject[]));
+			returnData.push.apply(returnData, responseData.records as IDataObject[]);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ error: error.toString() });

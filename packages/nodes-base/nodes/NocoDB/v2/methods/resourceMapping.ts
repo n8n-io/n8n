@@ -1,5 +1,6 @@
-import { ILoadOptionsFunctions, ResourceMapperFields } from 'n8n-workflow';
-import { ColumnsFetcher } from './columns-fetcher';
+import type { ILoadOptionsFunctions, ResourceMapperFields } from 'n8n-workflow';
+
+import { ColumnsFetcher } from '../helpers/columns-fetcher';
 
 export async function getResouceMapperFields(this: ILoadOptionsFunctions) {
 	const fetcher = new ColumnsFetcher(this);
