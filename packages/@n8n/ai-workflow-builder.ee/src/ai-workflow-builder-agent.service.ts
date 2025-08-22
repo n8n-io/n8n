@@ -30,6 +30,7 @@ export class AiWorkflowBuilderService {
 		private readonly nodeTypes: INodeTypes,
 		private readonly client?: AiAssistantClient,
 		private readonly logger?: Logger,
+		private readonly instanceUrl?: string,
 	) {
 		this.parsedNodeTypes = this.getNodeTypes();
 	}
@@ -162,6 +163,7 @@ export class AiWorkflowBuilderService {
 			tracer: this.tracingClient
 				? new LangChainTracer({ client: this.tracingClient, projectName: 'n8n-workflow-builder' })
 				: undefined,
+			instanceUrl: this.instanceUrl,
 		});
 
 		return this.agent;

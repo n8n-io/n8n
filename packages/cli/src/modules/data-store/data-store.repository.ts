@@ -10,7 +10,6 @@ import { UnexpectedError } from 'n8n-workflow';
 import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStore } from './data-store.entity';
-import { toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataStore> {
@@ -32,7 +31,6 @@ export class DataStoreRepository extends Repository<DataStore> {
 			await em.insert(DataStore, dataStore);
 			dataStoreId = dataStore.id;
 
-			const tableName = toTableName(dataStore.id);
 			const queryRunner = em.queryRunner;
 			if (!queryRunner) {
 				throw new UnexpectedError('QueryRunner is not available');
@@ -41,9 +39,9 @@ export class DataStoreRepository extends Repository<DataStore> {
 			// insert columns
 			const columnEntities = columns.map((col, index) =>
 				em.create(DataStoreColumn, {
+					dataStoreId,
 					name: col.name,
 					type: col.type,
-					dataStoreId: dataStore.id,
 					index: col.index ?? index,
 				}),
 			);
@@ -54,7 +52,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 
 			// create user table (will create empty table with just id column if no columns)
 			await this.dataStoreRowsRepository.createTableWithColumns(
-				tableName,
+				dataStoreId,
 				columnEntities,
 				queryRunner,
 			);
@@ -81,7 +79,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 			}
 
 			await em.delete(DataStore, { id: dataStoreId });
-			await queryRunner.dropTable(toTableName(dataStoreId), true);
+			await this.dataStoreRowsRepository.dropTable(dataStoreId, queryRunner);
 
 			return true;
 		});
@@ -113,7 +111,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 			let changed = false;
 			for (const match of existingTables) {
 				const result = await em.delete(DataStore, { id: match.id });
-				await queryRunner.dropTable(toTableName(match.id), true);
+				await this.dataStoreRowsRepository.dropTable(match.id, queryRunner);
 				changed = changed || (result.affected ?? 0) > 0;
 			}
 

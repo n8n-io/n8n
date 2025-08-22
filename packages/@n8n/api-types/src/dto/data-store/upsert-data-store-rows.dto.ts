@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-import { dataStoreColumnNameSchema } from '../../schemas/data-store.schema';
-
-const dataStoreValueSchema = z.union([z.string(), z.number(), z.boolean(), z.date(), z.null()]);
+import {
+	dataStoreColumnNameSchema,
+	dataStoreColumnValueSchema,
+} from '../../schemas/data-store.schema';
 
 const upsertDataStoreRowsShape = {
-	rows: z.array(z.record(dataStoreValueSchema)),
+	rows: z.array(z.record(dataStoreColumnNameSchema, dataStoreColumnValueSchema)),
 	matchFields: z.array(dataStoreColumnNameSchema).min(1),
 };
 

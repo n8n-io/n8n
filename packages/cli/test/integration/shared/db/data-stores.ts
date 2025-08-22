@@ -7,7 +7,6 @@ import type { DataStoreRows } from 'n8n-workflow';
 import { DataStoreColumnRepository } from '@/modules/data-store/data-store-column.repository';
 import { DataStoreRowsRepository } from '@/modules/data-store/data-store-rows.repository';
 import { DataStoreRepository } from '@/modules/data-store/data-store.repository';
-import { toTableName } from '@/modules/data-store/utils/sql-utils';
 
 export const createDataStore = async (
 	project: Project,
@@ -37,7 +36,7 @@ export const createDataStore = async (
 		const columns = await dataStoreColumnRepository.getColumns(dataStore.id);
 
 		const dataStoreRowsRepository = Container.get(DataStoreRowsRepository);
-		await dataStoreRowsRepository.insertRows(toTableName(dataStore.id), options.data, columns);
+		await dataStoreRowsRepository.insertRows(dataStore.id, options.data, columns);
 	}
 
 	return dataStore;
