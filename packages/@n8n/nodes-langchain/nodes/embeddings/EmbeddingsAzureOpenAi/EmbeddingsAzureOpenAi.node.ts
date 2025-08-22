@@ -156,7 +156,9 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				: undefined,
 			configuration: {
 				fetchOptions: {
-					dispatcher: getProxyAgent(),
+					dispatcher: getProxyAgent(
+						credentials.endpoint ?? `https://${credentials.resourceName}.openai.azure.com`,
+					),
 				},
 			},
 			...options,
