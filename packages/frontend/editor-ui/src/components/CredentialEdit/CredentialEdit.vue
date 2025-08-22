@@ -28,7 +28,6 @@ import { useMessage } from '@/composables/useMessage';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -37,11 +36,11 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Project, ProjectSharingData } from '@/types/projects.types';
 import { N8nInlineTextEdit, N8nText, type IMenuItem } from '@n8n/design-system';
+import { getResourcePermissions } from '@n8n/permissions';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { isExpression, isTestableExpression } from '@/utils/expressions';
@@ -51,6 +50,7 @@ import {
 	updateNodeAuthType,
 } from '@/utils/nodeTypesUtils';
 import { isCredentialModalState, isValidCredentialResponse } from '@/utils/typeGuards';
+import { useI18n } from '@n8n/i18n';
 import { useElementSize } from '@vueuse/core';
 
 type Props = {
@@ -771,16 +771,9 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	return credential;
 }
 
-const createToastMessagingForNewCredentials = (
-	credentialDetails: ICredentialsDecrypted,
-	project?: Project | null,
-) => {
+const createToastMessagingForNewCredentials = (project?: Project | null) => {
 	let toastTitle = i18n.baseText('credentials.create.personal.toast.title');
 	let toastText = '';
-
-	if (!credentialDetails.sharedWithProjects) {
-		toastText = i18n.baseText('credentials.create.personal.toast.text');
-	}
 
 	if (
 		projectsStore.currentProject &&
@@ -811,7 +804,7 @@ async function createCredential(
 		credential = await credentialsStore.createNewCredential(credentialDetails, project?.id);
 		hasUnsavedChanges.value = false;
 
-		const { title, message } = createToastMessagingForNewCredentials(credentialDetails, project);
+		const { title, message } = createToastMessagingForNewCredentials(project);
 
 		toast.showMessage({
 			title,
