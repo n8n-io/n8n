@@ -8,6 +8,7 @@ import path from 'node:path';
 export class CommunityPackagesModule implements ModuleInterface {
 	async init() {
 		await import('./community-packages.controller');
+		await import('./community-node-types.controller');
 	}
 
 	async entities() {
