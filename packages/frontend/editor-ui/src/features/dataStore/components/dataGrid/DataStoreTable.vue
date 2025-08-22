@@ -244,23 +244,23 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		// Provide initial value for the editor, otherwise agLargeTextCellEditor breaks
 		columnDef.cellEditorParams = (params: CellEditRequestEvent<DataStoreRow>) => ({
 			value: params.value ?? '',
-			// Track if the original value was null to handle it properly on save
-			maxLength: 100000,
 		});
-		// With the workaround above, we need to ensure not to convert values to empty
-		// string if users had not typed anything
 		columnDef.valueSetter = (params: ValueSetterParams<DataStoreRow>) => {
 			const originalValue = params.data[col.name];
-			const newValue = params.newValue;
+			let newValue = params.newValue;
 
-			// If original was null and new value is empty string, keep it as null
-			if (originalValue === null && newValue === '') {
-				return false; // No change
+			if (!isDataStoreValue(newValue)) {
+				return false;
 			}
 
+			// Make sure not to trigger update if cell content is not set and value was null
+			if (originalValue === null && newValue === '') {
+				return false;
+			}
+
+			// When clearing editor content, set value to empty string
 			if (isTextEditorOpen.value && newValue === null) {
-				params.data[col.name] = '';
-				return true;
+				newValue = '';
 			}
 
 			// Otherwise update the value
