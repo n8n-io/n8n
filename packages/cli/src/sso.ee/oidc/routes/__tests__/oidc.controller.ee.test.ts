@@ -2,11 +2,12 @@ import type { User } from '@n8n/db';
 import { type Request, type Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import type { AuthService } from '@/auth/auth.service';
-import type { UrlService } from '@/services/url.service';
-
 import type { OidcService } from '../../oidc.service.ee';
 import { OidcController } from '../oidc.controller.ee';
+
+import type { AuthService } from '@/auth/auth.service';
+import type { AuthlessRequest } from '@/requests';
+import type { UrlService } from '@/services/url.service';
 
 const authService = mock<AuthService>();
 const oidcService = mock<OidcService>();
@@ -33,8 +34,9 @@ describe('OidcController', () => {
 
 	describe('callbackHandler', () => {
 		test('Should issue cookie with MFA flag set to true on successful OIDC login', async () => {
-			const req = mock<Request>({
+			const req = mock<AuthlessRequest>({
 				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
 			});
 			const res = mock<Response>();
 
@@ -51,16 +53,17 @@ describe('OidcController', () => {
 			expect(oidcService.loginUser).toHaveBeenCalledWith(expectedCallbackUrl);
 
 			// Verify that issueCookie was called with MFA flag set to true
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, req.browserId);
 
 			// Verify redirect to home page
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
 		test('Should handle callback URL with different query parameters', async () => {
-			const req = mock<Request>({
+			const req = mock<AuthlessRequest>({
 				originalUrl:
 					'/sso/oidc/callback?code=different_code&state=different_state&session_state=session123',
+				browserId: 'browser-id-123',
 			});
 			const res = mock<Response>();
 
@@ -73,13 +76,14 @@ describe('OidcController', () => {
 			await controller.callbackHandler(req, res);
 
 			expect(oidcService.loginUser).toHaveBeenCalledWith(expectedCallbackUrl);
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, req.browserId);
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
 		test('Should handle callback URL with no query parameters', async () => {
-			const req = mock<Request>({
+			const req = mock<AuthlessRequest>({
 				originalUrl: '/sso/oidc/callback',
+				browserId: undefined,
 			});
 			const res = mock<Response>();
 
@@ -90,7 +94,7 @@ describe('OidcController', () => {
 			await controller.callbackHandler(req, res);
 
 			expect(oidcService.loginUser).toHaveBeenCalledWith(expectedCallbackUrl);
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, undefined);
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
