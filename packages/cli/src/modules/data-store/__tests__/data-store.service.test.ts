@@ -1263,7 +1263,7 @@ describe('dataStore', () => {
 			const result = await dataStoreService.insertRows(dataStoreId, project1.id, rows);
 
 			// ASSERT
-			expect(result).toEqual([1, 2, 3]);
+			expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
 
 			const { count, data } = await dataStoreService.getManyRowsAndCount(
 				dataStoreId,
