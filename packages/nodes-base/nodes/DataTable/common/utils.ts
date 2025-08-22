@@ -9,13 +9,11 @@ import {
 
 import type { FieldEntry, FilterType } from './constants';
 import { ALL_FILTERS, ANY_FILTER } from './constants';
-import { DATA_STORE_ID_FIELD } from './fields';
-
-type IDataStoreProxyFunctions = IExecuteFunctions | ILoadOptionsFunctions;
+import { DATA_TABLE_ID_FIELD } from './fields';
 
 // We need two functions here since the available getNodeParameter
 // overloads vary with the index
-export async function getDataStoreProxyExecute(
+export async function getDataTableProxyExecute(
 	ctx: IExecuteFunctions,
 	index: number = 0,
 ): Promise<IDataStoreProjectService> {
@@ -25,14 +23,14 @@ export async function getDataStoreProxyExecute(
 			'Attempted to use Data Store node but the module is disabled',
 		);
 
-	const dataStoreId = ctx.getNodeParameter(DATA_STORE_ID_FIELD, index, undefined, {
+	const dataStoreId = ctx.getNodeParameter(DATA_TABLE_ID_FIELD, index, undefined, {
 		extractValue: true,
 	}) as string;
 
 	return await ctx.helpers.getDataStoreProxy(dataStoreId);
 }
 
-export async function getDataStoreProxyLoadOptions(
+export async function getDataTableProxyLoadOptions(
 	ctx: ILoadOptionsFunctions,
 ): Promise<IDataStoreProjectService> {
 	if (ctx.helpers.getDataStoreProxy === undefined)
@@ -41,15 +39,15 @@ export async function getDataStoreProxyLoadOptions(
 			'Attempted to use Data Store node but the module is disabled',
 		);
 
-	const dataStoreId = ctx.getNodeParameter(DATA_STORE_ID_FIELD, undefined, {
+	const dataStoreId = ctx.getNodeParameter(DATA_TABLE_ID_FIELD, undefined, {
 		extractValue: true,
 	}) as string;
 
 	return await ctx.helpers.getDataStoreProxy(dataStoreId);
 }
 
-export async function getDataStoreAggregateProxy(
-	ctx: IDataStoreProxyFunctions,
+export async function getDataTableAggregateProxy(
+	ctx: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<IDataStoreProjectAggregateService> {
 	if (ctx.helpers.getDataStoreAggregateProxy === undefined)
 		throw new NodeOperationError(

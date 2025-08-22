@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const DATA_STORE_ID_FIELD = 'dataStoreId';
+export const DATA_TABLE_ID_FIELD = 'dataTableId';
 
 export const COLUMNS: INodeProperties = {
 	displayName: 'Columns',
@@ -13,9 +13,9 @@ export const COLUMNS: INodeProperties = {
 	noDataExpression: true,
 	required: true,
 	typeOptions: {
-		loadOptionsDependsOn: [`${DATA_STORE_ID_FIELD}.value`],
+		loadOptionsDependsOn: [`${DATA_TABLE_ID_FIELD}.value`],
 		resourceMapper: {
-			resourceMapperMethod: 'getDataStores',
+			resourceMapperMethod: 'getDataTables',
 			mode: 'add',
 			fieldWords: {
 				singular: 'column',

@@ -6,7 +6,7 @@ import type {
 	ResourceMapperFields,
 } from 'n8n-workflow';
 
-import { getDataStoreAggregateProxy, getDataStoreProxyLoadOptions } from './utils';
+import { getDataTableAggregateProxy, getDataTableProxyLoadOptions } from './utils';
 
 // @ADO-3904: Pagination here does not work until a filter is entered or removed, suspected bug in ResourceLocator
 export async function tableSearch(
@@ -14,7 +14,7 @@ export async function tableSearch(
 	filterString?: string,
 	prevPaginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const proxy = await getDataStoreAggregateProxy(this);
+	const proxy = await getDataTableAggregateProxy(this);
 
 	const skip = prevPaginationToken === undefined ? 0 : parseInt(prevPaginationToken, 10);
 	const take = 100;
@@ -43,7 +43,7 @@ export async function tableSearch(
 export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
 	const returnData: INodePropertyOptions[] = [{ name: 'id - (string)', value: 'id' }];
-	const proxy = await getDataStoreProxyLoadOptions(this);
+	const proxy = await getDataTableProxyLoadOptions(this);
 	const columns = await proxy.getColumns();
 	for (const column of columns) {
 		returnData.push({
@@ -55,7 +55,7 @@ export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 }
 
 export async function getDataTables(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
-	const proxy = await getDataStoreProxyLoadOptions(this);
+	const proxy = await getDataTableProxyLoadOptions(this);
 	const result = await proxy.getColumns();
 
 	const fields: ResourceMapperField[] = [];

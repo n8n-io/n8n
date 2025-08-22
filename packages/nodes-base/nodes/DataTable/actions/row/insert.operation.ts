@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { COLUMNS } from '../../common/fields';
-import { getDataStoreProxyExecute } from '../../common/utils';
+import { getDataTableProxyExecute } from '../../common/utils';
 
 export const FIELD: string = 'insert';
 
@@ -31,7 +31,7 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 
-	const dataStoreProxy = await getDataStoreProxyExecute(this, index);
+	const dataStoreProxy = await getDataTableProxyExecute(this, index);
 	const dataMode = this.getNodeParameter('columns.mappingMode', index) as string;
 
 	let data: IDataObject;

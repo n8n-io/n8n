@@ -6,7 +6,7 @@ import {
 } from 'n8n-workflow';
 
 import type { FilterType } from './constants';
-import { DATA_STORE_ID_FIELD } from './fields';
+import { DATA_TABLE_ID_FIELD } from './fields';
 import { buildGetManyFilter, isFieldArray, isMatchType } from './utils';
 
 export function getSelectFields(displayOptions: IDisplayOptions): INodeProperties[] {
@@ -50,8 +50,8 @@ export function getSelectFields(displayOptions: IDisplayOptions): INodePropertie
 							description:
 								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 							typeOptions: {
-								loadOptionsDependsOn: [DATA_STORE_ID_FIELD],
-								loadOptionsMethod: 'getDataStoreColumns',
+								loadOptionsDependsOn: [DATA_TABLE_ID_FIELD],
+								loadOptionsMethod: 'getDataTableColumns',
 							},
 							default: 'id',
 						},

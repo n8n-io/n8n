@@ -6,7 +6,7 @@ import * as row from './actions/row/Row.resource';
 import { getDataTableColumns, getDataTables, tableSearch } from './common/methods';
 
 // TODO: hide this node
-export class DataStore implements INodeType {
+export class DataTable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Data Table',
 		name: 'dataTable',

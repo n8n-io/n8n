@@ -3,7 +3,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import * as row from './row/Row.resource';
 
-type DataStoreNodeType = AllEntities<{ row: 'insert' | 'get' }>;
+type DataTableNodeType = AllEntities<{ row: 'insert' | 'get' }>;
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const operationResult: INodeExecutionData[] = [];
@@ -13,16 +13,16 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const resource = this.getNodeParameter('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 
-	const dataStoreNodeData = {
+	const dataTableNodeData = {
 		resource,
 		operation,
-	} as DataStoreNodeType;
+	} as DataTableNodeType;
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			switch (dataStoreNodeData.resource) {
+			switch (dataTableNodeData.resource) {
 				case 'row':
-					responseData = await row[dataStoreNodeData.operation].execute.call(this, i);
+					responseData = await row[dataTableNodeData.operation].execute.call(this, i);
 					break;
 				default:
 					throw new NodeOperationError(

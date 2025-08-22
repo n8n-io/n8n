@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { getSelectFields, getSelectFilter } from '../../common/selectMany';
-import { getDataStoreProxyExecute } from '../../common/utils';
+import { getDataTableProxyExecute } from '../../common/utils';
 
 export const FIELD: string = 'get';
 
@@ -23,7 +23,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const dataStoreProxy = await getDataStoreProxyExecute(this, index);
+	const dataStoreProxy = await getDataTableProxyExecute(this, index);
 
 	let take = 1000;
 	const result: INodeExecutionData[] = [];

@@ -3,12 +3,12 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { execute } from '../../../actions/row/get.operation';
 import type { FieldEntry } from '../../../common/constants';
 import { ANY_FILTER } from '../../../common/constants';
-import { DATA_STORE_ID_FIELD } from '../../../common/fields';
+import { DATA_TABLE_ID_FIELD } from '../../../common/fields';
 
-describe('Data Store get Operation', () => {
+describe('Data Table get Operation', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
 	const getManyRowsAndCount = jest.fn();
-	const dataStoreId = 2345;
+	const dataTableId = 2345;
 	let filters: FieldEntry[];
 
 	beforeEach(() => {
@@ -24,8 +24,8 @@ describe('Data Store get Operation', () => {
 			getInputData: jest.fn().mockReturnValue([{}]),
 			getNodeParameter: jest.fn().mockImplementation((field) => {
 				switch (field) {
-					case DATA_STORE_ID_FIELD:
-						return dataStoreId;
+					case DATA_TABLE_ID_FIELD:
+						return dataTableId;
 					case 'filters.conditions':
 						return filters;
 					case 'matchType':
