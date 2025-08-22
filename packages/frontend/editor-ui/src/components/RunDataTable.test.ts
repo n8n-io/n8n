@@ -131,17 +131,14 @@ describe('RunDataTable.vue', () => {
 			},
 		];
 
-		const { getAllByText } = renderComponent({
+		const { container } = renderComponent({
 			props: { inputData },
 		});
 
-		const nullValues = getAllByText(/null|empty/i); // returns HTML span elements that do not have the style applied!
-		getAllByText(/null|empty/i).forEach((element) => {
+		const emptyValues = container.querySelectorAll('[class*="_empty"]');
+		emptyValues.forEach((element) => {
 			expect(element).toHaveStyle('font-style: italic;');
 		});
-
-		// elements will have this class:
-		// <span class="_content_1tmoh_123 _nestedValue_1csa6_287 _value_1csa6_283 _empty_1csa6_230"><span><!---->null</span></span>
 	});
 
 	it('inserts col elements in DOM to specify column widths when collapsing column name is specified', async () => {
