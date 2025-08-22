@@ -177,6 +177,9 @@ export class DataStoreRowsRepository {
 			setValues[key] = normalizeValue(value, columnTypeMap[key], dbType);
 		}
 
+		// Always update the updatedAt timestamp
+		setValues.updatedAt = normalizeValue(new Date(), 'date', dbType);
+
 		queryBuilder.set(setValues);
 
 		const normalizedWhereData: Record<string, DataStoreColumnJsType | null> = {};

@@ -1816,6 +1816,56 @@ describe('dataStore', () => {
 			);
 		});
 
+		it('should update the updatedAt', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'active', type: 'boolean' },
+				],
+			});
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true },
+			]);
+
+			const { data: initialRows } = await dataStoreService.getManyRowsAndCount(
+				dataStoreId,
+				project1.id,
+				{},
+			);
+
+			// Wait to ensure different timestamps
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			// ACT
+			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
+				filter: { name: 'Alice' },
+				data: { age: 31, active: false },
+			});
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const { data: updatedRows } = await dataStoreService.getManyRowsAndCount(
+				dataStoreId,
+				project1.id,
+				{},
+			);
+
+			expect(updatedRows[0].createdAt).not.toBeNull();
+			expect(updatedRows[0].updatedAt).not.toBeNull();
+			expect(initialRows[0].updatedAt).not.toBeNull();
+			expect(new Date(updatedRows[0].updatedAt as string).getTime()).toBeGreaterThan(
+				new Date(initialRows[0].updatedAt as string).getTime(),
+			);
+			expect(new Date(updatedRows[0].updatedAt as string).getTime()).toBeGreaterThan(
+				new Date(updatedRows[0].createdAt as string).getTime(),
+			);
+		});
+
 		it('should update row with multiple filter conditions', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
