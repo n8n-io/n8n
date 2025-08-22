@@ -157,7 +157,7 @@ class TaskExecutor:
         """Create a custom print function that captures output to the given list."""
 
         def custom_print(*args):
-            log = " ".join(str(arg) for arg in args)
-            print_logs.append(log)
+            print_logs.append(args)
+            print("[user code]", *args)
 
         return custom_print

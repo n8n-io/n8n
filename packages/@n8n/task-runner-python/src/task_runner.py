@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 import websockets
 import random
 
-
+from .logs import format_print_args
 from .errors import WebsocketConnectionError, TaskMissingError
 from .message_types.broker import TaskSettings
 from .nanoid import nanoid
@@ -217,9 +217,10 @@ class TaskRunner:
                 process, queue, self.opts.task_timeout, task_settings.continue_on_fail
             )
 
-            for log_message in print_logs:
+            for print_log_args in print_logs:
+                formatted_args = format_print_args(*print_log_args)
                 await self._send_rpc_message(
-                    task_id, RPC_BROWSER_CONSOLE_LOG_METHOD, [f"{log_message}"]
+                    task_id, RPC_BROWSER_CONSOLE_LOG_METHOD, formatted_args
                 )
 
             response = RunnerTaskDone(task_id=task_id, data={"result": result})
