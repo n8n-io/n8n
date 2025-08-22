@@ -1,15 +1,15 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type {
 	INodeExecutionData,
 	IPollFunctions,
-	NodeConnectionTypes,
-	type INodeType,
-	type INodeTypeBaseDescription,
-	type INodeTypeDescription,
+	INodeType,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import { TriggerOptions } from './options/trigger.options';
-import * as apiV3Methods from '../helpers/apiV3Methods';
-import { poll_trigger } from './poll/trigger.poll';
+import * as apiV3Methods from '../v2/methods';
+import { pollTrigger } from './poll/trigger.poll';
 
 export class NocoDBTriggerV1 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
@@ -71,7 +71,8 @@ export class NocoDBTriggerV1 implements INodeType {
 	}
 	description: INodeTypeDescription;
 	methods = apiV3Methods;
-	poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		return poll_trigger.call(this);
+
+	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
+		return await pollTrigger.call(this);
 	}
 }

@@ -8,9 +8,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../GenericFunctions';
+import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../v2/transport';
 
-export async function poll_trigger(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
+export async function pollTrigger(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 	const returnData: IDataObject[] = [];
 	let responseData;
 
@@ -80,9 +80,9 @@ export async function poll_trigger(this: IPollFunctions): Promise<INodeExecution
 				downloadFieldNames,
 				[{ item: 0 }],
 			);
-			returnData.push(...response);
+			returnData.push.apply(returnData, response);
 		} else {
-			returnData.push(...(responseData as IDataObject[]));
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 		}
 		webhookData.lastTimeChecked = endDate;
 	} catch (error) {

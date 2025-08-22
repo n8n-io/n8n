@@ -3,22 +3,63 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestMethods,
 	INodeExecutionData,
+	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
-import { apiRequest, downloadRecordAttachments } from '../../GenericFunctions';
+import { apiRequest, downloadRecordAttachments } from '../../transport';
 
-export async function execute_V_0240_rows_get(
-	this: IExecuteFunctions,
-): Promise<INodeExecutionData[][]> {
+export const description: INodeProperties[] = updateDisplayOptions(
+	{
+		show: {
+			operation: ['get'],
+		},
+	},
+	[
+		{
+			displayName: 'Row ID Value',
+			name: 'id',
+			type: 'string',
+			default: '',
+			required: true,
+			description: 'The value of the ID field',
+		},
+		{
+			displayName: 'Download Attachments',
+			name: 'downloadAttachments',
+			type: 'boolean',
+			default: false,
+			description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
+		},
+		{
+			displayName: 'Download Field Name or ID',
+			name: 'downloadFieldNames',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: 'getDownloadFields',
+			},
+			required: true,
+			displayOptions: {
+				show: {
+					downloadAttachments: [true],
+				},
+			},
+			default: '',
+			description:
+				'Name of the fields of type \'attachment\' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		},
+	],
+);
+
+export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const returnData: IDataObject[] = [];
 	let responseData;
 
 	let requestMethod: IHttpRequestMethods;
 	let endPoint = '';
-	let qs: IDataObject = {};
+	const qs: IDataObject = {};
 
 	const baseId = this.getNodeParameter('projectId', 0, undefined, {
 		extractValue: true,

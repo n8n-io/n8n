@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const DataToSendOption: INodeProperties[] = [
 	// for version 3 (noco v2 api), show legacy mapping

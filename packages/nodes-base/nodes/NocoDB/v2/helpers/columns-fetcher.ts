@@ -1,5 +1,6 @@
-import { ILoadOptionsFunctions, ResourceMapperField } from 'n8n-workflow';
-import { apiRequest } from '../GenericFunctions';
+import type { ILoadOptionsFunctions, ResourceMapperField } from 'n8n-workflow';
+
+import { apiRequest } from '../transport';
 
 const makeUidtMapper = (version: number) => {
 	const uidtMapper: Record<string, (field: any) => ResourceMapperField | undefined> = {
@@ -122,7 +123,7 @@ export class ColumnsFetcher {
 		const tableId = this.loadOptionsFunctions.getNodeParameter('table', 0, {
 			extractValue: true,
 		}) as string;
-		return this.fetch({
+		return await this.fetch({
 			version,
 			workspaceId,
 			baseId,
