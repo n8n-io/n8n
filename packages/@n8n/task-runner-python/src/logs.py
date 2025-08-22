@@ -1,7 +1,12 @@
 import logging
 import os
 import json
-from .constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT, ENV_HIDE_TASK_OFFER_LOGS
+from .constants import (
+    CIRCULAR_REFERENCE_PLACEHOLDER_KEY,
+    LOG_FORMAT,
+    LOG_TIMESTAMP_FORMAT,
+    ENV_HIDE_TASK_OFFER_LOGS,
+)
 
 COLORS = {
     "DEBUG": "\033[34m",  # blue
@@ -78,7 +83,9 @@ def format_print_args(*args) -> list[str]:
 
     formatted_args = []
     for arg in args:
-        if isinstance(arg, str):
+        if isinstance(arg, dict) and CIRCULAR_REFERENCE_PLACEHOLDER_KEY in arg:
+            formatted_args.append(f"[Circular {arg['__type__']}]")
+        elif isinstance(arg, str):
             formatted_args.append(f"'{arg}'")
         elif isinstance(arg, (int, float, bool)) or arg is None:
             formatted_args.append(str(arg))

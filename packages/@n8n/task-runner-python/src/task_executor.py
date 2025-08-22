@@ -11,7 +11,7 @@ from .errors import (
 )
 
 from .message_types.broker import NodeMode, Items
-from .constants import EXECUTOR_USER_OUTPUT_KEY
+from .constants import CIRCULAR_REFERENCE_PLACEHOLDER_KEY, EXECUTOR_USER_OUTPUT_KEY
 
 from multiprocessing.context import SpawnProcess
 
@@ -154,10 +154,23 @@ class TaskExecutor:
 
     @staticmethod
     def _create_custom_print(print_logs: list):
-        """Create a custom print function that captures output to the given list."""
-
         def custom_print(*args):
-            print_logs.append(args)
+            safe_args = []
+            for arg in args:
+                try:
+                    import pickle
+
+                    pickle.dumps(arg)
+                    safe_args.append(arg)
+                except:
+                    # Non-picklable (e.g. custom self-referential) objects cannot be passed back through the queue.
+                    safe_args.append(
+                        {
+                            CIRCULAR_REFERENCE_PLACEHOLDER_KEY: repr(arg),
+                            "__type__": type(arg).__name__,
+                        }
+                    )
+            print_logs.append(tuple(safe_args))
             print("[user code]", *args)
 
         return custom_print
