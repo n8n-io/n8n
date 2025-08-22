@@ -94,15 +94,8 @@ def format_print_args(*args) -> list[str]:
                 formatted_args.append(json.dumps(arg, default=str, ensure_ascii=False))
             except (RecursionError, ValueError, TypeError):
                 formatted_args.append(f"[Circular {type(arg).__name__}]")
-        elif isinstance(arg, dict):
-            try:
-                formatted_args.append(json.dumps(arg, default=str, ensure_ascii=False))
-            except Exception:
-                formatted_args.append("[Circular dict]")
         else:
-            # Classes, custom objects, etc.
             try:
-                print(arg)
                 formatted_args.append(json.dumps(arg, default=str, ensure_ascii=False))
             except Exception as e:
                 print(e)
