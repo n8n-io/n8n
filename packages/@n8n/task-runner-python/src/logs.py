@@ -93,7 +93,6 @@ def format_print_args(*args) -> list[str]:
             try:
                 formatted_args.append(json.dumps(arg, default=str, ensure_ascii=False))
             except Exception as e:
-                print(e)
                 formatted_args.append(f"[Circular {type(arg).__name__}]")
 
     return formatted_args
