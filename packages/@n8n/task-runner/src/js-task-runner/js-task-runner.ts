@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import isObject from 'lodash/isObject';
 import set from 'lodash/set';
 import { DateTime, Duration, Interval } from 'luxon';
@@ -30,15 +31,16 @@ import { type Context, createContext, runInContext } from 'node:vm';
 
 import type { MainConfig } from '@/config/main-config';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
+import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
 import type {
 	DataRequestResponse,
 	InputDataChunkDefinition,
 	PartialAdditionalData,
 	TaskResultData,
 } from '@/runner-types';
-import { EXPOSED_RPC_METHODS, UNSUPPORTED_HELPER_FUNCTIONS } from '@/runner-types';
-import { noOp, TaskRunner } from '@/task-runner';
 import type { TaskParams } from '@/task-runner';
+import { noOp, TaskRunner } from '@/task-runner';
+import { TaskRunnerSentry } from '@/task-runner-sentry';
 
 import { BuiltInsParser } from './built-ins-parser/built-ins-parser';
 import { BuiltInsParserState } from './built-ins-parser/built-ins-parser-state';
@@ -50,6 +52,9 @@ import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { validateRunForAllItemsOutput, validateRunForEachItemOutput } from './result-validation';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
+
+// eslint-disable-next-line id-denylist
+let disableEventLoopBlockDetection: (<T>(callback: () => Promise<T>) => Promise<T>) | undefined;
 
 export interface RpcCallObject {
 	[name: string]: ((...args: unknown[]) => Promise<unknown>) | RpcCallObject;
@@ -127,6 +132,19 @@ export class JsTaskRunner extends TaskRunner {
 		});
 
 		if (this.mode === 'secure') this.preventPrototypePollution(allowedExternalModules);
+
+		if (Container.get(TaskRunnerSentry).isEnabled) this.loadEventLoopBlockDetection();
+	}
+
+	private loadEventLoopBlockDetection() {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const { disableBlockDetectionForCallback: disable } = require('@sentry/node-native');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			disableEventLoopBlockDetection = disable;
+		} catch {
+			disableEventLoopBlockDetection = undefined;
+		}
 	}
 
 	private preventPrototypePollution(allowedExternalModules: Set<string> | '*') {
@@ -259,11 +277,22 @@ export class JsTaskRunner extends TaskRunner {
 				let taskResult: Promise<TaskResultData['result']>;
 
 				if (this.mode === 'secure') {
-					taskResult = runInContext(this.createVmExecutableCode(settings.code), context, {
-						timeout: this.taskTimeout * 1000,
-					}) as Promise<TaskResultData['result']>;
+					const executeCode = async () => {
+						return await (runInContext(this.createVmExecutableCode(settings.code), context, {
+							timeout: this.taskTimeout * 1000,
+						}) as Promise<TaskResultData['result']>);
+					};
+
+					taskResult = disableEventLoopBlockDetection
+						? disableEventLoopBlockDetection(executeCode)
+						: executeCode();
 				} else {
-					taskResult = this.runDirectly<TaskResultData['result']>(settings.code, context);
+					const executeCode = async () =>
+						await this.runDirectly<TaskResultData['result']>(settings.code, context);
+
+					taskResult = disableEventLoopBlockDetection
+						? disableEventLoopBlockDetection(executeCode)
+						: executeCode();
 				}
 
 				void taskResult
@@ -328,11 +357,22 @@ export class JsTaskRunner extends TaskRunner {
 					let taskResult: Promise<INodeExecutionData>;
 
 					if (this.mode === 'secure') {
-						taskResult = runInContext(this.createVmExecutableCode(settings.code), context, {
-							timeout: this.taskTimeout * 1000,
-						}) as Promise<INodeExecutionData>;
+						const executeCode = async () => {
+							return await (runInContext(this.createVmExecutableCode(settings.code), context, {
+								timeout: this.taskTimeout * 1000,
+							}) as Promise<INodeExecutionData>);
+						};
+
+						taskResult = disableEventLoopBlockDetection
+							? disableEventLoopBlockDetection(executeCode)
+							: executeCode();
 					} else {
-						taskResult = this.runDirectly<INodeExecutionData>(settings.code, context);
+						const executeCode = async () =>
+							await this.runDirectly<INodeExecutionData>(settings.code, context);
+
+						taskResult = disableEventLoopBlockDetection
+							? disableEventLoopBlockDetection(executeCode)
+							: executeCode();
 					}
 
 					void taskResult

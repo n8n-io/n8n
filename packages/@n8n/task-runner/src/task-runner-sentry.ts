@@ -9,6 +9,8 @@ import { SentryConfig } from './config/sentry-config';
  */
 @Service()
 export class TaskRunnerSentry {
+	isEnabled = false;
+
 	constructor(
 		private readonly config: SentryConfig,
 		private readonly errorReporter: ErrorReporter,
@@ -27,6 +29,8 @@ export class TaskRunnerSentry {
 			serverName: deploymentName,
 			beforeSendFilter: this.filterOutUserCodeErrors,
 		});
+
+		this.isEnabled = true;
 	}
 
 	async shutdown() {
