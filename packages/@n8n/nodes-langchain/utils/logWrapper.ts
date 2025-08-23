@@ -213,7 +213,7 @@ export function logWrapper<
 							async () => {
 								return (await callMethodAsync.call(target, {
 									executeFunctions,
-									connectionType: currentConnectionType,
+									connectionType: currentConnectionType, // Messages will be validated after retrieval
 									currentNodeRunIndex: index,
 									method: target[prop],
 									arguments: [],
