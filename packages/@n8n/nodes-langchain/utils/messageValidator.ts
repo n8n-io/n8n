@@ -27,14 +27,200 @@ interface HumanMessageWithMessages extends HumanMessage {
 }
 
 /**
+ * Type for individual lc_kwargs item
+ */
+interface LcKwargsItem {
+	role?: string;
+	content?: string;
+	messages?: Array<{ text?: string; content?: string } | string>;
+	[key: string]: unknown;
+}
+
+/**
+ * Type guard to check if a value is a valid LcKwargsItem
+ * @param value - The value to check
+ * @returns True if the value is a valid LcKwargsItem
+ */
+function isLcKwargsItem(value: unknown): value is LcKwargsItem {
+	return value !== null && value !== undefined && typeof value === 'object';
+}
+
+/**
  * BaseMessage with optional lc_kwargs for MongoDB compatibility
  */
 interface MessageWithLcKwargs {
-	lc_kwargs?: Array<{
-		role?: string;
-		content?: string;
-		messages?: Array<{ text?: string; content?: string } | string>;
-	}>;
+	lc_kwargs?: Array<LcKwargsItem>;
+}
+
+/**
+ * Safely checks if an object has a property and it's an array
+ * @param obj - The object to check
+ * @param prop - The property name to check
+ * @returns True if the property exists and is an array
+ */
+function hasArrayProperty(obj: unknown, prop: string): boolean {
+	if (obj === null || obj === undefined || typeof obj !== 'object') {
+		return false;
+	}
+
+	// Use Reflect.has for safer property checking
+	if (!Reflect.has(obj, prop)) {
+		return false;
+	}
+
+	// Use Reflect.get for safer property access
+	const value = Reflect.get(obj, prop);
+	return Array.isArray(value);
+}
+
+/**
+ * Safely checks if an object has a property
+ * @param obj - The object to check
+ * @param prop - The property name to check
+ * @returns True if the property exists
+ */
+function hasProperty(obj: unknown, prop: string): boolean {
+	return obj !== null && obj !== undefined && typeof obj === 'object' && Reflect.has(obj, prop);
+}
+
+/**
+ * Type guard to check if a message is a HumanMessageWithMessages
+ * @param message - The message to check
+ * @returns True if the message has a messages property
+ */
+function isHumanMessageWithMessages(message: BaseMessage): message is HumanMessageWithMessages {
+	return message._getType() === 'human' && hasArrayProperty(message, 'messages');
+}
+
+/**
+ * Type guard to check if a message has lc_kwargs property
+ * @param message - The message to check
+ * @returns True if the message has lc_kwargs property
+ */
+function hasLcKwargs(message: BaseMessage): message is BaseMessage & MessageWithLcKwargs {
+	return hasArrayProperty(message, 'lc_kwargs');
+}
+
+/**
+ * Interface for MongoDB raw message document
+ */
+interface MongoRawMessage {
+	_id?: unknown;
+	data?: {
+		additional_kwargs?: unknown;
+		content?: unknown;
+		kwargs?: {
+			content?: string;
+		};
+		text?: string;
+	};
+	[key: string]: unknown;
+}
+
+/**
+ * Type guard to check if a value is a valid MongoRawMessage
+ * @param value - The value to check
+ * @returns True if the value is a valid MongoRawMessage
+ */
+function isMongoRawMessage(value: unknown): value is MongoRawMessage {
+	return (
+		value !== null &&
+		value !== undefined &&
+		typeof value === 'object' &&
+		hasProperty(value, 'data') &&
+		hasProperty(value, '_id')
+	);
+}
+
+/**
+ * Interface for MongoDB collection operations
+ */
+interface MongoCollection {
+	find(query: Record<string, unknown>): {
+		toArray(): Promise<Array<unknown>>;
+	};
+	updateOne(filter: Record<string, unknown>, update: Record<string, unknown>): Promise<unknown>;
+}
+
+/**
+ * Interface for MongoDB history with collection access
+ */
+interface MongoDbHistory {
+	collection?: MongoCollection;
+	sessionId?: string;
+}
+
+/**
+ * Interface for chat history context with callable methods
+ */
+interface ChatHistoryContext {
+	getMessages?(): Promise<BaseMessage[]>;
+	addMessage?(message: BaseMessage): Promise<void>;
+	[key: string]: unknown;
+}
+
+/**
+ * Extended chat history context that may include MongoDB properties
+ */
+type ExtendedChatHistoryContext = ChatHistoryContext & Partial<MongoDbHistory>;
+
+/**
+ * Type guard to check if an object has MongoDB collection properties
+ * @param obj - The object to check
+ * @returns True if the object has collection and sessionId properties
+ */
+function isMongoDbHistory(obj: unknown): obj is MongoDbHistory {
+	return (
+		obj !== null &&
+		obj !== undefined &&
+		typeof obj === 'object' &&
+		hasProperty(obj, 'collection') &&
+		hasProperty(obj, 'sessionId')
+	);
+}
+
+/**
+ * Type representing various message content formats
+ */
+type MessageContent =
+	| string
+	| { text?: string; content?: string }
+	| { text?: string }
+	| { content?: string };
+
+/**
+ * Type guard to check if a value is a valid message content
+ * @param value - The value to check
+ * @returns True if the value is a valid message content
+ */
+function isValidMessageContent(value: unknown): value is MessageContent {
+	if (typeof value === 'string') {
+		return true;
+	}
+
+	if (value && typeof value === 'object') {
+		return hasProperty(value, 'text') || hasProperty(value, 'content');
+	}
+
+	return false;
+}
+
+/**
+ * Safely extracts text or content from a message object
+ * @param msg - The message object
+ * @returns The extracted text or empty string
+ */
+function getTextFromMessage(msg: MessageContent): string {
+	if (typeof msg === 'string') {
+		return msg;
+	}
+
+	const text = Reflect.get(msg, 'text');
+	const content = Reflect.get(msg, 'content');
+
+	return (
+		(typeof text === 'string' ? text : '') || (typeof content === 'string' ? content : '') || ''
+	);
 }
 
 /**
@@ -42,13 +228,13 @@ interface MessageWithLcKwargs {
  * @param messages - Array of message objects or strings
  * @returns Concatenated text content
  */
-function extractTextContent(messages: Array<any>): string {
+function extractTextContent(messages: Array<unknown>): string {
 	return messages
-		.filter((msg: any) => msg && (typeof msg === 'string' || msg.text || msg.content))
-		.map((msg: any) => {
-			if (typeof msg === 'string') return msg;
-			return msg.text || msg.content || '';
-		})
+		.filter(
+			(msg): msg is MessageContent =>
+				msg !== null && msg !== undefined && isValidMessageContent(msg),
+		)
+		.map(getTextFromMessage)
 		.join(' ')
 		.trim();
 }
@@ -64,7 +250,7 @@ function recoverContentFromLcKwargs(messageWithKwargs: MessageWithLcKwargs): str
 
 	// Look for user messages first
 	const userMessages = lc_kwargs.filter(
-		(item: any) => item && typeof item === 'object' && item.role === 'user',
+		(item): item is LcKwargsItem => isLcKwargsItem(item) && item.role === 'user',
 	);
 
 	if (userMessages.length > 0) {
@@ -75,7 +261,7 @@ function recoverContentFromLcKwargs(messageWithKwargs: MessageWithLcKwargs): str
 
 	// Fallback: look for any non-system content
 	for (const kwarg of lc_kwargs) {
-		if (kwarg && typeof kwarg === 'object') {
+		if (isLcKwargsItem(kwarg)) {
 			if (kwarg.content !== undefined && kwarg.role !== 'system') {
 				return kwarg.content;
 			}
@@ -109,20 +295,17 @@ export function validateAndFixHumanMessage(message: BaseMessage): BaseMessage {
 	cacheStats.misses++;
 
 	if (message._getType() === 'human') {
-		const humanMessage = message as HumanMessageWithMessages;
-
 		// Check if content is undefined or null but messages array exists
 		if (
-			(humanMessage.content === undefined || humanMessage.content === null) &&
-			'messages' in humanMessage &&
-			Array.isArray(humanMessage.messages)
+			(message.content === undefined || message.content === null) &&
+			isHumanMessageWithMessages(message)
 		) {
-			const content = extractTextContent(humanMessage.messages);
+			const content = extractTextContent(message.messages || []);
 
 			// Create a new HumanMessage with proper content
 			const fixedMessage = new HumanMessage({
 				content: content || '',
-				additional_kwargs: humanMessage.additional_kwargs || {},
+				additional_kwargs: message.additional_kwargs || {},
 			});
 
 			// Cache the result
@@ -131,18 +314,19 @@ export function validateAndFixHumanMessage(message: BaseMessage): BaseMessage {
 		}
 
 		// Try to recover from lc_kwargs (MongoDB specific)
-		if (humanMessage.content === undefined || humanMessage.content === null) {
-			const messageWithKwargs = humanMessage as HumanMessage & MessageWithLcKwargs;
-			const recoveredContent = recoverContentFromLcKwargs(messageWithKwargs);
+		if (message.content === undefined || message.content === null) {
+			if (hasLcKwargs(message)) {
+				const recoveredContent = recoverContentFromLcKwargs(message);
 
-			const fixedMessage = new HumanMessage({
-				content: recoveredContent || '',
-				additional_kwargs: humanMessage.additional_kwargs || {},
-			});
+				const fixedMessage = new HumanMessage({
+					content: recoveredContent || '',
+					additional_kwargs: message.additional_kwargs || {},
+				});
 
-			// Cache the result
-			validatedMessageCache.set(message, fixedMessage);
-			return fixedMessage;
+				// Cache the result
+				validatedMessageCache.set(message, fixedMessage);
+				return fixedMessage;
+			}
 		}
 	}
 
@@ -212,7 +396,7 @@ export function wrapMemoryWithValidation(
 	}
 
 	// Replace with validation wrapper
-	memory.chatHistory.getMessages = async function (this: any) {
+	memory.chatHistory.getMessages = async function (this: ChatHistoryContext) {
 		try {
 			const messages = await originalGetMessages.call(this);
 
@@ -266,7 +450,7 @@ export function wrapMemoryWithStorageValidation(
 
 	if (typeof originalAddMessage === 'function') {
 		memory.chatHistory.addMessage = async function (
-			this: any,
+			this: ChatHistoryContext,
 			message: BaseMessage,
 		): Promise<void> {
 			// Validate and fix the message before storing
@@ -282,14 +466,12 @@ export function wrapMemoryWithStorageValidation(
 		const originalGetMessages = memory.chatHistory.getMessages;
 
 		if (typeof originalGetMessages === 'function') {
-			memory.chatHistory.getMessages = async function (this: any) {
+			memory.chatHistory.getMessages = async function (this: ExtendedChatHistoryContext) {
 				try {
-					const mongoHistory = this as any;
-
 					// Try direct MongoDB fix if collection is available
-					if (mongoHistory.collection && mongoHistory.sessionId) {
+					if (isMongoDbHistory(this)) {
 						try {
-							await fixMongoDbMessagesDirectly(mongoHistory);
+							await fixMongoDbMessagesDirectly(this);
 						} catch (dbError) {}
 					}
 
@@ -312,7 +494,7 @@ export function wrapMemoryWithStorageValidation(
  * Fixes MongoDB messages directly in the database
  * @param mongoHistory - MongoDB history instance with collection access
  */
-async function fixMongoDbMessagesDirectly(mongoHistory: any): Promise<void> {
+async function fixMongoDbMessagesDirectly(mongoHistory: MongoDbHistory): Promise<void> {
 	if (!mongoHistory.collection || !mongoHistory.sessionId) {
 		return;
 	}
@@ -323,21 +505,21 @@ async function fixMongoDbMessagesDirectly(mongoHistory: any): Promise<void> {
 			.toArray();
 
 		for (const rawMsg of rawMessages) {
-			if (rawMsg.data && rawMsg._id) {
-				const updates: any = {};
+			if (isMongoRawMessage(rawMsg)) {
+				const updates: Record<string, unknown> = {};
 				let needsUpdate = false;
 
 				// Fix null additional_kwargs
-				if (rawMsg.data.additional_kwargs === null) {
+				if (rawMsg.data?.additional_kwargs === null) {
 					updates['data.additional_kwargs'] = {};
 					needsUpdate = true;
 				}
 
 				// Fix null content with fallback attempts
-				if (rawMsg.data.content === null) {
-					if (rawMsg.data.kwargs && rawMsg.data.kwargs.content) {
+				if (rawMsg.data?.content === null) {
+					if (rawMsg.data?.kwargs?.content) {
 						updates['data.content'] = rawMsg.data.kwargs.content;
-					} else if (rawMsg.data.text) {
+					} else if (rawMsg.data?.text) {
 						updates['data.content'] = rawMsg.data.text;
 					} else {
 						updates['data.content'] = '';
@@ -347,7 +529,7 @@ async function fixMongoDbMessagesDirectly(mongoHistory: any): Promise<void> {
 
 				// Apply updates if necessary
 				if (needsUpdate) {
-					await mongoHistory.collection.updateOne({ _id: rawMsg._id }, { $set: updates });
+					await mongoHistory.collection?.updateOne({ _id: rawMsg._id }, { $set: updates });
 				}
 			}
 		}

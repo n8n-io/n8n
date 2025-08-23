@@ -11,7 +11,7 @@ import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
-import { isChatInstance, getConnectedTools } from '@utils/helpers';
+import { isChatInstance, getConnectedTools, isBaseChatMemory } from '@utils/helpers';
 import { wrapMemoryWithValidation } from '@utils/messageValidator';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 /* -----------------------------------------------------------
@@ -305,11 +305,17 @@ export async function getChatModel(
 export async function getOptionalMemory(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 ): Promise<BaseChatMemory | undefined> {
-	const memory = (await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
-		| BaseChatMemory
-		| undefined;
+	const memory = await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0);
 
 	if (!memory) return undefined;
+
+	// Use type guard to safely narrow the type
+	if (!isBaseChatMemory(memory)) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			'Connected memory is not a valid BaseChatMemory instance',
+		);
+	}
 
 	// Use the shared validation wrapper with fallback enabled
 	return wrapMemoryWithValidation(memory, {
