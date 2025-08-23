@@ -20,6 +20,8 @@ import {
 	customerCardOperations,
 	customerFields,
 	customerOperations,
+	meterEventFields,
+	meterEventOperations,
 	sourceFields,
 	sourceOperations,
 	tokenFields,
@@ -83,6 +85,10 @@ export class Stripe implements INodeType {
 						value: 'customerCard',
 					},
 					{
+						name: 'Meter Event',
+						value: 'meterEvent',
+					},
+					{
 						name: 'Source',
 						value: 'source',
 					},
@@ -102,6 +108,8 @@ export class Stripe implements INodeType {
 			...couponFields,
 			...customerOperations,
 			...customerFields,
+			...meterEventOperations,
+			...meterEventFields,
 			...sourceOperations,
 			...sourceFields,
 			...tokenOperations,
@@ -428,6 +436,61 @@ export class Stripe implements INodeType {
 
 						const sourceId = this.getNodeParameter('sourceId', i);
 						responseData = await stripeApiRequest.call(this, 'GET', `/sources/${sourceId}`, {}, {});
+					}
+				} else if (resource === 'meterEvent') {
+					// *********************************************************************
+					//                           meter event
+					// *********************************************************************
+
+					// https://docs.stripe.com/api/billing/meter-event/create
+
+					if (operation === 'create') {
+						// ----------------------------------
+						//       meterEvent: create
+						// ----------------------------------
+
+						const eventName = this.getNodeParameter('eventName', i) as string;
+						const customerId = this.getNodeParameter('customerId', i) as string;
+						const value = this.getNodeParameter('value', i) as number;
+
+						const body = {
+							event_name: eventName,
+							'payload[stripe_customer_id]': customerId,
+							'payload[value]': value.toString(),
+						} as IDataObject;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.identifier) {
+							body.identifier = additionalFields.identifier as string;
+						}
+
+						if (additionalFields.timestamp) {
+							const timestamp = additionalFields.timestamp as string;
+							// Convert to Unix timestamp
+							body.timestamp = Math.floor(new Date(timestamp).getTime() / 1000).toString();
+						}
+
+						if (additionalFields.customPayloadFields) {
+							const customFields = additionalFields.customPayloadFields as {
+								values: Array<{ key: string; value: string }>;
+							};
+							if (customFields.values && customFields.values.length > 0) {
+								customFields.values.forEach((field) => {
+									if (field.key && field.value) {
+										body[`payload[${field.key}]`] = field.value;
+									}
+								});
+							}
+						}
+
+						responseData = await stripeApiRequest.call(
+							this,
+							'POST',
+							'/billing/meter_events',
+							body,
+							{},
+						);
 					}
 				} else if (resource === 'token') {
 					// *********************************************************************
