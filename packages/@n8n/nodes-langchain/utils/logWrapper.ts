@@ -5,6 +5,7 @@ import type { Document } from '@langchain/core/documents';
 import { Embeddings } from '@langchain/core/embeddings';
 import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
 import type { BaseMessage } from '@langchain/core/messages';
+import { HumanMessage } from '@langchain/core/messages';
 import { BaseRetriever } from '@langchain/core/retrievers';
 import { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { StructuredTool, Tool } from '@langchain/core/tools';
@@ -182,13 +183,75 @@ export function logWrapper<
 							[{ json: { action: 'getMessages' } }],
 						]);
 
-						const response = (await callMethodAsync.call(target, {
-							executeFunctions,
-							connectionType,
-							currentNodeRunIndex: index,
-							method: target[prop],
-							arguments: [],
-						})) as BaseMessage[];
+						let response: BaseMessage[];
+						try {
+							response = (await callMethodAsync.call(target, {
+								executeFunctions,
+								connectionType,
+								currentNodeRunIndex: index,
+								method: target[prop],
+								arguments: [],
+							})) as BaseMessage[];
+						} catch (error) {
+							// If the original method fails due to data issues, try to fix them directly
+
+							// Call the original method directly and try to handle the error
+							try {
+								response = await (target[prop] as () => Promise<BaseMessage[]>)();
+							} catch (innerError) {
+								// If we still can't get messages, return empty array
+								response = [];
+							}
+						}
+
+						// Apply message validation to fix any remaining issues
+						if (Array.isArray(response)) {
+							response = response.map((message) => {
+								// Skip null or undefined messages
+								if (!message || typeof message._getType !== 'function') {
+									return message;
+								}
+
+								if (message._getType() === 'human') {
+									const humanMessage = message as HumanMessage;
+
+									// Check if we need to fix the message
+									if (
+										humanMessage.content === undefined ||
+										humanMessage.content === null ||
+										!humanMessage.additional_kwargs
+									) {
+										// Extract content from messages array if needed
+										let content: string | any[] = humanMessage.content;
+										if (
+											(content === undefined || content === null) &&
+											'messages' in humanMessage &&
+											Array.isArray((humanMessage as any).messages)
+										) {
+											const messages = (humanMessage as any).messages;
+											if (messages.length > 0) {
+												const textContent = messages
+													.filter((msg: any) => msg && (typeof msg === 'string' || msg.text))
+													.map((msg: any) => (typeof msg === 'string' ? msg : msg.text))
+													.join(' ')
+													.trim();
+												content = textContent || '';
+											} else {
+												content = '';
+											}
+										}
+
+										// Create a new HumanMessage with proper content
+										return new HumanMessage({
+											content: content || '',
+											additional_kwargs: humanMessage.additional_kwargs || {},
+										});
+									}
+								}
+
+								return message;
+							});
+						}
 
 						const payload = { action: 'getMessages', response };
 						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
@@ -199,7 +262,95 @@ export function logWrapper<
 				} else if (prop === 'addMessage' && 'addMessage' in target) {
 					return async (message: BaseMessage): Promise<void> => {
 						connectionType = NodeConnectionTypes.AiMemory;
-						const payload = { action: 'addMessage', message };
+
+						// Fix HumanMessage content issues before saving to memory
+						let fixedMessage = message;
+						if (
+							message &&
+							typeof message._getType === 'function' &&
+							message._getType() === 'human'
+						) {
+							const humanMessage = message as HumanMessage;
+
+							// Try to extract content from various possible locations
+							let content = humanMessage.content;
+
+							// If content is undefined, try to find it in lc_kwargs or other locations
+							if (content === undefined || content === null) {
+								const messageAny = humanMessage as any;
+
+								// Check lc_kwargs array for content - this might be a conversation array
+								if (messageAny.lc_kwargs && Array.isArray(messageAny.lc_kwargs)) {
+									// Look for the actual user message in the conversation array
+									const userMessages = messageAny.lc_kwargs.filter(
+										(item: any) => item && typeof item === 'object' && item.role === 'user',
+									);
+
+									if (userMessages.length > 0) {
+										// Get the last user message (most recent)
+										const lastUserMessage = userMessages[userMessages.length - 1];
+										content = lastUserMessage.content;
+									} else {
+										// Fallback: look for any content in the array
+										for (const kwarg of messageAny.lc_kwargs) {
+											if (kwarg && typeof kwarg === 'object') {
+												if (kwarg.content !== undefined && kwarg.role !== 'system') {
+													content = kwarg.content;
+													break;
+												}
+												if (kwarg.messages && Array.isArray(kwarg.messages)) {
+													// Extract text from messages array
+													const textContent = kwarg.messages
+														.filter((msg: any) => msg && (typeof msg === 'string' || msg.text))
+														.map((msg: any) => (typeof msg === 'string' ? msg : msg.text))
+														.join(' ')
+														.trim();
+													if (textContent) {
+														content = textContent;
+														break;
+													}
+												}
+											}
+										}
+									}
+								}
+
+								// Check if there's a messages property directly on the object
+								if (
+									(content === undefined || content === null) &&
+									messageAny.messages &&
+									Array.isArray(messageAny.messages)
+								) {
+									const textContent = messageAny.messages
+										.filter((msg: any) => msg && (typeof msg === 'string' || msg.text))
+										.map((msg: any) => (typeof msg === 'string' ? msg : msg.text))
+										.join(' ')
+										.trim();
+									if (textContent) {
+										content = textContent;
+									}
+								}
+
+								// If still no content, default to empty string
+								if (content === undefined || content === null) {
+									content = '';
+								}
+							}
+
+							const additional_kwargs = humanMessage.additional_kwargs || {};
+
+							// Only create a new message if we found content or need to fix kwargs
+							if (humanMessage.content !== content || !humanMessage.additional_kwargs) {
+								// Create a new message with the recovered content
+								fixedMessage = new HumanMessage({
+									content,
+									additional_kwargs,
+								});
+							}
+							// If no issues, keep the original message unchanged
+						}
+
+						const payload = { action: 'addMessage', message: fixedMessage };
 						const { index } = executeFunctions.addInputData(connectionType, [[{ json: payload }]]);
 
 						await callMethodAsync.call(target, {
@@ -207,10 +358,52 @@ export function logWrapper<
 							connectionType,
 							currentNodeRunIndex: index,
 							method: target[prop],
-							arguments: [message],
+							arguments: [fixedMessage],
 						});
 
-						logAiEvent(executeFunctions, 'ai-message-added-to-memory', { message });
+						logAiEvent(executeFunctions, 'ai-message-added-to-memory', { message: fixedMessage });
+						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
+					};
+				} else if (prop === 'addUserMessage' && 'addUserMessage' in target) {
+					return async (content: string): Promise<void> => {
+						connectionType = NodeConnectionTypes.AiMemory;
+
+						// Create a properly formatted HumanMessage
+						const fixedMessage = new HumanMessage({
+							content: content || '',
+							additional_kwargs: {},
+						});
+
+						const payload = { action: 'addUserMessage', message: fixedMessage };
+						const { index } = executeFunctions.addInputData(connectionType, [[{ json: payload }]]);
+
+						await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [content],
+						});
+
+						logAiEvent(executeFunctions, 'ai-message-added-to-memory', { content });
+						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
+					};
+				} else if (prop === 'addAIMessage' && 'addAIMessage' in target) {
+					return async (content: string): Promise<void> => {
+						connectionType = NodeConnectionTypes.AiMemory;
+
+						const payload = { action: 'addAIMessage', content };
+						const { index } = executeFunctions.addInputData(connectionType, [[{ json: payload }]]);
+
+						await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop] as (...args: any[]) => Promise<unknown>,
+							arguments: [content],
+						});
+
+						logAiEvent(executeFunctions, 'ai-message-added-to-memory', { content });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
 					};
 				}

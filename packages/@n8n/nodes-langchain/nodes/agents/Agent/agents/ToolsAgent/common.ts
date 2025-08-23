@@ -12,6 +12,7 @@ import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
 import { isChatInstance, getConnectedTools } from '@utils/helpers';
+import { wrapMemoryWithValidation } from '@utils/messageValidator';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 /* -----------------------------------------------------------
    Output Parser Helper
@@ -74,8 +75,13 @@ export async function extractBinaryMessages(
 				};
 			}),
 	);
+
+	// Ensure content is always an array, even if empty
+	const content = Array.isArray(binaryMessages) ? binaryMessages : [];
+
 	return new HumanMessage({
-		content: [...binaryMessages],
+		content: content,
+		additional_kwargs: {},
 	});
 }
 
@@ -299,9 +305,16 @@ export async function getChatModel(
 export async function getOptionalMemory(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 ): Promise<BaseChatMemory | undefined> {
-	return (await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
+	const memory = (await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;
+
+	if (!memory) return undefined;
+
+	// Use the shared validation wrapper with fallback enabled
+	return wrapMemoryWithValidation(memory, {
+		fallbackOnError: true,
+	});
 }
 
 /**

@@ -10,6 +10,7 @@ import {
 
 import { getSessionId } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
+import { wrapMemoryWithValidation } from '@utils/messageValidator';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import {
@@ -164,6 +165,11 @@ export class MemoryBufferWindow implements INodeType {
 			memoryKey: 'chat_history',
 			outputKey: 'output',
 			returnMessages: true,
+		});
+
+		// Use the shared validation wrapper to ensure messages are properly validated
+		wrapMemoryWithValidation(memory, {
+			fallbackOnError: true,
 		});
 
 		return {
