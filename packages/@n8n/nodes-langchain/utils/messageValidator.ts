@@ -136,10 +136,25 @@ function isMongoRawMessage(value: unknown): value is MongoRawMessage {
  * Interface for MongoDB collection operations
  */
 interface MongoCollection {
-	find(query: Record<string, unknown>): {
+	find(
+		query: Record<string, unknown>,
+		options?: { projection?: Record<string, unknown> },
+	): {
 		toArray(): Promise<Array<unknown>>;
+		limit(count: number): {
+			toArray(): Promise<Array<unknown>>;
+			[Symbol.asyncIterator](): AsyncIterableIterator<unknown>;
+		};
 	};
 	updateOne(filter: Record<string, unknown>, update: Record<string, unknown>): Promise<unknown>;
+	bulkWrite(
+		operations: Array<{
+			updateOne: {
+				filter: Record<string, unknown>;
+				update: Record<string, unknown>;
+			};
+		}>,
+	): Promise<unknown>;
 }
 
 /**
@@ -471,8 +486,15 @@ export function wrapMemoryWithStorageValidation(
 					// Try direct MongoDB fix if collection is available
 					if (isMongoDbHistory(this)) {
 						try {
-							await fixMongoDbMessagesDirectly(this);
-						} catch (dbError) {}
+							// Use moderate batch size and limit for better performance
+							await fixMongoDbMessagesDirectly(this, { batchSize: 50, limit: 500 });
+						} catch (dbError) {
+							// Log database errors for debugging but don't throw to maintain backward compatibility
+							console.warn(
+								'MongoDB message fix failed:',
+								dbError instanceof Error ? dbError.message : String(dbError),
+							);
+						}
 					}
 
 					// Now try the original method
@@ -491,20 +513,52 @@ export function wrapMemoryWithStorageValidation(
 }
 
 /**
- * Fixes MongoDB messages directly in the database
+ * Fixes MongoDB messages directly in the database with improved performance
  * @param mongoHistory - MongoDB history instance with collection access
+ * @param options - Optional configuration for pagination and batch size
  */
-async function fixMongoDbMessagesDirectly(mongoHistory: MongoDbHistory): Promise<void> {
+async function fixMongoDbMessagesDirectly(
+	mongoHistory: MongoDbHistory,
+	options: { batchSize?: number; limit?: number } = {},
+): Promise<void> {
 	if (!mongoHistory.collection || !mongoHistory.sessionId) {
 		return;
 	}
 
-	try {
-		const rawMessages = await mongoHistory.collection
-			.find({ sessionId: mongoHistory.sessionId })
-			.toArray();
+	const { batchSize = 100, limit = 1000 } = options;
 
-		for (const rawMsg of rawMessages) {
+	try {
+		// Use bulk operations for better performance
+		const bulkOperations: Array<{
+			updateOne: {
+				filter: { _id: unknown };
+				update: { $set: Record<string, unknown> };
+			};
+		}> = [];
+
+		// Find messages with null content or additional_kwargs using projection to reduce memory usage
+		const cursor = mongoHistory.collection
+			.find(
+				{
+					sessionId: mongoHistory.sessionId,
+					$or: [{ 'data.content': null }, { 'data.additional_kwargs': null }],
+				},
+				{
+					// Only fetch the fields we need to reduce memory usage
+					projection: {
+						_id: 1,
+						'data.content': 1,
+						'data.additional_kwargs': 1,
+						'data.kwargs.content': 1,
+						'data.text': 1,
+					},
+				},
+			)
+			.limit(limit);
+
+		let processedCount = 0;
+
+		for await (const rawMsg of cursor) {
 			if (isMongoRawMessage(rawMsg)) {
 				const updates: Record<string, unknown> = {};
 				let needsUpdate = false;
@@ -527,11 +581,29 @@ async function fixMongoDbMessagesDirectly(mongoHistory: MongoDbHistory): Promise
 					needsUpdate = true;
 				}
 
-				// Apply updates if necessary
+				// Add to bulk operations if update is needed
 				if (needsUpdate) {
-					await mongoHistory.collection?.updateOne({ _id: rawMsg._id }, { $set: updates });
+					bulkOperations.push({
+						updateOne: {
+							filter: { _id: rawMsg._id },
+							update: { $set: updates },
+						},
+					});
 				}
 			}
+
+			processedCount++;
+
+			// Execute bulk operations in batches
+			if (bulkOperations.length >= batchSize) {
+				await mongoHistory.collection.bulkWrite(bulkOperations);
+				bulkOperations.length = 0; // Clear the array
+			}
+		}
+
+		// Execute remaining bulk operations
+		if (bulkOperations.length > 0) {
+			await mongoHistory.collection.bulkWrite(bulkOperations);
 		}
 	} catch (error) {
 		throw error;
