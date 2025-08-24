@@ -39,7 +39,7 @@ const breadcrumbs = computed<PathItem[]>(() => {
 		{
 			id: 'datastores',
 			label: i18n.baseText('dataStore.dataStores'),
-			href: `/projects/${project.value.id}/datastores`,
+			href: `/projects/${project.value.id}/datatables`,
 		},
 	];
 });
