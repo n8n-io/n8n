@@ -89,4 +89,22 @@ describe('dataStore.store', () => {
 		);
 		expect(dataStoreStore.dataStores[0].columns.find((c) => c.id === columnId)).toBeUndefined();
 	});
+
+	it('can delete rows', async () => {
+		const datastoreId = faker.string.alphanumeric(10);
+		const projectId = 'p1';
+		const rowIds = [1, 2, 3];
+
+		vi.spyOn(dataStoreApi, 'deleteDataStoreRowsApi').mockResolvedValue(true);
+
+		const result = await dataStoreStore.deleteRows(datastoreId, projectId, rowIds);
+
+		expect(result).toBe(true);
+		expect(dataStoreApi.deleteDataStoreRowsApi).toHaveBeenCalledWith(
+			rootStore.restApiContext,
+			datastoreId,
+			rowIds,
+			projectId,
+		);
+	});
 });

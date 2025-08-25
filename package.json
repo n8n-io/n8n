@@ -45,7 +45,7 @@
     "test:affected": "turbo run test --affected --concurrency=1",
     "test:with:docker": "pnpm --filter=n8n-playwright test:container:standard",
     "test:show:report": "pnpm --filter=n8n-playwright exec playwright show-report",
-    "watch": "turbo run watch",
+    "watch": "turbo run watch --concurrency=30",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker"
   },
