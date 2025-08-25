@@ -125,12 +125,17 @@ export class DataStoreService {
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
 	}
 
-	async insertRows(dataStoreId: string, projectId: string, rows: DataStoreRows) {
+	async insertRows(
+		dataStoreId: string,
+		projectId: string,
+		rows: DataStoreRows,
+		returnData: boolean = false,
+	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateRows(dataStoreId, rows);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns);
+		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnData);
 	}
 
 	async upsertRows(dataStoreId: string, projectId: string, dto: UpsertDataStoreRowsDto) {
