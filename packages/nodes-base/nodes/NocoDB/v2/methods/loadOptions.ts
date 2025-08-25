@@ -14,14 +14,14 @@ export async function getApiVersions(this: ILoadOptionsFunctions) {
 				value: 3,
 			},
 			{
-				name: 'v0.240.0 Onwards',
+				name: 'v0.260.0 Onwards',
 				value: 4,
 			},
 		];
 	} else {
 		return [
 			{
-				name: 'v0.240.0 Onwards',
+				name: 'v0.260.0 Onwards',
 				value: 4,
 			},
 		];
