@@ -215,7 +215,7 @@ const onAddColumn = async (column: DataStoreColumnCreatePayload) => {
 			...colDefs.value.slice(-1),
 		];
 		rowData.value = rowData.value.map((row) => {
-			return { ...row, [newColumn.name]: getDefaultValueForType(newColumn.type) };
+			return { ...row, [newColumn.name]: null };
 		});
 		refreshGridData();
 	} catch (error) {
@@ -253,7 +253,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		},
 		cellRendererSelector: (params: ICellRendererParams) => {
 			if (params.data?.id === ADD_ROW_ROW_ID || col.id === 'add-column') {
-				return undefined;
+				return {};
 			}
 			let rowValue = params.data?.[col.name];
 			// When adding new column, rowValue is undefined (same below, in string cell editor)
@@ -343,8 +343,8 @@ const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 const onAddRowClick = async () => {
 	try {
 		// Go to last page if we are not there already
-		if (currentPage.value * pageSize.value < totalItems.value) {
-			await setCurrentPage(Math.ceil(totalItems.value / pageSize.value));
+		if (currentPage.value * pageSize.value < totalItems.value + 1) {
+			await setCurrentPage(Math.ceil((totalItems.value + 1) / pageSize.value));
 		}
 		contentLoading.value = true;
 		emit('toggleSave', true);
@@ -355,8 +355,8 @@ const onAddRowClick = async () => {
 			newRow[col.name] = null;
 		});
 		rowData.value.push(newRow);
+		totalItems.value += 1;
 		refreshGridData();
-		// TODO: handle the case where the row is overflowing the current page
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 	} finally {
@@ -661,7 +661,7 @@ const handleClearSelection = () => {
 	// AG Grid style overrides
 	--ag-foreground-color: var(--color-text-base);
 	--ag-cell-text-color: var(--color-text-dark);
-	--ag-accent-color: var(--color-primary);
+	--ag-accent-color: var(--grid-cell-focus-border-color);
 	--ag-row-hover-color: var(--color-background-light-base);
 	--ag-selected-row-background-color: var(--grid-row-selected-background);
 	--ag-background-color: var(--color-background-xlight);
@@ -692,12 +692,13 @@ const handleClearSelection = () => {
 		right: -7px;
 	}
 
-	// Don't show borders for the checkbox cells
 	:global(.ag-cell[col-id='ag-Grid-SelectionColumn']) {
 		border: none;
+		padding-left: var(--spacing-l);
 	}
 
 	:global(.ag-header-cell[col-id='ag-Grid-SelectionColumn']) {
+		padding-left: var(--spacing-l);
 		&:after {
 			display: none;
 		}
