@@ -1,5 +1,5 @@
 import { ModuleMetadata } from '@n8n/decorators';
-import type { EntityClass, ModuleSettings } from '@n8n/decorators';
+import type { EntityClass, ModuleContext, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -18,6 +18,8 @@ export class ModuleRegistry {
 	readonly loadDirs: string[] = [];
 
 	readonly settings: Map<string, ModuleSettings> = new Map();
+
+	readonly context: Map<string, ModuleContext> = new Map();
 
 	constructor(
 		private readonly moduleMetadata: ModuleMetadata,
@@ -115,6 +117,10 @@ export class ModuleRegistry {
 			const moduleSettings = await Container.get(ModuleClass).settings?.();
 
 			if (moduleSettings) this.settings.set(moduleName, moduleSettings);
+
+			const moduleContext = await Container.get(ModuleClass).context?.();
+
+			if (moduleContext) this.context.set(moduleName, moduleContext);
 
 			this.logger.debug(`Initialized module "${moduleName}"`);
 

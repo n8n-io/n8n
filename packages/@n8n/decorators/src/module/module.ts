@@ -25,14 +25,54 @@ export interface TimestampedEntity {
 export type EntityClass = new () => BaseEntity | TimestampedEntity;
 
 export type ModuleSettings = Record<string, unknown>;
+export type ModuleContext = Record<string, unknown>;
 
 export interface ModuleInterface {
 	init?(): Promise<void>;
 	shutdown?(): Promise<void>;
+
+	/**
+	 * Return a list of entities to register with the typeorm database connection.
+	 *
+	 * @example [ InsightsByPeriod, InsightsMetadata, InsightsRaw ]
+	 */
 	entities?(): Promise<EntityClass[]>;
+
+	/**
+	 * Return an object with settings to send to the client via `/module-settings`.
+	 *
+	 * @example { summary: true, dashboard: false }
+	 */
 	settings?(): Promise<ModuleSettings>;
 
 	/**
+	 * Return an object to merge into workflow context, a.k.a. `WorkflowExecuteAdditionalData`.
+	 * This object will be namespaced under the module name set by `@BackendModule('name')`.
+	 *
+	 * @example
+	 * ```ts
+	 * // at Module.context()
+	 * { proxy: Container.get(InsightsProxyService) }
+	 *
+	 * // at callsite
+	 * additionalData.insights.proxy.method()
+	 * ```
+	 *
+	 * For type safety, add the module context to `IWorkflowExecuteAdditionalData`.
+	 *
+	 * ```ts
+	 * export interface IWorkflowExecuteAdditionalData {
+	 *   insights?: {
+	 *     proxy: { method: () => void };
+	 *   };
+	 * }
+	 * ```
+	 */
+	context?(): Promise<ModuleContext>;
+
+	/**
+	 * Return a path to a dir to load nodes and credentials from.
+	 *
 	 * @returns Path to a dir to load nodes and credentials from. `null` to skip.
 	 * @example '/Users/nathan/.n8n/nodes/node_modules'
 	 */
