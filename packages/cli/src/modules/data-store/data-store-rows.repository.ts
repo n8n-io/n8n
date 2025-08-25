@@ -1,8 +1,4 @@
-import type {
-	ListDataStoreContentQueryDto,
-	ListDataStoreContentFilter,
-	UpsertDataStoreRowsDto,
-} from '@n8n/api-types';
+import type { ListDataStoreContentQueryDto, ListDataStoreContentFilter } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -181,17 +177,26 @@ export class DataStoreRowsRepository {
 	}
 
 	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
-	async upsertRows(dataStoreId: string, dto: UpsertDataStoreRowsDto, columns: DataStoreColumn[]) {
-		const { rows, matchFields } = dto;
-
+	async upsertRows(
+		dataStoreId: string,
+		matchFields: string[],
+		rows: DataStoreRows,
+		columns: DataStoreColumn[],
+		returnData = false,
+	) {
 		const { rowsToInsert, rowsToUpdate } = await this.fetchAndSplitRowsByExistence(
 			dataStoreId,
 			matchFields,
 			rows,
 		);
 
+		const output: DataStoreRowWithId[] = [];
+
 		if (rowsToInsert.length > 0) {
-			await this.insertRows(dataStoreId, rowsToInsert, columns);
+			const result = await this.insertRows(dataStoreId, rowsToInsert, columns, returnData);
+			if (returnData) {
+				output.push.apply(output, result);
+			}
 		}
 
 		if (rowsToUpdate.length > 0) {
@@ -204,11 +209,14 @@ export class DataStoreRowsRepository {
 				const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
 				const whereData = Object.fromEntries(matchFields.map((key) => [key, row[key]]));
 
-				await this.updateRow(dataStoreId, setData, whereData, columns);
+				const result = await this.updateRow(dataStoreId, setData, whereData, columns, returnData);
+				if (returnData) {
+					output.push.apply(output, result);
+				}
 			}
 		}
 
-		return true;
+		return returnData ? output : true;
 	}
 
 	async deleteRows(dataStoreId: string, ids: number[]) {

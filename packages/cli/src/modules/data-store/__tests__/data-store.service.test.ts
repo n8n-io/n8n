@@ -1264,7 +1264,7 @@ describe('dataStore', () => {
 	});
 
 	describe('upsertRows', () => {
-		it('updates rows if filter matches', async () => {
+		it('should update a row if filter matches', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1311,7 +1311,7 @@ describe('dataStore', () => {
 			);
 		});
 
-		it('works correctly with multiple filters', async () => {
+		it('should work correctly with multiple filters', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1356,7 +1356,7 @@ describe('dataStore', () => {
 			);
 		});
 
-		it('inserts a row if filter does not match', async () => {
+		it('should insert a row if filter does not match', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1393,6 +1393,59 @@ describe('dataStore', () => {
 				{ name: 'Alice', age: 30, id: 1, pid: '1995-111a' },
 				{ name: 'Alice', age: 30, id: 2, pid: '1992-222b' },
 			]);
+		});
+
+		it('should return full upserted rows if returnData is set', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'pid', type: 'string' },
+					{ name: 'fullName', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'birthday', type: 'date' },
+				],
+			});
+
+			// Insert initial row
+			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ pid: '1995-111a', fullName: 'Alice', age: 30, birthday: new Date('1995-01-01') },
+			]);
+			expect(ids).toEqual([{ id: 1 }]);
+
+			// ACT
+			const result = await dataStoreService.upsertRows(
+				dataStoreId,
+				project1.id,
+				{
+					rows: [
+						{ pid: '1995-111a', fullName: 'Alicia', age: 31, birthday: new Date('1995-01-01') },
+						{ pid: '1992-222b', fullName: 'Bob', age: 30, birthday: new Date('1992-01-01') },
+					],
+					matchFields: ['pid'],
+				},
+				true,
+			);
+
+			// ASSERT
+			expect(result).toEqual(
+				expect.arrayContaining([
+					{
+						id: 1,
+						fullName: 'Alicia',
+						age: 31,
+						pid: '1995-111a',
+						birthday: new Date('1995-01-01'),
+					},
+					{
+						id: 2,
+						fullName: 'Bob',
+						age: 30,
+						pid: '1992-222b',
+						birthday: new Date('1992-01-01'),
+					},
+				]),
+			);
 		});
 	});
 

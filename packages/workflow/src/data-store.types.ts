@@ -104,5 +104,5 @@ export interface IDataStoreProjectService {
 
 	insertRows(rows: DataStoreRows): Promise<Array<{ id: number }>>;
 
-	upsertRows(options: UpsertDataStoreRowsOptions): Promise<boolean>;
+	upsertRows(options: UpsertDataStoreRowsOptions): Promise<boolean | DataStoreRowWithId[]>;
 }

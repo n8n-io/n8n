@@ -2887,10 +2887,12 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 			matchFields: ['first'],
 		};
 
-		await authMemberAgent
+		const result = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
 			.send(payload)
 			.expect(200);
+
+		expect(result.body.data).toBe(true);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {
 			sortBy: ['id', 'ASC'],
@@ -2899,6 +2901,59 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
 		expect(rowsInDb.data[1]).toMatchObject(payload.rows[0]);
 		expect(rowsInDb.data[2]).toMatchObject(payload.rows[1]);
+	});
+
+	test('should return affected rows if returnData is set', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test row',
+					second: 'test value',
+				},
+				{
+					first: 'test row',
+					second: 'another row with same first column',
+				},
+			],
+		});
+
+		const payload = {
+			rows: [
+				{
+					first: 'test row',
+					second: 'updated value',
+				},
+				{
+					first: 'new row',
+					second: 'new value',
+				},
+			],
+			matchFields: ['first'],
+			returnData: true,
+		};
+
+		const result = await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
+			.send(payload)
+			.expect(200);
+
+		expect(result.body.data).toEqual(
+			expect.arrayContaining([
+				{ id: 1, first: 'test row', second: 'updated value' },
+				{ id: 2, first: 'test row', second: 'updated value' },
+				{ id: 3, first: 'new row', second: 'new value' },
+			]),
+		);
 	});
 });
 
