@@ -546,7 +546,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						:workflow="expressionLocalResolveCtx?.workflow"
 						:node="node"
 						:input-node-name="expressionLocalResolveCtx?.inputNode?.name"
-						:visible="true"
+						:visible="false"
 						:virtual-ref="contentRef ?? undefined"
 						:container-height="contentRef?.offsetHeight ?? 0"
 					/>
