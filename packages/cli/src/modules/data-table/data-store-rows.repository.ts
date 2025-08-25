@@ -177,6 +177,9 @@ export class DataStoreRowsRepository {
 			setValues[key] = normalizeValue(value, columnTypeMap[key], dbType);
 		}
 
+		// Always update the updatedAt timestamp
+		setValues.updatedAt = normalizeValue(new Date(), 'date', dbType);
+
 		queryBuilder.set(setValues);
 
 		const normalizedWhereData: Record<string, DataStoreColumnJsType | null> = {};
@@ -208,8 +211,9 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 	) {
 		const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
-		const createTable = new CreateTable(this.toTableName(dataStoreId), '', queryRunner);
-		createTable.withColumns.apply(createTable, dslColumns);
+		const createTable = new CreateTable(this.toTableName(dataStoreId), '', queryRunner).withColumns(
+			...dslColumns,
+		).withTimestamps;
 
 		await createTable.execute(queryRunner);
 	}
