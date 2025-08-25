@@ -1,11 +1,5 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import {
-	GLOBAL_MEMBER_ROLE,
-	GLOBAL_OWNER_ROLE,
-	ProjectRelationRepository,
-	type Project,
-	type User,
-} from '@n8n/db';
+import { ProjectRelationRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
@@ -16,7 +10,7 @@ import { DataStoreAggregateService } from '../data-store-aggregate.service';
 import { DataStoreService } from '../data-store.service';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-store']);
+	await testModules.loadModules(['data-table']);
 	await testDb.init();
 });
 
@@ -47,7 +41,7 @@ describe('dataStoreAggregate', () => {
 	beforeEach(async () => {
 		project1 = await createTeamProject();
 		project2 = await createTeamProject();
-		user = await createUser({ role: GLOBAL_OWNER_ROLE });
+		user = await createUser({ role: 'global:owner' });
 	});
 
 	afterEach(async () => {
@@ -114,7 +108,7 @@ describe('dataStoreAggregate', () => {
 
 		it('should return an empty array if user has no access to any project', async () => {
 			// ARRANGE
-			const currentUser = await createUser({ role: GLOBAL_MEMBER_ROLE });
+			const currentUser = await createUser({ role: 'global:member' });
 
 			await dataStoreService.createDataStore(project1.id, {
 				name: 'store1',

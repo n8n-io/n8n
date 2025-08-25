@@ -23,7 +23,7 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 import { JobProcessor } from '../job-processor';
 import type { Job } from '../scaling.types';
-import { DataStoreProxyService } from '@/modules/data-store/data-store-proxy.service';
+import { DataStoreProxyService } from '@/modules/data-table/data-store-proxy.service';
 
 mockInstance(VariablesService, {
 	getAllCached: jest.fn().mockResolvedValue([]),

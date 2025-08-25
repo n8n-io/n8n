@@ -70,6 +70,19 @@ vi.mock('@/composables/useToast', () => ({
 	}),
 }));
 
+vi.mock('@n8n/i18n', async (importOriginal) => ({
+	...(await importOriginal()),
+	useI18n: () => ({
+		baseText: (key: string) => {
+			const translations: Record<string, string> = {
+				'dataStore.addRow.label': 'Add Row',
+				'dataStore.addRow.disabled.tooltip': 'Add a column first',
+			};
+			return translations[key] || key;
+		},
+	}),
+}));
+
 vi.mock('@/features/dataStore/composables/useDataStoreTypes', () => ({
 	useDataStoreTypes: () => ({
 		mapToAGCellType: (type: string) => {

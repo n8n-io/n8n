@@ -9,7 +9,7 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import type { Project, User, ListQueryDb } from '@n8n/db';
-import { GLOBAL_MEMBER_ROLE, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
+import { ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
@@ -68,10 +68,10 @@ beforeEach(async () => {
 	admin = await createAdmin();
 	ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 
-	member = await createUser({ role: { slug: 'global:member' } });
+	member = await createUser({ role: 'global:member' });
 	memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
 
-	anotherMember = await createUser({ role: { slug: 'global:member' } });
+	anotherMember = await createUser({ role: 'global:member' });
 	anotherMemberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 		anotherMember.id,
 	);
@@ -110,7 +110,7 @@ describe('POST /credentials', () => {
 describe('GET /credentials', () => {
 	test('should return all creds for owner', async () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
-			role: { slug: 'global:member' },
+			role: 'global:member',
 		});
 		const member1PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			member1.id,
@@ -183,7 +183,7 @@ describe('GET /credentials', () => {
 
 	test('should return only relevant creds for member', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: { slug: 'global:member' },
+			role: 'global:member',
 		});
 		const member1PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			member1.id,
@@ -579,7 +579,7 @@ describe('GET /credentials/:id', () => {
 
 	test('should retrieve non-owned cred for owner', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: { slug: 'global:member' },
+			role: 'global:member',
 		});
 		const member1PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			member1.id,
@@ -626,7 +626,7 @@ describe('GET /credentials/:id', () => {
 
 	test('should retrieve owned cred for member', async () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
-			role: { slug: 'global:member' },
+			role: 'global:member',
 		});
 		const member1PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			member1.id,
@@ -745,7 +745,7 @@ describe('PUT /credentials/:id/share', () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const [member1, member2, member3, member4, member5] = await createManyUsers(5, {
-			role: { slug: 'global:member' },
+			role: 'global:member',
 		});
 		// TODO: write helper for getting multiple personal projects by user id
 		const shareWithProjectIds = (
@@ -793,7 +793,7 @@ describe('PUT /credentials/:id/share', () => {
 
 	test('should share the credential with the provided userIds', async () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
-			role: { slug: 'global:member' },
+			role: 'global:member',
 		});
 		const projectIds = (
 			await Promise.all([
@@ -876,7 +876,7 @@ describe('PUT /credentials/:id/share', () => {
 
 	test('should respond 403 for non-owned credentials for non-shared members sharing', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
-		const tempUser = await createUser({ role: { slug: 'global:member' } });
+		const tempUser = await createUser({ role: 'global:member' });
 		const tempUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			tempUser.id,
 		);
@@ -910,7 +910,7 @@ describe('PUT /credentials/:id/share', () => {
 	});
 
 	test('should not ignore pending sharee', async () => {
-		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const memberShell = await createUserShell('global:member');
 		const memberShellPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			memberShell.id,
 		);
@@ -1019,7 +1019,7 @@ describe('PUT /credentials/:id/share', () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const [member1, member2] = await createManyUsers(2, {
-			role: { slug: 'global:member' },
+			role: 'global:member',
 		});
 
 		await shareCredentialWithUsers(savedCredential, [member1, member2]);
@@ -1045,7 +1045,7 @@ describe('PUT /credentials/:id/share', () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const [member1, member2] = await createManyUsers(2, {
-			role: { slug: 'global:member' },
+			role: 'global:member',
 		});
 
 		await shareCredentialWithUsers(savedCredential, [member1, member2]);

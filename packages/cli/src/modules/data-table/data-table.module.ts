@@ -3,8 +3,8 @@ import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { BaseEntity } from '@n8n/typeorm';
 
-@BackendModule({ name: 'data-store' })
-export class DataStoreModule implements ModuleInterface {
+@BackendModule({ name: 'data-table' })
+export class DataTableModule implements ModuleInterface {
 	async init() {
 		await import('./data-store.controller');
 		await import('./data-store-aggregate.controller');

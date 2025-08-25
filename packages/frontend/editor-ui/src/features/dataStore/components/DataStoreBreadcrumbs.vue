@@ -9,7 +9,7 @@ import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 
-const BREADCRUMBS_SEPARATOR = '›';
+const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {
 	dataStore: DataStore;
@@ -39,7 +39,7 @@ const breadcrumbs = computed<PathItem[]>(() => {
 		{
 			id: 'datastores',
 			label: i18n.baseText('dataStore.dataStores'),
-			href: `/projects/${project.value.id}/datastores`,
+			href: `/projects/${project.value.id}/datatables`,
 		},
 	];
 });
@@ -118,7 +118,12 @@ watch(
 			</template>
 		</n8n-breadcrumbs>
 		<div :class="$style['data-store-actions']">
-			<DataStoreActions :data-store="props.dataStore" @rename="onRename" @on-deleted="onDelete" />
+			<DataStoreActions
+				:data-store="props.dataStore"
+				location="breadcrumbs"
+				@rename="onRename"
+				@on-deleted="onDelete"
+			/>
 		</div>
 	</div>
 </template>
