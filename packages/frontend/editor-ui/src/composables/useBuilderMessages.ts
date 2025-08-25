@@ -169,6 +169,7 @@ export function useBuilderMessages() {
 				type: 'tool',
 				toolName: msg.toolName,
 				toolCallId: msg.toolCallId,
+				displayName: msg.displayName,
 				status: msg.status,
 				updates: msg.updates || [],
 				read: false,
