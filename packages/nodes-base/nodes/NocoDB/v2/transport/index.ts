@@ -42,11 +42,9 @@ export async function apiRequest(
 
 	const baseUrl = credentials.host as string;
 
-	query = query || {};
-
-	if (!uri) {
-		uri = baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`;
-	}
+	query = query ?? {};
+	uri =
+		(uri ?? baseUrl.endsWith('/')) ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`;
 
 	const options: IHttpRequestOptions = {
 		method,
@@ -82,28 +80,32 @@ export async function apiRequestAllItems(
 ): Promise<any> {
 	const version = this.getNodeParameter('version', 0) as number;
 
-	if (query === undefined) {
-		query = {};
-	}
+	query = query ?? {};
 	query.limit = 100;
 	query.offset = query?.offset ? (query.offset as number) : 0;
 	const returnData: IDataObject[] = [];
 
-	let responseData;
+	let responseData:
+		| {
+				records: IDataObject[];
+		  }
+		| {
+				list: IDataObject[];
+				pageInfo: {
+					isLastPage: boolean;
+				};
+		  };
 
 	let continueFetch;
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		query.offset += query.limit;
-		if (version === 1) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-			continueFetch = responseData.length !== 0;
-		} else if (version === 4) {
-			returnData.push.apply(returnData, responseData.records as IDataObject[]);
+		if (version === 4 && 'records' in responseData) {
+			returnData.push.apply(returnData, responseData.records);
 			continueFetch = responseData.records.length === query.limit && query.limit > 0;
-		} else {
-			returnData.push.apply(returnData, responseData.list as IDataObject[]);
-			continueFetch = responseData.pageInfo.isLastPage !== true;
+		} else if ('list' in responseData) {
+			returnData.push.apply(returnData, responseData.list);
+			continueFetch = !responseData.pageInfo.isLastPage;
 		}
 	} while (continueFetch);
 
@@ -123,21 +125,21 @@ export async function apiMetaRequestAllItems(
 	body: IDataObject,
 	query?: IDataObject,
 ): Promise<any> {
-	if (query === undefined) {
-		query = {};
-	}
+	query = query ?? {};
 	query.limit = 100;
 	query.offset = query?.offset ? (query.offset as number) : 0;
 	const returnData: IDataObject[] = [];
 
-	let responseData;
+	let responseData: {
+		list: IDataObject[];
+	};
 
 	let continueFetch;
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		query.offset += query.limit;
 
-		returnData.push.apply(returnData, responseData.list as IDataObject[]);
+		returnData.push.apply(returnData, responseData.list);
 		continueFetch = responseData.list.length === query.limit;
 	} while (continueFetch);
 
