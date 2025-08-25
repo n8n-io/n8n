@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const TriggerOptions: INodeProperties[] = [
 	{
@@ -118,7 +118,7 @@ export const TriggerOptions: INodeProperties[] = [
 		name: 'downloadAttachments',
 		type: 'boolean',
 		default: false,
-		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
+		description: "Whether the attachment fields defined in 'Download Fields' will be downloaded",
 	},
 	{
 		displayName: 'Download Field Name or ID',
