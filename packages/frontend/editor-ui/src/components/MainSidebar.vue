@@ -367,7 +367,7 @@ function onResize() {
 }
 
 async function onResizeEnd() {
-	if (window.outerWidth < 900) {
+	if (window.innerWidth < 900) {
 		uiStore.sidebarMenuCollapsed = true;
 	} else {
 		uiStore.sidebarMenuCollapsed = uiStore.sidebarMenuCollapsedPreference;
