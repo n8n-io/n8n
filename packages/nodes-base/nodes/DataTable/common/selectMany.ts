@@ -29,7 +29,7 @@ export function getSelectFields(displayOptions: IDisplayOptions): INodePropertie
 			default: 'anyFilter',
 		},
 		{
-			displayName: 'ConditionsA',
+			displayName: 'Conditions',
 			name: 'filters',
 			type: 'fixedCollection',
 			typeOptions: {
@@ -40,7 +40,7 @@ export function getSelectFields(displayOptions: IDisplayOptions): INodePropertie
 			placeholder: 'Add Condition',
 			options: [
 				{
-					displayName: 'ConditionsB',
+					displayName: 'Conditions',
 					name: 'conditions',
 					values: [
 						{
