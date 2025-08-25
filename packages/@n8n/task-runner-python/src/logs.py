@@ -1,8 +1,6 @@
 import logging
 import os
-import json
 from .constants import (
-    CIRCULAR_REFERENCE_PLACEHOLDER_KEY,
     LOG_FORMAT,
     LOG_TIMESTAMP_FORMAT,
     ENV_HIDE_TASK_OFFER_LOGS,
@@ -76,23 +74,3 @@ def setup_logging():
     logger.addHandler(stream_handler)
 
     logging.getLogger("websockets.client").setLevel(logging.DEBUG)
-
-
-def format_print_args(*args) -> list[str]:
-    """Format `print` arguments for browser console output, handling circular references."""
-
-    formatted_args = []
-    for arg in args:
-        if isinstance(arg, dict) and CIRCULAR_REFERENCE_PLACEHOLDER_KEY in arg:
-            formatted_args.append(f"[Circular {arg['__type__']}]")
-        elif isinstance(arg, str):
-            formatted_args.append(f"'{arg}'")
-        elif isinstance(arg, (int, float, bool)) or arg is None:
-            formatted_args.append(str(arg))
-        else:
-            try:
-                formatted_args.append(json.dumps(arg, default=str, ensure_ascii=False))
-            except Exception as _:
-                formatted_args.append(f"[Circular {type(arg).__name__}]")
-
-    return formatted_args

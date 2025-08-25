@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 import websockets
 import random
 
-from .logs import format_print_args
 from .errors import WebsocketConnectionError, TaskMissingError
 from .message_types.broker import TaskSettings
 from .nanoid import nanoid
@@ -144,7 +143,7 @@ class TaskRunner:
             case BrokerTaskCancel():
                 await self._handle_task_cancel(message)
             case BrokerRpcResponse():
-                pass  # only logging is implemented, handled by browser
+                pass  # currently only logging, already handled by browser
             case _:
                 self.logger.warning(f"Unhandled message type: {type(message)}")
 
@@ -217,10 +216,9 @@ class TaskRunner:
                 process, queue, self.opts.task_timeout, task_settings.continue_on_fail
             )
 
-            for print_log_args in print_logs:
-                formatted_args = format_print_args(*print_log_args)
+            for print_logs_per_call in print_logs:
                 await self._send_rpc_message(
-                    task_id, RPC_BROWSER_CONSOLE_LOG_METHOD, formatted_args
+                    task_id, RPC_BROWSER_CONSOLE_LOG_METHOD, print_logs_per_call
                 )
 
             response = RunnerTaskDone(task_id=task_id, data={"result": result})

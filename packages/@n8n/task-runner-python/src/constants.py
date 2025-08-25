@@ -26,6 +26,7 @@ OFFER_VALIDITY_LATENCY_BUFFER = 0.1  # 100ms
 
 # Executor
 EXECUTOR_USER_OUTPUT_KEY = "__n8n_internal_user_output__"
+EXECUTOR_CIRCULAR_REFERENCE_KEY = "__n8n_circular_ref__"
 
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
@@ -42,7 +43,8 @@ ENV_HIDE_TASK_OFFER_LOGS = "N8N_RUNNERS_HIDE_TASK_OFFER_LOGS"
 # Logging
 LOG_FORMAT = "%(asctime)s.%(msecs)03d\t%(levelname)s\t%(message)s"
 LOG_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
-CIRCULAR_REFERENCE_PLACEHOLDER_KEY = "__circular_placeholder__"
+
+# RPC
 RPC_BROWSER_CONSOLE_LOG_METHOD = "logNodeOutput"
 
 # Rejection reasons

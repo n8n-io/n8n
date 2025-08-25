@@ -2,6 +2,7 @@ from queue import Empty
 import multiprocessing
 import traceback
 import textwrap
+import json
 
 from .errors import (
     TaskResultMissingError,
@@ -11,11 +12,14 @@ from .errors import (
 )
 
 from .message_types.broker import NodeMode, Items
-from .constants import CIRCULAR_REFERENCE_PLACEHOLDER_KEY, EXECUTOR_USER_OUTPUT_KEY
+from .constants import EXECUTOR_CIRCULAR_REFERENCE_KEY, EXECUTOR_USER_OUTPUT_KEY
+from typing import Any
 
 from multiprocessing.context import SpawnProcess
 
 MULTIPROCESSING_CONTEXT = multiprocessing.get_context("spawn")
+
+PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
 
 
 class TaskExecutor:
@@ -42,8 +46,10 @@ class TaskExecutor:
         queue: multiprocessing.Queue,
         task_timeout: int,
         continue_on_fail: bool,
-    ):
+    ) -> tuple[list, PrintArgs]:
         """Execute a subprocess for a Python code task."""
+
+        print_args: PrintArgs = []
 
         try:
             process.start()
@@ -65,14 +71,14 @@ class TaskExecutor:
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
 
-            result = returned.get("result") or []
-            print_logs = returned.get("print_logs", [])
+            result = returned.get("result", [])
+            print_args = returned.get("print_args", [])
 
-            return result, print_logs
+            return result, print_args
 
         except Exception as e:
             if continue_on_fail:
-                return [{"json": {"error": str(e)}}]
+                return [{"json": {"error": str(e)}}], print_args
             raise
 
     @staticmethod
@@ -92,40 +98,42 @@ class TaskExecutor:
     def _all_items(raw_code: str, items: Items, queue: multiprocessing.Queue):
         """Execute a Python code task in all-items mode."""
 
+        print_args: PrintArgs = []
+
         try:
             code = TaskExecutor._wrap_code(raw_code)
-            print_logs = []
 
             globals = {
                 "__builtins__": __builtins__,
                 "_items": items,
-                "print": TaskExecutor._create_custom_print(print_logs),
+                "print": TaskExecutor._create_custom_print(print_args),
             }
 
             exec(code, globals)
 
             queue.put(
-                {"result": globals[EXECUTOR_USER_OUTPUT_KEY], "print_logs": print_logs}
+                {"result": globals[EXECUTOR_USER_OUTPUT_KEY], "print_args": print_args}
             )
 
         except Exception as e:
-            TaskExecutor._put_error(queue, e)
+            TaskExecutor._put_error(queue, e, print_args)
 
     @staticmethod
     def _per_item(raw_code: str, items: Items, queue: multiprocessing.Queue):
         """Execute a Python code task in per-item mode."""
 
+        print_args: PrintArgs = []
+
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
             compiled_code = compile(wrapped_code, "<per_item_task_execution>", "exec")
-            print_logs = []
 
             result = []
             for index, item in enumerate(items):
                 globals = {
                     "__builtins__": __builtins__,
                     "_item": item,
-                    "print": TaskExecutor._create_custom_print(print_logs),
+                    "print": TaskExecutor._create_custom_print(print_args),
                 }
 
                 exec(compiled_code, globals)
@@ -138,10 +146,10 @@ class TaskExecutor:
                 user_output["pairedItem"] = {"item": index}
                 result.append(user_output)
 
-            queue.put({"result": result, "print_logs": print_logs})
+            queue.put({"result": result, "print_args": print_args})
 
         except Exception as e:
-            TaskExecutor._put_error(queue, e)
+            TaskExecutor._put_error(queue, e, print_args)
 
     @staticmethod
     def _wrap_code(raw_code: str) -> str:
@@ -149,28 +157,63 @@ class TaskExecutor:
         return f"def _user_function():\n{indented_code}\n\n{EXECUTOR_USER_OUTPUT_KEY} = _user_function()"
 
     @staticmethod
-    def _put_error(queue: multiprocessing.Queue, e: Exception):
-        queue.put({"error": {"message": str(e), "stack": traceback.format_exc()}})
+    def _put_error(queue: multiprocessing.Queue, e: Exception, print_args: PrintArgs):
+        queue.put(
+            {
+                "error": {"message": str(e), "stack": traceback.format_exc()},
+                "print_args": print_args,
+            }
+        )
+
+    # ========== print() ==========
 
     @staticmethod
-    def _create_custom_print(print_logs: list):
+    def _create_custom_print(print_args: PrintArgs):
         def custom_print(*args):
-            safe_args = []
+            serializable_args = []
+
             for arg in args:
                 try:
-                    import pickle
-
-                    pickle.dumps(arg)
-                    safe_args.append(arg)
+                    json.dumps(arg, default=str, ensure_ascii=False)
+                    serializable_args.append(arg)
                 except Exception as _:
-                    # Non-picklable (e.g. custom self-referential) objects cannot be passed back through the queue.
-                    safe_args.append(
+                    # Ensure args are serializable so they are transmissible
+                    # through the multiprocessing queue and via websockets.
+                    serializable_args.append(
                         {
-                            CIRCULAR_REFERENCE_PLACEHOLDER_KEY: repr(arg),
+                            EXECUTOR_CIRCULAR_REFERENCE_KEY: repr(arg),
                             "__type__": type(arg).__name__,
                         }
                     )
-            print_logs.append(tuple(safe_args))
+
+            formatted = TaskExecutor._format_print_args(*serializable_args)
+            print_args.append(formatted)
             print("[user code]", *args)
 
         return custom_print
+
+    @staticmethod
+    def _format_print_args(*args) -> list[str]:
+        """
+        Takes the arguments passed to a `print()` call in user code and converts them
+        to string representations suitable for display in a browser console.
+
+        Expects all args to be serializable.
+        """
+
+        formatted = []
+
+        for arg in args:
+            if isinstance(arg, str):
+                formatted.append(f"'{arg}'")
+
+            elif arg is None or isinstance(arg, (int, float, bool)):
+                formatted.append(str(arg))
+
+            elif isinstance(arg, dict) and EXECUTOR_CIRCULAR_REFERENCE_KEY in arg:
+                formatted.append(f"[Circular {arg.get('__type__', 'Object')}]")
+
+            else:
+                formatted.append(json.dumps(arg, default=str, ensure_ascii=False))
+
+        return formatted
