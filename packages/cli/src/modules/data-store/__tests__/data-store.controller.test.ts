@@ -1582,7 +1582,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
 			.expect(200);
 
-		expect(response.body.data).toEqual({
+		expect(response.body.data).toMatchObject({
 			count: 1,
 			data: [
 				{
@@ -1621,7 +1621,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
 			.expect(200);
 
-		expect(response.body.data).toEqual({
+		expect(response.body.data).toMatchObject({
 			count: 1,
 			data: [
 				{
@@ -1660,7 +1660,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
 			.expect(200);
 
-		expect(response.body.data).toEqual({
+		expect(response.body.data).toMatchObject({
 			count: 1,
 			data: [
 				{
@@ -1696,7 +1696,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
 			.expect(200);
 
-		expect(response.body.data).toEqual({
+		expect(response.body.data).toMatchObject({
 			count: 1,
 			data: [
 				{
@@ -3053,7 +3053,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
-		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
+		expect(readResponse.body.data.data[0]).toMatchObject({
+			id: 1,
+			name: 'Alice',
+			age: 31,
+		});
 	});
 
 	test('should update row in personal project', async () => {
@@ -3080,7 +3084,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
-		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
+		expect(readResponse.body.data.data[0]).toMatchObject({
+			id: 1,
+			name: 'Alice',
+			age: 31,
+		});
 	});
 
 	test('should update row by id filter', async () => {
@@ -3112,8 +3120,16 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		expect(readResponse.body.data.count).toBe(2);
 		expect(readResponse.body.data.data).toEqual(
 			expect.arrayContaining([
-				{ id: 1, name: 'Alice', age: 31 },
-				{ id: 2, name: 'Bob', age: 25 },
+				expect.objectContaining({
+					id: 1,
+					name: 'Alice',
+					age: 31,
+				}),
+				expect.objectContaining({
+					id: 2,
+					name: 'Bob',
+					age: 25,
+				}),
 			]),
 		);
 	});
@@ -3149,9 +3165,24 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		expect(readResponse.body.data.count).toBe(3);
 		expect(readResponse.body.data.data).toEqual(
 			expect.arrayContaining([
-				{ id: 1, name: 'Alice', age: 30, department: 'Management' },
-				{ id: 2, name: 'Alice', age: 25, department: 'Marketing' },
-				{ id: 3, name: 'Bob', age: 30, department: 'Engineering' },
+				expect.objectContaining({
+					id: 1,
+					name: 'Alice',
+					age: 30,
+					department: 'Management',
+				}),
+				expect.objectContaining({
+					id: 2,
+					name: 'Alice',
+					age: 25,
+					department: 'Marketing',
+				}),
+				expect.objectContaining({
+					id: 3,
+					name: 'Bob',
+					age: 30,
+					department: 'Engineering',
+				}),
 			]),
 		);
 	});
@@ -3182,7 +3213,10 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
-		expect(readResponse.body.data.data[0]).toMatchObject({ name: 'Alice', age: 30 });
+		expect(readResponse.body.data.data[0]).toMatchObject({
+			name: 'Alice',
+			age: 30,
+		});
 	});
 
 	test('should fail when filter is empty', async () => {

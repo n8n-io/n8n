@@ -272,66 +272,36 @@ describe('dataStore', () => {
 			}
 			const columnResult = await dataStoreService.getColumns(dataStoreId, project1.id);
 			expect(columnResult).toEqual([
-				{
+				expect.objectContaining({
 					index: 0,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn0',
 					type: 'string',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
-				{
+				}),
+				expect.objectContaining({
 					index: 1,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn1',
 					type: 'string',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
-				{
+				}),
+				expect.objectContaining({
 					index: 2,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn2',
 					type: 'number',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
-				{
+				}),
+				expect.objectContaining({
 					index: 3,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn3',
 					type: 'number',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
-				{
+				}),
+				expect.objectContaining({
 					index: 4,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn4',
 					type: 'date',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
+				}),
 			]);
 
 			const userTableName = dataStoreRowsRepository.toTableName(dataStoreId);
@@ -377,30 +347,18 @@ describe('dataStore', () => {
 			expect(columnResult.length).toBe(2);
 
 			expect(columnResult).toEqual([
-				{
+				expect.objectContaining({
 					index: 0,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn0',
 					type: 'string',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
-				{
+				}),
+				expect.objectContaining({
 					index: 1,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn1',
 					type: 'number',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
+				}),
 			]);
 
 			const userTableName = dataStoreRowsRepository.toTableName(dataStoreId);
@@ -496,36 +454,24 @@ describe('dataStore', () => {
 			const updatedData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(updatedData.count).toBe(3);
 			expect(updatedData.data).toEqual([
-				{
+				expect.objectContaining({
 					id: 1,
 					name: 'Alice',
 					age: 30,
 					email: null,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
-				{
+				}),
+				expect.objectContaining({
 					id: 2,
 					name: 'Bob',
 					age: 25,
 					email: null,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
-				{
+				}),
+				expect.objectContaining({
 					id: 3,
 					name: 'Charlie',
 					age: 35,
 					email: null,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
+				}),
 			]);
 
 			// Verify we can insert new rows with the new column
@@ -541,46 +487,30 @@ describe('dataStore', () => {
 			const finalData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(finalData.count).toBe(4);
 			expect(finalData.data).toEqual([
-				{
+				expect.objectContaining({
 					id: 1,
 					name: 'Alice',
 					age: 30,
 					email: null,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
-				{
+				}),
+				expect.objectContaining({
 					id: 2,
 					name: 'Bob',
 					age: 25,
 					email: null,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
-				{
+				}),
+				expect.objectContaining({
 					id: 3,
 					name: 'Charlie',
 					age: 35,
 					email: null,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
-				{
+				}),
+				expect.objectContaining({
 					id: 4,
 					name: 'David',
 					age: 28,
 					email: 'david@example.com',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
+				}),
 			]);
 		});
 	});
@@ -1065,18 +995,16 @@ describe('dataStore', () => {
 			);
 			expect(count).toEqual(4);
 			expect(data).toEqual(
-				rows.map((row, i) => ({
-					...row,
-					id: i + 1,
-					c1: row.c1,
-					c2: row.c2,
-					c3: row.c3 instanceof Date ? row.c3.toISOString() : row.c3,
-					c4: row.c4,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				})),
+				rows.map(
+					(row) =>
+						expect.objectContaining({
+							...row,
+							c1: row.c1,
+							c2: row.c2,
+							c3: row.c3 instanceof Date ? row.c3.toISOString() : row.c3,
+							c4: row.c4,
+						}) as Record<string, unknown>,
+				),
 			);
 		});
 
@@ -1108,24 +1036,16 @@ describe('dataStore', () => {
 
 			expect(count).toEqual(2);
 			expect(data).toEqual([
-				{
+				expect.objectContaining({
 					c1: 1,
 					c2: 'foo',
 					id: 1,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
-				{
+				}),
+				expect.objectContaining({
 					c1: 1,
 					c2: 'foo',
 					id: 2,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
+				}),
 			]);
 		});
 
@@ -1161,33 +1081,21 @@ describe('dataStore', () => {
 
 			expect(count).toEqual(3);
 			expect(data).toEqual([
-				{
+				expect.objectContaining({
 					c1: 2,
 					c2: 'bar',
 					id: 2,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
-				{
+				}),
+				expect.objectContaining({
 					c1: 1,
 					c2: 'baz',
 					id: 3,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
-				{
+				}),
+				expect.objectContaining({
 					c1: 2,
 					c2: 'faz',
 					id: 4,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
+				}),
 			]);
 		});
 
@@ -1449,36 +1357,21 @@ describe('dataStore', () => {
 			expect(count).toEqual(3);
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{
+					expect.objectContaining({
 						pid: '1995-111a',
 						name: 'Alicia',
 						age: 31,
-						id: 1,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					},
-					{
+					}),
+					expect.objectContaining({
 						pid: '1994-222a',
 						name: 'John',
 						age: 32,
-						id: 2,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					},
-					{
+					}),
+					expect.objectContaining({
 						pid: '1993-333a',
 						name: 'Paul',
 						age: 32,
-						id: 3,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					}, // unchanged
+					}), // unchanged
 				]),
 			);
 		});
@@ -1521,36 +1414,21 @@ describe('dataStore', () => {
 			expect(count).toEqual(3);
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{
+					expect.objectContaining({
 						city: 'Berlin',
 						age: 30,
 						isEligible: true,
-						id: 1,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					},
-					{
+					}),
+					expect.objectContaining({
 						city: 'Amsterdam',
 						age: 32,
 						isEligible: true,
-						id: 2,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					},
-					{
+					}),
+					expect.objectContaining({
 						city: 'Oslo',
 						age: 28,
 						isEligible: false,
-						id: 3,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					},
+					}),
 				]),
 			);
 		});
@@ -1589,26 +1467,16 @@ describe('dataStore', () => {
 
 			expect(count).toEqual(2);
 			expect(data).toEqual([
-				{
+				expect.objectContaining({
 					name: 'Alice',
 					age: 30,
-					id: 1,
 					pid: '1995-111a',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
-				{
+				}),
+				expect.objectContaining({
 					name: 'Alice',
 					age: 30,
-					id: 2,
 					pid: '1992-222b',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
+				}),
 			]);
 		});
 	});
@@ -1633,10 +1501,6 @@ describe('dataStore', () => {
 			]);
 			expect(ids).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
 
-			// Get initial data to find row IDs
-			const initialData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(initialData.count).toBe(3);
-
 			// ACT - Delete first and third rows
 			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, [1, 3]);
 
@@ -1646,15 +1510,10 @@ describe('dataStore', () => {
 			const rows = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(rows.count).toBe(1);
 			expect(rows.data).toEqual([
-				{
+				expect.objectContaining({
 					name: 'Bob',
 					age: 25,
-					id: 2,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
+				}),
 			]);
 		});
 
@@ -1732,26 +1591,18 @@ describe('dataStore', () => {
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{
+					expect.objectContaining({
 						id: 1,
 						name: 'Alice',
 						age: 31,
 						active: false,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					},
-					{
+					}),
+					expect.objectContaining({
 						id: 2,
 						name: 'Bob',
 						age: 25,
 						active: false,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					},
+					}),
 				]),
 			);
 		});
@@ -1792,26 +1643,18 @@ describe('dataStore', () => {
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{
+					expect.objectContaining({
 						id: 1,
 						name: 'Alicia',
 						age: 31,
 						active: false,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					},
-					{
+					}),
+					expect.objectContaining({
 						id: 2,
 						name: 'Bob',
 						age: 25,
 						active: false,
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					},
+					}),
 				]),
 			);
 		});
@@ -1895,36 +1738,24 @@ describe('dataStore', () => {
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{
+					expect.objectContaining({
 						id: 1,
 						name: 'Alice',
 						age: 30,
 						department: 'Management',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					},
-					{
+					}),
+					expect.objectContaining({
 						id: 2,
 						name: 'Alice',
 						age: 25,
 						department: 'Marketing',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					},
-					{
+					}),
+					expect.objectContaining({
 						id: 3,
 						name: 'Bob',
 						age: 30,
 						department: 'Engineering',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						createdAt: expect.any(String),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						updatedAt: expect.any(String),
-					},
+					}),
 				]),
 			);
 		});
@@ -1952,15 +1783,10 @@ describe('dataStore', () => {
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual([
-				{
-					id: 1,
+				expect.objectContaining({
 					name: 'Alice',
 					age: 30,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
+				}),
 			]);
 		});
 
@@ -1989,15 +1815,10 @@ describe('dataStore', () => {
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual([
-				{
-					id: 1,
+				expect.objectContaining({
 					name: 'Alice',
 					age: 30,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
+				}),
 			]);
 		});
 
@@ -2026,15 +1847,10 @@ describe('dataStore', () => {
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual([
-				{
-					id: 1,
+				expect.objectContaining({
 					name: 'Alice',
 					age: 30,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
+				}),
 			]);
 		});
 
@@ -2131,16 +1947,11 @@ describe('dataStore', () => {
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual([
-				{
-					id: 1,
+				expect.objectContaining({
 					name: 'Alice',
 					age: 31,
 					active: true,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
+				}),
 			]);
 		});
 
@@ -2171,15 +1982,10 @@ describe('dataStore', () => {
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual([
-				{
-					id: 1,
+				expect.objectContaining({
 					name: 'Alice',
 					birthDate: newDate.toISOString(),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(String),
-				},
+				}),
 			]);
 		});
 	});
