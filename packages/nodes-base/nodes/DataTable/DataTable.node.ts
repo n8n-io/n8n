@@ -5,14 +5,13 @@ import { router } from './actions/router';
 import * as row from './actions/row/Row.resource';
 import { getDataTableColumns, getDataTables, tableSearch } from './common/methods';
 
-// TODO: hide this node
 export class DataTable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Data Table',
 		name: 'dataTable',
 		icon: 'fa:table',
 		iconColor: 'orange',
-		group: ['transform'], // ?
+		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["action"]}}',
 		description: 'Save data across workflow executions in a table',
