@@ -79,5 +79,15 @@ describe('Data Table get Operation', () => {
 			expect(result[0]).toEqual({ json: { id: 0 } });
 			expect(result[2344]).toEqual({ json: { id: 2344 } });
 		});
+		it('should pass null through correctly', async () => {
+			// ARRANGE
+			getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, colA: null }], count: 1 });
+
+			// ACT
+			const result = await execute.call(mockExecuteFunctions, 0);
+
+			// ASSERT
+			expect(result).toEqual([{ json: { id: 1, colA: null } }]);
+		});
 	});
 });
