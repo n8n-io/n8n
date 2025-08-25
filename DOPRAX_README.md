@@ -16,6 +16,8 @@ This repository includes a `Dockerfile` at the root directory, which is **requir
 - Sets up health checks
 - Exposes the required port (5678)
 
+**Note**: Doprax requires a `Dockerfile` for the main source code deployment, not a `playbook.yaml` file. The `docker-compose.yml` file is provided for local development and alternative deployment methods.
+
 ### 1. Deploy to Doprax
 
 1. **Fork or clone this repository** to your GitHub account
