@@ -74,7 +74,7 @@ const props = withDefaults(
 		subTitle?: string;
 		extraTabsClassName?: string;
 		extraParameterWrapperClassName?: string;
-		isNDVV2?: boolean;
+		isNdvV2?: boolean;
 		hideExecute?: boolean;
 		hideDocs?: boolean;
 	}>(),
@@ -83,7 +83,7 @@ const props = withDefaults(
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
 		subTitle: undefined,
-		isNDVV2: false,
+		isNdvV2: false,
 		hideExecute: false,
 		hideDocs: true,
 	},
@@ -608,7 +608,7 @@ function handleSelectAction(params: INodeParameters) {
 				<slot name="actions" />
 			</template>
 		</ExperimentalEmbeddedNdvHeader>
-		<div v-else-if="!isNDVV2" :class="$style.header">
+		<div v-else-if="!isNdvV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -664,7 +664,7 @@ function handleSelectAction(params: INodeParameters) {
 			:class="[
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
-				{ 'ndv-v2': isNDVV2 },
+				{ 'ndv-v2': isNdvV2 },
 				extraParameterWrapperClassName ?? '',
 			]"
 			data-test-id="node-parameters"
@@ -780,7 +780,7 @@ function handleSelectAction(params: INodeParameters) {
 				</div>
 			</div>
 			<div
-				v-if="isNDVV2 && featureRequestUrl && !isEmbeddedInCanvas"
+				v-if="isNdvV2 && featureRequestUrl && !isEmbeddedInCanvas"
 				:class="$style.featureRequest"
 			>
 				<a target="_blank" @click="onFeatureRequestClick">
