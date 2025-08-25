@@ -46,7 +46,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			name: 'downloadAttachments',
 			type: 'boolean',
 			default: false,
-			description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
+			description: "Whether the attachment fields defined in 'Download Fields' will be downloaded",
 		},
 		{
 			displayName: 'Download Field Name or ID',

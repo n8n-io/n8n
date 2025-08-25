@@ -261,7 +261,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
+		description: "Whether the attachment fields defined in 'Download Fields' will be downloaded",
 	},
 	{
 		displayName: 'Download Fields',
@@ -381,7 +381,7 @@ export const operationFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
+		description: "Whether the attachment fields defined in 'Download Fields' will be downloaded",
 	},
 	{
 		displayName: 'Download Fields',
