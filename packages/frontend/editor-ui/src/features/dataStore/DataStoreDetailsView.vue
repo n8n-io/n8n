@@ -44,6 +44,7 @@ const initialize = async () => {
 		const response = await dataStoreStore.fetchOrFindDataStore(props.id, props.projectId);
 		if (response) {
 			dataStore.value = response;
+			documentTitle.set(`${i18n.baseText('dataStore.dataStores')} > ${response.name}`);
 		} else {
 			await showErrorAndGoBackToList(new Error(i18n.baseText('dataStore.notFound')));
 		}
