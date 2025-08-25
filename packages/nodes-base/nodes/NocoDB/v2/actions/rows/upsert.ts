@@ -90,19 +90,27 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			if (!id) {
 				requestMethod = 'POST';
 			}
-			const newItem: IDataObject = { id };
+			const newItem: {
+				id: string;
+				fields: IDataObject;
+			} = { id, fields: {} };
 			const dataToSend = this.getNodeParameter('dataToSend', i) as
 				| 'defineBelow'
 				| 'mapWithFields'
 				| 'autoMapInputData';
 
 			if (dataToSend === 'autoMapInputData') {
-				const incomingKeys = Object.keys(items[i].json);
-				const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-				const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
-				for (const key of incomingKeys) {
-					if (inputDataToIgnore.includes(key)) continue;
-					newItem[key] = items[i].json[key];
+				if (items[i].json.fields) {
+					const itemFields = items[i].json.fields as IDataObject;
+					const incomingKeys = Object.keys(itemFields as any);
+					const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+					const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
+					for (const key of incomingKeys) {
+						if (inputDataToIgnore.includes(key)) continue;
+						if (key in itemFields) {
+							newItem.fields[key] = itemFields[key];
+						}
+					}
 				}
 			} else {
 				const fields = this.getNodeParameter('fieldsMapper', i, []) as any;
