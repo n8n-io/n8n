@@ -284,16 +284,20 @@ export function createWorkflowPlannerAgent(llm: BaseChatModel, nodeTypes: INodeT
 				return true;
 			});
 
-			const workflowPlanToolCall = result.messages.findLast((msg) => {
+			const workflowPlanToolCall = result.messages.findLast((msg): msg is ToolMessage => {
 				return msg.name === 'generate_workflow_plan';
-			}) as ToolMessage | undefined;
+			});
 
 			if (!workflowPlanToolCall) {
 				throw new ToolExecutionError('No workflow plan tool call found in the result');
 			}
 
 			try {
-				const workflowPlan = jsonParse<WorkflowPlan>(workflowPlanToolCall.content as string);
+				if (typeof workflowPlanToolCall.content !== 'string') {
+					throw new ToolExecutionError('Workflow plan tool call content is not a string');
+				}
+
+				const workflowPlan = jsonParse<WorkflowPlan>(workflowPlanToolCall.content);
 				return {
 					plan: workflowPlan,
 					toolMessages,
