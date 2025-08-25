@@ -8,6 +8,14 @@ n8n is a workflow automation tool that helps you automate tasks across different
 
 ## Quick Start
 
+### Prerequisites
+
+This repository includes a `Dockerfile` at the root directory, which is **required by Doprax** for deployment. The Dockerfile:
+- Uses the official n8n Docker image
+- Configures the necessary environment variables
+- Sets up health checks
+- Exposes the required port (5678)
+
 ### 1. Deploy to Doprax
 
 1. **Fork or clone this repository** to your GitHub account
@@ -36,13 +44,13 @@ Click "Deploy" and wait for the build to complete. Your n8n instance will be ava
 
 ## Configuration Files
 
-### `playbook.yml`
+### `Dockerfile`
 The main configuration file for Doprax deployment. It defines:
 - The n8n Docker image
 - Environment variables
 - Port configuration
 - Health checks
-- Volume mounts
+- Application startup
 
 ### `docker-compose.yml`
 Alternative Docker Compose configuration for local development or other platforms.
