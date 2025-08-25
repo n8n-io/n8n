@@ -26,7 +26,7 @@ OFFER_VALIDITY_LATENCY_BUFFER = 0.1  # 100ms
 
 # Executor
 EXECUTOR_USER_OUTPUT_KEY = "__n8n_internal_user_output__"
-EXECUTOR_CIRCULAR_REFERENCE_KEY = "__n8n_circular_ref__"
+EXECUTOR_CIRCULAR_REFERENCE_KEY = "__n8n_internal_circular_ref__"
 
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
