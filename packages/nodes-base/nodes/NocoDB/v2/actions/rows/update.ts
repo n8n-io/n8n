@@ -66,7 +66,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			typeOptions: {
 				loadOptionsDependsOn: ['table.value'],
 				resourceMapper: {
-					resourceMapperMethod: 'getResouceMapperFields',
+					resourceMapperMethod: 'getResourceMapperFields',
 					mode: 'add',
 					fieldWords: {
 						singular: 'column',
