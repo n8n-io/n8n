@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import ProjectHeader, { type CustomAction } from '@/components/Projects/ProjectHeader.vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
 import { useProjectPages } from '@/composables/useProjectPages';
 import { useInsightsStore } from '@/features/insights/insights.store';
 
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { SortingAndPaginationUpdates } from '@/Interface';
@@ -17,6 +16,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import {
 	ADD_DATA_STORE_MODAL_KEY,
 	DEFAULT_DATA_STORE_PAGE_SIZE,
+	PROJECT_DATA_STORES,
 } from '@/features/dataStore/constants';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -26,6 +26,7 @@ import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
 const i18n = useI18n();
 const route = useRoute();
+const router = useRouter();
 const projectPages = useProjectPages();
 const { callDebounced } = useDebounce();
 const documentTitle = useDocumentTitle();
@@ -35,19 +36,12 @@ const dataStoreStore = useDataStoreStore();
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
+const uiStore = useUIStore();
 
 const loading = ref(true);
 
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_DATA_STORE_PAGE_SIZE);
-
-const customProjectActions = computed<CustomAction[]>(() => [
-	{
-		id: 'add-data-store',
-		label: i18n.baseText('dataStore.add.button.label'),
-		disabled: loading.value || projectPages.isOverviewSubPage,
-	},
-]);
 
 const dataStoreResources = computed<DataStoreResource[]>(() =>
 	dataStoreStore.dataStores.map((ds) => {
@@ -57,6 +51,10 @@ const dataStoreResources = computed<DataStoreResource[]>(() =>
 		};
 	}),
 );
+
+const projectId = computed(() => {
+	return Array.isArray(route.params.projectId) ? route.params.projectId[0] : route.params.projectId;
+});
 
 const totalCount = computed(() => dataStoreStore.totalCount);
 
@@ -86,11 +84,8 @@ const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly
 
 const initialize = async () => {
 	loading.value = true;
-	const projectId = Array.isArray(route.params.projectId)
-		? route.params.projectId[0]
-		: route.params.projectId;
 	try {
-		await dataStoreStore.fetchDataStores(projectId, currentPage.value, pageSize.value);
+		await dataStoreStore.fetchDataStores(projectId.value, currentPage.value, pageSize.value);
 	} catch (error) {
 		toast.showError(error, 'Error loading data stores');
 	} finally {
@@ -111,18 +106,27 @@ const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
 };
 
 const onAddModalClick = () => {
-	useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
-};
-
-const onProjectHeaderAction = (action: string) => {
-	if (action === 'add-data-store') {
-		useUIStore().openModal(ADD_DATA_STORE_MODAL_KEY);
-	}
+	void router.push({
+		name: PROJECT_DATA_STORES,
+		params: { projectId: projectId.value, new: 'new' },
+	});
 };
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('dataStore.dataStores'));
 });
+
+watch(
+	() => route.params.new,
+	() => {
+		if (route.params.new === 'new') {
+			uiStore.openModal(ADD_DATA_STORE_MODAL_KEY);
+		} else {
+			uiStore.closeModal(ADD_DATA_STORE_MODAL_KEY);
+		}
+	},
+	{ immediate: true },
+);
 </script>
 <template>
 	<ResourcesListLayout
@@ -144,10 +148,7 @@ onMounted(() => {
 		@update:pagination-and-sort="onPaginationUpdate"
 	>
 		<template #header>
-			<ProjectHeader
-				:custom-actions="customProjectActions"
-				@custom-action-selected="onProjectHeaderAction"
-			>
+			<ProjectHeader>
 				<InsightsSummary
 					v-if="projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled"
 					:loading="insightsStore.weeklySummary.isLoading"
