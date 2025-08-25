@@ -1835,7 +1835,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			.expect(200);
 
 		expect(response.body).toEqual({
-			data: [1],
+			data: [{ id: 1 }],
 		});
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
@@ -1875,7 +1875,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			.expect(200);
 
 		expect(response.body).toEqual({
-			data: [1],
+			data: [{ id: 1 }],
 		});
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
@@ -1912,11 +1912,64 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			.expect(200);
 
 		expect(response.body).toEqual({
-			data: [1],
+			data: [{ id: 1 }],
 		});
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
 		expect(rowsInDb.count).toBe(1);
+		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
+	});
+
+	test('should return inserted data if returnData is set', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+		});
+
+		const payload = {
+			returnData: true,
+			data: [
+				{
+					first: 'first row',
+					second: 'some value',
+				},
+				{
+					first: 'another row',
+					second: 'another value',
+				},
+			],
+		};
+
+		const response = await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.send(payload)
+			.expect(200);
+
+		expect(response.body).toEqual({
+			data: [
+				{
+					id: 1,
+					first: 'first row',
+					second: 'some value',
+				},
+				{
+					id: 2,
+					first: 'another row',
+					second: 'another value',
+				},
+			],
+		});
+
+		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {});
+		expect(rowsInDb.count).toBe(2);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
 
@@ -1982,7 +2035,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			.expect(200);
 
 		expect(response.body).toEqual({
-			data: [1],
+			data: [{ id: 1 }],
 		});
 
 		const readResponse = await authMemberAgent
@@ -2030,7 +2083,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			.expect(200);
 
 		expect(response.body).toEqual({
-			data: [1],
+			data: [{ id: 1 }],
 		});
 
 		const readResponse = await authMemberAgent
@@ -2070,7 +2123,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			.expect(200);
 
 		expect(response.body).toEqual({
-			data: [1],
+			data: [{ id: 1 }],
 		});
 
 		const readResponse = await authMemberAgent
@@ -2125,7 +2178,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			.expect(200);
 
 		expect(response.body).toEqual({
-			data: [1],
+			data: [{ id: 1 }],
 		});
 
 		const readResponse = await authMemberAgent
@@ -2175,7 +2228,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			.expect(200);
 
 		expect(response.body).toEqual({
-			data: [1],
+			data: [{ id: 1 }],
 		});
 
 		const readResponse = await authMemberAgent
@@ -2223,7 +2276,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			.expect(200);
 
 		expect(first.body).toEqual({
-			data: [1, 2, 3],
+			data: [{ id: 1 }, { id: 2 }, { id: 3 }],
 		});
 
 		const second = await authMemberAgent
@@ -2232,7 +2285,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 			.expect(200);
 
 		expect(second.body).toEqual({
-			data: [4, 5, 6],
+			data: [{ id: 4 }, { id: 5 }, { id: 6 }],
 		});
 
 		const readResponse = await authMemberAgent

@@ -6,8 +6,13 @@ import type {
 import { GlobalConfig } from '@n8n/config';
 import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, DataSourceOptions, QueryRunner, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataStoreColumnJsType, DataStoreRows } from 'n8n-workflow';
+import { DataSource, DataSourceOptions, QueryRunner, SelectQueryBuilder, In } from '@n8n/typeorm';
+import {
+	DataStoreColumnJsType,
+	DataStoreRows,
+	DataStoreRowWithId,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreUserTableName } from './data-store.types';
@@ -16,6 +21,7 @@ import {
 	buildColumnTypeMap,
 	deleteColumnQuery,
 	extractInsertedIds,
+	extractReturningData,
 	getPlaceholder,
 	normalizeValue,
 	quoteIdentifier,
@@ -54,16 +60,26 @@ export class DataStoreRowsRepository {
 		return `${tablePrefix}data_store_user_${dataStoreId}`;
 	}
 
-	async insertRows(dataStoreId: string, rows: DataStoreRows, columns: DataStoreColumn[]) {
-		const insertedIds: number[] = [];
+	async insertRows(
+		dataStoreId: string,
+		rows: DataStoreRows,
+		columns: DataStoreColumn[],
+		returnData: boolean = false,
+	) {
+		const inserted: DataStoreRowWithId[] = [];
+		const dbType = this.dataSource.options.type;
+		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
+
+		const table = this.toTableName(dataStoreId);
+		const columnNames = columns.map((c) => c.name);
+		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
+		const selectColumns = ['id', ...escapedColumns];
 
 		// We insert one by one as the default behavior of returning the last inserted ID
 		// is consistent, whereas getting all inserted IDs when inserting multiple values is
 		// surprisingly awkward without Entities, e.g. `RETURNING id` explicitly does not aggregate
 		// and the `identifiers` array output of `execute()` is empty
 		for (const row of rows) {
-			const dbType = this.dataSource.options.type;
-
 			for (const column of columns) {
 				row[column.name] = normalizeValue(row[column.name], column.type, dbType);
 			}
@@ -71,22 +87,47 @@ export class DataStoreRowsRepository {
 			const query = this.dataSource
 				.createQueryBuilder()
 				.insert()
-				.into(
-					this.toTableName(dataStoreId),
-					columns.map((c) => c.name),
-				)
+				.into(table, columnNames)
 				.values(row);
 
-			if (dbType === 'postgres' || dbType === 'mariadb') {
-				query.returning('id');
+			if (useReturning) {
+				query.returning(returnData ? selectColumns.join(',') : 'id');
 			}
 
 			const result = await query.execute();
 
-			insertedIds.push(...extractInsertedIds(result.raw, dbType));
+			if (useReturning) {
+				const returned = extractReturningData(result.raw);
+				inserted.push.apply(inserted, returned);
+				continue;
+			}
+
+			// Engines without RETURNING support
+			const rowIds = extractInsertedIds(result.raw, dbType);
+			if (rowIds.length === 0) {
+				throw new UnexpectedError("Couldn't find the inserted row ID");
+			}
+
+			if (!returnData) {
+				inserted.push(...rowIds.map((id) => ({ id })));
+				continue;
+			}
+
+			const insertedRow = await this.dataSource
+				.createQueryBuilder()
+				.select(selectColumns)
+				.from(table, 'dataStore')
+				.where({ id: In(rowIds) })
+				.getRawOne<DataStoreRowWithId>();
+
+			if (!insertedRow) {
+				throw new UnexpectedError("Couldn't find the inserted row");
+			}
+
+			inserted.push(insertedRow);
 		}
 
-		return insertedIds;
+		return inserted;
 	}
 
 	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
