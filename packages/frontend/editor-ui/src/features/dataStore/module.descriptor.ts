@@ -40,7 +40,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 		},
 		{
 			name: PROJECT_DATA_STORES,
-			path: 'datatables',
+			path: 'datatables/:new(new)?',
 			props: true,
 			components: {
 				default: DataStoreView,

@@ -10,7 +10,7 @@
     "dist"
   ],
   "scripts": {
-    "start": "./bin/create.js"
+    "start": "node bin/create.js"
   },
   "repository": {
     "type": "git",
