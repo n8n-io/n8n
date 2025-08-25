@@ -1,5 +1,4 @@
 import {
-	GLOBAL_MEMBER_ROLE,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -63,7 +62,7 @@ describe('userHasScopes', () => {
 		findByWorkflowMock.mockResolvedValueOnce([]);
 		findByCredentialMock.mockResolvedValueOnce([]);
 
-		const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+		const user = { id: 'userId', scopes: [], role: 'global:member' } as unknown as User;
 		const scopes = ['workflow:read', 'credential:read'] as Scope[];
 
 		const params: { credentialId?: string; workflowId?: string; projectId?: string } = {
@@ -141,7 +140,7 @@ describe('userHasScopes', () => {
 			const user = {
 				id: 'userId',
 				scopes: userScopes,
-				role: GLOBAL_MEMBER_ROLE,
+				role: 'global:member',
 			} as unknown as User;
 			const scopes = [scope] as Scope[];
 			const params: { credentialId?: string; workflowId?: string; projectId?: string } = {

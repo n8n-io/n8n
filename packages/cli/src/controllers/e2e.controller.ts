@@ -305,9 +305,7 @@ export class E2EController {
 				id: uuid(),
 				...owner,
 				password: await this.passwordUtility.hash(owner.password),
-				role: {
-					slug: 'global:owner',
-				},
+				role: 'global:owner',
 			}),
 		];
 
@@ -316,9 +314,7 @@ export class E2EController {
 				id: uuid(),
 				...admin,
 				password: await this.passwordUtility.hash(admin.password),
-				role: {
-					slug: 'global:admin',
-				},
+				role: 'global:admin',
 			}),
 		);
 
@@ -328,9 +324,7 @@ export class E2EController {
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
-					role: {
-						slug: 'global:member',
-					},
+					role: 'global:member',
 				}),
 			);
 		}

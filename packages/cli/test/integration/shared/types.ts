@@ -43,10 +43,10 @@ type EndpointGroup =
 	| 'ai'
 	| 'folder'
 	| 'insights'
-	| 'data-store'
+	| 'data-table'
 	| 'module-settings';
 
-type ModuleName = 'insights' | 'external-secrets' | 'community-packages' | 'data-store';
+type ModuleName = 'insights' | 'external-secrets' | 'community-packages' | 'data-table';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

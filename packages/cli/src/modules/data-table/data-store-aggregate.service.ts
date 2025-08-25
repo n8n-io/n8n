@@ -14,7 +14,7 @@ export class DataStoreAggregateService {
 		private readonly projectService: ProjectService,
 		private readonly logger: Logger,
 	) {
-		this.logger = this.logger.scoped('data-store');
+		this.logger = this.logger.scoped('data-table');
 	}
 	async start() {}
 	async shutdown() {}
