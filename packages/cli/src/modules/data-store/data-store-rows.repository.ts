@@ -136,10 +136,10 @@ export class DataStoreRowsRepository {
 		const selectColumns = ['id', ...escapedColumns];
 
 		for (const column of columns) {
-			if (setData[column.name]) {
+			if (column.name in setData) {
 				setData[column.name] = normalizeValue(setData[column.name], column.type, dbType);
 			}
-			if (whereData[column.name]) {
+			if (column.name in whereData) {
 				whereData[column.name] = normalizeValue(whereData[column.name], column.type, dbType);
 			}
 		}
