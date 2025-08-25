@@ -94,11 +94,6 @@ jobs:
           docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:beta" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:next" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
 
-      - name: Tag experiment Docker image
-        if: needs.validate-inputs.outputs.release_channel == 'experiment'
-        run: |
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:experiment" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-
   release-to-github-container-registry:
     name: Release to GitHub Container Registry
     runs-on: ubuntu-latest
