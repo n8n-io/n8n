@@ -80,7 +80,9 @@ describe('SettingsSso View', () => {
 
 			const pageRedirectionHelper = usePageRedirectionHelper();
 
-			const { getByTestId } = renderView();
+			const { getByTestId, queryByTestId } = renderView();
+
+			expect(queryByTestId('sso-auth-protocol-select')).not.toBeInTheDocument();
 
 			const actionBox = getByTestId('sso-content-unlicensed');
 			expect(actionBox).toBeInTheDocument();
@@ -95,7 +97,10 @@ describe('SettingsSso View', () => {
 
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 
-			const { getAllByTestId } = renderView();
+			const { getAllByTestId, getByTestId } = renderView();
+
+			const authProtocolSelect = getByTestId('sso-auth-protocol-select');
+			expect(authProtocolSelect).toBeInTheDocument();
 
 			expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(1);
 

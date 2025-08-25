@@ -73,7 +73,7 @@ const validateName = () => {
 	}
 };
 
-const onInput = debounce(validateName, { debounceTime: 300 });
+const onInput = debounce(validateName, { debounceTime: 100 });
 </script>
 
 <template>
@@ -89,6 +89,7 @@ const onInput = debounce(validateName, { debounceTime: 300 });
 				<template #trigger>
 					<N8nIconButton
 						data-test-id="data-store-add-column-trigger-button"
+						text
 						icon="plus"
 						type="tertiary"
 					/>
@@ -168,7 +169,7 @@ const onInput = debounce(validateName, { debounceTime: 300 });
 	padding: var(--spacing-2xs);
 	border: var(--border-base);
 	border-left: none;
-	height: 50px;
+	height: 38px;
 }
 
 .popover-content {

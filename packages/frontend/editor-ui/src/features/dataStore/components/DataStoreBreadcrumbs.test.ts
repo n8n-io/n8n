@@ -153,7 +153,7 @@ describe('DataStoreBreadcrumbs', () => {
 			const datastoresLink = getByText('Data Stores');
 			await userEvent.click(datastoresLink);
 
-			expect(mockRouter.push).toHaveBeenCalledWith('/projects/project-1/datastores');
+			expect(mockRouter.push).toHaveBeenCalledWith('/projects/project-1/datatables');
 		});
 
 		it('should render DataStoreActions component that can trigger navigation', () => {

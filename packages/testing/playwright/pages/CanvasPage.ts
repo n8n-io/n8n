@@ -77,6 +77,18 @@ export class CanvasPage extends BasePage {
 		await this.nodeCreatorSubItem(subItemText).click();
 	}
 
+	async addActionNode(searchText: string, subItemText: string): Promise<void> {
+		await this.addNode(searchText);
+		await this.page.getByText('Actions').click();
+		await this.nodeCreatorSubItem(subItemText).click();
+	}
+
+	async addTriggerNode(searchText: string, subItemText: string): Promise<void> {
+		await this.addNode(searchText);
+		await this.page.getByText('Triggers').click();
+		await this.nodeCreatorSubItem(subItemText).click();
+	}
+
 	async deleteNodeByName(nodeName: string): Promise<void> {
 		await this.nodeDeleteButton(nodeName).click();
 	}
@@ -422,5 +434,16 @@ export class CanvasPage extends BasePage {
 		};
 		await this.canvasPane().focus();
 		await this.page.keyboard.press(keyMap[direction]);
+	}
+
+	/**
+	 * Visit the workflow page with a specific timestamp for NPS survey testing.
+	 * Uses Playwright's clock API to set a fixed time.
+	 */
+	async visitWithTimestamp(timestamp: number): Promise<void> {
+		// Set fixed time using Playwright's clock API
+		await this.page.clock.setFixedTime(timestamp);
+
+		await this.page.goto('/workflow/new');
 	}
 }

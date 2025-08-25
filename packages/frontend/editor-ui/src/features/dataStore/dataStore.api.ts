@@ -98,6 +98,36 @@ export const addDataStoreColumnApi = async (
 	);
 };
 
+export const deleteDataStoreColumnApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	projectId: string,
+	columnId: string,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/data-stores/${dataStoreId}/columns/${columnId}`,
+	);
+};
+
+export const moveDataStoreColumnApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	projectId: string,
+	columnId: string,
+	targetIndex: number,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-stores/${dataStoreId}/columns/${columnId}/move`,
+		{
+			targetIndex,
+		},
+	);
+};
+
 export const getDataStoreRowsApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
@@ -121,7 +151,7 @@ export const insertDataStoreRowApi = async (
 	row: DataStoreRow,
 	projectId: string,
 ) => {
-	return await makeRestApiRequest<boolean>(
+	return await makeRestApiRequest<number[]>(
 		context,
 		'POST',
 		`/projects/${projectId}/data-stores/${dataStoreId}/insert`,
@@ -131,20 +161,20 @@ export const insertDataStoreRowApi = async (
 	);
 };
 
-export const upsertDataStoreRowsApi = async (
+export const updateDataStoreRowsApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
-	rows: DataStoreRow[],
+	rowId: number,
+	rowData: DataStoreRow,
 	projectId: string,
-	matchFields: string[] = ['id'],
 ) => {
 	return await makeRestApiRequest<boolean>(
 		context,
-		'POST',
-		`/projects/${projectId}/data-stores/${dataStoreId}/upsert`,
+		'PATCH',
+		`/projects/${projectId}/data-stores/${dataStoreId}/rows`,
 		{
-			rows,
-			matchFields,
+			filter: { id: rowId },
+			data: rowData,
 		},
 	);
 };

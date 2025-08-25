@@ -1,0 +1,27 @@
+{
+    "type": "object",
+    "properties": {
+        "disabled": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "localized": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "omitted": {
+            "type": "boolean"
+        },
+        "required": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

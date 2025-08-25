@@ -1,11 +1,11 @@
 import {
 	DATA_STORE_COLUMN_REGEX,
-	type DataStoreRows,
 	type DataStoreCreateColumnSchema,
 	type DataStoreColumn,
 } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
+import type { DataStoreColumnJsType, DataStoreRows, DataStoreRowWithId } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -18,7 +18,7 @@ export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[
 
 		switch (col.type) {
 			case 'number':
-				return name.int;
+				return name.double;
 			case 'boolean':
 				return name.bool;
 			case 'string':
@@ -39,7 +39,17 @@ function dataStoreColumnTypeToSql(
 		case 'string':
 			return 'TEXT';
 		case 'number':
-			return 'FLOAT';
+			switch (dbType) {
+				case 'postgres':
+					return 'DOUBLE PRECISION';
+				case 'mysql':
+				case 'mariadb':
+					return 'DOUBLE';
+				case 'sqlite':
+					return 'REAL';
+				default:
+					return 'DOUBLE';
+			}
 		case 'boolean':
 			return 'BOOLEAN';
 		case 'date':
@@ -88,80 +98,6 @@ export function deleteColumnQuery(
 	return `ALTER TABLE ${quotedTableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
 }
 
-export function buildInsertQuery(
-	tableName: DataStoreUserTableName,
-	rows: DataStoreRows,
-	columns: Array<{ name: string; type: string }>,
-	dbType: DataSourceOptions['type'] = 'sqlite',
-): [string, unknown[]] {
-	if (rows.length === 0 || Object.keys(rows[0]).length === 0) {
-		return ['', []];
-	}
-
-	const keys = Object.keys(rows[0]);
-	const quotedKeys = keys.map((key) => quoteIdentifier(key, dbType)).join(', ');
-	const quotedTableName = quoteIdentifier(tableName, dbType);
-
-	const columnTypeMap = buildColumnTypeMap(columns);
-	const parameters: unknown[] = [];
-	const valuePlaceholders: string[] = [];
-	let placeholderIndex = 1;
-
-	for (const row of rows) {
-		const rowPlaceholders = keys.map((key) => {
-			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
-			parameters.push(value);
-			return getPlaceholder(placeholderIndex++, dbType);
-		});
-		valuePlaceholders.push(`(${rowPlaceholders.join(', ')})`);
-	}
-
-	const query = `INSERT INTO ${quotedTableName} (${quotedKeys}) VALUES ${valuePlaceholders.join(', ')}`;
-	return [query, parameters];
-}
-
-export function buildUpdateQuery(
-	tableName: DataStoreUserTableName,
-	row: Record<string, unknown>,
-	columns: Array<{ name: string; type: string }>,
-	matchFields: string[],
-	dbType: DataSourceOptions['type'] = 'sqlite',
-): [string, unknown[]] {
-	if (Object.keys(row).length === 0 || matchFields.length === 0) {
-		return ['', []];
-	}
-
-	const updateKeys = Object.keys(row).filter((key) => !matchFields.includes(key));
-	if (updateKeys.length === 0) {
-		return ['', []];
-	}
-
-	const quotedTableName = quoteIdentifier(tableName, dbType);
-	const columnTypeMap = buildColumnTypeMap(columns);
-
-	const parameters: unknown[] = [];
-	let placeholderIndex = 1;
-
-	const setClause = updateKeys
-		.map((key) => {
-			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
-			parameters.push(value);
-			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
-		})
-		.join(', ');
-
-	const whereClause = matchFields
-		.map((key) => {
-			const value = normalizeValue(row[key], columnTypeMap[key], dbType);
-			parameters.push(value);
-			return `${quoteIdentifier(key, dbType)} = ${getPlaceholder(placeholderIndex++, dbType)}`;
-		})
-		.join(' AND ');
-
-	const query = `UPDATE ${quotedTableName} SET ${setClause} WHERE ${whereClause}`;
-	return [query, parameters];
-}
-
 export function splitRowsByExistence(
 	existing: Array<Record<string, unknown>>,
 	matchFields: string[],
@@ -201,8 +137,59 @@ export function quoteIdentifier(name: string, dbType: DataSourceOptions['type'])
 	}
 }
 
-export function toTableName(dataStoreId: string): DataStoreUserTableName {
-	return `data_store_user_${dataStoreId}`;
+type WithInsertId = { insertId: number };
+type WithRowId = { id: number };
+
+const isArrayOf = <T>(data: unknown, itemGuard: (x: unknown) => x is T): data is T[] =>
+	Array.isArray(data) && data.every(itemGuard);
+
+const isNumber = (value: unknown): value is number => {
+	return typeof value === 'number' && Number.isFinite(value);
+};
+
+function hasInsertId(data: unknown): data is WithInsertId {
+	return typeof data === 'object' && data !== null && 'insertId' in data && isNumber(data.insertId);
+}
+
+function hasRowId(data: unknown): data is WithRowId {
+	return typeof data === 'object' && data !== null && 'id' in data && isNumber(data.id);
+}
+
+export function extractReturningData(raw: unknown): DataStoreRowWithId[] {
+	if (!isArrayOf(raw, hasRowId)) {
+		throw new UnexpectedError(
+			'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+		);
+	}
+
+	return raw;
+}
+
+export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type']): number[] {
+	switch (dbType) {
+		case 'postgres':
+		case 'mariadb': {
+			if (!isArrayOf(raw, hasRowId)) {
+				throw new UnexpectedError(
+					'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+				);
+			}
+			return raw.map((r) => r.id);
+		}
+		case 'mysql': {
+			if (!hasInsertId(raw)) {
+				throw new UnexpectedError('Expected INSERT INTO raw.insertId: number for MySQL');
+			}
+			return [raw.insertId];
+		}
+		case 'sqlite':
+		default: {
+			if (!isNumber(raw)) {
+				throw new UnexpectedError('Expected INSERT INTO raw to be a number for SQLite');
+			}
+			return [raw];
+		}
+	}
 }
 
 export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
@@ -242,38 +229,32 @@ export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 	});
 }
 
-function normalizeValue(
-	value: unknown,
+export function normalizeValue(
+	value: DataStoreColumnJsType | null,
 	columnType: string | undefined,
 	dbType: DataSourceOptions['type'],
-): unknown {
+): DataStoreColumnJsType | null {
 	if (['mysql', 'mariadb'].includes(dbType)) {
 		if (columnType === 'date') {
-			if (
-				value instanceof Date ||
-				(typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/))
-			) {
-				return toMySQLDateTimeString(value);
+			if (value instanceof Date) {
+				return value;
+			} else if (typeof value === 'string') {
+				const date = new Date(value);
+				if (!isNaN(date.getTime())) {
+					return date;
+				}
 			}
 		}
 	}
-	return value;
-}
 
-function toMySQLDateTimeString(date: Date | string, convertFromDate = true): string {
-	const dateString = convertFromDate
-		? date instanceof Date
-			? date.toISOString()
-			: date
-		: (date as string);
-	return dateString.replace('T', ' ').replace('Z', '');
+	return value;
 }
 
 export function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
 	return dbType.includes('postgres') ? `$${index}` : '?';
 }
 
-function buildColumnTypeMap(
+export function buildColumnTypeMap(
 	columns: Array<{ name: string; type: string }>,
 ): Record<string, string> {
 	return Object.fromEntries(columns.map((col) => [col.name, col.type]));

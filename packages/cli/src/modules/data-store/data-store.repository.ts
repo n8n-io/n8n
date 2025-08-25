@@ -10,7 +10,6 @@ import { UnexpectedError } from 'n8n-workflow';
 import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStore } from './data-store.entity';
-import { toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataStore> {
@@ -32,30 +31,28 @@ export class DataStoreRepository extends Repository<DataStore> {
 			await em.insert(DataStore, dataStore);
 			dataStoreId = dataStore.id;
 
-			const tableName = toTableName(dataStore.id);
 			const queryRunner = em.queryRunner;
 			if (!queryRunner) {
 				throw new UnexpectedError('QueryRunner is not available');
 			}
 
-			if (columns.length === 0) {
-				return;
-			}
-
 			// insert columns
 			const columnEntities = columns.map((col, index) =>
 				em.create(DataStoreColumn, {
+					dataStoreId,
 					name: col.name,
 					type: col.type,
-					dataStoreId: dataStore.id,
 					index: col.index ?? index,
 				}),
 			);
-			await em.insert(DataStoreColumn, columnEntities);
 
-			// create user table
+			if (columnEntities.length > 0) {
+				await em.insert(DataStoreColumn, columnEntities);
+			}
+
+			// create user table (will create empty table with just id column if no columns)
 			await this.dataStoreRowsRepository.createTableWithColumns(
-				tableName,
+				dataStoreId,
 				columnEntities,
 				queryRunner,
 			);
@@ -82,7 +79,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 			}
 
 			await em.delete(DataStore, { id: dataStoreId });
-			await queryRunner.dropTable(toTableName(dataStoreId), true);
+			await this.dataStoreRowsRepository.dropTable(dataStoreId, queryRunner);
 
 			return true;
 		});
@@ -114,7 +111,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 			let changed = false;
 			for (const match of existingTables) {
 				const result = await em.delete(DataStore, { id: match.id });
-				await queryRunner.dropTable(toTableName(match.id), true);
+				await this.dataStoreRowsRepository.dropTable(match.id, queryRunner);
 				changed = changed || (result.affected ?? 0) > 0;
 			}
 
@@ -222,8 +219,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 				'dataStore',
 				...this.getDataStoreColumnFields('data_store_column'),
 				...this.getProjectFields('project'),
-			])
-			.addOrderBy('data_store_column.index', 'ASC');
+			]);
 	}
 
 	private getDataStoreColumnFields(alias: string): string[] {
@@ -233,6 +229,7 @@ export class DataStoreRepository extends Repository<DataStore> {
 			`${alias}.type`,
 			`${alias}.createdAt`,
 			`${alias}.updatedAt`,
+			`${alias}.index`,
 		];
 	}
 
