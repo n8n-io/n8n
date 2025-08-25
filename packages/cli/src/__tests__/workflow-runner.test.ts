@@ -1,4 +1,5 @@
 import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { type User, type ExecutionEntity, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Response } from 'express';
@@ -333,7 +334,7 @@ describe('workflow timeout with startedAt', () => {
 		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
 
 		// Mock config to return a workflow timeout of 10 seconds
-		jest.spyOn(config, 'getEnv').mockReturnValue(10);
+		Container.get(GlobalConfig).executions.timeout = 10;
 
 		const startedAt = new Date(Date.now() - 5000); // 5 seconds ago
 		const data = mock<IWorkflowExecutionDataProcess>({
@@ -389,7 +390,7 @@ describe('workflow timeout with startedAt', () => {
 		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
 
 		// Mock config to return a workflow timeout of 10 seconds
-		jest.spyOn(config, 'getEnv').mockReturnValue(10);
+		Container.get(GlobalConfig).executions.timeout = 10;
 
 		const startedAt = new Date(Date.now() - 15000); // 15 seconds ago (timeout already elapsed)
 		const data = mock<IWorkflowExecutionDataProcess>({
@@ -436,7 +437,7 @@ describe('workflow timeout with startedAt', () => {
 		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
 
 		// Mock config to return a workflow timeout of 10 seconds
-		jest.spyOn(config, 'getEnv').mockReturnValue(10);
+		Container.get(GlobalConfig).executions.timeout = 10;
 
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: {
