@@ -484,7 +484,7 @@ const onSelectionChanged = () => {
 	const newSelectedIds = new Set<number>();
 
 	selectedNodes.forEach((node) => {
-		if (node.data?.id && typeof node.data.id === 'number') {
+		if (typeof node.data?.id === 'number') {
 			newSelectedIds.add(node.data.id);
 		}
 	});
@@ -533,7 +533,7 @@ const handleDeleteSelected = async () => {
 };
 
 const handleClearSelection = () => {
-	selectedRowIds.value.clear();
+	selectedRowIds.value = new Set();
 	if (gridApi.value) {
 		gridApi.value.deselectAll();
 	}

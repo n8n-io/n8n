@@ -22,7 +22,7 @@ describe('SelectedItemsInfo', () => {
 	});
 
 	it('should render when selectedCount is greater than 0', () => {
-		const { getByTestId, getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				selectedCount: 3,
 			},
