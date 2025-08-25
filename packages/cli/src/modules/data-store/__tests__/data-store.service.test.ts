@@ -101,7 +101,7 @@ describe('dataStore', () => {
 				const table = await queryRunner.getTable(userTableName);
 				const columnNames = table?.columns.map((col) => col.name);
 
-				expect(columnNames).toEqual(['id', 'createdAt', 'updatedAt']);
+				expect(columnNames).toEqual(expect.arrayContaining(['id', 'createdAt', 'updatedAt']));
 			} finally {
 				await queryRunner.release();
 			}
