@@ -4,14 +4,16 @@ import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { BaseEntity } from '@n8n/typeorm';
 
-const DATA_TABLE_WARNING_MESSAGE = `The data table module is experimental and subject to change.
+const YELLOW = '\x1b[33m';
+const CLEAR = '\x1b[0m';
+const DATA_TABLE_WARNING_MESSAGE = `[Data Table] The data table module is experimental and subject to change.
 Any tables added before the official release may become inaccessible at any point. Use at your own risk.`;
 
 @BackendModule({ name: 'data-store' })
 export class DataStoreModule implements ModuleInterface {
 	async init() {
-		const logger = Container.get(Logger).scoped('data-table');
-		logger.warn(DATA_TABLE_WARNING_MESSAGE);
+		const logger = Container.get(Logger).scoped('data-store');
+		logger.warn(`${YELLOW}${DATA_TABLE_WARNING_MESSAGE}${CLEAR}`);
 
 		await import('./data-store.controller');
 		await import('./data-store-aggregate.controller');
