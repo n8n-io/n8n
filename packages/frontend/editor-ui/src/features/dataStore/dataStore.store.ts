@@ -13,6 +13,7 @@ import {
 	getDataStoreRowsApi,
 	insertDataStoreRowApi,
 	updateDataStoreRowsApi,
+	deleteDataStoreRowsApi,
 } from '@/features/dataStore/dataStore.api';
 import type {
 	DataStore,
@@ -208,6 +209,10 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		);
 	};
 
+	const deleteRows = async (dataStoreId: string, projectId: string, rowIds: number[]) => {
+		return await deleteDataStoreRowsApi(rootStore.restApiContext, dataStoreId, rowIds, projectId);
+	};
+
 	return {
 		dataStores,
 		totalCount,
@@ -223,5 +228,6 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		fetchDataStoreContent,
 		insertEmptyRow,
 		updateRow,
+		deleteRows,
 	};
 });

@@ -2,7 +2,7 @@ import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import { testDb, randomValidPassword, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
+import { ApiKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	getApiKeyScopesForRole,
@@ -59,7 +59,7 @@ describe('Owner shell', () => {
 	let ownerShell: User;
 
 	beforeEach(async () => {
-		ownerShell = await createUserShell(GLOBAL_OWNER_ROLE);
+		ownerShell = await createUserShell('global:owner');
 	});
 
 	test('POST /api-keys should create an api key with no expiration', async () => {
@@ -304,9 +304,9 @@ describe('Owner shell', () => {
 
 		const scopes = apiKeyScopesResponse.body.data as ApiKeyScope[];
 
-		const scopesForRole = getApiKeyScopesForRole(ownerShell);
+		const scopesForRole = getApiKeyScopesForRole(ownerShell.role);
 
-		expect(scopes.sort()).toEqual(scopesForRole.sort());
+		expect(scopes).toEqual(scopesForRole);
 	});
 });
 
@@ -317,7 +317,7 @@ describe('Member', () => {
 	beforeEach(async () => {
 		member = await createUser({
 			password: memberPassword,
-			role: GLOBAL_MEMBER_ROLE,
+			role: 'global:member',
 		});
 		await utils.setInstanceOwnerSetUp(true);
 	});
@@ -328,7 +328,6 @@ describe('Member', () => {
 			.post('/api-keys')
 			.send({ label: 'My API Key', expiresAt: null, scopes: ['workflow:create'] });
 
-		console.log(newApiKeyResponse.body);
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKeyResponse.body.data.apiKey).toBeDefined();
 		expect(newApiKeyResponse.body.data.apiKey).not.toBeNull();
@@ -493,8 +492,8 @@ describe('Member', () => {
 
 		const scopes = apiKeyScopesResponse.body.data as ApiKeyScope[];
 
-		const scopesForRole = getApiKeyScopesForRole(member);
+		const scopesForRole = getApiKeyScopesForRole(member.role);
 
-		expect(scopes.sort()).toEqual(scopesForRole.sort());
+		expect(scopes).toEqual(scopesForRole);
 	});
 });

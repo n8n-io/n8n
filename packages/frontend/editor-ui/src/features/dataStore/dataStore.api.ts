@@ -178,3 +178,19 @@ export const updateDataStoreRowsApi = async (
 		},
 	);
 };
+
+export const deleteDataStoreRowsApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	rowIds: number[],
+	projectId: string,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/data-stores/${dataStoreId}/rows`,
+		{
+			ids: rowIds.join(','),
+		},
+	);
+};

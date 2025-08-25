@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import orderBy from 'lodash/orderBy';
 import type {
 	DataStore,
@@ -41,6 +41,7 @@ import {
 	CellStyleModule,
 } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
+import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
@@ -122,6 +123,12 @@ const pageSizeOptions = [10, 20, 50];
 const currentPage = ref(1);
 const pageSize = ref(20);
 const totalItems = ref(0);
+
+// Data store content
+const rows = ref<DataStoreRow[]>([]);
+
+const selectedRowIds = ref<Set<number>>(new Set());
+const selectedCount = computed(() => selectedRowIds.value.size);
 
 const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
@@ -486,6 +493,7 @@ const fetchDataStoreContent = async () => {
 		rowData.value = fetchedRows.data;
 		totalItems.value = fetchedRows.count;
 		refreshGridData();
+		handleClearSelection();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));
 	} finally {
@@ -507,7 +515,6 @@ const resetLastFocusedCell = () => {
 const initialize = async () => {
 	initColumnDefinitions();
 	await fetchDataStoreContent();
-	refreshGridData();
 };
 
 onMounted(async () => {
@@ -525,6 +532,68 @@ const onCellEditingStarted = (params: CellEditingStartedEvent<DataStoreRow>) => 
 const onCellEditingStopped = (params: CellEditingStoppedEvent<DataStoreRow>) => {
 	if (params.column.getColDef().cellDataType === 'text') {
 		isTextEditorOpen.value = false;
+	}
+};
+
+const onSelectionChanged = () => {
+	if (!gridApi.value) return;
+
+	const selectedNodes = gridApi.value.getSelectedNodes();
+	const newSelectedIds = new Set<number>();
+
+	selectedNodes.forEach((node) => {
+		if (typeof node.data?.id === 'number') {
+			newSelectedIds.add(node.data.id);
+		}
+	});
+
+	selectedRowIds.value = newSelectedIds;
+};
+
+const handleDeleteSelected = async () => {
+	if (selectedRowIds.value.size === 0) return;
+
+	const confirmResponse = await message.confirm(
+		i18n.baseText('dataStore.deleteRows.confirmation', {
+			adjustToNumber: selectedRowIds.value.size,
+			interpolate: { count: selectedRowIds.value.size },
+		}),
+		i18n.baseText('dataStore.deleteRows.title'),
+		{
+			confirmButtonText: i18n.baseText('generic.delete'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+
+	if (confirmResponse !== MODAL_CONFIRM) {
+		return;
+	}
+
+	try {
+		emit('toggleSave', true);
+		const idsToDelete = Array.from(selectedRowIds.value);
+		await dataStoreStore.deleteRows(props.dataStore.id, props.dataStore.projectId, idsToDelete);
+
+		rows.value = rows.value.filter((row) => !selectedRowIds.value.has(row.id as number));
+		rowData.value = rows.value;
+
+		await fetchDataStoreContent();
+
+		toast.showMessage({
+			title: i18n.baseText('dataStore.deleteRows.success'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataStore.deleteRows.error'));
+	} finally {
+		emit('toggleSave', false);
+	}
+};
+
+const handleClearSelection = () => {
+	selectedRowIds.value = new Set();
+	if (gridApi.value) {
+		gridApi.value.deselectAll();
 	}
 };
 </script>
@@ -552,7 +621,7 @@ const onCellEditingStopped = (params: CellEditingStoppedEvent<DataStoreRow>) => 
 				@cell-editing-started="onCellEditingStarted"
 				@cell-editing-stopped="onCellEditingStopped"
 				@column-header-clicked="resetLastFocusedCell"
-				@selection-changed="resetLastFocusedCell"
+				@selection-changed="onSelectionChanged"
 			/>
 		</div>
 		<div :class="$style.footer">
@@ -568,6 +637,11 @@ const onCellEditingStopped = (params: CellEditingStoppedEvent<DataStoreRow>) => 
 				@size-change="setPageSize"
 			/>
 		</div>
+		<SelectedItemsInfo
+			:selected-count="selectedCount"
+			@delete-selected="handleDeleteSelected"
+			@clear-selection="handleClearSelection"
+		/>
 	</div>
 </template>
 
