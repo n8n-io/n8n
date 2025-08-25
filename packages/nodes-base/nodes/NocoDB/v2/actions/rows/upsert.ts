@@ -48,7 +48,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			typeOptions: {
 				loadOptionsDependsOn: ['version', 'workspaceId', 'projectId', 'table', 'dataToSend'],
 				resourceMapper: {
-					resourceMapperMethod: 'getResouceMapperFields',
+					resourceMapperMethod: 'getResourceMapperFields',
 					mode: 'add',
 					fieldWords: {
 						singular: 'column',

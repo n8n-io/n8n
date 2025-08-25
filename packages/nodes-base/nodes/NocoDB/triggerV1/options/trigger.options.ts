@@ -91,7 +91,7 @@ export const TriggerOptions: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		required: true,
 		description:
-			'The field to watch for trigger to occurs. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			'The field to watch for trigger to occur. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		typeOptions: {
 			loadOptionsDependsOn: ['table.value'],
 		},
