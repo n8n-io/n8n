@@ -90,7 +90,6 @@ function onApprovePlan() {
 }
 
 function onRequestChanges() {
-	// Could be enhanced to prompt for specific changes
 	planStatus.value = 'rejected';
 }
 

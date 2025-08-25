@@ -45,26 +45,6 @@ export interface PlanChunk {
 }
 
 /**
- * Plan adjusted chunk for streaming
- */
-export interface PlanAdjustedChunk {
-	role: 'assistant';
-	type: 'plan-adjusted';
-	plan: unknown;
-}
-
-/**
- * Plan review chunk for streaming (interrupt)
- */
-export interface PlanReviewChunk {
-	role: 'assistant';
-	type: 'plan-review';
-	plan: unknown;
-	message: string;
-	resumable: boolean;
-}
-
-/**
  * Union type for all stream chunks
  */
 export type StreamChunk =
@@ -72,9 +52,7 @@ export type StreamChunk =
 	| ToolProgressChunk
 	| WorkflowUpdateChunk
 	| ExecutionRequestChunk
-	| PlanChunk
-	| PlanAdjustedChunk
-	| PlanReviewChunk;
+	| PlanChunk;
 
 /**
  * Stream output containing messages

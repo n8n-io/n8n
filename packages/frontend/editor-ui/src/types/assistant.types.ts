@@ -168,7 +168,7 @@ export namespace ChatRequest {
 	// API-only types
 	export interface PlanMessage {
 		role: 'assistant';
-		type: 'plan' | 'plan-adjusted' | 'plan-review';
+		type: 'plan';
 		plan: Array<{
 			nodeType: string;
 			nodeName: string;
@@ -279,8 +279,5 @@ export function isEndSessionMessage(
 }
 
 export function isPlanMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.PlanMessage {
-	return (
-		'type' in msg &&
-		(msg.type === 'plan' || msg.type === 'plan-adjusted' || msg.type === 'plan-review')
-	);
+	return 'type' in msg && msg.type === 'plan' && 'plan' in msg && Array.isArray(msg.plan);
 }

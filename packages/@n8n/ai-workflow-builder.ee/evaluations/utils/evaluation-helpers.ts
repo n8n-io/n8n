@@ -7,10 +7,11 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { join } from 'path';
 import pc from 'picocolors';
 
-import { anthropicClaudeSonnet4 } from '../../src/llm-config.js';
-import { ChatPayload, WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
-import type { Violation } from '../types/evaluation.js';
-import type { TestResult } from '../types/test-result.js';
+import { anthropicClaudeSonnet4 } from '../../src/llm-config';
+import type { ChatPayload } from '../../src/workflow-builder-agent';
+import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
+import type { Violation } from '../types/evaluation';
+import type { TestResult } from '../types/test-result';
 
 /**
  * Sets up the LLM with proper configuration

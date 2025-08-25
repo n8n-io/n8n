@@ -82,7 +82,7 @@ export const WorkflowState = Annotation.Root({
 		default: () => null,
 	}),
 	// Status of the workflow plan
-	planStatus: Annotation<'pending' | 'reviewing' | 'approved' | 'rejected' | null>({
+	planStatus: Annotation<'pending' | 'approved' | 'rejected' | null>({
 		reducer: (x, y) => y ?? x,
 		default: () => null,
 	}),
