@@ -8,7 +8,7 @@ import { join } from 'path';
 import pc from 'picocolors';
 
 import { anthropicClaudeSonnet4 } from '../../src/llm-config.js';
-import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
+import { ChatPayload, WorkflowBuilderAgent } from '../../src/workflow-builder-agent.js';
 import type { Violation } from '../types/evaluation.js';
 import type { TestResult } from '../types/test-result.js';
 
@@ -267,4 +267,19 @@ export function saveEvaluationResults(
 	writeFileSync(resultsPath, JSON.stringify(results, null, 2));
 
 	return { reportPath, resultsPath };
+}
+
+export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
+	for await (const _ of gen) {
+		/* consume all */
+	}
+}
+
+export function getChatPayload(message: string, id: string): ChatPayload {
+	return {
+		message,
+		workflowContext: {
+			currentWorkflow: { id, nodes: [], connections: {} },
+		},
+	};
 }
