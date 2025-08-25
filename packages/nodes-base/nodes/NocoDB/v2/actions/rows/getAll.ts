@@ -204,7 +204,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const downloadAttachments = this.getNodeParameter('downloadAttachments', i) as boolean;
 
 			if (downloadAttachments) {
-				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(
+				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', i) as string).split(
 					',',
 				);
 				const response = await downloadRecordAttachments.call(
