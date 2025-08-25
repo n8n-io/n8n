@@ -18,7 +18,6 @@ const LICENSE_TRUNCATION_LENGTH = 80;
 const PERMISSION_WORD_LIMIT = 12;
 const TEMP_LICENSE_FILE = 'licenses.json';
 const OUTPUT_FILE = 'THIRD_PARTY_LICENSES.md';
-const FORMAT_FILE = 'third-party-license-format.json';
 
 // Disable verbose output for cleaner logs
 $.verbose = false;
@@ -34,10 +33,10 @@ async function generateLicenseData() {
   echo(chalk.yellow('Step 1: Running license-checker...'));
   
   const licensesJsonPath = path.join(rootDir, TEMP_LICENSE_FILE);
-  const customFormatPath = path.join(__dirname, FORMAT_FILE);
+  const formatPath = path.join(__dirname, 'third-party-license-format.json');
 
   try {
-    await $`license-checker --json --customPath ${customFormatPath}`.pipe(fs.createWriteStream(licensesJsonPath));
+    await $`license-checker --json --customPath ${formatPath}`.pipe(fs.createWriteStream(licensesJsonPath));
     return licensesJsonPath;
   } catch (error) {
     echo(chalk.red('Error: Failed to run license-checker'));
@@ -192,6 +191,14 @@ The n8n software includes open source packages, libraries, and modules, each of 
  */
 async function main() {
   echo(chalk.blue('Generating third-party licenses for n8n...'));
+
+  // Check if license-checker is available
+  try {
+    await $`license-checker --version`;
+  } catch (error) {
+    echo(chalk.red('Error: license-checker is not installed. Run: npm install -g license-checker'));
+    process.exit(1);
+  }
 
   try {
     // Step 1: Generate license data

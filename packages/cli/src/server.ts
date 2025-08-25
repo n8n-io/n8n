@@ -263,6 +263,17 @@ export class Server extends AbstractServer {
 			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
 		);
 
+		// Serve third-party licenses file
+		const licenseFile = resolve(CLI_DIR, '..', '..', 'THIRD_PARTY_LICENSES.md');
+		this.app.get('/THIRD_PARTY_LICENSES.md', async (_, res) => {
+			try {
+				await fsAccess(licenseFile);
+				res.sendFile(licenseFile, { dotfiles: 'allow' });
+			} catch {
+				res.status(404).send('Third-party licenses file not found');
+			}
+		});
+
 		// ----------------------------------------
 		// Settings
 		// ----------------------------------------
