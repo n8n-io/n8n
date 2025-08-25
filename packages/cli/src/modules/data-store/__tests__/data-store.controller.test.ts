@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { DataStore, DataStoreCreateColumnSchema } from '@n8n/api-types';
 import {
 	createTeamProject,
@@ -271,7 +273,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 
 		expect(response.body.data.count).toBe(2);
 		expect(response.body.data.data).toHaveLength(2);
-		expect(response.body.data.data.map((f: any) => f.name).sort()).toEqual(
+		expect((response.body.data.data as DataStore[]).map((f) => f.name).sort()).toEqual(
 			['Personal Data Store 1', 'Personal Data Store 2'].sort(),
 		);
 	});
@@ -288,7 +290,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 
 		expect(response.body.data.count).toBe(2);
 		expect(response.body.data.data).toHaveLength(2);
-		expect(response.body.data.data.map((f: any) => f.name).sort()).toEqual(
+		expect((response.body.data.data as DataStore[]).map((f) => f.name).sort()).toEqual(
 			['Test Data Store 1', 'Test Data Store 2'].sort(),
 		);
 	});
@@ -305,7 +307,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 
 		expect(response.body.data.count).toBe(2);
 		expect(response.body.data.data).toHaveLength(2);
-		expect(response.body.data.data.map((f: any) => f.name).sort()).toEqual(
+		expect((response.body.data.data as DataStore[]).map((f) => f.name).sort()).toEqual(
 			['Test Data Store', 'Test Something Else'].sort(),
 		);
 	});
@@ -357,7 +359,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 
 		expect(response.body.data.count).toBe(5); // Total count should be 5
 		expect(response.body.data.data).toHaveLength(3); // But only 3 returned
-		expect(response.body.data.data.map((store: DataStore) => store.name)).toEqual([
+		expect((response.body.data.data as DataStore[]).map((store) => store.name)).toEqual([
 			'Data Store 5',
 			'Data Store 4',
 			'Data Store 3',
@@ -381,7 +383,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 
 		expect(response.body.data.count).toBe(5);
 		expect(response.body.data.data).toHaveLength(3);
-		expect(response.body.data.data.map((store: DataStore) => store.name)).toEqual([
+		expect((response.body.data.data as DataStore[]).map((store) => store.name)).toEqual([
 			'Data Store 3',
 			'Data Store 2',
 			'Data Store 1',
@@ -405,7 +407,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 
 		expect(response.body.data.count).toBe(5);
 		expect(response.body.data.data).toHaveLength(2);
-		expect(response.body.data.data.map((store: DataStore) => store.name)).toEqual([
+		expect((response.body.data.data as DataStore[]).map((store) => store.name)).toEqual([
 			'Data Store 4',
 			'Data Store 3',
 		]);
@@ -421,7 +423,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 			.query({ sortBy: 'name:asc' })
 			.expect(200);
 
-		expect(response.body.data.data.map((store: DataStore) => store.name)).toEqual([
+		expect((response.body.data.data as DataStore[]).map((store) => store.name)).toEqual([
 			'A Data Store',
 			'M Data Store',
 			'Z Data Store',
@@ -438,7 +440,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 			.query({ sortBy: 'name:desc' })
 			.expect(200);
 
-		expect(response.body.data.data.map((f: DataStore) => f.name)).toEqual([
+		expect((response.body.data.data as DataStore[]).map((f) => f.name)).toEqual([
 			'Z Data Store',
 			'M Data Store',
 			'A Data Store',
@@ -464,7 +466,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 			.query({ sortBy: 'updatedAt:desc' })
 			.expect(200);
 
-		expect(response.body.data.data.map((f: DataStore) => f.name)).toEqual([
+		expect((response.body.data.data as DataStore[]).map((f) => f.name)).toEqual([
 			'Newest Data Store',
 			'Middle Data Store',
 			'Older Data Store',

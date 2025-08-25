@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { AddDataStoreColumnDto, CreateDataStoreColumnDto } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Project } from '@n8n/db';
@@ -62,11 +63,8 @@ describe('dataStore', () => {
 					type: 'string',
 					index: 0,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					updatedAt: expect.any(Date),
 				},
 			]);
@@ -547,7 +545,6 @@ describe('dataStore', () => {
 					name: 'myColumn2',
 					type: 'number',
 					createdAt: c2.createdAt,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					updatedAt: expect.any(Date),
 				},
 			]);
@@ -653,7 +650,6 @@ describe('dataStore', () => {
 			expect(result.data).toHaveLength(1);
 			expect(result.data[0]).toEqual({
 				...dataStore,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				project: expect.any(Project),
 			});
 			expect(result.data[0].project).toEqual({
@@ -686,12 +682,10 @@ describe('dataStore', () => {
 			expect(result.data).toHaveLength(2);
 			expect(result.data).toContainEqual({
 				...dataStore2,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				project: expect.any(Project),
 			});
 			expect(result.data).toContainEqual({
 				...dataStore1,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				project: expect.any(Project),
 			});
 			expect(result.count).toEqual(2);
@@ -800,46 +794,34 @@ describe('dataStore', () => {
 			expect(resultColumns).toEqual(
 				expect.arrayContaining([
 					{
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						id: expect.any(String),
 						name: 'myColumn1',
 						type: 'string',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						createdAt: expect.any(Date),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						updatedAt: expect.any(Date),
 						index: 0,
 					},
 					{
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						id: expect.any(String),
 						name: 'myColumn2',
 						type: 'number',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						createdAt: expect.any(Date),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						updatedAt: expect.any(Date),
 						index: 1,
 					},
 					{
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						id: expect.any(String),
 						name: 'myColumn3',
 						type: 'number',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						createdAt: expect.any(Date),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						updatedAt: expect.any(Date),
 						index: 2,
 					},
 					{
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						id: expect.any(String),
 						name: 'myColumn4',
 						type: 'date',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						createdAt: expect.any(Date),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						updatedAt: expect.any(Date),
 						index: 3,
 					},
@@ -1293,23 +1275,17 @@ describe('dataStore', () => {
 			expect(data).toEqual([
 				{
 					id: 1,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					updatedAt: expect.any(String),
 				},
 				{
 					id: 2,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					updatedAt: expect.any(String),
 				},
 				{
 					id: 3,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					updatedAt: expect.any(String),
 				},
 			]);
@@ -2040,9 +2016,7 @@ describe('dataStore', () => {
 					c3: '1970-01-01T00:00:00.000Z',
 					c4: rows[0].c4,
 					id: 1,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					updatedAt: expect.any(String),
 				},
 				{
@@ -2051,9 +2025,7 @@ describe('dataStore', () => {
 					c3: '1970-01-01T00:00:00.001Z',
 					c4: rows[1].c4,
 					id: 2,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					updatedAt: expect.any(String),
 				},
 				{
@@ -2062,9 +2034,7 @@ describe('dataStore', () => {
 					c3: '1970-01-01T00:00:00.002Z',
 					c4: rows[2].c4,
 					id: 3,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					createdAt: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					updatedAt: expect.any(String),
 				},
 			]);
