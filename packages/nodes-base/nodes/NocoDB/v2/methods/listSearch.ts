@@ -15,8 +15,10 @@ export async function getWorkspaces(
 ): Promise<INodeListSearchResult> {
 	try {
 		const requestMethod = 'GET';
-		const endpoint = '/api/v1/workspaces/';
+		// no v3 api yet for workspaces list
+		const endpoint = '/api/v2/meta/workspaces';
 		const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
+		console.log('getWorkspaces responseData', responseData);
 		const results: INodeListSearchItems[] = responseData.list.map((i: IDataObject) => ({
 			name: i.title,
 			value: i.id,
@@ -41,11 +43,15 @@ export async function getBases(
 		let results: INodeListSearchItems[];
 		if (workspaceId && workspaceId !== 'none') {
 			const requestMethod = 'GET';
-			const endpoint = `/api/v1/workspaces/${workspaceId}/bases/`;
+			const endpoint =
+				version === 4
+					? `/api/v3/meta/workspaces/${workspaceId}/bases`
+					: `/api/v2/meta/workspaces/${workspaceId}/bases`;
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 			results = responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
 		} else {
 			const requestMethod = 'GET';
+			// no v3 api yet for bases list without workspace
 			const endpoint = version === 3 ? '/api/v2/meta/bases/' : '/api/v1/db/meta/projects/';
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 			results = responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
@@ -57,7 +63,7 @@ export async function getBases(
 	} catch (e) {
 		throw new NodeOperationError(
 			this.getNode(),
-			new Error(`Error while fetching ${version === 3 ? 'bases' : 'projects'}!`, {
+			new Error('Error while fetching bases!', {
 				cause: e,
 			}),
 			{
@@ -105,13 +111,9 @@ export async function getTables(
 			);
 		}
 	} else {
-		throw new NodeOperationError(
-			this.getNode(),
-			`No  ${version === 3 ? 'base' : 'project'} selected!`,
-			{
-				level: 'warning',
-			},
-		);
+		throw new NodeOperationError(this.getNode(), 'No base selected!', {
+			level: 'warning',
+		});
 	}
 }
 
