@@ -154,8 +154,8 @@ export class DataStoreService {
 	async updateRow(
 		dataStoreId: string,
 		projectId: string,
-		dto: UpdateDataStoreRowDto,
-		returnData: boolean = false,
+		dto: Omit<UpdateDataStoreRowDto, 'returnData'>,
+		returnData = false,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 

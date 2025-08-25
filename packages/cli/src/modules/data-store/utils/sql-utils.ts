@@ -210,12 +210,17 @@ export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 				}
 			}
 			if (type === 'date' && value !== null && value !== undefined) {
-				// Convert date objects or strings to ISO string
+				// Convert date objects or strings to dates in UTC
 				let dateObj: Date | null = null;
 
 				if (value instanceof Date) {
 					dateObj = value;
-				} else if (typeof value === 'string' || typeof value === 'number') {
+				} else if (typeof value === 'string') {
+					const parsed = new Date(value.endsWith('Z') ? value : value + 'Z');
+					if (!isNaN(parsed.getTime())) {
+						dateObj = parsed;
+					}
+				} else if (typeof value === 'number') {
 					const parsed = new Date(value);
 					if (!isNaN(parsed.getTime())) {
 						dateObj = parsed;

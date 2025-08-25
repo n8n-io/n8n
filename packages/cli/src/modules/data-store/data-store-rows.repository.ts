@@ -97,7 +97,7 @@ export class DataStoreRowsRepository {
 			const result = await query.execute();
 
 			if (useReturning) {
-				const returned = extractReturningData(result.raw);
+				const returned = normalizeRows(extractReturningData(result.raw), columns);
 				inserted.push.apply(inserted, returned);
 				continue;
 			}
@@ -133,7 +133,7 @@ export class DataStoreRowsRepository {
 		returnData: boolean = false,
 	) {
 		const dbType = this.dataSource.options.type;
-		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
+		const useReturning = dbType === 'postgres';
 
 		const table = this.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
@@ -150,8 +150,8 @@ export class DataStoreRowsRepository {
 
 		let affectedRows: DataStoreRowWithId[] = [];
 		if (!useReturning && returnData) {
-			// Engines without RETURNING support
-			// First select IDs of all rows matching the where clauses
+			// Only Postgres supports RETURNING statement on updates (with our typeorm),
+			// on other engines we must query the list of updates rows later by ID
 			affectedRows = await this.dataSource
 				.createQueryBuilder()
 				.select('id')
@@ -163,7 +163,7 @@ export class DataStoreRowsRepository {
 		const query = this.dataSource.createQueryBuilder().update(table).set(setData).where(whereData);
 
 		if (useReturning && returnData) {
-			query.returning(returnData ? selectColumns.join(',') : 'id');
+			query.returning(selectColumns.join(','));
 		}
 
 		const result = await query.execute();
