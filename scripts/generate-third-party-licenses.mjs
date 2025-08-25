@@ -25,6 +25,7 @@ $.verbose = false;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, '..');
+const cliDistDir = path.join(rootDir, 'packages', 'cli', 'dist');
 
 /**
  * Runs license-checker and saves output to temporary JSON file
@@ -212,7 +213,9 @@ async function main() {
     const { content, processedCount } = generateMarkdownContent(packages);
 
     // Step 4: Write to file
-    const outputPath = path.join(rootDir, OUTPUT_FILE);
+    // Ensure CLI dist directory exists
+    await fs.ensureDir(cliDistDir);
+    const outputPath = path.join(cliDistDir, OUTPUT_FILE);
     await fs.writeFile(outputPath, content);
 
     // Step 5: Clean up temporary file

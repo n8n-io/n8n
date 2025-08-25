@@ -264,7 +264,7 @@ export class Server extends AbstractServer {
 		);
 
 		// Serve third-party licenses file
-		const licenseFile = resolve(CLI_DIR, '..', '..', 'THIRD_PARTY_LICENSES.md');
+		const licenseFile = resolve(CLI_DIR, 'dist', 'THIRD_PARTY_LICENSES.md');
 		this.app.get('/THIRD_PARTY_LICENSES.md', async (_, res) => {
 			try {
 				await fsAccess(licenseFile);
