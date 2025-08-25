@@ -141,6 +141,36 @@ describe('RunDataTable.vue', () => {
 		});
 	});
 
+	it('uses i18n expression for empty object and empty string', () => {
+		const inputData = [
+			{
+				json: { emptyObject: {} }, // should render "{empty object}""
+			},
+			{
+				json: { emptyString: '' }, // should render "empty string"
+			},
+		];
+
+		const { container } = renderComponent({
+			props: { inputData },
+		});
+		const spans = container.textContent;
+
+		expect(spans).toContain('{empty object}');
+		expect(spans).toContain('empty');
+	});
+
+	it('only renders `[null]` for empty arrays', () => {
+		const inputData = { json: { null: null } }; // should not render "[null]"
+
+		const { container } = renderComponent({
+			props: { inputData: [inputData] },
+		});
+		const spans = container.textContent;
+
+		expect(spans).not.toContain('[null]');
+	});
+
 	it('inserts col elements in DOM to specify column widths when collapsing column name is specified', async () => {
 		const inputData = { json: { firstName: 'John', lastName: 'Doe' } };
 		const rendered = renderComponent({
