@@ -622,6 +622,12 @@ const onCellEditingStopped = (params: CellEditingStoppedEvent<DataStoreRow>) => 
 		border: none;
 	}
 
+	:global(.ag-header-cell[col-id='ag-Grid-SelectionColumn']) {
+		&:after {
+			display: none;
+		}
+	}
+
 	:global(.ag-cell[col-id='ag-Grid-SelectionColumn'].ag-cell-focus) {
 		outline: none;
 	}
