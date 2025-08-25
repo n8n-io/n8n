@@ -4,6 +4,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { ChatUI, RatingFeedback } from '@n8n/design-system';
 import BaseMessage from '@n8n/design-system/components/AskAssistantChat/messages/BaseMessage.vue';
+import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 
 interface NodesPlan {
@@ -29,7 +30,9 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
 const nodeTypesStore = useNodeTypesStore();
+const i18n = useI18n();
 const showControlsLocal = ref(props.showControls ?? true);
 
 const emit = defineEmits<{
@@ -78,10 +81,14 @@ function onRequestChanges() {
 			</li>
 		</ol>
 		<template v-if="showControls && showControlsLocal && !streaming">
-			Do you want to proceed with this plan?
+			{{ i18n.baseText('aiAssistant.builder.plan.intro') }}
 			<div :class="$style.controls">
-				<n8n-button type="primary" @click="onApprovePlan">Approve Plan</n8n-button>
-				<n8n-button type="secondary" @click="onRequestChanges">Request Changes</n8n-button>
+				<n8n-button type="primary" @click="onApprovePlan">{{
+					i18n.baseText('aiAssistant.builder.plan.approve')
+				}}</n8n-button>
+				<n8n-button type="secondary" @click="onRequestChanges">{{
+					i18n.baseText('aiAssistant.builder.plan.reject')
+				}}</n8n-button>
 			</div>
 		</template>
 	</BaseMessage>
@@ -101,7 +108,6 @@ function onRequestChanges() {
 }
 .nodeIcon {
 	padding: var(--spacing-3xs);
-	background: white;
 	border-radius: var(--border-radius-base);
 	border: 1px solid var(--color-foreground-base);
 	display: inline-flex;
