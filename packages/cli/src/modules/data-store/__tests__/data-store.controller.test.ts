@@ -2977,13 +2977,15 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			columns: [
 				{ name: 'name', type: 'string' },
 				{ name: 'age', type: 'number' },
+				{ name: 'active', type: 'boolean' },
+				{ name: 'birthday', type: 'date' },
 			],
-			data: [{ name: 'Alice', age: 30 }],
+			data: [{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') }],
 		});
 
 		const payload = {
 			filter: { name: 'Alice' },
-			data: { age: 31 },
+			data: { name: 'Alicia', age: 31, active: false, birthday: new Date('1990-01-02') },
 		};
 
 		await authMemberAgent
@@ -2996,7 +2998,13 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
-		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
+		expect(readResponse.body.data.data[0]).toMatchObject({
+			id: 1,
+			name: 'Alicia',
+			age: 31,
+			active: false,
+			birthday: new Date('1990-01-02').toISOString(),
+		});
 	});
 
 	test('should update row if user has project:admin role in team project', async () => {
@@ -3156,7 +3164,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		);
 	});
 
-	test('should return empty array when no rows match the filter', async () => {
+	test('should return true when no rows match the filter', async () => {
 		const dataStore = await createDataStore(memberProject, {
 			columns: [
 				{ name: 'name', type: 'string' },
@@ -3175,7 +3183,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		expect(response.body.data).toEqual([]);
+		expect(response.body.data).toEqual(true);
 
 		const readResponse = await authMemberAgent
 			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)

@@ -18,11 +18,11 @@ import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreUserTableName } from './data-store.types';
 import {
 	addColumnQuery,
-	// buildColumnTypeMap,
 	deleteColumnQuery,
 	extractInsertedIds,
 	extractReturningData,
 	getPlaceholder,
+	normalizeRows,
 	normalizeValue,
 	quoteIdentifier,
 	splitRowsByExistence,
@@ -113,7 +113,11 @@ export class DataStoreRowsRepository {
 				continue;
 			}
 
-			const insertedRows = await this.getManyByIds(dataStoreId, ids, columns);
+			const insertedRows = (await this.getManyByIds(
+				dataStoreId,
+				ids,
+				columns,
+			)) as DataStoreRowWithId[];
 
 			inserted.push(...insertedRows);
 		}
@@ -135,21 +139,17 @@ export class DataStoreRowsRepository {
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const selectColumns = ['id', ...escapedColumns];
 
-		// TODO: I don't think we need this?
-		// const columnTypeMap = buildColumnTypeMap(columns);
-
-		// const setValues: Record<string, DataStoreColumnJsType | null> = {};
-		// for (const [key, value] of Object.entries(setData)) {
-		// 	setValues[key] = normalizeValue(value, columnTypeMap[key], dbType);
-		// }
-
-		// const normalizedWhereData: Record<string, DataStoreColumnJsType | null> = {};
-		// for (const [field, value] of Object.entries(whereData)) {
-		// 	normalizedWhereData[field] = normalizeValue(value, columnTypeMap[field], dbType);
-		// }
+		for (const column of columns) {
+			if (setData[column.name]) {
+				setData[column.name] = normalizeValue(setData[column.name], column.type, dbType);
+			}
+			if (whereData[column.name]) {
+				whereData[column.name] = normalizeValue(whereData[column.name], column.type, dbType);
+			}
+		}
 
 		let affectedRows: DataStoreRowWithId[] = [];
-		if (!useReturning) {
+		if (!useReturning && returnData) {
 			// Engines without RETURNING support
 			// First select IDs of all rows matching the where clauses
 			affectedRows = await this.dataSource
@@ -162,18 +162,18 @@ export class DataStoreRowsRepository {
 
 		const query = this.dataSource.createQueryBuilder().update(table).set(setData).where(whereData);
 
-		if (useReturning) {
+		if (useReturning && returnData) {
 			query.returning(returnData ? selectColumns.join(',') : 'id');
 		}
 
 		const result = await query.execute();
 
-		if (useReturning) {
-			return extractReturningData(result.raw);
+		if (!returnData) {
+			return true;
 		}
 
-		if (!returnData) {
-			return affectedRows;
+		if (useReturning) {
+			return extractReturningData(result.raw);
 		}
 
 		const ids = affectedRows.map((row) => row.id);
@@ -286,17 +286,7 @@ export class DataStoreRowsRepository {
 			.where({ id: In(ids) })
 			.getRawMany<DataStoreRowWithId>();
 
-		return updatedRows.map((row) => {
-			columns.forEach((column) => {
-				const cell = row[column.name];
-				if (column.type === 'boolean' && typeof cell === 'number') {
-					row[column.name] = Boolean(cell); // Boolean columns on sqlite / mySQL / mariaDB
-				} else if (column.type === 'date' && typeof cell === 'string') {
-					row[column.name] = new Date(cell); // Sqlite returns dates as ISO-8601 strings
-				}
-			});
-			return row;
-		});
+		return normalizeRows(updatedRows, columns);
 	}
 
 	async getRowIds(dataStoreId: string, dto: ListDataStoreContentQueryDto) {

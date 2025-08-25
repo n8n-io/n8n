@@ -222,7 +222,7 @@ export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 					}
 				}
 
-				normalized[key] = dateObj ? dateObj.toISOString() : value;
+				normalized[key] = dateObj ?? value;
 			}
 		}
 		return normalized;
@@ -252,10 +252,4 @@ export function normalizeValue(
 
 export function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
 	return dbType.includes('postgres') ? `$${index}` : '?';
-}
-
-export function buildColumnTypeMap(
-	columns: Array<{ name: string; type: string }>,
-): Record<string, string> {
-	return Object.fromEntries(columns.map((col) => [col.name, col.type]));
 }
