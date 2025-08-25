@@ -85,7 +85,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 				config,
 				'add_nodes',
 				DISPLAY_TITLE,
-				getCustomDisplayTitle({ name: input.name }),
+				getCustomDisplayTitle(input),
 			);
 
 			try {
