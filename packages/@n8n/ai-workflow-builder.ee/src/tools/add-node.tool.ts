@@ -70,7 +70,7 @@ function buildResponseMessage(addedNode: AddedNode, nodeTypes: INodeTypeDescript
 export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 	return tool(
 		async (input, config) => {
-			const reporter = createProgressReporter(config, 'add_nodes');
+			const reporter = createProgressReporter(config, 'add_nodes', 'Adding nodes');
 
 			try {
 				// Validate input using Zod schema

@@ -13,9 +13,6 @@ import {
 	type NodeExecutionSchema,
 } from 'n8n-workflow';
 
-import { workflowNameChain } from '@/chains/workflow-name';
-import { DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS, MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
-
 import { conversationCompactChain } from './chains/conversation-compact';
 import { LLMServiceError, ValidationError } from './errors';
 import { createAddNodeTool } from './tools/add-node.tool';
@@ -31,6 +28,9 @@ import { createStreamProcessor, formatMessages } from './utils/stream-processor'
 import { extractLastTokenUsage } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
+
+import { workflowNameChain } from '@/chains/workflow-name';
+import { DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS, MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 
 export interface WorkflowBuilderAgentConfig {
 	parsedNodeTypes: INodeTypeDescription[];

@@ -52,7 +52,7 @@ export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger
 	return tool(
 		// eslint-disable-next-line complexity
 		(input, config) => {
-			const reporter = createProgressReporter(config, 'connect_nodes');
+			const reporter = createProgressReporter(config, 'connect_nodes', 'Connecting nodes');
 
 			try {
 				// Validate input using Zod schema

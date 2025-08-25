@@ -75,7 +75,7 @@ function buildResponseMessage(
 export function createRemoveNodeTool(_logger?: Logger) {
 	return tool(
 		(input, config) => {
-			const reporter = createProgressReporter(config, 'remove_node');
+			const reporter = createProgressReporter(config, 'remove_node', 'Removing nodes');
 
 			try {
 				// Validate input using Zod schema

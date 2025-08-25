@@ -128,7 +128,7 @@ function extractNodeDetails(nodeType: INodeTypeDescription): NodeDetails {
 export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 	return tool(
 		(input: unknown, config) => {
-			const reporter = createProgressReporter(config, 'get_node_details');
+			const reporter = createProgressReporter(config, 'get_node_details', 'Getting nodes’ details');
 
 			try {
 				// Validate input using Zod schema

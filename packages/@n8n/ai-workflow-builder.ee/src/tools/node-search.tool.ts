@@ -114,7 +114,7 @@ function buildResponseMessage(
 export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]) {
 	return tool(
 		(input: unknown, config) => {
-			const reporter = createProgressReporter(config, 'search_nodes');
+			const reporter = createProgressReporter(config, 'search_nodes', 'Searching nodes');
 
 			try {
 				// Validate input using Zod schema

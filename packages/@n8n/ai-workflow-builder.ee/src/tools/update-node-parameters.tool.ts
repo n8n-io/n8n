@@ -122,7 +122,11 @@ export function createUpdateNodeParametersTool(
 ) {
 	return tool(
 		async (input, config) => {
-			const reporter = createProgressReporter(config, 'update_node_parameters');
+			const reporter = createProgressReporter(
+				config,
+				'update_node_parameters',
+				'Updating node parameters',
+			);
 
 			try {
 				// Validate input using Zod schema

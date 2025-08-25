@@ -14,6 +14,7 @@ import type {
 export function createProgressReporter<TToolName extends string = string>(
 	config: ToolRunnableConfig & LangGraphRunnableConfig,
 	toolName: TToolName,
+	displayTitle: string,
 ): ProgressReporter {
 	const toolCallId = config.toolCall?.id;
 
@@ -26,6 +27,7 @@ export function createProgressReporter<TToolName extends string = string>(
 			type: 'tool',
 			toolName,
 			toolCallId,
+			actionTitle: displayTitle,
 			status: 'running',
 			updates: [
 				{
@@ -41,6 +43,7 @@ export function createProgressReporter<TToolName extends string = string>(
 			type: 'tool',
 			toolName,
 			toolCallId,
+			actionTitle: displayTitle,
 			status: 'running',
 			updates: [
 				{
@@ -56,6 +59,7 @@ export function createProgressReporter<TToolName extends string = string>(
 			type: 'tool',
 			toolName,
 			toolCallId,
+			actionTitle: displayTitle,
 			status: 'completed',
 			updates: [
 				{
@@ -71,6 +75,7 @@ export function createProgressReporter<TToolName extends string = string>(
 			type: 'tool',
 			toolName,
 			toolCallId,
+			actionTitle: displayTitle,
 			status: 'error',
 			updates: [
 				{
