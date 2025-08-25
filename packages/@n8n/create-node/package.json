@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "publish:dry": "pnpm run build && pnpm pub --dry-run",
-    "start": "./bin/create.js"
+    "start": "node bin/create.js"
   },
   "repository": {
     "type": "git",
