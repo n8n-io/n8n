@@ -19,7 +19,12 @@ describe('dataStore.api', () => {
 
 			vi.mocked(makeRestApiRequest).mockResolvedValue(true);
 
-			const result = await deleteDataStoreRowsApi({}, dataStoreId, rowIds, projectId);
+			const result = await deleteDataStoreRowsApi(
+				{ baseUrl: '/rest', pushRef: 'test-push-ref' },
+				dataStoreId,
+				rowIds,
+				projectId,
+			);
 
 			expect(makeRestApiRequest).toHaveBeenCalledWith(
 				expect.anything(),
