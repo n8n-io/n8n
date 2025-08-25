@@ -52,7 +52,7 @@ const onSubmit = async () => {
 
 const onCancel = () => {
 	uiStore.closeModal(props.modalName);
-	void router.replace({ name: PROJECT_DATA_STORES });
+	redirectToDataStores();
 };
 
 const redirectToDataStores = () => {
