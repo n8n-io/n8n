@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { GLOBAL_MEMBER_ROLE, User, UserRepository } from '@n8n/db';
+import { User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
@@ -23,7 +23,6 @@ describe('UserService', () => {
 	const commonMockUser = Object.assign(new User(), {
 		id: uuid(),
 		password: 'passwordHash',
-		role: GLOBAL_MEMBER_ROLE,
 	});
 
 	describe('toPublic', () => {
@@ -36,7 +35,6 @@ describe('UserService', () => {
 				mfaRecoveryCodes: ['test'],
 				updatedAt: new Date(),
 				authIdentities: [],
-				role: GLOBAL_MEMBER_ROLE,
 			});
 
 			type MaybeSensitiveProperties = Partial<
@@ -57,17 +55,13 @@ describe('UserService', () => {
 			const scoped = await userService.toPublic(commonMockUser, { withScopes: true });
 			const unscoped = await userService.toPublic(commonMockUser);
 
-			expect(scoped.globalScopes).toEqual(GLOBAL_MEMBER_ROLE.scopes.map((s) => s.slug));
+			expect(scoped.globalScopes).toEqual([]);
 			expect(unscoped.globalScopes).toBeUndefined();
 		});
 
 		it('should add invite URL if requested', async () => {
-			const firstUser = Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE });
-			const secondUser = Object.assign(new User(), {
-				id: uuid(),
-				role: GLOBAL_MEMBER_ROLE,
-				isPending: true,
-			});
+			const firstUser = Object.assign(new User(), { id: uuid() });
+			const secondUser = Object.assign(new User(), { id: uuid(), isPending: true });
 
 			const withoutUrl = await userService.toPublic(secondUser);
 			const withUrl = await userService.toPublic(secondUser, {

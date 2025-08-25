@@ -9,7 +9,7 @@ const CLEAR = '\x1b[0m';
 const DATA_TABLE_WARNING_MESSAGE = `[Data Table] The data table module is experimental and subject to change.
 Any tables added before the official release may become inaccessible at any point. Use at your own risk.`;
 
-@BackendModule({ name: 'data-store' })
+@BackendModule({ name: 'data-table' })
 export class DataStoreModule implements ModuleInterface {
 	async init() {
 		const logger = Container.get(Logger).scoped('data-table');

@@ -1793,7 +1793,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 	test('should not transfer folder if license does not allow it', async () => {
 		testServer.license.disable('feat:folders');
 
-		const admin = await createUser({ role: { slug: 'global:admin' } });
+		const admin = await createUser({ role: 'global:admin' });
 		const sourceProject = await createTeamProject('source project', admin);
 		const destinationProject = await createTeamProject('destination project', member);
 		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
@@ -1996,7 +1996,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 
 	test('owner transfers folder from project they are not part of, e.g. test global cred sharing scope', async () => {
 		// ARRANGE
-		const admin = await createUser({ role: { slug: 'global:admin' } });
+		const admin = await createUser({ role: 'global:admin' });
 		const sourceProject = await createTeamProject('source project', admin);
 		const destinationProject = await createTeamProject('destination project', member);
 		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
@@ -2078,7 +2078,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 
 	test('admin transfers folder from project they are not part of, e.g. test global cred sharing scope', async () => {
 		// ARRANGE
-		const admin = await createUser({ role: { slug: 'global:admin' } });
+		const admin = await createUser({ role: 'global:admin' });
 		const sourceProject = await createTeamProject('source project', owner);
 		const destinationProject = await createTeamProject('destination project', owner);
 		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });

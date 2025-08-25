@@ -9,7 +9,7 @@ import type {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { AllRoleTypes, Scope } from '@n8n/permissions';
-import { ALL_ROLES, combineScopes, getAuthPrincipalScopes, getRoleScopes } from '@n8n/permissions';
+import { ALL_ROLES, combineScopes, getRoleScopes } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { License } from '@/license';
@@ -89,7 +89,7 @@ export class RoleService {
 		shared: SharedCredentials[] | SharedWorkflow[],
 		userProjectRelations: ProjectRelation[],
 	): Scope[] {
-		const globalScopes = getAuthPrincipalScopes(user, [type]);
+		const globalScopes = getRoleScopes(user.role, [type]);
 		const scopesSet: Set<Scope> = new Set(globalScopes);
 		for (const sharedEntity of shared) {
 			const pr = userProjectRelations.find(
