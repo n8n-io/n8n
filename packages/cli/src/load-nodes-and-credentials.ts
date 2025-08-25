@@ -1,4 +1,4 @@
-import { inTest, isContainedWithin, Logger } from '@n8n/backend-common';
+import { inTest, isContainedWithin, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import type ParcelWatcher from '@parcel/watcher';
@@ -30,8 +30,6 @@ import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-w
 import path from 'path';
 import picocolors from 'picocolors';
 
-import { CommunityPackagesConfig } from './community-packages/community-packages.config';
-
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 
 @Service()
@@ -58,6 +56,7 @@ export class LoadNodesAndCredentials {
 		private readonly errorReporter: ErrorReporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async init() {
@@ -90,12 +89,8 @@ export class LoadNodesAndCredentials {
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
-		if (!Container.get(CommunityPackagesConfig).preventLoading) {
-			// Load nodes from any other `n8n-nodes-*` packages in the download directory
-			// This includes the community nodes
-			await this.loadNodesFromNodeModules(
-				path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
-			);
+		for (const dir of this.moduleRegistry.loadDirs) {
+			await this.loadNodesFromNodeModules(dir);
 		}
 
 		await this.loadNodesFromCustomDirectories();

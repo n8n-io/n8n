@@ -100,10 +100,13 @@ export function isValueExpression(
 }
 
 export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObject[] =>
-	inputData.reduce<IDataObject[]>(
-		(acc, item) => (isJsonKeyObject(item) ? acc.concat(item.json) : acc),
-		[],
-	);
+	inputData.reduce<IDataObject[]>((acc, item) => {
+		if (isJsonKeyObject(item)) {
+			acc.push(item.json);
+		}
+
+		return acc;
+	}, []);
 
 export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 	return (

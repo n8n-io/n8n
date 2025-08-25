@@ -44,7 +44,11 @@ async function onUserMessage(content: string) {
 	if (isNewWorkflow) {
 		await workflowSaver.saveCurrentWorkflow();
 	}
-	builderStore.sendChatMessage({ text: content });
+
+	// If the workflow is empty, set the initial generation flag
+	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
+
+	builderStore.sendChatMessage({ text: content, initialGeneration: isInitialGeneration });
 }
 
 // Watch for workflow updates and apply them
@@ -70,6 +74,7 @@ watch(
 							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
 						});
+
 						// Track tool usage for telemetry
 						const newToolMessages = builderStore.toolMessages.filter(
 							(toolMsg) =>
@@ -92,6 +97,33 @@ watch(
 			});
 	},
 	{ deep: true },
+);
+
+// If this is the initial generation, streaming has ended, and there were workflow updates,
+// we want to save the workflow
+watch(
+	() => builderStore.streaming,
+	async () => {
+		if (
+			builderStore.initialGeneration &&
+			!builderStore.streaming &&
+			workflowsStore.workflow.nodes.length > 0
+		) {
+			// Check if the generation completed successfully (no error or cancellation)
+			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+			const successful =
+				lastMessage &&
+				lastMessage.type !== 'error' &&
+				!(lastMessage.type === 'text' && lastMessage.content === '[Task aborted]');
+
+			builderStore.initialGeneration = false;
+
+			// Only save if generation completed successfully
+			if (successful) {
+				await workflowSaver.saveCurrentWorkflow();
+			}
+		}
+	},
 );
 
 function onNewWorkflow() {

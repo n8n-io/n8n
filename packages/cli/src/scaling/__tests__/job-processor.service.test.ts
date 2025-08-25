@@ -23,6 +23,7 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 import { JobProcessor } from '../job-processor';
 import type { Job } from '../scaling.types';
+import { DataStoreProxyService } from '@/modules/data-store/data-store-proxy.service';
 
 mockInstance(VariablesService, {
 	getAllCached: jest.fn().mockResolvedValue([]),
@@ -32,6 +33,7 @@ mockInstance(ExternalSecretsProxy);
 mockInstance(WorkflowStaticDataService);
 mockInstance(WorkflowStatisticsService);
 mockInstance(ExternalHooks);
+mockInstance(DataStoreProxyService);
 
 const processRunExecutionDataMock = jest.fn();
 jest.mock('n8n-core', () => {

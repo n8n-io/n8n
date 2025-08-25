@@ -1,6 +1,5 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import type { GlobalRole } from '@n8n/permissions';
 import type { DeepPartial, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
@@ -56,22 +55,23 @@ export class UserRepository extends Repository<User> {
 				email,
 				password: Not(IsNull()),
 			},
-			relations: ['authIdentities'],
+			relations: ['authIdentities', 'role'],
 		});
 	}
 
 	/** Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }` */
 	async countUsersByRole() {
+		const escapedRoleSlug = this.manager.connection.driver.escape('roleSlug');
 		const rows = (await this.createQueryBuilder()
-			.select(['role', 'COUNT(role) as count'])
-			.groupBy('role')
-			.execute()) as Array<{ role: GlobalRole; count: string }>;
+			.select([escapedRoleSlug, `COUNT(${escapedRoleSlug}) as count`])
+			.groupBy(escapedRoleSlug)
+			.execute()) as Array<{ roleSlug: string; count: string }>;
 		return rows.reduce(
 			(acc, row) => {
-				acc[row.role] = parseInt(row.count, 10);
+				acc[row.roleSlug] = parseInt(row.count, 10);
 				return acc;
 			},
-			{} as Record<GlobalRole, number>,
+			{} as Record<string, number>,
 		);
 	}
 
@@ -92,20 +92,25 @@ export class UserRepository extends Repository<User> {
 		const createInner = async (entityManager: EntityManager) => {
 			const newUser = entityManager.create(User, user);
 			const savedUser = await entityManager.save<User>(newUser);
+			const userWithRole = await entityManager.findOne(User, {
+				where: { id: savedUser.id },
+				relations: ['role'],
+			});
+			if (!userWithRole) throw new Error('Failed to create user!');
 			const savedProject = await entityManager.save<Project>(
 				entityManager.create(Project, {
 					type: 'personal',
-					name: savedUser.createPersonalProjectName(),
+					name: userWithRole.createPersonalProjectName(),
 				}),
 			);
 			await entityManager.save<ProjectRelation>(
 				entityManager.create(ProjectRelation, {
 					projectId: savedProject.id,
-					userId: savedUser.id,
+					userId: userWithRole.id,
 					role: 'project:personalOwner',
 				}),
 			);
-			return { user: savedUser, project: savedProject };
+			return { user: userWithRole, project: savedProject };
 		};
 		if (transactionManager) {
 			return await createInner(transactionManager);
@@ -128,6 +133,7 @@ export class UserRepository extends Repository<User> {
 					project: { sharedWorkflows: { workflowId, role: 'workflow:owner' } },
 				},
 			},
+			relations: ['role'],
 		});
 	}
 
@@ -144,6 +150,7 @@ export class UserRepository extends Repository<User> {
 					projectId,
 				},
 			},
+			relations: ['role'],
 		});
 	}
 
@@ -287,6 +294,8 @@ export class UserRepository extends Repository<User> {
 		this.applyUserListExpand(queryBuilder, expand);
 		this.applyUserListPagination(queryBuilder, take, skip);
 		this.applyUserListSort(queryBuilder, sortBy);
+		queryBuilder.leftJoinAndSelect('user.role', 'role');
+		queryBuilder.leftJoinAndSelect('role.scopes', 'scopes');
 
 		return queryBuilder;
 	}

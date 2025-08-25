@@ -1,5 +1,11 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, type Project, type User } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	ProjectRelationRepository,
+	type Project,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
@@ -41,7 +47,7 @@ describe('dataStoreAggregate', () => {
 	beforeEach(async () => {
 		project1 = await createTeamProject();
 		project2 = await createTeamProject();
-		user = await createUser({ role: 'global:owner' });
+		user = await createUser({ role: GLOBAL_OWNER_ROLE });
 	});
 
 	afterEach(async () => {
@@ -99,8 +105,8 @@ describe('dataStoreAggregate', () => {
 			// ASSERT
 			expect(result.data).toEqual(
 				expect.arrayContaining([
-					expect.objectContaining({ id: ds1!.id, name: ds1!.name }),
-					expect.objectContaining({ id: ds2!.id, name: ds2!.name }),
+					expect.objectContaining({ id: ds1.id, name: ds1.name }),
+					expect.objectContaining({ id: ds2.id, name: ds2.name }),
 				]),
 			);
 			expect(result.count).toBe(2);
@@ -108,7 +114,7 @@ describe('dataStoreAggregate', () => {
 
 		it('should return an empty array if user has no access to any project', async () => {
 			// ARRANGE
-			const currentUser = await createUser({ role: 'global:member' });
+			const currentUser = await createUser({ role: GLOBAL_MEMBER_ROLE });
 
 			await dataStoreService.createDataStore(project1.id, {
 				name: 'store1',
@@ -162,13 +168,13 @@ describe('dataStoreAggregate', () => {
 
 			// ACT
 			const result = await dataStoreAggregateService.getManyAndCount(user, {
-				filter: { id: ds2!.id },
+				filter: { id: ds2.id },
 				skip: 0,
 				take: 10,
 			});
 
 			// ASSERT
-			expect(result.data).toEqual([expect.objectContaining({ id: ds2!.id, name: ds2!.name })]);
+			expect(result.data).toEqual([expect.objectContaining({ id: ds2.id, name: ds2.name })]);
 			expect(result.count).toBe(1);
 		});
 
@@ -208,7 +214,7 @@ describe('dataStoreAggregate', () => {
 
 			// ASSERT
 			expect(result.data.length).toBe(1);
-			expect([ds1!.id, ds2!.id, ds3!.id]).toContain(result.data[0].id);
+			expect([ds1.id, ds2.id, ds3.id]).toContain(result.data[0].id);
 			expect(result.count).toBe(3);
 		});
 	});

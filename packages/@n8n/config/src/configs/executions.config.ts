@@ -12,6 +12,32 @@ class PruningIntervalsConfig {
 }
 
 @Config
+class ConcurrencyConfig {
+	/**
+	 * Max production executions allowed to run concurrently. `-1` means unlimited.
+	 *
+	 * Default for scaling mode is taken from the worker's `--concurrency` flag.
+	 */
+	@Env('N8N_CONCURRENCY_PRODUCTION_LIMIT')
+	productionLimit: number = -1;
+
+	/** Max evaluation executions allowed to run concurrently. `-1` means unlimited. */
+	@Env('N8N_CONCURRENCY_EVALUATION_LIMIT')
+	evaluationLimit: number = -1;
+}
+
+@Config
+class QueueRecoveryConfig {
+	/** How often (minutes) to check for queue recovery. */
+	@Env('N8N_EXECUTIONS_QUEUE_RECOVERY_INTERVAL')
+	interval: number = 180;
+
+	/** Size of batch of executions to check for queue recovery. */
+	@Env('N8N_EXECUTIONS_QUEUE_RECOVERY_BATCH')
+	batchSize: number = 100;
+}
+
+@Config
 export class ExecutionsConfig {
 	/** Whether to delete past executions on a rolling basis. */
 	@Env('EXECUTIONS_DATA_PRUNE')
@@ -38,4 +64,26 @@ export class ExecutionsConfig {
 
 	@Nested
 	pruneDataIntervals: PruningIntervalsConfig;
+
+	@Nested
+	concurrency: ConcurrencyConfig;
+
+	@Nested
+	queueRecovery: QueueRecoveryConfig;
+
+	/** Whether to save execution data for failed production executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_ERROR')
+	saveDataOnError: 'all' | 'none' = 'all';
+
+	/** Whether to save execution data for successful production executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_SUCCESS')
+	saveDataOnSuccess: 'all' | 'none' = 'all';
+
+	/** Whether to save execution data as each node executes. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_PROGRESS')
+	saveExecutionProgress: boolean = false;
+
+	/** Whether to save execution data for manual executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
+	saveDataManualExecutions: boolean = true;
 }

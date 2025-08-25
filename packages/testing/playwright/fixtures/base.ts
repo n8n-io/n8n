@@ -2,7 +2,6 @@ import { test as base, expect } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
-import { setTimeout as wait } from 'node:timers/promises';
 
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { n8nPage } from '../pages/n8nPage';
@@ -62,16 +61,12 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 			const envBaseURL = process.env.N8N_BASE_URL;
 
 			if (envBaseURL) {
-				console.log(`Using external N8N_BASE_URL: ${envBaseURL}`);
 				await use(null as unknown as N8NStack);
 				return;
 			}
 
 			console.log('Creating container with config:', containerConfig);
 			const container = await createN8NStack(containerConfig);
-
-			// TODO: Remove this once we have a better way to wait for the container to be ready (e.g. healthcheck)
-			await wait(3000);
 
 			console.log(`Container URL: ${container.baseUrl}`);
 
@@ -145,13 +140,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		await page.close();
 	},
 
-	n8n: async ({ page }, use) => {
-		const n8nInstance = new n8nPage(page);
+	n8n: async ({ page, api }, use) => {
+		const n8nInstance = new n8nPage(page, api);
 		await use(n8nInstance);
 	},
 
-	api: async ({ context }, use) => {
+	api: async ({ context }, use, testInfo) => {
 		const api = new ApiHelpers(context.request);
+		await api.setupFromTags(testInfo.tags);
 		await use(api);
 	},
 

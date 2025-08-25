@@ -15,23 +15,25 @@ export const node: INode = {
 
 export const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 	const fakeExecuteFunction = {
-		getInputData() {
+		getInputData: jest.fn(() => {
 			return [{ json: {} }];
-		},
-		getNodeParameter(
-			parameterName: string,
-			_itemIndex: number,
-			fallbackValue?: IDataObject,
-			options?: IGetNodeParameterOptions,
-		) {
-			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
-			return get(nodeParameters, parameter, fallbackValue);
-		},
-		getNode() {
+		}),
+		getNodeParameter: jest.fn(
+			(
+				parameterName: string,
+				_itemIndex: number,
+				fallbackValue?: IDataObject,
+				options?: IGetNodeParameterOptions,
+			) => {
+				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
+				return get(nodeParameters, parameter, fallbackValue);
+			},
+		),
+		getNode: jest.fn(() => {
 			return node;
-		},
-		helpers: { constructExecutionMetaData },
-		continueOnFail: () => false,
+		}),
+		helpers: { constructExecutionMetaData: jest.fn(constructExecutionMetaData) },
+		continueOnFail: jest.fn(() => false),
 	} as unknown as IExecuteFunctions;
 	return fakeExecuteFunction;
 };

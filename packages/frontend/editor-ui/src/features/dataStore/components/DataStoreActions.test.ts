@@ -64,6 +64,7 @@ const renderComponent = createComponentRenderer(DataStoreActions, {
 	props: {
 		dataStore: mockDataStore,
 		isReadOnly: false,
+		location: 'breadcrumbs',
 	},
 });
 
@@ -235,5 +236,51 @@ describe('DataStoreActions', () => {
 			deleteError,
 			'Something went wrong while deleting the data store.',
 		);
+	});
+
+	describe('rename action visibility', () => {
+		it('should show rename action when location is breadcrumbs', async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					dataStore: mockDataStore,
+					isReadOnly: false,
+					location: 'breadcrumbs',
+				},
+				pinia: createTestingPinia({
+					initialState: {},
+					stubActions: false,
+				}),
+			});
+
+			// Click on the action toggle to open dropdown
+			await userEvent.click(getByTestId('data-store-card-actions'));
+			expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
+
+			// Check that rename action is present
+			expect(queryByTestId(`action-${DATA_STORE_CARD_ACTIONS.RENAME}`)).toBeInTheDocument();
+		});
+
+		it('should not show rename action when location is card', async () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					dataStore: mockDataStore,
+					isReadOnly: false,
+					location: 'card',
+				},
+				pinia: createTestingPinia({
+					initialState: {},
+					stubActions: false,
+				}),
+			});
+
+			// Click on the action toggle to open dropdown
+			await userEvent.click(getByTestId('data-store-card-actions'));
+			expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
+
+			// Check that rename action is NOT present
+			expect(queryByTestId(`action-${DATA_STORE_CARD_ACTIONS.RENAME}`)).not.toBeInTheDocument();
+			// But delete action should still be present
+			expect(queryByTestId(`action-${DATA_STORE_CARD_ACTIONS.DELETE}`)).toBeInTheDocument();
+		});
 	});
 });

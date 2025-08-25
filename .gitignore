@@ -39,3 +39,4 @@ packages/cli/src/modules/my-feature
 packages/testing/**/.cursor/rules/
 .venv
 .ruff_cache
+__pycache__
