@@ -7,7 +7,7 @@ import type { IUser } from '@n8n/rest-api-client/api/users';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
-	const resolve = vi.fn().mockReturnValue({ href: '/projects/1/datastores/1' });
+	const resolve = vi.fn().mockReturnValue({ href: '/projects/1/datatables/1' });
 	return {
 		useRouter: vi.fn().mockReturnValue({
 			push,
@@ -55,7 +55,7 @@ const renderComponent = createComponentRenderer(DataStoreCard, {
 					href() {
 						// Generate href from the route object
 						if (this.to && typeof this.to === 'object') {
-							return `/projects/${this.to.params.projectId}/datastores/${this.to.params.id}`;
+							return `/projects/${this.to.params.projectId}/datatables/${this.to.params.id}`;
 						}
 						return '#';
 					},
@@ -83,7 +83,7 @@ describe('DataStoreCard', () => {
 	it('should render data store info correctly', () => {
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('data-store-card-icon')).toBeInTheDocument();
-		expect(getByTestId('datastore-name-input')).toHaveTextContent(DEFAULT_DATA_STORE.name);
+		expect(getByTestId('data-store-card-name')).toHaveTextContent(DEFAULT_DATA_STORE.name);
 		expect(getByTestId('data-store-card-record-count')).toBeInTheDocument();
 		expect(getByTestId('data-store-card-column-count')).toBeInTheDocument();
 		expect(getByTestId('data-store-card-last-updated')).toHaveTextContent('Last updated');
@@ -110,7 +110,7 @@ describe('DataStoreCard', () => {
 		expect(link).toBeInTheDocument();
 		expect(link).toHaveAttribute(
 			'href',
-			`/projects/${DEFAULT_DATA_STORE.projectId}/datastores/${DEFAULT_DATA_STORE.id}`,
+			`/projects/${DEFAULT_DATA_STORE.projectId}/datatables/${DEFAULT_DATA_STORE.id}`,
 		);
 	});
 
