@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 
 export abstract class BasePage {
-	constructor(readonly page: Page) {}
+	constructor(protected readonly page: Page) {}
 
 	protected async clickByTestId(testId: string) {
 		await this.page.getByTestId(testId).click();

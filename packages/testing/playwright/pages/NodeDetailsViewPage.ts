@@ -12,7 +12,7 @@ export class NodeDetailsViewPage extends BasePage {
 	constructor(page: Page) {
 		super(page);
 		this.setupHelper = new NodeParameterHelper(this);
-		this.editFields = new EditFieldsNode(this);
+		this.editFields = new EditFieldsNode(page);
 	}
 
 	async clickBackToCanvasButton() {

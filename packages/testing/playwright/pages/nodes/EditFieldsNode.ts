@@ -1,9 +1,11 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
-import type { NodeDetailsViewPage } from '../NodeDetailsViewPage';
+import { BasePage } from '../BasePage';
 
-export class EditFieldsNode {
-	constructor(private ndv: NodeDetailsViewPage) {}
+export class EditFieldsNode extends BasePage {
+	constructor(page: Page) {
+		super(page);
+	}
 
 	async setFieldsValues(
 		fields: Array<{
@@ -13,7 +15,7 @@ export class EditFieldsNode {
 		}>,
 		paramName = 'assignments',
 	): Promise<void> {
-		const container = this.ndv.page.getByTestId(`assignment-collection-${paramName}`);
+		const container = this.page.getByTestId(`assignment-collection-${paramName}`);
 
 		for (let i = 0; i < fields.length; i++) {
 			await this.ensureFieldExists(container, i);
@@ -60,7 +62,7 @@ export class EditFieldsNode {
 		await typeSelect.click();
 
 		const typeOptionText = this.getTypeOptionText(type);
-		const option = this.ndv.page.getByRole('option', { name: typeOptionText });
+		const option = this.page.getByRole('option', { name: typeOptionText });
 		await option.waitFor({ state: 'visible' });
 		await option.click();
 	}
@@ -102,7 +104,7 @@ export class EditFieldsNode {
 	private async setBooleanValue(valueContainer: Locator, value: boolean): Promise<void> {
 		await valueContainer.click();
 		const booleanValue = value ? 'True' : 'False';
-		const option = this.ndv.page.getByRole('option', { name: booleanValue });
+		const option = this.page.getByRole('option', { name: booleanValue });
 		await option.waitFor({ state: 'visible' });
 		await option.click();
 	}
