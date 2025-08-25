@@ -187,7 +187,6 @@ const onDeleteColumn = async (columnId: string) => {
 
 const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload }) => {
 	try {
-		// todo: api call should be last
 		const newColumn = await dataStoreStore.addDataStoreColumn(
 			props.dataStore.id,
 			props.dataStore.projectId,
