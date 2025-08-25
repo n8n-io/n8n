@@ -22,7 +22,7 @@ export async function getDataTableProxyExecute(
 	if (ctx.helpers.getDataStoreProxy === undefined)
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'Attempted to use Data Store node but the module is disabled',
+			'Attempted to use Data Table node but the module is disabled',
 		);
 
 	const dataStoreId = ctx.getNodeParameter(DATA_TABLE_ID_FIELD, index, undefined, {
@@ -38,7 +38,7 @@ export async function getDataTableProxyLoadOptions(
 	if (ctx.helpers.getDataStoreProxy === undefined)
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'Attempted to use Data Store node but the module is disabled',
+			'Attempted to use Data Table node but the module is disabled',
 		);
 
 	const dataStoreId = ctx.getNodeParameter(DATA_TABLE_ID_FIELD, undefined, {
@@ -54,7 +54,7 @@ export async function getDataTableAggregateProxy(
 	if (ctx.helpers.getDataStoreAggregateProxy === undefined)
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'Attempted to use Data Store node but the module is disabled',
+			'Attempted to use Data Table node but the module is disabled',
 		);
 
 	return await ctx.helpers.getDataStoreAggregateProxy();

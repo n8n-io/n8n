@@ -50,7 +50,7 @@ describe('DataStoreProxyService', () => {
 			id: PROJECT_ID,
 		});
 		node = mock<INode>({
-			type: 'n8n-nodes-base.dataStore',
+			type: 'n8n-nodes-base.dataTable',
 		});
 
 		ownershipServiceMock.getWorkflowProjectCached.mockResolvedValueOnce(project);
