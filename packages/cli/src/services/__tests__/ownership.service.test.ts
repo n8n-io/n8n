@@ -11,7 +11,6 @@ import {
 	UserRepository,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import { OwnershipService } from '@/services/ownership.service';
@@ -27,7 +26,6 @@ describe('OwnershipService', () => {
 	const ownershipService = new OwnershipService(
 		cacheService,
 		userRepository,
-		mock(),
 		projectRelationRepository,
 		sharedWorkflowRepository,
 	);

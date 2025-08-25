@@ -2,7 +2,6 @@ import type { Project, User, ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
 	ProjectRelationRepository,
-	ProjectRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 } from '@n8n/db';
@@ -15,7 +14,6 @@ export class OwnershipService {
 	constructor(
 		private cacheService: CacheService,
 		private userRepository: UserRepository,
-		private projectRepository: ProjectRepository,
 		private projectRelationRepository: ProjectRelationRepository,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
@@ -29,7 +27,7 @@ export class OwnershipService {
 			workflowId,
 		);
 
-		if (cachedValue) return this.projectRepository.create(cachedValue);
+		if (cachedValue) return cachedValue;
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
 			where: { workflowId, role: 'workflow:owner' },
@@ -48,7 +46,7 @@ export class OwnershipService {
 	async getPersonalProjectOwnerCached(projectId: string): Promise<User | null> {
 		const cachedValue = await this.cacheService.getHashValue<User>('project-owner', projectId);
 
-		if (cachedValue) return this.userRepository.create(cachedValue);
+		if (cachedValue) return cachedValue;
 
 		const ownerRel = await this.projectRelationRepository.getPersonalProjectOwners([projectId]);
 		const owner = ownerRel[0]?.user ?? null;
