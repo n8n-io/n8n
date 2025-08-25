@@ -385,7 +385,7 @@ export const planFormatter = (plan?: WorkflowPlan | null) => {
 		return `
 			<workflow_plan_node>
 				<type>${node.nodeType}</type>
-				<name>${node.nodeType}</name>
+				<name>${node.nodeName}</name>
 				<reasoning>${node.reasoning}</reasoning>
 			</workflow_plan_node>
 		`;
