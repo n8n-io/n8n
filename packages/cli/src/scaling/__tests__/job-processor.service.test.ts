@@ -14,17 +14,17 @@ import {
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+import { JobProcessor } from '../job-processor';
+import type { Job } from '../scaling.types';
+
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExternalHooks } from '@/external-hooks';
 import type { ManualExecutionService } from '@/manual-execution.service';
-import { DataStoreProxyService } from '@/modules/data-store/data-store-proxy.service';
+import { DataStoreProxyService } from '@/modules/data-table/data-store-proxy.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-
-import { JobProcessor } from '../job-processor';
-import type { Job } from '../scaling.types';
 
 mockInstance(VariablesService, {
 	getAllCached: jest.fn().mockResolvedValue([]),

@@ -24,7 +24,7 @@ import {
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
-import { DataStoreProxyService } from '@/modules/data-store/data-store-proxy.service';
+import { DataStoreProxyService } from '@/modules/data-table/data-store-proxy.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';

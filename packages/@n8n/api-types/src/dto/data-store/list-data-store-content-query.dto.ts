@@ -11,7 +11,7 @@ export type ListDataStoreContentFilterConditionType = z.infer<typeof FilterCondi
 const filterRecord = z.object({
 	columnName: dataStoreColumnNameSchema,
 	condition: FilterConditionSchema.default('eq'),
-	value: z.union([z.string(), z.number(), z.boolean(), z.date()]),
+	value: z.union([z.string(), z.number(), z.boolean(), z.date(), z.null()]),
 });
 
 const chainedFilterSchema = z.union([z.literal('and'), z.literal('or')]);

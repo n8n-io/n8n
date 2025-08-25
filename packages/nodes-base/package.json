@@ -488,6 +488,7 @@
       "dist/nodes/Crypto/Crypto.node.js",
       "dist/nodes/CustomerIo/CustomerIo.node.js",
       "dist/nodes/CustomerIo/CustomerIoTrigger.node.js",
+      "dist/nodes/DataTable/DataTable.node.js",
       "dist/nodes/DateTime/DateTime.node.js",
       "dist/nodes/DebugHelper/DebugHelper.node.js",
       "dist/nodes/DeepL/DeepL.node.js",

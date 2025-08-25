@@ -1,7 +1,10 @@
 import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { type User, type ExecutionEntity, GLOBAL_OWNER_ROLE } from '@n8n/db';
+import type { User, ExecutionEntity } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { createExecution } from '@test-integration/db/executions';
+import { createUser } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DirectedGraph, WorkflowExecute } from 'n8n-core';
@@ -31,9 +34,6 @@ import { ManualExecutionService } from '@/manual-execution.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
-import { createExecution } from '@test-integration/db/executions';
-import { createUser } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
 
 let owner: User;
 let runner: WorkflowRunner;
@@ -42,7 +42,7 @@ setupTestServer({ endpointGroups: [] });
 mockInstance(Telemetry);
 
 beforeAll(async () => {
-	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+	owner = await createUser({ role: 'global:owner' });
 
 	runner = Container.get(WorkflowRunner);
 });

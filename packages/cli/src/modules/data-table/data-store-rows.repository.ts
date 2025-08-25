@@ -163,8 +163,8 @@ export class DataStoreRowsRepository {
 
 	async updateRow(
 		dataStoreId: string,
-		setData: Record<string, DataStoreColumnJsType | null>,
-		whereData: Record<string, DataStoreColumnJsType | null>,
+		setData: Record<string, DataStoreColumnJsType>,
+		whereData: Record<string, DataStoreColumnJsType>,
 		columns: DataStoreColumn[],
 	) {
 		const dbType = this.dataSource.options.type;
@@ -172,10 +172,13 @@ export class DataStoreRowsRepository {
 
 		const queryBuilder = this.dataSource.createQueryBuilder().update(this.toTableName(dataStoreId));
 
-		const setValues: Record<string, DataStoreColumnJsType | null> = {};
+		const setValues: Record<string, DataStoreColumnJsType> = {};
 		for (const [key, value] of Object.entries(setData)) {
 			setValues[key] = normalizeValue(value, columnTypeMap[key], dbType);
 		}
+
+		// Always update the updatedAt timestamp
+		setValues.updatedAt = normalizeValue(new Date(), 'date', dbType);
 
 		queryBuilder.set(setValues);
 
@@ -208,8 +211,9 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 	) {
 		const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
-		const createTable = new CreateTable(this.toTableName(dataStoreId), '', queryRunner);
-		createTable.withColumns.apply(createTable, dslColumns);
+		const createTable = new CreateTable(this.toTableName(dataStoreId), '', queryRunner).withColumns(
+			...dslColumns,
+		).withTimestamps;
 
 		await createTable.execute(queryRunner);
 	}
@@ -325,8 +329,7 @@ export class DataStoreRowsRepository {
 			}
 		});
 
-		const existing: Array<Record<string, DataStoreColumnJsType | null>> =
-			await queryBuilder.getRawMany();
+		const existing: Array<Record<string, DataStoreColumnJsType>> = await queryBuilder.getRawMany();
 
 		return splitRowsByExistence(existing, matchFields, rows);
 	}
