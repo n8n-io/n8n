@@ -18,7 +18,6 @@ export async function getWorkspaces(
 		// no v3 api yet for workspaces list
 		const endpoint = '/api/v2/meta/workspaces';
 		const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
-		console.log('getWorkspaces responseData', responseData);
 		const results: INodeListSearchItems[] = responseData.list.map((i: IDataObject) => ({
 			name: i.title,
 			value: i.id,
