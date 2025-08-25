@@ -27,7 +27,7 @@ export function createProgressReporter<TToolName extends string = string>(
 			type: 'tool',
 			toolName,
 			toolCallId,
-			actionTitle: displayTitle,
+			displayTitle,
 			status: 'running',
 			updates: [
 				{
@@ -43,7 +43,7 @@ export function createProgressReporter<TToolName extends string = string>(
 			type: 'tool',
 			toolName,
 			toolCallId,
-			actionTitle: displayTitle,
+			displayTitle,
 			status: 'running',
 			updates: [
 				{
@@ -59,7 +59,7 @@ export function createProgressReporter<TToolName extends string = string>(
 			type: 'tool',
 			toolName,
 			toolCallId,
-			actionTitle: displayTitle,
+			displayTitle,
 			status: 'completed',
 			updates: [
 				{
@@ -75,7 +75,7 @@ export function createProgressReporter<TToolName extends string = string>(
 			type: 'tool',
 			toolName,
 			toolCallId,
-			actionTitle: displayTitle,
+			displayTitle,
 			status: 'error',
 			updates: [
 				{
