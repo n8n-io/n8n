@@ -20,12 +20,7 @@ import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/stores/ui.store';
-
-export type CustomAction = {
-	id: string;
-	label: string;
-	disabled?: boolean;
-};
+import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 
 const route = useRoute();
 const router = useRouter();
@@ -37,17 +32,8 @@ const uiStore = useUIStore();
 
 const projectPages = useProjectPages();
 
-type Props = {
-	customActions?: CustomAction[];
-};
-
-const props = withDefaults(defineProps<Props>(), {
-	customActions: () => [],
-});
-
 const emit = defineEmits<{
 	createFolder: [];
-	customActionSelected: [actionId: string, projectId: string];
 }>();
 
 const headerIcon = computed((): IconOrEmoji => {
@@ -122,6 +108,7 @@ const ACTION_TYPES = {
 	WORKFLOW: 'workflow',
 	CREDENTIAL: 'credential',
 	FOLDER: 'folder',
+	DATA_STORE: 'dataStore',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -155,16 +142,17 @@ const menu = computed(() => {
 		});
 	}
 
-	// Append custom actions
-	if (props.customActions?.length) {
-		props.customActions.forEach((customAction) => {
-			items.push({
-				value: customAction.id,
-				label: customAction.label,
-				disabled: customAction.disabled ?? false,
-			});
+	if (settingsStore.isDataStoreFeatureEnabled) {
+		// TODO: this should probably be moved to the module descriptor as a setting
+		items.push({
+			value: ACTION_TYPES.DATA_STORE,
+			label: i18n.baseText('dataStore.add.button.label'),
+			disabled:
+				sourceControlStore.preferences.branchReadOnly ||
+				!getResourcePermissions(homeProject.value?.scopes)?.dataStore?.create,
 		});
 	}
+
 	return items;
 });
 
@@ -195,6 +183,12 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 	},
 	[ACTION_TYPES.FOLDER]: () => {
 		emit('createFolder');
+	},
+	[ACTION_TYPES.DATA_STORE]: (projectId: string) => {
+		void router.push({
+			name: PROJECT_DATA_STORES,
+			params: { projectId, new: 'new' },
+		});
 	},
 } as const;
 
@@ -264,12 +258,6 @@ const projectDescriptionTruncated = computed(() => {
 const onSelect = (action: string) => {
 	const executableAction = actions[action as ActionTypes];
 	if (!homeProject.value) {
-		return;
-	}
-
-	// Check if this is a custom action
-	if (!executableAction) {
-		emit('customActionSelected', action, homeProject.value.id);
 		return;
 	}
 

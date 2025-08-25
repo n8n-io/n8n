@@ -44,10 +44,27 @@ const projectTabsSpy = vi.fn().mockReturnValue({
 	render: vi.fn(),
 });
 
+const ProjectCreateResourceStub = {
+	props: {
+		actions: Array,
+	},
+	template: `
+		<div>
+			<div data-test-id="add-resource"><button role="button"></button></div>
+			<button data-test-id="add-resource-workflow" @click="$emit('action', 'workflow')">Workflow</button>
+			<button data-test-id="action-credential" @click="$emit('action', 'credential')">Credentials</button>
+			<div data-test-id="add-resource-actions" >
+				<button v-for="action in $props.actions" :key="action.value"></button>
+			</div>
+		</div>
+	`,
+};
+
 const renderComponent = createComponentRenderer(ProjectHeader, {
 	global: {
 		stubs: {
 			ProjectTabs: projectTabsSpy,
+			ProjectCreateResource: ProjectCreateResourceStub,
 		},
 	},
 });
@@ -69,6 +86,7 @@ describe('ProjectHeader', () => {
 
 		projectsStore.teamProjectsLimit = -1;
 		settingsStore.settings.folders = { enabled: false };
+		settingsStore.isDataStoreFeatureEnabled = true;
 
 		// Setup default moduleTabs structure
 		uiStore.moduleTabs = {
@@ -434,6 +452,23 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
+		});
+	});
+
+	describe('ProjectCreateResource', () => {
+		it('should render menu items', () => {
+			const { getByTestId } = renderComponent();
+			const actionsContainer = getByTestId('add-resource-actions');
+			expect(actionsContainer).toBeInTheDocument();
+			expect(actionsContainer.children).toHaveLength(2);
+		});
+
+		it('should not render datastore menu item if data store feature is disabled', () => {
+			settingsStore.isDataStoreFeatureEnabled = false;
+			const { getByTestId } = renderComponent();
+			const actionsContainer = getByTestId('add-resource-actions');
+			expect(actionsContainer).toBeInTheDocument();
+			expect(actionsContainer.children).toHaveLength(1);
 		});
 	});
 });
