@@ -2,6 +2,7 @@ import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { ToolCall } from '@langchain/core/messages/tool';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
 
+import type { WorkflowPlan } from '../agents/workflow-planner-agent';
 import type {
 	AgentMessageChunk,
 	ToolProgressChunk,
@@ -44,6 +45,23 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 				workflowJSON?: unknown;
 				workflowOperations?: unknown;
 			};
+			createPlan?: {
+				workflowPlan?: unknown;
+				planStatus?: string;
+			};
+			reviewPlan?: {
+				planStatus?: string;
+			};
+			adjustPlan?: {
+				workflowPlan?: unknown;
+				planStatus?: string;
+			};
+			__interrupt__?: Array<{
+				value: unknown;
+				resumable: boolean;
+				ns: string[];
+				when: string;
+			}>;
 		};
 
 		if ((agentChunk?.delete_messages?.messages ?? []).length > 0) {
@@ -96,6 +114,29 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 
 				return null;
 			}
+		}
+
+		// Handle plan creation
+		if (agentChunk?.createPlan?.workflowPlan) {
+			const workflowPlan = agentChunk.createPlan.workflowPlan as WorkflowPlan;
+			const planChunk = {
+				role: 'assistant' as const,
+				type: 'plan' as const,
+				plan: workflowPlan.plan,
+				message: workflowPlan.intro,
+			};
+			return { messages: [planChunk] };
+		}
+
+		if (agentChunk?.adjustPlan?.workflowPlan) {
+			const workflowPlan = agentChunk.adjustPlan.workflowPlan as WorkflowPlan;
+			const planChunk = {
+				role: 'assistant' as const,
+				type: 'plan' as const,
+				plan: workflowPlan.plan,
+				message: workflowPlan.intro,
+			};
+			return { messages: [planChunk] };
 		}
 
 		// Handle process_operations updates - emit workflow update after operations are processed
@@ -197,6 +238,16 @@ function createToolCallMessage(
 	toolCall: ToolCall,
 	builderTool?: BuilderTool,
 ): Record<string, unknown> {
+	if (toolCall.name === 'generate_workflow_plan') {
+		const workflowPlan = toolCall.args as WorkflowPlan;
+		return {
+			role: 'assistant',
+			type: 'plan',
+			plan: workflowPlan.plan,
+			message: workflowPlan.intro,
+		}
+	}
+
 	return {
 		id: toolCall.id,
 		toolCallId: toolCall.id,

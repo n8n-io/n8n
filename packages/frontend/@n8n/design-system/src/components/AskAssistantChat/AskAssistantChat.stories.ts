@@ -1,6 +1,7 @@
 import type { StoryFn } from '@storybook/vue3';
 
 import AskAssistantChat from './AskAssistantChat.vue';
+import CustomMessageExample from './messages/CustomMessageExample.vue';
 import type { ChatUI } from '../../types/assistant';
 
 export default {
@@ -814,6 +815,188 @@ MixedMessagesWithTools.args = {
 				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 				'@@ -1,3 +1,8 @@\n const response = await $http.request(options);\n-return response.data;\n+\n+if (response.status !== 200) {\n+  throw new Error(`HTTP request failed with status ${response.status}`);\n+}\n+\n+return response.data;',
 			suggestionId: 'fix_http_error',
+			read: false,
+		},
+	]),
+};
+
+const TemplateWithCustomMessage: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		AskAssistantChat,
+		CustomMessageExample,
+	},
+	template: `
+		<div style="width:275px; height:500px">
+			<ask-assistant-chat v-bind="args">
+				<template #custom-message="{ message, ...props }">
+					<CustomMessageExample
+						v-if="message.customType === 'workflow'"
+						:message="message"
+						v-bind="props"
+					/>
+					<CustomMessageExample
+						v-else-if="message.customType === 'analytics'"
+						:message="message"
+						v-bind="props"
+					/>
+				</template>
+			</ask-assistant-chat>
+		</div>
+	`,
+	methods,
+});
+
+export const CustomMessages = TemplateWithCustomMessage.bind({});
+CustomMessages.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '1',
+			type: 'text',
+			role: 'user',
+			content: 'Can you create a workflow for me?',
+			read: true,
+		},
+		{
+			id: '2',
+			type: 'text',
+			role: 'assistant',
+			content: "I've created a workflow for you. Here are the details:",
+			read: true,
+		},
+		{
+			id: '3',
+			type: 'custom',
+			customType: 'workflow',
+			role: 'assistant',
+			data: {
+				title: 'Email Automation Workflow',
+				description:
+					'This workflow automatically processes incoming emails and creates tasks in your project management system.',
+				metadata: {
+					workflowId: 'wf_email_123',
+					nodes: ['Email Trigger', 'Filter', 'Create Task', 'Send Notification'],
+					createdAt: new Date().toISOString(),
+					version: '1.0.0',
+				},
+			},
+			read: true,
+		},
+		{
+			id: '4',
+			type: 'text',
+			role: 'user',
+			content: 'Can you show me the analytics for this workflow?',
+			read: true,
+		},
+		{
+			id: '5',
+			type: 'text',
+			role: 'assistant',
+			content: 'Here are the analytics for your workflow:',
+			read: true,
+		},
+		{
+			id: '6',
+			type: 'custom',
+			customType: 'analytics',
+			role: 'assistant',
+			data: {
+				title: 'Workflow Analytics',
+				description: 'Performance metrics for the last 7 days',
+				metadata: {
+					executions: 156,
+					successRate: '94.2%',
+					averageExecutionTime: '2.3s',
+					failedExecutions: 9,
+					lastRun: new Date().toISOString(),
+				},
+			},
+			read: false,
+			showRating: true,
+			ratingStyle: 'regular',
+			showFeedback: true,
+		},
+	]),
+};
+
+export const MixedCustomAndStandardMessages = TemplateWithCustomMessage.bind({});
+MixedCustomAndStandardMessages.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '1',
+			type: 'text',
+			role: 'user',
+			content: 'I need help setting up a complex workflow',
+			read: true,
+		},
+		{
+			id: '2',
+			type: 'text',
+			role: 'assistant',
+			content: "I'll help you set up your workflow. Let me analyze what you need.",
+			read: true,
+		},
+		{
+			id: '3',
+			type: 'custom',
+			customType: 'workflow',
+			role: 'assistant',
+			data: {
+				title: 'Data Processing Pipeline',
+				description: 'A multi-step workflow for processing CSV files and generating reports.',
+				metadata: {
+					steps: [
+						'1. Read CSV file from FTP',
+						'2. Validate and clean data',
+						'3. Transform data structure',
+						'4. Generate PDF report',
+						'5. Send email with attachment',
+					],
+					estimatedTime: '5-10 minutes to set up',
+					difficulty: 'Intermediate',
+				},
+			},
+			read: true,
+		},
+		{
+			id: '4',
+			type: 'code-diff',
+			role: 'assistant',
+			description: "Here's the code for the data transformation step",
+			codeDiff:
+				"@@ -1,3 +1,12 @@\n // Transform CSV data\n-const items = $input.all();\n-return items;\n+const items = $input.all();\n+\n+return items.map(item => ({\n+  id: item.json.id,\n+  name: item.json.name?.trim(),\n+  email: item.json.email?.toLowerCase(),\n+  processedAt: new Date().toISOString(),\n+  status: 'processed'\n+}));",
+			suggestionId: 'transform_code',
+			read: true,
+		},
+		{
+			id: '5',
+			type: 'text',
+			role: 'assistant',
+			content: 'Would you like me to help you implement any specific part of this workflow?',
+			quickReplies: [
+				{
+					type: 'csv-processing',
+					text: 'Help with CSV processing',
+				},
+				{
+					type: 'email-setup',
+					text: 'Set up email sending',
+				},
+				{
+					type: 'all-good',
+					text: 'No, this is perfect!',
+				},
+			],
 			read: false,
 		},
 	]),

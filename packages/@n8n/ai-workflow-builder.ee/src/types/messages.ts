@@ -48,25 +48,10 @@ export interface AgentChatMessage {
 }
 
 /**
- * Prompt validation message
- */
-export interface PromptValidationMessage {
-	role: 'assistant';
-	type: 'prompt-validation';
-	isWorkflowPrompt: boolean;
-	id: string;
-}
-
-/**
  * Union type for all possible message responses
  */
 export type MessageResponse =
-	| ((
-			| AssistantChatMessage
-			| AssistantSummaryMessage
-			| AgentChatMessage
-			| PromptValidationMessage
-	  ) & {
+	| ((AssistantChatMessage | AssistantSummaryMessage | AgentChatMessage) & {
 			quickReplies?: QuickReplyOption[];
 	  })
 	| EndSessionMessage;

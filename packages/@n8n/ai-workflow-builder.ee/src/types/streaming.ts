@@ -36,13 +36,45 @@ export interface ExecutionRequestChunk {
 }
 
 /**
+ * Plan chunk for streaming
+ */
+export interface PlanChunk {
+	role: 'assistant';
+	type: 'plan';
+	plan: unknown;
+}
+
+/**
+ * Plan adjusted chunk for streaming
+ */
+export interface PlanAdjustedChunk {
+	role: 'assistant';
+	type: 'plan-adjusted';
+	plan: unknown;
+}
+
+/**
+ * Plan review chunk for streaming (interrupt)
+ */
+export interface PlanReviewChunk {
+	role: 'assistant';
+	type: 'plan-review';
+	plan: unknown;
+	message: string;
+	resumable: boolean;
+}
+
+/**
  * Union type for all stream chunks
  */
 export type StreamChunk =
 	| AgentMessageChunk
 	| ToolProgressChunk
 	| WorkflowUpdateChunk
-	| ExecutionRequestChunk;
+	| ExecutionRequestChunk
+	| PlanChunk
+	| PlanAdjustedChunk
+	| PlanReviewChunk;
 
 /**
  * Stream output containing messages
