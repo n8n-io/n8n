@@ -138,7 +138,7 @@ export function createLangsmithEvaluator(
 
 			for (const metric of usageMetrics) {
 				if (metric.value !== undefined) {
-					// Langsmith has a limitation on large scored (>99999) so we track in thousands
+					// Langsmith has a limitation on large scores (>99999) so we track in thousands
 					results.push({ key: metric.key, score: metric.value / 1000 });
 				}
 			}
