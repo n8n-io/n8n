@@ -45,6 +45,25 @@ function getConditionAndParams(
 			return [`${column} = :${paramName}`, { [paramName]: filter.value }];
 		case 'neq':
 			return [`${column} != :${paramName}`, { [paramName]: filter.value }];
+		// case-sensitive
+		case 'like':
+			if (dbType === 'sqlite') {
+				// SQLite GLOB is case-sensitive and uses * instead of %
+				const globValue = filter.value.toString().replace(/%/g, '*').replace(/_/g, '?');
+				return [`${column} GLOB :${paramName}`, { [paramName]: globValue }];
+			} else if (dbType === 'mysql' || dbType === 'mariadb') {
+				return [`${column} LIKE BINARY :${paramName}`, { [paramName]: filter.value }];
+			} else {
+				// PostgreSQL: LIKE is case-sensitive by default
+				return [`${column} LIKE :${paramName}`, { [paramName]: filter.value }];
+			}
+		// case-insensitive
+		case 'ilike':
+			if (dbType === 'postgres') {
+				return [`${column} ILIKE :${paramName}`, { [paramName]: filter.value }];
+			} else {
+				return [`UPPER(${column}) LIKE UPPER(:${paramName})`, { [paramName]: filter.value }];
+			}
 	}
 }
 
