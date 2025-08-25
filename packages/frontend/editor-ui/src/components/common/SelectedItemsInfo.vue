@@ -75,7 +75,6 @@ const handleClearSelection = () => {
 	font-size: var(--font-size-2xs);
 
 	button {
-		background: var(--execution-selector-button-background);
 		margin-left: var(--spacing-2xs);
 	}
 }
