@@ -98,7 +98,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const activeModules = computed(() => settings.value.activeModules);
 
 	const isModuleActive = (moduleName: string) => {
-		return activeModules.value.includes(moduleName);
+		return activeModules.value?.includes(moduleName);
 	};
 
 	const partialExecutionVersion = computed<1 | 2>(() => {
