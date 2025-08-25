@@ -19,7 +19,7 @@ import type { DataStoreService } from '../data-store.service';
 const PROJECT_ID = 'project-id';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-store']);
+	await testModules.loadModules(['data-table']);
 	await testDb.init();
 });
 describe('DataStoreProxyService', () => {
