@@ -19,9 +19,9 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { DataStoreService } from './data-store.service';
-
 import { OwnershipService } from '@/services/ownership.service';
+
+import { DataStoreService } from './data-store.service';
 
 @Service()
 export class DataStoreProxyService implements DataStoreProxyProvider {
