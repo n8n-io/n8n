@@ -140,7 +140,7 @@ onBeforeMount(async () => {
 					data-test-id="project-plus-button"
 					:disabled="isCreatingProject || !projectsStore.hasPermissionToCreateProjects"
 					:class="$style.plusBtn"
-					@click="globalEntityCreation.createProject"
+					@click="globalEntityCreation.createProject({ context: 'add icon' })"
 				/>
 			</N8nTooltip>
 		</N8nText>
