@@ -1,13 +1,13 @@
-import {
-	type IDisplayOptions,
-	type IDataObject,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeProperties,
+import type {
+	IDisplayOptions,
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
 } from 'n8n-workflow';
 
 import { COLUMNS } from '../../common/fields';
-import { getDataTableProxyExecute } from '../../common/utils';
+import { dataObjectToApiInput, getDataTableProxyExecute } from '../../common/utils';
 
 export const FIELD: string = 'insert';
 
@@ -44,6 +44,8 @@ export async function execute(
 		data = fields;
 	}
 
-	const insertedRowIds = (await dataStoreProxy.insertRows([data as never])) as never as number[];
+	const rows = dataObjectToApiInput(data, this.getNode(), index);
+
+	const insertedRowIds = await dataStoreProxy.insertRows([rows]);
 	return insertedRowIds.map((x) => ({ json: { id: x } }));
 }

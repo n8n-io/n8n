@@ -1,11 +1,13 @@
-import {
-	type ListDataStoreContentFilter,
-	type IDataStoreProjectAggregateService,
-	type IDataStoreProjectService,
-	type IExecuteFunctions,
-	type ILoadOptionsFunctions,
-	NodeOperationError,
+import type {
+	IDataObject,
+	INode,
+	ListDataStoreContentFilter,
+	IDataStoreProjectAggregateService,
+	IDataStoreProjectService,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import type { FieldEntry, FilterType } from './constants';
 import { ALL_FILTERS, ANY_FILTER } from './constants';
@@ -82,5 +84,29 @@ export function buildGetManyFilter(
 export function isFieldArray(value: unknown): value is FieldEntry[] {
 	return (
 		value !== null && typeof value === 'object' && Array.isArray(value) && value.every(isFieldEntry)
+	);
+}
+
+export function dataObjectToApiInput(data: IDataObject, node: INode, row: number) {
+	return Object.fromEntries(
+		Object.entries(data).map(([k, v]) => {
+			if (v === undefined || v === null) return [k, null];
+
+			if (Array.isArray(v)) {
+				throw new NodeOperationError(
+					node,
+					`unexpected array input '${JSON.stringify(v)}' in row ${row}`,
+				);
+			}
+
+			if (!(v instanceof Date) && typeof v === 'object') {
+				throw new NodeOperationError(
+					node,
+					`unexpected object input '${JSON.stringify(v)}' in row ${row}`,
+				);
+			}
+
+			return [k, v];
+		}),
 	);
 }
