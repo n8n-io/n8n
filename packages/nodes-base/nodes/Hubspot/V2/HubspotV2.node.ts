@@ -32,6 +32,7 @@ import {
 	getCallMetadata,
 	getEmailMetadata,
 	getMeetingMetadata,
+	getOwnerId,
 	getTaskMetadata,
 	hubspotApiRequest,
 	hubspotApiRequestAllItems,
@@ -47,7 +48,7 @@ export class HubspotV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			group: ['output'],
-			version: [2, 2.1],
+			version: [2, 2.1, 2.2],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			defaults: {
 				name: 'HubSpot',
@@ -2736,13 +2737,19 @@ export class HubspotV2 implements INodeType {
 								);
 							}
 
+							const ownerIdResult = getOwnerId(associations.ownerId);
+							if (ownerIdResult.error) {
+								throw new NodeOperationError(this.getNode(), ownerIdResult.error, { itemIndex: i });
+							}
+
 							const body: {
-								engagement: { type: string };
+								engagement: { type: string; ownerId?: number };
 								metadata: IDataObject;
 								associations: IDataObject;
 							} = {
 								engagement: {
 									type: type.toUpperCase(),
+									ownerId: ownerIdResult.value,
 								},
 								metadata: {},
 								associations: {},
