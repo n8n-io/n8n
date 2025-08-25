@@ -67,7 +67,7 @@ function buildResponseMessage(addedNode: AddedNode, nodeTypes: INodeTypeDescript
 
 function getCustomDisplayTitle(input: Record<string, unknown>): string {
 	if ('name' in input && typeof input['name'] === 'string') {
-		return `Adding ${input['name']}`;
+		return `Adding "${input['name']}" node`;
 	}
 
 	return 'Adding node';
