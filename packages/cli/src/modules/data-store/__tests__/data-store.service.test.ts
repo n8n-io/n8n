@@ -1849,7 +1849,7 @@ describe('dataStore', () => {
 			];
 
 			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, rows);
-			expect(ids).toEqual([1, 2, 3, 4]);
+			expect(ids).toEqual([1, 2, 3, 4].map((id) => ({ id })));
 
 			// ACT
 			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {
@@ -1885,7 +1885,7 @@ describe('dataStore', () => {
 			];
 
 			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, rows);
-			expect(ids).toEqual([1, 2, 3, 4]);
+			expect(ids).toEqual([1, 2, 3, 4].map((id) => ({ id })));
 
 			// ACT
 			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {
