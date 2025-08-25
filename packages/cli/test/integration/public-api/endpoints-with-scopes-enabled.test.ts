@@ -222,7 +222,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					expect(returnedUser.id).toBe(storedUser.id);
 					expect(returnedUser.email).toBe(storedUser.email);
 					expect(returnedUser.email).toBe(payloadUser.email);
-					expect(storedUser.role.slug).toBe(payloadUser.role);
+					expect(storedUser.role).toBe(payloadUser.role);
 				});
 
 				test('should fail to create user when API key doesn\'t have "user:create" scope', async () => {
@@ -267,7 +267,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 */
 					expect(response.status).toBe(204);
 					const storedUser = await getUserById(member.id);
-					expect(storedUser.role.slug).toBe(payload.newRoleName);
+					expect(storedUser.role).toBe(payload.newRoleName);
 				});
 
 				test('should fail to change role when API key doesn\'t have "user:changeRole" scope', async () => {

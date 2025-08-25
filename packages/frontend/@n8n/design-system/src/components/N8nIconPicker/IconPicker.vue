@@ -203,8 +203,9 @@ const togglePopup = () => {
 	}
 
 	.emoji {
-		font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji',
-			'Twemoji Mozilla', 'Noto Color Emoji', 'Android Emoji', sans-serif;
+		font-family:
+			'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji', 'Twemoji Mozilla',
+			'Noto Color Emoji', 'Android Emoji', sans-serif;
 	}
 }
 </style>

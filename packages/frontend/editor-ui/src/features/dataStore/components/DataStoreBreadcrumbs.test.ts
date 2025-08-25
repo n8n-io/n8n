@@ -96,7 +96,7 @@ describe('DataStoreBreadcrumbs', () => {
 			});
 
 			expect(getByText('Data Stores')).toBeInTheDocument();
-			const separators = getAllByText('›');
+			const separators = getAllByText('/');
 			expect(separators.length).toBeGreaterThan(0);
 		});
 
@@ -224,7 +224,7 @@ describe('DataStoreBreadcrumbs', () => {
 				}),
 			});
 
-			const separators = getAllByText('›');
+			const separators = getAllByText('/');
 			expect(separators.length).toBeGreaterThan(0);
 		});
 	});

@@ -44,7 +44,7 @@ describe('UserRepository', () => {
 		test('should create personal project for a user', async () => {
 			const { user, project } = await userRepository.createUserWithProject({
 				email: randomEmail(),
-				role: { slug: 'global:member' },
+				role: 'global:member',
 			});
 
 			const projectRelation = await Container.get(ProjectRelationRepository).findOneOrFail({
