@@ -15,6 +15,10 @@ type ErrorReporterInitOptions = {
 	environment: string;
 	serverName: string;
 	releaseDate?: Date;
+
+	/** Whether to enable event loop block detection, if Sentry is enabled. */
+	withEventLoopBlockDetection: boolean;
+
 	/**
 	 * Function to allow filtering out errors before they are sent to Sentry.
 	 * Return true if the error should be filtered out.
@@ -83,6 +87,7 @@ export class ErrorReporter {
 		environment,
 		serverName,
 		releaseDate,
+		withEventLoopBlockDetection,
 	}: ErrorReporterInitOptions) {
 		if (inTest) return;
 
@@ -126,7 +131,9 @@ export class ErrorReporter {
 			'ContextLines',
 		];
 
-		const eventLoopBlockIntegration = await this.getEventLoopBlockIntegration();
+		const eventLoopBlockIntegration = withEventLoopBlockDetection
+			? await this.getEventLoopBlockIntegration()
+			: [];
 
 		init({
 			dsn,
