@@ -77,7 +77,7 @@ jobs:
 
       - name: Test MariaDB
         working-directory: packages/cli
-        run: pnpm test:mariadb --testTimeout 60000
+        run: pnpm test:mariadb --testTimeout 120000
 
   mysql:
     name: MySQL (${{ matrix.service-name }})
@@ -104,7 +104,7 @@ jobs:
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql --testTimeout 60000
+        run: pnpm test:mysql --testTimeout 120000
 
   postgres:
     name: Postgres

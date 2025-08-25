@@ -35,7 +35,7 @@ describe('UsersController', () => {
 			const request = mock<AuthenticatedRequest>({
 				user: { id: '123' },
 			});
-			userRepository.findOne.mockResolvedValue(mock<User>({ id: '456' }));
+			userRepository.findOneBy.mockResolvedValue(mock<User>({ id: '456' }));
 			projectService.getUserOwnedOrAdminProjects.mockResolvedValue([]);
 
 			await controller.changeGlobalRole(

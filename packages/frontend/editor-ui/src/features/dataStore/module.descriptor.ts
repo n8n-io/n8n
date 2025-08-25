@@ -15,7 +15,7 @@ const DataStoreDetailsView = async () =>
 	await import('@/features/dataStore/DataStoreDetailsView.vue');
 
 export const DataStoreModule: FrontendModuleDescription = {
-	id: 'data-store',
+	id: 'data-table',
 	name: 'Data Store',
 	description: 'Manage and store data efficiently with the Data Store module.',
 	icon: 'database',
@@ -40,7 +40,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 		},
 		{
 			name: PROJECT_DATA_STORES,
-			path: 'datatables',
+			path: 'datatables/:new(new)?',
 			props: true,
 			components: {
 				default: DataStoreView,

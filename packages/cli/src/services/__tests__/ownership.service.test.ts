@@ -9,7 +9,6 @@ import {
 	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	UserRepository,
-	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
@@ -219,7 +218,7 @@ describe('OwnershipService', () => {
 			await ownershipService.getInstanceOwner();
 
 			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
-				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				where: { role: 'global:owner' },
 			});
 		});
 	});

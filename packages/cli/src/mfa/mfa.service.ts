@@ -122,10 +122,7 @@ export class MfaService {
 	}
 
 	async enableMfa(userId: string) {
-		const user = await this.userRepository.findOneOrFail({
-			where: { id: userId },
-			relations: ['role'],
-		});
+		const user = await this.userRepository.findOneByOrFail({ id: userId });
 		user.mfaEnabled = true;
 		return await this.userRepository.save(user);
 	}

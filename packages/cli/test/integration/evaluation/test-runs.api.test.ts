@@ -1,11 +1,6 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import {
-	GLOBAL_MEMBER_ROLE,
-	GLOBAL_OWNER_ROLE,
-	ProjectRepository,
-	TestRunRepository,
-} from '@n8n/db';
+import { ProjectRepository, TestRunRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mockInstance } from 'n8n-core/test/utils';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -30,7 +25,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	ownerShell = await createUserShell(GLOBAL_OWNER_ROLE);
+	ownerShell = await createUserShell('global:owner');
 	authOwnerAgent = testServer.authAgentFor(ownerShell);
 });
 
@@ -118,7 +113,7 @@ describe('GET /workflows/:workflowId/test-runs', () => {
 	});
 
 	test('should retrieve list of test runs for a shared workflow', async () => {
-		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const memberShell = await createUserShell('global:member');
 		const memberAgent = testServer.authAgentFor(memberShell);
 		const memberPersonalProject = await Container.get(
 			ProjectRepository,
@@ -176,7 +171,7 @@ describe('GET /workflows/:workflowId/test-runs/:id', () => {
 	});
 
 	test('should retrieve test run of a shared workflow', async () => {
-		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const memberShell = await createUserShell('global:member');
 		const memberAgent = testServer.authAgentFor(memberShell);
 		const memberPersonalProject = await Container.get(
 			ProjectRepository,
@@ -350,7 +345,7 @@ describe('GET /workflows/:workflowId/test-runs/:id/test-cases', () => {
 	});
 
 	test('should return test cases for a shared workflow', async () => {
-		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const memberShell = await createUserShell('global:member');
 		const memberAgent = testServer.authAgentFor(memberShell);
 		const memberPersonalProject = await Container.get(
 			ProjectRepository,
