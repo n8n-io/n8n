@@ -348,6 +348,7 @@ const onAddRowClick = async () => {
 			newRow[col.name] = null;
 		});
 		rowData.value.push(newRow);
+		refreshGridData();
 		// TODO: handle the case where the row is overflowing the current page
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
