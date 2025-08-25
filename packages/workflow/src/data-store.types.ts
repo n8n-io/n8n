@@ -47,7 +47,7 @@ export type ListDataStoreContentFilter = {
 	filters: Array<{
 		columnName: string;
 		condition: 'eq' | 'neq';
-		value: string | number | boolean | Date;
+		value: DataStoreColumnJsType;
 	}>;
 };
 
