@@ -33,27 +33,27 @@ describe('SelectedItemsInfo', () => {
 		expect(getByTestId('clear-selection-button')).toBeInTheDocument();
 	});
 
-	it('should emit deleteSelected event when delete button is clicked', async () => {
+	it('should emit deleteSelected event when delete button is clicked', () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {
 				selectedCount: 1,
 			},
 		});
 
-		await getByTestId('delete-selected-button').click();
+		getByTestId('delete-selected-button').click();
 
 		expect(emitted().deleteSelected).toBeTruthy();
 		expect(emitted().deleteSelected).toHaveLength(1);
 	});
 
-	it('should emit clearSelection event when clear button is clicked', async () => {
+	it('should emit clearSelection event when clear button is clicked', () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {
 				selectedCount: 5,
 			},
 		});
 
-		await getByTestId('clear-selection-button').click();
+		getByTestId('clear-selection-button').click();
 
 		expect(emitted().clearSelection).toBeTruthy();
 		expect(emitted().clearSelection).toHaveLength(1);
