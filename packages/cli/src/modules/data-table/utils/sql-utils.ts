@@ -193,7 +193,13 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 }
 
 export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
-	const typeMap = new Map(columns.map((col) => [col.name, col.type]));
+	// we need to normalize system dates as well
+	const systemColumns = [
+		{ name: 'createdAt', type: 'date' },
+		{ name: 'updatedAt', type: 'date' },
+	];
+
+	const typeMap = new Map([...columns, ...systemColumns].map((col) => [col.name, col.type]));
 	return rows.map((row) => {
 		const normalized = { ...row };
 		for (const [key, value] of Object.entries(row)) {
