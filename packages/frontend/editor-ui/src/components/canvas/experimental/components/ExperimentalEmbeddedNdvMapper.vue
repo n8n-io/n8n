@@ -4,21 +4,22 @@ import { CanvasKey } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { N8nPopover } from '@n8n/design-system';
+import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
 import type { Workflow } from 'n8n-workflow';
 import { computed, inject, ref, useTemplateRef } from 'vue';
 
-const { node, inputNodeName, visible, virtualRef, containerHeight } = defineProps<{
+const { node, inputNodeName, visible, virtualRef } = defineProps<{
 	workflow: Workflow;
 	node: INodeUi;
 	inputNodeName: string;
 	visible: boolean;
 	virtualRef: HTMLElement | undefined;
-	containerHeight: number;
 }>();
 
 const contentRef = useTemplateRef('content');
 const ndvStore = useNDVStore();
+const vf = useVueFlow();
 const canvas = inject(CanvasKey, undefined);
 const isVisible = computed(() => visible && !canvas?.isPaneMoving.value);
 const isOnceVisible = ref(isVisible.value);
@@ -53,7 +54,7 @@ defineExpose({
 			:tabindex="-1"
 			:class="$style.inputPanel"
 			:style="{
-				maxHeight: `calc(${containerHeight}px - var(--spacing-s) * 2)`,
+				maxHeight: `calc(${vf.viewportRef.value?.offsetHeight ?? 0}px - var(--spacing-s) * 2)`,
 			}"
 			:workflow-object="workflow"
 			:run-index="0"
