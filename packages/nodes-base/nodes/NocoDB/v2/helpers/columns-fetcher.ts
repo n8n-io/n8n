@@ -104,7 +104,7 @@ export class ColumnsFetcher {
 	constructor(protected loadOptionsFunctions: ILoadOptionsFunctions) {}
 
 	async mapperFieldsFromDefinedParam() {
-		const version = this.loadOptionsFunctions.getNodeParameter('version', 0) as number;
+		const version = Number(this.loadOptionsFunctions.getNodeParameter('version', 0));
 		const fetchResult = await this.fetchFromDefinedParam();
 		return this.mapApiResultToMapperFields({
 			version,
@@ -113,7 +113,7 @@ export class ColumnsFetcher {
 	}
 
 	async fetchFromDefinedParam() {
-		const version = this.loadOptionsFunctions.getNodeParameter('version', 0) as number;
+		const version = Number(this.loadOptionsFunctions.getNodeParameter('version', 0));
 		const workspaceId = this.loadOptionsFunctions.getNodeParameter('workspaceId', 0, {
 			extractValue: true,
 		}) as string;
