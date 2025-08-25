@@ -1,38 +1,24 @@
 <script setup lang="ts">
-import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
-import { N8nText } from '@n8n/design-system';
-import { computed, provide } from 'vue';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useVueFlow } from '@vue-flow/core';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { INodeUi } from '@/Interface';
+import { N8nText } from '@n8n/design-system';
+import { GraphNode } from '@vue-flow/core';
+import { computed, provide } from 'vue';
+import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 
-const workflowsStore = useWorkflowsStore();
-const { setActiveNodeName } = useNDVStore();
-const vueFlow = useVueFlow(workflowsStore.workflowId);
+const { node, nodes } = defineProps<{ node: INodeUi; nodes: GraphNode[] }>();
 
-const node = computed(() => {
-	const node = vueFlow.getSelectedNodes.value[0];
+const emit = defineEmits<{ openNdv: [] }>();
 
-	return node ? (workflowsStore.allNodes.find((n) => n.id === node.id) ?? null) : null;
-});
-const expressionResolveCtx = useExpressionResolveCtx(node);
-
-function handleOpenNdv() {
-	if (node.value) {
-		setActiveNodeName(node.value.name);
-	}
-}
+const expressionResolveCtx = useExpressionResolveCtx(computed(() => node));
 
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 </script>
 
 <template>
 	<div :class="$style.component">
-		<N8nText v-if="vueFlow.getSelectedNodes.value.length > 1" color="text-base">
-			{{ vueFlow.getSelectedNodes.value.length }} nodes selected
-		</N8nText>
+		<N8nText v-if="nodes.length > 1" color="text-base"> {{ nodes.length }} nodes selected </N8nText>
 		<ExperimentalCanvasNodeSettings v-else-if="node" :key="node.id" :node-id="node.id">
 			<template #actions>
 				<N8nIconButton
@@ -42,7 +28,7 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 					size="mini"
 					icon-size="large"
 					aria-label="Expand"
-					@click="handleOpenNdv"
+					@click="emit('openNdv')"
 				/>
 			</template>
 		</ExperimentalCanvasNodeSettings>

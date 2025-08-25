@@ -15,7 +15,7 @@ import type {
 	IUpdateInformation,
 } from '@/Interface';
 
-import { BASE_NODE_SURVEY_URL, NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
+import { BASE_NODE_SURVEY_URL } from '@/constants';
 
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
@@ -50,7 +50,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
-import { usePostHog } from '@/stores/posthog.store';
 import { useResizeObserver } from '@vueuse/core';
 import { useNodeSettingsParameters } from '@/composables/useNodeSettingsParameters';
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
@@ -75,12 +74,18 @@ const props = withDefaults(
 		subTitle?: string;
 		extraTabsClassName?: string;
 		extraParameterWrapperClassName?: string;
+		isNDVV2?: boolean;
+		hideExecute?: boolean;
+		hideDocs?: boolean;
 	}>(),
 	{
 		inputSize: 0,
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
 		subTitle: undefined,
+		isNDVV2: false,
+		hideExecute: false,
+		hideDocs: true,
 	},
 );
 
@@ -108,7 +113,6 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
-const posthogStore = usePostHog();
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
@@ -251,13 +255,6 @@ const credentialOwnerName = computed(() => {
 
 	return credentialsStore.getCredentialOwnerName(credential);
 });
-
-const isNDVV2 = computed(() =>
-	posthogStore.isVariantEnabled(
-		NDV_UI_OVERHAUL_EXPERIMENT.name,
-		NDV_UI_OVERHAUL_EXPERIMENT.variant,
-	),
-);
 
 const featureRequestUrl = computed(() => {
 	if (!nodeType.value) {
@@ -648,9 +645,10 @@ function handleSelectAction(params: INodeParameters) {
 			:node-name="node.name"
 			:node-type="nodeType"
 			:execute-button-tooltip="executeButtonTooltip"
-			:hide-execute="!isExecutable || blockUI || !node || !nodeValid"
+			:hide-execute="props.hideExecute || !isExecutable || blockUI || !node || !nodeValid"
 			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
 			:hide-tabs="!nodeValid"
+			:hide-docs="props.hideDocs"
 			:push-ref="pushRef"
 			@execute="onNodeExecute"
 			@stop-execution="onStopExecution"

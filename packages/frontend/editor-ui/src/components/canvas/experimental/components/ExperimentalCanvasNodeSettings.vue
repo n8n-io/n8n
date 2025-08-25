@@ -80,6 +80,9 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 		:sub-title="subTitle"
 		extra-tabs-class-name="nodrag"
 		extra-parameter-wrapper-class-name="nodrag"
+		is-n-d-v-v2
+		hide-execute
+		:hide-docs="false"
 		@value-changed="handleValueChanged"
 		@capture-wheel-body="handleCaptureWheelEvent"
 		@dblclick-header="handleDoubleClickHeader"

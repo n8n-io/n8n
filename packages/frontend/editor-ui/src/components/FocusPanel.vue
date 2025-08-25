@@ -26,7 +26,7 @@ import {
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
-import type { ResizeData, TargetNodeParameterContext } from '@/Interface';
+import type { INodeUi, ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useThrottleFn } from '@vueuse/core';
 import { useStyles } from '@/composables/useStyles';
@@ -37,6 +37,8 @@ import { useExperimentalNdvStore } from '@/components/canvas/experimental/experi
 import { useUIStore } from '@/stores/ui.store';
 import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useVueFlow } from '@vue-flow/core';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -63,8 +65,10 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
+const ndvStore = useNDVStore();
 const deviceSupport = useDeviceSupport();
 const styles = useStyles();
+const vueFlow = useVueFlow(workflowsStore.workflowId);
 
 const contentRef = useTemplateRef('contentRef');
 
@@ -108,22 +112,26 @@ const isDisplayed = computed(() => {
 	);
 });
 
+const node = computed<INodeUi | undefined>(() => {
+	if (!experimentalNdvStore.isNdvInFocusPanelEnabled || resolvedParameter.value) {
+		return resolvedParameter.value?.node;
+	}
+
+	const selected = focusedNodeParameter.value?.nodeId ?? vueFlow.getSelectedNodes.value[0]?.id;
+
+	return selected ? workflowsStore.allNodes.find((n) => n.id === selected) : undefined;
+});
+
 const isExecutable = computed(() => {
-	if (!resolvedParameter.value) return false;
+	if (!node.value) return false;
 
 	if (!isDisplayed.value) return false;
 
 	const foreignCredentials = nodeHelpers.getForeignCredentialsIfSharingEnabled(
-		resolvedParameter.value.node.credentials,
+		node.value.credentials,
 	);
-	return nodeHelpers.isNodeExecutable(
-		resolvedParameter.value.node,
-		!props.isCanvasReadOnly,
-		foreignCredentials,
-	);
+	return nodeHelpers.isNodeExecutable(node.value, !props.isCanvasReadOnly, foreignCredentials);
 });
-
-const node = computed(() => resolvedParameter.value?.node);
 
 const { workflowRunData } = useExecutionData({ node });
 
@@ -370,6 +378,12 @@ function onResize(event: ResizeData) {
 }
 
 const onResizeThrottle = useThrottleFn(onResize, 10);
+
+function onOpenNdv() {
+	if (node.value) {
+		ndvStore.setActiveNodeName(node.value.name);
+	}
+}
 </script>
 
 <template>
@@ -383,16 +397,18 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 			:style="{ width: `${focusPanelWidth}px`, zIndex: styles.APP_Z_INDEXES.FOCUS_PANEL }"
 			@resize="onResizeThrottle"
 		>
-			<ExperimentalNodeDetailsDrawer
-				v-if="
-					experimentalNdvStore.isNdvInFocusPanelEnabled &&
-					!resolvedParameter &&
-					uiStore.lastSelectedNode
-				"
-			/>
-			<div v-else :class="$style.container">
+			<div :class="$style.container">
+				<ExperimentalFocusPanelHeader
+					v-if="experimentalNdvStore.isNdvInFocusPanelEnabled && node"
+					:node="node"
+					:parameter="resolvedParameter?.parameter"
+					:is-executable="isExecutable"
+					@execute="onExecute"
+					@open-ndv="onOpenNdv"
+					@clear-parameter="closeFocusPanel"
+				/>
 				<div v-if="resolvedParameter" ref="contentRef" :class="$style.content">
-					<div :class="$style.tabHeader">
+					<div v-if="!experimentalNdvStore.isNdvInFocusPanelEnabled" :class="$style.tabHeader">
 						<div :class="$style.tabHeaderText">
 							<N8nText color="text-dark" size="small">
 								{{ resolvedParameter.parameter.displayName }}
@@ -551,6 +567,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						:container-height="contentRef?.offsetHeight ?? 0"
 					/>
 				</div>
+				<ExperimentalNodeDetailsDrawer
+					v-else-if="
+						node && experimentalNdvStore.isNdvInFocusPanelEnabled && uiStore.lastSelectedNode
+					"
+					:node="node"
+					:nodes="vueFlow.getSelectedNodes.value"
+					@open-ndv="onOpenNdv"
+				/>
 				<div v-else :class="[$style.content, $style.emptyContent]">
 					<div :class="$style.emptyText">
 						<div :class="$style.focusParameterWrapper">
