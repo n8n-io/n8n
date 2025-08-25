@@ -78,6 +78,7 @@ export namespace ChatUI {
 		toolName: string;
 		toolCallId?: string;
 		displayTitle?: string;
+		customDisplayTitle?: string;
 		status: 'running' | 'completed' | 'error';
 		updates: Array<{
 			type: 'input' | 'output' | 'progress' | 'error';

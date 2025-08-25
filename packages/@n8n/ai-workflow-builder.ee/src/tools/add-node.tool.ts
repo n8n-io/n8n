@@ -65,6 +65,14 @@ function buildResponseMessage(addedNode: AddedNode, nodeTypes: INodeTypeDescript
 	return `Successfully added "${addedNode.name}" (${addedNode.displayName ?? addedNode.type})${nodeTypeInfo} with ID ${addedNode.id}`;
 }
 
+function getCustomDisplayTitle(input: Record<string, unknown>): string {
+	if ('name' in input && typeof input['name'] === 'string') {
+		return `Adding ${input['name']}`;
+	}
+
+	return 'Adding node';
+}
+
 /**
  * Factory function to create the add node tool
  */
@@ -73,7 +81,12 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 
 	const dynamicTool = tool(
 		async (input, config) => {
-			const reporter = createProgressReporter(config, 'add_nodes', DISPLAY_TITLE);
+			const reporter = createProgressReporter(
+				config,
+				'add_nodes',
+				DISPLAY_TITLE,
+				getCustomDisplayTitle({ name: input.name }),
+			);
 
 			try {
 				// Validate input using Zod schema
@@ -201,5 +214,6 @@ Think through the connectionParametersReasoning FIRST, then set connectionParame
 	return {
 		tool: dynamicTool,
 		displayTitle: DISPLAY_TITLE,
+		getCustomDisplayTitle,
 	};
 }

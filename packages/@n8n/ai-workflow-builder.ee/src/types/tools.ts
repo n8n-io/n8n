@@ -26,7 +26,8 @@ export interface ToolProgressMessage<TToolName extends string = string> {
 	toolCallId?: string;
 	status: 'running' | 'completed' | 'error';
 	updates: ProgressUpdate[];
-	displayTitle?: string; // Name of tool action in UI
+	displayTitle?: string; // Name of tool action in UI, for example "Adding nodes"
+	customDisplayTitle?: string; // Custom name for tool action in UI, for example "Adding Gmail node"
 }
 
 /**

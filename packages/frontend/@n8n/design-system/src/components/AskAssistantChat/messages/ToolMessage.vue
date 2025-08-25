@@ -25,6 +25,7 @@ const { t } = useI18n();
 const toolDisplayName = computed(() => {
 	// Convert tool names from snake_case to Title Case
 	return (
+		props.message.customDisplayTitle ??
 		props.message.displayTitle ??
 		props.message.toolName
 			.split('_')

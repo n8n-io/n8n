@@ -11,6 +11,7 @@ import type {
 export interface BuilderTool {
 	tool: DynamicStructuredTool;
 	displayTitle: string;
+	getCustomDisplayTitle?: (values: Record<string, unknown>) => string;
 }
 
 /**
@@ -135,6 +136,8 @@ export async function* createStreamProcessor(
 	}
 }
 
+// todo
+// eslint-disable-next-line complexity
 export function formatMessages(
 	messages: Array<AIMessage | HumanMessage | ToolMessage>,
 	builderTools?: BuilderTool[],
@@ -185,6 +188,8 @@ export function formatMessages(
 						type: 'tool',
 						toolName: toolCall.name,
 						displayTitle: builderTool?.displayTitle,
+						customDisplayTitle:
+							toolCall.args && builderTool?.getCustomDisplayTitle?.(toolCall.args),
 						status: 'completed',
 						updates: [
 							{
