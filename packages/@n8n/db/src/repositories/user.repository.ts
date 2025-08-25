@@ -55,20 +55,19 @@ export class UserRepository extends Repository<User> {
 				email,
 				password: Not(IsNull()),
 			},
-			relations: ['authIdentities', 'role'],
+			relations: ['authIdentities'],
 		});
 	}
 
 	/** Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }` */
 	async countUsersByRole() {
-		const escapedRoleSlug = this.manager.connection.driver.escape('roleSlug');
 		const rows = (await this.createQueryBuilder()
-			.select([escapedRoleSlug, `COUNT(${escapedRoleSlug}) as count`])
-			.groupBy(escapedRoleSlug)
-			.execute()) as Array<{ roleSlug: string; count: string }>;
+			.select(['role', 'COUNT(role) as count'])
+			.groupBy('role')
+			.execute()) as Array<{ role: string; count: string }>;
 		return rows.reduce(
 			(acc, row) => {
-				acc[row.roleSlug] = parseInt(row.count, 10);
+				acc[row.role] = parseInt(row.count, 10);
 				return acc;
 			},
 			{} as Record<string, number>,
@@ -92,25 +91,20 @@ export class UserRepository extends Repository<User> {
 		const createInner = async (entityManager: EntityManager) => {
 			const newUser = entityManager.create(User, user);
 			const savedUser = await entityManager.save<User>(newUser);
-			const userWithRole = await entityManager.findOne(User, {
-				where: { id: savedUser.id },
-				relations: ['role'],
-			});
-			if (!userWithRole) throw new Error('Failed to create user!');
 			const savedProject = await entityManager.save<Project>(
 				entityManager.create(Project, {
 					type: 'personal',
-					name: userWithRole.createPersonalProjectName(),
+					name: savedUser.createPersonalProjectName(),
 				}),
 			);
 			await entityManager.save<ProjectRelation>(
 				entityManager.create(ProjectRelation, {
 					projectId: savedProject.id,
-					userId: userWithRole.id,
+					userId: savedUser.id,
 					role: 'project:personalOwner',
 				}),
 			);
-			return { user: userWithRole, project: savedProject };
+			return { user: savedUser, project: savedProject };
 		};
 		if (transactionManager) {
 			return await createInner(transactionManager);
@@ -133,7 +127,6 @@ export class UserRepository extends Repository<User> {
 					project: { sharedWorkflows: { workflowId, role: 'workflow:owner' } },
 				},
 			},
-			relations: ['role'],
 		});
 	}
 
@@ -150,7 +143,6 @@ export class UserRepository extends Repository<User> {
 					projectId,
 				},
 			},
-			relations: ['role'],
 		});
 	}
 
@@ -294,8 +286,6 @@ export class UserRepository extends Repository<User> {
 		this.applyUserListExpand(queryBuilder, expand);
 		this.applyUserListPagination(queryBuilder, take, skip);
 		this.applyUserListSort(queryBuilder, sortBy);
-		queryBuilder.leftJoinAndSelect('user.role', 'role');
-		queryBuilder.leftJoinAndSelect('role.scopes', 'scopes');
 
 		return queryBuilder;
 	}
