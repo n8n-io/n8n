@@ -246,7 +246,12 @@ export class DataStoreController {
 		@Body dto: AddDataStoreRowsDto,
 	) {
 		try {
-			return await this.dataStoreService.insertRows(dataStoreId, req.params.projectId, dto.data);
+			return await this.dataStoreService.insertRows(
+				dataStoreId,
+				req.params.projectId,
+				dto.data,
+				dto.returnData,
+			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
 				throw new NotFoundError(e.message);

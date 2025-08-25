@@ -29,7 +29,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 	routes: [
 		{
 			name: DATA_STORE_VIEW,
-			path: '/home/datastores',
+			path: '/home/datatables',
 			components: {
 				default: DataStoreView,
 				sidebar: MainSidebar,
@@ -40,7 +40,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 		},
 		{
 			name: PROJECT_DATA_STORES,
-			path: 'datastores',
+			path: 'datatables',
 			props: true,
 			components: {
 				default: DataStoreView,
@@ -53,7 +53,7 @@ export const DataStoreModule: FrontendModuleDescription = {
 		},
 		{
 			name: DATA_STORE_DETAILS,
-			path: 'datastores/:id',
+			path: 'datatables/:id',
 			props: true,
 			components: {
 				default: DataStoreDetailsView,
