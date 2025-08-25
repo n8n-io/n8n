@@ -123,6 +123,7 @@ export interface FrontendSettings {
 	unverifiedCommunityNodesEnabled: boolean;
 	aiAssistant: {
 		enabled: boolean;
+		setup: boolean;
 	};
 	askAi: {
 		enabled: boolean;
