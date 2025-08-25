@@ -1,4 +1,5 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
+import type { DynamicStructuredTool } from '@langchain/core/tools';
 
 import type {
 	AgentMessageChunk,
@@ -6,6 +7,11 @@ import type {
 	WorkflowUpdateChunk,
 	StreamOutput,
 } from '../types/streaming';
+
+export interface BuilderTool {
+	tool: DynamicStructuredTool;
+	displayTitle: string;
+}
 
 /**
  * Tools which should trigger canvas updates
@@ -131,6 +137,7 @@ export async function* createStreamProcessor(
 
 export function formatMessages(
 	messages: Array<AIMessage | HumanMessage | ToolMessage>,
+	builderTools?: BuilderTool[],
 ): Array<Record<string, unknown>> {
 	const formattedMessages: Array<Record<string, unknown>> = [];
 
@@ -170,12 +177,14 @@ export function formatMessages(
 			if (msg.tool_calls && msg.tool_calls.length > 0) {
 				// Add tool messages for each tool call
 				for (const toolCall of msg.tool_calls) {
+					const builderTool = builderTools?.find((bt) => bt.tool.name === toolCall.name);
 					formattedMessages.push({
 						id: toolCall.id,
 						toolCallId: toolCall.id,
 						role: 'assistant',
 						type: 'tool',
 						toolName: toolCall.name,
+						displayTitle: builderTool?.displayTitle,
 						status: 'completed',
 						updates: [
 							{

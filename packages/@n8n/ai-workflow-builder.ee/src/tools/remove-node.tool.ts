@@ -9,6 +9,7 @@ import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, getWorkflowState, removeNodeFromWorkflow } from './helpers/state';
 import { validateNodeExists, createNodeNotFoundError } from './helpers/validation';
 import type { RemoveNodeOutput } from '../types/tools';
+import type { BuilderTool } from '../utils/stream-processor';
 
 /**
  * Schema for the remove node tool
@@ -72,10 +73,12 @@ function buildResponseMessage(
 /**
  * Factory function to create the remove node tool
  */
-export function createRemoveNodeTool(_logger?: Logger) {
-	return tool(
+export function createRemoveNodeTool(_logger?: Logger): BuilderTool {
+	const DISPLAY_TITLE = 'Removing node';
+
+	const dynamicTool = tool(
 		(input, config) => {
-			const reporter = createProgressReporter(config, 'remove_node', 'Removing nodes');
+			const reporter = createProgressReporter(config, 'remove_node', DISPLAY_TITLE);
 
 			try {
 				// Validate input using Zod schema
@@ -152,4 +155,9 @@ export function createRemoveNodeTool(_logger?: Logger) {
 			schema: removeNodeSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		displayTitle: DISPLAY_TITLE,
+	};
 }

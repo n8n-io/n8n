@@ -24,7 +24,7 @@ import { createRemoveNodeTool } from './tools/remove-node.tool';
 import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import type { SimpleWorkflow } from './types/workflow';
 import { processOperations } from './utils/operations-processor';
-import { createStreamProcessor, formatMessages } from './utils/stream-processor';
+import { createStreamProcessor, formatMessages, type BuilderTool } from './utils/stream-processor';
 import { extractLastTokenUsage } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
@@ -74,8 +74,8 @@ export class WorkflowBuilderAgent {
 		this.instanceUrl = config.instanceUrl;
 	}
 
-	private createWorkflow() {
-		const tools = [
+	private getBuilderTools(): BuilderTool[] {
+		return [
 			createNodeSearchTool(this.parsedNodeTypes),
 			createNodeDetailsTool(this.parsedNodeTypes),
 			createAddNodeTool(this.parsedNodeTypes),
@@ -88,6 +88,13 @@ export class WorkflowBuilderAgent {
 				this.instanceUrl,
 			),
 		];
+	}
+
+	private createWorkflow() {
+		const builderTools = this.getBuilderTools();
+
+		// Extract just the tools for LLM binding
+		const tools = builderTools.map((bt) => bt.tool);
 
 		// Create a map for quick tool lookup
 		const toolMap = new Map(tools.map((tool) => [tool.name, tool]));
@@ -485,7 +492,7 @@ export class WorkflowBuilderAgent {
 
 					sessions.push({
 						sessionId: threadId,
-						messages: formatMessages(messages),
+						messages: formatMessages(messages, this.getBuilderTools()),
 						lastUpdated: checkpoint.checkpoint.ts,
 					});
 				}

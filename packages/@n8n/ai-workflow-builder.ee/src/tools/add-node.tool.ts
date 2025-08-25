@@ -12,6 +12,7 @@ import { getCurrentWorkflow, addNodeToWorkflow, getWorkflowState } from './helpe
 import { findNodeType } from './helpers/validation';
 import type { AddedNode } from '../types/nodes';
 import type { AddNodeOutput, ToolError } from '../types/tools';
+import type { BuilderTool } from '../utils/stream-processor';
 
 /**
  * Schema for node creation input
@@ -67,10 +68,12 @@ function buildResponseMessage(addedNode: AddedNode, nodeTypes: INodeTypeDescript
 /**
  * Factory function to create the add node tool
  */
-export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
-	return tool(
+export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderTool {
+	const DISPLAY_TITLE = 'Adding nodes';
+
+	const dynamicTool = tool(
 		async (input, config) => {
-			const reporter = createProgressReporter(config, 'add_nodes', 'Adding nodes');
+			const reporter = createProgressReporter(config, 'add_nodes', DISPLAY_TITLE);
 
 			try {
 				// Validate input using Zod schema
@@ -194,4 +197,9 @@ Think through the connectionParametersReasoning FIRST, then set connectionParame
 			schema: nodeCreationSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		displayTitle: DISPLAY_TITLE,
+	};
 }

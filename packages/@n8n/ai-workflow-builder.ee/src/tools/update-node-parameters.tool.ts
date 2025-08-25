@@ -21,6 +21,7 @@ import {
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
 import type { UpdateNodeParametersOutput } from '../types/tools';
+import type { BuilderTool } from '../utils/stream-processor';
 
 /**
  * Schema for update node parameters input
@@ -119,14 +120,12 @@ export function createUpdateNodeParametersTool(
 	llm: BaseChatModel,
 	logger?: Logger,
 	instanceUrl?: string,
-) {
-	return tool(
+): BuilderTool {
+	const DISPLAY_TITLE = 'Updating node parameters';
+
+	const dynamicTool = tool(
 		async (input, config) => {
-			const reporter = createProgressReporter(
-				config,
-				'update_node_parameters',
-				'Updating node parameters',
-			);
+			const reporter = createProgressReporter(config, 'update_node_parameters', DISPLAY_TITLE);
 
 			try {
 				// Validate input using Zod schema
@@ -237,4 +236,9 @@ export function createUpdateNodeParametersTool(
 			schema: updateNodeParametersSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		displayTitle: DISPLAY_TITLE,
+	};
 }

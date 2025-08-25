@@ -8,6 +8,7 @@ import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { findNodeType, createNodeTypeNotFoundError } from './helpers/validation';
 import type { NodeDetails } from '../types/nodes';
 import type { NodeDetailsOutput } from '../types/tools';
+import type { BuilderTool } from '../utils/stream-processor';
 
 /**
  * Schema for node details tool input
@@ -125,10 +126,12 @@ function extractNodeDetails(nodeType: INodeTypeDescription): NodeDetails {
 /**
  * Factory function to create the node details tool
  */
-export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
-	return tool(
+export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]): BuilderTool {
+	const DISPLAY_TITLE = 'Getting node details';
+
+	const dynamicTool = tool(
 		(input: unknown, config) => {
-			const reporter = createProgressReporter(config, 'get_node_details', 'Getting nodes’ details');
+			const reporter = createProgressReporter(config, 'get_node_details', DISPLAY_TITLE);
 
 			try {
 				// Validate input using Zod schema
@@ -194,4 +197,9 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 			schema: nodeDetailsSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		displayTitle: DISPLAY_TITLE,
+	};
 }
