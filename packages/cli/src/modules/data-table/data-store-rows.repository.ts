@@ -163,8 +163,8 @@ export class DataStoreRowsRepository {
 
 	async updateRow(
 		dataStoreId: string,
-		setData: Record<string, DataStoreColumnJsType | null>,
-		whereData: Record<string, DataStoreColumnJsType | null>,
+		setData: Record<string, DataStoreColumnJsType>,
+		whereData: Record<string, DataStoreColumnJsType>,
 		columns: DataStoreColumn[],
 	) {
 		const dbType = this.dataSource.options.type;
@@ -172,7 +172,7 @@ export class DataStoreRowsRepository {
 
 		const queryBuilder = this.dataSource.createQueryBuilder().update(this.toTableName(dataStoreId));
 
-		const setValues: Record<string, DataStoreColumnJsType | null> = {};
+		const setValues: Record<string, DataStoreColumnJsType> = {};
 		for (const [key, value] of Object.entries(setData)) {
 			setValues[key] = normalizeValue(value, columnTypeMap[key], dbType);
 		}
@@ -329,8 +329,7 @@ export class DataStoreRowsRepository {
 			}
 		});
 
-		const existing: Array<Record<string, DataStoreColumnJsType | null>> =
-			await queryBuilder.getRawMany();
+		const existing: Array<Record<string, DataStoreColumnJsType>> = await queryBuilder.getRawMany();
 
 		return splitRowsByExistence(existing, matchFields, rows);
 	}

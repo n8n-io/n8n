@@ -236,10 +236,10 @@ export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 }
 
 export function normalizeValue(
-	value: DataStoreColumnJsType | null,
+	value: DataStoreColumnJsType,
 	columnType: string | undefined,
 	dbType: DataSourceOptions['type'],
-): DataStoreColumnJsType | null {
+): DataStoreColumnJsType {
 	if (['mysql', 'mariadb'].includes(dbType)) {
 		if (columnType === 'date') {
 			if (value instanceof Date) {
