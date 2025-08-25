@@ -12,7 +12,7 @@ Any tables added before the official release may become inaccessible at any poin
 @BackendModule({ name: 'data-store' })
 export class DataStoreModule implements ModuleInterface {
 	async init() {
-		const logger = Container.get(Logger).scoped('data-store');
+		const logger = Container.get(Logger).scoped('data-table');
 		logger.warn(`${YELLOW}${DATA_TABLE_WARNING_MESSAGE}${CLEAR}`);
 
 		await import('./data-store.controller');
