@@ -112,24 +112,6 @@ const onProjectHeaderAction = (action: string) => {
 	}
 };
 
-const onCardRename = async (payload: { dataStore: DataStoreResource }) => {
-	try {
-		const updated = await dataStoreStore.updateDataStore(
-			payload.dataStore.id,
-			payload.dataStore.name,
-			payload.dataStore.projectId,
-		);
-		if (!updated) {
-			toast.showError(
-				new Error(i18n.baseText('generic.unknownError')),
-				i18n.baseText('dataStore.rename.error'),
-			);
-		}
-	} catch (error) {
-		toast.showError(error, i18n.baseText('dataStore.rename.error'));
-	}
-};
-
 onMounted(() => {
 	documentTitle.set(i18n.baseText('dataStore.dataStores'));
 });
@@ -189,7 +171,6 @@ watch(
 				:data-store="data as DataStoreResource"
 				:show-ownership-badge="projectPages.isOverviewSubPage"
 				:read-only="readOnlyEnv"
-				@rename="onCardRename"
 			/>
 		</template>
 	</ResourcesListLayout>

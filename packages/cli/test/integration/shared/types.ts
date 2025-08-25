@@ -46,7 +46,7 @@ type EndpointGroup =
 	| 'data-store'
 	| 'module-settings';
 
-type ModuleName = 'insights' | 'external-secrets' | 'data-store';
+type ModuleName = 'insights' | 'external-secrets' | 'community-packages' | 'data-store';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

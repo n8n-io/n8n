@@ -527,7 +527,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			// Verify that ErrorReporter.error was called due to invalid JSON data
 			expect(mockErrorReporter.error).toHaveBeenCalledWith(
-				'node execution returned incorrect data',
+				'node execution returned incorrect output',
 				expect.objectContaining({
 					shouldBeLogged: false,
 					extra: expect.objectContaining({

@@ -12,6 +12,9 @@
                 }
             }
         },
+        "CaseNumber": {
+            "type": "string"
+        },
         "Id": {
             "type": "string"
         },
@@ -19,5 +22,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

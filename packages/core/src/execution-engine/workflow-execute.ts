@@ -1196,7 +1196,7 @@ export class WorkflowExecute {
 			// Does not block the execution from continuing
 			const jsonCompatibleResult = isJsonCompatible(data, new Set(['pairedItem']));
 			if (!jsonCompatibleResult.isValid) {
-				Container.get(ErrorReporter).error('node execution returned incorrect data', {
+				Container.get(ErrorReporter).error('node execution returned incorrect output', {
 					shouldBeLogged: false,
 					extra: {
 						nodeName: node.name,
@@ -1777,10 +1777,8 @@ export class WorkflowExecute {
 							});
 
 							nodeSuccessData = this.assignPairedItems(nodeSuccessData, executionData);
-							const noOutputData =
-								!nodeSuccessData || nodeSuccessData.every((data) => !data?.length);
 
-							if (noOutputData) {
+							if (!nodeSuccessData?.[0]?.[0]) {
 								if (executionData.node.alwaysOutputData === true) {
 									const pairedItem: IPairedItemData[] = [];
 

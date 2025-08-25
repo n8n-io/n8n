@@ -4,7 +4,6 @@ import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { ErrorEvent, EventHint } from '@sentry/core';
 import type { NodeOptions } from '@sentry/node';
-import { eventLoopBlockIntegration } from '@sentry/node-native';
 import { AxiosError } from 'axios';
 import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
@@ -16,6 +15,10 @@ type ErrorReporterInitOptions = {
 	environment: string;
 	serverName: string;
 	releaseDate?: Date;
+
+	/** Whether to enable event loop block detection, if Sentry is enabled. */
+	withEventLoopBlockDetection: boolean;
+
 	/**
 	 * Function to allow filtering out errors before they are sent to Sentry.
 	 * Return true if the error should be filtered out.
@@ -84,6 +87,7 @@ export class ErrorReporter {
 		environment,
 		serverName,
 		releaseDate,
+		withEventLoopBlockDetection,
 	}: ErrorReporterInitOptions) {
 		if (inTest) return;
 
@@ -127,6 +131,10 @@ export class ErrorReporter {
 			'ContextLines',
 		];
 
+		const eventLoopBlockIntegration = withEventLoopBlockDetection
+			? await this.getEventLoopBlockIntegration()
+			: [];
+
 		init({
 			dsn,
 			release,
@@ -147,7 +155,7 @@ export class ErrorReporter {
 						url: true,
 					},
 				}),
-				eventLoopBlockIntegration(),
+				...eventLoopBlockIntegration,
 			],
 		});
 
@@ -252,5 +260,17 @@ export class ErrorReporter {
 		event.level = level;
 		if (extra) event.extra = { ...event.extra, ...extra };
 		if (tags) event.tags = { ...event.tags, ...tags };
+	}
+
+	private async getEventLoopBlockIntegration() {
+		try {
+			const { eventLoopBlockIntegration } = await import('@sentry/node-native');
+			return [eventLoopBlockIntegration()];
+		} catch {
+			this.logger.debug(
+				"Sentry's event loop block integration is disabled, because the native binary for `@sentry/node-native` was not found",
+			);
+			return [];
+		}
 	}
 }

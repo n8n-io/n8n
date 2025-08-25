@@ -18,9 +18,9 @@ import { useNodeType } from '@/composables/useNodeType';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useActions } from '../composables/useActions';
 import { useViewStacks } from '../composables/useViewStacks';
-import { useI18n } from '@n8n/i18n';
 import { isNodePreviewKey, removePreviewToken, shouldShowCommunityNodeDetails } from '../utils';
 
 export interface Props {
@@ -179,7 +179,11 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	>
 		<template #icon>
 			<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
-			<NodeIcon :class="$style.nodeIcon" :node-type="nodeType" />
+			<NodeIcon
+				:class="$style.nodeIcon"
+				:node-type="nodeType"
+				color-default="var(--color-foreground-xdark)"
+			/>
 		</template>
 
 		<template v-if="isOfficial" #extraDetails>
@@ -222,7 +226,13 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 				:class="$style.draggable"
 				:style="draggableStyle"
 			>
-				<NodeIcon :node-type="nodeType" :size="40" :shrink="false" @click.capture.stop />
+				<NodeIcon
+					:node-type="nodeType"
+					:size="40"
+					:shrink="false"
+					@click.capture.stop
+					color-default="var(--color-foreground-xdark)"
+				/>
 			</div>
 		</template>
 	</N8nNodeCreatorNode>
@@ -232,7 +242,6 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 .nodeItem {
 	--trigger-icon-background-color: #{$trigger-icon-background-color};
 	--trigger-icon-border-color: #{$trigger-icon-border-color};
-	--canvas-node-icon-color: var(--color-foreground-xdark);
 	margin-left: 15px;
 	margin-right: 12px;
 	user-select: none;
