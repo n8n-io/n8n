@@ -1,21 +1,30 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { InstalledNodes, InstalledPackages } from '@n8n/db';
 import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { CommunityPackagesService } from '@/community-packages/community-packages.service';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
+import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 
-import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
-import { createOwner } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import { setupTestServer, mockPackage, mockNode, mockPackageName } from './shared/utils';
+import { COMMUNITY_PACKAGE_VERSION } from '../../../../test/integration/shared/constants';
+import { createOwner } from '../../../../test/integration/shared/db/users';
+import type { SuperAgentTest } from '../../../../test/integration/shared/types';
+import {
+	setupTestServer,
+	mockPackage,
+	mockNode,
+	mockPackageName,
+} from '../../../../test/integration/shared/utils';
 
 const communityPackagesService = mockInstance(CommunityPackagesService, {
 	hasMissingPackages: false,
 });
 mockInstance(LoadNodesAndCredentials);
 
-const testServer = setupTestServer({ endpointGroups: ['community-packages'] });
+const testServer = setupTestServer({
+	endpointGroups: ['community-packages'],
+	modules: ['community-packages'],
+});
 
 const commonUpdatesProps = {
 	createdAt: new Date(),

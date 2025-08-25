@@ -4,8 +4,8 @@ Official CLI for developing community nodes for [n8n](https://n8n.io).
 
 ## Features
 
-- 🔧 Scaffold new nodes
-- More coming soon
+- 🔧 Scaffold new n8n nodes
+- 💻 Develop n8n nodes with live preview
 
 ## Installation
 

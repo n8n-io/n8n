@@ -1,5 +1,6 @@
 import type { Logger, LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, BinaryDataConfig } from 'n8n-core';
 
@@ -8,12 +9,11 @@ import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { PushConfig } from '@/push/push.config';
 import { FrontendService } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
 import type { UserManagementMailer } from '@/user-management/email';
-import { CommunityPackagesConfig } from '@/community-packages/community-packages.config';
-import { Container } from '@n8n/di';
 
 describe('FrontendService', () => {
 	let originalEnv: NodeJS.ProcessEnv;

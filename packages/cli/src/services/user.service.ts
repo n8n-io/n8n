@@ -64,14 +64,16 @@ export class UserService {
 			mfaAuthenticated?: boolean;
 		},
 	) {
-		const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, ...rest } = user;
+		const { password, updatedAt, authIdentities, mfaRecoveryCodes, mfaSecret, role, ...rest } =
+			user;
 
 		const providerType = authIdentities?.[0]?.providerType;
 
 		let publicUser: PublicUser = {
 			...rest,
+			role: role.slug,
 			signInType: providerType ?? 'email',
-			isOwner: user.role === 'global:owner',
+			isOwner: user.role.slug === 'global:owner',
 		};
 
 		if (options?.withInviteUrl && !options?.inviterId) {
@@ -214,7 +216,12 @@ export class UserService {
 					await Promise.all(
 						toCreateUsers.map(async ({ email, role }) => {
 							const { user: savedUser } = await this.userRepository.createUserWithProject(
-								{ email, role },
+								{
+									email,
+									role: {
+										slug: role,
+									},
+								},
 								transactionManager,
 							);
 							createdUsers.set(email, savedUser.id);
@@ -240,11 +247,11 @@ export class UserService {
 
 	async changeUserRole(user: User, targetUser: User, newRole: RoleChangeRequestDto) {
 		return await this.userRepository.manager.transaction(async (trx) => {
-			await trx.update(User, { id: targetUser.id }, { role: newRole.newRoleName });
+			await trx.update(User, { id: targetUser.id }, { role: { slug: newRole.newRoleName } });
 
 			const adminDowngradedToMember =
-				user.role === 'global:owner' &&
-				targetUser.role === 'global:admin' &&
+				user.role.slug === 'global:owner' &&
+				targetUser.role.slug === 'global:admin' &&
 				newRole.newRoleName === 'global:member';
 
 			if (adminDowngradedToMember) {
