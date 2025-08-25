@@ -68,7 +68,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Publish to Chromatic
-        uses: chromaui/action@c93e0bc3a63aa176e14a75b61a31847cbfdd341c # v11
+        uses: chromaui/action@1cfa065cbdab28f6ca3afaeb3d761383076a35aa # v11
         id: chromatic_tests
         continue-on-error: true
         with:

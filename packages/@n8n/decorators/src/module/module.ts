@@ -33,10 +33,10 @@ export interface ModuleInterface {
 	settings?(): Promise<ModuleSettings>;
 
 	/**
-	 * @returns Path to a dir to load nodes and credentials from.
+	 * @returns Path to a dir to load nodes and credentials from. `null` to skip.
 	 * @example '/Users/nathan/.n8n/nodes/node_modules'
 	 */
-	loadDir?(): string;
+	loadDir?(): Promise<string | null>;
 }
 
 export type ModuleClass = Constructable<ModuleInterface>;

@@ -69,7 +69,7 @@ const validateName = () => {
 	}
 };
 
-const onInput = debounce(validateName, { debounceTime: 300 });
+const onInput = debounce(validateName, { debounceTime: 100 });
 </script>
 
 <template>

@@ -154,6 +154,21 @@ describe('WebhookService', () => {
 
 			expect(returnedMethods).toEqual([]);
 		});
+
+		test('should return dynamic webhook method when static search returns nothing', async () => {
+			const webhookId = uuid();
+			const dynamicPath = `${webhookId}/user/1`;
+			const mockDynamicWebhook = createWebhook('POST', 'user/:id', webhookId, 2);
+
+			// Mock static webhook search to return empty
+			webhookRepository.find.mockResolvedValue([]);
+			// Mock dynamic webhook search to return a webhook
+			webhookRepository.findBy.mockResolvedValue([mockDynamicWebhook]);
+
+			const returnedMethods = await webhookService.getWebhookMethods(dynamicPath);
+
+			expect(returnedMethods).toEqual(['POST']);
+		});
 	});
 
 	describe('deleteWorkflowWebhooks()', () => {

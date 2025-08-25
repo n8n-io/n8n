@@ -66,7 +66,7 @@ export class ParameterUpdatePromptBuilder {
 			const examples = this.selectRelevantExamples(context);
 			if (examples.length > 0) {
 				sections.push('\n## Relevant Examples');
-				sections.push(...examples);
+				sections.push.apply(sections, examples);
 			}
 		}
 

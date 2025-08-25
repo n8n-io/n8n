@@ -6,7 +6,7 @@ import { useInsightsStore } from '@/features/insights/insights.store';
 
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { SortingAndPaginationUpdates } from '@/Interface';
@@ -16,6 +16,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import {
 	ADD_DATA_STORE_MODAL_KEY,
 	DEFAULT_DATA_STORE_PAGE_SIZE,
+	PROJECT_DATA_STORES,
 } from '@/features/dataStore/constants';
 import { useDebounce } from '@/composables/useDebounce';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
@@ -25,6 +26,7 @@ import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 
 const i18n = useI18n();
 const route = useRoute();
+const router = useRouter();
 const projectPages = useProjectPages();
 const { callDebounced } = useDebounce();
 const documentTitle = useDocumentTitle();
@@ -49,6 +51,10 @@ const dataStoreResources = computed<DataStoreResource[]>(() =>
 		};
 	}),
 );
+
+const projectId = computed(() => {
+	return Array.isArray(route.params.projectId) ? route.params.projectId[0] : route.params.projectId;
+});
 
 const totalCount = computed(() => dataStoreStore.totalCount);
 
@@ -78,11 +84,8 @@ const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly
 
 const initialize = async () => {
 	loading.value = true;
-	const projectId = Array.isArray(route.params.projectId)
-		? route.params.projectId[0]
-		: route.params.projectId;
 	try {
-		await dataStoreStore.fetchDataStores(projectId, currentPage.value, pageSize.value);
+		await dataStoreStore.fetchDataStores(projectId.value, currentPage.value, pageSize.value);
 	} catch (error) {
 		toast.showError(error, 'Error loading data stores');
 	} finally {
@@ -103,31 +106,10 @@ const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
 };
 
 const onAddModalClick = () => {
-	uiStore.openModal(ADD_DATA_STORE_MODAL_KEY);
-};
-
-const onProjectHeaderAction = (action: string) => {
-	if (action === 'add-data-store') {
-		uiStore.openModal(ADD_DATA_STORE_MODAL_KEY);
-	}
-};
-
-const onCardRename = async (payload: { dataStore: DataStoreResource }) => {
-	try {
-		const updated = await dataStoreStore.updateDataStore(
-			payload.dataStore.id,
-			payload.dataStore.name,
-			payload.dataStore.projectId,
-		);
-		if (!updated) {
-			toast.showError(
-				new Error(i18n.baseText('generic.unknownError')),
-				i18n.baseText('dataStore.rename.error'),
-			);
-		}
-	} catch (error) {
-		toast.showError(error, i18n.baseText('dataStore.rename.error'));
-	}
+	void router.push({
+		name: PROJECT_DATA_STORES,
+		params: { projectId: projectId.value, new: 'new' },
+	});
 };
 
 onMounted(() => {
@@ -139,6 +121,8 @@ watch(
 	() => {
 		if (route.params.new === 'new') {
 			uiStore.openModal(ADD_DATA_STORE_MODAL_KEY);
+		} else {
+			uiStore.closeModal(ADD_DATA_STORE_MODAL_KEY);
 		}
 	},
 	{ immediate: true },
@@ -189,7 +173,6 @@ watch(
 				:data-store="data as DataStoreResource"
 				:show-ownership-badge="projectPages.isOverviewSubPage"
 				:read-only="readOnlyEnv"
-				@rename="onCardRename"
 			/>
 		</template>
 	</ResourcesListLayout>
