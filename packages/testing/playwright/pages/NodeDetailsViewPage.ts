@@ -447,8 +447,36 @@ export class NodeDetailsViewPage extends BasePage {
 		}
 	}
 
+	async switchInputMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary'): Promise<void> {
+		await this.page.getByRole('radio', { name: mode }).click();
+	}
+
+	async switchOutputMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary'): Promise<void> {
+		await this.page.getByRole('radio', { name: mode }).click();
+	}
+
 	getAssignmentCollectionContainer(paramName: string) {
 		return this.page.getByTestId(`assignment-collection-${paramName}`);
+	}
+
+	getJsonDataContainer() {
+		return this.getInputPanel().locator('.json-data');
+	}
+
+	getInputJsonProperty(propertyName: string) {
+		return this.getInputPanel()
+			.locator('.json-data')
+			.locator('span')
+			.filter({ hasText: new RegExp(`^"${propertyName}"$`) })
+			.first();
+	}
+
+	getInputJsonPropertyContaining(text: string) {
+		return this.getInputPanel()
+			.locator('.json-data')
+			.locator('span')
+			.filter({ hasText: `"${text}"` })
+			.first();
 	}
 
 	getAssignmentName(paramName: string, index = 0) {

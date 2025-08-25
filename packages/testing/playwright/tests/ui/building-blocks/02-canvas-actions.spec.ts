@@ -1,5 +1,8 @@
-import { MANUAL_TRIGGER_NODE_NAME, MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../../config/constants';
-import { test, expect } from '../../fixtures/base';
+import {
+	MANUAL_TRIGGER_NODE_NAME,
+	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+} from '../../../config/constants';
+import { test, expect } from '../../../fixtures/base';
 
 test.describe('Canvas Node Actions', () => {
 	test.beforeEach(async ({ n8n }) => {
