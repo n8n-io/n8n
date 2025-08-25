@@ -10,7 +10,7 @@ import { DataStoreAggregateService } from '../data-store-aggregate.service';
 import { DataStoreService } from '../data-store.service';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-store']);
+	await testModules.loadModules(['data-table']);
 	await testDb.init();
 });
 

@@ -250,11 +250,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * Module name is also added to the key so that we can check if the module is active
 	 * when tabs are rendered.\
 	 * @example
-	 * uiStore.registerCustomTabs('overview', 'data-store', [
+	 * uiStore.registerCustomTabs('overview', 'data-table', [
 	 *   {
-	 *     label: 'Data Store',
-	 *     value: 'data-store',
-	 *     to: { name: 'data-store' },
+	 *     label: 'Data Table',
+	 *     value: 'data-table',
+	 *     to: { name: 'data-table' },
 	 *   },
 	 * ]);
 	 */
