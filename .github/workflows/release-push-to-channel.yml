@@ -16,7 +16,7 @@ on:
         options:
           - beta
           - stable
-          - experiment
+          - experimental
 
 jobs:
   validate-inputs:
@@ -66,10 +66,10 @@ jobs:
           npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" latest
           npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" stable
 
-      - name: Add experiment tag to NPM
-        if: needs.validate-inputs.outputs.release_channel == 'experiment'
+      - name: Add experimental tag to NPM
+        if: needs.validate-inputs.outputs.release_channel == 'experimental'
         run: |
-          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" experiment
+          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" experimental
 
   release-to-docker-hub:
     name: Release to DockerHub
@@ -117,11 +117,6 @@ jobs:
         run: |
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:beta" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:next" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-
-      - name: Tag experiment GHCR image
-        if: needs.validate-inputs.outputs.release_channel == 'experiment'
-        run: |
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:experiment" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
 
   update-docs:
     name: Update latest and next in the docs
