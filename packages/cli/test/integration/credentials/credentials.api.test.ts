@@ -103,7 +103,7 @@ describe('GET /credentials', () => {
 
 	test('should return only own creds for member', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: { slug: 'global:member' },
+			role: 'global:member',
 		});
 
 		const [savedCredential1] = await Promise.all([
@@ -125,7 +125,7 @@ describe('GET /credentials', () => {
 
 	test('should return scopes when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: { slug: 'global:member' },
+			role: 'global:member',
 		});
 
 		const teamProject = await createTeamProject(undefined, member1);
@@ -239,7 +239,7 @@ describe('GET /credentials', () => {
 	test('should return data when ?includeData=true', async () => {
 		// ARRANGE
 		const [actor, otherMember] = await createManyUsers(2, {
-			role: { slug: 'global:member' },
+			role: 'global:member',
 		});
 
 		const teamProjectViewer = await createTeamProject(undefined);

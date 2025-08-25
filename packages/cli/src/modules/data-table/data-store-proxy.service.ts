@@ -30,7 +30,7 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
 	) {
-		this.logger = this.logger.scoped('data-store');
+		this.logger = this.logger.scoped('data-table');
 	}
 
 	private validateRequest(node: INode) {

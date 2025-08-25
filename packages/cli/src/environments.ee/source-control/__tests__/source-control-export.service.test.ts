@@ -1,5 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { GLOBAL_ADMIN_ROLE, User } from '@n8n/db';
+import { User } from '@n8n/db';
 import type {
 	SharedCredentials,
 	SharedWorkflow,
@@ -23,7 +23,7 @@ import { SourceControlContext } from '../types/source-control-context';
 describe('SourceControlExportService', () => {
 	const globalAdminContext = new SourceControlContext(
 		Object.assign(new User(), {
-			role: GLOBAL_ADMIN_ROLE,
+			role: 'global:admin',
 		}),
 	);
 

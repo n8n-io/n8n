@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { AddDataStoreColumnDto, CreateDataStoreColumnDto } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Project } from '@n8n/db';
@@ -13,7 +14,7 @@ import { DataStoreNotFoundError } from '../errors/data-store-not-found.error';
 import { DataStoreValidationError } from '../errors/data-store-validation.error';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-store']);
+	await testModules.loadModules(['data-table']);
 	await testDb.init();
 });
 
@@ -62,11 +63,8 @@ describe('dataStore', () => {
 					type: 'string',
 					index: 0,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					id: expect.any(String),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					updatedAt: expect.any(Date),
 				},
 			]);
@@ -101,7 +99,7 @@ describe('dataStore', () => {
 				const table = await queryRunner.getTable(userTableName);
 				const columnNames = table?.columns.map((col) => col.name);
 
-				expect(columnNames).toEqual(['id']);
+				expect(columnNames).toEqual(expect.arrayContaining(['id', 'createdAt', 'updatedAt']));
 			} finally {
 				await queryRunner.release();
 			}
@@ -272,66 +270,36 @@ describe('dataStore', () => {
 			}
 			const columnResult = await dataStoreService.getColumns(dataStoreId, project1.id);
 			expect(columnResult).toEqual([
-				{
+				expect.objectContaining({
 					index: 0,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn0',
 					type: 'string',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
-				{
+				}),
+				expect.objectContaining({
 					index: 1,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn1',
 					type: 'string',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
-				{
+				}),
+				expect.objectContaining({
 					index: 2,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn2',
 					type: 'number',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
-				{
+				}),
+				expect.objectContaining({
 					index: 3,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn3',
 					type: 'number',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
-				{
+				}),
+				expect.objectContaining({
 					index: 4,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn4',
 					type: 'date',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
+				}),
 			]);
 
 			const userTableName = dataStoreRowsRepository.toTableName(dataStoreId);
@@ -343,6 +311,8 @@ describe('dataStore', () => {
 				expect(columnNames).toEqual(
 					expect.arrayContaining([
 						'id',
+						'createdAt',
+						'updatedAt',
 						'myColumn0',
 						'myColumn1',
 						'myColumn2',
@@ -375,30 +345,18 @@ describe('dataStore', () => {
 			expect(columnResult.length).toBe(2);
 
 			expect(columnResult).toEqual([
-				{
+				expect.objectContaining({
 					index: 0,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn0',
 					type: 'string',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
-				{
+				}),
+				expect.objectContaining({
 					index: 1,
 					dataStoreId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					id: expect.any(String),
 					name: 'myColumn1',
 					type: 'number',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					createdAt: expect.any(Date),
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					updatedAt: expect.any(Date),
-				},
+				}),
 			]);
 
 			const userTableName = dataStoreRowsRepository.toTableName(dataStoreId);
@@ -407,7 +365,9 @@ describe('dataStore', () => {
 				const table = await queryRunner.getTable(userTableName);
 				const columnNames = table?.columns.map((col) => col.name);
 
-				expect(columnNames).toEqual(expect.arrayContaining(['id', 'myColumn0', 'myColumn1']));
+				expect(columnNames).toEqual(
+					expect.arrayContaining(['id', 'createdAt', 'updatedAt', 'myColumn0', 'myColumn1']),
+				);
 			} finally {
 				await queryRunner.release();
 			}
@@ -492,9 +452,24 @@ describe('dataStore', () => {
 			const updatedData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(updatedData.count).toBe(3);
 			expect(updatedData.data).toEqual([
-				{ id: 1, name: 'Alice', age: 30, email: null },
-				{ id: 2, name: 'Bob', age: 25, email: null },
-				{ id: 3, name: 'Charlie', age: 35, email: null },
+				expect.objectContaining({
+					id: 1,
+					name: 'Alice',
+					age: 30,
+					email: null,
+				}),
+				expect.objectContaining({
+					id: 2,
+					name: 'Bob',
+					age: 25,
+					email: null,
+				}),
+				expect.objectContaining({
+					id: 3,
+					name: 'Charlie',
+					age: 35,
+					email: null,
+				}),
 			]);
 
 			// Verify we can insert new rows with the new column
@@ -510,10 +485,30 @@ describe('dataStore', () => {
 			const finalData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(finalData.count).toBe(4);
 			expect(finalData.data).toEqual([
-				{ id: 1, name: 'Alice', age: 30, email: null },
-				{ id: 2, name: 'Bob', age: 25, email: null },
-				{ id: 3, name: 'Charlie', age: 35, email: null },
-				{ id: 4, name: 'David', age: 28, email: 'david@example.com' },
+				expect.objectContaining({
+					id: 1,
+					name: 'Alice',
+					age: 30,
+					email: null,
+				}),
+				expect.objectContaining({
+					id: 2,
+					name: 'Bob',
+					age: 25,
+					email: null,
+				}),
+				expect.objectContaining({
+					id: 3,
+					name: 'Charlie',
+					age: 35,
+					email: null,
+				}),
+				expect.objectContaining({
+					id: 4,
+					name: 'David',
+					age: 28,
+					email: 'david@example.com',
+				}),
 			]);
 		});
 	});
@@ -550,7 +545,6 @@ describe('dataStore', () => {
 					name: 'myColumn2',
 					type: 'number',
 					createdAt: c2.createdAt,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					updatedAt: expect.any(Date),
 				},
 			]);
@@ -656,7 +650,6 @@ describe('dataStore', () => {
 			expect(result.data).toHaveLength(1);
 			expect(result.data[0]).toEqual({
 				...dataStore,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				project: expect.any(Project),
 			});
 			expect(result.data[0].project).toEqual({
@@ -689,12 +682,10 @@ describe('dataStore', () => {
 			expect(result.data).toHaveLength(2);
 			expect(result.data).toContainEqual({
 				...dataStore2,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				project: expect.any(Project),
 			});
 			expect(result.data).toContainEqual({
 				...dataStore1,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				project: expect.any(Project),
 			});
 			expect(result.count).toEqual(2);
@@ -803,46 +794,34 @@ describe('dataStore', () => {
 			expect(resultColumns).toEqual(
 				expect.arrayContaining([
 					{
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						id: expect.any(String),
 						name: 'myColumn1',
 						type: 'string',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						createdAt: expect.any(Date),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						updatedAt: expect.any(Date),
 						index: 0,
 					},
 					{
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						id: expect.any(String),
 						name: 'myColumn2',
 						type: 'number',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						createdAt: expect.any(Date),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						updatedAt: expect.any(Date),
 						index: 1,
 					},
 					{
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						id: expect.any(String),
 						name: 'myColumn3',
 						type: 'number',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						createdAt: expect.any(Date),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						updatedAt: expect.any(Date),
 						index: 2,
 					},
 					{
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						id: expect.any(String),
 						name: 'myColumn4',
 						type: 'date',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						createdAt: expect.any(Date),
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						updatedAt: expect.any(Date),
 						index: 3,
 					},
@@ -998,14 +977,16 @@ describe('dataStore', () => {
 			);
 			expect(count).toEqual(4);
 			expect(data).toEqual(
-				rows.map((row, i) => ({
-					...row,
-					id: i + 1,
-					c1: row.c1,
-					c2: row.c2,
-					c3: typeof row.c3 === 'string' ? new Date(row.c3) : row.c3,
-					c4: row.c4,
-				})),
+				rows.map((row, i) =>
+					expect.objectContaining({
+						...row,
+						id: i + 1,
+						c1: row.c1,
+						c2: row.c2,
+						c3: typeof row.c3 === 'string' ? new Date(row.c3) : row.c3,
+						c4: row.c4,
+					}),
+				),
 			);
 		});
 
@@ -1037,8 +1018,16 @@ describe('dataStore', () => {
 
 			expect(count).toEqual(2);
 			expect(data).toEqual([
-				{ c1: 1, c2: 'foo', id: 1 },
-				{ c1: 1, c2: 'foo', id: 2 },
+				expect.objectContaining({
+					c1: 1,
+					c2: 'foo',
+					id: 1,
+				}),
+				expect.objectContaining({
+					c1: 1,
+					c2: 'foo',
+					id: 2,
+				}),
 			]);
 		});
 
@@ -1074,9 +1063,21 @@ describe('dataStore', () => {
 
 			expect(count).toEqual(3);
 			expect(data).toEqual([
-				{ c1: 2, c2: 'bar', id: 2 },
-				{ c1: 1, c2: 'baz', id: 3 },
-				{ c1: 2, c2: 'faz', id: 4 },
+				expect.objectContaining({
+					c1: 2,
+					c2: 'bar',
+					id: 2,
+				}),
+				expect.objectContaining({
+					c1: 1,
+					c2: 'baz',
+					id: 3,
+				}),
+				expect.objectContaining({
+					c1: 2,
+					c2: 'faz',
+					id: 4,
+				}),
 			]);
 		});
 
@@ -1259,7 +1260,23 @@ describe('dataStore', () => {
 				{},
 			);
 			expect(count).toEqual(3);
-			expect(data).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
+			expect(data).toEqual([
+				{
+					id: 1,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+				{
+					id: 2,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+				{
+					id: 3,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+			]);
 		});
 	});
 
@@ -1304,9 +1321,21 @@ describe('dataStore', () => {
 			expect(count).toEqual(3);
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{ pid: '1995-111a', name: 'Alicia', age: 31, id: 1 },
-					{ pid: '1994-222a', name: 'John', age: 32, id: 2 },
-					{ pid: '1993-333a', name: 'Paul', age: 32, id: 3 }, // unchanged
+					expect.objectContaining({
+						pid: '1995-111a',
+						name: 'Alicia',
+						age: 31,
+					}),
+					expect.objectContaining({
+						pid: '1994-222a',
+						name: 'John',
+						age: 32,
+					}),
+					expect.objectContaining({
+						pid: '1993-333a',
+						name: 'Paul',
+						age: 32,
+					}), // unchanged
 				]),
 			);
 		});
@@ -1349,9 +1378,21 @@ describe('dataStore', () => {
 			expect(count).toEqual(3);
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{ city: 'Berlin', age: 30, isEligible: true, id: 1 },
-					{ city: 'Amsterdam', age: 32, isEligible: true, id: 2 },
-					{ city: 'Oslo', age: 28, isEligible: false, id: 3 },
+					expect.objectContaining({
+						city: 'Berlin',
+						age: 30,
+						isEligible: true,
+					}),
+					expect.objectContaining({
+						city: 'Amsterdam',
+						age: 32,
+						isEligible: true,
+					}),
+					expect.objectContaining({
+						city: 'Oslo',
+						age: 28,
+						isEligible: false,
+					}),
 				]),
 			);
 		});
@@ -1390,8 +1431,16 @@ describe('dataStore', () => {
 
 			expect(count).toEqual(2);
 			expect(data).toEqual([
-				{ name: 'Alice', age: 30, id: 1, pid: '1995-111a' },
-				{ name: 'Alice', age: 30, id: 2, pid: '1992-222b' },
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30,
+					pid: '1995-111a',
+				}),
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30,
+					pid: '1992-222b',
+				}),
 			]);
 		});
 
@@ -1469,10 +1518,6 @@ describe('dataStore', () => {
 			]);
 			expect(ids).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
 
-			// Get initial data to find row IDs
-			const initialData = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(initialData.count).toBe(3);
-
 			// ACT - Delete first and third rows
 			const result = await dataStoreService.deleteRows(dataStoreId, project1.id, [1, 3]);
 
@@ -1481,7 +1526,12 @@ describe('dataStore', () => {
 
 			const rows = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(rows.count).toBe(1);
-			expect(rows.data).toEqual([{ name: 'Bob', age: 25, id: 2 }]);
+			expect(rows.data).toEqual([
+				expect.objectContaining({
+					name: 'Bob',
+					age: 25,
+				}),
+			]);
 		});
 
 		it('returns true when deleting empty list of IDs', async () => {
@@ -1559,8 +1609,20 @@ describe('dataStore', () => {
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{ id: 1, name: 'Alicia', age: 31, active: false, birthday: new Date('1990-01-02') },
-					{ id: 2, name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+					expect.objectContaining({
+						id: 1,
+						name: 'Alicia',
+						age: 31,
+						active: false,
+						birthday: new Date('1990-01-02'),
+					}),
+					expect.objectContaining({
+						id: 2,
+						name: 'Bob',
+						age: 25,
+						active: false,
+						birthday: new Date('1995-01-01'),
+					}),
 				]),
 			);
 		});
@@ -1577,8 +1639,16 @@ describe('dataStore', () => {
 			});
 
 			await dataStoreService.insertRows(dataStoreId, project1.id, [
-				{ name: 'Alice', age: 30, active: true },
-				{ name: 'Bob', age: 25, active: false },
+				{
+					name: 'Alice',
+					age: 30,
+					active: true,
+				},
+				{
+					name: 'Bob',
+					age: 25,
+					active: false,
+				},
 			]);
 
 			// ACT
@@ -1593,9 +1663,69 @@ describe('dataStore', () => {
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{ id: 1, name: 'Alicia', age: 31, active: false },
-					{ id: 2, name: 'Bob', age: 25, active: false },
+					expect.objectContaining({
+						id: 1,
+						name: 'Alicia',
+						age: 31,
+						active: false,
+					}),
+					expect.objectContaining({
+						id: 2,
+						name: 'Bob',
+						age: 25,
+						active: false,
+					}),
 				]),
+			);
+		});
+
+		it('should update the updatedAt', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'active', type: 'boolean' },
+				],
+			});
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true },
+			]);
+
+			const { data: initialRows } = await dataStoreService.getManyRowsAndCount(
+				dataStoreId,
+				project1.id,
+				{},
+			);
+
+			// Wait to ensure different timestamps
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			// ACT
+			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
+				filter: { name: 'Alice' },
+				data: { age: 31, active: false },
+			});
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const { data: updatedRows } = await dataStoreService.getManyRowsAndCount(
+				dataStoreId,
+				project1.id,
+				{},
+			);
+
+			expect(updatedRows[0].createdAt).not.toBeNull();
+			expect(updatedRows[0].updatedAt).not.toBeNull();
+			expect(initialRows[0].updatedAt).not.toBeNull();
+			expect(new Date(updatedRows[0].updatedAt as string).getTime()).toBeGreaterThan(
+				new Date(initialRows[0].updatedAt as string).getTime(),
+			);
+			expect(new Date(updatedRows[0].updatedAt as string).getTime()).toBeGreaterThan(
+				new Date(updatedRows[0].createdAt as string).getTime(),
 			);
 		});
 
@@ -1628,8 +1758,20 @@ describe('dataStore', () => {
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{ id: 1, name: 'Alicia', age: 30, active: true, birthday: new Date('1990-01-01') },
-					{ id: 2, name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+					expect.objectContaining({
+						id: 1,
+						name: 'Alicia',
+						age: 30,
+						active: true,
+						birthday: new Date('1990-01-01'),
+					}),
+					expect.objectContaining({
+						id: 2,
+						name: 'Bob',
+						age: 25,
+						active: false,
+						birthday: new Date('1995-01-01'),
+					}),
 				]),
 			);
 		});
@@ -1663,8 +1805,20 @@ describe('dataStore', () => {
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{ id: 1, name: 'Alice', age: 31, active: true, birthday: new Date('1990-01-01') },
-					{ id: 2, name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+					expect.objectContaining({
+						id: 1,
+						name: 'Alice',
+						age: 31,
+						active: true,
+						birthday: new Date('1990-01-01'),
+					}),
+					expect.objectContaining({
+						id: 2,
+						name: 'Bob',
+						age: 25,
+						active: false,
+						birthday: new Date('1995-01-01'),
+					}),
 				]),
 			);
 		});
@@ -1698,8 +1852,20 @@ describe('dataStore', () => {
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{ id: 1, name: 'Alice', age: 30, active: false, birthday: new Date('1990-01-01') },
-					{ id: 2, name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+					expect.objectContaining({
+						id: 1,
+						name: 'Alice',
+						age: 30,
+						active: false,
+						birthday: new Date('1990-01-01'),
+					}),
+					expect.objectContaining({
+						id: 2,
+						name: 'Bob',
+						age: 25,
+						active: false,
+						birthday: new Date('1995-01-01'),
+					}),
 				]),
 			);
 		});
@@ -1733,8 +1899,20 @@ describe('dataStore', () => {
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{ id: 1, name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-02') },
-					{ id: 2, name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+					expect.objectContaining({
+						id: 1,
+						name: 'Alice',
+						age: 30,
+						active: true,
+						birthday: new Date('1990-01-02'),
+					}),
+					expect.objectContaining({
+						id: 2,
+						name: 'Bob',
+						age: 25,
+						active: false,
+						birthday: new Date('1995-01-01'),
+					}),
 				]),
 			);
 		});
@@ -1768,9 +1946,24 @@ describe('dataStore', () => {
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
 				expect.arrayContaining([
-					{ id: 1, name: 'Alice', age: 30, department: 'Management' },
-					{ id: 2, name: 'Alice', age: 25, department: 'Marketing' },
-					{ id: 3, name: 'Bob', age: 30, department: 'Engineering' },
+					expect.objectContaining({
+						id: 1,
+						name: 'Alice',
+						age: 30,
+						department: 'Management',
+					}),
+					expect.objectContaining({
+						id: 2,
+						name: 'Alice',
+						age: 25,
+						department: 'Marketing',
+					}),
+					expect.objectContaining({
+						id: 3,
+						name: 'Bob',
+						age: 30,
+						department: 'Engineering',
+					}),
 				]),
 			);
 		});
@@ -1797,7 +1990,12 @@ describe('dataStore', () => {
 			expect(result).toEqual(true);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(data).toEqual([{ id: 1, name: 'Alice', age: 30 }]);
+			expect(data).toEqual([
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30,
+				}),
+			]);
 		});
 
 		it('should throw validation error when filters are empty', async () => {
@@ -1824,7 +2022,12 @@ describe('dataStore', () => {
 			);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(data).toEqual([{ id: 1, name: 'Alice', age: 30 }]);
+			expect(data).toEqual([
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30,
+				}),
+			]);
 		});
 
 		it('should throw validation error when data is empty', async () => {
@@ -1851,7 +2054,12 @@ describe('dataStore', () => {
 			);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(data).toEqual([{ id: 1, name: 'Alice', age: 30 }]);
+			expect(data).toEqual([
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30,
+				}),
+			]);
 		});
 
 		it('should fail when data store does not exist', async () => {
@@ -1946,7 +2154,13 @@ describe('dataStore', () => {
 			expect(result).toEqual(true);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(data).toEqual([{ id: 1, name: 'Alice', age: 31, active: true }]);
+			expect(data).toEqual([
+				expect.objectContaining({
+					name: 'Alice',
+					age: 31,
+					active: true,
+				}),
+			]);
 		});
 
 		it('should handle date column updates correctly', async () => {
@@ -1975,7 +2189,8 @@ describe('dataStore', () => {
 			expect(result).toEqual(true);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(data).toEqual([{ id: 1, name: 'Alice', birthDate: newDate }]);
+
+			expect(data).toEqual([expect.objectContaining({ id: 1, name: 'Alice', birthDate: newDate })]);
 		});
 
 		it('should return full updated rows if returnData is set', async () => {
@@ -2011,7 +2226,9 @@ describe('dataStore', () => {
 			);
 
 			// ASSERT
-			expect(result).toEqual([{ id: 1, name: 'Alice', age: 31, active: false, timestamp: soon }]);
+			expect(result).toEqual([
+				expect.objectContaining({ id: 1, name: 'Alice', age: 31, active: false, timestamp: soon }),
+			]);
 		});
 	});
 
@@ -2029,9 +2246,24 @@ describe('dataStore', () => {
 			});
 
 			const rows = [
-				{ c1: 3, c2: true, c3: new Date(0), c4: 'hello?' },
-				{ c1: 4, c2: false, c3: new Date(1), c4: 'hello!' },
-				{ c1: 5, c2: true, c3: new Date(2), c4: 'hello.' },
+				{
+					c1: 3,
+					c2: true,
+					c3: new Date(0),
+					c4: 'hello?',
+				},
+				{
+					c1: 4,
+					c2: false,
+					c3: new Date(1),
+					c4: 'hello!',
+				},
+				{
+					c1: 5,
+					c2: true,
+					c3: new Date(2),
+					c4: 'hello.',
+				},
 			];
 
 			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, rows);
@@ -2050,6 +2282,8 @@ describe('dataStore', () => {
 					c3: new Date(0),
 					c4: rows[0].c4,
 					id: 1,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
 				},
 				{
 					c1: rows[1].c1,
@@ -2057,6 +2291,8 @@ describe('dataStore', () => {
 					c3: new Date(1),
 					c4: rows[1].c4,
 					id: 2,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
 				},
 				{
 					c1: rows[2].c1,
@@ -2064,6 +2300,8 @@ describe('dataStore', () => {
 					c3: new Date(2),
 					c4: rows[2].c4,
 					id: 3,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
 				},
 			]);
 		});
