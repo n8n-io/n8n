@@ -216,6 +216,7 @@ export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 				if (value instanceof Date) {
 					dateObj = value;
 				} else if (typeof value === 'string') {
+					// sqlite returns date strings without timezone information, but we store them as UTC
 					const parsed = new Date(value.endsWith('Z') ? value : value + 'Z');
 					if (!isNaN(parsed.getTime())) {
 						dateObj = parsed;
