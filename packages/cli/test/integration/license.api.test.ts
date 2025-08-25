@@ -1,5 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import nock from 'nock';
 
 import config from '@/config';
@@ -21,8 +21,8 @@ let authMemberAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({ endpointGroups: ['license'] });
 
 beforeAll(async () => {
-	owner = await createUserShell(GLOBAL_OWNER_ROLE);
-	member = await createUserShell(GLOBAL_MEMBER_ROLE);
+	owner = await createUserShell('global:owner');
+	member = await createUserShell('global:member');
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
