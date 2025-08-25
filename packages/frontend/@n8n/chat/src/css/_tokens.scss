@@ -116,4 +116,8 @@
 	--chat--body--background: var(--chat--color-light);
 	--chat--footer--background: var(--chat--color-light);
 	--chat--footer--color: var(--chat--color-dark);
+
+	/* Ag Grid */
+	--grid-row-hover-background: var(--p-color-secondary-070);
+	--grid-cell-focus-border-color: var(--p-color-secondary-470);
 }

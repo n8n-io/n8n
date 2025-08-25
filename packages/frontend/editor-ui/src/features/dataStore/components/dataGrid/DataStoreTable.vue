@@ -104,7 +104,7 @@ const rowData = ref<DataStoreRow[]>([]);
 const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
 	mode: 'multiRow',
 	enableClickSelection: false,
-	checkboxes: true,
+	checkboxes: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 	isRowSelectable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 };
 
@@ -116,13 +116,6 @@ const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
 const isTextEditorOpen = ref(false);
 
 const gridContainer = useTemplateRef('gridContainer');
-
-// Shared config for all columns
-const defaultColumnDef: ColDef = {
-	flex: 1,
-	sortable: false,
-	filter: false,
-};
 
 // Pagination
 const pageSizeOptions = [10, 20, 50];
@@ -199,7 +192,7 @@ const onDeleteColumn = async (columnId: string) => {
 	}
 };
 
-const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload }) => {
+const onAddColumn = async (column: DataStoreColumnCreatePayload) => {
 	try {
 		const newColumn = await dataStoreStore.addDataStoreColumn(
 			props.dataStore.id,
@@ -252,6 +245,9 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 			return params.data?.[col.name];
 		},
 		cellRendererSelector: (params: ICellRendererParams) => {
+			if (params.data?.id === ADD_ROW_ROW_ID || col.id === 'add-column') {
+				return undefined;
+			}
 			let rowValue = params.data?.[col.name];
 			// When adding new column, rowValue is undefined (same below, in string cell editor)
 			if (rowValue === undefined) {
@@ -590,13 +586,16 @@ const onCellEditingStopped = (params: CellEditingStoppedEvent<DataStoreRow>) => 
 	// AG Grid style overrides
 	--ag-foreground-color: var(--color-text-base);
 	--ag-cell-text-color: var(--color-text-dark);
-	--ag-accent-color: var(--color-secondary);
+	--ag-accent-color: var(--color-primary);
+	--ag-row-hover-color: var(--color-background-light-base);
+	--ag-selected-row-background-color: var(--grid-row-selected-background);
 	--ag-background-color: var(--color-background-xlight);
 	--ag-border-color: var(--border-color-base);
 	--ag-border-radius: var(--border-radius-base);
 	--ag-wrapper-border-radius: 0;
 	--ag-font-family: var(--font-family);
 	--ag-font-size: var(--font-size-xs);
+	--ag-font-color: var(--color-text-base);
 	--ag-row-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 	--ag-header-background-color: var(--color-background-light-base);
 	--ag-header-font-size: var(--font-size-xs);
@@ -605,6 +604,7 @@ const onCellEditingStopped = (params: CellEditingStoppedEvent<DataStoreRow>) => 
 	--ag-cell-horizontal-padding: var(--spacing-2xs);
 	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 	--ag-header-column-border-height: 100%;
+	--ag-range-selection-border-color: var(--grid-cell-focus-border-color);
 
 	:global(.ag-cell) {
 		display: flex;
@@ -638,6 +638,11 @@ const onCellEditingStopped = (params: CellEditingStoppedEvent<DataStoreRow>) => 
 
 	:global(.id-column) {
 		color: var(--color-text-light);
+		justify-content: center;
+	}
+
+	:global(.ag-header-cell[col-id='id']) {
+		text-align: center;
 	}
 
 	:global(.add-row-cell) {
