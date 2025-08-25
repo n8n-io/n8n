@@ -449,9 +449,13 @@ export class Stripe implements INodeType {
 						//       meterEvent: create
 						// ----------------------------------
 
-						const eventName = this.getNodeParameter('eventName', i) as string;
-						const customerId = this.getNodeParameter('customerId', i) as string;
-						const value = this.getNodeParameter('value', i) as number;
+						const eventName = this.getNodeParameter('eventName', i);
+						const customerId = this.getNodeParameter('customerId', i);
+						const value = this.getNodeParameter('value', i);
+
+						if (typeof value !== 'number') {
+							throw new NodeOperationError(this.getNode(), 'Invalid value', { itemIndex: i });
+						}
 
 						const body = {
 							event_name: eventName,
@@ -459,7 +463,7 @@ export class Stripe implements INodeType {
 							'payload[value]': value.toString(),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.identifier) {
 							body.identifier = additionalFields.identifier as string;
