@@ -1,4 +1,4 @@
-import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { type Request, type Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
@@ -21,7 +21,7 @@ const user = mock<User>({
 	lastName: 'User',
 	password: 'password',
 	authIdentities: [],
-	role: GLOBAL_MEMBER_ROLE,
+	role: 'global:member',
 });
 
 describe('OidcController', () => {

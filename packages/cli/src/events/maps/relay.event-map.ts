@@ -1,5 +1,6 @@
 import type { AuthenticationMethod, ProjectRelation } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
+import type { GlobalRole } from '@n8n/permissions';
 import type {
 	IPersonalizationSurveyAnswersV4,
 	IRun,
@@ -16,9 +17,7 @@ export type UserLike = {
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	role: {
-		slug: string;
-	};
+	role: string;
 };
 
 export type RelayEventMap = {
@@ -369,14 +368,14 @@ export type RelayEventMap = {
 
 	'team-project-updated': {
 		userId: string;
-		role: string;
+		role: GlobalRole;
 		members: ProjectRelation[];
 		projectId: string;
 	};
 
 	'team-project-deleted': {
 		userId: string;
-		role: string;
+		role: GlobalRole;
 		projectId: string;
 		removalType: 'transfer' | 'delete';
 		targetProjectId?: string;
@@ -384,7 +383,7 @@ export type RelayEventMap = {
 
 	'team-project-created': {
 		userId: string;
-		role: string;
+		role: GlobalRole;
 	};
 
 	// #endregion
