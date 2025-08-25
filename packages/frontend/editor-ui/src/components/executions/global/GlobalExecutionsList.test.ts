@@ -148,7 +148,7 @@ describe('GlobalExecutionsList', () => {
 				).toBe(10),
 			);
 			expect(getByTestId('select-all-executions-checkbox')).toBeInTheDocument();
-			expect(getByTestId('selected-executions-info').textContent).toContain(10);
+			expect(getByTestId('selected-items-info').textContent).toContain(10);
 
 			await userEvent.click(getByTestId('load-more-button'));
 			await rerender({
