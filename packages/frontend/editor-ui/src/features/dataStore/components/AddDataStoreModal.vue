@@ -56,7 +56,6 @@ const onCancel = () => {
 };
 
 const redirectToDataStores = () => {
-	console.log('before close');
 	void router.replace({ name: PROJECT_DATA_STORES });
 };
 </script>
