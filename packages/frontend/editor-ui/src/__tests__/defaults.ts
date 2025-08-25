@@ -138,6 +138,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	aiAssistant: {
 		enabled: false,
+		setup: false,
 	},
 	aiCredits: {
 		enabled: false,
