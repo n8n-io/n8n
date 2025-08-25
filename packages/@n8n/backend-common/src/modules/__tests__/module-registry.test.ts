@@ -221,6 +221,48 @@ describe('initModules', () => {
 		expect(moduleRegistry.isActive(moduleName as any)).toBe(true);
 		expect(moduleRegistry.getActiveModules()).toEqual([moduleName]);
 	});
+
+	it('registers context for module with `context` method', async () => {
+		// ARRANGE
+		const moduleName = 'test-module';
+		const moduleContext = { proxy: 'test-proxy', config: { enabled: true } };
+		const ModuleClass: ModuleInterface = {
+			init: jest.fn(),
+			context: jest.fn().mockReturnValue(moduleContext),
+		};
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+
+		// ACT
+		await moduleRegistry.initModules();
+
+		// ASSERT
+		expect(ModuleClass.context).toHaveBeenCalled();
+		expect(moduleRegistry.context.has(moduleName)).toBe(true);
+		expect(moduleRegistry.context.get(moduleName)).toBe(moduleContext);
+	});
+
+	it('does not register context for module without `context` method', async () => {
+		// ARRANGE
+		const moduleName = 'test-module';
+		const ModuleClass: ModuleInterface = { init: jest.fn() };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+
+		// ACT
+		await moduleRegistry.initModules();
+
+		// ASSERT
+		expect(moduleRegistry.context.has(moduleName)).toBe(false);
+	});
 });
 
 describe('loadDir', () => {

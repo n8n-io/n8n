@@ -8,7 +8,7 @@ import type {
 	ListQueryDb,
 	WorkflowHistory,
 } from '@n8n/db';
-import type { AssignableGlobalRole, GlobalRole, ProjectRole, Scope } from '@n8n/permissions';
+import type { AssignableGlobalRole, ProjectRole, Scope } from '@n8n/permissions';
 import type {
 	ICredentialDataDecryptedObject,
 	INodeCredentialTestRequest,
@@ -268,9 +268,7 @@ export declare namespace ActiveWorkflowRequest {
 // ----------------------------------
 
 export declare namespace ProjectRequest {
-	type GetMyProjectsResponse = Array<
-		Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }
-	>;
+	type GetMyProjectsResponse = Array<Project & { role: string; scopes?: Scope[] }>;
 
 	type ProjectRelationResponse = {
 		id: string;
