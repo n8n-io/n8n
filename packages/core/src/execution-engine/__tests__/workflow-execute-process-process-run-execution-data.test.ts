@@ -13,7 +13,10 @@ import { types, nodeTypes } from './helpers';
 
 describe('processRunExecutionData', () => {
 	const runHook = jest.fn().mockResolvedValue(undefined);
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks: { runHook } });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		hooks: { runHook },
+		restartExecutionId: undefined,
+	});
 	const executionMode: WorkflowExecuteMode = 'trigger';
 
 	beforeEach(() => {
@@ -131,11 +134,12 @@ describe('processRunExecutionData', () => {
 		await workflowExecute.processRunExecutionData(workflow);
 
 		// ASSERT
-		expect(runHook).toHaveBeenCalledTimes(5);
-		expect(runHook).toHaveBeenNthCalledWith(1, 'nodeExecuteBefore', expect.any(Array));
-		expect(runHook).toHaveBeenNthCalledWith(2, 'nodeExecuteAfter', expect.any(Array));
-		expect(runHook).toHaveBeenNthCalledWith(3, 'nodeExecuteBefore', expect.any(Array));
-		expect(runHook).toHaveBeenNthCalledWith(4, 'nodeExecuteAfter', expect.any(Array));
-		expect(runHook).toHaveBeenNthCalledWith(5, 'workflowExecuteAfter', expect.any(Array));
+		expect(runHook).toHaveBeenCalledTimes(6);
+		expect(runHook).toHaveBeenNthCalledWith(1, 'workflowExecuteBefore', expect.any(Array));
+		expect(runHook).toHaveBeenNthCalledWith(2, 'nodeExecuteBefore', expect.any(Array));
+		expect(runHook).toHaveBeenNthCalledWith(3, 'nodeExecuteAfter', expect.any(Array));
+		expect(runHook).toHaveBeenNthCalledWith(4, 'nodeExecuteBefore', expect.any(Array));
+		expect(runHook).toHaveBeenNthCalledWith(5, 'nodeExecuteAfter', expect.any(Array));
+		expect(runHook).toHaveBeenNthCalledWith(6, 'workflowExecuteAfter', expect.any(Array));
 	});
 });
