@@ -4,9 +4,9 @@ import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataStoreRows } from 'n8n-workflow';
 
-import { DataStoreColumnRepository } from '@/modules/data-store/data-store-column.repository';
-import { DataStoreRowsRepository } from '@/modules/data-store/data-store-rows.repository';
-import { DataStoreRepository } from '@/modules/data-store/data-store.repository';
+import { DataStoreColumnRepository } from '@/modules/data-table/data-store-column.repository';
+import { DataStoreRowsRepository } from '@/modules/data-table/data-store-rows.repository';
+import { DataStoreRepository } from '@/modules/data-table/data-store.repository';
 
 export const createDataStore = async (
 	project: Project,

@@ -47,7 +47,7 @@ export type ListDataStoreContentFilter = {
 	filters: Array<{
 		columnName: string;
 		condition: 'eq' | 'neq';
-		value: string | number | boolean | Date;
+		value: DataStoreColumnJsType;
 	}>;
 };
 
@@ -70,9 +70,9 @@ export type MoveDataStoreColumnOptions = {
 export type AddDataStoreColumnOptions = Pick<DataStoreColumn, 'name' | 'type'> &
 	Partial<Pick<DataStoreColumn, 'index'>>;
 
-export type DataStoreColumnJsType = string | number | boolean | Date;
+export type DataStoreColumnJsType = string | number | boolean | Date | null;
 
-export type DataStoreRow = Record<string, DataStoreColumnJsType | null>;
+export type DataStoreRow = Record<string, DataStoreColumnJsType>;
 export type DataStoreRows = DataStoreRow[];
 export type DataStoreRowWithId = DataStoreRow & { id: number };
 
