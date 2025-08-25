@@ -80,6 +80,7 @@ describe('CredentialsController', () => {
 				projectId: projectOwningCredentialData.id,
 				projectType: projectOwningCredentialData.type,
 				publicApi: false,
+				context: newCredentialsPayload.context,
 			});
 
 			expect(newApiKey).toEqual(createdCredentials);

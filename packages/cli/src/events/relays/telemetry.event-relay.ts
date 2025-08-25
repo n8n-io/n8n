@@ -149,10 +149,11 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private teamProjectCreated({ userId, role }: RelayEventMap['team-project-created']) {
+	private teamProjectCreated({ userId, role, context }: RelayEventMap['team-project-created']) {
 		this.telemetry.track('User created project', {
 			user_id: userId,
 			role,
+			context,
 		});
 	}
 
@@ -404,6 +405,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialId,
 		projectId,
 		projectType,
+		context,
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track('User created credentials', {
 			user_id: user.id,
@@ -411,6 +413,7 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_id: credentialId,
 			project_id: projectId,
 			project_type: projectType,
+			context,
 		});
 	}
 
@@ -524,6 +527,7 @@ export class TelemetryEventRelay extends EventRelay {
 		publicApi,
 		projectId,
 		projectType,
+		context,
 	}: RelayEventMap['workflow-created']) {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 
@@ -534,6 +538,7 @@ export class TelemetryEventRelay extends EventRelay {
 			public_api: publicApi,
 			project_id: projectId,
 			project_type: projectType,
+			context,
 		});
 	}
 
