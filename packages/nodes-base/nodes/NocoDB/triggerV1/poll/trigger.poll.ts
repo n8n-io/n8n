@@ -54,7 +54,7 @@ export async function pollTrigger(this: IPollFunctions): Promise<INodeExecutionD
 			qs.fields = (qs.fields as IDataObject[]).join(',');
 		}
 		if (this.getMode() !== 'manual') {
-			const clause = `("${triggerFieldName}",gte,exactDate,"${startDate}")~and("${triggerFieldName}",lte,exactDate,"${endDate}")`;
+			const clause = `("${triggerFieldName}",gte,exactDate,"${startDate}")~and("${triggerFieldName}",lt,exactDate,"${endDate}")`;
 			if (qs.where) {
 				qs.where += `~and${clause}`;
 			} else {
