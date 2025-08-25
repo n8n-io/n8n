@@ -14,12 +14,7 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
-import {
-	combineScopes,
-	getAuthPrincipalScopes,
-	getRoleScopes,
-	hasGlobalScope,
-} from '@n8n/permissions';
+import { combineScopes, getRoleScopes, hasGlobalScope } from '@n8n/permissions';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
@@ -65,7 +60,7 @@ export class ProjectController {
 
 			this.eventService.emit('team-project-created', {
 				userId: req.user.id,
-				role: req.user.role.slug,
+				role: req.user.role,
 			});
 
 			return {
@@ -73,7 +68,7 @@ export class ProjectController {
 				role: 'project:admin',
 				scopes: [
 					...combineScopes({
-						global: getAuthPrincipalScopes(req.user),
+						global: getRoleScopes(req.user.role),
 						project: getRoleScopes('project:admin'),
 					}),
 				],
@@ -110,7 +105,7 @@ export class ProjectController {
 			if (result.scopes) {
 				result.scopes.push(
 					...combineScopes({
-						global: getAuthPrincipalScopes(req.user),
+						global: getRoleScopes(req.user.role),
 						project: getRoleScopes(pr.role),
 					}),
 				);
@@ -126,13 +121,13 @@ export class ProjectController {
 					// If the user has the global `project:read` scope then they may not
 					// own this relationship in that case we use the global user role
 					// instead of the relation role, which is for another user.
-					role: req.user.role.slug,
+					role: req.user.role,
 					scopes: [],
 				},
 			);
 
 			if (result.scopes) {
-				result.scopes.push(...combineScopes({ global: getAuthPrincipalScopes(req.user) }));
+				result.scopes.push(...combineScopes({ global: getRoleScopes(req.user.role) }));
 			}
 
 			results.push(result);
@@ -156,7 +151,7 @@ export class ProjectController {
 		}
 		const scopes: Scope[] = [
 			...combineScopes({
-				global: getAuthPrincipalScopes(req.user),
+				global: getRoleScopes(req.user.role),
 				project: getRoleScopes('project:personalOwner'),
 			}),
 		];
@@ -194,7 +189,7 @@ export class ProjectController {
 			})),
 			scopes: [
 				...combineScopes({
-					global: getAuthPrincipalScopes(req.user),
+					global: getRoleScopes(req.user.role),
 					...(myRelation ? { project: getRoleScopes(myRelation.role) } : {}),
 				}),
 			],
@@ -235,7 +230,7 @@ export class ProjectController {
 
 			this.eventService.emit('team-project-updated', {
 				userId: req.user.id,
-				role: req.user.role.slug,
+				role: req.user.role,
 				members: relations,
 				projectId,
 			});
@@ -256,7 +251,7 @@ export class ProjectController {
 
 		this.eventService.emit('team-project-deleted', {
 			userId: req.user.id,
-			role: req.user.role.slug,
+			role: req.user.role,
 			projectId,
 			removalType: query.transferId !== undefined ? 'transfer' : 'delete',
 			targetProjectId: query.transferId,
