@@ -496,11 +496,16 @@ export class WorkflowDataProxy {
 					name = name.toString();
 
 					if (!node) {
-						throw new ExpressionError("Referenced node doesn't exist", {
+						throw new ExpressionError('Referenced node does not exist', {
+							messageTemplate: 'Make sure to double-check the node name for typos',
+							functionality: 'pairedItem',
+							descriptionKey: isScriptingNode(nodeName, that.workflow)
+								? 'pairedItemNoConnectionCodeNode'
+								: 'pairedItemNoConnection',
+							type: 'paired_item_no_connection',
+							nodeCause: nodeName,
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							nodeCause: nodeName,
-							descriptionKey: 'nodeNotFound',
 						});
 					}
 
@@ -514,22 +519,13 @@ export class WorkflowDataProxy {
 							return undefined;
 						}
 
+						// Ultra-simple execution-based validation: if no execution data exists, throw error
 						if (executionData.length === 0) {
-							if (that.workflow.getParentNodes(nodeName).length === 0) {
-								throw new ExpressionError('No execution data available', {
-									messageTemplate:
-										'No execution data available to expression under ‘%%PARAMETER%%’',
-									descriptionKey: 'noInputConnection',
-									nodeCause: nodeName,
-									runIndex: that.runIndex,
-									itemIndex: that.itemIndex,
-									type: 'no_input_connection',
-								});
-							}
-
 							throw new ExpressionError('No execution data available', {
+								messageTemplate: 'Make sure the node has been executed and has output data',
 								runIndex: that.runIndex,
 								itemIndex: that.itemIndex,
+								nodeCause: nodeName,
 								type: 'no_execution_data',
 							});
 						}

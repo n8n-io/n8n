@@ -275,7 +275,7 @@ describe('WorkflowDataProxy', () => {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
 				expect(exprError.message).toEqual('No execution data available');
-				expect(exprError.context.type).toEqual('no_input_connection');
+				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
 
