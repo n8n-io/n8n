@@ -71,7 +71,7 @@ spy.mockImplementation(
 const setAssistantEnabled = (enabled: boolean) => {
 	settingsStore.setSettings(
 		merge({}, defaultSettings, {
-			aiAssistant: { enabled },
+			aiAssistant: { enable, setup: true },
 		}),
 	);
 };
