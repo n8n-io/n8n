@@ -261,7 +261,3 @@ export function normalizeValue(
 
 	return value;
 }
-
-export function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
-	return dbType.includes('postgres') ? `$${index}` : '?';
-}
