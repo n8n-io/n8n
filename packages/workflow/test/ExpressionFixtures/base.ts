@@ -273,19 +273,16 @@ export const baseFixtures: ExpressionTestFixture[] = [
 			{
 				type: 'evaluation',
 				input: [],
-				error: new ExpressionError(
-					'"node" node didn\'t get executed yet, but is needed for your expression',
-					{
-						runIndex: 0,
-						itemIndex: -1,
-						type: 'no_execution_data',
-						functionality: 'pairedItem',
-						messageTemplate:
-							'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
-						descriptionKey: 'pairedItemNoConnection',
-						nodeCause: 'node',
-					},
-				),
+				error: new ExpressionError("Node 'node' isn't executed", {
+					runIndex: 0,
+					itemIndex: -1,
+					type: 'no_execution_data',
+					functionality: 'pairedItem',
+					messageTemplate:
+						'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+					descriptionKey: 'pairedItemNoConnection',
+					nodeCause: 'node',
+				}),
 			},
 			{ type: 'transform' },
 			{ type: 'transform', forceTransform: true },
