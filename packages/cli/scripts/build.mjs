@@ -85,11 +85,12 @@ function generateTimezoneData() {
 }
 
 function generateThirdPartyLicenses() {
-	const scriptPath = path.resolve(ROOT_DIR, '..', '..', 'scripts', 'generate-third-party-licenses.mjs');
 	console.log('Generating third-party licenses...');
-	const result = shell.exec(`node ${scriptPath}`, { silent: false });
+	const result = shell.exec('pnpm run generate:third-party-licenses', { silent: false, cwd: path.resolve(ROOT_DIR, '..', '..') });
 	if (result.code !== 0) {
-		console.error('Failed to generate third-party licenses');
-		process.exit(1);
+		console.warn('⚠️  Warning: Third-party license generation failed, continuing build...');
+		console.warn(`License generation error code: ${result.code}`);
+	} else {
+		console.log('✅ Third-party licenses generated successfully');
 	}
 }

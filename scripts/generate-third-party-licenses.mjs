@@ -37,6 +37,8 @@ async function generateLicenseData() {
   const formatPath = path.join(__dirname, 'third-party-license-format.json');
 
   try {
+    // Change to root directory to ensure all workspace dependencies are scanned
+    $.cwd = rootDir;
     await $`pnpm exec license-checker --json --customPath ${formatPath}`.pipe(fs.createWriteStream(licensesJsonPath));
     return licensesJsonPath;
   } catch (error) {
