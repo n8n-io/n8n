@@ -977,15 +977,15 @@ describe('dataStore', () => {
 			);
 			expect(count).toEqual(4);
 			expect(data).toEqual(
-				rows.map(
-					(row) =>
-						expect.objectContaining({
-							...row,
-							c1: row.c1,
-							c2: row.c2,
-							c3: row.c3 instanceof Date ? row.c3.toISOString() : row.c3,
-							c4: row.c4,
-						}) as Record<string, unknown>,
+				rows.map((row, i) =>
+					expect.objectContaining({
+						...row,
+						id: i + 1,
+						c1: row.c1,
+						c2: row.c2,
+						c3: typeof row.c3 === 'string' ? new Date(row.c3) : row.c3,
+						c4: row.c4,
+					}),
 				),
 			);
 		});
@@ -1081,47 +1081,35 @@ describe('dataStore', () => {
 			]);
 		});
 
-		it('return inserted data if requested', async () => {
+		it('return full inserted data if returnData is set', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'myDataStore',
 				columns: [
 					{ name: 'c1', type: 'number' },
 					{ name: 'c2', type: 'string' },
+					{ name: 'c3', type: 'boolean' },
+					{ name: 'c4', type: 'date' },
 				],
 			});
+
+			const now = new Date();
 
 			// Insert initial row
 			const ids = await dataStoreService.insertRows(
 				dataStoreId,
 				project1.id,
 				[
-					{ c1: 1, c2: 'foo' },
-					{ c1: 2, c2: 'bar' },
+					{ c1: 1, c2: 'foo', c3: true, c4: now },
+					{ c1: 2, c2: 'bar', c3: false, c4: now },
+					{ c1: null, c2: null, c3: null, c4: null },
 				],
 				true,
 			);
 			expect(ids).toEqual([
-				{ id: 1, c1: 1, c2: 'foo' },
-				{ id: 2, c1: 2, c2: 'bar' },
-			]);
-
-			await dataStoreService.deleteRows(dataStoreId, project1.id, [ids[0].id]);
-
-			const result = await dataStoreService.insertRows(
-				dataStoreId,
-				project1.id,
-				[
-					{ c1: 1, c2: 'baz' },
-					{ c1: 2, c2: 'faz' },
-				],
-				true,
-			);
-
-			// ASSERT
-			expect(result).toEqual([
-				{ id: 3, c1: 1, c2: 'baz' },
-				{ id: 4, c1: 2, c2: 'faz' },
+				{ id: 1, c1: 1, c2: 'foo', c3: true, c4: now },
+				{ id: 2, c1: 2, c2: 'bar', c3: false, c4: now },
+				{ id: 3, c1: null, c2: null, c3: null, c4: null },
 			]);
 		});
 
@@ -1275,25 +1263,25 @@ describe('dataStore', () => {
 			expect(data).toEqual([
 				{
 					id: 1,
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
 				},
 				{
 					id: 2,
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
 				},
 				{
 					id: 3,
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
 				},
 			]);
 		});
 	});
 
 	describe('upsertRows', () => {
-		it('updates rows if filter matches', async () => {
+		it('should update a row if filter matches', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1352,7 +1340,7 @@ describe('dataStore', () => {
 			);
 		});
 
-		it('works correctly with multiple filters', async () => {
+		it('should work correctly with multiple filters', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1409,7 +1397,7 @@ describe('dataStore', () => {
 			);
 		});
 
-		it('inserts a row if filter does not match', async () => {
+		it('should insert a row if filter does not match', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1454,6 +1442,59 @@ describe('dataStore', () => {
 					pid: '1992-222b',
 				}),
 			]);
+		});
+
+		it('should return full upserted rows if returnData is set', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'pid', type: 'string' },
+					{ name: 'fullName', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'birthday', type: 'date' },
+				],
+			});
+
+			// Insert initial row
+			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ pid: '1995-111a', fullName: 'Alice', age: 30, birthday: new Date('1995-01-01') },
+			]);
+			expect(ids).toEqual([{ id: 1 }]);
+
+			// ACT
+			const result = await dataStoreService.upsertRows(
+				dataStoreId,
+				project1.id,
+				{
+					rows: [
+						{ pid: '1995-111a', fullName: 'Alicia', age: 31, birthday: new Date('1995-01-01') },
+						{ pid: '1992-222b', fullName: 'Bob', age: 30, birthday: new Date('1992-01-01') },
+					],
+					matchFields: ['pid'],
+				},
+				true,
+			);
+
+			// ASSERT
+			expect(result).toEqual(
+				expect.arrayContaining([
+					{
+						id: 1,
+						fullName: 'Alicia',
+						age: 31,
+						pid: '1995-111a',
+						birthday: new Date('1995-01-01'),
+					},
+					{
+						id: 2,
+						fullName: 'Bob',
+						age: 30,
+						pid: '1992-222b',
+						birthday: new Date('1992-01-01'),
+					},
+				]),
+			);
 		});
 	});
 
@@ -1547,37 +1588,40 @@ describe('dataStore', () => {
 					{ name: 'name', type: 'string' },
 					{ name: 'age', type: 'number' },
 					{ name: 'active', type: 'boolean' },
+					{ name: 'birthday', type: 'date' },
 				],
 			});
 
 			await dataStoreService.insertRows(dataStoreId, project1.id, [
-				{ name: 'Alice', age: 30, active: true },
-				{ name: 'Bob', age: 25, active: false },
+				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
+				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
 			]);
 
 			// ACT
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
 				filter: { name: 'Alice' },
-				data: { age: 31, active: false },
+				data: { name: 'Alicia', age: 31, active: false, birthday: new Date('1990-01-02') },
 			});
 
 			// ASSERT
-			expect(result).toBe(true);
+			expect(result).toEqual(true);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
 						id: 1,
-						name: 'Alice',
+						name: 'Alicia',
 						age: 31,
 						active: false,
+						birthday: new Date('1990-01-02'),
 					}),
 					expect.objectContaining({
 						id: 2,
 						name: 'Bob',
 						age: 25,
 						active: false,
+						birthday: new Date('1995-01-01'),
 					}),
 				]),
 			);
@@ -1614,7 +1658,7 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			expect(result).toBe(true);
+			expect(result).toEqual(true);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
@@ -1685,6 +1729,194 @@ describe('dataStore', () => {
 			);
 		});
 
+		it('should be able to update by string column', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'active', type: 'boolean' },
+					{ name: 'birthday', type: 'date' },
+				],
+			});
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
+				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+			]);
+
+			// ACT
+			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
+				filter: { name: 'Alice' },
+				data: { name: 'Alicia' },
+			});
+
+			// ASSERT
+			expect(result).toEqual(true);
+
+			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(data).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						id: 1,
+						name: 'Alicia',
+						age: 30,
+						active: true,
+						birthday: new Date('1990-01-01'),
+					}),
+					expect.objectContaining({
+						id: 2,
+						name: 'Bob',
+						age: 25,
+						active: false,
+						birthday: new Date('1995-01-01'),
+					}),
+				]),
+			);
+		});
+
+		it('should be able to update by number column', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'active', type: 'boolean' },
+					{ name: 'birthday', type: 'date' },
+				],
+			});
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
+				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+			]);
+
+			// ACT
+			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
+				filter: { age: 30 },
+				data: { age: 31 },
+			});
+
+			// ASSERT
+			expect(result).toEqual(true);
+
+			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(data).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						id: 1,
+						name: 'Alice',
+						age: 31,
+						active: true,
+						birthday: new Date('1990-01-01'),
+					}),
+					expect.objectContaining({
+						id: 2,
+						name: 'Bob',
+						age: 25,
+						active: false,
+						birthday: new Date('1995-01-01'),
+					}),
+				]),
+			);
+		});
+
+		it('should be able to update by boolean column', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'active', type: 'boolean' },
+					{ name: 'birthday', type: 'date' },
+				],
+			});
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
+				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+			]);
+
+			// ACT
+			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
+				filter: { active: true },
+				data: { active: false },
+			});
+
+			// ASSERT
+			expect(result).toEqual(true);
+
+			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(data).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						id: 1,
+						name: 'Alice',
+						age: 30,
+						active: false,
+						birthday: new Date('1990-01-01'),
+					}),
+					expect.objectContaining({
+						id: 2,
+						name: 'Bob',
+						age: 25,
+						active: false,
+						birthday: new Date('1995-01-01'),
+					}),
+				]),
+			);
+		});
+
+		it('should be able to update by date column', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'active', type: 'boolean' },
+					{ name: 'birthday', type: 'date' },
+				],
+			});
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
+				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+			]);
+
+			// ACT
+			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
+				filter: { birthday: new Date('1990-01-01') },
+				data: { birthday: new Date('1990-01-02') },
+			});
+
+			// ASSERT
+			expect(result).toEqual(true);
+
+			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
+			expect(data).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						id: 1,
+						name: 'Alice',
+						age: 30,
+						active: true,
+						birthday: new Date('1990-01-02'),
+					}),
+					expect.objectContaining({
+						id: 2,
+						name: 'Bob',
+						age: 25,
+						active: false,
+						birthday: new Date('1995-01-01'),
+					}),
+				]),
+			);
+		});
+
 		it('should update row with multiple filter conditions', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
@@ -1709,7 +1941,7 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			expect(result).toBe(true);
+			expect(result).toEqual(true);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual(
@@ -1755,7 +1987,7 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			expect(result).toBe(true);
+			expect(result).toEqual(true);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual([
@@ -1919,7 +2151,7 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			expect(result).toBe(true);
+			expect(result).toEqual(true);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
 			expect(data).toEqual([
@@ -1954,14 +2186,48 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			expect(result).toBe(true);
+			expect(result).toEqual(true);
 
 			const { data } = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {});
-			expect(data).toEqual([
-				expect.objectContaining({
-					name: 'Alice',
-					birthDate: newDate.toISOString(),
-				}),
+
+			expect(data).toEqual([expect.objectContaining({ id: 1, name: 'Alice', birthDate: newDate })]);
+		});
+
+		it('should return full updated rows if returnData is set', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'active', type: 'boolean' },
+					{ name: 'timestamp', type: 'date' },
+				],
+			});
+
+			const now = new Date();
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Alice', age: 30, active: true, timestamp: now },
+				{ name: 'Bob', age: 25, active: false, timestamp: now },
+			]);
+
+			const soon = new Date();
+			soon.setDate(now.getDate() + 1);
+
+			// ACT
+			const result = await dataStoreService.updateRow(
+				dataStoreId,
+				project1.id,
+				{
+					filter: { name: 'Alice' },
+					data: { age: 31, active: false, timestamp: soon },
+				},
+				true,
+			);
+
+			// ASSERT
+			expect(result).toEqual([
+				expect.objectContaining({ id: 1, name: 'Alice', age: 31, active: false, timestamp: soon }),
 			]);
 		});
 	});
@@ -2013,29 +2279,29 @@ describe('dataStore', () => {
 				{
 					c1: rows[0].c1,
 					c2: rows[0].c2,
-					c3: '1970-01-01T00:00:00.000Z',
+					c3: new Date(0),
 					c4: rows[0].c4,
 					id: 1,
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
 				},
 				{
 					c1: rows[1].c1,
 					c2: rows[1].c2,
-					c3: '1970-01-01T00:00:00.001Z',
+					c3: new Date(1),
 					c4: rows[1].c4,
 					id: 2,
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
 				},
 				{
 					c1: rows[2].c1,
 					c2: rows[2].c2,
-					c3: '1970-01-01T00:00:00.002Z',
+					c3: new Date(2),
 					c4: rows[2].c4,
 					id: 3,
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
 				},
 			]);
 		});

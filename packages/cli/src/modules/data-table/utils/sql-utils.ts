@@ -216,19 +216,25 @@ export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 				}
 			}
 			if (type === 'date' && value !== null && value !== undefined) {
-				// Convert date objects or strings to ISO string
+				// Convert date objects or strings to dates in UTC
 				let dateObj: Date | null = null;
 
 				if (value instanceof Date) {
 					dateObj = value;
-				} else if (typeof value === 'string' || typeof value === 'number') {
+				} else if (typeof value === 'string') {
+					// sqlite returns date strings without timezone information, but we store them as UTC
+					const parsed = new Date(value.endsWith('Z') ? value : value + 'Z');
+					if (!isNaN(parsed.getTime())) {
+						dateObj = parsed;
+					}
+				} else if (typeof value === 'number') {
 					const parsed = new Date(value);
 					if (!isNaN(parsed.getTime())) {
 						dateObj = parsed;
 					}
 				}
 
-				normalized[key] = dateObj ? dateObj.toISOString() : value;
+				normalized[key] = dateObj ?? value;
 			}
 		}
 		return normalized;
@@ -258,10 +264,4 @@ export function normalizeValue(
 
 export function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
 	return dbType.includes('postgres') ? `$${index}` : '?';
-}
-
-export function buildColumnTypeMap(
-	columns: Array<{ name: string; type: string }>,
-): Record<string, string> {
-	return Object.fromEntries(columns.map((col) => [col.name, col.type]));
 }

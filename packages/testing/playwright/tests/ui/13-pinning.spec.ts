@@ -165,7 +165,7 @@ test.describe('Data pinning', () => {
 			await n8n.ndv.setPinnedData([{ http: 123 }]);
 			await n8n.ndv.close();
 
-			await n8n.canvas.addNodeWithSubItem(NODES.PIPEDRIVE, 'Create an activity');
+			await n8n.canvas.addNode(NODES.PIPEDRIVE, { action: 'Create an activity' });
 			await n8n.ndv.setPinnedData(Array(3).fill({ pipedrive: 123 }));
 			await n8n.ndv.close();
 
