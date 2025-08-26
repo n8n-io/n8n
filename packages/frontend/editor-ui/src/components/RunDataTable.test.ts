@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import RunDataTable from '@/components/RunDataTable.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { cleanup, fireEvent, waitFor } from '@testing-library/vue';
+import { cleanup, fireEvent, waitFor, within } from '@testing-library/vue';
 import { nextTick } from 'vue';
 
 vi.mock('vue-router', () => {
@@ -109,55 +109,35 @@ describe('RunDataTable.vue', () => {
 		});
 	});
 
-	it('renders null values in italics', () => {
-		const inputData = [
-			{
-				json: { emptyObject: {} },
-			},
-			{
-				json: { emptyString: '' },
-			},
-			{
-				json: { null: null },
-			},
-			{
-				json: { nullArray: [null] },
-			},
-			{
-				json: { arrayWithNull: [1, 2, null, 'b'] },
-			},
-			{
-				json: { objectWithNull: { a: 1, b: null, c: 'boo' } },
-			},
-		];
+	it('renders null values correctly', () => {
+		function getFirstTableCellForColumn(container: HTMLElement, columnName: string) {
+			const headers = within(container).getAllByRole('columnheader');
+			const header = within(container).getByRole('columnheader', { name: columnName });
+			const columnIndex = headers.indexOf(header);
+			const firstRow = within(container).getAllByRole('row')[1];
+			const cells = within(firstRow).getAllByRole('cell');
+			const cell = cells[columnIndex];
+			return cell;
+		}
 
+		const cases = [
+			{ key: 'emptyString', value: '', expected: 'empty' },
+			{ key: 'emptyObject', value: {}, expected: '{empty object}' },
+			{ key: 'null', value: null, expected: 'null' },
+			{ key: 'nullArray', value: [null], expected: '0:null' },
+			{ key: 'arrayWithNull', value: [1, 2, null, 'b'], expected: '2:null' },
+			{ key: 'objectWithNull', value: { a: 1, b: null, c: 'boo' }, expected: 'b:null' },
+		];
+		const inputData = [{ json: Object.fromEntries(cases.map((c) => [c.key, c.value])) }];
 		const { container } = renderComponent({
 			props: { inputData },
 		});
 
-		const emptyValues = container.querySelectorAll('[class*="_empty"]');
-		emptyValues.forEach((element) => {
-			expect(element).toHaveStyle('font-style: italic;');
-		});
-	});
-
-	it('uses i18n expression for empty object and empty string', () => {
-		const inputData = [
-			{
-				json: { emptyObject: {} }, // should render "{empty object}""
-			},
-			{
-				json: { emptyString: '' }, // should render "empty string"
-			},
-		];
-
-		const { container } = renderComponent({
-			props: { inputData },
-		});
-		const spans = container.textContent;
-
-		expect(spans).toContain('{empty object}');
-		expect(spans).toContain('empty');
+		for (const { key: columnName, expected } of cases) {
+			const cell = getFirstTableCellForColumn(container as HTMLElement, columnName);
+			expect(cell).toHaveTextContent(expected);
+			expect(cell.querySelector('.empty')).toBeInTheDocument();
+		}
 	});
 
 	it('only renders `[null]` for empty arrays', () => {
