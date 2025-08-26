@@ -11,6 +11,11 @@ import knowledgeStoreAgentWithGoogleDriveJson from '@/utils/templates/samples/ag
 import taskManagementAgentWithGoogleSheetsJson from '@/utils/templates/samples/agents/task_management_agent_with_google_sheets.json';
 import voiceAssistantAgentJson from '@/utils/templates/samples/agents/voice-agent.json';
 import calendarAgentJson from '@/utils/templates/samples/agents/calendar-agent.json';
+import buildYourFirstAiAgentJson from '@/utils/templates/samples/tutorial/build_your_first_ai_agent.json';
+import jsonBasicsJson from '@/utils/templates/samples/tutorial/json_basics.json';
+import expressionsTutorialJson from '@/utils/templates/samples/tutorial/expressions_tutorial.json';
+import workflowLogicJson from '@/utils/templates/samples/tutorial/workflow_logic.json';
+import apiFundamentalsJson from '@/utils/templates/samples/tutorial/api_fundamentals.json';
 /* eslint-enable import-x/extensions */
 
 const getWorkflowJson = (json: unknown): WorkflowDataWithTemplateId => {
@@ -43,8 +48,20 @@ export const PrebuiltAgentTemplates = {
 	VoiceAssistantAgent: getWorkflowJson(voiceAssistantAgentJson).meta.templateId,
 } as const;
 
+export const TutorialTemplates = {
+	BuildYourFirstAiAgent: getWorkflowJson(buildYourFirstAiAgentJson).meta.templateId,
+	JsonBasics: getWorkflowJson(jsonBasicsJson).meta.templateId,
+	Expressions: getWorkflowJson(expressionsTutorialJson).meta.templateId,
+	WorkflowLogic: getWorkflowJson(workflowLogicJson).meta.templateId,
+	ApiFundamentals: getWorkflowJson(apiFundamentalsJson).meta.templateId,
+} as const;
+
 export const isPrebuiltAgentTemplateId = (value: string): boolean => {
 	return Object.values(PrebuiltAgentTemplates).includes(value);
+};
+
+export const isTutorialTemplateId = (value: string): boolean => {
+	return Object.values(TutorialTemplates).includes(value);
 };
 
 interface SampleTemplate {
@@ -135,35 +152,35 @@ export const getTutorialTemplates = (): SampleTemplate[] => {
 			name: 'Build your first AI agent',
 			description:
 				'This template launches your very first AI Agent —an AI-powered chatbot that can do more than just talk— it can take action using tools.',
-			template: getWorkflowJson(voiceAssistantAgentJson),
+			template: getWorkflowJson(buildYourFirstAiAgentJson),
 			nodes: [],
 		},
 		{
 			name: 'JSON basics',
 			description:
 				'Designed to teach you the absolute basics of JSON (JavaScript Object Notation) and, more importantly, how to use it within n8n.',
-			template: getWorkflowJson(emailTriageAgentWithGmailJson),
+			template: getWorkflowJson(jsonBasicsJson),
 			nodes: [],
 		},
 		{
 			name: 'Expressions',
 			description:
 				'Step-by-step tutorial designed to teach you the most important skill in n8n: using expressions to access and manipulate data.',
-			template: getWorkflowJson(knowledgeStoreAgentWithGoogleDriveJson),
+			template: getWorkflowJson(expressionsTutorialJson),
 			nodes: [],
 		},
 		{
 			name: 'Workflow logic',
 			description:
 				'This template is a hands-on tutorial that teaches you the three most fundamental nodes for controlling the flow of your automations: Merge, IF, and Switch.',
-			template: getWorkflowJson(calendarAgentJson),
+			template: getWorkflowJson(workflowLogicJson),
 			nodes: [],
 		},
 		{
 			name: 'API fundamentals',
 			description:
 				'Hands-on tutorial designed to demystify what an API is and how it works, right inside your n8n canvas.',
-			template: getWorkflowJson(taskManagementAgentWithGoogleSheetsJson),
+			template: getWorkflowJson(apiFundamentalsJson),
 			nodes: [],
 		},
 	];
@@ -176,6 +193,7 @@ export const getSampleWorkflowByTemplateId = (
 		getEasyAiWorkflowJson(),
 		getRagStarterWorkflowJson(),
 		...getPrebuiltAgents().map((agent) => agent.template),
+		...getTutorialTemplates().map((tutorial) => tutorial.template),
 	];
 
 	return workflows.find((workflow) => workflow.meta.templateId === templateId);
