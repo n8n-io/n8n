@@ -115,6 +115,7 @@ const node = computed<INodeUi | undefined>(() => {
 
 	return selected ? workflowsStore.allNodes.find((n) => n.id === selected) : undefined;
 });
+const multipleNodesSelected = computed(() => vueFlow.getSelectedNodes.value.length > 1);
 
 const isExecutable = computed(() => {
 	if (!node.value) return false;
@@ -384,14 +385,14 @@ function onOpenNdv() {
 			:width="focusPanelWidth"
 			:supported-directions="['left']"
 			:min-width="300"
-			:max-width="1000"
+			:max-width="experimentalNdvStore.isNdvInFocusPanelEnabled ? undefined : 1000"
 			:grid-size="8"
 			:style="{ width: `${focusPanelWidth}px` }"
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
 				<ExperimentalFocusPanelHeader
-					v-if="experimentalNdvStore.isNdvInFocusPanelEnabled && node"
+					v-if="experimentalNdvStore.isNdvInFocusPanelEnabled && node && !multipleNodesSelected"
 					:node="node"
 					:parameter="resolvedParameter?.parameter"
 					:is-executable="isExecutable"
@@ -591,11 +592,14 @@ function onOpenNdv() {
 <style lang="scss" module>
 .wrapper {
 	display: flex;
-	flex-direction: row nowrap;
+	flex-direction: row;
+	flex-wrap: nowrap;
 	border-left: 1px solid var(--color-foreground-base);
 	background: var(--color-background-xlight);
 	overflow-y: hidden;
 	height: 100%;
+	flex-grow: 0;
+	flex-shrink: 0;
 }
 
 .container {
