@@ -554,11 +554,10 @@ export class WorkflowDataProxy {
 										'Adjust your expression to access an existing item index (0-{{maxIndex}})',
 									functionality: 'pairedItem',
 									descriptionKey: 'pairedItemInvalidIndex',
-									type: 'invalid_item_index',
+									type: 'no_execution_data',
 									nodeCause: nodeName,
 									runIndex: that.runIndex,
 									itemIndex: that.itemIndex,
-									maxIndex: executionData.length - 1,
 								},
 							);
 						}
@@ -1144,7 +1143,7 @@ export class WorkflowDataProxy {
 								let contextNode = that.contextNodeName;
 								if (activeNode) {
 									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
-									contextNode = parentMainInputNode.name ?? contextNode;
+									contextNode = parentMainInputNode?.name ?? contextNode;
 								}
 								const parentNodes = that.workflow.getParentNodes(contextNode);
 								if (!parentNodes.includes(nodeName)) {
