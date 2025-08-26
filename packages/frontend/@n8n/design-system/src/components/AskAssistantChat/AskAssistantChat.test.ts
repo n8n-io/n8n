@@ -268,90 +268,86 @@ describe('AskAssistantChat', () => {
 			MessageWrapper: MessageWrapperMock,
 		};
 
-		it('should not collapse single tool message', () => {
-			render(AskAssistantChat, {
+		const createToolMessage = (
+			overrides: Partial<ChatUI.ToolMessage & { id: string }> = {},
+		): ChatUI.ToolMessage & { id: string } => ({
+			id: '1',
+			role: 'assistant',
+			type: 'tool',
+			toolName: 'search',
+			status: 'completed',
+			displayTitle: 'Search Results',
+			updates: [{ type: 'output', data: { result: 'Found items' } }],
+			...overrides,
+		});
+
+		const renderWithMessages = (messages: ChatUI.AssistantMessage[], extraProps = {}) => {
+			MessageWrapperMock.mockClear();
+			return render(AskAssistantChat, {
 				global: { stubs: stubsWithMessageWrapper },
 				props: {
 					user: { firstName: 'Kobi', lastName: 'Dog' },
-					messages: [
-						{
-							id: '1',
-							role: 'assistant',
-							type: 'tool',
-							toolName: 'search',
-							status: 'completed',
-							displayTitle: 'Search Results',
-							updates: [{ type: 'output', data: { result: 'Found 10 items' } }],
-						},
-					],
+					messages,
+					...extraProps,
 				},
 			});
+		};
+
+		const getMessageWrapperProps = (callIndex = 0): MessageWrapperProps => {
+			const mockCall = MessageWrapperMock.mock.calls[callIndex];
+			expect(mockCall).toBeDefined();
+			return (mockCall as unknown as [props: MessageWrapperProps])[0];
+		};
+
+		it('should not collapse single tool message', () => {
+			const message = createToolMessage({
+				id: '1',
+				displayTitle: 'Search Results',
+				updates: [{ type: 'output', data: { result: 'Found 10 items' } }],
+			});
+
+			renderWithMessages([message]);
 
 			expect(MessageWrapperMock).toHaveBeenCalledTimes(1);
-			const mockCall = MessageWrapperMock.mock.calls[0];
-			expect(mockCall).toBeDefined();
-			const [props] = mockCall as unknown as [props: MessageWrapperProps];
+			const props = getMessageWrapperProps();
 
 			// Verify the message passed to MessageWrapper
 			expect(props.message).toEqual(
 				expect.objectContaining({
-					id: '1',
-					role: 'assistant',
-					type: 'tool',
-					toolName: 'search',
-					status: 'completed',
-					displayTitle: 'Search Results',
-					updates: [{ type: 'output', data: { result: 'Found 10 items' } }],
+					...message,
 					read: true, // Added by normalizeMessages
 				}),
 			);
 		});
 
 		it('should collapse consecutive tool messages with same toolName', () => {
-			MessageWrapperMock.mockClear();
+			const messages = [
+				createToolMessage({
+					id: '1',
+					status: 'running',
+					displayTitle: 'Searching...',
+					updates: [{ type: 'progress', data: { status: 'Initializing search' } }],
+				}),
+				createToolMessage({
+					id: '2',
+					status: 'running',
+					displayTitle: 'Still searching...',
+					customDisplayTitle: 'Custom Search Title',
+					updates: [{ type: 'progress', data: { status: 'Processing results' } }],
+				}),
+				createToolMessage({
+					id: '3',
+					status: 'completed',
+					displayTitle: 'Search Complete',
+					updates: [{ type: 'output', data: { result: 'Found 10 items' } }],
+				}),
+			];
 
-			render(AskAssistantChat, {
-				global: { stubs: stubsWithMessageWrapper },
-				props: {
-					user: { firstName: 'Kobi', lastName: 'Dog' },
-					messages: [
-						{
-							id: '1',
-							role: 'assistant',
-							type: 'tool',
-							toolName: 'search',
-							status: 'running',
-							displayTitle: 'Searching...',
-							updates: [{ type: 'progress', data: { status: 'Initializing search' } }],
-						},
-						{
-							id: '2',
-							role: 'assistant',
-							type: 'tool',
-							toolName: 'search',
-							status: 'running',
-							displayTitle: 'Still searching...',
-							customDisplayTitle: 'Custom Search Title',
-							updates: [{ type: 'progress', data: { status: 'Processing results' } }],
-						},
-						{
-							id: '3',
-							role: 'assistant',
-							type: 'tool',
-							toolName: 'search',
-							status: 'completed',
-							displayTitle: 'Search Complete',
-							updates: [{ type: 'output', data: { result: 'Found 10 items' } }],
-						},
-					],
-				},
-			});
+			renderWithMessages(messages);
 
 			// Should only render one MessageWrapper (collapsed)
 			expect(MessageWrapperMock).toHaveBeenCalledTimes(1);
-			const mockCall = MessageWrapperMock.mock.calls[0];
-			expect(mockCall).toBeDefined();
-			const [props] = mockCall as unknown as [{ message: string }];
+			const props = getMessageWrapperProps();
 
 			// Verify collapsed message has combined updates and prioritizes running status
 			expect(props.message).toEqual(
@@ -374,42 +370,28 @@ describe('AskAssistantChat', () => {
 		});
 
 		it('should not collapse tool messages with different toolNames', () => {
-			MessageWrapperMock.mockClear();
+			const messages = [
+				createToolMessage({
+					id: '1',
+					toolName: 'search',
+					displayTitle: 'Search Results',
+					updates: [{ type: 'output', data: { result: 'Found 10 items' } }],
+				}),
+				createToolMessage({
+					id: '2',
+					toolName: 'fetch',
+					displayTitle: 'Data Fetched',
+					updates: [{ type: 'output', data: { result: 'Data retrieved' } }],
+				}),
+			];
 
-			render(AskAssistantChat, {
-				global: { stubs: stubsWithMessageWrapper },
-				props: {
-					user: { firstName: 'Kobi', lastName: 'Dog' },
-					messages: [
-						{
-							id: '1',
-							role: 'assistant',
-							type: 'tool',
-							toolName: 'search',
-							status: 'completed',
-							displayTitle: 'Search Results',
-							updates: [{ type: 'output', data: { result: 'Found 10 items' } }],
-						},
-						{
-							id: '2',
-							role: 'assistant',
-							type: 'tool',
-							toolName: 'fetch',
-							status: 'completed',
-							displayTitle: 'Data Fetched',
-							updates: [{ type: 'output', data: { result: 'Data retrieved' } }],
-						},
-					],
-				},
-			});
+			renderWithMessages(messages);
 
 			// Should render two separate MessageWrappers
 			expect(MessageWrapperMock).toHaveBeenCalledTimes(2);
 
 			// First message should remain unchanged
-			const firstCall = MessageWrapperMock.mock.calls[0];
-			expect(firstCall).toBeDefined();
-			const [firstProps] = firstCall as unknown as [props: MessageWrapperProps];
+			const firstProps = getMessageWrapperProps(0);
 			expect(firstProps.message).toEqual(
 				expect.objectContaining({
 					id: '1',
@@ -420,9 +402,7 @@ describe('AskAssistantChat', () => {
 			);
 
 			// Second message should remain unchanged
-			const secondCall = MessageWrapperMock.mock.calls[1];
-			expect(secondCall).toBeDefined();
-			const [secondProps] = secondCall as unknown as [props: MessageWrapperProps];
+			const secondProps = getMessageWrapperProps(1);
 			expect(secondProps.message).toEqual(
 				expect.objectContaining({
 					id: '2',
