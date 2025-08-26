@@ -15,6 +15,7 @@ import { DataStoreUserTableName } from './data-store.types';
 import {
 	addColumnQuery,
 	deleteColumnQuery,
+	escapeLikeSpecials,
 	extractInsertedIds,
 	extractReturningData,
 	normalizeRows,
@@ -22,11 +23,24 @@ import {
 	quoteIdentifier,
 	splitRowsByExistence,
 	toDslColumns,
+	toSqliteGlobFromPercent,
 } from './utils/sql-utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
 
+/**
+ * Converts filter conditions to SQL WHERE clauses with parameters.
+ *
+ * LIKE / ILIKE rules:
+ * - Only '%' is a wildcard (zero or more chars).
+ * - All other special chars ('_', '*', '?', '[', ']') are treated literally.
+ * - '_' and '\' are escaped in the value; SQL uses `ESCAPE '\'` so `\_` means literal underscore.
+ *
+ * Why the crazy backslashes:
+ * - Postgres/SQLite/Oracle/SQL Server: `ESCAPE '\'` is written as-is.
+ * - MySQL/MariaDB: the SQL literal itself requires two backslashes (`'\\'`) to mean one.
+ */
 function getConditionAndParams(
 	filter: ListDataStoreContentFilter['filters'][number],
 	index: number,
@@ -38,8 +52,55 @@ function getConditionAndParams(
 	switch (filter.condition) {
 		case 'eq':
 			return [`${column} = :${paramName}`, { [paramName]: filter.value }];
+
 		case 'neq':
 			return [`${column} != :${paramName}`, { [paramName]: filter.value }];
+
+		// case-sensitive
+		case 'like':
+			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
+				const globValue = toSqliteGlobFromPercent(filter.value as string);
+				return [`${column} GLOB :${paramName}`, { [paramName]: globValue }];
+			}
+
+			if (['mysql', 'mariadb'].includes(dbType)) {
+				const escapedValue = escapeLikeSpecials(filter.value as string);
+				return [`${column} LIKE BINARY :${paramName} ESCAPE '\\\\'`, { [paramName]: escapedValue }];
+			}
+
+			// PostgreSQL: LIKE is case-sensitive
+			if (dbType === 'postgres') {
+				const escapedValue = escapeLikeSpecials(filter.value as string);
+				return [`${column} LIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
+			}
+
+			// Generic fallback
+			return [`${column} LIKE :${paramName}`, { [paramName]: filter.value }];
+
+		// case-insensitive
+		case 'ilike':
+			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
+				const escapedValue = escapeLikeSpecials(filter.value as string);
+				return [
+					`UPPER(${column}) LIKE UPPER(:${paramName}) ESCAPE '\\'`,
+					{ [paramName]: escapedValue },
+				];
+			}
+
+			if (['mysql', 'mariadb'].includes(dbType)) {
+				const escapedValue = escapeLikeSpecials(filter.value as string);
+				return [
+					`UPPER(${column}) LIKE UPPER(:${paramName}) ESCAPE '\\\\'`,
+					{ [paramName]: escapedValue },
+				];
+			}
+
+			if (dbType === 'postgres') {
+				const escapedValue = escapeLikeSpecials(filter.value as string);
+				return [`${column} ILIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
+			}
+
+			return [`UPPER(${column}) LIKE UPPER(:${paramName})`, { [paramName]: filter.value }];
 	}
 }
 

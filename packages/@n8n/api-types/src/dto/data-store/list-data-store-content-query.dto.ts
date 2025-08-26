@@ -5,7 +5,12 @@ import { Z } from 'zod-class';
 import { dataStoreColumnNameSchema } from '../../schemas/data-store.schema';
 import { paginationSchema } from '../pagination/pagination.dto';
 
-const FilterConditionSchema = z.union([z.literal('eq'), z.literal('neq')]);
+const FilterConditionSchema = z.union([
+	z.literal('eq'),
+	z.literal('neq'),
+	z.literal('like'),
+	z.literal('ilike'),
+]);
 export type ListDataStoreContentFilterConditionType = z.infer<typeof FilterConditionSchema>;
 
 const filterRecord = z.object({

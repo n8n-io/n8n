@@ -261,3 +261,29 @@ export function normalizeValue(
 
 	return value;
 }
+
+/**
+ * Convert a LIKE-style pattern (only % is wildcard) into a SQLite GLOB pattern.
+ */
+export function toSqliteGlobFromPercent(input: string): string {
+	const out: string[] = [];
+	for (const ch of String(input ?? '')) {
+		if (ch === '%') out.push('*');
+		else if (ch === '[') out.push('[[]');
+		else if (ch === ']') out.push('[]]');
+		else if (ch === '*') out.push('[*]');
+		else if (ch === '?') out.push('[?]');
+		else out.push(ch);
+	}
+	return out.join('');
+}
+
+/**
+ * LIKE escaper for DBs where we use ESCAPE '\'.
+ * Keep '%' as wildcard; make '_' literal; escape the escape char itself.
+ */
+export function escapeLikeSpecials(input: string): string {
+	return input
+		.replace(/\\/g, '\\\\') // escape the escape char itself
+		.replace(/_/g, '\\_'); // make '_' literal ('%' stays a wildcard)
+}
