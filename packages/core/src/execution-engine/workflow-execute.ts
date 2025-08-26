@@ -768,10 +768,7 @@ export class WorkflowExecute {
 				// eslint-disable-next-line @typescript-eslint/no-for-in-array
 				for (const outputIndexParent in workflow.connectionsBySourceNode[parentNodeName].main) {
 					if (
-						!Object.prototype.hasOwnProperty.call(
-							workflow.connectionsBySourceNode[parentNodeName].main,
-							outputIndexParent,
-						)
+						!Object.hasOwn(workflow.connectionsBySourceNode[parentNodeName].main, outputIndexParent)
 					) {
 						continue;
 					}
@@ -1094,7 +1091,7 @@ export class WorkflowExecute {
 	 * Handles execution of disabled nodes by passing through input data
 	 */
 	private handleDisabledNode(inputData: ITaskDataConnections): IRunNodeResponse {
-		if (Object.prototype.hasOwnProperty.call(inputData, 'main') && inputData.main.length > 0) {
+		if (Object.hasOwn(inputData, 'main') && inputData.main.length > 0) {
 			// If the node is disabled simply return the data from the first main input
 			if (inputData.main[0] === null) {
 				return { data: undefined };
@@ -1652,12 +1649,7 @@ export class WorkflowExecute {
 
 					// Get the index of the current run
 					runIndex = 0;
-					if (
-						Object.prototype.hasOwnProperty.call(
-							this.runExecutionData.resultData.runData,
-							executionNode.name,
-						)
-					) {
+					if (Object.hasOwn(this.runExecutionData.resultData.runData, executionNode.name)) {
 						runIndex = this.runExecutionData.resultData.runData[executionNode.name].length;
 					}
 					currentExecutionTry = `${executionNode.name}:${runIndex}`;
@@ -1857,12 +1849,7 @@ export class WorkflowExecute {
 					// Add the data to return to the user
 					// (currently does not get cloned as data does not get changed, maybe later we should do that?!?!)
 
-					if (
-						!Object.prototype.hasOwnProperty.call(
-							this.runExecutionData.resultData.runData,
-							executionNode.name,
-						)
-					) {
+					if (!Object.hasOwn(this.runExecutionData.resultData.runData, executionNode.name)) {
 						this.runExecutionData.resultData.runData[executionNode.name] = [];
 					}
 
@@ -1898,10 +1885,7 @@ export class WorkflowExecute {
 							)
 						) {
 							// Workflow should continue running even if node errors
-							if (
-								Object.prototype.hasOwnProperty.call(executionData.data, 'main') &&
-								executionData.data.main.length > 0
-							) {
+							if (Object.hasOwn(executionData.data, 'main') && executionData.data.main.length > 0) {
 								// Simply get the input data of the node if it has any and pass it through
 								// to the next node
 								if (executionData.data.main[0] !== null) {
@@ -1993,18 +1977,8 @@ export class WorkflowExecute {
 
 					// Add the nodes to which the current node has an output connection to that they can
 					// be executed next
-					if (
-						Object.prototype.hasOwnProperty.call(
-							workflow.connectionsBySourceNode,
-							executionNode.name,
-						)
-					) {
-						if (
-							Object.prototype.hasOwnProperty.call(
-								workflow.connectionsBySourceNode[executionNode.name],
-								'main',
-							)
-						) {
+					if (Object.hasOwn(workflow.connectionsBySourceNode, executionNode.name)) {
+						if (Object.hasOwn(workflow.connectionsBySourceNode[executionNode.name], 'main')) {
 							let outputIndex: string;
 							let connectionData: IConnection;
 							// Iterate over all the outputs
@@ -2019,7 +1993,7 @@ export class WorkflowExecute {
 							// eslint-disable-next-line @typescript-eslint/no-for-in-array
 							for (outputIndex in workflow.connectionsBySourceNode[executionNode.name].main) {
 								if (
-									!Object.prototype.hasOwnProperty.call(
+									!Object.hasOwn(
 										workflow.connectionsBySourceNode[executionNode.name].main,
 										outputIndex,
 									)
@@ -2031,7 +2005,7 @@ export class WorkflowExecute {
 								for (connectionData of workflow.connectionsBySourceNode[executionNode.name].main[
 									outputIndex
 								] ?? []) {
-									if (!Object.prototype.hasOwnProperty.call(workflow.nodes, connectionData.node)) {
+									if (!Object.hasOwn(workflow.nodes, connectionData.node)) {
 										throw new ApplicationError('Destination node not found', {
 											extra: {
 												sourceNodeName: executionNode.name,
@@ -2351,7 +2325,7 @@ export class WorkflowExecute {
 				return true;
 			}
 
-			if (!Object.prototype.hasOwnProperty.call(executionData.data, 'main')) {
+			if (!Object.hasOwn(executionData.data, 'main')) {
 				// ExecutionData does not even have the connection set up so can
 				// not have that data, so add it again to be executed later
 				this.runExecutionData.executionData!.nodeExecutionStack.push(executionData);
