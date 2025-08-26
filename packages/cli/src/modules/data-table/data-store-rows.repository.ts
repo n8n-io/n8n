@@ -156,7 +156,6 @@ export class DataStoreRowsRepository {
 				.getRawMany<{ id: number }>();
 		}
 
-		// Always update the updatedAt timestamp
 		setData.updatedAt = normalizeValue(new Date(), 'date', dbType);
 
 		const query = this.dataSource.createQueryBuilder().update(table).set(setData).where(whereData);
@@ -379,8 +378,7 @@ export class DataStoreRowsRepository {
 			}
 		});
 
-		const existing: Array<Record<string, DataStoreColumnJsType | null>> =
-			await queryBuilder.getRawMany();
+		const existing: Array<Record<string, DataStoreColumnJsType>> = await queryBuilder.getRawMany();
 
 		return splitRowsByExistence(existing, matchFields, rows);
 	}
