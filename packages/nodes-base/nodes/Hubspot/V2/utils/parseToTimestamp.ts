@@ -1,10 +1,12 @@
+import moment from 'moment-timezone';
+
 export function parseToTimestamp(dateString: unknown): number {
 	if (typeof dateString !== 'string') {
 		throw new Error('Invalid date string');
 	}
-	const dateObject = new Date(dateString);
-	if (isNaN(dateObject.getTime())) {
+	const timestamp = moment(dateString).utc(false).valueOf();
+	if (isNaN(timestamp)) {
 		throw new Error('Invalid date string');
 	}
-	return dateObject.getTime();
+	return timestamp;
 }
