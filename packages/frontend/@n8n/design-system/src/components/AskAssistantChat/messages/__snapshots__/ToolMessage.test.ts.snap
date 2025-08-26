@@ -1,7 +1,0 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-
-exports[`ToolMessage > props handling > should handle optional showProgressLogs prop 1`] = `"<base-message-stub message="[object Object]" isfirstofrole="false"></base-message-stub>"`;
-
-exports[`ToolMessage > props handling > should work without optional user prop 1`] = `"<base-message-stub message="[object Object]" isfirstofrole="true"></base-message-stub>"`;
-
-exports[`ToolMessage > rendering > should render correctly with basic props 1`] = `"<base-message-stub message="[object Object]" user="[object Object]" isfirstofrole="true"></base-message-stub>"`;
