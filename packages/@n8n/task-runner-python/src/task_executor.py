@@ -4,7 +4,7 @@ import traceback
 import textwrap
 import json
 
-from .errors import (
+from src.errors import (
     TaskResultMissingError,
     TaskRuntimeError,
     TaskTimeoutError,
