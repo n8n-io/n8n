@@ -135,10 +135,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		});
 	}
 
-	function open() {
-		_setOptions({ isActive: true });
-	}
-
 	function openWithFocusedNodeParameter(nodeParameter: FocusedNodeParameter) {
 		const parameters = [nodeParameter];
 		// TODO: uncomment when tabs are implemented
@@ -195,7 +191,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		focusedNodeParametersInTelemetryFormat,
 		lastFocusTimestamp,
 		focusPanelWidth,
-		open,
 		openWithFocusedNodeParameter,
 		isRichParameter,
 		closeFocusPanel,

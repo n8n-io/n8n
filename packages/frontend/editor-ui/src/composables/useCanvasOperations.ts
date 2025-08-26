@@ -797,9 +797,10 @@ export function useCanvasOperations() {
 				if (options.openNDV && !preventOpeningNDV) {
 					if (
 						experimentalNdvStore.isNdvInFocusPanelEnabled &&
+						focusPanelStore.focusPanelActive &&
 						focusPanelStore.focusedNodeParameters.length === 0
 					) {
-						focusPanelStore.open();
+						// Do nothing. The added node get selected and the details are shown in the focus panel
 					} else if (experimentalNdvStore.isZoomedViewEnabled) {
 						experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
 					} else {
