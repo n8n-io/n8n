@@ -356,11 +356,11 @@ describe('Hubspot Node', () => {
 	describe('engagements', () => {
 		beforeAll(() => {
 			hubspotNock
-				.post('/engagements/v1/engagements', (body) => {
+				.post('/engagements/v1/engagements', function checkOwnerIdIsDefined(body) {
 					return body.engagement.ownerId === engagements.request[0].engagement.ownerId;
 				})
 				.reply(200, engagements.response[0])
-				.post('/engagements/v1/engagements', (body) => {
+				.post('/engagements/v1/engagements', function checkOwnerIdIsNotDefined(body) {
 					return body.engagement.ownerId === undefined;
 				})
 				.reply(200, engagements.response[1]);
