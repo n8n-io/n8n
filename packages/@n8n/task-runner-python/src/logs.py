@@ -1,7 +1,7 @@
 import sys
 import logging
 import os
-from src.constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT, ENV_HIDE_TASK_OFFER_LOGS
+from src.constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT
 
 COLORS = {
     "DEBUG": "\033[34m",  # blue
@@ -20,7 +20,7 @@ class ColorFormatter(logging.Formatter):
 
         self.use_colors = os.getenv("NO_COLOR") is None
 
-        # When started by launcher, log level and timestamps are handled by launcher.
+        # When started by launcher, log level and timestamp are handled by launcher.
         self.short_form = os.getenv("N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED") == "true"
 
     def format(self, record):
@@ -49,24 +49,6 @@ class ColorFormatter(logging.Formatter):
         return formatted
 
 
-class TaskOfferFilter(logging.Filter):
-    def __init__(self):
-        super().__init__()
-        self.hide_offers = os.getenv(ENV_HIDE_TASK_OFFER_LOGS, "").lower() == "true"
-
-    def filter(self, record):
-        """Filter out task offers if N8N_RUNNERS_HIDE_TASK_OFFER_LOGS is 'true'."""
-
-        return not (self.hide_offers and self._is_task_offer_message(record))
-
-    def _is_task_offer_message(self, record):
-        return (
-            record.levelname == "DEBUG"
-            and "websockets" in record.name
-            and '"runner:taskoffer"' in record.getMessage()
-        )
-
-
 def setup_logging():
     logger = logging.getLogger()
 
@@ -76,10 +58,9 @@ def setup_logging():
 
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(ColorFormatter(LOG_FORMAT, LOG_TIMESTAMP_FORMAT))
-    stream_handler.addFilter(TaskOfferFilter())
     logger.addHandler(stream_handler)
 
-    # Harcode to INFO as websocket logs are too verbose
+    # Hardcoded to INFO as websocket logs are too verbose
     logging.getLogger("websockets.client").setLevel(logging.INFO)
     logging.getLogger("websockets.server").setLevel(logging.INFO)
     logging.getLogger("websockets").setLevel(logging.INFO)
