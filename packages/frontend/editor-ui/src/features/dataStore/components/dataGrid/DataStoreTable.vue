@@ -607,6 +607,10 @@ const handleClearSelection = () => {
 		gridApi.value.deselectAll();
 	}
 };
+
+defineExpose({
+	addRow: onAddRowClick,
+});
 </script>
 
 <template>

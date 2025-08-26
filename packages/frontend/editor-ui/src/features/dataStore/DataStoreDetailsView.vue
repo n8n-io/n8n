@@ -28,6 +28,8 @@ const dataStoreStore = useDataStoreStore();
 const loading = ref(false);
 const saving = ref(false);
 const dataStore = ref<DataStore | null>(null);
+const dataStoreTableRef = ref<InstanceType<typeof DataStoreTable>>();
+
 const { debounce } = useDebounce();
 
 const showErrorAndGoBackToList = async (error: unknown) => {
@@ -104,9 +106,16 @@ onMounted(async () => {
 					<n8n-spinner />
 					<n8n-text>{{ i18n.baseText('generic.saving') }}...</n8n-text>
 				</div>
+				<div :class="$style.actions">
+					<n8n-button @click="dataStoreTableRef?.addRow">Add Row</n8n-button>
+				</div>
 			</div>
 			<div :class="$style.content">
-				<DataStoreTable :data-store="dataStore" @toggle-save="onToggleSave" />
+				<DataStoreTable
+					ref="dataStoreTableRef"
+					:data-store="dataStore"
+					@toggle-save="onToggleSave"
+				/>
 			</div>
 		</div>
 	</div>
@@ -144,5 +153,11 @@ onMounted(async () => {
 	align-items: center;
 	gap: var(--spacing-3xs);
 	margin-top: var(--spacing-5xs);
+}
+
+.actions {
+	display: flex;
+	gap: var(--spacing-3xs);
+	margin-left: auto;
 }
 </style>
