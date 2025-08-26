@@ -17,11 +17,16 @@ RESET = "\033[0m"
 class ColorFormatter(logging.Formatter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.use_colors = os.getenv("NO_COLOR") is None
 
+        # When started by launcher, log level and timestamps are handled by launcher.
+        self.short_form = os.getenv("N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED") == "true"
+
     def format(self, record):
-        if os.getenv("N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED") == "true":
+        if self.short_form:
             return record.getMessage()
+
         formatted = super().format(record)
 
         if not self.use_colors:
