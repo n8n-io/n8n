@@ -137,7 +137,7 @@ export class DataStoreRowsRepository {
 
 		const table = this.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = ['id', ...escapedColumns];
+		const selectColumns = [...DATA_TABLE_SYSTEM_COLUMNS, ...escapedColumns];
 
 		for (const column of columns) {
 			if (column.name in setData) {
