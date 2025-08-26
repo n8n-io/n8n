@@ -1,8 +1,7 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
-import { NodeConnectionTypes, NodeOperationError, deepCopy } from 'n8n-workflow';
-import { isSafe } from 'redos-detector';
+import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -82,7 +81,7 @@ export class RenameKeys implements INodeType {
 						displayName: 'Regex',
 						name: 'regexReplacement',
 						placeholder: 'Add new regular expression',
-						description: 'Adds a regular expressiond',
+						description: 'Adds a regular expression',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -98,6 +97,13 @@ export class RenameKeys implements INodeType {
 										displayName:
 											'Be aware that by using regular expression previously renamed keys can be affected',
 										name: 'regExNotice',
+										type: 'notice',
+										default: '',
+									},
+									{
+										displayName:
+											'⚠️ Complex regex patterns (like nested quantifiers .*+, ()*+, or multiple wildcards) may cause performance issues with large datasets. Consider using simpler patterns like [a-z]+ or \\w+ for better performance.',
+										name: 'performanceWarning',
 										type: 'notice',
 										default: '',
 									},

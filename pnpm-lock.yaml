@@ -2975,9 +2975,6 @@ importers:
       redis:
         specifier: 4.6.14
         version: 4.6.14
-      redos-detector:
-        specifier: 6.1.2
-        version: 6.1.2
       rfc2047:
         specifier: 4.0.1
         version: 4.0.1
@@ -14333,11 +14330,6 @@ packages:
       react: ^16.8.4 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.4 || ^17.0.0 || ^18.0.0 || ^19.0.0
       styled-components: ^4.1.1 || ^5.1.1 || ^6.0.5
-
-  redos-detector@6.1.2:
-    resolution: {integrity: sha512-xyBnPq9WBqK1h4eQPvSJIVsAwsRligAwGLGS7ukCHxz2CTHxCMviB0v5mxDV+/6jPsf5q0I17PquNH0E7y02Hg==}
-    engines: {node: '>=16.0.0'}
-    hasBin: true
 
   reflect-metadata@0.2.2:
     resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
@@ -30815,10 +30807,6 @@ snapshots:
       - encoding
       - react-native
       - supports-color
-
-  redos-detector@6.1.2:
-    dependencies:
-      regjsparser: 0.12.0
 
   reflect-metadata@0.2.2: {}
 
