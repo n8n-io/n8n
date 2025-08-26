@@ -72,10 +72,12 @@ export type AddDataStoreColumnOptions = Pick<DataStoreColumn, 'name' | 'type'> &
 
 export type DataStoreColumnJsType = string | number | boolean | Date | null;
 
+export const DATA_TABLE_SYSTEM_COLUMNS = ['id', 'createdAt', 'updatedAt'] as const;
+
 export type DataStoreRowReturnBase = {
 	id: number;
-	createdAt: string;
-	updatedAt: string;
+	createdAt: Date;
+	updatedAt: Date;
 };
 export type DataStoreRow = Record<string, DataStoreColumnJsType>;
 export type DataStoreRows = DataStoreRow[];

@@ -151,8 +151,8 @@ const isNumber = (value: unknown): value is number => {
 	return typeof value === 'number' && Number.isFinite(value);
 };
 
-const isString = (value: unknown): value is string => {
-	return typeof value === 'string';
+const isDate = (value: unknown): value is Date => {
+	return value instanceof Date;
 };
 
 function hasInsertId(data: unknown): data is WithInsertId {
@@ -166,16 +166,20 @@ function hasRowReturnData(data: unknown): data is DataStoreRowReturn {
 		'id' in data &&
 		isNumber(data.id) &&
 		'createdAt' in data &&
-		isString(data.createdAt) &&
+		isDate(data.createdAt) &&
 		'updatedAt' in data &&
-		isString(data.updatedAt)
+		isDate(data.updatedAt)
 	);
+}
+
+function hasRowId(data: unknown): data is Pick<DataStoreRowReturn, 'id'> {
+	return typeof data === 'object' && data !== null && 'id' in data && isNumber(data.id);
 }
 
 export function extractReturningData(raw: unknown): DataStoreRowReturn[] {
 	if (!isArrayOf(raw, hasRowReturnData)) {
 		throw new UnexpectedError(
-			'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+			`Expected INSERT INTO raw to be { id: number; createdAt: string; updatedAt: string }[] on Postgres or MariaDB. Is '${JSON.stringify(raw)}'`,
 		);
 	}
 
@@ -186,9 +190,9 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 	switch (dbType) {
 		case 'postgres':
 		case 'mariadb': {
-			if (!isArrayOf(raw, hasRowReturnData)) {
+			if (!isArrayOf(raw, hasRowId)) {
 				throw new UnexpectedError(
-					'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+					`Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB. Is '${JSON.stringify(raw)}'`,
 				);
 			}
 			return raw.map((r) => r.id);
