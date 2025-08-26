@@ -24,6 +24,7 @@ import {
 	getSampleWorkflowByTemplateId,
 	getTutorialTemplates,
 	isPrebuiltAgentTemplateId,
+	isTutorialTemplateId,
 	SampleTemplates,
 } from '@/utils/templates/workflowSamples';
 import type { INodeCreateElement, OpenTemplateElement } from '@/Interface';
@@ -177,6 +178,13 @@ export function useCalloutHelpers() {
 			});
 		} else if (isPrebuiltAgentTemplateId(templateId)) {
 			telemetry.track('User inserted pre-built Agent', {
+				template: templateId,
+				source: options.telemetry.source,
+				node_type: options.telemetry.nodeType ?? null,
+				section: options.telemetry.section ?? null,
+			});
+		} else if (isTutorialTemplateId(templateId)) {
+			telemetry.track('User inserted tutorial template', {
 				template: templateId,
 				source: options.telemetry.source,
 				node_type: options.telemetry.nodeType ?? null,
