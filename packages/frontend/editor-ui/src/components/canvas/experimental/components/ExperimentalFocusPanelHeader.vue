@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
-import { INodeUi } from '@/Interface';
+import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nIconButton, N8nText } from '@n8n/design-system';
-import { INodeProperties } from 'n8n-workflow';
+import { type INodeProperties } from 'n8n-workflow';
 import { computed } from 'vue';
 
 const { node, parameter, isExecutable } = defineProps<{

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
-import { INodeUi } from '@/Interface';
+import { type INodeUi } from '@/Interface';
 import { N8nText } from '@n8n/design-system';
-import { GraphNode } from '@vue-flow/core';
+import { type GraphNode } from '@vue-flow/core';
 import { computed, provide } from 'vue';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 
