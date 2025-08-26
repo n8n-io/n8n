@@ -13,10 +13,22 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a user',
+				action: 'Get a user',
+			},
+			{
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get many users',
 				action: 'Get many users',
+			},
+			{
+				name: 'Get Self',
+				value: 'getSelf',
+				description: 'Retrieve currently logged-in user',
+				action: 'Get currently logged-in user',
 			},
 		],
 		default: 'getAll',
@@ -24,6 +36,28 @@ export const userOperations: INodeProperties[] = [
 ];
 
 export const userFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                  user:get                                  */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'User Name or ID',
+		name: 'userId',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsDependsOn: ['workspaceId'],
+			loadOptionsMethod: 'loadUsersForWorkspace',
+		},
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['get'],
+			},
+		},
+		default: '',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -59,10 +93,10 @@ export const userFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				resource: ['user'],
