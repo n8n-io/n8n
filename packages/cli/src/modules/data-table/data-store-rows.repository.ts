@@ -103,7 +103,7 @@ export class DataStoreRowsRepository {
 			if (useReturning) {
 				const returned = returnData
 					? normalizeRows(extractReturningData(result.raw), columns)
-					: extractInsertedIds(result.raw, dbType);
+					: extractInsertedIds(result.raw, dbType).map((id) => ({ id }));
 				inserted.push.apply(inserted, returned);
 				continue;
 			}
