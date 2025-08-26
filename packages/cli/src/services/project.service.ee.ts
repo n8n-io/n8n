@@ -18,6 +18,7 @@ import {
 	type Scope,
 	type ProjectRole,
 	CustomRole,
+	PROJECT_OWNER_ROLE_SLUG,
 } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
@@ -25,12 +26,12 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
+import { CacheService } from './cache/cache.service';
+import { RoleService } from './role.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import { CacheService } from './cache/cache.service';
-import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -305,12 +306,16 @@ export class ProjectService {
 			throw new ForbiddenError("Can't add users to personal projects.");
 		}
 
-		if (relations.some((r) => r.role === 'project:personalOwner')) {
+		if (relations.some((r) => r.role === PROJECT_OWNER_ROLE_SLUG)) {
 			throw new ForbiddenError("Can't add a personalOwner to a team project.");
 		}
 
 		await this.projectRelationRepository.save(
-			relations.map((relation) => ({ projectId, ...relation })),
+			relations.map((relation) => ({
+				projectId,
+				userId: relation.userId,
+				role: { slug: relation.role },
+			})),
 		);
 	}
 
@@ -332,7 +337,7 @@ export class ProjectService {
 			const existing = project.projectRelations.find((pr) => pr.userId === userId);
 			// We don't throw an error if the user already exists with that role so
 			// existing projects continue working as is.
-			if (existing?.role !== role && !this.roleService.isRoleLicensed(role)) {
+			if (existing?.role?.slug !== role && !this.roleService.isRoleLicensed(role)) {
 				throw new UnlicensedProjectRoleError(role);
 			}
 		}
@@ -340,7 +345,7 @@ export class ProjectService {
 
 	private isUserProjectOwner(project: Project, userId: string) {
 		return project.projectRelations.some(
-			(pr) => pr.userId === userId && pr.role === 'project:personalOwner',
+			(pr) => pr.userId === userId && pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
 		);
 	}
 
@@ -356,7 +361,7 @@ export class ProjectService {
 	}
 
 	async changeUserRoleInProject(projectId: string, userId: string, role: ProjectRole) {
-		if (role === 'project:personalOwner') {
+		if (role === PROJECT_OWNER_ROLE_SLUG) {
 			throw new ForbiddenError('Personal owner cannot be added to a team project.');
 		}
 
@@ -368,7 +373,7 @@ export class ProjectService {
 			throw new ProjectNotFoundError(projectId);
 		}
 
-		await this.projectRelationRepository.update({ projectId, userId }, { role });
+		await this.projectRelationRepository.update({ projectId, userId }, { role: { slug: role } });
 	}
 
 	async clearCredentialCanUseExternalSecretsCache(projectId: string) {
@@ -402,7 +407,7 @@ export class ProjectService {
 				this.projectRelationRepository.create({
 					projectId: project.id,
 					userId: v.userId,
-					role: v.role,
+					role: { slug: v.role },
 				}),
 			),
 		);
@@ -451,7 +456,7 @@ export class ProjectService {
 		return await trx.save(ProjectRelation, {
 			projectId,
 			userId,
-			role,
+			role: { slug: role },
 		});
 	}
 
@@ -475,7 +480,7 @@ export class ProjectService {
 			where: {
 				projectRelations: {
 					userId,
-					role: In(['project:personalOwner', 'project:admin']),
+					role: In([PROJECT_OWNER_ROLE_SLUG, 'project:admin']),
 				},
 			},
 		});

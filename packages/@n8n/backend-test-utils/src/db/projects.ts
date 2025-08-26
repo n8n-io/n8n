@@ -1,7 +1,7 @@
 import type { Project, User, ProjectRelation } from '@n8n/db';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { CustomRole } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG, type CustomRole } from '@n8n/permissions';
 
 import { randomName } from '../random';
 
@@ -11,7 +11,7 @@ export const linkUserToProject = async (user: User, project: Project, role: Cust
 		projectRelationRepository.create({
 			projectId: project.id,
 			userId: user.id,
-			role,
+			role: { slug: role },
 		}),
 	);
 };
@@ -41,7 +41,7 @@ export const getPersonalProject = async (user: User): Promise<Project> => {
 		where: {
 			projectRelations: {
 				userId: user.id,
-				role: 'project:personalOwner',
+				role: { slug: PROJECT_OWNER_ROLE_SLUG },
 			},
 			type: 'personal',
 		},
@@ -72,7 +72,7 @@ export const getProjectRoleForUser = async (
 		await Container.get(ProjectRelationRepository).findOne({
 			where: { projectId, userId },
 		})
-	)?.role;
+	)?.role?.slug;
 };
 
 export const getAllProjectRelations = async ({

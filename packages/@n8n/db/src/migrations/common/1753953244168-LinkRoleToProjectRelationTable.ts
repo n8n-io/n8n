@@ -1,3 +1,4 @@
+import { PROJECT_ROLES, PROJECT_VIEWER_ROLE } from '../../constants';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 /*
@@ -19,16 +20,11 @@ export class LinkRoleToProjectRelationTable1753953244168 implements ReversibleMi
 			: `INSERT IGNORE INTO ${tableName} (${slugColumn}, ${roleTypeColumn}, ${systemRoleColumn}) VALUES (:slug, :roleType, :systemRole)`;
 
 		// Make sure that the global roles that we need exist
-		for (const role of [
-			'project:personalOwner',
-			'project:admin',
-			'project:editor',
-			'project:viewer',
-		]) {
+		for (const role of Object.values(PROJECT_ROLES)) {
 			await runQuery(query, {
-				slug: role,
-				roleType: 'project',
-				systemRole: true,
+				slug: role.slug,
+				roleType: role.roleType,
+				systemRole: role.systemRole,
 			});
 		}
 
@@ -36,7 +32,7 @@ export class LinkRoleToProjectRelationTable1753953244168 implements ReversibleMi
 		// This should not happen in a correctly set up system, but we want to ensure
 		// that all users have a role set, before we add the foreign key constraint
 		await runQuery(
-			`UPDATE ${projectRelationTableName} SET ${roleColumn} = 'project:viewer' WHERE NOT EXISTS (SELECT 1 FROM ${tableName} WHERE ${slugColumn} = ${roleColumn})`,
+			`UPDATE ${projectRelationTableName} SET ${roleColumn} = '${PROJECT_VIEWER_ROLE.slug}' WHERE NOT EXISTS (SELECT 1 FROM ${tableName} WHERE ${slugColumn} = ${roleColumn})`,
 		);
 
 		await addForeignKey('project_relation', 'role', ['role', 'slug']);

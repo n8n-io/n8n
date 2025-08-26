@@ -34,7 +34,7 @@ export async function userHasScopes(
 		await Container.get(ProjectRepository)
 			.createQueryBuilder('project')
 			.innerJoin('project.projectRelations', 'relation')
-			.innerJoin('relation.roleEntity', 'role')
+			.innerJoin('relation.role', 'role')
 			.innerJoin('role.scopes', 'scope')
 			.where('relation.userId = :userId', { userId: user.id })
 			.andWhere('scope.slug IN (:...scopes)', { scopes })

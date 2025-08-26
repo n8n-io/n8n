@@ -96,7 +96,7 @@ export class SourceControlScopedService {
 		return {
 			type: 'team',
 			projectRelations: {
-				roleEntity: {
+				role: {
 					scopes: {
 						slug: 'sourceControl:push',
 					},

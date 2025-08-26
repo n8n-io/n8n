@@ -46,7 +46,7 @@ export class Role {
 	 */
 	roleType: 'global' | 'project' | 'workflow' | 'credential';
 
-	@OneToMany('ProjectRelation', 'roleEntity')
+	@OneToMany('ProjectRelation', 'role')
 	projectRelations: ProjectRelation[];
 
 	@ManyToMany(() => Scope, {

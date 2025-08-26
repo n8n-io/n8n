@@ -5,6 +5,7 @@
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { EntityNotFoundError, In } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
@@ -36,12 +37,12 @@ import {
 	isExpression,
 } from 'n8n-workflow';
 
-import { CredentialTypes } from '@/credential-types';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { CacheService } from './services/cache/cache.service';
+
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 
 const mockNode = {
 	name: '',
@@ -496,7 +497,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 							role: 'credential:owner',
 							project: {
 								projectRelations: {
-									role: In(['project:personalOwner', 'project:admin']),
+									role: { slug: In([PROJECT_OWNER_ROLE_SLUG, 'project:admin']) },
 									user: {
 										role: In(['global:owner', 'global:admin']),
 									},

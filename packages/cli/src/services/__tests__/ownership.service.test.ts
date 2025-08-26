@@ -11,12 +11,13 @@ import {
 	UserRepository,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { mockCredential, mockProject } from '@test/mock-objects';
 import { v4 as uuid } from 'uuid';
 
-import { OwnershipService } from '@/services/ownership.service';
-import { mockCredential, mockProject } from '@test/mock-objects';
-
 import { CacheService } from '../cache/cache.service';
+
+import { OwnershipService } from '@/services/ownership.service';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
@@ -64,7 +65,7 @@ describe('OwnershipService', () => {
 			const owner = new User();
 			owner.role = GLOBAL_OWNER_ROLE;
 			const projectRelation = new ProjectRelation();
-			projectRelation.role = 'project:personalOwner';
+			projectRelation.role = { slug: PROJECT_OWNER_ROLE_SLUG } as any;
 			(projectRelation.project = project), (projectRelation.user = owner);
 
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([projectRelation]);
@@ -92,7 +93,7 @@ describe('OwnershipService', () => {
 			owner.id = uuid();
 			owner.role = GLOBAL_OWNER_ROLE;
 			const projectRelation = new ProjectRelation();
-			projectRelation.role = 'project:personalOwner';
+			projectRelation.role = { slug: PROJECT_OWNER_ROLE_SLUG } as any;
 			(projectRelation.project = project), (projectRelation.user = owner);
 
 			cacheService.getHashValue.mockResolvedValueOnce(owner);
@@ -116,7 +117,7 @@ describe('OwnershipService', () => {
 			mockOwner.role = GLOBAL_OWNER_ROLE;
 
 			const projectRelation = Object.assign(new ProjectRelation(), {
-				role: 'project:personalOwner',
+				role: PROJECT_OWNER_ROLE_SLUG,
 				project: mockProject,
 				user: mockOwner,
 			});

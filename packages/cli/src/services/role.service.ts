@@ -97,7 +97,7 @@ export class RoleService {
 			);
 			let projectScopes: Scope[] = [];
 			if (pr) {
-				projectScopes = pr.roleEntity.scopes.map((s) => s.slug);
+				projectScopes = pr.role.scopes.map((s) => s.slug);
 			}
 			const resourceMask = getRoleScopes(sharedEntity.role);
 			const mergedScopes = combineScopes(
