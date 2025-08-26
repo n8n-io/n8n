@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List, Literal, Union, Any, Dict
 from ..constants import RUNNER_RPC_CALL
 
-from ..constants import (
+from src.constants import (
     RUNNER_INFO,
     RUNNER_TASK_ACCEPTED,
     RUNNER_TASK_DONE,
