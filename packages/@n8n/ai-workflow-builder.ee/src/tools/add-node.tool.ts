@@ -65,9 +65,15 @@ function buildResponseMessage(addedNode: AddedNode, nodeTypes: INodeTypeDescript
 	return `Successfully added "${addedNode.name}" (${addedNode.displayName ?? addedNode.type})${nodeTypeInfo} with ID ${addedNode.id}`;
 }
 
-function getCustomDisplayTitle(input: Record<string, unknown>): string {
-	if ('name' in input && typeof input['name'] === 'string') {
-		return `Adding "${input['name']}" node`;
+function getCustomNodeTitle(
+	input: Record<string, unknown>,
+	nodeTypes: INodeTypeDescription[],
+): string {
+	if ('nodeType' in input && typeof input['nodeType'] === 'string') {
+		const nodeType = nodeTypes.find((type) => type.name === input.nodeType);
+		if (nodeType) {
+			return `Adding ${nodeType.displayName} node`;
+		}
 	}
 
 	return 'Adding node';
@@ -85,7 +91,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 				config,
 				'add_nodes',
 				DISPLAY_TITLE,
-				getCustomDisplayTitle(input),
+				getCustomNodeTitle(input, nodeTypes),
 			);
 
 			try {
@@ -214,6 +220,6 @@ Think through the connectionParametersReasoning FIRST, then set connectionParame
 	return {
 		tool: dynamicTool,
 		displayTitle: DISPLAY_TITLE,
-		getCustomDisplayTitle,
+		getCustomDisplayTitle: (input: Record<string, unknown>) => getCustomNodeTitle(input, nodeTypes),
 	};
 }
