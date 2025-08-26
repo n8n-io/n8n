@@ -11,7 +11,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { DataStoreRow, DataStoreRows } from 'n8n-workflow';
+import type { DataStoreRow, DataStoreRowReturn, DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
@@ -126,11 +126,17 @@ export class DataStoreService {
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
 	}
 
+	async insertRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		projectId: string,
+		rows: DataStoreRows,
+		returnData?: T,
+	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	async insertRows(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
-		returnData: boolean = false,
+		returnData?: boolean,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateRows(dataStoreId, rows);
@@ -139,6 +145,12 @@ export class DataStoreService {
 		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnData);
 	}
 
+	async upsertRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<UpsertDataStoreRowsDto, 'returnData'>,
+		returnData?: T,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async upsertRows(
 		dataStoreId: string,
 		projectId: string,

@@ -6,8 +6,10 @@ import { DataSource, DataSourceOptions, QueryRunner, SelectQueryBuilder, In } fr
 import {
 	DataStoreColumnJsType,
 	DataStoreRows,
-	DataStoreRowWithId,
+	DataStoreRowReturn,
 	UnexpectedError,
+	DataStoreRowsReturn,
+	DATA_TABLE_SYSTEM_COLUMNS,
 } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
@@ -116,20 +118,29 @@ export class DataStoreRowsRepository {
 		return `${tablePrefix}data_store_user_${dataStoreId}`;
 	}
 
+	async insertRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		rows: DataStoreRows,
+		columns: DataStoreColumn[],
+		returnData?: T,
+	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	async insertRows(
 		dataStoreId: string,
 		rows: DataStoreRows,
 		columns: DataStoreColumn[],
-		returnData: boolean = false,
-	) {
-		const inserted: DataStoreRowWithId[] = [];
+		returnData?: boolean,
+	): Promise<Array<DataStoreRowReturn | Pick<DataStoreRowReturn, 'id'>>> {
+		const inserted: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
 
 		const table = this.toTableName(dataStoreId);
 		const columnNames = columns.map((c) => c.name);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = ['id', ...escapedColumns];
+		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+			this.dataSource.driver.escape(x),
+		);
+		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
 
 		// We insert one by one as the default behavior of returning the last inserted ID
 		// is consistent, whereas getting all inserted IDs when inserting multiple values is
@@ -153,7 +164,9 @@ export class DataStoreRowsRepository {
 			const result = await query.execute();
 
 			if (useReturning) {
-				const returned = normalizeRows(extractReturningData(result.raw), columns);
+				const returned = returnData
+					? normalizeRows(extractReturningData(result.raw), columns)
+					: extractInsertedIds(result.raw, dbType).map((id) => ({ id }));
 				inserted.push.apply(inserted, returned);
 				continue;
 			}
@@ -169,11 +182,7 @@ export class DataStoreRowsRepository {
 				continue;
 			}
 
-			const insertedRows = (await this.getManyByIds(
-				dataStoreId,
-				ids,
-				columns,
-			)) as DataStoreRowWithId[];
+			const insertedRows = await this.getManyByIds(dataStoreId, ids, columns);
 
 			inserted.push(...insertedRows);
 		}
@@ -193,7 +202,10 @@ export class DataStoreRowsRepository {
 
 		const table = this.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = ['id', ...escapedColumns];
+		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+			this.dataSource.driver.escape(x),
+		);
+		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
 
 		for (const column of columns) {
 			if (column.name in setData) {
@@ -204,7 +216,7 @@ export class DataStoreRowsRepository {
 			}
 		}
 
-		let affectedRows: DataStoreRowWithId[] = [];
+		let affectedRows: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 		if (!useReturning && returnData) {
 			// Only Postgres supports RETURNING statement on updates (with our typeorm),
 			// on other engines we must query the list of updates rows later by ID
@@ -239,20 +251,28 @@ export class DataStoreRowsRepository {
 	}
 
 	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
+	async upsertRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		matchFields: string[],
+		rows: DataStoreRows,
+		columns: DataStoreColumn[],
+		returnData?: T,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async upsertRows(
 		dataStoreId: string,
 		matchFields: string[],
 		rows: DataStoreRows,
 		columns: DataStoreColumn[],
-		returnData = false,
+		returnData?: boolean,
 	) {
+		returnData = returnData ?? false;
 		const { rowsToInsert, rowsToUpdate } = await this.fetchAndSplitRowsByExistence(
 			dataStoreId,
 			matchFields,
 			rows,
 		);
 
-		const output: DataStoreRowWithId[] = [];
+		const output: DataStoreRowReturn[] = [];
 
 		if (rowsToInsert.length > 0) {
 			const result = await this.insertRows(dataStoreId, rowsToInsert, columns, returnData);
@@ -335,7 +355,7 @@ export class DataStoreRowsRepository {
 
 	async getManyAndCount(dataStoreId: string, dto: ListDataStoreContentQueryDto) {
 		const [countQuery, query] = this.getManyQuery(dataStoreId, dto);
-		const data: DataStoreRows = await query.select('*').getRawMany();
+		const data: DataStoreRowsReturn = await query.select('*').getRawMany();
 		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 			count: number | string | null;
 		}>();
@@ -347,7 +367,10 @@ export class DataStoreRowsRepository {
 	async getManyByIds(dataStoreId: string, ids: number[], columns: DataStoreColumn[]) {
 		const table = this.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = ['id', ...escapedColumns];
+		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+			this.dataSource.driver.escape(x),
+		);
+		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
 
 		if (ids.length === 0) {
 			return [];
@@ -358,7 +381,7 @@ export class DataStoreRowsRepository {
 			.select(selectColumns)
 			.from(table, 'dataStore')
 			.where({ id: In(ids) })
-			.getRawMany<DataStoreRowWithId>();
+			.getRawMany<DataStoreRowReturn>();
 
 		return normalizeRows(updatedRows, columns);
 	}
