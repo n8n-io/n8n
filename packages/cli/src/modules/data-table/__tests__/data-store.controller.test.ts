@@ -1961,11 +1961,15 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 					id: 1,
 					first: 'first row',
 					second: 'some value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
 				},
 				{
 					id: 2,
 					first: 'another row',
 					second: 'another value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
 				},
 			],
 		});
@@ -2951,9 +2955,27 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 
 		expect(result.body.data).toEqual(
 			expect.arrayContaining([
-				{ id: 1, first: 'test row', second: 'updated value' },
-				{ id: 2, first: 'test row', second: 'updated value' },
-				{ id: 3, first: 'new row', second: 'new value' },
+				{
+					id: 1,
+					first: 'test row',
+					second: 'updated value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
+				{
+					id: 2,
+					first: 'test row',
+					second: 'updated value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
+				{
+					id: 3,
+					first: 'new row',
+					second: 'new value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
 			]),
 		);
 	});
