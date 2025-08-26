@@ -5,6 +5,7 @@ import { jsonParse } from 'n8n-workflow';
 import { join } from 'path';
 
 const cache: Record<string, Tiktoken> = {};
+const loadingPromises: Record<string, Promise<Tiktoken> | undefined> = {};
 
 const loadJSONFile = async (filename: string): Promise<TiktokenBPE> => {
 	const filePath = join(__dirname, filename);
@@ -17,22 +18,35 @@ export async function getEncoding(encoding: TiktokenEncoding): Promise<Tiktoken>
 		return cache[encoding];
 	}
 
-	let jsonData: TiktokenBPE;
-
-	switch (encoding) {
-		case 'o200k_base':
-			jsonData = await loadJSONFile('./o200k_base.json');
-			break;
-		case 'cl100k_base':
-			jsonData = await loadJSONFile('./cl100k_base.json');
-			break;
-		default:
-			// Fall back to cl100k_base for unsupported encodings
-			jsonData = await loadJSONFile('./cl100k_base.json');
+	// Check if we're already loading this encoding
+	if (loadingPromises[encoding]) {
+		return await loadingPromises[encoding];
 	}
 
-	cache[encoding] = new Tiktoken(jsonData);
-	return cache[encoding];
+	// Create a promise for loading this encoding
+	loadingPromises[encoding] = (async () => {
+		let jsonData: TiktokenBPE;
+
+		switch (encoding) {
+			case 'o200k_base':
+				jsonData = await loadJSONFile('./o200k_base.json');
+				break;
+			case 'cl100k_base':
+				jsonData = await loadJSONFile('./cl100k_base.json');
+				break;
+			default:
+				// Fall back to cl100k_base for unsupported encodings
+				jsonData = await loadJSONFile('./cl100k_base.json');
+		}
+
+		const tiktoken = new Tiktoken(jsonData);
+		cache[encoding] = tiktoken;
+		// Clean up the loading promise after completion
+		delete loadingPromises[encoding];
+		return tiktoken;
+	})();
+
+	return await loadingPromises[encoding];
 }
 
 export async function encodingForModel(model: TiktokenModel): Promise<Tiktoken> {
