@@ -89,11 +89,12 @@ describe('OwnershipService', () => {
 			project.id = uuid();
 			const owner = new User();
 			owner.id = uuid();
+			owner.role = GLOBAL_OWNER_ROLE;
 			const projectRelation = new ProjectRelation();
 			projectRelation.role = 'project:personalOwner';
 			(projectRelation.project = project), (projectRelation.user = owner);
 
-			cacheService.getHashValue.mockResolvedValueOnce(owner);
+			cacheService.getHashValue.mockResolvedValueOnce(JSON.stringify(owner));
 			userRepository.create.mockReturnValueOnce(owner);
 
 			// ACT

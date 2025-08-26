@@ -44,20 +44,25 @@ export class OwnershipService {
 	}
 
 	deserializeUser(serialized: string): User | undefined {
-		const object = jsonParse(serialized);
-		if (typeof object !== 'object' || object === null) {
-			return undefined;
-		}
-		const user = Object.assign(new User(), object);
-		if ('role' in object && object.role && typeof object.role === 'object') {
-			user.role = Object.assign(new Role(), object.role);
-			if ('scopes' in object.role && Array.isArray(object.role.scopes)) {
-				user.role.scopes = object.role.scopes.map((scope) => {
-					const x = Object.assign(new Scope(), scope) as Scope;
-					return x;
-				});
+		try {
+			const object = jsonParse(serialized);
+			if (typeof object !== 'object' || object === null) {
+				return undefined;
 			}
-			return user;
+			const user = Object.assign(new User(), object);
+			if ('role' in object && object.role && typeof object.role === 'object') {
+				user.role = Object.assign(new Role(), object.role);
+				if ('scopes' in object.role && Array.isArray(object.role.scopes)) {
+					user.role.scopes = object.role.scopes.map((scope) => {
+						const x = Object.assign(new Scope(), scope) as Scope;
+						return x;
+					});
+				}
+				return user;
+			}
+		} catch {
+			// If deserialization fails, we need to invalidate the cache and reload
+			return undefined;
 		}
 		// we need the role on the user, if this is missing, we should invalidate the cache and reload
 		return undefined;

@@ -404,7 +404,7 @@ describe('SourceControlService', () => {
 		it.each<SourceControlledFile['type']>(['folders', 'credential', 'tags', 'variables'])(
 			'should throw an error if the file type is not handled',
 			async (type) => {
-				const user = mock<User>({ id: 'user-id', role: { slug: 'global:admin' } });
+				const user = mock<User>({ id: 'user-id', role: GLOBAL_ADMIN_ROLE });
 				await expect(
 					sourceControlService.getRemoteFileEntity({ user, type, id: 'unknown' }),
 				).rejects.toThrow(`Unsupported file type: ${type}`);
@@ -413,7 +413,7 @@ describe('SourceControlService', () => {
 
 		it('should fail if the git service fails to get the file content', async () => {
 			jest.spyOn(gitService, 'getFileContent').mockRejectedValue(new Error('Git service error'));
-			const user = mock<User>({ id: 'user-id', role: { slug: 'global:admin' } });
+			const user = mock<User>({ id: 'user-id', role: GLOBAL_ADMIN_ROLE });
 
 			await expect(
 				sourceControlService.getRemoteFileEntity({ user, type: 'workflow', id: '1234' }),
@@ -423,7 +423,7 @@ describe('SourceControlService', () => {
 		it('should throw an error if the user does not have access to the project', async () => {
 			const user = mock<User>({
 				id: 'user-id',
-				role: { slug: 'global:member' },
+				role: GLOBAL_MEMBER_ROLE,
 			});
 			jest
 				.spyOn(sourceControlScopedService, 'getWorkflowsInAdminProjectsFromContext')
@@ -435,7 +435,7 @@ describe('SourceControlService', () => {
 		});
 
 		it('should return content for an authorized workflow', async () => {
-			const user = mock<User>({ id: 'user-id', role: { slug: 'global:member' } });
+			const user = mock<User>({ id: 'user-id', role: GLOBAL_MEMBER_ROLE });
 			jest
 				.spyOn(sourceControlScopedService, 'getWorkflowsInAdminProjectsFromContext')
 				.mockResolvedValue([{ id: '1234' } as WorkflowEntity]);

@@ -1460,7 +1460,7 @@ describe('PATCH /users/:id/role', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data).toStrictEqual({ success: true });
 
-			const user = await getUserById(admin.id);
+			const user = await getUserById(member.id);
 
 			expect(user.role.slug).toBe('global:admin');
 

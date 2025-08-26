@@ -29,8 +29,8 @@ describe('sso/saml/samlHelpers', () => {
 				userPrincipalName: 'Huh?',
 			};
 
-			userRepository.findOne.mockImplementationOnce(async (user) => user as User);
-			userRepository.save.mockImplementationOnce(async (user) => user as User);
+			userRepository.findOne.mockImplementationOnce(async (_) => user);
+			userRepository.save.mockImplementationOnce(async (_) => user);
 
 			//
 			// ACT
