@@ -14,6 +14,7 @@ import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import {
 	NODE_CREATOR_OPEN_SOURCES,
 	PRE_BUILT_AGENTS_EXPERIMENT,
+	PRE_BUILT_AGENTS_MODAL_KEY,
 	REGULAR_NODE_CREATOR_VIEW,
 	VIEWS,
 } from '@/constants';
@@ -25,12 +26,15 @@ import {
 	SampleTemplates,
 } from '@/utils/templates/workflowSamples';
 import type { INodeCreateElement, OpenTemplateElement } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
 
 export function useCalloutHelpers() {
 	const route = useRoute();
 	const router = useRouter();
 	const telemetry = useTelemetry();
 	const postHog = usePostHog();
+	const i18n = useI18n();
+
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const usersStore = useUsersStore();
@@ -38,7 +42,7 @@ export function useCalloutHelpers() {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const viewStacks = useViewStacks();
 	const nodeTypesStore = useNodeTypesStore();
-	const i18n = useI18n();
+	const uiStore = useUIStore();
 
 	const isRagStarterCalloutVisible = computed(() => {
 		const template = getRagStarterWorkflowJson();
@@ -57,6 +61,7 @@ export function useCalloutHelpers() {
 
 	const getPreBuiltAgentNodeCreatorItems = (): OpenTemplateElement[] => {
 		const templates = getPrebuiltAgents();
+
 		return templates.map((template) => {
 			return {
 				key: template.template.meta.templateId,
@@ -77,6 +82,17 @@ export function useCalloutHelpers() {
 		});
 	};
 
+	const openPreBuiltAgentsModal = async () => {
+		telemetry.track('User opened pre-built Agents collection', {
+			source: 'workflows',
+			node_type: null,
+			section: null,
+		});
+
+		await nodeTypesStore.loadNodeTypesIfNotLoaded();
+		uiStore.openModal(PRE_BUILT_AGENTS_MODAL_KEY);
+	};
+
 	const openPreBuiltAgentsCollection = async (options: {
 		telemetry: {
 			source: 'ndv' | 'nodeCreator';
@@ -91,6 +107,7 @@ export function useCalloutHelpers() {
 			section: options.telemetry.section ?? null,
 		});
 
+		await nodeTypesStore.loadNodeTypesIfNotLoaded();
 		const items: INodeCreateElement[] = getPreBuiltAgentNodeCreatorItems();
 
 		ndvStore.setActiveNodeName(null);
@@ -124,7 +141,7 @@ export function useCalloutHelpers() {
 		templateId: string,
 		options: {
 			telemetry: {
-				source: 'ndv' | 'nodeCreator';
+				source: 'ndv' | 'nodeCreator' | 'modal';
 				nodeType?: string;
 				section?: string;
 			};
@@ -185,6 +202,7 @@ export function useCalloutHelpers() {
 
 	return {
 		openSampleWorkflowTemplate,
+		openPreBuiltAgentsModal,
 		openPreBuiltAgentsCollection,
 		getPreBuiltAgentNodeCreatorItems,
 		isRagStarterCalloutVisible,
