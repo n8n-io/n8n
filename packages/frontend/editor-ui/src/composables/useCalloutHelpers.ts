@@ -22,6 +22,7 @@ import {
 	getPrebuiltAgents,
 	getRagStarterWorkflowJson,
 	getSampleWorkflowByTemplateId,
+	getTutorialTemplates,
 	isPrebuiltAgentTemplateId,
 	SampleTemplates,
 } from '@/utils/templates/workflowSamples';
@@ -61,6 +62,29 @@ export function useCalloutHelpers() {
 
 	const getPreBuiltAgentNodeCreatorItems = (): OpenTemplateElement[] => {
 		const templates = getPrebuiltAgents();
+
+		return templates.map((template) => {
+			return {
+				key: template.template.meta.templateId,
+				type: 'openTemplate',
+				properties: {
+					templateId: template.template.meta.templateId,
+					title: template.name,
+					description: template.description,
+					nodes: template.nodes.flatMap((node) => {
+						const nodeType = nodeTypesStore.getNodeType(node.name, node.version);
+						if (!nodeType) {
+							return [];
+						}
+						return nodeType;
+					}),
+				},
+			};
+		});
+	};
+
+	const getTutorialTemplatesNodeCreatorItems = (): OpenTemplateElement[] => {
+		const templates = getTutorialTemplates();
 
 		return templates.map((template) => {
 			return {
@@ -205,6 +229,7 @@ export function useCalloutHelpers() {
 		openPreBuiltAgentsModal,
 		openPreBuiltAgentsCollection,
 		getPreBuiltAgentNodeCreatorItems,
+		getTutorialTemplatesNodeCreatorItems,
 		isRagStarterCalloutVisible,
 		isPreBuiltAgentsCalloutVisible,
 		isCalloutDismissed,

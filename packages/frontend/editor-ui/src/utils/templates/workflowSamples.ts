@@ -47,14 +47,14 @@ export const isPrebuiltAgentTemplateId = (value: string): boolean => {
 	return Object.values(PrebuiltAgentTemplates).includes(value);
 };
 
-interface PrebuiltAgentTemplate {
+interface SampleTemplate {
 	template: WorkflowDataWithTemplateId;
 	name: string;
 	description: string;
 	nodes: INodeTypeNameVersion[];
 }
 
-export const getPrebuiltAgents = (): PrebuiltAgentTemplate[] => {
+export const getPrebuiltAgents = (): SampleTemplate[] => {
 	return [
 		{
 			name: 'Voice assistant agent',
@@ -125,6 +125,46 @@ export const getPrebuiltAgents = (): PrebuiltAgentTemplate[] => {
 					version: 4.2,
 				},
 			],
+		},
+	];
+};
+
+export const getTutorialTemplates = (): SampleTemplate[] => {
+	return [
+		{
+			name: 'Build your first AI agent',
+			description:
+				'This template launches your very first AI Agent —an AI-powered chatbot that can do more than just talk— it can take action using tools.',
+			template: getWorkflowJson(voiceAssistantAgentJson),
+			nodes: [],
+		},
+		{
+			name: 'JSON basics',
+			description:
+				'Designed to teach you the absolute basics of JSON (JavaScript Object Notation) and, more importantly, how to use it within n8n.',
+			template: getWorkflowJson(emailTriageAgentWithGmailJson),
+			nodes: [],
+		},
+		{
+			name: 'Expressions',
+			description:
+				'Step-by-step tutorial designed to teach you the most important skill in n8n: using expressions to access and manipulate data.',
+			template: getWorkflowJson(knowledgeStoreAgentWithGoogleDriveJson),
+			nodes: [],
+		},
+		{
+			name: 'Workflow logic',
+			description:
+				'This template is a hands-on tutorial that teaches you the three most fundamental nodes for controlling the flow of your automations: Merge, IF, and Switch.',
+			template: getWorkflowJson(calendarAgentJson),
+			nodes: [],
+		},
+		{
+			name: 'API fundamentals',
+			description:
+				'Hands-on tutorial designed to demystify what an API is and how it works, right inside your n8n canvas.',
+			template: getWorkflowJson(taskManagementAgentWithGoogleSheetsJson),
+			nodes: [],
 		},
 	];
 };
