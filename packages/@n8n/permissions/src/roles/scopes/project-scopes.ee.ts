@@ -115,3 +115,5 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'dataStore:read',
 	'dataStore:readRow',
 ];
+
+export const PROJECT_EXECUTOR_SCOPES: Scope[] = [...PROJECT_VIEWER_SCOPES, 'workflow:execute'];
