@@ -14,6 +14,12 @@ export const contactOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Count',
+				value: 'count',
+				description: 'Count items',
+				action: 'Count items',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new contact',
