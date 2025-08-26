@@ -32,7 +32,6 @@ import {
 	getCallMetadata,
 	getEmailMetadata,
 	getMeetingMetadata,
-	getOwnerId,
 	getTaskMetadata,
 	hubspotApiRequest,
 	hubspotApiRequestAllItems,
@@ -2737,10 +2736,10 @@ export class HubspotV2 implements INodeType {
 								);
 							}
 
-							const ownerIdResult = getOwnerId(associations.ownerId);
-							if (ownerIdResult.error) {
-								throw new NodeOperationError(this.getNode(), ownerIdResult.error, { itemIndex: i });
-							}
+							const ownerId =
+								associations.ownerId && typeof associations.ownerId === 'number'
+									? associations.ownerId
+									: undefined;
 
 							const body: {
 								engagement: { type: string; ownerId?: number };
@@ -2749,7 +2748,7 @@ export class HubspotV2 implements INodeType {
 							} = {
 								engagement: {
 									type: type.toUpperCase(),
-									ownerId: ownerIdResult.value,
+									ownerId,
 								},
 								metadata: {},
 								associations: {},

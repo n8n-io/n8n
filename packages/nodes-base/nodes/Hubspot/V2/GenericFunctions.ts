@@ -2005,20 +2005,3 @@ export async function validateCredentials(
 
 	return await this.helpers.request(options);
 }
-
-type OwnerIdResult = {
-	error?: string;
-	value?: number;
-};
-
-export function getOwnerId(ownerId: unknown): OwnerIdResult {
-	if (!ownerId) {
-		return { value: undefined };
-	}
-
-	if (typeof ownerId !== 'number') {
-		return { error: 'Owner ID must be a number' };
-	}
-
-	return { value: ownerId };
-}
