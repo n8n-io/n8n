@@ -44,7 +44,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
-
 jest.mock('fast-glob');
 
 type Scope = {

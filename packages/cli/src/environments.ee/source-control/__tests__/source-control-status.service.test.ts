@@ -1,23 +1,27 @@
-import {
-	FolderRepository,
-	FolderWithWorkflowAndSubFolderCount,
-	TagEntity,
-	TagRepository,
-	User,
-	Variables,
-} from '@n8n/db';
-import { mock } from 'jest-mock-extended';
-import { SourceControlImportService } from '../source-control-import.service.ee';
-import { SourceControlStatusService } from '../source-control-status.service.ee';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { SourceControlGitService } from '../source-control-git.service.ee';
-import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
-import { EventService } from '@/events/event.service';
-import { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
-import { StatusExportableCredential } from '../types/exportable-credential';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InstanceSettings } from 'n8n-core';
+import {
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	type FolderRepository,
+	type FolderWithWorkflowAndSubFolderCount,
+	type TagEntity,
+	type TagRepository,
+	type User,
+	type Variables,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
+import { InstanceSettings } from 'n8n-core';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { EventService } from '@/events/event.service';
+
+import type { SourceControlGitService } from '../source-control-git.service.ee';
+import type { SourceControlImportService } from '../source-control-import.service.ee';
+import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import { SourceControlStatusService } from '../source-control-status.service.ee';
+import type { StatusExportableCredential } from '../types/exportable-credential';
+import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 
 describe('getStatus', () => {
 	const sourceControlImportService = mock<SourceControlImportService>();
@@ -44,7 +48,7 @@ describe('getStatus', () => {
 	it('ensure updatedAt field for last deleted tag', async () => {
 		// ARRANGE
 		const user = mock<User>({
-			role: 'global:admin',
+			role: GLOBAL_ADMIN_ROLE,
 		});
 
 		sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);
@@ -100,7 +104,7 @@ describe('getStatus', () => {
 	it('ensure updatedAt field for last deleted folder', async () => {
 		// ARRANGE
 		const user = mock<User>({
-			role: 'global:admin',
+			role: GLOBAL_ADMIN_ROLE,
 		});
 
 		sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);
@@ -159,7 +163,7 @@ describe('getStatus', () => {
 	it('conflict depends on the value of `direction`', async () => {
 		// ARRANGE
 		const user = mock<User>({
-			role: 'global:admin',
+			role: GLOBAL_ADMIN_ROLE,
 		});
 
 		// Define a credential that does only exist locally.
@@ -266,7 +270,7 @@ describe('getStatus', () => {
 	it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
 		// ARRANGE
 		const user = mock<User>({
-			role: 'global:member',
+			role: GLOBAL_MEMBER_ROLE,
 		});
 
 		// ACT
