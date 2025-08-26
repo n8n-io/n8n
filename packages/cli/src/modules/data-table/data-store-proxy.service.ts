@@ -30,12 +30,12 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
 	) {
-		this.logger = this.logger.scoped('data-store');
+		this.logger = this.logger.scoped('data-table');
 	}
 
 	private validateRequest(node: INode) {
-		if (node.type !== 'n8n-nodes-base.dataStore') {
-			throw new Error('This proxy is only available for data store nodes');
+		if (node.type !== 'n8n-nodes-base.dataTable') {
+			throw new Error('This proxy is only available for data table nodes');
 		}
 	}
 
@@ -125,11 +125,15 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 			},
 
 			async insertRows(rows: DataStoreRows) {
-				return await dataStoreService.insertRows(dataStoreId, projectId, rows);
+				return await dataStoreService.insertRows(dataStoreId, projectId, rows, true);
 			},
 
 			async upsertRows(options: UpsertDataStoreRowsOptions) {
-				return await dataStoreService.upsertRows(dataStoreId, projectId, options);
+				return await dataStoreService.upsertRows(dataStoreId, projectId, options, true);
+			},
+
+			async deleteRows(ids: number[]) {
+				return await dataStoreService.deleteRows(dataStoreId, projectId, ids);
 			},
 		};
 	}

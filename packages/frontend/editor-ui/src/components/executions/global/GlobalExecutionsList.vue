@@ -2,6 +2,7 @@
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
+import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
@@ -455,32 +456,11 @@ const goToUpgrade = () => {
 				</N8nTableBase>
 			</div>
 		</div>
-		<div
-			v-if="selectedCount > 0"
-			:class="$style.selectionOptions"
-			data-test-id="selected-executions-info"
-		>
-			<span>
-				{{
-					i18n.baseText('executionsList.selected', {
-						adjustToNumber: selectedCount,
-						interpolate: { count: `${selectedCount}` },
-					})
-				}}
-			</span>
-			<N8nButton
-				:label="i18n.baseText('generic.delete')"
-				type="tertiary"
-				data-test-id="delete-selected-button"
-				@click="handleDeleteSelected"
-			/>
-			<N8nButton
-				:label="i18n.baseText('executionsList.clearSelection')"
-				type="tertiary"
-				data-test-id="clear-selection-button"
-				@click="handleClearSelection"
-			/>
-		</div>
+		<SelectedItemsInfo
+			:selected-count="selectedCount"
+			@delete-selected="handleDeleteSelected"
+			@clear-selection="handleClearSelection"
+		/>
 	</div>
 </template>
 
@@ -505,25 +485,6 @@ const goToUpgrade = () => {
 	align-items: center;
 	justify-content: flex-start;
 	margin-bottom: var(--spacing-s);
-}
-
-.selectionOptions {
-	display: flex;
-	align-items: center;
-	position: absolute;
-	padding: var(--spacing-2xs);
-	z-index: 2;
-	left: 50%;
-	transform: translateX(-50%);
-	bottom: var(--spacing-3xl);
-	background: var(--execution-selector-background);
-	border-radius: var(--border-radius-base);
-	color: var(--execution-selector-text);
-	font-size: var(--font-size-2xs);
-
-	button {
-		margin-left: var(--spacing-2xs);
-	}
 }
 
 .execTable {

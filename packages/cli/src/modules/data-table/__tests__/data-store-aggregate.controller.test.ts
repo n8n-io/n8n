@@ -6,11 +6,12 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
+import { DateTime } from 'luxon';
+
 import { createDataStore } from '@test-integration/db/data-stores';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
-import { DateTime } from 'luxon';
 
 let owner: User;
 let member: User;
@@ -22,8 +23,8 @@ let ownerProject: Project;
 let memberProject: Project;
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['data-store'],
-	modules: ['data-store'],
+	endpointGroups: ['data-table'],
+	modules: ['data-table'],
 });
 
 beforeAll(async () => {

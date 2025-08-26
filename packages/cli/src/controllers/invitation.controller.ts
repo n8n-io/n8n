@@ -99,10 +99,7 @@ export class InvitationController {
 	) {
 		const { inviterId, firstName, lastName, password } = payload;
 
-		const users = await this.userRepository.find({
-			where: [{ id: inviterId }, { id: inviteeId }],
-			relations: ['role'],
-		});
+		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
 
 		if (users.length !== 2) {
 			this.logger.debug(

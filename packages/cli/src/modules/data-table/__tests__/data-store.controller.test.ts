@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { DataStore, DataStoreCreateColumnSchema } from '@n8n/api-types';
 import {
 	createTeamProject,
@@ -29,8 +31,8 @@ let ownerProject: Project;
 let memberProject: Project;
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['data-store'],
-	modules: ['data-store'],
+	endpointGroups: ['data-table'],
+	modules: ['data-table'],
 });
 let projectRepository: ProjectRepository;
 let dataStoreRepository: DataStoreRepository;
@@ -271,7 +273,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 
 		expect(response.body.data.count).toBe(2);
 		expect(response.body.data.data).toHaveLength(2);
-		expect(response.body.data.data.map((f: any) => f.name).sort()).toEqual(
+		expect((response.body.data.data as DataStore[]).map((f) => f.name).sort()).toEqual(
 			['Personal Data Store 1', 'Personal Data Store 2'].sort(),
 		);
 	});
@@ -288,7 +290,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 
 		expect(response.body.data.count).toBe(2);
 		expect(response.body.data.data).toHaveLength(2);
-		expect(response.body.data.data.map((f: any) => f.name).sort()).toEqual(
+		expect((response.body.data.data as DataStore[]).map((f) => f.name).sort()).toEqual(
 			['Test Data Store 1', 'Test Data Store 2'].sort(),
 		);
 	});
@@ -305,7 +307,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 
 		expect(response.body.data.count).toBe(2);
 		expect(response.body.data.data).toHaveLength(2);
-		expect(response.body.data.data.map((f: any) => f.name).sort()).toEqual(
+		expect((response.body.data.data as DataStore[]).map((f) => f.name).sort()).toEqual(
 			['Test Data Store', 'Test Something Else'].sort(),
 		);
 	});
@@ -357,7 +359,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 
 		expect(response.body.data.count).toBe(5); // Total count should be 5
 		expect(response.body.data.data).toHaveLength(3); // But only 3 returned
-		expect(response.body.data.data.map((store: DataStore) => store.name)).toEqual([
+		expect((response.body.data.data as DataStore[]).map((store) => store.name)).toEqual([
 			'Data Store 5',
 			'Data Store 4',
 			'Data Store 3',
@@ -381,7 +383,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 
 		expect(response.body.data.count).toBe(5);
 		expect(response.body.data.data).toHaveLength(3);
-		expect(response.body.data.data.map((store: DataStore) => store.name)).toEqual([
+		expect((response.body.data.data as DataStore[]).map((store) => store.name)).toEqual([
 			'Data Store 3',
 			'Data Store 2',
 			'Data Store 1',
@@ -405,7 +407,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 
 		expect(response.body.data.count).toBe(5);
 		expect(response.body.data.data).toHaveLength(2);
-		expect(response.body.data.data.map((store: DataStore) => store.name)).toEqual([
+		expect((response.body.data.data as DataStore[]).map((store) => store.name)).toEqual([
 			'Data Store 4',
 			'Data Store 3',
 		]);
@@ -421,7 +423,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 			.query({ sortBy: 'name:asc' })
 			.expect(200);
 
-		expect(response.body.data.data.map((store: DataStore) => store.name)).toEqual([
+		expect((response.body.data.data as DataStore[]).map((store) => store.name)).toEqual([
 			'A Data Store',
 			'M Data Store',
 			'Z Data Store',
@@ -438,7 +440,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 			.query({ sortBy: 'name:desc' })
 			.expect(200);
 
-		expect(response.body.data.data.map((f: DataStore) => f.name)).toEqual([
+		expect((response.body.data.data as DataStore[]).map((f) => f.name)).toEqual([
 			'Z Data Store',
 			'M Data Store',
 			'A Data Store',
@@ -464,7 +466,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 			.query({ sortBy: 'updatedAt:desc' })
 			.expect(200);
 
-		expect(response.body.data.data.map((f: DataStore) => f.name)).toEqual([
+		expect((response.body.data.data as DataStore[]).map((f) => f.name)).toEqual([
 			'Newest Data Store',
 			'Middle Data Store',
 			'Older Data Store',
@@ -1582,7 +1584,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
 			.expect(200);
 
-		expect(response.body.data).toEqual({
+		expect(response.body.data).toMatchObject({
 			count: 1,
 			data: [
 				{
@@ -1621,7 +1623,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
 			.expect(200);
 
-		expect(response.body.data).toEqual({
+		expect(response.body.data).toMatchObject({
 			count: 1,
 			data: [
 				{
@@ -1660,7 +1662,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
 			.expect(200);
 
-		expect(response.body.data).toEqual({
+		expect(response.body.data).toMatchObject({
 			count: 1,
 			data: [
 				{
@@ -1696,7 +1698,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
 			.expect(200);
 
-		expect(response.body.data).toEqual({
+		expect(response.body.data).toMatchObject({
 			count: 1,
 			data: [
 				{
@@ -1704,6 +1706,93 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 					first: 'test value',
 					second: 'another value',
 				},
+			],
+		});
+	});
+
+	test("should parse 'eq' filters correctly", async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'name',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					name: 'John',
+				},
+				{
+					name: 'Jane',
+				},
+				{
+					name: 'Tom',
+				},
+			],
+		});
+
+		const filterParam = encodeURIComponent(
+			JSON.stringify({
+				type: 'and',
+				filters: [{ columnName: 'name', value: 'John', condition: 'eq' }],
+			}),
+		);
+
+		const response = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows?filter=${filterParam}`)
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			count: 1,
+			data: [
+				expect.objectContaining({
+					name: 'John',
+				}),
+			],
+		});
+	});
+
+	test("should parse 'like' filters correctly", async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'name',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					name: 'John',
+				},
+				{
+					name: 'Jane',
+				},
+				{
+					name: 'Tom',
+				},
+			],
+		});
+
+		const filterParam = encodeURIComponent(
+			JSON.stringify({
+				type: 'and',
+				filters: [{ columnName: 'name', value: '%j%', condition: 'ilike' }],
+			}),
+		);
+
+		const response = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows?filter=${filterParam}`)
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			count: 2,
+			data: [
+				expect.objectContaining({
+					name: 'John',
+				}),
+				expect.objectContaining({
+					name: 'Jane',
+				}),
 			],
 		});
 	});
@@ -1959,11 +2048,15 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 					id: 1,
 					first: 'first row',
 					second: 'some value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
 				},
 				{
 					id: 2,
 					first: 'another row',
 					second: 'another value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
 				},
 			],
 		});
@@ -2887,10 +2980,12 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 			matchFields: ['first'],
 		};
 
-		await authMemberAgent
+		const result = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
 			.send(payload)
 			.expect(200);
+
+		expect(result.body.data).toBe(true);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {
 			sortBy: ['id', 'ASC'],
@@ -2899,6 +2994,77 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
 		expect(rowsInDb.data[1]).toMatchObject(payload.rows[0]);
 		expect(rowsInDb.data[2]).toMatchObject(payload.rows[1]);
+	});
+
+	test('should return affected rows if returnData is set', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test row',
+					second: 'test value',
+				},
+				{
+					first: 'test row',
+					second: 'another row with same first column',
+				},
+			],
+		});
+
+		const payload = {
+			rows: [
+				{
+					first: 'test row',
+					second: 'updated value',
+				},
+				{
+					first: 'new row',
+					second: 'new value',
+				},
+			],
+			matchFields: ['first'],
+			returnData: true,
+		};
+
+		const result = await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
+			.send(payload)
+			.expect(200);
+
+		expect(result.body.data).toEqual(
+			expect.arrayContaining([
+				{
+					id: 1,
+					first: 'test row',
+					second: 'updated value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
+				{
+					id: 2,
+					first: 'test row',
+					second: 'updated value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
+				{
+					id: 3,
+					first: 'new row',
+					second: 'new value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
+			]),
+		);
 	});
 });
 
@@ -2977,26 +3143,36 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			columns: [
 				{ name: 'name', type: 'string' },
 				{ name: 'age', type: 'number' },
+				{ name: 'active', type: 'boolean' },
+				{ name: 'birthday', type: 'date' },
 			],
-			data: [{ name: 'Alice', age: 30 }],
+			data: [{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') }],
 		});
 
 		const payload = {
 			filter: { name: 'Alice' },
-			data: { age: 31 },
+			data: { name: 'Alicia', age: 31, active: false, birthday: new Date('1990-01-02') },
 		};
 
-		await authMemberAgent
+		const result = await authMemberAgent
 			.patch(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(200);
+
+		expect(result.body.data).toBe(true);
 
 		const readResponse = await authMemberAgent
 			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
-		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
+		expect(readResponse.body.data.data[0]).toMatchObject({
+			id: 1,
+			name: 'Alicia',
+			age: 31,
+			active: false,
+			birthday: new Date('1990-01-02').toISOString(),
+		});
 	});
 
 	test('should update row if user has project:admin role in team project', async () => {
@@ -3053,7 +3229,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
-		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
+		expect(readResponse.body.data.data[0]).toMatchObject({
+			id: 1,
+			name: 'Alice',
+			age: 31,
+		});
 	});
 
 	test('should update row in personal project', async () => {
@@ -3080,7 +3260,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
-		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
+		expect(readResponse.body.data.data[0]).toMatchObject({
+			id: 1,
+			name: 'Alice',
+			age: 31,
+		});
 	});
 
 	test('should update row by id filter', async () => {
@@ -3112,8 +3296,16 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		expect(readResponse.body.data.count).toBe(2);
 		expect(readResponse.body.data.data).toEqual(
 			expect.arrayContaining([
-				{ id: 1, name: 'Alice', age: 31 },
-				{ id: 2, name: 'Bob', age: 25 },
+				expect.objectContaining({
+					id: 1,
+					name: 'Alice',
+					age: 31,
+				}),
+				expect.objectContaining({
+					id: 2,
+					name: 'Bob',
+					age: 25,
+				}),
 			]),
 		);
 	});
@@ -3149,9 +3341,24 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		expect(readResponse.body.data.count).toBe(3);
 		expect(readResponse.body.data.data).toEqual(
 			expect.arrayContaining([
-				{ id: 1, name: 'Alice', age: 30, department: 'Management' },
-				{ id: 2, name: 'Alice', age: 25, department: 'Marketing' },
-				{ id: 3, name: 'Bob', age: 30, department: 'Engineering' },
+				expect.objectContaining({
+					id: 1,
+					name: 'Alice',
+					age: 30,
+					department: 'Management',
+				}),
+				expect.objectContaining({
+					id: 2,
+					name: 'Alice',
+					age: 25,
+					department: 'Marketing',
+				}),
+				expect.objectContaining({
+					id: 3,
+					name: 'Bob',
+					age: 30,
+					department: 'Engineering',
+				}),
 			]),
 		);
 	});
@@ -3175,14 +3382,17 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		expect(response.body.data).toBe(true);
+		expect(response.body.data).toEqual(true);
 
 		const readResponse = await authMemberAgent
 			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
-		expect(readResponse.body.data.data[0]).toMatchObject({ name: 'Alice', age: 30 });
+		expect(readResponse.body.data.data[0]).toMatchObject({
+			name: 'Alice',
+			age: 30,
+		});
 	});
 
 	test('should fail when filter is empty', async () => {
@@ -3363,5 +3573,48 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			name: 'Alice',
 			birthdate: '1995-05-15T12:30:00.000Z',
 		});
+	});
+
+	test('should return updated data if returnData is set', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'active', type: 'boolean' },
+				{ name: 'birthday', type: 'date' },
+			],
+			data: [
+				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01T00:00:00.000Z') },
+				{ name: 'Bob', age: 25, active: true, birthday: new Date('1995-05-15T00:00:00.000Z') },
+			],
+		});
+
+		const payload = {
+			filter: { active: true },
+			data: { active: false },
+			returnData: true,
+		};
+
+		const result = await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		expect(result.body.data).toMatchObject([
+			{
+				id: 1,
+				name: 'Alice',
+				age: 30,
+				active: false,
+				birthday: '1990-01-01T00:00:00.000Z',
+			},
+			{
+				id: 2,
+				name: 'Bob',
+				age: 25,
+				active: false,
+				birthday: '1995-05-15T00:00:00.000Z',
+			},
+		]);
 	});
 });
