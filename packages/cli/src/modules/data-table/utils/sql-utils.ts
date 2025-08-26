@@ -151,8 +151,8 @@ const isNumber = (value: unknown): value is number => {
 	return typeof value === 'number' && Number.isFinite(value);
 };
 
-const isString = (value: unknown): value is string => {
-	return typeof value === 'string';
+const isDate = (value: unknown): value is Date => {
+	return value instanceof Date;
 };
 
 function hasInsertId(data: unknown): data is WithInsertId {
@@ -166,9 +166,9 @@ function hasRowReturnData(data: unknown): data is DataStoreRowReturn {
 		'id' in data &&
 		isNumber(data.id) &&
 		'createdAt' in data &&
-		isString(data.createdAt) &&
+		isDate(data.createdAt) &&
 		'updatedAt' in data &&
-		isString(data.updatedAt)
+		isDate(data.updatedAt)
 	);
 }
 
