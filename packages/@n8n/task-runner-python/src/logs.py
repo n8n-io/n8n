@@ -1,6 +1,10 @@
 import logging
 import os
-from .constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT, ENV_HIDE_TASK_OFFER_LOGS
+from .constants import (
+    LOG_FORMAT,
+    LOG_TIMESTAMP_FORMAT,
+    ENV_HIDE_TASK_OFFER_LOGS,
+)
 
 COLORS = {
     "DEBUG": "\033[34m",  # blue
