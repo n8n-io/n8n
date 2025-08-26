@@ -38,7 +38,7 @@ jest.mock('crypto', () => ({
 
 describe('AddNodeTool', () => {
 	let nodeTypesList: INodeTypeDescription[];
-	let addNodeTool: ReturnType<typeof createAddNodeTool>;
+	let addNodeTool: ReturnType<typeof createAddNodeTool>['tool'];
 	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
 		typeof getCurrentTaskInput
 	>;
@@ -47,7 +47,7 @@ describe('AddNodeTool', () => {
 		jest.clearAllMocks();
 
 		nodeTypesList = [nodeTypes.code, nodeTypes.httpRequest, nodeTypes.webhook, nodeTypes.agent];
-		addNodeTool = createAddNodeTool(nodeTypesList);
+		addNodeTool = createAddNodeTool(nodeTypesList).tool;
 	});
 
 	afterEach(() => {
