@@ -15,6 +15,7 @@ from src.constants import (
     DEFAULT_TASK_BROKER_URI,
     DEFAULT_MAX_PAYLOAD_SIZE,
     ENV_TASK_TIMEOUT,
+    ENV_BUILTINS_DENY,
 )
 from src.logs import setup_logging
 from src.task_runner import TaskRunner, TaskRunnerOpts
@@ -32,12 +33,18 @@ async def main():
         logger.error(f"{ENV_GRANT_TOKEN} environment variable is required")
         sys.exit(1)
 
+    denied_builtins_str = os.getenv(ENV_BUILTINS_DENY, "")
+    denied_builtins = set(
+        name.strip() for name in denied_builtins_str.split(",") if name.strip()
+    )
+
     opts = TaskRunnerOpts(
         grant_token,
         os.getenv(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
         int(os.getenv(ENV_MAX_CONCURRENCY, DEFAULT_MAX_CONCURRENCY)),
         int(os.getenv(ENV_MAX_PAYLOAD_SIZE, DEFAULT_MAX_PAYLOAD_SIZE)),
         int(os.getenv(ENV_TASK_TIMEOUT, DEFAULT_TASK_TIMEOUT)),
+        denied_builtins,
     )
 
     task_runner = TaskRunner(opts)

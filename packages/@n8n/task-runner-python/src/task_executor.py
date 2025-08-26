@@ -3,6 +3,7 @@ import multiprocessing
 import traceback
 import textwrap
 import json
+import os
 
 from src.errors import (
     TaskResultMissingError,
@@ -11,8 +12,8 @@ from src.errors import (
     TaskProcessExitError,
 )
 
-from .message_types.broker import NodeMode, Items
-from .constants import EXECUTOR_CIRCULAR_REFERENCE_KEY, EXECUTOR_USER_OUTPUT_KEY
+from src.message_types.broker import NodeMode, Items
+from src.constants import EXECUTOR_CIRCULAR_REFERENCE_KEY, EXECUTOR_USER_OUTPUT_KEY
 from typing import Any
 
 from multiprocessing.context import SpawnProcess
@@ -26,7 +27,9 @@ class TaskExecutor:
     """Responsible for executing Python code tasks in isolated subprocesses."""
 
     @staticmethod
-    def create_process(code: str, node_mode: NodeMode, items: Items):
+    def create_process(
+        code: str, node_mode: NodeMode, items: Items, denied_builtins: set[str]
+    ):
         """Create a subprocess for executing a Python code task and a queue for communication."""
 
         fn = (
@@ -36,7 +39,9 @@ class TaskExecutor:
         )
 
         queue = MULTIPROCESSING_CONTEXT.Queue()
-        process = MULTIPROCESSING_CONTEXT.Process(target=fn, args=(code, items, queue))
+        process = MULTIPROCESSING_CONTEXT.Process(
+            target=fn, args=(code, items, queue, denied_builtins)
+        )
 
         return process, queue
 
@@ -95,8 +100,15 @@ class TaskExecutor:
             process.kill()
 
     @staticmethod
-    def _all_items(raw_code: str, items: Items, queue: multiprocessing.Queue):
+    def _all_items(
+        raw_code: str,
+        items: Items,
+        queue: multiprocessing.Queue,
+        denied_builtins: set[str],
+    ):
         """Execute a Python code task in all-items mode."""
+
+        os.environ.clear()
 
         print_args: PrintArgs = []
 
@@ -104,7 +116,7 @@ class TaskExecutor:
             code = TaskExecutor._wrap_code(raw_code)
 
             globals = {
-                "__builtins__": __builtins__,
+                "__builtins__": TaskExecutor._filter_builtins(denied_builtins),
                 "_items": items,
                 "print": TaskExecutor._create_custom_print(print_args),
             }
@@ -119,8 +131,15 @@ class TaskExecutor:
             TaskExecutor._put_error(queue, e, print_args)
 
     @staticmethod
-    def _per_item(raw_code: str, items: Items, queue: multiprocessing.Queue):
+    def _per_item(
+        raw_code: str,
+        items: Items,
+        queue: multiprocessing.Queue,
+        denied_builtins: set[str],
+    ):
         """Execute a Python code task in per-item mode."""
+
+        os.environ.clear()
 
         print_args: PrintArgs = []
 
@@ -131,7 +150,7 @@ class TaskExecutor:
             result = []
             for index, item in enumerate(items):
                 globals = {
-                    "__builtins__": __builtins__,
+                    "__builtins__": TaskExecutor._filter_builtins(denied_builtins),
                     "_item": item,
                     "print": TaskExecutor._create_custom_print(print_args),
                 }
@@ -195,7 +214,7 @@ class TaskExecutor:
     @staticmethod
     def _format_print_args(*args) -> list[str]:
         """
-        Takes the arguments passed to a `print()` call in user code and converts them
+        Takes the args passed to a `print()` call in user code and converts them
         to string representations suitable for display in a browser console.
 
         Expects all args to be serializable.
@@ -217,3 +236,14 @@ class TaskExecutor:
                 formatted.append(json.dumps(arg, default=str, ensure_ascii=False))
 
         return formatted
+
+    # ========== security ==========
+
+    @staticmethod
+    def _filter_builtins(denied_builtins: set[str]):
+        """Get __builtins__ with denied functions removed."""
+
+        if len(denied_builtins) == 0:
+            return __builtins__
+
+        return {k: v for k, v in __builtins__.items() if k not in denied_builtins}

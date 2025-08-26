@@ -12,7 +12,7 @@ from src.errors import WebsocketConnectionError, TaskMissingError
 from src.message_types.broker import TaskSettings
 from src.nanoid_utils import nanoid
 
-from .constants import (
+from src.constants import (
     RUNNER_NAME,
     TASK_REJECTED_REASON_AT_CAPACITY,
     TASK_REJECTED_REASON_OFFER_EXPIRED,
@@ -24,7 +24,7 @@ from .constants import (
     TASK_BROKER_WS_PATH,
     RPC_BROWSER_CONSOLE_LOG_METHOD,
 )
-from .message_types import (
+from src.message_types import (
     BrokerMessage,
     RunnerMessage,
     BrokerInfoRequest,
@@ -41,9 +41,9 @@ from .message_types import (
     RunnerTaskError,
     RunnerRpcCall,
 )
-from .message_serde import MessageSerde
-from .task_state import TaskState, TaskStatus
-from .task_executor import TaskExecutor
+from src.message_serde import MessageSerde
+from src.task_state import TaskState, TaskStatus
+from src.task_executor import TaskExecutor
 
 
 class TaskOffer:
@@ -63,6 +63,7 @@ class TaskRunnerOpts:
     max_concurrency: int
     max_payload_size: int
     task_timeout: int
+    denied_builtins: set[str]
 
 
 class TaskRunner:
@@ -208,7 +209,10 @@ class TaskRunner:
                 raise TaskMissingError(task_id)
 
             process, queue = self.executor.create_process(
-                task_settings.code, task_settings.node_mode, task_settings.items
+                task_settings.code,
+                task_settings.node_mode,
+                task_settings.items,
+                self.opts.denied_builtins,
             )
 
             task_state.process = process
