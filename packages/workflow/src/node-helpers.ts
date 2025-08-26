@@ -1586,6 +1586,15 @@ function resolveResourceAndOperation(
 	nodeParameters: INodeParameters,
 	nodeTypeDescription: INodeTypeDescription,
 ) {
+	if (nodeTypeDescription.name === 'n8n-nodes-base.code') {
+		const language = nodeParameters.language as string;
+		const langProp = nodeTypeDescription.properties.find((p) => p.name === 'language');
+		if (langProp?.options && isINodePropertyOptionsList(langProp.options)) {
+			const found = langProp.options.find((o) => o.value === language);
+			if (found?.action) return { action: found.action };
+		}
+	}
+
 	const resource = nodeParameters.resource as string;
 	const operation = nodeParameters.operation as string;
 	const nodeTypeOperation = nodeTypeDescription.properties.find(
