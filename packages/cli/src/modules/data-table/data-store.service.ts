@@ -107,6 +107,7 @@ export class DataStoreService {
 		dto: ListDataStoreContentQueryDto,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
+		this.validateFilters(dto);
 
 		// unclear if we should validate here, only use case would be to reduce the chance of
 		// a renamed/removed column appearing here (or added column missing) if the store was
@@ -319,6 +320,27 @@ export class DataStoreService {
 
 		if (hasNameClash) {
 			throw new DataStoreNameConflictError(name);
+		}
+	}
+
+	private validateFilters(dto: ListDataStoreContentQueryDto): void {
+		if (!dto.filter?.filters) {
+			return;
+		}
+
+		for (const filter of dto.filter.filters) {
+			if (['like', 'ilike'].includes(filter.condition)) {
+				if (filter.value === null || filter.value === undefined) {
+					throw new DataStoreValidationError(
+						`${filter.condition.toUpperCase()} filter value cannot be null or undefined`,
+					);
+				}
+				if (typeof filter.value !== 'string') {
+					throw new DataStoreValidationError(
+						`${filter.condition.toUpperCase()} filter value must be a string`,
+					);
+				}
+			}
 		}
 	}
 }
