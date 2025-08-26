@@ -316,7 +316,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 	// Setup date editor
 	if (col.type === 'date') {
 		columnDef.cellEditor = 'agDateCellEditor';
-		columnDef.cellEditorPopup = true;
+		columnDef.cellEditorPopup = false;
 	}
 	return {
 		...columnDef,
@@ -465,8 +465,11 @@ const onCellClicked = (params: CellClickedEvent<DataStoreRow>) => {
 	const clickedCellColumn = params.column.getColId();
 	const clickedCellRow = params.rowIndex;
 
-	// Skip if rowIndex is null
-	if (clickedCellRow === null) return;
+	if (
+		clickedCellRow === null ||
+		params.api.isEditing({ rowIndex: clickedCellRow, column: params.column, rowPinned: null })
+	)
+		return;
 
 	// Check if this is the same cell that was focused before this click
 	const wasAlreadyFocused =
