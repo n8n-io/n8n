@@ -29,7 +29,6 @@ import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { INodeUi, ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useThrottleFn } from '@vueuse/core';
-import { useStyles } from '@/composables/useStyles';
 import { useExecutionData } from '@/composables/useExecutionData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ExperimentalNodeDetailsDrawer from '@/components/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
@@ -65,7 +64,6 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const uiStore = useUIStore();
 const ndvStore = useNDVStore();
 const deviceSupport = useDeviceSupport();
-const styles = useStyles();
 const vueFlow = useVueFlow(workflowsStore.workflowId);
 
 const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
@@ -388,7 +386,7 @@ function onOpenNdv() {
 			:min-width="300"
 			:max-width="1000"
 			:grid-size="8"
-			:style="{ width: `${focusPanelWidth}px`, zIndex: styles.APP_Z_INDEXES.FOCUS_PANEL }"
+			:style="{ width: `${focusPanelWidth}px` }"
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
