@@ -20,7 +20,11 @@ const tutorials = computed<OpenTemplateElement[]>(() =>
 );
 
 const openTemplate = (templateId: string) => {
-	console.log(`Open template with ID: ${templateId}`);
+	calloutHelpers.openSampleWorkflowTemplate(templateId, {
+		telemetry: {
+			source: 'modal',
+		},
+	});
 };
 
 onMounted(async () => {
@@ -46,7 +50,7 @@ onMounted(async () => {
 						v-for="template in preBuiltAgents"
 						:key="template.key"
 						:class="$style.card"
-						@click="openTemplate('templateId')"
+						@click="openTemplate(template.properties.templateId)"
 					>
 						<N8nNodeCreatorNode
 							:class="$style.templateLink"
@@ -80,7 +84,7 @@ onMounted(async () => {
 						v-for="template in tutorials"
 						:key="template.key"
 						:class="$style.card"
-						@click="openTemplate('templateId')"
+						@click="openTemplate(template.properties.templateId)"
 					>
 						<N8nNodeCreatorNode
 							:class="$style.templateLink"
