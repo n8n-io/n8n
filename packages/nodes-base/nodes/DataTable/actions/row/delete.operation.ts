@@ -10,7 +10,8 @@ import { DRY_RUN } from '../../common/fields';
 import { executeSelectMany, getSelectFields } from '../../common/selectMany';
 import { getDataTableProxyExecute } from '../../common/utils';
 
-export const FIELD: string = 'delete';
+// named `deleteRows` since `delete` is a reserved keyword
+export const FIELD: string = 'deleteRows';
 
 const displayOptions: IDisplayOptions = {
 	show: {

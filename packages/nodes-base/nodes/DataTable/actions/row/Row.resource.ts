@@ -5,7 +5,7 @@ import * as get from './get.operation';
 import * as insert from './insert.operation';
 import { DATA_TABLE_ID_FIELD } from '../../common/fields';
 
-export { insert, get };
+export { insert, get, deleteRows };
 
 export const description: INodeProperties[] = [
 	{

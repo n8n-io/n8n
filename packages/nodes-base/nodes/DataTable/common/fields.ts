@@ -32,4 +32,6 @@ export const DRY_RUN = {
 	name: 'dryRun',
 	type: 'boolean',
 	default: false,
+	description:
+		'Whether the delete operation should only be simulated, returning the rows that would have been deleted',
 } satisfies INodeProperties;
