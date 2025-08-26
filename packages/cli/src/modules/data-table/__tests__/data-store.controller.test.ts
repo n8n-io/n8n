@@ -2889,10 +2889,12 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 			matchFields: ['first'],
 		};
 
-		await authMemberAgent
+		const result = await authMemberAgent
 			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
 			.send(payload)
 			.expect(200);
+
+		expect(result.body.data).toBe(true);
 
 		const rowsInDb = await dataStoreRowsRepository.getManyAndCount(dataStore.id, {
 			sortBy: ['id', 'ASC'],
@@ -2901,6 +2903,59 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		expect(rowsInDb.data[0]).toMatchObject(payload.rows[0]);
 		expect(rowsInDb.data[1]).toMatchObject(payload.rows[0]);
 		expect(rowsInDb.data[2]).toMatchObject(payload.rows[1]);
+	});
+
+	test('should return affected rows if returnData is set', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'first',
+					type: 'string',
+				},
+				{
+					name: 'second',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					first: 'test row',
+					second: 'test value',
+				},
+				{
+					first: 'test row',
+					second: 'another row with same first column',
+				},
+			],
+		});
+
+		const payload = {
+			rows: [
+				{
+					first: 'test row',
+					second: 'updated value',
+				},
+				{
+					first: 'new row',
+					second: 'new value',
+				},
+			],
+			matchFields: ['first'],
+			returnData: true,
+		};
+
+		const result = await authMemberAgent
+			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
+			.send(payload)
+			.expect(200);
+
+		expect(result.body.data).toEqual(
+			expect.arrayContaining([
+				{ id: 1, first: 'test row', second: 'updated value' },
+				{ id: 2, first: 'test row', second: 'updated value' },
+				{ id: 3, first: 'new row', second: 'new value' },
+			]),
+		);
 	});
 });
 
@@ -2979,26 +3034,36 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			columns: [
 				{ name: 'name', type: 'string' },
 				{ name: 'age', type: 'number' },
+				{ name: 'active', type: 'boolean' },
+				{ name: 'birthday', type: 'date' },
 			],
-			data: [{ name: 'Alice', age: 30 }],
+			data: [{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') }],
 		});
 
 		const payload = {
 			filter: { name: 'Alice' },
-			data: { age: 31 },
+			data: { name: 'Alicia', age: 31, active: false, birthday: new Date('1990-01-02') },
 		};
 
-		await authMemberAgent
+		const result = await authMemberAgent
 			.patch(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(200);
+
+		expect(result.body.data).toBe(true);
 
 		const readResponse = await authMemberAgent
 			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
-		expect(readResponse.body.data.data[0]).toMatchObject({ id: 1, name: 'Alice', age: 31 });
+		expect(readResponse.body.data.data[0]).toMatchObject({
+			id: 1,
+			name: 'Alicia',
+			age: 31,
+			active: false,
+			birthday: new Date('1990-01-02').toISOString(),
+		});
 	});
 
 	test('should update row if user has project:admin role in team project', async () => {
@@ -3208,7 +3273,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			.send(payload)
 			.expect(200);
 
-		expect(response.body.data).toBe(true);
+		expect(response.body.data).toEqual(true);
 
 		const readResponse = await authMemberAgent
 			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
@@ -3399,5 +3464,48 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			name: 'Alice',
 			birthdate: '1995-05-15T12:30:00.000Z',
 		});
+	});
+
+	test('should return updated data if returnData is set', async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'active', type: 'boolean' },
+				{ name: 'birthday', type: 'date' },
+			],
+			data: [
+				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01T00:00:00.000Z') },
+				{ name: 'Bob', age: 25, active: true, birthday: new Date('1995-05-15T00:00:00.000Z') },
+			],
+		});
+
+		const payload = {
+			filter: { active: true },
+			data: { active: false },
+			returnData: true,
+		};
+
+		const result = await authMemberAgent
+			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.send(payload)
+			.expect(200);
+
+		expect(result.body.data).toMatchObject([
+			{
+				id: 1,
+				name: 'Alice',
+				age: 30,
+				active: false,
+				birthday: '1990-01-01T00:00:00.000Z',
+			},
+			{
+				id: 2,
+				name: 'Bob',
+				age: 25,
+				active: false,
+				birthday: '1995-05-15T00:00:00.000Z',
+			},
+		]);
 	});
 });
