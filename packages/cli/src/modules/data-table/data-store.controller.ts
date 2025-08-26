@@ -238,11 +238,11 @@ export class DataStoreController {
 	/**
 	 * @returns the IDs of the inserted rows
 	 */
-	async appendDataStoreRows<T extends boolean>(
+	async appendDataStoreRows<T extends boolean | undefined>(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		dataStoreId: string,
-		dto: AddDataStoreRowsDto & { returnData: T },
+		dto: AddDataStoreRowsDto & { returnData?: T },
 	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	@Post('/:dataStoreId/insert')
 	@ProjectScope('dataStore:writeRow')
@@ -281,7 +281,12 @@ export class DataStoreController {
 		@Body dto: UpsertDataStoreRowsDto,
 	) {
 		try {
-			return await this.dataStoreService.upsertRows(dataStoreId, req.params.projectId, dto);
+			return await this.dataStoreService.upsertRows(
+				dataStoreId,
+				req.params.projectId,
+				dto,
+				dto.returnData,
+			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
 				throw new NotFoundError(e.message);
@@ -304,7 +309,12 @@ export class DataStoreController {
 		@Body dto: UpdateDataStoreRowDto,
 	) {
 		try {
-			return await this.dataStoreService.updateRow(dataStoreId, req.params.projectId, dto);
+			return await this.dataStoreService.updateRow(
+				dataStoreId,
+				req.params.projectId,
+				dto,
+				dto.returnData,
+			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
 				throw new NotFoundError(e.message);

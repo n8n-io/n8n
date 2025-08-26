@@ -151,8 +151,8 @@ const isNumber = (value: unknown): value is number => {
 	return typeof value === 'number' && Number.isFinite(value);
 };
 
-const isDate = (value: unknown): value is Date => {
-	return value instanceof Date;
+const isString = (value: unknown): value is string => {
+	return typeof value === 'string';
 };
 
 function hasInsertId(data: unknown): data is WithInsertId {
@@ -166,9 +166,9 @@ function hasRowReturnData(data: unknown): data is DataStoreRowReturn {
 		'id' in data &&
 		isNumber(data.id) &&
 		'createdAt' in data &&
-		isDate(data.createdAt) &&
+		isString(data.createdAt) &&
 		'updatedAt' in data &&
-		isDate(data.updatedAt)
+		isString(data.updatedAt)
 	);
 }
 
@@ -233,19 +233,25 @@ export function normalizeRows(rows: DataStoreRowsReturn, columns: DataStoreColum
 				}
 			}
 			if (type === 'date' && value !== null && value !== undefined) {
-				// Convert date objects or strings to ISO string
+				// Convert date objects or strings to dates in UTC
 				let dateObj: Date | null = null;
 
 				if (value instanceof Date) {
 					dateObj = value;
-				} else if (typeof value === 'string' || typeof value === 'number') {
+				} else if (typeof value === 'string') {
+					// sqlite returns date strings without timezone information, but we store them as UTC
+					const parsed = new Date(value.endsWith('Z') ? value : value + 'Z');
+					if (!isNaN(parsed.getTime())) {
+						dateObj = parsed;
+					}
+				} else if (typeof value === 'number') {
 					const parsed = new Date(value);
 					if (!isNaN(parsed.getTime())) {
 						dateObj = parsed;
 					}
 				}
 
-				normalized[key] = dateObj ? dateObj.toISOString() : value;
+				normalized[key] = dateObj ?? value;
 			}
 		}
 		return normalized;
@@ -275,10 +281,4 @@ export function normalizeValue(
 
 export function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
 	return dbType.includes('postgres') ? `$${index}` : '?';
-}
-
-export function buildColumnTypeMap(
-	columns: Array<{ name: string; type: string }>,
-): Record<string, string> {
-	return Object.fromEntries(columns.map((col) => [col.name, col.type]));
 }
