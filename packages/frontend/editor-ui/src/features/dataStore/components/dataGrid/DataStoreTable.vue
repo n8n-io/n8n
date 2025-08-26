@@ -236,7 +236,15 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		cellEditorPopup: false,
 		headerComponentParams: { onDelete: onDeleteColumn },
 		cellDataType: mapToAGCellType(col.type),
-		cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : ''),
+		cellClass: (params) => {
+			if (params.data?.id === ADD_ROW_ROW_ID) {
+				return 'add-row-cell';
+			}
+			if (params.column.getUserProvidedColDef()?.cellDataType === 'boolean') {
+				return 'boolean-cell';
+			}
+			return '';
+		},
 		valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
 			// If the value is null, return null to show empty cell
 			if (params.data?.[col.name] === null || params.data?.[col.name] === undefined) {
@@ -682,7 +690,9 @@ const handleClearSelection = () => {
 	--ag-range-selection-border-color: var(--grid-cell-focus-border-color);
 	--ag-input-padding-start: var(--spacing-2xs);
 	--ag-input-background-color: var(--color-background-light-base);
-	--ag-focus-shadow: 0 0 0 1px var(--color-secondary);
+	--ag-focus-shadow: none;
+
+	--cell-editing-border: 2px solid var(--color-secondary);
 
 	:global(.ag-cell) {
 		display: flex;
@@ -741,6 +751,10 @@ const handleClearSelection = () => {
 
 		textarea {
 			padding-top: var(--spacing-xs);
+
+			&:where(:focus-within, :active) {
+				border: var(--cell-editing-border);
+			}
 		}
 	}
 
@@ -751,6 +765,14 @@ const handleClearSelection = () => {
 	:global(.ag-checkbox-input-wrapper) {
 		&:where(:focus-within, :active) {
 			box-shadow: none;
+		}
+	}
+
+	:global(.ag-cell-inline-editing) {
+		box-shadow: none;
+
+		&:global(.boolean-cell) {
+			border: var(--cell-editing-border) !important;
 		}
 	}
 }
