@@ -9,7 +9,8 @@ import emailTriageAgentWithGmailJson from '@/utils/templates/samples/agents/emai
 import jokeAgentWithHttpToolJson from '@/utils/templates/samples/agents/joke_agent_with_http_tool.json';
 import knowledgeStoreAgentWithGoogleDriveJson from '@/utils/templates/samples/agents/knowledge_store_agent_with_google_drive.json';
 import taskManagementAgentWithGoogleSheetsJson from '@/utils/templates/samples/agents/task_management_agent_with_google_sheets.json';
-import voiceAssistantAgentWithTelegramAndGcalJson from '@/utils/templates/samples/agents/voice_assistant_agent_with_telegram_and_gcal.json';
+import voiceAssistantAgentJson from '@/utils/templates/samples/agents/voice-agent.json';
+import calendarAgentJson from '@/utils/templates/samples/agents/calendar-agent.json';
 /* eslint-enable import-x/extensions */
 
 const getWorkflowJson = (json: unknown): WorkflowDataWithTemplateId => {
@@ -34,11 +35,12 @@ export const SampleTemplates = {
 } as const;
 
 export const PrebuiltAgentTemplates = {
-	VoiceAssistantAgent: getWorkflowJson(voiceAssistantAgentWithTelegramAndGcalJson).meta.templateId,
+	CalendarAgent: getWorkflowJson(calendarAgentJson).meta.templateId,
 	EmailTriageAgent: getWorkflowJson(emailTriageAgentWithGmailJson).meta.templateId,
 	KnowledgeStoreAgent: getWorkflowJson(knowledgeStoreAgentWithGoogleDriveJson).meta.templateId,
 	TaskManagementAgent: getWorkflowJson(taskManagementAgentWithGoogleSheetsJson).meta.templateId,
 	JokeAgent: getWorkflowJson(jokeAgentWithHttpToolJson).meta.templateId,
+	VoiceAssistantAgent: getWorkflowJson(voiceAssistantAgentJson).meta.templateId,
 } as const;
 
 export const isPrebuiltAgentTemplateId = (value: string): boolean => {
@@ -55,14 +57,10 @@ interface PrebuiltAgentTemplate {
 export const getPrebuiltAgents = (): PrebuiltAgentTemplate[] => {
 	return [
 		{
-			name: 'Voice assistant agent',
-			description: 'Personal AI assistant in Telegram, handling both text and voice messages.',
-			template: getWorkflowJson(voiceAssistantAgentWithTelegramAndGcalJson),
+			name: 'Calendar agent',
+			description: 'Personal AI assistant for managing calendar events and availability.',
+			template: getWorkflowJson(calendarAgentJson),
 			nodes: [
-				{
-					name: 'n8n-nodes-base.telegram',
-					version: 1.2,
-				},
 				{
 					name: 'n8n-nodes-base.googleCalendar',
 					version: 1.3,
@@ -113,6 +111,17 @@ export const getPrebuiltAgents = (): PrebuiltAgentTemplate[] => {
 				{
 					name: 'n8n-nodes-base.httpRequest',
 					version: 4.2,
+				},
+			],
+		},
+		{
+			name: 'Voice assistant agent',
+			description: 'Personal AI assistant in Telegram, handling both text and voice messages.',
+			template: getWorkflowJson(voiceAssistantAgentJson),
+			nodes: [
+				{
+					name: 'n8n-nodes-base.telegram',
+					version: 1.2,
 				},
 			],
 		},
