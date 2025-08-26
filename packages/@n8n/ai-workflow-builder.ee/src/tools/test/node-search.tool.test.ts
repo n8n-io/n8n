@@ -222,6 +222,7 @@ describe('NodeSearchTool', () => {
 					{
 						queries: [
 							{
+								// @ts-expect-error
 								queryType: 'invalid',
 								query: 'test',
 							},
