@@ -82,4 +82,3 @@ function generateTimezoneData() {
 	}, {});
 	writeFileSync(path.resolve(ROOT_DIR, 'dist/timezones.json'), JSON.stringify({ data }));
 }
-
