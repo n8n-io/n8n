@@ -522,10 +522,7 @@
 	--color-menu-active-background: var(--p-gray-670);
 
 	/* Ag Grid */
-	--grid-row-hover-background: var(--color-background-light-base);
 	--grid-row-selected-background: var(--p-color-secondary-720);
-	--grid-cell-focus-border-color: var(--p-color-secondary-470);
-	--grid-cell-active-background: var(--color-text-xlight);
 }
 
 body[data-theme='dark'] {
