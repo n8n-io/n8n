@@ -136,7 +136,7 @@ export function useLogsExecutionData() {
 				);
 			}
 		},
-		{ throttle: 1000, immediate: true, deep: true },
+		{ throttle: 1000, immediate: true },
 	);
 
 	return {
