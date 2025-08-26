@@ -1,17 +1,17 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-const DATA_STORE_TABLE_NAME = 'data_store';
-const DATA_STORE_COLUMN_TABLE_NAME = 'data_store_column';
+const TABLE_TABLE_NAME_BEFORE = 'data_store';
+const COLUMN_TABLE_NAME_BEFORE = 'data_store_column';
 
-const DATA_TABLE_TABLE_NAME = 'data_table';
-const DATA_TABLE_COLUMN_TABLE_NAME = 'data_table_column';
+const TABLE_TABLE_NAME_AFTER = 'data_table';
+const COLUMN_TABLE_NAME_AFTER = 'data_table_column';
 
 export class ReplaceDataStoreTablesWithDataTables1754475614602 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column, dropTable } }: MigrationContext) {
-		await dropTable(DATA_STORE_COLUMN_TABLE_NAME);
-		await dropTable(DATA_STORE_TABLE_NAME);
+		await dropTable(COLUMN_TABLE_NAME_BEFORE);
+		await dropTable(TABLE_TABLE_NAME_BEFORE);
 
-		await createTable(DATA_TABLE_TABLE_NAME)
+		await createTable(TABLE_TABLE_NAME_AFTER)
 			.withColumns(
 				column('id').varchar(36).primary,
 				column('name').varchar(128).notNull,
@@ -24,7 +24,7 @@ export class ReplaceDataStoreTablesWithDataTables1754475614602 implements Revers
 			})
 			.withUniqueConstraintOn(['projectId', 'name']).withTimestamps;
 
-		await createTable(DATA_TABLE_COLUMN_TABLE_NAME)
+		await createTable(COLUMN_TABLE_NAME_AFTER)
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
 				column('name').varchar(128).notNull,
@@ -37,7 +37,7 @@ export class ReplaceDataStoreTablesWithDataTables1754475614602 implements Revers
 				column('dataTableId').varchar(36).notNull,
 			)
 			.withForeignKey('dataTableId', {
-				tableName: DATA_TABLE_TABLE_NAME,
+				tableName: TABLE_TABLE_NAME_AFTER,
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
@@ -45,10 +45,10 @@ export class ReplaceDataStoreTablesWithDataTables1754475614602 implements Revers
 	}
 
 	async down({ schemaBuilder: { createTable, column, dropTable } }: MigrationContext) {
-		await dropTable(DATA_TABLE_COLUMN_TABLE_NAME);
-		await dropTable(DATA_TABLE_TABLE_NAME);
+		await dropTable(COLUMN_TABLE_NAME_AFTER);
+		await dropTable(TABLE_TABLE_NAME_AFTER);
 
-		await createTable(DATA_STORE_TABLE_NAME)
+		await createTable(TABLE_TABLE_NAME_BEFORE)
 			.withColumns(
 				column('id').varchar(36).primary,
 				column('name').varchar(128).notNull,
@@ -62,7 +62,7 @@ export class ReplaceDataStoreTablesWithDataTables1754475614602 implements Revers
 			})
 			.withUniqueConstraintOn(['projectId', 'name']).withTimestamps;
 
-		await createTable(DATA_STORE_COLUMN_TABLE_NAME)
+		await createTable(COLUMN_TABLE_NAME_BEFORE)
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
 				column('name').varchar(128).notNull,
@@ -75,7 +75,7 @@ export class ReplaceDataStoreTablesWithDataTables1754475614602 implements Revers
 				column('dataStoreId').varchar(36).notNull,
 			)
 			.withForeignKey('dataStoreId', {
-				tableName: DATA_STORE_TABLE_NAME,
+				tableName: TABLE_TABLE_NAME_BEFORE,
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
