@@ -9,6 +9,7 @@ import {
 	DataStoreRowReturn,
 	UnexpectedError,
 	DataStoreRowsReturn,
+	DATA_TABLE_SYSTEM_COLUMNS,
 } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
@@ -76,7 +77,7 @@ export class DataStoreRowsRepository {
 		const table = this.toTableName(dataStoreId);
 		const columnNames = columns.map((c) => c.name);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = ['id', 'createdAt', 'updatedAt', ...escapedColumns];
+		const selectColumns = [...DATA_TABLE_SYSTEM_COLUMNS, ...escapedColumns];
 
 		// We insert one by one as the default behavior of returning the last inserted ID
 		// is consistent, whereas getting all inserted IDs when inserting multiple values is
@@ -295,7 +296,7 @@ export class DataStoreRowsRepository {
 	async getManyByIds(dataStoreId: string, ids: number[], columns: DataStoreColumn[]) {
 		const table = this.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = ['id', ...escapedColumns];
+		const selectColumns = [...DATA_TABLE_SYSTEM_COLUMNS, ...escapedColumns];
 
 		if (ids.length === 0) {
 			return [];

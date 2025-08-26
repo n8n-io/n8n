@@ -1113,8 +1113,8 @@ describe('dataStore', () => {
 					c2: 'foo',
 					c3: true,
 					c4: now,
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
 				},
 				{
 					id: 2,
@@ -1122,8 +1122,8 @@ describe('dataStore', () => {
 					c2: 'bar',
 					c3: false,
 					c4: now,
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
 				},
 				{
 					id: 3,
@@ -1131,8 +1131,8 @@ describe('dataStore', () => {
 					c2: null,
 					c3: null,
 					c4: null,
-					createdAt: expect.any(String),
-					updatedAt: expect.any(String),
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
 				},
 			]);
 		});
@@ -1509,6 +1509,8 @@ describe('dataStore', () => {
 						age: 31,
 						pid: '1995-111a',
 						birthday: new Date('1995-01-01'),
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
 					},
 					{
 						id: 2,
@@ -1516,6 +1518,8 @@ describe('dataStore', () => {
 						age: 30,
 						pid: '1992-222b',
 						birthday: new Date('1992-01-01'),
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
 					},
 				]),
 			);
