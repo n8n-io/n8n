@@ -47,6 +47,13 @@ function getConditionAndParams(
 			return [`${column} != :${paramName}`, { [paramName]: filter.value }];
 		// case-sensitive
 		case 'like':
+			if (filter.value === null || filter.value === undefined) {
+				throw new UnexpectedError('LIKE filter value cannot be null or undefined');
+			}
+			if (typeof filter.value !== 'string') {
+				throw new UnexpectedError('LIKE filter value must be a string');
+			}
+
 			if (dbType === 'sqlite') {
 				// SQLite GLOB is case-sensitive and uses * instead of %
 				const globValue = filter.value.toString().replace(/%/g, '*').replace(/_/g, '?');
