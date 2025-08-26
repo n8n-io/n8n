@@ -1,3 +1,50 @@
+# [1.109.0](https://github.com/n8n-io/n8n/compare/n8n@1.108.0...n8n@1.109.0) (2025-08-25)
+
+
+### Bug Fixes
+
+* Also run DB tests in CI when any test inside CLI package have changes ([#18527](https://github.com/n8n-io/n8n/issues/18527)) ([3386047](https://github.com/n8n-io/n8n/commit/33860473213e35e9e4ca6725b05342cd3954f15c))
+* Change siderbar to use innerWidth instead of outerWidth ([#18727](https://github.com/n8n-io/n8n/issues/18727)) ([4206b4a](https://github.com/n8n-io/n8n/commit/4206b4ab50f77fac326e7826e23dc145a5294029))
+* **core:** Don't reveal whether files exists if they're not within allowed paths ([#18480](https://github.com/n8n-io/n8n/issues/18480)) ([970351b](https://github.com/n8n-io/n8n/commit/970351bf238f475128d712d9bb2115c3d5ec0e2f))
+* **core:** Dynamically import `@sentry/node-native` ([#18586](https://github.com/n8n-io/n8n/issues/18586)) ([0f463c7](https://github.com/n8n-io/n8n/commit/0f463c781d56df5f1e24b0b333885ac2143a0f7c))
+* **core:** Ensure error.message is a string before checking for specific messages ([#17417](https://github.com/n8n-io/n8n/issues/17417)) ([0d4c890](https://github.com/n8n-io/n8n/commit/0d4c89058d3927f2c8b601e691a38181d9fb1d06))
+* **core:** Fix getting webhook methods from path only when dynamic webhook path ([#17803](https://github.com/n8n-io/n8n/issues/17803)) ([a5c6e2f](https://github.com/n8n-io/n8n/commit/a5c6e2fecfd2ee64c28298a915bfc83ad4e35331))
+* **core:** Handle insights by workflow table for deleted workflows ([#18496](https://github.com/n8n-io/n8n/issues/18496)) ([741dd69](https://github.com/n8n-io/n8n/commit/741dd693a474d905e73a90214aa143d5ca26af7f))
+* **core:** Integer overflow in insights runtime calculation ([#18122](https://github.com/n8n-io/n8n/issues/18122)) ([c767831](https://github.com/n8n-io/n8n/commit/c7678311b3f6f69b80e6ff1d3dd5a8354ae16f6e))
+* **core:** Make first queue reconciliation immediate on startup ([#18490](https://github.com/n8n-io/n8n/issues/18490)) ([961fc53](https://github.com/n8n-io/n8n/commit/961fc538d7df06b0878dce43805df886377313b5))
+* **core:** Move `/module-settings` behind auth ([#18492](https://github.com/n8n-io/n8n/issues/18492)) ([df54c10](https://github.com/n8n-io/n8n/commit/df54c10172bb6143a0d0d5eaa66189b379aaca06))
+* **core:** Redact secrets from credential test error message ([#18386](https://github.com/n8n-io/n8n/issues/18386)) ([309048a](https://github.com/n8n-io/n8n/commit/309048ae3cfb344f73bb62355357460503210da9))
+* **core:** Restore community node types controller ([#18665](https://github.com/n8n-io/n8n/issues/18665)) ([110439c](https://github.com/n8n-io/n8n/commit/110439c010b9ad6018ee2e3d806f95a4dac83e22))
+* Do not wait for community nodes to load ([#18628](https://github.com/n8n-io/n8n/issues/18628)) ([f7a6631](https://github.com/n8n-io/n8n/commit/f7a663172b29873904455486695ba5feb9c9f6dd))
+* **editor:** Add fallback color for NodeItem Icons ([#18607](https://github.com/n8n-io/n8n/issues/18607)) ([c8dc7d9](https://github.com/n8n-io/n8n/commit/c8dc7d9ab6a8a25793f85c828c82e00a69268ccd))
+* **editor:** Change the underlying data store db column types to support decimal numbers ([#18549](https://github.com/n8n-io/n8n/issues/18549)) ([25d6636](https://github.com/n8n-io/n8n/commit/25d66367110db827ea5f511c34d9b2cabffb24d0))
+* **editor:** Dont check for whats new if in demo mode ([#18532](https://github.com/n8n-io/n8n/issues/18532)) ([9881b9e](https://github.com/n8n-io/n8n/commit/9881b9e4358be73210cfda52c024d6ffd4318178))
+* **editor:** Fix importing curl commands with comma ([#18409](https://github.com/n8n-io/n8n/issues/18409)) ([d3431c0](https://github.com/n8n-io/n8n/commit/d3431c0ae5a3e64a3511c190826cafc3640ddd6c))
+* **editor:** Hide sso auth protocol selection if no license available ([#18655](https://github.com/n8n-io/n8n/issues/18655)) ([8b4e8f3](https://github.com/n8n-io/n8n/commit/8b4e8f347f659b14fffc7d9286acee23d9b94ef2))
+* **editor:** Refactor for-of loops to replace forEach on Set.values() for node 20 compatibility ([#18529](https://github.com/n8n-io/n8n/issues/18529)) ([06b586a](https://github.com/n8n-io/n8n/commit/06b586af44f4139d45e79bc020ed0ebdab275988))
+* **editor:** Show test URL when trigger is listening because of a connected node ([#18403](https://github.com/n8n-io/n8n/issues/18403)) ([010b6dc](https://github.com/n8n-io/n8n/commit/010b6dc7a5c1fa536f68d3a72d41b9e39338a273))
+* **editor:** Update misleading toaster success message when creating a personal workflow / credential ([#18541](https://github.com/n8n-io/n8n/issues/18541)) ([b6681bb](https://github.com/n8n-io/n8n/commit/b6681bb92cd0ee75f2ea03244a2dfdb549354657))
+* **HTTP Request Node:** Handle response errors correctly when continueOnFail is set ([#18207](https://github.com/n8n-io/n8n/issues/18207)) ([5c53c22](https://github.com/n8n-io/n8n/commit/5c53c22d0a3f3a149f006c3ca1efb05da77ca6a8))
+* **Microsoft SQL Node:** Correctly resolve expressions with dollar signs ([#18411](https://github.com/n8n-io/n8n/issues/18411)) ([f49f2cb](https://github.com/n8n-io/n8n/commit/f49f2cb59eab5092df0b6101cd227403b12f5726))
+* **Slack Node:** Refine label name for reply broadcast setting ([#15658](https://github.com/n8n-io/n8n/issues/15658)) ([5339350](https://github.com/n8n-io/n8n/commit/53393508ea5f3afa2c4be2d6877e6e9842ac71dc))
+
+
+### Features
+
+* **core:** Enable modules to append to workflow context ([#18551](https://github.com/n8n-io/n8n/issues/18551)) ([0488ea3](https://github.com/n8n-io/n8n/commit/0488ea3e8d42d228f3b663f1cb37ca7502494bc9))
+* **editor:** Add Alt+Meta+O keyboard shortcut for the About modal ([#18530](https://github.com/n8n-io/n8n/issues/18530)) ([94526b9](https://github.com/n8n-io/n8n/commit/94526b997571b4774ed1be242fa59c021e8b0410))
+* **editor:** Add mechanism for showing hidden nodes if required modules are enabled ([#18585](https://github.com/n8n-io/n8n/issues/18585)) ([da88075](https://github.com/n8n-io/n8n/commit/da8807562310224379388398824b071a36584c59))
+* Evaluation framework for AI Workflow Builder ([#18016](https://github.com/n8n-io/n8n/issues/18016)) ([fb3a2ae](https://github.com/n8n-io/n8n/commit/fb3a2ae2167b4f0077026931a601478ee74e09c0))
+* **OpenAI Node:** Add reasoning effort for GPT-5 ([#18644](https://github.com/n8n-io/n8n/issues/18644)) ([ca8629e](https://github.com/n8n-io/n8n/commit/ca8629ef30e75637d04fa5a57959a7a546a9fec1))
+
+
+### Performance Improvements
+
+* **core:** Optimize workflow getNodeConnectionIndexes ([#18542](https://github.com/n8n-io/n8n/issues/18542)) ([554327e](https://github.com/n8n-io/n8n/commit/554327ee78e488cd773bd7f547c696ffd3d10985))
+* **OpenAI Node:** Use streaming for file operations ([#18666](https://github.com/n8n-io/n8n/issues/18666)) ([1f1730c](https://github.com/n8n-io/n8n/commit/1f1730c27d491a444507f9de1db9b6988dfcf455))
+
+
+
 # [1.108.0](https://github.com/n8n-io/n8n/compare/n8n@1.107.0...n8n@1.108.0) (2025-08-18)
 
 

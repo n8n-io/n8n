@@ -36,6 +36,7 @@ export {
 	type InsightsByWorkflow,
 	type InsightsByTime,
 	type InsightsDateRange,
+	type RestrictedInsightsByTime,
 } from './schemas/insights.schema';
 
 export {
