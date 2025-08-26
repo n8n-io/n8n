@@ -2,15 +2,15 @@ import json
 from dataclasses import asdict
 from typing import cast
 
-from .message_types.broker import NodeMode, TaskSettings
-from .constants import (
+from src.message_types.broker import NodeMode, TaskSettings
+from src.constants import (
     BROKER_INFO_REQUEST,
     BROKER_RUNNER_REGISTERED,
     BROKER_TASK_CANCEL,
     BROKER_TASK_OFFER_ACCEPT,
     BROKER_TASK_SETTINGS,
 )
-from .message_types import (
+from src.message_types import (
     BrokerMessage,
     RunnerMessage,
     BrokerInfoRequest,

@@ -8,9 +8,9 @@ import websockets
 import random
 
 
-from .errors import WebsocketConnectionError, TaskMissingError
-from .message_types.broker import TaskSettings
-from .nanoid import nanoid
+from src.errors import WebsocketConnectionError, TaskMissingError
+from src.message_types.broker import TaskSettings
+from src.nanoid_utils import nanoid
 
 from .constants import (
     RUNNER_NAME,

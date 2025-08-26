@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal, Union, List, Dict, Any
 
-from ..constants import (
+from src.constants import (
     BROKER_INFO_REQUEST,
     BROKER_RUNNER_REGISTERED,
     BROKER_TASK_CANCEL,

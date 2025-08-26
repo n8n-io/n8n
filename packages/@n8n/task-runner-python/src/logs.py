@@ -1,6 +1,7 @@
+import sys
 import logging
 import os
-from .constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT, ENV_HIDE_TASK_OFFER_LOGS
+from src.constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT, ENV_HIDE_TASK_OFFER_LOGS
 
 COLORS = {
     "DEBUG": "\033[34m",  # blue
@@ -19,6 +20,8 @@ class ColorFormatter(logging.Formatter):
         self.use_colors = os.getenv("NO_COLOR") is None
 
     def format(self, record):
+        if os.getenv("N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED") == "true":
+            return record.getMessage()
         formatted = super().format(record)
 
         if not self.use_colors:
@@ -62,11 +65,13 @@ class TaskOfferFilter(logging.Filter):
 def setup_logging():
     logger = logging.getLogger()
 
+    # TODO: Inherit log level from launcher
+
     logger.setLevel(logging.INFO)
 
-    stream_handler = logging.StreamHandler()
+    stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(ColorFormatter(LOG_FORMAT, LOG_TIMESTAMP_FORMAT))
     stream_handler.addFilter(TaskOfferFilter())
     logger.addHandler(stream_handler)
 
-    logging.getLogger("websockets.client").setLevel(logging.DEBUG)
+    # logging.getLogger("websockets.client").setLevel(logging.DEBUG)

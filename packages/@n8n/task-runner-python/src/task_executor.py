@@ -3,7 +3,7 @@ import multiprocessing
 import traceback
 import textwrap
 
-from .errors import (
+from src.errors import (
     TaskResultMissingError,
     TaskRuntimeError,
     TaskTimeoutError,
