@@ -18,7 +18,6 @@ import {
 	escapeLikeSpecials,
 	extractInsertedIds,
 	extractReturningData,
-	getPlaceholder,
 	normalizeRows,
 	normalizeValue,
 	quoteIdentifier,
@@ -287,12 +286,15 @@ export class DataStoreRowsRepository {
 			return true;
 		}
 
-		const dbType = this.dataSource.options.type;
-		const quotedTableName = quoteIdentifier(this.toTableName(dataStoreId), dbType);
-		const placeholders = ids.map((_, index) => getPlaceholder(index + 1, dbType)).join(', ');
-		const query = `DELETE FROM ${quotedTableName} WHERE id IN (${placeholders})`;
+		const table = this.toTableName(dataStoreId);
 
-		await this.dataSource.query(query, ids);
+		await this.dataSource
+			.createQueryBuilder()
+			.delete()
+			.from(table, 'dataStore')
+			.where({ id: In(ids) })
+			.execute();
+
 		return true;
 	}
 

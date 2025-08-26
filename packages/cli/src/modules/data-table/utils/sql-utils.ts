@@ -287,7 +287,3 @@ export function escapeLikeSpecials(input: string): string {
 		.replace(/\\/g, '\\\\') // escape the escape char itself
 		.replace(/_/g, '\\_'); // make '_' literal ('%' stays a wildcard)
 }
-
-export function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
-	return dbType.includes('postgres') ? `$${index}` : '?';
-}
