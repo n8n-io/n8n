@@ -1,8 +1,6 @@
 import {
 	FolderRepository,
 	FolderWithWorkflowAndSubFolderCount,
-	GLOBAL_ADMIN_ROLE,
-	GLOBAL_MEMBER_ROLE,
 	TagEntity,
 	TagRepository,
 	User,
@@ -46,7 +44,7 @@ describe('getStatus', () => {
 	it('ensure updatedAt field for last deleted tag', async () => {
 		// ARRANGE
 		const user = mock<User>({
-			role: GLOBAL_ADMIN_ROLE,
+			role: 'global:admin',
 		});
 
 		sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);
@@ -102,7 +100,7 @@ describe('getStatus', () => {
 	it('ensure updatedAt field for last deleted folder', async () => {
 		// ARRANGE
 		const user = mock<User>({
-			role: GLOBAL_ADMIN_ROLE,
+			role: 'global:admin',
 		});
 
 		sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);
@@ -161,7 +159,7 @@ describe('getStatus', () => {
 	it('conflict depends on the value of `direction`', async () => {
 		// ARRANGE
 		const user = mock<User>({
-			role: GLOBAL_ADMIN_ROLE,
+			role: 'global:admin',
 		});
 
 		// Define a credential that does only exist locally.
@@ -268,7 +266,7 @@ describe('getStatus', () => {
 	it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
 		// ARRANGE
 		const user = mock<User>({
-			role: GLOBAL_MEMBER_ROLE,
+			role: 'global:member',
 		});
 
 		// ACT
