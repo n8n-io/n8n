@@ -1,6 +1,7 @@
+import sys
 import logging
 import os
-from .constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT, ENV_HIDE_TASK_OFFER_LOGS
+from src.constants import LOG_FORMAT, LOG_TIMESTAMP_FORMAT
 
 COLORS = {
     "DEBUG": "\033[34m",  # blue
@@ -16,9 +17,16 @@ RESET = "\033[0m"
 class ColorFormatter(logging.Formatter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.use_colors = os.getenv("NO_COLOR") is None
 
+        # When started by launcher, log level and timestamp are handled by launcher.
+        self.short_form = os.getenv("N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED") == "true"
+
     def format(self, record):
+        if self.short_form:
+            return record.getMessage()
+
         formatted = super().format(record)
 
         if not self.use_colors:
@@ -41,32 +49,18 @@ class ColorFormatter(logging.Formatter):
         return formatted
 
 
-class TaskOfferFilter(logging.Filter):
-    def __init__(self):
-        super().__init__()
-        self.hide_offers = os.getenv(ENV_HIDE_TASK_OFFER_LOGS, "").lower() == "true"
-
-    def filter(self, record):
-        """Filter out task offers if N8N_RUNNERS_HIDE_TASK_OFFER_LOGS is 'true'."""
-
-        return not (self.hide_offers and self._is_task_offer_message(record))
-
-    def _is_task_offer_message(self, record):
-        return (
-            record.levelname == "DEBUG"
-            and "websockets" in record.name
-            and '"runner:taskoffer"' in record.getMessage()
-        )
-
-
 def setup_logging():
     logger = logging.getLogger()
 
-    logger.setLevel(logging.INFO)
+    log_level_str = os.getenv("N8N_RUNNERS_LAUNCHER_LOG_LEVEL", "INFO").upper()
+    log_level = getattr(logging, log_level_str, logging.INFO)
+    logger.setLevel(log_level)
 
-    stream_handler = logging.StreamHandler()
+    stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(ColorFormatter(LOG_FORMAT, LOG_TIMESTAMP_FORMAT))
-    stream_handler.addFilter(TaskOfferFilter())
     logger.addHandler(stream_handler)
 
-    logging.getLogger("websockets.client").setLevel(logging.DEBUG)
+    # Hardcoded to INFO as websocket logs are too verbose
+    logging.getLogger("websockets.client").setLevel(logging.INFO)
+    logging.getLogger("websockets.server").setLevel(logging.INFO)
+    logging.getLogger("websockets").setLevel(logging.INFO)
