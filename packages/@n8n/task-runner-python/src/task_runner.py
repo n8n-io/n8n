@@ -8,9 +8,9 @@ import websockets
 import random
 
 
-from .errors import WebsocketConnectionError, TaskMissingError
-from .message_types.broker import TaskSettings
-from .nanoid import nanoid
+from src.errors import WebsocketConnectionError, TaskMissingError
+from src.message_types.broker import TaskSettings
+from src.nanoid_utils import nanoid
 
 from .constants import (
     RUNNER_NAME,
@@ -22,6 +22,7 @@ from .constants import (
     OFFER_VALIDITY_MAX_JITTER,
     OFFER_VALIDITY_LATENCY_BUFFER,
     TASK_BROKER_WS_PATH,
+    RPC_BROWSER_CONSOLE_LOG_METHOD,
 )
 from .message_types import (
     BrokerMessage,
@@ -31,12 +32,14 @@ from .message_types import (
     BrokerTaskOfferAccept,
     BrokerTaskSettings,
     BrokerTaskCancel,
+    BrokerRpcResponse,
     RunnerInfo,
     RunnerTaskOffer,
     RunnerTaskAccepted,
     RunnerTaskRejected,
     RunnerTaskDone,
     RunnerTaskError,
+    RunnerRpcCall,
 )
 from .message_serde import MessageSerde
 from .task_state import TaskState, TaskStatus
@@ -140,6 +143,8 @@ class TaskRunner:
                 await self._handle_task_settings(message)
             case BrokerTaskCancel():
                 await self._handle_task_cancel(message)
+            case BrokerRpcResponse():
+                pass  # currently only logging, already handled by browser
             case _:
                 self.logger.warning(f"Unhandled message type: {type(message)}")
 
@@ -208,9 +213,14 @@ class TaskRunner:
 
             task_state.process = process
 
-            result = self.executor.execute_process(
+            result, print_args = self.executor.execute_process(
                 process, queue, self.opts.task_timeout, task_settings.continue_on_fail
             )
+
+            for print_args_per_call in print_args:
+                await self._send_rpc_message(
+                    task_id, RPC_BROWSER_CONSOLE_LOG_METHOD, print_args_per_call
+                )
 
             response = RunnerTaskDone(task_id=task_id, data={"result": result})
             await self._send_message(response)
@@ -240,6 +250,13 @@ class TaskRunner:
         if task_state.status == TaskStatus.RUNNING:
             task_state.status = TaskStatus.ABORTING
             self.executor.stop_process(task_state.process)
+
+    async def _send_rpc_message(self, task_id: str, method_name: str, params: list):
+        message = RunnerRpcCall(
+            call_id=nanoid(), task_id=task_id, name=method_name, params=params
+        )
+
+        await self._send_message(message)
 
     async def _send_message(self, message: RunnerMessage) -> None:
         if self.websocket_connection is None:
