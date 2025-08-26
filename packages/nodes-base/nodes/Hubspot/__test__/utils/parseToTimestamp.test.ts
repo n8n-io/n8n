@@ -11,4 +11,9 @@ describe('parseToTimestamp', () => {
 		const invalidDateString = 'invalid-date';
 		expect(() => parseToTimestamp(invalidDateString)).toThrow('Invalid date string');
 	});
+
+	it('should throw an error when input is not a string', () => {
+		const invalidDateString = 1234567890;
+		expect(() => parseToTimestamp(invalidDateString)).toThrow('Invalid date string');
+	});
 });
