@@ -86,7 +86,10 @@ function generateTimezoneData() {
 
 function generateThirdPartyLicenses() {
 	console.log('Generating third-party licenses...');
-	const result = shell.exec('pnpm run generate:third-party-licenses', { silent: false, cwd: path.resolve(ROOT_DIR, '..', '..') });
+	const result = shell.exec('pnpm run generate:third-party-licenses', {
+		silent: false,
+		cwd: path.resolve(ROOT_DIR, '..', '..'),
+	});
 	if (result.code !== 0) {
 		console.warn('⚠️  Warning: Third-party license generation failed, continuing build...');
 		console.warn(`License generation error code: ${result.code}`);
