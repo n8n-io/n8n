@@ -101,7 +101,9 @@ export class DataStoreRowsRepository {
 			const result = await query.execute();
 
 			if (useReturning) {
-				const returned = normalizeRows(extractReturningData(result.raw), columns);
+				const returned = returnData
+					? normalizeRows(extractReturningData(result.raw), columns)
+					: extractInsertedIds(result.raw, dbType);
 				inserted.push.apply(inserted, returned);
 				continue;
 			}
