@@ -30,7 +30,7 @@ const workflowHistoryRoute = computed<{ name: string; params: { workflowId: stri
 			<N8nIconButton
 				:disabled="isNewWorkflow || !isFeatureEnabled"
 				data-test-id="workflow-history-button"
-				type="highlight"
+				type="tertiary"
 				icon="history"
 				size="medium"
 			/>
