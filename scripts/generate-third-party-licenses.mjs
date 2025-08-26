@@ -37,7 +37,7 @@ async function generateLicenseData() {
   const formatPath = path.join(__dirname, 'third-party-license-format.json');
 
   try {
-    await $`license-checker --json --customPath ${formatPath}`.pipe(fs.createWriteStream(licensesJsonPath));
+    await $`pnpm exec license-checker --json --customPath ${formatPath}`.pipe(fs.createWriteStream(licensesJsonPath));
     return licensesJsonPath;
   } catch (error) {
     echo(chalk.red('Error: Failed to run license-checker'));
@@ -195,9 +195,10 @@ async function main() {
 
   // Check if license-checker is available
   try {
-    await $`license-checker --version`;
+    await $`pnpm exec license-checker --version`.nothrow();
+    echo(chalk.green('License-checker is available'));
   } catch (error) {
-    echo(chalk.red('Error: license-checker is not installed. Run: npm install -g license-checker'));
+    echo(chalk.red('Error: license-checker is not installed. Run: pnpm install'));
     process.exit(1);
   }
 
