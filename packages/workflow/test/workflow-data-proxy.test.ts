@@ -1060,5 +1060,88 @@ describe('WorkflowDataProxy', () => {
 				'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
 			);
 		});
+
+		test('should show helpful error message when accessing non-existent node', () => {
+			const workflow: IWorkflowBase = {
+				id: '1',
+				name: 'test-workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Real Node',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const run = {
+				data: {
+					resultData: {
+						runData: {
+							'Real Node': [
+								{
+									data: {
+										main: [[{ json: { test: 'data' } }]],
+									},
+									source: [null],
+									startTime: 123,
+									executionTime: 456,
+									executionIndex: 0,
+								},
+							],
+						},
+					},
+				},
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				status: 'success' as const,
+			};
+
+			const proxy = getProxyFromFixture(workflow, run, 'Real Node');
+
+			// Should throw helpful error when trying to access a non-existent node
+			let error: ExpressionError | undefined;
+			try {
+				proxy.$('NonExistentNode').item;
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+
+			expect(error).toBeDefined();
+			expect(error).toBeInstanceOf(ExpressionError);
+			expect(error!.message).toBe("Referenced node doesn't exist");
+			expect(error!.context.descriptionKey).toBe('nodeNotFound');
+			expect(error!.context.nodeCause).toBe('NonExistentNode');
+		});
+
+		test('should show error when accessing item with invalid index via direct proxy access', () => {
+			// Use existing fixture data to test the item index validation path
+			const fixture = loadFixture('base');
+
+			// Create a proxy with itemIndex that exceeds available items for a node
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Set Node', 'manual', {
+				throwOnMissingExecutionData: true,
+				runIndex: 10, // itemIndex way too high
+			});
+
+			let error: ExpressionError | undefined;
+			try {
+				// This should trigger the error path for invalid item index
+				proxy.$('Set Node').item;
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+
+			expect(error).toBeDefined();
+			expect(error).toBeInstanceOf(ExpressionError);
+		});
 	});
 });
