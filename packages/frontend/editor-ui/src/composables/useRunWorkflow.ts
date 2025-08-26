@@ -126,6 +126,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		rerunTriggerNode?: boolean;
 		nodeData?: ITaskData;
 		source?: string;
+		metadata?: Record<string, string>;
 	}): Promise<IExecutionPushResponse | undefined> {
 		if (workflowsStore.activeExecutionId) {
 			return;
@@ -323,6 +324,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				startNodes,
 				triggerToStartFrom,
 			};
+
+			if (options.metadata) {
+				startRunData.metadata = options.metadata;
+			}
 
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;

@@ -33,6 +33,7 @@ export declare namespace WorkflowRequest {
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
 		dirtyNodeNames?: string[];
+		metadata?: Record<string, string>;
 		triggerToStartFrom?: {
 			name: string;
 			data?: ITaskData;

@@ -3,6 +3,7 @@ import type { BaseChatMemory } from 'langchain/memory';
 import {
 	autoSaveHighlightedDataProperty,
 	getHighlightedInputKey,
+	getHighlightedResponseKey,
 } from 'n8n-nodes-base/dist/utils/highlightedData';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -205,16 +206,15 @@ export class Chat implements INodeType {
 			return [inputData];
 		}
 
+		const message = data.json?.chatInput as string;
+		if (context.getNodeParameter('options.autoSaveHighlightedData', 0, true) !== false) {
+			context.customData.set(getHighlightedInputKey(context.getNode().name), message);
+		}
+
 		if (options.memoryConnection) {
 			const memory = (await context.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 				| BaseChatMemory
 				| undefined;
-
-			const message = data.json?.chatInput as string;
-
-			if (context.getNodeParameter('options.autoSaveHighlightedData', 0, true) !== false) {
-				context.customData.set(getHighlightedInputKey(context.getNode().name), message);
-			}
 
 			if (memory && message) {
 				await memory.chatHistory.addUserMessage(message);
@@ -263,6 +263,10 @@ export class Chat implements INodeType {
 		const options = this.getNodeParameter('options', 0, {}) as {
 			memoryConnection?: boolean;
 		};
+
+		if (this.getNodeParameter('options.autoSaveHighlightedData', 0, true) !== false) {
+			this.customData.set(getHighlightedResponseKey(this.getNode().name), message);
+		}
 
 		if (options.memoryConnection) {
 			const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
