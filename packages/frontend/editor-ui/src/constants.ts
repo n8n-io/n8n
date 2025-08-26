@@ -603,6 +603,7 @@ export const enum VIEWS {
 	SHARED_CREDENTIALS = 'SharedCredentials',
 	ENTITY_NOT_FOUND = 'EntityNotFound',
 	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
+	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
