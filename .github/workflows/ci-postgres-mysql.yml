@@ -80,13 +80,10 @@ jobs:
         run: pnpm test:mariadb --testTimeout 120000
 
   mysql:
-    name: MySQL (${{ matrix.service-name }})
+    name: MySQL 8.4
     needs: build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
-    strategy:
-      matrix:
-        service-name: ['mysql-8.0.13', 'mysql-8.4']
     env:
       DB_MYSQLDB_PASSWORD: password
     steps:
@@ -99,8 +96,7 @@ jobs:
         uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
         with:
           compose-file: ./.github/docker-compose.yml
-          services: |
-            ${{ matrix.service-name }}
+          services: mysql-8.4
 
       - name: Test MySQL
         working-directory: packages/cli
