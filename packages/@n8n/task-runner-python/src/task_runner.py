@@ -212,13 +212,13 @@ class TaskRunner:
 
             task_state.process = process
 
-            result, print_logs = self.executor.execute_process(
+            result, print_args = self.executor.execute_process(
                 process, queue, self.opts.task_timeout, task_settings.continue_on_fail
             )
 
-            for print_logs_per_call in print_logs:
+            for print_args_per_call in print_args:
                 await self._send_rpc_message(
-                    task_id, RPC_BROWSER_CONSOLE_LOG_METHOD, print_logs_per_call
+                    task_id, RPC_BROWSER_CONSOLE_LOG_METHOD, print_args_per_call
                 )
 
             response = RunnerTaskDone(task_id=task_id, data={"result": result})
