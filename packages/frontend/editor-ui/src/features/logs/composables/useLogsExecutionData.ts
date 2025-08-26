@@ -9,6 +9,7 @@ import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 import type { LatestNodeInfo, LogEntry } from '../logs.types';
 import { isChatNode } from '@/utils/aiUtils';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 
 export function useLogsExecutionData() {
 	const nodeHelpers = useNodeHelpers();
@@ -47,6 +48,7 @@ export function useLogsExecutionData() {
 			nodes.some(isChatNode),
 		),
 	);
+
 	const entries = computed<LogEntry[]>(() => {
 		if (!execData.value?.data || !workflow.value) {
 			return [];
@@ -59,7 +61,8 @@ export function useLogsExecutionData() {
 			subWorkflowExecData.value,
 		);
 	});
-	const updateInterval = computed(() => ((entries.value?.length ?? 0) > 10 ? 300 : 0));
+
+	const updateInterval = computed(() => ((entries.value?.length ?? 0) > 1 ? 1000 : 0));
 
 	function resetExecutionData() {
 		execData.value = undefined;
@@ -124,6 +127,15 @@ export function useLogsExecutionData() {
 			true,
 		),
 		{ immediate: true },
+	);
+
+	watch(
+		() => workflowsStore.workflowId,
+		(newId) => {
+			if (newId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				resetExecutionData();
+			}
+		},
 	);
 
 	return {

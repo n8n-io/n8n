@@ -192,24 +192,7 @@ function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
 	return subTree[subTree.length - 1];
 }
 
-export function createLogTree(
-	workflow: Workflow,
-	response: IExecutionResponse,
-	workflows: Record<string, Workflow> = {},
-	subWorkflowData: Record<string, IRunExecutionData> = {},
-) {
-	return createLogTreeRec({
-		parent: undefined,
-		ancestorRunIndexes: [],
-		executionId: response.id,
-		workflow,
-		workflows,
-		data: response.data ?? { resultData: { runData: {} } },
-		subWorkflowData,
-	});
-}
-
-function createLogTreeRec(context: LogTreeCreationContext) {
+function createLogTreeRec(context: LogTreeCreationContext): LogEntry[] {
 	const runData = context.data.resultData.runData;
 
 	return Object.entries(runData)
@@ -256,6 +239,23 @@ function createLogTreeRec(context: LogTreeCreationContext) {
 			getTreeNodeData(node, task, nodeHasMultipleRuns ? runIndex : undefined, context),
 		)
 		.sort(sortLogEntries);
+}
+
+export function createLogTree(
+	workflow: Workflow,
+	response: IExecutionResponse,
+	workflows: Record<string, Workflow> = {},
+	subWorkflowData: Record<string, IRunExecutionData> = {},
+): LogEntry[] {
+	return createLogTreeRec({
+		parent: undefined,
+		ancestorRunIndexes: [],
+		executionId: response.id,
+		workflow,
+		workflows,
+		data: response.data ?? { resultData: { runData: {} } },
+		subWorkflowData,
+	});
 }
 
 export function findLogEntryRec(
