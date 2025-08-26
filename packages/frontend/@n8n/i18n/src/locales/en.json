@@ -2834,7 +2834,7 @@
 	"contextual.users.settings.unavailable.button.cloud": "Upgrade now",
 	"contextual.feature.unavailable.title": "Available on the Enterprise Plan",
 	"contextual.feature.unavailable.title.cloud": "Available on the Pro Plan",
-	"dataStore.dataStores": "Data Tables",
+	"dataStore.dataStores": "Data tables",
 	"dataStore.empty.label": "You don't have any data tables yet",
 	"dataStore.empty.description": "Once you create data tables for your projects, they will appear here",
 	"dataStore.empty.button.label": "Create Data Table in \"{projectName}\"",
