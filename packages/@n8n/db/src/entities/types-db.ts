@@ -1,4 +1,4 @@
-import type { Scope } from '@n8n/permissions';
+import type { GlobalRole, Scope } from '@n8n/permissions';
 import type { FindOperator } from '@n8n/typeorm';
 import type express from 'express';
 import type {
@@ -105,7 +105,7 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
-	role?: string;
+	role?: GlobalRole;
 	globalScopes?: Scope[];
 	signInType: AuthProviderType;
 	disabled: boolean;

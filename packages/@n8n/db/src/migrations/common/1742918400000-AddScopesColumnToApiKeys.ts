@@ -1,7 +1,6 @@
 import type { GlobalRole } from '@n8n/permissions';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 
-import { GLOBAL_ROLES } from '../../constants';
 import { ApiKey } from '../../entities';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
@@ -27,10 +26,7 @@ export class AddScopesColumnToApiKeys1742918400000 implements ReversibleMigratio
 		);
 
 		for (const { id, role } of apiKeysWithRoles) {
-			const dbRole = GLOBAL_ROLES[role];
-			const scopes = getApiKeyScopesForRole({
-				role: dbRole,
-			});
+			const scopes = getApiKeyScopesForRole(role);
 			await queryRunner.manager.update(ApiKey, { id }, { scopes });
 		}
 	}

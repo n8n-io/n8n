@@ -95,7 +95,7 @@ describe('Users in Public API', () => {
 			expect(returnedUser.id).toBe(storedUser.id);
 			expect(returnedUser.email).toBe(storedUser.email);
 			expect(returnedUser.email).toBe(payloadUser.email);
-			expect(storedUser.role.slug).toBe(payloadUser.role);
+			expect(storedUser.role).toBe(payloadUser.role);
 		});
 	});
 
@@ -275,7 +275,7 @@ describe('Users in Public API', () => {
 			 */
 			expect(response.status).toBe(204);
 			const storedUser = await getUserById(member.id);
-			expect(storedUser.role.slug).toBe(payload.newRoleName);
+			expect(storedUser.role).toBe(payload.newRoleName);
 		});
 	});
 });
