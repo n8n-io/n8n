@@ -54,7 +54,7 @@ function getConditionAndParams(
 				throw new UnexpectedError('LIKE filter value must be a string');
 			}
 
-			if (dbType === 'sqlite') {
+			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
 				// SQLite GLOB is case-sensitive and uses * instead of %
 				const globValue = filter.value.toString().replace(/%/g, '*').replace(/_/g, '?');
 				return [`${column} GLOB :${paramName}`, { [paramName]: globValue }];
@@ -66,6 +66,13 @@ function getConditionAndParams(
 			}
 		// case-insensitive
 		case 'ilike':
+			if (filter.value === null || filter.value === undefined) {
+				throw new UnexpectedError('ILIKE filter value cannot be null or undefined');
+			}
+			if (typeof filter.value !== 'string') {
+				throw new UnexpectedError('ILIKE filter value must be a string');
+			}
+
 			if (dbType === 'postgres') {
 				return [`${column} ILIKE :${paramName}`, { [paramName]: filter.value }];
 			} else {

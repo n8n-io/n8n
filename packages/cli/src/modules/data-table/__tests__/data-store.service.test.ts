@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { AddDataStoreColumnDto, CreateDataStoreColumnDto } from '@n8n/api-types';
+import type {
+	AddDataStoreColumnDto,
+	CreateDataStoreColumnDto,
+	ListDataStoreContentFilterConditionType,
+} from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -2234,5 +2238,72 @@ describe('dataStore', () => {
 				expect.objectContaining({ name: 'Harold', age: 40 }),
 			]);
 		});
+
+		describe.each(['like', 'ilike'] as ListDataStoreContentFilterConditionType[])(
+			'%s filter validation',
+			(condition) => {
+				it(`throws error when '${condition}' filter value is null`, async () => {
+					// ARRANGE
+					const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+						name: 'dataStore',
+						columns: [
+							{ name: 'name', type: 'string' },
+							{ name: 'age', type: 'number' },
+						],
+					});
+
+					const rows = [
+						{ name: 'John', age: 30 },
+						{ name: 'Mary', age: 25 },
+					];
+
+					await dataStoreService.insertRows(dataStoreId, project1.id, rows);
+
+					// ACT
+					const result = dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'name', value: null, condition }],
+						},
+					});
+
+					// ASSERT
+					await expect(result).rejects.toThrow(
+						`${condition.toUpperCase()} filter value cannot be null or undefined`,
+					);
+				});
+
+				it(`throws error when '${condition}' filter value is not a string`, async () => {
+					// ARRANGE
+					const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+						name: 'dataStore',
+						columns: [
+							{ name: 'name', type: 'string' },
+							{ name: 'age', type: 'number' },
+						],
+					});
+
+					const rows = [
+						{ name: 'John', age: 30 },
+						{ name: 'Mary', age: 25 },
+					];
+
+					await dataStoreService.insertRows(dataStoreId, project1.id, rows);
+
+					// ACT
+					const result = dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', value: 123, condition }],
+						},
+					});
+
+					// ASSERT
+					await expect(result).rejects.toThrow(
+						`${condition.toUpperCase()} filter value must be a string`,
+					);
+				});
+			},
+		);
 	});
 });
