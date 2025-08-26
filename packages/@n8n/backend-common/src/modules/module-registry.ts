@@ -1,5 +1,5 @@
 import { ModuleMetadata } from '@n8n/decorators';
-import type { EntityClass, ModuleSettings } from '@n8n/decorators';
+import type { EntityClass, ModuleContext, ModuleSettings } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -19,6 +19,8 @@ export class ModuleRegistry {
 
 	readonly settings: Map<string, ModuleSettings> = new Map();
 
+	readonly context: Map<string, ModuleContext> = new Map();
+
 	constructor(
 		private readonly moduleMetadata: ModuleMetadata,
 		private readonly licenseState: LicenseState,
@@ -26,7 +28,11 @@ export class ModuleRegistry {
 		private readonly modulesConfig: ModulesConfig,
 	) {}
 
-	private readonly defaultModules: ModuleName[] = ['insights', 'external-secrets'];
+	private readonly defaultModules: ModuleName[] = [
+		'insights',
+		'external-secrets',
+		'community-packages',
+	];
 
 	private readonly activeModules: string[] = [];
 
@@ -83,7 +89,7 @@ export class ModuleRegistry {
 
 			if (entities?.length) this.entities.push(...entities);
 
-			const loadDir = Container.get(ModuleClass).loadDir?.();
+			const loadDir = await Container.get(ModuleClass).loadDir?.();
 
 			if (loadDir) this.loadDirs.push(loadDir);
 		}
@@ -111,6 +117,10 @@ export class ModuleRegistry {
 			const moduleSettings = await Container.get(ModuleClass).settings?.();
 
 			if (moduleSettings) this.settings.set(moduleName, moduleSettings);
+
+			const moduleContext = await Container.get(ModuleClass).context?.();
+
+			if (moduleContext) this.context.set(moduleName, moduleContext);
 
 			this.logger.debug(`Initialized module "${moduleName}"`);
 

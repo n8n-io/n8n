@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-cli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Official CLI for developing community nodes for n8n",
   "bin": {
     "n8n-node": "bin/n8n-node.mjs"
@@ -18,7 +18,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
-    "copy-templates": "./scripts/copy-templates.mjs",
+    "copy-templates": "node scripts/copy-templates.mjs",
     "dev": "tsc -p tsconfig.build.json -w --onCompilationComplete \"pnpm copy-templates\"",
     "format": "biome format --write src",
     "format:check": "biome ci src",
