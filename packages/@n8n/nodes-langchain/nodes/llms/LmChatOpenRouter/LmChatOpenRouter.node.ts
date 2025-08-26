@@ -16,6 +16,27 @@ import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatOpenRouter implements INodeType {
+	methods = {
+		loadOptions: {
+			async getModels(this: any) {
+				const credentials = await this.getCredentials('openRouterApi');
+
+				const response = await this.helpers.httpRequest({
+					method: 'GET',
+					url: `${credentials.url}/models`,
+					headers: {
+						Authorization: `Bearer ${credentials.apiKey}`,
+					},
+				});
+
+				return response.data.map((model: any) => ({
+					name: model.id,
+					value: model.id,
+				}));
+			},
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'OpenRouter Chat Model',
 		name: 'lmChatOpenRouter',
@@ -72,49 +93,44 @@ export class LmChatOpenRouter implements INodeType {
 			{
 				displayName: 'Model',
 				name: 'model',
-				type: 'options',
-				description:
-					'The model which will generate the completion. <a href="https://openrouter.ai/docs/models">Learn more</a>.',
-				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'data',
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.id}}',
-											value: '={{$responseItem.id}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
+				type: 'resourceLocator',
+				default: { mode: 'list', value: 'openai/gpt-4.1-mini' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a model...',
+						typeOptions: {
+							searchListMethod: 'getModels',
+							searchable: true,
 						},
 					},
-				},
+					{
+						displayName: 'Custom Model ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '@preset/gpt-oss-120b-cerebras',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '(.+)',
+									errorMessage: 'Model ID cannot be empty',
+								},
+							},
+						],
+					},
+				],
+				description:
+					'The model. Choose from the list, or specify a custom model ID including @preset/ models.',
 				routing: {
 					send: {
 						type: 'body',
 						property: 'model',
 					},
 				},
-				default: 'openai/gpt-4.1-mini',
 			},
 			{
 				displayName: 'Options',
@@ -162,6 +178,7 @@ export class LmChatOpenRouter implements INodeType {
 									'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
 							},
 						],
+						hint: 'Enter custom model IDs like @preset/ models or any OpenRouter model',
 					},
 					{
 						displayName: 'Presence Penalty',
@@ -204,6 +221,37 @@ export class LmChatOpenRouter implements INodeType {
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
 					},
+					{
+						displayName: 'Reasoning Effort Level',
+						name: 'reasoningEffort',
+						default: 'low',
+						type: 'options',
+						description:
+							'Controls the amount of reasoning effort the model should use. Higher effort may improve reasoning but increase response time and cost.',
+						options: [
+							{
+								name: 'Minimal',
+								value: 'minimal',
+								description:
+									'Minimal reasoning effort for much faster responses (only available on GPT-5)',
+							},
+							{
+								name: 'Low',
+								value: 'low',
+								description: 'Low reasoning effort for faster responses',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+								description: 'Balanced reasoning effort (default)',
+							},
+							{
+								name: 'High',
+								value: 'high',
+								description: 'Maximum reasoning effort for complex tasks',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -212,7 +260,8 @@ export class LmChatOpenRouter implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials<OpenAICompatibleCredential>('openRouterApi');
 
-		const modelName = this.getNodeParameter('model', itemIndex) as string;
+		const modelParam = this.getNodeParameter('model', itemIndex) as any;
+		const modelName = typeof modelParam === 'string' ? modelParam : modelParam?.value || modelParam;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			frequencyPenalty?: number;
@@ -223,6 +272,7 @@ export class LmChatOpenRouter implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
+			reasoningEffort?: 'low' | 'medium' | 'high' | 'minimal';
 		};
 
 		const configuration: ClientOptions = {
@@ -230,7 +280,30 @@ export class LmChatOpenRouter implements INodeType {
 			fetchOptions: {
 				dispatcher: getProxyAgent(credentials.url),
 			},
+			defaultHeaders: {
+				'HTTP-Referer': 'https://n8n.io',
+				'X-Title': 'n8n',
+			},
 		};
+
+		// Extra options to send to OpenRouter, that are not directly supported by LangChain
+		const modelKwargs: {
+			response_format?: object;
+			reasoning_effort?: 'low' | 'medium' | 'high' | 'minimal';
+		} = {};
+
+		// Add response format if specified
+		if (options.responseFormat) {
+			modelKwargs.response_format = { type: options.responseFormat };
+		}
+
+		// Add reasoning effort if specified and valid
+		if (
+			options.reasoningEffort &&
+			['low', 'medium', 'high', 'minimal'].includes(options.reasoningEffort)
+		) {
+			modelKwargs.reasoning_effort = options.reasoningEffort;
+		}
 
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
@@ -240,11 +313,7 @@ export class LmChatOpenRouter implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
