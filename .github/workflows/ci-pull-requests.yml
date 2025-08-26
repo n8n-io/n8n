@@ -4,12 +4,11 @@ on:
   pull_request:
     branches:
       - '**'
-      - '!release/*'
 
 jobs:
   install-and-build:
     name: Install & Build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: tenki-standard-autoscale
     env:
       NODE_OPTIONS: '--max-old-space-size=3072'
     outputs:
@@ -59,7 +58,7 @@ jobs:
     name: Bundle Size Check
     needs: install-and-build
     if: needs.install-and-build.outputs.frontend_changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: tenki-standard-autoscale
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:

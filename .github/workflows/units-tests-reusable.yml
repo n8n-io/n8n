@@ -28,7 +28,7 @@ env:
 jobs:
   unit-test:
     name: Unit tests
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: tenki-standard-autoscale
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
     steps:
