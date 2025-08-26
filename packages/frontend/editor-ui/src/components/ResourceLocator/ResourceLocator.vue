@@ -608,7 +608,8 @@ function onModeSelected(value: string): void {
 	} else if (value === 'id' && selectedMode.value === 'list' && props.modelValue?.value) {
 		emit('update:modelValue', { __rl: true, mode: value, value: props.modelValue.value });
 	} else {
-		emit('update:modelValue', { __rl: true, mode: value, value: '' });
+		const currentValue = props.modelValue?.value ?? '';
+		emit('update:modelValue', { __rl: true, mode: value, value: currentValue });
 	}
 
 	trackEvent('User changed resource locator mode', { mode: value });

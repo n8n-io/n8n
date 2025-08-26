@@ -11,7 +11,6 @@ import type {
 } from '@/Interface';
 import type {
 	CodeExecutionMode,
-	CodeNodeEditorLanguage,
 	EditorType,
 	IDataObject,
 	ILoadOptions,
@@ -24,6 +23,7 @@ import type {
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, isResourceLocatorValue, NodeHelpers } from 'n8n-workflow';
 
+import type { CodeNodeLanguageOption } from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEditModal from '@/components/ExpressionEditModal.vue';
@@ -259,10 +259,12 @@ const editorIsReadOnly = computed<boolean>(() => {
 	return getTypeOption<boolean>('editorIsReadOnly') ?? false;
 });
 
-const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
-	if (editorType.value === 'json' || props.parameter.type === 'json')
-		return 'json' as CodeNodeEditorLanguage;
-	return getTypeOption<CodeNodeEditorLanguage>('editorLanguage') ?? 'javaScript';
+const editorLanguage = computed<CodeNodeLanguageOption>(() => {
+	if (editorType.value === 'json' || props.parameter.type === 'json') return 'json';
+
+	if (node.value?.parameters?.language === 'pythonNative') return 'pythonNative';
+
+	return getTypeOption<CodeNodeLanguageOption>('editorLanguage') ?? 'javaScript';
 });
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {

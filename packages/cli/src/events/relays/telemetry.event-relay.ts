@@ -829,14 +829,13 @@ export class TelemetryEventRelay extends EventRelay {
 			},
 			execution_variables: {
 				executions_mode: config.getEnv('executions.mode'),
-				executions_timeout: config.getEnv('executions.timeout'),
-				executions_timeout_max: config.getEnv('executions.maxTimeout'),
-				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
-				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
-				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
-				executions_data_save_manual_executions: config.getEnv(
-					'executions.saveDataManualExecutions',
-				),
+				executions_timeout: this.globalConfig.executions.timeout,
+				executions_timeout_max: this.globalConfig.executions.maxTimeout,
+				executions_data_save_on_error: this.globalConfig.executions.saveDataOnError,
+				executions_data_save_on_success: this.globalConfig.executions.saveDataOnSuccess,
+				executions_data_save_on_progress: this.globalConfig.executions.saveExecutionProgress,
+				executions_data_save_manual_executions:
+					this.globalConfig.executions.saveDataManualExecutions,
 				executions_data_prune: this.globalConfig.executions.pruneData,
 				executions_data_max_age: this.globalConfig.executions.pruneDataMaxAge,
 			},

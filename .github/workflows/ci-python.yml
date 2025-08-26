@@ -10,7 +10,8 @@ on:
       - packages/@n8n/task-runner-python/**
 
 jobs:
-  python-ci:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,3 +39,11 @@ jobs:
 
       - name: Lint
         run: uv run ruff check
+
+  unit-test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Python unit tests
+        run: echo "Skipping unit tests for Python-only changes until we have Python unit tests"

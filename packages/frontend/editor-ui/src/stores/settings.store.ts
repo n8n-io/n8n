@@ -98,7 +98,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const activeModules = computed(() => settings.value.activeModules);
 
 	const isModuleActive = (moduleName: string) => {
-		return activeModules.value.includes(moduleName);
+		return activeModules.value?.includes(moduleName);
 	};
 
 	const partialExecutionVersion = computed<1 | 2>(() => {
@@ -143,6 +143,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isMfaFeatureEnabled = computed(() => mfa.value.enabled);
 
 	const isFoldersFeatureEnabled = computed(() => folders.value.enabled);
+
+	const isDataStoreFeatureEnabled = computed(() => isModuleActive('data-store'));
 
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
@@ -396,5 +398,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
+		isDataStoreFeatureEnabled,
 	};
 });

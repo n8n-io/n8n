@@ -19,18 +19,21 @@
     "install-browsers:local": "playwright install chromium --with-deps",
     "install-browsers:ci": "PLAYWRIGHT_BROWSERS_PATH=./ms-playwright-cache playwright install chromium --with-deps",
     "browsers:uninstall": "playwright uninstall --all",
-    "lint": "eslint .",
+    "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix"
   },
   "devDependencies": {
     "@currents/playwright": "^1.15.3",
+    "@n8n/api-types": "workspace:^",
     "@playwright/test": "1.54.2",
     "@types/lodash": "catalog:",
     "eslint-plugin-playwright": "2.2.2",
     "generate-schema": "2.6.0",
+    "n8n": "workspace:*",
     "n8n-containers": "workspace:*",
+    "n8n-core": "workspace:*",
+    "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
-    "tsx": "catalog:",
-    "@n8n/api-types": "workspace:^"
+    "tsx": "catalog:"
   }
 }
