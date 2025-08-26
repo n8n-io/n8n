@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 import { type INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nIconButton, N8nText } from '@n8n/design-system';
