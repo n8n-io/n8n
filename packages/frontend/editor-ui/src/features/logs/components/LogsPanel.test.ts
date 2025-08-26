@@ -63,7 +63,7 @@ describe('LogsPanel', () => {
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
 	function render() {
-		return renderComponent(LogsPanel, {
+		const wrapper = renderComponent(LogsPanel, {
 			global: {
 				provide: {
 					[ChatSymbol as symbol]: {},
@@ -78,9 +78,15 @@ describe('LogsPanel', () => {
 				],
 			},
 		});
+
+		vi.advanceTimersByTime(1000);
+
+		return wrapper;
 	}
 
 	beforeEach(() => {
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+
 		pinia = createTestingPinia({ stubActions: false, fakeApp: true });
 
 		setActivePinia(pinia);
@@ -148,7 +154,9 @@ describe('LogsPanel', () => {
 
 		const rendered = render();
 
-		expect(rendered.queryByTestId('log-details-header')).toHaveTextContent('AI Agent');
+		await waitFor(() =>
+			expect(rendered.queryByTestId('log-details-header')).toHaveTextContent('AI Agent'),
+		);
 		expect(rendered.queryByTestId('log-details-input')).not.toBeInTheDocument();
 		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
 	});
@@ -160,7 +168,9 @@ describe('LogsPanel', () => {
 
 		const rendered = render();
 
-		expect(rendered.queryByTestId('log-details-header')).toHaveTextContent('AI Model');
+		await waitFor(() =>
+			expect(rendered.queryByTestId('log-details-header')).toHaveTextContent('AI Model'),
+		);
 		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
 		expect(rendered.queryByTestId('log-details-output')).toBeInTheDocument();
 	});
@@ -289,6 +299,7 @@ describe('LogsPanel', () => {
 
 		const rendered = render();
 
+		await waitFor(() => expect(rendered.getByText('Overview')).toBeInTheDocument());
 		await fireEvent.click(rendered.getByText('Overview'));
 
 		expect(rendered.getByText(/Running/)).toBeInTheDocument();
@@ -299,6 +310,8 @@ describe('LogsPanel', () => {
 			executionId: '567',
 			data: { executionIndex: 0, startTime: Date.parse('2025-04-20T12:34:51.000Z'), source: [] },
 		});
+
+		vi.advanceTimersByTime(2000);
 
 		const lastTreeItem = await waitFor(() => {
 			const items = rendered.getAllByRole('treeitem');
@@ -321,6 +334,9 @@ describe('LogsPanel', () => {
 				executionStatus: 'success',
 			},
 		});
+
+		vi.advanceTimersByTime(1000);
+
 		expect(await lastTreeItem.findByText('AI Agent')).toBeInTheDocument();
 		expect(await lastTreeItem.findByText('Success')).toBeInTheDocument();
 		expect(lastTreeItem.getByText('in 33ms')).toBeInTheDocument();
@@ -333,6 +349,8 @@ describe('LogsPanel', () => {
 			startedAt: new Date('2025-04-20T12:34:50.000Z'),
 			stoppedAt: new Date('2025-04-20T12:34:56.000Z'),
 		});
+
+		vi.advanceTimersByTime(1000);
 
 		expect(await rendered.findByText('Success in 6s')).toBeInTheDocument();
 		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
@@ -417,6 +435,7 @@ describe('LogsPanel', () => {
 
 		const rendered = render();
 
+		await waitFor(() => expect(rendered.getByTestId('log-details-header')).toBeInTheDocument());
 		const header = within(rendered.getByTestId('log-details-header'));
 
 		expect(rendered.queryByTestId('log-details-input')).toBeInTheDocument();
@@ -472,7 +491,9 @@ describe('LogsPanel', () => {
 			const { getByTestId, findByRole } = render();
 			const overview = getByTestId('logs-overview');
 
-			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+			await waitFor(async () =>
+				expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/),
+			);
 			await fireEvent.keyDown(overview, { key: 'K' });
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
 			await fireEvent.keyDown(overview, { key: 'J' });
@@ -526,7 +547,9 @@ describe('LogsPanel', () => {
 
 			const { rerender, findByRole } = render();
 
-			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+			await waitFor(async () =>
+				expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/),
+			);
 
 			await canvasOperations.renameNode('AI Agent', 'Renamed Agent');
 			uiStore.lastSelectedNode = 'Renamed Agent';
