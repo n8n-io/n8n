@@ -11,7 +11,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { DataStoreRow, DataStoreRows } from 'n8n-workflow';
+import type { DataStoreRow, DataStoreRowReturn, DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
@@ -125,17 +125,23 @@ export class DataStoreService {
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
 	}
 
-	async insertRows(
+	async insertRows<T extends boolean>(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
-		returnData: boolean = false,
-	) {
+		returnData: T,
+	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
+	async insertRows<T extends boolean>(
+		dataStoreId: string,
+		projectId: string,
+		rows: DataStoreRows,
+		returnData?: T,
+	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>> {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateRows(dataStoreId, rows);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnData);
+		return await this.dataStoreRowsRepository.insertRows<T>(dataStoreId, rows, columns, returnData);
 	}
 
 	async upsertRows(dataStoreId: string, projectId: string, dto: UpsertDataStoreRowsDto) {

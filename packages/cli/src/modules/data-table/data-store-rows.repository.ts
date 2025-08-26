@@ -10,8 +10,9 @@ import { DataSource, DataSourceOptions, QueryRunner, SelectQueryBuilder, In } fr
 import {
 	DataStoreColumnJsType,
 	DataStoreRows,
-	DataStoreRowWithId,
+	DataStoreRowReturn,
 	UnexpectedError,
+	DataStoreRowsReturn,
 } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
@@ -60,13 +61,21 @@ export class DataStoreRowsRepository {
 		return `${tablePrefix}data_store_user_${dataStoreId}`;
 	}
 
+	async insertRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		rows: DataStoreRows,
+		columns: DataStoreColumn[],
+		returnData?: T,
+	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	async insertRows(
 		dataStoreId: string,
 		rows: DataStoreRows,
 		columns: DataStoreColumn[],
-		returnData: boolean = false,
-	) {
-		const inserted: DataStoreRowWithId[] = [];
+		returnData?: boolean,
+	): Promise<Array<DataStoreRowReturn | Pick<DataStoreRowReturn, 'id'>>> {
+		const doReturnData = returnData ?? false;
+
+		const inserted: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
 
@@ -91,7 +100,7 @@ export class DataStoreRowsRepository {
 				.values(row);
 
 			if (useReturning) {
-				query.returning(returnData ? selectColumns.join(',') : 'id');
+				query.returning(doReturnData ? selectColumns.join(',') : 'id');
 			}
 
 			const result = await query.execute();
@@ -108,7 +117,7 @@ export class DataStoreRowsRepository {
 				throw new UnexpectedError("Couldn't find the inserted row ID");
 			}
 
-			if (!returnData) {
+			if (!doReturnData) {
 				inserted.push(...rowIds.map((id) => ({ id })));
 				continue;
 			}
@@ -118,7 +127,7 @@ export class DataStoreRowsRepository {
 				.select(selectColumns)
 				.from(table, 'dataStore')
 				.where({ id: In(rowIds) })
-				.getRawOne<DataStoreRowWithId>();
+				.getRawOne<DataStoreRowReturn>();
 
 			if (!insertedRow) {
 				throw new UnexpectedError("Couldn't find the inserted row");
@@ -242,7 +251,7 @@ export class DataStoreRowsRepository {
 
 	async getManyAndCount(dataStoreId: string, dto: ListDataStoreContentQueryDto) {
 		const [countQuery, query] = this.getManyQuery(dataStoreId, dto);
-		const data: DataStoreRows = await query.select('*').getRawMany();
+		const data: DataStoreRowsReturn = await query.select('*').getRawMany();
 		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 			count: number | string | null;
 		}>();
