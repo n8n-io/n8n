@@ -8,7 +8,10 @@ import websockets
 import random
 
 
-from src.errors import WebsocketConnectionError, TaskMissingError, SecurityViolationError
+from src.errors import (
+    WebsocketConnectionError,
+    TaskMissingError,
+)
 from src.message_types.broker import TaskSettings
 from src.nanoid_utils import nanoid
 
@@ -212,9 +215,7 @@ class TaskRunner:
                 raise TaskMissingError(task_id)
 
             validate_code_security(
-                task_settings.code,
-                self.opts.stdlib_allow,
-                self.opts.external_allow
+                task_settings.code, self.opts.stdlib_allow, self.opts.external_allow
             )
 
             process, queue = self.executor.create_process(

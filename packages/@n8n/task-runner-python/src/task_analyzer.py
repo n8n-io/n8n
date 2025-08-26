@@ -1,6 +1,6 @@
 import ast
 import sys
-from typing import Set 
+from typing import Set
 
 from src.errors import SecurityViolationError
 
@@ -12,7 +12,7 @@ class TaskAnalyzer(ast.NodeVisitor):
         self.imported_modules: Set[str] = set()
         self.violations: list[str] = []
         self.stdlib_modules = sys.stdlib_module_names
-    
+
     def visit_Import(self, node: ast.Import) -> None:
         # import module
 
@@ -20,7 +20,7 @@ class TaskAnalyzer(ast.NodeVisitor):
             module_name = alias.name
             self._validate_import(module_name, node.lineno)
         self.generic_visit(node)
-    
+
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         # from module import ...
 
@@ -32,11 +32,11 @@ class TaskAnalyzer(ast.NodeVisitor):
                 f"Line {node.lineno}: Relative imports are not allowed"
             )
         self.generic_visit(node)
-    
+
     def visit_Call(self, node: ast.Call) -> None:
         # __import__() or importlib
 
-        if isinstance(node.func, ast.Name) and node.func.id == '__import__':
+        if isinstance(node.func, ast.Name) and node.func.id == "__import__":
             if node.args and isinstance(node.args[0], ast.Constant):
                 module_name = node.args[0].value
                 if isinstance(module_name, str):
@@ -45,11 +45,12 @@ class TaskAnalyzer(ast.NodeVisitor):
                 self.violations.append(
                     f"Line {node.lineno}: Dynamic imports using __import__() are not allowed"
                 )
-        
-        elif (isinstance(node.func, ast.Attribute) and 
-              node.func.attr == 'import_module'):
-            if (isinstance(node.func.value, ast.Name) and 
-                node.func.value.id == 'importlib'):
+
+        elif isinstance(node.func, ast.Attribute) and node.func.attr == "import_module":
+            if (
+                isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "importlib"
+            ):
                 if node.args and isinstance(node.args[0], ast.Constant):
                     module_name = node.args[0].value
                     if isinstance(module_name, str):
@@ -58,19 +59,19 @@ class TaskAnalyzer(ast.NodeVisitor):
                     self.violations.append(
                         f"Line {node.lineno}: Dynamic imports using importlib are not allowed"
                     )
-        
+
         self.generic_visit(node)
-    
+
     def _validate_import(self, module_name: str, lineno: int) -> None:
-        top_level = module_name.split('.')[0]
-        
+        top_level = module_name.split(".")[0]
+
         if top_level in self.imported_modules:
             return
-        
+
         self.imported_modules.add(top_level)
-        
+
         is_stdlib = self._is_stdlib_module(top_level)
-        
+
         if is_stdlib:
             if top_level not in self.stdlib_allow:
                 self.violations.append(
@@ -83,24 +84,24 @@ class TaskAnalyzer(ast.NodeVisitor):
                     f"Line {lineno}: Import of external package '{module_name}' is not allowed. "
                     f"Allowed external packages: {', '.join(sorted(self.external_allow)) if self.external_allow else 'none'}"
                 )
-    
+
     def _is_stdlib_module(self, module_name: str) -> bool:
         return module_name in self.stdlib_modules
 
 
 def validate_code_security(
-    code: str,
-    stdlib_allow: Set[str],
-    external_allow: Set[str]
+    code: str, stdlib_allow: Set[str], external_allow: Set[str]
 ) -> None:
     try:
         tree = ast.parse(code)
-    except SyntaxError as e:
+    except SyntaxError:
         raise
-    
+
     analyzer = TaskAnalyzer(stdlib_allow, external_allow)
     analyzer.visit(tree)
-    
+
     if analyzer.violations:
-        violation_msg = "Security violations detected:\n" + "\n".join(analyzer.violations)
+        violation_msg = "Security violations detected:\n" + "\n".join(
+            analyzer.violations
+        )
         raise SecurityViolationError(violation_msg)

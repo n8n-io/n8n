@@ -1,11 +1,11 @@
 import asyncio
 import logging
-import os
 import sys
 
 from src.env import parse_env_vars
 from src.logs import setup_logging
 from src.task_runner import TaskRunner
+
 
 async def main():
     setup_logging()
