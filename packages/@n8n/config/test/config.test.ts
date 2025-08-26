@@ -302,6 +302,8 @@ describe('GlobalConfig', () => {
 			disableWebhookHtmlSandboxing: false,
 		},
 		executions: {
+			timeout: -1,
+			maxTimeout: 3600,
 			pruneData: true,
 			pruneDataMaxAge: 336,
 			pruneDataMaxCount: 10_000,
