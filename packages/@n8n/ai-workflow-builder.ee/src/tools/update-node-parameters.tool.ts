@@ -3,8 +3,11 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeTypeDescription, INodeParameters, Logger } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
+
 import { createParameterUpdaterChain } from '../chains/parameter-updater';
 import { ValidationError, ParameterUpdateError, ToolExecutionError } from '../errors';
+import type { UpdateNodeParametersOutput } from '../types/tools';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, getWorkflowState, updateNodeInWorkflow } from './helpers/state';
@@ -20,8 +23,6 @@ import {
 	updateNodeWithParameters,
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
-import type { UpdateNodeParametersOutput } from '../types/tools';
-import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 const DISPLAY_TITLE = 'Updating node parameters';
 
