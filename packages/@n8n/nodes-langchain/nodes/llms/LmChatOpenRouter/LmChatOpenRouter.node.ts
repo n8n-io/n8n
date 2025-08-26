@@ -39,6 +39,9 @@ export class LmChatOpenRouter implements INodeType {
 					return model.id.toLowerCase().includes(filter.toLowerCase());
 				});
 
+				// Sort models alphabetically for better user experience
+				filteredModels.sort((a: any, b: any) => a.id.localeCompare(b.id));
+
 				return {
 					results: filteredModels.map((model: any) => ({
 						name: model.id,
@@ -255,7 +258,7 @@ export class LmChatOpenRouter implements INodeType {
 							{
 								name: 'Medium',
 								value: 'medium',
-								description: 'Balanced reasoning effort (default)',
+								description: 'Balanced reasoning effort',
 							},
 							{
 								name: 'High',

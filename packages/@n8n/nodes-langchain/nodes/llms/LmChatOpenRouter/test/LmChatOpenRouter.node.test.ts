@@ -1,5 +1,5 @@
 import type { ILoadOptionsFunctions, ISupplyDataFunctions } from 'n8n-workflow';
-import { LmChatOpenRouter } from './LmChatOpenRouter.node';
+import { LmChatOpenRouter } from '../LmChatOpenRouter.node';
 
 describe('LmChatOpenRouter', () => {
 	let mockContext: jest.Mocked<ILoadOptionsFunctions>;
@@ -47,9 +47,9 @@ describe('LmChatOpenRouter', () => {
 			});
 
 			expect(result.results).toEqual([
-				{ name: 'openai/gpt-4', value: 'openai/gpt-4' },
 				{ name: 'anthropic/claude-3', value: 'anthropic/claude-3' },
 				{ name: 'google/gemini-pro', value: 'google/gemini-pro' },
+				{ name: 'openai/gpt-4', value: 'openai/gpt-4' },
 			]);
 		});
 
@@ -66,8 +66,8 @@ describe('LmChatOpenRouter', () => {
 			const result = await nodeInstance.methods.listSearch.getModels.call(mockContext, 'gpt');
 
 			expect(result.results).toEqual([
-				{ name: 'openai/gpt-4', value: 'openai/gpt-4' },
 				{ name: 'openai/gpt-3.5-turbo', value: 'openai/gpt-3.5-turbo' },
+				{ name: 'openai/gpt-4', value: 'openai/gpt-4' },
 			]);
 		});
 
@@ -89,6 +89,29 @@ describe('LmChatOpenRouter', () => {
 			await expect(nodeInstance.methods.listSearch.getModels.call(mockContext)).rejects.toThrow(
 				'API Error',
 			);
+		});
+
+		it('should return models sorted alphabetically by id', async () => {
+			mockContext.helpers.httpRequest = jest.fn().mockResolvedValue({
+				data: [
+					{ id: 'openai/gpt-4' },
+					{ id: 'anthropic/claude-3' },
+					{ id: 'google/gemini-pro' },
+					{ id: 'meta/llama-2-70b' },
+					{ id: 'anthropic/claude-2' },
+				],
+			});
+
+			const nodeInstance = new LmChatOpenRouter();
+			const result = await nodeInstance.methods.listSearch.getModels.call(mockContext);
+
+			expect(result.results).toEqual([
+				{ name: 'anthropic/claude-2', value: 'anthropic/claude-2' },
+				{ name: 'anthropic/claude-3', value: 'anthropic/claude-3' },
+				{ name: 'google/gemini-pro', value: 'google/gemini-pro' },
+				{ name: 'meta/llama-2-70b', value: 'meta/llama-2-70b' },
+				{ name: 'openai/gpt-4', value: 'openai/gpt-4' },
+			]);
 		});
 	});
 
