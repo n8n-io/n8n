@@ -1,8 +1,10 @@
-import {
-	NodeOperationError,
-	type IDisplayOptions,
-	type IExecuteFunctions,
-	type INodeProperties,
+import { NodeOperationError } from 'n8n-workflow';
+import type {
+	DataStoreRowReturn,
+	IDataStoreProjectService,
+	IDisplayOptions,
+	IExecuteFunctions,
+	INodeProperties,
 } from 'n8n-workflow';
 
 import type { FilterType } from './constants';
@@ -97,4 +99,34 @@ export function getSelectFilter(ctx: IExecuteFunctions, index: number) {
 	}
 
 	return buildGetManyFilter(fields, matchType);
+}
+
+export async function executeSelectMany(
+	ctx: IExecuteFunctions,
+	index: number,
+	dataStoreProxy: IDataStoreProjectService,
+): Promise<Array<{ json: DataStoreRowReturn }>> {
+	const filter = getSelectFilter(ctx, index);
+
+	let take = 1000;
+	const result: Array<{ json: DataStoreRowReturn }> = [];
+
+	do {
+		const response = await dataStoreProxy.getManyRowsAndCount({
+			skip: result.length,
+			take,
+			filter,
+		});
+		const data = response.data.map((json) => ({ json }));
+
+		// Optimize common path of <1000 results
+		if (response.count === response.data.length) {
+			return data;
+		}
+
+		result.push.apply(result, data);
+		take = Math.min(take, response.count - result.length);
+	} while (take > 0);
+
+	return result;
 }

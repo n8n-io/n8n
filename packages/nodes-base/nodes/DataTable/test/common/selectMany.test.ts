@@ -1,13 +1,16 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IDataStoreProjectService, IExecuteFunctions } from 'n8n-workflow';
 
-import { execute } from '../../../actions/row/get.operation';
-import type { FieldEntry } from '../../../common/constants';
-import { ANY_FILTER } from '../../../common/constants';
-import { DATA_TABLE_ID_FIELD } from '../../../common/fields';
+import type { FieldEntry } from '../../common/constants';
+import { ANY_FILTER } from '../../common/constants';
+import { DATA_TABLE_ID_FIELD } from '../../common/fields';
+import { executeSelectMany } from '../../common/selectMany';
 
-describe('Data Table get Operation', () => {
+describe('selectMany utils', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
 	const getManyRowsAndCount = jest.fn();
+	const dataStoreProxy = jest.mocked<IDataStoreProjectService>({
+		getManyRowsAndCount,
+	} as unknown as IDataStoreProjectService);
 	const dataTableId = 2345;
 	let filters: FieldEntry[];
 
@@ -21,7 +24,6 @@ describe('Data Table get Operation', () => {
 		];
 		mockExecuteFunctions = {
 			getNode: jest.fn().mockReturnValue({}),
-			getInputData: jest.fn().mockReturnValue([{}]),
 			getNodeParameter: jest.fn().mockImplementation((field) => {
 				switch (field) {
 					case DATA_TABLE_ID_FIELD:
@@ -32,23 +34,18 @@ describe('Data Table get Operation', () => {
 						return ANY_FILTER;
 				}
 			}),
-			helpers: {
-				getDataStoreProxy: jest.fn().mockReturnValue({
-					getManyRowsAndCount,
-				}),
-			},
 		} as unknown as IExecuteFunctions;
 
 		jest.clearAllMocks();
 	});
 
-	describe('execute', () => {
+	describe('executeSelectMany', () => {
 		it('should get a few rows', async () => {
 			// ARRANGE
 			getManyRowsAndCount.mockReturnValue({ data: [{ id: 1 }], count: 1 });
 
 			// ACT
-			const result = await execute.call(mockExecuteFunctions, 0);
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
 
 			// ASSERT
 			expect(result).toEqual([{ json: { id: 1 } }]);
@@ -72,7 +69,7 @@ describe('Data Table get Operation', () => {
 			filters = [];
 
 			// ACT
-			const result = await execute.call(mockExecuteFunctions, 0);
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
 
 			// ASSERT
 			expect(result.length).toBe(2345);
@@ -84,7 +81,7 @@ describe('Data Table get Operation', () => {
 			getManyRowsAndCount.mockReturnValue({ data: [{ id: 1, colA: null }], count: 1 });
 
 			// ACT
-			const result = await execute.call(mockExecuteFunctions, 0);
+			const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
 
 			// ASSERT
 			expect(result).toEqual([{ json: { id: 1, colA: null } }]);
