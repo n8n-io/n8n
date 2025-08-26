@@ -1,0 +1,8 @@
+{
+	"type": "object",
+	"properties": {
+		"index": { "type": "integer" },
+		"embedding": { "type": "array", "items": { "type": "number" } }
+	},
+	"version": 1
+}

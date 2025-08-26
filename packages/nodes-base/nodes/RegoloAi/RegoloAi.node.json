@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.regoloAi",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Utility", "AI"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.regolo.ai/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.regolo.ai/"
+			}
+		]
+	},
+	"alias": ["Regolo AI", "Regolo Chat", "Image Generation", "Embeddings"]
+}

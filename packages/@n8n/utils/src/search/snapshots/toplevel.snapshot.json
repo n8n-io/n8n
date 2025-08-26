@@ -11896,6 +11896,40 @@
 		"type": "node"
 	},
 	{
+		"uuid": "a4e63642-57d5-4030-b3d3-95709cc5ad81",
+		"key": "@n8n/n8n-nodes-langchain.lmChatRegoloAi",
+		"subcategory": "*",
+		"properties": {
+			"displayName": "Regolo AI Chat Model",
+			"defaults": {
+				"name": "Regolo AI Chat Model"
+			},
+			"description": "For advanced usage with an AI chain",
+			"name": "@n8n/n8n-nodes-langchain.lmChatRegoloAi",
+			"group": ["transform"],
+			"iconUrl": {
+				"light": "icons/@n8n/n8n-nodes-langchain/dist/nodes/llms/LmChatRegoloAi/regoloAiLight.svg",
+				"dark": "icons/@n8n/n8n-nodes-langchain/dist/nodes/llms/LmChatRegoloAi/regoloAiLight.dark.svg"
+			},
+			"outputs": ["ai_languageModel"],
+			"codex": {
+				"categories": ["AI"],
+				"subcategories": {
+					"AI": ["Language Models", "Root Nodes"],
+					"Language Models": ["Chat Models (Recommended)"]
+				},
+				"resources": {
+					"primaryDocumentation": [
+						{
+							"url": "https://docs.regolo.ai/"
+						}
+					]
+				}
+			}
+		},
+		"type": "node"
+	},
+	{
 		"uuid": "5f62082d-87bd-4fe6-a6fb-3899d78d238e",
 		"key": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
 		"subcategory": "*",
