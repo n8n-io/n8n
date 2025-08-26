@@ -7,6 +7,7 @@ import {
 	DataStore,
 	DataStoreColumn,
 	DataStoreProxyProvider,
+	DataStoreRowReturn,
 	DataStoreRows,
 	IDataStoreProjectAggregateService,
 	IDataStoreProjectService,
@@ -15,6 +16,7 @@ import {
 	ListDataStoreRowsOptions,
 	MoveDataStoreColumnOptions,
 	UpdateDataStoreOptions,
+	UpdateDataStoreRowsOptions,
 	UpsertDataStoreRowsOptions,
 	Workflow,
 } from 'n8n-workflow';
@@ -126,6 +128,15 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 
 			async insertRows(rows: DataStoreRows) {
 				return await dataStoreService.insertRows(dataStoreId, projectId, rows, true);
+			},
+
+			async updateRows(options: UpdateDataStoreRowsOptions) {
+				return (await dataStoreService.updateRow(
+					dataStoreId,
+					projectId,
+					options,
+					true,
+				)) as unknown as DataStoreRowReturn[];
 			},
 
 			async upsertRows(options: UpsertDataStoreRowsOptions) {
