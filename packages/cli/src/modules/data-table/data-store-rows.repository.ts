@@ -47,16 +47,9 @@ function getConditionAndParams(
 			return [`${column} != :${paramName}`, { [paramName]: filter.value }];
 		// case-sensitive
 		case 'like':
-			if (filter.value === null || filter.value === undefined) {
-				throw new UnexpectedError('LIKE filter value cannot be null or undefined');
-			}
-			if (typeof filter.value !== 'string') {
-				throw new UnexpectedError('LIKE filter value must be a string');
-			}
-
 			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
 				// SQLite GLOB is case-sensitive and uses * instead of %
-				const globValue = filter.value.toString().replace(/%/g, '*').replace(/_/g, '?');
+				const globValue = filter.value!.toString().replace(/%/g, '*').replace(/_/g, '?');
 				return [`${column} GLOB :${paramName}`, { [paramName]: globValue }];
 			} else if (dbType === 'mysql' || dbType === 'mariadb') {
 				return [`${column} LIKE BINARY :${paramName}`, { [paramName]: filter.value }];
@@ -66,13 +59,6 @@ function getConditionAndParams(
 			}
 		// case-insensitive
 		case 'ilike':
-			if (filter.value === null || filter.value === undefined) {
-				throw new UnexpectedError('ILIKE filter value cannot be null or undefined');
-			}
-			if (typeof filter.value !== 'string') {
-				throw new UnexpectedError('ILIKE filter value must be a string');
-			}
-
 			if (dbType === 'postgres') {
 				return [`${column} ILIKE :${paramName}`, { [paramName]: filter.value }];
 			} else {

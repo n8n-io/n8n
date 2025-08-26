@@ -2269,7 +2269,9 @@ describe('dataStore', () => {
 
 					// ASSERT
 					await expect(result).rejects.toThrow(
-						`${condition.toUpperCase()} filter value cannot be null or undefined`,
+						new DataStoreValidationError(
+							`${condition.toUpperCase()} filter value cannot be null or undefined`,
+						),
 					);
 				});
 
@@ -2300,7 +2302,9 @@ describe('dataStore', () => {
 
 					// ASSERT
 					await expect(result).rejects.toThrow(
-						`${condition.toUpperCase()} filter value must be a string`,
+						new DataStoreValidationError(
+							`${condition.toUpperCase()} filter value must be a string`,
+						),
 					);
 				});
 			},
