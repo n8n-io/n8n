@@ -1,4 +1,4 @@
-import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, WorkflowEntity } from '@n8n/db';
+import { WorkflowEntity } from '@n8n/db';
 import type { User, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
@@ -41,7 +41,7 @@ describe('ActiveWorkflowsService', () => {
 		});
 
 		it('should return all workflow ids when user has full access', async () => {
-			user.role = GLOBAL_ADMIN_ROLE;
+			user.role = 'global:admin';
 			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual(['2', '3', '4']);
@@ -49,7 +49,7 @@ describe('ActiveWorkflowsService', () => {
 		});
 
 		it('should filter out workflow ids that the user does not have access to', async () => {
-			user.role = GLOBAL_MEMBER_ROLE;
+			user.role = 'global:member';
 			sharedWorkflowRepository.getSharedWorkflowIds.mockResolvedValue(['3']);
 			const ids = await service.getAllActiveIdsFor(user);
 

@@ -25,4 +25,4 @@ export const MIN_LOADING_TIME = 500; // ms
 export const NULL_VALUE = 'Null';
 export const EMPTY_VALUE = 'Empty';
 
-export const DATA_STORE_MODULE_NAME = 'data-store';
+export const DATA_STORE_MODULE_NAME = 'data-table';
