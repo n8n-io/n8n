@@ -1,6 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { BaseChatMemory } from 'langchain/memory';
 import {
+	autoSaveHighlightedDataProperty,
+	getHighlightedInputKey,
+} from 'n8n-nodes-base/dist/utils/highlightedData';
+import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_WAIT_USER_REPLY,
 	NodeConnectionTypes,
@@ -180,6 +184,7 @@ export class Chat implements INodeType {
 						default: false,
 					},
 					limitWaitTimeOption,
+					autoSaveHighlightedDataProperty,
 				],
 			},
 		],
@@ -205,10 +210,14 @@ export class Chat implements INodeType {
 				| BaseChatMemory
 				| undefined;
 
-			const message = data.json?.chatInput;
+			const message = data.json?.chatInput as string;
+
+			if (context.getNodeParameter('options.autoSaveHighlightedData', 0, true) !== false) {
+				context.customData.set(getHighlightedInputKey(context.getNode().name), message);
+			}
 
 			if (memory && message) {
-				await memory.chatHistory.addUserMessage(message as string);
+				await memory.chatHistory.addUserMessage(message);
 			}
 		}
 

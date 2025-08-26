@@ -1,38 +1,38 @@
 import { Container } from '@n8n/di';
 import get from 'lodash/get';
 import type {
-	Workflow,
-	INode,
-	IWorkflowExecuteAdditionalData,
-	WorkflowExecuteMode,
-	IRunExecutionData,
-	INodeExecutionData,
-	ITaskDataConnections,
-	IExecuteData,
-	ICredentialDataDecryptedObject,
-	CallbackManager,
-	IExecuteWorkflowInfo,
-	RelatedExecution,
-	ExecuteWorkflowData,
-	ITaskMetadata,
-	ContextType,
-	IContextObject,
-	IWorkflowDataProxyData,
-	ISourceData,
 	AiEvent,
+	CallbackManager,
+	ContextType,
+	ExecuteWorkflowData,
+	IContextObject,
+	ICredentialDataDecryptedObject,
+	IExecuteData,
+	IExecuteWorkflowInfo,
+	INode,
+	INodeExecutionData,
+	IRunExecutionData,
+	ISourceData,
+	ITaskDataConnections,
+	ITaskMetadata,
+	IWorkflowDataProxyData,
+	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
+	RelatedExecution,
+	Workflow,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
-	NodeHelpers,
 	NodeConnectionTypes,
+	NodeHelpers,
 	WAIT_INDEFINITELY,
 	WorkflowDataProxy,
 } from 'n8n-workflow';
 
-import { BinaryDataService } from '@/binary-data/binary-data.service';
-
 import { NodeExecutionContext } from './node-execution-context';
+
+import { BinaryDataService } from '@/binary-data/binary-data.service';
 
 export class BaseExecuteContext extends NodeExecutionContext {
 	protected readonly binaryDataService = Container.get(BinaryDataService);
