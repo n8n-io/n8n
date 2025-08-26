@@ -160,6 +160,10 @@ describe('WorkflowDataProxy', () => {
 			expect(proxy.$('Rename').params).toEqual({ value1: 'data', value2: 'initialName' });
 		});
 
+		test('$("NodeName").context', () => {
+			expect(proxy.$('Rename').context).toBeDefined();
+		});
+
 		test('$("NodeName") not in workflow should throw', () => {
 			expect(() => proxy.$('doNotExist')).toThrowError(ExpressionError);
 		});
@@ -187,6 +191,12 @@ describe('WorkflowDataProxy', () => {
 		});
 		test('$input.item', () => {
 			expect(proxy.$input.item?.json?.data).toEqual(105);
+		});
+		test('$input.context', () => {
+			expect(proxy.$input.context).toBeDefined();
+		});
+		test('$input.params', () => {
+			expect(proxy.$input.params).toBeDefined();
 		});
 		test('$thisItem', () => {
 			expect(proxy.$thisItem.json.data).toEqual(105);

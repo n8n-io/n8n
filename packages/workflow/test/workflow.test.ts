@@ -5,7 +5,6 @@ import { UserError } from '../src/errors';
 import { NodeConnectionTypes } from '../src/interfaces';
 import type {
 	IBinaryKeyData,
-	IConnection,
 	IConnections,
 	IDataObject,
 	INode,
@@ -3101,6 +3100,79 @@ describe('Workflow', () => {
 
 			const result = workflow.getConnectionsBetweenNodes(['Node1'], ['TargetNode']);
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('Error handling', () => {
+		test('should handle unknown node type in constructor', () => {
+			// Create a workflow with a node that has an unknown type
+			const workflow = new Workflow({
+				nodeTypes: {
+					getByNameAndVersion: () => undefined, // Always return undefined to simulate unknown node type
+					getAll: () => [],
+				} as any,
+				nodes: [
+					{
+						id: 'unknown-node',
+						name: 'UnknownNode',
+						type: 'unknown.type',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+			});
+
+			// Should not throw error, just continue processing
+			expect(workflow).toBeDefined();
+			expect(workflow.getNode('UnknownNode')).toBeDefined();
+		});
+
+		test('should throw error for unknown context type', () => {
+			expect(() => {
+				SIMPLE_WORKFLOW.getStaticData('invalid' as any);
+			}).toThrow('Unknown context type. Only `global` and `node` are supported.');
+		});
+
+		test('should throw error when node parameter is undefined for node context', () => {
+			expect(() => {
+				SIMPLE_WORKFLOW.getStaticData('node', undefined);
+			}).toThrow('The request data of context type "node" the node parameter has to be set!');
+		});
+
+		test('should throw error when connection node is not found in getParentMainInputNode', () => {
+			// Create a workflow where a node has outgoing connections to a non-existent node
+			const workflowWithBadConnection = new Workflow({
+				nodeTypes,
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Node1',
+						type: 'test.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				// Create connections where Node1 connects to NonExistentNode via AiAgent type
+				connections: {
+					Node1: {
+						[NodeConnectionTypes.AiAgent]: [
+							[{ node: 'NonExistentNode', type: NodeConnectionTypes.AiAgent, index: 0 }],
+						],
+					},
+				},
+				active: false,
+			});
+
+			// Get the node that connects to a non-existent node
+			const node1 = workflowWithBadConnection.getNode('Node1')!;
+
+			expect(() => {
+				workflowWithBadConnection.getParentMainInputNode(node1);
+			}).toThrow('Node "NonExistentNode" not found');
 		});
 	});
 });
