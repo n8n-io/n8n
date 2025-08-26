@@ -39,6 +39,7 @@ import {
 } from './GenericFunctions';
 import { ticketFields, ticketOperations } from './TicketDescription';
 import { generatePairedItemData } from '../../../utils/utilities';
+import { parseToTimestamp } from './utils/parseToTimestamp';
 
 export class HubspotV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -1144,7 +1145,7 @@ export class HubspotV2 implements INodeType {
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
-
+		const version = this.getNode().typeVersion;
 		//https://legacydocs.hubspot.com/docs/methods/lists/contact-lists-overview
 		if (resource === 'contactList') {
 			try {
@@ -2742,7 +2743,7 @@ export class HubspotV2 implements INodeType {
 									: undefined;
 
 							const body: {
-								engagement: { type: string; ownerId?: number };
+								engagement: { type: string; ownerId?: number; timestamp?: number };
 								metadata: IDataObject;
 								associations: IDataObject;
 							} = {
@@ -2760,6 +2761,13 @@ export class HubspotV2 implements INodeType {
 
 							if (type === 'task') {
 								body.metadata = getTaskMetadata(metadata);
+								if (version >= 2.2) {
+									const dueDateParameter = this.getNodeParameter('dueDate', i, null);
+									if (dueDateParameter) {
+										const timestamp = parseToTimestamp(dueDateParameter);
+										body.engagement.timestamp = timestamp;
+									}
+								}
 							}
 
 							if (type === 'meeting') {

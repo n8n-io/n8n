@@ -6,6 +6,7 @@
 				"authentication": "appToken",
 				"resource": "engagement",
 				"type": "task",
+				"dueDate": "2025-08-31T13:12:56",
 				"metadata": {
 					"body": "Hello world",
 					"subject": "Title"
@@ -33,6 +34,7 @@
 				"authentication": "appToken",
 				"resource": "engagement",
 				"type": "task",
+				"dueDate": "2025-08-31T13:12:56",
 				"metadata": {
 					"body": "Hello world",
 					"subject": "Title"
@@ -44,6 +46,29 @@
 			"position": [0, 200],
 			"id": "7fb51d0d-28b5-450d-b910-f6d91e69e934",
 			"name": "HubSpot - Engagement - Create",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "vWZfuQawMAWdxKms",
+					"name": "HubSpot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "engagement",
+				"type": "task",
+				"metadata": {
+					"body": "Hello world",
+					"subject": "Title"
+				},
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.1,
+			"position": [0, 400],
+			"id": "7fb51d0d-28b5-450d-b910-f6d91e69e935",
+			"name": "HubSpot - Engagement - Create 2.1",
 			"credentials": {
 				"hubspotAppToken": {
 					"id": "vWZfuQawMAWdxKms",
@@ -73,7 +98,7 @@
 						"lastUpdated": 1756127696406,
 						"ownerId": 123456789,
 						"type": "TASK",
-						"timestamp": 1756127696406,
+						"timestamp": 1756645976000,
 						"allAccessibleTeamIds": [],
 						"bodyPreview": "Hello world",
 						"queueMembershipIds": [],
@@ -120,7 +145,54 @@
 						"createdAt": 1756127766844,
 						"lastUpdated": 1756127766844,
 						"type": "TASK",
-						"timestamp": 1756127766844,
+						"timestamp": 1756645976000,
+						"allAccessibleTeamIds": [],
+						"bodyPreview": "Hello world",
+						"queueMembershipIds": [],
+						"bodyPreviewIsTruncated": false,
+						"bodyPreviewHtml": "<html>\n <head></head>\n <body>\n Hello world\n </body>\n</html>"
+					},
+					"associations": {
+						"contactIds": [],
+						"companyIds": [],
+						"dealIds": [],
+						"ownerIds": [],
+						"workflowIds": [],
+						"ticketIds": [],
+						"contentIds": [],
+						"quoteIds": [],
+						"marketingEventIds": [],
+						"partnerClientIds": [],
+						"orderIds": [],
+						"cartIds": []
+					},
+					"attachments": [],
+					"scheduledTasks": [],
+					"metadata": {
+						"body": "Hello world",
+						"status": "NOT_STARTED",
+						"forObjectType": "OWNER",
+						"subject": "Title",
+						"taskType": "TODO",
+						"reminders": [],
+						"priority": "NONE",
+						"isAllDay": false
+					}
+				}
+			}
+		],
+		"HubSpot - Engagement - Create 2.1": [
+			{
+				"json": {
+					"associationCreateFailures": [],
+					"engagement": {
+						"id": 274123775164,
+						"portalId": 146787276,
+						"active": true,
+						"createdAt": 1756127766844,
+						"lastUpdated": 1756127766844,
+						"type": "TASK",
+						"timestamp": 1756645976000,
 						"allAccessibleTeamIds": [],
 						"bodyPreview": "Hello world",
 						"queueMembershipIds": [],
@@ -168,6 +240,11 @@
 					},
 					{
 						"node": "HubSpot - Engagement - Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HubSpot - Engagement - Create 2.1",
 						"type": "main",
 						"index": 0
 					}
