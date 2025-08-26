@@ -65,13 +65,16 @@ class TaskOfferFilter(logging.Filter):
 def setup_logging():
     logger = logging.getLogger()
 
-    # TODO: Inherit log level from launcher
-
-    logger.setLevel(logging.INFO)
+    log_level_str = os.getenv("N8N_RUNNERS_LAUNCHER_LOG_LEVEL", "INFO").upper()
+    log_level = getattr(logging, log_level_str, logging.INFO)
+    logger.setLevel(log_level)
 
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(ColorFormatter(LOG_FORMAT, LOG_TIMESTAMP_FORMAT))
     stream_handler.addFilter(TaskOfferFilter())
     logger.addHandler(stream_handler)
 
-    # logging.getLogger("websockets.client").setLevel(logging.DEBUG)
+    # Harcode to INFO as websocket logs are too verbose
+    logging.getLogger("websockets.client").setLevel(logging.INFO)
+    logging.getLogger("websockets.server").setLevel(logging.INFO)
+    logging.getLogger("websockets").setLevel(logging.INFO)
