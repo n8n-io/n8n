@@ -58,7 +58,7 @@ import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
-import AddColumnHeaderComponent from '@/features/dataStore/components/dataGrid/AddColumnHeaderComponent.vue';
+import AddColumnButton from '@/features/dataStore/components/dataGrid/AddColumnButton.vue';
 import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.vue';
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue';
@@ -94,7 +94,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
-const { getDefaultValueForType, mapToAGCellType } = useDataStoreTypes();
+const { mapToAGCellType } = useDataStoreTypes();
 
 const dataStoreStore = useDataStoreStore();
 
@@ -421,7 +421,7 @@ const initColumnDefinitions = () => {
 				lockPinned: true,
 				lockPosition: 'right',
 				resizable: false,
-				headerComponent: AddColumnHeaderComponent,
+				headerComponent: AddColumnButton,
 				headerComponentParams: { onAddColumn },
 			},
 		),
@@ -610,6 +610,7 @@ const handleClearSelection = () => {
 
 defineExpose({
 	addRow: onAddRowClick,
+	addColumn: onAddColumn,
 });
 </script>
 

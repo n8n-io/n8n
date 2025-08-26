@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import type {
 	DataStoreColumnCreatePayload,
 	DataStoreColumnType,
@@ -9,14 +9,13 @@ import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStore
 import { COLUMN_NAME_REGEX, MAX_COLUMN_NAME_LENGTH } from '@/features/dataStore/constants';
 import Tooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
 import { useDebounce } from '@/composables/useDebounce';
-import type { IHeaderParams } from 'ag-grid-community';
-
-type HeaderParamsWithAddColumn = IHeaderParams & {
-	onAddColumn: (column: DataStoreColumnCreatePayload) => void;
-};
 
 const props = defineProps<{
-	params: HeaderParamsWithAddColumn;
+	params: {
+		onAddColumn: (column: DataStoreColumnCreatePayload) => void;
+	};
+	popoverId?: string;
+	useTextTrigger?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -35,6 +34,8 @@ const error = ref<string | null>(null);
 // Handling popover state manually to prevent it closing when interacting with dropdown
 const popoverOpen = ref(false);
 const isSelectOpen = ref(false);
+
+const popoverId = computed(() => props.popoverId ?? 'add-column-popover');
 
 const onAddButtonClicked = () => {
 	if (!columnName.value || !columnType.value) {
@@ -76,19 +77,26 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 	<N8nTooltip :disabled="popoverOpen" :content="i18n.baseText('dataStore.addColumn.label')">
 		<div class="add-column-header-component-wrapper">
 			<N8nPopoverReka
-				id="add-column-popover"
+				:id="popoverId"
 				:open="popoverOpen"
 				:popper-options="{ strategy: 'fixed' }"
 				:show-arrow="false"
 				@update:open="handlePopoverOpenChange"
 			>
 				<template #trigger>
-					<N8nIconButton
-						data-test-id="data-store-add-column-trigger-button"
-						text
-						icon="plus"
-						type="tertiary"
-					/>
+					<template v-if="props.useTextTrigger">
+						<N8nButton data-test-id="data-store-add-column-trigger-button" type="tertiary">
+							{{ i18n.baseText('dataStore.addColumn.label') }}
+						</N8nButton>
+					</template>
+					<template v-else>
+						<N8nIconButton
+							data-test-id="data-store-add-column-trigger-button"
+							text
+							icon="plus"
+							type="tertiary"
+						/>
+					</template>
 				</template>
 				<template #content>
 					<div class="add-ds-column-header-popover-content">
@@ -128,7 +136,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 							>
 								<N8nSelect
 									v-model="columnType"
-									append-to="#add-column-popover"
+									:append-to="`#${popoverId}`"
 									@visible-change="isSelectOpen = $event"
 								>
 									<N8nOption v-for="type in columnTypes" :key="type" :value="type">

@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumnHeaderComponent.vue';
+import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumnButton.vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { MAX_COLUMN_NAME_LENGTH } from '@/features/dataStore/constants';

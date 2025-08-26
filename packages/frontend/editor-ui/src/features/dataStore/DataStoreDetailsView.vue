@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import type { DataStore } from '@/features/dataStore/datastore.types';
+import type { DataStore, DataStoreColumnCreatePayload } from '@/features/dataStore/datastore.types';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -10,6 +10,7 @@ import DataStoreBreadcrumbs from '@/features/dataStore/components/DataStoreBread
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import DataStoreTable from './components/dataGrid/DataStoreTable.vue';
 import { useDebounce } from '@/composables/useDebounce';
+import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
 
 type Props = {
 	id: string;
@@ -81,6 +82,10 @@ const onToggleSave = (value: boolean) => {
 	}
 };
 
+const onAddColumn = (column: DataStoreColumnCreatePayload) => {
+	dataStoreTableRef.value?.addColumn(column);
+};
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('dataStore.dataStores'));
 	await initialize();
@@ -108,6 +113,11 @@ onMounted(async () => {
 				</div>
 				<div :class="$style.actions">
 					<n8n-button @click="dataStoreTableRef?.addRow">Add Row</n8n-button>
+					<AddColumnButton
+						:use-text-trigger="true"
+						:popover-id="'ds-details-add-column-popover'"
+						:params="{ onAddColumn }"
+					/>
 				</div>
 			</div>
 			<div :class="$style.content">
