@@ -681,6 +681,7 @@ const handleClearSelection = () => {
 	--ag-header-column-border-height: 100%;
 	--ag-range-selection-border-color: var(--grid-cell-focus-border-color);
 	--ag-input-padding-start: var(--spacing-2xs);
+	--ag-input-background-color: var(--color-background-light-base);
 
 	:global(.ag-cell) {
 		display: flex;
