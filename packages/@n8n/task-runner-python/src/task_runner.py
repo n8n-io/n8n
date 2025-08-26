@@ -47,7 +47,7 @@ from src.message_types import (
 from src.message_serde import MessageSerde
 from src.task_state import TaskState, TaskStatus
 from src.task_executor import TaskExecutor
-from src.task_analyzer import validate_code_security
+from src.task_analyzer import TaskAnalyzer
 
 
 class TaskOffer:
@@ -92,6 +92,7 @@ class TaskRunner:
         self.offers_coroutine: Optional[asyncio.Task] = None
         self.serde = MessageSerde()
         self.executor = TaskExecutor()
+        self.analyzer = TaskAnalyzer(opts.stdlib_allow, opts.external_allow)
         self.logger = logging.getLogger(__name__)
 
         self.task_broker_uri = opts.task_broker_uri
@@ -214,9 +215,7 @@ class TaskRunner:
             if task_state is None:
                 raise TaskMissingError(task_id)
 
-            validate_code_security(
-                task_settings.code, self.opts.stdlib_allow, self.opts.external_allow
-            )
+            self.analyzer.validate(task_settings.code)
 
             process, queue = self.executor.create_process(
                 task_settings.code,

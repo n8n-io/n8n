@@ -5,7 +5,7 @@ from typing import Set
 from src.errors import SecurityViolationError
 
 
-class TaskAnalyzer(ast.NodeVisitor):
+class ImportValidationVisitor(ast.NodeVisitor):
     def __init__(self, stdlib_allow: Set[str], external_allow: Set[str]):
         self.stdlib_allow = stdlib_allow
         self.external_allow = external_allow
@@ -89,19 +89,22 @@ class TaskAnalyzer(ast.NodeVisitor):
         return module_name in self.stdlib_modules
 
 
-def validate_code_security(
-    code: str, stdlib_allow: Set[str], external_allow: Set[str]
-) -> None:
-    try:
-        tree = ast.parse(code)
-    except SyntaxError:
-        raise
-
-    analyzer = TaskAnalyzer(stdlib_allow, external_allow)
-    analyzer.visit(tree)
-
-    if analyzer.violations:
-        violation_msg = "Security violations detected:\n" + "\n".join(
-            analyzer.violations
-        )
-        raise SecurityViolationError(violation_msg)
+class TaskAnalyzer:
+    def __init__(self, stdlib_allow: Set[str], external_allow: Set[str]):
+        self.stdlib_allow = stdlib_allow
+        self.external_allow = external_allow
+    
+    def validate(self, code: str) -> None:
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            raise
+        
+        visitor = ImportValidationVisitor(self.stdlib_allow, self.external_allow)
+        visitor.visit(tree)
+        
+        if visitor.violations:
+            message = "Security violations detected:\n" + "\n".join(
+                visitor.violations
+            )
+            raise SecurityViolationError(message)
