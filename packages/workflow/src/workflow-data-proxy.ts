@@ -522,10 +522,8 @@ export class WorkflowDataProxy {
 						// Ultra-simple execution-based validation: if no execution data exists, throw error
 						if (executionData.length === 0) {
 							throw new ExpressionError('No execution data available', {
-								messageTemplate: 'Make sure the node has been executed and has output data',
 								runIndex: that.runIndex,
 								itemIndex: that.itemIndex,
-								nodeCause: nodeName,
 								type: 'no_execution_data',
 							});
 						}
