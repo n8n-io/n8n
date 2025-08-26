@@ -145,7 +145,7 @@ describe('POST /workflows', () => {
 		);
 	});
 
-	test('should create workflow with context parameter', async () => {
+	test('should create workflow with ui_context parameter', async () => {
 		const payload = {
 			name: 'testing with context',
 			nodes: [
@@ -162,7 +162,7 @@ describe('POST /workflows', () => {
 			staticData: null,
 			settings: {},
 			active: false,
-			context: 'workflow_list',
+			ui_context: 'workflow_list',
 		};
 
 		const response = await authMemberAgent.post('/workflows').send(payload);

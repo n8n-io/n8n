@@ -6,5 +6,5 @@ export class CreateCredentialDto extends Z.class({
 	type: z.string().min(1).max(128),
 	data: z.record(z.string(), z.unknown()),
 	projectId: z.string().optional(),
-	context: z.string().optional(),
+	ui_context: z.string().optional(),
 }) {}

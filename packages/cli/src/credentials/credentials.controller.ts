@@ -192,7 +192,7 @@ export class CredentialsController {
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,
-			context: payload.context,
+			ui_context: payload.ui_context,
 		});
 
 		return newCredential;

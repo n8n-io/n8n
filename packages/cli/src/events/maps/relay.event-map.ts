@@ -61,7 +61,7 @@ export type RelayEventMap = {
 		publicApi: boolean;
 		projectId: string;
 		projectType: string;
-		context?: string;
+		ui_context?: string;
 	};
 
 	'workflow-deleted': {
@@ -293,7 +293,7 @@ export type RelayEventMap = {
 		publicApi: boolean;
 		projectId?: string;
 		projectType?: string;
-		context?: string;
+		ui_context?: string;
 	};
 
 	'credentials-shared': {
@@ -387,7 +387,7 @@ export type RelayEventMap = {
 	'team-project-created': {
 		userId: string;
 		role: string;
-		context?: string;
+		ui_context?: string;
 	};
 
 	// #endregion
