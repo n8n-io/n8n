@@ -35,6 +35,7 @@ import ExperimentalNodeDetailsDrawer from '@/components/canvas/experimental/comp
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
+import ExperimentalFocusPanelHeader from '@/components/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 
 defineOptions({ name: 'FocusPanel' });
 
