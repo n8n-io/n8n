@@ -12,7 +12,8 @@ import {
 	moveDataStoreColumnApi,
 	getDataStoreRowsApi,
 	insertDataStoreRowApi,
-	upsertDataStoreRowsApi,
+	updateDataStoreRowsApi,
+	deleteDataStoreRowsApi,
 } from '@/features/dataStore/dataStore.api';
 import type {
 	DataStore,
@@ -20,13 +21,10 @@ import type {
 	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 
 export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const rootStore = useRootStore();
 	const projectStore = useProjectsStore();
-
-	const dataStoreTypes = useDataStoreTypes();
 
 	const dataStores = ref<DataStore[]>([]);
 	const totalCount = ref(0);
@@ -185,19 +183,34 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 	const insertEmptyRow = async (dataStore: DataStore) => {
 		const emptyRow: DataStoreRow = {};
 		dataStore.columns.forEach((column) => {
-			// Set default values based on column type
-			emptyRow[column.name] = dataStoreTypes.getDefaultValueForType(column.type);
+			emptyRow[column.name] = null;
 		});
-		return await insertDataStoreRowApi(
+		const inserted = await insertDataStoreRowApi(
 			rootStore.restApiContext,
 			dataStore.id,
 			emptyRow,
 			dataStore.projectId,
 		);
+		return inserted[0];
 	};
 
-	const upsertRow = async (dataStoreId: string, projectId: string, row: DataStoreRow) => {
-		return await upsertDataStoreRowsApi(rootStore.restApiContext, dataStoreId, [row], projectId);
+	const updateRow = async (
+		dataStoreId: string,
+		projectId: string,
+		rowId: number,
+		rowData: DataStoreRow,
+	) => {
+		return await updateDataStoreRowsApi(
+			rootStore.restApiContext,
+			dataStoreId,
+			rowId,
+			rowData,
+			projectId,
+		);
+	};
+
+	const deleteRows = async (dataStoreId: string, projectId: string, rowIds: number[]) => {
+		return await deleteDataStoreRowsApi(rootStore.restApiContext, dataStoreId, rowIds, projectId);
 	};
 
 	return {
@@ -214,6 +227,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		moveDataStoreColumn,
 		fetchDataStoreContent,
 		insertEmptyRow,
-		upsertRow,
+		updateRow,
+		deleteRows,
 	};
 });

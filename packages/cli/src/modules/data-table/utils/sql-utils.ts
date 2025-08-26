@@ -5,12 +5,12 @@ import {
 } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import type { DataStoreColumnJsType, DataStoreRows } from 'n8n-workflow';
+import type { DataStoreColumnJsType, DataStoreRows, DataStoreRowWithId } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { DataStoreUserTableName } from '../data-store.types';
-
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import type { DataStoreUserTableName } from '../data-store.types';
 
 export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -155,6 +155,16 @@ function hasRowId(data: unknown): data is WithRowId {
 	return typeof data === 'object' && data !== null && 'id' in data && isNumber(data.id);
 }
 
+export function extractReturningData(raw: unknown): DataStoreRowWithId[] {
+	if (!isArrayOf(raw, hasRowId)) {
+		throw new UnexpectedError(
+			'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+		);
+	}
+
+	return raw;
+}
+
 export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type']): number[] {
 	switch (dbType) {
 		case 'postgres':
@@ -183,7 +193,13 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 }
 
 export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
-	const typeMap = new Map(columns.map((col) => [col.name, col.type]));
+	// we need to normalize system dates as well
+	const systemColumns = [
+		{ name: 'createdAt', type: 'date' },
+		{ name: 'updatedAt', type: 'date' },
+	];
+
+	const typeMap = new Map([...columns, ...systemColumns].map((col) => [col.name, col.type]));
 	return rows.map((row) => {
 		const normalized = { ...row };
 		for (const [key, value] of Object.entries(row)) {
@@ -220,10 +236,10 @@ export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
 }
 
 export function normalizeValue(
-	value: DataStoreColumnJsType | null,
+	value: DataStoreColumnJsType,
 	columnType: string | undefined,
 	dbType: DataSourceOptions['type'],
-): DataStoreColumnJsType | null {
+): DataStoreColumnJsType {
 	if (['mysql', 'mariadb'].includes(dbType)) {
 		if (columnType === 'date') {
 			if (value instanceof Date) {

@@ -306,8 +306,8 @@ export const setupTestServer = ({
 						await import('@/modules/insights/insights.module');
 						break;
 
-					case 'data-store':
-						await import('@/modules/data-store/data-store.module');
+					case 'data-table':
+						await import('@/modules/data-table/data-table.module');
 						break;
 
 					case 'module-settings':

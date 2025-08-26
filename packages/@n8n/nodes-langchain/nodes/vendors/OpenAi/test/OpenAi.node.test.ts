@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import get from 'lodash/get';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
@@ -362,7 +363,12 @@ describe('OpenAi, Audio resource', () => {
 			'POST',
 			'/audio/transcriptions',
 			expect.objectContaining({
-				headers: { 'Content-Type': 'multipart/form-data' },
+				headers: expect.objectContaining({
+					'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+				}),
+				option: expect.objectContaining({
+					formData: expect.any(FormData),
+				}),
 			}),
 		);
 	});
@@ -386,7 +392,12 @@ describe('OpenAi, Audio resource', () => {
 			'POST',
 			'/audio/translations',
 			expect.objectContaining({
-				headers: { 'Content-Type': 'multipart/form-data' },
+				headers: expect.objectContaining({
+					'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+				}),
+				option: expect.objectContaining({
+					formData: expect.any(FormData),
+				}),
 			}),
 		);
 	});
@@ -453,7 +464,12 @@ describe('OpenAi, File resource', () => {
 			'POST',
 			'/files',
 			expect.objectContaining({
-				headers: { 'Content-Type': 'multipart/form-data' },
+				headers: expect.objectContaining({
+					'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+				}),
+				option: expect.objectContaining({
+					formData: expect.any(FormData),
+				}),
 			}),
 		);
 	});
