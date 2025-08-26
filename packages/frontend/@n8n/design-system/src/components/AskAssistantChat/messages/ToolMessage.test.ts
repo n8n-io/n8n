@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import type { Props } from './ToolMessage.vue';
 import ToolMessage from './ToolMessage.vue';
 import type { ChatUI } from '../../../types/assistant';
+import N8nIcon from '../../N8nIcon';
 
 // Mock i18n to return keys instead of translated text
 vi.mock('@n8n/design-system/composables/useI18n', () => ({
@@ -20,6 +21,7 @@ const createMountOptions = (props: Props) => ({
 			BaseMessage: {
 				template: '<div><slot /></div>',
 			},
+			N8nIcon: true,
 		},
 	},
 });
@@ -162,7 +164,7 @@ describe('ToolMessage', () => {
 			});
 
 			// Check that tooltip is enabled by looking for the actual tooltip attributes
-			expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(true);
+			expect(wrapper.html()).toContain('icon="spinner"');
 		});
 
 		it('should disable tooltip for non-running status', () => {
@@ -177,7 +179,7 @@ describe('ToolMessage', () => {
 			});
 
 			// Check that the completed icon is rendered instead of spinner
-			expect(wrapper.find('[data-icon="circle-check"]').exists()).toBe(true);
+			expect(wrapper.html()).toContain('icon="circle-check"');
 		});
 	});
 
