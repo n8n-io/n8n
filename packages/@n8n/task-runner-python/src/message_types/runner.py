@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Literal, Union, Any, Dict
+from ..constants import RUNNER_RPC_CALL
 
 from ..constants import (
     RUNNER_INFO,
@@ -53,6 +54,15 @@ class RunnerTaskError:
     type: Literal["runner:taskerror"] = RUNNER_TASK_ERROR
 
 
+@dataclass
+class RunnerRpcCall:
+    call_id: str
+    task_id: str
+    name: str
+    params: List[Any]
+    type: Literal["runner:rpc"] = RUNNER_RPC_CALL
+
+
 RunnerMessage = Union[
     RunnerInfo,
     RunnerTaskOffer,
@@ -60,4 +70,5 @@ RunnerMessage = Union[
     RunnerTaskRejected,
     RunnerTaskDone,
     RunnerTaskError,
+    RunnerRpcCall,
 ]
