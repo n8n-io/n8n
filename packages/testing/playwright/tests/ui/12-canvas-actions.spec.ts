@@ -165,7 +165,7 @@ test.describe('Canvas Actions', () => {
 	test('should select nodes using arrow keys', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
-		await n8n.canvas.addNode(CODE_NODE_NAME, { closeNDV: true });
+		await n8n.canvas.addNode(CODE_NODE_NAME, { action: CODE_NODE_DISPLAY_NAME, closeNDV: true });
 		await n8n.canvas.getCanvasNodes().first().waitFor();
 		await n8n.canvas.navigateNodesWithArrows('left');
 
