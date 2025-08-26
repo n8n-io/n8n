@@ -37,6 +37,7 @@ import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
+export { CredentialsConfig } from './configs/credentials.config';
 export { DatabaseConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export { TaskRunnersConfig } from './configs/runners.config';

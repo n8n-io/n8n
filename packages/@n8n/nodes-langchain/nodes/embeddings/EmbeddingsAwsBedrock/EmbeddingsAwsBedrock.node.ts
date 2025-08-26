@@ -1,3 +1,4 @@
+import { Aws } from 'n8n-nodes-base/dist/credentials/Aws.credentials';
 import { BedrockEmbeddings } from '@langchain/aws';
 import {
 	NodeConnectionTypes,
@@ -111,11 +112,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			region: credentials.region as string,
 			model: modelName,
 			maxRetries: 3,
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey as string,
-				accessKeyId: credentials.accessKeyId as string,
-				sessionToken: credentials.sessionToken as string,
-			},
+			credentials: Aws.getCredentialProvider(credentials),
 		});
 
 		return {

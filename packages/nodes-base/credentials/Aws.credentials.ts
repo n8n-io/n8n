@@ -1,3 +1,7 @@
+import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
+import type { AwsCredentialIdentity, AwsCredentialIdentityProvider } from '@aws-sdk/types';
+import { CredentialsConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
 import type {
@@ -9,7 +13,7 @@ import type {
 	INodeProperties,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { isObjectEmpty } from 'n8n-workflow';
+import { isObjectEmpty, ApplicationError } from 'n8n-workflow';
 
 export const regions = [
 	{
@@ -197,6 +201,7 @@ export const regions = [
 export type AWSRegion = (typeof regions)[number]['name'];
 export type AwsCredentialsType = {
 	region: AWSRegion;
+	credentialType?: 'accessKey' | 'systemCredential';
 	accessKeyId: string;
 	secretAccessKey: string;
 	temporaryCredentials: boolean;
@@ -240,15 +245,43 @@ export class Aws implements ICredentialType {
 			default: 'us-east-1',
 		},
 		{
+			displayName: 'Credential Type',
+			name: 'credentialType',
+			type: 'options',
+			options: [
+				{
+					name: 'IAM Access Key',
+					value: 'accessKey',
+					description: 'Use IAM access key and secret key directly',
+				},
+				{
+					name: 'Systems',
+					value: 'systemCredential',
+					description: 'Use default credentials provider chain',
+				},
+			],
+			default: 'accessKey',
+		},
+		{
 			displayName: 'Access Key ID',
 			name: 'accessKeyId',
 			type: 'string',
+			displayOptions: {
+				show: {
+					credentialType: ['accessKey'],
+				},
+			},
 			default: '',
 		},
 		{
 			displayName: 'Secret Access Key',
 			name: 'secretAccessKey',
 			type: 'string',
+			displayOptions: {
+				show: {
+					credentialType: ['accessKey'],
+				},
+			},
 			default: '',
 			typeOptions: {
 				password: true,
@@ -500,13 +533,8 @@ export class Aws implements ICredentialType {
 			region,
 		} as unknown as Request;
 
-		const securityHeaders = {
-			accessKeyId: `${credentials.accessKeyId}`.trim(),
-			secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-			sessionToken: credentials.temporaryCredentials
-				? `${credentials.sessionToken}`.trim()
-				: undefined,
-		};
+		const securityHeaders = await Aws.getSecurityHeaders(credentials);
+
 		try {
 			sign(signOpts, securityHeaders);
 		} catch (err) {
@@ -531,4 +559,36 @@ export class Aws implements ICredentialType {
 			method: 'POST',
 		},
 	};
+
+	static async getSecurityHeaders(credentials: AwsCredentialsType): Promise<AwsCredentialIdentity> {
+		const provider = Aws.getCredentialProvider(credentials);
+		return await provider();
+	}
+
+	static getCredentialProvider(credentials: AwsCredentialsType): AwsCredentialIdentityProvider {
+		const credentialType = credentials.credentialType || 'accessKey';
+		if (credentialType == 'accessKey') {
+			return async function () {
+				return {
+					accessKeyId: `${credentials.accessKeyId}`.trim(),
+					secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+					sessionToken: credentials.temporaryCredentials
+						? `${credentials.sessionToken}`.trim()
+						: undefined,
+				};
+			};
+		}
+
+		if (!Container.get(CredentialsConfig).allowSystems) {
+			throw new ApplicationError(
+				"CREDENTIALS_ALLOW_SYSTEMS must be enable to use system's credentials",
+			);
+		}
+
+		return fromNodeProviderChain({
+			clientConfig: {
+				region: credentials.region,
+			},
+		});
+	}
 }
