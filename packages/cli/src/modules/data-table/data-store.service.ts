@@ -42,7 +42,7 @@ export class DataStoreService {
 		return await this.dataStoreRepository.createDataStore(projectId, dto.name, dto.columns);
 	}
 
-	// Currently only renames data stores
+	// Updates data store properties (currently limited to renaming)
 	async updateDataStore(dataStoreId: string, projectId: string, dto: UpdateDataStoreDto) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateUniqueName(dto.name, projectId);
