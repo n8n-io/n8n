@@ -800,7 +800,7 @@ export function useCanvasOperations() {
 						focusPanelStore.focusedNodeParameters.length === 0
 					) {
 						focusPanelStore.open();
-					} else if (experimentalNdvStore.isEnabled) {
+					} else if (experimentalNdvStore.isZoomedViewEnabled) {
 						experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
 					} else {
 						ndvStore.setActiveNodeName(nodeData.name);
