@@ -166,7 +166,7 @@ export function useCalloutHelpers() {
 		templateId: string,
 		options: {
 			telemetry: {
-				source: 'ndv' | 'nodeCreator' | 'modal';
+				source: 'ndv' | 'nodeCreator' | 'modal' | 'templates';
 				nodeType?: string;
 				section?: string;
 			};

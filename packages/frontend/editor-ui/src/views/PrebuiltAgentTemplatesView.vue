@@ -22,7 +22,7 @@ const tutorials = computed<OpenTemplateElement[]>(() =>
 const openTemplate = (templateId: string) => {
 	calloutHelpers.openSampleWorkflowTemplate(templateId, {
 		telemetry: {
-			source: 'modal',
+			source: 'templates',
 		},
 	});
 };
