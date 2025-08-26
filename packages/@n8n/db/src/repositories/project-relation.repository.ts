@@ -16,7 +16,11 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 				projectId: In(projectIds),
 				role: 'project:personalOwner',
 			},
-			relations: { user: true },
+			relations: {
+				user: {
+					role: true,
+				},
+			},
 		});
 	}
 
