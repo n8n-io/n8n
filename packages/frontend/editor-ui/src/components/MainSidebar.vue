@@ -34,6 +34,7 @@ import { useSidebarData } from '@/composables/useSidebarData';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import BecomeTemplateCreatorCta from './BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
+import { useSidebarData2 } from '@/composables/useSidebarData2';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -60,7 +61,9 @@ const user = ref<Element | null>(null);
 
 const basePath = ref('');
 
-const { items, bottomItems, projectsEmptyState } = useSidebarData();
+const { topItems, projectItems, canCreateProject, showProjects, openProject } = useSidebarData2();
+
+const { bottomItems } = useSidebarData();
 
 const {
 	menu,
@@ -255,13 +258,16 @@ const helpMenuItems = ref<IMenuElement[]>([
 
 <template>
 	<N8nSidebar
-		:items="items"
+		:top-items="topItems"
+		:project-items="projectItems"
+		:show-projects="showProjects"
+		:can-create-project="canCreateProject"
 		:bottom-items="bottomItems"
+		:open-project="openProject"
 		:user-name="usersStore.currentUser?.fullName || ''"
 		:release-channel="settingsStore.settings.releaseChannel"
 		:help-items="helpMenuItems"
 		:handle-select="handleSelect"
-		:projects-empty-state="projectsEmptyState"
 		@logout="onLogout"
 		@createProject="handleMenuSelect('create-project')"
 	>

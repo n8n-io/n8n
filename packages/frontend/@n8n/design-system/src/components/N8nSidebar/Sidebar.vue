@@ -110,12 +110,12 @@ onUnmounted(() => {
 					/>
 				</N8nTooltip>
 			</header>
-			<SidebarTree :items="props.topItems" />
-			<template v-if="props.showProjects">
+			<SidebarTree :items="topItems" :open-project="openProject" />
+			<template v-if="showProjects">
 				<SidebarProjectsEmpty v-if="projectItems.length === 0" :can-create="canCreateProject" />
 				<template v-else>
 					<N8nText size="small" color="text-light" class="sidebarSubheader" bold>Projects</N8nText>
-					<SidebarTree :items="props.projectItems" />
+					<SidebarTree :items="projectItems" :open-project="openProject" />
 				</template>
 			</template>
 			<div v-if="bottomItems?.length" class="sidebarBottomItems">
