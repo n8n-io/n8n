@@ -761,6 +761,10 @@ defineExpose({
 		background-color: transparent;
 	}
 
+	:global(.ag-cell-value[col-id='id']) {
+		border-right: 1px solid var(--ag-border-color);
+	}
+
 	:global(.ag-large-text-input) {
 		position: fixed;
 		padding: 0;
