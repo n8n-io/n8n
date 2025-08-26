@@ -30,9 +30,9 @@ import {
 	WorkflowDataProxy,
 } from 'n8n-workflow';
 
-import { NodeExecutionContext } from './node-execution-context';
-
 import { BinaryDataService } from '@/binary-data/binary-data.service';
+
+import { NodeExecutionContext } from './node-execution-context';
 
 export class BaseExecuteContext extends NodeExecutionContext {
 	protected readonly binaryDataService = Container.get(BinaryDataService);

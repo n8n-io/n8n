@@ -5,10 +5,10 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+
 import { createExecutionCustomData } from './custom-data';
 import { getSecretsProxy } from './get-secrets-proxy';
-
-import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 
 /** Returns the additional keys for Expressions and Function-Nodes */
 export function getAdditionalKeys(

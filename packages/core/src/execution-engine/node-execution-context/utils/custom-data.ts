@@ -27,7 +27,7 @@ export function createExecutionCustomData({
 				if (mode === 'manual') {
 					throw e;
 				}
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 				LoggerProxy.debug(e.message);
 			}
 		},
@@ -38,7 +38,7 @@ export function createExecutionCustomData({
 				if (mode === 'manual') {
 					throw e;
 				}
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 				LoggerProxy.debug(e.message);
 			}
 		},
