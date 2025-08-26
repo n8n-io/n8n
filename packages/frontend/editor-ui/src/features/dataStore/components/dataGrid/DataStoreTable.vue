@@ -682,6 +682,7 @@ const handleClearSelection = () => {
 	--ag-range-selection-border-color: var(--grid-cell-focus-border-color);
 	--ag-input-padding-start: var(--spacing-2xs);
 	--ag-input-background-color: var(--color-background-light-base);
+	--ag-focus-shadow: 0 0 0 1px var(--color-secondary);
 
 	:global(.ag-cell) {
 		display: flex;
@@ -745,6 +746,12 @@ const handleClearSelection = () => {
 
 	:global(.ag-center-cols-viewport) {
 		min-height: auto;
+	}
+
+	:global(.ag-checkbox-input-wrapper) {
+		&:where(:focus-within, :active) {
+			box-shadow: none;
+		}
 	}
 }
 
