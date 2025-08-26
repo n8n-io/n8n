@@ -731,6 +731,14 @@ const handleClearSelection = () => {
 			display: none;
 		}
 	}
+
+	:global(.ag-large-text-input) {
+		position: fixed;
+	}
+
+	:global(.ag-center-cols-viewport) {
+		min-height: auto;
+	}
 }
 
 .footer {
