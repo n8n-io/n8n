@@ -8,8 +8,6 @@ import Workflow_if from '../fixtures/Workflow_if.json';
 import Workflow_loop from '../fixtures/Workflow_loop.json';
 import Workflow_wait_for_webhook from '../fixtures/Workflow_wait_for_webhook.json';
 
-const LOGS_ENTRIES_THROTTLE_DURATION = 1000;
-
 describe('Logs', () => {
 	it('should populate logs as manual execution progresses', () => {
 		workflow.navigateToNewWorkflowPage();
