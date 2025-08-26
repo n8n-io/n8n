@@ -89,25 +89,31 @@ return
 				'`.itemMatching()` expects an item index to be passed in as its argument.',
 			);
 		});
+	});
 
-		test('should show lint errors in `runOnceForEachItem` mode', async ({ n8n }) => {
-			await n8n.ndv.getParameterInput('mode').click();
-			await n8n.page.getByRole('option', { name: 'Run Once for Each Item' }).click();
+	test.describe
+		.serial('Run Once for Each Item', () => {
+			test('should show lint errors in `runOnceForEachItem` mode', async ({ n8n }) => {
+				await n8n.start.fromHome();
+				await n8n.workflows.clickAddWorkflowButton();
+				await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+				await n8n.canvas.addNode(CODE_NODE_NAME);
+				await n8n.ndv.toggleCodeMode('Run Once for Each Item');
 
-			await n8n.ndv.getCodeEditor().fill(`$input.itemMatching()
+				await n8n.ndv.getCodeEditor().fill(`$input.itemMatching()
 $input.all()
 $input.first()
 $input.item()
 
 return []
 `);
-			await expect(n8n.ndv.getLintErrors()).toHaveCount(5);
-			await n8n.ndv.getParameterInput('jsCode').getByText('all').hover();
-			await expect(n8n.ndv.getLintTooltip()).toContainText(
-				"Method `$input.all()` is only available in the 'Run Once for All Items' mode.",
-			);
+				await expect(n8n.ndv.getLintErrors()).toHaveCount(7);
+				await n8n.ndv.getParameterInput('jsCode').getByText('all').hover();
+				await expect(n8n.ndv.getLintTooltip()).toContainText(
+					"Method `$input.all()` is only available in the 'Run Once for All Items' mode.",
+				);
+			});
 		});
-	});
 
 	test.describe('Ask AI', () => {
 		test.describe('Enabled', () => {

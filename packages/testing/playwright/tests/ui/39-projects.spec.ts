@@ -69,7 +69,7 @@ test.describe('Projects', () => {
 
 		await n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`);
 
-		const subn8n = new n8nPage(await subWorkflowPagePromise);
+		const subn8n = new n8nPage(await subWorkflowPagePromise, n8n.api);
 
 		await subn8n.ndv.clickBackToCanvasButton();
 
