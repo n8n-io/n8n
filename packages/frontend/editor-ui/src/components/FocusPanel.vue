@@ -33,7 +33,6 @@ import { useExecutionData } from '@/composables/useExecutionData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ExperimentalNodeDetailsDrawer from '@/components/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
 
@@ -61,7 +60,6 @@ const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
-const uiStore = useUIStore();
 const ndvStore = useNDVStore();
 const deviceSupport = useDeviceSupport();
 const vueFlow = useVueFlow(workflowsStore.workflowId);
@@ -111,7 +109,7 @@ const node = computed<INodeUi | undefined>(() => {
 		return resolvedParameter.value?.node;
 	}
 
-	const selected = focusedNodeParameter.value?.nodeId ?? vueFlow.getSelectedNodes.value[0]?.id;
+	const selected = vueFlow.getSelectedNodes.value[0]?.id;
 
 	return selected ? workflowsStore.allNodes.find((n) => n.id === selected) : undefined;
 });
@@ -546,9 +544,7 @@ function onOpenNdv() {
 					</div>
 				</div>
 				<ExperimentalNodeDetailsDrawer
-					v-else-if="
-						node && experimentalNdvStore.isNdvInFocusPanelEnabled && uiStore.lastSelectedNode
-					"
+					v-else-if="node && experimentalNdvStore.isNdvInFocusPanelEnabled"
 					:node="node"
 					:nodes="vueFlow.getSelectedNodes.value"
 					@open-ndv="onOpenNdv"

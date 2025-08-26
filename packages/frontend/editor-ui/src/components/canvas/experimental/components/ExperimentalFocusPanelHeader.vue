@@ -27,15 +27,30 @@ const emit = defineEmits<{
 		<NodeIcon :node-type="nodeType" :size="16" />
 		<div :class="$style.breadcrumbs">
 			<template v-if="parameter">
-				<N8nButton text type="tertiary" :class="$style.nodeName" @click="emit('clearParameter')">
+				<N8nText size="small" color="text-base" bold>
 					{{ node.name }}
-				</N8nButton>
+				</N8nText>
 				<N8nText size="small" color="text-light">/</N8nText>
 				{{ parameter.displayName }}
 			</template>
 			<template v-else>{{ node.name }}</template>
 		</div>
-		<N8nIconButton icon="maximize-2" size="small" type="tertiary" text @click="emit('openNdv')" />
+		<N8nIconButton
+			v-if="parameter"
+			icon="x"
+			size="small"
+			type="tertiary"
+			text
+			@click="emit('clearParameter')"
+		/>
+		<N8nIconButton
+			v-else
+			icon="maximize-2"
+			size="small"
+			type="tertiary"
+			text
+			@click="emit('openNdv')"
+		/>
 		<NodeExecuteButton
 			v-if="isExecutable"
 			data-test-id="node-execute-button"
@@ -66,11 +81,5 @@ const emit = defineEmits<{
 	gap: var(--spacing-4xs);
 	flex-grow: 1;
 	flex-shrink: 1;
-}
-
-.nodeName {
-	padding: 0;
-	border: none;
-	color: var(--color-text-light);
 }
 </style>
