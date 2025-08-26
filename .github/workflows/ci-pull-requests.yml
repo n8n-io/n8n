@@ -5,6 +5,7 @@ on:
     branches:
       - '**'
 
+# dummy change to trigger workflow
 jobs:
   install-and-build:
     name: Install & Build
