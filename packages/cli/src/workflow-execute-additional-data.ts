@@ -378,9 +378,9 @@ export async function getBase(
 	const eventService = Container.get(EventService);
 
 	const moduleRegistry = Container.get(ModuleRegistry);
-	const dataStoreProxyProvider = moduleRegistry.isActive('data-store')
+	const dataStoreProxyProvider = moduleRegistry.isActive('data-table')
 		? Container.get(
-				(await import('@/modules/data-store/data-store-proxy.service')).DataStoreProxyService,
+				(await import('@/modules/data-table/data-store-proxy.service')).DataStoreProxyService,
 			)
 		: undefined;
 
