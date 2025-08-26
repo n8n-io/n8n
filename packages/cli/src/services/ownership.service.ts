@@ -12,7 +12,6 @@ import {
 import { Service } from '@n8n/di';
 
 import { CacheService } from '@/services/cache/cache.service';
-import { jsonParse } from 'n8n-workflow';
 
 @Service()
 export class OwnershipService {
@@ -23,46 +22,47 @@ export class OwnershipService {
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
-	// These serialization methods are used to convert entities to and from their JSON representation
-	// We should refactor the cache service to require the caller to provide the serialization logic
-	// in that case the cache service could optimize away the serialization, in case it uses in memory caching
-	// This should be addressed an a future PR.
-	serializeProject(project: Project): string {
-		return JSON.stringify(project);
+	// To make use of the cache service we should store POJOs, these
+	// methods should be used to create copies of the entities
+	// converting them into plain JavaScript objects
+	// Ideally our data entities wouldn't be classes, but plain
+	// interfaces and therefore pojos adhering to these interfaces
+	copyProject(project: Project): Partial<Project> {
+		return {
+			...project,
+		};
 	}
 
-	deserializeProject(serialized: string): Project | undefined {
-		const object = jsonParse(serialized);
-		if (typeof object !== 'object' || object === null) {
+	reconstructProject(project: Partial<Project>): Project | undefined {
+		if (typeof project !== 'object' || project === null) {
 			return undefined;
 		}
-		return Object.assign(new Project(), object);
+		return Object.assign(new Project(), project);
 	}
 
-	serializeUser(user: User): string {
-		return JSON.stringify(user);
+	copyUser(user: User): Partial<User> {
+		return {
+			...user,
+			role: { ...user.role, scopes: [...user.role.scopes] },
+		};
 	}
 
-	deserializeUser(serialized: string): User | undefined {
-		try {
-			const object = jsonParse(serialized);
-			if (typeof object !== 'object' || object === null) {
-				return undefined;
-			}
-			const user = Object.assign(new User(), object);
-			if ('role' in object && object.role && typeof object.role === 'object') {
-				user.role = Object.assign(new Role(), object.role);
-				if ('scopes' in object.role && Array.isArray(object.role.scopes)) {
-					user.role.scopes = object.role.scopes.map((scope) => {
-						const x = Object.assign(new Scope(), scope) as Scope;
-						return x;
-					});
-				}
-				return user;
-			}
-		} catch {
-			// If deserialization fails, we need to invalidate the cache and reload
+	reconstructUser(cachedUser: Partial<User>): User | undefined {
+		if (typeof cachedUser !== 'object' || cachedUser === null) {
+			// performing runtime checks here, because the data is originating from
+			// an external system our cache
 			return undefined;
+		}
+		const user = Object.assign(new User(), cachedUser);
+		if ('role' in cachedUser && cachedUser.role && typeof cachedUser.role === 'object') {
+			user.role = Object.assign(new Role(), cachedUser.role);
+			if ('scopes' in cachedUser.role && Array.isArray(cachedUser.role.scopes)) {
+				user.role.scopes = cachedUser.role.scopes.map((scope) => {
+					const x = Object.assign(new Scope(), scope);
+					return x;
+				});
+			}
+			return user;
 		}
 		// we need the role on the user, if this is missing, we should invalidate the cache and reload
 		return undefined;
@@ -72,13 +72,13 @@ export class OwnershipService {
 	 * Retrieve the project that owns the workflow. Note that workflow ownership is **immutable**.
 	 */
 	async getWorkflowProjectCached(workflowId: string): Promise<Project> {
-		const cachedValue = await this.cacheService.getHashValue<string>(
+		const cachedValue = await this.cacheService.getHashValue<Partial<Project>>(
 			'workflow-project',
 			workflowId,
 		);
 
 		if (cachedValue) {
-			const project = this.deserializeProject(cachedValue);
+			const project = this.reconstructProject(cachedValue);
 			if (project) return project;
 		}
 
@@ -88,7 +88,7 @@ export class OwnershipService {
 		});
 
 		void this.cacheService.setHash('workflow-project', {
-			[workflowId]: this.serializeProject(sharedWorkflow.project),
+			[workflowId]: this.copyProject(sharedWorkflow.project),
 		});
 
 		return sharedWorkflow.project;
@@ -99,16 +99,19 @@ export class OwnershipService {
 	 * Personal project ownership is **immutable**.
 	 */
 	async getPersonalProjectOwnerCached(projectId: string): Promise<User | null> {
-		const cachedValue = await this.cacheService.getHashValue<string>('project-owner', projectId);
+		const cachedValue = await this.cacheService.getHashValue<Partial<User>>(
+			'project-owner',
+			projectId,
+		);
 
 		if (cachedValue) {
-			const user = this.deserializeUser(cachedValue);
+			const user = this.reconstructUser(cachedValue);
 			if (user) return user;
 		}
 
 		const ownerRel = await this.projectRelationRepository.getPersonalProjectOwners([projectId]);
 		const owner = ownerRel[0]?.user ?? null;
-		void this.cacheService.setHash('project-owner', { [projectId]: this.serializeUser(owner) });
+		void this.cacheService.setHash('project-owner', { [projectId]: this.copyUser(owner) });
 
 		return owner;
 	}
