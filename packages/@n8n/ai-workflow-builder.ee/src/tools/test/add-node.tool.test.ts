@@ -298,4 +298,23 @@ describe('AddNodeTool', () => {
 			expect(addedNode?.position?.[1]).toBeGreaterThan(100);
 		});
 	});
+
+	describe('getCustomDisplayTitle', () => {
+		it('should return node display name when nodeType exists', () => {
+			const tool = createAddNodeTool(nodeTypesList);
+			const result = tool.getCustomDisplayTitle({
+				nodeType: 'n8n-nodes-base.code',
+				name: 'My Code',
+			});
+
+			expect(result).toBe('Adding Code node');
+		});
+
+		it('should return default title when nodeType not found or missing', () => {
+			const tool = createAddNodeTool(nodeTypesList);
+
+			expect(tool.getCustomDisplayTitle({ nodeType: 'unknown.node' })).toBe('Adding node');
+			expect(tool.getCustomDisplayTitle({ name: 'Some Node' })).toBe('Adding node');
+		});
+	});
 });
