@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'n8n Release version to push to a channel (e.g., 1.2.3, 1.2.3-beta.4, or 1.2.3-exp.0)'
+        description: 'n8n Release version to push to a channel (e.g., 1.2.3 or 1.2.3-beta.4)'
         required: true
         type: string
 
@@ -16,7 +16,6 @@ on:
         options:
           - beta
           - stable
-          - experimental
 
 jobs:
   validate-inputs:
@@ -65,11 +64,6 @@ jobs:
         run: |
           npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" latest
           npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" stable
-
-      - name: Add experimental tag to NPM
-        if: needs.validate-inputs.outputs.release_channel == 'experimental'
-        run: |
-          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" experimental
 
   release-to-docker-hub:
     name: Release to DockerHub
