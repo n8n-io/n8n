@@ -9,7 +9,7 @@ import { ApplicationError } from 'n8n-workflow';
 import { DirectedGraph } from '../partial-execution-utils';
 import { createNodeData } from '../partial-execution-utils/__tests__/helpers';
 import { WorkflowExecute } from '../workflow-execute';
-import { types, nodeTypes } from './helpers';
+import { types, nodeTypes } from './mock-node-types';
 
 describe('processRunExecutionData', () => {
 	const runHook = jest.fn().mockResolvedValue(undefined);
