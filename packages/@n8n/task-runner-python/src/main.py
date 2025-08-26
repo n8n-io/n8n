@@ -5,7 +5,7 @@ import sys
 
 os.environ["WEBSOCKETS_MAX_LOG_SIZE"] = "256"
 
-from .constants import (
+from src.constants import (
     DEFAULT_MAX_CONCURRENCY,
     DEFAULT_TASK_TIMEOUT,
     ENV_MAX_CONCURRENCY,
@@ -16,8 +16,8 @@ from .constants import (
     DEFAULT_MAX_PAYLOAD_SIZE,
     ENV_TASK_TIMEOUT,
 )
-from .logs import setup_logging
-from .task_runner import TaskRunner, TaskRunnerOpts
+from src.logs import setup_logging
+from src.task_runner import TaskRunner, TaskRunnerOpts
 
 
 async def main():

@@ -829,8 +829,8 @@ export class TelemetryEventRelay extends EventRelay {
 			},
 			execution_variables: {
 				executions_mode: config.getEnv('executions.mode'),
-				executions_timeout: config.getEnv('executions.timeout'),
-				executions_timeout_max: config.getEnv('executions.maxTimeout'),
+				executions_timeout: this.globalConfig.executions.timeout,
+				executions_timeout_max: this.globalConfig.executions.maxTimeout,
 				executions_data_save_on_error: this.globalConfig.executions.saveDataOnError,
 				executions_data_save_on_success: this.globalConfig.executions.saveDataOnSuccess,
 				executions_data_save_on_progress: this.globalConfig.executions.saveExecutionProgress,
