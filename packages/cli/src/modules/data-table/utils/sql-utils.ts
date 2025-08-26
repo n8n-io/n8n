@@ -190,7 +190,13 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 }
 
 export function normalizeRows(rows: DataStoreRows, columns: DataTableColumn[]) {
-	const typeMap = new Map(columns.map((col) => [col.name, col.type]));
+	// we need to normalize system dates as well
+	const systemColumns = [
+		{ name: 'createdAt', type: 'date' },
+		{ name: 'updatedAt', type: 'date' },
+	];
+
+	const typeMap = new Map([...columns, ...systemColumns].map((col) => [col.name, col.type]));
 	return rows.map((row) => {
 		const normalized = { ...row };
 		for (const [key, value] of Object.entries(row)) {
@@ -227,10 +233,10 @@ export function normalizeRows(rows: DataStoreRows, columns: DataTableColumn[]) {
 }
 
 export function normalizeValue(
-	value: DataStoreColumnJsType | null,
+	value: DataStoreColumnJsType,
 	columnType: string | undefined,
 	dbType: DataSourceOptions['type'],
-): DataStoreColumnJsType | null {
+): DataStoreColumnJsType {
 	if (['mysql', 'mariadb'].includes(dbType)) {
 		if (columnType === 'date') {
 			if (value instanceof Date) {
