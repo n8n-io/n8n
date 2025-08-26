@@ -4,8 +4,7 @@ import { Tiktoken, getEncodingNameForModel } from 'js-tiktoken/lite';
 import { jsonParse } from 'n8n-workflow';
 import { join } from 'path';
 
-const cache: Record<string, Tiktoken> = {};
-const loadingPromises: Record<string, Promise<Tiktoken> | undefined> = {};
+const cache: Record<string, Promise<Tiktoken> | undefined> = {};
 
 const loadJSONFile = async (filename: string): Promise<TiktokenBPE> => {
 	const filePath = join(__dirname, filename);
@@ -15,16 +14,11 @@ const loadJSONFile = async (filename: string): Promise<TiktokenBPE> => {
 
 export async function getEncoding(encoding: TiktokenEncoding): Promise<Tiktoken> {
 	if (cache[encoding]) {
-		return cache[encoding];
+		return await cache[encoding];
 	}
 
-	// Check if we're already loading this encoding
-	if (loadingPromises[encoding]) {
-		return await loadingPromises[encoding];
-	}
-
-	// Create a promise for loading this encoding
-	loadingPromises[encoding] = (async () => {
+	// Create and cache the promise for loading this encoding
+	cache[encoding] = (async () => {
 		let jsonData: TiktokenBPE;
 
 		switch (encoding) {
@@ -39,14 +33,10 @@ export async function getEncoding(encoding: TiktokenEncoding): Promise<Tiktoken>
 				jsonData = await loadJSONFile('./cl100k_base.json');
 		}
 
-		const tiktoken = new Tiktoken(jsonData);
-		cache[encoding] = tiktoken;
-		// Clean up the loading promise after completion
-		delete loadingPromises[encoding];
-		return tiktoken;
+		return new Tiktoken(jsonData);
 	})();
 
-	return await loadingPromises[encoding];
+	return await cache[encoding];
 }
 
 export async function encodingForModel(model: TiktokenModel): Promise<Tiktoken> {
