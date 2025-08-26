@@ -228,6 +228,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		colId: col.id,
 		field: col.name,
 		headerName: col.name,
+		sortable: false,
 		flex: 1,
 		editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 		resizable: true,
@@ -678,8 +679,7 @@ defineExpose({
 	--ag-foreground-color: var(--color-text-base);
 	--ag-cell-text-color: var(--color-text-dark);
 	--ag-accent-color: var(--grid-cell-focus-border-color);
-	--ag-row-hover-color: var(--color-background-light-base);
-	--ag-selected-row-background-color: var(--grid-row-selected-background);
+	--ag-row-hover-color: var(--grid-row-hover-background);
 	--ag-background-color: var(--color-background-xlight);
 	--ag-border-color: var(--border-color-base);
 	--ag-border-radius: var(--border-radius-base);
@@ -697,7 +697,7 @@ defineExpose({
 	--ag-header-column-border-height: 100%;
 	--ag-range-selection-border-color: var(--grid-cell-focus-border-color);
 	--ag-input-padding-start: var(--spacing-2xs);
-	--ag-input-background-color: var(--color-background-light-base);
+	--ag-input-background-color: var(--grid-cell-active-background);
 	--ag-focus-shadow: none;
 
 	--cell-editing-border: 2px solid var(--color-secondary);
@@ -745,6 +745,7 @@ defineExpose({
 	:global(.add-row-cell) {
 		border: none !important;
 		outline: none !important;
+		background-color: transparent !important;
 	}
 
 	:global(.ag-header-cell[col-id='add-column']) {
@@ -753,8 +754,11 @@ defineExpose({
 		}
 	}
 
-	:global(.ag-cell-value[col-id='add-column']) {
+	:global(.ag-cell-value[col-id='add-column']),
+	:global(.ag-cell-value[col-id='id']),
+	:global(.ag-cell[col-id='ag-Grid-SelectionColumn']) {
 		border: none;
+		background-color: transparent;
 	}
 
 	:global(.ag-large-text-input) {
@@ -785,7 +789,15 @@ defineExpose({
 
 		&:global(.boolean-cell) {
 			border: var(--cell-editing-border) !important;
+
+			&:global(.ag-cell-focus) {
+				background-color: var(--grid-cell-active-background);
+			}
 		}
+	}
+
+	:global(.ag-cell-focus) {
+		background-color: var(--grid-row-selected-background);
 	}
 }
 
