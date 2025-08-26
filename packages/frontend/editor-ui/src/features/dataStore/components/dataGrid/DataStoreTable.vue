@@ -403,7 +403,7 @@ const initColumnDefinitions = () => {
 							},
 						};
 					}
-					return params.value;
+					return undefined;
 				},
 			},
 		),
