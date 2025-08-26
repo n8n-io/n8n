@@ -680,6 +680,7 @@ const handleClearSelection = () => {
 	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 	--ag-header-column-border-height: 100%;
 	--ag-range-selection-border-color: var(--grid-cell-focus-border-color);
+	--ag-input-padding-start: var(--spacing-2xs);
 
 	:global(.ag-cell) {
 		display: flex;
@@ -734,6 +735,11 @@ const handleClearSelection = () => {
 
 	:global(.ag-large-text-input) {
 		position: fixed;
+		padding: 0;
+
+		textarea {
+			padding-top: var(--spacing-xs);
+		}
 	}
 
 	:global(.ag-center-cols-viewport) {
