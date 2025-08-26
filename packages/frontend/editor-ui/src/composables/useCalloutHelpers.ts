@@ -82,9 +82,9 @@ export function useCalloutHelpers() {
 		});
 	};
 
-	const openPreBuiltAgentsModal = async () => {
+	const openPreBuiltAgentsModal = async (source: 'workflowsEmptyState' | 'workflowsList') => {
 		telemetry.track('User opened pre-built Agents collection', {
-			source: 'workflows',
+			source,
 			node_type: null,
 			section: null,
 		});

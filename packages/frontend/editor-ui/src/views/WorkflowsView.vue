@@ -897,8 +897,8 @@ const createAIStarterWorkflows = async (source: 'card' | 'callout') => {
 	}
 };
 
-const openPrebuiltAgentsModal = () => {
-	void calloutHelpers.openPreBuiltAgentsModal();
+const openPrebuiltAgentsModal = (source: 'workflowsEmptyState' | 'workflowsList') => {
+	void calloutHelpers.openPreBuiltAgentsModal(source);
 };
 
 const handleCreateReadyToRunWorkflows = async (source: 'card' | 'callout') => {
@@ -1806,7 +1806,7 @@ const onNameSubmit = async (name: string) => {
 						size="small"
 						:bold="true"
 						:underline="true"
-						@click="openPrebuiltAgentsModal()"
+						@click="openPrebuiltAgentsModal('workflowsEmptyState')"
 					>
 						{{ i18n.baseText('workflows.preBuiltAgents.linkText') }}
 					</N8nLink>
@@ -2060,7 +2060,7 @@ const onNameSubmit = async (name: string) => {
 						:class="$style.emptyStateCard"
 						hoverable
 						data-test-id="prebuilt-agents-card"
-						@click="openPrebuiltAgentsModal()"
+						@click="openPrebuiltAgentsModal('workflowsList')"
 					>
 						<div :class="$style.emptyStateCardContent">
 							<N8nIcon
