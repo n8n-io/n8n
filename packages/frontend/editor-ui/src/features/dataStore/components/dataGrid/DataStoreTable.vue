@@ -744,7 +744,6 @@ defineExpose({
 
 	:global(.add-row-cell) {
 		border: none !important;
-		outline: none !important;
 		background-color: transparent !important;
 	}
 
