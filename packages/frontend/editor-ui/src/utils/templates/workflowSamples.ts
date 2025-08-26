@@ -57,13 +57,13 @@ interface PrebuiltAgentTemplate {
 export const getPrebuiltAgents = (): PrebuiltAgentTemplate[] => {
 	return [
 		{
-			name: 'Calendar agent',
-			description: 'Personal AI assistant for managing calendar events and availability.',
-			template: getWorkflowJson(calendarAgentJson),
+			name: 'Voice assistant agent',
+			description: 'Personal AI assistant in Telegram, handling both text and voice messages.',
+			template: getWorkflowJson(voiceAssistantAgentJson),
 			nodes: [
 				{
-					name: 'n8n-nodes-base.googleCalendar',
-					version: 1.3,
+					name: 'n8n-nodes-base.telegram',
+					version: 1.2,
 				},
 			],
 		},
@@ -92,6 +92,18 @@ export const getPrebuiltAgents = (): PrebuiltAgentTemplate[] => {
 			],
 		},
 		{
+			name: 'Calendar agent',
+			description:
+				'Agent that can interact with your Google calendar to get availability and a list of events.',
+			template: getWorkflowJson(calendarAgentJson),
+			nodes: [
+				{
+					name: 'n8n-nodes-base.googleCalendar',
+					version: 1.3,
+				},
+			],
+		},
+		{
 			name: 'Task management agent',
 			description:
 				'Task management assistant that helps users create, view, update, and delete tasks.',
@@ -111,17 +123,6 @@ export const getPrebuiltAgents = (): PrebuiltAgentTemplate[] => {
 				{
 					name: 'n8n-nodes-base.httpRequest',
 					version: 4.2,
-				},
-			],
-		},
-		{
-			name: 'Voice assistant agent',
-			description: 'Personal AI assistant in Telegram, handling both text and voice messages.',
-			template: getWorkflowJson(voiceAssistantAgentJson),
-			nodes: [
-				{
-					name: 'n8n-nodes-base.telegram',
-					version: 1.2,
 				},
 			],
 		},
