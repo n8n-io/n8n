@@ -1,8 +1,4 @@
-import type {
-	ListDataStoreContentQueryDto,
-	ListDataStoreContentFilter,
-	UpsertDataStoreRowsDto,
-} from '@n8n/api-types';
+import type { ListDataStoreContentQueryDto, ListDataStoreContentFilter } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -18,11 +14,11 @@ import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreUserTableName } from './data-store.types';
 import {
 	addColumnQuery,
-	buildColumnTypeMap,
 	deleteColumnQuery,
 	extractInsertedIds,
 	extractReturningData,
 	getPlaceholder,
+	normalizeRows,
 	normalizeValue,
 	quoteIdentifier,
 	splitRowsByExistence,
@@ -97,51 +93,112 @@ export class DataStoreRowsRepository {
 			const result = await query.execute();
 
 			if (useReturning) {
-				const returned = extractReturningData(result.raw);
+				const returned = normalizeRows(extractReturningData(result.raw), columns);
 				inserted.push.apply(inserted, returned);
 				continue;
 			}
 
 			// Engines without RETURNING support
-			const rowIds = extractInsertedIds(result.raw, dbType);
-			if (rowIds.length === 0) {
+			const ids = extractInsertedIds(result.raw, dbType);
+			if (ids.length === 0) {
 				throw new UnexpectedError("Couldn't find the inserted row ID");
 			}
 
 			if (!returnData) {
-				inserted.push(...rowIds.map((id) => ({ id })));
+				inserted.push(...ids.map((id) => ({ id })));
 				continue;
 			}
 
-			const insertedRow = await this.dataSource
-				.createQueryBuilder()
-				.select(selectColumns)
-				.from(table, 'dataStore')
-				.where({ id: In(rowIds) })
-				.getRawOne<DataStoreRowWithId>();
+			const insertedRows = (await this.getManyByIds(
+				dataStoreId,
+				ids,
+				columns,
+			)) as DataStoreRowWithId[];
 
-			if (!insertedRow) {
-				throw new UnexpectedError("Couldn't find the inserted row");
-			}
-
-			inserted.push(insertedRow);
+			inserted.push(...insertedRows);
 		}
 
 		return inserted;
 	}
 
-	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
-	async upsertRows(dataStoreId: string, dto: UpsertDataStoreRowsDto, columns: DataStoreColumn[]) {
-		const { rows, matchFields } = dto;
+	async updateRow(
+		dataStoreId: string,
+		setData: Record<string, DataStoreColumnJsType | null>,
+		whereData: Record<string, DataStoreColumnJsType | null>,
+		columns: DataStoreColumn[],
+		returnData: boolean = false,
+	) {
+		const dbType = this.dataSource.options.type;
+		const useReturning = dbType === 'postgres';
 
+		const table = this.toTableName(dataStoreId);
+		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
+		const selectColumns = ['id', ...escapedColumns];
+
+		for (const column of columns) {
+			if (column.name in setData) {
+				setData[column.name] = normalizeValue(setData[column.name], column.type, dbType);
+			}
+			if (column.name in whereData) {
+				whereData[column.name] = normalizeValue(whereData[column.name], column.type, dbType);
+			}
+		}
+
+		let affectedRows: DataStoreRowWithId[] = [];
+		if (!useReturning && returnData) {
+			// Only Postgres supports RETURNING statement on updates (with our typeorm),
+			// on other engines we must query the list of updates rows later by ID
+			affectedRows = await this.dataSource
+				.createQueryBuilder()
+				.select('id')
+				.from(table, 'dataStore')
+				.where(whereData)
+				.getRawMany<{ id: number }>();
+		}
+
+		setData.updatedAt = normalizeValue(new Date(), 'date', dbType);
+
+		const query = this.dataSource.createQueryBuilder().update(table).set(setData).where(whereData);
+
+		if (useReturning && returnData) {
+			query.returning(selectColumns.join(','));
+		}
+
+		const result = await query.execute();
+
+		if (!returnData) {
+			return true;
+		}
+
+		if (useReturning) {
+			return extractReturningData(result.raw);
+		}
+
+		const ids = affectedRows.map((row) => row.id);
+		return await this.getManyByIds(dataStoreId, ids, columns);
+	}
+
+	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
+	async upsertRows(
+		dataStoreId: string,
+		matchFields: string[],
+		rows: DataStoreRows,
+		columns: DataStoreColumn[],
+		returnData = false,
+	) {
 		const { rowsToInsert, rowsToUpdate } = await this.fetchAndSplitRowsByExistence(
 			dataStoreId,
 			matchFields,
 			rows,
 		);
 
+		const output: DataStoreRowWithId[] = [];
+
 		if (rowsToInsert.length > 0) {
-			await this.insertRows(dataStoreId, rowsToInsert, columns);
+			const result = await this.insertRows(dataStoreId, rowsToInsert, columns, returnData);
+			if (returnData) {
+				output.push.apply(output, result);
+			}
 		}
 
 		if (rowsToUpdate.length > 0) {
@@ -154,41 +211,14 @@ export class DataStoreRowsRepository {
 				const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
 				const whereData = Object.fromEntries(matchFields.map((key) => [key, row[key]]));
 
-				await this.updateRow(dataStoreId, setData, whereData, columns);
+				const result = await this.updateRow(dataStoreId, setData, whereData, columns, returnData);
+				if (returnData) {
+					output.push.apply(output, result);
+				}
 			}
 		}
 
-		return true;
-	}
-
-	async updateRow(
-		dataStoreId: string,
-		setData: Record<string, DataStoreColumnJsType>,
-		whereData: Record<string, DataStoreColumnJsType>,
-		columns: DataStoreColumn[],
-	) {
-		const dbType = this.dataSource.options.type;
-		const columnTypeMap = buildColumnTypeMap(columns);
-
-		const queryBuilder = this.dataSource.createQueryBuilder().update(this.toTableName(dataStoreId));
-
-		const setValues: Record<string, DataStoreColumnJsType> = {};
-		for (const [key, value] of Object.entries(setData)) {
-			setValues[key] = normalizeValue(value, columnTypeMap[key], dbType);
-		}
-
-		// Always update the updatedAt timestamp
-		setValues.updatedAt = normalizeValue(new Date(), 'date', dbType);
-
-		queryBuilder.set(setValues);
-
-		const normalizedWhereData: Record<string, DataStoreColumnJsType | null> = {};
-		for (const [field, value] of Object.entries(whereData)) {
-			normalizedWhereData[field] = normalizeValue(value, columnTypeMap[field], dbType);
-		}
-		queryBuilder.where(normalizedWhereData);
-
-		await queryBuilder.execute();
+		return returnData ? output : true;
 	}
 
 	async deleteRows(dataStoreId: string, ids: number[]) {
@@ -249,6 +279,25 @@ export class DataStoreRowsRepository {
 		const count =
 			typeof countResult?.count === 'number' ? countResult.count : Number(countResult?.count) || 0;
 		return { count: count ?? -1, data };
+	}
+
+	async getManyByIds(dataStoreId: string, ids: number[], columns: DataStoreColumn[]) {
+		const table = this.toTableName(dataStoreId);
+		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
+		const selectColumns = ['id', ...escapedColumns];
+
+		if (ids.length === 0) {
+			return [];
+		}
+
+		const updatedRows = await this.dataSource
+			.createQueryBuilder()
+			.select(selectColumns)
+			.from(table, 'dataStore')
+			.where({ id: In(ids) })
+			.getRawMany<DataStoreRowWithId>();
+
+		return normalizeRows(updatedRows, columns);
 	}
 
 	async getRowIds(dataStoreId: string, dto: ListDataStoreContentQueryDto) {
