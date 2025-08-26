@@ -2,13 +2,13 @@ import asyncio
 from dataclasses import dataclass
 import logging
 import time
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Set
 from urllib.parse import urlparse
 import websockets
 import random
 
 
-from src.errors import WebsocketConnectionError, TaskMissingError
+from src.errors import WebsocketConnectionError, TaskMissingError, SecurityViolationError
 from src.message_types.broker import TaskSettings
 from src.nanoid_utils import nanoid
 
@@ -44,6 +44,7 @@ from src.message_types import (
 from src.message_serde import MessageSerde
 from src.task_state import TaskState, TaskStatus
 from src.task_executor import TaskExecutor
+from src.task_analyzer import validate_code_security
 
 
 class TaskOffer:
@@ -56,14 +57,16 @@ class TaskOffer:
         return time.time() > self.valid_until
 
 
-@dataclass()
+@dataclass
 class TaskRunnerOpts:
     grant_token: str
     task_broker_uri: str
     max_concurrency: int
     max_payload_size: int
     task_timeout: int
-    denied_builtins: set[str]
+    denied_builtins: Set[str]
+    stdlib_allow: Set[str]
+    external_allow: Set[str]
 
 
 class TaskRunner:
@@ -207,6 +210,12 @@ class TaskRunner:
 
             if task_state is None:
                 raise TaskMissingError(task_id)
+
+            validate_code_security(
+                task_settings.code,
+                self.opts.stdlib_allow,
+                self.opts.external_allow
+            )
 
             process, queue = self.executor.create_process(
                 task_settings.code,
