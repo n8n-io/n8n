@@ -73,8 +73,6 @@ export class DataStoreRowsRepository {
 		columns: DataStoreColumn[],
 		returnData?: boolean,
 	): Promise<Array<DataStoreRowReturn | Pick<DataStoreRowReturn, 'id'>>> {
-		const doReturnData = returnData ?? false;
-
 		const inserted: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
@@ -100,7 +98,7 @@ export class DataStoreRowsRepository {
 				.values(row);
 
 			if (useReturning) {
-				query.returning(doReturnData ? selectColumns.join(',') : 'id');
+				query.returning(returnData ? selectColumns.join(',') : 'id');
 			}
 
 			const result = await query.execute();
@@ -117,7 +115,7 @@ export class DataStoreRowsRepository {
 				throw new UnexpectedError("Couldn't find the inserted row ID");
 			}
 
-			if (!doReturnData) {
+			if (!returnData) {
 				inserted.push(...rowIds.map((id) => ({ id })));
 				continue;
 			}
