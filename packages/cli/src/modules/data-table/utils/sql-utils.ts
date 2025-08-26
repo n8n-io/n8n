@@ -179,7 +179,7 @@ function hasRowId(data: unknown): data is Pick<DataStoreRowReturn, 'id'> {
 export function extractReturningData(raw: unknown): DataStoreRowReturn[] {
 	if (!isArrayOf(raw, hasRowReturnData)) {
 		throw new UnexpectedError(
-			'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+			`Expected INSERT INTO raw to be { id: number; createdAt: string; updatedAt: string }[] on Postgres or MariaDB. Is '${JSON.stringify(raw)}'`,
 		);
 	}
 
@@ -192,7 +192,7 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 		case 'mariadb': {
 			if (!isArrayOf(raw, hasRowId)) {
 				throw new UnexpectedError(
-					'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+					`Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB. Is '${JSON.stringify(raw)}'`,
 				);
 			}
 			return raw.map((r) => r.id);
