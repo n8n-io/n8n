@@ -111,7 +111,9 @@ export class OwnershipService {
 
 		const ownerRel = await this.projectRelationRepository.getPersonalProjectOwners([projectId]);
 		const owner = ownerRel[0]?.user ?? null;
-		void this.cacheService.setHash('project-owner', { [projectId]: this.copyUser(owner) });
+		if (owner) {
+			void this.cacheService.setHash('project-owner', { [projectId]: this.copyUser(owner) });
+		}
 
 		return owner;
 	}

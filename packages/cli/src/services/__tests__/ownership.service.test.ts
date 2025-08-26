@@ -62,6 +62,7 @@ describe('OwnershipService', () => {
 			// ARRANGE
 			const project = new Project();
 			const owner = new User();
+			owner.role = GLOBAL_OWNER_ROLE;
 			const projectRelation = new ProjectRelation();
 			projectRelation.role = 'project:personalOwner';
 			(projectRelation.project = project), (projectRelation.user = owner);
@@ -94,7 +95,7 @@ describe('OwnershipService', () => {
 			projectRelation.role = 'project:personalOwner';
 			(projectRelation.project = project), (projectRelation.user = owner);
 
-			cacheService.getHashValue.mockResolvedValueOnce(JSON.stringify(owner));
+			cacheService.getHashValue.mockResolvedValueOnce(owner);
 			userRepository.create.mockReturnValueOnce(owner);
 
 			// ACT
@@ -112,6 +113,7 @@ describe('OwnershipService', () => {
 		test('should retrieve a project owner', async () => {
 			const mockProject = new Project();
 			const mockOwner = new User();
+			mockOwner.role = GLOBAL_OWNER_ROLE;
 
 			const projectRelation = Object.assign(new ProjectRelation(), {
 				role: 'project:personalOwner',
