@@ -32,7 +32,6 @@ export async function getEncoding(encoding: TiktokenEncoding): Promise<Tiktoken>
 
 			return new Tiktoken(jsonData);
 		})().catch((error) => {
-			// Remove failed promise from cache to allow retry
 			delete cache[encoding];
 			throw error;
 		});
