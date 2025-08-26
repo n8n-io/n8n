@@ -1528,18 +1528,10 @@ export class WorkflowExecute {
 
 		this.status = 'running';
 
-		const { hooks, executionId } = this.additionalData;
+		const { hooks } = this.additionalData;
 		assert.ok(hooks, 'Failed to run workflow due to missing execution lifecycle hooks');
 
-		if (!this.runExecutionData.executionData) {
-			throw new ApplicationError('Failed to run workflow due to missing execution data', {
-				extra: {
-					workflowId: workflow.id,
-					executionId,
-					mode: this.mode,
-				},
-			});
-		}
+		this.assertExecutionDataExists(this.runExecutionData.executionData, workflow);
 
 		/** Node execution stack will be empty for an execution containing only Chat Trigger. */
 		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
