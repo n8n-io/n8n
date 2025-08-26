@@ -5,6 +5,8 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	type ILoadOptionsFunctions,
+	type INodeListSearchResult,
 } from 'n8n-workflow';
 
 import { getProxyAgent } from '@utils/httpProxyAgent';
@@ -17,8 +19,11 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatOpenRouter implements INodeType {
 	methods = {
-		loadOptions: {
-			async getModels(this: any) {
+		listSearch: {
+			async getModels(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
 				const credentials = await this.getCredentials('openRouterApi');
 
 				const response = await this.helpers.httpRequest({
@@ -29,10 +34,17 @@ export class LmChatOpenRouter implements INodeType {
 					},
 				});
 
-				return response.data.map((model: any) => ({
-					name: model.id,
-					value: model.id,
-				}));
+				const filteredModels = response.data.filter((model: any) => {
+					if (!filter) return true;
+					return model.id.toLowerCase().includes(filter.toLowerCase());
+				});
+
+				return {
+					results: filteredModels.map((model: any) => ({
+						name: model.id,
+						value: model.id,
+					})),
+				};
 			},
 		},
 	};
