@@ -402,13 +402,21 @@ export class WorkflowDataProxy {
 				!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName) &&
 				!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 			) {
-				throw new ExpressionError('Referenced node is unexecuted', {
-					runIndex: that.runIndex,
-					itemIndex: that.itemIndex,
-					type: 'no_node_execution_data',
-					descriptionKey: 'noNodeExecutionData',
-					nodeCause: nodeName,
-				});
+				throw new ExpressionError(
+					`"${nodeName}" node didn't get executed yet, but is needed for your expression`,
+					{
+						messageTemplate:
+							'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
+						functionality: 'pairedItem',
+						descriptionKey: isScriptingNode(nodeName, that.workflow)
+							? 'pairedItemNoConnectionCodeNode'
+							: 'pairedItemNoConnection',
+						type: 'no_execution_data',
+						nodeCause: nodeName,
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					},
+				);
 			}
 
 			runIndex = runIndex === undefined ? that.defaultReturnRunIndex : runIndex;
@@ -521,18 +529,38 @@ export class WorkflowDataProxy {
 
 						// Ultra-simple execution-based validation: if no execution data exists, throw error
 						if (executionData.length === 0) {
-							throw new ExpressionError('No execution data available', {
-								runIndex: that.runIndex,
-								itemIndex: that.itemIndex,
-								type: 'no_execution_data',
-							});
+							throw new ExpressionError(
+								`"${nodeName}" node didn't get executed yet, but is needed for your expression`,
+								{
+									messageTemplate:
+										'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
+									functionality: 'pairedItem',
+									descriptionKey: isScriptingNode(nodeName, that.workflow)
+										? 'pairedItemNoConnectionCodeNode'
+										: 'pairedItemNoConnection',
+									type: 'no_execution_data',
+									nodeCause: nodeName,
+									runIndex: that.runIndex,
+									itemIndex: that.itemIndex,
+								},
+							);
 						}
 
 						if (executionData.length <= that.itemIndex) {
-							throw new ExpressionError(`No data found for item-index: "${that.itemIndex}"`, {
-								runIndex: that.runIndex,
-								itemIndex: that.itemIndex,
-							});
+							throw new ExpressionError(
+								`"${nodeName}" node has ${executionData.length} item(s) but you're trying to access item ${that.itemIndex}`,
+								{
+									messageTemplate:
+										'Adjust your expression to access an existing item index (0-{{maxIndex}})',
+									functionality: 'pairedItem',
+									descriptionKey: 'pairedItemInvalidIndex',
+									type: 'invalid_item_index',
+									nodeCause: nodeName,
+									runIndex: that.runIndex,
+									itemIndex: that.itemIndex,
+									maxIndex: executionData.length - 1,
+								},
+							);
 						}
 
 						if (['data', 'json'].includes(name)) {
@@ -1060,13 +1088,21 @@ export class WorkflowDataProxy {
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
-						throw createExpressionError('Referenced node is unexecuted', {
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-							type: 'no_node_execution_data',
-							descriptionKey: 'noNodeExecutionData',
-							nodeCause: nodeName,
-						});
+						throw createExpressionError(
+							`"${nodeName}" node didn't get executed yet, but is needed for your expression`,
+							{
+								messageTemplate:
+									'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
+								functionality: 'pairedItem',
+								descriptionKey: isScriptingNode(nodeName, that.workflow)
+									? 'pairedItemNoConnectionCodeNode'
+									: 'pairedItemNoConnection',
+								type: 'no_execution_data',
+								nodeCause: nodeName,
+								runIndex: that.runIndex,
+								itemIndex: that.itemIndex,
+							},
+						);
 					}
 				};
 

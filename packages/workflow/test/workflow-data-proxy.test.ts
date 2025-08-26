@@ -262,8 +262,10 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Referenced node is unexecuted');
-				expect(exprError.context.type).toEqual('no_node_execution_data');
+				expect(exprError.message).toEqual(
+					'"Impossible" node didn\'t get executed yet, but is needed for your expression',
+				);
+				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
 
@@ -274,7 +276,9 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('No execution data available');
+				expect(exprError.message).toEqual(
+					'"NoInputConnection" node didn\'t get executed yet, but is needed for your expression',
+				);
 				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
@@ -286,8 +290,10 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Referenced node is unexecuted');
-				expect(exprError.context.type).toEqual('no_node_execution_data');
+				expect(exprError.message).toEqual(
+					'"Impossible if" node didn\'t get executed yet, but is needed for your expression',
+				);
+				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
 
@@ -298,7 +304,9 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('No execution data available');
+				expect(exprError.message).toEqual(
+					'"Impossible" node didn\'t get executed yet, but is needed for your expression',
+				);
 				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
@@ -824,6 +832,233 @@ describe('WorkflowDataProxy', () => {
 			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Output');
 			expect(proxy.$('Set variable_3').item.json.variable_3).toEqual('3456');
 			expect(proxy.$('Set main variable').item.json.main_variable).toEqual(2);
+		});
+	});
+
+	describe('Improved error messages for missing execution data', () => {
+		test('should show helpful error message when accessing node without execution data', () => {
+			// Create a simple workflow with two connected nodes
+			const workflow: IWorkflowBase = {
+				id: '1',
+				name: 'test-workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Telegram Trigger',
+						type: 'n8n-nodes-base.telegramTrigger',
+						typeVersion: 1.2,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'Send a text message',
+						type: 'n8n-nodes-base.telegram',
+						typeVersion: 1.2,
+						position: [576, 0],
+						parameters: {
+							chatId: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+							text: 'Test message',
+						},
+					},
+				],
+				connections: {
+					'Telegram Trigger': {
+						main: [[{ node: 'Send a text message', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+				active: false,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			// Create run data without execution data for Telegram Trigger
+			const run = {
+				data: {
+					resultData: {
+						runData: {}, // Empty - no nodes have executed
+					},
+				},
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				status: 'success' as const,
+			};
+
+			const proxy = getProxyFromFixture(workflow, run, 'Send a text message');
+
+			// Should throw helpful error when trying to access Telegram Trigger data
+			let error: ExpressionError | undefined;
+			try {
+				proxy.$('Telegram Trigger').item;
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+
+			expect(error).toBeDefined();
+			expect(error).toBeInstanceOf(ExpressionError);
+			expect(error!.message).toBe(
+				'"Telegram Trigger" node didn\'t get executed yet, but is needed for your expression',
+			);
+			expect(error!.context.type).toBe('no_execution_data');
+			expect(error!.context.messageTemplate).toBe(
+				'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
+			);
+		});
+
+		test('should show helpful error message for different node names', () => {
+			const workflow: IWorkflowBase = {
+				id: '1',
+				name: 'test-workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'Process Data',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [300, 0],
+						parameters: {
+							jsCode: "return $('HTTP Request').all();",
+						},
+					},
+				],
+				connections: {
+					'HTTP Request': {
+						main: [[{ node: 'Process Data', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+				active: false,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const run = {
+				data: {
+					resultData: {
+						runData: {}, // Empty - no nodes have executed
+					},
+				},
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				status: 'success' as const,
+			};
+
+			const proxy = getProxyFromFixture(workflow, run, 'Process Data');
+
+			let error: ExpressionError | undefined;
+			try {
+				proxy.$('HTTP Request').item;
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+
+			expect(error).toBeDefined();
+			expect(error!.message).toBe(
+				'"HTTP Request" node didn\'t get executed yet, but is needed for your expression',
+			);
+			expect(error!.context.type).toBe('no_execution_data');
+			expect(error!.context.messageTemplate).toBe(
+				'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
+			);
+		});
+
+		test('should use improved error for first(), last(), and all() methods', () => {
+			const workflow: IWorkflowBase = {
+				id: '1',
+				name: 'test-workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Start Node',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'End Node',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [300, 0],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Start Node': {
+						main: [[{ node: 'End Node', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+				active: false,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const run = {
+				data: {
+					resultData: {
+						runData: {}, // Empty - no nodes have executed
+					},
+				},
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				status: 'success' as const,
+			};
+
+			const proxy = getProxyFromFixture(workflow, run, 'End Node');
+
+			// Test first() method
+			let error: ExpressionError | undefined;
+			try {
+				proxy.$('Start Node').first();
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+			expect(error).toBeDefined();
+			expect(error!.message).toBe(
+				'"Start Node" node didn\'t get executed yet, but is needed for your expression',
+			);
+			expect(error!.context.messageTemplate).toBe(
+				'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
+			);
+
+			// Test last() method
+			try {
+				proxy.$('Start Node').last();
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+			expect(error).toBeDefined();
+			expect(error!.message).toBe(
+				'"Start Node" node didn\'t get executed yet, but is needed for your expression',
+			);
+			expect(error!.context.messageTemplate).toBe(
+				'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
+			);
+
+			// Test all() method
+			try {
+				proxy.$('Start Node').all();
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+			expect(error).toBeDefined();
+			expect(error!.message).toBe(
+				'"Start Node" node didn\'t get executed yet, but is needed for your expression',
+			);
+			expect(error!.context.messageTemplate).toBe(
+				'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
+			);
 		});
 	});
 });

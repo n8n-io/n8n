@@ -273,11 +273,19 @@ export const baseFixtures: ExpressionTestFixture[] = [
 			{
 				type: 'evaluation',
 				input: [],
-				error: new ExpressionError('No execution data available', {
-					runIndex: 0,
-					itemIndex: -1,
-					type: 'no_execution_data',
-				}),
+				error: new ExpressionError(
+					'"node" node didn\'t get executed yet, but is needed for your expression',
+					{
+						runIndex: 0,
+						itemIndex: -1,
+						type: 'no_execution_data',
+						functionality: 'pairedItem',
+						messageTemplate:
+							'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
+						descriptionKey: 'pairedItemNoConnection',
+						nodeCause: 'node',
+					},
+				),
 			},
 			{ type: 'transform' },
 			{ type: 'transform', forceTransform: true },
