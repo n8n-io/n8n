@@ -41,10 +41,12 @@ const getV2LanguageProperty = (): INodeProperties => {
 		{
 			name: 'JavaScript',
 			value: 'javaScript',
+			action: 'Code in JavaScript',
 		},
 		{
 			name: 'Python (Beta)',
 			value: 'python',
+			action: 'Code in Python (Beta)',
 		},
 	];
 
@@ -52,6 +54,7 @@ const getV2LanguageProperty = (): INodeProperties => {
 		options.push({
 			name: 'Python (Native) (Beta)',
 			value: 'pythonNative',
+			action: 'Code in Python (Native) (Beta)',
 		});
 	}
 
