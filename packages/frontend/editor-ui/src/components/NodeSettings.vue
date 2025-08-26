@@ -77,6 +77,7 @@ const props = withDefaults(
 		isNdvV2?: boolean;
 		hideExecute?: boolean;
 		hideDocs?: boolean;
+		hideSubConnections?: boolean;
 	}>(),
 	{
 		inputSize: 0,
@@ -86,6 +87,7 @@ const props = withDefaults(
 		isNdvV2: false,
 		hideExecute: false,
 		hideDocs: true,
+		hideSubConnections: false,
 	},
 );
 
@@ -790,7 +792,7 @@ function handleSelectAction(params: INodeParameters) {
 			</div>
 		</div>
 		<NDVSubConnections
-			v-if="node && !props.isEmbeddedInCanvas"
+			v-if="node && !hideSubConnections"
 			ref="subConnections"
 			:root-node="node"
 			@switch-selected-node="onSwitchSelectedNode"

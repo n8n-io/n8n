@@ -83,6 +83,7 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 		is-ndv-v2
 		hide-execute
 		:hide-docs="false"
+		hide-sub-connections
 		@value-changed="handleValueChanged"
 		@capture-wheel-body="handleCaptureWheelEvent"
 		@dblclick-header="handleDoubleClickHeader"
