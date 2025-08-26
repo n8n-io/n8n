@@ -1102,8 +1102,8 @@ describe('dataStore', () => {
 				true,
 			);
 			expect(ids).toEqual([
-				{ id: 1, c1: 1, c2: 'foo' },
-				{ id: 2, c1: 2, c2: 'bar' },
+				{ id: 1, c1: 1, c2: 'foo', createdAt: expect.any(String), updatedAt: expect.any(String) },
+				{ id: 2, c1: 2, c2: 'bar', createdAt: expect.any(String), updatedAt: expect.any(String) },
 			]);
 
 			await dataStoreService.deleteRows(dataStoreId, project1.id, [ids[0].id]);
@@ -1120,8 +1120,8 @@ describe('dataStore', () => {
 
 			// ASSERT
 			expect(result).toEqual([
-				{ id: 3, c1: 1, c2: 'baz' },
-				{ id: 4, c1: 2, c2: 'faz' },
+				{ id: 3, c1: 1, c2: 'baz', createdAt: expect.any(String), updatedAt: expect.any(String) },
+				{ id: 4, c1: 2, c2: 'faz', createdAt: expect.any(String), updatedAt: expect.any(String) },
 			]);
 		});
 
@@ -1677,11 +1677,11 @@ describe('dataStore', () => {
 			expect(updatedRows[0].createdAt).not.toBeNull();
 			expect(updatedRows[0].updatedAt).not.toBeNull();
 			expect(initialRows[0].updatedAt).not.toBeNull();
-			expect(new Date(updatedRows[0].updatedAt as string).getTime()).toBeGreaterThan(
-				new Date(initialRows[0].updatedAt as string).getTime(),
+			expect(new Date(updatedRows[0].updatedAt).getTime()).toBeGreaterThan(
+				new Date(initialRows[0].updatedAt).getTime(),
 			);
-			expect(new Date(updatedRows[0].updatedAt as string).getTime()).toBeGreaterThan(
-				new Date(updatedRows[0].createdAt as string).getTime(),
+			expect(new Date(updatedRows[0].updatedAt).getTime()).toBeGreaterThan(
+				new Date(updatedRows[0].createdAt).getTime(),
 			);
 		});
 

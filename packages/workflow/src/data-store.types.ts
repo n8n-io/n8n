@@ -74,8 +74,8 @@ export type DataStoreColumnJsType = string | number | boolean | Date | null;
 
 export type DataStoreRowReturnBase = {
 	id: number;
-	createdAt: Date;
-	updatedAt: Date;
+	createdAt: string;
+	updatedAt: string;
 };
 export type DataStoreRow = Record<string, DataStoreColumnJsType>;
 export type DataStoreRows = DataStoreRow[];

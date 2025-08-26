@@ -80,7 +80,7 @@ export class DataStoreRowsRepository {
 		const table = this.toTableName(dataStoreId);
 		const columnNames = columns.map((c) => c.name);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = ['id', ...escapedColumns];
+		const selectColumns = ['id', 'createdAt', 'updatedAt', ...escapedColumns];
 
 		// We insert one by one as the default behavior of returning the last inserted ID
 		// is consistent, whereas getting all inserted IDs when inserting multiple values is

@@ -238,11 +238,11 @@ export class DataStoreController {
 	/**
 	 * @returns the IDs of the inserted rows
 	 */
-	async appendDataStoreRows<T extends boolean>(
+	async appendDataStoreRows<T extends boolean | undefined>(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		dataStoreId: string,
-		dto: AddDataStoreRowsDto & { returnData: T },
+		dto: AddDataStoreRowsDto & { returnData?: T },
 	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	@Post('/:dataStoreId/insert')
 	@ProjectScope('dataStore:writeRow')

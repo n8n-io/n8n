@@ -125,23 +125,23 @@ export class DataStoreService {
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
 	}
 
-	async insertRows<T extends boolean>(
-		dataStoreId: string,
-		projectId: string,
-		rows: DataStoreRows,
-		returnData: T,
-	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
-	async insertRows<T extends boolean>(
+	async insertRows<T extends boolean | undefined>(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
 		returnData?: T,
-	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>> {
+	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
+	async insertRows(
+		dataStoreId: string,
+		projectId: string,
+		rows: DataStoreRows,
+		returnData?: boolean,
+	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateRows(dataStoreId, rows);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		return await this.dataStoreRowsRepository.insertRows<T>(dataStoreId, rows, columns, returnData);
+		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnData);
 	}
 
 	async upsertRows(dataStoreId: string, projectId: string, dto: UpsertDataStoreRowsDto) {
