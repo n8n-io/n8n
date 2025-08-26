@@ -8,7 +8,6 @@ import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { findNodeType, createNodeTypeNotFoundError } from './helpers/validation';
 import type { NodeDetails } from '../types/nodes';
 import type { NodeDetailsOutput } from '../types/tools';
-import type { BuilderTool } from '../utils/stream-processor';
 
 /**
  * Schema for node details tool input
@@ -126,7 +125,7 @@ function extractNodeDetails(nodeType: INodeTypeDescription): NodeDetails {
 /**
  * Factory function to create the node details tool
  */
-export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]): BuilderTool {
+export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 	const DISPLAY_TITLE = 'Getting node details';
 
 	const dynamicTool = tool(

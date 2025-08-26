@@ -8,7 +8,6 @@ import { createProgressReporter, createBatchProgressReporter } from './helpers/p
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import type { NodeSearchResult } from '../types/nodes';
 import type { NodeSearchOutput } from '../types/tools';
-import type { BuilderTool } from '../utils/stream-processor';
 
 /**
  * Search query schema - simplified for better LLM compatibility
@@ -112,7 +111,7 @@ function buildResponseMessage(
 /**
  * Factory function to create the node search tool
  */
-export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]): BuilderTool {
+export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]) {
 	const DISPLAY_TITLE = 'Searching nodes';
 
 	const dynamicTool = tool(

@@ -20,7 +20,6 @@ import {
 	inferConnectionType,
 } from './utils/connection.utils';
 import type { ConnectNodesOutput } from '../types/tools';
-import type { BuilderTool } from '../utils/stream-processor';
 
 /**
  * Schema for node connection
@@ -49,10 +48,7 @@ export const nodeConnectionSchema = z.object({
 /**
  * Factory function to create the connect nodes tool
  */
-export function createConnectNodesTool(
-	nodeTypes: INodeTypeDescription[],
-	logger?: Logger,
-): BuilderTool {
+export function createConnectNodesTool(nodeTypes: INodeTypeDescription[], logger?: Logger) {
 	const DISPLAY_TITLE = 'Connecting nodes';
 
 	const dynamicTool = tool(

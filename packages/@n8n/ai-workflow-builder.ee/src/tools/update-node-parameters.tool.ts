@@ -21,7 +21,6 @@ import {
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
 import type { UpdateNodeParametersOutput } from '../types/tools';
-import type { BuilderTool } from '../utils/stream-processor';
 
 /**
  * Schema for update node parameters input
@@ -120,7 +119,7 @@ export function createUpdateNodeParametersTool(
 	llm: BaseChatModel,
 	logger?: Logger,
 	instanceUrl?: string,
-): BuilderTool {
+) {
 	const DISPLAY_TITLE = 'Updating node parameters';
 
 	const dynamicTool = tool(

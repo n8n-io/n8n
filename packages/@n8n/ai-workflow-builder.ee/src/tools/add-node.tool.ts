@@ -12,7 +12,6 @@ import { getCurrentWorkflow, addNodeToWorkflow, getWorkflowState } from './helpe
 import { findNodeType } from './helpers/validation';
 import type { AddedNode } from '../types/nodes';
 import type { AddNodeOutput, ToolError } from '../types/tools';
-import type { BuilderTool } from '../utils/stream-processor';
 
 /**
  * Schema for node creation input
@@ -82,7 +81,7 @@ function getCustomNodeTitle(
 /**
  * Factory function to create the add node tool
  */
-export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderTool {
+export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 	const DISPLAY_TITLE = 'Adding nodes';
 
 	const dynamicTool = tool(

@@ -9,7 +9,6 @@ import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, getWorkflowState, removeNodeFromWorkflow } from './helpers/state';
 import { validateNodeExists, createNodeNotFoundError } from './helpers/validation';
 import type { RemoveNodeOutput } from '../types/tools';
-import type { BuilderTool } from '../utils/stream-processor';
 
 /**
  * Schema for the remove node tool
@@ -73,7 +72,7 @@ function buildResponseMessage(
 /**
  * Factory function to create the remove node tool
  */
-export function createRemoveNodeTool(_logger?: Logger): BuilderTool {
+export function createRemoveNodeTool(_logger?: Logger) {
 	const DISPLAY_TITLE = 'Removing node';
 
 	const dynamicTool = tool(
