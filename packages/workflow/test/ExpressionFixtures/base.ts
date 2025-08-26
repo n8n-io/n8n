@@ -281,7 +281,7 @@ export const baseFixtures: ExpressionTestFixture[] = [
 						type: 'no_execution_data',
 						functionality: 'pairedItem',
 						messageTemplate:
-							'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
+							'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
 						descriptionKey: 'pairedItemNoConnection',
 						nodeCause: 'node',
 					},

@@ -402,21 +402,18 @@ export class WorkflowDataProxy {
 				!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName) &&
 				!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 			) {
-				throw new ExpressionError(
-					`"${nodeName}" node didn't get executed yet, but is needed for your expression`,
-					{
-						messageTemplate:
-							'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
-						functionality: 'pairedItem',
-						descriptionKey: isScriptingNode(nodeName, that.workflow)
-							? 'pairedItemNoConnectionCodeNode'
-							: 'pairedItemNoConnection',
-						type: 'no_execution_data',
-						nodeCause: nodeName,
-						runIndex: that.runIndex,
-						itemIndex: that.itemIndex,
-					},
-				);
+				throw new ExpressionError(`Node '${nodeName}' isn't executed`, {
+					messageTemplate:
+						'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+					functionality: 'pairedItem',
+					descriptionKey: isScriptingNode(nodeName, that.workflow)
+						? 'pairedItemNoConnectionCodeNode'
+						: 'pairedItemNoConnection',
+					type: 'no_execution_data',
+					nodeCause: nodeName,
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
 			}
 
 			runIndex = runIndex === undefined ? that.defaultReturnRunIndex : runIndex;
@@ -529,21 +526,18 @@ export class WorkflowDataProxy {
 
 						// Ultra-simple execution-based validation: if no execution data exists, throw error
 						if (executionData.length === 0) {
-							throw new ExpressionError(
-								`"${nodeName}" node didn't get executed yet, but is needed for your expression`,
-								{
-									messageTemplate:
-										'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
-									functionality: 'pairedItem',
-									descriptionKey: isScriptingNode(nodeName, that.workflow)
-										? 'pairedItemNoConnectionCodeNode'
-										: 'pairedItemNoConnection',
-									type: 'no_execution_data',
-									nodeCause: nodeName,
-									runIndex: that.runIndex,
-									itemIndex: that.itemIndex,
-								},
-							);
+							throw new ExpressionError(`Node '${nodeName}' isn't executed`, {
+								messageTemplate:
+									'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+								functionality: 'pairedItem',
+								descriptionKey: isScriptingNode(nodeName, that.workflow)
+									? 'pairedItemNoConnectionCodeNode'
+									: 'pairedItemNoConnection',
+								type: 'no_execution_data',
+								nodeCause: nodeName,
+								runIndex: that.runIndex,
+								itemIndex: that.itemIndex,
+							});
 						}
 
 						if (executionData.length <= that.itemIndex) {
@@ -1087,21 +1081,18 @@ export class WorkflowDataProxy {
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
-						throw createExpressionError(
-							`"${nodeName}" node didn't get executed yet, but is needed for your expression`,
-							{
-								messageTemplate:
-									'Execute "{{nodeName}}" node first, or click on it and press the "Test step" button',
-								functionality: 'pairedItem',
-								descriptionKey: isScriptingNode(nodeName, that.workflow)
-									? 'pairedItemNoConnectionCodeNode'
-									: 'pairedItemNoConnection',
-								type: 'no_execution_data',
-								nodeCause: nodeName,
-								runIndex: that.runIndex,
-								itemIndex: that.itemIndex,
-							},
-						);
+						throw createExpressionError(`Node '${nodeName}' isn't executed`, {
+							messageTemplate:
+								'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+							functionality: 'pairedItem',
+							descriptionKey: isScriptingNode(nodeName, that.workflow)
+								? 'pairedItemNoConnectionCodeNode'
+								: 'pairedItemNoConnection',
+							type: 'no_execution_data',
+							nodeCause: nodeName,
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+						});
 					}
 				};
 
