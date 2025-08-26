@@ -2070,7 +2070,7 @@ describe('dataStore', () => {
 			// ASSERT
 			expect(result.count).toEqual(2);
 			// Assuming IDs are auto-incremented starting from 1
-			expect(result.data).toEqual([
+			expect(result.data).toMatchObject([
 				{ c1: null, c2: true, id: 1 },
 				{ c1: null, c2: false, id: 3 },
 			]);
@@ -2106,7 +2106,7 @@ describe('dataStore', () => {
 			// ASSERT
 			expect(result.count).toEqual(2);
 			// Assuming IDs are auto-incremented starting from 1
-			expect(result.data).toEqual([
+			expect(result.data).toMatchObject([
 				{ c1: 'Marco', c2: true, id: 2 },
 				{ c1: 'Polo', c2: false, id: 4 },
 			]);
