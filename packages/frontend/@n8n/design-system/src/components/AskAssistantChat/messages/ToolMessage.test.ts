@@ -4,7 +4,6 @@ import { createPinia, setActivePinia } from 'pinia';
 import type { Props } from './ToolMessage.vue';
 import ToolMessage from './ToolMessage.vue';
 import type { ChatUI } from '../../../types/assistant';
-import N8nIcon from '../../N8nIcon';
 
 // Mock i18n to return keys instead of translated text
 vi.mock('@n8n/design-system/composables/useI18n', () => ({
@@ -211,7 +210,7 @@ describe('ToolMessage', () => {
 				updates: [
 					{
 						type: 'error' as const,
-						data: { error: 'Simple error message' },
+						data: { message: 'Simple error message' },
 					},
 				],
 			};
