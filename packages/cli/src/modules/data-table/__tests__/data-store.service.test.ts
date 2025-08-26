@@ -1111,9 +1111,33 @@ describe('dataStore', () => {
 				true,
 			);
 			expect(ids).toEqual([
-				{ id: 1, c1: 1, c2: 'foo', c3: true, c4: now },
-				{ id: 2, c1: 2, c2: 'bar', c3: false, c4: now },
-				{ id: 3, c1: null, c2: null, c3: null, c4: null },
+				{
+					id: 1,
+					c1: 1,
+					c2: 'foo',
+					c3: true,
+					c4: now,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+				{
+					id: 2,
+					c1: 2,
+					c2: 'bar',
+					c3: false,
+					c4: now,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+				{
+					id: 3,
+					c1: null,
+					c2: null,
+					c3: null,
+					c4: null,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
 			]);
 		});
 
@@ -1489,6 +1513,8 @@ describe('dataStore', () => {
 						age: 31,
 						pid: '1995-111a',
 						birthday: new Date('1995-01-01'),
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
 					},
 					{
 						id: 2,
@@ -1496,6 +1522,8 @@ describe('dataStore', () => {
 						age: 30,
 						pid: '1992-222b',
 						birthday: new Date('1992-01-01'),
+						createdAt: expect.any(Date),
+						updatedAt: expect.any(Date),
 					},
 				]),
 			);
@@ -1725,11 +1753,11 @@ describe('dataStore', () => {
 			expect(updatedRows[0].createdAt).not.toBeNull();
 			expect(updatedRows[0].updatedAt).not.toBeNull();
 			expect(initialRows[0].updatedAt).not.toBeNull();
-			expect(new Date(updatedRows[0].updatedAt as string).getTime()).toBeGreaterThan(
-				new Date(initialRows[0].updatedAt as string).getTime(),
+			expect(new Date(updatedRows[0].updatedAt).getTime()).toBeGreaterThan(
+				new Date(initialRows[0].updatedAt).getTime(),
 			);
-			expect(new Date(updatedRows[0].updatedAt as string).getTime()).toBeGreaterThan(
-				new Date(updatedRows[0].createdAt as string).getTime(),
+			expect(new Date(updatedRows[0].updatedAt).getTime()).toBeGreaterThan(
+				new Date(updatedRows[0].createdAt).getTime(),
 			);
 		});
 
