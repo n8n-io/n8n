@@ -110,7 +110,7 @@ export interface IDataStoreProjectService {
 
 	insertRows(rows: DataStoreRows): Promise<DataStoreRowReturn[]>;
 
-	upsertRows(options: UpsertDataStoreRowsOptions): Promise<boolean | DataStoreRowReturn[]>;
+	upsertRows(options: UpsertDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
 
 	deleteRows(ids: number[]): Promise<boolean>;
 }

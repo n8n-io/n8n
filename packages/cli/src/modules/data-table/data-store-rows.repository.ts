@@ -182,13 +182,21 @@ export class DataStoreRowsRepository {
 	}
 
 	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
+	async upsertRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		matchFields: string[],
+		rows: DataStoreRows,
+		columns: DataStoreColumn[],
+		returnData?: T,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async upsertRows(
 		dataStoreId: string,
 		matchFields: string[],
 		rows: DataStoreRows,
 		columns: DataStoreColumn[],
-		returnData = false,
+		returnData?: boolean,
 	) {
+		returnData = returnData ?? false;
 		const { rowsToInsert, rowsToUpdate } = await this.fetchAndSplitRowsByExistence(
 			dataStoreId,
 			matchFields,
