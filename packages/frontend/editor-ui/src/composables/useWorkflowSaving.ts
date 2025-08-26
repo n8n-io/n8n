@@ -169,9 +169,12 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 		const isLoading = useCanvasStore().isLoading;
 		const currentWorkflow = id || (router.currentRoute.value.params.name as string);
 		const parentFolderId = router.currentRoute.value.query.parentFolderId as string;
+		const uiContext: string | undefined = router.currentRoute.value.query.ui_context as
+			| string
+			| undefined;
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId }, redirect));
+			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId, uiContext }, redirect));
 		}
 
 		// Workflow exists already so update it
@@ -292,6 +295,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			resetNodeIds,
 			openInNewWindow,
 			parentFolderId,
+			uiContext,
 			data,
 		}: {
 			name?: string;
@@ -300,6 +304,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			openInNewWindow?: boolean;
 			resetNodeIds?: boolean;
 			parentFolderId?: string;
+			uiContext?: string;
 			data?: WorkflowDataCreate;
 		} = {},
 		redirect = true,
@@ -340,6 +345,11 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			if (parentFolderId) {
 				workflowDataRequest.parentFolderId = parentFolderId;
 			}
+
+			if (uiContext) {
+				workflowDataRequest.ui_context = uiContext;
+			}
+
 			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
 
 			workflowsStore.addWorkflow(workflowData);

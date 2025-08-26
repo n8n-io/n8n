@@ -184,14 +184,14 @@ export const useGlobalEntityCreation = () => {
 		] satisfies Item[];
 	});
 
-	const createProject = async (context?: string) => {
+	const createProject = async (ui_context?: string) => {
 		isCreatingProject.value = true;
 
 		try {
 			const newProject = await projectsStore.createProject({
 				name: i18n.baseText('projects.settings.newProjectName'),
 				icon: { type: 'icon', value: DEFAULT_ICON },
-				context,
+				ui_context,
 			});
 			await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
 			toast.showMessage({
@@ -211,7 +211,7 @@ export const useGlobalEntityCreation = () => {
 		if (id !== CREATE_PROJECT_ID) return;
 
 		if (projectsStore.canCreateProjects && projectsStore.hasPermissionToCreateProjects) {
-			void createProject('universal button');
+			void createProject('universal_button');
 			return;
 		}
 
