@@ -97,6 +97,18 @@ try {
 	buildProcess.pipe(process.stdout);
 	await buildProcess;
 
+	// Generate third-party licenses for production build
+	echo(chalk.yellow('INFO: Generating third-party licenses...'));
+	try {
+		const licenseProcess = $`cd ${config.rootDir} && node scripts/generate-third-party-licenses.mjs`;
+		licenseProcess.pipe(process.stdout);
+		await licenseProcess;
+		echo(chalk.green('✅ Third-party licenses generated successfully'));
+	} catch (error) {
+		echo(chalk.yellow('⚠️  Warning: Third-party license generation failed, continuing build...'));
+		echo(chalk.red(`ERROR: License generation failed: ${error.message}`));
+	}
+
 	echo(chalk.green('✅ pnpm install and build completed'));
 
 } catch (error) {
@@ -184,15 +196,6 @@ if (excludeTestController) {
 }
 
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
-
-// Copy license file from CLI dist to compiled directory
-const licenseFile = path.join(config.rootDir, 'packages/cli/dist/THIRD_PARTY_LICENSES.md');
-if (await fs.pathExists(licenseFile)) {
-	await fs.copy(licenseFile, path.join(config.compiledAppDir, 'THIRD_PARTY_LICENSES.md'));
-	echo(chalk.green('✅ Copied THIRD_PARTY_LICENSES.md to compiled directory'));
-} else {
-	echo(chalk.yellow('⚠️  THIRD_PARTY_LICENSES.md not found in packages/cli/dist/, skipping copy'));
-}
 
 const packageDeployTime = getElapsedTime('package_deploy');
 

@@ -71,7 +71,7 @@ const copyDebugInfoToClipboard = async () => {
 						<n8n-text>{{ i18n.baseText('about.thirdPartyLicenses') }}</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-link to="/THIRD_PARTY_LICENSES.md" target="_blank" download>
+						<n8n-link to="/THIRD_PARTY_LICENSES.md" new-window>
 							{{ i18n.baseText('about.thirdPartyLicensesLink') }}
 						</n8n-link>
 					</el-col>

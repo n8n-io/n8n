@@ -265,12 +265,20 @@ export class Server extends AbstractServer {
 
 		// Serve third-party licenses file
 		const licenseFile = resolve(CLI_DIR, 'dist', 'THIRD_PARTY_LICENSES.md');
+		const placeholderLicenseFile = resolve(CLI_DIR, 'THIRD_PARTY_LICENSES_PLACEHOLDER.md');
 		this.app.get('/THIRD_PARTY_LICENSES.md', async (_, res) => {
 			try {
+				// Try production file first
 				await fsAccess(licenseFile);
-				res.sendFile(licenseFile, { dotfiles: 'allow' });
+				res.sendFile(licenseFile);
 			} catch {
-				res.status(404).send('Third-party licenses file not found');
+				try {
+					// Fall back to placeholder file for local development
+					await fsAccess(placeholderLicenseFile);
+					res.sendFile(placeholderLicenseFile);
+				} catch {
+					res.status(404).send('Not found');
+				}
 			}
 		});
 

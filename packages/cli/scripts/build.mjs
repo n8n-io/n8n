@@ -16,7 +16,6 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
 generateUserManagementEmailTemplates();
 generateTimezoneData();
-generateThirdPartyLicenses();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
@@ -84,16 +83,3 @@ function generateTimezoneData() {
 	writeFileSync(path.resolve(ROOT_DIR, 'dist/timezones.json'), JSON.stringify({ data }));
 }
 
-function generateThirdPartyLicenses() {
-	console.log('Generating third-party licenses...');
-	const result = shell.exec('pnpm run generate:third-party-licenses', {
-		silent: false,
-		cwd: path.resolve(ROOT_DIR, '..', '..'),
-	});
-	if (result.code !== 0) {
-		console.warn('⚠️  Warning: Third-party license generation failed, continuing build...');
-		console.warn(`License generation error code: ${result.code}`);
-	} else {
-		console.log('✅ Third-party licenses generated successfully');
-	}
-}
