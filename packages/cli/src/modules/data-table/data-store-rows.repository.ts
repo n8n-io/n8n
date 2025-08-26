@@ -77,7 +77,10 @@ export class DataStoreRowsRepository {
 		const table = this.toTableName(dataStoreId);
 		const columnNames = columns.map((c) => c.name);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = [...DATA_TABLE_SYSTEM_COLUMNS, ...escapedColumns];
+		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+			this.dataSource.driver.escape(x),
+		);
+		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
 
 		// We insert one by one as the default behavior of returning the last inserted ID
 		// is consistent, whereas getting all inserted IDs when inserting multiple values is
@@ -139,7 +142,10 @@ export class DataStoreRowsRepository {
 
 		const table = this.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = [...DATA_TABLE_SYSTEM_COLUMNS, ...escapedColumns];
+		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+			this.dataSource.driver.escape(x),
+		);
+		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
 
 		for (const column of columns) {
 			if (column.name in setData) {
@@ -298,7 +304,10 @@ export class DataStoreRowsRepository {
 	async getManyByIds(dataStoreId: string, ids: number[], columns: DataStoreColumn[]) {
 		const table = this.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = [...DATA_TABLE_SYSTEM_COLUMNS, ...escapedColumns];
+		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+			this.dataSource.driver.escape(x),
+		);
+		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
 
 		if (ids.length === 0) {
 			return [];
