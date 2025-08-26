@@ -116,7 +116,7 @@ export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]): Builder
 	const DISPLAY_TITLE = 'Searching nodes';
 
 	const dynamicTool = tool(
-		(input: unknown, config) => {
+		(input, config) => {
 			const reporter = createProgressReporter(config, 'search_nodes', DISPLAY_TITLE);
 
 			try {

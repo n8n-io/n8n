@@ -302,7 +302,7 @@ describe('AddNodeTool', () => {
 	describe('getCustomDisplayTitle', () => {
 		it('should return node display name when nodeType exists', () => {
 			const tool = createAddNodeTool(nodeTypesList);
-			const result = tool.getCustomDisplayTitle({
+			const result = tool.getCustomDisplayTitle?.({
 				nodeType: 'n8n-nodes-base.code',
 				name: 'My Code',
 			});
@@ -313,8 +313,8 @@ describe('AddNodeTool', () => {
 		it('should return default title when nodeType not found or missing', () => {
 			const tool = createAddNodeTool(nodeTypesList);
 
-			expect(tool.getCustomDisplayTitle({ nodeType: 'unknown.node' })).toBe('Adding node');
-			expect(tool.getCustomDisplayTitle({ name: 'Some Node' })).toBe('Adding node');
+			expect(tool.getCustomDisplayTitle?.({ nodeType: 'unknown.node' })).toBe('Adding node');
+			expect(tool.getCustomDisplayTitle?.({ name: 'Some Node' })).toBe('Adding node');
 		});
 	});
 });
