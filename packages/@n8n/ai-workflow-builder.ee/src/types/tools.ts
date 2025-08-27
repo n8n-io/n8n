@@ -48,6 +48,7 @@ export interface ProgressReporter {
 	complete: <T>(output: T) => void;
 	error: (error: ToolError) => void;
 	createBatchReporter: (scope: string) => BatchReporter;
+	setCustomDisplayTitle: (title: string) => void;
 }
 
 /**

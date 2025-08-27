@@ -13,6 +13,8 @@ import { findNodeType } from './helpers/validation';
 import type { AddedNode } from '../types/nodes';
 import type { AddNodeOutput, ToolError } from '../types/tools';
 
+const DISPLAY_TITLE = 'Adding node';
+
 /**
  * Schema for node creation input
  */
@@ -75,15 +77,13 @@ function getCustomNodeTitle(
 		}
 	}
 
-	return 'Adding node';
+	return DISPLAY_TITLE;
 }
 
 /**
  * Factory function to create the add node tool
  */
 export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
-	const DISPLAY_TITLE = 'Adding nodes';
-
 	const dynamicTool = tool(
 		async (input, config) => {
 			const reporter = createProgressReporter(

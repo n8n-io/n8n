@@ -15,9 +15,11 @@ export function createProgressReporter<TToolName extends string = string>(
 	config: ToolRunnableConfig & LangGraphRunnableConfig,
 	toolName: TToolName,
 	displayTitle: string,
-	customDisplayTitle?: string,
+	customTitle?: string,
 ): ProgressReporter {
 	const toolCallId = config.toolCall?.id;
+
+	let customDisplayTitle = customTitle;
 
 	const emit = (message: ToolProgressMessage<TToolName>): void => {
 		config.writer?.(message);
@@ -38,6 +40,10 @@ export function createProgressReporter<TToolName extends string = string>(
 				},
 			],
 		});
+	};
+
+	const setCustomDisplayTitle = (title: string) => {
+		customDisplayTitle = title;
 	};
 
 	const progress = (message: string, data?: Record<string, unknown>): void => {
@@ -120,6 +126,7 @@ export function createProgressReporter<TToolName extends string = string>(
 		complete,
 		error,
 		createBatchReporter,
+		setCustomDisplayTitle,
 	};
 }
 

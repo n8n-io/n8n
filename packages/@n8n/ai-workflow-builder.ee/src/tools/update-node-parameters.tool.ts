@@ -22,6 +22,8 @@ import {
 } from './utils/parameter-update.utils';
 import type { UpdateNodeParametersOutput } from '../types/tools';
 
+const DISPLAY_TITLE = 'Updating node parameters';
+
 /**
  * Schema for update node parameters input
  */
@@ -111,6 +113,17 @@ async function processParameterUpdates(
 	return fixExpressionPrefixes(newParameters.parameters) as INodeParameters;
 }
 
+function getCustomNodeTitle(input: Record<string, unknown>, nodes?: INode[]): string {
+	if ('nodeId' in input && typeof input['nodeId'] === 'string') {
+		const targetNode = nodes?.find((node) => node.id === input.nodeId);
+		if (targetNode) {
+			return `Updating "${targetNode.name}" node parameters`;
+		}
+	}
+
+	return DISPLAY_TITLE;
+}
+
 /**
  * Factory function to create the update node parameters tool
  */
@@ -120,8 +133,6 @@ export function createUpdateNodeParametersTool(
 	logger?: Logger,
 	instanceUrl?: string,
 ) {
-	const DISPLAY_TITLE = 'Updating node parameters';
-
 	const dynamicTool = tool(
 		async (input, config) => {
 			const reporter = createProgressReporter(config, 'update_node_parameters', DISPLAY_TITLE);
@@ -131,12 +142,14 @@ export function createUpdateNodeParametersTool(
 				const validatedInput = updateNodeParametersSchema.parse(input);
 				const { nodeId, changes } = validatedInput;
 
-				// Report tool start
-				reporter.start(validatedInput);
-
 				// Get current state
 				const state = getWorkflowState();
 				const workflow = getCurrentWorkflow(state);
+
+				reporter.setCustomDisplayTitle(getCustomNodeTitle(input, workflow.nodes));
+
+				// Report tool start
+				reporter.start(validatedInput);
 
 				// Find the node
 				const node = validateNodeExists(nodeId, workflow.nodes);
@@ -239,5 +252,6 @@ export function createUpdateNodeParametersTool(
 	return {
 		tool: dynamicTool,
 		displayTitle: DISPLAY_TITLE,
+		getCustomDisplayTitle: getCustomNodeTitle,
 	};
 }
