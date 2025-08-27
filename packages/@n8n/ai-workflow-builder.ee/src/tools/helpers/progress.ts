@@ -25,7 +25,10 @@ export function createProgressReporter<TToolName extends string = string>(
 		config.writer?.(message);
 	};
 
-	const start = <T>(input: T): void => {
+	const start = <T>(input: T, options?: { customDisplayTitle: string }): void => {
+		if (options?.customDisplayTitle) {
+			customDisplayTitle = options.customDisplayTitle;
+		}
 		emit({
 			type: 'tool',
 			toolName,
@@ -40,10 +43,6 @@ export function createProgressReporter<TToolName extends string = string>(
 				},
 			],
 		});
-	};
-
-	const setCustomDisplayTitle = (title: string) => {
-		customDisplayTitle = title;
 	};
 
 	const progress = (message: string, data?: Record<string, unknown>): void => {
@@ -126,7 +125,6 @@ export function createProgressReporter<TToolName extends string = string>(
 		complete,
 		error,
 		createBatchReporter,
-		setCustomDisplayTitle,
 	};
 }
 

@@ -43,12 +43,11 @@ export interface ToolError {
  * Progress reporter interface for tools
  */
 export interface ProgressReporter {
-	start: <T>(input: T) => void;
+	start: <T>(input: T, options?: { customDisplayTitle: string }) => void;
 	progress: (message: string, data?: Record<string, unknown>) => void;
 	complete: <T>(output: T) => void;
 	error: (error: ToolError) => void;
 	createBatchReporter: (scope: string) => BatchReporter;
-	setCustomDisplayTitle: (title: string) => void;
 }
 
 /**

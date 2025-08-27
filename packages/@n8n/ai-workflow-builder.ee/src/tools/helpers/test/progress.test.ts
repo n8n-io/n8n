@@ -383,5 +383,54 @@ describe('progress helpers', () => {
 				}),
 			);
 		});
+
+		it('should update customDisplayTitle when provided in start options', () => {
+			const reporter = createProgressReporter(mockConfig, 'test_tool', 'Test Tool');
+			const input = { test: 'data' };
+
+			reporter.start(input, { customDisplayTitle: 'Custom Title from Options' });
+
+			expect(mockWriter).toHaveBeenCalledWith({
+				type: 'tool',
+				toolName: 'test_tool',
+				toolCallId: 'test-tool-call-id',
+				displayTitle: 'Test Tool',
+				customDisplayTitle: 'Custom Title from Options',
+				status: 'running',
+				updates: [
+					{
+						type: 'input',
+						data: input,
+					},
+				],
+			});
+		});
+
+		it('should preserve initial custom title when start is called without options', () => {
+			const reporter = createProgressReporter(
+				mockConfig,
+				'test_tool',
+				'Test Tool',
+				'Initial Custom Title',
+			);
+			const input = { test: 'data' };
+
+			reporter.start(input);
+
+			expect(mockWriter).toHaveBeenCalledWith({
+				type: 'tool',
+				toolName: 'test_tool',
+				toolCallId: 'test-tool-call-id',
+				displayTitle: 'Test Tool',
+				customDisplayTitle: 'Initial Custom Title',
+				status: 'running',
+				updates: [
+					{
+						type: 'input',
+						data: input,
+					},
+				],
+			});
+		});
 	});
 });

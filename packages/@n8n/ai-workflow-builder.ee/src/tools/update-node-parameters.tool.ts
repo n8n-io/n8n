@@ -146,10 +146,10 @@ export function createUpdateNodeParametersTool(
 				const state = getWorkflowState();
 				const workflow = getCurrentWorkflow(state);
 
-				reporter.setCustomDisplayTitle(getCustomNodeTitle(input, workflow.nodes));
-
 				// Report tool start
-				reporter.start(validatedInput);
+				reporter.start(validatedInput, {
+					customDisplayTitle: getCustomNodeTitle(input, workflow.nodes),
+				});
 
 				// Find the node
 				const node = validateNodeExists(nodeId, workflow.nodes);
