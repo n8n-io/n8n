@@ -191,7 +191,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 			emptyRow,
 			dataStore.projectId,
 		);
-		return inserted[0];
+		return inserted[0].id;
 	};
 
 	const updateRow = async (
