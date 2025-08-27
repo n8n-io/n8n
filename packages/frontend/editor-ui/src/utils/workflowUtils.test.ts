@@ -1,5 +1,6 @@
 import { removeWorkflowExecutionData } from './workflowUtils';
 import type { IWorkflowDb } from '@/Interface';
+import type { INodeIssues } from 'n8n-workflow';
 
 describe('workflowUtils', () => {
 	describe('removeWorkflowExecutionData', () => {
@@ -24,7 +25,7 @@ describe('workflowUtils', () => {
 						position: [100, 100],
 						parameters: {},
 						// Execution-related data that should be removed
-						issues: {} as any,
+						issues: {} as INodeIssues,
 						pinData: { someData: 'test' },
 					},
 					{
@@ -97,7 +98,7 @@ describe('workflowUtils', () => {
 						notes: 'Some notes',
 						disabled: true,
 						// Execution data to be removed
-						issues: {} as any,
+						issues: {} as INodeIssues,
 						pinData: { result: [{ json: { test: 'data' } }] },
 					},
 				],
