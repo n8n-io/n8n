@@ -80,7 +80,7 @@ export default class New extends Command {
 		}
 
 		const config = (await template.prompts?.()) ?? {};
-		const packageManager = detectPackageManager() ?? 'npm';
+		const packageManager = (await detectPackageManager()) ?? 'npm';
 		const templateData: TemplateData = {
 			destinationPath: destination,
 			nodePackageName: nodeName,

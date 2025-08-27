@@ -2,6 +2,7 @@ import { Command, Flags } from '@oclif/core';
 import os from 'node:os';
 import path from 'node:path';
 import picocolors from 'picocolors';
+import { rimraf } from 'rimraf';
 
 import { ensureFolder } from '../../utils/filesystem';
 import { detectPackageManager } from '../../utils/package-manager';
@@ -33,18 +34,10 @@ export default class Dev extends Command {
 	async run(): Promise<void> {
 		const { flags } = await this.parse(Dev);
 
-		const packageManager = detectPackageManager() ?? 'npm';
-		const { isN8nInstalled, runCommand, runPersistentCommand } = commands();
+		const packageManager = (await detectPackageManager()) ?? 'npm';
+		const { runCommand, runPersistentCommand } = commands();
 
 		await ensureN8nPackage('n8n-node dev');
-
-		const installed = await isN8nInstalled();
-		if (!installed && !flags['external-n8n']) {
-			console.error(
-				'❌ n8n is not installed or not in PATH. Learn how to install n8n here: https://docs.n8n.io/hosting/installation/npm',
-			);
-			process.exit(1);
-		}
 
 		await copyStaticFiles();
 
@@ -59,11 +52,15 @@ export default class Dev extends Command {
 
 		if (invalidNodeNameError) return onCancel(invalidNodeNameError);
 
-		await runCommand(packageManager, ['link', packageName], { cwd: customPath });
+		// Remove existing package.json to avoid conflicts
+		await rimraf(path.join(customPath, 'package.json'));
+		await runCommand(packageManager, ['link', packageName], {
+			cwd: customPath,
+		});
 
 		if (!flags['external-n8n']) {
 			// Run n8n with hot reload enabled
-			runPersistentCommand('n8n', [], {
+			runPersistentCommand('npx n8n', [], {
 				cwd: customPath,
 				env: { N8N_DEV_RELOAD: 'true' },
 				name: 'n8n',
@@ -72,7 +69,7 @@ export default class Dev extends Command {
 		}
 
 		// Run `tsc --watch` in background
-		runPersistentCommand('tsc', ['--watch'], {
+		runPersistentCommand(packageManager, ['exec', 'tsc', '--watch'], {
 			name: 'build',
 			color: picocolors.cyan,
 		});

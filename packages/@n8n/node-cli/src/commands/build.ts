@@ -7,6 +7,7 @@ import path from 'node:path';
 import picocolors from 'picocolors';
 import { rimraf } from 'rimraf';
 
+import { detectPackageManager } from '../utils/package-manager';
 import { ensureN8nPackage } from '../utils/prompts';
 
 export default class Build extends Command {
@@ -44,9 +45,10 @@ export default class Build extends Command {
 }
 
 async function runTscBuild(): Promise<void> {
+	const packageManager = (await detectPackageManager()) ?? 'npm';
 	return await new Promise((resolve, reject) => {
-		const child = spawn('tsc', [], {
-			stdio: ['ignore', 'pipe', 'pipe'],
+		const child = spawn(packageManager, ['exec', 'tsc'], {
+			stdio: [null, 'pipe', 'pipe'],
 			shell: true,
 		});
 
@@ -79,7 +81,7 @@ async function runTscBuild(): Promise<void> {
 
 export async function copyStaticFiles() {
 	const staticFiles = glob.sync(['**/*.{png,svg}', '**/__schema__/**/*.json'], {
-		ignore: ['dist'],
+		ignore: ['dist', 'node_modules'],
 	});
 
 	return await Promise.all(

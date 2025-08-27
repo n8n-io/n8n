@@ -34,16 +34,26 @@ export function commands() {
 			const child = spawn(cmd, args, {
 				cwd: opts.cwd,
 				env: { ...process.env, ...opts.env },
-				stdio: ['inherit', 'pipe', 'pipe'],
+				stdio: [null, 'pipe', 'pipe'],
 			});
 
-			child.on('error', (error) => {
-				reject(error);
-			});
+			const output: Buffer[] = [];
+
+			const handleOutput = (data: Buffer): void => {
+				output.push(data);
+			};
+
+			child.stdout.on('data', handleOutput);
+			child.stderr.on('data', handleOutput);
 
 			child.on('close', (code) => {
 				if (code === 0) resolve();
-				else reject(new Error(`${cmd} exited with code ${code}`));
+				else {
+					for (const buffer of output) {
+						console.log(buffer);
+					}
+					reject(new Error(`${cmd} exited with code ${code}`));
+				}
 			});
 
 			registerChild(child);
@@ -101,17 +111,7 @@ export function commands() {
 		});
 	}
 
-	async function isN8nInstalled(): Promise<boolean> {
-		try {
-			await runCommand('n8n', ['--version'], {});
-			return true;
-		} catch {
-			return false;
-		}
-	}
-
 	return {
-		isN8nInstalled,
 		runCommand,
 		runPersistentCommand,
 	};
