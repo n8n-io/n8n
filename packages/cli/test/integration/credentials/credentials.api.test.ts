@@ -822,6 +822,25 @@ describe('POST /credentials', () => {
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 
+	test('should create cred with uiContext parameter', async () => {
+		const payload = { ...randomCredentialPayload(), uiContext: 'credentials_list' };
+
+		const response = await authMemberAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name, type } = response.body.data;
+
+		expect(name).toBe(payload.name);
+		expect(type).toBe(payload.type);
+
+		const credential = await getCredentialById(id);
+		a.ok(credential);
+
+		expect(credential.name).toBe(payload.name);
+		expect(credential.type).toBe(payload.type);
+	});
+
 	test('should fail with invalid inputs', async () => {
 		for (const invalidPayload of INVALID_PAYLOADS) {
 			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
