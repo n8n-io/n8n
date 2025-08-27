@@ -44,14 +44,13 @@ def parse_env_vars() -> TaskRunnerOpts:
         raise ValueError(f"{ENV_GRANT_TOKEN} environment variable is required")
 
     denied_builtins_str = os.getenv(ENV_BUILTINS_DENY, "")
-    denied_builtins = set(
-        name.strip() for name in denied_builtins_str.split(",") if name.strip()
-    )
+    denied_builtins = {
+        name for raw_name in denied_builtins_str.split(",") if (name := raw_name.strip())
+    }
 
     stdlib_allow_str = os.getenv(ENV_STDLIB_ALLOW, "")
     stdlib_allow = parse_allowlist(stdlib_allow_str, "stdlib allowlist")
 
-    # Parse allowed external packages (default to none)
     external_allow_str = os.getenv(ENV_EXTERNAL_ALLOW, "")
     external_allow = parse_allowlist(external_allow_str, "external allowlist")
 
