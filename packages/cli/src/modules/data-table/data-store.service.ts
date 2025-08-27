@@ -107,7 +107,7 @@ export class DataStoreService {
 		dto: ListDataStoreContentQueryDto,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
-		this.validateFilters(dto);
+		this.validateAndTransformFilters(dto);
 
 		// unclear if we should validate here, only use case would be to reduce the chance of
 		// a renamed/removed column appearing here (or added column missing) if the store was
@@ -335,7 +335,7 @@ export class DataStoreService {
 		}
 	}
 
-	private validateFilters(dto: ListDataStoreContentQueryDto): void {
+	private validateAndTransformFilters(dto: ListDataStoreContentQueryDto): void {
 		if (!dto.filter?.filters) {
 			return;
 		}
@@ -351,6 +351,10 @@ export class DataStoreService {
 					throw new DataStoreValidationError(
 						`${filter.condition.toUpperCase()} filter value must be a string`,
 					);
+				}
+
+				if (!filter.value.includes('%')) {
+					filter.value = `%${filter.value}%`;
 				}
 			}
 		}

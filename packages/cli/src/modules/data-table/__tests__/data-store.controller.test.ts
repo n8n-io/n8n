@@ -1796,6 +1796,44 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 	});
+
+	test.each(['like', 'ilike'])(
+		'should auto-wrap %s filters if no wildcard is present',
+		async (condition) => {
+			const dataStore = await createDataStore(memberProject, {
+				columns: [
+					{
+						name: 'name',
+						type: 'string',
+					},
+				],
+				data: [
+					{
+						name: 'Alice Smith',
+					},
+					{
+						name: 'Bob Jones',
+					},
+					{
+						name: 'Carol Brown',
+					},
+				],
+			});
+
+			const filterParam = encodeURIComponent(
+				JSON.stringify({
+					type: 'and',
+					filters: [{ columnName: 'name', value: 'Alice', condition }],
+				}),
+			);
+			const response = await authMemberAgent
+				.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows?filter=${filterParam}`)
+				.expect(200);
+
+			expect(response.body.data.count).toBe(1);
+			expect(response.body.data.data[0].name).toBe('Alice Smith');
+		},
+	);
 });
 
 describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
