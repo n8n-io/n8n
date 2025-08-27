@@ -1,7 +1,18 @@
 <script lang="ts" setup>
 import N8nTooltip from '../N8nTooltip';
-import { N8nButton, N8nIcon, N8nIconButton } from '..';
-import N8nPopoverReka from '../N8nPopoverReka/N8nPopoverReka.vue';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '..';
+import {
+	DropdownMenuArrow,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuPortal,
+	DropdownMenuRoot,
+	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
+	DropdownMenuTrigger,
+} from 'reka-ui';
 import { ref, computed } from 'vue';
 
 interface FilterOption {
@@ -17,11 +28,6 @@ interface ActiveFilter {
 }
 
 const activeFilters = ref<ActiveFilter[]>([]);
-const filtersOpen = ref(false);
-
-function toggleFilters() {
-	filtersOpen.value = !filtersOpen.value;
-}
 
 const filterOptions: FilterOption[] = [
 	{
@@ -108,93 +114,67 @@ function clearAllFilters() {
 				<N8nIconButton type="tertiary" icon="arrow-up-down" text />
 			</N8nTooltip>
 
-			<!-- Filters Popover -->
-			<N8nPopoverReka
-				:open="filtersOpen"
-				@update:open="toggleFilters"
-				width="280px"
-				max-height="400px"
-			>
-				<template #trigger>
+			<!-- Filters Dropdown -->
+			<DropdownMenuRoot>
+				<DropdownMenuTrigger class="filter-button">
 					<N8nTooltip content="Filter">
 						<N8nIconButton
 							type="tertiary"
 							icon="list-filter"
 							text
 							:class="{ active: hasActiveFilters }"
-							@click="toggleFilters"
 						/>
 					</N8nTooltip>
-				</template>
-				<template #content>
-					<div class="filters-popover">
-						<h3 class="filters-title">Filters</h3>
-
-						<div class="filter-sections">
-							<div
-								v-for="filterOption in filterOptions"
-								:key="filterOption.label"
-								class="filter-section"
-							>
-								<h4 class="filter-section-title">{{ filterOption.label }}</h4>
-
-								<div v-if="filterOption.type === 'single'" class="filter-options">
-									<div
-										v-for="option in filterOption.options"
-										:key="option"
-										class="filter-option single"
-										:class="{ selected: isValueSelected(filterOption.label, option) }"
-										@click="selectFilterValue(filterOption.label, option, 'single')"
-									>
-										<N8nIcon
-											v-if="isValueSelected(filterOption.label, option)"
-											icon="check"
-											size="small"
-											class="check-icon"
-										/>
-										<span>{{ option }}</span>
-									</div>
-								</div>
-
-								<div v-else class="filter-options">
-									<label
-										v-for="option in filterOption.options"
-										:key="option"
-										class="filter-option multi"
-										:class="{ selected: isValueSelected(filterOption.label, option) }"
-									>
-										<input
-											type="checkbox"
-											:checked="isValueSelected(filterOption.label, option)"
-											@change="selectFilterValue(filterOption.label, option, 'multi')"
-											class="checkbox"
-										/>
-										<N8nIcon
-											v-if="isValueSelected(filterOption.label, option)"
-											icon="check"
-											size="small"
-											class="check-icon"
-										/>
-										<span>{{ option }}</span>
-									</label>
-								</div>
+				</DropdownMenuTrigger>
+				<DropdownMenuPortal>
+					<DropdownMenuContent class="filter-sub-content">
+						<template v-for="filterOption in filterOptions" :key="filterOption.label">
+							<DropdownMenuSub>
+								<DropdownMenuSubTrigger class="filter-sub-trigger">
+									<N8nText size="small" color="text-dark">
+										{{ filterOption.label }}
+									</N8nText></DropdownMenuSubTrigger
+								>
+								<DropdownMenuPortal>
+									<DropdownMenuSubContent class="filter-sub-content">
+										<DropdownMenuItem
+											v-for="option in filterOption.options"
+											:key="option"
+											@click="selectFilterValue(filterOption.label, option, filterOption.type)"
+											class="filter-option-item"
+											:class="{ selected: isValueSelected(filterOption.label, option) }"
+										>
+											<N8nIcon
+												v-if="isValueSelected(filterOption.label, option)"
+												icon="check"
+												size="small"
+												class="check-icon"
+											/>
+											<N8nText size="small" color="text-dark">
+												{{ option }}
+											</N8nText>
+										</DropdownMenuItem>
+									</DropdownMenuSubContent>
+								</DropdownMenuPortal>
+							</DropdownMenuSub>
+						</template>
+						<div v-if="hasActiveFilters" class="clear-all-section">
+							<DropdownMenuSeparator class="filter-separator" />
+							<div class="clear-all-container">
+								<N8nButton
+									type="secondary"
+									size="small"
+									@click="clearAllFilters"
+									class="clear-all-btn"
+								>
+									<N8nIcon icon="trash-2" size="small" />
+									Clear all filters
+								</N8nButton>
 							</div>
 						</div>
-
-						<div v-if="hasActiveFilters" class="clear-all-section">
-							<N8nButton
-								type="secondary"
-								size="small"
-								@click="clearAllFilters"
-								class="clear-all-btn"
-							>
-								<N8nIcon icon="trash-2" size="small" />
-								Clear all filters
-							</N8nButton>
-						</div>
-					</div>
-				</template>
-			</N8nPopoverReka>
+					</DropdownMenuContent>
+				</DropdownMenuPortal>
+			</DropdownMenuRoot>
 
 			<N8nTooltip content="Add folder">
 				<N8nIconButton type="tertiary" icon="folder-plus" text />
@@ -233,6 +213,13 @@ function clearAllFilters() {
 	width: 100%;
 }
 
+.filter-button {
+	padding: 0;
+	background-color: transparent;
+	border: none;
+	outline: none;
+}
+
 .toolbar {
 	padding: var(--spacing-m);
 	background-color: var(--color-background-light);
@@ -266,7 +253,6 @@ function clearAllFilters() {
 	font-weight: var(--font-weight-bold);
 	color: var(--color-text-light);
 	text-transform: uppercase;
-	letter-spacing: 0.5px;
 }
 
 .filter-tags {
@@ -306,54 +292,54 @@ function clearAllFilters() {
 	}
 }
 
-.filters-popover {
-	padding: var(--spacing-m);
+:deep(.filters-dropdown-content) {
+	box-shadow: var(--box-shadow-light);
+	border-radius: var(--border-radius-base);
+	background-color: var(--color-background-xlight);
+	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
+}
+
+.filters-header {
+	margin-bottom: var(--spacing-s);
 }
 
 .filters-title {
-	margin: 0 0 var(--spacing-s) 0;
+	margin: 0;
 	font-size: var(--font-size-l);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-text-dark);
 }
 
-.filter-sections {
+.filter-sub-trigger {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-m);
-}
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing-3xs) var(--spacing-2xs);
+	border-radius: var(--border-radius-small);
+	color: var(--color-text-base);
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+	letter-spacing: 0.5px;
 
-.filter-section {
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
-	padding-bottom: var(--spacing-s);
-
-	&:last-child {
-		border-bottom: none;
-		padding-bottom: 0;
+	&:hover {
+		background-color: var(--color-background-base);
 	}
 }
 
-.filter-section-title {
-	margin: 0 0 var(--spacing-xs) 0;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-text-base);
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
+:deep(.filter-sub-content) {
+	padding: var(--spacing-4xs) 0;
+	min-width: 160px;
+	box-shadow: var(--box-shadow-light);
+	border-radius: var(--border-radius-base);
+	background-color: var(--color-background-xlight);
+	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 }
 
-.filter-options {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-3xs);
-}
-
-.filter-option {
+.filter-option-item {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-2xs);
 	padding: var(--spacing-2xs) var(--spacing-xs);
-	border-radius: var(--border-radius-small);
 	font-size: var(--font-size-s);
 	cursor: pointer;
 	transition: background-color 0.2s ease;
@@ -365,23 +351,6 @@ function clearAllFilters() {
 	&.selected {
 		background-color: var(--color-primary-tint-3);
 		color: var(--color-primary);
-	}
-
-	&.single {
-		padding-left: var(--spacing-l);
-		position: relative;
-
-		.check-icon {
-			position: absolute;
-			left: var(--spacing-xs);
-		}
-	}
-
-	&.multi {
-		.checkbox {
-			opacity: 0;
-			position: absolute;
-		}
 
 		.check-icon {
 			color: var(--color-primary);
@@ -389,10 +358,17 @@ function clearAllFilters() {
 	}
 }
 
-.clear-all-section {
-	margin-top: var(--spacing-s);
-	padding-top: var(--spacing-s);
+.filter-separator {
+	margin: var(--spacing-3xs) 0;
 	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
+}
+
+.clear-all-container {
+	padding: var(--spacing-3xs) var(--spacing-xs);
+}
+
+.clear-all-section {
+	margin-top: var(--spacing-3xs);
 }
 
 .clear-all-btn {
