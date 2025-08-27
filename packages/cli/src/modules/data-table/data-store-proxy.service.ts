@@ -7,7 +7,6 @@ import {
 	DataStore,
 	DataStoreColumn,
 	DataStoreProxyProvider,
-	DataStoreRowReturn,
 	DataStoreRows,
 	IDataStoreProjectAggregateService,
 	IDataStoreProjectService,
@@ -21,9 +20,9 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { OwnershipService } from '@/services/ownership.service';
-
 import { DataStoreService } from './data-store.service';
+
+import { OwnershipService } from '@/services/ownership.service';
 
 @Service()
 export class DataStoreProxyService implements DataStoreProxyProvider {
@@ -131,12 +130,7 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 			},
 
 			async updateRows(options: UpdateDataStoreRowsOptions) {
-				return (await dataStoreService.updateRow(
-					dataStoreId,
-					projectId,
-					options,
-					true,
-				)) as unknown as DataStoreRowReturn[];
+				return await dataStoreService.updateRow(dataStoreId, projectId, options, true);
 			},
 
 			async upsertRows(options: UpsertDataStoreRowsOptions) {

@@ -176,6 +176,12 @@ export class DataStoreService {
 		);
 	}
 
+	async updateRow<T extends boolean | undefined>(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<UpdateDataStoreRowDto, 'returnData'>,
+		returnData?: T,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async updateRow(
 		dataStoreId: string,
 		projectId: string,
