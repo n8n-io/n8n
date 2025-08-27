@@ -28,6 +28,8 @@ class ImportValidator(ast.NodeVisitor):
         self.external_allow = external_allow
         self._stdlib_allowed_str = self._format_allowed(stdlib_allow)
         self._external_allowed_str = self._format_allowed(external_allow)
+        self._stdlib_allow_all = "*" in stdlib_allow
+        self._external_allow_all = "*" in external_allow
 
     # ========== Visitors ==========
 
@@ -89,11 +91,11 @@ class ImportValidator(ast.NodeVisitor):
         is_stdlib = module_name in sys.stdlib_module_names
         is_external = not is_stdlib
 
-        if is_stdlib and ("*" in self.stdlib_allow or module_name in self.stdlib_allow):
+        if is_stdlib and (self._stdlib_allow_all or module_name in self.stdlib_allow):
             return
 
         if is_external and (
-            "*" in self.external_allow or module_name in self.external_allow
+            self._external_allow_all or module_name in self.external_allow
         ):
             return
 
@@ -124,8 +126,12 @@ class TaskAnalyzer:
             tuple(sorted(stdlib_allow)),
             tuple(sorted(external_allow)),
         )
+        self._allow_all = "*" in stdlib_allow and "*" in external_allow
 
     def validate(self, code: str) -> None:
+        if self._allow_all:
+            return
+
         cache_key = self._to_cache_key(code)
         cached_violations = self._cache.get(cache_key)
         cache_hit = cached_violations is not None
