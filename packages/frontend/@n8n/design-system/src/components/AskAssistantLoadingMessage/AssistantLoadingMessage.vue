@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import N8nText from '../N8nText';
+
 withDefaults(
 	defineProps<{
 		message: string;
@@ -14,7 +16,13 @@ withDefaults(
 	<div :class="$style.container">
 		<div :class="$style['message-container']">
 			<transition :name="animationType" mode="out-in">
-				<span v-if="message" :key="message" :class="$style.message">{{ message }}</span>
+				<N8nText
+					v-if="message"
+					:key="message"
+					:class="[$style.message, $style.shimmer]"
+					:shimmer="true"
+					>{{ message }}</N8nText
+				>
 			</transition>
 		</div>
 	</div>
@@ -43,6 +51,23 @@ withDefaults(
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-base);
 	text-align: left;
+}
+
+.shimmer {
+	background: linear-gradient(135deg, #ffffff, #5e5e5e, #ffffff);
+	background-clip: text;
+	color: transparent;
+	background-size: 200% 100%;
+	animation: shimmer 5s linear infinite;
+}
+
+@keyframes shimmer {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -200% 0;
+	}
 }
 </style>
 
