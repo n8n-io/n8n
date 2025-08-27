@@ -64,6 +64,7 @@ import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue';
 import { onClickOutside } from '@vueuse/core';
+import { useClipboard } from '@/composables/useClipboard';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -98,6 +99,8 @@ const message = useMessage();
 const { mapToAGCellType } = useDataStoreTypes();
 
 const dataStoreStore = useDataStoreStore();
+
+useClipboard({ onPaste: onClipboardPaste });
 
 // AG Grid State
 const gridApi = ref<GridApi | null>(null);
@@ -526,6 +529,22 @@ onClickOutside(gridContainer, () => {
 	resetLastFocusedCell();
 	gridApi.value?.clearFocusedCell();
 });
+
+function onClipboardPaste(data: string) {
+	if (!gridApi.value) return;
+	const focusedCell = gridApi.value.getFocusedCell();
+	const isEditing = gridApi.value.getEditingCells().length > 0;
+	if (!focusedCell || isEditing) return;
+	const row = gridApi.value.getDisplayedRowAtIndex(focusedCell.rowIndex);
+	if (!row) return;
+
+	const colDef = focusedCell.column.getColDef();
+	if (colDef.cellDataType === 'text') {
+		row.setDataValue(focusedCell.column.getColId(), data);
+	} else if (!Number.isNaN(Number(data))) {
+		row.setDataValue(focusedCell.column.getColId(), Number(data));
+	}
+}
 
 const resetLastFocusedCell = () => {
 	lastFocusedCell.value = null;
