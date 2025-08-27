@@ -61,12 +61,12 @@ def parse_env_vars() -> TaskRunnerOpts:
         grant_token=grant_token,
         task_broker_uri=os.getenv(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
         max_concurrency=int(
-            os.getenv(ENV_MAX_CONCURRENCY, str(DEFAULT_MAX_CONCURRENCY))
+            os.getenv(ENV_MAX_CONCURRENCY) or str(DEFAULT_MAX_CONCURRENCY)
         ),
         max_payload_size=int(
-            os.getenv(ENV_MAX_PAYLOAD_SIZE, str(DEFAULT_MAX_PAYLOAD_SIZE))
+            os.getenv(ENV_MAX_PAYLOAD_SIZE) or str(DEFAULT_MAX_PAYLOAD_SIZE)
         ),
-        task_timeout=int(os.getenv(ENV_TASK_TIMEOUT, str(DEFAULT_TASK_TIMEOUT))),
+        task_timeout=int(os.getenv(ENV_TASK_TIMEOUT) or str(DEFAULT_TASK_TIMEOUT)),
         denied_builtins=denied_builtins,
         stdlib_allow=stdlib_allow,
         external_allow=external_allow,
