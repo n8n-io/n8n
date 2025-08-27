@@ -45,7 +45,9 @@ def parse_env_vars() -> TaskRunnerOpts:
 
     denied_builtins_str = os.getenv(ENV_BUILTINS_DENY, "")
     denied_builtins = {
-        name for raw_name in denied_builtins_str.split(",") if (name := raw_name.strip())
+        name
+        for raw_name in denied_builtins_str.split(",")
+        if (name := raw_name.strip())
     }
 
     stdlib_allow_str = os.getenv(ENV_STDLIB_ALLOW, "")
