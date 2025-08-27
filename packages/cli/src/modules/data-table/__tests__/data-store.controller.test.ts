@@ -11,6 +11,7 @@ import type { Project, User } from '@n8n/db';
 import { ProjectRepository, QueryFailedError } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
+import type { DataStoreRow } from 'n8n-workflow';
 
 import { createDataStore } from '@test-integration/db/data-stores';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
@@ -1796,6 +1797,64 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 	});
+
+	test.each([
+		['gt', '>', 25, ['Bob'], ['Alice', 'Carol']],
+		['gte', '>=', 25, ['Bob', 'Carol'], ['Alice']],
+		['lt', '<', 25, ['Alice'], ['Bob', 'Carol']],
+		['lte', '<=', 25, ['Alice', 'Carol'], ['Bob']],
+	])(
+		'should filter rows using %s (%s) condition correctly',
+		async (condition, _operator, value, expectedNames, excludedNames) => {
+			const dataStore = await createDataStore(memberProject, {
+				columns: [
+					{
+						name: 'name',
+						type: 'string',
+					},
+					{
+						name: 'age',
+						type: 'number',
+					},
+				],
+				data: [
+					{
+						name: 'Alice',
+						age: 20,
+					},
+					{
+						name: 'Bob',
+						age: 30,
+					},
+					{
+						name: 'Carol',
+						age: 25,
+					},
+				],
+			});
+
+			const filterParam = encodeURIComponent(
+				JSON.stringify({
+					type: 'and',
+					filters: [{ columnName: 'age', value, condition }],
+				}),
+			);
+			const response = await authMemberAgent
+				.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows?filter=${filterParam}`)
+				.expect(200);
+
+			expect(response.body.data.count).toBe(expectedNames.length);
+			const returnedNames = (response.body.data.data as DataStoreRow[]).map((row) => row.name);
+
+			for (const expectedName of expectedNames) {
+				expect(returnedNames).toContain(expectedName);
+			}
+
+			for (const excludedName of excludedNames) {
+				expect(returnedNames).not.toContain(excludedName);
+			}
+		},
+	);
 
 	test.each(['like', 'ilike'])(
 		'should auto-wrap %s filters if no wildcard is present',
