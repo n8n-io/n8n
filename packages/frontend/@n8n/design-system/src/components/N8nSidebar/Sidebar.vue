@@ -61,37 +61,37 @@ const {
 		@resize="onResize"
 		@resizeend="onResizeEnd"
 	>
+		<header class="sidebarHeader">
+			<N8nLogo
+				class="sidebarHeaderLogo"
+				location="sidebar"
+				:release-channel="props.releaseChannel"
+			/>
+			<slot name="createButton" />
+			<N8nTooltip placement="right">
+				<template #content>
+					<div class="toggleTooltip">
+						<N8nText size="small" class="tooltipText">Toggle sidebar</N8nText>
+						<N8nKeyboardShortcut :keys="[']']" />
+					</div>
+				</template>
+				<N8nIconButton
+					icon-size="large"
+					size="mini"
+					:icon="panelIcon"
+					type="secondary"
+					text
+					square
+					@click="togglePeak"
+				/>
+			</N8nTooltip>
+		</header>
 		<nav
 			:class="{ sidebar: true, sidebarHidden: state === 'hidden', sidebarPeak: state === 'peak' }"
 			class="sidebar"
 			:style="{ width: `${sidebarWidth}px` }"
 			@mouseleave="peakMouseOver"
 		>
-			<header class="sidebarHeader">
-				<N8nLogo
-					class="sidebarHeaderLogo"
-					location="sidebar"
-					:release-channel="props.releaseChannel"
-				/>
-				<slot name="createButton" />
-				<N8nTooltip placement="right">
-					<template #content>
-						<div class="toggleTooltip">
-							<N8nText size="small" class="tooltipText">Toggle sidebar</N8nText>
-							<N8nKeyboardShortcut :keys="[']']" />
-						</div>
-					</template>
-					<N8nIconButton
-						icon-size="large"
-						size="mini"
-						:icon="panelIcon"
-						type="secondary"
-						text
-						square
-						@click="togglePeak"
-					/>
-				</N8nTooltip>
-			</header>
 			<SidebarTree :items="topItems" :open-project="openProject" />
 			<template v-if="showProjects">
 				<N8nText size="small" color="text-light" class="sidebarSubheader" bold>Projects</N8nText>
@@ -270,6 +270,7 @@ const {
 .sidebar {
 	padding: var(--spacing-2xs);
 	padding-right: var(--spacing-5xs);
+	padding-top: var(--spacing-5xs);
 	background-color: var(--color-foreground-xlight);
 	position: relative;
 	max-height: 100%;
@@ -285,6 +286,8 @@ const {
 	justify-content: space-between;
 	margin-bottom: var(--spacing-2xs);
 	gap: var(--spacing-2xs);
+	padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-5xs);
+	background-color: var(--color-foreground-xlight);
 }
 
 .sidebarHeaderLogo {
