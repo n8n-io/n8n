@@ -1,13 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AIMessage, BaseMessage, ToolMessage } from '@langchain/core/messages';
+import type { BaseMessage, ToolMessage } from '@langchain/core/messages';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { StateGraph, MessagesAnnotation, END, START } from '@langchain/langgraph';
 import { ToolNode } from '@langchain/langgraph/prebuilt';
 import { jsonParse, type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { isAIMessage } from '@/types/langchain';
 
 import { LLMServiceError, ToolExecutionError } from '../errors';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
@@ -185,6 +187,10 @@ Your plan MUST always include:
 After using the generate_workflow_plan tool, only respond with a single word "DONE" to indicate the plan is complete.
 Remember: Be precise about node types, understand connection patterns, and always include trigger and configuration nodes.`;
 
+function formatPlanFeedback(previousPlan: WorkflowPlan, feedback: string) {
+	return `Previous plan: ${JSON.stringify(previousPlan, null, 2)}\n\nUser feedback: ${feedback}\n\nPlease adjust the plan based on the feedback.`;
+}
+
 /**
  * Creates a workflow planner agent that can search for and analyze nodes
  */
@@ -261,7 +267,8 @@ export function createWorkflowPlannerAgent(llm: BaseChatModel, nodeTypes: INodeT
 
 			let userMessage = userRequest;
 			if (previousPlan && feedback) {
-				userMessage = `${userRequest}\n\nPrevious plan: ${JSON.stringify(previousPlan, null, 2)}\n\nUser feedback: ${feedback}\n\nPlease adjust the plan based on the feedback.`;
+				userMessage += '\n\n';
+				userMessage += formatPlanFeedback(previousPlan, feedback);
 			}
 
 			const humanMessage = new HumanMessage(userMessage);
@@ -277,7 +284,7 @@ export function createWorkflowPlannerAgent(llm: BaseChatModel, nodeTypes: INodeT
 				}
 
 				// Do not include final AI message
-				if (msg.getType() === 'ai' && ((msg as AIMessage).tool_calls ?? []).length === 0) {
+				if (isAIMessage(msg) && (msg.tool_calls ?? []).length === 0) {
 					return false;
 				}
 
