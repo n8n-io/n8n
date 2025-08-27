@@ -127,7 +127,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PROJECT_MOVE_RESOURCE_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
 				IMPORT_WORKFLOW_URL_MODAL_KEY,
-				WHATS_NEW_MODAL_KEY,
 				PRE_BUILT_AGENTS_MODAL_KEY,
 				WORKFLOW_DIFF_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
@@ -221,9 +220,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			data: {
 				articleId: undefined,
 			},
-		},
-		[PRE_BUILT_AGENTS_MODAL_KEY]: {
-			open: false,
 		},
 		[EXPERIMENT_TEMPLATE_RECO_V2_KEY]: {
 			open: false,
