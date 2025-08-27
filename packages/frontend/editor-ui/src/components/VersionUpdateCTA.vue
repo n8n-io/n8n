@@ -30,6 +30,7 @@ const onUpdateClick = async () => {
 	<div :class="$style.container">
 		<N8nLink
 			size="small"
+			theme="text"
 			:class="$style.link"
 			data-test-id="version-update-next-versions-link"
 			@click="openUpdatesPanel"
@@ -60,8 +61,12 @@ const onUpdateClick = async () => {
 	margin-top: var(--spacing-xs);
 	padding: var(--spacing-xs) var(--spacing-xs);
 	border-radius: var(--border-radius-base);
-	background: var(--color-background-base);
+	background: var(--color-background-xlight);
 	width: 100%;
+}
+
+.button {
+	text-decoration: underline;
 }
 
 .button,
