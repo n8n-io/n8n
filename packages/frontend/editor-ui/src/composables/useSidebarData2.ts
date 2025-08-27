@@ -30,6 +30,7 @@ export function useSidebarData2() {
 	});
 
 	function workflowToMenuItem(workflow: IWorkflowDb): IMenuElement {
+		console.log(workflow.name, workflow);
 		return {
 			id: workflow.id,
 			label: workflow.name,
@@ -93,10 +94,7 @@ export function useSidebarData2() {
 	const sharedWorkflows = computed(() =>
 		workflowsStore.allWorkflows
 			.filter((workflow) => {
-				return (
-					workflow.homeProject?.id !== projectsStore.personalProject?.id &&
-					workflow.homeProject?.type !== 'team'
-				);
+				return workflow.sharedWithProjects?.find((p) => p.id === projectsStore.personalProject?.id);
 			})
 			.map((w) => {
 				return workflowToMenuItem(w);
