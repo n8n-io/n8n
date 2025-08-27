@@ -1,8 +1,15 @@
 import ast
+import hashlib
 import sys
-from typing import Set
+from typing import Set, Dict, Tuple, Optional
+from collections import OrderedDict
 
 from src.errors import SecurityViolationError
+from src.constants import MAX_VALIDATION_CACHE_SIZE
+
+CacheKey = Tuple[str, Tuple]  # (code_hash, allowlists_tuple)
+CachedViolations = list[str]
+ValidationCache = OrderedDict[CacheKey, CachedViolations]
 
 ERROR_RELATIVE_IMPORT = "Relative imports are disallowed"
 ERROR_DYNAMIC_IMPORT = "Dynamic imports using `__import__()` are disallowed, because they can bypass allowlist validation at runtime."
@@ -108,21 +115,50 @@ class ImportValidator(ast.NodeVisitor):
 
 
 class TaskAnalyzer:
+    _cache: ValidationCache = OrderedDict()
+    
     def __init__(self, stdlib_allow: Set[str], external_allow: Set[str]):
         self.stdlib_allow = stdlib_allow
         self.external_allow = external_allow
+        self._allow_config = (
+            tuple(sorted(stdlib_allow)),
+            tuple(sorted(external_allow))
+        )
 
     def validate(self, code: str) -> None:
+        cached_violations, cache_key = self._get_from_cache(code)
+        cache_hit = cached_violations is not None
+        
+        if cache_hit and len(cached_violations) == 0:
+            return
+        
+        if cache_hit and len(cached_violations) > 0:
+            self._raise_security_error(cached_violations)
+
         tree = ast.parse(code)
 
         import_validator = ImportValidator(self.stdlib_allow, self.external_allow)
         import_validator.visit(tree)
 
-        if not import_validator.violations:
-            return
+        self._set_in_cache(cache_key, import_validator.violations)
 
-        message = ERROR_SECURITY_VIOLATIONS.format(
-            violations="\n".join(import_validator.violations)
-        )
-
+        if import_validator.violations:
+            self._raise_security_error(import_validator.violations)
+    
+    def _raise_security_error(self, violations: CachedViolations) -> None:
+        message = ERROR_SECURITY_VIOLATIONS.format(violations="\n".join(violations))
         raise SecurityViolationError(message)
+    
+    def _get_from_cache(self, code: str) -> Tuple[Optional[CachedViolations], CacheKey]:
+        code_hash = hashlib.sha256(code.encode()).hexdigest()
+        cache_key = (code_hash, self._allow_config)
+        cached_violations = self._cache.get(cache_key)
+        return cached_violations, cache_key
+
+    def _set_in_cache(self, cache_key: CacheKey, violations: CachedViolations) -> None:
+        if len(self._cache) >= MAX_VALIDATION_CACHE_SIZE:
+            self._cache.popitem(last=False)
+        
+        self._cache[cache_key] = violations.copy()
+        
+        self._cache.move_to_end(cache_key)
