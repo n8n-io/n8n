@@ -13,7 +13,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { CanvasNodeData } from '@/types';
+import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
 import { N8nButton, N8nHeading, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
@@ -87,8 +87,8 @@ const sourceWorkFlow = computed(() => (props.data.direction === 'push' ? remote 
 const targetWorkFlow = computed(() => (props.data.direction === 'push' ? local : remote));
 
 const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
-	computed(() => sourceWorkFlow.value.state.value?.workflow),
-	computed(() => targetWorkFlow.value.state.value?.workflow),
+	computed(() => removeWorkflowExecutionData(sourceWorkFlow.value.state.value?.workflow)),
+	computed(() => removeWorkflowExecutionData(targetWorkFlow.value.state.value?.workflow)),
 );
 
 type SettingsChange = {
@@ -375,16 +375,6 @@ const modifiers = [
 		},
 	},
 ];
-
-// prevent the current execution from leaking into the workflowDiff
-const defaultState: Partial<CanvasNodeData> = {
-	issues: { items: [], visible: false },
-	pinnedData: { count: 0, visible: false },
-	execution: {
-		running: false,
-	},
-	runData: { iterations: 0, outputMap: {}, visible: false },
-};
 </script>
 
 <template>
@@ -593,11 +583,7 @@ const defaultState: Partial<CanvasNodeData> = {
 									:connections="source.connections"
 								>
 									<template #node="{ nodeProps }">
-										<Node
-											v-bind="nodeProps"
-											:data="{ ...nodeProps.data, ...defaultState }"
-											:class="{ [getNodeStatusClass(nodeProps.id)]: true }"
-										>
+										<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
 											<template #toolbar />
 										</Node>
 									</template>
@@ -650,11 +636,7 @@ const defaultState: Partial<CanvasNodeData> = {
 									:connections="target.connections"
 								>
 									<template #node="{ nodeProps }">
-										<Node
-											v-bind="nodeProps"
-											:data="{ ...nodeProps.data, ...defaultState }"
-											:class="{ [getNodeStatusClass(nodeProps.id)]: true }"
-										>
+										<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
 											<template #toolbar />
 										</Node>
 									</template>
