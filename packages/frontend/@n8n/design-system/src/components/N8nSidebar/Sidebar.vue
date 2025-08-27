@@ -284,9 +284,8 @@ const {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: var(--spacing-2xs);
 	gap: var(--spacing-2xs);
-	padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-5xs);
+	padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs);
 	background-color: var(--color-foreground-xlight);
 }
 
