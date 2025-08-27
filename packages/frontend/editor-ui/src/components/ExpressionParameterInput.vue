@@ -16,7 +16,8 @@ import { startCompletion } from '@codemirror/autocomplete';
 import type { EditorState, SelectionRange } from '@codemirror/state';
 import type { IDataObject } from 'n8n-workflow';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
-import { CanvasKey, ExpressionLocalResolveContextSymbol } from '@/constants';
+import { CanvasKey } from '@/constants';
+import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
 
 const isFocused = ref(false);
 const segments = ref<Segment[]>([]);
@@ -56,8 +57,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 
 const canvas = inject(CanvasKey, undefined);
-const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
-const isInExperimentalNdv = computed(() => expressionLocalResolveCtx?.value !== undefined);
+const isInExperimentalNdv = useIsInExperimentalNdv();
 
 const isDragging = computed(() => ndvStore.isDraggableDragging);
 const isOutputPopoverVisible = computed(
@@ -236,7 +236,7 @@ defineExpose({ focus, select });
 			:segments="segments"
 			:is-read-only="isReadOnly"
 			:virtual-ref="container"
-			:append-to="isInExperimentalNdv ? '#canvas' : undefined"
+			:append-to="isInExperimentalNdv ? 'body' : undefined"
 		/>
 	</div>
 </template>

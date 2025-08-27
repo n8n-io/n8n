@@ -458,7 +458,13 @@ export function generateNodesGraph(
 					}
 				}
 			} catch (e: unknown) {
-				if (!(e instanceof Error && e.message.includes('Unrecognized node type'))) {
+				if (
+					!(
+						e instanceof Error &&
+						typeof e.message === 'string' &&
+						e.message.includes('Unrecognized node type')
+					)
+				) {
 					throw e;
 				}
 			}

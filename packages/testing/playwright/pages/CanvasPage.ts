@@ -37,6 +37,10 @@ export class CanvasPage extends BasePage {
 		await this.clickByTestId('canvas-plus-button');
 	}
 
+	getCanvasNodes() {
+		return this.page.getByTestId('canvas-node');
+	}
+
 	async clickNodeCreatorPlusButton(): Promise<void> {
 		await this.clickByTestId('node-creator-plus-button');
 	}
@@ -53,24 +57,63 @@ export class CanvasPage extends BasePage {
 		await this.nodeCreatorItemByName(text).click();
 	}
 
-	async addNode(text: string): Promise<void> {
+	/**
+	 * Add a node to the canvas with flexible options
+	 * @param nodeName - The name of the node to search for and add
+	 * @param options - Configuration options for node addition
+	 * @param options.closeNDV - Whether to close the NDV after adding (default: false, keeps open)
+	 * @param options.action - Specific action to select (Actions tab is default)
+	 * @param options.trigger - Specific trigger to select (will switch to Triggers)
+	 * @example
+	 * // Basic node addition
+	 * await canvas.addNode('Code');
+	 *
+	 * // Add with specific action
+	 * await canvas.addNode('Linear', { action: 'Create an issue' });
+	 *
+	 * // Add with trigger
+	 * await canvas.addNode('Jira', { trigger: 'On issue created' });
+	 *
+	 * // Add and explicitly close with back button
+	 * await canvas.addNode('Code', { closeNDV: true });
+	 */
+	async addNode(
+		nodeName: string,
+		options?: {
+			closeNDV?: boolean;
+			action?: string;
+			trigger?: string;
+		},
+	): Promise<void> {
+		// Always start with canvas plus button
 		await this.clickNodeCreatorPlusButton();
-		await this.fillNodeCreatorSearchBar(text);
-		await this.clickNodeCreatorItemName(text);
-	}
 
-	async addNodeAndCloseNDV(text: string, subItemText?: string): Promise<void> {
-		if (subItemText) {
-			await this.addNodeWithSubItem(text, subItemText);
-		} else {
-			await this.addNode(text);
+		// Search for and select the node, works on exact name match only
+		await this.fillNodeCreatorSearchBar(nodeName);
+		await this.clickNodeCreatorItemName(nodeName);
+
+		if (options?.action) {
+			// Check if Actions category is collapsed and expand if needed
+			const actionsCategory = this.page
+				.getByTestId('node-creator-category-item')
+				.getByText('Actions');
+			if ((await actionsCategory.getAttribute('data-category-collapsed')) === 'true') {
+				await actionsCategory.click();
+			}
+			await this.nodeCreatorSubItem(options.action).click();
+		} else if (options?.trigger) {
+			// Check if Triggers category is collapsed and expand if needed
+			const triggersCategory = this.page
+				.getByTestId('node-creator-category-item')
+				.getByText('Triggers');
+			if ((await triggersCategory.getAttribute('data-category-collapsed')) === 'true') {
+				await triggersCategory.click();
+			}
+			await this.nodeCreatorSubItem(options.trigger).click();
 		}
-		await this.page.keyboard.press('Escape');
-	}
-
-	async addNodeWithSubItem(searchText: string, subItemText: string): Promise<void> {
-		await this.addNode(searchText);
-		await this.nodeCreatorSubItem(subItemText).click();
+		if (options?.closeNDV) {
+			await this.page.getByTestId('back-to-canvas').click();
+		}
 	}
 
 	async deleteNodeByName(nodeName: string): Promise<void> {
@@ -79,6 +122,10 @@ export class CanvasPage extends BasePage {
 
 	async saveWorkflow(): Promise<void> {
 		await this.clickSaveWorkflowButton();
+	}
+
+	getExecuteWorkflowButton(): Locator {
+		return this.page.getByTestId('execute-workflow-button');
 	}
 
 	async clickExecuteWorkflowButton(): Promise<void> {
@@ -162,8 +209,11 @@ export class CanvasPage extends BasePage {
 			(response) =>
 				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
 		);
+
 		await this.page.getByTestId('workflow-activate-switch').click();
 		await responsePromise;
+
+		await this.page.waitForTimeout(200);
 	}
 
 	async clickZoomToFitButton(): Promise<void> {
@@ -256,8 +306,9 @@ export class CanvasPage extends BasePage {
 		await this.getProductionChecklistActionItem(actionText).click();
 	}
 
-	getCanvasNodes(): Locator {
-		return this.page.getByTestId('canvas-node');
+	async duplicateNode(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click({ button: 'right' });
+		await this.page.getByTestId('context-menu').getByText('Duplicate').click();
 	}
 
 	nodeConnections(): Locator {
@@ -277,7 +328,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	nodeCreatorNodeItems(): Locator {
-		return this.page.getByTestId('node-creator-node-item');
+		return this.page.getByTestId('node-creator-item-name');
 	}
 
 	nodeCreatorActionItems(): Locator {
@@ -410,5 +461,21 @@ export class CanvasPage extends BasePage {
 		};
 		await this.canvasPane().focus();
 		await this.page.keyboard.press(keyMap[direction]);
+	}
+
+	/**
+	 * Visit the workflow page with a specific timestamp for NPS survey testing.
+	 * Uses Playwright's clock API to set a fixed time.
+	 */
+	async visitWithTimestamp(timestamp: number): Promise<void> {
+		// Set fixed time using Playwright's clock API
+		await this.page.clock.setFixedTime(timestamp);
+
+		await this.page.goto('/workflow/new');
+	}
+
+	async addNodeWithSubItem(searchText: string, subItemText: string): Promise<void> {
+		await this.addNode(searchText);
+		await this.nodeCreatorSubItem(subItemText).click();
 	}
 }

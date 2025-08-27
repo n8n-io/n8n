@@ -185,6 +185,11 @@ export const useActions = () => {
 			actionName: actionData.name,
 		};
 
+		if (typeof actionData.value.language === 'string') {
+			result.parameters = { language: actionData.value.language };
+			return result;
+		}
+
 		if (
 			typeof actionData.value.resource === 'string' ||
 			typeof actionData.value.operation === 'string'

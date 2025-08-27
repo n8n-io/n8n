@@ -1,8 +1,9 @@
 /* eslint-disable no-control-regex */
 import { type ChildProcess, spawn } from 'child_process';
-import { jsonParse } from 'n8n-workflow';
 import fs from 'node:fs/promises';
 import type { Formatter } from 'picocolors/types';
+
+import { jsonParse } from '../../utils/json';
 
 export function commands() {
 	const childProcesses: ChildProcess[] = [];
@@ -119,5 +120,5 @@ export function commands() {
 export async function readPackageName(): Promise<string> {
 	return await fs
 		.readFile('package.json', 'utf-8')
-		.then((packageJson) => jsonParse<{ name: string }>(packageJson).name);
+		.then((packageJson) => jsonParse<{ name: string }>(packageJson)?.name ?? 'unknown');
 }
