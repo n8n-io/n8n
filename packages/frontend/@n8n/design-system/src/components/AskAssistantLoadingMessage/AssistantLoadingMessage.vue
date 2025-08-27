@@ -54,7 +54,7 @@ withDefaults(
 }
 
 .shimmer {
-	background: linear-gradient(135deg, #ffffff, #5e5e5e, #ffffff);
+	background: linear-gradient(135deg, #fff, #5e5e5e, #fff);
 	background-clip: text;
 	color: transparent;
 	background-size: 200% 100%;
