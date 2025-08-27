@@ -6,12 +6,17 @@ import { resolve } from 'path';
 
 @RestController('/third-party-licenses')
 export class ThirdPartyLicensesController {
+	private sendLicenseFile(res: Response, content: string, filename: string) {
+		res.setHeader('Content-Type', 'text/markdown');
+		res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+		res.send(content);
+	}
+
 	/**
 	 * Download third-party licenses file
-	 * Public access (licenses are required to be disclosed)
-	 * User already authenticated to access About modal
+	 * Requires authentication to access
 	 */
-	@Get('/', { skipAuth: true })
+	@Get('/')
 	async getThirdPartyLicenses(_: Request, res: Response) {
 		const licenseFile = resolve(CLI_DIR, 'dist', 'THIRD_PARTY_LICENSES.md');
 		const placeholderLicenseFile = resolve(CLI_DIR, 'THIRD_PARTY_LICENSES_PLACEHOLDER.md');
@@ -20,23 +25,13 @@ export class ThirdPartyLicensesController {
 			// Try production file first
 			await fsAccess(licenseFile);
 			const content = await readFile(licenseFile, 'utf-8');
-
-			res.set({
-				'Content-Type': 'text/markdown',
-				'Content-Disposition': 'attachment; filename="THIRD_PARTY_LICENSES.md"',
-			});
-			res.send(content);
+			this.sendLicenseFile(res, content, 'THIRD_PARTY_LICENSES.md');
 		} catch {
 			try {
 				// Fall back to placeholder file for local development
 				await fsAccess(placeholderLicenseFile);
 				const content = await readFile(placeholderLicenseFile, 'utf-8');
-
-				res.set({
-					'Content-Type': 'text/markdown',
-					'Content-Disposition': 'attachment; filename="THIRD_PARTY_LICENSES_PLACEHOLDER.md"',
-				});
-				res.send(content);
+				this.sendLicenseFile(res, content, 'THIRD_PARTY_LICENSES_PLACEHOLDER.md');
 			} catch {
 				res.status(404).send('Not found');
 			}
