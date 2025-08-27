@@ -5,7 +5,7 @@ import type { ListDataStoreQueryDto } from '../dto';
 export const dataStoreNameSchema = z.string().trim().min(1).max(128);
 export const dataStoreIdSchema = z.string().max(36);
 
-export const DATA_STORE_COLUMN_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9-]*$/;
+export const DATA_STORE_COLUMN_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9-_]*$/;
 
 export const dataStoreColumnNameSchema = z
 	.string()
