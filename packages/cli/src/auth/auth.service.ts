@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Response } from 'express';
@@ -134,7 +134,7 @@ export class AuthService {
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 		if (
 			config.getEnv('userManagement.isInstanceOwnerSetUp') &&
-			user.role !== 'global:owner' &&
+			user.role.slug !== GLOBAL_OWNER_ROLE.slug &&
 			!isWithinUsersLimit
 		) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
@@ -174,6 +174,7 @@ export class AuthService {
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
 		const user = await this.userRepository.findOne({
 			where: { id: jwtPayload.id },
+			relations: ['role'],
 		});
 
 		if (
@@ -237,7 +238,7 @@ export class AuthService {
 
 		const user = await this.userRepository.findOne({
 			where: { id: decodedToken.sub },
-			relations: ['authIdentities'],
+			relations: ['authIdentities', 'role'],
 		});
 
 		if (!user) {
@@ -268,9 +269,9 @@ export class AuthService {
 		return createHash('sha256').update(input).digest('base64');
 	}
 
-	/** How many **milliseconds** before expiration should a JWT be renewed */
+	/** How many **milliseconds** before expiration should a JWT be renewed. */
 	get jwtRefreshTimeout() {
-		const { jwtRefreshTimeoutHours, jwtSessionDurationHours } = config.get('userManagement');
+		const { jwtRefreshTimeoutHours, jwtSessionDurationHours } = this.globalConfig.userManagement;
 		if (jwtRefreshTimeoutHours === 0) {
 			return Math.floor(jwtSessionDurationHours * 0.25 * Time.hours.toMilliseconds);
 		} else {
@@ -278,8 +279,8 @@ export class AuthService {
 		}
 	}
 
-	/** How many **seconds** is an issued JWT valid for */
+	/** How many **seconds** is an issued JWT valid for. */
 	get jwtExpiration() {
-		return config.get('userManagement.jwtSessionDurationHours') * Time.hours.toSeconds;
+		return this.globalConfig.userManagement.jwtSessionDurationHours * Time.hours.toSeconds;
 	}
 }

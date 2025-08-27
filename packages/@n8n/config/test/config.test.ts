@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 import fs from 'fs';
 import { mock } from 'jest-mock-extended';
 
+import type { UserManagementConfig } from '../src/configs/user-management.config';
 import { GlobalConfig } from '../src/index';
 
 jest.mock('fs');
@@ -101,6 +102,9 @@ describe('GlobalConfig', () => {
 			},
 		},
 		userManagement: {
+			jwtSecret: '',
+			jwtSessionDurationHours: 168,
+			jwtRefreshTimeoutHours: 0,
 			emails: {
 				mode: 'smtp',
 				smtp: {
@@ -124,7 +128,7 @@ describe('GlobalConfig', () => {
 					'project-shared': '',
 				},
 			},
-		},
+		} as UserManagementConfig,
 		eventBus: {
 			checkUnsentInterval: 0,
 			crashRecoveryMode: 'extensive',
@@ -295,9 +299,11 @@ describe('GlobalConfig', () => {
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
-			disableIframeSandboxing: false,
+			disableWebhookHtmlSandboxing: false,
 		},
 		executions: {
+			timeout: -1,
+			maxTimeout: 3600,
 			pruneData: true,
 			pruneDataMaxAge: 336,
 			pruneDataMaxCount: 10_000,
@@ -306,6 +312,18 @@ describe('GlobalConfig', () => {
 				hardDelete: 15,
 				softDelete: 60,
 			},
+			concurrency: {
+				productionLimit: -1,
+				evaluationLimit: -1,
+			},
+			queueRecovery: {
+				interval: 180,
+				batchSize: 100,
+			},
+			saveDataOnError: 'all',
+			saveDataOnSuccess: 'all',
+			saveExecutionProgress: false,
+			saveDataManualExecutions: true,
 		},
 		diagnostics: {
 			enabled: true,

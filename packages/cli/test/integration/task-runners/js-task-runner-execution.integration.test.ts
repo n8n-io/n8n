@@ -234,7 +234,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 			expect(result).toEqual({
 				ok: false,
 				error: expect.objectContaining({
-					message: "Cannot find module 'fs' [line 2]",
+					message: "Module 'fs' is disallowed [line 2]",
 				}),
 			});
 		});
@@ -262,7 +262,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 			expect(result).toEqual({
 				ok: false,
 				error: expect.objectContaining({
-					message: "Cannot find module 'lodash' [line 2]",
+					message: "Module 'lodash' is disallowed [line 2]",
 				}),
 			});
 		});

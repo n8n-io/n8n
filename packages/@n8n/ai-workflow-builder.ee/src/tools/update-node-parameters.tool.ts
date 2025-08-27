@@ -18,7 +18,6 @@ import {
 	extractNodeParameters,
 	formatChangesForPrompt,
 	updateNodeWithParameters,
-	mergeParameters,
 	fixExpressionPrefixes,
 } from './utils/parameter-update.utils';
 import type { UpdateNodeParametersOutput } from '../types/tools';
@@ -45,12 +44,81 @@ function buildSuccessMessage(node: INode, changes: string[]): string {
 }
 
 /**
+ * Process parameter updates using the LLM chain
+ */
+async function processParameterUpdates(
+	node: INode,
+	nodeType: INodeTypeDescription,
+	nodeId: string,
+	changes: string[],
+	state: ReturnType<typeof getWorkflowState>,
+	llm: BaseChatModel,
+	logger?: Logger,
+	instanceUrl?: string,
+): Promise<INodeParameters> {
+	const workflow = getCurrentWorkflow(state);
+
+	// Get current parameters
+	const currentParameters = extractNodeParameters(node);
+
+	// Format inputs for the chain
+	const formattedChanges = formatChangesForPrompt(changes);
+
+	// Get the node's properties definition as JSON
+	const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
+
+	// Call the parameter updater chain with dynamic prompt building
+	const parametersChain = createParameterUpdaterChain(
+		llm,
+		{
+			nodeType: node.type,
+			nodeDefinition: nodeType,
+			requestedChanges: changes,
+		},
+		logger,
+	);
+
+	const newParameters = (await parametersChain.invoke({
+		workflow_json: workflow,
+		execution_schema: state.workflowContext?.executionSchema ?? 'NO SCHEMA',
+		execution_data: state.workflowContext?.executionData ?? 'NO EXECUTION DATA YET',
+		node_id: nodeId,
+		node_name: node.name,
+		node_type: node.type,
+		current_parameters: JSON.stringify(currentParameters, null, 2),
+		node_definition: nodePropertiesJson,
+		changes: formattedChanges,
+		instanceUrl: instanceUrl ?? '',
+	})) as INodeParameters;
+
+	// Ensure newParameters is a valid object
+	if (!newParameters || typeof newParameters !== 'object') {
+		throw new ParameterUpdateError('Invalid parameters returned from LLM', {
+			nodeId,
+			nodeType: node.type,
+		});
+	}
+
+	// Ensure parameters property exists and is valid
+	if (!newParameters.parameters || typeof newParameters.parameters !== 'object') {
+		throw new ParameterUpdateError('Invalid parameters structure returned from LLM', {
+			nodeId,
+			nodeType: node.type,
+		});
+	}
+
+	// Fix expression prefixes in the new parameters
+	return fixExpressionPrefixes(newParameters.parameters) as INodeParameters;
+}
+
+/**
  * Factory function to create the update node parameters tool
  */
 export function createUpdateNodeParametersTool(
 	nodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
 	logger?: Logger,
+	instanceUrl?: string,
 ) {
 	return tool(
 		async (input, config) => {
@@ -91,61 +159,15 @@ export function createUpdateNodeParametersTool(
 				});
 
 				try {
-					// Get current parameters
-					const currentParameters = extractNodeParameters(node);
-
-					// Format inputs for the chain
-					const formattedChanges = formatChangesForPrompt(changes);
-
-					// Get the node's properties definition as JSON
-					const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
-
-					// Call the parameter updater chain with dynamic prompt building
-					const parametersChain = createParameterUpdaterChain(
+					const updatedParameters = await processParameterUpdates(
+						node,
+						nodeType,
+						nodeId,
+						changes,
+						state,
 						llm,
-						{
-							nodeType: node.type,
-							nodeDefinition: nodeType,
-							requestedChanges: changes,
-						},
 						logger,
-					);
-
-					const newParameters = (await parametersChain.invoke({
-						workflow_json: workflow,
-						execution_schema: state.workflowContext?.executionSchema ?? 'NO SCHEMA',
-						execution_data: state.workflowContext?.executionData ?? 'NO EXECUTION DATA YET',
-						node_id: nodeId,
-						node_name: node.name,
-						node_type: node.type,
-						current_parameters: JSON.stringify(currentParameters, null, 2),
-						node_definition: nodePropertiesJson,
-						changes: formattedChanges,
-					})) as INodeParameters;
-
-					// Ensure newParameters is a valid object
-					if (!newParameters || typeof newParameters !== 'object') {
-						throw new ParameterUpdateError('Invalid parameters returned from LLM', {
-							nodeId,
-							nodeType: node.type,
-						});
-					}
-
-					// Ensure parameters property exists and is valid
-					if (!newParameters.parameters || typeof newParameters.parameters !== 'object') {
-						throw new ParameterUpdateError('Invalid parameters structure returned from LLM', {
-							nodeId,
-							nodeType: node.type,
-						});
-					}
-
-					// Fix expression prefixes in the new parameters
-					const fixedParameters = fixExpressionPrefixes(newParameters.parameters);
-
-					// Merge the new parameters with existing ones
-					const updatedParameters = mergeParameters(
-						currentParameters,
-						fixedParameters as INodeParameters,
+						instanceUrl,
 					);
 
 					// Create updated node

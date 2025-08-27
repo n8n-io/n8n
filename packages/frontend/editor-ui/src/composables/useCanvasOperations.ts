@@ -113,6 +113,7 @@ import { isChatNode } from '@/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useFocusPanelStore } from '@/stores/focusPanel.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -139,6 +140,7 @@ type AddNodesOptions = AddNodesBaseOptions & {
 type AddNodeOptions = AddNodesBaseOptions & {
 	openNDV?: boolean;
 	isAutoAdd?: boolean;
+	actionName?: string;
 };
 
 export function useCanvasOperations() {
@@ -157,6 +159,7 @@ export function useCanvasOperations() {
 	const projectsStore = useProjectsStore();
 	const logsStore = useLogsStore();
 	const experimentalNdvStore = useExperimentalNdvStore();
+	const focusPanelStore = useFocusPanelStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -667,7 +670,7 @@ export function useCanvasOperations() {
 		}
 
 		for (const [index, nodeAddData] of nodesWithTypeVersion.entries()) {
-			const { isAutoAdd, openDetail: openNDV, ...node } = nodeAddData;
+			const { isAutoAdd, openDetail: openNDV, actionName, ...node } = nodeAddData;
 			const position = node.position ?? insertPosition;
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 
@@ -683,6 +686,7 @@ export function useCanvasOperations() {
 						...(index === 0 ? { viewport } : {}),
 						openNDV,
 						isAutoAdd,
+						actionName,
 					},
 				);
 				lastAddedNode = newNode;
@@ -791,7 +795,13 @@ export function useCanvasOperations() {
 				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
 
 				if (options.openNDV && !preventOpeningNDV) {
-					if (experimentalNdvStore.isEnabled) {
+					if (
+						experimentalNdvStore.isNdvInFocusPanelEnabled &&
+						focusPanelStore.focusPanelActive &&
+						focusPanelStore.focusedNodeParameters.length === 0
+					) {
+						// Do nothing. The added node get selected and the details are shown in the focus panel
+					} else if (experimentalNdvStore.isZoomedViewEnabled) {
 						experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
 					} else {
 						ndvStore.setActiveNodeName(nodeData.name);
@@ -904,6 +914,13 @@ export function useCanvasOperations() {
 	}
 
 	function trackAddDefaultNode(nodeData: INodeUi, options: AddNodeOptions) {
+		// Extract action-related parameters from node parameters if available
+		const nodeParameters = nodeData.parameters;
+		const resource =
+			typeof nodeParameters?.resource === 'string' ? nodeParameters.resource : undefined;
+		const operation =
+			typeof nodeParameters?.operation === 'string' ? nodeParameters.operation : undefined;
+
 		nodeCreatorStore.onNodeAddedToCanvas({
 			node_id: nodeData.id,
 			node_type: nodeData.type,
@@ -914,6 +931,9 @@ export function useCanvasOperations() {
 			input_node_type: uiStore.lastInteractedWithNode
 				? uiStore.lastInteractedWithNode.type
 				: undefined,
+			resource,
+			operation,
+			action: options.actionName,
 		});
 	}
 
@@ -1904,37 +1924,41 @@ export function useCanvasOperations() {
 
 			removeUnknownCredentials(workflowData);
 
-			const nodeGraph = JSON.stringify(
-				TelemetryHelpers.generateNodesGraph(
-					workflowData as IWorkflowBase,
-					workflowHelpers.getNodeTypes(),
-					{
-						nodeIdMap,
-						sourceInstanceId:
-							workflowData.meta && workflowData.meta.instanceId !== rootStore.instanceId
-								? workflowData.meta.instanceId
-								: '',
-						isCloudDeployment: settingsStore.isCloudDeployment,
-					},
-				).nodeGraph,
-			);
+			try {
+				const nodeGraph = JSON.stringify(
+					TelemetryHelpers.generateNodesGraph(
+						workflowData as IWorkflowBase,
+						workflowHelpers.getNodeTypes(),
+						{
+							nodeIdMap,
+							sourceInstanceId:
+								workflowData.meta && workflowData.meta.instanceId !== rootStore.instanceId
+									? workflowData.meta.instanceId
+									: '',
+							isCloudDeployment: settingsStore.isCloudDeployment,
+						},
+					).nodeGraph,
+				);
 
-			if (source === 'paste') {
-				telemetry.track('User pasted nodes', {
-					workflow_id: workflowsStore.workflowId,
-					node_graph_string: nodeGraph,
-				});
-			} else if (source === 'duplicate') {
-				telemetry.track('User duplicated nodes', {
-					workflow_id: workflowsStore.workflowId,
-					node_graph_string: nodeGraph,
-				});
-			} else {
-				telemetry.track('User imported workflow', {
-					source,
-					workflow_id: workflowsStore.workflowId,
-					node_graph_string: nodeGraph,
-				});
+				if (source === 'paste') {
+					telemetry.track('User pasted nodes', {
+						workflow_id: workflowsStore.workflowId,
+						node_graph_string: nodeGraph,
+					});
+				} else if (source === 'duplicate') {
+					telemetry.track('User duplicated nodes', {
+						workflow_id: workflowsStore.workflowId,
+						node_graph_string: nodeGraph,
+					});
+				} else {
+					telemetry.track('User imported workflow', {
+						source,
+						workflow_id: workflowsStore.workflowId,
+						node_graph_string: nodeGraph,
+					});
+				}
+			} catch {
+				// If telemetry fails, don't throw an error
 			}
 
 			// Fix the node position as it could be totally offscreen

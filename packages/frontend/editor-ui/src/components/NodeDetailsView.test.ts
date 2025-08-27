@@ -152,7 +152,7 @@ describe('NodeDetailsView', () => {
 
 		test('should unregister keydown listener on unmount', async () => {
 			const { pinia, workflowObject, nodeName } = await createPiniaStore(false);
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(pinia);
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
 				props: {

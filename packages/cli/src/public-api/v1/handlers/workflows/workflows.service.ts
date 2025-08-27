@@ -44,7 +44,7 @@ export async function getSharedWorkflow(
 ): Promise<SharedWorkflow | null> {
 	return await Container.get(SharedWorkflowRepository).findOne({
 		where: {
-			...(!['global:owner', 'global:admin'].includes(user.role) && { userId: user.id }),
+			...(!['global:owner', 'global:admin'].includes(user.role.slug) && { userId: user.id }),
 			...(workflowId && { workflowId }),
 		},
 		relations: [

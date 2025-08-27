@@ -10,12 +10,9 @@
         "mode": {
             "type": "string"
         },
-        "waitTill": {
-            "type": "null"
-        },
         "workflowId": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

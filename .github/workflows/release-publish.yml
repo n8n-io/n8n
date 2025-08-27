@@ -37,7 +37,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Set release version in env
-        run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> $GITHUB_ENV
+        run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> "$GITHUB_ENV"
 
       - name: Build
         run: pnpm build
@@ -67,7 +67,7 @@ jobs:
         continue-on-error: true
 
       - id: set-release
-        run: echo "release=${{ env.RELEASE }}" >> $GITHUB_OUTPUT
+        run: echo "release=${{ env.RELEASE }}" >> "$GITHUB_OUTPUT"
 
   publish-to-docker-hub:
     name: Publish to DockerHub
@@ -91,7 +91,7 @@ jobs:
 
     steps:
       - name: Create a Release on GitHub
-        uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174 # v1
+        uses: ncipollo/release-action@bcfe5470707e8832e12347755757cec0eb3c22af # v1
         with:
           commit: ${{github.event.pull_request.base.ref}}
           tag: 'n8n@${{ needs.publish-to-npm.outputs.release }}'

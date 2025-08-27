@@ -1,9 +1,6 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
-import type { BinaryOperator } from '@langchain/langgraph/dist/channels/binop';
-
-import { MAX_USER_MESSAGES } from '@/constants';
 
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
 import type { ChatPayload } from './workflow-builder-agent';
@@ -61,19 +58,9 @@ export function createTrimMessagesReducer(maxUserMessages: number) {
 	};
 }
 
-// Utility function to combine multiple message reducers into one.
-function combineMessageReducers(...reducers: Array<BinaryOperator<BaseMessage[], BaseMessage[]>>) {
-	return (current: BaseMessage[], update: BaseMessage[]): BaseMessage[] => {
-		return reducers.reduce((acc, reducer) => reducer(acc, update), current);
-	};
-}
-
 export const WorkflowState = Annotation.Root({
 	messages: Annotation<BaseMessage[]>({
-		reducer: combineMessageReducers(
-			messagesStateReducer,
-			createTrimMessagesReducer(MAX_USER_MESSAGES),
-		),
+		reducer: messagesStateReducer,
 		default: () => [],
 	}),
 	// // The original prompt from the user.
@@ -81,7 +68,7 @@ export const WorkflowState = Annotation.Root({
 	// Now a simple field without custom reducer - all updates go through operations
 	workflowJSON: Annotation<SimpleWorkflow>({
 		reducer: (x, y) => y ?? x,
-		default: () => ({ nodes: [], connections: {} }),
+		default: () => ({ nodes: [], connections: {}, name: '' }),
 	}),
 	// Operations to apply to the workflow - processed by a separate node
 	workflowOperations: Annotation<WorkflowOperation[] | null>({
@@ -92,5 +79,11 @@ export const WorkflowState = Annotation.Root({
 	// Latest workflow context
 	workflowContext: Annotation<ChatPayload['workflowContext'] | undefined>({
 		reducer: (x, y) => y ?? x,
+	}),
+
+	// Previous conversation summary (used for compressing long conversations)
+	previousSummary: Annotation<string>({
+		reducer: (x, y) => y ?? x, // Overwrite with the latest summary
+		default: () => 'EMPTY',
 	}),
 });

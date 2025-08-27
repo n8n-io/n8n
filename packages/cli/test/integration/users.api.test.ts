@@ -12,6 +12,9 @@ import {
 import type { PublicUser, User } from '@n8n/db';
 import {
 	FolderRepository,
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
@@ -61,26 +64,26 @@ describe('GET /users', () => {
 		userRepository = Container.get(UserRepository);
 
 		owner = await createUser({
-			role: 'global:owner',
+			role: GLOBAL_OWNER_ROLE,
 			email: 'owner@n8n.io',
 			firstName: 'OwnerFirstName',
 			lastName: 'OwnerLastName',
 		});
 		member1 = await createUser({
-			role: 'global:member',
+			role: GLOBAL_MEMBER_ROLE,
 			email: 'member1@n8n.io',
 			firstName: 'Member1FirstName',
 			lastName: 'Member1LastName',
 			mfaEnabled: true,
 		});
 		member2 = await createUser({
-			role: 'global:member',
+			role: GLOBAL_MEMBER_ROLE,
 			email: 'member2@n8n.io',
 			firstName: 'Member2FirstName',
 			lastName: 'Member2LastName',
 		});
 		await createUser({
-			role: 'global:admin',
+			role: GLOBAL_ADMIN_ROLE,
 			email: 'admin@n8n.io',
 			firstName: 'AdminFirstName',
 			lastName: 'AdminLastName',
@@ -575,7 +578,7 @@ describe('GET /users', () => {
 			let pendingUser: User;
 			beforeAll(async () => {
 				pendingUser = await createUser({
-					role: 'global:member',
+					role: { slug: 'global:member' },
 					email: 'pending@n8n.io',
 					firstName: 'PendingFirstName',
 					lastName: 'PendingLastName',
@@ -723,14 +726,14 @@ describe('GET /users', () => {
 
 			test('should sort by firstName and lastName combined', async () => {
 				const user1 = await createUser({
-					role: 'global:member',
+					role: { slug: 'global:member' },
 					email: 'memberz1@n8n.io',
 					firstName: 'ZZZFirstName',
 					lastName: 'ZZZLastName',
 				});
 
 				const user2 = await createUser({
-					role: 'global:member',
+					role: { slug: 'global:member' },
 					email: 'memberz2@n8n.io',
 					firstName: 'ZZZFirstName',
 					lastName: 'ZZYLastName',
@@ -1423,7 +1426,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(otherAdmin.id);
 
-			expect(user.role).toBe('global:member');
+			expect(user.role.slug).toBe('global:member');
 
 			// restore other admin
 
@@ -1441,7 +1444,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(admin.id);
 
-			expect(user.role).toBe('global:member');
+			expect(user.role.slug).toBe('global:member');
 
 			// restore admin
 
@@ -1457,9 +1460,9 @@ describe('PATCH /users/:id/role', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data).toStrictEqual({ success: true });
 
-			const user = await getUserById(admin.id);
+			const user = await getUserById(member.id);
 
-			expect(user.role).toBe('global:admin');
+			expect(user.role.slug).toBe('global:admin');
 
 			// restore member
 
@@ -1508,7 +1511,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(admin.id);
 
-			expect(user.role).toBe('global:admin');
+			expect(user.role.slug).toBe('global:admin');
 
 			// restore member
 
@@ -1526,7 +1529,7 @@ describe('PATCH /users/:id/role', () => {
 
 			const user = await getUserById(admin.id);
 
-			expect(user.role).toBe('global:member');
+			expect(user.role.slug).toBe('global:member');
 
 			// restore admin
 
