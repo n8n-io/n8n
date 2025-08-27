@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import orderBy from 'lodash/orderBy';
 import type {
 	DataStore,
@@ -23,6 +23,7 @@ import type {
 	ValueSetterParams,
 	CellEditingStartedEvent,
 	CellEditingStoppedEvent,
+	CellKeyDownEvent,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -116,7 +117,7 @@ const contentLoading = ref(false);
 const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
 const isTextEditorOpen = ref(false);
 
-const gridContainer = useTemplateRef('gridContainer');
+const gridContainer = ref<HTMLElement | null>(null);
 
 // Pagination
 const pageSizeOptions = [10, 20, 50];
@@ -408,7 +409,9 @@ const initColumnDefinitions = () => {
 			},
 		),
 		// Append other columns
-		...orderBy(props.dataStore.columns, 'index').map((col) => createColumnDef(col)),
+		...orderBy(props.dataStore.columns, 'index').map((col: DataStoreColumn) =>
+			createColumnDef(col),
+		),
 		createColumnDef(
 			{
 				index: props.dataStore.columns.length + 1,
@@ -562,6 +565,17 @@ const onSelectionChanged = () => {
 	selectedRowIds.value = newSelectedIds;
 };
 
+const onCellKeyDown = async (params: CellKeyDownEvent<DataStoreRow>) => {
+	const key = (params.event as KeyboardEvent).key;
+	if (key !== 'Delete' && key !== 'Backspace') return;
+
+	const isEditing = params.api.getEditingCells().length > 0;
+	if (isEditing || selectedRowIds.value.size === 0) return;
+
+	params.event?.preventDefault();
+	await handleDeleteSelected();
+};
+
 const handleDeleteSelected = async () => {
 	if (selectedRowIds.value.size === 0) return;
 
@@ -639,6 +653,7 @@ defineExpose({
 				@cell-editing-stopped="onCellEditingStopped"
 				@column-header-clicked="resetLastFocusedCell"
 				@selection-changed="onSelectionChanged"
+				@cell-key-down="onCellKeyDown"
 			/>
 		</div>
 		<div :class="$style.footer">
