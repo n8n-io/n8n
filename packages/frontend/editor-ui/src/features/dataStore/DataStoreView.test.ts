@@ -102,7 +102,6 @@ const TEST_DATA_STORE: DataStoreResource = {
 	id: '1',
 	name: 'Test Data Store',
 	sizeBytes: 1024,
-	recordCount: 100,
 	columns: [],
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
