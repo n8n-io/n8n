@@ -96,6 +96,7 @@ const statusColor = computed(() => {
 						size="small"
 						bold
 						:color="message.status === 'running' ? 'text-light' : 'text-dark'"
+						:class="{ [$style.running]: message.status === 'running' }"
 						>{{ toolDisplayName }}</N8nText
 					>
 				</div>
@@ -114,6 +115,8 @@ const statusColor = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '../../../css/mixins/animations';
+
 .toolMessage {
 	width: 100%;
 }
@@ -128,6 +131,10 @@ const statusColor = computed(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-3xs);
+}
+
+.running {
+	@include animations.shimmer;
 }
 
 .statusText {

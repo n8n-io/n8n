@@ -16,19 +16,17 @@ withDefaults(
 	<div :class="$style.container">
 		<div :class="$style['message-container']">
 			<transition :name="animationType" mode="out-in">
-				<N8nText
-					v-if="message"
-					:key="message"
-					:class="[$style.message, $style.shimmer]"
-					:shimmer="true"
-					>{{ message }}</N8nText
-				>
+				<N8nText v-if="message" :key="message" :class="$style.message" :shimmer="true">{{
+					message
+				}}</N8nText>
 			</transition>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
+@use '../../css/mixins/animations';
+
 .container {
 	display: flex;
 	align-items: center;
@@ -51,23 +49,8 @@ withDefaults(
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-base);
 	text-align: left;
-}
 
-.shimmer {
-	background: linear-gradient(135deg, #fff, #5e5e5e, #fff);
-	background-clip: text;
-	color: transparent;
-	background-size: 200% 100%;
-	animation: shimmer 2.5s linear infinite;
-}
-
-@keyframes shimmer {
-	0% {
-		background-position: 200% 0;
-	}
-	100% {
-		background-position: -200% 0;
-	}
+	@include animations.shimmer;
 }
 </style>
 
