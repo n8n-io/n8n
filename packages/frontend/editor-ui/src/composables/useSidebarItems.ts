@@ -1,19 +1,25 @@
+import { VIEWS } from '@/constants';
 import { IWorkflowDb } from '@/Interface';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { IMenuElement } from '@n8n/design-system';
+import { hasPermission } from '@/utils/rbac/permissions';
+import { IMenuElement, IMenuItem } from '@n8n/design-system';
 import { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { computed, onBeforeMount } from 'vue';
+import { useI18n } from '@n8n/i18n';
+import { useTemplatesStore } from '@/stores/templates.store';
 
-export function useSidebarData2() {
+export function useSidebarItems() {
 	const projectsStore = useProjectsStore();
 	const folderStore = useFoldersStore();
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
+	const templatesStore = useTemplatesStore();
+	const i18n = useI18n();
 
 	const showShared = computed(
 		() => usersStore.allUsers.filter((user) => user.isPendingUser === false).length > 1,
@@ -132,7 +138,7 @@ export function useSidebarData2() {
 		},
 		{
 			id: 'shared',
-			label: 'Shared',
+			label: 'Shared with you',
 			icon: 'share',
 			route: { to: '/shared/workflows' },
 			available: showShared.value,
@@ -172,6 +178,63 @@ export function useSidebarData2() {
 			}),
 	);
 
+	const bottomMenuItems = computed<IMenuItem[]>(() => [
+		{
+			id: 'cloud-admin',
+			position: 'bottom',
+			label: 'Admin Panel',
+			icon: 'cloud',
+			available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
+			type: 'other',
+		},
+		{
+			// Link to in-app templates, available if custom templates are enabled
+			id: 'templates',
+			icon: 'package-open',
+			label: i18n.baseText('mainSidebar.templates'),
+			position: 'bottom',
+			available: settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost,
+			route: { to: { name: VIEWS.TEMPLATES } },
+			type: 'other',
+		},
+		{
+			// Link to website templates, available if custom templates are not enabled
+			id: 'templates',
+			icon: 'package-open',
+			label: i18n.baseText('mainSidebar.templates'),
+			position: 'bottom',
+			available: settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost,
+			type: 'other',
+			link: {
+				href: templatesStore.websiteTemplateRepositoryURL,
+				target: '_blank',
+			},
+		},
+		{
+			id: 'variables',
+			icon: 'variable',
+			label: i18n.baseText('mainSidebar.variables'),
+			position: 'bottom',
+			type: 'other',
+			route: { to: { name: VIEWS.VARIABLES } },
+		},
+		{
+			id: 'insights',
+			icon: 'chart-column-decreasing',
+			label: 'Insights',
+			position: 'bottom',
+			route: { to: { name: VIEWS.INSIGHTS } },
+			type: 'other',
+			available:
+				settingsStore.isModuleActive('insights') &&
+				hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+		},
+	]);
+
+	const visibleBottomMenuItems = computed(() => {
+		return bottomMenuItems.value.filter((item) => item.available !== false);
+	});
+
 	return {
 		topItems: topItemsFiltered,
 		openProject,
@@ -180,5 +243,6 @@ export function useSidebarData2() {
 		canCreateProject,
 		showShared,
 		convertToTreeStructure,
+		bottomItems: visibleBottomMenuItems,
 	};
 }

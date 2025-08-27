@@ -1,5 +1,5 @@
 import { useLocalStorage } from '@vueuse/core';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const N8N_SIDEBAR_WIDTH_KEY = 'n8n-sidebar-width';
 const N8N_SIDEBAR_STATE_KEY = 'n8n-sidebar-state';
@@ -84,6 +84,22 @@ export function useSidebarLayout({ defaultWidth = 300 }: UseSidebarLayoutOptions
 
 	watch(state, (newState) => {
 		persistedState.value = newState;
+	});
+
+	onMounted(() => {
+		window.addEventListener('keydown', (event) => {
+			if (event.key === ']') {
+				const target = event.target as HTMLElement;
+				if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+					return;
+				}
+				toggleHidden();
+			}
+		});
+	});
+
+	onUnmounted(() => {
+		window.removeEventListener('keydown', togglePeak);
 	});
 
 	return {

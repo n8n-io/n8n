@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { onMounted, onUnmounted } from 'vue';
 import N8nLogo from '../N8nLogo';
 import N8nText from '../N8nText';
 import SidebarItem from './SidebarItem.vue';
@@ -34,7 +33,6 @@ const {
 	state,
 	sidebarWidth,
 	panelIcon,
-	toggleHidden,
 	togglePeak,
 	peakSidebar,
 	onResizeStart,
@@ -43,22 +41,6 @@ const {
 	peakMouseOver,
 	subMenuOpen,
 } = useSidebarLayout({});
-
-onMounted(() => {
-	window.addEventListener('keydown', (event) => {
-		if (event.key === ']') {
-			const target = event.target as HTMLElement;
-			if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-				return;
-			}
-			toggleHidden();
-		}
-	});
-});
-
-onUnmounted(() => {
-	window.removeEventListener('keydown', togglePeak);
-});
 </script>
 
 <template>
@@ -144,7 +126,7 @@ onUnmounted(() => {
 					@click="$emit('logout')"
 					aria-label="Sign out"
 					icon-size="large"
-					size="mini"
+					size="xmini"
 					icon="door-open"
 					type="secondary"
 					text
@@ -158,7 +140,7 @@ onUnmounted(() => {
 				<N8nRoute to="/settings">
 					<N8nIconButton
 						icon-size="large"
-						size="mini"
+						size="xmini"
 						icon="settings"
 						type="secondary"
 						text
@@ -170,7 +152,7 @@ onUnmounted(() => {
 				<template #trigger>
 					<N8nIconButton
 						icon-size="large"
-						size="mini"
+						size="xmini"
 						icon="circle-help"
 						type="secondary"
 						text
@@ -225,7 +207,6 @@ onUnmounted(() => {
 	flex-direction: column;
 
 	scrollbar-width: thin; /* Firefox */
-	scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.1); /* Firefox */
 
 	&::-webkit-scrollbar {
 		width: 8px; /* vertical scrollbar */
@@ -233,12 +214,12 @@ onUnmounted(() => {
 	}
 
 	&::-webkit-scrollbar-thumb {
-		background-color: rgba(0, 0, 0, 0.1);
+		background-color: rgba(0, 0, 0, 0);
 		border-radius: 4px;
 	}
 
 	&::-webkit-scrollbar-thumb:hover {
-		background: rgba(0, 0, 0, 0.2);
+		background: rgba(0, 0, 0, 0);
 	}
 }
 
@@ -324,7 +305,7 @@ onUnmounted(() => {
 
 .sidebarUserArea {
 	position: relative;
-	padding: var(--spacing-2xs);
+	padding: var(--spacing-3xs) var(--spacing-2xs);
 	background-color: var(--color-foreground-xlight);
 	border-top: var(--border-base);
 	display: flex;

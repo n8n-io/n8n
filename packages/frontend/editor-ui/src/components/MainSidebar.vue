@@ -30,11 +30,10 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import VersionUpdateCTA from '@/components/VersionUpdateCTA.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
-import { useSidebarData } from '@/composables/useSidebarData';
 import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import BecomeTemplateCreatorCta from './BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
-import { useSidebarData2 } from '@/composables/useSidebarData2';
+import { useSidebarItems } from '@/composables/useSidebarItems';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -61,9 +60,8 @@ const user = ref<Element | null>(null);
 
 const basePath = ref('');
 
-const { topItems, projectItems, canCreateProject, showProjects, openProject } = useSidebarData2();
-
-const { bottomItems } = useSidebarData();
+const { topItems, projectItems, canCreateProject, showProjects, openProject, bottomItems } =
+	useSidebarItems();
 
 const {
 	menu,

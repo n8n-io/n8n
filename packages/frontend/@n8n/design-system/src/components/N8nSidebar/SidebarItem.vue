@@ -101,6 +101,7 @@ const folderIcon = computed<IconName>(() => {
 	cursor: pointer;
 	min-width: 0;
 	width: 100%;
+	position: relative;
 
 	&:hover .sidebarItemDropdownIcon {
 		color: var(--color-text-dark);
