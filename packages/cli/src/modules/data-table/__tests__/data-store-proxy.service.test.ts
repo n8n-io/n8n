@@ -19,7 +19,7 @@ import type { DataStoreService } from '../data-store.service';
 const PROJECT_ID = 'project-id';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-store']);
+	await testModules.loadModules(['data-table']);
 	await testDb.init();
 });
 describe('DataStoreProxyService', () => {
@@ -50,7 +50,7 @@ describe('DataStoreProxyService', () => {
 			id: PROJECT_ID,
 		});
 		node = mock<INode>({
-			type: 'n8n-nodes-base.dataStore',
+			type: 'n8n-nodes-base.dataTable',
 		});
 
 		ownershipServiceMock.getWorkflowProjectCached.mockResolvedValueOnce(project);
@@ -209,7 +209,7 @@ describe('DataStoreProxyService', () => {
 		);
 		await dataStoreOperations.insertRows(rows);
 
-		expect(dataStoreServiceMock.insertRows).toBeCalledWith('dataStore-id', PROJECT_ID, rows);
+		expect(dataStoreServiceMock.insertRows).toBeCalledWith('dataStore-id', PROJECT_ID, rows, true);
 	});
 
 	it('should call upsertRows with correct parameters', async () => {
@@ -225,6 +225,11 @@ describe('DataStoreProxyService', () => {
 		);
 		await dataStoreOperations.upsertRows(options);
 
-		expect(dataStoreServiceMock.upsertRows).toBeCalledWith('dataStore-id', PROJECT_ID, options);
+		expect(dataStoreServiceMock.upsertRows).toBeCalledWith(
+			'dataStore-id',
+			PROJECT_ID,
+			options,
+			true,
+		);
 	});
 });

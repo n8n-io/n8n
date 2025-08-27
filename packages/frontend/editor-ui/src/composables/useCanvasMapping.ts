@@ -7,7 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Ref } from 'vue';
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import type {
 	BoundingBox,
 	CanvasConnection,
@@ -46,6 +46,7 @@ import {
 } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import {
+	CANVAS_EXECUTION_DATA_THROTTLE_DURATION,
 	CUSTOM_API_CALL_KEY,
 	FORM_NODE_TYPE,
 	SIMULATE_NODE_TYPE,
@@ -60,6 +61,7 @@ import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { getNodeIconSource } from '../utils/nodeIcon';
 import * as workflowUtils from 'n8n-workflow/common';
+import { throttledWatch } from '@vueuse/core';
 
 export function useCanvasMapping({
 	nodes,
@@ -355,9 +357,14 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
-	const nodeExecutionRunDataOutputMapById = computed(() =>
-		Object.keys(nodeExecutionRunDataById.value).reduce<Record<string, ExecutionOutputMap>>(
-			(acc, nodeId) => {
+	const nodeExecutionRunDataOutputMapById = ref<Record<string, ExecutionOutputMap>>({});
+
+	throttledWatch(
+		nodeExecutionRunDataById,
+		(value) => {
+			nodeExecutionRunDataOutputMapById.value = Object.keys(value).reduce<
+				Record<string, ExecutionOutputMap>
+			>((acc, nodeId) => {
 				acc[nodeId] = {};
 
 				const outputData = { iterations: 0, total: 0 };
@@ -383,9 +390,9 @@ export function useCanvasMapping({
 				}
 
 				return acc;
-			},
-			{},
-		),
+			}, {});
+		},
+		{ throttle: CANVAS_EXECUTION_DATA_THROTTLE_DURATION, immediate: true },
 	);
 
 	const nodeIssuesById = computed(() =>

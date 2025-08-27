@@ -66,6 +66,7 @@ export class ProjectController {
 			this.eventService.emit('team-project-created', {
 				userId: req.user.id,
 				role: req.user.role.slug,
+				uiContext: payload.uiContext,
 			});
 
 			return {

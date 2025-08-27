@@ -2,7 +2,13 @@ import type { PushMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import { SettingsRepository, UserRepository } from '@n8n/db';
+import {
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	SettingsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
@@ -306,7 +312,7 @@ export class E2EController {
 				...owner,
 				password: await this.passwordUtility.hash(owner.password),
 				role: {
-					slug: 'global:owner',
+					slug: GLOBAL_OWNER_ROLE.slug,
 				},
 			}),
 		];
@@ -317,7 +323,7 @@ export class E2EController {
 				...admin,
 				password: await this.passwordUtility.hash(admin.password),
 				role: {
-					slug: 'global:admin',
+					slug: GLOBAL_ADMIN_ROLE.slug,
 				},
 			}),
 		);
@@ -329,7 +335,7 @@ export class E2EController {
 					...payload,
 					password: await this.passwordUtility.hash(password),
 					role: {
-						slug: 'global:member',
+						slug: GLOBAL_MEMBER_ROLE.slug,
 					},
 				}),
 			);

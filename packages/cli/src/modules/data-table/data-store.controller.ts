@@ -34,6 +34,7 @@ import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-fou
 import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
+import { DataStoreRowReturn } from 'n8n-workflow';
 
 @RestController('/projects/:projectId/data-stores')
 export class DataStoreController {
@@ -237,6 +238,12 @@ export class DataStoreController {
 	/**
 	 * @returns the IDs of the inserted rows
 	 */
+	async appendDataStoreRows<T extends boolean | undefined>(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		dataStoreId: string,
+		dto: AddDataStoreRowsDto & { returnData?: T },
+	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	@Post('/:dataStoreId/insert')
 	@ProjectScope('dataStore:writeRow')
 	async appendDataStoreRows(
@@ -274,7 +281,12 @@ export class DataStoreController {
 		@Body dto: UpsertDataStoreRowsDto,
 	) {
 		try {
-			return await this.dataStoreService.upsertRows(dataStoreId, req.params.projectId, dto);
+			return await this.dataStoreService.upsertRows(
+				dataStoreId,
+				req.params.projectId,
+				dto,
+				dto.returnData,
+			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
 				throw new NotFoundError(e.message);
@@ -297,7 +309,12 @@ export class DataStoreController {
 		@Body dto: UpdateDataStoreRowDto,
 	) {
 		try {
-			return await this.dataStoreService.updateRow(dataStoreId, req.params.projectId, dto);
+			return await this.dataStoreService.updateRow(
+				dataStoreId,
+				req.params.projectId,
+				dto,
+				dto.returnData,
+			);
 		} catch (e: unknown) {
 			if (e instanceof DataStoreNotFoundError) {
 				throw new NotFoundError(e.message);

@@ -220,10 +220,10 @@ describe('SourceControlService', () => {
 			*/
 
 		[globalAdmin, globalOwner, globalMember, projectAdmin] = await Promise.all([
-			await createUser({ role: GLOBAL_ADMIN_ROLE }),
-			await createUser({ role: GLOBAL_OWNER_ROLE }),
-			await createUser({ role: GLOBAL_MEMBER_ROLE }),
-			await createUser({ role: GLOBAL_MEMBER_ROLE }),
+			createUser({ role: GLOBAL_ADMIN_ROLE }),
+			createUser({ role: GLOBAL_OWNER_ROLE }),
+			createUser({ role: GLOBAL_MEMBER_ROLE }),
+			createUser({ role: GLOBAL_MEMBER_ROLE }),
 		]);
 
 		[projectA, projectB] = await Promise.all([
