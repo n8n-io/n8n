@@ -175,678 +175,684 @@ describe('dataStore filters', () => {
 	});
 
 	describe('getManyRowsAndCount', () => {
-		it("retrieves rows with 'equals' filter correctly", async () => {
-			// ARRANGE
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
-				name: 'dataStore',
-				columns: [
-					{ name: 'name', type: 'string' },
-					{ name: 'age', type: 'number' },
-				],
-			});
-
-			const rows = [
-				{ name: 'John', age: 30 },
-				{ name: 'Mary', age: 25 },
-				{ name: 'Jack', age: 35 },
-			];
-
-			await dataStoreService.insertRows(dataStoreId, project.id, rows);
-
-			// ACT
-			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-				filter: { type: 'and', filters: [{ columnName: 'name', value: 'Mary', condition: 'eq' }] },
-			});
-
-			// ASSERT
-			expect(result.count).toEqual(1);
-			expect(result.data).toEqual([expect.objectContaining({ name: 'Mary', age: 25 })]);
-		});
-
-		it("retrieves rows with 'not equals' filter correctly", async () => {
-			// ARRANGE
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
-				name: 'dataStore',
-				columns: [
-					{ name: 'name', type: 'string' },
-					{ name: 'age', type: 'number' },
-				],
-			});
-
-			const rows = [
-				{ name: 'John', age: 30 },
-				{ name: 'Mary', age: 25 },
-				{ name: 'Jack', age: 35 },
-			];
-
-			await dataStoreService.insertRows(dataStoreId, project.id, rows);
-
-			// ACT
-			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-				filter: { type: 'and', filters: [{ columnName: 'name', value: 'Mary', condition: 'neq' }] },
-			});
-
-			// ASSERT
-			expect(result.count).toEqual(2);
-			expect(result.data).toEqual([
-				expect.objectContaining({ name: 'John', age: 30 }),
-				expect.objectContaining({ name: 'Jack', age: 35 }),
-			]);
-		});
-
-		it("retrieves rows with 'contains sensitive' filter correctly", async () => {
-			// ARRANGE
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
-				name: 'dataStore',
-				columns: [
-					{ name: 'name', type: 'string' },
-					{ name: 'age', type: 'number' },
-				],
-			});
-
-			const rows = [
-				{ name: 'Arnold', age: 30 },
-				{ name: 'Mary', age: 25 },
-				{ name: 'Charlie', age: 35 },
-			];
-
-			await dataStoreService.insertRows(dataStoreId, project.id, rows);
-
-			// ACT
-			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'name', value: '%ar%', condition: 'like' }],
-				},
-			});
-
-			// ASSERT
-			expect(result.count).toEqual(2);
-			expect(result.data).toEqual([
-				expect.objectContaining({ name: 'Mary', age: 25 }),
-				expect.objectContaining({ name: 'Charlie', age: 35 }),
-			]);
-		});
-
-		it("retrieves rows with 'contains insensitive' filter correctly", async () => {
-			// ARRANGE
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
-				name: 'dataStore',
-				columns: [
-					{ name: 'name', type: 'string' },
-					{ name: 'age', type: 'number' },
-				],
-			});
-
-			const rows = [
-				{ name: 'John', age: 30 },
-				{ name: 'Mary', age: 20 },
-				{ name: 'Benjamin', age: 25 },
-				{ name: 'Taj', age: 35 },
-			];
-
-			await dataStoreService.insertRows(dataStoreId, project.id, rows);
-
-			// ACT
-			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'name', value: '%J%', condition: 'ilike' }],
-				},
-			});
-
-			// ASSERT
-			expect(result.count).toEqual(3);
-			expect(result.data).toEqual([
-				expect.objectContaining({ name: 'John', age: 30 }),
-				expect.objectContaining({ name: 'Benjamin', age: 25 }),
-				expect.objectContaining({ name: 'Taj', age: 35 }),
-			]);
-		});
-
-		it("retrieves rows with 'starts with' filter correctly", async () => {
-			// ARRANGE
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
-				name: 'dataStore',
-				columns: [
-					{ name: 'name', type: 'string' },
-					{ name: 'age', type: 'number' },
-				],
-			});
-
-			const rows = [
-				{ name: 'Arnold', age: 30 },
-				{ name: 'Mary', age: 25 },
-				{ name: 'Charlie', age: 35 },
-			];
-
-			await dataStoreService.insertRows(dataStoreId, project.id, rows);
-
-			// ACT
-			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'name', value: 'Ar%', condition: 'ilike' }],
-				},
-			});
-
-			// ASSERT
-			expect(result.count).toEqual(1);
-			expect(result.data).toEqual([expect.objectContaining({ name: 'Arnold', age: 30 })]);
-		});
-
-		it("retrieves rows with 'ends with' filter correctly", async () => {
-			// ARRANGE
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
-				name: 'dataStore',
-				columns: [
-					{ name: 'name', type: 'string' },
-					{ name: 'age', type: 'number' },
-				],
-			});
-
-			const rows = [
-				{ name: 'Arnold', age: 30 },
-				{ name: 'Mary', age: 25 },
-				{ name: 'Charlie', age: 35 },
-				{ name: 'Harold', age: 40 },
-			];
-
-			await dataStoreService.insertRows(dataStoreId, project.id, rows);
-
-			// ACT
-			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'name', value: '%old', condition: 'ilike' }],
-				},
-			});
-
-			// ASSERT
-			expect(result.count).toEqual(2);
-			expect(result.data).toEqual([
-				expect.objectContaining({ name: 'Arnold', age: 30 }),
-				expect.objectContaining({ name: 'Harold', age: 40 }),
-			]);
-		});
-
-		describe.each(['like', 'ilike'] as ListDataStoreContentFilterConditionType[])(
-			'%s filter validation',
-			(condition) => {
-				it(`throws error when '${condition}' filter value is null`, async () => {
-					// ARRANGE
-					const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
-						name: 'dataStore',
-						columns: [
-							{ name: 'name', type: 'string' },
-							{ name: 'age', type: 'number' },
-						],
-					});
-
-					const rows = [
-						{ name: 'John', age: 30 },
-						{ name: 'Mary', age: 25 },
-					];
-
-					await dataStoreService.insertRows(dataStoreId, project.id, rows);
-
-					// ACT
-					const result = dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'name', value: null, condition }],
-						},
-					});
-
-					// ASSERT
-					await expect(result).rejects.toThrow(
-						new DataStoreValidationError(
-							`${condition.toUpperCase()} filter value cannot be null or undefined`,
-						),
-					);
-				});
-
-				it(`throws error when '${condition}' filter value is not a string`, async () => {
-					// ARRANGE
-					const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
-						name: 'dataStore',
-						columns: [
-							{ name: 'name', type: 'string' },
-							{ name: 'age', type: 'number' },
-						],
-					});
-
-					const rows = [
-						{ name: 'John', age: 30 },
-						{ name: 'Mary', age: 25 },
-					];
-
-					await dataStoreService.insertRows(dataStoreId, project.id, rows);
-
-					// ACT
-					const result = dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-						filter: {
-							type: 'and',
-							filters: [{ columnName: 'age', value: 123, condition }],
-						},
-					});
-
-					// ASSERT
-					await expect(result).rejects.toThrow(
-						new DataStoreValidationError(
-							`${condition.toUpperCase()} filter value must be a string`,
-						),
-					);
-				});
-			},
-		);
-
-		describe('like filter with special characters', () => {
-			let dataStoreId: string;
-
-			beforeEach(async () => {
-				const { id } = await dataStoreService.createDataStore(project.id, {
+		describe('equals and not equals filters', () => {
+			it("retrieves rows with 'equals' filter correctly", async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
 					name: 'dataStore',
-					columns: [{ name: 'text', type: 'string' }],
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'age', type: 'number' },
+					],
 				});
-				dataStoreId = id;
-			});
 
-			it('should treat square brackets literally in like patterns', async () => {
-				// ARRANGE
-				await dataStoreService.insertRows(dataStoreId, project.id, [
-					{ text: 'test[abc]data' },
-					{ text: 'Test[abc]Data' },
-					{ text: 'testAdata' },
-					{ text: 'testBdata' },
-				]);
+				const rows = [
+					{ name: 'John', age: 30 },
+					{ name: 'Mary', age: 25 },
+					{ name: 'Jack', age: 35 },
+				];
+
+				await dataStoreService.insertRows(dataStoreId, project.id, rows);
 
 				// ACT
 				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
-						filters: [{ columnName: 'text', value: 'test%[abc]%', condition: 'like' }],
+						filters: [{ columnName: 'name', value: 'Mary', condition: 'eq' }],
 					},
 				});
 
 				// ASSERT
 				expect(result.count).toEqual(1);
-				expect(result.data).toEqual([expect.objectContaining({ text: 'test[abc]data' })]);
+				expect(result.data).toEqual([expect.objectContaining({ name: 'Mary', age: 25 })]);
 			});
 
-			it('should treat asterisk literally in like patterns', async () => {
+			it("retrieves rows with 'not equals' filter correctly", async () => {
 				// ARRANGE
-				await dataStoreService.insertRows(dataStoreId, project.id, [
-					{ text: 'test*data' },
-					{ text: 'Test*Data' },
-					{ text: 'testAdata' },
-					{ text: 'testABCdata' },
-				]);
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'age', type: 'number' },
+					],
+				});
+
+				const rows = [
+					{ name: 'John', age: 30 },
+					{ name: 'Mary', age: 25 },
+					{ name: 'Jack', age: 35 },
+				];
+
+				await dataStoreService.insertRows(dataStoreId, project.id, rows);
 
 				// ACT
 				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
-						filters: [{ columnName: 'text', value: 'test%*%', condition: 'like' }],
+						filters: [{ columnName: 'name', value: 'Mary', condition: 'neq' }],
 					},
 				});
 
 				// ASSERT
-				expect(result.count).toEqual(1);
-				expect(result.data).toEqual([expect.objectContaining({ text: 'test*data' })]);
+				expect(result.count).toEqual(2);
+				expect(result.data).toEqual([
+					expect.objectContaining({ name: 'John', age: 30 }),
+					expect.objectContaining({ name: 'Jack', age: 35 }),
+				]);
 			});
 
-			it('should treat question mark literally in like patterns', async () => {
+			it('supports filter by null', async () => {
 				// ARRANGE
-				await dataStoreService.insertRows(dataStoreId, project.id, [
-					{ text: 'test?data' },
-					{ text: 'Test?Data' },
-					{ text: 'testAdata' },
-					{ text: 'testXdata' },
-				]);
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'c1', type: 'string' },
+						{ name: 'c2', type: 'boolean' },
+					],
+				});
+
+				const rows = [
+					{ c1: null, c2: true },
+					{ c1: 'Marco', c2: true },
+					{ c1: null, c2: false },
+					{ c1: 'Polo', c2: false },
+				];
+
+				await dataStoreService.insertRows(dataStoreId, project.id, rows);
 
 				// ACT
 				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
-						filters: [{ columnName: 'text', value: 'test%?%', condition: 'like' }],
+						filters: [{ columnName: 'c1', condition: 'eq', value: null }],
 					},
 				});
 
 				// ASSERT
-				expect(result.count).toEqual(1);
-				expect(result.data).toEqual([expect.objectContaining({ text: 'test?data' })]);
+				expect(result.count).toEqual(2);
+				expect(result.data).toMatchObject([
+					expect.objectContaining({ c1: null, c2: true }),
+					expect.objectContaining({ c1: null, c2: false }),
+				]);
 			});
 
-			it('should convert LIKE % wildcard to match zero or more characters', async () => {
+			it('supports filter by not null', async () => {
 				// ARRANGE
-				await dataStoreService.insertRows(dataStoreId, project.id, [
-					{ text: 'data%more' },
-					{ text: 'Data%More' },
-					{ text: 'datamore' },
-					{ text: 'dataABCmore' },
-					{ text: 'different' },
-				]);
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'c1', type: 'string' },
+						{ name: 'c2', type: 'boolean' },
+					],
+				});
+
+				const rows = [
+					{ c1: null, c2: true },
+					{ c1: 'Marco', c2: true },
+					{ c1: null, c2: false },
+					{ c1: 'Polo', c2: false },
+				];
+
+				await dataStoreService.insertRows(dataStoreId, project.id, rows);
 
 				// ACT
 				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
-						filters: [{ columnName: 'text', value: 'data%more', condition: 'like' }],
+						filters: [{ columnName: 'c1', condition: 'neq', value: null }],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(2);
+				expect(result.data).toMatchObject([
+					expect.objectContaining({ c1: 'Marco', c2: true }),
+					expect.objectContaining({ c1: 'Polo', c2: false }),
+				]);
+			});
+		});
+
+		describe('LIKE filters', () => {
+			it("retrieves rows with 'contains sensitive' filter correctly", async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'age', type: 'number' },
+					],
+				});
+
+				const rows = [
+					{ name: 'Arnold', age: 30 },
+					{ name: 'Mary', age: 25 },
+					{ name: 'Charlie', age: 35 },
+				];
+
+				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', value: '%ar%', condition: 'like' }],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(2);
+				expect(result.data).toEqual([
+					expect.objectContaining({ name: 'Mary', age: 25 }),
+					expect.objectContaining({ name: 'Charlie', age: 35 }),
+				]);
+			});
+
+			it("retrieves rows with 'contains insensitive' filter correctly", async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'age', type: 'number' },
+					],
+				});
+
+				const rows = [
+					{ name: 'John', age: 30 },
+					{ name: 'Mary', age: 20 },
+					{ name: 'Benjamin', age: 25 },
+					{ name: 'Taj', age: 35 },
+				];
+
+				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', value: '%J%', condition: 'ilike' }],
 					},
 				});
 
 				// ASSERT
 				expect(result.count).toEqual(3);
-				expect(result.data).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({ text: 'data%more' }),
-						expect.objectContaining({ text: 'datamore' }),
-						expect.objectContaining({ text: 'dataABCmore' }),
-					]),
-				);
-			});
-
-			it('should treat underscore literally in like patterns', async () => {
-				// ARRANGE
-				await dataStoreService.insertRows(dataStoreId, project.id, [
-					{ text: 'prefix_suffix' },
-					{ text: 'Prefix_Suffix' },
-					{ text: 'prefix\\_suffix' },
-					{ text: 'prefixAsuffix' },
-					{ text: 'prefixsuffix' },
+				expect(result.data).toEqual([
+					expect.objectContaining({ name: 'John', age: 30 }),
+					expect.objectContaining({ name: 'Benjamin', age: 25 }),
+					expect.objectContaining({ name: 'Taj', age: 35 }),
 				]);
-
-				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'text', value: 'prefix_suffix', condition: 'like' }],
-					},
-				});
-
-				// ASSERT
-				expect(result.count).toEqual(1);
-				expect(result.data).toEqual([expect.objectContaining({ text: 'prefix_suffix' })]);
 			});
 
-			it('should handle multiple special characters', async () => {
+			it("retrieves rows with 'starts with' filter correctly", async () => {
 				// ARRANGE
-				await dataStoreService.insertRows(dataStoreId, project.id, [
-					{ text: 'test[*?]data' },
-					{ text: 'Test[*?]Data' },
-					{ text: 'testOtherData' },
-					{ text: 'test123data' },
-				]);
-
-				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'text', value: 'test%[*?]%', condition: 'like' }],
-					},
-				});
-
-				// ASSERT
-				expect(result.count).toEqual(1);
-				expect(result.data).toEqual([expect.objectContaining({ text: 'test[*?]data' })]);
-			});
-		});
-
-		describe('ilike filter with special characters (case-insensitive)', () => {
-			let dataStoreId: string;
-
-			beforeEach(async () => {
-				const { id } = await dataStoreService.createDataStore(project.id, {
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
 					name: 'dataStore',
-					columns: [{ name: 'text', type: 'string' }],
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'age', type: 'number' },
+					],
 				});
-				dataStoreId = id;
-			});
 
-			it('should treat square brackets literally', async () => {
-				// ARRANGE
-				await dataStoreService.insertRows(dataStoreId, project.id, [
-					{ text: 'test[abc]data' },
-					{ text: 'Test[ABC]Data' },
-					{ text: 'testAdata' },
-					{ text: 'testBdata' },
-				]);
+				const rows = [
+					{ name: 'Arnold', age: 30 },
+					{ name: 'Mary', age: 25 },
+					{ name: 'Charlie', age: 35 },
+				];
+
+				await dataStoreService.insertRows(dataStoreId, project.id, rows);
 
 				// ACT
 				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
-						filters: [{ columnName: 'text', value: '%[abc]%', condition: 'ilike' }],
+						filters: [{ columnName: 'name', value: 'Ar%', condition: 'ilike' }],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(1);
+				expect(result.data).toEqual([expect.objectContaining({ name: 'Arnold', age: 30 })]);
+			});
+
+			it("retrieves rows with 'ends with' filter correctly", async () => {
+				// ARRANGE
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'age', type: 'number' },
+					],
+				});
+
+				const rows = [
+					{ name: 'Arnold', age: 30 },
+					{ name: 'Mary', age: 25 },
+					{ name: 'Charlie', age: 35 },
+					{ name: 'Harold', age: 40 },
+				];
+
+				await dataStoreService.insertRows(dataStoreId, project.id, rows);
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', value: '%old', condition: 'ilike' }],
 					},
 				});
 
 				// ASSERT
 				expect(result.count).toEqual(2);
-				expect(result.data).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({ text: 'test[abc]data' }),
-						expect.objectContaining({ text: 'Test[ABC]Data' }),
-					]),
-				);
-			});
-
-			it('should treat asterisk literally', async () => {
-				// ARRANGE
-				await dataStoreService.insertRows(dataStoreId, project.id, [
-					{ text: 'test*data' },
-					{ text: 'Test*Data' },
-					{ text: 'testOtherData' },
-					{ text: 'testABCdata' },
+				expect(result.data).toEqual([
+					expect.objectContaining({ name: 'Arnold', age: 30 }),
+					expect.objectContaining({ name: 'Harold', age: 40 }),
 				]);
-
-				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'text', value: '%*%', condition: 'ilike' }],
-					},
-				});
-
-				// ASSERT
-				expect(result.count).toEqual(2);
-				expect(result.data).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({ text: 'test*data' }),
-						expect.objectContaining({ text: 'Test*Data' }),
-					]),
-				);
 			});
 
-			it('should treat question mark literally', async () => {
-				// ARRANGE
-				await dataStoreService.insertRows(dataStoreId, project.id, [
-					{ text: 'test?data' },
-					{ text: 'Test?Data' },
-					{ text: 'testSingleChar' },
-					{ text: 'testMultiChar' },
-				]);
+			describe.each(['like', 'ilike'] as ListDataStoreContentFilterConditionType[])(
+				'%s filter validation',
+				(condition) => {
+					it(`throws error when '${condition}' filter value is null`, async () => {
+						// ARRANGE
+						const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+							name: 'dataStore',
+							columns: [
+								{ name: 'name', type: 'string' },
+								{ name: 'age', type: 'number' },
+							],
+						});
 
-				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'text', value: '%?%', condition: 'ilike' }],
-					},
-				});
+						const rows = [
+							{ name: 'John', age: 30 },
+							{ name: 'Mary', age: 25 },
+						];
 
-				// ASSERT
-				expect(result.count).toEqual(2);
-				expect(result.data).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({ text: 'test?data' }),
-						expect.objectContaining({ text: 'Test?Data' }),
-					]),
-				);
-			});
+						await dataStoreService.insertRows(dataStoreId, project.id, rows);
 
-			it('should convert % wildcard to match zero or more characters', async () => {
-				// ARRANGE
-				await dataStoreService.insertRows(dataStoreId, project.id, [
-					{ text: 'data%more' },
-					{ text: 'Data%More' },
-					{ text: 'datamore' },
-					{ text: 'DataMore' },
-					{ text: 'dataABCmore' },
-					{ text: 'DataABCMore' },
-					{ text: 'different' },
-				]);
+						// ACT
+						const result = dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'name', value: null, condition }],
+							},
+						});
 
-				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'text', value: 'data%more', condition: 'ilike' }],
-					},
-				});
+						// ASSERT
+						await expect(result).rejects.toThrow(
+							new DataStoreValidationError(
+								`${condition.toUpperCase()} filter value cannot be null or undefined`,
+							),
+						);
+					});
 
-				// ASSERT
-				expect(result.count).toEqual(6);
-				expect(result.data).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({ text: 'data%more' }),
-						expect.objectContaining({ text: 'Data%More' }),
-						expect.objectContaining({ text: 'datamore' }),
-						expect.objectContaining({ text: 'DataMore' }),
-						expect.objectContaining({ text: 'dataABCmore' }),
-						expect.objectContaining({ text: 'DataABCMore' }),
-					]),
-				);
-			});
+					it(`throws error when '${condition}' filter value is not a string`, async () => {
+						// ARRANGE
+						const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+							name: 'dataStore',
+							columns: [
+								{ name: 'name', type: 'string' },
+								{ name: 'age', type: 'number' },
+							],
+						});
 
-			it('should treat underscore literally', async () => {
-				// ARRANGE
-				await dataStoreService.insertRows(dataStoreId, project.id, [
-					{ text: 'prefix_suffix' },
-					{ text: 'Prefix_Suffix' },
-					{ text: 'Prefix\\_Suffix' },
-					{ text: 'prefixASuffix' },
-					{ text: 'prefixsuffix' },
-				]);
+						const rows = [
+							{ name: 'John', age: 30 },
+							{ name: 'Mary', age: 25 },
+						];
 
-				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'text', value: 'prefix_suffix', condition: 'ilike' }],
-					},
-				});
+						await dataStoreService.insertRows(dataStoreId, project.id, rows);
 
-				// ASSERT
-				expect(result.count).toEqual(2);
-				expect(result.data).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({ text: 'prefix_suffix' }),
-						expect.objectContaining({ text: 'Prefix_Suffix' }),
-					]),
-				);
-			});
+						// ACT
+						const result = dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+							filter: {
+								type: 'and',
+								filters: [{ columnName: 'age', value: 123, condition }],
+							},
+						});
 
-			it('should handle multiple special characters', async () => {
-				// ARRANGE
-				await dataStoreService.insertRows(dataStoreId, project.id, [
-					{ text: 'test[*?]data' },
-					{ text: 'Test[*?]Data' },
-					{ text: 'testOtherData' },
-					{ text: 'test123data' },
-				]);
-
-				// ACT
-				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-					filter: {
-						type: 'and',
-						filters: [{ columnName: 'text', value: '%[*?]%', condition: 'ilike' }],
-					},
-				});
-
-				// ASSERT
-				expect(result.count).toEqual(2);
-				expect(result.data).toEqual(
-					expect.arrayContaining([
-						expect.objectContaining({ text: 'test[*?]data' }),
-						expect.objectContaining({ text: 'Test[*?]Data' }),
-					]),
-				);
-			});
-		});
-
-		it('supports filter by null', async () => {
-			// ARRANGE
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
-				name: 'dataStore',
-				columns: [
-					{ name: 'c1', type: 'string' },
-					{ name: 'c2', type: 'boolean' },
-				],
-			});
-
-			const rows = [
-				{ c1: null, c2: true },
-				{ c1: 'Marco', c2: true },
-				{ c1: null, c2: false },
-				{ c1: 'Polo', c2: false },
-			];
-
-			const ids = await dataStoreService.insertRows(dataStoreId, project.id, rows);
-			expect(ids).toEqual([1, 2, 3, 4].map((id) => ({ id })));
-
-			// ACT
-			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'c1', condition: 'eq', value: null }],
+						// ASSERT
+						await expect(result).rejects.toThrow(
+							new DataStoreValidationError(
+								`${condition.toUpperCase()} filter value must be a string`,
+							),
+						);
+					});
 				},
+			);
+
+			describe('like filter with special characters', () => {
+				let dataStoreId: string;
+
+				beforeEach(async () => {
+					const { id } = await dataStoreService.createDataStore(project.id, {
+						name: 'dataStore',
+						columns: [{ name: 'text', type: 'string' }],
+					});
+					dataStoreId = id;
+				});
+
+				it('should treat square brackets literally in like patterns', async () => {
+					// ARRANGE
+					await dataStoreService.insertRows(dataStoreId, project.id, [
+						{ text: 'test[abc]data' },
+						{ text: 'Test[abc]Data' },
+						{ text: 'testAdata' },
+						{ text: 'testBdata' },
+					]);
+
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'text', value: 'test%[abc]%', condition: 'like' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(1);
+					expect(result.data).toEqual([expect.objectContaining({ text: 'test[abc]data' })]);
+				});
+
+				it('should treat asterisk literally in like patterns', async () => {
+					// ARRANGE
+					await dataStoreService.insertRows(dataStoreId, project.id, [
+						{ text: 'test*data' },
+						{ text: 'Test*Data' },
+						{ text: 'testAdata' },
+						{ text: 'testABCdata' },
+					]);
+
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'text', value: 'test%*%', condition: 'like' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(1);
+					expect(result.data).toEqual([expect.objectContaining({ text: 'test*data' })]);
+				});
+
+				it('should treat question mark literally in like patterns', async () => {
+					// ARRANGE
+					await dataStoreService.insertRows(dataStoreId, project.id, [
+						{ text: 'test?data' },
+						{ text: 'Test?Data' },
+						{ text: 'testAdata' },
+						{ text: 'testXdata' },
+					]);
+
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'text', value: 'test%?%', condition: 'like' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(1);
+					expect(result.data).toEqual([expect.objectContaining({ text: 'test?data' })]);
+				});
+
+				it('should convert LIKE % wildcard to match zero or more characters', async () => {
+					// ARRANGE
+					await dataStoreService.insertRows(dataStoreId, project.id, [
+						{ text: 'data%more' },
+						{ text: 'Data%More' },
+						{ text: 'datamore' },
+						{ text: 'dataABCmore' },
+						{ text: 'different' },
+					]);
+
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'text', value: 'data%more', condition: 'like' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(3);
+					expect(result.data).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({ text: 'data%more' }),
+							expect.objectContaining({ text: 'datamore' }),
+							expect.objectContaining({ text: 'dataABCmore' }),
+						]),
+					);
+				});
+
+				it('should treat underscore literally in like patterns', async () => {
+					// ARRANGE
+					await dataStoreService.insertRows(dataStoreId, project.id, [
+						{ text: 'prefix_suffix' },
+						{ text: 'Prefix_Suffix' },
+						{ text: 'prefix\\_suffix' },
+						{ text: 'prefixAsuffix' },
+						{ text: 'prefixsuffix' },
+					]);
+
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'text', value: 'prefix_suffix', condition: 'like' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(1);
+					expect(result.data).toEqual([expect.objectContaining({ text: 'prefix_suffix' })]);
+				});
+
+				it('should handle multiple special characters', async () => {
+					// ARRANGE
+					await dataStoreService.insertRows(dataStoreId, project.id, [
+						{ text: 'test[*?]data' },
+						{ text: 'Test[*?]Data' },
+						{ text: 'testOtherData' },
+						{ text: 'test123data' },
+					]);
+
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'text', value: 'test%[*?]%', condition: 'like' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(1);
+					expect(result.data).toEqual([expect.objectContaining({ text: 'test[*?]data' })]);
+				});
 			});
 
-			// ASSERT
-			expect(result.count).toEqual(2);
-			// Assuming IDs are auto-incremented starting from 1
-			expect(result.data).toMatchObject([
-				{ c1: null, c2: true, id: 1 },
-				{ c1: null, c2: false, id: 3 },
-			]);
-		});
+			describe('ilike filter with special characters (case-insensitive)', () => {
+				let dataStoreId: string;
 
-		it('supports filter by not null', async () => {
-			// ARRANGE
-			const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
-				name: 'dataStore',
-				columns: [
-					{ name: 'c1', type: 'string' },
-					{ name: 'c2', type: 'boolean' },
-				],
+				beforeEach(async () => {
+					const { id } = await dataStoreService.createDataStore(project.id, {
+						name: 'dataStore',
+						columns: [{ name: 'text', type: 'string' }],
+					});
+					dataStoreId = id;
+				});
+
+				it('should treat square brackets literally', async () => {
+					// ARRANGE
+					await dataStoreService.insertRows(dataStoreId, project.id, [
+						{ text: 'test[abc]data' },
+						{ text: 'Test[ABC]Data' },
+						{ text: 'testAdata' },
+						{ text: 'testBdata' },
+					]);
+
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'text', value: '%[abc]%', condition: 'ilike' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(2);
+					expect(result.data).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({ text: 'test[abc]data' }),
+							expect.objectContaining({ text: 'Test[ABC]Data' }),
+						]),
+					);
+				});
+
+				it('should treat asterisk literally', async () => {
+					// ARRANGE
+					await dataStoreService.insertRows(dataStoreId, project.id, [
+						{ text: 'test*data' },
+						{ text: 'Test*Data' },
+						{ text: 'testOtherData' },
+						{ text: 'testABCdata' },
+					]);
+
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'text', value: '%*%', condition: 'ilike' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(2);
+					expect(result.data).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({ text: 'test*data' }),
+							expect.objectContaining({ text: 'Test*Data' }),
+						]),
+					);
+				});
+
+				it('should treat question mark literally', async () => {
+					// ARRANGE
+					await dataStoreService.insertRows(dataStoreId, project.id, [
+						{ text: 'test?data' },
+						{ text: 'Test?Data' },
+						{ text: 'testSingleChar' },
+						{ text: 'testMultiChar' },
+					]);
+
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'text', value: '%?%', condition: 'ilike' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(2);
+					expect(result.data).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({ text: 'test?data' }),
+							expect.objectContaining({ text: 'Test?Data' }),
+						]),
+					);
+				});
+
+				it('should convert % wildcard to match zero or more characters', async () => {
+					// ARRANGE
+					await dataStoreService.insertRows(dataStoreId, project.id, [
+						{ text: 'data%more' },
+						{ text: 'Data%More' },
+						{ text: 'datamore' },
+						{ text: 'DataMore' },
+						{ text: 'dataABCmore' },
+						{ text: 'DataABCMore' },
+						{ text: 'different' },
+					]);
+
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'text', value: 'data%more', condition: 'ilike' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(6);
+					expect(result.data).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({ text: 'data%more' }),
+							expect.objectContaining({ text: 'Data%More' }),
+							expect.objectContaining({ text: 'datamore' }),
+							expect.objectContaining({ text: 'DataMore' }),
+							expect.objectContaining({ text: 'dataABCmore' }),
+							expect.objectContaining({ text: 'DataABCMore' }),
+						]),
+					);
+				});
+
+				it('should treat underscore literally', async () => {
+					// ARRANGE
+					await dataStoreService.insertRows(dataStoreId, project.id, [
+						{ text: 'prefix_suffix' },
+						{ text: 'Prefix_Suffix' },
+						{ text: 'Prefix\\_Suffix' },
+						{ text: 'prefixASuffix' },
+						{ text: 'prefixsuffix' },
+					]);
+
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'text', value: 'prefix_suffix', condition: 'ilike' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(2);
+					expect(result.data).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({ text: 'prefix_suffix' }),
+							expect.objectContaining({ text: 'Prefix_Suffix' }),
+						]),
+					);
+				});
+
+				it('should handle multiple special characters', async () => {
+					// ARRANGE
+					await dataStoreService.insertRows(dataStoreId, project.id, [
+						{ text: 'test[*?]data' },
+						{ text: 'Test[*?]Data' },
+						{ text: 'testOtherData' },
+						{ text: 'test123data' },
+					]);
+
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'text', value: '%[*?]%', condition: 'ilike' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(2);
+					expect(result.data).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({ text: 'test[*?]data' }),
+							expect.objectContaining({ text: 'Test[*?]Data' }),
+						]),
+					);
+				});
 			});
-
-			const rows = [
-				{ c1: null, c2: true },
-				{ c1: 'Marco', c2: true },
-				{ c1: null, c2: false },
-				{ c1: 'Polo', c2: false },
-			];
-
-			const ids = await dataStoreService.insertRows(dataStoreId, project.id, rows);
-			expect(ids).toEqual([1, 2, 3, 4].map((id) => ({ id })));
-
-			// ACT
-			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
-				filter: {
-					type: 'and',
-					filters: [{ columnName: 'c1', condition: 'neq', value: null }],
-				},
-			});
-
-			// ASSERT
-			expect(result.count).toEqual(2);
-			// Assuming IDs are auto-incremented starting from 1
-			expect(result.data).toMatchObject([
-				{ c1: 'Marco', c2: true, id: 2 },
-				{ c1: 'Polo', c2: false, id: 4 },
-			]);
 		});
 	});
 });
