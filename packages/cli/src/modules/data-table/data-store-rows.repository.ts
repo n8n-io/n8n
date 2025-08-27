@@ -60,25 +60,24 @@ function getConditionAndParams(
 		}
 	}
 
+	// Handle operators that map directly to SQL operators
+	const operators: Record<string, string> = {
+		eq: '=',
+		neq: '!=',
+		gt: '>',
+		gte: '>=',
+		lt: '<',
+		lte: '<=',
+	};
+
+	if (operators[filter.condition]) {
+		return [
+			`${column} ${operators[filter.condition]} :${paramName}`,
+			{ [paramName]: filter.value },
+		];
+	}
+
 	switch (filter.condition) {
-		case 'eq':
-			return [`${column} = :${paramName}`, { [paramName]: filter.value }];
-
-		case 'neq':
-			return [`${column} != :${paramName}`, { [paramName]: filter.value }];
-
-		case 'gt':
-			return [`${column} > :${paramName}`, { [paramName]: filter.value }];
-
-		case 'gte':
-			return [`${column} >= :${paramName}`, { [paramName]: filter.value }];
-
-		case 'lt':
-			return [`${column} < :${paramName}`, { [paramName]: filter.value }];
-
-		case 'lte':
-			return [`${column} <= :${paramName}`, { [paramName]: filter.value }];
-
 		// case-sensitive
 		case 'like':
 			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
@@ -125,6 +124,9 @@ function getConditionAndParams(
 
 			return [`UPPER(${column}) LIKE UPPER(:${paramName})`, { [paramName]: filter.value }];
 	}
+
+	// This should never happen as all valid conditions are handled above
+	throw new Error(`Unsupported filter condition: ${filter.condition}`);
 }
 
 @Service()
