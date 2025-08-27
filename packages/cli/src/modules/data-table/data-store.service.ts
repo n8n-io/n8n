@@ -357,6 +357,14 @@ export class DataStoreService {
 					filter.value = `%${filter.value}%`;
 				}
 			}
+
+			if (['gt', 'gte', 'lt', 'lte'].includes(filter.condition)) {
+				if (filter.value === null || filter.value === undefined) {
+					throw new DataStoreValidationError(
+						`${filter.condition.toUpperCase()} filter value cannot be null or undefined`,
+					);
+				}
+			}
 		}
 	}
 }
