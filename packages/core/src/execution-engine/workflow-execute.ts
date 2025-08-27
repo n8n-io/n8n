@@ -1513,6 +1513,27 @@ export class WorkflowExecute {
 		}
 	}
 
+	private checkForWorkflowIssues(workflow: Workflow): void {
+		this.assertExecutionDataExists(this.runExecutionData.executionData, workflow);
+		// Node execution stack will be empty for an execution containing only Chat
+		// Trigger.
+		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
+
+		let destinationNode: string | undefined;
+		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
+			destinationNode = this.runExecutionData.startData.destinationNode;
+		}
+		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
+		const workflowIssues = this.checkReadyForExecution(workflow, {
+			startNode,
+			destinationNode,
+			pinDataNodeNames,
+		});
+		if (workflowIssues !== null) {
+			throw new WorkflowHasIssuesError();
+		}
+	}
+
 	/**
 	 * Runs the given execution data.
 	 *
@@ -1528,37 +1549,8 @@ export class WorkflowExecute {
 
 		this.status = 'running';
 
-		const { hooks, executionId } = this.additionalData;
+		const { hooks } = this.additionalData;
 		assert.ok(hooks, 'Failed to run workflow due to missing execution lifecycle hooks');
-
-		if (!this.runExecutionData.executionData) {
-			throw new ApplicationError('Failed to run workflow due to missing execution data', {
-				extra: {
-					workflowId: workflow.id,
-					executionId,
-					mode: this.mode,
-				},
-			});
-		}
-
-		/** Node execution stack will be empty for an execution containing only Chat Trigger. */
-		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
-
-		let destinationNode: string | undefined;
-		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
-			destinationNode = this.runExecutionData.startData.destinationNode;
-		}
-
-		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
-
-		const workflowIssues = this.checkReadyForExecution(workflow, {
-			startNode,
-			destinationNode,
-			pinDataNodeNames,
-		});
-		if (workflowIssues !== null) {
-			throw new WorkflowHasIssuesError();
-		}
 
 		// Variables which hold temporary data for each node-execution
 		let executionData: IExecuteData;
@@ -1570,6 +1562,7 @@ export class WorkflowExecute {
 			this.runExecutionData.startData = {};
 		}
 
+		this.checkForWorkflowIssues(workflow);
 		this.handleWaitingState(workflow);
 
 		let currentExecutionTry = '';
