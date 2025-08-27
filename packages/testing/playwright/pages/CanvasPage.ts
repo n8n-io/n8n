@@ -473,4 +473,9 @@ export class CanvasPage extends BasePage {
 
 		await this.page.goto('/workflow/new');
 	}
+
+	async addNodeWithSubItem(searchText: string, subItemText: string): Promise<void> {
+		await this.addNode(searchText);
+		await this.nodeCreatorSubItem(subItemText).click();
+	}
 }

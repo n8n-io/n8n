@@ -984,3 +984,10 @@ export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 export const AI_ASSISTANT_MAX_CONTENT_LENGTH = 100; // in kilobytes
 
 export const RUN_DATA_DEFAULT_PAGE_SIZE = 25;
+
+/**
+ * Performance Optimizations
+ */
+
+export const LOGS_EXECUTION_DATA_THROTTLE_DURATION = 1000;
+export const CANVAS_EXECUTION_DATA_THROTTLE_DURATION = 500;

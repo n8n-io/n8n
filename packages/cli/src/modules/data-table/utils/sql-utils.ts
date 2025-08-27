@@ -5,12 +5,17 @@ import {
 } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
-import type { DataStoreColumnJsType, DataStoreRows, DataStoreRowWithId } from 'n8n-workflow';
+import type {
+	DataStoreColumnJsType,
+	DataStoreRows,
+	DataStoreRowReturn,
+	DataStoreRowsReturn,
+} from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
 import type { DataStoreUserTableName } from '../data-store.types';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -138,7 +143,6 @@ export function quoteIdentifier(name: string, dbType: DataSourceOptions['type'])
 }
 
 type WithInsertId = { insertId: number };
-type WithRowId = { id: number };
 
 const isArrayOf = <T>(data: unknown, itemGuard: (x: unknown) => x is T): data is T[] =>
 	Array.isArray(data) && data.every(itemGuard);
@@ -147,18 +151,35 @@ const isNumber = (value: unknown): value is number => {
 	return typeof value === 'number' && Number.isFinite(value);
 };
 
+const isDate = (value: unknown): value is Date => {
+	return value instanceof Date;
+};
+
 function hasInsertId(data: unknown): data is WithInsertId {
 	return typeof data === 'object' && data !== null && 'insertId' in data && isNumber(data.insertId);
 }
 
-function hasRowId(data: unknown): data is WithRowId {
+function hasRowReturnData(data: unknown): data is DataStoreRowReturn {
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		'id' in data &&
+		isNumber(data.id) &&
+		'createdAt' in data &&
+		isDate(data.createdAt) &&
+		'updatedAt' in data &&
+		isDate(data.updatedAt)
+	);
+}
+
+function hasRowId(data: unknown): data is Pick<DataStoreRowReturn, 'id'> {
 	return typeof data === 'object' && data !== null && 'id' in data && isNumber(data.id);
 }
 
-export function extractReturningData(raw: unknown): DataStoreRowWithId[] {
-	if (!isArrayOf(raw, hasRowId)) {
+export function extractReturningData(raw: unknown): DataStoreRowReturn[] {
+	if (!isArrayOf(raw, hasRowReturnData)) {
 		throw new UnexpectedError(
-			'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+			`Expected INSERT INTO raw to be { id: number; createdAt: string; updatedAt: string }[] on Postgres or MariaDB. Is '${JSON.stringify(raw)}'`,
 		);
 	}
 
@@ -171,7 +192,7 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 		case 'mariadb': {
 			if (!isArrayOf(raw, hasRowId)) {
 				throw new UnexpectedError(
-					'Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB',
+					`Expected INSERT INTO raw to be { id: number }[] on Postgres or MariaDB. Is '${JSON.stringify(raw)}'`,
 				);
 			}
 			return raw.map((r) => r.id);
@@ -192,7 +213,7 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 	}
 }
 
-export function normalizeRows(rows: DataStoreRows, columns: DataStoreColumn[]) {
+export function normalizeRows(rows: DataStoreRowsReturn, columns: DataStoreColumn[]) {
 	// we need to normalize system dates as well
 	const systemColumns = [
 		{ name: 'createdAt', type: 'date' },
@@ -262,6 +283,28 @@ export function normalizeValue(
 	return value;
 }
 
-export function getPlaceholder(index: number, dbType: DataSourceOptions['type']): string {
-	return dbType.includes('postgres') ? `$${index}` : '?';
+/**
+ * Convert a LIKE-style pattern (only % is wildcard) into a SQLite GLOB pattern.
+ */
+export function toSqliteGlobFromPercent(input: string): string {
+	const out: string[] = [];
+	for (const ch of String(input ?? '')) {
+		if (ch === '%') out.push('*');
+		else if (ch === '[') out.push('[[]');
+		else if (ch === ']') out.push('[]]');
+		else if (ch === '*') out.push('[*]');
+		else if (ch === '?') out.push('[?]');
+		else out.push(ch);
+	}
+	return out.join('');
+}
+
+/**
+ * LIKE escaper for DBs where we use ESCAPE '\'.
+ * Keep '%' as wildcard; make '_' literal; escape the escape char itself.
+ */
+export function escapeLikeSpecials(input: string): string {
+	return input
+		.replace(/\\/g, '\\\\') // escape the escape char itself
+		.replace(/_/g, '\\_'); // make '_' literal ('%' stays a wildcard)
 }
