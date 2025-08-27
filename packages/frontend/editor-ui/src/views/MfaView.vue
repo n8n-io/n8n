@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { IFormInputs } from '@/Interface';
+import type { IFormInputs, InputAutocompletePropType } from '@/Interface';
 import Logo from '@/components/Logo/Logo.vue';
 import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
@@ -65,12 +65,11 @@ const formField = (
 	placeholder: string,
 	maxlength: number,
 	focus = true,
-	autocomplete: string = 'text',
+	autocomplete: InputAutocompletePropType = 'off',
 ) => {
 	return {
 		name,
 		initialValue: '',
-		autocomplete: autocomplete,
 		properties: {
 			label,
 			placeholder,
@@ -78,6 +77,7 @@ const formField = (
 			capitalize: true,
 			validateOnBlur: false,
 			focusInitially: focus,
+			autocomplete,
 		},
 	};
 };
@@ -116,11 +116,8 @@ const focusMfaCodeAfterPasswordManager = () => {
 	setTimeout(() => {
 		if (mfaFormRef.value) {
 			const container = mfaFormRef.value.$el;
-
 			if (!container) return;
-
 			const inputElement = container.querySelector('input[name="mfaCode"]') as HTMLInputElement;
-
 			if (inputElement) {
 				inputElement.focus();
 			}
