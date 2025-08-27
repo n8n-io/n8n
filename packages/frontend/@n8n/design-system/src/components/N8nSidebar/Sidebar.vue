@@ -207,20 +207,39 @@ const {
 	display: flex;
 	flex-direction: column;
 
-	scrollbar-width: thin; /* Firefox */
-
-	&::-webkit-scrollbar {
-		width: 8px; /* vertical scrollbar */
-		height: 8px; /* horizontal scrollbar */
+	/* Webkit browsers (Chrome, Safari, Edge) */
+	::-webkit-scrollbar {
+		width: 4px;
+		height: 3px;
 	}
 
-	&::-webkit-scrollbar-thumb {
-		background-color: rgba(0, 0, 0, 0);
-		border-radius: 4px;
+	::-webkit-scrollbar-track {
+		background: transparent;
 	}
 
-	&::-webkit-scrollbar-thumb:hover {
-		background: rgba(0, 0, 0, 0);
+	::-webkit-scrollbar-thumb {
+		background: rgba(0, 0, 0, 0.3);
+		border-radius: 3px;
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		background: rgba(0, 0, 0, 0.5);
+	}
+
+	/* Firefox */
+	* {
+		scrollbar-width: thin;
+		scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+	}
+
+	/* Prevent layout shift by reserving scrollbar space */
+	html {
+		overflow-y: scroll; /* Always show vertical scrollbar space */
+	}
+
+	/* Or use this approach for containers that might need scrollbars */
+	.scrollable-container {
+		scrollbar-gutter: stable; /* Modern browsers - reserves space */
 	}
 }
 
@@ -250,6 +269,7 @@ const {
 
 .sidebar {
 	padding: var(--spacing-2xs);
+	padding-right: var(--spacing-5xs);
 	background-color: var(--color-foreground-xlight);
 	position: relative;
 	max-height: 100%;
@@ -257,11 +277,6 @@ const {
 	flex-grow: 1;
 	display: flex;
 	flex-direction: column;
-}
-
-.sidebarHidden,
-.sidebarPeak {
-	overflow: auto;
 }
 
 .sidebarHeader {
@@ -306,7 +321,7 @@ const {
 
 .sidebarUserArea {
 	position: relative;
-	padding: var(--spacing-3xs) var(--spacing-2xs);
+	padding: var(--spacing-3xs) var(--spacing-xs) var(--spacing-2xs) var(--spacing-xs);
 	background-color: var(--color-foreground-xlight);
 	border-top: var(--border-base);
 	display: flex;
