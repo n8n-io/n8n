@@ -55,3 +55,6 @@ TASK_REJECTED_REASON_OFFER_EXPIRED = (
     "Offer expired - not accepted within validity window"
 )
 TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capacity"
+
+# Security
+DEFAULT_DENIED_BUILTINS = "eval,exec,compile,open,input,breakpoint"

@@ -6,6 +6,7 @@ from src.constants import (
     DEFAULT_TASK_TIMEOUT,
     DEFAULT_TASK_BROKER_URI,
     DEFAULT_MAX_PAYLOAD_SIZE,
+    DEFAULT_DENIED_BUILTINS,
     ENV_MAX_CONCURRENCY,
     ENV_MAX_PAYLOAD_SIZE,
     ENV_TASK_BROKER_URI,
@@ -43,7 +44,7 @@ def parse_env_vars() -> TaskRunnerOpts:
     if not grant_token:
         raise ValueError(f"{ENV_GRANT_TOKEN} environment variable is required")
 
-    denied_builtins_str = os.getenv(ENV_BUILTINS_DENY, "")
+    denied_builtins_str = os.getenv(ENV_BUILTINS_DENY, DEFAULT_DENIED_BUILTINS)
     denied_builtins = {
         name
         for raw_name in denied_builtins_str.split(",")
