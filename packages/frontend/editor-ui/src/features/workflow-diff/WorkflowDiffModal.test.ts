@@ -27,13 +27,13 @@ vi.mock('vue-router', () => ({
 
 vi.mock('@/features/workflow-diff/useViewportSync', () => ({
 	useProvideViewportSync: () => ({
-		selectedDetailId: vi.fn(),
+		selectedDetailId: ref(undefined),
 		onNodeClick: vi.fn(),
 	}),
 	useInjectViewportSync: () => ({
 		triggerViewportChange: vi.fn(),
 		onViewportChange: vi.fn(),
-		selectedDetailId: vi.fn(),
+		selectedDetailId: ref(undefined),
 		triggerNodeClick: vi.fn(),
 	}),
 }));

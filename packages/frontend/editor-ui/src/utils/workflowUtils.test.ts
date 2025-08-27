@@ -1,5 +1,5 @@
 import { removeWorkflowExecutionData } from './workflowUtils';
-import type { IWorkflowDb, INodeUi } from '@/Interface';
+import type { IWorkflowDb } from '@/Interface';
 
 describe('workflowUtils', () => {
 	describe('removeWorkflowExecutionData', () => {
