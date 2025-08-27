@@ -92,6 +92,7 @@ import { AddLastActiveAtColumnToUser1750252139166 } from '../common/175025213916
 import { AddScopeTables1750252139166 } from '../common/1750252139166-AddScopeTables';
 import { AddRolesTables1750252139167 } from '../common/1750252139167-AddRolesTables';
 import { LinkRoleToUserTable1750252139168 } from '../common/1750252139168-LinkRoleToUserTable';
+import { RemoveOldRoleColumn1750252139170 } from '../common/1750252139170-RemoveOldRoleColumn';
 import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
 import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
 import type { Migration } from '../migration-types';
@@ -192,5 +193,6 @@ export const postgresMigrations: Migration[] = [
 	LinkRoleToUserTable1750252139168,
 	AddInputsOutputsToTestCaseExecution1752669793000,
 	CreateDataStoreTables1754475614601,
+	RemoveOldRoleColumn1750252139170,
 	ReplaceDataStoreTablesWithDataTables1754475614602,
 ];

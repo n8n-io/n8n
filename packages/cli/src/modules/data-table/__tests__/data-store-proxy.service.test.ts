@@ -209,7 +209,7 @@ describe('DataStoreProxyService', () => {
 		);
 		await dataStoreOperations.insertRows(rows);
 
-		expect(dataStoreServiceMock.insertRows).toBeCalledWith('dataStore-id', PROJECT_ID, rows);
+		expect(dataStoreServiceMock.insertRows).toBeCalledWith('dataStore-id', PROJECT_ID, rows, true);
 	});
 
 	it('should call upsertRows with correct parameters', async () => {
@@ -225,6 +225,11 @@ describe('DataStoreProxyService', () => {
 		);
 		await dataStoreOperations.upsertRows(options);
 
-		expect(dataStoreServiceMock.upsertRows).toBeCalledWith('dataStore-id', PROJECT_ID, options);
+		expect(dataStoreServiceMock.upsertRows).toBeCalledWith(
+			'dataStore-id',
+			PROJECT_ID,
+			options,
+			true,
+		);
 	});
 });

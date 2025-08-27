@@ -2,15 +2,16 @@ import json
 from dataclasses import asdict
 from typing import cast
 
-from .message_types.broker import NodeMode, TaskSettings
-from .constants import (
+from src.message_types.broker import NodeMode, TaskSettings
+from src.constants import (
     BROKER_INFO_REQUEST,
     BROKER_RUNNER_REGISTERED,
     BROKER_TASK_CANCEL,
     BROKER_TASK_OFFER_ACCEPT,
     BROKER_TASK_SETTINGS,
+    BROKER_RPC_RESPONSE,
 )
-from .message_types import (
+from src.message_types import (
     BrokerMessage,
     RunnerMessage,
     BrokerInfoRequest,
@@ -18,6 +19,7 @@ from .message_types import (
     BrokerTaskOfferAccept,
     BrokerTaskSettings,
     BrokerTaskCancel,
+    BrokerRpcResponse,
 )
 
 
@@ -75,12 +77,24 @@ def _parse_task_cancel(d: dict) -> BrokerTaskCancel:
     return BrokerTaskCancel(task_id=task_id, reason=reason)
 
 
+def _parse_rpc_response(d: dict) -> BrokerRpcResponse:
+    try:
+        call_id = d["callId"]
+        task_id = d["taskId"]
+        status = d["status"]
+    except KeyError as e:
+        raise ValueError(f"Missing field in RPC response message: {e}")
+
+    return BrokerRpcResponse(call_id, task_id, status)
+
+
 MESSAGE_TYPE_MAP = {
     BROKER_INFO_REQUEST: lambda _: BrokerInfoRequest(),
     BROKER_RUNNER_REGISTERED: lambda _: BrokerRunnerRegistered(),
     BROKER_TASK_OFFER_ACCEPT: _parse_task_offer_accept,
     BROKER_TASK_SETTINGS: _parse_task_settings,
     BROKER_TASK_CANCEL: _parse_task_cancel,
+    BROKER_RPC_RESPONSE: _parse_rpc_response,
 }
 
 
