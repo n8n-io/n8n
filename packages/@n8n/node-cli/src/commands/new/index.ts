@@ -114,7 +114,10 @@ export default class New extends Command {
 		}
 
 		note(
-			`Need help? Check out the docs: https://docs.n8n.io/integrations/creating-nodes/build/${type}-style-node/`,
+			`cd ./${nodeName} && ${packageManager} run dev
+
+📚 Documentation: https://docs.n8n.io/integrations/creating-nodes/build/${type}-style-node/
+💬 Community: https://community.n8n.io`,
 			'Next Steps',
 		);
 
