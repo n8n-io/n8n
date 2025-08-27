@@ -33,6 +33,12 @@
         ]
     },
     "release-it": {
+        "git": {
+            "requireCleanWorkingDir": true,
+            "requireBranch": "main",
+            "requireUpstream": true,
+            "requireCommits": true
+        },
         "hooks": {
             "before:init": "{{packageManager.name}} run lint && {{packageManager.name}} run build"
         }
