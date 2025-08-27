@@ -356,14 +356,12 @@ describe('Hubspot Node', () => {
 	describe('engagements', () => {
 		beforeAll(() => {
 			hubspotNock
-				.post('/engagements/v1/engagements', function checkOwnerIdIsDefined(body) {
-					return body.engagement.ownerId === engagements.request[0].engagement.ownerId;
-				})
-				.reply(200, engagements.response[0])
-				.post('/engagements/v1/engagements', function checkOwnerIdIsNotDefined(body) {
-					return body.engagement.ownerId === undefined;
-				})
-				.reply(200, engagements.response[1]);
+				.post('/engagements/v1/engagements', engagements.request.createWithOwnerId)
+				.reply(200, engagements.response.createWithOwnerId)
+				.post('/engagements/v1/engagements', engagements.request.createWithoutOwnerId)
+				.reply(200, engagements.response.createWithoutOwnerId)
+				.post('/engagements/v1/engagements', engagements.request.createV2_1)
+				.reply(200, engagements.response.createV2_1);
 		});
 
 		afterAll(() => hubspotNock.done());
