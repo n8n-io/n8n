@@ -42,7 +42,7 @@ class ImportValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        """Validate from import statements (e.g., from os import path)."""
+        """Validate from import statements (e.g., from os import path). Relative imports are disallowed."""
 
         if node.level > 0:
             self._add_violation(node.lineno, ERROR_RELATIVE_IMPORT)
@@ -52,14 +52,24 @@ class ImportValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
-        """Validate dynamic imports, i.e. __import__() or importlib.import_module()."""
+        """Validate dynamic imports: __import__() or importlib.import_module() are allowed only with constant strings that do not start with a dot."""
 
         # __import__()
         if isinstance(node.func, ast.Name) and node.func.id == "__import__":
+            module_arg = None
+            
+            # positional argument
             if node.args and isinstance(node.args[0], ast.Constant):
-                module_name = node.args[0].value
-                if isinstance(module_name, str):
-                    self._validate_import(module_name, node.lineno)
+                module_arg = node.args[0].value
+            # keyword argument
+            elif node.keywords:
+                for keyword in node.keywords:
+                    if keyword.arg == "name" and isinstance(keyword.value, ast.Constant):
+                        module_arg = keyword.value.value
+                        break
+            
+            if module_arg and isinstance(module_arg, str):
+                self._validate_import(module_arg, node.lineno)
             else:
                 self._add_violation(node.lineno, ERROR_DYNAMIC_IMPORT)
         
@@ -73,10 +83,20 @@ class ImportValidator(ast.NodeVisitor):
                 and isinstance(node.func.value, ast.Name)
                 and node.func.value.id == "importlib")
         ):
+            module_arg = None
+            
+            # Check positional argument
             if node.args and isinstance(node.args[0], ast.Constant):
-                module_name = node.args[0].value
-                if isinstance(module_name, str):
-                    self._validate_import(module_name, node.lineno)
+                module_arg = node.args[0].value
+            # Check keyword argument (name="module")
+            elif node.keywords:
+                for keyword in node.keywords:
+                    if keyword.arg == "name" and isinstance(keyword.value, ast.Constant):
+                        module_arg = keyword.value.value
+                        break
+            
+            if module_arg and isinstance(module_arg, str):
+                self._validate_import(module_arg, node.lineno)
             else:
                 self._add_violation(node.lineno, ERROR_DYNAMIC_IMPORTLIB)
 
