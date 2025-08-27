@@ -44,10 +44,10 @@ class ImportValidator(ast.NodeVisitor):
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         """Validate from import statements (e.g., from os import path). Block relative imports."""
 
-        if node.module:
-            self._validate_import(node.module, node.lineno)
-        elif node.level > 0:
+        if node.level > 0:
             self._add_violation(node.lineno, ERROR_RELATIVE_IMPORT)
+        elif node.module:
+            self._validate_import(node.module, node.lineno)
 
         self.generic_visit(node)
 
