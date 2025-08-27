@@ -110,7 +110,7 @@ export async function executeSelectMany(
 
 	let take = 1000;
 	const result: Array<{ json: DataStoreRowReturn }> = [];
-
+	let totalCount = undefined;
 	do {
 		const response = await dataStoreProxy.getManyRowsAndCount({
 			skip: result.length,
@@ -123,6 +123,14 @@ export async function executeSelectMany(
 		if (response.count === response.data.length) {
 			return data;
 		}
+
+		if (totalCount !== undefined && response.count !== totalCount) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'synchronization error: result count changed during pagination',
+			);
+		}
+		totalCount = response.count;
 
 		result.push.apply(result, data);
 		take = Math.min(take, response.count - result.length);
