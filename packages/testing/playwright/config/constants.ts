@@ -9,6 +9,7 @@ export const MANUAL_CHAT_TRIGGER_NODE_NAME = 'Chat Trigger';
 export const CHAT_TRIGGER_NODE_DISPLAY_NAME = 'When chat message received';
 export const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 export const CODE_NODE_NAME = 'Code';
+export const CODE_NODE_DISPLAY_NAME = 'Code in JavaScript';
 export const SET_NODE_NAME = 'Set';
 export const EDIT_FIELDS_SET_NODE_NAME = 'Edit Fields (Set)';
 export const LOOP_OVER_ITEMS_NODE_NAME = 'Loop Over Items';
