@@ -854,5 +854,284 @@ describe('dataStore filters', () => {
 				});
 			});
 		});
+
+		describe('greater than and less than filters', () => {
+			describe('number comparisons', () => {
+				let dataStoreId: string;
+
+				beforeEach(async () => {
+					const { id } = await dataStoreService.createDataStore(project.id, {
+						name: 'dataStore',
+						columns: [
+							{ name: 'name', type: 'string' },
+							{ name: 'age', type: 'number' },
+						],
+					});
+					dataStoreId = id;
+
+					const rows = [
+						{ name: 'John', age: 25 },
+						{ name: 'Mary', age: 30 },
+						{ name: 'Jack', age: 35 },
+						{ name: 'Alice', age: 40 },
+					];
+
+					await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				});
+
+				it("retrieves rows with 'greater than' filter correctly", async () => {
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', value: 30, condition: 'gt' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(2);
+					expect(result.data).toEqual([
+						expect.objectContaining({ name: 'Jack', age: 35 }),
+						expect.objectContaining({ name: 'Alice', age: 40 }),
+					]);
+				});
+
+				it("retrieves rows with 'greater than or equal' filter correctly", async () => {
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', value: 30, condition: 'gte' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(3);
+					expect(result.data).toEqual([
+						expect.objectContaining({ name: 'Mary', age: 30 }),
+						expect.objectContaining({ name: 'Jack', age: 35 }),
+						expect.objectContaining({ name: 'Alice', age: 40 }),
+					]);
+				});
+
+				it("retrieves rows with 'less than' filter correctly", async () => {
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', value: 35, condition: 'lt' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(2);
+					expect(result.data).toEqual([
+						expect.objectContaining({ name: 'John', age: 25 }),
+						expect.objectContaining({ name: 'Mary', age: 30 }),
+					]);
+				});
+
+				it("retrieves rows with 'less than or equal' filter correctly", async () => {
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'age', value: 35, condition: 'lte' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(3);
+					expect(result.data).toEqual([
+						expect.objectContaining({ name: 'John', age: 25 }),
+						expect.objectContaining({ name: 'Mary', age: 30 }),
+						expect.objectContaining({ name: 'Jack', age: 35 }),
+					]);
+				});
+			});
+
+			describe('string comparisons', () => {
+				let dataStoreId: string;
+
+				beforeEach(async () => {
+					const { id } = await dataStoreService.createDataStore(project.id, {
+						name: 'dataStore',
+						columns: [
+							{ name: 'name', type: 'string' },
+							{ name: 'category', type: 'string' },
+						],
+					});
+					dataStoreId = id;
+
+					const rows = [
+						{ name: 'Alice', category: 'Alpha' },
+						{ name: 'Bob', category: 'Beta' },
+						{ name: 'Charlie', category: 'Gamma' },
+						{ name: 'David', category: 'Delta' },
+					];
+
+					await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				});
+
+				it("retrieves rows with 'greater than' string filter correctly", async () => {
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'category', value: 'Beta', condition: 'gt' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(2);
+					expect(result.data).toEqual([
+						expect.objectContaining({ name: 'Charlie', category: 'Gamma' }),
+						expect.objectContaining({ name: 'David', category: 'Delta' }),
+					]);
+				});
+
+				it("retrieves rows with 'less than' string filter correctly", async () => {
+					// ACT
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [{ columnName: 'category', value: 'Delta', condition: 'lt' }],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(2);
+					expect(result.data).toEqual([
+						expect.objectContaining({ name: 'Alice', category: 'Alpha' }),
+						expect.objectContaining({ name: 'Bob', category: 'Beta' }),
+					]);
+				});
+			});
+
+			describe('date comparisons', () => {
+				let dataStoreId: string;
+
+				beforeEach(async () => {
+					const { id } = await dataStoreService.createDataStore(project.id, {
+						name: 'dataStore',
+						columns: [
+							{ name: 'name', type: 'string' },
+							{ name: 'registeredAt', type: 'date' },
+						],
+					});
+					dataStoreId = id;
+
+					const rows = [
+						{ name: 'Task1', registeredAt: new Date('2023-12-31') },
+						{ name: 'Task2', registeredAt: new Date('2024-01-01') },
+						{ name: 'Task3', registeredAt: new Date('2024-01-02') },
+						{ name: 'Task4', registeredAt: new Date('2024-01-03') },
+					];
+
+					await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				});
+
+				it("retrieves rows with 'greater than' date filter correctly", async () => {
+					// ACT
+					const baseDate = new Date('2024-01-01');
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [
+								{ columnName: 'registeredAt', value: baseDate.toISOString(), condition: 'gt' },
+							],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(2);
+					expect(result.data).toEqual([
+						expect.objectContaining({ name: 'Task3' }),
+						expect.objectContaining({ name: 'Task4' }),
+					]);
+				});
+
+				it("retrieves rows with 'less than or equal' date filter correctly", async () => {
+					// ACT
+					const baseDate = new Date('2024-01-02');
+					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+						filter: {
+							type: 'and',
+							filters: [
+								{ columnName: 'registeredAt', value: baseDate.toISOString(), condition: 'lte' },
+							],
+						},
+					});
+
+					// ASSERT
+					expect(result.count).toEqual(3);
+					expect(result.data).toEqual([
+						expect.objectContaining({ name: 'Task1' }),
+						expect.objectContaining({ name: 'Task2' }),
+						expect.objectContaining({ name: 'Task3' }),
+					]);
+				});
+			});
+
+			describe('null value validation', () => {
+				let dataStoreId: string;
+
+				beforeEach(async () => {
+					const { id } = await dataStoreService.createDataStore(project.id, {
+						name: 'dataStore',
+						columns: [
+							{ name: 'name', type: 'string' },
+							{ name: 'age', type: 'number' },
+						],
+					});
+					dataStoreId = id;
+
+					const rows = [
+						{ name: 'John', age: 31 },
+						{ name: 'Jack', age: 29 },
+						{ name: 'Mary', age: null },
+					];
+
+					await dataStoreService.insertRows(dataStoreId, project.id, rows);
+				});
+
+				describe.each(['gt', 'gte', 'lt', 'lte'] as const)(
+					'%s filter with null values',
+					(condition) => {
+						it(`throws error when '${condition}' filter value is null`, async () => {
+							// ACT
+							const result = dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+								filter: {
+									type: 'and',
+									filters: [{ columnName: 'age', value: null, condition }],
+								},
+							});
+
+							// ASSERT
+							await expect(result).rejects.toThrow(
+								new DataStoreValidationError(
+									`${condition.toUpperCase()} filter value cannot be null or undefined`,
+								),
+							);
+						});
+
+						it(`handles null values in data correctly with '${condition}' filter`, async () => {
+							// ACT
+							const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+								filter: {
+									type: 'and',
+									filters: [{ columnName: 'age', value: 30, condition }],
+								},
+							});
+
+							// ASSERT
+							// Null values should be excluded from comparison results
+							expect(result.count).toBeGreaterThanOrEqual(1);
+							expect(result.data.every((row) => row.age !== null)).toBe(true);
+						});
+					},
+				);
+			});
+		});
 	});
 });
