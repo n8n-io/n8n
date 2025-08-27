@@ -311,14 +311,14 @@ export class DataStoreService {
 		return existingTable;
 	}
 
-	private async validateColumnExists(dataStoreId: string, columnId: string) {
+	private async validateColumnExists(dataTableId: string, columnId: string) {
 		const existingColumn = await this.dataStoreColumnRepository.findOneBy({
 			id: columnId,
-			dataStoreId,
+			dataTableId,
 		});
 
 		if (existingColumn === null) {
-			throw new DataStoreColumnNotFoundError(dataStoreId, columnId);
+			throw new DataStoreColumnNotFoundError(dataTableId, columnId);
 		}
 
 		return existingColumn;
