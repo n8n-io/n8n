@@ -1,14 +1,14 @@
 <script lang="ts" setup>
-import { computed, onBeforeMount } from 'vue';
-import type { IMenuItem } from '@n8n/design-system/types';
-import { useI18n } from '@n8n/i18n';
+import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectListItem } from '@/types/projects.types';
-import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
+import type { ProjectListItem } from '@/types/projects.types';
+import type { IMenuItem } from '@n8n/design-system/types';
+import { useI18n } from '@n8n/i18n';
 import { ElMenu } from 'element-plus';
+import { computed, onBeforeMount } from 'vue';
 
 type Props = {
 	collapsed: boolean;
@@ -28,7 +28,7 @@ const isCreatingProject = computed(() => globalEntityCreation.isCreatingProject.
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
 const hasMultipleVerifiedUsers = computed(
-	() => usersStore.allUsers.filter((user) => user.isPendingUser === false).length > 1,
+	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
 );
 
 const home = computed<IMenuItem>(() => ({
@@ -140,7 +140,7 @@ onBeforeMount(async () => {
 					data-test-id="project-plus-button"
 					:disabled="isCreatingProject || !projectsStore.hasPermissionToCreateProjects"
 					:class="$style.plusBtn"
-					@click="globalEntityCreation.createProject"
+					@click="globalEntityCreation.createProject('add_icon')"
 				/>
 			</N8nTooltip>
 		</N8nText>

@@ -2,7 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const DATA_TABLE_ID_FIELD = 'dataTableId';
 
-export const COLUMNS: INodeProperties = {
+export const COLUMNS = {
 	displayName: 'Columns',
 	name: 'columns',
 	type: 'resourceMapper',
@@ -25,4 +25,13 @@ export const COLUMNS: INodeProperties = {
 			multiKeyMatch: true,
 		},
 	},
-};
+} satisfies INodeProperties;
+
+export const DRY_RUN = {
+	displayName: 'Dry Run',
+	name: 'dryRun',
+	type: 'boolean',
+	default: false,
+	description:
+		'Whether the delete operation should only be simulated, returning the rows that would have been deleted',
+} satisfies INodeProperties;
