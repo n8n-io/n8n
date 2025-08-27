@@ -320,7 +320,7 @@ describe('AskAssistantChat', () => {
 
 		const expectToolMessage = (
 			props: MessageWrapperProps,
-			expectedProps: Partial<ChatUI.ToolMessage & { id: string }>,
+			expectedProps: Partial<ChatUI.ToolMessage & { id: string; read?: boolean }>,
 		) => {
 			expect(props.message).toEqual(expect.objectContaining(expectedProps));
 		};
@@ -580,8 +580,9 @@ describe('AskAssistantChat', () => {
 			expectMessageWrapperCalledTimes(1);
 			const props = getMessageWrapperProps();
 
-			expect(props.message.status).toEqual('running');
-			expect(props.message.updates).toEqual([
+			const toolMessage = props.message as ChatUI.ToolMessage;
+			expect(toolMessage.status).toEqual('running');
+			expect(toolMessage.updates).toEqual([
 				{ type: 'progress', data: { status: 'Starting search' } },
 				{ type: 'input', data: { query: 'test query' } },
 				{ type: 'progress', data: { status: 'Processing results' } },
