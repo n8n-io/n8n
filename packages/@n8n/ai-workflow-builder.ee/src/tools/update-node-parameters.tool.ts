@@ -252,6 +252,5 @@ export function createUpdateNodeParametersTool(
 	return {
 		tool: dynamicTool,
 		displayTitle: DISPLAY_TITLE,
-		getCustomDisplayTitle: getCustomNodeTitle,
 	};
 }
