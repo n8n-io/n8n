@@ -7,6 +7,7 @@ import { useToast } from '@/composables/useToast';
 import { useClipboard } from '@/composables/useClipboard';
 import { useDebugInfo } from '@/composables/useDebugInfo';
 import { useI18n } from '@n8n/i18n';
+import axios from 'axios';
 
 const modalBus = createEventBus();
 const toast = useToast();
@@ -71,9 +72,9 @@ const copyDebugInfoToClipboard = async () => {
 						<n8n-text>{{ i18n.baseText('about.thirdPartyLicenses') }}</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-link to="/THIRD_PARTY_LICENSES.md" new-window>
+						<a href="/rest/third-party-licenses" download>
 							{{ i18n.baseText('about.thirdPartyLicensesLink') }}
-						</n8n-link>
+						</a>
 					</el-col>
 				</el-row>
 				<el-row>

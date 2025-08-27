@@ -44,7 +44,8 @@ type EndpointGroup =
 	| 'folder'
 	| 'insights'
 	| 'data-store'
-	| 'module-settings';
+	| 'module-settings'
+	| 'third-party-licenses';
 
 type ModuleName = 'insights' | 'external-secrets' | 'community-packages' | 'data-store';
 

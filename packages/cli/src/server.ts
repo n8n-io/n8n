@@ -91,6 +91,7 @@ export class Server extends AbstractServer {
 			const { FrontendService } = await import('@/services/frontend.service');
 			this.frontendService = Container.get(FrontendService);
 			await import('@/controllers/module-settings.controller');
+			await import('@/controllers/third-party-licenses.controller');
 		}
 
 		this.presetCredentialsLoaded = false;
@@ -262,25 +263,6 @@ export class Server extends AbstractServer {
 		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) =>
 			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
 		);
-
-		// Serve third-party licenses file
-		const licenseFile = resolve(CLI_DIR, 'dist', 'THIRD_PARTY_LICENSES.md');
-		const placeholderLicenseFile = resolve(CLI_DIR, 'THIRD_PARTY_LICENSES_PLACEHOLDER.md');
-		this.app.get('/THIRD_PARTY_LICENSES.md', async (_, res) => {
-			try {
-				// Try production file first
-				await fsAccess(licenseFile);
-				res.sendFile(licenseFile);
-			} catch {
-				try {
-					// Fall back to placeholder file for local development
-					await fsAccess(placeholderLicenseFile);
-					res.sendFile(placeholderLicenseFile);
-				} catch {
-					res.status(404).send('Not found');
-				}
-			}
-		});
 
 		// ----------------------------------------
 		// Settings

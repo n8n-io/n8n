@@ -15,7 +15,6 @@ import { fileURLToPath } from 'url';
 const CONFIG = {
 	TEMP_LICENSE_FILE: 'licenses.json',
 	OUTPUT_FILE: 'THIRD_PARTY_LICENSES.md',
-	EXCLUDED_PACKAGE_PATTERN: 'n8n',
 	INVALID_LICENSE_FILES: ['readme.md', 'readme.txt', 'readme', 'package.json'],
 	VALID_LICENSE_FILES: ['license', 'licence', 'copying', 'copyright'],
 };
@@ -88,7 +87,14 @@ function parsePackageKey(packageKey) {
 }
 
 function shouldExcludePackage(packageName) {
-	return packageName.includes(CONFIG.EXCLUDED_PACKAGE_PATTERN);
+	const n8nPatterns = [
+		/^@n8n\//,      // @n8n/package
+		/^@n8n_/,       // @n8n_io/package  
+		/^n8n-/,        // n8n-package
+		/-n8n/          // package-n8n
+	];
+	
+	return n8nPatterns.some(pattern => pattern.test(packageName));
 }
 
 function isValidLicenseFile(filePath) {
