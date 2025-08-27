@@ -45,7 +45,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['DataStore', 'DataStoreColumn', 'Project', 'ProjectRelation']);
+	await testDb.truncate(['DataTable', 'DataTableColumn', 'Project', 'ProjectRelation']);
 
 	projectRepository = Container.get(ProjectRepository);
 	dataStoreRepository = Container.get(DataStoreRepository);
@@ -758,7 +758,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		expect(dataStoreInDb).toBeNull();
 	});
 
-	test("should delete data from 'data_store', 'data_store_column' tables and drop 'data_store_user_<id>' table", async () => {
+	test("should delete data from 'data_table', 'data_table_column' tables and drop 'data_table_user_<id>' table", async () => {
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const dataStore = await createDataStore(personalProject, {
 			name: 'Test Data Store',
@@ -779,7 +779,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		expect(dataStoreInDb).toBeNull();
 
 		const dataStoreColumnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 		});
 		expect(dataStoreColumnInDb).toBeNull();
 
@@ -924,7 +924,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.send(payload)
 			.expect(400);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(0);
 	});
 
@@ -942,7 +942,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.send(payload)
 			.expect(400);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(0);
 	});
 
@@ -964,7 +964,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			})
 			.expect(403);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(1);
 		expect(columnsInDb[0].name).toBe('test-column');
 	});
@@ -984,7 +984,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.send(payload)
 			.expect(403);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(0);
 	});
 
@@ -1011,7 +1011,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.send(payload)
 			.expect(200);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(2);
 		expect(columnsInDb[0].name).toBe('new-column');
 		expect(columnsInDb[0].type).toBe('string');
@@ -1040,7 +1040,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.send(payload)
 			.expect(200);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(2);
 		expect(columnsInDb[0].name).toBe('new-column');
 		expect(columnsInDb[0].type).toBe('boolean');
@@ -1070,7 +1070,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.send(payload)
 			.expect(200);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(2);
 		expect(columnsInDb[0].name).toBe('new-column');
 		expect(columnsInDb[0].type).toBe('boolean');
@@ -1163,7 +1163,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 			.expect(403);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 		});
 		expect(columnInDb).toBeDefined();
@@ -1187,7 +1187,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 			.expect(403);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 		});
 		expect(columnInDb).toBeDefined();
@@ -1214,7 +1214,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 		});
 		expect(columnInDb).toBeNull();
@@ -1240,7 +1240,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 		});
 		expect(columnInDb).toBeNull();
@@ -1265,7 +1265,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 		});
 		expect(columnInDb).toBeNull();
@@ -1289,7 +1289,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 		});
 		expect(columnInDb).toBeNull();
@@ -1364,7 +1364,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 			.expect(403);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 			index: 0,
 		});
@@ -1395,7 +1395,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 			.expect(403);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 			index: 0,
 		});
@@ -1426,7 +1426,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 			index: 1,
 		});
@@ -1457,7 +1457,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 			index: 1,
 		});
@@ -1488,7 +1488,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 			index: 1,
 		});
@@ -1517,7 +1517,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 			index: 1,
 		});
