@@ -18,11 +18,19 @@ from src.constants import (
 from src.task_runner import TaskRunnerOpts
 
 
-def parse_allowlist(allowlist_str: str) -> Set[str]:
+def parse_allowlist(allowlist_str: str, list_name: str) -> Set[str]:
     if not allowlist_str:
         return set()
 
-    return set(module.strip() for module in allowlist_str.split(",") if module.strip())
+    modules = {module for raw_module in allowlist_str.split(",") if (module := raw_module.strip())}
+    
+    if "*" in modules and len(modules) > 1:
+        raise ValueError(
+            f"Wildcard '*' in {list_name} must be used alone, not with other modules. "
+            f"Got: {', '.join(sorted(modules))}"
+        )
+    
+    return modules
 
 
 def parse_env_vars() -> TaskRunnerOpts:
@@ -37,11 +45,11 @@ def parse_env_vars() -> TaskRunnerOpts:
     )
 
     stdlib_allow_str = os.getenv(ENV_STDLIB_ALLOW)
-    stdlib_allow = parse_allowlist(stdlib_allow_str)
+    stdlib_allow = parse_allowlist(stdlib_allow_str, "stdlib allowlist")
 
     # Parse allowed external packages (default to none)
     external_allow_str = os.getenv(ENV_EXTERNAL_ALLOW, "")
-    external_allow = parse_allowlist(external_allow_str)
+    external_allow = parse_allowlist(external_allow_str, "external allowlist")
 
     return TaskRunnerOpts(
         grant_token=grant_token,

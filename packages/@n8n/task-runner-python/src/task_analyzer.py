@@ -4,9 +4,9 @@ from typing import Set
 
 from src.errors import SecurityViolationError
 
-ERROR_RELATIVE_IMPORTS = "Relative imports are disallowed"
-ERROR_DYNAMIC_IMPORT = "Dynamic imports using `__import__()` are disallowed (could bypass allowlist validation at runtime)"
-ERROR_DYNAMIC_IMPORTLIB = "Dynamic imports using `importlib` are disallowed (could bypass allowlist validation at runtime)"
+ERROR_RELATIVE_IMPORT = "Relative imports are disallowed"
+ERROR_DYNAMIC_IMPORT = "Dynamic imports using `__import__()` are disallowed, because they can bypass allowlist validation at runtime."
+ERROR_DYNAMIC_IMPORTLIB = "Dynamic imports using `importlib` are disallowed, because they can bypass allowlist validation at runtime."
 ERROR_STDLIB_DISALLOWED = "Import of standard library module '{module}' is disallowed. Allowed stdlib modules: {allowed}"
 ERROR_EXTERNAL_DISALLOWED = "Import of external package '{module}' is disallowed. Allowed external packages: {allowed}"
 ERROR_SECURITY_VIOLATIONS = "Security violations detected:\n{violations}"
@@ -38,12 +38,12 @@ class ImportValidator(ast.NodeVisitor):
         if node.module:
             self._validate_import(node.module, node.lineno)
         elif node.level > 0:
-            self._add_violation(node.lineno, ERROR_RELATIVE_IMPORTS)
+            self._add_violation(node.lineno, ERROR_RELATIVE_IMPORT)
 
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
-        """Validate dynamic imports, i.e. __import__() or importlib.import_module(). Block non-constant module names."""
+        """Validate dynamic imports, i.e. __import__() or importlib.import_module()."""
 
         if isinstance(node.func, ast.Name) and node.func.id == "__import__":
             if node.args and isinstance(node.args[0], ast.Constant):
@@ -82,10 +82,12 @@ class ImportValidator(ast.NodeVisitor):
         is_stdlib = module_name in sys.stdlib_module_names
         is_external = not is_stdlib
 
-        if is_stdlib and module_name in self.stdlib_allow:
+        if is_stdlib and ("*" in self.stdlib_allow or module_name in self.stdlib_allow):
             return
 
-        if is_external and module_name in self.external_allow:
+        if is_external and (
+            "*" in self.external_allow or module_name in self.external_allow
+        ):
             return
 
         error, allowed_str = (
@@ -102,7 +104,6 @@ class ImportValidator(ast.NodeVisitor):
         return ", ".join(sorted(allow_set)) if allow_set else "none"
 
     def _add_violation(self, lineno: int, message: str) -> None:
-        """Add a violation with line number prefix."""
         self.violations.append(f"Line {lineno}: {message}")
 
 
@@ -114,14 +115,14 @@ class TaskAnalyzer:
     def validate(self, code: str) -> None:
         tree = ast.parse(code)
 
-        visitor = ImportValidator(self.stdlib_allow, self.external_allow)
-        visitor.visit(tree)
+        import_validator = ImportValidator(self.stdlib_allow, self.external_allow)
+        import_validator.visit(tree)
 
-        if not visitor.violations:
+        if not import_validator.violations:
             return
 
         message = ERROR_SECURITY_VIOLATIONS.format(
-            violations="\n".join(visitor.violations)
+            violations="\n".join(import_validator.violations)
         )
 
         raise SecurityViolationError(message)
