@@ -146,7 +146,7 @@ describe('ToolMessage', () => {
 				isFirstOfRole: true,
 			});
 
-			expect(wrapper.html()).toContain('icon="circle-x"');
+			expect(wrapper.html()).toContain('icon="triangle-alert"');
 		});
 	});
 
