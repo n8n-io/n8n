@@ -73,7 +73,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -90,7 +90,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: '',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -107,7 +107,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -124,7 +124,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -144,7 +144,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -164,7 +164,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -183,7 +183,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -201,7 +201,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -492,11 +492,11 @@ describe('GET /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test_column-1',
+					name: 'test_column_1',
 					type: 'string',
 				},
 				{
-					name: 'test_column-2',
+					name: 'test_column_2',
 					type: 'boolean',
 				},
 			],
@@ -958,7 +958,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		await authMemberAgent
 			.post(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns`)
 			.send({
-				name: 'new-column',
+				name: 'new_column',
 				type: 'string',
 			})
 			.expect(403);
@@ -1000,7 +1000,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		});
 
 		const payload = {
-			name: 'new-column',
+			name: 'new_column',
 			type: 'string',
 			index: 0,
 		};
@@ -1012,7 +1012,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 
 		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
 		expect(columnsInDb).toHaveLength(2);
-		expect(columnsInDb[0].name).toBe('new-column');
+		expect(columnsInDb[0].name).toBe('new_column');
 		expect(columnsInDb[0].type).toBe('string');
 	});
 
@@ -1029,7 +1029,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		});
 
 		const payload = {
-			name: 'new-column',
+			name: 'new_column',
 			type: 'boolean',
 			index: 0,
 		};
@@ -1041,7 +1041,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 
 		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
 		expect(columnsInDb).toHaveLength(2);
-		expect(columnsInDb[0].name).toBe('new-column');
+		expect(columnsInDb[0].name).toBe('new_column');
 		expect(columnsInDb[0].type).toBe('boolean');
 		expect(columnsInDb[1].name).toBe('test_column');
 		expect(columnsInDb[1].type).toBe('string');
@@ -1059,7 +1059,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		});
 
 		const payload = {
-			name: 'new-column',
+			name: 'new_column',
 			type: 'boolean',
 			index: 0,
 		};
@@ -1071,7 +1071,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 
 		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
 		expect(columnsInDb).toHaveLength(2);
-		expect(columnsInDb[0].name).toBe('new-column');
+		expect(columnsInDb[0].name).toBe('new_column');
 		expect(columnsInDb[0].type).toBe('boolean');
 		expect(columnsInDb[1].name).toBe('test_column');
 		expect(columnsInDb[1].type).toBe('string');
@@ -1082,18 +1082,18 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test_column-1',
+					name: 'test_column_1',
 					type: 'string',
 				},
 				{
-					name: 'test_column-2',
+					name: 'test_column_2',
 					type: 'string',
 				},
 			],
 		});
 
 		const payload: DataStoreCreateColumnSchema = {
-			name: 'new-column',
+			name: 'new_column',
 			type: 'boolean',
 			index: 1,
 		};
@@ -1106,9 +1106,9 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const columns = await dataStoreColumnRepository.getColumns(dataStore.id);
 
 		expect(columns).toHaveLength(3);
-		expect(columns[0].name).toBe('test_column-1');
-		expect(columns[1].name).toBe('new-column');
-		expect(columns[2].name).toBe('test_column-2');
+		expect(columns[0].name).toBe('test_column_1');
+		expect(columns[1].name).toBe('new_column');
+		expect(columns[2].name).toBe('test_column_2');
 	});
 });
 
