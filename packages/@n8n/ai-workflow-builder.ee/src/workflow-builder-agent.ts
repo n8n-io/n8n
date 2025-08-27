@@ -414,20 +414,20 @@ export class WorkflowBuilderAgent {
 			.addNode('compact_messages', compactSession)
 			.addNode('auto_compact_messages', compactSession)
 			.addNode('create_workflow_name', createWorkflowName)
-			.addNode('createPlan', createPlan)
-			.addNode('reviewPlan', reviewPlan)
-			.addNode('adjustPlan', adjustPlan)
+			.addNode('create_plan', createPlan)
+			.addNode('review_plan', reviewPlan)
+			.addNode('adjust_plan', adjustPlan)
 			.addConditionalEdges('__start__', shouldModifyState)
-			.addEdge('createPlan', 'reviewPlan')
-			.addConditionalEdges('reviewPlan', (state) => {
+			.addEdge('create_plan', 'review_plan')
+			.addConditionalEdges('review_plan', (state) => {
 				// Route based on the plan status after review
-				return state.planStatus === 'approved' ? 'agent' : 'adjustPlan';
+				return state.planStatus === 'approved' ? 'agent' : 'adjust_plan';
 			})
-			.addEdge('adjustPlan', 'reviewPlan')
+			.addEdge('adjust_plan', 'review_plan')
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent')
 			.addEdge('auto_compact_messages', 'agent')
-			.addEdge('create_workflow_name', 'createPlan')
+			.addEdge('create_workflow_name', 'create_plan')
 			.addEdge('delete_messages', END)
 			.addEdge('compact_messages', END)
 			.addConditionalEdges('agent', shouldContinue);
