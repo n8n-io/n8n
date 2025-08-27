@@ -54,6 +54,7 @@ class ImportValidator(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         """Validate dynamic imports, i.e. __import__() or importlib.import_module()."""
 
+        # __import__()
         if isinstance(node.func, ast.Name) and node.func.id == "__import__":
             if node.args and isinstance(node.args[0], ast.Constant):
                 module_name = node.args[0].value
@@ -61,18 +62,23 @@ class ImportValidator(ast.NodeVisitor):
                     self._validate_import(module_name, node.lineno)
             else:
                 self._add_violation(node.lineno, ERROR_DYNAMIC_IMPORT)
-
-        elif isinstance(node.func, ast.Attribute) and node.func.attr == "import_module":
-            if (
-                isinstance(node.func.value, ast.Name)
-                and node.func.value.id == "importlib"
-            ):
-                if node.args and isinstance(node.args[0], ast.Constant):
-                    module_name = node.args[0].value
-                    if isinstance(module_name, str):
-                        self._validate_import(module_name, node.lineno)
-                else:
-                    self._add_violation(node.lineno, ERROR_DYNAMIC_IMPORTLIB)
+        
+        # import_module()
+        elif (
+            # from importlib import import_module\n import_module()
+            (isinstance(node.func, ast.Name) and node.func.id == "import_module")
+            # import importlib\nimportlib.import_module()
+            or (isinstance(node.func, ast.Attribute) 
+                and node.func.attr == "import_module"
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "importlib")
+        ):
+            if node.args and isinstance(node.args[0], ast.Constant):
+                module_name = node.args[0].value
+                if isinstance(module_name, str):
+                    self._validate_import(module_name, node.lineno)
+            else:
+                self._add_violation(node.lineno, ERROR_DYNAMIC_IMPORTLIB)
 
         self.generic_visit(node)
 
