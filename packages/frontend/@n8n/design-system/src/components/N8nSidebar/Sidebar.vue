@@ -200,6 +200,7 @@ const {
 .resizeWrapper {
 	max-height: 100%;
 	height: 100%;
+
 	overflow-x: hidden;
 	overflow-y: auto;
 	border-right: var(--border-base);
@@ -252,7 +253,7 @@ const {
 	background-color: var(--color-foreground-xlight);
 	position: relative;
 	max-height: 100%;
-	overflow-y: auto;
+	overflow-y: scroll;
 	flex-grow: 1;
 	display: flex;
 	flex-direction: column;

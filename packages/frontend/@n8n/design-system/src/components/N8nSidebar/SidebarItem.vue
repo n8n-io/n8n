@@ -34,7 +34,7 @@ const to = computed(() => {
 	return undefined;
 });
 
-const folderIcon = computed<IconName>(() => {
+const icon = computed<IconName>(() => {
 	if (props.item.type === 'folder') {
 		return props.open ? 'folder-open' : 'folder';
 	}
@@ -62,7 +62,7 @@ const folderIcon = computed<IconName>(() => {
 						class="sidebarItemEmoji"
 						>{{ item.icon }}</span
 					>
-					<N8nIcon v-else-if="item.icon" :icon="folderIcon" />
+					<N8nIcon v-else-if="item.icon" :icon="icon" />
 				</div>
 				<button
 					v-if="item.type !== 'other'"
@@ -70,7 +70,7 @@ const folderIcon = computed<IconName>(() => {
 					@click="click"
 					:aria-label="ariaLabel"
 				>
-					<N8nIcon :icon="open ? 'chevron-down' : 'chevron-right'" />
+					<N8nIcon color="foreground-xdark" :icon="open ? 'chevron-down' : 'chevron-right'" />
 				</button>
 			</div>
 			<N8nText size="small" class="sidebarItemText">{{ item.label }}</N8nText>
@@ -94,7 +94,7 @@ const folderIcon = computed<IconName>(() => {
 	display: flex;
 	align-items: center;
 	padding: var(--spacing-3xs) var(--spacing-4xs);
-	gap: var(--spacing-4xs);
+	gap: var(--spacing-3xs);
 	cursor: pointer;
 	color: var(--color-text-base);
 	border-radius: var(--spacing-4xs);
@@ -146,7 +146,7 @@ const folderIcon = computed<IconName>(() => {
 		align-items: center;
 		justify-content: center;
 		pointer-events: none;
-		color: var(--color-foreground-xdark);
+		color: var(--color-foreground-dark);
 	}
 
 	&:not(.other) {
