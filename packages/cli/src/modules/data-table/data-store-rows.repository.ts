@@ -67,6 +67,18 @@ function getConditionAndParams(
 		case 'neq':
 			return [`${column} != :${paramName}`, { [paramName]: filter.value }];
 
+		case 'gt':
+			return [`${column} > :${paramName}`, { [paramName]: filter.value }];
+
+		case 'gte':
+			return [`${column} >= :${paramName}`, { [paramName]: filter.value }];
+
+		case 'lt':
+			return [`${column} < :${paramName}`, { [paramName]: filter.value }];
+
+		case 'lte':
+			return [`${column} <= :${paramName}`, { [paramName]: filter.value }];
+
 		// case-sensitive
 		case 'like':
 			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
