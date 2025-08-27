@@ -77,10 +77,11 @@ class ImportValidator(ast.NodeVisitor):
 
         # import_module()
         elif (
-            # from importlib import import_module\n import_module()
+            # from importlib import import_module; import_module()
             (isinstance(node.func, ast.Name) and node.func.id == "import_module")
-            # import importlib\nimportlib.import_module()
-            or (
+            or
+            # import importlib; importlib.import_module()
+            (
                 isinstance(node.func, ast.Attribute)
                 and node.func.attr == "import_module"
                 and isinstance(node.func.value, ast.Name)
