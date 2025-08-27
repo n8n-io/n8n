@@ -810,6 +810,10 @@ defineExpose({
 	gap: var(--spacing-m);
 }
 
+.listItems {
+	overflow-y: auto;
+}
+
 .listPagination {
 	display: flex;
 	justify-content: flex-end;
