@@ -521,6 +521,7 @@ const fetchDataStoreContent = async () => {
 
 onClickOutside(gridContainer, () => {
 	resetLastFocusedCell();
+	gridApi.value?.clearFocusedCell();
 });
 
 const resetLastFocusedCell = () => {
