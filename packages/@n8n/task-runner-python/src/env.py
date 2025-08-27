@@ -48,7 +48,7 @@ def parse_env_vars() -> TaskRunnerOpts:
         name.strip() for name in denied_builtins_str.split(",") if name.strip()
     )
 
-    stdlib_allow_str = os.getenv(ENV_STDLIB_ALLOW)
+    stdlib_allow_str = os.getenv(ENV_STDLIB_ALLOW, "")
     stdlib_allow = parse_allowlist(stdlib_allow_str, "stdlib allowlist")
 
     # Parse allowed external packages (default to none)
