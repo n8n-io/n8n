@@ -3,7 +3,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import * as row from './row/Row.resource';
 
-type DataTableNodeType = AllEntities<{ row: 'insert' | 'get' }>;
+type DataTableNodeType = AllEntities<{ row: 'insert' | 'get' | 'deleteRows' }>;
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const operationResult: INodeExecutionData[] = [];
