@@ -47,7 +47,7 @@ export default class Build extends Command {
 async function runTscBuild(): Promise<void> {
 	const packageManager = (await detectPackageManager()) ?? 'npm';
 	return await new Promise((resolve, reject) => {
-		const child = spawn(packageManager, ['exec', 'tsc'], {
+		const child = spawn(packageManager, ['exec', '--', 'tsc'], {
 			stdio: [null, 'pipe', 'pipe'],
 			shell: true,
 		});

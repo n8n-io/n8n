@@ -69,7 +69,7 @@ export default class Dev extends Command {
 		}
 
 		// Run `tsc --watch` in background
-		runPersistentCommand(packageManager, ['exec', 'tsc', '--watch'], {
+		runPersistentCommand(packageManager, ['exec', '--', 'tsc', '--watch'], {
 			name: 'build',
 			color: picocolors.cyan,
 		});
