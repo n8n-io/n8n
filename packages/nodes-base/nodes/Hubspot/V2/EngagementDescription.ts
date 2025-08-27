@@ -411,6 +411,22 @@ export const engagementFields: INodeProperties[] = [
 						name: 'ownerIds',
 						type: 'string',
 						default: '',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { lt: 2.2 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Owner ID',
+						name: 'ownerId',
+						type: 'number',
+						default: 0,
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 2.2 } }],
+							},
+						},
 					},
 					{
 						displayName: 'Ticket IDs',

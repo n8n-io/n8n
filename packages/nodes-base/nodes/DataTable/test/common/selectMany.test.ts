@@ -1,4 +1,9 @@
-import type { IDataStoreProjectService, IExecuteFunctions } from 'n8n-workflow';
+import {
+	type INode,
+	NodeOperationError,
+	type IDataStoreProjectService,
+	type IExecuteFunctions,
+} from 'n8n-workflow';
 
 import type { FieldEntry } from '../../common/constants';
 import { ANY_FILTER } from '../../common/constants';
@@ -13,6 +18,7 @@ describe('selectMany utils', () => {
 	} as unknown as IDataStoreProjectService);
 	const dataTableId = 2345;
 	let filters: FieldEntry[];
+	const node = { id: 1 } as unknown as INode;
 
 	beforeEach(() => {
 		filters = [
@@ -23,7 +29,7 @@ describe('selectMany utils', () => {
 			},
 		];
 		mockExecuteFunctions = {
-			getNode: jest.fn().mockReturnValue({}),
+			getNode: jest.fn().mockReturnValue(node),
 			getNodeParameter: jest.fn().mockImplementation((field) => {
 				switch (field) {
 					case DATA_TABLE_ID_FIELD:
@@ -85,6 +91,27 @@ describe('selectMany utils', () => {
 
 			// ASSERT
 			expect(result).toEqual([{ json: { id: 1, colA: null } }]);
+		});
+		it('should panic if pagination gets out of sync', async () => {
+			// ARRANGE
+			getManyRowsAndCount.mockReturnValueOnce({
+				data: Array.from({ length: 1000 }, (_, k) => ({ id: k })),
+				count: 2345,
+			});
+			getManyRowsAndCount.mockReturnValueOnce({
+				data: Array.from({ length: 1000 }, (_, k) => ({ id: k + 1000 })),
+				count: 2344,
+			});
+
+			filters = [];
+
+			// ACT ASSERT
+			await expect(executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy)).rejects.toEqual(
+				new NodeOperationError(
+					node,
+					'synchronization error: result count changed during pagination',
+				),
+			);
 		});
 	});
 });

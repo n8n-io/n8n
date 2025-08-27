@@ -1476,6 +1476,43 @@ export class WorkflowExecute {
 		);
 	}
 
+	private assertExecutionDataExists(
+		this: WorkflowExecute,
+		executionData: IRunExecutionData['executionData'],
+		workflow: Workflow,
+	): asserts executionData is NonNullable<IRunExecutionData['executionData']> {
+		if (!executionData) {
+			throw new UnexpectedError('Failed to run workflow due to missing execution data', {
+				extra: {
+					workflowId: workflow.id,
+					executionId: this.additionalData.executionId,
+					mode: this.mode,
+				},
+			});
+		}
+	}
+
+	/**
+	 * Handles executions that have been waiting by
+	 * 1. unsetting the `waitTill`
+	 * 2. disabling the currently executing node (which should be the node that
+	 *    put the execution into waiting) making sure it won't be executed again
+	 * 3. Removing the last run for the last executed node (which also should be
+	 *    the node that put the execution into waiting) to make sure the node
+	 *    does not show up as having run twice
+	 */
+	private handleWaitingState(workflow: Workflow) {
+		if (this.runExecutionData.waitTill) {
+			this.runExecutionData.waitTill = undefined;
+
+			this.assertExecutionDataExists(this.runExecutionData.executionData, workflow);
+			this.runExecutionData.executionData.nodeExecutionStack[0].node.disabled = true;
+
+			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
+			this.runExecutionData.resultData.runData[lastNodeExecuted].pop();
+		}
+	}
+
 	/**
 	 * Runs the given execution data.
 	 *
@@ -1533,12 +1570,7 @@ export class WorkflowExecute {
 			this.runExecutionData.startData = {};
 		}
 
-		if (this.runExecutionData.waitTill) {
-			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
-			this.runExecutionData.executionData.nodeExecutionStack[0].node.disabled = true;
-			this.runExecutionData.waitTill = undefined;
-			this.runExecutionData.resultData.runData[lastNodeExecuted].pop();
-		}
+		this.handleWaitingState(workflow);
 
 		let currentExecutionTry = '';
 		let lastExecutionTry = '';
