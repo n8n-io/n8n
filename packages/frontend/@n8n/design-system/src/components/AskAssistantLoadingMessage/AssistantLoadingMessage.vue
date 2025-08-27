@@ -58,7 +58,7 @@ withDefaults(
 	background-clip: text;
 	color: transparent;
 	background-size: 200% 100%;
-	animation: shimmer 5s linear infinite;
+	animation: shimmer 2.5s linear infinite;
 }
 
 @keyframes shimmer {
