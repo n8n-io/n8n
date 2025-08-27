@@ -57,7 +57,7 @@ export type NodeExecuteAfter = {
 	data: {
 		executionId: string;
 		nodeName: string;
-		// data: ITaskData;
+		data: ITaskData;
 
 		/**
 		 * When a worker relays updates about a manual execution to main, if the

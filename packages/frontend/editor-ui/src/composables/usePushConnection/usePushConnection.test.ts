@@ -22,6 +22,7 @@ vi.mock('@/composables/usePushConnection/handlers', () => ({
 	nodeDescriptionUpdated: vi.fn(),
 	nodeExecuteBefore: vi.fn(),
 	nodeExecuteAfter: vi.fn(),
+	nodeExecuteAfterData: vi.fn(),
 	executionStarted: vi.fn(),
 	executionWaiting: vi.fn(),
 	sendWorkerStatusMessage: vi.fn(),

@@ -10,6 +10,7 @@ import {
 	nodeDescriptionUpdated,
 	nodeExecuteBefore,
 	nodeExecuteAfter,
+	nodeExecuteAfterData,
 	executionStarted,
 	sendWorkerStatusMessage,
 	sendConsoleMessage,
@@ -60,6 +61,8 @@ export function usePushConnection(options: { router: ReturnType<typeof useRouter
 				return await nodeExecuteBefore(event);
 			case 'nodeExecuteAfter':
 				return await nodeExecuteAfter(event);
+			case 'nodeExecuteAfterData':
+				return await nodeExecuteAfterData(event);
 			case 'executionStarted':
 				return await executionStarted(event);
 			case 'sendWorkerStatusMessage':

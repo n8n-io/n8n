@@ -186,11 +186,13 @@ function hookFunctionsPush(
 		});
 
 		const itemCount = data.data?.main[0]?.length ?? 1;
+		const { data: _, ...taskData } = data;
 
 		pushInstance.send(
-			{ type: 'nodeExecuteAfter', data: { executionId, nodeName, itemCount } },
+			{ type: 'nodeExecuteAfter', data: { executionId, nodeName, itemCount, data: taskData } },
 			pushRef,
 		);
+
 		pushInstance.send(
 			{ type: 'nodeExecuteAfterData', data: { executionId, nodeName, data } },
 			pushRef,
