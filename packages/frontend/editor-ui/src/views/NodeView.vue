@@ -769,7 +769,7 @@ function onSetNodeActivated(id: string, event?: MouseEvent) {
 		}
 	}
 
-	setNodeActive(id);
+	setNodeActive(id, 'canvas_default_view');
 }
 
 function onOpenSubWorkflow(id: string) {
@@ -1212,7 +1212,7 @@ function onSwitchActiveNode(nodeName: string) {
 	const node = workflowsStore.getNodeByName(nodeName);
 	if (!node) return;
 
-	setNodeActiveByName(nodeName);
+	setNodeActiveByName(nodeName, 'other');
 	selectNodes([node.id]);
 }
 
@@ -1773,7 +1773,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'openNodeDetail',
 		action: ({ node }: { node: string }) => {
-			setNodeActiveByName(node);
+			setNodeActiveByName(node, 'other');
 		},
 	});
 
@@ -1824,7 +1824,7 @@ function showAddFirstStepIfEnabled() {
 function updateNodeRoute(nodeId: string) {
 	const nodeUi = workflowsStore.findNodeByPartialId(nodeId);
 	if (nodeUi) {
-		setNodeActive(nodeUi.id);
+		setNodeActive(nodeUi.id, 'other');
 	} else {
 		toast.showToast({
 			title: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.title'),

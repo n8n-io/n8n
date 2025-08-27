@@ -36,6 +36,7 @@ import { useExperimentalNdvStore } from '@/components/canvas/experimental/experi
 import { useNDVStore } from '@/stores/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
 import ExperimentalFocusPanelHeader from '@/components/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -65,12 +66,9 @@ const ndvStore = useNDVStore();
 const deviceSupport = useDeviceSupport();
 const vueFlow = useVueFlow(workflowsStore.workflowId);
 
-const focusedNodeParameter = computed(() => focusPanelStore.focusedNodeParameters[0]);
-const resolvedParameter = computed(() =>
-	focusedNodeParameter.value && focusPanelStore.isRichParameter(focusedNodeParameter.value)
-		? focusedNodeParameter.value
-		: undefined,
-);
+useTelemetryContext({ view_shown: 'focus_panel' });
+
+const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
 
 const inputValue = ref<string>('');
 
@@ -373,7 +371,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 
 function onOpenNdv() {
 	if (node.value) {
-		ndvStore.setActiveNodeName(node.value.name);
+		ndvStore.setActiveNodeName(node.value.name, 'focus_panel');
 	}
 }
 </script>

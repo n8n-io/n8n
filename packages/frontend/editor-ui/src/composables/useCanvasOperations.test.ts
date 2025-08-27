@@ -257,7 +257,9 @@ describe('useCanvasOperations', () => {
 				{ openNDV: true },
 			);
 
-			await waitFor(() => expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Test Name'));
+			await waitFor(() =>
+				expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Test Name', 'add_new_node'),
+			);
 		});
 
 		it('should not set sticky node type as active node', async () => {
@@ -1318,7 +1320,7 @@ describe('useCanvasOperations', () => {
 			ndvStore.activeNodeName = '';
 
 			const { setNodeActive } = useCanvasOperations();
-			setNodeActive(nodeId);
+			setNodeActive(nodeId, 'other');
 
 			expect(ndvStore.activeNodeName).toBe(nodeName);
 		});
@@ -1331,7 +1333,7 @@ describe('useCanvasOperations', () => {
 			ndvStore.activeNodeName = 'Existing Node';
 
 			const { setNodeActive } = useCanvasOperations();
-			setNodeActive(nodeId);
+			setNodeActive(nodeId, 'other');
 
 			expect(ndvStore.activeNodeName).toBe('Existing Node');
 		});
@@ -1343,7 +1345,7 @@ describe('useCanvasOperations', () => {
 			workflowsStore.getNodeById.mockImplementation(() => node);
 
 			const { setNodeActive } = useCanvasOperations();
-			setNodeActive(node.id);
+			setNodeActive(node.id, 'other');
 
 			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(node.name, false);
 		});
@@ -1356,7 +1358,7 @@ describe('useCanvasOperations', () => {
 			ndvStore.activeNodeName = '';
 
 			const { setNodeActiveByName } = useCanvasOperations();
-			setNodeActiveByName(nodeName);
+			setNodeActiveByName(nodeName, 'other');
 
 			expect(ndvStore.activeNodeName).toBe(nodeName);
 		});

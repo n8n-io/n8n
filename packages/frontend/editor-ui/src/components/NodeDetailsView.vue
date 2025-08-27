@@ -39,6 +39,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { useStyles } from '@/composables/useStyles';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
@@ -78,6 +79,8 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
+
+useTelemetryContext({ view_shown: 'ndv' });
 
 const settingsEventBus = createEventBus();
 const runInputIndex = ref(-1);
@@ -649,6 +652,7 @@ watch(
 						data_pinning_tooltip_presented: pinDataDiscoveryTooltipVisible.value,
 						input_displayed_row_height_avg: avgInputRowHeight.value,
 						output_displayed_row_height_avg: avgOutputRowHeight.value,
+						source: ndvStore.lastSetActiveNodeSource ?? 'other',
 					});
 				}
 			}, 2000); // wait for RunData to mount and present pindata discovery tooltip

@@ -93,7 +93,7 @@ export function useCalloutHelpers() {
 
 		const items: INodeCreateElement[] = getPreBuiltAgentNodeCreatorItems();
 
-		ndvStore.setActiveNodeName(null);
+		ndvStore.unsetActiveNodeName();
 		nodeCreatorStore.setNodeCreatorState({
 			source: NODE_CREATOR_OPEN_SOURCES.TEMPLATES_CALLOUT,
 			createNodeActive: true,

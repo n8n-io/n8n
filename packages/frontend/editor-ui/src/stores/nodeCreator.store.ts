@@ -43,6 +43,7 @@ import { CanvasConnectionMode } from '@/types';
 import { isVueFlowConnection } from '@/utils/typeGuards';
 import type { PartialBy } from '@/utils/typeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
+import type { TelemetryNdvType } from '@/types/telemetry';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -417,6 +418,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		resource?: string;
 		operation?: string;
 		action?: string;
+		next_view_shown?: TelemetryNdvType;
 	}) {
 		trackNodeCreatorEvent('User added node to workflow canvas', properties);
 	}
