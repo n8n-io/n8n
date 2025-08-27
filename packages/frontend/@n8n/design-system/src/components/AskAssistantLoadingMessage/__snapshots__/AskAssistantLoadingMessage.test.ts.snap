@@ -18,12 +18,15 @@ exports[`AssistantLoadingMessage > renders loading message correctly 1`] = `
         name="slide-vertical"
         persisted="false"
       >
-        <span
+        <n8n-text-stub
+          bold="false"
           class="message"
+          compact="false"
           data-v-4e90e01e=""
-        >
-          Thinking...
-        </span>
+          shimmer="true"
+          size="medium"
+          tag="span"
+        />
       </transition-stub>
     </div>
   </div>
