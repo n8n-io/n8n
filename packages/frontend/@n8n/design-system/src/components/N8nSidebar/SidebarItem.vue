@@ -43,7 +43,7 @@ const to = computed(() => {
 			v-for="level in new Array(level - 1)"
 			:key="level"
 		/>
-		<N8nRoute :to="to" :class="{ sidebarItem: true }" :aria-label="props.ariaLabel">
+		<N8nRoute :to="to" class="sidebarItem" :aria-label="props.ariaLabel">
 			<div
 				v-if="item.type !== 'workflow'"
 				:class="{ sidebarItemDropdown: true, other: item.type === 'other' }"
@@ -93,7 +93,6 @@ const to = computed(() => {
 	cursor: pointer;
 	min-width: 0;
 	width: 100%;
-	height: calc(100% - 1px);
 
 	&:hover .sidebarItemDropdownIcon {
 		color: var(--color-text-dark);

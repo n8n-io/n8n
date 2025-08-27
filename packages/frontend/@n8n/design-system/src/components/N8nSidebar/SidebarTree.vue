@@ -15,7 +15,7 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 
 <template>
 	<TreeRoot :items :get-key="(item: IMenuElement) => item.id">
-		<TreeVirtualizer v-slot="{ item }" :text-content="(opt) => opt.name">
+		<TreeVirtualizer v-slot="{ item }" :text-content="(opt) => opt.name" :estimate-size="29">
 			<TreeItem
 				as-child
 				:key="item.value.id"
