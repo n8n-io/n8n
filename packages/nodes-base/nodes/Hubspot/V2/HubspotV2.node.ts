@@ -47,7 +47,7 @@ export class HubspotV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			group: ['output'],
-			version: [2, 2.1],
+			version: [2, 2.1, 2.2],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			defaults: {
 				name: 'HubSpot',
@@ -2736,13 +2736,19 @@ export class HubspotV2 implements INodeType {
 								);
 							}
 
+							const ownerId =
+								associations.ownerId && typeof associations.ownerId === 'number'
+									? associations.ownerId
+									: undefined;
+
 							const body: {
-								engagement: { type: string };
+								engagement: { type: string; ownerId?: number };
 								metadata: IDataObject;
 								associations: IDataObject;
 							} = {
 								engagement: {
 									type: type.toUpperCase(),
+									ownerId,
 								},
 								metadata: {},
 								associations: {},

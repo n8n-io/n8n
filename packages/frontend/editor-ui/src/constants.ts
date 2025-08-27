@@ -808,6 +808,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	NDV_UI_OVERHAUL_EXPERIMENT.name,
 	BATCH_11AUG_EXPERIMENT.name,
 	PRE_BUILT_AGENTS_EXPERIMENT.name,
+	TEMPLATE_RECO_V2.name,
 ];
 
 export const MFA_FORM = {
@@ -984,3 +985,10 @@ export const AI_NODES_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 export const AI_ASSISTANT_MAX_CONTENT_LENGTH = 100; // in kilobytes
 
 export const RUN_DATA_DEFAULT_PAGE_SIZE = 25;
+
+/**
+ * Performance Optimizations
+ */
+
+export const LOGS_EXECUTION_DATA_THROTTLE_DURATION = 1000;
+export const CANVAS_EXECUTION_DATA_THROTTLE_DURATION = 500;

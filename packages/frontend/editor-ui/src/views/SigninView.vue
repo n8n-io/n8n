@@ -136,10 +136,6 @@ const login = async (form: LoginRequestDto) => {
 		loading.value = false;
 		await settingsStore.getSettings();
 
-		if (settingsStore.activeModules.length > 0) {
-			await settingsStore.getModuleSettings();
-		}
-
 		toast.clearAllStickyNotifications();
 
 		if (settingsStore.isMFAEnforced && !usersStore.currentUser?.mfaAuthenticated) {

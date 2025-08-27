@@ -2937,5 +2937,77 @@ describe('dataStore', () => {
 				);
 			});
 		});
+		it('retrieves supports filter by null', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'c1', type: 'string' },
+					{ name: 'c2', type: 'boolean' },
+				],
+			});
+
+			const rows = [
+				{ c1: null, c2: true },
+				{ c1: 'Marco', c2: true },
+				{ c1: null, c2: false },
+				{ c1: 'Polo', c2: false },
+			];
+
+			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, rows);
+			expect(ids).toEqual([1, 2, 3, 4].map((id) => ({ id })));
+
+			// ACT
+			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'c1', condition: 'eq', value: null }],
+				},
+			});
+
+			// ASSERT
+			expect(result.count).toEqual(2);
+			// Assuming IDs are auto-incremented starting from 1
+			expect(result.data).toMatchObject([
+				{ c1: null, c2: true, id: 1 },
+				{ c1: null, c2: false, id: 3 },
+			]);
+		});
+		it('retrieves supports filter by not null', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'c1', type: 'string' },
+					{ name: 'c2', type: 'boolean' },
+				],
+			});
+
+			const rows = [
+				{ c1: null, c2: true },
+				{ c1: 'Marco', c2: true },
+				{ c1: null, c2: false },
+				{ c1: 'Polo', c2: false },
+			];
+
+			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, rows);
+			expect(ids).toEqual([1, 2, 3, 4].map((id) => ({ id })));
+
+			// ACT
+			const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'c1', condition: 'neq', value: null }],
+				},
+			});
+
+			// ASSERT
+			expect(result.count).toEqual(2);
+			// Assuming IDs are auto-incremented starting from 1
+			expect(result.data).toMatchObject([
+				{ c1: 'Marco', c2: true, id: 2 },
+				{ c1: 'Polo', c2: false, id: 4 },
+			]);
+		});
 	});
 });

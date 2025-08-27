@@ -9,7 +9,7 @@ import { parse } from 'flatted';
 import { useToast } from '@/composables/useToast';
 import type { LatestNodeInfo, LogEntry } from '../logs.types';
 import { isChatNode } from '@/utils/aiUtils';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { LOGS_EXECUTION_DATA_THROTTLE_DURATION, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 
 export function useLogsExecutionData() {
 	const nodeHelpers = useNodeHelpers();
@@ -62,7 +62,9 @@ export function useLogsExecutionData() {
 		);
 	});
 
-	const updateInterval = computed(() => ((entries.value?.length ?? 0) > 1 ? 1000 : 0));
+	const updateInterval = computed(() =>
+		(entries.value?.length ?? 0) > 1 ? LOGS_EXECUTION_DATA_THROTTLE_DURATION : 0,
+	);
 
 	function resetExecutionData() {
 		execData.value = undefined;

@@ -16,6 +16,7 @@ import {
 	WorkflowHistoryRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
@@ -70,9 +71,9 @@ beforeAll(async () => {
 	owner = await createOwner();
 	admin = await createAdmin();
 	ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
-	member = await createUser({ role: 'global:member' });
+	member = await createUser({ role: { slug: 'global:member' } });
 	memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
-	anotherMember = await createUser({ role: 'global:member' });
+	anotherMember = await createUser({ role: { slug: 'global:member' } });
 	anotherMemberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 		anotherMember.id,
 	);
@@ -159,7 +160,7 @@ describe('PUT /workflows/:workflowId/share', () => {
 
 	test('should allow sharing with pending users', async () => {
 		const workflow = await createWorkflow({}, owner);
-		const memberShell = await createUserShell('global:member');
+		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
 		const memberShellPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			memberShell.id,
 		);
@@ -272,7 +273,7 @@ describe('PUT /workflows/:workflowId/share', () => {
 	test('should not allow sharing by another non-shared member', async () => {
 		const workflow = await createWorkflow({}, member);
 
-		const tempUser = await createUser({ role: 'global:member' });
+		const tempUser = await createUser({ role: { slug: 'global:member' } });
 		const tempUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			tempUser.id,
 		);
