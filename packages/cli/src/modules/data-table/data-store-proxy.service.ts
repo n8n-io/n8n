@@ -68,6 +68,10 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 	private makeAggregateOperations(projectId: string): IDataStoreProjectAggregateService {
 		const dataStoreService = this.dataStoreService;
 		return {
+			getProjectId() {
+				return projectId;
+			},
+
 			async getManyAndCount(options: ListDataStoreOptions = {}) {
 				const serviceOptions: DataStoreListOptions = {
 					...options,
