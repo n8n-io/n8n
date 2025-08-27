@@ -1709,6 +1709,93 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 	});
+
+	test("should parse 'eq' filters correctly", async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'name',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					name: 'John',
+				},
+				{
+					name: 'Jane',
+				},
+				{
+					name: 'Tom',
+				},
+			],
+		});
+
+		const filterParam = encodeURIComponent(
+			JSON.stringify({
+				type: 'and',
+				filters: [{ columnName: 'name', value: 'John', condition: 'eq' }],
+			}),
+		);
+
+		const response = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows?filter=${filterParam}`)
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			count: 1,
+			data: [
+				expect.objectContaining({
+					name: 'John',
+				}),
+			],
+		});
+	});
+
+	test("should parse 'like' filters correctly", async () => {
+		const dataStore = await createDataStore(memberProject, {
+			columns: [
+				{
+					name: 'name',
+					type: 'string',
+				},
+			],
+			data: [
+				{
+					name: 'John',
+				},
+				{
+					name: 'Jane',
+				},
+				{
+					name: 'Tom',
+				},
+			],
+		});
+
+		const filterParam = encodeURIComponent(
+			JSON.stringify({
+				type: 'and',
+				filters: [{ columnName: 'name', value: '%j%', condition: 'ilike' }],
+			}),
+		);
+
+		const response = await authMemberAgent
+			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows?filter=${filterParam}`)
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			count: 2,
+			data: [
+				expect.objectContaining({
+					name: 'John',
+				}),
+				expect.objectContaining({
+					name: 'Jane',
+				}),
+			],
+		});
+	});
 });
 
 describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
@@ -1961,11 +2048,15 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 					id: 1,
 					first: 'first row',
 					second: 'some value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
 				},
 				{
 					id: 2,
 					first: 'another row',
 					second: 'another value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
 				},
 			],
 		});
@@ -2951,9 +3042,27 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 
 		expect(result.body.data).toEqual(
 			expect.arrayContaining([
-				{ id: 1, first: 'test row', second: 'updated value' },
-				{ id: 2, first: 'test row', second: 'updated value' },
-				{ id: 3, first: 'new row', second: 'new value' },
+				{
+					id: 1,
+					first: 'test row',
+					second: 'updated value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
+				{
+					id: 2,
+					first: 'test row',
+					second: 'updated value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
+				{
+					id: 3,
+					first: 'new row',
+					second: 'new value',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+				},
 			]),
 		);
 	});

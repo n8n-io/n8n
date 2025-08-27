@@ -11,7 +11,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { DataStoreRow, DataStoreRows } from 'n8n-workflow';
+import type { DataStoreRow, DataStoreRowReturn, DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
@@ -107,6 +107,7 @@ export class DataStoreService {
 		dto: ListDataStoreContentQueryDto,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
+		this.validateFilters(dto);
 
 		// unclear if we should validate here, only use case would be to reduce the chance of
 		// a renamed/removed column appearing here (or added column missing) if the store was
@@ -125,11 +126,17 @@ export class DataStoreService {
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
 	}
 
+	async insertRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		projectId: string,
+		rows: DataStoreRows,
+		returnData?: T,
+	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	async insertRows(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
-		returnData: boolean = false,
+		returnData?: boolean,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateRows(dataStoreId, rows);
@@ -138,6 +145,12 @@ export class DataStoreService {
 		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnData);
 	}
 
+	async upsertRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<UpsertDataStoreRowsDto, 'returnData'>,
+		returnData?: T,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async upsertRows(
 		dataStoreId: string,
 		projectId: string,
@@ -319,6 +332,27 @@ export class DataStoreService {
 
 		if (hasNameClash) {
 			throw new DataStoreNameConflictError(name);
+		}
+	}
+
+	private validateFilters(dto: ListDataStoreContentQueryDto): void {
+		if (!dto.filter?.filters) {
+			return;
+		}
+
+		for (const filter of dto.filter.filters) {
+			if (['like', 'ilike'].includes(filter.condition)) {
+				if (filter.value === null || filter.value === undefined) {
+					throw new DataStoreValidationError(
+						`${filter.condition.toUpperCase()} filter value cannot be null or undefined`,
+					);
+				}
+				if (typeof filter.value !== 'string') {
+					throw new DataStoreValidationError(
+						`${filter.condition.toUpperCase()} filter value must be a string`,
+					);
+				}
+			}
 		}
 	}
 }
