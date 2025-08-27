@@ -6,7 +6,7 @@ import { validate } from 'class-validator';
 import { rm as fsRm } from 'fs/promises';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
-import { writeFile, chmod, readFile } from 'node:fs/promises';
+import { writeFile, readFile } from 'node:fs/promises';
 import path from 'path';
 
 import {
@@ -96,9 +96,29 @@ export class SourceControlPreferencesService {
 
 		const tempFilePath = path.join(this.instanceSettings.n8nFolder, 'ssh_private_key_temp');
 
-		await writeFile(tempFilePath, dbPrivateKey);
+		// Ensure proper line endings (LF only) for SSH keys, especially on Windows
+		const normalizedKey = dbPrivateKey.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-		await chmod(tempFilePath, 0o600);
+		try {
+			// Remove existing file if it exists to avoid permission conflicts
+			await fsRm(tempFilePath).catch(() => {
+				// Ignore errors if file doesn't exist
+			});
+
+			// Try restrictive permissions first (Unix standard), fall back to permissive if needed
+			try {
+				await writeFile(tempFilePath, normalizedKey, { mode: 0o600 });
+			} catch (permissionError) {
+				// If restrictive permissions fail (e.g., on Windows), use more permissive mode
+				await writeFile(tempFilePath, normalizedKey, { mode: 0o644 });
+			}
+		} catch (error) {
+			this.logger.error('Failed to write SSH private key to temp file', {
+				tempFilePath,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			throw new UnexpectedError('Failed to create SSH private key file', { cause: error });
+		}
 
 		return tempFilePath;
 	}
