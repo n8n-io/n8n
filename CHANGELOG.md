@@ -1,3 +1,12 @@
+## [1.108.2](https://github.com/n8n-io/n8n/compare/n8n@1.108.1...n8n@1.108.2) (2025-08-27)
+
+
+### Bug Fixes
+
+* **core:** Fix waiting webhooks validation when n8n is behind proxy ([#18767](https://github.com/n8n-io/n8n/issues/18767)) ([13674bd](https://github.com/n8n-io/n8n/commit/13674bd47ba7f8f4e41062b7f3492c110cdcedbf))
+
+
+
 ## [1.108.1](https://github.com/n8n-io/n8n/compare/n8n@1.108.0...n8n@1.108.1) (2025-08-20)
 
 
