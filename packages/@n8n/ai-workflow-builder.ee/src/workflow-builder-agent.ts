@@ -248,17 +248,20 @@ export class WorkflowBuilderAgent {
 				workflowPlan ?? undefined,
 				planFeedback ?? undefined,
 			);
+
+			// Remove previous plan tool messages to avoid confusion
 			const filteredMessages = messages.map((m) => {
-				// Remove previous plan tool messages to avoid confusion
 				if (m instanceof ToolMessage && m.name === 'generate_workflow_plan') {
 					return new RemoveMessage({ id: m.id! });
 				}
+
 				if (m instanceof AIMessage && m.tool_calls && m.tool_calls.length > 0) {
 					const hasPlanCall = m.tool_calls.find((tc) => tc.name === 'generate_workflow_plan');
 					if (hasPlanCall) {
 						return new RemoveMessage({ id: m.id! });
 					}
 				}
+
 				return m;
 			});
 

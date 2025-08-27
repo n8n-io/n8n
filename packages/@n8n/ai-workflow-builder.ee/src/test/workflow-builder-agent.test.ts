@@ -415,7 +415,7 @@ describe('WorkflowBuilderAgent', () => {
 			mockCreateWorkflowPlannerAgent.mockReturnValue(mockPlannerAgent);
 		});
 
-		describe('createPlan', () => {
+		describe('create_plan', () => {
 			it('should create a workflow plan from user message', async () => {
 				const payload: ChatPayload = {
 					message: 'Create a workflow to process data',
