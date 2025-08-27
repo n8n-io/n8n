@@ -26,6 +26,7 @@ export function useSidebarData2() {
 	const canCreateProject = computed(() => projectsStore.hasPermissionToCreateProjects);
 
 	onBeforeMount(async () => {
+		await usersStore.fetchUsers();
 		await projectsStore.getAllProjects();
 	});
 
@@ -70,7 +71,17 @@ export function useSidebarData2() {
 					id: folder.id,
 					label: folder.name,
 					icon: 'folder' as IconName,
-					children,
+					children:
+						children.length > 0
+							? children
+							: [
+									{
+										id: 'empty',
+										label: 'No workflows or folders',
+										type: 'empty',
+										available: false,
+									},
+								],
 					route: { to: `/projects/${projectId}/folders/${folder.id}/workflows` },
 					type: 'folder',
 				});
