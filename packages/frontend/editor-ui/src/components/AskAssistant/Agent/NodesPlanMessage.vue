@@ -63,7 +63,7 @@ function onRequestChanges() {
 		{{ message.message }}
 		<ol :class="$style.nodes">
 			<li v-for="(node, index) in message.data" :key="index" :class="$style.node">
-				<n8n-tooltip placement="left">
+				<n8n-tooltip placement="left" :show-after="300">
 					<template #content>
 						{{ node.reasoning }}
 					</template>
