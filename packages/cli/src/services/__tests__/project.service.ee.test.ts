@@ -101,7 +101,7 @@ describe('ProjectService', () => {
 
 			expect(projectRepository.findOne).toHaveBeenCalledWith({
 				where: { id: projectId, type: 'team' },
-				relations: { projectRelations: true },
+				relations: { projectRelations: { role: true } },
 			});
 
 			expect(manager.delete).toHaveBeenCalled();
@@ -186,7 +186,7 @@ describe('ProjectService', () => {
 
 			expect(projectRepository.findOne).toHaveBeenCalledWith({
 				where: { id: projectId, type: 'team' },
-				relations: { projectRelations: true },
+				relations: { projectRelations: { role: true } },
 			});
 
 			expect(projectRelationRepository.update).toHaveBeenCalledWith(
@@ -211,7 +211,7 @@ describe('ProjectService', () => {
 
 			expect(projectRepository.findOne).toHaveBeenCalledWith({
 				where: { id: projectId, type: 'team' },
-				relations: { projectRelations: true },
+				relations: { projectRelations: { role: true } },
 			});
 		});
 
@@ -231,7 +231,7 @@ describe('ProjectService', () => {
 
 			expect(projectRepository.findOne).toHaveBeenCalledWith({
 				where: { id: projectId, type: 'team' },
-				relations: { projectRelations: true },
+				relations: { projectRelations: { role: true } },
 			});
 		});
 	});

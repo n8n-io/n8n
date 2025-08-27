@@ -61,6 +61,7 @@ export const getProjectRelations = async ({
 }: Partial<ProjectRelation>): Promise<ProjectRelation[]> => {
 	return await Container.get(ProjectRelationRepository).find({
 		where: { projectId, userId, role },
+		relations: { role: true },
 	});
 };
 
@@ -71,6 +72,7 @@ export const getProjectRoleForUser = async (
 	return (
 		await Container.get(ProjectRelationRepository).findOne({
 			where: { projectId, userId },
+			relations: { role: true },
 		})
 	)?.role?.slug;
 };
@@ -80,5 +82,6 @@ export const getAllProjectRelations = async ({
 }: Partial<ProjectRelation>): Promise<ProjectRelation[]> => {
 	return await Container.get(ProjectRelationRepository).find({
 		where: { projectId },
+		relations: { role: true },
 	});
 };

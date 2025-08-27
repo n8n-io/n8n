@@ -89,6 +89,7 @@ describe('ProjectService', () => {
 			//
 			const relationships = await projectRelationRepository.find({
 				where: { userId: member.id, projectId: project.id },
+				relations: { role: true },
 			});
 
 			expect(relationships).toHaveLength(1);

@@ -43,6 +43,7 @@ export class SourceControlScopedService {
 				relations: {
 					projectRelations: {
 						user: true,
+						role: true,
 					},
 				},
 			});
@@ -52,6 +53,7 @@ export class SourceControlScopedService {
 			relations: {
 				projectRelations: {
 					user: true,
+					role: true,
 				},
 			},
 			select: {

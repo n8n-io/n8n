@@ -265,7 +265,7 @@ export class ProjectService {
 	async getProjectRelationsForUser(user: User): Promise<ProjectRelation[]> {
 		return await this.projectRelationRepository.find({
 			where: { userId: user.id },
-			relations: ['project'],
+			relations: ['project', 'role'],
 		});
 	}
 
@@ -322,7 +322,7 @@ export class ProjectService {
 	private async getTeamProjectWithRelations(projectId: string) {
 		const project = await this.projectRepository.findOne({
 			where: { id: projectId, type: 'team' },
-			relations: { projectRelations: true },
+			relations: { projectRelations: { role: true } },
 		});
 		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
 		return project;
@@ -471,7 +471,7 @@ export class ProjectService {
 	async getProjectRelations(projectId: string): Promise<ProjectRelation[]> {
 		return await this.projectRelationRepository.find({
 			where: { projectId },
-			relations: { user: true },
+			relations: { user: true, role: true },
 		});
 	}
 

@@ -73,6 +73,7 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 			where: {
 				userId,
 			},
+			relations: { role: true },
 		});
 	}
 }

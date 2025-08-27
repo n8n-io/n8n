@@ -28,7 +28,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				role: 'workflow:owner',
 				workflowId: In(workflowIds),
 			},
-			relations: { project: { projectRelations: { user: true } } },
+			relations: { project: { projectRelations: { user: true, role: true } } },
 		});
 	}
 

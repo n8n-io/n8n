@@ -7,9 +7,7 @@ import { User } from './user';
 
 @Entity()
 export class ProjectRelation extends WithTimestamps {
-	@ManyToOne('Role', 'projectRelations', {
-		eager: true,
-	})
+	@ManyToOne('Role', 'projectRelations')
 	@JoinColumn({ name: 'role', referencedColumnName: 'slug' })
 	role: Role;
 

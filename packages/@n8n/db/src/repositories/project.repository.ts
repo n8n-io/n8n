@@ -19,6 +19,7 @@ export class ProjectRepository extends Repository<Project> {
 				type: 'personal',
 				projectRelations: { userId, role: { slug: PROJECT_OWNER_ROLE_SLUG } },
 			},
+			relations: ['projectRelations.role'],
 		});
 	}
 
