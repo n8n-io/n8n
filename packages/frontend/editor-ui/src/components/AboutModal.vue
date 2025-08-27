@@ -7,8 +7,7 @@ import { useToast } from '@/composables/useToast';
 import { useClipboard } from '@/composables/useClipboard';
 import { useDebugInfo } from '@/composables/useDebugInfo';
 import { useI18n } from '@n8n/i18n';
-import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
-import axios from 'axios';
+import { useFileDownload } from '@/composables/useFileDownload';
 
 const modalBus = createEventBus();
 const toast = useToast();
@@ -16,15 +15,7 @@ const i18n = useI18n();
 const debugInfo = useDebugInfo();
 const clipboard = useClipboard();
 const rootStore = useRootStore();
-
-const getBrowserId = () => {
-	let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
-	if (!browserId) {
-		browserId = crypto.randomUUID();
-		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
-	}
-	return browserId;
-};
+const { downloadThirdPartyLicenses } = useFileDownload();
 
 const closeDialog = () => {
 	modalBus.emit('close');
@@ -38,34 +29,6 @@ const copyDebugInfoToClipboard = async () => {
 		duration: 5000,
 	});
 	await clipboard.copy(debugInfo.generateDebugInfo());
-};
-
-const handleDownloadThirdPartyLicenses = async () => {
-	try {
-		const response = await axios.get('/rest/third-party-licenses', {
-			responseType: 'blob',
-			headers: {
-				'push-ref': rootStore.restApiContext.pushRef,
-				'browser-id': getBrowserId(),
-			},
-		});
-
-		const filename =
-			(response.headers['content-disposition'] as string)?.match(/filename="([^"]+)"/)?.[1] ??
-			'THIRD_PARTY_LICENSES.md';
-
-		const blob = new Blob([response.data], { type: 'text/markdown' });
-		const url = window.URL.createObjectURL(blob);
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = filename;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-		window.URL.revokeObjectURL(url);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('about.thirdPartyLicenses.downloadError'));
-	}
 };
 </script>
 
@@ -110,7 +73,15 @@ const handleDownloadThirdPartyLicenses = async () => {
 						<n8n-text>{{ i18n.baseText('about.thirdPartyLicenses') }}</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-link @click="handleDownloadThirdPartyLicenses">
+						<n8n-link
+							@click="
+								() =>
+									downloadThirdPartyLicenses(
+										rootStore.restApiContext.baseUrl,
+										rootStore.restApiContext.pushRef,
+									)
+							"
+						>
 							{{ i18n.baseText('about.thirdPartyLicensesLink') }}
 						</n8n-link>
 					</el-col>
