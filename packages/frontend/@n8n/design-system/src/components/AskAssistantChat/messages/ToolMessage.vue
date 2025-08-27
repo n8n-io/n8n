@@ -34,17 +34,10 @@ const toolDisplayName = computed(() => {
 	);
 });
 
-const latestError = computed(() => {
-	const errorUpdate = props.message.updates.find((u) => u.type === 'error');
-	return errorUpdate?.data;
-});
-
 const statusMessage = computed(() => {
 	switch (props.message.status) {
 		case 'running':
 			return t('assistantChat.builder.toolRunning');
-		case 'completed':
-			return t('assistantChat.builder.toolCompleted');
 		case 'error':
 			return t('assistantChat.builder.toolError');
 		default:
@@ -57,7 +50,7 @@ const statusColor = computed(() => {
 		case 'completed':
 			return 'success';
 		case 'error':
-			return 'danger';
+			return 'warning';
 		default:
 			return 'secondary';
 	}
@@ -70,7 +63,7 @@ const statusColor = computed(() => {
 			<div :class="$style.header">
 				<div :class="$style.titleRow">
 					<div :class="$style.status">
-						<N8nTooltip placement="top" :disabled="message.status !== 'running'">
+						<N8nTooltip placement="top" :disabled="!statusMessage">
 							<template #content>
 								<span :class="$style.statusText">
 									{{ statusMessage }}
@@ -85,7 +78,7 @@ const statusColor = computed(() => {
 							/>
 							<N8nIcon
 								v-else-if="message.status === 'error'"
-								icon="circle-x"
+								icon="triangle-alert"
 								:color="statusColor"
 								size="large"
 							/>
@@ -99,15 +92,6 @@ const statusColor = computed(() => {
 						:class="{ [$style.running]: message.status === 'running' }"
 						>{{ toolDisplayName }}</N8nText
 					>
-				</div>
-			</div>
-
-			<div :class="$style.content">
-				<!-- Error -->
-				<div v-if="latestError" :class="$style.section">
-					<div :class="$style.errorContent">
-						{{ latestError.message || latestError }}
-					</div>
 				</div>
 			</div>
 		</div>
@@ -139,7 +123,6 @@ const statusColor = computed(() => {
 
 .statusText {
 	font-size: var(--font-size-2xs);
-	text-transform: capitalize;
 
 	&.status-running {
 		color: var(--execution-card-text-waiting);
