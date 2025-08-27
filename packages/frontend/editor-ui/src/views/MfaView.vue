@@ -33,6 +33,7 @@ const showRecoveryCodeForm = ref(false);
 const verifyingMfaCode = ref(false);
 const formError = ref('');
 const { reportError } = toRefs(props);
+const mfaFormRef = ref<{ $el?: HTMLElement } | null>(null);
 
 // ---------------------------------------------------------------------------
 // #region Composable
@@ -64,10 +65,12 @@ const formField = (
 	placeholder: string,
 	maxlength: number,
 	focus = true,
+	autocomplete: string = 'text',
 ) => {
 	return {
 		name,
 		initialValue: '',
+		autocomplete: autocomplete,
 		properties: {
 			label,
 			placeholder,
@@ -97,6 +100,7 @@ const onBackClick = () => {
 	hasAnyChanges.value = true;
 	formInputs.value = [mfaCodeFieldWithDefaults()];
 	emit('onBackClick', MFA_FORM.MFA_RECOVERY_CODE);
+	focusMfaCodeAfterPasswordManager();
 };
 
 const onSubmit = (formData: unknown) => {
@@ -106,6 +110,22 @@ const onSubmit = (formData: unknown) => {
 		? i18.baseText('mfa.code.invalid')
 		: i18.baseText('mfa.recovery.invalid');
 	emit('submit', data);
+};
+
+const focusMfaCodeAfterPasswordManager = async () => {
+	setTimeout(() => {
+		if (mfaFormRef.value) {
+			const container = mfaFormRef.value.$el;
+
+			if (!container) return;
+
+			const inputElement = container.querySelector('input[name="mfaCode"]') as HTMLInputElement;
+
+			if (inputElement) {
+				inputElement.focus();
+			}
+		}
+	}, 200);
 };
 
 const onInput = ({ target: { value, name } }: { target: { value: string; name: string } }) => {
@@ -149,6 +169,8 @@ const mfaCodeFieldWithDefaults = () => {
 		i18.baseText('mfa.code.input.label'),
 		i18.baseText('mfa.code.input.placeholder'),
 		MFA_AUTHENTICATION_CODE_INPUT_MAX_LENGTH,
+		false,
+		'one-time-code',
 	);
 };
 
@@ -168,6 +190,8 @@ const {
 
 onMounted(() => {
 	formInputs.value = [mfaCodeFieldWithDefaults()];
+
+	focusMfaCodeAfterPasswordManager();
 });
 
 // #endregion
@@ -190,6 +214,7 @@ onMounted(() => {
 					data-test-id="mfa-login-form"
 					:inputs="formInputs"
 					:event-bus="formBus"
+					ref="mfaFormRef"
 					@input="onInput"
 					@submit="onSubmit"
 				/>
