@@ -194,6 +194,7 @@ const dateTimePickerOptions = ref({
 	],
 });
 const isFocused = ref(false);
+const isMapperShown = ref(false);
 
 const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
 	expressionLocalResolveCtx.value.nodeName,
@@ -602,11 +603,7 @@ const showDragnDropTip = computed(
 
 const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM_NODE_TYPE);
 
-const shouldShowMapper = computed(
-	() =>
-		isFocused.value &&
-		(isModelValueExpression.value || props.forceShowExpression || props.modelValue === ''),
-);
+const mapperElRef = computed(() => mapperRef.value?.contentRef);
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -793,6 +790,10 @@ async function setFocus() {
 		}
 
 		isFocused.value = true;
+
+		if (isModelValueExpression.value || props.forceShowExpression || props.modelValue === '') {
+			isMapperShown.value = true;
+		}
 	}
 
 	emit('focus');
@@ -933,17 +934,12 @@ function expressionUpdated(value: string) {
 }
 
 function onBlur(event?: FocusEvent | KeyboardEvent) {
-	if (
-		event?.target instanceof HTMLElement &&
-		mapperRef.value?.contentRef &&
-		(event.target === mapperRef.value.contentRef ||
-			mapperRef.value.contentRef.contains(event.target))
-	) {
-		return;
-	}
-
 	emit('blur');
 	isFocused.value = false;
+
+	if (event?.target instanceof Node && !mapperElRef.value?.contains(event.target)) {
+		isMapperShown.value = false;
+	}
 }
 
 function onPaste(event: ClipboardEvent) {
@@ -989,6 +985,12 @@ function onUpdateTextInput(value: string) {
 	onTextInputChange(value);
 }
 
+function onClickOutsideMapper() {
+	if (!isFocused.value) {
+		isMapperShown.value = false;
+	}
+}
+
 async function optionSelected(command: string) {
 	const prevValue = props.modelValue;
 
@@ -1003,6 +1005,7 @@ async function optionSelected(command: string) {
 
 		case 'removeExpression':
 			isFocused.value = false;
+			isMapperShown.value = false;
 			valueChanged(
 				parseFromExpression(
 					props.modelValue,
@@ -1192,7 +1195,7 @@ onUpdated(async () => {
 	}
 });
 
-onClickOutside(wrapper, onBlur);
+onClickOutside(mapperElRef, onClickOutsideMapper);
 </script>
 
 <template>
@@ -1221,7 +1224,7 @@ onClickOutside(wrapper, onBlur);
 			:workflow="expressionLocalResolveCtx?.workflow"
 			:node="node"
 			:input-node-name="expressionLocalResolveCtx?.inputNode?.name"
-			:visible="shouldShowMapper"
+			:visible="isMapperShown"
 			:virtual-ref="wrapper"
 		/>
 
