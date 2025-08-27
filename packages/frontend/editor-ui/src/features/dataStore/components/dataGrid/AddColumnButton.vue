@@ -11,6 +11,7 @@ import Tooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
 import { useDebounce } from '@/composables/useDebounce';
 
 const props = defineProps<{
+	// the params key is needed so that we can pass this directly to ag-grid as column
 	params: {
 		onAddColumn: (column: DataStoreColumnCreatePayload) => void;
 	};
