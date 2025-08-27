@@ -57,44 +57,50 @@ class ImportValidator(ast.NodeVisitor):
         # __import__()
         if isinstance(node.func, ast.Name) and node.func.id == "__import__":
             module_arg = None
-            
+
             # positional argument
             if node.args and isinstance(node.args[0], ast.Constant):
                 module_arg = node.args[0].value
             # keyword argument
             elif node.keywords:
                 for keyword in node.keywords:
-                    if keyword.arg == "name" and isinstance(keyword.value, ast.Constant):
+                    if keyword.arg == "name" and isinstance(
+                        keyword.value, ast.Constant
+                    ):
                         module_arg = keyword.value.value
                         break
-            
+
             if module_arg and isinstance(module_arg, str):
                 self._validate_import(module_arg, node.lineno)
             else:
                 self._add_violation(node.lineno, ERROR_DYNAMIC_IMPORT)
-        
+
         # import_module()
         elif (
             # from importlib import import_module\n import_module()
             (isinstance(node.func, ast.Name) and node.func.id == "import_module")
             # import importlib\nimportlib.import_module()
-            or (isinstance(node.func, ast.Attribute) 
+            or (
+                isinstance(node.func, ast.Attribute)
                 and node.func.attr == "import_module"
                 and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == "importlib")
+                and node.func.value.id == "importlib"
+            )
         ):
             module_arg = None
-            
+
             # Check positional argument
             if node.args and isinstance(node.args[0], ast.Constant):
                 module_arg = node.args[0].value
             # Check keyword argument (name="module")
             elif node.keywords:
                 for keyword in node.keywords:
-                    if keyword.arg == "name" and isinstance(keyword.value, ast.Constant):
+                    if keyword.arg == "name" and isinstance(
+                        keyword.value, ast.Constant
+                    ):
                         module_arg = keyword.value.value
                         break
-            
+
             if module_arg and isinstance(module_arg, str):
                 self._validate_import(module_arg, node.lineno)
             else:
@@ -106,7 +112,7 @@ class ImportValidator(ast.NodeVisitor):
 
     def _validate_import(self, module_path: str, lineno: int) -> None:
         """Validate that a module import is allowed based on allowlists."""
-        
+
         if module_path.startswith("."):
             self._add_violation(lineno, ERROR_RELATIVE_IMPORT)
             return
