@@ -289,7 +289,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		columnDef.cellEditorParams = (params: CellEditRequestEvent<DataStoreRow>) => ({
 			value: params.value ?? '',
 			// Rely on the backend to limit the length of the value
-			maxLength: Number.MAX_SAFE_INTEGER,
+			maxLength: 999999999,
 		});
 		columnDef.valueSetter = (params: ValueSetterParams<DataStoreRow>) => {
 			let originalValue = params.data[col.name];
