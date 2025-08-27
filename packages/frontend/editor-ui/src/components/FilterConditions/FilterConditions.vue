@@ -94,6 +94,7 @@ watch(
 	() => props.node?.parameters,
 	() => {
 		const typeOptions = props.parameter.typeOptions?.filter;
+
 		if (!typeOptions) {
 			return;
 		}
@@ -105,6 +106,7 @@ watch(
 				...resolveParameter(typeOptions as unknown as NodeParameterValue),
 			};
 		} catch (error) {}
+
 		if (!isEqual(state.paramValue.options, newOptions)) {
 			state.paramValue.options = newOptions;
 			debouncedEmitChange();
