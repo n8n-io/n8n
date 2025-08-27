@@ -106,7 +106,9 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
 		available:
-			settingsStore.isTemplatesEnabled && calloutHelpers.isPreBuiltAgentsCalloutVisible.value,
+			settingsStore.isTemplatesEnabled &&
+			calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+			!personalizedTemplatesV2Store.isFeatureEnabled(),
 		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
 	},
 	{
