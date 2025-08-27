@@ -12,8 +12,8 @@ CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
 
 ERROR_RELATIVE_IMPORT = "Relative imports are disallowed."
-ERROR_DYNAMIC_IMPORT = "Dynamic imports using `__import__()` are disallowed, because they can bypass allowlist validation at runtime."
-ERROR_DYNAMIC_IMPORTLIB = "Dynamic imports using `importlib` are disallowed, because they can bypass allowlist validation at runtime."
+ERROR_DYNAMIC_IMPORT = "Dynamic imports using `__import__()` with variables are disallowed, because they can bypass allowlist validation at runtime."
+ERROR_DYNAMIC_IMPORTLIB = "Dynamic imports using `importlib` with variables are disallowed, because they can bypass allowlist validation at runtime."
 ERROR_STDLIB_DISALLOWED = "Import of standard library module '{module}' is disallowed. Allowed stdlib modules: {allowed}"
 ERROR_EXTERNAL_DISALLOWED = "Import of external package '{module}' is disallowed. Allowed external packages: {allowed}"
 ERROR_SECURITY_VIOLATIONS = "Security violations detected:\n{violations}"
