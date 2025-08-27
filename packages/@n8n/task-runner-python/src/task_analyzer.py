@@ -112,7 +112,7 @@ class ImportValidator(ast.NodeVisitor):
     # ========== Validation ==========
 
     def _validate_import(self, module_path: str, lineno: int) -> None:
-        """Validate that a module import is allowed based on allowlists."""
+        """Validate that a module import is allowed based on allowlists. Relative imports are disallowed."""
 
         if module_path.startswith("."):
             self._add_violation(lineno, ERROR_RELATIVE_IMPORT)
