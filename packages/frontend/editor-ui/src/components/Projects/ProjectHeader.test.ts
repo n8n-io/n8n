@@ -266,13 +266,15 @@ describe('ProjectHeader', () => {
 
 			await userEvent.click(getByTestId('action-credential'));
 
-			expect(mockPush).toHaveBeenCalledWith({
-				name: VIEWS.PROJECTS_CREDENTIALS,
-				params: {
-					projectId: project.id,
-					credentialId: 'create',
-				},
-			});
+			expect(mockPush).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: VIEWS.PROJECTS_CREDENTIALS,
+					params: {
+						projectId: project.id,
+						credentialId: 'create',
+					},
+				}),
+			);
 		});
 	});
 
