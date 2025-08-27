@@ -317,6 +317,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const createNewCredential = async (
 		data: ICredentialsDecrypted,
 		projectId?: string,
+		uiContext?: string,
 	): Promise<ICredentialsResponse> => {
 		const settingsStore = useSettingsStore();
 		const credential = await credentialsApi.createNewCredential(rootStore.restApiContext, {
@@ -324,6 +325,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			type: data.type,
 			data: data.data ?? {},
 			projectId,
+			uiContext,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {

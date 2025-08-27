@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "activeRegionNum": {
-            "type": "integer"
-        },
         "beginTime": {
             "type": "string"
         },
@@ -11,9 +8,6 @@
             "type": "string"
         },
         "classType": {
-            "type": "string"
-        },
-        "endTime": {
             "type": "string"
         },
         "flrID": {
@@ -49,5 +43,5 @@
             "type": "integer"
         }
     },
-    "version": 4
+    "version": 5
 }

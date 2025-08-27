@@ -799,6 +799,7 @@ onBeforeUnmount(() => {
 								:executable="!readOnly"
 								:input-size="inputSize"
 								:class="$style.settings"
+								is-ndv-v2
 								@execute="onNodeExecute"
 								@stop-execution="onStopExecution"
 								@activate="onWorkflowActivate"

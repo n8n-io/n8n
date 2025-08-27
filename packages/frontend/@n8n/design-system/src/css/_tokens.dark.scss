@@ -520,6 +520,9 @@
 	--color-menu-background: var(--p-gray-740);
 	--color-menu-hover-background: var(--p-gray-670);
 	--color-menu-active-background: var(--p-gray-670);
+
+	/* Ag Grid */
+	--grid-row-selected-background: var(--p-color-secondary-720);
 }
 
 body[data-theme='dark'] {

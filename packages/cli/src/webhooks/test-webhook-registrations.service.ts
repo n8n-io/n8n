@@ -71,6 +71,10 @@ export class TestWebhookRegistrationsService {
 		return Object.values(hash);
 	}
 
+	async getRegistrationsHash() {
+		return await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
+	}
+
 	async deregisterAll() {
 		await this.cacheService.delete(this.cacheKey);
 	}
