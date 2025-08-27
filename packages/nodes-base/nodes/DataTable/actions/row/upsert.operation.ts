@@ -11,7 +11,7 @@ import { DRY_RUN } from '../../common/fields';
 import { executeSelectMany, getSelectFields } from '../../common/selectMany';
 import { getDataTableProxyExecute } from '../../common/utils';
 
-export const FIELD: string = 'update';
+export const FIELD: string = 'upsert';
 
 const displayOptions: IDisplayOptions = {
 	show: {
@@ -53,7 +53,13 @@ export async function execute(
 	}
 
 	const row = getAddRow(this, index);
-	const matches = await executeSelectMany(this, index, dataStoreProxy);
+
+	// Remove system columns
+	delete row['id'];
+	delete row['createdAt'];
+	delete row['updatedAt'];
+
+	const matches = await executeSelectMany(this, index, dataStoreProxy, true);
 
 	if (dryRun) {
 		return matches;
@@ -67,16 +73,21 @@ export async function execute(
 
 	// update
 	const result = [];
-	for (const x of matches) {
+	for (const match of matches) {
 		const updatedRows = await dataStoreProxy.updateRows({
 			data: row,
-			filter: { id: x.json.id },
+			filter: { id: match.json.id },
 		});
-		if (updatedRows.length !== 0) {
+		if (updatedRows.length !== 1) {
 			throw new NodeOperationError(this.getNode(), 'invariant broken');
 		}
+
+		// The input object gets updated in the api call, somehow
+		// So let's just re-delete the field until we have a more aligned API
+		delete row['updatedAt'];
+
 		result.push(updatedRows[0]);
 	}
 
-	return matches;
+	return result.map((json) => ({ json }));
 }

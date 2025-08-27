@@ -60,7 +60,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Upsert',
 				value: upsert.FIELD,
-				description: 'Update row(s) matching certain fields, or insert if there is no match',
+				description: 'Update row(s), or insert if there is no match',
 				action: 'Upsert row(s)',
 			},
 		],

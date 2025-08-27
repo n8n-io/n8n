@@ -13,7 +13,6 @@ export const ADD_ROW = {
 	},
 	noDataExpression: true,
 	required: true,
-	description: 'Hello',
 	typeOptions: {
 		loadOptionsDependsOn: [`${DATA_TABLE_ID_FIELD}.value`],
 		resourceMapper: {

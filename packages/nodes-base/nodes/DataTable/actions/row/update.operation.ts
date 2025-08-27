@@ -53,8 +53,12 @@ export async function execute(
 	}
 
 	const row = getAddRow(this, index);
-	const matches = await executeSelectMany(this, index, dataStoreProxy);
+	// Remove system columns
+	delete row['id'];
+	delete row['createdAt'];
+	delete row['updatedAt'];
 
+	const matches = await executeSelectMany(this, index, dataStoreProxy, true);
 	if (dryRun) {
 		return matches;
 	}
@@ -65,11 +69,16 @@ export async function execute(
 			data: row,
 			filter: { id: x.json.id },
 		});
-		if (updatedRows.length !== 0) {
+		if (updatedRows.length !== 1) {
 			throw new NodeOperationError(this.getNode(), 'invariant broken');
 		}
+
+		// The input object gets updated in the api call, somehow
+		// So let's just re-delete the field until we have a more aligned API
+		delete row['updatedAt'];
+
 		result.push(updatedRows[0]);
 	}
 
-	return matches;
+	return result.map((json) => ({ json }));
 }
