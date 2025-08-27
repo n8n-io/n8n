@@ -241,7 +241,7 @@ class TaskExecutor:
 
     @staticmethod
     def _filter_builtins(denied_builtins: set[str]):
-        """Get __builtins__ with denied functions removed."""
+        """Get __builtins__ with denied ones removed."""
 
         if len(denied_builtins) == 0:
             return __builtins__

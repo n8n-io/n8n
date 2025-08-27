@@ -11,7 +11,7 @@ CacheKey = Tuple[str, Tuple]  # (code_hash, allowlists_tuple)
 CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
 
-ERROR_RELATIVE_IMPORT = "Relative imports are disallowed"
+ERROR_RELATIVE_IMPORT = "Relative imports are disallowed."
 ERROR_DYNAMIC_IMPORT = "Dynamic imports using `__import__()` are disallowed, because they can bypass allowlist validation at runtime."
 ERROR_DYNAMIC_IMPORTLIB = "Dynamic imports using `importlib` are disallowed, because they can bypass allowlist validation at runtime."
 ERROR_STDLIB_DISALLOWED = "Import of standard library module '{module}' is disallowed. Allowed stdlib modules: {allowed}"
