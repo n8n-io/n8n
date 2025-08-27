@@ -57,6 +57,9 @@ test.describe('Canvas Node Actions', () => {
 			await n8n.canvas.clickNodePlusEndpoint(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 			await n8n.canvas.fillNodeCreatorSearchBar('Code');
 			await n8n.page.keyboard.press('Enter');
+
+			await n8n.canvas.clickNodeCreatorItemName('Code in JavaScript');
+			await n8n.page.keyboard.press('Enter');
 			await n8n.page.keyboard.press('Escape');
 
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
@@ -66,7 +69,7 @@ test.describe('Canvas Node Actions', () => {
 		test('should add disconnected node when nothing selected', async ({ n8n }) => {
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.deselectAll();
-			await n8n.canvas.addNode('Code', { closeNDV: true });
+			await n8n.canvas.addNode('Code', { action: 'Code in JavaScript', closeNDV: true });
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 			await expect(n8n.canvas.nodeConnections()).toHaveCount(0);
 		});

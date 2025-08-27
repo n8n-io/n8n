@@ -44,7 +44,5 @@ export class InteractionsPage extends BasePage {
 		await this.page.mouse.down();
 		await this.page.mouse.move(dropPosition.x, dropPosition.y);
 		await this.page.mouse.up();
-
-		await this.page.waitForTimeout(200);
 	}
 }
