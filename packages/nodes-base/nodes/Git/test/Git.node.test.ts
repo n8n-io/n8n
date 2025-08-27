@@ -7,6 +7,7 @@ import { Git } from '../Git.node';
 // Mock simple-git
 const mockGit = {
 	checkout: jest.fn(),
+	checkoutBranch: jest.fn(),
 	checkoutLocalBranch: jest.fn(),
 	add: jest.fn(),
 	commit: jest.fn(),
@@ -81,16 +82,144 @@ describe('Git Node', () => {
 			expect(mockGit.push).toHaveBeenCalled();
 		});
 
-		it('should switch to branch for pull operation', async () => {
+		it('should handle switchBranch operation to existing branch', async () => {
 			mockExecuteFunctions.getNodeParameter
-				.mockReturnValueOnce('pull')
+				.mockReturnValueOnce('switchBranch')
 				.mockReturnValueOnce('/repo')
-				.mockReturnValueOnce({ branch: 'main' });
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('existing-branch');
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.checkout).toHaveBeenCalledWith('existing-branch');
+			expect(result[0]).toEqual([
+				{ json: { success: true, branch: 'existing-branch' }, pairedItem: { item: 0 } },
+			]);
+		});
+
+		it('should create new branch when switchBranch fails and createBranch is true', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('switchBranch')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({ createBranch: true })
+				.mockReturnValueOnce('new-branch');
+
+			mockGit.checkout.mockRejectedValueOnce(new Error('Branch not found'));
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.checkout).toHaveBeenCalledWith('new-branch');
+			expect(mockGit.checkoutLocalBranch).toHaveBeenCalledWith('new-branch');
+			expect(result[0]).toEqual([
+				{ json: { success: true, branch: 'new-branch' }, pairedItem: { item: 0 } },
+			]);
+		});
+
+		it('should create branch from start point when specified', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('switchBranch')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({ createBranch: true, startPoint: 'main' })
+				.mockReturnValueOnce('feature-branch');
+
+			mockGit.checkout.mockRejectedValueOnce(new Error('Branch not found'));
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockGit.checkout).toHaveBeenCalledWith('main');
-			expect(mockGit.pull).toHaveBeenCalled();
+			expect(mockGit.checkout).toHaveBeenCalledWith('feature-branch');
+			expect(mockGit.checkoutBranch).toHaveBeenCalledWith('feature-branch', 'main');
+		});
+
+		it('should force checkout when force option is enabled', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('switchBranch')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({ force: true })
+				.mockReturnValueOnce('force-branch');
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.checkout).toHaveBeenCalledWith(['-f', 'force-branch']);
+		});
+
+		it('should throw error when createBranch is false and branch does not exist', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('switchBranch')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({ createBranch: false })
+				.mockReturnValueOnce('nonexistent-branch');
+
+			const error = new Error('Branch not found');
+			mockGit.checkout.mockRejectedValueOnce(error);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow('Branch not found');
+		});
+
+		it('should set upstream tracking when creating new branch with setUpstream option', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('switchBranch')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({
+					createBranch: true,
+					setUpstream: true,
+					remoteName: 'origin',
+				})
+				.mockReturnValueOnce('feature-branch');
+
+			mockGit.checkout.mockRejectedValueOnce(new Error('Branch not found'));
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.checkout).toHaveBeenCalledWith('feature-branch');
+			expect(mockGit.checkoutLocalBranch).toHaveBeenCalledWith('feature-branch');
+			expect(mockGit.addConfig).toHaveBeenCalledWith('branch.feature-branch.remote', 'origin');
+			expect(mockGit.addConfig).toHaveBeenCalledWith(
+				'branch.feature-branch.merge',
+				'refs/heads/feature-branch',
+			);
+		});
+
+		it('should use default remote name when not specified', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('switchBranch')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({
+					createBranch: true,
+					setUpstream: true,
+					// remoteName not specified, should default to 'origin'
+				})
+				.mockReturnValueOnce('feature-branch');
+
+			mockGit.checkout.mockRejectedValueOnce(new Error('Branch not found'));
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.addConfig).toHaveBeenCalledWith('branch.feature-branch.remote', 'origin');
+		});
+
+		it('should continue successfully even if upstream setup fails', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('switchBranch')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({
+					createBranch: true,
+					setUpstream: true,
+					remoteName: 'origin',
+				})
+				.mockReturnValueOnce('feature-branch');
+
+			mockGit.checkout.mockRejectedValueOnce(new Error('Branch not found'));
+			mockGit.addConfig.mockRejectedValueOnce(new Error('Remote not found'));
+
+			const result = await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.checkoutLocalBranch).toHaveBeenCalledWith('feature-branch');
+			expect(result[0]).toEqual([
+				{
+					json: { success: true, branch: 'feature-branch' },
+					pairedItem: { item: 0 },
+				},
+			]);
 		});
 
 		it('should not switch branch when not specified', async () => {
@@ -155,6 +284,17 @@ describe('Git Node', () => {
 			await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.fetch).toHaveBeenCalled();
+		});
+
+		it('should handle pull operation', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('pull')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({});
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.pull).toHaveBeenCalled();
 		});
 
 		it('should handle log operation', async () => {
