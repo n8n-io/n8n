@@ -39,18 +39,56 @@ export function useSidebarData2() {
 	}
 
 	async function openProject(id: string) {
-		console.log(id);
-		const workflowsAndFolders = await workflowsStore.fetchWorkflowsPage(
-			id,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			true,
+		await folderStore.fetchProjectFolders(id);
+		await workflowsStore.fetchAllWorkflows(id);
+	}
+
+	const convertToTreeStructure = computed(() => (projectId: string): IMenuElement[] => {
+		const projectFolders = Object.values(folderStore.breadcrumbsCache).filter(
+			(f) => f.projectId === projectId,
+		);
+		const projectWorkflows = workflowsStore.allWorkflows.filter(
+			(w) => w.homeProject?.id === projectId,
 		);
 
-		console.log(workflowsAndFolders);
-	}
+		function buildTree(
+			folders: typeof projectFolders,
+			workflows: typeof projectWorkflows,
+			parentFolderId: string | null = null,
+		): IMenuElement[] {
+			const tree: IMenuElement[] = [];
+
+			// Add folders
+			const topLevelFolders = folders.filter((folder) =>
+				folder.parentFolder ? folder.parentFolder === parentFolderId : parentFolderId === null,
+			);
+
+			topLevelFolders.forEach((folder) => {
+				const children = buildTree(folders, workflows, folder.id);
+				tree.push({
+					id: folder.id,
+					label: folder.name,
+					icon: 'folder' as IconName,
+					children,
+					route: { to: `/projects/${projectId}/folders/${folder.id}/workflows` },
+					type: 'folder',
+				});
+			});
+
+			// Add workflows that belong to the current parent folder
+			workflows
+				.filter((workflow) =>
+					parentFolderId ? workflow.parentFolder?.id === parentFolderId : !workflow.parentFolder,
+				)
+				.forEach((workflow) => {
+					tree.push(workflowToMenuItem(workflow));
+				});
+
+			return tree;
+		}
+
+		return buildTree(projectFolders, projectWorkflows);
+	});
 
 	const topItems = computed<IMenuElement[]>(() => [
 		{
@@ -66,9 +104,7 @@ export function useSidebarData2() {
 			label: 'Personal',
 			icon: 'user',
 			route: { to: `/projects/${projectsStore.personalProject?.id}/workflows` },
-			children: workflowsStore.allWorkflows
-				.filter((workflow) => workflow.homeProject?.id === projectsStore.personalProject?.id)
-				.map(workflowToMenuItem),
+			children: convertToTreeStructure.value(projectsStore.personalProject?.id as string),
 			type: 'project',
 			available: true,
 		},
@@ -96,19 +132,12 @@ export function useSidebarData2() {
 
 	const projectItems = computed<IMenuElement[]>(() =>
 		projectsStore.teamProjects.map((project) => {
-			const workflows = workflowsStore.allWorkflows
-				.filter((workflow) => workflow.homeProject?.id === project.id)
-				.map(workflowToMenuItem);
-
 			return {
 				id: project.id,
 				label: project.name as string,
 				icon: (project.icon?.value || 'layers') as IconName,
 				route: { to: `/projects/${project.id}/workflows` },
-				children:
-					workflows.length > 0
-						? workflows
-						: [{ id: `${project.id}-empty`, label: 'No workflows', type: 'empty' }],
+				children: convertToTreeStructure.value(project.id),
 				type: 'project',
 			};
 		}),
@@ -121,5 +150,6 @@ export function useSidebarData2() {
 		showProjects,
 		canCreateProject,
 		showShared,
+		convertToTreeStructure,
 	};
 }

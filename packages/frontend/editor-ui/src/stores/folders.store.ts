@@ -40,6 +40,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 					id: folder.id,
 					name: folder.name,
 					parentFolder: folder.parentFolder,
+					projectId: folder.projectId,
 				};
 			}
 		});
@@ -116,14 +117,36 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 	async function deleteFolder(projectId: string, folderId: string, newParentId?: string) {
 		await workflowsApi.deleteFolder(rootStore.restApiContext, projectId, folderId, newParentId);
+		await fetchProjectFolders(projectId);
 	}
 
 	async function renameFolder(projectId: string, folderId: string, name: string) {
 		await workflowsApi.renameFolder(rootStore.restApiContext, projectId, folderId, name);
+		await fetchProjectFolders(projectId);
 	}
 
 	async function fetchProjectFolders(projectId: string) {
-		return await workflowsApi.getProjectFolders(rootStore.restApiContext, projectId);
+		const { data } = await workflowsApi.getWorkflowsAndFolders(
+			rootStore.restApiContext,
+			{ projectId, isArchived: false },
+			undefined,
+
+			true,
+		);
+		console.log('For cache:', data);
+		const forCache: FolderShortInfo[] = data
+			.filter((f) => f.resource === 'folder')
+			.map((folder) => ({
+				id: folder.id,
+				name: folder.name,
+				parentFolder: folder.parentFolder?.id,
+				projectId,
+			}));
+
+		console.log('For cache:', forCache);
+
+		cacheFolders(forCache);
+		return;
 	}
 
 	async function fetchFoldersAvailableForMove(
@@ -219,6 +242,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		await workflowsApi.moveFolder(rootStore.restApiContext, projectId, folderId, parentFolderId);
 		// Update the cache after moving the folder
 		delete breadcrumbsCache.value[folderId];
+		await fetchProjectFolders(projectId);
 	}
 
 	async function moveFolderToProject(
@@ -239,6 +263,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 		// Update the cache after moving the folder
 		delete breadcrumbsCache.value[folderId];
+		await fetchProjectFolders(projectId);
 	}
 
 	async function fetchFolderContent(
