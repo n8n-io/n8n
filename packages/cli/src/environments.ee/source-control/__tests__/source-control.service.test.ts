@@ -15,6 +15,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
+import type { SourceControlExportService } from '../source-control-export.service.ee';
 
 // Mock the status service to avoid complex dependency issues
 const mockStatusService = {

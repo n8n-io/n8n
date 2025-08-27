@@ -144,7 +144,9 @@ export class SourceControlStatusService {
 			await this.gitService.resetBranch();
 			await this.gitService.pull();
 		} catch (error) {
-			this.logger.error(`Failed to reset workfolder: ${(error as Error).message}`);
+			this.logger.error(
+				`Failed to reset workfolder: ${error instanceof Error ? error.message : String(error)}`,
+			);
 			throw error;
 		}
 	}
