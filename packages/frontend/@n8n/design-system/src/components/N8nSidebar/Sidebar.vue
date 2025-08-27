@@ -347,5 +347,6 @@ onUnmounted(() => {
 
 .sidebarBottomItems {
 	margin-top: auto;
+	padding-top: var(--spacing-s);
 }
 </style>

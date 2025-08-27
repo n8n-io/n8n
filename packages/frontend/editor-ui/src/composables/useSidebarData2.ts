@@ -133,7 +133,7 @@ export function useSidebarData2() {
 		{
 			id: 'shared',
 			label: 'Shared',
-			icon: 'users',
+			icon: 'share',
 			route: { to: '/shared/workflows' },
 			available: showShared.value,
 			type: 'project',

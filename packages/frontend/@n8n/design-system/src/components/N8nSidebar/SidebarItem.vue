@@ -33,6 +33,14 @@ const to = computed(() => {
 	}
 	return undefined;
 });
+
+const folderIcon = computed<IconName>(() => {
+	if (props.item.type === 'folder') {
+		return props.open ? 'folder-open' : 'folder';
+	}
+
+	return props.item.icon as IconName;
+});
 </script>
 
 <template>
@@ -54,7 +62,7 @@ const to = computed(() => {
 						class="sidebarItemEmoji"
 						>{{ item.icon }}</span
 					>
-					<N8nIcon v-else-if="item.icon" :icon="item.icon as IconName" />
+					<N8nIcon v-else-if="item.icon" :icon="folderIcon" />
 				</div>
 				<button
 					v-if="item.type !== 'other'"

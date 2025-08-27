@@ -59,11 +59,14 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 	display: flex;
 	align-items: center;
 	max-width: 100%;
-	overflow: hidden;
 }
 
 .sidebarEmptyState {
 	padding: var(--spacing-3xs) var(--spacing-3xs);
+	width: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 .itemIdent {
