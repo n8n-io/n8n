@@ -19,7 +19,7 @@
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
     "copy-templates": "node scripts/copy-templates.mjs",
-    "dev": "tsc -p tsconfig.build.json -w --onCompilationComplete \"pnpm copy-templates\"",
+    "dev": "tsc-watch -p tsconfig.build.json -w --onCompilationComplete \"pnpm copy-templates\"",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "lint": "eslint src --quiet",
