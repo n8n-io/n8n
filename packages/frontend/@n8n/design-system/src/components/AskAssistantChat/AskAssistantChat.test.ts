@@ -413,6 +413,133 @@ describe('AskAssistantChat', () => {
 			);
 		});
 
+		it('should collapse completed and error statuses', () => {
+			MessageWrapperMock.mockClear();
+
+			render(AskAssistantChat, {
+				global: { stubs: stubsWithMessageWrapper },
+				props: {
+					user: { firstName: 'Kobi', lastName: 'Dog' },
+					messages: [
+						{
+							id: '1',
+							role: 'assistant',
+							type: 'tool',
+							toolName: 'search',
+							status: 'completed',
+							displayTitle: 'Search Complete',
+							updates: [{ type: 'output', data: { result: 'Found some items' } }],
+						},
+						{
+							id: '2',
+							role: 'assistant',
+							type: 'tool',
+							toolName: 'search',
+							status: 'error',
+							displayTitle: 'Search error',
+							customDisplayTitle: 'Custom Running Title',
+							updates: [{ type: 'progress', data: { status: 'Processing more results' } }],
+						},
+						{
+							id: '3',
+							role: 'assistant',
+							type: 'tool',
+							toolName: 'search',
+							status: 'completed',
+							displayTitle: 'Final Search Complete',
+							updates: [{ type: 'output', data: { result: 'All done' } }],
+						},
+					],
+				},
+			});
+
+			expect(MessageWrapperMock).toHaveBeenCalledTimes(1);
+			const mockCall = MessageWrapperMock.mock.calls[0];
+			expect(mockCall).toBeDefined();
+			const [props] = mockCall as unknown as [props: MessageWrapperProps];
+
+			// Should use the last running message's status and titles
+			expect(props.message).toEqual(
+				expect.objectContaining({
+					id: '3', // Uses last message's id
+					status: 'error', // Uses running status from message 2
+					displayTitle: 'Search error', // Uses running message's displayTitle
+					customDisplayTitle: undefined,
+					updates: [
+						{ type: 'output', data: { result: 'Found some items' } },
+						{ type: 'progress', data: { status: 'Processing more results' } },
+						{ type: 'output', data: { result: 'All done' } },
+					],
+				}),
+			);
+		});
+
+		it('should collapse running, completed and error statuses into running', () => {
+			MessageWrapperMock.mockClear();
+
+			render(AskAssistantChat, {
+				global: { stubs: stubsWithMessageWrapper },
+				props: {
+					user: { firstName: 'Kobi', lastName: 'Dog' },
+					messages: [
+						{
+							id: '1',
+							role: 'assistant',
+							type: 'tool',
+							toolName: 'search',
+							status: 'running',
+							displayTitle: 'Search Running',
+							customDisplayTitle: 'Custom Search Title',
+							updates: [{ type: 'output', data: { result: 'Found some items' } }],
+						},
+						{
+							id: '2',
+							role: 'assistant',
+							type: 'tool',
+							toolName: 'search',
+							status: 'error',
+							displayTitle: 'Search error',
+							customDisplayTitle: 'Custom Error Title',
+							updates: [{ type: 'progress', data: { status: 'Processing more results' } }],
+						},
+						{
+							id: '3',
+							role: 'assistant',
+							type: 'tool',
+							toolName: 'search',
+							status: 'completed',
+							displayTitle: 'Final Search Complete',
+							updates: [{ type: 'output', data: { result: 'All done' } }],
+						},
+					],
+				},
+			});
+
+			expect(MessageWrapperMock).toHaveBeenCalledTimes(1);
+			const mockCall = MessageWrapperMock.mock.calls[0];
+			expect(mockCall).toBeDefined();
+			const [props] = mockCall as unknown as [props: MessageWrapperProps];
+
+			// Should use the last running message's status and titles
+			expect(props.message).toEqual(
+				expect.objectContaining({
+					id: '3', // Uses last message's id
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'search',
+					status: 'running', // Uses running status
+					displayTitle: 'Search Running', // Uses running message's displayTitle
+					customDisplayTitle: 'Custom Search Title', // Preserves customDisplayTitle for running status
+					updates: [
+						{ type: 'output', data: { result: 'Found some items' } },
+						{ type: 'progress', data: { status: 'Processing more results' } },
+						{ type: 'output', data: { result: 'All done' } },
+					],
+					read: true,
+				}),
+			);
+		});
+
 		it('should preserve running status when collapsing messages with running status', () => {
 			MessageWrapperMock.mockClear();
 
@@ -515,6 +642,7 @@ describe('AskAssistantChat', () => {
 			expect(mockCall).toBeDefined();
 			const [props] = mockCall as unknown as [props: { message: ChatUI.ToolMessage }];
 
+			expect(props.message.status).toEqual('running');
 			// Should combine all updates from both messages
 			expect(props.message.updates).toEqual([
 				{ type: 'progress', data: { status: 'Starting search' } },

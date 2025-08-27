@@ -95,15 +95,16 @@ function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assis
 		if (toolMessages.length > 1) {
 			// Determine the status to show based on priority rules
 			const lastMessage = toolMessages[toolMessages.length - 1];
-			let finalStatus = lastMessage.status;
 			let titleSource = lastMessage;
 
 			// Check if we have running messages - if so, show the last running one and use its titles
 			const runningMessages = toolMessages.filter((msg) => msg.status === 'running');
+			const errorMessage = toolMessages.find((msg) => msg.status === 'error');
 			if (runningMessages.length > 0) {
 				const lastRunning = runningMessages[runningMessages.length - 1];
-				finalStatus = lastRunning.status;
 				titleSource = lastRunning;
+			} else if (errorMessage) {
+				titleSource = errorMessage;
 			}
 
 			// Combine all updates from all tool messages
@@ -112,11 +113,12 @@ function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assis
 			// Create collapsed message with title logic based on final status
 			const collapsedMessage: ChatUI.ToolMessage = {
 				...lastMessage,
-				status: finalStatus,
+				status: titleSource.status,
 				updates: combinedUpdates,
 				displayTitle: titleSource.displayTitle,
-				// Only set customDisplayTitle if status is running
-				customDisplayTitle: finalStatus === 'running' ? titleSource.customDisplayTitle : undefined,
+				// Only set customDisplayTitle if status is running (for example "Adding X node")
+				customDisplayTitle:
+					titleSource.status === 'running' ? titleSource.customDisplayTitle : undefined,
 			};
 
 			result.push(collapsedMessage);
