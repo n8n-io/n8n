@@ -125,7 +125,6 @@ When planning nodes, consider their connection requirements:
 - AI Agent: hasOutputParser creates additional input for schema
 - Vector Store: mode parameter affects available connections (insert vs retrieve-as-tool)
 - Document Loader: textSplittingMode and dataType affect input structure
-- Tool nodes: Support $fromAI expressions for AI-determined values
 
 ## AI Node Connection Patterns
 CRITICAL: AI sub-nodes PROVIDE capabilities, making them the SOURCE in connections:
