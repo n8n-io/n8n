@@ -19,7 +19,7 @@ export class LinkRoleToProjectRelationTable1753953244168 implements ReversibleMi
 			? `INSERT INTO ${tableName} (${slugColumn}, ${roleTypeColumn}, ${systemRoleColumn}) VALUES (:slug, :roleType, :systemRole) ON CONFLICT DO NOTHING`
 			: `INSERT IGNORE INTO ${tableName} (${slugColumn}, ${roleTypeColumn}, ${systemRoleColumn}) VALUES (:slug, :roleType, :systemRole)`;
 
-		// Make sure that the global roles that we need exist
+		// Make sure that the project roles that we need exist
 		for (const role of Object.values(PROJECT_ROLES)) {
 			await runQuery(query, {
 				slug: role.slug,

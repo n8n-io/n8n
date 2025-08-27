@@ -6,6 +6,7 @@ import {
 	ProjectRelationRepository,
 	type Project,
 	type User,
+	PROJECT_ADMIN_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
@@ -72,7 +73,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project1.id,
-					role: { slug: 'project:admin' } as Role,
+					role: PROJECT_ADMIN_ROLE,
 					user,
 					project: project1,
 					createdAt: new Date(),
@@ -148,7 +149,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project1.id,
-					role: { slug: 'project:admin' } as Role,
+					role: PROJECT_ADMIN_ROLE,
 					user,
 					project: project1,
 					createdAt: new Date(),
@@ -197,7 +198,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project1.id,
-					role: { slug: 'project:admin' } as Role,
+					role: PROJECT_ADMIN_ROLE,
 					user,
 					project: project1,
 					createdAt: new Date(),

@@ -1,13 +1,14 @@
 import type { ProjectRelation } from '@n8n/api-types';
 import type { DatabaseConfig } from '@n8n/config';
-import type {
-	Project,
-	ProjectRepository,
-	SharedCredentialsRepository,
-	ProjectRelationRepository,
-	SharedCredentials,
+import {
+	type Project,
+	type ProjectRepository,
+	type SharedCredentialsRepository,
+	type ProjectRelationRepository,
+	type SharedCredentials,
+	PROJECT_ADMIN_ROLE,
 } from '@n8n/db';
-import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
@@ -140,7 +141,7 @@ describe('ProjectService', () => {
 				mock<Project>({
 					id: projectId,
 					type: 'team',
-					projectRelations: [{ userId: 'user1', role: { slug: PROJECT_ADMIN_ROLE_SLUG } }] as any,
+					projectRelations: [{ userId: 'user1', role: PROJECT_ADMIN_ROLE }],
 				}),
 			);
 			roleService.isRoleLicensed.mockReturnValue(false);

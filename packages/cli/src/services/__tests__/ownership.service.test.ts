@@ -10,14 +10,15 @@ import {
 	SharedWorkflowRepository,
 	UserRepository,
 	GLOBAL_OWNER_ROLE,
+	PROJECT_OWNER_ROLE,
 } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { mockCredential, mockProject } from '@test/mock-objects';
 import { v4 as uuid } from 'uuid';
 
-import { CacheService } from '../cache/cache.service';
-
 import { OwnershipService } from '@/services/ownership.service';
+import { mockCredential, mockProject } from '@test/mock-objects';
+
+import { CacheService } from '../cache/cache.service';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
@@ -65,7 +66,7 @@ describe('OwnershipService', () => {
 			const owner = new User();
 			owner.role = GLOBAL_OWNER_ROLE;
 			const projectRelation = new ProjectRelation();
-			projectRelation.role = { slug: PROJECT_OWNER_ROLE_SLUG } as any;
+			projectRelation.role = PROJECT_OWNER_ROLE;
 			(projectRelation.project = project), (projectRelation.user = owner);
 
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([projectRelation]);

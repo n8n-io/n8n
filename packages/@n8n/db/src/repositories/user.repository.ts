@@ -237,7 +237,7 @@ export class UserRepository extends Repository<User> {
 				.leftJoinAndSelect(
 					'user.projectRelations',
 					'projectRelations',
-					'projectRelations.role IS NOT NULL AND projectRelations.role <> :projectRole',
+					'projectRelations.role <> :projectRole',
 					{ projectRole: PROJECT_OWNER_ROLE_SLUG },
 				)
 				.leftJoinAndSelect('projectRelations.project', 'project')

@@ -62,10 +62,10 @@ describe('CredentialsFinderService', () => {
 					project: {
 						projectRelations: {
 							role: In([
-								'project:admin',
+								PROJECT_ADMIN_ROLE_SLUG,
 								PROJECT_OWNER_ROLE_SLUG,
-								'project:editor',
-								'project:viewer',
+								PROJECT_EDITOR_ROLE_SLUG,
+								PROJECT_VIEWER_ROLE_SLUG,
 							]),
 							userId: member.id,
 						},

@@ -19,6 +19,7 @@ import {
 	type ProjectRole,
 	CustomRole,
 	PROJECT_OWNER_ROLE_SLUG,
+	PROJECT_ADMIN_ROLE_SLUG,
 } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
@@ -26,12 +27,12 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { CacheService } from './cache/cache.service';
-import { RoleService } from './role.service';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { CacheService } from './cache/cache.service';
+import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -480,7 +481,7 @@ export class ProjectService {
 			where: {
 				projectRelations: {
 					userId,
-					role: In([PROJECT_OWNER_ROLE_SLUG, 'project:admin']),
+					role: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]),
 				},
 			},
 		});

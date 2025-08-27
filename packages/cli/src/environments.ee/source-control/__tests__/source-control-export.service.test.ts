@@ -1,5 +1,5 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { GLOBAL_ADMIN_ROLE, User } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, PROJECT_OWNER_ROLE, User } from '@n8n/db';
 import type {
 	SharedCredentials,
 	SharedWorkflow,
@@ -11,7 +11,6 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { mock, captor } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
@@ -84,10 +83,10 @@ describe('SourceControlExportService', () => {
 						type: 'personal',
 						projectRelations: [
 							{
-								role: { slug: PROJECT_OWNER_ROLE_SLUG },
+								role: PROJECT_OWNER_ROLE,
 								user: mock({ email: 'user@example.com' }),
 							},
-						] as any,
+						],
 					}),
 				}),
 			]);
@@ -269,7 +268,7 @@ describe('SourceControlExportService', () => {
 				mock<SharedWorkflow>({
 					project: mock({
 						type: 'personal',
-						projectRelations: [{ role: { slug: PROJECT_OWNER_ROLE_SLUG }, user: mock() }] as any,
+						projectRelations: [{ role: PROJECT_OWNER_ROLE, user: mock() }],
 					}),
 					workflow: mock(),
 				}),
