@@ -275,7 +275,7 @@ export class WorkflowBuilderAgent {
 		};
 
 		const shouldModifyState = (state: typeof WorkflowState.State) => {
-			const { messages, workflowContext, planStatus } = state;
+			const { messages, workflowContext } = state;
 			const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!; // There always should be at least one human message in the array
 
 			if (lastHumanMessage.content === '/compact') {
@@ -294,11 +294,6 @@ export class WorkflowBuilderAgent {
 
 			if (shouldAutoCompact(state)) {
 				return 'auto_compact_messages';
-			}
-
-			// If we don't have a plan yet, create one
-			if (!planStatus) {
-				return 'createPlan';
 			}
 
 			return 'agent';
