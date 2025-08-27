@@ -61,7 +61,6 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 			const envBaseURL = process.env.N8N_BASE_URL;
 
 			if (envBaseURL) {
-				console.log(`Using external N8N_BASE_URL: ${envBaseURL}`);
 				await use(null as unknown as N8NStack);
 				return;
 			}
@@ -141,8 +140,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		await page.close();
 	},
 
-	n8n: async ({ page }, use) => {
-		const n8nInstance = new n8nPage(page);
+	n8n: async ({ page, api }, use) => {
+		const n8nInstance = new n8nPage(page, api);
 		await use(n8nInstance);
 	},
 

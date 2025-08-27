@@ -9,6 +9,8 @@ import {
 	INSTANCE_ADMIN_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
+import { CredentialApiHelper } from './credential-api-helper';
+import { ProjectApiHelper } from './project-api-helper';
 import { WorkflowApiHelper } from './workflow-api-helper';
 
 export interface LoginResponseData {
@@ -33,10 +35,14 @@ const DB_TAGS = {
 export class ApiHelpers {
 	request: APIRequestContext;
 	workflowApi: WorkflowApiHelper;
+	projectApi: ProjectApiHelper;
+	credentialApi: CredentialApiHelper;
 
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
 		this.workflowApi = new WorkflowApiHelper(this);
+		this.projectApi = new ProjectApiHelper(this);
+		this.credentialApi = new CredentialApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====

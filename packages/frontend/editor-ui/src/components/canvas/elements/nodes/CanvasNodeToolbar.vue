@@ -66,7 +66,7 @@ const isDisableNodeVisible = computed(() => {
 
 const isDeleteNodeVisible = computed(() => !props.readOnly);
 
-const isFocusNodeVisible = computed(() => experimentalNdvStore.isEnabled);
+const isFocusNodeVisible = computed(() => experimentalNdvStore.isZoomedViewEnabled);
 
 const isStickyNoteChangeColorVisible = computed(
 	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,

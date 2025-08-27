@@ -3,6 +3,7 @@ import {
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	CODE_NODE_NAME,
 	HTTP_REQUEST_NODE_NAME,
+	CODE_NODE_DISPLAY_NAME,
 } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
 
@@ -22,6 +23,7 @@ test.describe('Canvas Actions', () => {
 		await n8n.canvas.clickNodePlusEndpoint(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 		await n8n.canvas.fillNodeCreatorSearchBar(CODE_NODE_NAME);
 		await n8n.page.keyboard.press('Enter');
+		await n8n.canvas.nodeCreatorSubItem(CODE_NODE_DISPLAY_NAME).click();
 		await n8n.page.keyboard.press('Escape');
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
@@ -32,12 +34,10 @@ test.describe('Canvas Actions', () => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.clickNodePlusEndpoint(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 		await n8n.canvas.fillNodeCreatorSearchBar(CODE_NODE_NAME);
-
-		const sourceElement = n8n.canvas
-			.nodeCreatorNodeItems()
-			.filter({ hasText: CODE_NODE_NAME })
-			.first();
-		await sourceElement.dragTo(n8n.canvas.canvasPane(), { targetPosition: { x: 100, y: 100 } });
+		await n8n.page.keyboard.press('Enter');
+		await n8n.canvas
+			.nodeCreatorSubItem(CODE_NODE_DISPLAY_NAME)
+			.dragTo(n8n.canvas.canvasPane(), { targetPosition: { x: 100, y: 100 } });
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(1);
@@ -61,7 +61,7 @@ test.describe('Canvas Actions', () => {
 	test('should add disconnected node if nothing is selected', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.deselectAll();
-		await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
+		await n8n.canvas.addNode(CODE_NODE_NAME, { action: CODE_NODE_DISPLAY_NAME, closeNDV: true });
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(0);
@@ -70,14 +70,14 @@ test.describe('Canvas Actions', () => {
 	test('should add node between two connected nodes', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
-		await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
+		await n8n.canvas.addNode(CODE_NODE_NAME, { action: CODE_NODE_DISPLAY_NAME, closeNDV: true });
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(1);
 
 		await n8n.canvas.addNodeBetweenNodes(
 			MANUAL_TRIGGER_NODE_DISPLAY_NAME,
-			CODE_NODE_NAME,
+			CODE_NODE_DISPLAY_NAME,
 			HTTP_REQUEST_NODE_NAME,
 		);
 
@@ -96,8 +96,11 @@ test.describe('Canvas Actions', () => {
 	test('should delete connections by clicking on the delete button', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
-		await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
-		await n8n.canvas.deleteConnectionBetweenNodes(MANUAL_TRIGGER_NODE_DISPLAY_NAME, CODE_NODE_NAME);
+		await n8n.canvas.addNode(CODE_NODE_NAME, { action: CODE_NODE_DISPLAY_NAME, closeNDV: true });
+		await n8n.canvas.deleteConnectionBetweenNodes(
+			MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+			CODE_NODE_DISPLAY_NAME,
+		);
 
 		await expect(n8n.canvas.nodeConnections()).toHaveCount(0);
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
@@ -116,9 +119,9 @@ test.describe('Canvas Actions', () => {
 
 		test('should disable and enable node', async ({ n8n }) => {
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-			await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
+			await n8n.canvas.addNode(CODE_NODE_NAME, { action: CODE_NODE_DISPLAY_NAME, closeNDV: true });
 
-			const disableButton = n8n.canvas.nodeDisableButton(CODE_NODE_NAME);
+			const disableButton = n8n.canvas.nodeDisableButton(CODE_NODE_DISPLAY_NAME);
 			await disableButton.click();
 
 			await expect(n8n.canvas.disabledNodes()).toHaveCount(1);
@@ -130,8 +133,8 @@ test.describe('Canvas Actions', () => {
 
 		test('should delete node', async ({ n8n }) => {
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-			await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
-			await n8n.canvas.deleteNodeByName(CODE_NODE_NAME);
+			await n8n.canvas.addNode(CODE_NODE_NAME, { action: CODE_NODE_DISPLAY_NAME, closeNDV: true });
+			await n8n.canvas.deleteNodeByName(CODE_NODE_DISPLAY_NAME);
 
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
 			await expect(n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME)).toBeVisible();
@@ -140,9 +143,9 @@ test.describe('Canvas Actions', () => {
 
 	test('should copy selected nodes', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
+		await n8n.canvas.addNode(CODE_NODE_NAME, { action: CODE_NODE_DISPLAY_NAME, closeNDV: true });
 		await n8n.canvasComposer.selectAllAndCopy();
-		await n8n.canvas.nodeByName(CODE_NODE_NAME).click();
+		await n8n.canvas.nodeByName(CODE_NODE_DISPLAY_NAME).click();
 		await n8n.canvasComposer.copySelectedNodesWithToast();
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
@@ -150,7 +153,7 @@ test.describe('Canvas Actions', () => {
 
 	test('should select/deselect all nodes', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
+		await n8n.canvas.addNode(CODE_NODE_NAME, { action: CODE_NODE_DISPLAY_NAME, closeNDV: true });
 		await n8n.canvas.selectAll();
 
 		await expect(n8n.canvas.selectedNodes()).toHaveCount(2);
@@ -162,7 +165,7 @@ test.describe('Canvas Actions', () => {
 	test('should select nodes using arrow keys', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
-		await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
+		await n8n.canvas.addNode(CODE_NODE_NAME, { action: CODE_NODE_DISPLAY_NAME, closeNDV: true });
 		await n8n.canvas.getCanvasNodes().first().waitFor();
 		await n8n.canvas.navigateNodesWithArrows('left');
 
@@ -177,7 +180,7 @@ test.describe('Canvas Actions', () => {
 	test('should select nodes using shift and arrow keys', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
-		await n8n.canvas.addNodeAndCloseNDV(CODE_NODE_NAME);
+		await n8n.canvas.addNode(CODE_NODE_NAME, { action: CODE_NODE_DISPLAY_NAME, closeNDV: true });
 		await n8n.canvas.getCanvasNodes().first().waitFor();
 		await n8n.canvas.extendSelectionWithArrows('left');
 

@@ -36,6 +36,7 @@ export {
 	type InsightsByWorkflow,
 	type InsightsByTime,
 	type InsightsDateRange,
+	type RestrictedInsightsByTime,
 } from './schemas/insights.schema';
 
 export {
@@ -53,6 +54,5 @@ export {
 	type DataStoreCreateColumnSchema,
 	type DataStoreListFilter,
 	type DataStoreListOptions,
-	type DataStoreUserTableName,
 	dateTimeSchema,
 } from './schemas/data-store.schema';

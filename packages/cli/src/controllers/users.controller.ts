@@ -15,6 +15,8 @@ import {
 	SharedWorkflowRepository,
 	UserRepository,
 	AuthenticatedRequest,
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
 import {
 	GlobalScope,
@@ -115,6 +117,9 @@ export class UsersController {
 					withInviteUrl,
 					inviterId: req.user.id,
 				});
+				if (listQueryOptions.select && !listQueryOptions.select?.includes('role')) {
+					delete user.role;
+				}
 				return {
 					...user,
 					projectRelations: u.projectRelations?.map((pr) => ({
@@ -137,12 +142,16 @@ export class UsersController {
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: req.params.id },
+			relations: ['role'],
 		});
 		if (!user) {
 			throw new NotFoundError('User not found');
 		}
 
-		if (req.user.role === 'global:admin' && user.role === 'global:owner') {
+		if (
+			req.user.role.slug === GLOBAL_ADMIN_ROLE.slug &&
+			user.role.slug === GLOBAL_OWNER_ROLE.slug
+		) {
 			throw new ForbiddenError('Admin cannot reset password of global owner');
 		}
 
@@ -186,7 +195,10 @@ export class UsersController {
 
 		const { transferId } = req.query;
 
-		const userToDelete = await this.userRepository.findOneBy({ id: idToDelete });
+		const userToDelete = await this.userRepository.findOne({
+			where: { id: idToDelete },
+			relations: ['role'],
+		});
 
 		if (!userToDelete) {
 			throw new NotFoundError(
@@ -194,7 +206,7 @@ export class UsersController {
 			);
 		}
 
-		if (userToDelete.role === 'global:owner') {
+		if (userToDelete.role.slug === GLOBAL_OWNER_ROLE.slug) {
 			throw new ForbiddenError('Instance owner cannot be deleted.');
 		}
 
@@ -302,16 +314,25 @@ export class UsersController {
 		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
 			UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
-		const targetUser = await this.userRepository.findOneBy({ id });
+		const targetUser = await this.userRepository.findOne({
+			where: { id },
+			relations: ['role'],
+		});
 		if (targetUser === null) {
 			throw new NotFoundError(NO_USER);
 		}
 
-		if (req.user.role === 'global:admin' && targetUser.role === 'global:owner') {
+		if (
+			req.user.role.slug === GLOBAL_ADMIN_ROLE.slug &&
+			targetUser.role.slug === GLOBAL_OWNER_ROLE.slug
+		) {
 			throw new ForbiddenError(NO_ADMIN_ON_OWNER);
 		}
 
-		if (req.user.role === 'global:owner' && targetUser.role === 'global:owner') {
+		if (
+			req.user.role.slug === GLOBAL_OWNER_ROLE.slug &&
+			targetUser.role.slug === GLOBAL_OWNER_ROLE.slug
+		) {
 			throw new ForbiddenError(NO_OWNER_ON_OWNER);
 		}
 

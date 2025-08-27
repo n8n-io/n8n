@@ -8,6 +8,7 @@ import { UrlService } from '@/services/url.service';
 
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '../constants';
 import { OidcService } from '../oidc.service.ee';
+import { AuthlessRequest } from '@/requests';
 
 @RestController('/sso/oidc')
 export class OidcController {
@@ -51,13 +52,13 @@ export class OidcController {
 
 	@Get('/callback', { skipAuth: true })
 	@Licensed('feat:oidc')
-	async callbackHandler(req: Request, res: Response) {
+	async callbackHandler(req: AuthlessRequest, res: Response) {
 		const fullUrl = `${this.urlService.getInstanceBaseUrl()}${req.originalUrl}`;
 		const callbackUrl = new URL(fullUrl);
 
 		const user = await this.oidcService.loginUser(callbackUrl);
 
-		this.authService.issueCookie(res, user, true);
+		this.authService.issueCookie(res, user, true, req.browserId);
 
 		res.redirect('/');
 	}
