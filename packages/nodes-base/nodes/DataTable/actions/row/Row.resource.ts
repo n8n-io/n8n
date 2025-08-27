@@ -53,7 +53,7 @@ export const description: INodeProperties[] = [
 		default: 'insert',
 	},
 	{
-		displayName: 'Data Store',
+		displayName: 'Data Table',
 		name: DATA_TABLE_ID_FIELD,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
