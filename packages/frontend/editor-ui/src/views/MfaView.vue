@@ -112,7 +112,7 @@ const onSubmit = (formData: unknown) => {
 	emit('submit', data);
 };
 
-const focusMfaCodeAfterPasswordManager = async () => {
+const focusMfaCodeAfterPasswordManager = () => {
 	setTimeout(() => {
 		if (mfaFormRef.value) {
 			const container = mfaFormRef.value.$el;
