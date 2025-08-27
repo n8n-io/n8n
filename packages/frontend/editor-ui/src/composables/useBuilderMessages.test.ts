@@ -289,7 +289,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
+			expect(result.thinkingMessage).toBe(undefined);
 			expect(result.shouldClearThinking).toBe(false);
 		});
 
@@ -389,8 +389,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should show thinking message for the new running tool
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
+			// Should not show thinking message as new tool is running
+			expect(result.thinkingMessage).toBe(undefined);
 		});
 
 		it('should show thinking message when second tool completes', () => {
@@ -473,8 +473,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should still show thinking because call-456 is still running
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
+			// Should not show thinking because call-456 is still running
+			expect(result.thinkingMessage).toBe(undefined);
 
 			// Verify first tool is now completed
 			const firstTool = result.messages.find(
@@ -1263,7 +1263,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			let result = builderMessages.processAssistantMessages(currentMessages, batch1, 'batch-1');
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
+			expect(result.thinkingMessage).toBe(undefined);
 			currentMessages = result.messages;
 
 			// Second batch: tool completes
