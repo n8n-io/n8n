@@ -51,6 +51,15 @@ function getConditionAndParams(
 	const paramName = `filter_${index}`;
 	const column = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(filter.columnName, dbType)}`;
 
+	if (filter.value === null) {
+		switch (filter.condition) {
+			case 'eq':
+				return [`${column} IS NULL`, {}];
+			case 'neq':
+				return [`${column} IS NOT NULL`, {}];
+		}
+	}
+
 	switch (filter.condition) {
 		case 'eq':
 			return [`${column} = :${paramName}`, { [paramName]: filter.value }];
