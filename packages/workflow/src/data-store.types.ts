@@ -86,6 +86,8 @@ export type DataStoreRowsReturn = DataStoreRowReturn[];
 
 // APIs for a data store service operating on a specific projectId
 export interface IDataStoreProjectAggregateService {
+	getProjectId(): string;
+
 	createDataStore(options: CreateDataStoreOptions): Promise<DataStore>;
 
 	getManyAndCount(options: ListDataStoreOptions): Promise<{ count: number; data: DataStore[] }>;

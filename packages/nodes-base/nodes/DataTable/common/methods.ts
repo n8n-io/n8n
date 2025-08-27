@@ -29,6 +29,7 @@ export async function tableSearch(
 		return {
 			name: row.name,
 			value: row.id,
+			url: `/projects/${proxy.getProjectId()}/datatables/${row.id}`,
 		};
 	});
 
@@ -42,7 +43,7 @@ export async function tableSearch(
 
 export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
-	const returnData: INodePropertyOptions[] = [{ name: 'id - (string)', value: 'id' }];
+	const returnData: INodePropertyOptions[] = [{ name: 'id - (number)', value: 'id' }];
 	const proxy = await getDataTableProxyLoadOptions(this);
 	const columns = await proxy.getColumns();
 	for (const column of columns) {
