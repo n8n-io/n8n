@@ -4,9 +4,10 @@ import * as deleteRows from './delete.operation';
 import * as get from './get.operation';
 import * as insert from './insert.operation';
 import * as update from './update.operation';
+import * as upsert from './upsert.operation';
 import { DATA_TABLE_ID_FIELD } from '../../common/fields';
 
-export { insert, get, deleteRows, update };
+export { insert, get, deleteRows, update, upsert };
 
 export const description: INodeProperties[] = [
 	{
@@ -56,6 +57,12 @@ export const description: INodeProperties[] = [
 				description: 'Update row(s) matching certain fields',
 				action: 'Update row(s)',
 			},
+			{
+				name: 'Upsert',
+				value: upsert.FIELD,
+				description: 'Update row(s) matching certain fields, or insert if there is no match',
+				action: 'Upsert row(s)',
+			},
 		],
 		default: 'insert',
 	},
@@ -87,4 +94,5 @@ export const description: INodeProperties[] = [
 	...insert.description,
 	...get.description,
 	...update.description,
+	...upsert.description,
 ];
