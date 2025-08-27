@@ -37,6 +37,7 @@ import IconLucideArrowRight from '~icons/lucide/arrow-right';
 import IconLucideArrowRightFromLine from '~icons/lucide/arrow-right-from-line';
 import IconLucideArrowRightToLine from '~icons/lucide/arrow-right-to-line';
 import IconLucideArrowUp from '~icons/lucide/arrow-up';
+import IconLucideArrowUpDown from '~icons/lucide/arrow-up-down';
 import IconLucideAtSign from '~icons/lucide/at-sign';
 import IconLucideBan from '~icons/lucide/ban';
 import IconLucideBell from '~icons/lucide/bell';
@@ -128,6 +129,7 @@ import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideListFilter from '~icons/lucide/list-filter';
 import IconLucideLock from '~icons/lucide/lock';
 import IconLucideLogIn from '~icons/lucide/log-in';
 import IconLucideLogOut from '~icons/lucide/log-out';
@@ -186,6 +188,7 @@ import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
 import IconLucideType from '~icons/lucide/type';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
 import IconLucideUnlink from '~icons/lucide/unlink';
+
 import IconLucideUser from '~icons/lucide/user';
 import IconLucideUserCheck from '~icons/lucide/user-check';
 import IconLucideUserLock from '~icons/lucide/user-lock';
@@ -451,6 +454,7 @@ export const updatedIconSet = {
 	'arrow-right-from-line': IconLucideArrowRightFromLine,
 	'arrow-right-to-line': IconLucideArrowRightToLine,
 	'arrow-up': IconLucideArrowUp,
+	'arrow-up-down': IconLucideArrowUpDown,
 	'at-sign': IconLucideAtSign,
 	ban: IconLucideBan,
 	bell: IconLucideBell,
@@ -540,6 +544,7 @@ export const updatedIconSet = {
 	lightbulb: IconLucideLightbulb,
 	link: IconLucideLink,
 	list: IconLucideList,
+	'list-filter': IconLucideListFilter,
 	'list-checks': IconLucideListChecks,
 	lock: IconLucideLock,
 	'log-in': IconLucideLogIn,
