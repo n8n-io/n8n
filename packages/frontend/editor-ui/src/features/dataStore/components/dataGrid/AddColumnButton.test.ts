@@ -177,7 +177,7 @@ describe('AddColumnButton', () => {
 
 		const nameInput = getByPlaceholderText('Enter column name');
 
-		expect(nameInput.maxLength).toBe(MAX_COLUMN_NAME_LENGTH);
+		expect(nameInput.getAttribute('maxlength')).toBe(MAX_COLUMN_NAME_LENGTH.toString());
 	});
 
 	it('should allow selecting different column types', async () => {
@@ -223,7 +223,7 @@ describe('AddColumnButton', () => {
 
 		await waitFor(() => {
 			const resetNameInput = getByPlaceholderText('Enter column name');
-			expect(resetNameInput.value).toBe('');
+			expect((resetNameInput as HTMLInputElement).value).toBe('');
 		});
 	});
 
