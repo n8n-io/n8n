@@ -5,6 +5,7 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
+import { DataStore } from './data-store.entity';
 import { DataStoreColumnNameConflictError } from './errors/data-store-column-name-conflict.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 
@@ -40,7 +41,11 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 			});
 
 			if (existingColumnMatch) {
-				throw new DataStoreColumnNameConflictError(schema.name, dataStoreId);
+				const dataStore = await em.findOneBy(DataStore, { id: dataStoreId });
+				if (!dataStore) {
+					throw new UnexpectedError('Data store not found');
+				}
+				throw new DataStoreColumnNameConflictError(schema.name, dataStore.name);
 			}
 
 			if (schema.index === undefined) {
