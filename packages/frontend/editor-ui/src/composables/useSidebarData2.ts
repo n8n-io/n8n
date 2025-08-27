@@ -40,7 +40,7 @@ export function useSidebarData2() {
 
 	async function openProject(id: string) {
 		await folderStore.fetchProjectFolders(id);
-		await workflowsStore.fetchAllWorkflows(id);
+		await workflowsStore.fetchAllWorkflows(id, true);
 	}
 
 	const convertToTreeStructure = computed(() => (projectId: string): IMenuElement[] => {

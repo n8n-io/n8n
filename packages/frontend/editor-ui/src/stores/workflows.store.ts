@@ -620,8 +620,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflows;
 	}
 
-	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
+	async function fetchAllWorkflows(
+		projectId?: string,
+		dontReplace?: boolean,
+	): Promise<IWorkflowDb[]> {
 		const workflows = await searchWorkflows({ projectId });
+		if (dontReplace) {
+			setWorkflows([...allWorkflows.value, ...workflows]);
+			return workflows;
+		}
 		setWorkflows(workflows);
 		return workflows;
 	}
