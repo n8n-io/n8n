@@ -326,7 +326,7 @@ export function useCanvasOperations() {
 
 		const isRenamingActiveNode = ndvStore.activeNodeName === currentName;
 		if (isRenamingActiveNode) {
-			ndvStore.activeNodeName = newName;
+			ndvStore.setActiveNodeName(newName, 'other');
 		}
 
 		if (trackHistory && trackBulk) {
@@ -2204,7 +2204,7 @@ export function useCanvasOperations() {
 		if (nodeId) {
 			const node = workflowsStore.getNodeById(nodeId);
 			if (node) {
-				ndvStore.activeNodeName = node.name;
+				ndvStore.setActiveNodeName(node.name, 'other');
 			} else {
 				toast.showError(
 					new Error(`Node with id "${nodeId}" could not be found!`),

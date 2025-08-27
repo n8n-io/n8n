@@ -108,7 +108,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		const nodeName = node ?? ndvStore.activeNodeName;
 		const nodeData = nodeName ? workflowsStore.getNodeByName(nodeName) : null;
 
-		ndvStore.activeNodeName = null;
+		ndvStore.unsetActiveNodeName();
 
 		setTimeout(() => {
 			if (creatorView) {
@@ -216,7 +216,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}
 
 	function openNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
-		ndvStore.activeNodeName = null;
+		ndvStore.unsetActiveNodeName();
 		setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
 		setShowScrim(true);
 		setNodeCreatorState({
@@ -239,7 +239,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			transformNodeType(a, actionNode.properties.displayName, 'action'),
 		);
 
-		ndvStore.activeNodeName = null;
+		ndvStore.unsetActiveNodeName();
 		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
 		setNodeCreatorState({
 			source: eventSource,
