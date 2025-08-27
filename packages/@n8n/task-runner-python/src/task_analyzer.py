@@ -12,7 +12,7 @@ ERROR_EXTERNAL_DISALLOWED = "Import of external package '{module}' is disallowed
 ERROR_SECURITY_VIOLATIONS = "Security violations detected:\n{violations}"
 
 
-class ImportValidationVisitor(ast.NodeVisitor):
+class ImportValidator(ast.NodeVisitor):
     def __init__(self, stdlib_allow: Set[str], external_allow: Set[str]):
         self.checked_modules: Set[str] = set()
         self.violations: list[str] = []
@@ -112,16 +112,16 @@ class TaskAnalyzer:
         self.external_allow = external_allow
 
     def validate(self, code: str) -> None:
-        try:
-            tree = ast.parse(code)
-        except SyntaxError:
-            raise
+        tree = ast.parse(code)
 
-        visitor = ImportValidationVisitor(self.stdlib_allow, self.external_allow)
+        visitor = ImportValidator(self.stdlib_allow, self.external_allow)
         visitor.visit(tree)
 
-        if visitor.violations:
-            message = ERROR_SECURITY_VIOLATIONS.format(
-                violations="\n".join(visitor.violations)
-            )
-            raise SecurityViolationError(message)
+        if not visitor.violations:
+            return
+
+        message = ERROR_SECURITY_VIOLATIONS.format(
+            violations="\n".join(visitor.violations)
+        )
+
+        raise SecurityViolationError(message)
