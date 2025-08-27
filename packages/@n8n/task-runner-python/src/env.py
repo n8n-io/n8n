@@ -22,14 +22,18 @@ def parse_allowlist(allowlist_str: str, list_name: str) -> Set[str]:
     if not allowlist_str:
         return set()
 
-    modules = {module for raw_module in allowlist_str.split(",") if (module := raw_module.strip())}
-    
+    modules = {
+        module
+        for raw_module in allowlist_str.split(",")
+        if (module := raw_module.strip())
+    }
+
     if "*" in modules and len(modules) > 1:
         raise ValueError(
             f"Wildcard '*' in {list_name} must be used alone, not with other modules. "
             f"Got: {', '.join(sorted(modules))}"
         )
-    
+
     return modules
 
 

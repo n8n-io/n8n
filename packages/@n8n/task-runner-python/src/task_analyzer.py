@@ -1,7 +1,7 @@
 import ast
 import hashlib
 import sys
-from typing import Set, Dict, Tuple, Optional
+from typing import Set, Tuple
 from collections import OrderedDict
 
 from src.errors import SecurityViolationError
@@ -120,9 +120,9 @@ class TaskAnalyzer:
     _cache: ValidationCache = OrderedDict()
 
     def __init__(self, stdlib_allow: Set[str], external_allow: Set[str]):
-        self.stdlib_allow = stdlib_allow
-        self.external_allow = external_allow
-        self._allow_config = (
+        self._stdlib_allow = stdlib_allow
+        self._external_allow = external_allow
+        self._allowlists = (
             tuple(sorted(stdlib_allow)),
             tuple(sorted(external_allow)),
         )
@@ -144,7 +144,7 @@ class TaskAnalyzer:
 
         tree = ast.parse(code)
 
-        import_validator = ImportValidator(self.stdlib_allow, self.external_allow)
+        import_validator = ImportValidator(self._stdlib_allow, self._external_allow)
         import_validator.visit(tree)
 
         self._set_in_cache(cache_key, import_validator.violations)
@@ -158,12 +158,11 @@ class TaskAnalyzer:
 
     def _to_cache_key(self, code: str) -> CacheKey:
         code_hash = hashlib.sha256(code.encode()).hexdigest()
-        return (code_hash, self._allow_config)
+        return (code_hash, self._allowlists)
 
     def _set_in_cache(self, cache_key: CacheKey, violations: CachedViolations) -> None:
         if len(self._cache) >= MAX_VALIDATION_CACHE_SIZE:
-            self._cache.popitem(last=False)
+            self._cache.popitem(last=False)  # FIFO
 
         self._cache[cache_key] = violations.copy()
-
         self._cache.move_to_end(cache_key)
