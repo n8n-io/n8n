@@ -90,6 +90,19 @@ export function useSidebarData2() {
 		return buildTree(projectFolders, projectWorkflows);
 	});
 
+	const sharedWorkflows = computed(() =>
+		workflowsStore.allWorkflows
+			.filter((workflow) => {
+				return (
+					workflow.homeProject?.id !== projectsStore.personalProject?.id &&
+					workflow.homeProject?.type !== 'team'
+				);
+			})
+			.map((w) => {
+				return workflowToMenuItem(w);
+			}),
+	);
+
 	const topItems = computed<IMenuElement[]>(() => [
 		{
 			id: 'overview',
@@ -115,32 +128,39 @@ export function useSidebarData2() {
 			route: { to: '/shared/workflows' },
 			available: showShared.value,
 			type: 'project',
-			children: workflowsStore.allWorkflows
-				.filter((workflow) => {
-					return (
-						workflow.homeProject?.id !== projectsStore.personalProject?.id &&
-						workflow.homeProject?.type !== 'team'
-					);
-				})
-				.map((w) => {
-					return workflowToMenuItem(w);
-				}),
+			children:
+				sharedWorkflows.value.length > 0
+					? sharedWorkflows.value
+					: [{ id: 'empty', label: 'No shared workflows', type: 'empty', available: false }],
 		},
 	]);
 
 	const topItemsFiltered = computed(() => topItems.value.filter((item) => item.available));
 
 	const projectItems = computed<IMenuElement[]>(() =>
-		projectsStore.teamProjects.map((project) => {
-			return {
-				id: project.id,
-				label: project.name as string,
-				icon: (project.icon?.value || 'layers') as IconName,
-				route: { to: `/projects/${project.id}/workflows` },
-				children: convertToTreeStructure.value(project.id),
-				type: 'project',
-			};
-		}),
+		projectsStore.myProjects
+			.filter((p) => p.type === 'team')
+			.map((project) => {
+				const children = convertToTreeStructure.value(project.id);
+				return {
+					id: project.id,
+					label: project.name as string,
+					icon: (project.icon?.value || 'layers') as IconName,
+					route: { to: `/projects/${project.id}/workflows` },
+					children:
+						children.length > 0
+							? convertToTreeStructure.value(project.id)
+							: [
+									{
+										id: 'empty',
+										label: 'No workflows or folders',
+										type: 'empty',
+										available: false,
+									},
+								],
+					type: 'project',
+				};
+			}),
 	);
 
 	return {

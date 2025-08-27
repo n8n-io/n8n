@@ -112,9 +112,13 @@ onUnmounted(() => {
 			</header>
 			<SidebarTree :items="topItems" :open-project="openProject" />
 			<template v-if="showProjects">
-				<SidebarProjectsEmpty v-if="projectItems.length === 0" :can-create="canCreateProject" />
+				<N8nText size="small" color="text-light" class="sidebarSubheader" bold>Projects</N8nText>
+				<SidebarProjectsEmpty
+					v-if="projectItems.length === 0"
+					:can-create="canCreateProject"
+					@create-project="$emit('createProject')"
+				/>
 				<template v-else>
-					<N8nText size="small" color="text-light" class="sidebarSubheader" bold>Projects</N8nText>
 					<SidebarTree :items="projectItems" :open-project="openProject" />
 				</template>
 			</template>
