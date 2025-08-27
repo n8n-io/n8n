@@ -10815,11 +10815,11 @@
 		"key": "n8n-nodes-base.wordpress",
 		"subcategory": "*",
 		"properties": {
-			"displayName": "Wordpress",
+			"displayName": "WordPress",
 			"defaults": {
-				"name": "Wordpress"
+				"name": "WordPress"
 			},
-			"description": "Consume Wordpress API",
+			"description": "Consume WordPress API",
 			"name": "n8n-nodes-base.wordpress",
 			"group": ["output"],
 			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Wordpress/wordpress.svg",
