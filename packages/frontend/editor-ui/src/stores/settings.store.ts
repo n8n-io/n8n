@@ -10,10 +10,7 @@ import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
 import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
-import {
-	INSECURE_CONNECTION_WARNING,
-	LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,
-} from '@/constants';
+import { INSECURE_CONNECTION_WARNING } from '@/constants';
 import { STORES } from '@n8n/stores';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
@@ -279,8 +276,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		await getSettings();
 
 		initialized.value = true;
-
-		await getModuleSettings();
 	};
 
 	const stopShowingSetupPage = () => {
@@ -316,15 +311,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const fetched = await moduleSettingsApi.getModuleSettings(useRootStore().restApiContext);
 		moduleSettings.value = fetched;
 	};
-
-	/**
-	 * (Experimental) If set to true, show node settings for a selected node in docked pane
-	 */
-	const experimental__dockedNodeSettingsEnabled = useLocalStorage(
-		LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS,
-		false,
-		{ writeDefaults: false },
-	);
 
 	return {
 		settings,
@@ -382,7 +368,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAskAiEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
-		experimental__dockedNodeSettingsEnabled,
 		partialExecutionVersion,
 		reset,
 		getTimezones,

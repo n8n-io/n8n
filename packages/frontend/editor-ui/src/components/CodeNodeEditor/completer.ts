@@ -30,9 +30,13 @@ export const useCompleter = (
 				const word = context.matchBefore(/\w*/);
 				if (!word) return null;
 
-				const label = toValue(mode) === 'runOnceForEachItem' ? '_item' : '_items';
+				const options = [];
 
-				return { from: word.from, options: [{ label, type: 'variable' }] };
+				const label = toValue(mode) === 'runOnceForEachItem' ? '_item' : '_items';
+				options.push({ label, type: 'variable' });
+				options.push({ label: 'print', type: 'function' });
+
+				return { from: word.from, options };
 			};
 
 			return autocompletion({ icons: false, override: [completions] });

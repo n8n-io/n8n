@@ -733,6 +733,7 @@ export type NodeTypeSelectedPayload = {
 	parameters?: {
 		resource?: string;
 		operation?: string;
+		language?: string;
 	};
 	actionName?: string;
 };

@@ -52,6 +52,7 @@ import {
 import { isCredentialModalState, isValidCredentialResponse } from '@/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useElementSize } from '@vueuse/core';
+import { useRouter } from 'vue-router';
 
 type Props = {
 	modalName: string;
@@ -75,6 +76,7 @@ const toast = useToast();
 const message = useMessage();
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const router = useRouter();
 
 const activeTab = ref('connection');
 const authError = ref('');
@@ -801,7 +803,16 @@ async function createCredential(
 	let credential;
 
 	try {
-		credential = await credentialsStore.createNewCredential(credentialDetails, project?.id);
+		credential = await credentialsStore.createNewCredential(
+			credentialDetails,
+			project?.id,
+			router.currentRoute.value.query.uiContext?.toString(),
+		);
+
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { uiContext, ...rest } = router.currentRoute.value.query;
+		void router.replace({ query: rest });
+
 		hasUnsavedChanges.value = false;
 
 		const { title, message } = createToastMessagingForNewCredentials(project);
