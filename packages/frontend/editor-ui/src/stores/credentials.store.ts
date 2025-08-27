@@ -325,7 +325,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			type: data.type,
 			data: data.data ?? {},
 			projectId,
-			ui_context: uiContext,
+			uiContext,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {

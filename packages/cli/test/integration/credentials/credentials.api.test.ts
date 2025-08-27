@@ -822,8 +822,8 @@ describe('POST /credentials', () => {
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 
-	test('should create cred with ui_context parameter', async () => {
-		const payload = { ...randomCredentialPayload(), ui_context: 'credentials_list' };
+	test('should create cred with uiContext parameter', async () => {
+		const payload = { ...randomCredentialPayload(), uiContext: 'credentials_list' };
 
 		const response = await authMemberAgent.post('/credentials').send(payload);
 

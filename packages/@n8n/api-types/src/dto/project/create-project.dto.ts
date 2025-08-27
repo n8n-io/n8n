@@ -6,5 +6,5 @@ import { projectIconSchema, projectNameSchema } from '../../schemas/project.sche
 export class CreateProjectDto extends Z.class({
 	name: projectNameSchema,
 	icon: projectIconSchema.optional(),
-	ui_context: z.string().optional(),
+	uiContext: z.string().optional(),
 }) {}

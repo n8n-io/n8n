@@ -806,11 +806,11 @@ async function createCredential(
 		credential = await credentialsStore.createNewCredential(
 			credentialDetails,
 			project?.id,
-			router.currentRoute.value.query.ui_context?.toString(),
+			router.currentRoute.value.query.uiContext?.toString(),
 		);
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { ui_context, ...rest } = router.currentRoute.value.query;
+		const { uiContext, ...rest } = router.currentRoute.value.query;
 		void router.replace({ query: rest });
 
 		hasUnsavedChanges.value = false;

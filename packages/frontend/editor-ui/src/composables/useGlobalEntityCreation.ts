@@ -184,14 +184,14 @@ export const useGlobalEntityCreation = () => {
 		] satisfies Item[];
 	});
 
-	const createProject = async (ui_context?: string) => {
+	const createProject = async (uiContext?: string) => {
 		isCreatingProject.value = true;
 
 		try {
 			const newProject = await projectsStore.createProject({
 				name: i18n.baseText('projects.settings.newProjectName'),
 				icon: { type: 'icon', value: DEFAULT_ICON },
-				ui_context,
+				uiContext,
 			});
 			await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
 			toast.showMessage({

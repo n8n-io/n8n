@@ -404,7 +404,7 @@ describe('POST /projects/', () => {
 
 		const resp = await ownerAgent.post('/projects/').send({
 			name: 'Test Team Project with Context',
-			ui_context: 'universal_button',
+			uiContext: 'universal_button',
 		});
 		expect(resp.status).toBe(200);
 		const respProject = resp.body.data as Project;

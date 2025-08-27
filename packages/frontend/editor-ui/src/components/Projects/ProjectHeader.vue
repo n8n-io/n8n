@@ -200,7 +200,7 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			query: {
 				projectId,
 				parentFolderId: route.params.folderId as string,
-				ui_context: getUIContext(route.name?.toString() ?? ''),
+				uiContext: getUIContext(route.name?.toString() ?? ''),
 			},
 		});
 	},
@@ -212,7 +212,7 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 				credentialId: 'create',
 			},
 			query: {
-				ui_context: getUIContext(route.name?.toString() ?? ''),
+				uiContext: getUIContext(route.name?.toString() ?? ''),
 			},
 		});
 	},
