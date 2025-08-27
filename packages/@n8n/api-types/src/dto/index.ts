@@ -86,8 +86,10 @@ export { UpdateDataStoreRowDto } from './data-store/update-data-store-row.dto';
 export { UpsertDataStoreRowsDto } from './data-store/upsert-data-store-rows.dto';
 export { ListDataStoreQueryDto } from './data-store/list-data-store-query.dto';
 export { ListDataStoreContentQueryDto } from './data-store/list-data-store-content-query.dto';
-export { ListDataStoreContentFilterConditionType } from './data-store/list-data-store-content-query.dto';
-export type { ListDataStoreContentFilter } from './data-store/list-data-store-content-query.dto';
+export type {
+	ListDataStoreContentFilter,
+	ListDataStoreContentFilterConditionType,
+} from './data-store/list-data-store-content-query.dto';
 export { CreateDataStoreColumnDto } from './data-store/create-data-store-column.dto';
 export { AddDataStoreRowsDto } from './data-store/add-data-store-rows.dto';
 export { AddDataStoreColumnDto } from './data-store/add-data-store-column.dto';
