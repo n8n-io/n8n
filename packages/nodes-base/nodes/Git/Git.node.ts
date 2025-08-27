@@ -16,6 +16,7 @@ import {
 	cloneFields,
 	commitFields,
 	logFields,
+	pullFields,
 	pushFields,
 	tagFields,
 } from './descriptions';
@@ -190,6 +191,7 @@ export class Git implements INodeType {
 			...cloneFields,
 			...commitFields,
 			...logFields,
+			...pullFields,
 			...pushFields,
 			...tagFields,
 			// ...userSetupFields,
@@ -213,6 +215,23 @@ export class Git implements INodeType {
 			}
 
 			return repositoryPath;
+		};
+
+		const switchToBranchIfNeeded = async (git: SimpleGit, branch: string): Promise<void> => {
+			if (branch) {
+				try {
+					// Try to checkout the branch
+					await git.checkout(branch);
+				} catch (error) {
+					// If branch doesn't exist, try to create it locally first
+					try {
+						await git.checkoutLocalBranch(branch);
+					} catch (createError) {
+						// If that fails, throw the original checkout error
+						throw error;
+					}
+				}
+			}
 		};
 
 		const operation = this.getNodeParameter('operation', 0);
@@ -304,6 +323,10 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const message = this.getNodeParameter('message', itemIndex, '') as string;
+					const branch = options.branch as string;
+
+					// Switch to branch if specified
+					await switchToBranchIfNeeded(git, branch);
 
 					let pathsToAdd: string[] | undefined = undefined;
 					if (options.files !== undefined) {
@@ -365,6 +388,11 @@ export class Git implements INodeType {
 					//         pull
 					// ----------------------------------
 
+					const branch = options.branch as string;
+
+					// Switch to branch if specified
+					await switchToBranchIfNeeded(git, branch);
+
 					await git.pull();
 					returnItems.push({
 						json: {
@@ -378,6 +406,11 @@ export class Git implements INodeType {
 					// ----------------------------------
 					//         push
 					// ----------------------------------
+
+					const branch = options.branch as string;
+
+					// Switch to branch if specified
+					await switchToBranchIfNeeded(git, branch);
 
 					if (options.repository) {
 						const targetRepository = await prepareRepository(options.targetRepository as string);
