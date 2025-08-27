@@ -1,10 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import * as deleteRows from './delete.operation';
 import * as get from './get.operation';
 import * as insert from './insert.operation';
 import { DATA_TABLE_ID_FIELD } from '../../common/fields';
 
-export { insert, get };
+export { insert, get, deleteRows };
 
 export const description: INodeProperties[] = [
 	{
@@ -24,12 +25,12 @@ export const description: INodeProperties[] = [
 			// 		description: 'Create a new record, or update the current one if it already exists (upsert)',
 			// 		action: 'Create or update a row',
 			// 	},
-			// 	{
-			// 		name: 'Delete',
-			// 		value: 'delete',
-			// 		description: 'Delete a row',
-			// 		action: 'Delete a row',
-			// 	},
+			{
+				name: 'Delete',
+				value: deleteRows.FIELD,
+				description: 'Delete row(s)',
+				action: 'Delete row(s)',
+			},
 			{
 				name: 'Get',
 				value: get.FIELD,
@@ -52,7 +53,7 @@ export const description: INodeProperties[] = [
 		default: 'insert',
 	},
 	{
-		displayName: 'Data Store',
+		displayName: 'Data Table',
 		name: DATA_TABLE_ID_FIELD,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -75,7 +76,7 @@ export const description: INodeProperties[] = [
 		],
 		displayOptions: { show: { resource: ['row'] } },
 	},
-
+	...deleteRows.description,
 	...insert.description,
 	...get.description,
 ];

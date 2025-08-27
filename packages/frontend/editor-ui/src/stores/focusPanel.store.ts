@@ -147,6 +147,10 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		_setOptions({ isActive: false });
 	}
 
+	function unsetParameters() {
+		_setOptions({ parameters: [] });
+	}
+
 	function toggleFocusPanel() {
 		_setOptions({ isActive: !focusPanelActive.value });
 	}
@@ -193,5 +197,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		toggleFocusPanel,
 		onNewWorkflowSave,
 		updateWidth,
+		unsetParameters,
 	};
 });

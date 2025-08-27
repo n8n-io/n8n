@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import orderBy from 'lodash/orderBy';
 import type {
 	DataStore,
@@ -120,7 +120,7 @@ const contentLoading = ref(false);
 const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
 const isTextEditorOpen = ref(false);
 
-const gridContainer = ref<HTMLElement | null>(null);
+const gridContainer = useTemplateRef('gridContainer');
 
 // Pagination
 const pageSizeOptions = [10, 20, 50];
@@ -415,9 +415,7 @@ const initColumnDefinitions = () => {
 			},
 		),
 		// Append other columns
-		...orderBy(props.dataStore.columns, 'index').map((col: DataStoreColumn) =>
-			createColumnDef(col),
-		),
+		...orderBy(props.dataStore.columns, 'index').map((col) => createColumnDef(col)),
 		createColumnDef(
 			{
 				index: props.dataStore.columns.length + 1,

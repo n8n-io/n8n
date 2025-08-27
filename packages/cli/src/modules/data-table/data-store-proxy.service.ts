@@ -68,6 +68,10 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 	private makeAggregateOperations(projectId: string): IDataStoreProjectAggregateService {
 		const dataStoreService = this.dataStoreService;
 		return {
+			getProjectId() {
+				return projectId;
+			},
+
 			async getManyAndCount(options: ListDataStoreOptions = {}) {
 				const serviceOptions: DataStoreListOptions = {
 					...options,
@@ -125,11 +129,15 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 			},
 
 			async insertRows(rows: DataStoreRows) {
-				return await dataStoreService.insertRows(dataStoreId, projectId, rows);
+				return await dataStoreService.insertRows(dataStoreId, projectId, rows, true);
 			},
 
 			async upsertRows(options: UpsertDataStoreRowsOptions) {
-				return await dataStoreService.upsertRows(dataStoreId, projectId, options);
+				return await dataStoreService.upsertRows(dataStoreId, projectId, options, true);
+			},
+
+			async deleteRows(ids: number[]) {
+				return await dataStoreService.deleteRows(dataStoreId, projectId, ids);
 			},
 		};
 	}

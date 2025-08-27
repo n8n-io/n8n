@@ -1,7 +1,7 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest, User, PublicUser } from '@n8n/db';
-import { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
@@ -38,7 +38,7 @@ describe('MeController', () => {
 				email: 'valid@email.com',
 				password: 'password',
 				authIdentities: [],
-				role: 'global:owner',
+				role: GLOBAL_OWNER_ROLE,
 				mfaEnabled: false,
 			});
 			const payload = new UserUpdateRequestDto({
@@ -88,7 +88,7 @@ describe('MeController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				role: 'global:owner',
+				role: GLOBAL_OWNER_ROLE,
 				mfaEnabled: false,
 			});
 			const req = mock<AuthenticatedRequest>({ user });
@@ -115,7 +115,7 @@ describe('MeController', () => {
 					email: 'valid@email.com',
 					password: 'password',
 					authIdentities: [],
-					role: 'global:owner',
+					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: true,
 				});
 				const req = mock<AuthenticatedRequest>({ user, browserId });
@@ -139,7 +139,7 @@ describe('MeController', () => {
 					email: 'valid@email.com',
 					password: 'password',
 					authIdentities: [],
-					role: 'global:owner',
+					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: true,
 				});
 				const req = mock<AuthenticatedRequest>({ user, browserId });
@@ -165,7 +165,7 @@ describe('MeController', () => {
 					email: 'valid@email.com',
 					password: 'password',
 					authIdentities: [],
-					role: 'global:owner',
+					role: GLOBAL_OWNER_ROLE,
 					mfaEnabled: true,
 					mfaSecret: 'secret',
 				});

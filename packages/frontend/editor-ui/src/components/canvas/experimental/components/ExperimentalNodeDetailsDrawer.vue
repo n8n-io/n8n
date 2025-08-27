@@ -1,50 +1,25 @@
 <script setup lang="ts">
-import { type CanvasNode } from '@/types';
-import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
+import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
+import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { type INodeUi } from '@/Interface';
 import { N8nText } from '@n8n/design-system';
-import { computed, watch, ref } from 'vue';
-import { useNDVStore } from '@/stores/ndv.store';
+import { type GraphNode } from '@vue-flow/core';
+import { computed, provide } from 'vue';
+import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
 
-const { selectedNodes } = defineProps<{ selectedNodes: CanvasNode[] }>();
+const { node, nodes } = defineProps<{ node: INodeUi; nodes: GraphNode[] }>();
 
-const content = computed(() =>
-	selectedNodes.length > 1
-		? `${selectedNodes.length} nodes selected`
-		: selectedNodes.length > 0
-			? selectedNodes[0]
-			: undefined,
-);
-const lastContent = ref<string | CanvasNode | undefined>();
-const { setActiveNodeName } = useNDVStore();
+const emit = defineEmits<{ openNdv: [] }>();
 
-function handleOpenNdv() {
-	if (typeof content.value === 'object' && content.value.data) {
-		setActiveNodeName(content.value.data.name);
-	}
-}
+const expressionResolveCtx = useExpressionResolveCtx(computed(() => node));
 
-// Sync lastContent to be "last defined content" (for drawer animation)
-watch(
-	content,
-	(newContent) => {
-		if (newContent !== undefined) {
-			lastContent.value = newContent;
-		}
-	},
-	{ immediate: true },
-);
+provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 </script>
 
 <template>
-	<div :class="[$style.component, content === undefined ? $style.closed : '']">
-		<N8nText v-if="typeof lastContent === 'string'" color="text-base">
-			{{ lastContent }}
-		</N8nText>
-		<ExperimentalCanvasNodeSettings
-			v-else-if="lastContent !== undefined"
-			:key="lastContent.id"
-			:node-id="lastContent.id"
-		>
+	<div :class="$style.component">
+		<N8nText v-if="nodes.length > 1" color="text-base"> {{ nodes.length }} nodes selected </N8nText>
+		<ExperimentalCanvasNodeSettings v-else-if="node" :key="node.id" :node-id="node.id">
 			<template #actions>
 				<N8nIconButton
 					icon="maximize-2"
@@ -53,7 +28,7 @@ watch(
 					size="mini"
 					icon-size="large"
 					aria-label="Expand"
-					@click="handleOpenNdv"
+					@click="emit('openNdv')"
 				/>
 			</template>
 		</ExperimentalCanvasNodeSettings>
@@ -62,22 +37,10 @@ watch(
 
 <style lang="scss" module>
 .component {
-	position: absolute;
-	right: 0;
-	z-index: 10;
-	flex-grow: 0;
-	flex-shrink: 0;
-	border-left: var(--border-base);
-	background-color: var(--color-background-xlight);
-	width: #{$node-creator-width};
-	height: 100%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: transform 0.2s ease;
-
-	&.closed {
-		transform: translateX(100%);
-	}
+	height: 100%;
+	overflow: auto;
 }
 </style>
