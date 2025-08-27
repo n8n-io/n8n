@@ -339,12 +339,13 @@ const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 	}
 
 	const oldIndex = colDefs.value.findIndex((col) => col.colId === moveEvent.column!.getColId());
+	console.log(moveEvent.toIndex);
 	try {
 		await dataStoreStore.moveDataStoreColumn(
 			props.dataStore.id,
 			props.dataStore.projectId,
 			moveEvent.column.getColId(),
-			moveEvent.toIndex - 1,
+			moveEvent.toIndex - 2, // ag grid index start from 1 and also we need to account for the id column
 		);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.moveColumn.error'));
