@@ -107,7 +107,7 @@ export class DataStoreService {
 		dto: ListDataStoreContentQueryDto,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
-		this.validateFilters(dto);
+		this.validateAndTransformFilters(dto);
 
 		// unclear if we should validate here, only use case would be to reduce the chance of
 		// a renamed/removed column appearing here (or added column missing) if the store was
@@ -311,14 +311,14 @@ export class DataStoreService {
 		return existingTable;
 	}
 
-	private async validateColumnExists(dataStoreId: string, columnId: string) {
+	private async validateColumnExists(dataTableId: string, columnId: string) {
 		const existingColumn = await this.dataStoreColumnRepository.findOneBy({
 			id: columnId,
-			dataStoreId,
+			dataTableId,
 		});
 
 		if (existingColumn === null) {
-			throw new DataStoreColumnNotFoundError(dataStoreId, columnId);
+			throw new DataStoreColumnNotFoundError(dataTableId, columnId);
 		}
 
 		return existingColumn;
@@ -335,7 +335,7 @@ export class DataStoreService {
 		}
 	}
 
-	private validateFilters(dto: ListDataStoreContentQueryDto): void {
+	private validateAndTransformFilters(dto: ListDataStoreContentQueryDto): void {
 		if (!dto.filter?.filters) {
 			return;
 		}
@@ -350,6 +350,18 @@ export class DataStoreService {
 				if (typeof filter.value !== 'string') {
 					throw new DataStoreValidationError(
 						`${filter.condition.toUpperCase()} filter value must be a string`,
+					);
+				}
+
+				if (!filter.value.includes('%')) {
+					filter.value = `%${filter.value}%`;
+				}
+			}
+
+			if (['gt', 'gte', 'lt', 'lte'].includes(filter.condition)) {
+				if (filter.value === null || filter.value === undefined) {
+					throw new DataStoreValidationError(
+						`${filter.condition.toUpperCase()} filter value cannot be null or undefined`,
 					);
 				}
 			}

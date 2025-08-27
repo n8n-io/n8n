@@ -97,6 +97,7 @@ watch(
 		<n8n-breadcrumbs
 			:items="breadcrumbs"
 			:separator="BREADCRUMBS_SEPARATOR"
+			:highlight-last-item="false"
 			@item-selected="onItemClicked"
 		>
 			<template #prepend>

@@ -12,8 +12,8 @@ import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 } from 'n8n-workflow';
 
-import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreUserTableName } from './data-store.types';
+import { DataTableColumn } from './data-table-column.entity';
 import {
 	addColumnQuery,
 	deleteColumnQuery,
@@ -60,13 +60,24 @@ function getConditionAndParams(
 		}
 	}
 
+	// Handle operators that map directly to SQL operators
+	const operators: Record<string, string> = {
+		eq: '=',
+		neq: '!=',
+		gt: '>',
+		gte: '>=',
+		lt: '<',
+		lte: '<=',
+	};
+
+	if (operators[filter.condition]) {
+		return [
+			`${column} ${operators[filter.condition]} :${paramName}`,
+			{ [paramName]: filter.value },
+		];
+	}
+
 	switch (filter.condition) {
-		case 'eq':
-			return [`${column} = :${paramName}`, { [paramName]: filter.value }];
-
-		case 'neq':
-			return [`${column} != :${paramName}`, { [paramName]: filter.value }];
-
 		// case-sensitive
 		case 'like':
 			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
@@ -113,6 +124,9 @@ function getConditionAndParams(
 
 			return [`UPPER(${column}) LIKE UPPER(:${paramName})`, { [paramName]: filter.value }];
 	}
+
+	// This should never happen as all valid conditions are handled above
+	throw new Error(`Unsupported filter condition: ${filter.condition}`);
 }
 
 @Service()
@@ -124,19 +138,19 @@ export class DataStoreRowsRepository {
 
 	toTableName(dataStoreId: string): DataStoreUserTableName {
 		const { tablePrefix } = this.globalConfig.database;
-		return `${tablePrefix}data_store_user_${dataStoreId}`;
+		return `${tablePrefix}data_table_user_${dataStoreId}`;
 	}
 
 	async insertRows<T extends boolean | undefined>(
 		dataStoreId: string,
 		rows: DataStoreRows,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		returnData?: T,
 	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	async insertRows(
 		dataStoreId: string,
 		rows: DataStoreRows,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		returnData?: boolean,
 	): Promise<Array<DataStoreRowReturn | Pick<DataStoreRowReturn, 'id'>>> {
 		const inserted: Array<Pick<DataStoreRowReturn, 'id'>> = [];
@@ -203,7 +217,7 @@ export class DataStoreRowsRepository {
 		dataStoreId: string,
 		setData: Record<string, DataStoreColumnJsType | null>,
 		whereData: Record<string, DataStoreColumnJsType | null>,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		returnData: boolean = false,
 	) {
 		const dbType = this.dataSource.options.type;
@@ -264,14 +278,14 @@ export class DataStoreRowsRepository {
 		dataStoreId: string,
 		matchFields: string[],
 		rows: DataStoreRows,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		returnData?: T,
 	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async upsertRows(
 		dataStoreId: string,
 		matchFields: string[],
 		rows: DataStoreRows,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		returnData?: boolean,
 	) {
 		returnData = returnData ?? false;
@@ -329,7 +343,7 @@ export class DataStoreRowsRepository {
 
 	async createTableWithColumns(
 		dataStoreId: string,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		queryRunner: QueryRunner,
 	) {
 		const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
@@ -346,7 +360,7 @@ export class DataStoreRowsRepository {
 
 	async addColumn(
 		dataStoreId: string,
-		column: DataStoreColumn,
+		column: DataTableColumn,
 		queryRunner: QueryRunner,
 		dbType: DataSourceOptions['type'],
 	) {
@@ -373,7 +387,7 @@ export class DataStoreRowsRepository {
 		return { count: count ?? -1, data };
 	}
 
-	async getManyByIds(dataStoreId: string, ids: number[], columns: DataStoreColumn[]) {
+	async getManyByIds(dataStoreId: string, ids: number[], columns: DataTableColumn[]) {
 		const table = this.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>

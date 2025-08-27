@@ -3,25 +3,25 @@ import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
+import { DataTableColumn } from './data-table-column.entity';
 import { DataStoreColumnNameConflictError } from './errors/data-store-column-name-conflict.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 
 @Service()
-export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
+export class DataStoreColumnRepository extends Repository<DataTableColumn> {
 	constructor(
 		dataSource: DataSource,
 		private dataStoreRowsRepository: DataStoreRowsRepository,
 	) {
-		super(DataStoreColumn, dataSource.manager);
+		super(DataTableColumn, dataSource.manager);
 	}
 
-	async getColumns(rawDataStoreId: string, em?: EntityManager) {
+	async getColumns(dataTableId: string, em?: EntityManager) {
 		const executor = em ?? this.manager;
 		const columns = await executor
-			.createQueryBuilder(DataStoreColumn, 'dsc')
-			.where('dsc.dataStoreId = :dataStoreId', { dataStoreId: rawDataStoreId })
+			.createQueryBuilder(DataTableColumn, 'dsc')
+			.where('dsc.dataTableId = :dataTableId', { dataTableId })
 			.getMany();
 
 		// Ensure columns are always returned in the correct order by index,
@@ -32,30 +32,30 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 		return columns;
 	}
 
-	async addColumn(dataStoreId: string, schema: DataStoreCreateColumnSchema) {
+	async addColumn(dataTableId: string, schema: DataStoreCreateColumnSchema) {
 		return await this.manager.transaction(async (em) => {
-			const existingColumnMatch = await em.existsBy(DataStoreColumn, {
+			const existingColumnMatch = await em.existsBy(DataTableColumn, {
 				name: schema.name,
-				dataStoreId,
+				dataTableId,
 			});
 
 			if (existingColumnMatch) {
-				throw new DataStoreColumnNameConflictError(schema.name, dataStoreId);
+				throw new DataStoreColumnNameConflictError(schema.name, dataTableId);
 			}
 
 			if (schema.index === undefined) {
-				const columns = await this.getColumns(dataStoreId, em);
+				const columns = await this.getColumns(dataTableId, em);
 				schema.index = columns.length;
 			} else {
-				await this.shiftColumns(dataStoreId, schema.index, 1, em);
+				await this.shiftColumns(dataTableId, schema.index, 1, em);
 			}
 
-			const column = em.create(DataStoreColumn, {
+			const column = em.create(DataTableColumn, {
 				...schema,
-				dataStoreId,
+				dataTableId,
 			});
 
-			await em.insert(DataStoreColumn, column);
+			await em.insert(DataTableColumn, column);
 
 			const queryRunner = em.queryRunner;
 			if (!queryRunner) {
@@ -63,7 +63,7 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 			}
 
 			await this.dataStoreRowsRepository.addColumn(
-				dataStoreId,
+				dataTableId,
 				column,
 				queryRunner,
 				em.connection.options.type,
@@ -73,9 +73,9 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 		});
 	}
 
-	async deleteColumn(dataStoreId: string, column: DataStoreColumn) {
+	async deleteColumn(dataStoreId: string, column: DataTableColumn) {
 		await this.manager.transaction(async (em) => {
-			await em.remove(DataStoreColumn, column);
+			await em.remove(DataTableColumn, column);
 
 			const queryRunner = em.queryRunner;
 			if (!queryRunner) {
@@ -92,9 +92,9 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 		});
 	}
 
-	async moveColumn(dataStoreId: string, column: DataStoreColumn, targetIndex: number) {
+	async moveColumn(dataTableId: string, column: DataTableColumn, targetIndex: number) {
 		await this.manager.transaction(async (em) => {
-			const columnCount = await em.countBy(DataStoreColumn, { dataStoreId });
+			const columnCount = await em.countBy(DataTableColumn, { dataTableId });
 
 			if (targetIndex < 0) {
 				throw new DataStoreValidationError('tried to move column to negative index');
@@ -106,27 +106,22 @@ export class DataStoreColumnRepository extends Repository<DataStoreColumn> {
 				);
 			}
 
-			await this.shiftColumns(dataStoreId, column.index, -1, em);
-			await this.shiftColumns(dataStoreId, targetIndex, 1, em);
-			await em.update(DataStoreColumn, { id: column.id }, { index: targetIndex });
+			await this.shiftColumns(dataTableId, column.index, -1, em);
+			await this.shiftColumns(dataTableId, targetIndex, 1, em);
+			await em.update(DataTableColumn, { id: column.id }, { index: targetIndex });
 		});
 	}
 
-	async shiftColumns(
-		rawDataStoreId: string,
-		lowestIndex: number,
-		delta: -1 | 1,
-		em?: EntityManager,
-	) {
+	async shiftColumns(dataTableId: string, lowestIndex: number, delta: -1 | 1, em?: EntityManager) {
 		const executor = em ?? this.manager;
 		await executor
 			.createQueryBuilder()
-			.update(DataStoreColumn)
+			.update(DataTableColumn)
 			.set({
 				index: () => `index + ${delta}`,
 			})
-			.where('dataStoreId = :dataStoreId AND index >= :thresholdValue', {
-				dataStoreId: rawDataStoreId,
+			.where('dataTableId = :dataTableId AND index >= :thresholdValue', {
+				dataTableId,
 				thresholdValue: lowestIndex,
 			})
 			.execute();
