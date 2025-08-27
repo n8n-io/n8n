@@ -116,22 +116,23 @@ class ImportValidator(ast.NodeVisitor):
 
 class TaskAnalyzer:
     _cache: ValidationCache = OrderedDict()
-    
+
     def __init__(self, stdlib_allow: Set[str], external_allow: Set[str]):
         self.stdlib_allow = stdlib_allow
         self.external_allow = external_allow
         self._allow_config = (
             tuple(sorted(stdlib_allow)),
-            tuple(sorted(external_allow))
+            tuple(sorted(external_allow)),
         )
 
     def validate(self, code: str) -> None:
-        cached_violations, cache_key = self._get_from_cache(code)
+        cache_key = self._to_cache_key(code)
+        cached_violations = self._cache.get(cache_key)
         cache_hit = cached_violations is not None
-        
+
         if cache_hit and len(cached_violations) == 0:
             return
-        
+
         if cache_hit and len(cached_violations) > 0:
             self._raise_security_error(cached_violations)
 
@@ -144,21 +145,19 @@ class TaskAnalyzer:
 
         if import_validator.violations:
             self._raise_security_error(import_validator.violations)
-    
+
     def _raise_security_error(self, violations: CachedViolations) -> None:
         message = ERROR_SECURITY_VIOLATIONS.format(violations="\n".join(violations))
         raise SecurityViolationError(message)
-    
-    def _get_from_cache(self, code: str) -> Tuple[Optional[CachedViolations], CacheKey]:
+
+    def _to_cache_key(self, code: str) -> CacheKey:
         code_hash = hashlib.sha256(code.encode()).hexdigest()
-        cache_key = (code_hash, self._allow_config)
-        cached_violations = self._cache.get(cache_key)
-        return cached_violations, cache_key
+        return (code_hash, self._allow_config)
 
     def _set_in_cache(self, cache_key: CacheKey, violations: CachedViolations) -> None:
         if len(self._cache) >= MAX_VALIDATION_CACHE_SIZE:
             self._cache.popitem(last=False)
-        
+
         self._cache[cache_key] = violations.copy()
-        
+
         self._cache.move_to_end(cache_key)
