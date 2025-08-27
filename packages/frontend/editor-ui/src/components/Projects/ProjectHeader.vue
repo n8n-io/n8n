@@ -241,9 +241,17 @@ const sectionDescription = computed(() => {
 	if (projectPages.isSharedSubPage) {
 		return i18n.baseText('projects.header.shared.subtitle');
 	} else if (projectPages.isOverviewSubPage) {
-		return i18n.baseText('projects.header.overview.subtitle');
+		return i18n.baseText(
+			settingsStore.isDataStoreFeatureEnabled
+				? 'projects.header.overview.subtitleWithDataTables'
+				: 'projects.header.overview.subtitle',
+		);
 	} else if (isPersonalProject.value) {
-		return i18n.baseText('projects.header.personal.subtitle');
+		return i18n.baseText(
+			settingsStore.isDataStoreFeatureEnabled
+				? 'projects.header.personal.subtitleWithDataTables'
+				: 'projects.header.personal.subtitle',
+		);
 	}
 
 	return null;

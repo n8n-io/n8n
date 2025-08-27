@@ -123,6 +123,7 @@ describe('ProjectHeader', () => {
 	});
 
 	it('Overview: should render the correct title and subtitle', async () => {
+		settingsStore.isDataStoreFeatureEnabled = false;
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		const { getByTestId, rerender } = renderComponent();
 		const overviewSubtitle = 'All the workflows, credentials and executions you have access to';
@@ -146,6 +147,7 @@ describe('ProjectHeader', () => {
 	});
 
 	it('Personal: should render the correct title and subtitle', async () => {
+		settingsStore.isDataStoreFeatureEnabled = false;
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 		const { getByTestId, rerender } = renderComponent();
