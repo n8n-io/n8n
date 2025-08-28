@@ -40,3 +40,11 @@ packages/testing/**/.cursor/rules/
 .venv
 .ruff_cache
 __pycache__
+
+# n8n specific
+.env
+local-files/*
+!local-files/.gitkeep
+
+# Doprax specific
+.doprax/

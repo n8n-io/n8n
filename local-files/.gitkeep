@@ -1,0 +1,2 @@
+# This file ensures the local-files directory is tracked in git
+# Users can place files here that will be accessible from within n8n
