@@ -4,11 +4,11 @@ import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	IPairedItemData,
 	IPollFunctions,
-	IRequestOptions,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
@@ -42,17 +42,15 @@ export async function apiRequest(
 
 	const baseUrl = credentials.host as string;
 
-	query = query || {};
+	query = query ?? {};
+	uri =
+		(uri ?? baseUrl.endsWith('/')) ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`;
 
-	if (!uri) {
-		uri = baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`;
-	}
-
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs: query,
-		uri,
+		url: uri,
 		json: true,
 	};
 
@@ -80,25 +78,70 @@ export async function apiRequestAllItems(
 	body: IDataObject,
 	query?: IDataObject,
 ): Promise<any> {
-	const version = this.getNode().typeVersion;
+	const version = this.getNodeParameter('version', 0) as number;
 
-	if (query === undefined) {
-		query = {};
-	}
+	query = query ?? {};
 	query.limit = 100;
 	query.offset = query?.offset ? (query.offset as number) : 0;
 	const returnData: IDataObject[] = [];
 
-	let responseData;
+	let responseData:
+		| {
+				records: IDataObject[];
+		  }
+		| {
+				list: IDataObject[];
+				pageInfo: {
+					isLastPage: boolean;
+				};
+		  };
 
+	let continueFetch;
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		version === 1
-			? returnData.push(...(responseData as IDataObject[]))
-			: returnData.push(...(responseData.list as IDataObject[]));
-
 		query.offset += query.limit;
-	} while (version === 1 ? responseData.length !== 0 : responseData.pageInfo.isLastPage !== true);
+		if (version === 4 && 'records' in responseData) {
+			returnData.push.apply(returnData, responseData.records);
+			continueFetch = responseData.records.length === query.limit && query.limit > 0;
+		} else if ('list' in responseData) {
+			returnData.push.apply(returnData, responseData.list);
+			continueFetch = !responseData.pageInfo.isLastPage;
+		}
+	} while (continueFetch);
+
+	return returnData;
+}
+
+/**
+ * Make an API request to paginated NocoDB endpoint
+ * and return all results
+ *
+ * @param {(IHookFunctions | IExecuteFunctions)} this
+ */
+export async function apiMetaRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | IPollFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+): Promise<any> {
+	query = query ?? {};
+	query.limit = 100;
+	query.offset = query?.offset ? (query.offset as number) : 0;
+	const returnData: IDataObject[] = [];
+
+	let responseData: {
+		list: IDataObject[];
+	};
+
+	let continueFetch;
+	do {
+		responseData = await apiRequest.call(this, method, endpoint, body, query);
+		query.offset += query.limit;
+
+		returnData.push.apply(returnData, responseData.list);
+		continueFetch = responseData.list.length === query.limit;
+	} while (continueFetch);
 
 	return returnData;
 }
@@ -110,6 +153,10 @@ export async function downloadRecordAttachments(
 	pairedItem?: IPairedItemData[],
 ): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
+	const version = this.getNodeParameter('version', 0) as number;
+	const getAttachmentField = (record: any, fieldName: string) => {
+		return version === 4 ? record.fields[fieldName] : record[fieldName];
+	};
 
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
@@ -118,11 +165,11 @@ export async function downloadRecordAttachments(
 		}
 		element.json = record as unknown as IDataObject;
 		for (const fieldName of fieldNames) {
-			let attachments = record[fieldName] as IAttachment[];
+			let attachments = getAttachmentField(record, fieldName) as IAttachment[];
 			if (typeof attachments === 'string') {
-				attachments = jsonParse<IAttachment[]>(record[fieldName] as string);
+				attachments = jsonParse<IAttachment[]>(attachments as string);
 			}
-			if (record[fieldName]) {
+			if (attachments) {
 				for (const [index, attachment] of attachments.entries()) {
 					const attachmentUrl = attachment.signedUrl || attachment.url;
 					const file: Buffer = await apiRequest.call(this, 'GET', '', {}, {}, attachmentUrl, {
