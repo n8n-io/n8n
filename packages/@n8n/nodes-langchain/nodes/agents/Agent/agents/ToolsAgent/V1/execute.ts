@@ -261,7 +261,6 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				},
 			);
 			if (usageCollector) {
-				response.__tokenUsageByModel = usageCollector.usageByModel;
 				response.__tokenUsageRecords = usageCollector.getUsageRecords();
 			}
 
@@ -287,7 +286,6 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				),
 			};
 
-			const usageMap = response?.__tokenUsageByModel as Record<string, any> | undefined;
 			const usageRecords = response?.__tokenUsageRecords as
 				| Array<{
 						modelType: string;
@@ -298,9 +296,6 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 						isEstimate: boolean;
 				  }>
 				| undefined;
-			if (usageMap && Object.keys(usageMap).length > 0) {
-				(itemResult.json as any).tokenUsageByModel = usageMap;
-			}
 			if (usageRecords && usageRecords.length > 0) {
 				(itemResult.json as any).tokenUsageRecords = usageRecords;
 			}

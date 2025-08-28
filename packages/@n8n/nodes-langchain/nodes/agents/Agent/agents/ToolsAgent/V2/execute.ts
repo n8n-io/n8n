@@ -464,14 +464,12 @@ export async function toolsAgentExecute(
 				// attach usage for later aggregation
 				return {
 					...streamResult,
-					__tokenUsageByModel: usageCollector?.usageByModel,
 					__tokenUsageRecords: usageCollector?.getUsageRecords(),
 				} as any;
 			} else {
 				// Handle regular execution
 				const res: any = await executor.invoke(invokeParams, executeOptions);
 				if (usageCollector) {
-					res.__tokenUsageByModel = usageCollector.usageByModel;
 					res.__tokenUsageRecords = usageCollector.getUsageRecords();
 				}
 				return res;
@@ -520,12 +518,8 @@ export async function toolsAgentExecute(
 				pairedItem: { item: itemIndex },
 			};
 
-			// Attach aggregated token usage by model to the result
-			const usageMap = (response as any)?.__tokenUsageByModel as Record<string, any> | undefined;
+			// Attach token usage records (estimate vs actual per model)
 			const usageRecords = (response as any)?.__tokenUsageRecords as ModelUsage[] | undefined;
-			if (usageMap && Object.keys(usageMap).length > 0) {
-				(itemResult.json as any).tokenUsageByModel = usageMap;
-			}
 			if (usageRecords && usageRecords.length > 0) {
 				(itemResult.json as any).tokenUsageRecords = usageRecords;
 			}
