@@ -7,6 +7,10 @@ import path from 'path';
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import type { SourceControlPreferences } from '../types/source-control-preferences';
 
+// Restore real fs modules for these tests since we need actual file operations
+jest.unmock('node:fs');
+jest.unmock('node:fs/promises');
+
 describe('SourceControlPreferencesService', () => {
 	const instanceSettings = mock<InstanceSettings>({ n8nFolder: '' });
 	const service = new SourceControlPreferencesService(
@@ -32,29 +36,29 @@ describe('SourceControlPreferencesService', () => {
 		let tempDir: string;
 
 		beforeEach(async () => {
-			tempDir = await mkdir(path.join(os.tmpdir(), 'n8n-test-'), { recursive: true }).then(() =>
-				path.join(os.tmpdir(), 'n8n-test-' + Date.now()),
-			);
+			tempDir = path.join(os.tmpdir(), 'n8n-test-' + Date.now());
 			await mkdir(tempDir, { recursive: true });
 		});
 
 		it('should normalize CRLF line endings to LF when writing private key', async () => {
 			// Arrange
+			const keyWithCRLF =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\r\nkey\r\ndata\r\n-----END OPENSSH PRIVATE KEY-----\r\n';
+			const expectedNormalizedKey = keyWithCRLF.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+			const mockCipher = mock();
+			mockCipher.decrypt.mockReturnValue(keyWithCRLF);
+
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
 				instanceSettings,
 				mock(),
-				mock(),
+				mockCipher,
 				mock(),
 				mock(),
 			);
 
-			const keyWithCRLF =
-				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\r\nkey\r\ndata\r\n-----END OPENSSH PRIVATE KEY-----\r\n';
-
-			// Mock the getPrivateKeyFromDatabase method to return key with CRLF
-			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(keyWithCRLF);
-			// Mock the getKeyPairFromDatabase method
+			// Mock the getKeyPairFromDatabase method to return a key pair
 			jest.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
 				encryptedPrivateKey: 'encrypted',
 				publicKey: 'public',
@@ -66,28 +70,26 @@ describe('SourceControlPreferencesService', () => {
 			// Assert - check the actual file content has normalized line endings
 			const fileContent = await readFile(tempFilePath, 'utf8');
 			expect(fileContent).not.toContain('\r');
-			expect(fileContent).toBe(
-				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n',
-			);
+			expect(fileContent).toBe(expectedNormalizedKey);
 		});
 
 		it('should normalize mixed CR and CRLF line endings to LF when writing private key', async () => {
 			// Arrange
+			const keyWithMixedEndings =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\rkey\r\ndata\r-----END OPENSSH PRIVATE KEY-----\n';
+
+			const mockCipher = mock();
+			mockCipher.decrypt.mockReturnValue(keyWithMixedEndings);
+
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
 				instanceSettings,
 				mock(),
-				mock(),
+				mockCipher,
 				mock(),
 				mock(),
 			);
 
-			const keyWithMixedEndings =
-				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\rkey\r\ndata\r-----END OPENSSH PRIVATE KEY-----\n';
-
-			jest
-				.spyOn(service as any, 'getPrivateKeyFromDatabase')
-				.mockResolvedValue(keyWithMixedEndings);
 			// Mock the getKeyPairFromDatabase method
 			jest.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
 				encryptedPrivateKey: 'encrypted',
@@ -107,19 +109,21 @@ describe('SourceControlPreferencesService', () => {
 
 		it('should leave existing LF line endings unchanged when writing private key', async () => {
 			// Arrange
+			const keyWithLF =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n';
+
+			const mockCipher = mock();
+			mockCipher.decrypt.mockReturnValue(keyWithLF);
+
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
 				instanceSettings,
 				mock(),
-				mock(),
+				mockCipher,
 				mock(),
 				mock(),
 			);
 
-			const keyWithLF =
-				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n';
-
-			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(keyWithLF);
 			// Mock the getKeyPairFromDatabase method
 			jest.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
 				encryptedPrivateKey: 'encrypted',
@@ -139,26 +143,27 @@ describe('SourceControlPreferencesService', () => {
 		let tempDir: string;
 
 		beforeEach(async () => {
-			tempDir = await mkdir(path.join(os.tmpdir(), 'n8n-test-'), { recursive: true }).then(() =>
-				path.join(os.tmpdir(), 'n8n-test-' + Date.now()),
-			);
+			tempDir = path.join(os.tmpdir(), 'n8n-test-' + Date.now());
 			await mkdir(tempDir, { recursive: true });
 		});
 
 		it('should always use restrictive permissions for SSH private keys', async () => {
 			// Arrange
+			const testKey =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
+
+			const mockCipher = mock();
+			mockCipher.decrypt.mockReturnValue(testKey);
+
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
 				instanceSettings,
 				mock(),
-				mock(),
+				mockCipher,
 				mock(),
 				mock(),
 			);
 
-			const testKey =
-				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
-			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(testKey);
 			// Mock the getKeyPairFromDatabase method
 			jest.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
 				encryptedPrivateKey: 'encrypted',
@@ -200,18 +205,21 @@ describe('SourceControlPreferencesService', () => {
 
 		it('should remove existing file before creating new one with fsRm force option', async () => {
 			// Arrange
+			const testKey =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
+
+			const mockCipher = mock();
+			mockCipher.decrypt.mockReturnValue(testKey);
+
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
 				instanceSettings,
 				mock(),
-				mock(),
+				mockCipher,
 				mock(),
 				mock(),
 			);
 
-			const testKey =
-				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
-			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(testKey);
 			// Mock the getKeyPairFromDatabase method
 			jest.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
 				encryptedPrivateKey: 'encrypted',

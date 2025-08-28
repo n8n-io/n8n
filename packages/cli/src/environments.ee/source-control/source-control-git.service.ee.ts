@@ -108,8 +108,9 @@ export class SourceControlGitService {
 		const sshKnownHosts = path.join(sshFolder, 'known_hosts');
 
 		// Convert paths to POSIX format for SSH command (works cross-platform)
-		const normalizedPrivateKeyPath = privateKeyPath.split(path.sep).join(path.posix.sep);
-		const normalizedKnownHostsPath = sshKnownHosts.split(path.sep).join(path.posix.sep);
+		// Use regex to handle both Windows (\) and POSIX (/) separators regardless of current platform
+		const normalizedPrivateKeyPath = privateKeyPath.split(/[/\\]/).join('/');
+		const normalizedKnownHostsPath = sshKnownHosts.split(/[/\\]/).join('/');
 
 		// Escape double quotes to prevent command injection
 		const escapedPrivateKeyPath = normalizedPrivateKeyPath.replace(/"/g, '\\"');

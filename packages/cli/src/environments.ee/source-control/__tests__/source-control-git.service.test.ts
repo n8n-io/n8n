@@ -16,18 +16,21 @@ const MOCK_BRANCHES = {
 	current: 'master',
 };
 
+const mockGitInstance = {
+	branch: jest.fn().mockResolvedValue(MOCK_BRANCHES),
+	env: jest.fn().mockReturnThis(),
+};
+
 jest.mock('simple-git', () => {
 	return {
-		simpleGit: jest.fn().mockImplementation(() => ({
-			branch: jest.fn().mockResolvedValue(MOCK_BRANCHES),
-		})),
+		simpleGit: jest.fn().mockImplementation(() => mockGitInstance),
 	};
 });
 
 describe('SourceControlGitService', () => {
 	const sourceControlGitService = new SourceControlGitService(mock(), mock(), mock());
 
-	beforeAll(() => {
+	beforeEach(() => {
 		sourceControlGitService.git = simpleGit();
 	});
 
@@ -109,6 +112,10 @@ describe('SourceControlGitService', () => {
 
 	describe('path normalization', () => {
 		describe('cross-platform path handling', () => {
+			beforeEach(() => {
+				jest.clearAllMocks();
+			});
+
 			it('should normalize Windows paths to POSIX format for SSH command', async () => {
 				// Arrange
 				const mockPreferencesService = mock<SourceControlPreferencesService>();
@@ -120,33 +127,25 @@ describe('SourceControlGitService', () => {
 
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 
-				// Spy on the simpleGit creation to capture the env() calls
-				const mockGit = {
-					env: jest.fn().mockReturnThis(),
-				};
-
-				// Mock the simpleGit import to capture the SSH command
-				jest.doMock('simple-git', () => ({
-					simpleGit: jest.fn(() => mockGit),
-				}));
-
 				// Act
 				await gitService.setGitSshCommand('/git/folder', sshFolder);
 
 				// Assert - verify Windows paths are normalized to POSIX format
-				expect(mockGit.env).toHaveBeenCalledWith(
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
 					expect.stringContaining('C:/Users/Test/.n8n/ssh_private_key_temp'), // Forward slashes
 				);
-				expect(mockGit.env).toHaveBeenCalledWith(
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
 					expect.stringContaining('C:/Users/Test/.n8n/.ssh/known_hosts'), // Forward slashes
 				);
-				// Ensure no backslashes remain in the SSH command
-				expect(mockGit.env).toHaveBeenCalledWith(
-					'GIT_SSH_COMMAND',
-					expect.not.stringContaining('\\'),
+				// Ensure no backslashes remain in the SSH command (check the actual call)
+				const sshCommandCall = mockGitInstance.env.mock.calls.find(
+					(call: any) => call[0] === 'GIT_SSH_COMMAND',
 				);
+				expect(sshCommandCall).toBeDefined();
+				const sshCommand = sshCommandCall[1] as string;
+				expect(sshCommand).not.toContain('\\');
 			});
 
 			it('should create properly quoted SSH command', () => {
@@ -172,25 +171,15 @@ describe('SourceControlGitService', () => {
 
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 
-				// Spy on the simpleGit creation to capture the env() calls
-				const mockGit = {
-					env: jest.fn().mockReturnThis(),
-				};
-
-				// Mock the simpleGit import to capture the SSH command
-				jest.doMock('simple-git', () => ({
-					simpleGit: jest.fn(() => mockGit),
-				}));
-
 				// Act
 				await gitService.setGitSshCommand('/git/folder', sshFolder);
 
 				// Assert - verify the SSH command was properly escaped
-				expect(mockGit.env).toHaveBeenCalledWith(
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
 					expect.stringContaining('Test\\"User'), // Escaped quote
 				);
-				expect(mockGit.env).toHaveBeenCalledWith(
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
 					expect.not.stringContaining('Test"User'), // No unescaped quote in final command
 				);
