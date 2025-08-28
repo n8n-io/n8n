@@ -23,7 +23,7 @@
 		},
 		{
 			"parameters": {
-				"content": "### Voice assistant agent\nPersonal AI assistant in Telegram, handling both text and voice messages.\n\n#### Set up\n- Configure credentials in the **Model** and **Telegram** nodes\n- Follow the bot creation steps in our [Telegram docs](https://docs.n8n.io/integrations/builtin/credentials/telegram/#supported-authentication-methods)\n- Add your user ID to the **Telegram Message Trigger** so only you can access it\n- Activate the workflow to recieve messages from Telegram\n- Send a message to the agent\n\n#### Next steps\nTry giving the agent more tools, so that it can draft emails and calendar events for you from just a message.\n",
+				"content": "### Voice assistant agent\nPersonal AI assistant in Telegram, handling both text and voice messages.\n\n#### Set up\n- Configure credentials in the **Model** and **Telegram** nodes\n- Follow the bot creation steps in our [Telegram docs](https://docs.n8n.io/integrations/builtin/credentials/telegram/#supported-authentication-methods)\n- Add your user ID to the **Telegram Message Trigger** so only you can access it\n- Activate the workflow to receive messages from Telegram\n- Send a message to the agent\n\n#### Next steps\nTry giving the agent more tools, so that it can draft emails and calendar events for you from just a message.\n",
 				"height": 496,
 				"width": 304,
 				"color": 5
