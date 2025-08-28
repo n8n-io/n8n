@@ -177,134 +177,136 @@ function handleCheckboxChange(
 
 <template>
 	<div class="toolbar">
-		<!-- Active Filters -->
-		<div v-if="hasActiveFilters" class="active-filters">
-			<div v-for="filter in activeFilters" :key="filter.filterName" class="filter-tags">
-				<button class="filter-tag" @click="removeFilter(filter.filterName)">
-					<N8nText size="small" color="text-light">{{ filter.filterName }} is</N8nText>
-					<N8nText bold size="small" color="text-base">{{ filter.values.join(', ') }}</N8nText>
-					<N8nIcon icon="x" color="text-dark" />
-				</button>
+		<div class="filters">
+			<!-- Active Filters -->
+			<div v-if="hasActiveFilters" class="active-filters">
+				<template v-for="filter in activeFilters" :key="filter.filterName">
+					<button class="filter-tag active" @click="removeFilter(filter.filterName)">
+						<N8nText size="small">{{ filter.filterName }} is</N8nText>
+						<N8nText bold size="small">{{ filter.values.join(', ') }}</N8nText>
+						<N8nIcon icon="x" />
+					</button>
+				</template>
 			</div>
-		</div>
-
-		<!-- Filters Dropdown -->
-		<DropdownMenuRoot>
-			<DropdownMenuTrigger class="filter-button">
-				<N8nTooltip content="Filter">
-					<N8nIconButton
-						type="tertiary"
-						icon="list-filter"
-						text
-						:class="{ active: hasActiveFilters }"
-					/>
-				</N8nTooltip>
-			</DropdownMenuTrigger>
-			<DropdownMenuPortal>
-				<DropdownMenuContent class="filter-sub-content">
-					<template v-for="filterOption in filterOptions" :key="filterOption.label">
-						<DropdownMenuSub>
-							<DropdownMenuSubTrigger class="filter-sub-trigger">
-								<N8nText size="small" color="text-dark">
-									{{ filterOption.label }}
-								</N8nText></DropdownMenuSubTrigger
-							>
-							<DropdownMenuPortal>
-								<DropdownMenuSubContent class="filter-sub-content filter-sub-content-enhanced">
-									<!-- Search Bar -->
-									<div v-if="filterOption.options.length > 10">
-										<N8nInput
-											:modelValue="searchQueries[filterOption.label] || ''"
-											@update:modelValue="
-												(value: string) => updateSearchQuery(filterOption.label, value)
-											"
-											type="text"
-											size="small"
-											placeholder="Search..."
-											:clearable="true"
-										>
-											<template #prefix>
-												<N8nIcon icon="search" size="small" />
-											</template>
-										</N8nInput>
-									</div>
-
-									<!-- Custom Value Input -->
-									<div v-if="filterOption.allowCustomValues">
-										<N8nInput
-											v-model="customInputs[filterOption.label]"
-											type="text"
-											size="small"
-											:placeholder="`Add custom ${filterOption.label.toLowerCase()}...`"
-											@keyup="
-												(event) =>
-													handleCustomInputKeyup(filterOption.label, filterOption.type, event)
-											"
-										>
-										</N8nInput>
-									</div>
-
-									<!-- Scrollable Options Area -->
-									<N8nScrollArea
-										maxHeight="600px"
-										type="hover"
-										:enableVerticalScroll="true"
-										:enableHorizontalScroll="false"
-										class="filter-options-scroll-area"
-									>
-										<template
-											v-for="option in getFilteredOptions(filter, filterOption.options)"
-											:key="option"
-										>
-											<DropdownMenuItem
-												class="filter-option-item"
-												:class="{ selected: isValueSelected(filterOption.label, option) }"
+			<!-- Filters Dropdown -->
+			<DropdownMenuRoot>
+				<DropdownMenuTrigger class="filter-button">
+					<N8nTooltip content="Filter">
+						<N8nIconButton
+							type="tertiary"
+							icon="list-filter"
+							text
+							:class="{ active: hasActiveFilters }"
+						/>
+					</N8nTooltip>
+				</DropdownMenuTrigger>
+				<DropdownMenuPortal>
+					<DropdownMenuContent class="filter-dropdown">
+						<template v-for="filterOption in filterOptions" :key="filterOption.label">
+							<DropdownMenuSub>
+								<DropdownMenuSubTrigger class="filter-item">
+									<N8nText size="small" color="text-dark">
+										{{ filterOption.label }}
+									</N8nText></DropdownMenuSubTrigger
+								>
+								<DropdownMenuPortal>
+									<DropdownMenuSubContent class="filter-dropdown">
+										<!-- Search Bar -->
+										<div v-if="filterOption.options.length > 10">
+											<N8nInput
+												:modelValue="searchQueries[filterOption.label] || ''"
+												@update:modelValue="
+													(value: string) => updateSearchQuery(filterOption.label, value)
+												"
+												type="text"
+												size="small"
+												placeholder="Search..."
+												:clearable="true"
 											>
-												<!-- Checkbox for multi-select filters -->
-												<N8nCheckbox
-													v-if="filterOption.type === 'multi'"
-													:modelValue="isValueSelected(filterOption.label, option)"
-													@update:modelValue="
-														(checked: boolean | string | number) =>
-															handleCheckboxChange(
-																filterOption.label,
-																option,
-																filterOption.type,
-																Boolean(checked),
-															)
-													"
-													@click.stop
-													class="filter-checkbox"
-												/>
-												<!-- Check icon for single-select filters -->
-												<N8nIcon
-													v-else-if="isValueSelected(filterOption.label, option)"
-													icon="check"
-													size="small"
-													class="check-icon"
-												/>
-												<!-- Spacer for single-select unselected items -->
-												<div v-else class="check-icon-spacer"></div>
+												<template #prefix>
+													<N8nIcon icon="search" size="small" />
+												</template>
+											</N8nInput>
+										</div>
 
-												<!-- Clickable text area -->
-												<span
-													@click="selectFilterValue(filterOption.label, option, filterOption.type)"
-													class="filter-option-text"
+										<!-- Custom Value Input -->
+										<div v-if="filterOption.allowCustomValues">
+											<N8nInput
+												v-model="customInputs[filterOption.label]"
+												type="text"
+												size="small"
+												:placeholder="`Add custom ${filterOption.label.toLowerCase()}...`"
+												@keyup="
+													(event) =>
+														handleCustomInputKeyup(filterOption.label, filterOption.type, event)
+												"
+											>
+											</N8nInput>
+										</div>
+
+										<!-- Scrollable Options Area -->
+										<N8nScrollArea
+											maxHeight="500px"
+											type="hover"
+											:enableVerticalScroll="true"
+											:enableHorizontalScroll="false"
+										>
+											<template
+												v-for="option in getFilteredOptions(filter, filterOption.options)"
+												:key="option"
+											>
+												<DropdownMenuItem
+													class="filter-item"
+													:class="{ selected: isValueSelected(filterOption.label, option) }"
 												>
-													<N8nText size="small" color="text-dark">
-														{{ option }}
-													</N8nText>
-												</span>
-											</DropdownMenuItem>
-										</template>
-									</N8nScrollArea>
-								</DropdownMenuSubContent>
-							</DropdownMenuPortal>
-						</DropdownMenuSub>
-					</template>
-				</DropdownMenuContent>
-			</DropdownMenuPortal>
-		</DropdownMenuRoot>
+													<!-- Checkbox for multi-select filters -->
+													<N8nCheckbox
+														v-if="filterOption.type === 'multi'"
+														:modelValue="isValueSelected(filterOption.label, option)"
+														@update:modelValue="
+															(checked: boolean | string | number) =>
+																handleCheckboxChange(
+																	filterOption.label,
+																	option,
+																	filterOption.type,
+																	Boolean(checked),
+																)
+														"
+														@click.stop
+														class="filter-checkbox"
+													/>
+													<!-- Check icon for single-select filters -->
+													<N8nIcon
+														v-else-if="isValueSelected(filterOption.label, option)"
+														icon="check"
+														size="small"
+														class="check-icon"
+													/>
+													<!-- Spacer for single-select unselected items -->
+													<div v-else class="check-icon-spacer"></div>
+
+													<!-- Clickable text area -->
+													<span
+														@click="
+															selectFilterValue(filterOption.label, option, filterOption.type)
+														"
+														class="filter-option-text"
+													>
+														<N8nText size="small" color="text-dark">
+															{{ option }}
+														</N8nText>
+													</span>
+												</DropdownMenuItem>
+											</template>
+										</N8nScrollArea>
+									</DropdownMenuSubContent>
+								</DropdownMenuPortal>
+							</DropdownMenuSub>
+						</template>
+					</DropdownMenuContent>
+				</DropdownMenuPortal>
+			</DropdownMenuRoot>
+		</div>
 
 		<template v-for="action in props.actions" :key="action.label">
 			<N8nTooltip :content="action.tooltip || action.label">
@@ -319,12 +321,45 @@ function handleCheckboxChange(
 </template>
 
 <style scoped lang="scss">
+.toolbar {
+	display: flex;
+	justify-content: end;
+	align-items: center;
+	gap: var(--spacing-xs);
+	width: 100%;
+}
+
+.filters {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
+}
+
 .active-filters {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-2xs);
 	flex-wrap: wrap;
 	max-width: 100%;
+}
+
+.active {
+	background-color: var(--color-callout-secondary-background);
+	border: var(--border-base);
+	border-color: var(--color-callout-secondary-border);
+	color: var(--color-callout-secondary-font);
+}
+
+.filter-tag {
+	outline: none;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
+	border-radius: var(--border-radius-base);
+	padding: var(--spacing-3xs) var(--spacing-3xs);
+	height: 30px;
+	font-size: var(--font-size-2xs);
+	color: var(--color-callout-secondary-font);
 }
 
 .filter-button {
@@ -334,55 +369,7 @@ function handleCheckboxChange(
 	outline: none;
 }
 
-.toolbar {
-	display: flex;
-	justify-content: end;
-	align-items: center;
-	gap: var(--spacing-s);
-	width: 100%;
-}
-
-.active {
-	background-color: var(--color-callout-secondary-background);
-	color: var(--color-callout-secondary-font) !important;
-}
-
-.filter-tag {
-	outline: none;
-	border: none;
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-4xs);
-	background-color: var(--color-background-base);
-
-	border-radius: var(--border-radius-base);
-	padding: var(--spacing-3xs) var(--spacing-3xs);
-	height: 30px;
-	font-size: var(--font-size-2xs);
-
-	&:hover {
-		background-color: var(--color-background-xlight);
-		cursor: pointer;
-	}
-}
-
-.filter-sub-trigger {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing-3xs) var(--spacing-2xs);
-	border-radius: var(--border-radius-small);
-	color: var(--color-text-base);
-	cursor: pointer;
-	transition: background-color 0.2s ease;
-	letter-spacing: 0.5px;
-
-	&:hover {
-		background-color: var(--color-background-base);
-	}
-}
-
-:deep(.filter-sub-content) {
+:deep(.filter-dropdown) {
 	padding: var(--spacing-4xs);
 
 	z-index: 1000;
@@ -393,64 +380,24 @@ function handleCheckboxChange(
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 }
 
-.filter-search-container {
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
-}
-
-:deep(.filter-search-input) {
-	.el-input__inner {
-		font-size: var(--font-size-2xs);
-		height: 28px;
-	}
-
-	.el-input__prefix {
-		align-items: center;
-	}
-}
-
-.filter-options-scroll-area {
-	padding: var(--spacing-4xs) 0;
-}
-
-.filter-option-item {
+.filter-item {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	justify-content: space-between;
 	padding: var(--spacing-3xs) var(--spacing-2xs);
 	border-radius: var(--border-radius-small);
-	font-size: var(--font-size-s);
-	margin-bottom: 2px;
+	color: var(--color-text-base);
 	cursor: pointer;
 	transition: background-color 0.2s ease;
-	position: relative;
 
-	&:hover,
-	&:focus {
+	&:hover {
 		background-color: var(--color-background-base);
-	}
-
-	&.selected {
-		background-color: var(--color-background-base);
-
-		.check-icon {
-			color: var(--color-success);
-		}
 	}
 }
 
 .filter-checkbox {
 	flex-shrink: 0;
-	margin-right: var(--spacing-4xs);
 	margin-bottom: 0;
-
-	:deep(.el-checkbox__inner) {
-		width: 14px;
-		height: 14px;
-	}
-
-	:deep(.el-checkbox__label) {
-		display: none;
-	}
 }
 
 .filter-option-text {
@@ -458,11 +405,6 @@ function handleCheckboxChange(
 	cursor: pointer;
 	display: flex;
 	align-items: center;
-}
-
-.filter-separator {
-	margin: var(--spacing-3xs) 0;
-	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 }
 
 // Prevent dropdown from closing when interacting with checkboxes

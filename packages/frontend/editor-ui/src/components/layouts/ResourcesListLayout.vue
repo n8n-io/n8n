@@ -588,6 +588,21 @@ const tempFilters = computed<{
 					'Tag 13',
 					'Tag 14',
 					'Tag 15',
+					'Tag 16',
+					'Tag 17',
+					'Tag 18',
+					'Tag 19',
+					'Tag 20',
+					'Tag 21',
+					'Tag 22',
+					'Tag 23',
+					'Tag 24',
+					'Tag 25',
+					'Tag 26',
+					'Tag 27',
+					'Tag 28',
+					'Tag 29',
+					'Tag 30',
 				],
 				type: 'multi',
 			},
@@ -627,7 +642,11 @@ const tempFilters = computed<{
 		options: arr,
 		primaryAction: route.path.includes('/credentials') ? 'Create credential' : 'Create workflow',
 		actions: route.path.includes('/workflows')
-			? undefined
+			? [
+					{ label: 'Search', icon: 'search', tooltip: 'Search' },
+					{ label: 'Sort', icon: 'arrow-up-down', tooltip: 'Sort' },
+					{ label: 'Folders', icon: 'folder-plus', tooltip: 'Folders' },
+				]
 			: [
 					{ label: 'Search', icon: 'search', tooltip: 'Search' },
 					{ label: 'Sort', icon: 'arrow-up-down', tooltip: 'Sort' },
