@@ -552,4 +552,39 @@ export class NodeDetailsViewPage extends BasePage {
 		// eslint-disable-next-line playwright/no-wait-for-timeout
 		await this.page.waitForTimeout(2500);
 	}
+
+	// Pagination methods for output panel
+	getOutputPagination() {
+		return this.getOutputPanel().getByTestId('ndv-data-pagination');
+	}
+
+	getOutputPaginationPages() {
+		return this.getOutputPagination().locator('.el-pager li.number');
+	}
+
+	async navigateToOutputPage(pageNumber: number): Promise<void> {
+		const pages = this.getOutputPaginationPages();
+		await pages.nth(pageNumber - 1).click();
+	}
+
+	async getCurrentOutputPage(): Promise<number> {
+		const activePage = this.getOutputPagination().locator('.el-pager li.is-active').first();
+		const pageText = await activePage.textContent();
+		return parseInt(pageText ?? '1', 10);
+	}
+
+	async getOutputPageContent(row: number = 0, col: number = 0): Promise<string> {
+		return (await this.getOutputTbodyCell(row, col).textContent()) ?? '';
+	}
+
+	/**
+	 * Set parameter input value by clearing and filling (for parameters without standard test-id)
+	 * @param parameterName - The parameter name
+	 * @param value - The value to set
+	 */
+	async setParameterInputValue(parameterName: string, value: string): Promise<void> {
+		const input = this.getParameterInput(parameterName).locator('input');
+		await input.clear();
+		await input.fill(value);
+	}
 }
