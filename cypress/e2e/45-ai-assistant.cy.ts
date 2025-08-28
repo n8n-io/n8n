@@ -445,7 +445,7 @@ describe('AI Assistant Credential Help', () => {
 		aiAssistant.getters.credentialEditAssistantButton().should('not.exist');
 
 		credentialsModal.getters.credentialAuthTypeRadioButtons().eq(1).click();
-		credentialsModal.getters.credentialInputs().should('have.length', 3);
+		credentialsModal.getters.credentialInputs().should('have.length', 4);
 		aiAssistant.getters.credentialEditAssistantButton().should('exist');
 	});
 
