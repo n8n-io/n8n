@@ -38,6 +38,17 @@ def parse_allowlist(allowlist_str: str, list_name: str) -> Set[str]:
     return modules
 
 
+def parse_denylist(denylist_str: str) -> Set[str]:
+    if not denylist_str:
+        return set()
+    
+    return {
+        name
+        for raw_name in denylist_str.split(",")
+        if (name := raw_name.strip())
+    }
+
+
 def parse_env_vars() -> TaskRunnerOpts:
     grant_token = os.getenv(ENV_GRANT_TOKEN, "")
 
@@ -45,11 +56,7 @@ def parse_env_vars() -> TaskRunnerOpts:
         raise ValueError(f"{ENV_GRANT_TOKEN} environment variable is required")
 
     denied_builtins_str = os.getenv(ENV_BUILTINS_DENY, DEFAULT_DENIED_BUILTINS)
-    denied_builtins = {
-        name
-        for raw_name in denied_builtins_str.split(",")
-        if (name := raw_name.strip())
-    }
+    denied_builtins = parse_denylist(denied_builtins_str)
 
     stdlib_allow_str = os.getenv(ENV_STDLIB_ALLOW, "")
     stdlib_allow = parse_allowlist(stdlib_allow_str, "stdlib allowlist")
