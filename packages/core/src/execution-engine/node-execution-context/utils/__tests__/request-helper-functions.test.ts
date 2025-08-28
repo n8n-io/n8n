@@ -540,150 +540,6 @@ describe('Request Helper Functions', () => {
 		});
 	});
 
-	describe('applyPaginationRequestData', () => {
-		test('should merge pagination request data with original request options', () => {
-			const originalRequestOptions: IRequestOptions = {
-				uri: 'https://original.com/api',
-				method: 'GET',
-				qs: { page: 1 },
-				headers: { 'X-Original-Header': 'original' },
-			};
-
-			const paginationRequestData: PaginationOptions['request'] = {
-				url: 'https://pagination.com/api',
-				body: { key: 'value' },
-				headers: { 'X-Pagination-Header': 'pagination' },
-			};
-
-			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
-
-			expect(result).toEqual({
-				uri: 'https://pagination.com/api',
-				url: 'https://pagination.com/api',
-				method: 'GET',
-				qs: { page: 1 },
-				headers: {
-					'X-Original-Header': 'original',
-					'X-Pagination-Header': 'pagination',
-				},
-				body: { key: 'value' },
-			});
-		});
-
-		test('should handle formData correctly', () => {
-			const originalRequestOptions: IRequestOptions = {
-				uri: 'https://original.com/api',
-				method: 'POST',
-				formData: { original: 'data' },
-			};
-
-			const paginationRequestData: PaginationOptions['request'] = {
-				url: 'https://pagination.com/api',
-				body: { key: 'value' },
-			};
-
-			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
-
-			expect(result).toEqual({
-				uri: 'https://pagination.com/api',
-				url: 'https://pagination.com/api',
-				method: 'POST',
-				formData: { key: 'value', original: 'data' },
-			});
-		});
-
-		test('should handle form data correctly', () => {
-			const originalRequestOptions: IRequestOptions = {
-				uri: 'https://original.com/api',
-				method: 'POST',
-				form: { original: 'data' },
-			};
-
-			const paginationRequestData: PaginationOptions['request'] = {
-				url: 'https://pagination.com/api',
-				body: { key: 'value' },
-			};
-
-			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
-
-			expect(result).toEqual({
-				uri: 'https://pagination.com/api',
-				url: 'https://pagination.com/api',
-				method: 'POST',
-				form: { key: 'value', original: 'data' },
-			});
-		});
-
-		test('should prefer pagination body over original body', () => {
-			const originalRequestOptions: IRequestOptions = {
-				uri: 'https://original.com/api',
-				method: 'POST',
-				body: { original: 'data' },
-			};
-
-			const paginationRequestData: PaginationOptions['request'] = {
-				url: 'https://pagination.com/api',
-				body: { key: 'value' },
-			};
-
-			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
-
-			expect(result).toEqual({
-				uri: 'https://pagination.com/api',
-				url: 'https://pagination.com/api',
-				method: 'POST',
-				body: { key: 'value', original: 'data' },
-			});
-		});
-
-		test('should merge complex request options', () => {
-			const originalRequestOptions: IRequestOptions = {
-				uri: 'https://original.com/api',
-				method: 'GET',
-				qs: { page: 1, limit: 10 },
-				headers: { 'X-Original-Header': 'original' },
-				body: { filter: 'active' },
-			};
-
-			const paginationRequestData: PaginationOptions['request'] = {
-				url: 'https://pagination.com/api',
-				body: { key: 'value' },
-				headers: { 'X-Pagination-Header': 'pagination' },
-				qs: { offset: 20 },
-			};
-
-			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
-
-			expect(result).toEqual({
-				uri: 'https://pagination.com/api',
-				url: 'https://pagination.com/api',
-				method: 'GET',
-				qs: { offset: 20, limit: 10, page: 1 },
-				headers: {
-					'X-Original-Header': 'original',
-					'X-Pagination-Header': 'pagination',
-				},
-				body: { key: 'value', filter: 'active' },
-			});
-		});
-
-		test('should handle edge cases with empty pagination data', () => {
-			const originalRequestOptions: IRequestOptions = {
-				uri: 'https://original.com/api',
-				method: 'GET',
-			};
-
-			const paginationRequestData: PaginationOptions['request'] = {};
-
-			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
-
-			expect(result).toEqual({
-				uri: 'https://original.com/api',
-				method: 'GET',
-			});
-		});
-	});
-
 	describe('httpRequest', () => {
 		const baseUrl = 'https://example.com';
 
@@ -953,6 +809,254 @@ describe('Request Helper Functions', () => {
 				});
 				expect(protocol).toEqual('https');
 				expect(agent).toBeInstanceOf(HttpsAgent);
+			});
+		});
+	});
+
+	describe('applyPaginationRequestData', () => {
+		test('should merge pagination request data with original request options', () => {
+			const originalRequestOptions: IRequestOptions = {
+				uri: 'https://original.com/api',
+				method: 'GET',
+				qs: { page: 1 },
+				headers: { 'X-Original-Header': 'original' },
+			};
+
+			const paginationRequestData: PaginationOptions['request'] = {
+				url: 'https://pagination.com/api',
+				body: { key: 'value' },
+				headers: { 'X-Pagination-Header': 'pagination' },
+			};
+
+			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+			expect(result).toEqual({
+				uri: 'https://pagination.com/api',
+				url: 'https://pagination.com/api',
+				method: 'GET',
+				qs: { page: 1 },
+				headers: {
+					'X-Original-Header': 'original',
+					'X-Pagination-Header': 'pagination',
+				},
+				body: { key: 'value' },
+			});
+		});
+
+		test('should handle edge cases with empty pagination data', () => {
+			const originalRequestOptions: IRequestOptions = {
+				uri: 'https://original.com/api',
+				method: 'GET',
+			};
+
+			const paginationRequestData: PaginationOptions['request'] = {};
+
+			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+			expect(result).toEqual({
+				uri: 'https://original.com/api',
+				method: 'GET',
+			});
+		});
+
+		test('should prefer pagination body over original body', () => {
+			const originalRequestOptions: IRequestOptions = {
+				uri: 'https://original.com/api',
+				method: 'POST',
+				body: { original: 'data' },
+			};
+
+			const paginationRequestData: PaginationOptions['request'] = {
+				url: 'https://pagination.com/api',
+				body: { key: 'value' },
+			};
+
+			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+			expect(result).toEqual({
+				uri: 'https://pagination.com/api',
+				url: 'https://pagination.com/api',
+				method: 'POST',
+				body: { key: 'value', original: 'data' },
+			});
+		});
+
+		test('should merge complex request options', () => {
+			const originalRequestOptions: IRequestOptions = {
+				uri: 'https://original.com/api',
+				method: 'GET',
+				qs: { page: 1, limit: 10 },
+				headers: { 'X-Original-Header': 'original' },
+				body: { filter: 'active' },
+			};
+
+			const paginationRequestData: PaginationOptions['request'] = {
+				url: 'https://pagination.com/api',
+				body: { key: 'value' },
+				headers: { 'X-Pagination-Header': 'pagination' },
+				qs: { offset: 20 },
+			};
+
+			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+			expect(result).toEqual({
+				uri: 'https://pagination.com/api',
+				url: 'https://pagination.com/api',
+				method: 'GET',
+				qs: { offset: 20, limit: 10, page: 1 },
+				headers: {
+					'X-Original-Header': 'original',
+					'X-Pagination-Header': 'pagination',
+				},
+				body: { key: 'value', filter: 'active' },
+			});
+		});
+
+		test('should merge simple objects correctly', () => {
+			const requestData = {
+				qs: { filter: 'test' },
+				body: { existing: 'value' },
+			};
+			const paginationData = {
+				qs: { page: 1 },
+				body: { newField: 'newValue' },
+			};
+
+			const result = applyPaginationRequestData(requestData, paginationData);
+
+			expect(result.qs).toEqual({ filter: 'test', page: 1 });
+			expect(result.body).toEqual({ existing: 'value', newField: 'newValue' });
+		});
+
+		test('should handle nested objects with arrays properly', () => {
+			const requestData = {
+				body: {
+					call: 'ListarCategorias',
+					param: [{ pagina: 1, registros_por_pagina: 50 }],
+					app_key: '#APP_KEY#',
+					app_secret: '#APP_SECRET#',
+				},
+			};
+			const paginationData = {
+				body: {
+					param: [{ pagina: 2 }],
+				},
+			};
+
+			const result = applyPaginationRequestData(requestData, paginationData);
+
+			expect(result.body).toEqual({
+				call: 'ListarCategorias',
+				param: [{ pagina: 2, registros_por_pagina: 50 }],
+				app_key: '#APP_KEY#',
+				app_secret: '#APP_SECRET#',
+			});
+		});
+
+		test('should handle nested arrays with multiple objects', () => {
+			const requestData = {
+				body: {
+					param: [
+						{ pagina: 1, registros_por_pagina: 50, filter: 'active' },
+						{ otherParam: 'value' },
+					],
+				},
+			};
+			const paginationData = {
+				body: {
+					param: [{ pagina: 3 }, { otherParam: 'updatedValue' }],
+				},
+			};
+
+			const result = applyPaginationRequestData(requestData, paginationData);
+
+			expect(result.body).toEqual({
+				param: [
+					{ pagina: 3, registros_por_pagina: 50, filter: 'active' },
+					{ otherParam: 'updatedValue' },
+				],
+			});
+		});
+
+		test('should handle formData correctly (replacement behavior)', () => {
+			const originalRequestOptions: IRequestOptions = {
+				uri: 'https://original.com/api',
+				method: 'POST',
+				formData: { original: 'data' },
+			};
+
+			const paginationRequestData: PaginationOptions['request'] = {
+				url: 'https://pagination.com/api',
+				body: { key: 'value' },
+			};
+
+			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+			expect(result).toEqual({
+				uri: 'https://pagination.com/api',
+				url: 'https://pagination.com/api',
+				method: 'POST',
+				formData: { key: 'value' },
+			});
+		});
+
+		test('should handle form correctly (replacement behavior)', () => {
+			const originalRequestOptions: IRequestOptions = {
+				uri: 'https://original.com/api',
+				method: 'POST',
+				form: { original: 'data' },
+			};
+
+			const paginationRequestData: PaginationOptions['request'] = {
+				url: 'https://pagination.com/api',
+				body: { key: 'value' },
+			};
+
+			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
+
+			expect(result).toEqual({
+				uri: 'https://pagination.com/api',
+				url: 'https://pagination.com/api',
+				method: 'POST',
+				form: { key: 'value' },
+			});
+		});
+
+		test('should handle complex nested structures', () => {
+			const requestData = {
+				body: {
+					query: {
+						bool: {
+							must: [{ match: { status: 'active' } }, { range: { date: { gte: '2023-01-01' } } }],
+							filter: [{ term: { category: 'test' } }],
+						},
+					},
+					from: 0,
+					size: 10,
+				},
+			};
+			const paginationData = {
+				body: {
+					from: 20,
+					query: {
+						bool: {
+							must: [{ match: { status: 'active' } }, { range: { date: { gte: '2023-02-01' } } }],
+						},
+					},
+				},
+			};
+
+			const result = applyPaginationRequestData(requestData, paginationData);
+
+			expect(result.body).toEqual({
+				query: {
+					bool: {
+						must: [{ match: { status: 'active' } }, { range: { date: { gte: '2023-02-01' } } }],
+						filter: [{ term: { category: 'test' } }],
+					},
+				},
+				from: 20,
+				size: 10,
 			});
 		});
 	});
