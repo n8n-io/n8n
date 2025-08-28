@@ -11,7 +11,10 @@ import type { FilterType } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
 import { buildGetManyFilter, isFieldArray, isMatchType } from './utils';
 
-export function getSelectFields(displayOptions: IDisplayOptions): INodeProperties[] {
+export function getSelectFields(
+	displayOptions: IDisplayOptions,
+	requireCondition = false,
+): INodeProperties[] {
 	return [
 		{
 			displayName: 'Must Match',
@@ -36,6 +39,7 @@ export function getSelectFields(displayOptions: IDisplayOptions): INodePropertie
 			type: 'fixedCollection',
 			typeOptions: {
 				multipleValues: true,
+				minRequiredFields: requireCondition ? 1 : 0,
 			},
 			displayOptions,
 			default: {},
@@ -105,8 +109,13 @@ export async function executeSelectMany(
 	ctx: IExecuteFunctions,
 	index: number,
 	dataStoreProxy: IDataStoreProjectService,
+	rejectEmpty = false,
 ): Promise<Array<{ json: DataStoreRowReturn }>> {
 	const filter = getSelectFilter(ctx, index);
+
+	if (rejectEmpty && filter.filters.length === 0) {
+		throw new NodeOperationError(ctx.getNode(), 'At least one condition is required');
+	}
 
 	let take = 1000;
 	const result: Array<{ json: DataStoreRowReturn }> = [];
