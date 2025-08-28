@@ -258,7 +258,7 @@ describe('useCanvasOperations', () => {
 			);
 
 			await waitFor(() =>
-				expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Test Name', 'add_new_node'),
+				expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Test Name', 'added_new_node'),
 			);
 		});
 
@@ -1229,7 +1229,7 @@ describe('useCanvasOperations', () => {
 			await renameNode(oldName, newName);
 
 			expect(workflowObject.renameNode).toHaveBeenCalledWith(oldName, newName);
-			expect(ndvStore.activeNodeName).toBe(newName);
+			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(newName, expect.any(String));
 		});
 
 		it('should not rename node when new name is same as old name', async () => {
@@ -1293,7 +1293,7 @@ describe('useCanvasOperations', () => {
 			const { revertRenameNode } = useCanvasOperations();
 			await revertRenameNode(currentName, oldName);
 
-			expect(ndvStore.activeNodeName).toBe(oldName);
+			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(oldName, expect.any(String));
 		});
 
 		it('should not revert node renaming when old name is same as new name', async () => {
@@ -1322,7 +1322,7 @@ describe('useCanvasOperations', () => {
 			const { setNodeActive } = useCanvasOperations();
 			setNodeActive(nodeId, 'other');
 
-			expect(ndvStore.activeNodeName).toBe(nodeName);
+			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(nodeName, expect.any(String));
 		});
 
 		it('should not change active node name when node does not exist', () => {
@@ -1360,7 +1360,7 @@ describe('useCanvasOperations', () => {
 			const { setNodeActiveByName } = useCanvasOperations();
 			setNodeActiveByName(nodeName, 'other');
 
-			expect(ndvStore.activeNodeName).toBe(nodeName);
+			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(nodeName, expect.any(String));
 		});
 	});
 
@@ -3167,7 +3167,7 @@ describe('useCanvasOperations', () => {
 			await openExecution(executionId, nodeId);
 
 			expect(workflowsStore.getNodeById).toHaveBeenCalledWith(nodeId);
-			expect(ndvStore.activeNodeName).toBe(mockNode.name);
+			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(mockNode.name, expect.any(String));
 		});
 
 		it('should show error when nodeId is provided but node does not exist', async () => {
