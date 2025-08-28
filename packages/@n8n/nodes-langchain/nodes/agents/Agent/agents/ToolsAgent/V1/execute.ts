@@ -239,6 +239,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					'input',
 					'chat_history',
 					'agent_scratchpad',
+					'__tokenUsageByModel',
 				),
 			};
 

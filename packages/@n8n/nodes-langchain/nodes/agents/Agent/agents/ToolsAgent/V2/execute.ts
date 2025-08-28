@@ -486,6 +486,7 @@ export async function toolsAgentExecute(
 					'input',
 					'chat_history',
 					'agent_scratchpad',
+					'__tokenUsageByModel',
 				),
 				pairedItem: { item: itemIndex },
 			};
