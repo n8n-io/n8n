@@ -68,7 +68,7 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-describe('POST /projects/:projectId/data-stores', () => {
+describe('POST /projects/:projectId/data-tables', () => {
 	test('should not create data store when project does not exist', async () => {
 		const payload = {
 			name: 'Test Data Store',
@@ -80,9 +80,9 @@ describe('POST /projects/:projectId/data-stores', () => {
 			],
 		};
 
-		await authMemberAgent.post('/projects/non-existing-id/data-stores').send(payload).expect(403);
-		await authAdminAgent.post('/projects/non-existing-id/data-stores').send(payload).expect(403);
-		await authOwnerAgent.post('/projects/non-existing-id/data-stores').send(payload).expect(403);
+		await authMemberAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(403);
+		await authAdminAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(403);
+		await authOwnerAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(403);
 	});
 
 	test('should not create data store when name is empty', async () => {
@@ -97,7 +97,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			],
 		};
 
-		await authOwnerAgent.post(`/projects/${project.id}/data-stores`).send(payload).expect(400);
+		await authOwnerAgent.post(`/projects/${project.id}/data-tables`).send(payload).expect(400);
 	});
 
 	test('should not create data store if user has project:viewer role in team project', async () => {
@@ -114,7 +114,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			],
 		};
 
-		await authMemberAgent.post(`/projects/${project.id}/data-stores`).send(payload).expect(403);
+		await authMemberAgent.post(`/projects/${project.id}/data-tables`).send(payload).expect(403);
 
 		const dataStoresInDb = await dataStoreRepository.find();
 		expect(dataStoresInDb).toHaveLength(0);
@@ -132,7 +132,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 		};
 
 		await authMemberAgent
-			.post(`/projects/${ownerProject.id}/data-stores`)
+			.post(`/projects/${ownerProject.id}/data-tables`)
 			.send(payload)
 			.expect(403);
 	});
@@ -151,7 +151,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			],
 		};
 
-		await authMemberAgent.post(`/projects/${project.id}/data-stores`).send(payload).expect(200);
+		await authMemberAgent.post(`/projects/${project.id}/data-tables`).send(payload).expect(200);
 
 		const dataStoresInDb = await dataStoreRepository.find();
 		expect(dataStoresInDb).toHaveLength(1);
@@ -171,7 +171,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			],
 		};
 
-		await authAdminAgent.post(`/projects/${project.id}/data-stores`).send(payload).expect(200);
+		await authAdminAgent.post(`/projects/${project.id}/data-tables`).send(payload).expect(200);
 
 		const dataStoresInDb = await dataStoreRepository.find();
 		expect(dataStoresInDb).toHaveLength(1);
@@ -190,7 +190,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			],
 		};
 
-		await authOwnerAgent.post(`/projects/${project.id}/data-stores`).send(payload).expect(200);
+		await authOwnerAgent.post(`/projects/${project.id}/data-tables`).send(payload).expect(200);
 
 		const dataStoresInDb = await dataStoreRepository.find();
 		expect(dataStoresInDb).toHaveLength(1);
@@ -209,7 +209,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 		};
 
 		const response = await authOwnerAgent
-			.post(`/projects/${personalProject.id}/data-stores`)
+			.post(`/projects/${personalProject.id}/data-tables`)
 			.send(payload)
 			.expect(200);
 
@@ -229,27 +229,27 @@ describe('POST /projects/:projectId/data-stores', () => {
 	});
 });
 
-describe('GET /projects/:projectId/data-stores', () => {
+describe('GET /projects/:projectId/data-tables', () => {
 	test('should not list data stores when project does not exist', async () => {
-		await authMemberAgent.get('/projects/non-existing-id/data-stores').expect(403);
-		await authAdminAgent.get('/projects/non-existing-id/data-stores').expect(403);
-		await authOwnerAgent.get('/projects/non-existing-id/data-stores').expect(403);
+		await authMemberAgent.get('/projects/non-existing-id/data-tables').expect(403);
+		await authAdminAgent.get('/projects/non-existing-id/data-tables').expect(403);
+		await authOwnerAgent.get('/projects/non-existing-id/data-tables').expect(403);
 	});
 
 	test('should not list data stores if user has no access to project', async () => {
 		const project = await createTeamProject('test project', owner);
 
-		await authMemberAgent.get(`/projects/${project.id}/data-stores`).expect(403);
+		await authMemberAgent.get(`/projects/${project.id}/data-tables`).expect(403);
 	});
 
 	test('should not list data stores if admin has no access to project', async () => {
 		const project = await createTeamProject('test project', owner);
 
-		await authAdminAgent.get(`/projects/${project.id}/data-stores`).expect(403);
+		await authAdminAgent.get(`/projects/${project.id}/data-tables`).expect(403);
 	});
 
 	test("should not list data stores from another user's personal project", async () => {
-		await authMemberAgent.get(`/projects/${ownerProject.id}/data-stores`).expect(403);
+		await authMemberAgent.get(`/projects/${ownerProject.id}/data-tables`).expect(403);
 	});
 
 	test('should list data stores if user has project:viewer role in team project', async () => {
@@ -257,7 +257,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		await linkUserToProject(member, project, 'project:viewer');
 		await createDataStore(project, { name: 'Test Data Store' });
 
-		const response = await authMemberAgent.get(`/projects/${project.id}/data-stores`).expect(200);
+		const response = await authMemberAgent.get(`/projects/${project.id}/data-tables`).expect(200);
 
 		expect(response.body.data.count).toBe(1);
 		expect(response.body.data.data).toHaveLength(1);
@@ -269,7 +269,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		await createDataStore(ownerProject, { name: 'Personal Data Store 2' });
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.expect(200);
 
 		expect(response.body.data.count).toBe(2);
@@ -285,7 +285,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		await createDataStore(memberProject, { name: 'Another Data Store' });
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.query({ filter: JSON.stringify({ name: 'test' }) })
 			.expect(200);
 
@@ -302,7 +302,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		await createDataStore(ownerProject, { name: 'Test Something Else' });
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.query({ filter: JSON.stringify({ name: 'test' }) })
 			.expect(200);
 
@@ -319,7 +319,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		await createDataStore(ownerProject, { name: 'Data Store 3' });
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.query({ filter: JSON.stringify({ id: dataStore1.id }) })
 			.expect(200);
 
@@ -334,7 +334,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		await createDataStore(ownerProject, { name: 'Another Store' });
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.query({ filter: JSON.stringify({ name: ['Store', 'Test'] }) })
 			.expect(200);
 
@@ -354,7 +354,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		}
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.query({ take: 3 })
 			.expect(200);
 
@@ -378,7 +378,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		}
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.query({ skip: 2 })
 			.expect(200);
 
@@ -402,7 +402,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		}
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.query({ skip: 1, take: 2 })
 			.expect(200);
 
@@ -420,7 +420,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		await createDataStore(ownerProject, { name: 'M Data Store' });
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.query({ sortBy: 'name:asc' })
 			.expect(200);
 
@@ -437,7 +437,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		await createDataStore(ownerProject, { name: 'M Data Store' });
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.query({ sortBy: 'name:desc' })
 			.expect(200);
 
@@ -463,7 +463,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		});
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.query({ sortBy: 'updatedAt:desc' })
 			.expect(200);
 
@@ -479,7 +479,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		await createDataStore(ownerProject, { name: 'Another Data Store' });
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.query({ filter: JSON.stringify({ name: 'data', id: dataStore1.id }), sortBy: 'name:asc' })
 			.expect(200);
 
@@ -504,7 +504,7 @@ describe('GET /projects/:projectId/data-stores', () => {
 		});
 
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/data-stores`)
+			.get(`/projects/${ownerProject.id}/data-tables`)
 			.query({ filter: JSON.stringify({ name: 'test' }) })
 			.expect(200);
 
@@ -514,14 +514,14 @@ describe('GET /projects/:projectId/data-stores', () => {
 	});
 });
 
-describe('PATCH /projects/:projectId/data-stores/:dataStoreId', () => {
+describe('PATCH /projects/:projectId/data-tables/:dataStoreId', () => {
 	test('should not update data store when project does not exist', async () => {
 		const payload = {
 			name: 'Updated Data Store Name',
 		};
 
 		await authOwnerAgent
-			.patch('/projects/non-existing-id/data-stores/some-data-store-id')
+			.patch('/projects/non-existing-id/data-tables/some-data-store-id')
 			.send(payload)
 			.expect(403);
 	});
@@ -534,7 +534,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId', () => {
 		};
 
 		await authOwnerAgent
-			.patch(`/projects/${project.id}/data-stores/non-existing-data-store`)
+			.patch(`/projects/${project.id}/data-tables/non-existing-data-store`)
 			.send(payload)
 			.expect(404);
 	});
@@ -548,7 +548,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId', () => {
 		};
 
 		await authOwnerAgent
-			.patch(`/projects/${project.id}/data-stores/${dataStore.id}`)
+			.patch(`/projects/${project.id}/data-tables/${dataStore.id}`)
 			.send(payload)
 			.expect(400);
 
@@ -566,7 +566,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId', () => {
 		};
 
 		await authMemberAgent
-			.patch(`/projects/${project.id}/data-stores/${dataStore.id}`)
+			.patch(`/projects/${project.id}/data-tables/${dataStore.id}`)
 			.send(payload)
 			.expect(403);
 
@@ -582,7 +582,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId', () => {
 		};
 
 		await authMemberAgent
-			.patch(`/projects/${ownerProject.id}/data-stores/${dataStore.id}`)
+			.patch(`/projects/${ownerProject.id}/data-tables/${dataStore.id}`)
 			.send(payload)
 			.expect(403);
 
@@ -600,7 +600,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId', () => {
 		};
 
 		await authMemberAgent
-			.patch(`/projects/${project.id}/data-stores/${dataStore.id}`)
+			.patch(`/projects/${project.id}/data-tables/${dataStore.id}`)
 			.send(payload)
 			.expect(200);
 
@@ -618,7 +618,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId', () => {
 		};
 
 		await authAdminAgent
-			.patch(`/projects/${project.id}/data-stores/${dataStore.id}`)
+			.patch(`/projects/${project.id}/data-tables/${dataStore.id}`)
 			.send(payload)
 			.expect(200);
 
@@ -635,7 +635,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId', () => {
 		};
 
 		await authOwnerAgent
-			.patch(`/projects/${project.id}/data-stores/${dataStore.id}`)
+			.patch(`/projects/${project.id}/data-tables/${dataStore.id}`)
 			.send(payload)
 			.expect(200);
 
@@ -652,7 +652,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId', () => {
 		};
 
 		await authOwnerAgent
-			.patch(`/projects/${personalProject.id}/data-stores/${dataStore.id}`)
+			.patch(`/projects/${personalProject.id}/data-tables/${dataStore.id}`)
 			.send(payload)
 			.expect(200);
 
@@ -661,10 +661,10 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId', () => {
 	});
 });
 
-describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
+describe('DELETE /projects/:projectId/data-tables/:dataStoreId', () => {
 	test('should not delete data store when project does not exist', async () => {
 		await authOwnerAgent
-			.delete('/projects/non-existing-id/data-stores/some-data-store-id')
+			.delete('/projects/non-existing-id/data-tables/some-data-store-id')
 			.send({})
 			.expect(403);
 	});
@@ -673,7 +673,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		const project = await createTeamProject('test project', owner);
 
 		await authOwnerAgent
-			.delete(`/projects/${project.id}/data-stores/non-existing-data-store`)
+			.delete(`/projects/${project.id}/data-tables/non-existing-data-store`)
 			.send({})
 			.expect(404);
 	});
@@ -684,7 +684,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		await linkUserToProject(member, project, 'project:viewer');
 
 		await authMemberAgent
-			.delete(`/projects/${project.id}/data-stores/${dataStore.id}`)
+			.delete(`/projects/${project.id}/data-tables/${dataStore.id}`)
 			.send({})
 			.expect(403);
 
@@ -696,7 +696,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		const dataStore = await createDataStore(ownerProject);
 
 		await authMemberAgent
-			.delete(`/projects/${ownerProject.id}/data-stores/${dataStore.id}`)
+			.delete(`/projects/${ownerProject.id}/data-tables/${dataStore.id}`)
 			.send({})
 			.expect(403);
 
@@ -710,7 +710,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		await linkUserToProject(member, project, 'project:editor');
 
 		await authMemberAgent
-			.delete(`/projects/${project.id}/data-stores/${dataStore.id}`)
+			.delete(`/projects/${project.id}/data-tables/${dataStore.id}`)
 			.send({})
 			.expect(200);
 
@@ -724,7 +724,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		await linkUserToProject(admin, project, 'project:admin');
 
 		await authAdminAgent
-			.delete(`/projects/${project.id}/data-stores/${dataStore.id}`)
+			.delete(`/projects/${project.id}/data-tables/${dataStore.id}`)
 			.send({})
 			.expect(200);
 
@@ -737,7 +737,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		const dataStore = await createDataStore(project);
 
 		await authOwnerAgent
-			.delete(`/projects/${project.id}/data-stores/${dataStore.id}`)
+			.delete(`/projects/${project.id}/data-tables/${dataStore.id}`)
 			.send({})
 			.expect(200);
 
@@ -750,7 +750,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		const dataStore = await createDataStore(personalProject);
 
 		await authOwnerAgent
-			.delete(`/projects/${personalProject.id}/data-stores/${dataStore.id}`)
+			.delete(`/projects/${personalProject.id}/data-tables/${dataStore.id}`)
 			.send({})
 			.expect(200);
 
@@ -771,7 +771,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		});
 
 		await authOwnerAgent
-			.delete(`/projects/${personalProject.id}/data-stores/${dataStore.id}`)
+			.delete(`/projects/${personalProject.id}/data-tables/${dataStore.id}`)
 			.send({})
 			.expect(200);
 
@@ -789,10 +789,10 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 	});
 });
 
-describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
+describe('GET /projects/:projectId/data-tables/:dataStoreId/columns', () => {
 	test('should not list columns when project does not exist', async () => {
 		await authOwnerAgent
-			.get('/projects/non-existing-id/data-stores/non-existing-id/columns')
+			.get('/projects/non-existing-id/data-tables/non-existing-id/columns')
 			.expect(403);
 	});
 
@@ -801,19 +801,19 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project);
 
 		await authMemberAgent
-			.get(`/projects/${project.id}/data-stores/${dataStore.id}/columns`)
+			.get(`/projects/${project.id}/data-tables/${dataStore.id}/columns`)
 			.expect(403);
 	});
 
 	test("should not list columns from data stores in another user's personal project", async () => {
-		await authMemberAgent.get(`/projects/${ownerProject.id}/data-stores`).expect(403);
+		await authMemberAgent.get(`/projects/${ownerProject.id}/data-tables`).expect(403);
 	});
 
 	test('should not list columns when data store does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 
 		await authOwnerAgent
-			.get(`/projects/${project.id}/data-stores/non-existing-id/columns`)
+			.get(`/projects/${project.id}/data-tables/non-existing-id/columns`)
 			.expect(404);
 	});
 
@@ -834,7 +834,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		});
 
 		const response = await authMemberAgent
-			.get(`/projects/${project.id}/data-stores/${dataStore.id}/columns`)
+			.get(`/projects/${project.id}/data-tables/${dataStore.id}/columns`)
 			.expect(200);
 
 		expect(response.body.data).toHaveLength(2);
@@ -855,7 +855,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		});
 
 		const response = await authMemberAgent
-			.get(`/projects/${project.id}/data-stores/${dataStore.id}/columns`)
+			.get(`/projects/${project.id}/data-tables/${dataStore.id}/columns`)
 			.expect(200);
 
 		expect(response.body.data).toHaveLength(1);
@@ -874,7 +874,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		});
 
 		const response = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/columns`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/columns`)
 			.expect(200);
 
 		expect(response.body.data).toHaveLength(1);
@@ -882,7 +882,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 	});
 });
 
-describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
+describe('POST /projects/:projectId/data-tables/:dataStoreId/columns', () => {
 	test('should not create column when project does not exist', async () => {
 		const payload = {
 			name: 'Test Column',
@@ -890,7 +890,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		};
 
 		await authOwnerAgent
-			.post('/projects/non-existing-id/data-stores/some-data-store-id/columns')
+			.post('/projects/non-existing-id/data-tables/some-data-store-id/columns')
 			.send(payload)
 			.expect(403);
 	});
@@ -905,7 +905,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		};
 
 		await authOwnerAgent
-			.post(`/projects/${project.id}/data-stores/non-existing-data-store/columns`)
+			.post(`/projects/${project.id}/data-tables/non-existing-data-store/columns`)
 			.send(payload)
 			.expect(404);
 	});
@@ -920,7 +920,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		};
 
 		await authOwnerAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/columns`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/columns`)
 			.send(payload)
 			.expect(400);
 
@@ -938,7 +938,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		};
 
 		await authOwnerAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/columns`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/columns`)
 			.send(payload)
 			.expect(400);
 
@@ -957,7 +957,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		});
 
 		await authMemberAgent
-			.post(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns`)
+			.post(`/projects/${ownerProject.id}/data-tables/${dataStore.id}/columns`)
 			.send({
 				name: 'new_column',
 				type: 'string',
@@ -980,7 +980,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		};
 
 		await authMemberAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/columns`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/columns`)
 			.send(payload)
 			.expect(403);
 
@@ -1007,7 +1007,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		};
 
 		await authMemberAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/columns`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/columns`)
 			.send(payload)
 			.expect(200);
 
@@ -1036,7 +1036,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		};
 
 		await authAdminAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/columns`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/columns`)
 			.send(payload)
 			.expect(200);
 
@@ -1066,7 +1066,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		};
 
 		await authOwnerAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/columns`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/columns`)
 			.send(payload)
 			.expect(200);
 
@@ -1100,7 +1100,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		};
 
 		await authOwnerAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/columns`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/columns`)
 			.send(payload)
 			.expect(200);
 
@@ -1113,10 +1113,10 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 	});
 });
 
-describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId', () => {
+describe('DELETE /projects/:projectId/data-tables/:dataStoreId/columns/:columnId', () => {
 	test('should not delete column when project does not exist', async () => {
 		await authOwnerAgent
-			.delete('/projects/non-existing-id/data-stores/some-data-store-id/columns/some-column-id')
+			.delete('/projects/non-existing-id/data-tables/some-data-store-id/columns/some-column-id')
 			.send({})
 			.expect(403);
 	});
@@ -1125,7 +1125,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const project = await createTeamProject('test project', owner);
 
 		await authOwnerAgent
-			.delete(`/projects/${project.id}/data-stores/non-existing-id/columns/some-column-id`)
+			.delete(`/projects/${project.id}/data-tables/non-existing-id/columns/some-column-id`)
 			.send()
 			.expect(404);
 	});
@@ -1142,7 +1142,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		});
 
 		await authOwnerAgent
-			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/columns/non-existing-id`)
+			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/columns/non-existing-id`)
 			.send()
 			.expect(404);
 	});
@@ -1158,7 +1158,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		});
 
 		await authMemberAgent
-			.delete(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns/test_column`)
+			.delete(`/projects/${ownerProject.id}/data-tables/${dataStore.id}/columns/test_column`)
 			.send()
 			.expect(403);
 
@@ -1182,7 +1182,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		await linkUserToProject(member, project, 'project:viewer');
 
 		await authMemberAgent
-			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/columns/test_column`)
+			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/columns/test_column`)
 			.send()
 			.expect(403);
 
@@ -1208,7 +1208,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 
 		await authOwnerAgent
 			.delete(
-				`/projects/${project.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}`,
+				`/projects/${project.id}/data-tables/${dataStore.id}/columns/${dataStore.columns[0].id}`,
 			)
 			.send()
 			.expect(200);
@@ -1234,7 +1234,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 
 		await authAdminAgent
 			.delete(
-				`/projects/${project.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}`,
+				`/projects/${project.id}/data-tables/${dataStore.id}/columns/${dataStore.columns[0].id}`,
 			)
 			.send()
 			.expect(200);
@@ -1259,7 +1259,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 
 		await authOwnerAgent
 			.delete(
-				`/projects/${project.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}`,
+				`/projects/${project.id}/data-tables/${dataStore.id}/columns/${dataStore.columns[0].id}`,
 			)
 			.send()
 			.expect(200);
@@ -1283,7 +1283,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 
 		await authMemberAgent
 			.delete(
-				`/projects/${memberProject.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}`,
+				`/projects/${memberProject.id}/data-tables/${dataStore.id}/columns/${dataStore.columns[0].id}`,
 			)
 			.send()
 			.expect(200);
@@ -1296,14 +1296,14 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 	});
 });
 
-describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/move', () => {
+describe('PATCH /projects/:projectId/data-tables/:dataStoreId/columns/:columnId/move', () => {
 	test('should not move column when project does not exist', async () => {
 		const payload = {
 			index: 1,
 		};
 
 		await authOwnerAgent
-			.patch('/projects/non-existing-id/data-stores/some-data-store-id/columns/some-column-id/move')
+			.patch('/projects/non-existing-id/data-tables/some-data-store-id/columns/some-column-id/move')
 			.send(payload)
 			.expect(403);
 	});
@@ -1316,7 +1316,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 
 		await authOwnerAgent
 			.patch(
-				`/projects/${project.id}/data-stores/non-existing-data-store/columns/some-column-id/move`,
+				`/projects/${project.id}/data-tables/non-existing-data-store/columns/some-column-id/move`,
 			)
 			.send(payload)
 			.expect(404);
@@ -1337,7 +1337,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		};
 
 		await authOwnerAgent
-			.patch(`/projects/${project.id}/data-stores/${dataStore.id}/columns/some-column-id/move`)
+			.patch(`/projects/${project.id}/data-tables/${dataStore.id}/columns/some-column-id/move`)
 			.send(payload)
 			.expect(404);
 	});
@@ -1358,7 +1358,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 
 		await authMemberAgent
 			.patch(
-				`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
+				`/projects/${ownerProject.id}/data-tables/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
 			)
 			.send({ targetIndex: 1 })
 			.expect(403);
@@ -1389,7 +1389,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 
 		await authMemberAgent
 			.patch(
-				`/projects/${project.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
+				`/projects/${project.id}/data-tables/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
 			)
 			.send({ targetIndex: 1 })
 			.expect(403);
@@ -1420,7 +1420,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 
 		await authMemberAgent
 			.patch(
-				`/projects/${project.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
+				`/projects/${project.id}/data-tables/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
 			)
 			.send({ targetIndex: 1 })
 			.expect(200);
@@ -1451,7 +1451,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 
 		await authAdminAgent
 			.patch(
-				`/projects/${project.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
+				`/projects/${project.id}/data-tables/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
 			)
 			.send({ targetIndex: 1 })
 			.expect(200);
@@ -1482,7 +1482,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 
 		await authOwnerAgent
 			.patch(
-				`/projects/${project.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
+				`/projects/${project.id}/data-tables/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
 			)
 			.send({ targetIndex: 1 })
 			.expect(200);
@@ -1511,7 +1511,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 
 		await authMemberAgent
 			.patch(
-				`/projects/${memberProject.id}/data-stores/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
+				`/projects/${memberProject.id}/data-tables/${dataStore.id}/columns/${dataStore.columns[0].id}/move`,
 			)
 			.send({ targetIndex: 1 })
 			.expect(200);
@@ -1525,17 +1525,17 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 	});
 });
 
-describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
+describe('GET /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 	test('should not list rows when project does not exist', async () => {
 		await authOwnerAgent
-			.get('/projects/non-existing-id/data-stores/some-data-store-id/rows')
+			.get('/projects/non-existing-id/data-tables/some-data-store-id/rows')
 			.expect(403);
 	});
 
 	test('should not list rows when data store does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 		await authOwnerAgent
-			.get(`/projects/${project.id}/data-stores/non-existing-id/rows`)
+			.get(`/projects/${project.id}/data-tables/non-existing-id/rows`)
 			.expect(404);
 	});
 
@@ -1554,7 +1554,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		await authMemberAgent
-			.get(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${ownerProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(403);
 	});
 
@@ -1582,7 +1582,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		const response = await authMemberAgent
-			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(response.body.data).toMatchObject({
@@ -1621,7 +1621,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		const response = await authMemberAgent
-			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(response.body.data).toMatchObject({
@@ -1660,7 +1660,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		const response = await authAdminAgent
-			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(response.body.data).toMatchObject({
@@ -1696,7 +1696,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		const response = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(response.body.data).toMatchObject({
@@ -1740,7 +1740,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		);
 
 		const response = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows?filter=${filterParam}`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows?filter=${filterParam}`)
 			.expect(200);
 
 		expect(response.body.data).toEqual({
@@ -1782,7 +1782,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		);
 
 		const response = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows?filter=${filterParam}`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows?filter=${filterParam}`)
 			.expect(200);
 
 		expect(response.body.data).toEqual({
@@ -1840,7 +1840,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 				}),
 			);
 			const response = await authMemberAgent
-				.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows?filter=${filterParam}`)
+				.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows?filter=${filterParam}`)
 				.expect(200);
 
 			expect(response.body.data.count).toBe(expectedNames.length);
@@ -1886,7 +1886,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 				}),
 			);
 			const response = await authMemberAgent
-				.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows?filter=${filterParam}`)
+				.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows?filter=${filterParam}`)
 				.expect(200);
 
 			expect(response.body.data.count).toBe(1);
@@ -1895,7 +1895,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 	);
 });
 
-describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
+describe('POST /projects/:projectId/data-tables/:dataStoreId/insert', () => {
 	test('should not insert rows when project does not exist', async () => {
 		const payload = {
 			data: [
@@ -1907,7 +1907,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		await authOwnerAgent
-			.post('/projects/non-existing-id/data-stores/some-data-store-id/insert')
+			.post('/projects/non-existing-id/data-tables/some-data-store-id/insert')
 			.send(payload)
 			.expect(403);
 	});
@@ -1924,7 +1924,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		await authOwnerAgent
-			.post(`/projects/${project.id}/data-stores/non-existing-id/insert`)
+			.post(`/projects/${project.id}/data-tables/non-existing-id/insert`)
 			.send(payload)
 			.expect(404);
 	});
@@ -1953,7 +1953,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		await authMemberAgent
-			.post(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${ownerProject.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(403);
 	});
@@ -1984,7 +1984,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		await authMemberAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(403);
 	});
@@ -2016,7 +2016,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		const response = await authMemberAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
 
@@ -2056,7 +2056,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		const response = await authAdminAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
 
@@ -2093,7 +2093,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		const response = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
 
@@ -2135,7 +2135,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		const response = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
 
@@ -2187,7 +2187,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		const response = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(400);
 
@@ -2220,7 +2220,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		const response = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
 
@@ -2229,7 +2229,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		});
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
@@ -2268,7 +2268,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		const response = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
 
@@ -2277,7 +2277,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		});
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
@@ -2308,7 +2308,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		const response = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
 
@@ -2317,7 +2317,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		});
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
@@ -2363,7 +2363,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		const response = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
 
@@ -2372,7 +2372,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		});
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
@@ -2413,7 +2413,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		const response = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
 
@@ -2422,7 +2422,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		});
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
@@ -2461,7 +2461,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		};
 
 		const first = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
 
@@ -2470,7 +2470,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		});
 
 		const second = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/insert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/insert`)
 			.send(payload)
 			.expect(200);
 
@@ -2479,7 +2479,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 		});
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(6);
@@ -2487,10 +2487,10 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
 	});
 });
 
-describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
+describe('DELETE /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 	test('should not delete rows when project does not exist', async () => {
 		await authOwnerAgent
-			.delete('/projects/non-existing-id/data-stores/some-data-store-id/rows')
+			.delete('/projects/non-existing-id/data-tables/some-data-store-id/rows')
 			.query({ ids: '1,2' })
 			.expect(403);
 	});
@@ -2499,7 +2499,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		const project = await createTeamProject('test project', owner);
 
 		await authOwnerAgent
-			.delete(`/projects/${project.id}/data-stores/non-existing-id/rows`)
+			.delete(`/projects/${project.id}/data-tables/non-existing-id/rows`)
 			.query({ ids: '1,2' })
 			.expect(404);
 	});
@@ -2525,7 +2525,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		await authMemberAgent
-			.delete(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/rows`)
+			.delete(`/projects/${ownerProject.id}/data-tables/${dataStore.id}/rows`)
 			.query({ ids: '1' })
 			.expect(403);
 
@@ -2556,7 +2556,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		await authMemberAgent
-			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.query({ ids: '1' })
 			.expect(403);
 
@@ -2596,7 +2596,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		await authMemberAgent
-			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.query({ ids: '1,3' })
 			.expect(200);
 
@@ -2636,7 +2636,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		await authAdminAgent
-			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.query({ ids: '2' })
 			.expect(200);
 
@@ -2675,7 +2675,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		await authOwnerAgent
-			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.delete(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.query({ ids: '1,2' })
 			.expect(200);
 
@@ -2712,7 +2712,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		await authMemberAgent
-			.delete(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.query({ ids: '2' })
 			.expect(200);
 
@@ -2737,7 +2737,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		const response = await authMemberAgent
-			.delete(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.query({ ids: '' })
 			.expect(200);
 
@@ -2763,7 +2763,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		await authMemberAgent
-			.delete(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.query({ ids: '999,1000' })
 			.expect(200);
 
@@ -2790,7 +2790,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		});
 
 		await authMemberAgent
-			.delete(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.delete(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.query({ ids: '1,999,2,1000' })
 			.expect(200);
 
@@ -2799,7 +2799,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 	});
 });
 
-describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
+describe('POST /projects/:projectId/data-tables/:dataStoreId/upsert', () => {
 	test('should not upsert rows when project does not exist', async () => {
 		const payload = {
 			rows: [
@@ -2812,7 +2812,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		};
 
 		await authOwnerAgent
-			.post('/projects/non-existing-id/data-stores/some-data-store-id/upsert')
+			.post('/projects/non-existing-id/data-tables/some-data-store-id/upsert')
 			.send(payload)
 			.expect(403);
 	});
@@ -2830,7 +2830,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		};
 
 		await authOwnerAgent
-			.post(`/projects/${project.id}/data-stores/non-existing-id/upsert`)
+			.post(`/projects/${project.id}/data-tables/non-existing-id/upsert`)
 			.send(payload)
 			.expect(404);
 	});
@@ -2860,7 +2860,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		};
 
 		await authMemberAgent
-			.post(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/upsert`)
+			.post(`/projects/${ownerProject.id}/data-tables/${dataStore.id}/upsert`)
 			.send(payload)
 			.expect(403);
 	});
@@ -2892,7 +2892,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		};
 
 		await authMemberAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/upsert`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/upsert`)
 			.send(payload)
 			.expect(403);
 	});
@@ -2925,7 +2925,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		};
 
 		await authMemberAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/upsert`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/upsert`)
 			.send(payload)
 			.expect(200);
 
@@ -2962,7 +2962,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		};
 
 		await authAdminAgent
-			.post(`/projects/${project.id}/data-stores/${dataStore.id}/upsert`)
+			.post(`/projects/${project.id}/data-tables/${dataStore.id}/upsert`)
 			.send(payload)
 			.expect(200);
 
@@ -2996,7 +2996,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		};
 
 		await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/upsert`)
 			.send(payload)
 			.expect(200);
 
@@ -3030,7 +3030,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		};
 
 		const response = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/upsert`)
 			.send(payload)
 			.expect(400);
 
@@ -3078,7 +3078,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		};
 
 		const result = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/upsert`)
 			.send(payload)
 			.expect(200);
 
@@ -3133,7 +3133,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 		};
 
 		const result = await authMemberAgent
-			.post(`/projects/${memberProject.id}/data-stores/${dataStore.id}/upsert`)
+			.post(`/projects/${memberProject.id}/data-tables/${dataStore.id}/upsert`)
 			.send(payload)
 			.expect(200);
 
@@ -3165,7 +3165,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/upsert', () => {
 	});
 });
 
-describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
+describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 	test('should not update row when project does not exist', async () => {
 		const payload = {
 			filter: { name: 'Alice' },
@@ -3173,7 +3173,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		await authOwnerAgent
-			.patch('/projects/non-existing-id/data-stores/some-data-store-id/rows')
+			.patch('/projects/non-existing-id/data-tables/some-data-store-id/rows')
 			.send(payload)
 			.expect(403);
 	});
@@ -3186,7 +3186,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		await authOwnerAgent
-			.patch(`/projects/${project.id}/data-stores/non-existing-id/rows`)
+			.patch(`/projects/${project.id}/data-tables/non-existing-id/rows`)
 			.send(payload)
 			.expect(404);
 	});
@@ -3206,7 +3206,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		await authMemberAgent
-			.patch(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${ownerProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(403);
 	});
@@ -3228,7 +3228,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		await authMemberAgent
-			.patch(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(403);
 	});
@@ -3252,14 +3252,14 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		const result = await authMemberAgent
-			.patch(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(200);
 
 		expect(result.body.data).toBe(true);
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
@@ -3289,12 +3289,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		await authAdminAgent
-			.patch(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(200);
 
 		const readResponse = await authAdminAgent
-			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
@@ -3317,12 +3317,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		await authOwnerAgent
-			.patch(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(200);
 
 		const readResponse = await authOwnerAgent
-			.get(`/projects/${project.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${project.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
@@ -3348,12 +3348,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(200);
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
@@ -3382,12 +3382,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(200);
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(2);
@@ -3427,12 +3427,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(200);
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(3);
@@ -3475,14 +3475,14 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		const response = await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(200);
 
 		expect(response.body.data).toEqual(true);
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
@@ -3503,7 +3503,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		const response = await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(400);
 
@@ -3521,7 +3521,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		const response = await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(400);
 
@@ -3540,7 +3540,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		const response = await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(400);
 
@@ -3559,7 +3559,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		const response = await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(400);
 
@@ -3581,7 +3581,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		const response = await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(400);
 
@@ -3603,7 +3603,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		const response = await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(400);
 
@@ -3626,12 +3626,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(200);
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
@@ -3657,12 +3657,12 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(200);
 
 		const readResponse = await authMemberAgent
-			.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.get(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.expect(200);
 
 		expect(readResponse.body.data.count).toBe(1);
@@ -3693,7 +3693,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		};
 
 		const result = await authMemberAgent
-			.patch(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows`)
+			.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
 			.send(payload)
 			.expect(200);
 
