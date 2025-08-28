@@ -60,11 +60,11 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 			const lastMessage =
 				agentChunk.compact_messages!.messages![agentChunk.compact_messages!.messages!.length - 1];
 
-			if (lastMessage.content) {
+			if (lastMessage.content && typeof lastMessage.content === 'string') {
 				const messageChunk: AgentMessageChunk = {
 					role: 'assistant',
 					type: 'message',
-					text: lastMessage.content as string,
+					text: lastMessage.content,
 				};
 
 				return { messages: [messageChunk] };

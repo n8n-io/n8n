@@ -338,8 +338,9 @@ const responsePatterns = `
 IMPORTANT: Only provide ONE response AFTER all tool execution is complete.
 
 Response format:
-**⚙️ How to Setup**
-1. List credentials/configuration needed (numbered format)
+**⚙️ How to Setup** (numbered format)
+- List credentials and parameters that need to configured
+- Only list incomplete tasks that need user action (skip what's already configured)
 
 **ℹ️ How to Use**
 - Only essential user actions (what to click, where to go)
