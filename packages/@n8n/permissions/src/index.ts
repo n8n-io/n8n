@@ -11,6 +11,8 @@ export {
 	teamRoleSchema,
 	roleSchema,
 	type Role,
+	systemProjectRoleSchema,
+	assignableProjectRoleSchema,
 	scopeSchema,
 } from './schemas.ee';
 

@@ -9,9 +9,10 @@ import {
 	roleNamespaceSchema,
 	globalRoleSchema,
 	assignableGlobalRoleSchema,
-	projectRoleSchema,
+	systemProjectRoleSchema,
 	credentialSharingRoleSchema,
 	workflowSharingRoleSchema,
+	customProjectRoleSchema,
 } from '../schemas.ee';
 
 describe('roleNamespaceSchema', () => {
@@ -58,7 +59,7 @@ describe('assignableGlobalRoleSchema', () => {
 	});
 });
 
-describe('projectRoleSchema', () => {
+describe('systemProjectRoleSchema', () => {
 	test.each([
 		{
 			name: `valid role: ${PROJECT_OWNER_ROLE_SLUG}`,
@@ -82,7 +83,7 @@ describe('projectRoleSchema', () => {
 		},
 		{ name: 'invalid role', value: 'invalid-role', expected: false },
 	])('should validate $name', ({ value, expected }) => {
-		const result = projectRoleSchema.safeParse(value);
+		const result = systemProjectRoleSchema.safeParse(value);
 		expect(result.success).toBe(expected);
 	});
 });
@@ -111,6 +112,18 @@ describe('workflowSharingRoleSchema', () => {
 		{ name: 'empty string', value: '', expected: false },
 	])('should validate $name', ({ value, expected }) => {
 		const result = workflowSharingRoleSchema.safeParse(value);
+		expect(result.success).toBe(expected);
+	});
+});
+
+describe('customProjectRoleSchema', () => {
+	test.each([
+		{ name: 'valid role: custom:role', value: 'custom:role', expected: true },
+		{ name: 'undefined value', value: undefined, expected: false },
+		{ name: 'empty string', value: '', expected: false },
+		{ name: 'system role', value: PROJECT_ADMIN_ROLE_SLUG, expected: false },
+	])('should validate $name', ({ value, expected }) => {
+		const result = customProjectRoleSchema.safeParse(value);
 		expect(result.success).toBe(expected);
 	});
 });
