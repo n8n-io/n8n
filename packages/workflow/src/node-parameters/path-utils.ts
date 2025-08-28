@@ -4,7 +4,7 @@
  * If `candidateRelativePath` is not relative, it is returned unchanged.
  *
  * `parameters.a.b.c`, `&d` -> `a.b.d`
- * `parameters.a.b[0].c`, `&d` -> `a.b.d`
+ * `parameters.a.b[0].c`, `&d` -> `a.b[0].d`
  * `parameters.a.b.c`, `d` -> `d`
  */
 export function resolveRelativePath(
