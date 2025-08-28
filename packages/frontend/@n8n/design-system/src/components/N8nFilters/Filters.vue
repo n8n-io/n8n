@@ -32,21 +32,26 @@ const activeFilters = ref<ActiveFilter[]>([]);
 const filterOptions: FilterOption[] = [
 	{
 		label: 'Status',
-		options: ['active', 'deactivated', 'archived'],
+		options: ['Active', 'Deactivated', 'Archived'],
 		type: 'single',
 	},
 	{
 		label: 'Tag',
-		options: ['tag 1', 'tag 2', 'tag 3'],
+		options: [
+			...Array(100)
+				.keys()
+				.map((_, i) => `Tag ${i + 1}`),
+		],
 		type: 'multi',
 	},
 	{
 		label: 'Owner',
-		options: ['user 1', 'user 2', 'user 3'],
+		options: ['User 1', 'User 2', 'User 3'],
 		type: 'single',
 	},
 ];
 
+console.log('filterOptions', filterOptions);
 const hasActiveFilters = computed(() => activeFilters.value.length > 0);
 
 function selectFilterValue(filterName: string, value: string, type: 'single' | 'multi') {
@@ -107,12 +112,16 @@ function clearAllFilters() {
 <template>
 	<div class="filters-wrapper">
 		<div class="toolbar">
-			<N8nTooltip content="Search">
-				<N8nIconButton type="tertiary" icon="search" text />
-			</N8nTooltip>
-			<N8nTooltip content="Sort">
-				<N8nIconButton type="tertiary" icon="arrow-up-down" text />
-			</N8nTooltip>
+			<!-- Active Filters -->
+			<div v-if="hasActiveFilters" class="active-filters">
+				<div v-for="filter in activeFilters" :key="filter.filterName" class="filter-tags">
+					<button class="filter-tag" @click="removeFilter(filter.filterName)">
+						<N8nText size="small" color="text-light">{{ filter.filterName }} is</N8nText>
+						<N8nText bold size="small" color="text-base">{{ filter.values.join(', ') }}</N8nText>
+						<N8nIcon icon="x" color="text-dark" />
+					</button>
+				</div>
+			</div>
 
 			<!-- Filters Dropdown -->
 			<DropdownMenuRoot>
@@ -158,24 +167,16 @@ function clearAllFilters() {
 								</DropdownMenuPortal>
 							</DropdownMenuSub>
 						</template>
-						<div v-if="hasActiveFilters" class="clear-all-section">
-							<DropdownMenuSeparator class="filter-separator" />
-							<div class="clear-all-container">
-								<N8nButton
-									type="secondary"
-									size="small"
-									@click="clearAllFilters"
-									class="clear-all-btn"
-								>
-									<N8nIcon icon="trash-2" size="small" />
-									Clear all filters
-								</N8nButton>
-							</div>
-						</div>
 					</DropdownMenuContent>
 				</DropdownMenuPortal>
 			</DropdownMenuRoot>
 
+			<N8nTooltip content="Search">
+				<N8nIconButton type="tertiary" icon="search" text />
+			</N8nTooltip>
+			<N8nTooltip content="Sort">
+				<N8nIconButton type="tertiary" icon="arrow-up-down" text />
+			</N8nTooltip>
 			<N8nTooltip content="Add folder">
 				<N8nIconButton type="tertiary" icon="folder-plus" text />
 			</N8nTooltip>
@@ -184,33 +185,14 @@ function clearAllFilters() {
 				<N8nIconButton type="tertiary" icon="ellipsis" text />
 			</N8nTooltip>
 		</div>
-
-		<!-- Active Filters Display -->
-		<div v-if="hasActiveFilters" class="active-filters">
-			<div class="active-filters-header">
-				<span class="active-filters-label">Active Filters:</span>
-				<N8nButton type="tertiary" size="mini" @click="clearAllFilters"> Clear all </N8nButton>
-			</div>
-			<div class="filter-tags">
-				<div v-for="filter in activeFilters" :key="filter.filterName" class="filter-tag">
-					<span class="filter-name">{{ filter.filterName }}:</span>
-					<span class="filter-values">{{ filter.values.join(', ') }}</span>
-					<N8nIconButton
-						type="tertiary"
-						icon="x"
-						size="mini"
-						@click="removeFilter(filter.filterName)"
-						class="remove-filter"
-					/>
-				</div>
-			</div>
-		</div>
 	</div>
 </template>
 
 <style scoped lang="scss">
 .filters-wrapper {
-	width: 100%;
+	display: flex;
+	align-items: end;
+	width: 100vw;
 }
 
 .filter-button {
@@ -224,9 +206,10 @@ function clearAllFilters() {
 	padding: var(--spacing-m);
 	background-color: var(--color-background-light);
 	display: flex;
-	justify-content: center;
+	justify-content: end;
 	align-items: center;
 	gap: var(--spacing-s);
+	width: 100%;
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 }
 
@@ -236,16 +219,8 @@ function clearAllFilters() {
 }
 
 .active-filters {
-	padding: var(--spacing-s) var(--spacing-m);
-	background-color: var(--color-background-xlight);
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
-}
-
-.active-filters-header {
 	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: var(--spacing-2xs);
+	gap: var(--spacing-2xs);
 }
 
 .active-filters-label {
@@ -262,13 +237,15 @@ function clearAllFilters() {
 }
 
 .filter-tag {
+	outline: none;
+	border: none;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing-4xs);
 	background-color: var(--color-background-base);
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+
 	border-radius: var(--border-radius-base);
-	padding: var(--spacing-4xs) var(--spacing-2xs);
+	padding: var(--spacing-2xs) var(--spacing-3xs);
 	font-size: var(--font-size-2xs);
 }
 
@@ -349,11 +326,11 @@ function clearAllFilters() {
 	}
 
 	&.selected {
-		background-color: var(--color-primary-tint-3);
+		background-color: var(--color-background-base);
 		color: var(--color-primary);
 
 		.check-icon {
-			color: var(--color-primary);
+			color: var(--color-success);
 		}
 	}
 }
