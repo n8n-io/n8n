@@ -105,13 +105,8 @@ export class SourceControlPreferencesService {
 				// Ignore errors if file doesn't exist
 			});
 
-			// Try restrictive permissions first (Unix standard), fall back to permissive if needed
-			try {
-				await writeFile(tempFilePath, normalizedKey, { mode: 0o600 });
-			} catch (permissionError) {
-				// If restrictive permissions fail (e.g., on Windows), use more permissive mode
-				await writeFile(tempFilePath, normalizedKey, { mode: 0o644 });
-			}
+			// Always use restrictive permissions for SSH private keys (security requirement)
+			await writeFile(tempFilePath, normalizedKey, { mode: 0o600 });
 		} catch (error) {
 			this.logger.error('Failed to write SSH private key to temp file', {
 				tempFilePath,

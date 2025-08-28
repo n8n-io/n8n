@@ -61,77 +61,52 @@ describe('SourceControlPreferencesService', () => {
 		});
 	});
 
-	describe('file permission fallback behavior', () => {
-		it('should use restrictive permissions as the first choice', () => {
-			// The getPrivateKeyPath method should attempt 0o600 first for security
-			const restrictiveMode = 0o600;
-			const permissiveMode = 0o644;
+	describe('file security and permissions', () => {
+		it('should always use restrictive permissions for SSH private keys', () => {
+			// SSH private keys must use restrictive permissions for security
+			const sshKeyMode = 0o600;
 
-			// Verify that restrictive mode is more secure (fewer permissions)
-			expect(restrictiveMode).toBeLessThan(permissiveMode);
+			// Verify the octal value is correct for SSH private keys
+			expect(sshKeyMode.toString(8)).toBe('600'); // owner: rw-, group: ---, others: ---
 
-			// Verify the octal values are correct
-			expect(restrictiveMode.toString(8)).toBe('600'); // owner: rw-, group: ---, others: ---
-			expect(permissiveMode.toString(8)).toBe('644'); // owner: rw-, group: r--, others: r--
+			// Verify this is the most restrictive mode for files (no execute needed)
+			expect(sshKeyMode & 0o077).toBe(0); // Group and others have no permissions
+			expect(sshKeyMode & 0o700).toBe(0o600); // Owner has read+write only
 		});
 
-		it('should simulate permission fallback when restrictive mode fails', async () => {
-			// Test simulates the try-catch behavior in getPrivateKeyPath
-			let attemptedMode: number | null = null;
-			let fallbackMode: number | null = null;
-
-			// Simulate writeFile function that fails on restrictive permissions
+		it('should fail securely if file permissions cannot be set', async () => {
+			// Test that we fail securely rather than downgrade permissions
 			const mockWriteFile = async (_path: string, _content: string, options: { mode: number }) => {
-				if (options.mode === 0o600) {
-					attemptedMode = options.mode;
-					throw new Error('Permission denied');
-				} else {
-					fallbackMode = options.mode;
-				}
+				// Verify we always attempt restrictive permissions
+				expect(options.mode).toBe(0o600);
+				throw new Error('Permission denied - cannot create file');
 			};
 
-			// Simulate the try-catch logic from getPrivateKeyPath
-			try {
-				await mockWriteFile('/test/path', 'content', { mode: 0o600 });
-			} catch (error) {
-				await mockWriteFile('/test/path', 'content', { mode: 0o644 });
-			}
-
-			expect(attemptedMode).toBe(0o600);
-			expect(fallbackMode).toBe(0o644);
-		});
-
-		it('should handle multiple consecutive permission failures gracefully', async () => {
-			// Test that if both permission attempts fail, we get a meaningful error
-			let firstAttempt = false;
-			let secondAttempt = false;
-
-			const mockWriteFile = async (_path: string, _content: string, options: { mode: number }) => {
-				if (options.mode === 0o600) {
-					firstAttempt = true;
-					throw new Error('EPERM: operation not permitted (restrictive)');
-				} else if (options.mode === 0o644) {
-					secondAttempt = true;
-					throw new Error('EACCES: permission denied (permissive)');
-				}
-			};
-
-			// Simulate both attempts failing
+			// Simulate the file creation failing
 			let caughtError: Error | null = null;
 			try {
-				try {
-					await mockWriteFile('/test/path', 'content', { mode: 0o600 });
-				} catch (error) {
-					await mockWriteFile('/test/path', 'content', { mode: 0o644 });
-				}
+				await mockWriteFile('/test/path', 'ssh-key-content', { mode: 0o600 });
 			} catch (error) {
 				caughtError = error as Error;
 			}
 
-			expect(firstAttempt).toBe(true);
-			expect(secondAttempt).toBe(true);
 			expect(caughtError).toBeInstanceOf(Error);
-			expect(caughtError?.message).toContain('permission denied');
+			expect(caughtError?.message).toContain('Permission denied');
+		});
+
+		it('should validate SSH key permission requirements', () => {
+			// SSH requires private keys to be readable only by owner
+			const correctMode = 0o600;
+			const insecureMode = 0o644; // This would be rejected by SSH
+
+			// Verify correct mode allows owner read/write, denies group/others
+			expect(correctMode & 0o400).toBeTruthy(); // Owner can read
+			expect(correctMode & 0o200).toBeTruthy(); // Owner can write
+			expect(correctMode & 0o040).toBeFalsy(); // Group cannot read
+			expect(correctMode & 0o004).toBeFalsy(); // Others cannot read
+
+			// Verify insecure mode would expose key to group/others
+			expect(insecureMode & 0o044).toBeTruthy(); // Group and others can read (bad!)
 		});
 	});
 });
