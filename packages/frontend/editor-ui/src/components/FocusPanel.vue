@@ -2,7 +2,7 @@
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nText, N8nInput, N8nResizeWrapper, N8nInfoTip } from '@n8n/design-system';
-import { computed, nextTick, ref, watch, toRef } from 'vue';
+import { computed, nextTick, ref, watch, toRef, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	formatAsExpression,
@@ -28,7 +28,7 @@ import { htmlEditorEventBus } from '@/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/utils/typesUtils';
 import type { INodeUi, ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useThrottleFn } from '@vueuse/core';
+import { useActiveElement, useThrottleFn } from '@vueuse/core';
 import { useExecutionData } from '@/composables/useExecutionData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ExperimentalNodeDetailsDrawer from '@/components/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
@@ -52,6 +52,7 @@ const emit = defineEmits<{
 // ESLint: false positive
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput> | HTMLElement>();
+const wrapperRef = useTemplateRef('wrapper');
 
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
@@ -65,6 +66,7 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const ndvStore = useNDVStore();
 const deviceSupport = useDeviceSupport();
 const vueFlow = useVueFlow(workflowsStore.workflowId);
+const activeElement = useActiveElement();
 
 useTelemetryContext({ view_shown: 'focus_panel' });
 
@@ -286,6 +288,12 @@ function optionSelected(command: string) {
 function closeFocusPanel() {
 	if (experimentalNdvStore.isNdvInFocusPanelEnabled && resolvedParameter.value) {
 		focusPanelStore.unsetParameters();
+
+		telemetry.track('User removed focused param', {
+			source: 'closeIcon',
+			parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+		});
+
 		return;
 	}
 
@@ -363,6 +371,24 @@ watch(
 	{ immediate: true },
 );
 
+watch(activeElement, (active) => {
+	if (!node.value || !active || !wrapperRef.value?.contains(active)) {
+		return;
+	}
+
+	const path = active.closest('.parameter-input')?.getAttribute('data-parameter-path');
+
+	if (!path) {
+		return;
+	}
+
+	telemetry.track('User focused focus panel', {
+		node_id: node.value.id,
+		node_type: node.value.type,
+		parameter_path: path,
+	});
+});
+
 function onResize(event: ResizeData) {
 	focusPanelStore.updateWidth(event.width);
 }
@@ -377,7 +403,7 @@ function onOpenNdv() {
 </script>
 
 <template>
-	<div v-if="focusPanelActive" :class="$style.wrapper" @keydown.stop>
+	<div v-if="focusPanelActive" ref="wrapper" :class="$style.wrapper" @keydown.stop>
 		<N8nResizeWrapper
 			:width="focusPanelWidth"
 			:supported-directions="['left']"
