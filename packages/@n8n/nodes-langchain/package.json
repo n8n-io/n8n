@@ -173,7 +173,7 @@
     "@google/generative-ai": "0.21.0",
     "@huggingface/inference": "4.0.5",
     "@langchain/anthropic": "catalog:",
-    "@langchain/aws": "0.1.11",
+    "@langchain/aws": "0.1.14",
     "@langchain/cohere": "0.3.4",
     "@langchain/community": "catalog:",
     "@langchain/core": "catalog:",
