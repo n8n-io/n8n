@@ -1,0 +1,20 @@
+
+> @n8n/design-system@1.96.0 build /Users/robsquires/repos/n8n/packages/frontend/@n8n/design-system
+> vite build
+
+vite v6.3.5 building for production...
+transforming...
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+✓ 2683 modules transformed.
+[plugin vite:reporter] 
+(!) /Users/robsquires/repos/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /Users/robsquires/repos/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /Users/robsquires/repos/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+
+rendering chunks...
+computing gzip size...
+dist/design-system.css          105.61 kB │ gzip:  14.91 kB
+dist/n8n-design-system.es.js  1,489.04 kB │ gzip: 391.96 kB
+dist/design-system.css           105.61 kB │ gzip:  14.91 kB
+dist/n8n-design-system.umd.js  1,100.36 kB │ gzip: 333.25 kB
+✓ built in 5.28s

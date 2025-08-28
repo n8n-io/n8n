@@ -1,13 +1,19 @@
 <script lang="ts" setup>
 import N8nTooltip from '../N8nTooltip';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '..';
 import {
-	DropdownMenuArrow,
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nText,
+	N8nCheckbox,
+	N8nInput,
+	N8nScrollArea,
+} from '..';
+import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuPortal,
 	DropdownMenuRoot,
-	DropdownMenuSeparator,
 	DropdownMenuSub,
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
@@ -28,6 +34,7 @@ interface ActiveFilter {
 }
 
 const activeFilters = ref<ActiveFilter[]>([]);
+const searchQueries = ref<Record<string, string>>({});
 
 const filterOptions: FilterOption[] = [
 	{
@@ -104,8 +111,63 @@ function removeFilter(filterName: string) {
 	}
 }
 
-function clearAllFilters() {
-	activeFilters.value = [];
+// function clearAllFilters() {
+// 	activeFilters.value = [];
+// }
+
+function getFilteredOptions(filterLabel: string, options: string[]) {
+	const searchQuery = searchQueries.value[filterLabel] || '';
+	if (!searchQuery.trim()) {
+		return options;
+	}
+	return options.filter((option) => option.toLowerCase().includes(searchQuery.toLowerCase()));
+}
+
+function updateSearchQuery(filterLabel: string, query: string) {
+	searchQueries.value[filterLabel] = query;
+}
+
+function handleCheckboxChange(
+	filterName: string,
+	value: string,
+	type: 'single' | 'multi',
+	checked: boolean,
+) {
+	if (type === 'multi') {
+		if (checked) {
+			// Add the value if checked
+			const existingFilterIndex = activeFilters.value.findIndex(
+				(filter) => filter.filterName === filterName,
+			);
+			if (existingFilterIndex >= 0) {
+				const currentValues = activeFilters.value[existingFilterIndex].values;
+				if (!currentValues.includes(value)) {
+					currentValues.push(value);
+				}
+			} else {
+				activeFilters.value.push({
+					filterName,
+					values: [value],
+					type: 'multi',
+				});
+			}
+		} else {
+			// Remove the value if unchecked
+			const existingFilterIndex = activeFilters.value.findIndex(
+				(filter) => filter.filterName === filterName,
+			);
+			if (existingFilterIndex >= 0) {
+				const currentValues = activeFilters.value[existingFilterIndex].values;
+				const valueIndex = currentValues.indexOf(value);
+				if (valueIndex >= 0) {
+					currentValues.splice(valueIndex, 1);
+					if (currentValues.length === 0) {
+						activeFilters.value.splice(existingFilterIndex, 1);
+					}
+				}
+			}
+		}
+	}
 }
 </script>
 
@@ -145,24 +207,85 @@ function clearAllFilters() {
 									</N8nText></DropdownMenuSubTrigger
 								>
 								<DropdownMenuPortal>
-									<DropdownMenuSubContent class="filter-sub-content">
-										<DropdownMenuItem
-											v-for="option in filterOption.options"
-											:key="option"
-											@click="selectFilterValue(filterOption.label, option, filterOption.type)"
-											class="filter-option-item"
-											:class="{ selected: isValueSelected(filterOption.label, option) }"
-										>
-											<N8nIcon
-												v-if="isValueSelected(filterOption.label, option)"
-												icon="check"
+									<DropdownMenuSubContent class="filter-sub-content filter-sub-content-enhanced">
+										<!-- Search Bar -->
+										<div class="filter-search-container">
+											<N8nInput
+												:modelValue="searchQueries[filterOption.label] || ''"
+												@update:modelValue="
+													(value: string) => updateSearchQuery(filterOption.label, value)
+												"
+												type="text"
 												size="small"
-												class="check-icon"
-											/>
-											<N8nText size="small" color="text-dark">
-												{{ option }}
-											</N8nText>
-										</DropdownMenuItem>
+												placeholder="Search..."
+												:clearable="true"
+												class="filter-search-input"
+											>
+												<template #prefix>
+													<N8nIcon icon="search" size="small" />
+												</template>
+											</N8nInput>
+										</div>
+
+										<!-- Scrollable Options Area -->
+										<N8nScrollArea
+											maxHeight="600px"
+											type="hover"
+											:enableVerticalScroll="true"
+											:enableHorizontalScroll="false"
+											class="filter-options-scroll-area"
+										>
+											<template
+												v-for="option in getFilteredOptions(
+													filterOption.label,
+													filterOption.options,
+												)"
+												:key="option"
+											>
+												<DropdownMenuItem
+													class="filter-option-item"
+													:class="{ selected: isValueSelected(filterOption.label, option) }"
+												>
+													<!-- Checkbox for multi-select filters -->
+													<N8nCheckbox
+														v-if="filterOption.type === 'multi'"
+														:modelValue="isValueSelected(filterOption.label, option)"
+														@update:modelValue="
+															(checked: boolean | string | number) =>
+																handleCheckboxChange(
+																	filterOption.label,
+																	option,
+																	filterOption.type,
+																	Boolean(checked),
+																)
+														"
+														@click.stop
+														class="filter-checkbox"
+													/>
+													<!-- Check icon for single-select filters -->
+													<N8nIcon
+														v-else-if="isValueSelected(filterOption.label, option)"
+														icon="check"
+														size="small"
+														class="check-icon"
+													/>
+													<!-- Spacer for single-select unselected items -->
+													<div v-else class="check-icon-spacer"></div>
+
+													<!-- Clickable text area -->
+													<span
+														@click="
+															selectFilterValue(filterOption.label, option, filterOption.type)
+														"
+														class="filter-option-text"
+													>
+														<N8nText size="small" color="text-dark">
+															{{ option }}
+														</N8nText>
+													</span>
+												</DropdownMenuItem>
+											</template>
+										</N8nScrollArea>
 									</DropdownMenuSubContent>
 								</DropdownMenuPortal>
 							</DropdownMenuSub>
@@ -312,6 +435,34 @@ function clearAllFilters() {
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 }
 
+:deep(.filter-sub-content-enhanced) {
+	padding: 0;
+	min-width: 200px;
+	max-width: 300px;
+}
+
+.filter-search-container {
+	padding: var(--spacing-2xs);
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
+}
+
+:deep(.filter-search-input) {
+	width: 100%;
+
+	.el-input__inner {
+		font-size: var(--font-size-2xs);
+		height: 28px;
+	}
+
+	.el-input__prefix {
+		align-items: center;
+	}
+}
+
+.filter-options-scroll-area {
+	padding: var(--spacing-4xs) 0;
+}
+
 .filter-option-item {
 	display: flex;
 	align-items: center;
@@ -320,6 +471,7 @@ function clearAllFilters() {
 	font-size: var(--font-size-s);
 	cursor: pointer;
 	transition: background-color 0.2s ease;
+	position: relative;
 
 	&:hover {
 		background-color: var(--color-background-base);
@@ -333,6 +485,34 @@ function clearAllFilters() {
 			color: var(--color-success);
 		}
 	}
+}
+
+.filter-checkbox {
+	flex-shrink: 0;
+	margin-right: var(--spacing-4xs);
+
+	:deep(.el-checkbox__inner) {
+		width: 14px;
+		height: 14px;
+	}
+
+	:deep(.el-checkbox__label) {
+		display: none;
+	}
+}
+
+.check-icon-spacer {
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+	margin-right: var(--spacing-2xs);
+}
+
+.filter-option-text {
+	flex: 1;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
 }
 
 .filter-separator {
@@ -352,5 +532,14 @@ function clearAllFilters() {
 	width: 100%;
 	justify-content: center;
 	gap: var(--spacing-2xs);
+}
+
+// Prevent dropdown from closing when interacting with checkboxes
+:deep(.filter-checkbox .el-checkbox) {
+	pointer-events: auto;
+}
+
+:deep(.filter-checkbox .el-checkbox__input) {
+	pointer-events: auto;
 }
 </style>
