@@ -132,7 +132,7 @@ describe('AddColumnButton', () => {
 		const nameInput = getByPlaceholderText('Enter column name');
 
 		// Test valid names
-		const validNames = ['column1', 'my-column', 'Column123', 'a1b2c3'];
+		const validNames = ['column1', 'my_column', 'Column123', 'a1b2c3'];
 
 		for (const name of validNames) {
 			await fireEvent.update(nameInput, name);
