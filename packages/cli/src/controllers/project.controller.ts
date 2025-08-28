@@ -14,12 +14,7 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
-import {
-	combineScopes,
-	getAuthPrincipalScopes,
-	getRoleScopes,
-	hasGlobalScope,
-} from '@n8n/permissions';
+import { combineScopes, getAuthPrincipalScopes, hasGlobalScope } from '@n8n/permissions';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
@@ -69,13 +64,18 @@ export class ProjectController {
 				uiContext: payload.uiContext,
 			});
 
+			const relations = await this.projectsService.getProjectRelations(project.id);
+
 			return {
 				...project,
 				role: 'project:admin',
 				scopes: [
 					...combineScopes({
 						global: getAuthPrincipalScopes(req.user),
-						project: getRoleScopes('project:admin'),
+						project:
+							relations
+								.find((pr) => pr.userId === req.user.id)
+								?.role.scopes.map((scope) => scope.slug) || [],
 					}),
 				],
 			};
@@ -105,14 +105,14 @@ export class ProjectController {
 		for (const pr of relations) {
 			const result: ProjectRequest.GetMyProjectsResponse[number] = Object.assign(
 				this.projectRepository.create(pr.project),
-				{ role: pr.role, scopes: [] },
+				{ role: pr.role.slug, scopes: [] },
 			);
 
 			if (result.scopes) {
 				result.scopes.push(
 					...combineScopes({
 						global: getAuthPrincipalScopes(req.user),
-						project: getRoleScopes(pr.role),
+						project: pr.role.scopes.map((scope) => scope.slug),
 					}),
 				);
 			}
@@ -155,10 +155,15 @@ export class ProjectController {
 		if (!project) {
 			throw new NotFoundError('Could not find a personal project for this user');
 		}
+
+		const relations = await this.projectsService.getProjectRelations(project.id);
 		const scopes: Scope[] = [
 			...combineScopes({
 				global: getAuthPrincipalScopes(req.user),
-				project: getRoleScopes('project:personalOwner'),
+				project:
+					relations
+						.find((pr) => pr.userId === req.user.id)
+						?.role.scopes.map((scope) => scope.slug) ?? [],
 			}),
 		];
 		return {
@@ -191,12 +196,12 @@ export class ProjectController {
 				email: r.user.email,
 				firstName: r.user.firstName,
 				lastName: r.user.lastName,
-				role: r.role,
+				role: r.role.slug,
 			})),
 			scopes: [
 				...combineScopes({
 					global: getAuthPrincipalScopes(req.user),
-					...(myRelation ? { project: getRoleScopes(myRelation.role) } : {}),
+					...(myRelation ? { project: myRelation.role.scopes.map((scope) => scope.slug) } : {}),
 				}),
 			],
 		};
