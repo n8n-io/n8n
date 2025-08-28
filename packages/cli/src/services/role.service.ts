@@ -21,7 +21,7 @@ export class RoleService {
 	getAllRoles() {
 		Object.values(ALL_ROLES).forEach((entries) => {
 			entries.forEach((entry) => {
-				entry.licensed = this.isRoleLicensed(entry.role);
+				entry.licensed = this.isRoleLicensed(entry.slug);
 			});
 		});
 		return ALL_ROLES;
@@ -112,7 +112,7 @@ export class RoleService {
 		return [...scopesSet].sort();
 	}
 
-	isRoleLicensed(role: AllRoleTypes) {
+	isRoleLicensed(role: AllRoleTypes | string) {
 		// TODO: move this info into FrontendSettings
 		switch (role) {
 			case 'project:admin':
