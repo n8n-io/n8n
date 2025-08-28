@@ -6,7 +6,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { ADD_ROW, getAddRow } from '../../common/addRow';
+import { makeAddRow, getAddRow } from '../../common/addRow';
 import { DRY_RUN } from '../../common/fields';
 import { executeSelectMany, getSelectFields } from '../../common/selectMany';
 import { getDataTableProxyExecute } from '../../common/utils';
@@ -22,10 +22,7 @@ const displayOptions: IDisplayOptions = {
 
 export const description: INodeProperties[] = [
 	...getSelectFields(displayOptions),
-	{
-		...ADD_ROW,
-		displayOptions,
-	},
+	makeAddRow(FIELD, displayOptions),
 	{
 		displayName: 'Options',
 		name: 'options',

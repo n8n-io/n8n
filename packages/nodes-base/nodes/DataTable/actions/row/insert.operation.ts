@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { ADD_ROW, getAddRow } from '../../common/addRow';
+import { getAddRow, makeAddRow } from '../../common/addRow';
 import { getDataTableProxyExecute } from '../../common/utils';
 
 export const FIELD: string = 'insert';
@@ -17,12 +17,7 @@ const displayOptions: IDisplayOptions = {
 	},
 };
 
-export const description: INodeProperties[] = [
-	{
-		...ADD_ROW,
-		displayOptions,
-	},
-];
+export const description: INodeProperties[] = [makeAddRow(FIELD, displayOptions)];
 
 export async function execute(
 	this: IExecuteFunctions,
