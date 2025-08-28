@@ -76,7 +76,7 @@ export class MongoDb implements INodeType {
 					}
 
 					// Note: ICredentialTestFunctions doesn't have a way to get the Node instance
-					// so we set the version to 0.0
+					// so we set the version to 0
 					const client = await connectMongoClient(connectionString, 0, credentials);
 
 					const { databases } = await client.db().admin().listDatabases();

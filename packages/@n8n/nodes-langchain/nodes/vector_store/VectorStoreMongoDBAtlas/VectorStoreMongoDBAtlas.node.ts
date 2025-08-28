@@ -111,6 +111,7 @@ const insertFields: INodeProperties[] = [
 export const mongoConfig = {
 	client: null as MongoClient | null,
 	connectionString: '',
+	nodeVersion: 0,
 };
 
 /**
@@ -135,7 +136,11 @@ type IFunctionsContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptions
 export async function getMongoClient(context: any, version: number) {
 	const credentials = await context.getCredentials(MONGODB_CREDENTIALS);
 	const connectionString = credentials.connectionString as string;
-	if (!mongoConfig.client || mongoConfig.connectionString !== connectionString) {
+	if (
+		!mongoConfig.client ||
+		mongoConfig.connectionString !== connectionString ||
+		mongoConfig.nodeVersion !== version
+	) {
 		if (mongoConfig.client) {
 			await mongoConfig.client.close();
 		}
