@@ -124,7 +124,7 @@ export function createNodeParameterTooLargeError(
 	return {
 		message: error.message,
 		code: 'NODE_PARAMETER_TOO_LARGE',
-		details: { nodeId, parameterName: parameter, maxSize: maxSize.toString() },
+		details: { nodeId, parameter, maxSize: maxSize.toString() },
 	};
 }
 
