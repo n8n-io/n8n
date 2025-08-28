@@ -203,7 +203,7 @@
 * Table in confirm modal to see all workflows using nodes before updating / uninstalling ([#17488](https://github.com/n8n-io/n8n/issues/17488)) ([76230d2](https://github.com/n8n-io/n8n/commit/76230d2640f04da8a2a3c78dbdf5003b0ebd1771))
 * **Vercel AI Gateway Node:** Add Vercel AI Gateway model Node ([#17524](https://github.com/n8n-io/n8n/issues/17524)) ([e97cd8a](https://github.com/n8n-io/n8n/commit/e97cd8afa18bbf67dc296c79cd1057e5bab083ab))
 * **Webhook Node:** Add notices about using the 'Content-Type' header ([#17739](https://github.com/n8n-io/n8n/issues/17739)) ([1c5a27d](https://github.com/n8n-io/n8n/commit/1c5a27d3ee8216b6cb5e1894d38881b2de14c654))
-* **Wordpress Node:** Add date fields ([#17755](https://github.com/n8n-io/n8n/issues/17755)) ([724b5a5](https://github.com/n8n-io/n8n/commit/724b5a51f2259de29dac3be0b51e9d80fd5244de))
+* **WordPress Node:** Add date fields ([#17755](https://github.com/n8n-io/n8n/issues/17755)) ([724b5a5](https://github.com/n8n-io/n8n/commit/724b5a51f2259de29dac3be0b51e9d80fd5244de))
 
 
 ### Performance Improvements
@@ -3451,7 +3451,7 @@
 * **editor:** Help users discover expressions when using drag n drop ([#8869](https://github.com/n8n-io/n8n/issues/8869)) ([e78cc2d](https://github.com/n8n-io/n8n/commit/e78cc2d8d2d22bdea30af45edd8e319d479deb55))
 * **editor:** Improve errors in output panel ([#8644](https://github.com/n8n-io/n8n/issues/8644)) ([5301323](https://github.com/n8n-io/n8n/commit/5301323906663a64a3042bd2f8946e5f1e3f6293))
 * **Pinecone Vector Store Node:** Support serverless environments ([#8849](https://github.com/n8n-io/n8n/issues/8849)) ([a136a73](https://github.com/n8n-io/n8n/commit/a136a73e4e15b5d2d1c11ef90caec75d0318f829))
-* **Wordpress Node:** Support WordPress pages ([#8852](https://github.com/n8n-io/n8n/issues/8852)) ([a678e85](https://github.com/n8n-io/n8n/commit/a678e8570b72514b0b5da6fcac4da5534d05fee8))
+* **WordPress Node:** Support WordPress pages ([#8852](https://github.com/n8n-io/n8n/issues/8852)) ([a678e85](https://github.com/n8n-io/n8n/commit/a678e8570b72514b0b5da6fcac4da5534d05fee8))
 
 
 
@@ -3856,7 +3856,7 @@
 * **editor:** Add template Id to workflow metadata ([#8088](https://github.com/n8n-io/n8n/issues/8088)) ([517b050](https://github.com/n8n-io/n8n/commit/517b050d0ae1a64987ac00d5795c5e59ed176f3f))
 * **Home Assistant Node:** Use the new Home Assistant logo ([#8150](https://github.com/n8n-io/n8n/issues/8150)) ([518a99e](https://github.com/n8n-io/n8n/commit/518a99e5287dc648edafd34a4dd27c9205eb8629))
 * **Qdrant Vector Store Node:** Qdrant vector store support ([#8080](https://github.com/n8n-io/n8n/issues/8080)) ([66460f6](https://github.com/n8n-io/n8n/commit/66460f66b0b02ae6f342e52500b29fe8b724e1dc))
-* **Wordpress Node:** Add option to ignore error when using self signed certificates ([#8199](https://github.com/n8n-io/n8n/issues/8199)) ([65c8e12](https://github.com/n8n-io/n8n/commit/65c8e12b96ac8c1c53d3879d91982ca834f3cda1))
+* **WordPress Node:** Add option to ignore error when using self signed certificates ([#8199](https://github.com/n8n-io/n8n/issues/8199)) ([65c8e12](https://github.com/n8n-io/n8n/commit/65c8e12b96ac8c1c53d3879d91982ca834f3cda1))
 
 
 
@@ -7030,7 +7030,7 @@ To update -go to the workflows that use the Merge node, select 'Combine' operati
 - **Google Ads Node:** Add new node ([#3526](https://github.com/n8n-io/n8n/issues/3526)) ([088daf9](https://github.com/n8n-io/n8n/commit/088daf952ea7340a3101362bce18668147b8431f))
 - **Jira Node:** Use Jira rendered fields with simplify option ([#3323](https://github.com/n8n-io/n8n/issues/3323)) ([07b6cff](https://github.com/n8n-io/n8n/commit/07b6cffdba55a48bfed629a1faec8cf88bee88bc))
 - **Webflow Trigger Node:** Reduce chance of webhook duplication and add credential test ([#3594](https://github.com/n8n-io/n8n/issues/3594)) ([224e008](https://github.com/n8n-io/n8n/commit/224e008fb64dabef99998508eb4385e1b872c5ad))
-- **Wordpress Node:** Add post template option ([#3139](https://github.com/n8n-io/n8n/issues/3139)) ([02bc3da](https://github.com/n8n-io/n8n/commit/02bc3da78545de4771edf6fdc68720b0e7d596b9))
+- **WordPress Node:** Add post template option ([#3139](https://github.com/n8n-io/n8n/issues/3139)) ([02bc3da](https://github.com/n8n-io/n8n/commit/02bc3da78545de4771edf6fdc68720b0e7d596b9))
 
 # [0.184.0](https://github.com/n8n-io/n8n/compare/n8n@0.183.0...n8n@0.184.0) (2022-06-29)
 
@@ -7412,6 +7412,6 @@ From [Apache 2.0 with Commons Clause](https://github.com/n8n-io/n8n/blob/181ba3c
 - **If Node,Switch Node:** Add negative operations ([6412546](https://github.com/n8n-io/n8n/commit/6412546c0c5465b17ab2a289f45d8c8fa325eb68))
 - **MongoDb Node:** Add Aggregate Operation ([2c9a06e](https://github.com/n8n-io/n8n/commit/2c9a06e86346a9e21f877cb508d13a1401c700a9))
 - **Redis Node:** Add Redis Trigger node and publish operation to regular node ([5c2deb4](https://github.com/n8n-io/n8n/commit/5c2deb468867ec77a05d09ef324d4855210e17d4))
-- **Wordpress Node:** Add Status option to Get All operation of Posts resource ([4d4db7f](https://github.com/n8n-io/n8n/commit/4d4db7f805673758dfb379c9e86e98815f265db2))
+- **WordPress Node:** Add Status option to Get All operation of Posts resource ([4d4db7f](https://github.com/n8n-io/n8n/commit/4d4db7f805673758dfb379c9e86e98815f265db2))
 
 > **Note:** for changelogs before 0.167.0, refer to the [Release notes](https://docs.n8n.io/reference/release-notes.html) in the documentation.
