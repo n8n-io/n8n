@@ -339,7 +339,7 @@ IMPORTANT: Only provide ONE response AFTER all tool execution is complete.
 
 Response format:
 **⚙️ How to Setup**
-- List credentials/configuration needed
+1. List credentials/configuration needed (numbered format)
 
 **ℹ️ How to Use**
 - Brief usage steps
