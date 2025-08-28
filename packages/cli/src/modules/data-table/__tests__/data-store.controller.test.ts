@@ -74,7 +74,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -91,7 +91,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: '',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -108,7 +108,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -125,7 +125,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -145,7 +145,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -165,7 +165,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -184,7 +184,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -202,7 +202,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -493,11 +493,11 @@ describe('GET /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-column-1',
+					name: 'test_column_1',
 					type: 'string',
 				},
 				{
-					name: 'test-column-2',
+					name: 'test_column_2',
 					type: 'boolean',
 				},
 			],
@@ -823,11 +823,11 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'boolean',
 				},
 			],
@@ -838,8 +838,8 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.expect(200);
 
 		expect(response.body.data).toHaveLength(2);
-		expect(response.body.data[0].name).toBe('test-column');
-		expect(response.body.data[1].name).toBe('another-column');
+		expect(response.body.data[0].name).toBe('test_column');
+		expect(response.body.data[1].name).toBe('another_column');
 	});
 
 	test('should list columns if user has project:editor role in team project', async () => {
@@ -848,7 +848,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -859,7 +859,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.expect(200);
 
 		expect(response.body.data).toHaveLength(1);
-		expect(response.body.data[0].name).toBe('test-column');
+		expect(response.body.data[0].name).toBe('test_column');
 	});
 
 	test('should list columns from personal project data store', async () => {
@@ -867,7 +867,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			name: 'Personal Data Store 1',
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -878,7 +878,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.expect(200);
 
 		expect(response.body.data).toHaveLength(1);
-		expect(response.body.data[0].name).toBe('test-column');
+		expect(response.body.data[0].name).toBe('test_column');
 	});
 });
 
@@ -899,7 +899,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const project = await createTeamProject('test project', owner);
 
 		const payload = {
-			name: 'test-column',
+			name: 'test_column',
 			type: 'string',
 			index: 0,
 		};
@@ -950,7 +950,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(ownerProject, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -959,14 +959,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		await authMemberAgent
 			.post(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns`)
 			.send({
-				name: 'new-column',
+				name: 'new_column',
 				type: 'string',
 			})
 			.expect(403);
 
 		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(1);
-		expect(columnsInDb[0].name).toBe('test-column');
+		expect(columnsInDb[0].name).toBe('test_column');
 	});
 
 	test('should not create column if user has project:viewer role in team project', async () => {
@@ -975,7 +975,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project);
 
 		const payload = {
-			name: 'test-column',
+			name: 'test_column',
 			type: 'string',
 		};
 
@@ -994,14 +994,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
 		});
 
 		const payload = {
-			name: 'new-column',
+			name: 'new_column',
 			type: 'string',
 			index: 0,
 		};
@@ -1013,7 +1013,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 
 		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(2);
-		expect(columnsInDb[0].name).toBe('new-column');
+		expect(columnsInDb[0].name).toBe('new_column');
 		expect(columnsInDb[0].type).toBe('string');
 	});
 
@@ -1023,14 +1023,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
 		});
 
 		const payload = {
-			name: 'new-column',
+			name: 'new_column',
 			type: 'boolean',
 			index: 0,
 		};
@@ -1042,9 +1042,9 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 
 		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(2);
-		expect(columnsInDb[0].name).toBe('new-column');
+		expect(columnsInDb[0].name).toBe('new_column');
 		expect(columnsInDb[0].type).toBe('boolean');
-		expect(columnsInDb[1].name).toBe('test-column');
+		expect(columnsInDb[1].name).toBe('test_column');
 		expect(columnsInDb[1].type).toBe('string');
 	});
 
@@ -1053,14 +1053,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
 		});
 
 		const payload = {
-			name: 'new-column',
+			name: 'new_column',
 			type: 'boolean',
 			index: 0,
 		};
@@ -1072,9 +1072,9 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 
 		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(2);
-		expect(columnsInDb[0].name).toBe('new-column');
+		expect(columnsInDb[0].name).toBe('new_column');
 		expect(columnsInDb[0].type).toBe('boolean');
-		expect(columnsInDb[1].name).toBe('test-column');
+		expect(columnsInDb[1].name).toBe('test_column');
 		expect(columnsInDb[1].type).toBe('string');
 	});
 
@@ -1083,18 +1083,18 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column-1',
+					name: 'test_column_1',
 					type: 'string',
 				},
 				{
-					name: 'test-column-2',
+					name: 'test_column_2',
 					type: 'string',
 				},
 			],
 		});
 
 		const payload: DataStoreCreateColumnSchema = {
-			name: 'new-column',
+			name: 'new_column',
 			type: 'boolean',
 			index: 1,
 		};
@@ -1107,9 +1107,9 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const columns = await dataStoreColumnRepository.getColumns(dataStore.id);
 
 		expect(columns).toHaveLength(3);
-		expect(columns[0].name).toBe('test-column-1');
-		expect(columns[1].name).toBe('new-column');
-		expect(columns[2].name).toBe('test-column-2');
+		expect(columns[0].name).toBe('test_column_1');
+		expect(columns[1].name).toBe('new_column');
+		expect(columns[2].name).toBe('test_column_2');
 	});
 });
 
@@ -1135,7 +1135,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1151,14 +1151,14 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(ownerProject, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
 		});
 
 		await authMemberAgent
-			.delete(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns/test-column`)
+			.delete(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns/test_column`)
 			.send()
 			.expect(403);
 
@@ -1174,7 +1174,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1182,7 +1182,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		await linkUserToProject(member, project, 'project:viewer');
 
 		await authMemberAgent
-			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/columns/test-column`)
+			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/columns/test_column`)
 			.send()
 			.expect(403);
 
@@ -1200,7 +1200,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1226,7 +1226,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1251,7 +1251,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1275,7 +1275,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(memberProject, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1327,7 +1327,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1346,11 +1346,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(ownerProject, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1377,11 +1377,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1408,11 +1408,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1439,11 +1439,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1470,11 +1470,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1499,11 +1499,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(memberProject, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1543,11 +1543,11 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		const dataStore = await createDataStore(ownerProject, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
