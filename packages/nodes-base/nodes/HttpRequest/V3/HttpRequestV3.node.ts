@@ -237,6 +237,7 @@ export class HttpRequestV3 implements INodeType {
 					queryParameterArrays,
 					response,
 					lowercaseHeaders,
+					disableGzip,
 				} = this.getNodeParameter('options', itemIndex, {}) as {
 					batching: { batch: { batchSize: number; batchInterval: number } };
 					proxy: string;
@@ -253,6 +254,7 @@ export class HttpRequestV3 implements INodeType {
 					};
 					redirect: { redirect: { maxRedirects: number; followRedirects: boolean } };
 					lowercaseHeaders: boolean;
+					disableGzip: boolean;
 				};
 
 				responseFileName = response?.response?.outputPropertyName;
@@ -302,6 +304,10 @@ export class HttpRequestV3 implements INodeType {
 
 				if (response?.response?.neverError) {
 					requestOptions.simple = false;
+				}
+
+				if (disableGzip) {
+					requestOptions.gzip = false;
 				}
 
 				if (proxy) {
