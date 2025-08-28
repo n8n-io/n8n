@@ -337,11 +337,11 @@ describe('GET /data-stores-global', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-column-1',
+					name: 'test_column_1',
 					type: 'string',
 				},
 				{
-					name: 'test-column-2',
+					name: 'test_column_2',
 					type: 'boolean',
 				},
 			],
