@@ -19,8 +19,9 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from 'reka-ui';
-import { ref, computed } from 'vue';
+import { ref, computed, useTemplateRef, nextTick } from 'vue';
 import type { FilterOption, FilterAction } from './Filters.vue';
+import InlineTextEdit from '../N8nInlineTextEdit/InlineTextEdit.vue';
 
 interface ActiveFilter {
 	filterName: string;
@@ -173,6 +174,35 @@ function handleCheckboxChange(
 		}
 	}
 }
+
+const resourceSearch = ref<{ text: string; state: 'visible' | 'hidden' }>({
+	text: '',
+	state: 'hidden',
+});
+const searchInputRef = useTemplateRef('searchInputRef');
+
+async function toggleSearchInput() {
+	if (resourceSearch.value.state === 'hidden') {
+		resourceSearch.value.state = 'visible';
+
+		await nextTick();
+		const inputRef = Array.isArray(searchInputRef.value)
+			? searchInputRef.value[0]
+			: searchInputRef.value;
+		if (inputRef?.forceFocus) {
+			inputRef.forceFocus();
+		}
+	} else {
+		resourceSearch.value.state = 'hidden';
+		resourceSearch.value.text = '';
+	}
+}
+
+function handleBlur() {
+	if (resourceSearch.value.text.trim() === '') {
+		resourceSearch.value.state = 'hidden';
+	}
+}
 </script>
 
 <template>
@@ -237,7 +267,7 @@ function handleCheckboxChange(
 												size="small"
 												:placeholder="`Add custom ${filterOption.label.toLowerCase()}...`"
 												@keyup="
-													(event) =>
+													(event: KeyboardEvent) =>
 														handleCustomInputKeyup(filterOption.label, filterOption.type, event)
 												"
 											>
@@ -252,7 +282,10 @@ function handleCheckboxChange(
 											:enableHorizontalScroll="false"
 										>
 											<template
-												v-for="option in getFilteredOptions(filter, filterOption.options)"
+												v-for="option in getFilteredOptions(
+													filterOption.label,
+													filterOption.options,
+												)"
 												:key="option"
 											>
 												<DropdownMenuItem
@@ -310,8 +343,25 @@ function handleCheckboxChange(
 
 		<template v-for="action in props.actions" :key="action.label">
 			<N8nTooltip :content="action.tooltip || action.label">
-				<N8nIconButton type="tertiary" :icon="action.icon" text />
+				<N8nIconButton type="tertiary" :icon="action.icon" text @click="toggleSearchInput" />
 			</N8nTooltip>
+			<N8nText v-if="action.tooltip === 'Search' && resourceSearch.state === 'visible'">
+				<InlineTextEdit
+					ref="searchInputRef"
+					:placeholder="`Search...`"
+					:max-width="100"
+					:min-width="100"
+					:model-value="resourceSearch.text"
+					@update:state="
+						({ state, value }) => {
+							if (state === 'submit' && value.trim() === '') {
+								handleBlur();
+							}
+						}
+					"
+					@update:model-value="(value: string) => (resourceSearch.text = value)"
+				/>
+			</N8nText>
 		</template>
 		<N8nTooltip v-if="!noTertiaryActions" content="More actions">
 			<N8nIconButton type="tertiary" icon="ellipsis" text />

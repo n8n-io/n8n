@@ -23,6 +23,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	'update:model-value': [value: string];
+	'update:state': [
+		state: {
+			state: string;
+			value: string;
+		},
+	];
 }>();
 
 const editableRoot = useTemplateRef('editableRoot');
@@ -80,6 +86,10 @@ function onInput(value: string) {
 }
 
 function onStateChange(state: string) {
+	emit('update:state', {
+		state,
+		value: editingValue.value,
+	});
 	if (state === 'cancel') {
 		editingValue.value = props.modelValue;
 	}
