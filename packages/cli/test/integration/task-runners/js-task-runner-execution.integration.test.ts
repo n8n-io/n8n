@@ -190,7 +190,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 			// Assert
 			expect(result).toEqual({
 				ok: true,
-				result: [{ json: { hello: 'world' } }],
+				result: [{ hello: 'world' }],
 			});
 		});
 	});
@@ -220,7 +220,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 
 			expect(result).toEqual({
 				ok: true,
-				result: [{ json: { digest: 'T09DMv7upNDKMD3Ht36FkwzrmWSgWpPiUNlcIX9/yaI=' } }],
+				result: [{ digest: 'T09DMv7upNDKMD3Ht36FkwzrmWSgWpPiUNlcIX9/yaI=' }],
 			});
 		});
 
@@ -248,7 +248,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 
 			expect(result).toEqual({
 				ok: true,
-				result: [{ json: { time: '1995-12-25' } }],
+				result: [{ time: '1995-12-25' }],
 			});
 		});
 
