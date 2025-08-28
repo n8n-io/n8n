@@ -109,34 +109,27 @@ describe('SourceControlGitService', () => {
 
 	describe('path normalization', () => {
 		describe('cross-platform path handling', () => {
-			it('should normalize Windows backslashes to forward slashes', () => {
-				// Test the path normalization logic directly
-				const windowsPath = 'C:\\Users\\Test\\.n8n\\ssh_private_key_temp';
-				const expected = 'C:/Users/Test/.n8n/ssh_private_key_temp';
+			it('should normalize paths correctly based on current OS', () => {
+				// Test the actual production logic behavior on each platform
+				if (process.platform === 'win32') {
+					// On Windows: test Windows path normalization
+					const windowsPath = 'C:\\Users\\Test\\.n8n\\ssh_private_key_temp';
+					const expected = 'C:/Users/Test/.n8n/ssh_private_key_temp';
 
-				// This mimics the logic from setGitSshCommand
-				const normalized = windowsPath.split(path.sep).join(path.posix.sep);
+					// This mimics the logic from setGitSshCommand on Windows
+					const normalized = windowsPath.split(path.sep).join(path.posix.sep);
 
-				expect(normalized).toBe(expected);
-				expect(normalized).not.toContain('\\');
-			});
+					expect(normalized).toBe(expected);
+					expect(normalized).not.toContain('\\');
+				} else {
+					// On Unix/macOS: test Unix path handling
+					const unixPath = '/home/user/.n8n/ssh_private_key_temp';
 
-			it('should handle Unix paths without modification', () => {
-				const unixPath = '/home/user/.n8n/ssh_private_key_temp';
+					// This mimics the logic from setGitSshCommand on Unix
+					const normalized = unixPath.split(path.sep).join(path.posix.sep);
 
-				const normalized = unixPath.split(path.sep).join(path.posix.sep);
-
-				expect(normalized).toBe(unixPath);
-			});
-
-			it('should handle mixed path separators', () => {
-				const mixedPath = 'C:/Users\\Test/.n8n\\ssh_private_key_temp';
-				const expected = 'C:/Users/Test/.n8n/ssh_private_key_temp';
-
-				const normalized = mixedPath.split(path.sep).join(path.posix.sep);
-
-				expect(normalized).toBe(expected);
-				expect(normalized).not.toContain('\\');
+					expect(normalized).toBe(unixPath); // Should remain unchanged
+				}
 			});
 
 			it('should create properly quoted SSH command', () => {
