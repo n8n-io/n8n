@@ -1,0 +1,79 @@
+{
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5ebe2f65-45db-4b22-bd2b-43993c20806f",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [740, 320]
+		},
+		{
+			"parameters": {
+				"jsCode": "return {\"data\": [{\"x\":1459468800000,\"o\":18.23,\"h\":19.36,\"l\":18.18,\"c\":19.31},{\"x\":1459555200000,\"o\":19.5,\"h\":19.89,\"l\":19,\"c\":19.29},{\"x\":1459641600000,\"o\":19.13,\"h\":19.15,\"l\":18.43,\"c\":18.75},{\"x\":1459900800000,\"o\":18.54,\"h\":18.76,\"l\":18.27,\"c\":18.76},{\"x\":1459987200000,\"o\":18.76,\"h\":19.14,\"l\":18.63,\"c\":18.76} ] , \"backgroundColor\":\"#121d6d77\"}"
+			},
+			"id": "2e81f78c-41a5-48de-80c4-74abf163cd57",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [980, 320]
+		},
+		{
+			"parameters": {
+				"chartType": "candlestick",
+				"labelsUi": {
+					"labelsValues": [
+						{
+							"label": "Data"
+						}
+					]
+				},
+				"data": "={{ $json.data }}",
+				"chartOptions": {
+					"backgroundColor": "#f93636ff",
+					"devicePixelRatio": 2,
+					"format": "png",
+					"height": 300,
+					"width": 500
+				},
+				"datasetOptions": {
+					"backgroundColor": "={{ $json[\"backgroundColor\"] }}",
+					"borderColor": "#e81010",
+					"label": "={{ $json[\"label\"] }}"
+				}
+			},
+			"name": "Candlestick",
+			"type": "n8n-nodes-base.quickChart",
+			"typeVersion": 1,
+			"position": [1220, 400],
+			"id": "6c8e1463-c384-4f5c-9de3-d7e052b02b0c"
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Candlestick",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
