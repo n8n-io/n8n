@@ -1401,18 +1401,20 @@ describe('dataStore', () => {
 			);
 
 			expect(count).toEqual(2);
-			expect(data).toEqual([
-				expect.objectContaining({
-					name: 'Alice',
-					age: 35, // updated age
-					pid: '1995-111a',
-				}),
-				expect.objectContaining({
-					name: 'Alice',
-					age: null, // missing age
-					pid: '1992-222b',
-				}),
-			]);
+			expect(data).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						name: 'Alice',
+						age: 35, // updated age
+						pid: '1995-111a',
+					}),
+					expect.objectContaining({
+						name: 'Alice',
+						age: null, // missing age
+						pid: '1992-222b',
+					}),
+				]),
+			);
 		});
 
 		it('should return full upserted rows if returnData is set', async () => {

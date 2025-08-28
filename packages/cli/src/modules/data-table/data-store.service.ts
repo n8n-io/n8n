@@ -139,7 +139,7 @@ export class DataStoreService {
 		returnData?: boolean,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
-		await this.validateRows(dataStoreId, rows, true);
+		await this.validateRows(dataStoreId, rows);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnData);
