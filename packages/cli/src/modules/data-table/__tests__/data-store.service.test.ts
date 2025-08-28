@@ -1003,7 +1003,7 @@ describe('dataStore', () => {
 			]);
 		});
 
-		it('rejects a mismatched row with extra column', async () => {
+		it('rejects a mismatched row with unknown column', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1022,29 +1022,61 @@ describe('dataStore', () => {
 			]);
 
 			// ASSERT
-			await expect(result).rejects.toThrow(new DataStoreValidationError('mismatched key count'));
+			await expect(result).rejects.toThrow(new DataStoreValidationError('unknown column name'));
 		});
 
-		it('rejects a mismatched row with missing column', async () => {
+		it('inserts rows with partial data (some columns missing)', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
 				columns: [
-					{ name: 'c1', type: 'number' },
-					{ name: 'c2', type: 'boolean' },
-					{ name: 'c3', type: 'date' },
-					{ name: 'c4', type: 'string' },
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'email', type: 'string' },
+					{ name: 'active', type: 'boolean' },
 				],
 			});
 
 			// ACT
-			const result = dataStoreService.insertRows(dataStoreId, project1.id, [
-				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
-				{ c2: true, c3: new Date(), c4: 'hello?' },
+			await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ name: 'Mary', age: 20, email: 'mary@example.com', active: true }, // full row
+				{ name: 'Alice', age: 30 }, // missing email and active
+				{ name: 'Bob' }, // missing age, email and active
+				{}, // missing all columns
 			]);
 
-			// ASSERT
-			await expect(result).rejects.toThrow(new DataStoreValidationError('mismatched key count'));
+			const { count, data } = await dataStoreService.getManyRowsAndCount(
+				dataStoreId,
+				project1.id,
+				{},
+			);
+			expect(count).toEqual(4);
+			expect(data).toEqual([
+				expect.objectContaining({
+					name: 'Mary',
+					age: 20,
+					email: 'mary@example.com',
+					active: true,
+				}),
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30,
+					email: null,
+					active: null,
+				}),
+				expect.objectContaining({
+					name: 'Bob',
+					age: null,
+					email: null,
+					active: null,
+				}),
+				expect.objectContaining({
+					name: null,
+					age: null,
+					email: null,
+					active: null,
+				}),
+			]);
 		});
 
 		it('rejects a mismatched row with replaced column', async () => {
