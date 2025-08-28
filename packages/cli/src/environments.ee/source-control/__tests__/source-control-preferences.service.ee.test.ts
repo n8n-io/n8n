@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { readFile, access } from 'fs/promises';
 
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import type { SourceControlPreferences } from '../types/source-control-preferences';
@@ -26,87 +27,163 @@ describe('SourceControlPreferencesService', () => {
 	});
 
 	describe('line ending normalization', () => {
-		it('should normalize CRLF line endings to LF', () => {
+		it('should normalize CRLF line endings to LF when writing private key', async () => {
+			// Arrange
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/test' });
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+
 			const keyWithCRLF =
 				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\r\nkey\r\ndata\r\n-----END OPENSSH PRIVATE KEY-----\r\n';
-			const expected =
-				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n';
 
-			// Test the normalization logic directly
-			const normalized = keyWithCRLF.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+			// Mock the getPrivateKeyFromDatabase method to return key with CRLF
+			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(keyWithCRLF);
 
-			expect(normalized).toBe(expected);
-			expect(normalized).not.toContain('\r');
+			// Act
+			const tempFilePath = await service.getPrivateKeyPath();
+
+			// Assert - check the actual file content has normalized line endings
+			const fileContent = await readFile(tempFilePath, 'utf8');
+			expect(fileContent).not.toContain('\r');
+			expect(fileContent).toBe(
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n',
+			);
 		});
 
-		it('should normalize mixed CR and CRLF line endings to LF', () => {
+		it('should normalize mixed CR and CRLF line endings to LF when writing private key', async () => {
+			// Arrange
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/test' });
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+
 			const keyWithMixedEndings =
 				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\rkey\r\ndata\r-----END OPENSSH PRIVATE KEY-----\n';
-			const expected =
-				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n';
 
-			const normalized = keyWithMixedEndings.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+			jest
+				.spyOn(service as any, 'getPrivateKeyFromDatabase')
+				.mockResolvedValue(keyWithMixedEndings);
 
-			expect(normalized).toBe(expected);
-			expect(normalized).not.toContain('\r');
+			// Act
+			const tempFilePath = await service.getPrivateKeyPath();
+
+			// Assert - check the actual file content has normalized line endings
+			const fileContent = await readFile(tempFilePath, 'utf8');
+			expect(fileContent).not.toContain('\r');
+			expect(fileContent).toBe(
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n',
+			);
 		});
 
-		it('should leave existing LF line endings unchanged', () => {
+		it('should leave existing LF line endings unchanged when writing private key', async () => {
+			// Arrange
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/test' });
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+
 			const keyWithLF =
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n';
 
-			const normalized = keyWithLF.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(keyWithLF);
 
-			expect(normalized).toBe(keyWithLF);
+			// Act
+			const tempFilePath = await service.getPrivateKeyPath();
+
+			// Assert - check the actual file content remains unchanged
+			const fileContent = await readFile(tempFilePath, 'utf8');
+			expect(fileContent).toBe(keyWithLF);
 		});
 	});
 
 	describe('file security and permissions', () => {
-		it('should always use restrictive permissions for SSH private keys', () => {
-			// SSH private keys must use restrictive permissions for security
-			const sshKeyMode = 0o600;
+		it('should always use restrictive permissions for SSH private keys', async () => {
+			// Arrange
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/test' });
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
 
-			// Verify the octal value is correct for SSH private keys
-			expect(sshKeyMode.toString(8)).toBe('600'); // owner: rw-, group: ---, others: ---
+			const testKey =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
+			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(testKey);
 
-			// Verify this is the most restrictive mode for files (no execute needed)
-			expect(sshKeyMode & 0o077).toBe(0); // Group and others have no permissions
-			expect(sshKeyMode & 0o700).toBe(0o600); // Owner has read+write only
+			// Act
+			const tempFilePath = await service.getPrivateKeyPath();
+
+			// Assert - check the actual file permissions
+			const fs = require('fs');
+			const stats = await fs.promises.stat(tempFilePath);
+			const permissions = (stats.mode & parseInt('777', 8)).toString(8);
+
+			expect(permissions).toBe('600'); // Owner read/write only
+			expect(stats.mode & 0o077).toBe(0); // Group and others have no permissions
 		});
 
-		it('should fail securely if file permissions cannot be set', async () => {
-			// Test that we fail securely rather than downgrade permissions
-			const mockWriteFile = async (_path: string, _content: string, options: { mode: number }) => {
-				// Verify we always attempt restrictive permissions
-				expect(options.mode).toBe(0o600);
-				throw new Error('Permission denied - cannot create file');
-			};
+		it('should fail securely when file cannot be created', async () => {
+			// Arrange
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/nonexistent/path' });
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
 
-			// Simulate the file creation failing
-			let caughtError: Error | null = null;
-			try {
-				await mockWriteFile('/test/path', 'ssh-key-content', { mode: 0o600 });
-			} catch (error) {
-				caughtError = error as Error;
-			}
+			const testKey =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
+			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(testKey);
 
-			expect(caughtError).toBeInstanceOf(Error);
-			expect(caughtError?.message).toContain('Permission denied');
+			// Act & Assert - should throw UnexpectedError when file creation fails
+			await expect(service.getPrivateKeyPath()).rejects.toThrow(
+				'Failed to create SSH private key file',
+			);
 		});
 
-		it('should validate SSH key permission requirements', () => {
-			// SSH requires private keys to be readable only by owner
-			const correctMode = 0o600;
-			const insecureMode = 0o644; // This would be rejected by SSH
+		it('should remove existing file before creating new one with fsRm force option', async () => {
+			// Arrange
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/test' });
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
 
-			// Verify correct mode allows owner read/write, denies group/others
-			expect(correctMode & 0o400).toBeTruthy(); // Owner can read
-			expect(correctMode & 0o200).toBeTruthy(); // Owner can write
-			expect(correctMode & 0o040).toBeFalsy(); // Group cannot read
-			expect(correctMode & 0o004).toBeFalsy(); // Others cannot read
+			const testKey =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
+			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(testKey);
 
-			// Verify insecure mode would expose key to group/others
-			expect(insecureMode & 0o044).toBeTruthy(); // Group and others can read (bad!)
+			// Create a test file first
+			const tempFilePath1 = await service.getPrivateKeyPath();
+			expect(await access(tempFilePath1)).toBeUndefined(); // File exists
+
+			// Act - call again to test file removal and recreation
+			const tempFilePath2 = await service.getPrivateKeyPath();
+
+			// Assert - should succeed without errors (fsRm with force: true handles existing file)
+			expect(tempFilePath2).toBe(tempFilePath1);
+			const fileContent = await readFile(tempFilePath2, 'utf8');
+			expect(fileContent).toBe(testKey);
 		});
 	});
 });
