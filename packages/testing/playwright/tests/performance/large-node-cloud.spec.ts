@@ -25,7 +25,7 @@ async function setupPerformanceTest(n8n: n8nPage, size: number) {
 }
 
 test.describe('Large Node Performance - Cloud Resources', () => {
-	test('Large workflow with starter plan resources @cloud:starter', async ({ n8n }) => {
+	test('Large workflow with starter plan resources', async ({ n8n }, testInfo) => {
 		await setupPerformanceTest(n8n, 30000);
 		const loopSize = 20;
 		const stats = [];
@@ -49,6 +49,12 @@ test.describe('Large Node Performance - Cloud Resources', () => {
 		}
 		const average = stats.reduce((a, b) => a + b, 0) / stats.length;
 		console.log(`Average open node duration: ${average.toFixed(1)}ms`);
+
+		// Attach performance metric
+		await testInfo.attach('metric:open-node-30000', {
+			body: JSON.stringify({ value: average, unit: 'ms' }),
+		});
+
 		expect(average).toBeLessThan(5000);
 	});
 });
