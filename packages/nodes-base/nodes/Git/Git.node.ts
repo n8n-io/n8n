@@ -17,6 +17,7 @@ import {
 	commitFields,
 	logFields,
 	pushFields,
+	switchBranchFields,
 	tagFields,
 } from './descriptions';
 
@@ -142,6 +143,12 @@ export class Git implements INodeType {
 						action: 'Return status of current repository',
 					},
 					{
+						name: 'Switch Branch',
+						value: 'switchBranch',
+						description: 'Switch to a different branch',
+						action: 'Switch to a different branch',
+					},
+					{
 						name: 'Tag',
 						value: 'tag',
 						description: 'Create a new tag',
@@ -191,6 +198,7 @@ export class Git implements INodeType {
 			...commitFields,
 			...logFields,
 			...pushFields,
+			...switchBranchFields,
 			...tagFields,
 			// ...userSetupFields,
 		],
@@ -213,6 +221,67 @@ export class Git implements INodeType {
 			}
 
 			return repositoryPath;
+		};
+
+		interface CheckoutBranchOptions {
+			branchName: string;
+			createBranch?: boolean;
+			startPoint?: string;
+			force?: boolean;
+			setUpstream?: boolean;
+			remoteName?: string;
+		}
+
+		const checkoutBranch = async (
+			git: SimpleGit,
+			options: CheckoutBranchOptions,
+		): Promise<void> => {
+			const {
+				branchName,
+				createBranch = true,
+				startPoint,
+				force = false,
+				setUpstream = false,
+				remoteName = 'origin',
+			} = options;
+
+			if (!branchName) return;
+
+			try {
+				if (force) {
+					await git.checkout(['-f', branchName]);
+				} else {
+					await git.checkout(branchName);
+				}
+			} catch (error) {
+				if (createBranch) {
+					try {
+						if (startPoint) {
+							await git.checkoutBranch(branchName, startPoint);
+						} else {
+							await git.checkoutLocalBranch(branchName);
+						}
+
+						// Set up upstream tracking if requested
+						if (setUpstream) {
+							try {
+								await git.addConfig(`branch.${branchName}.remote`, remoteName);
+								await git.addConfig(`branch.${branchName}.merge`, `refs/heads/${branchName}`);
+							} catch (upstreamError) {
+								// Non-fatal error - branch was created but upstream setup failed
+								// This could happen if remote doesn't exist or branch doesn't exist on remote
+								// We'll continue without failing the operation
+							}
+						}
+					} catch (createError) {
+						// If creation fails, throw original checkout error
+						throw error;
+					}
+				} else {
+					// Don't create branch, throw original error
+					throw error;
+				}
+			}
 		};
 
 		const operation = this.getNodeParameter('operation', 0);
@@ -304,6 +373,13 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const message = this.getNodeParameter('message', itemIndex, '') as string;
+					const branch = options.branch as string;
+
+					// Switch to branch if specified
+					await checkoutBranch(git, {
+						branchName: branch,
+						setUpstream: true, // Auto-setup upstream for newly created branches
+					});
 
 					let pathsToAdd: string[] | undefined = undefined;
 					if (options.files !== undefined) {
@@ -378,6 +454,14 @@ export class Git implements INodeType {
 					// ----------------------------------
 					//         push
 					// ----------------------------------
+
+					const branch = options.branch as string;
+
+					// Switch to branch if specified
+					await checkoutBranch(git, {
+						branchName: branch,
+						setUpstream: true, // Auto-setup upstream for newly created branches
+					});
 
 					if (options.repository) {
 						const targetRepository = await prepareRepository(options.targetRepository as string);
@@ -464,6 +548,36 @@ export class Git implements INodeType {
 							};
 						}),
 					);
+				} else if (operation === 'switchBranch') {
+					// ----------------------------------
+					//         switchBranch
+					// ----------------------------------
+
+					const branchName = this.getNodeParameter('branchName', itemIndex, '') as string;
+					const createBranch = options.createBranch !== false; // default to true
+					const startPoint = options.startPoint as string;
+					const force = options.force as boolean;
+					const setUpstream = options.setUpstream as boolean;
+					const remoteName = (options.remoteName as string) || 'origin';
+
+					await checkoutBranch(git, {
+						branchName,
+						createBranch,
+						startPoint,
+						force,
+						setUpstream,
+						remoteName,
+					});
+
+					returnItems.push({
+						json: {
+							success: true,
+							branch: branchName,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 				} else if (operation === 'tag') {
 					// ----------------------------------
 					//         tag
