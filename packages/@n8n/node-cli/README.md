@@ -31,13 +31,16 @@ pnpm build
 ### Linting
 ```bash
 pnpm lint
-# Runs: eslint and other checks
+# Runs: n8n-node lint
+
+pnpm lint:fix
+# Runs: n8n-node lint --fix
 ```
 
 ### Publishing
 ```bash
 pnpm run release
-# Runs: release-it (build, lint, tag, release)
+# Runs: n8n-node release
 ```
 
 ## 🛠️ CLI Reference
@@ -50,23 +53,48 @@ n8n-node [COMMAND] [OPTIONS]
 
 ### Commands
 
+#### `n8n-node new`
+
+Create a new node project.
+
+```bash
+n8n-node new [NAME] [OPTIONS]
+```
+
+**Flags:**
+| Flag | Description |
+|------|-------------|
+| `-f, --force` | Overwrite destination folder if it already exists |
+| `--skip-install` | Skip installing dependencies |
+| `--template <template>` | Choose template: `declarative/custom`, `declarative/github-issues`, `programmatic/example` |
+
+**Examples:**
+```bash
+n8n-node new
+n8n-node new n8n-nodes-my-app --skip-install
+n8n-node new n8n-nodes-my-app --force
+n8n-node new n8n-nodes-my-app --template declarative/custom
+```
+
+> **Note:** This command is used internally by `pnpm create @n8n/node` to provide the interactive scaffolding experience.
+
 #### `n8n-node dev`
 
 Run n8n with your node in development mode with hot reload.
 
 ```bash
-n8n-node dev [--external-n8n] [--custom-nodes-dir <value>]
+n8n-node dev [--external-n8n] [--custom-user-folder <value>]
 ```
 
 **Flags:**
 | Flag | Description |
 |------|-------------|
 | `--external-n8n` | Run n8n externally instead of in a subprocess |
-| `--custom-nodes-dir <path>` | Custom directory to link your node (default: `~/.n8n/custom`) |
+| `--custom-user-folder <path>` | Folder to use to store user-specific n8n data (default: `~/.n8n-node-cli/.n8n/custom`) |
 
 This command:
 - Starts n8n on `http://localhost:5678` (unless using `--external-n8n`)
-- Links your node to n8n's custom nodes directory
+- Links your node to n8n's custom nodes directory (`~/.n8n-node-cli/.n8n/custom`)
 - Rebuilds on file changes for live preview
 - Watches for changes in your `src/` directory
 
@@ -79,7 +107,7 @@ n8n-node dev
 n8n-node dev --external-n8n
 
 # Custom n8n extensions directory
-n8n-node dev --custom-nodes-dir /opt/n8n-extensions
+n8n-node dev --custom-user-folder /home/user
 ```
 
 #### `n8n-node build`
@@ -97,6 +125,46 @@ Generates:
 - Bundled node package
 - Optimized assets and icons
 - Ready-to-publish package in `dist/`
+
+#### `n8n-node lint`
+
+Lint the node in the current directory.
+
+```bash
+n8n-node lint [--fix]
+```
+
+**Flags:**
+| Flag | Description |
+|------|-------------|
+| `--fix` | Automatically fix problems |
+
+**Examples:**
+```bash
+# Check for linting issues
+n8n-node lint
+
+# Automatically fix fixable issues
+n8n-node lint --fix
+```
+
+#### `n8n-node release`
+
+Publish your community node package to npm.
+
+```bash
+n8n-node release
+```
+
+**Flags:** None
+
+This command handles the complete release process using [release-it](https://github.com/release-it/release-it):
+- Builds the node
+- Runs linting checks
+- Updates changelog
+- Creates git tags
+- Creates GitHub releases
+- Publishes to npm
 
 #### `n8n-node new`
 
@@ -143,12 +211,17 @@ The recommended workflow using the scaffolding tool:
 
 3. **Test your node** at `http://localhost:5678`
 
-4. **Build for production**:
+4. **Lint your code**:
+   ```bash
+   pnpm lint
+   ```
+
+5. **Build for production**:
    ```bash
    pnpm build
    ```
 
-5. **Publish**:
+6. **Publish**:
    ```bash
    pnpm run release
    ```
@@ -193,7 +266,7 @@ The CLI reads configuration from your `package.json`:
 ### Development server issues
 ```bash
 # Clear n8n custom nodes cache
-rm -rf ~/.n8n/custom
+rm -rf ~/.n8n-node-cli/.n8n/custom
 
 # Restart development server
 pnpm dev

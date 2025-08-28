@@ -7,6 +7,7 @@ export default class Prerelease extends Command {
 		'Only for internal use. Prevent npm publish, instead require npm run release';
 	static override examples = ['<%= config.bin %> <%= command.id %>'];
 	static override flags = {};
+	static override hidden = true;
 
 	async run(): Promise<void> {
 		await this.parse(Prerelease);

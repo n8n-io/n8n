@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import { detectPackageManager } from '../utils/package-manager';
 
 export default class Lint extends Command {
-	static override description = 'Lint the node in the current directory. Includes ';
+	static override description = 'Lint the node in the current directory. Includes auto-fixing.';
 	static override examples = ['<%= config.bin %> <%= command.id %>'];
 	static override flags = {
 		fix: Flags.boolean({ description: 'Automatically fix problems', default: false }),

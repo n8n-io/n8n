@@ -28,7 +28,7 @@ export default class Dev extends Command {
 		'custom-user-folder': Flags.directory({
 			default: path.join(os.homedir(), '.n8n-node-cli'),
 			description:
-				'Folder to use to store user-specific n8n data. By default it will link to ~/.n8n-node-cli. You probably want to enable this option if you run n8n with a custom N8N_CUSTOM_EXTENSIONS env variable.',
+				'Folder to use to store user-specific n8n data. By default it will use ~/.n8n-node-cli. You probably want to enable this option if you run n8n with a custom N8N_CUSTOM_EXTENSIONS env variable.',
 		}),
 	};
 

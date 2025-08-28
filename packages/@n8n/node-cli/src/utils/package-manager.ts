@@ -15,7 +15,7 @@ export function detectPackageManagerFromUserAgent(): PackageManager | null {
 	return null;
 }
 
-async function detectPackageManagerFromWorkingDir(): Promise<PackageManager | null> {
+async function detectPackageManagerFromLockFiles(): Promise<PackageManager | null> {
 	const lockFiles: Record<PackageManager, string> = {
 		npm: 'package-lock.json',
 		yarn: 'yarn.lock',
@@ -36,10 +36,13 @@ async function detectPackageManagerFromWorkingDir(): Promise<PackageManager | nu
 }
 
 export async function detectPackageManager(): Promise<PackageManager | null> {
+	// When used via package.json scripts or `npm/yarn/pnpm create`, we can detect the package manager via the user agent
 	const fromUserAgent = detectPackageManagerFromUserAgent();
 	if (fromUserAgent) return fromUserAgent;
-	const fromWorkingDir = await detectPackageManagerFromWorkingDir();
-	if (fromWorkingDir) return fromWorkingDir;
+
+	// When used directly via `n8n-node` CLI, we can try to detect the package manager via the lock files
+	const fromLockFiles = await detectPackageManagerFromLockFiles();
+	if (fromLockFiles) return fromLockFiles;
 
 	return null;
 }

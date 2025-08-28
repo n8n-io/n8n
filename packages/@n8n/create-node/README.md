@@ -93,6 +93,7 @@ This command:
 - Starts n8n in development mode on `http://localhost:5678`
 - Enables hot reload for your node changes
 - Automatically includes your node in the n8n instance
+- Links your node to `~/.n8n-node-cli/.n8n/custom` for development
 - Watches for file changes and rebuilds automatically
 
 ### 3. Test your node
@@ -101,6 +102,37 @@ This command:
 - Create a new workflow
 - Find your node in the node panel
 - Test parameters and functionality in real-time
+
+## 📦 Generated Project Commands
+
+Your generated project comes with these convenient npm scripts:
+
+### Development
+```bash
+pnpm dev
+# Runs: n8n-node dev
+```
+
+### Building
+```bash
+pnpm build
+# Runs: n8n-node build
+```
+
+### Linting
+```bash
+pnpm lint
+# Runs: n8n-node lint
+
+pnpm lint:fix
+# Runs: n8n-node lint --fix
+```
+
+### Publishing
+```bash
+pnpm run release
+# Runs: n8n-node release
+```
 
 ## 📦 Build & Deploy
 
@@ -128,20 +160,27 @@ Validates:
 - Common integration issues
 - Cloud publication readiness
 
+Fix issues automatically:
+
+```bash
+pnpm lint:fix
+```
+
 ### Publish your node
 
 ```bash
 pnpm run release
 ```
 
-Runs `release-it` to handle the complete release process:
+Runs [release-it](https://github.com/release-it/release-it) to handle the complete release process:
 - Ensures working directory is clean
 - Verifies you're on the main git branch
 - Increments your package version
 - Runs build and lint checks
+- Updates changelog
 - Creates git tag with version bump
 - Creates GitHub release with changelog
-- Updates changelog
+- Publishes to npm
 
 ## 📁 Project Structure
 
@@ -161,6 +200,27 @@ my-awesome-api-node/
 └── README.md
 ```
 
+The CLI expects your project to follow this structure for proper building and development.
+
+## ⚙️ Configuration
+
+The CLI reads configuration from your `package.json`:
+
+```json
+{
+  "name": "n8n-nodes-my-awesome-node",
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "nodes": [
+      "dist/nodes/MyAwesomeApi/MyAwesomeApi.node.js"
+    ],
+    "credentials": [
+      "dist/credentials/MyAwesomeApiAuth.credentials.js"
+    ]
+  }
+}
+```
+
 ## 🎨 Node Types
 
 Choose the right template for your use case:
@@ -170,21 +230,14 @@ Choose the right template for your use case:
 | **Declarative** | REST APIs, simple integrations | JSON-based configuration, automatic UI generation |
 | **Programmatic** | Complex logic, custom operations | Full TypeScript control, advanced error handling |
 
-## 📚 Resources
-
-- **[Node Development Guide](https://docs.n8n.io/integrations/creating-nodes/)** - Complete documentation
-- **[API Reference](https://docs.n8n.io/integrations/creating-nodes/build/reference/)** - Technical specifications
-- **[Community Forum](https://community.n8n.io)** - Get help and share your nodes
-- **[Node Examples](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes)** - Official node implementations
-
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
 **Node not appearing in n8n:**
 ```bash
-# Clear n8n cache and restart
-rm -rf ~/.n8n
+# Clear n8n node cli cache and restart
+rm -rf ~/.n8n-node-cli/.n8n/custom
 pnpm dev
 ```
 
@@ -201,6 +254,39 @@ pnpm install
 pnpm lint --fix
 pnpm build
 ```
+
+**Development server issues:**
+```bash
+# Clear cache and restart development server
+rm -rf ~/.n8n-node-cli/.n8n/custom
+pnpm dev
+```
+
+## 🔧 Advanced Usage
+
+### Using External n8n Instance
+
+If you prefer to use your own n8n installation:
+
+```bash
+pnpm dev --external-n8n
+```
+
+### Custom User Folder
+
+Specify a custom location for n8n user data:
+
+```bash
+pnpm dev --custom-user-folder /path/to/custom/folder
+```
+
+## 📚 Resources
+
+- **[Node Development Guide](https://docs.n8n.io/integrations/creating-nodes/)** - Complete documentation
+- **[API Reference](https://docs.n8n.io/integrations/creating-nodes/build/reference/)** - Technical specifications
+- **[Community Forum](https://community.n8n.io)** - Get help and share your nodes
+- **[Node Examples](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes)** - Official node implementations
+- **[@n8n/node-cli](https://www.npmjs.com/package/@n8n/node-cli)** - The underlying CLI tool
 
 ## 🤝 Contributing
 
