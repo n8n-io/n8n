@@ -7,6 +7,9 @@ export function useFileDownload() {
 	const error = ref<Error | null>(null);
 	const rootStore = useRootStore();
 
+	/**
+	 * Get or generate a browser ID for request tracking
+	 */
 	function getBrowserId(): string {
 		let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
 		if (!browserId) {
@@ -16,6 +19,12 @@ export function useFileDownload() {
 		return browserId;
 	}
 
+	/**
+	 * Download a file from a URL with automatic auth handling for internal URLs
+	 * @param url - The URL to download from
+	 * @param filename - Optional filename override
+	 * @param additionalHeaders - Optional additional headers to include
+	 */
 	async function downloadFile(
 		url: string,
 		filename?: string,

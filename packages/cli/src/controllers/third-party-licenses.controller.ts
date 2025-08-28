@@ -18,23 +18,14 @@ export class ThirdPartyLicensesController {
 	 */
 	@Get('/')
 	async getThirdPartyLicenses(_: Request, res: Response) {
-		const licenseFile = resolve(CLI_DIR, 'dist', 'THIRD_PARTY_LICENSES.md');
-		const placeholderLicenseFile = resolve(CLI_DIR, 'THIRD_PARTY_LICENSES_PLACEHOLDER.md');
+		const licenseFile = resolve(CLI_DIR, 'THIRD_PARTY_LICENSES.md');
 
 		try {
-			// Try production file first
 			await fsAccess(licenseFile);
 			const content = await readFile(licenseFile, 'utf-8');
 			this.sendLicenseFile(res, content, 'THIRD_PARTY_LICENSES.md');
 		} catch {
-			try {
-				// Fall back to placeholder file for local development
-				await fsAccess(placeholderLicenseFile);
-				const content = await readFile(placeholderLicenseFile, 'utf-8');
-				this.sendLicenseFile(res, content, 'THIRD_PARTY_LICENSES_PLACEHOLDER.md');
-			} catch {
-				res.status(404).send('Not found');
-			}
+			res.status(404).send('Third-party licenses file not found');
 		}
 	}
 }

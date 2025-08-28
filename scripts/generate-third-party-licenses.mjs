@@ -8,33 +8,28 @@
  * Usage: node scripts/generate-third-party-licenses.mjs
  */
 
-import { $, echo, fs, chalk, path } from 'zx';
+import { $, echo, fs, chalk } from 'zx';
+import path from 'path';
 import { fileURLToPath } from 'url';
-
-// Configuration
-const CONFIG = {
-	TEMP_LICENSE_FILE: 'licenses.json',
-	OUTPUT_FILE: 'THIRD_PARTY_LICENSES.md',
-	INVALID_LICENSE_FILES: ['readme.md', 'readme.txt', 'readme', 'package.json'],
-	VALID_LICENSE_FILES: ['license', 'licence', 'copying', 'copyright'],
-};
-
-const PATHS = (() => {
-	const __filename = fileURLToPath(import.meta.url);
-	const __dirname = path.dirname(__filename);
-	const rootDir = path.join(__dirname, '..');
-
-	return {
-		root: rootDir,
-		cliDist: path.join(rootDir, 'packages', 'cli', 'dist'),
-		formatConfig: path.join(__dirname, 'third-party-license-format.json'),
-		tempLicenses: path.join(rootDir, CONFIG.TEMP_LICENSE_FILE),
-		output: path.join(rootDir, 'packages', 'cli', 'dist', CONFIG.OUTPUT_FILE),
-	};
-})();
 
 // Disable verbose zx output
 $.verbose = false;
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.join(scriptDir, '..');
+
+const config = {
+	tempLicenseFile: 'licenses.json',
+	outputFile: 'THIRD_PARTY_LICENSES.md',
+	invalidLicenseFiles: ['readme.md', 'readme.txt', 'readme', 'package.json', 'changelog.md', 'history.md'],
+	validLicenseFiles: ['license', 'licence', 'copying', 'copyright', 'unlicense'],
+	paths: {
+		root: rootDir,
+		cliRoot: path.join(rootDir, 'packages', 'cli'),
+		formatConfig: path.join(scriptDir, 'third-party-license-format.json'),
+		tempLicenses: path.join(rootDir, 'licenses.json'),
+		output: path.join(rootDir, 'packages', 'cli', 'THIRD_PARTY_LICENSES.md'),
+	},
+};
 
 /**
  * Validates that license-checker is available
@@ -42,10 +37,10 @@ $.verbose = false;
 async function validateLicenseChecker() {
 	try {
 		await $`pnpm exec license-checker --version`.nothrow();
-		echo(chalk.green('✓ license-checker is available'));
+		echo(chalk.green('✅ license-checker is available'));
 	} catch (error) {
-		echo(chalk.red('✗ license-checker not found. Run: pnpm install'));
-		process.exit(1);
+		echo(chalk.red('❌ license-checker not found. Run: pnpm install'));
+		throw new Error('license-checker validation failed');
 	}
 }
 
@@ -53,15 +48,15 @@ async function generateLicenseData() {
 	echo(chalk.yellow('📊 Running license-checker...'));
 
 	try {
-		$.cwd = PATHS.root;
-		await $`pnpm exec license-checker --json --customPath ${PATHS.formatConfig}`.pipe(
-			fs.createWriteStream(PATHS.tempLicenses),
+		$.cwd = config.paths.root;
+		await $`pnpm exec license-checker --json --customPath ${config.paths.formatConfig}`.pipe(
+			fs.createWriteStream(config.paths.tempLicenses),
 		);
 
-		echo(chalk.green('✓ License data collected'));
-		return PATHS.tempLicenses;
+		echo(chalk.green('✅ License data collected'));
+		return config.paths.tempLicenses;
 	} catch (error) {
-		echo(chalk.red('✗ Failed to run license-checker'));
+		echo(chalk.red('❌ Failed to run license-checker'));
 		throw error;
 	}
 }
@@ -70,10 +65,10 @@ async function readLicenseData(filePath) {
 	try {
 		const data = await fs.readFile(filePath, 'utf-8');
 		const parsed = JSON.parse(data);
-		echo(chalk.green(`✓ Parsed ${Object.keys(parsed).length} packages`));
+		echo(chalk.green(`✅ Parsed ${Object.keys(parsed).length} packages`));
 		return parsed;
 	} catch (error) {
-		echo(chalk.red('✗ Failed to parse license data'));
+		echo(chalk.red('❌ Failed to parse license data'));
 		throw error;
 	}
 }
@@ -100,30 +95,36 @@ function shouldExcludePackage(packageName) {
 function isValidLicenseFile(filePath) {
 	if (!filePath) return false;
 
-	const fileName = filePath.toLowerCase();
+	const fileName = path.basename(filePath).toLowerCase();
 
 	// Exclude non-license files
-	const isInvalidFile = CONFIG.INVALID_LICENSE_FILES.some((invalid) => fileName.endsWith(invalid));
-
+	const isInvalidFile = config.invalidLicenseFiles.some((invalid) => 
+		fileName === invalid || fileName.endsWith(invalid)
+	);
 	if (isInvalidFile) return false;
 
 	// Must contain license-related keywords
-	return CONFIG.VALID_LICENSE_FILES.some((valid) => fileName.includes(valid));
+	return config.validLicenseFiles.some((valid) => fileName.includes(valid));
 }
 
-function processLicenseText(licenseText, licenseFilePath, licenseType) {
-	if (licenseText?.trim() && isValidLicenseFile(licenseFilePath)) {
-		return licenseText.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\r\n/g, '\n').trim();
+function getFallbackLicenseText(licenseType, packages = []) {
+	const fallbacks = {
+		'CC-BY-3.0': 'Creative Commons Attribution 3.0 Unported License\n\nFull license text available at: https://creativecommons.org/licenses/by/3.0/legalcode',
+		'LGPL-3.0-or-later': 'GNU Lesser General Public License v3.0 or later\n\nFull license text available at: https://www.gnu.org/licenses/lgpl-3.0.html',
+		'PSF': 'Python Software Foundation License\n\nFull license text available at: https://docs.python.org/3/license.html',
+		'(MIT OR CC0-1.0)': 'Licensed under MIT OR CC0-1.0\n\nMIT License full text available at: https://opensource.org/licenses/MIT\nCC0 1.0 Universal full text available at: https://creativecommons.org/publicdomain/zero/1.0/legalcode',
+		'UNKNOWN': `License information not available for the following packages:\n${packages.map(pkg => `- ${pkg.name} ${pkg.version}`).join('\n')}\n\nPlease check individual package repositories for license details.`,
+	};
+
+	// Check for custom licenses that start with "Custom:"
+	if (licenseType.startsWith('Custom:')) {
+		return `Custom license. See: ${licenseType.replace('Custom: ', '')}`;
 	}
 
-	if (licenseType && licenseType !== 'Unknown' && licenseType.trim()) {
-		return `Licensed under ${licenseType}`;
-	}
-
-	return 'License text not available.';
+	return fallbacks[licenseType] || null;
 }
 
-function groupPackagesByLicense(packages) {
+function processPackages(packages) {
 	const licenseGroups = new Map();
 	const licenseTexts = new Map();
 	let processedCount = 0;
@@ -138,6 +139,7 @@ function groupPackagesByLicense(packages) {
 		const licenseType = pkg.licenses || 'Unknown';
 		processedCount++;
 
+		// Group packages by license
 		if (!licenseGroups.has(licenseType)) {
 			licenseGroups.set(licenseType, []);
 		}
@@ -149,23 +151,60 @@ function groupPackagesByLicense(packages) {
 			copyright: pkg.copyright,
 		});
 
+		// Store license text (use first non-empty occurrence)
 		if (!licenseTexts.has(licenseType)) {
-			const text = processLicenseText(pkg.licenseText, pkg.licenseFile, licenseType);
-			licenseTexts.set(licenseType, text);
+			licenseTexts.set(licenseType, null); // Initialize as null
+		}
+		
+		if (!licenseTexts.get(licenseType) && pkg.licenseText && pkg.licenseText.trim()) {
+			// Only use license text if it comes from a valid license file
+			if (isValidLicenseFile(pkg.licenseFile)) {
+				const cleanText = pkg.licenseText
+					.replace(/\\n/g, '\n')
+					.replace(/\\"/g, '"')
+					.replace(/\r\n/g, '\n')
+					.trim();
+				licenseTexts.set(licenseType, cleanText);
+			}
 		}
 	}
 
-	echo(
-		chalk.cyan(`📦 Processed ${processedCount} packages in ${licenseGroups.size} license groups`),
-	);
+	// Apply fallback license texts for missing ones
+	const missingTexts = [];
+	const fallbacksUsed = [];
+	
+	for (const [licenseType, text] of licenseTexts.entries()) {
+		if (!text || !text.trim()) {
+			const packagesForLicense = licenseGroups.get(licenseType) || [];
+			const fallback = getFallbackLicenseText(licenseType, packagesForLicense);
+			if (fallback) {
+				licenseTexts.set(licenseType, fallback);
+				fallbacksUsed.push(licenseType);
+			} else {
+				missingTexts.push(licenseType);
+			}
+		}
+	}
+
+	echo(chalk.cyan(`📦 Processed ${processedCount} packages in ${licenseGroups.size} license groups`));
+	
+	if (fallbacksUsed.length > 0) {
+		echo(chalk.blue(`ℹ️  Used fallback texts for: ${fallbacksUsed.join(', ')}`));
+	}
+	
+	if (missingTexts.length > 0) {
+		echo(chalk.yellow(`⚠️  Still missing license texts for: ${missingTexts.join(', ')}`));
+	} else {
+		echo(chalk.green(`✅ All license types have texts`));
+	}
+
 	return { licenseGroups, licenseTexts, processedCount };
 }
 
-function createLicenseSection(licenseType, packages, licenseText) {
+function createPackageSection(licenseType, packages) {
 	const sortedPackages = [...packages].sort((a, b) => a.name.localeCompare(b.name));
 
 	let section = `## ${licenseType}\n\n`;
-	section += `The following components are licensed under ${licenseType}:\n\n`;
 
 	for (const pkg of sortedPackages) {
 		section += `* ${pkg.name} ${pkg.version}`;
@@ -176,8 +215,13 @@ function createLicenseSection(licenseType, packages, licenseText) {
 	}
 
 	section += '\n';
+	return section;
+}
 
-	if (licenseText && licenseText !== 'License text not available.') {
+function createLicenseTextSection(licenseType, licenseText) {
+	let section = `## ${licenseType} License Text\n\n`;
+	
+	if (licenseText && licenseText.trim()) {
 		section += `\`\`\`\n${licenseText}\n\`\`\`\n\n`;
 	} else {
 		section += `${licenseType} license text not available.\n\n`;
@@ -197,18 +241,24 @@ The n8n software includes open source packages, libraries, and modules, each of 
 }
 
 function buildMarkdownDocument(packages) {
-	echo(chalk.yellow('📝 Building markdown document...'));
-
-	const { licenseGroups, licenseTexts, processedCount } = groupPackagesByLicense(packages);
+	const { licenseGroups, licenseTexts, processedCount } = processPackages(packages);
 
 	let document = createDocumentHeader();
 
 	const sortedLicenseTypes = [...licenseGroups.keys()].sort();
 
+	// First: Add all package sections
 	for (const licenseType of sortedLicenseTypes) {
 		const packages = licenseGroups.get(licenseType);
+		document += createPackageSection(licenseType, packages);
+	}
+
+	// Second: Add license texts section
+	document += '# License Texts\n\n';
+	
+	for (const licenseType of sortedLicenseTypes) {
 		const licenseText = licenseTexts.get(licenseType);
-		document += createLicenseSection(licenseType, packages, licenseText);
+		document += createLicenseTextSection(licenseType, licenseText);
 	}
 
 	return { content: document, processedCount };
@@ -223,18 +273,20 @@ async function generateThirdPartyLicenses() {
 		const licensesJsonPath = await generateLicenseData();
 		const packages = await readLicenseData(licensesJsonPath);
 
+		echo(chalk.yellow('📝 Building markdown document...'));
 		const { content, processedCount } = buildMarkdownDocument(packages);
 
-		await fs.ensureDir(PATHS.cliDist);
-		await fs.writeFile(PATHS.output, content);
+		await fs.ensureDir(config.paths.cliRoot);
+		await fs.writeFile(config.paths.output, content);
 
+		// Clean up temporary file
 		await fs.remove(licensesJsonPath);
 
 		echo(chalk.green('\n🎉 License generation completed successfully!'));
-		echo(chalk.green(`📄 Output: ${PATHS.output}`));
+		echo(chalk.green(`📄 Output: ${config.paths.output}`));
 		echo(chalk.green(`📦 Packages: ${processedCount}`));
 	} catch (error) {
-		echo(chalk.red(`\n💥 Generation failed: ${error.message}`));
+		echo(chalk.red(`\n❌ Generation failed: ${error.message}`));
 		process.exit(1);
 	}
 }
