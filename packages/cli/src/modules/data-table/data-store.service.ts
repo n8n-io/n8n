@@ -158,7 +158,7 @@ export class DataStoreService {
 		returnData: boolean = false,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
-		await this.validateRows(dataStoreId, dto.rows);
+		await this.validateRows(dataStoreId, dto.rows, true);
 
 		if (dto.rows.length === 0) {
 			throw new DataStoreValidationError('No rows provided for upsertRows');

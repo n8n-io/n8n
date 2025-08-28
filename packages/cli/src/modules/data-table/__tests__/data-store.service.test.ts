@@ -1366,6 +1366,55 @@ describe('dataStore', () => {
 			]);
 		});
 
+		it('should allow adding partial data', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [
+					{ name: 'pid', type: 'string' },
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+
+			const ids = await dataStoreService.insertRows(dataStoreId, project1.id, [
+				{ pid: '1995-111a', name: 'Alice', age: 30 },
+			]);
+			expect(ids).toEqual([{ id: 1 }]);
+
+			// ACT
+			const result = await dataStoreService.upsertRows(dataStoreId, project1.id, {
+				rows: [
+					{ pid: '1992-222b', name: 'Alice' }, // age is missing
+					{ pid: '1995-111a', age: 35 }, // name is missing
+				],
+				matchFields: ['pid'],
+			});
+
+			// ASSERT
+			expect(result).toBe(true);
+
+			const { count, data } = await dataStoreService.getManyRowsAndCount(
+				dataStoreId,
+				project1.id,
+				{},
+			);
+
+			expect(count).toEqual(2);
+			expect(data).toEqual([
+				expect.objectContaining({
+					name: 'Alice',
+					age: 35, // updated age
+					pid: '1995-111a',
+				}),
+				expect.objectContaining({
+					name: 'Alice',
+					age: null, // missing age
+					pid: '1992-222b',
+				}),
+			]);
+		});
+
 		it('should return full upserted rows if returnData is set', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
