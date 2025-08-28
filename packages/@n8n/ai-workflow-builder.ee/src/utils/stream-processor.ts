@@ -245,7 +245,7 @@ function createToolCallMessage(
 			type: 'plan',
 			plan: workflowPlan.plan,
 			message: workflowPlan.intro,
-		}
+		};
 	}
 
 	return {
