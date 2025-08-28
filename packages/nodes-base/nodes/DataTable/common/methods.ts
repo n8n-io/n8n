@@ -42,33 +42,49 @@ export async function tableSearch(
 }
 
 export async function getDataTableColumns(this: ILoadOptionsFunctions) {
-	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
-	const returnData: INodePropertyOptions[] = [{ name: 'id - (number)', value: 'id' }];
+	const returnData: Array<INodePropertyOptions & { type: string }> = [
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
+		{ name: 'id - (number)', value: 'id', type: 'number' },
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
+		{ name: 'createdAt - (date)', value: 'id', type: 'date' },
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
+		{ name: 'updatedAt - (date)', value: 'id', type: 'date' },
+	];
 	const proxy = await getDataTableProxyLoadOptions(this);
 	const columns = await proxy.getColumns();
 	for (const column of columns) {
 		returnData.push({
 			name: `${column.name} - (${column.type})`,
 			value: column.name,
+			type: column.type,
 		});
 	}
 	return returnData;
 }
 
+const systemColumns = [
+	{ name: 'id', type: 'number' },
+	{ name: 'createdAt', type: 'date' },
+	{ name: 'updatedAt', type: 'date' },
+] as const;
+
 export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
-	const keyName = this.getCurrentNodeParameter('keyName') as string;
+	const keyName = this.getCurrentNodeParameter('&keyName') as string;
 
 	// Base conditions available for all column types
 	const baseConditions: INodePropertyOptions[] = [
 		{ name: 'Equals', value: 'eq' },
 		{ name: 'Not Equals', value: 'neq' },
+	];
+
+	const numberConditions: INodePropertyOptions[] = [
 		{ name: 'Greater Than', value: 'gt' },
 		{ name: 'Greater Than or Equal', value: 'gte' },
 		{ name: 'Less Than', value: 'lt' },
 		{ name: 'Less Than or Equal', value: 'lte' },
 	];
 
-	const likeConditions: INodePropertyOptions[] = [
+	const stringConditions: INodePropertyOptions[] = [
 		{
 			name: 'LIKE operator',
 			value: 'like',
@@ -83,7 +99,7 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 		},
 	];
 
-	const allConditions = [...baseConditions, ...likeConditions];
+	const allConditions = [...baseConditions, ...numberConditions, ...stringConditions];
 
 	// If no column is selected yet, return all conditions
 	if (!keyName) {
@@ -91,9 +107,11 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	}
 
 	// Get column type to determine available conditions
-	const proxy = await getDataTableProxyLoadOptions(this);
-	const columns = await proxy.getColumns();
-	const column = columns.find((col) => col.name === keyName);
+	const column =
+		systemColumns.find((col) => col.name === keyName) ??
+		(await (await getDataTableProxyLoadOptions(this)).getColumns()).find(
+			(col) => col.name === keyName,
+		);
 
 	if (!column) {
 		return baseConditions;
@@ -101,10 +119,14 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 
 	// String columns get LIKE operators
 	if (column.type === 'string') {
-		return allConditions;
+		return [...baseConditions, ...stringConditions];
 	}
 
-	return baseConditions;
+	if (column.type === 'number') {
+		return [...baseConditions, ...numberConditions];
+	}
+
+	return allConditions;
 }
 
 export async function getDataTables(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {

@@ -64,7 +64,7 @@ export function getSelectFields(displayOptions: IDisplayOptions): INodePropertie
 							// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
 							type: 'options',
 							typeOptions: {
-								loadOptionsDependsOn: ['keyName'],
+								loadOptionsDependsOn: ['filters.conditions.keyName'],
 								loadOptionsMethod: 'getConditionsForColumn',
 							},
 							default: 'eq',
