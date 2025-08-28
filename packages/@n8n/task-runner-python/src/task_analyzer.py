@@ -12,11 +12,29 @@ CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
 
 ERROR_RELATIVE_IMPORT = "Relative imports are disallowed."
-ERROR_DYNAMIC_IMPORT = "Dynamic imports using `__import__()` with variables are disallowed, because they can bypass allowlist validation at runtime."
-ERROR_DYNAMIC_IMPORTLIB = "Dynamic imports using `importlib` with variables are disallowed, because they can bypass allowlist validation at runtime."
 ERROR_STDLIB_DISALLOWED = "Import of standard library module '{module}' is disallowed. Allowed stdlib modules: {allowed}"
 ERROR_EXTERNAL_DISALLOWED = "Import of external package '{module}' is disallowed. Allowed external packages: {allowed}"
+ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_SECURITY_VIOLATIONS = "Security violations detected:\n{violations}"
+
+UNSAFE_ATTRIBUTES = {
+    "__class__",
+    "__bases__",
+    "__subclasses__",
+    "__globals__",
+    "__code__",
+    "__closure__",
+    "__builtins__",
+    "__loader__",
+    "__cached__",
+    "__dict__",
+    "__import__",
+    "__mro__",
+    "__init_subclass__",
+    "__getattr__",
+    "__setattr__",
+    "__delattr__",
+}
 
 
 class ImportValidator(ast.NodeVisitor):
@@ -36,7 +54,7 @@ class ImportValidator(ast.NodeVisitor):
     # ========== Detection ==========
 
     def visit_Import(self, node: ast.Import) -> None:
-        """Validate bare import statements (e.g., import os). Also aliased bare import statements (e.g., import numpy as np)."""
+        """Detect bare import statements (e.g., import os), including aliased (e.g., import numpy as np)."""
 
         for alias in node.names:
             module_name = alias.name
@@ -44,7 +62,7 @@ class ImportValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        """Validate from import statements (e.g., from os import path). Relative imports are disallowed."""
+        """Detect from import statements (e.g., from os import path)."""
 
         if node.level > 0:
             self._add_violation(node.lineno, ERROR_RELATIVE_IMPORT)
@@ -53,68 +71,32 @@ class ImportValidator(ast.NodeVisitor):
 
         self.generic_visit(node)
 
-    def visit_Call(self, node: ast.Call) -> None:
-        """Validate dynamic imports: __import__() or importlib.import_module() are allowed only with constant strings that do not start with a dot."""
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        """Detect access to unsafe attributes that could bypass security."""
 
-        # __import__()
-        if isinstance(node.func, ast.Name) and node.func.id == "__import__":
-            module_arg = None
-
-            # positional arg
-            if node.args and isinstance(node.args[0], ast.Constant):
-                module_arg = node.args[0].value
-            # keyword arg
-            elif node.keywords:
-                for keyword in node.keywords:
-                    if keyword.arg == "name" and isinstance(
-                        keyword.value, ast.Constant
-                    ):
-                        module_arg = keyword.value.value
-                        break
-
-            if module_arg and isinstance(module_arg, str):
-                self._validate_import(module_arg, node.lineno)
-            else:
-                self._add_violation(node.lineno, ERROR_DYNAMIC_IMPORT)
-
-        # import_module()
-        elif (
-            # from importlib import import_module; import_module()
-            (isinstance(node.func, ast.Name) and node.func.id == "import_module")
-            or
-            # import importlib; importlib.import_module()
-            (
-                isinstance(node.func, ast.Attribute)
-                and node.func.attr == "import_module"
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == "importlib"
-            )
-        ):
-            module_arg = None
-
-            # positional arg
-            if node.args and isinstance(node.args[0], ast.Constant):
-                module_arg = node.args[0].value
-            # keyword arg
-            elif node.keywords:
-                for keyword in node.keywords:
-                    if keyword.arg == "name" and isinstance(
-                        keyword.value, ast.Constant
-                    ):
-                        module_arg = keyword.value.value
-                        break
-
-            if module_arg and isinstance(module_arg, str):
-                self._validate_import(module_arg, node.lineno)
-            else:
-                self._add_violation(node.lineno, ERROR_DYNAMIC_IMPORTLIB)
+        if node.attr in UNSAFE_ATTRIBUTES:
+            # Always block
+            if node.attr in ["__subclasses__", "__globals__", "__builtins__"]:
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
+                )
+            # Block only in attribute chains (e.g., x.__class__.__bases__)
+            elif isinstance(node.value, ast.Attribute):
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
+                )
+            # Block __class__ on literals (e.g., "".__class__)
+            elif node.attr == "__class__" and isinstance(node.value, (ast.Constant)):
+                self._add_violation(
+                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
+                )
 
         self.generic_visit(node)
 
     # ========== Validation ==========
 
     def _validate_import(self, module_path: str, lineno: int) -> None:
-        """Validate that a module import is allowed based on allowlists. Relative imports are disallowed."""
+        """Validate that a module import is allowed based on allowlists. Also disallow relative imports."""
 
         if module_path.startswith("."):
             self._add_violation(lineno, ERROR_RELATIVE_IMPORT)
