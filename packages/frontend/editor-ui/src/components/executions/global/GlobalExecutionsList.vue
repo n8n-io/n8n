@@ -334,13 +334,14 @@ const goToUpgrade = () => {
 				:filters="
 					Object.entries(props.filters).map(([key, value]) => ({
 						label: key.charAt(0).toUpperCase() + key.slice(1),
-						options: Array.isArray(value) ? value : [value],
+						options: [],
 						type: Array.isArray(value) ? 'multi' : 'single',
+						allowCustomValues: true,
 					}))
 				"
 				:primary-action-text="undefined"
 				:actions="[]"
-				:type="'dropdown'"
+				:type="'chip'"
 				no-tertiary-actions
 				@update:filters="onFilterChanged"
 			/>

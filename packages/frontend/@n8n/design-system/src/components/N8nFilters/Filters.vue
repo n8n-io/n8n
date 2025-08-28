@@ -7,6 +7,7 @@ export interface FilterOption {
 	label: string;
 	options: string[];
 	type: 'single' | 'multi';
+	allowCustomValues?: boolean;
 }
 
 export interface FilterAction {
@@ -53,20 +54,40 @@ const props = withDefaults(defineProps<Props>(), {
 		<N8nDropdownFilters
 			:filters="[
 				{ label: 'Status', options: ['Active', 'Inactive'], type: 'multi' },
-				{ label: 'Owner', options: ['John Doe', 'Jane Doe'], type: 'single' },
-				{ label: 'Tag', options: ['Tag 1', 'Tag 2', 'Tag 3'], type: 'multi' },
+				{
+					label: 'Owner',
+					options: ['John Doe', 'Jane Doe'],
+					type: 'single',
+					allowCustomValues: true,
+				},
+				{
+					label: 'Tag',
+					options: ['Tag 1', 'Tag 2', 'Tag 3'],
+					type: 'multi',
+					allowCustomValues: true,
+				},
 			]"
-			:primaryActionText="props.primaryActionText"
+			primaryActionText="Create workflow"
 			:actions="props.actions"
 			:noTertiaryActions="props.noTertiaryActions"
 		/>
 		<ChipFilters
 			:filters="[
 				{ label: 'Status', options: ['Active', 'Inactive'], type: 'multi' },
-				{ label: 'Owner', options: ['John Doe', 'Jane Doe'], type: 'single' },
-				{ label: 'Tag', options: ['Tag 1', 'Tag 2', 'Tag 3'], type: 'multi' },
+				{
+					label: 'Owner',
+					options: ['John Doe', 'Jane Doe'],
+					type: 'single',
+					allowCustomValues: true,
+				},
+				{
+					label: 'Tag',
+					options: ['Tag 1', 'Tag 2', 'Tag 3'],
+					type: 'multi',
+					allowCustomValues: true,
+				},
 			]"
-			:primaryActionText="props.primaryActionText"
+			primaryActionText="Create workflow"
 			:actions="props.actions"
 			:noTertiaryActions="props.noTertiaryActions"
 		/>

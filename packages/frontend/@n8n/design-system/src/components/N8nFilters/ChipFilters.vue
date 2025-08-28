@@ -34,12 +34,12 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
 	filters: () => [],
-	primaryActionText: 'Create workflow',
 	actions: () => [],
 });
 
 const activeFilters = ref<ActiveFilter[]>([]);
 const searchQueries = ref<Record<string, string>>({});
+const customInputs = ref<Record<string, string>>({});
 
 const filterOptions = computed(() => props.filters);
 
@@ -101,6 +101,24 @@ function getFilteredOptions(filterLabel: string, options: string[]) {
 
 function updateSearchQuery(filterLabel: string, query: string) {
 	searchQueries.value[filterLabel] = query;
+}
+
+function addCustomValue(filterName: string, type: 'single' | 'multi') {
+	const customValue = customInputs.value[filterName]?.trim();
+	if (!customValue) return;
+
+	selectFilterValue(filterName, customValue, type);
+	customInputs.value[filterName] = '';
+}
+
+function handleCustomInputKeyup(
+	filterName: string,
+	type: 'single' | 'multi',
+	event: KeyboardEvent,
+) {
+	if (event.key === 'Enter') {
+		addCustomValue(filterName, type);
+	}
 }
 
 function handleCheckboxChange(
@@ -177,7 +195,7 @@ function getActiveFilter(filterName: string): ActiveFilter | undefined {
 					<DropdownMenuPortal>
 						<DropdownMenuContent align="end" class="filter-sub-content filter-sub-content-enhanced">
 							<!-- Search Bar -->
-							<div class="filter-search-container" v-if="filterOption.options.length > 10">
+							<div v-if="filterOption.options.length > 10">
 								<N8nInput
 									:modelValue="searchQueries[filterOption.label] || ''"
 									@update:modelValue="
@@ -187,10 +205,33 @@ function getActiveFilter(filterName: string): ActiveFilter | undefined {
 									size="small"
 									placeholder="Search..."
 									:clearable="true"
-									class="filter-search-input"
 								>
 									<template #prefix>
 										<N8nIcon icon="search" size="small" />
+									</template>
+								</N8nInput>
+							</div>
+
+							<!-- Custom Value Input -->
+							<div v-if="filterOption.allowCustomValues">
+								<N8nInput
+									v-model="customInputs[filterOption.label]"
+									type="text"
+									size="small"
+									:placeholder="`Add custom ${filterOption.label.toLowerCase()}...`"
+									@keyup="
+										(event) => handleCustomInputKeyup(filterOption.label, filterOption.type, event)
+									"
+								>
+									<template #suffix>
+										<N8nIconButton
+											@click="addCustomValue(filterOption.label, filterOption.type)"
+											icon="plus"
+											size="xmini"
+											type="tertiary"
+											text
+											:disabled="!customInputs[filterOption.label]?.trim()"
+										/>
 									</template>
 								</N8nInput>
 							</div>
@@ -263,10 +304,10 @@ function getActiveFilter(filterName: string): ActiveFilter | undefined {
 				<N8nIconButton type="tertiary" :icon="action.icon" text />
 			</N8nTooltip>
 		</template>
-		<N8nButton size="small">{{ props.primaryActionText }}</N8nButton>
 		<N8nTooltip v-if="!noTertiaryActions" content="More actions">
 			<N8nIconButton type="tertiary" icon="ellipsis" text />
 		</N8nTooltip>
+		<N8nButton v-if="primaryActionText" size="small">{{ props.primaryActionText }}</N8nButton>
 	</div>
 </template>
 
@@ -335,7 +376,6 @@ function getActiveFilter(filterName: string): ActiveFilter | undefined {
 	color: var(--color-text-base);
 	cursor: pointer;
 	transition: background-color 0.2s ease;
-	letter-spacing: 0.5px;
 
 	&:hover {
 		background-color: var(--color-background-base);
@@ -349,6 +389,7 @@ function getActiveFilter(filterName: string): ActiveFilter | undefined {
 	border-radius: var(--border-radius-base);
 	background-color: var(--color-background-xlight);
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
+	z-index: 8000;
 }
 
 .filter-search-container {
@@ -430,5 +471,22 @@ function getActiveFilter(filterName: string): ActiveFilter | undefined {
 
 :deep(.filter-checkbox .el-checkbox__input) {
 	pointer-events: auto;
+}
+
+.custom-input-container {
+	padding: var(--spacing-4xs);
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
+	margin-bottom: var(--spacing-4xs);
+}
+
+:deep(.custom-value-input) {
+	.el-input__inner {
+		font-size: var(--font-size-2xs);
+		height: 28px;
+	}
+
+	.el-input__suffix {
+		align-items: center;
+	}
 }
 </style>

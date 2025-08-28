@@ -42,6 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const activeFilters = ref<ActiveFilter[]>([]);
 const searchQueries = ref<Record<string, string>>({});
+const customInputs = ref<Record<string, string>>({});
 
 const filterOptions = computed(() => props.filters);
 const hasActiveFilters = computed(() => activeFilters.value.length > 0);
@@ -110,6 +111,24 @@ function getFilteredOptions(filterLabel: string, options: string[]) {
 
 function updateSearchQuery(filterLabel: string, query: string) {
 	searchQueries.value[filterLabel] = query;
+}
+
+function addCustomValue(filterName: string, type: 'single' | 'multi') {
+	const customValue = customInputs.value[filterName]?.trim();
+	if (!customValue) return;
+
+	selectFilterValue(filterName, customValue, type);
+	customInputs.value[filterName] = '';
+}
+
+function handleCustomInputKeyup(
+	filterName: string,
+	type: 'single' | 'multi',
+	event: KeyboardEvent,
+) {
+	if (event.key === 'Enter') {
+		addCustomValue(filterName, type);
+	}
 }
 
 function handleCheckboxChange(
@@ -193,7 +212,7 @@ function handleCheckboxChange(
 							<DropdownMenuPortal>
 								<DropdownMenuSubContent class="filter-sub-content filter-sub-content-enhanced">
 									<!-- Search Bar -->
-									<div class="filter-search-container" v-if="filterOption.options.length > 10">
+									<div v-if="filterOption.options.length > 10">
 										<N8nInput
 											:modelValue="searchQueries[filterOption.label] || ''"
 											@update:modelValue="
@@ -203,11 +222,25 @@ function handleCheckboxChange(
 											size="small"
 											placeholder="Search..."
 											:clearable="true"
-											class="filter-search-input"
 										>
 											<template #prefix>
 												<N8nIcon icon="search" size="small" />
 											</template>
+										</N8nInput>
+									</div>
+
+									<!-- Custom Value Input -->
+									<div v-if="filterOption.allowCustomValues">
+										<N8nInput
+											v-model="customInputs[filterOption.label]"
+											type="text"
+											size="small"
+											:placeholder="`Add custom ${filterOption.label.toLowerCase()}...`"
+											@keyup="
+												(event) =>
+													handleCustomInputKeyup(filterOption.label, filterOption.type, event)
+											"
+										>
 										</N8nInput>
 									</div>
 
@@ -220,7 +253,7 @@ function handleCheckboxChange(
 										class="filter-options-scroll-area"
 									>
 										<template
-											v-for="option in getFilteredOptions(filterOption.label, filterOption.options)"
+											v-for="option in getFilteredOptions(filter, filterOption.options)"
 											:key="option"
 										>
 											<DropdownMenuItem
@@ -278,14 +311,22 @@ function handleCheckboxChange(
 				<N8nIconButton type="tertiary" :icon="action.icon" text />
 			</N8nTooltip>
 		</template>
-		<N8nButton v-if="primaryActionText" size="small">{{ props.primaryActionText }}</N8nButton>
 		<N8nTooltip v-if="!noTertiaryActions" content="More actions">
 			<N8nIconButton type="tertiary" icon="ellipsis" text />
 		</N8nTooltip>
+		<N8nButton v-if="primaryActionText" size="small">{{ props.primaryActionText }}</N8nButton>
 	</div>
 </template>
 
 <style scoped lang="scss">
+.active-filters {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
+	flex-wrap: wrap;
+	max-width: 100%;
+}
+
 .filter-button {
 	padding: 0;
 	background-color: transparent;
@@ -431,5 +472,22 @@ function handleCheckboxChange(
 
 :deep(.filter-checkbox .el-checkbox__input) {
 	pointer-events: auto;
+}
+
+.custom-input-container {
+	padding: var(--spacing-4xs);
+	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
+	margin-bottom: var(--spacing-4xs);
+}
+
+:deep(.custom-value-input) {
+	.el-input__inner {
+		font-size: var(--font-size-2xs);
+		height: 28px;
+	}
+
+	.el-input__suffix {
+		align-items: center;
+	}
 }
 </style>

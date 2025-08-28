@@ -332,29 +332,6 @@ const onSelect = (action: string) => {
 					</template>
 				</div>
 			</div>
-			<div
-				v-if="route.name !== VIEWS.PROJECT_SETTINGS"
-				ref="headerActionsRef"
-				:class="[$style.headerActions]"
-			>
-				<N8nTooltip
-					:disabled="!sourceControlStore.preferences.branchReadOnly"
-					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
-				>
-					<ProjectCreateResource
-						data-test-id="add-resource-buttons"
-						:actions="menu"
-						:disabled="sourceControlStore.preferences.branchReadOnly"
-						@action="onSelect"
-					>
-						<N8nButton
-							data-test-id="add-resource-workflow"
-							v-bind="createWorkflowButton"
-							@click="onSelect(ACTION_TYPES.WORKFLOW)"
-						/>
-					</ProjectCreateResource>
-				</N8nTooltip>
-			</div>
 		</div>
 		<slot></slot>
 		<div :class="$style.actions">
