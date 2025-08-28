@@ -17,12 +17,8 @@ export class WorkerViewPage extends BasePage {
 		return this.page.getByTestId('worker-view-unlicensed');
 	}
 
-	getMenuItems() {
-		return this.page.locator('.el-menu-item');
-	}
-
 	getWorkerMenuItem() {
-		return this.page.locator('#settings-workersview');
+		return this.page.getByText('Workers', { exact: true });
 	}
 
 	async visitWorkerView() {
