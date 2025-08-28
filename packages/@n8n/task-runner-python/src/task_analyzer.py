@@ -17,14 +17,25 @@ ERROR_EXTERNAL_DISALLOWED = "Import of external package '{module}' is disallowed
 ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
 ERROR_SECURITY_VIOLATIONS = "Security violations detected:\n{violations}"
 
-UNSAFE_ATTRIBUTES = {
-    "__class__",
-    "__bases__",
+ALWAYS_BLOCKED_ATTRIBUTES = {
     "__subclasses__",
     "__globals__",
+    "__builtins__",
+    "__traceback__",
+    "tb_frame",
+    "tb_next",
+    "f_back",
+    "f_globals",
+    "f_locals",
+    "f_code",
+    "f_builtins",
+}
+
+CONDITIONALLY_BLOCKED_ATTRIBUTES = {
+    "__class__",
+    "__bases__",
     "__code__",
     "__closure__",
-    "__builtins__",
     "__loader__",
     "__cached__",
     "__dict__",
@@ -35,6 +46,8 @@ UNSAFE_ATTRIBUTES = {
     "__setattr__",
     "__delattr__",
 }
+
+UNSAFE_ATTRIBUTES = ALWAYS_BLOCKED_ATTRIBUTES | CONDITIONALLY_BLOCKED_ATTRIBUTES
 
 
 class ImportValidator(ast.NodeVisitor):
@@ -75,8 +88,8 @@ class ImportValidator(ast.NodeVisitor):
         """Detect access to unsafe attributes that could bypass security."""
 
         if node.attr in UNSAFE_ATTRIBUTES:
-            # Always block
-            if node.attr in ["__subclasses__", "__globals__", "__builtins__"]:
+            # Block regardless of context
+            if node.attr in ALWAYS_BLOCKED_ATTRIBUTES:
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
                 )
@@ -85,7 +98,7 @@ class ImportValidator(ast.NodeVisitor):
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
                 )
-            # Block __class__ on literals (e.g., "".__class__)
+            # Block only on literals (e.g., "".__class__)
             elif node.attr == "__class__" and isinstance(node.value, (ast.Constant)):
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
