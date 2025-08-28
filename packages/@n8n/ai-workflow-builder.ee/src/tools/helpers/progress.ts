@@ -10,6 +10,11 @@ import type {
 
 /**
  * Create a progress reporter for a tool execution
+ *
+ * @param config
+ * @param toolName
+ * @param displayTitle the general tool action name, for example "Searching for nodes"
+ * @param customTitle custom title per tool call, for example "Searching for OpenAI"
  */
 export function createProgressReporter<TToolName extends string = string>(
 	config: ToolRunnableConfig & LangGraphRunnableConfig,

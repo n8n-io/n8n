@@ -78,13 +78,13 @@ function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assis
 		}
 
 		// Collect consecutive tool messages with the same toolName
-		const toolMessages = [currentMsg];
+		const toolMessagesGroup = [currentMsg];
 		let j = i + 1;
 
 		while (j < messages.length) {
 			const nextMsg = messages[j];
 			if (isToolMessage(nextMsg) && nextMsg.toolName === currentMsg.toolName) {
-				toolMessages.push(nextMsg);
+				toolMessagesGroup.push(nextMsg);
 				j++;
 			} else {
 				break;
@@ -92,14 +92,14 @@ function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assis
 		}
 
 		// If we have multiple tool messages with the same toolName, collapse them
-		if (toolMessages.length > 1) {
+		if (toolMessagesGroup.length > 1) {
 			// Determine the status to show based on priority rules
-			const lastMessage = toolMessages[toolMessages.length - 1];
+			const lastMessage = toolMessagesGroup[toolMessagesGroup.length - 1];
 			let titleSource = lastMessage;
 
 			// Check if we have running messages - if so, show the last running one and use its titles
-			const runningMessages = toolMessages.filter((msg) => msg.status === 'running');
-			const errorMessage = toolMessages.find((msg) => msg.status === 'error');
+			const runningMessages = toolMessagesGroup.filter((msg) => msg.status === 'running');
+			const errorMessage = toolMessagesGroup.find((msg) => msg.status === 'error');
 			if (runningMessages.length > 0) {
 				const lastRunning = runningMessages[runningMessages.length - 1];
 				titleSource = lastRunning;
@@ -108,7 +108,7 @@ function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assis
 			}
 
 			// Combine all updates from all tool messages
-			const combinedUpdates = toolMessages.flatMap((msg) => msg.updates || []);
+			const combinedUpdates = toolMessagesGroup.flatMap((msg) => msg.updates || []);
 
 			// Create collapsed message with title logic based on final status
 			const collapsedMessage: ChatUI.ToolMessage = {
