@@ -32,7 +32,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['DataStore', 'DataStoreColumn', 'Project', 'ProjectRelation']);
+	await testDb.truncate(['DataTable', 'DataTableColumn', 'Project', 'ProjectRelation']);
 
 	owner = await createOwner();
 	member = await createMember();
@@ -337,11 +337,11 @@ describe('GET /data-stores-global', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-column-1',
+					name: 'test_column_1',
 					type: 'string',
 				},
 				{
-					name: 'test-column-2',
+					name: 'test_column_2',
 					type: 'boolean',
 				},
 			],

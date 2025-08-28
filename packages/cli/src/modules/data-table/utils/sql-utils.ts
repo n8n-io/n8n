@@ -1,8 +1,4 @@
-import {
-	DATA_STORE_COLUMN_REGEX,
-	type DataStoreCreateColumnSchema,
-	type DataStoreColumn,
-} from '@n8n/api-types';
+import { DATA_STORE_COLUMN_REGEX, type DataStoreCreateColumnSchema } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import type {
@@ -14,6 +10,7 @@ import type {
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { DataStoreUserTableName } from '../data-store.types';
+import type { DataTableColumn } from '../data-table-column.entity';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -213,7 +210,7 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 	}
 }
 
-export function normalizeRows(rows: DataStoreRowsReturn, columns: DataStoreColumn[]) {
+export function normalizeRows(rows: DataStoreRowsReturn, columns: DataTableColumn[]) {
 	// we need to normalize system dates as well
 	const systemColumns = [
 		{ name: 'createdAt', type: 'date' },

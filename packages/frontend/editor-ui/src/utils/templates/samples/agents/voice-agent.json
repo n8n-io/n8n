@@ -1,8 +1,8 @@
 {
-	"name": "Voice assistant agent (with Telegram and Gcal)",
+	"name": "Voice assistant agent",
 	"meta": {
 		"templateCredsSetupCompleted": false,
-		"templateId": "voice_assistant_agent_with_telegram_and_gcal"
+		"templateId": "voice_assistant_agent_with_telegram"
 	},
 	"nodes": [
 		{
@@ -127,26 +127,6 @@
 		},
 		{
 			"parameters": {
-				"operation": "getAll",
-				"calendar": {
-					"__rl": true,
-					"value": "robert@n8n.io",
-					"mode": "list",
-					"cachedResultName": "robert@n8n.io"
-				},
-				"timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
-				"timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
-				"options": {}
-			},
-			"type": "n8n-nodes-base.googleCalendarTool",
-			"typeVersion": 1.3,
-			"position": [928, 288],
-			"id": "a533f343-5bf8-48d7-bc35-b12072e32602",
-			"name": "Get events",
-			"credentials": {}
-		},
-		{
-			"parameters": {
 				"model": {
 					"__rl": true,
 					"value": "gpt-4.1-mini",
@@ -164,23 +144,10 @@
 		},
 		{
 			"parameters": {
-				"content": "### Voice assistant agent\nPersonal AI assistant in Telegram, handling both text and voice messages, and can access your Google Calendar.\n\n#### Set up\n- Configure credentials in the **Telegram**, **Model** and **Get events** nodes\n- Follow the bot creation steps in our [Telegram docs](https://docs.n8n.io/integrations/builtin/credentials/telegram/#supported-authentication-methods)\n- Add your user ID to the **Telegram Message Trigger** so only you can access it\n- Activate the workflow to recieve messages from Telegram\n- Send a message to the agent, e.g. What's in my calendar today?\n\n#### Next steps\nTry giving the agent more tools, so that it can draft emails and events for you from just a message.\n",
-				"height": 496,
-				"width": 304,
-				"color": 5
-			},
-			"type": "n8n-nodes-base.stickyNote",
-			"position": [-576, -80],
-			"typeVersion": 1,
-			"id": "a4a8f73c-f663-4ee6-b60e-d60722145726",
-			"name": "Sticky Note"
-		},
-		{
-			"parameters": {
 				"promptType": "define",
 				"text": "={{ $json.text || $json.message.text }}",
 				"options": {
-					"systemMessage": "=# Telegram Personal AI Assistant System Prompt\n\nYou are a helpful personal AI assistant that communicates with users through Telegram. You can handle both text and voice messages, and you have access to the user's email and calendar to provide comprehensive assistance.\n\n## Your Capabilities\n\nYou can help users with:\n- **General conversation** - Answer questions and provide information\n- **Email management** - Check and retrieve emails from their Gmail account\n- **Calendar assistance** - View upcoming events and schedule information\n- **Voice interaction** - Respond to transcribed voice messages naturally\n- **Personal productivity** - Help organize and manage daily tasks\n\n## Communication Style\n\n### Response Format\n- Keep responses conversational and friendly\n- Use appropriate length for Telegram (not too long)\n- Be helpful and informative\n- Match the user's tone and communication style\n\n### Voice Message Handling\n- When users send voice messages, respond naturally as if they spoke to you directly\n- Don't mention that their message was transcribed\n- Respond in a conversational way that flows naturally\n\n## Tool Usage Guidelines\n\n### Email Tool (Get emails)\n- Use when users ask about emails, messages, or communication\n- Can filter by date ranges when specified\n- Help users find specific emails or get summaries\n- Examples: \"Check my recent emails\", \"Any important messages today?\"\n\n### Calendar Tool (Get events)\n- Use when users ask about schedule, meetings, or appointments\n- Can check specific date ranges\n- Help with scheduling conflicts or availability\n- Examples: \"What's on my calendar today?\", \"Am I free tomorrow afternoon?\"\n\n## Context Awareness\n\n- Remember the current date and time: **Today is {{ $now.format('cccc') }} the {{ $now.format('yyyy-MM-dd HH:mm') }}**\n- Use this information to provide relevant, timely responses\n- Reference \"today\", \"tomorrow\", \"this week\" appropriately\n\n## User Interaction Examples\n\n### Email Queries\n**User**: \"Any important emails today?\"\n**You**: \"Let me check your recent emails...\" *[uses Get emails tool]*\n\n### Calendar Queries  \n**User**: \"What's my schedule like tomorrow?\"\n**You**: \"I'll check your calendar for tomorrow...\" *[uses Get events tool]*\n\n### General Assistance\n**User**: \"How's the weather?\"\n**You**: \"I don't have access to weather data, but you could check your local weather app or ask me to help with your emails or calendar instead!\"\n\n## Important Guidelines\n\n- Maintain conversation context using the memory system\n- Be proactive in offering help with emails and calendar\n- Ask clarifying questions when requests are ambiguous\n- Respect privacy - only access information when relevant to the request\n- If you can't help with something, suggest alternatives or redirect to your available capabilities\n\nRemember: You're a personal assistant, so be personable, helpful, and focused on making the user's day easier and more organized.\n\nToday is {{ $now.format('cccc') }} the {{ $now.format('yyyy-MM-dd HH:mm') }}."
+					"systemMessage": "=# Telegram Personal AI Assistant System Prompt\n\nYou are a helpful personal AI assistant that communicates with users through Telegram.\n\n## Your Capabilities\n\nYou can help users with:\n- **General conversation** - Answer questions and provide information\n\n## Communication Style\n\n### Response Format\n- Keep responses conversational and friendly\n- Use appropriate length for Telegram (not too long)\n- Be helpful and informative\n- Match the user's tone and communication style\n\n### Voice Message Handling\n- When users send voice messages, respond naturally as if they spoke to you directly\n- Don't mention that their message was transcribed\n- Respond in a conversational way that flows naturally\n\n\n## Context Awareness\n\n- Remember the current date and time: **Today is {{ $now.format('cccc') }} the {{ $now.format('yyyy-MM-dd HH:mm') }}**\n- Use this information to provide relevant, timely responses\n- Reference \"today\", \"tomorrow\", \"this week\" appropriately\n\n## Important Guidelines\n\n- Maintain conversation context using the memory system\n- Ask clarifying questions when requests are ambiguous\n- Respect privacy - only access information when relevant to the request\n- If you can't help with something, suggest alternatives or redirect to your available capabilities\n\nRemember: You're a personal assistant, so be personable, helpful, and focused on making the user's day easier and more organized.\n\nToday is {{ $now.format('cccc') }} the {{ $now.format('yyyy-MM-dd HH:mm') }}."
 				}
 			},
 			"id": "f958d2f6-6602-4443-bfae-ef628af09b84",
@@ -190,7 +157,6 @@
 			"position": [704, 0]
 		}
 	],
-	"pinData": {},
 	"connections": {
 		"Telegram Message Trigger": {
 			"main": [
@@ -265,17 +231,6 @@
 				]
 			]
 		},
-		"Get events": {
-			"ai_tool": [
-				[
-					{
-						"node": "Assistant Agent",
-						"type": "ai_tool",
-						"index": 0
-					}
-				]
-			]
-		},
 		"Model": {
 			"ai_languageModel": [
 				[
@@ -299,6 +254,7 @@
 			]
 		}
 	},
+	"pinData": {},
 	"active": false,
 	"settings": {
 		"executionOrder": "v1"

@@ -38,18 +38,28 @@ import {
 	ClientSideRowModelApiModule,
 	ValidationModule,
 	UndoRedoEditModule,
+	CellStyleModule,
 } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
-import AddColumnPopover from '@/features/dataStore/components/dataGrid/AddColumnPopover.vue';
 import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { DEFAULT_ID_COLUMN_NAME, EMPTY_VALUE, NULL_VALUE } from '@/features/dataStore/constants';
+import {
+	DEFAULT_ID_COLUMN_NAME,
+	EMPTY_VALUE,
+	NULL_VALUE,
+	DATA_STORE_ID_COLUMN_WIDTH,
+	DATA_STORE_HEADER_HEIGHT,
+	DATA_STORE_ROW_HEIGHT,
+	ADD_ROW_ROW_ID,
+} from '@/features/dataStore/constants';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
+import AddColumnButton from '@/features/dataStore/components/dataGrid/AddColumnButton.vue';
+import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.vue';
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue';
 import { onClickOutside } from '@vueuse/core';
@@ -68,6 +78,7 @@ ModuleRegistry.registerModules([
 	DateEditorModule,
 	ClientSideRowModelApiModule,
 	UndoRedoEditModule,
+	CellStyleModule,
 ]);
 
 type Props = {
@@ -83,7 +94,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
-const { getDefaultValueForType, mapToAGCellType } = useDataStoreTypes();
+const { mapToAGCellType } = useDataStoreTypes();
 
 const dataStoreStore = useDataStoreStore();
 
@@ -94,7 +105,8 @@ const rowData = ref<DataStoreRow[]>([]);
 const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
 	mode: 'multiRow',
 	enableClickSelection: false,
-	checkboxes: true,
+	checkboxes: (params) => params.data?.id !== ADD_ROW_ROW_ID,
+	isRowSelectable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 };
 
 const contentLoading = ref(false);
@@ -105,13 +117,6 @@ const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
 const isTextEditorOpen = ref(false);
 
 const gridContainer = useTemplateRef('gridContainer');
-
-// Shared config for all columns
-const defaultColumnDef: ColDef = {
-	flex: 1,
-	sortable: false,
-	filter: false,
-};
 
 // Pagination
 const pageSizeOptions = [10, 20, 50];
@@ -132,7 +137,12 @@ const onGridReady = (params: GridReadyEvent) => {
 const refreshGridData = () => {
 	if (gridApi.value) {
 		gridApi.value.setGridOption('columnDefs', colDefs.value);
-		gridApi.value.setGridOption('rowData', rowData.value);
+		gridApi.value.setGridOption('rowData', [
+			...rowData.value,
+			{
+				id: ADD_ROW_ROW_ID,
+			},
+		]);
 	}
 };
 
@@ -189,7 +199,7 @@ const onDeleteColumn = async (columnId: string) => {
 	}
 };
 
-const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload }) => {
+const onAddColumn = async (column: DataStoreColumnCreatePayload) => {
 	try {
 		const newColumn = await dataStoreStore.addDataStoreColumn(
 			props.dataStore.id,
@@ -199,9 +209,13 @@ const onAddColumn = async ({ column }: { column: DataStoreColumnCreatePayload })
 		if (!newColumn) {
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
-		colDefs.value = [...colDefs.value, createColumnDef(newColumn)];
+		colDefs.value = [
+			...colDefs.value.slice(0, -1),
+			createColumnDef(newColumn),
+			...colDefs.value.slice(-1),
+		];
 		rowData.value = rowData.value.map((row) => {
-			return { ...row, [newColumn.name]: getDefaultValueForType(newColumn.type) };
+			return { ...row, [newColumn.name]: null };
 		});
 		refreshGridData();
 	} catch (error) {
@@ -214,13 +228,24 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		colId: col.id,
 		field: col.name,
 		headerName: col.name,
-		editable: true,
+		sortable: false,
+		flex: 1,
+		editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 		resizable: true,
 		lockPinned: true,
 		headerComponent: ColumnHeader,
 		cellEditorPopup: false,
 		headerComponentParams: { onDelete: onDeleteColumn },
 		cellDataType: mapToAGCellType(col.type),
+		cellClass: (params) => {
+			if (params.data?.id === ADD_ROW_ROW_ID) {
+				return 'add-row-cell';
+			}
+			if (params.column.getUserProvidedColDef()?.cellDataType === 'boolean') {
+				return 'boolean-cell';
+			}
+			return '';
+		},
 		valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
 			// If the value is null, return null to show empty cell
 			if (params.data?.[col.name] === null || params.data?.[col.name] === undefined) {
@@ -236,6 +261,9 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 			return params.data?.[col.name];
 		},
 		cellRendererSelector: (params: ICellRendererParams) => {
+			if (params.data?.id === ADD_ROW_ROW_ID || col.id === 'add-column') {
+				return {};
+			}
 			let rowValue = params.data?.[col.name];
 			// When adding new column, rowValue is undefined (same below, in string cell editor)
 			if (rowValue === undefined) {
@@ -289,7 +317,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 	// Setup date editor
 	if (col.type === 'date') {
 		columnDef.cellEditor = 'agDateCellEditor';
-		columnDef.cellEditorPopup = true;
+		columnDef.cellEditorPopup = false;
 	}
 	return {
 		...columnDef,
@@ -324,8 +352,8 @@ const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 const onAddRowClick = async () => {
 	try {
 		// Go to last page if we are not there already
-		if (currentPage.value * pageSize.value < totalItems.value) {
-			await setCurrentPage(Math.ceil(totalItems.value / pageSize.value));
+		if (currentPage.value * pageSize.value < totalItems.value + 1) {
+			await setCurrentPage(Math.ceil((totalItems.value + 1) / pageSize.value));
 		}
 		contentLoading.value = true;
 		emit('toggleSave', true);
@@ -335,7 +363,9 @@ const onAddRowClick = async () => {
 		props.dataStore.columns.forEach((col) => {
 			newRow[col.name] = null;
 		});
-		rows.value.push(newRow);
+		rowData.value.push(newRow);
+		totalItems.value += 1;
+		refreshGridData();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 	} finally {
@@ -360,10 +390,42 @@ const initColumnDefinitions = () => {
 				suppressMovable: true,
 				headerComponent: null,
 				lockPosition: true,
+				minWidth: DATA_STORE_ID_COLUMN_WIDTH,
+				maxWidth: DATA_STORE_ID_COLUMN_WIDTH,
+				resizable: false,
+				cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'id-column'),
+				cellRendererSelector: (params: ICellRendererParams) => {
+					if (params.value === ADD_ROW_ROW_ID) {
+						return {
+							component: AddRowButton,
+							params: {
+								onClick: onAddRowClick,
+							},
+						};
+					}
+					return undefined;
+				},
 			},
 		),
 		// Append other columns
 		...orderBy(props.dataStore.columns, 'index').map((col) => createColumnDef(col)),
+		createColumnDef(
+			{
+				index: props.dataStore.columns.length + 1,
+				id: 'add-column',
+				name: 'Add Column',
+				type: 'string',
+			},
+			{
+				editable: false,
+				suppressMovable: true,
+				lockPinned: true,
+				lockPosition: 'right',
+				resizable: false,
+				headerComponent: AddColumnButton,
+				headerComponentParams: { onAddColumn },
+			},
+		),
 	];
 };
 
@@ -404,8 +466,11 @@ const onCellClicked = (params: CellClickedEvent<DataStoreRow>) => {
 	const clickedCellColumn = params.column.getColId();
 	const clickedCellRow = params.rowIndex;
 
-	// Skip if rowIndex is null
-	if (clickedCellRow === null) return;
+	if (
+		clickedCellRow === null ||
+		params.api.isEditing({ rowIndex: clickedCellRow, column: params.column, rowPinned: null })
+	)
+		return;
 
 	// Check if this is the same cell that was focused before this click
 	const wasAlreadyFocused =
@@ -437,10 +502,9 @@ const fetchDataStoreContent = async () => {
 			currentPage.value,
 			pageSize.value,
 		);
-		rows.value = fetchedRows.data;
+		rowData.value = fetchedRows.data;
 		totalItems.value = fetchedRows.count;
-		rowData.value = rows.value;
-
+		refreshGridData();
 		handleClearSelection();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.fetchContent.error'));
@@ -544,6 +608,11 @@ const handleClearSelection = () => {
 		gridApi.value.deselectAll();
 	}
 };
+
+defineExpose({
+	addRow: onAddRowClick,
+	addColumn: onAddColumn,
+});
 </script>
 
 <template>
@@ -551,12 +620,9 @@ const handleClearSelection = () => {
 		<div ref="gridContainer" :class="$style['grid-container']" data-test-id="data-store-grid">
 			<AgGridVue
 				style="width: 100%"
-				:row-data="rowData"
-				:column-defs="colDefs"
-				:default-col-def="defaultColumnDef"
 				:dom-layout="'autoHeight'"
-				:row-height="36"
-				:header-height="36"
+				:row-height="DATA_STORE_ROW_HEIGHT"
+				:header-height="DATA_STORE_HEADER_HEIGHT"
 				:animate-rows="false"
 				:theme="n8nTheme"
 				:suppress-drag-leave-hides-columns="true"
@@ -574,22 +640,8 @@ const handleClearSelection = () => {
 				@column-header-clicked="resetLastFocusedCell"
 				@selection-changed="onSelectionChanged"
 			/>
-			<AddColumnPopover
-				:data-store="props.dataStore"
-				:class="$style['add-column-popover']"
-				@add-column="onAddColumn"
-			/>
 		</div>
 		<div :class="$style.footer">
-			<n8n-tooltip :content="i18n.baseText('dataStore.addRow.label')">
-				<n8n-icon-button
-					data-test-id="data-store-add-row-button"
-					icon="plus"
-					class="mb-xl"
-					type="secondary"
-					@click="onAddRowClick"
-				/>
-			</n8n-tooltip>
 			<el-pagination
 				v-model:current-page="currentPage"
 				v-model:page-size="pageSize"
@@ -615,7 +667,6 @@ const handleClearSelection = () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-m);
-	width: calc(100% - var(--spacing-m) * 2);
 	align-items: center;
 }
 
@@ -626,22 +677,35 @@ const handleClearSelection = () => {
 
 	// AG Grid style overrides
 	--ag-foreground-color: var(--color-text-base);
-	--ag-accent-color: var(--color-primary);
+	--ag-cell-text-color: var(--color-text-dark);
+	--ag-accent-color: var(--p-color-secondary-470);
+	--ag-row-hover-color: var(--color-background-light-base);
 	--ag-background-color: var(--color-background-xlight);
 	--ag-border-color: var(--border-color-base);
 	--ag-border-radius: var(--border-radius-base);
 	--ag-wrapper-border-radius: 0;
 	--ag-font-family: var(--font-family);
 	--ag-font-size: var(--font-size-xs);
+	--ag-font-color: var(--color-text-base);
 	--ag-row-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 	--ag-header-background-color: var(--color-background-light-base);
 	--ag-header-font-size: var(--font-size-xs);
-	--ag-header-font-weight: var(--font-weight-bold);
+	--ag-header-font-weight: var(--font-weight-medium);
 	--ag-header-foreground-color: var(--color-text-dark);
 	--ag-cell-horizontal-padding: var(--spacing-2xs);
-	--ag-header-column-resize-handle-color: var(--color-foreground-base);
-	--ag-header-column-resize-handle-height: 100%;
 	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);
+	--ag-header-column-border-height: 100%;
+	--ag-range-selection-border-color: var(--p-color-secondary-470);
+	--ag-input-padding-start: var(--spacing-2xs);
+	--ag-input-background-color: var(--color-text-xlight);
+	--ag-focus-shadow: none;
+
+	--cell-editing-border: 2px solid var(--color-secondary);
+
+	:global(.ag-cell) {
+		display: flex;
+		align-items: center;
+	}
 
 	:global(.ag-header-cell-resize) {
 		width: var(--spacing-xs);
@@ -649,26 +713,101 @@ const handleClearSelection = () => {
 		right: -7px;
 	}
 
-	// Don't show borders for the checkbox cells
 	:global(.ag-cell[col-id='ag-Grid-SelectionColumn']) {
 		border: none;
+		padding-left: var(--spacing-l);
+	}
+
+	:global(.ag-header-cell[col-id='ag-Grid-SelectionColumn']) {
+		padding-left: var(--spacing-l);
+		&:after {
+			display: none;
+		}
 	}
 
 	:global(.ag-cell[col-id='ag-Grid-SelectionColumn'].ag-cell-focus) {
 		outline: none;
 	}
-}
 
-.add-column-popover {
-	display: flex;
-	position: absolute;
-	right: -47px;
+	:global(.ag-root-wrapper) {
+		border-left: none;
+	}
+
+	:global(.id-column) {
+		color: var(--color-text-light);
+		justify-content: center;
+	}
+
+	:global(.ag-header-cell[col-id='id']) {
+		text-align: center;
+	}
+
+	:global(.add-row-cell) {
+		border: none !important;
+		background-color: transparent !important;
+	}
+
+	:global(.ag-header-cell[col-id='add-column']) {
+		&:after {
+			display: none;
+		}
+	}
+
+	:global(.ag-cell-value[col-id='add-column']),
+	:global(.ag-cell-value[col-id='id']),
+	:global(.ag-cell[col-id='ag-Grid-SelectionColumn']) {
+		border: none;
+		background-color: transparent;
+	}
+
+	:global(.ag-cell-value[col-id='id']) {
+		border-right: 1px solid var(--ag-border-color);
+	}
+
+	:global(.ag-large-text-input) {
+		position: fixed;
+		padding: 0;
+
+		textarea {
+			padding-top: var(--spacing-xs);
+
+			&:where(:focus-within, :active) {
+				border: var(--cell-editing-border);
+			}
+		}
+	}
+
+	:global(.ag-center-cols-viewport) {
+		min-height: auto;
+	}
+
+	:global(.ag-checkbox-input-wrapper) {
+		&:where(:focus-within, :active) {
+			box-shadow: none;
+		}
+	}
+
+	:global(.ag-cell-inline-editing) {
+		box-shadow: none;
+
+		&:global(.boolean-cell) {
+			border: var(--cell-editing-border) !important;
+
+			&:global(.ag-cell-focus) {
+				background-color: var(--grid-cell-active-background);
+			}
+		}
+	}
+
+	:global(.ag-cell-focus) {
+		background-color: var(--grid-row-selected-background);
+	}
 }
 
 .footer {
 	display: flex;
 	width: 100%;
-	justify-content: space-between;
+	justify-content: flex-end;
 	margin-bottom: var(--spacing-l);
 	padding-right: var(--spacing-xl);
 
