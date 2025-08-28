@@ -28,7 +28,6 @@ const DEFAULT_DATA_STORE: DataStoreResource = {
 	id: '1',
 	name: 'Test Data Store',
 	sizeBytes: 1024,
-	recordCount: 100,
 	columns: [],
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
@@ -84,7 +83,6 @@ describe('DataStoreCard', () => {
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('data-store-card-icon')).toBeInTheDocument();
 		expect(getByTestId('data-store-card-name')).toHaveTextContent(DEFAULT_DATA_STORE.name);
-		expect(getByTestId('data-store-card-record-count')).toBeInTheDocument();
 		expect(getByTestId('data-store-card-column-count')).toBeInTheDocument();
 		expect(getByTestId('data-store-card-last-updated')).toHaveTextContent('Last updated');
 		expect(getByTestId('data-store-card-created')).toHaveTextContent('Created');
@@ -112,13 +110,6 @@ describe('DataStoreCard', () => {
 			'href',
 			`/projects/${DEFAULT_DATA_STORE.projectId}/datatables/${DEFAULT_DATA_STORE.id}`,
 		);
-	});
-
-	it('should display record count information', () => {
-		const { getByTestId } = renderComponent();
-		const recordCountElement = getByTestId('data-store-card-record-count');
-		expect(recordCountElement).toBeInTheDocument();
-		expect(recordCountElement).toHaveTextContent(`${DEFAULT_DATA_STORE.recordCount}`);
 	});
 
 	it('should display column count information', () => {
