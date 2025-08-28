@@ -139,13 +139,11 @@ describe('SourceControlGitService', () => {
 					'GIT_SSH_COMMAND',
 					expect.stringContaining('C:/Users/Test/.n8n/.ssh/known_hosts'), // Forward slashes
 				);
-				// Ensure no backslashes remain in the SSH command (check the actual call)
-				const sshCommandCall = mockGitInstance.env.mock.calls.find(
-					(call: any) => call[0] === 'GIT_SSH_COMMAND',
+				// Ensure no backslashes remain in the SSH command
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.not.stringContaining('\\'),
 				);
-				expect(sshCommandCall).toBeDefined();
-				const sshCommand = sshCommandCall[1] as string;
-				expect(sshCommand).not.toContain('\\');
 			});
 
 			it('should create properly quoted SSH command', () => {

@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
+import type { InstanceSettings, Cipher } from 'n8n-core';
 import { readFile, access, mkdir } from 'fs/promises';
 import os from 'os';
 import path from 'path';
@@ -46,7 +46,7 @@ describe('SourceControlPreferencesService', () => {
 				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\r\nkey\r\ndata\r\n-----END OPENSSH PRIVATE KEY-----\r\n';
 			const expectedNormalizedKey = keyWithCRLF.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-			const mockCipher = mock();
+			const mockCipher = mock<Cipher>();
 			mockCipher.decrypt.mockReturnValue(keyWithCRLF);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
@@ -78,7 +78,7 @@ describe('SourceControlPreferencesService', () => {
 			const keyWithMixedEndings =
 				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\rkey\r\ndata\r-----END OPENSSH PRIVATE KEY-----\n';
 
-			const mockCipher = mock();
+			const mockCipher = mock<Cipher>();
 			mockCipher.decrypt.mockReturnValue(keyWithMixedEndings);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
@@ -112,7 +112,7 @@ describe('SourceControlPreferencesService', () => {
 			const keyWithLF =
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n';
 
-			const mockCipher = mock();
+			const mockCipher = mock<Cipher>();
 			mockCipher.decrypt.mockReturnValue(keyWithLF);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
@@ -152,7 +152,7 @@ describe('SourceControlPreferencesService', () => {
 			const testKey =
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
 
-			const mockCipher = mock();
+			const mockCipher = mock<Cipher>();
 			mockCipher.decrypt.mockReturnValue(testKey);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
@@ -208,7 +208,7 @@ describe('SourceControlPreferencesService', () => {
 			const testKey =
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
 
-			const mockCipher = mock();
+			const mockCipher = mock<Cipher>();
 			mockCipher.decrypt.mockReturnValue(testKey);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
