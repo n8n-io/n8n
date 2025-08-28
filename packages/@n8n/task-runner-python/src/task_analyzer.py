@@ -20,6 +20,8 @@ ERROR_SECURITY_VIOLATIONS = "Security violations detected:\n{violations}"
 
 
 class ImportValidator(ast.NodeVisitor):
+    """AST visitor that enforces import allowlists."""
+
     def __init__(self, stdlib_allow: Set[str], external_allow: Set[str]):
         self.checked_modules: Set[str] = set()
         self.violations: list[str] = []
