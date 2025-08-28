@@ -269,7 +269,7 @@ describe('useBuilderMessages', () => {
 			expect(result.messages[2].id).toBe('batch-id-2');
 		});
 
-		it('should show running tools message when tools are in progress', () => {
+		it('should show thinking message when tools are in progress', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
 			const newMessages: ChatRequest.MessageResponse[] = [
 				{
@@ -289,11 +289,11 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
+			expect(result.thinkingMessage).toBe(undefined);
 			expect(result.shouldClearThinking).toBe(false);
 		});
 
-		it('should show processing message when tools are completed but no text response yet', () => {
+		it('should show thinking message when tools are completed but no text response yet', () => {
 			const currentMessages: ChatUI.AssistantMessage[] = [];
 			const newMessages: ChatRequest.MessageResponse[] = [
 				{
@@ -316,7 +316,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(1);
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 			expect(result.shouldClearThinking).toBe(false);
 		});
 
@@ -389,11 +389,11 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should show "aiAssistant.thinkingSteps.runningTools" for the new running tool, not "aiAssistant.thinkingSteps.processingResults"
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
+			// Should not show thinking message as new tool is running
+			expect(result.thinkingMessage).toBe(undefined);
 		});
 
-		it('should show processing message when second tool completes', () => {
+		it('should show thinking message when second tool completes', () => {
 			// Both tools completed
 			const currentMessages: ChatUI.AssistantMessage[] = [
 				{
@@ -426,7 +426,7 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 		});
 
 		it('should keep showing running tools message when parallel tools complete one by one', () => {
@@ -473,8 +473,8 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should still show "aiAssistant.thinkingSteps.runningTools" because call-456 is still running
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
+			// Should not show thinking because call-456 is still running
+			expect(result.thinkingMessage).toBe(undefined);
 
 			// Verify first tool is now completed
 			const firstTool = result.messages.find(
@@ -489,7 +489,7 @@ describe('useBuilderMessages', () => {
 			expect(secondTool.status).toBe('running');
 		});
 
-		it('should show processing results when all parallel tools complete', () => {
+		it('should show thinking message when all parallel tools complete', () => {
 			// One tool already completed, one still running
 			const currentMessages: ChatUI.AssistantMessage[] = [
 				{
@@ -533,11 +533,11 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should now show "aiAssistant.thinkingSteps.processingResults" because all tools are completed
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
+			// Should now show thinking because all tools are completed but no text response yet
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 		});
 
-		it('should keep processing message when workflow-updated arrives after tools complete', () => {
+		it('should keep thinking message when workflow-updated arrives after tools complete', () => {
 			// Tool completed
 			const currentMessages: ChatUI.AssistantMessage[] = [
 				{
@@ -568,13 +568,13 @@ describe('useBuilderMessages', () => {
 			);
 
 			expect(result.messages).toHaveLength(2);
-			// Should still show "aiAssistant.thinkingSteps.processingResults" because workflow-updated is not a text response
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
+			// Should still show thinking because workflow-updated is not a text response
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 			// Should NOT clear thinking for workflow updates
 			expect(result.shouldClearThinking).toBe(false);
 		});
 
-		it('should clear processing message only when text arrives after workflow-updated', () => {
+		it('should clear thinking message only when text arrives after workflow-updated', () => {
 			// Tool completed and workflow updated
 			const currentMessages: ChatUI.AssistantMessage[] = [
 				{
@@ -1263,7 +1263,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			let result = builderMessages.processAssistantMessages(currentMessages, batch1, 'batch-1');
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.runningTools');
+			expect(result.thinkingMessage).toBe(undefined);
 			currentMessages = result.messages;
 
 			// Second batch: tool completes
@@ -1279,7 +1279,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			result = builderMessages.processAssistantMessages(currentMessages, batch2, 'batch-2');
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 			currentMessages = result.messages;
 
 			// Third batch: workflow updated
@@ -1292,7 +1292,7 @@ describe('useBuilderMessages', () => {
 			];
 
 			result = builderMessages.processAssistantMessages(currentMessages, batch3, 'batch-3');
-			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.processingResults');
+			expect(result.thinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 			currentMessages = result.messages;
 
 			// Fourth batch: final text response
@@ -1450,6 +1450,244 @@ describe('useBuilderMessages', () => {
 			expect(result[0]).not.toHaveProperty('ratingStyle');
 			expect(result[1]).toEqual(messages[1]); // tool message unchanged
 			expect(result[2]).toEqual(messages[2]); // text without rating unchanged
+		});
+	});
+
+	describe('error message handling with retry', () => {
+		it('should pass retry function to error messages from processAssistantMessages', () => {
+			const retryFn = vi.fn(async () => {});
+			const currentMessages: ChatUI.AssistantMessage[] = [];
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'Something went wrong',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				retryFn,
+			);
+
+			expect(result.messages).toHaveLength(1);
+			const errorMessage = result.messages[0] as ChatUI.ErrorMessage;
+			expect(errorMessage).toMatchObject({
+				id: 'test-id-0',
+				role: 'assistant',
+				type: 'error',
+				content: 'Something went wrong',
+				read: false,
+			});
+			expect(errorMessage.retry).toBe(retryFn);
+		});
+
+		it('should not pass retry function to non-error messages', () => {
+			const retryFn = vi.fn(async () => {});
+			const currentMessages: ChatUI.AssistantMessage[] = [];
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'message',
+					role: 'assistant',
+					text: 'This is a normal text message',
+				},
+				{
+					role: 'assistant',
+					type: 'tool',
+					toolName: 'add_nodes',
+					toolCallId: 'call-1',
+					status: 'running',
+					updates: [],
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				retryFn,
+			);
+
+			expect(result.messages).toHaveLength(2);
+
+			const textMessage = result.messages[0] as ChatUI.TextMessage;
+			expect(textMessage.type).toBe('text');
+			expect('retry' in textMessage).toBe(false);
+
+			const toolMessage = result.messages[1] as ChatUI.ToolMessage;
+			expect(toolMessage.type).toBe('tool');
+			expect('retry' in toolMessage).toBe(false);
+		});
+
+		it('should clear retry from previous error messages when processing new messages', () => {
+			const oldRetryFn = vi.fn(async () => {});
+			const newRetryFn = vi.fn(async () => {});
+
+			const currentMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'error-1',
+					role: 'assistant',
+					type: 'error',
+					content: 'First error',
+					retry: oldRetryFn,
+					read: false,
+				} as ChatUI.ErrorMessage,
+				{
+					id: 'error-2',
+					role: 'assistant',
+					type: 'error',
+					content: 'Second error',
+					retry: oldRetryFn,
+					read: false,
+				} as ChatUI.ErrorMessage,
+			];
+
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'New error',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				newRetryFn,
+			);
+
+			expect(result.messages).toHaveLength(3);
+
+			// First error should have retry removed
+			const firstError = result.messages[0] as ChatUI.ErrorMessage;
+			expect(firstError.content).toBe('First error');
+			expect('retry' in firstError).toBe(false);
+
+			// Second error should have retry removed
+			const secondError = result.messages[1] as ChatUI.ErrorMessage;
+			expect(secondError.content).toBe('Second error');
+			expect('retry' in secondError).toBe(false);
+
+			// New error should have the new retry function
+			const newError = result.messages[2] as ChatUI.ErrorMessage;
+			expect(newError.content).toBe('New error');
+			expect(newError.retry).toBe(newRetryFn);
+		});
+
+		it('should only keep retry on the last error message when multiple errors exist', () => {
+			const retryFn = vi.fn(async () => {});
+			const currentMessages: ChatUI.AssistantMessage[] = [];
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'First error in batch',
+				},
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'Second error in batch',
+				},
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'Third error in batch',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				retryFn,
+			);
+
+			expect(result.messages).toHaveLength(3);
+
+			// First error should not have retry
+			const firstError = result.messages[0] as ChatUI.ErrorMessage;
+			expect(firstError.content).toBe('First error in batch');
+			expect('retry' in firstError).toBe(false);
+
+			// Second error should not have retry
+			const secondError = result.messages[1] as ChatUI.ErrorMessage;
+			expect(secondError.content).toBe('Second error in batch');
+			expect('retry' in secondError).toBe(false);
+
+			// Only the last error should have retry
+			const lastError = result.messages[2] as ChatUI.ErrorMessage;
+			expect(lastError.content).toBe('Third error in batch');
+			expect(lastError.retry).toBe(retryFn);
+		});
+
+		it('should handle mixed message types and only affect error messages with retry logic', () => {
+			const retryFn = vi.fn(async () => {});
+			const currentMessages: ChatUI.AssistantMessage[] = [
+				{
+					id: 'msg-1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Normal message',
+					read: false,
+				},
+				{
+					id: 'error-1',
+					role: 'assistant',
+					type: 'error',
+					content: 'Old error',
+					retry: retryFn,
+					read: false,
+				} as ChatUI.ErrorMessage,
+			];
+
+			const newMessages: ChatRequest.MessageResponse[] = [
+				{
+					type: 'message',
+					role: 'assistant',
+					text: 'New text message',
+				},
+				{
+					type: 'error',
+					role: 'assistant',
+					content: 'New error message',
+				},
+			];
+
+			const result = builderMessages.processAssistantMessages(
+				currentMessages,
+				newMessages,
+				'test-id',
+				retryFn,
+			);
+
+			expect(result.messages).toHaveLength(4);
+
+			// Normal text message should be unchanged
+			expect(result.messages[0]).toMatchObject({
+				type: 'text',
+				content: 'Normal message',
+			});
+			expect('retry' in result.messages[0]).toBe(false);
+
+			// Old error should have retry removed
+			const oldError = result.messages[1] as ChatUI.ErrorMessage;
+			expect(oldError.content).toBe('Old error');
+			expect('retry' in oldError).toBe(false);
+
+			// New text message should not have retry
+			expect(result.messages[2]).toMatchObject({
+				type: 'text',
+				content: 'New text message',
+			});
+			expect('retry' in result.messages[2]).toBe(false);
+
+			// Only the new error should have retry
+			const newError = result.messages[3] as ChatUI.ErrorMessage;
+			expect(newError.content).toBe('New error message');
+			expect(newError.retry).toBe(retryFn);
 		});
 	});
 

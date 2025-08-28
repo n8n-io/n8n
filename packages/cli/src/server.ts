@@ -65,7 +65,6 @@ import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
-import { CommunityPackagesConfig } from './community-packages/community-packages.config';
 
 @Service()
 export class Server extends AbstractServer {
@@ -117,11 +116,6 @@ export class Server extends AbstractServer {
 			const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
 			await import('@/ldap.ee/ldap.controller.ee');
 			await Container.get(LdapService).init();
-		}
-
-		if (Container.get(CommunityPackagesConfig).enabled) {
-			await import('@/community-packages/community-packages.controller');
-			await import('@/community-packages/community-node-types.controller');
 		}
 
 		if (inE2ETests) {

@@ -12,6 +12,7 @@ import {
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -35,7 +36,7 @@ test('user-management:reset should reset DB to default user state', async () => 
 	//
 	// ARRANGE
 	//
-	const owner = await createUser({ role: 'global:owner' });
+	const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	const ownerProject = await getPersonalProject(owner);
 
 	// should be deleted
@@ -70,7 +71,7 @@ test('user-management:reset should reset DB to default user state', async () => 
 
 	// check if the owner account was reset:
 	await expect(
-		Container.get(UserRepository).findOneBy({ role: 'global:owner' }),
+		Container.get(UserRepository).findOneBy({ role: { slug: GLOBAL_OWNER_ROLE.slug } }),
 	).resolves.toMatchObject({
 		email: null,
 		firstName: null,
@@ -80,7 +81,9 @@ test('user-management:reset should reset DB to default user state', async () => 
 	});
 
 	// all members were deleted:
-	const members = await Container.get(UserRepository).findOneBy({ role: 'global:member' });
+	const members = await Container.get(UserRepository).findOneBy({
+		role: { slug: 'global:member' },
+	});
 	expect(members).toBeNull();
 
 	// all workflows are owned by the owner:

@@ -18,7 +18,9 @@ describe('DeprecationService', () => {
 	beforeEach(() => {
 		// Ignore environment variables coming in from the environment when running
 		// this test suite.
-		process.env = {};
+		process.env = {
+			N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
+		};
 
 		jest.resetAllMocks();
 	});
@@ -135,7 +137,10 @@ describe('DeprecationService', () => {
 		const envVar = 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS';
 
 		beforeEach(() => {
-			process.env = { N8N_RUNNERS_ENABLED: 'true' };
+			process.env = {
+				N8N_RUNNERS_ENABLED: 'true',
+				N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
+			};
 
 			jest.spyOn(config, 'getEnv').mockImplementation((key) => {
 				if (key === 'executions.mode') return 'queue';
@@ -228,5 +233,30 @@ describe('DeprecationService', () => {
 				});
 			});
 		});
+	});
+
+	describe('N8N_BLOCK_ENV_ACCESS_IN_NODE', () => {
+		beforeEach(() => {
+			process.env = {
+				N8N_RUNNERS_ENABLED: 'true',
+			};
+
+			jest.resetAllMocks();
+		});
+
+		test('should warn when N8N_BLOCK_ENV_ACCESS_IN_NODE is not set', () => {
+			delete process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;
+			deprecationService.warn();
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		test.each(['false', 'true'])(
+			'should not warn when N8N_BLOCK_ENV_ACCESS_IN_NODE is %s',
+			(value) => {
+				process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = value;
+				deprecationService.warn();
+				expect(logger.warn).not.toHaveBeenCalled();
+			},
+		);
 	});
 });

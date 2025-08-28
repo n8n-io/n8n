@@ -157,7 +157,7 @@ export = {
 				...(name !== undefined && { name: Like('%' + name.trim() + '%') }),
 			};
 
-			if (['global:owner', 'global:admin'].includes(req.user.role)) {
+			if (['global:owner', 'global:admin'].includes(req.user.role.slug)) {
 				if (tags) {
 					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
 						parseTagNames(tags),

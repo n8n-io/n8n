@@ -6,6 +6,7 @@ import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	SWITCH_NODE_NAME,
 	MERGE_NODE_NAME,
+	CODE_NODE_DISPLAY_NAME,
 } from './../constants';
 import {
 	clickContextMenuAction,
@@ -165,7 +166,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
-		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_NAME, {
+		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_DISPLAY_NAME, {
 			method: 'right-click',
 			anchor: 'topLeft',
 		});
@@ -176,7 +177,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 	it('should delete node using keyboard shortcut', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).click();
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_DISPLAY_NAME).click();
 		cy.get('body').type('{backspace}');
 		WorkflowPage.getters.canvasNodes().should('have.length', 1);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
@@ -188,7 +189,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 2);
-		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).click();
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.zoomToFit();
 		cy.get('body').type('{backspace}');
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
@@ -318,7 +319,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
 
-		WorkflowPage.actions.disableNode(CODE_NODE_NAME);
+		WorkflowPage.actions.disableNode(CODE_NODE_DISPLAY_NAME);
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
 	});
 
@@ -394,7 +395,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.duplicateNode(CODE_NODE_NAME);
+		WorkflowPage.actions.duplicateNode(CODE_NODE_DISPLAY_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 

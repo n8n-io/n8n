@@ -30,8 +30,6 @@ import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-w
 import path from 'path';
 import picocolors from 'picocolors';
 
-import { CommunityPackagesConfig } from './community-packages/community-packages.config';
-
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 
 @Service()
@@ -89,14 +87,6 @@ export class LoadNodesAndCredentials {
 		for (const nodeModulesDir of basePathsToScan) {
 			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
-		}
-
-		if (!Container.get(CommunityPackagesConfig).preventLoading) {
-			// Load nodes from any other `n8n-nodes-*` packages in the download directory
-			// This includes the community nodes
-			await this.loadNodesFromNodeModules(
-				path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
-			);
 		}
 
 		for (const dir of this.moduleRegistry.loadDirs) {
