@@ -127,12 +127,9 @@ export class SourceControlGitService {
 
 		const { simpleGit } = await import('simple-git');
 
-		this.git = simpleGit(this.gitOptions.baseDir, {
-			...this.gitOptions,
-		}).env({
-			GIT_SSH_COMMAND: sshCommand,
-			GIT_TERMINAL_PROMPT: '0',
-		});
+		this.git = simpleGit(this.gitOptions)
+			.env('GIT_SSH_COMMAND', sshCommand)
+			.env('GIT_TERMINAL_PROMPT', '0');
 	}
 
 	resetService() {

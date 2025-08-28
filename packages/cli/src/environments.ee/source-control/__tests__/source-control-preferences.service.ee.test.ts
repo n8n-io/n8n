@@ -54,6 +54,11 @@ describe('SourceControlPreferencesService', () => {
 
 			// Mock the getPrivateKeyFromDatabase method to return key with CRLF
 			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(keyWithCRLF);
+			// Mock the getKeyPairFromDatabase method
+			jest.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				encryptedPrivateKey: 'encrypted',
+				publicKey: 'public',
+			});
 
 			// Act
 			const tempFilePath = await service.getPrivateKeyPath();
@@ -83,6 +88,11 @@ describe('SourceControlPreferencesService', () => {
 			jest
 				.spyOn(service as any, 'getPrivateKeyFromDatabase')
 				.mockResolvedValue(keyWithMixedEndings);
+			// Mock the getKeyPairFromDatabase method
+			jest.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				encryptedPrivateKey: 'encrypted',
+				publicKey: 'public',
+			});
 
 			// Act
 			const tempFilePath = await service.getPrivateKeyPath();
@@ -110,6 +120,11 @@ describe('SourceControlPreferencesService', () => {
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n';
 
 			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(keyWithLF);
+			// Mock the getKeyPairFromDatabase method
+			jest.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				encryptedPrivateKey: 'encrypted',
+				publicKey: 'public',
+			});
 
 			// Act
 			const tempFilePath = await service.getPrivateKeyPath();
@@ -144,6 +159,11 @@ describe('SourceControlPreferencesService', () => {
 			const testKey =
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
 			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(testKey);
+			// Mock the getKeyPairFromDatabase method
+			jest.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				encryptedPrivateKey: 'encrypted',
+				publicKey: 'public',
+			});
 
 			// Act
 			const tempFilePath = await service.getPrivateKeyPath();
@@ -192,6 +212,11 @@ describe('SourceControlPreferencesService', () => {
 			const testKey =
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
 			jest.spyOn(service as any, 'getPrivateKeyFromDatabase').mockResolvedValue(testKey);
+			// Mock the getKeyPairFromDatabase method
+			jest.spyOn(service as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				encryptedPrivateKey: 'encrypted',
+				publicKey: 'public',
+			});
 
 			// Create a test file first
 			const tempFilePath1 = await service.getPrivateKeyPath();
