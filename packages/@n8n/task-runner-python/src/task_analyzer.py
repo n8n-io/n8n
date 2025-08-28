@@ -175,11 +175,14 @@ class TaskAnalyzer:
         cached_violations = self._cache.get(cache_key)
         cache_hit = cached_violations is not None
 
-        if cache_hit and len(cached_violations) == 0:
-            return
+        if cache_hit:
+            self._cache.move_to_end(cache_key)
 
-        if cache_hit and len(cached_violations) > 0:
-            self._raise_security_error(cached_violations)
+            if len(cached_violations) == 0:
+                return
+
+            if len(cached_violations) > 0:
+                self._raise_security_error(cached_violations)
 
         tree = ast.parse(code)
 
