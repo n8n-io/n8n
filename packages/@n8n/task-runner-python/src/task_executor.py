@@ -34,7 +34,7 @@ class TaskExecutor:
         items: Items,
         stdlib_allow: Set[str],
         external_allow: Set[str],
-        denied_builtins: set[str],
+        builtins_deny: set[str],
     ):
         """Create a subprocess for executing a Python code task and a queue for communication."""
 
@@ -47,7 +47,7 @@ class TaskExecutor:
         queue = MULTIPROCESSING_CONTEXT.Queue()
         process = MULTIPROCESSING_CONTEXT.Process(
             target=fn,
-            args=(code, items, queue, stdlib_allow, external_allow, denied_builtins),
+            args=(code, items, queue, stdlib_allow, external_allow, builtins_deny),
         )
 
         return process, queue
@@ -113,7 +113,7 @@ class TaskExecutor:
         queue: multiprocessing.Queue,
         stdlib_allow: Set[str],
         external_allow: Set[str],
-        denied_builtins: set[str],
+        builtins_deny: set[str],
     ):
         """Execute a Python code task in all-items mode."""
 
@@ -127,7 +127,7 @@ class TaskExecutor:
             code = TaskExecutor._wrap_code(raw_code)
 
             globals = {
-                "__builtins__": TaskExecutor._filter_builtins(denied_builtins),
+                "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
                 "_items": items,
                 "print": TaskExecutor._create_custom_print(print_args),
             }
@@ -148,7 +148,7 @@ class TaskExecutor:
         queue: multiprocessing.Queue,
         stdlib_allow: Set[str],
         external_allow: Set[str],
-        denied_builtins: set[str],
+        builtins_deny: set[str],
     ):
         """Execute a Python code task in per-item mode."""
 
@@ -165,7 +165,7 @@ class TaskExecutor:
             result = []
             for index, item in enumerate(items):
                 globals = {
-                    "__builtins__": TaskExecutor._filter_builtins(denied_builtins),
+                    "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
                     "_item": item,
                     "print": TaskExecutor._create_custom_print(print_args),
                 }
@@ -255,13 +255,13 @@ class TaskExecutor:
     # ========== security ==========
 
     @staticmethod
-    def _filter_builtins(denied_builtins: set[str]):
+    def _filter_builtins(builtins_deny: set[str]):
         """Get __builtins__ with denied ones removed."""
 
-        if len(denied_builtins) == 0:
+        if len(builtins_deny) == 0:
             return __builtins__
 
-        return {k: v for k, v in __builtins__.items() if k not in denied_builtins}
+        return {k: v for k, v in __builtins__.items() if k not in builtins_deny}
 
     @staticmethod
     def _sanitize_sys_modules(stdlib_allow: Set[str], external_allow: Set[str]):

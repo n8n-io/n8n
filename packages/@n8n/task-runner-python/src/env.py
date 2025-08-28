@@ -6,7 +6,7 @@ from src.constants import (
     DEFAULT_TASK_TIMEOUT,
     DEFAULT_TASK_BROKER_URI,
     DEFAULT_MAX_PAYLOAD_SIZE,
-    DEFAULT_DENIED_BUILTINS,
+    BUILTINS_DENY_DEFAULT,
     ENV_MAX_CONCURRENCY,
     ENV_MAX_PAYLOAD_SIZE,
     ENV_TASK_BROKER_URI,
@@ -51,8 +51,8 @@ def parse_env_vars() -> TaskRunnerOpts:
     if not grant_token:
         raise ValueError(f"{ENV_GRANT_TOKEN} environment variable is required")
 
-    denied_builtins_str = os.getenv(ENV_BUILTINS_DENY, DEFAULT_DENIED_BUILTINS)
-    denied_builtins = parse_denylist(denied_builtins_str)
+    builtins_deny_str = os.getenv(ENV_BUILTINS_DENY, BUILTINS_DENY_DEFAULT)
+    builtins_deny = parse_denylist(builtins_deny_str)
 
     stdlib_allow_str = os.getenv(ENV_STDLIB_ALLOW, "")
     stdlib_allow = parse_allowlist(stdlib_allow_str, "stdlib allowlist")
@@ -70,7 +70,7 @@ def parse_env_vars() -> TaskRunnerOpts:
             os.getenv(ENV_MAX_PAYLOAD_SIZE) or str(DEFAULT_MAX_PAYLOAD_SIZE)
         ),
         task_timeout=int(os.getenv(ENV_TASK_TIMEOUT) or str(DEFAULT_TASK_TIMEOUT)),
-        denied_builtins=denied_builtins,
         stdlib_allow=stdlib_allow,
         external_allow=external_allow,
+        builtins_deny=builtins_deny,
     )

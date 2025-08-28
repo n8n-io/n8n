@@ -67,9 +67,9 @@ class TaskRunnerOpts:
     max_concurrency: int
     max_payload_size: int
     task_timeout: int
-    denied_builtins: Set[str]
     stdlib_allow: Set[str]
     external_allow: Set[str]
+    builtins_deny: Set[str]
 
 
 class TaskRunner:
@@ -223,7 +223,7 @@ class TaskRunner:
                 task_settings.items,
                 self.opts.stdlib_allow,
                 self.opts.external_allow,
-                self.opts.denied_builtins,
+                self.opts.builtins_deny,
             )
 
             task_state.process = process
