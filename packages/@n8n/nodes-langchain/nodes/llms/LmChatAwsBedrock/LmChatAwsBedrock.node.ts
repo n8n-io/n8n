@@ -1,4 +1,5 @@
 import { ChatBedrockConverse } from '@langchain/aws';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -7,7 +8,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getProxyAgent } from '@utils/httpProxyAgent';
+import { getNodeProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
@@ -232,11 +233,14 @@ export class LmChatAwsBedrock implements INodeType {
 		const model = new ChatBedrockConverse({
 			region: credentials.region as string,
 			model: modelName,
+			clientOptions: {
+				requestHandler: new NodeHttpHandler({
+					httpAgent: getNodeProxyAgent(),
+					httpsAgent: getNodeProxyAgent(),
+				}),
+			},
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
-			clientConfig: {
-				httpAgent: getProxyAgent(),
-			},
 			credentials: {
 				secretAccessKey: credentials.secretAccessKey as string,
 				accessKeyId: credentials.accessKeyId as string,
