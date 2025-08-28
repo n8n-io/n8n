@@ -1,6 +1,8 @@
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { readFile, access } from 'fs/promises';
+import { readFile, access, mkdir } from 'fs/promises';
+import os from 'os';
+import path from 'path';
 
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import type { SourceControlPreferences } from '../types/source-control-preferences';
@@ -27,9 +29,18 @@ describe('SourceControlPreferencesService', () => {
 	});
 
 	describe('line ending normalization', () => {
+		let tempDir: string;
+
+		beforeEach(async () => {
+			tempDir = await mkdir(path.join(os.tmpdir(), 'n8n-test-'), { recursive: true }).then(() =>
+				path.join(os.tmpdir(), 'n8n-test-' + Date.now()),
+			);
+			await mkdir(tempDir, { recursive: true });
+		});
+
 		it('should normalize CRLF line endings to LF when writing private key', async () => {
 			// Arrange
-			const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/test' });
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
 				instanceSettings,
 				mock(),
@@ -57,7 +68,7 @@ describe('SourceControlPreferencesService', () => {
 
 		it('should normalize mixed CR and CRLF line endings to LF when writing private key', async () => {
 			// Arrange
-			const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/test' });
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
 				instanceSettings,
 				mock(),
@@ -86,7 +97,7 @@ describe('SourceControlPreferencesService', () => {
 
 		it('should leave existing LF line endings unchanged when writing private key', async () => {
 			// Arrange
-			const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/test' });
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
 				instanceSettings,
 				mock(),
@@ -110,9 +121,18 @@ describe('SourceControlPreferencesService', () => {
 	});
 
 	describe('file security and permissions', () => {
+		let tempDir: string;
+
+		beforeEach(async () => {
+			tempDir = await mkdir(path.join(os.tmpdir(), 'n8n-test-'), { recursive: true }).then(() =>
+				path.join(os.tmpdir(), 'n8n-test-' + Date.now()),
+			);
+			await mkdir(tempDir, { recursive: true });
+		});
+
 		it('should always use restrictive permissions for SSH private keys', async () => {
 			// Arrange
-			const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/test' });
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
 				instanceSettings,
 				mock(),
@@ -160,7 +180,7 @@ describe('SourceControlPreferencesService', () => {
 
 		it('should remove existing file before creating new one with fsRm force option', async () => {
 			// Arrange
-			const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/test' });
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
 				instanceSettings,
 				mock(),
