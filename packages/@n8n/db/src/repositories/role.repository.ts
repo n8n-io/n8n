@@ -14,11 +14,14 @@ export class RoleRepository extends Repository<Role> {
 	}
 
 	async findAll() {
-		return await this.find();
+		return await this.find({ relations: ['scopes'] });
 	}
 
 	async findBySlug(slug: string) {
-		return await this.findOne({ where: { slug } });
+		return await this.findOne({
+			where: { slug },
+			relations: ['scopes'],
+		});
 	}
 
 	async removeBySlug(slug: string) {
@@ -33,14 +36,29 @@ export class RoleRepository extends Repository<Role> {
 		slug: string,
 		newData: Partial<Pick<Role, 'description' | 'scopes' | 'displayName'>>,
 	) {
-		const role = await entityManager.findOneBy(Role, { slug });
+		const role = await entityManager.findOne(Role, {
+			where: { slug },
+			relations: ['scopes'],
+		});
 		if (!role) {
 			throw new Error('Role not found');
 		}
 		if (role.systemRole) {
 			throw new Error('Cannot update system roles');
 		}
-		Object.assign(role, newData);
+
+		// Only update fields that are explicitly provided (not undefined)
+		// This preserves existing scopes when scopes is undefined
+		if (newData.displayName !== undefined) {
+			role.displayName = newData.displayName;
+		}
+		if (newData.description !== undefined) {
+			role.description = newData.description;
+		}
+		if (newData.scopes !== undefined) {
+			role.scopes = newData.scopes;
+		}
+
 		return await entityManager.save<Role>(role);
 	}
 

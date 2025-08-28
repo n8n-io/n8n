@@ -108,7 +108,7 @@ export class RoleService {
 		role.scopes = scopes;
 		role.systemRole = false;
 		role.roleType = newRole.roleType;
-		role.slug = `${newRole.roleType}:${newRole.displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+		role.slug = `${newRole.roleType}:${newRole.displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.random().toString(36).substring(2, 8)}`;
 		const createdRole = await this.roleRepository.save(role);
 		return this.dbRoleToRoleDTO(createdRole);
 	}
