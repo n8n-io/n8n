@@ -33,7 +33,7 @@ class ImportValidator(ast.NodeVisitor):
         self._stdlib_allow_all = "*" in stdlib_allow
         self._external_allow_all = "*" in external_allow
 
-    # ========== Visitors ==========
+    # ========== Detection ==========
 
     def visit_Import(self, node: ast.Import) -> None:
         """Validate bare import statements (e.g., import os). Also aliased bare import statements (e.g., import numpy as np)."""
