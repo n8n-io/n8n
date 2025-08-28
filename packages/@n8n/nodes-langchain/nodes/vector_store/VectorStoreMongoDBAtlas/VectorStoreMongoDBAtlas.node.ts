@@ -146,6 +146,7 @@ export async function getMongoClient(context: any, version: number) {
 		}
 
 		mongoConfig.connectionString = connectionString;
+		mongoConfig.nodeVersion = version;
 		mongoConfig.client = new MongoClient(connectionString, {
 			appName: 'devrel.integration.n8n_vector_integ',
 			driverInfo: {
