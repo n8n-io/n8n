@@ -146,16 +146,37 @@ describe('SourceControlGitService', () => {
 				);
 			});
 
-			it('should create properly quoted SSH command', () => {
+			it('should create properly quoted SSH command', async () => {
+				// Arrange
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
 				const privateKeyPath = 'C:/Users/Test User/.n8n/ssh_private_key_temp';
-				const knownHostsPath = 'C:/Users/Test User/.n8n/.ssh/known_hosts';
+				const sshFolder = 'C:/Users/Test User/.n8n/.ssh';
 
-				const sshCommand = `ssh -o UserKnownHostsFile="${knownHostsPath}" -o StrictHostKeyChecking=no -i "${privateKeyPath}"`;
+				// Mock the getPrivateKeyPath to return a path with spaces
+				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(privateKeyPath);
 
-				expect(sshCommand).toContain('"C:/Users/Test User/.n8n/ssh_private_key_temp"');
-				expect(sshCommand).toContain('"C:/Users/Test User/.n8n/.ssh/known_hosts"');
-				expect(sshCommand).toContain('UserKnownHostsFile=');
-				expect(sshCommand).toContain('StrictHostKeyChecking=no');
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+
+				// Act
+				await gitService.setGitSshCommand('/git/folder', sshFolder);
+
+				// Assert - verify paths with spaces are properly quoted
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining('"C:/Users/Test User/.n8n/ssh_private_key_temp"'), // Quoted path with spaces
+				);
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining('"C:/Users/Test User/.n8n/.ssh/known_hosts"'), // Quoted known_hosts path
+				);
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining('UserKnownHostsFile='),
+				);
+				expect(mockGitInstance.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining('StrictHostKeyChecking=no'),
+				);
 			});
 
 			it('should escape double quotes in paths to prevent command injection', async () => {
