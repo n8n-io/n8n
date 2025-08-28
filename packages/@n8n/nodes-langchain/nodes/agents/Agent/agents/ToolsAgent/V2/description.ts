@@ -49,7 +49,7 @@ export const getToolsAgentProperties = ({
 		options: [
 			...commonOptions,
 			getBatchingOptionFields(undefined, 1),
-			...(withStreaming ? [enableStreaminOption] : []),
+			...(withStreaming ? [enableStreamingOption, streamingFormatOption] : []),
 		],
 		displayOptions: {
 			hide: {
