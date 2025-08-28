@@ -199,8 +199,8 @@ export class DataStoreService {
 			throw new DataStoreValidationError('Data columns must not be empty for updateRow');
 		}
 
-		this.validateRowsWithColumns([filter], columns, true, true);
-		this.validateRowsWithColumns([data], columns, true, false);
+		this.validateRowsWithColumns([filter], columns, true);
+		this.validateRowsWithColumns([data], columns, false);
 
 		return await this.dataStoreRowsRepository.updateRow(
 			dataStoreId,
@@ -220,7 +220,6 @@ export class DataStoreService {
 	private validateRowsWithColumns(
 		rows: DataStoreRows,
 		columns: Array<{ name: string; type: string }>,
-		allowPartial = false,
 		includeSystemColumns = false,
 	): void {
 		// Include system columns like 'id' if requested
@@ -231,9 +230,6 @@ export class DataStoreService {
 		const columnTypeMap = new Map(allColumns.map((x) => [x.name, x.type]));
 		for (const row of rows) {
 			const keys = Object.keys(row);
-			if (!allowPartial && columnNames.size !== keys.length) {
-				throw new DataStoreValidationError('mismatched key count');
-			}
 			for (const key of keys) {
 				if (!columnNames.has(key)) {
 					throw new DataStoreValidationError('unknown column name');
@@ -246,11 +242,10 @@ export class DataStoreService {
 	private async validateRows(
 		dataStoreId: string,
 		rows: DataStoreRows,
-		allowPartial = false,
 		includeSystemColumns = false,
 	): Promise<void> {
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		this.validateRowsWithColumns(rows, columns, allowPartial, includeSystemColumns);
+		this.validateRowsWithColumns(rows, columns, includeSystemColumns);
 	}
 
 	private validateCell(row: DataStoreRow, key: string, columnTypeMap: Map<string, string>) {
