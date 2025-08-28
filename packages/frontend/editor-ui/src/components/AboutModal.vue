@@ -15,10 +15,16 @@ const i18n = useI18n();
 const debugInfo = useDebugInfo();
 const clipboard = useClipboard();
 const rootStore = useRootStore();
-const { downloadThirdPartyLicenses } = useFileDownload();
+const { downloadFile } = useFileDownload();
 
 const closeDialog = () => {
 	modalBus.emit('close');
+};
+
+const downloadThirdPartyLicenses = () => {
+	downloadFile(`${rootStore.restApiContext.baseUrl}/third-party-licenses`, undefined, {
+		'push-ref': rootStore.restApiContext.pushRef,
+	});
 };
 
 const copyDebugInfoToClipboard = async () => {
@@ -73,15 +79,7 @@ const copyDebugInfoToClipboard = async () => {
 						<n8n-text>{{ i18n.baseText('about.thirdPartyLicenses') }}</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-link
-							@click="
-								() =>
-									downloadThirdPartyLicenses(
-										rootStore.restApiContext.baseUrl,
-										rootStore.restApiContext.pushRef,
-									)
-							"
-						>
+						<n8n-link @click="downloadThirdPartyLicenses">
 							{{ i18n.baseText('about.thirdPartyLicensesLink') }}
 						</n8n-link>
 					</el-col>

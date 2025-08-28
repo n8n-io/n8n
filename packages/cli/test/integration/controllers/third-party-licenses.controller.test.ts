@@ -15,9 +15,8 @@ describe('ThirdPartyLicensesController', () => {
 	});
 
 	describe('GET /third-party-licenses', () => {
-		it('should allow unauthenticated access (for new window from About modal)', async () => {
-			const response = await testServer.authlessAgent.get('/third-party-licenses');
-			expect([200, 404]).toContain(response.status);
+		it('should require authentication', async () => {
+			await testServer.authlessAgent.get('/third-party-licenses').expect(401);
 		});
 
 		it('should allow authenticated owner to get third-party licenses', async () => {
