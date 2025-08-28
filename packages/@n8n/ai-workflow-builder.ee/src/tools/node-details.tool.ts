@@ -126,9 +126,11 @@ function extractNodeDetails(nodeType: INodeTypeDescription): NodeDetails {
  * Factory function to create the node details tool
  */
 export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
-	return tool(
+	const DISPLAY_TITLE = 'Getting node details';
+
+	const dynamicTool = tool(
 		(input: unknown, config) => {
-			const reporter = createProgressReporter(config, 'get_node_details');
+			const reporter = createProgressReporter(config, 'get_node_details', DISPLAY_TITLE);
 
 			try {
 				// Validate input using Zod schema
@@ -194,4 +196,9 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 			schema: nodeDetailsSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		displayTitle: DISPLAY_TITLE,
+	};
 }
