@@ -222,6 +222,8 @@ class TaskRunner:
                 task_settings.node_mode,
                 task_settings.items,
                 self.opts.denied_builtins,
+                self.opts.stdlib_allow,
+                self.opts.external_allow,
             )
 
             task_state.process = process

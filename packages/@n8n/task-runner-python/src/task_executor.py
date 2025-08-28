@@ -4,6 +4,7 @@ import traceback
 import textwrap
 import json
 import os
+import sys
 
 from src.errors import (
     TaskResultMissingError,
@@ -14,7 +15,7 @@ from src.errors import (
 
 from src.message_types.broker import NodeMode, Items
 from src.constants import EXECUTOR_CIRCULAR_REFERENCE_KEY, EXECUTOR_USER_OUTPUT_KEY
-from typing import Any
+from typing import Any, Set
 
 from multiprocessing.context import SpawnProcess
 
@@ -28,7 +29,12 @@ class TaskExecutor:
 
     @staticmethod
     def create_process(
-        code: str, node_mode: NodeMode, items: Items, denied_builtins: set[str]
+        code: str,
+        node_mode: NodeMode,
+        items: Items,
+        stdlib_allow: Set[str],
+        external_allow: Set[str],
+        denied_builtins: set[str],
     ):
         """Create a subprocess for executing a Python code task and a queue for communication."""
 
@@ -40,7 +46,8 @@ class TaskExecutor:
 
         queue = MULTIPROCESSING_CONTEXT.Queue()
         process = MULTIPROCESSING_CONTEXT.Process(
-            target=fn, args=(code, items, queue, denied_builtins)
+            target=fn,
+            args=(code, items, queue, stdlib_allow, external_allow, denied_builtins),
         )
 
         return process, queue
@@ -104,11 +111,15 @@ class TaskExecutor:
         raw_code: str,
         items: Items,
         queue: multiprocessing.Queue,
+        stdlib_allow: Set[str],
+        external_allow: Set[str],
         denied_builtins: set[str],
     ):
         """Execute a Python code task in all-items mode."""
 
         os.environ.clear()
+
+        TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
 
         print_args: PrintArgs = []
 
@@ -135,11 +146,15 @@ class TaskExecutor:
         raw_code: str,
         items: Items,
         queue: multiprocessing.Queue,
+        stdlib_allow: Set[str],
+        external_allow: Set[str],
         denied_builtins: set[str],
     ):
         """Execute a Python code task in per-item mode."""
 
         os.environ.clear()
+
+        TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
 
         print_args: PrintArgs = []
 
@@ -247,3 +262,34 @@ class TaskExecutor:
             return __builtins__
 
         return {k: v for k, v in __builtins__.items() if k not in denied_builtins}
+
+    @staticmethod
+    def _sanitize_sys_modules(stdlib_allow: Set[str], external_allow: Set[str]):
+        safe_modules = {
+            "builtins",
+            "__main__",
+            "sys",
+            "traceback",
+            "linecache",
+        }
+
+        if "*" in stdlib_allow:
+            safe_modules.update(sys.stdlib_module_names)
+        else:
+            safe_modules.update(stdlib_allow)
+
+        if "*" in external_allow:
+            safe_modules.update(
+                name
+                for name in sys.modules.keys()
+                if name not in sys.stdlib_module_names
+            )
+        else:
+            safe_modules.update(external_allow)
+
+        modules_to_remove = [
+            name for name in sys.modules.keys() if name not in safe_modules
+        ]
+
+        for module_name in modules_to_remove:
+            del sys.modules[module_name]
