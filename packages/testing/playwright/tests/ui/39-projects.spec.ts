@@ -63,18 +63,18 @@ test.describe('Projects', () => {
 			n8n.page.getByText('Workflow successfully created', { exact: false }),
 		).toBeVisible();
 
-		await n8n.canvas.addNodeWithSubItem(EXECUTE_WORKFLOW_NODE_NAME, 'Execute A Sub Workflow');
+		await n8n.canvas.addNode(EXECUTE_WORKFLOW_NODE_NAME, { action: 'Execute A Sub Workflow' });
 
 		const subWorkflowPagePromise = n8n.page.waitForEvent('popup');
 
 		await n8n.ndv.selectWorkflowResource(`Create a Sub-Workflow in '${projectName}'`);
 
-		const subn8n = new n8nPage(await subWorkflowPagePromise);
+		const subn8n = new n8nPage(await subWorkflowPagePromise, n8n.api);
 
 		await subn8n.ndv.clickBackToCanvasButton();
 
 		await subn8n.canvas.deleteNodeByName('Replace me with your logic');
-		await subn8n.canvas.addNodeWithSubItem(NOTION_NODE_NAME, 'Append a block');
+		await subn8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block' });
 
 		await subn8n.credentials.createAndSaveNewCredential('apiKey', NOTION_API_KEY);
 
@@ -95,7 +95,7 @@ test.describe('Projects', () => {
 		await expect(subn8n.page.getByRole('heading', { name: 'My Sub-Workflow' })).toBeVisible();
 
 		// Navigate to Credentials
-		await subn8n.page.getByRole('link', { name: 'Credentials' }).click();
+		await subn8n.page.getByRole('link', { name: 'Credentials', exact: true }).click();
 
 		// Assert that the credential is in the list
 		await expect(subn8n.page.locator('[data-test-id="resources-list-item"]')).toHaveCount(1);

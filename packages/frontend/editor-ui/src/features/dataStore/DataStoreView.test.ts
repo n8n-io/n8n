@@ -69,7 +69,7 @@ const router = createRouter({
 	history: createWebHistory(),
 	routes: [
 		{
-			path: '/projects/:projectId/data-stores',
+			path: '/projects/:projectId/data-tables',
 			component: { template: '<div></div>' },
 		},
 		{
@@ -113,7 +113,7 @@ const TEST_DATA_STORE: DataStoreResource = {
 describe('DataStoreView', () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
-		await router.push('/projects/test-project/data-stores');
+		await router.push('/projects/test-project/data-tables');
 		await router.isReady();
 
 		pinia = createTestingPinia({ initialState });

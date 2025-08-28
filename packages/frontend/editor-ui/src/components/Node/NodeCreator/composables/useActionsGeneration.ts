@@ -54,6 +54,25 @@ const customNodeActionsParsers: {
 			}),
 		);
 	},
+	['n8n-nodes-base.code']: (matchedProperty, nodeTypeDescription) => {
+		if (matchedProperty.name !== 'language') return;
+
+		const languageOptions = matchedProperty.options as INodePropertyOptions[] | undefined;
+		if (!languageOptions) return;
+
+		return languageOptions.map(
+			(option): ActionTypeDescription => ({
+				...getNodeTypeBase(nodeTypeDescription),
+				actionKey: `language_${option.value}`,
+				displayName: `Code in ${option.name}`,
+				description: `Run custom ${option.name} code`,
+				displayOptions: matchedProperty.displayOptions,
+				values: {
+					language: option.value,
+				},
+			}),
+		);
+	},
 };
 
 function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: string) {
@@ -78,6 +97,21 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: stri
 
 function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription[] {
 	if (nodeTypeDescription.properties.find((property) => property.name === 'resource')) return [];
+
+	if (nodeTypeDescription.name === 'n8n-nodes-base.code') {
+		const languageProperty = nodeTypeDescription.properties.find(
+			(property) =>
+				property.name === 'language' && property.displayOptions?.show?.['@version']?.[0] === 2,
+		);
+
+		if (languageProperty) {
+			const customParsedItems = customNodeActionsParsers[nodeTypeDescription.name]?.(
+				languageProperty,
+				nodeTypeDescription,
+			);
+			if (customParsedItems) return customParsedItems;
+		}
+	}
 
 	const matchedProperty = nodeTypeDescription.properties.find(
 		(property) => property.name?.toLowerCase() === 'operation',

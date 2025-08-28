@@ -27,7 +27,7 @@ jest.mock('@langchain/langgraph', () => ({
 
 describe('NodeDetailsTool', () => {
 	let nodeTypesList: INodeTypeDescription[];
-	let nodeDetailsTool: ReturnType<typeof createNodeDetailsTool>;
+	let nodeDetailsTool: ReturnType<typeof createNodeDetailsTool>['tool'];
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -43,7 +43,7 @@ describe('NodeDetailsTool', () => {
 			nodeTypes.mergeNode,
 			nodeTypes.vectorStoreNode,
 		];
-		nodeDetailsTool = createNodeDetailsTool(nodeTypesList);
+		nodeDetailsTool = createNodeDetailsTool(nodeTypesList).tool;
 	});
 
 	afterEach(() => {
@@ -296,7 +296,7 @@ describe('NodeDetailsTool', () => {
 			});
 
 			const testNodeTypes = [...nodeTypesList, nodeWithManyProps];
-			const testTool = createNodeDetailsTool(testNodeTypes);
+			const testTool = createNodeDetailsTool(testNodeTypes).tool;
 
 			const mockConfig = createToolConfig('get_node_details', 'test-call-11');
 
@@ -373,7 +373,7 @@ describe('NodeDetailsTool', () => {
 			});
 
 			const testNodeTypes = [...nodeTypesList, complexNode];
-			const testTool = createNodeDetailsTool(testNodeTypes);
+			const testTool = createNodeDetailsTool(testNodeTypes).tool;
 
 			const mockConfig = createToolConfig('get_node_details', 'test-call-13');
 
@@ -436,7 +436,7 @@ describe('NodeDetailsTool', () => {
 			});
 
 			const testNodeTypes = [...nodeTypesList, noOutputNode];
-			const testTool = createNodeDetailsTool(testNodeTypes);
+			const testTool = createNodeDetailsTool(testNodeTypes).tool;
 
 			const mockConfig = createToolConfig('get_node_details', 'test-call-15');
 

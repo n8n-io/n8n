@@ -23,6 +23,8 @@ import omit from 'lodash/omit';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { NodeOperationError, PROJECT_ROOT, UserError, WorkflowActivationError } from 'n8n-workflow';
 
+import { WorkflowFinderService } from './workflow-finder.service';
+
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -33,8 +35,6 @@ import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflo
 import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-
-import { WorkflowFinderService } from './workflow-finder.service';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -74,7 +74,7 @@ export class EnterpriseWorkflowService {
 		);
 
 		const newSharedWorkflows = projects
-			// We filter by role === 'project:personalOwner' above and there should
+			// We filter by role === PROJECT_OWNER_ROLE_SLUG above and there should
 			// always only be one owner.
 			.map((project) =>
 				this.sharedWorkflowRepository.create({

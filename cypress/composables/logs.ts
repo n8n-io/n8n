@@ -71,7 +71,7 @@ export function toggleInputPanel() {
 }
 
 export function clickOpenNdvAtRow(rowIndex: number) {
-	getLogEntries().eq(rowIndex).realHover();
+	getLogEntries().eq(rowIndex).trigger('focus').realHover();
 	getLogEntries().eq(rowIndex).find('[aria-label="Open..."]').click();
 }
 

@@ -10,6 +10,7 @@ import { computed } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { AI_TRANSFORM_NODE_TYPE } from '@/constants';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
+import { useIsInExperimentalNdv } from '@/components/canvas/experimental/composables/useIsInExperimentalNdv';
 
 interface Props {
 	parameter: INodeProperties;
@@ -51,13 +52,14 @@ const isHtmlEditor = computed(
 const shouldShowExpressionSelector = computed(
 	() => !props.parameter.noDataExpression && props.showExpressionSelector && !props.isReadOnly,
 );
+const isInEmbeddedNdv = useIsInExperimentalNdv();
 
 const canBeOpenedInFocusPanel = computed(
 	() =>
 		!props.parameter.isNodeSetting &&
 		!props.isReadOnly &&
 		!props.isContentOverridden &&
-		activeNode.value && // checking that it's inside ndv
+		(activeNode.value || isInEmbeddedNdv.value) && // checking that it's inside ndv
 		(props.parameter.type === 'string' || props.parameter.type === 'json'),
 );
 

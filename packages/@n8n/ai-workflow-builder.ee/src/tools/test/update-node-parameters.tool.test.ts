@@ -36,7 +36,7 @@ jest.mock('../../../src/chains/parameter-updater', () => ({
 
 describe('UpdateNodeParametersTool', () => {
 	let nodeTypesList: INodeTypeDescription[];
-	let updateNodeParametersTool: ReturnType<typeof createUpdateNodeParametersTool>;
+	let updateNodeParametersTool: ReturnType<typeof createUpdateNodeParametersTool>['tool'];
 	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
 		typeof getCurrentTaskInput
 	>;
@@ -59,7 +59,7 @@ describe('UpdateNodeParametersTool', () => {
 		parameterUpdaterModule.createParameterUpdaterChain.mockReturnValue(mockChain);
 
 		nodeTypesList = [nodeTypes.code, nodeTypes.httpRequest, nodeTypes.webhook, nodeTypes.setNode];
-		updateNodeParametersTool = createUpdateNodeParametersTool(nodeTypesList, mockLLM);
+		updateNodeParametersTool = createUpdateNodeParametersTool(nodeTypesList, mockLLM).tool;
 	});
 
 	afterEach(() => {
@@ -468,7 +468,7 @@ describe('UpdateNodeParametersTool', () => {
 			};
 
 			// Create tool with custom node type
-			const customTool = createUpdateNodeParametersTool([customNodeType], mockLLM);
+			const customTool = createUpdateNodeParametersTool([customNodeType], mockLLM).tool;
 
 			const existingWorkflow = createWorkflow([
 				createNode({

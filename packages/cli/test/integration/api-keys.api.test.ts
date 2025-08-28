@@ -328,7 +328,6 @@ describe('Member', () => {
 			.post('/api-keys')
 			.send({ label: 'My API Key', expiresAt: null, scopes: ['workflow:create'] });
 
-		console.log(newApiKeyResponse.body);
 		expect(newApiKeyResponse.statusCode).toBe(200);
 		expect(newApiKeyResponse.body.data.apiKey).toBeDefined();
 		expect(newApiKeyResponse.body.data.apiKey).not.toBeNull();

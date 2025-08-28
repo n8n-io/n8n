@@ -8,7 +8,7 @@ import type {
 	ProjectRelation,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { AllRoleTypes, Scope } from '@n8n/permissions';
+import type { CustomRole, ProjectRole, Scope } from '@n8n/permissions';
 import { ALL_ROLES, combineScopes, getAuthPrincipalScopes, getRoleScopes } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -97,7 +97,7 @@ export class RoleService {
 			);
 			let projectScopes: Scope[] = [];
 			if (pr) {
-				projectScopes = getRoleScopes(pr.role);
+				projectScopes = pr.role.scopes.map((s) => s.slug);
 			}
 			const resourceMask = getRoleScopes(sharedEntity.role);
 			const mergedScopes = combineScopes(
@@ -112,7 +112,7 @@ export class RoleService {
 		return [...scopesSet].sort();
 	}
 
-	isRoleLicensed(role: AllRoleTypes) {
+	isRoleLicensed(role: ProjectRole | CustomRole) {
 		// TODO: move this info into FrontendSettings
 		switch (role) {
 			case 'project:admin':
@@ -124,6 +124,7 @@ export class RoleService {
 			case 'global:admin':
 				return this.license.isAdvancedPermissionsLicensed();
 			default:
+				// TODO: handle custom roles licensing
 				return true;
 		}
 	}
