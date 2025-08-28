@@ -14,7 +14,11 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { SampleTemplates, isPrebuiltAgentTemplateId } from '@/utils/templates/workflowSamples';
+import {
+	SampleTemplates,
+	isPrebuiltAgentTemplateId,
+	isTutorialTemplateId,
+} from '@/utils/templates/workflowSamples';
 import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,
@@ -76,6 +80,11 @@ export async function executionFinished(
 			readyToRunWorkflowsStore.trackExecuteWorkflow(templateId.split('-').pop() ?? '', data.status);
 		} else if (isPrebuiltAgentTemplateId(templateId)) {
 			telemetry.track('User executed pre-built Agent', {
+				template: templateId,
+				status: data.status,
+			});
+		} else if (isTutorialTemplateId(templateId)) {
+			telemetry.track('User executed tutorial template', {
 				template: templateId,
 				status: data.status,
 			});

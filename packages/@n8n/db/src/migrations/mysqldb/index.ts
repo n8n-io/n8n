@@ -94,6 +94,7 @@ import { LinkRoleToUserTable1750252139168 } from '../common/1750252139168-LinkRo
 import { RemoveOldRoleColumn1750252139170 } from '../common/1750252139170-RemoveOldRoleColumn';
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
 import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
+import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
 
@@ -195,4 +196,5 @@ export const mysqlMigrations: Migration[] = [
 	AddInputsOutputsToTestCaseExecution1752669793000,
 	CreateDataStoreTables1754475614601,
 	RemoveOldRoleColumn1750252139170,
+	ReplaceDataStoreTablesWithDataTables1754475614602,
 ];

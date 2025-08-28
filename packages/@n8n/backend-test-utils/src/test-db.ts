@@ -73,8 +73,8 @@ type EntityName =
 	| 'InsightsRaw'
 	| 'InsightsByPeriod'
 	| 'InsightsMetadata'
-	| 'DataStore'
-	| 'DataStoreColumn';
+	| 'DataTable'
+	| 'DataTableColumn';
 
 /**
  * Truncate specific DB tables in a test DB.
