@@ -111,8 +111,12 @@ export class SourceControlGitService {
 		const normalizedPrivateKeyPath = privateKeyPath.split(path.sep).join(path.posix.sep);
 		const normalizedKnownHostsPath = sshKnownHosts.split(path.sep).join(path.posix.sep);
 
+		// Escape double quotes to prevent command injection
+		const escapedPrivateKeyPath = normalizedPrivateKeyPath.replace(/"/g, '\\"');
+		const escapedKnownHostsPath = normalizedKnownHostsPath.replace(/"/g, '\\"');
+
 		// Quote paths to handle spaces and special characters
-		const sshCommand = `ssh -o UserKnownHostsFile="${normalizedKnownHostsPath}" -o StrictHostKeyChecking=no -i "${normalizedPrivateKeyPath}"`;
+		const sshCommand = `ssh -o UserKnownHostsFile="${escapedKnownHostsPath}" -o StrictHostKeyChecking=no -i "${escapedPrivateKeyPath}"`;
 
 		this.gitOptions = {
 			baseDir: gitFolder,

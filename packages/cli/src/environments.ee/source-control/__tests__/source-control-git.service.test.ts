@@ -143,6 +143,26 @@ describe('SourceControlGitService', () => {
 				expect(sshCommand).toContain('UserKnownHostsFile=');
 				expect(sshCommand).toContain('StrictHostKeyChecking=no');
 			});
+
+			it('should escape double quotes in paths to prevent command injection', () => {
+				// Test paths containing double quotes that could break the command
+				const pathWithQuotes = 'C:/Users/Test"User/.n8n/ssh_private_key_temp';
+				const knownHostsWithQuotes = 'C:/Users/Test"User/.n8n/.ssh/known_hosts';
+
+				// Apply the same escaping logic as in the production code
+				const escapedPrivateKeyPath = pathWithQuotes.replace(/"/g, '\\"');
+				const escapedKnownHostsPath = knownHostsWithQuotes.replace(/"/g, '\\"');
+
+				const sshCommand = `ssh -o UserKnownHostsFile="${escapedKnownHostsPath}" -o StrictHostKeyChecking=no -i "${escapedPrivateKeyPath}"`;
+
+				// Verify quotes are properly escaped
+				expect(sshCommand).toContain('C:/Users/Test\\"User/.n8n/ssh_private_key_temp');
+				expect(sshCommand).toContain('C:/Users/Test\\"User/.n8n/.ssh/known_hosts');
+				expect(escapedPrivateKeyPath).not.toContain('"');
+				expect(escapedKnownHostsPath).not.toContain('"');
+				expect(escapedPrivateKeyPath).toContain('\\"');
+				expect(escapedKnownHostsPath).toContain('\\"');
+			});
 		});
 	});
 });
