@@ -45,7 +45,7 @@ export type ListDataStoreContentFilter = {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
+		condition: 'eq' | 'neq';
 		value: DataStoreColumnJsType;
 	}>;
 };
