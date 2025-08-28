@@ -20,12 +20,7 @@ import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/stores/ui.store';
-
-export type CustomAction = {
-	id: string;
-	label: string;
-	disabled?: boolean;
-};
+import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 
 const route = useRoute();
 const router = useRouter();
@@ -37,17 +32,8 @@ const uiStore = useUIStore();
 
 const projectPages = useProjectPages();
 
-type Props = {
-	customActions?: CustomAction[];
-};
-
-const props = withDefaults(defineProps<Props>(), {
-	customActions: () => [],
-});
-
 const emit = defineEmits<{
 	createFolder: [];
-	customActionSelected: [actionId: string, projectId: string];
 }>();
 
 const headerIcon = computed((): IconOrEmoji => {
@@ -122,6 +108,7 @@ const ACTION_TYPES = {
 	WORKFLOW: 'workflow',
 	CREDENTIAL: 'credential',
 	FOLDER: 'folder',
+	DATA_STORE: 'dataStore',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -155,16 +142,17 @@ const menu = computed(() => {
 		});
 	}
 
-	// Append custom actions
-	if (props.customActions?.length) {
-		props.customActions.forEach((customAction) => {
-			items.push({
-				value: customAction.id,
-				label: customAction.label,
-				disabled: customAction.disabled ?? false,
-			});
+	if (settingsStore.isDataStoreFeatureEnabled) {
+		// TODO: this should probably be moved to the module descriptor as a setting
+		items.push({
+			value: ACTION_TYPES.DATA_STORE,
+			label: i18n.baseText('dataStore.add.button.label'),
+			disabled:
+				sourceControlStore.preferences.branchReadOnly ||
+				!getResourcePermissions(homeProject.value?.scopes)?.dataStore?.create,
 		});
 	}
+
 	return items;
 });
 
@@ -174,6 +162,37 @@ const showProjectIcon = computed(() => {
 	);
 });
 
+function isCredentialsListView(routeName: string) {
+	const CREDENTIAL_VIEWS: string[] = [
+		VIEWS.PROJECTS_CREDENTIALS,
+		VIEWS.CREDENTIALS,
+		VIEWS.SHARED_CREDENTIALS,
+	];
+
+	return CREDENTIAL_VIEWS.includes(routeName);
+}
+
+function isWorkflowListView(routeName: string) {
+	const WORKFLOWS_VIEWS: string[] = [
+		VIEWS.PROJECTS_WORKFLOWS,
+		VIEWS.WORKFLOWS,
+		VIEWS.SHARED_WORKFLOWS,
+		VIEWS.PROJECTS_FOLDERS,
+	];
+
+	return WORKFLOWS_VIEWS.includes(routeName);
+}
+
+function getUIContext(routeName: string) {
+	if (isCredentialsListView(routeName)) {
+		return 'credentials_list';
+	} else if (isWorkflowListView(routeName)) {
+		return 'workflow_list';
+	} else {
+		return;
+	}
+}
+
 const actions: Record<ActionTypes, (projectId: string) => void> = {
 	[ACTION_TYPES.WORKFLOW]: (projectId: string) => {
 		void router.push({
@@ -181,6 +200,7 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			query: {
 				projectId,
 				parentFolderId: route.params.folderId as string,
+				uiContext: getUIContext(route.name?.toString() ?? ''),
 			},
 		});
 	},
@@ -191,10 +211,19 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 				projectId,
 				credentialId: 'create',
 			},
+			query: {
+				uiContext: getUIContext(route.name?.toString() ?? ''),
+			},
 		});
 	},
 	[ACTION_TYPES.FOLDER]: () => {
 		emit('createFolder');
+	},
+	[ACTION_TYPES.DATA_STORE]: (projectId: string) => {
+		void router.push({
+			name: PROJECT_DATA_STORES,
+			params: { projectId, new: 'new' },
+		});
 	},
 } as const;
 
@@ -212,9 +241,17 @@ const sectionDescription = computed(() => {
 	if (projectPages.isSharedSubPage) {
 		return i18n.baseText('projects.header.shared.subtitle');
 	} else if (projectPages.isOverviewSubPage) {
-		return i18n.baseText('projects.header.overview.subtitle');
+		return i18n.baseText(
+			settingsStore.isDataStoreFeatureEnabled
+				? 'projects.header.overview.subtitleWithDataTables'
+				: 'projects.header.overview.subtitle',
+		);
 	} else if (isPersonalProject.value) {
-		return i18n.baseText('projects.header.personal.subtitle');
+		return i18n.baseText(
+			settingsStore.isDataStoreFeatureEnabled
+				? 'projects.header.personal.subtitleWithDataTables'
+				: 'projects.header.personal.subtitle',
+		);
 	}
 
 	return null;
@@ -264,12 +301,6 @@ const projectDescriptionTruncated = computed(() => {
 const onSelect = (action: string) => {
 	const executableAction = actions[action as ActionTypes];
 	if (!homeProject.value) {
-		return;
-	}
-
-	// Check if this is a custom action
-	if (!executableAction) {
-		emit('customActionSelected', action, homeProject.value.id);
 		return;
 	}
 

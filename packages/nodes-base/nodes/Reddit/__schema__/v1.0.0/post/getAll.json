@@ -4,6 +4,12 @@
         "allow_live_comments": {
             "type": "boolean"
         },
+        "approved_at_utc": {
+            "type": "null"
+        },
+        "approved_by": {
+            "type": "null"
+        },
         "archived": {
             "type": "boolean"
         },
@@ -57,9 +63,6 @@
         "clicked": {
             "type": "boolean"
         },
-        "content_categories": {
-            "type": "null"
-        },
         "contest_mode": {
             "type": "boolean"
         },
@@ -68,6 +71,9 @@
         },
         "created_utc": {
             "type": "integer"
+        },
+        "discussion_type": {
+            "type": "null"
         },
         "domain": {
             "type": "string"
@@ -110,6 +116,9 @@
         },
         "is_video": {
             "type": "boolean"
+        },
+        "likes": {
+            "type": "null"
         },
         "link_flair_richtext": {
             "type": "array",
@@ -158,6 +167,9 @@
         "num_crossposts": {
             "type": "integer"
         },
+        "num_reports": {
+            "type": "null"
+        },
         "over_18": {
             "type": "boolean"
         },
@@ -167,6 +179,59 @@
         "pinned": {
             "type": "boolean"
         },
+        "post_hint": {
+            "type": "string"
+        },
+        "preview": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "resolutions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "height": {
+                                            "type": "integer"
+                                        },
+                                        "url": {
+                                            "type": "string"
+                                        },
+                                        "width": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            },
+                            "source": {
+                                "type": "object",
+                                "properties": {
+                                    "height": {
+                                        "type": "integer"
+                                    },
+                                    "url": {
+                                        "type": "string"
+                                    },
+                                    "width": {
+                                        "type": "integer"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "quarantine": {
             "type": "boolean"
         },
@@ -174,6 +239,12 @@
             "type": "null"
         },
         "removed_by": {
+            "type": "null"
+        },
+        "removed_by_category": {
+            "type": "null"
+        },
+        "report_reasons": {
             "type": "null"
         },
         "saved": {
@@ -227,6 +298,9 @@
         "url": {
             "type": "string"
         },
+        "url_overridden_by_dest": {
+            "type": "string"
+        },
         "view_count": {
             "type": "null"
         },
@@ -234,5 +308,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -39,8 +39,6 @@ export const dataStoreSchema = z.object({
 export type DataStore = z.infer<typeof dataStoreSchema>;
 export type DataStoreColumn = z.infer<typeof dataStoreColumnSchema>;
 
-export type DataStoreUserTableName = `data_store_user_${string}`;
-
 export type DataStoreListFilter = {
 	id?: string | string[];
 	projectId?: string | string[];
@@ -57,5 +55,10 @@ export const dateTimeSchema = z
 	.transform((s) => new Date(s))
 	.pipe(z.date());
 
-// Dates are received as date strings and validated before insertion
-export const dataStoreColumnValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+export const dataStoreColumnValueSchema = z.union([
+	z.string(),
+	z.number(),
+	z.boolean(),
+	z.null(),
+	z.date(),
+]);

@@ -15,22 +15,26 @@ beforeEach(() => {
 
 describe('eligibleModules', () => {
 	it('should consider all default modules eligible', () => {
-		// 'data-store' isn't (yet) eligible module by default
-		const expectedModules = MODULE_NAMES.filter((name) => name !== 'data-store');
+		// 'data-table' isn't (yet) eligible module by default
+		const expectedModules = MODULE_NAMES.filter((name) => name !== 'data-table');
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(expectedModules);
 	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
-		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(['external-secrets']);
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'external-secrets',
+			'community-packages',
+		]);
 	});
 
 	it('should consider a module eligible if it was enabled via env var', () => {
-		process.env.N8N_ENABLED_MODULES = 'data-store';
+		process.env.N8N_ENABLED_MODULES = 'data-table';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'insights',
 			'external-secrets',
-			'data-store',
+			'community-packages',
+			'data-table',
 		]);
 	});
 
@@ -216,6 +220,48 @@ describe('initModules', () => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		expect(moduleRegistry.isActive(moduleName as any)).toBe(true);
 		expect(moduleRegistry.getActiveModules()).toEqual([moduleName]);
+	});
+
+	it('registers context for module with `context` method', async () => {
+		// ARRANGE
+		const moduleName = 'test-module';
+		const moduleContext = { proxy: 'test-proxy', config: { enabled: true } };
+		const ModuleClass: ModuleInterface = {
+			init: jest.fn(),
+			context: jest.fn().mockReturnValue(moduleContext),
+		};
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+
+		// ACT
+		await moduleRegistry.initModules();
+
+		// ASSERT
+		expect(ModuleClass.context).toHaveBeenCalled();
+		expect(moduleRegistry.context.has(moduleName)).toBe(true);
+		expect(moduleRegistry.context.get(moduleName)).toBe(moduleContext);
+	});
+
+	it('does not register context for module without `context` method', async () => {
+		// ARRANGE
+		const moduleName = 'test-module';
+		const ModuleClass: ModuleInterface = { init: jest.fn() };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: jest.fn().mockReturnValue([[moduleName, { class: ModuleClass }]]),
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+
+		// ACT
+		await moduleRegistry.initModules();
+
+		// ASSERT
+		expect(moduleRegistry.context.has(moduleName)).toBe(false);
 	});
 });
 
