@@ -209,8 +209,6 @@
 	"aiAssistant.codeUpdated.message.body2": "node to see the changes",
 	"aiAssistant.thinkingSteps.analyzingError": "Analyzing the error...",
 	"aiAssistant.thinkingSteps.thinking": "Thinking...",
-	"aiAssistant.thinkingSteps.runningTools": "Running tools...",
-	"aiAssistant.thinkingSteps.processingResults": "Processing results...",
 	"aiAssistant.prompts.currentView.workflowList": "The user is currently looking at the list of workflows.",
 	"aiAssistant.prompts.currentView.credentialsList": "The user is currently looking at the list of credentials.",
 	"aiAssistant.prompts.currentView.executionsView": "The user is currently looking at the list of executions for the currently open workflow.",
