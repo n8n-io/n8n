@@ -473,7 +473,7 @@ describe('AI Assistant Credential Help', () => {
 		wf.getters.nodeCredentialsCreateOption().click();
 		ndv.getters.copyInput().should('not.exist');
 		credentialsModal.getters.oauthConnectButton().should('have.length', 1);
-		credentialsModal.getters.credentialInputs().should('have.length', 1);
+		credentialsModal.getters.credentialInputs().should('have.length', 2);
 		aiAssistant.getters.credentialEditAssistantButton().should('not.exist');
 	});
 });
