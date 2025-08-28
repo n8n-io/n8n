@@ -41,12 +41,8 @@ def parse_allowlist(allowlist_str: str, list_name: str) -> Set[str]:
 def parse_denylist(denylist_str: str) -> Set[str]:
     if not denylist_str:
         return set()
-    
-    return {
-        name
-        for raw_name in denylist_str.split(",")
-        if (name := raw_name.strip())
-    }
+
+    return {name for raw_name in denylist_str.split(",") if (name := raw_name.strip())}
 
 
 def parse_env_vars() -> TaskRunnerOpts:
