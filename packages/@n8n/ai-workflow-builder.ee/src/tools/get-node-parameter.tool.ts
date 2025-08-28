@@ -106,7 +106,6 @@ export function createGetNodeParameterTool(logger?: Logger) {
 				// Report completion
 				logger?.debug(`Parameter value for path ${path} in node ${node.name} retrieved`);
 
-				const message = 'Parameter value retrieved successfully';
 				const formattedParameterValue = formatNodeParameter(path, parameterValue);
 
 				if (formattedParameterValue.length > MAX_PARAMETER_VALUE_LENGTH) {
@@ -116,13 +115,12 @@ export function createGetNodeParameterTool(logger?: Logger) {
 				}
 
 				const output: GetNodeParameterOutput = {
-					message,
-					parameter: formatNodeParameter(path, parameterValue),
+					message: 'Parameter value retrieved successfully',
 				};
 				reporter.complete(output);
 
 				// Return success response
-				return createSuccessResponse(config, message);
+				return createSuccessResponse(config, formattedParameterValue);
 			} catch (error) {
 				// Handle validation or unexpected errors
 				if (error instanceof z.ZodError) {

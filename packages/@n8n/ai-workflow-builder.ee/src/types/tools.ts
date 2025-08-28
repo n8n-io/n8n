@@ -130,6 +130,5 @@ export interface NodeSearchOutput {
  * Output type for get node parameter tool
  */
 export interface GetNodeParameterOutput {
-	message: string;
-	parameter: string;
+	message: string; // This is only to report success or error, without actual value (we don't need to send it to the frontend)
 }
