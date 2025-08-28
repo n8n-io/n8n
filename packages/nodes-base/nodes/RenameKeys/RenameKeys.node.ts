@@ -100,13 +100,6 @@ export class RenameKeys implements INodeType {
 										default: '',
 									},
 									{
-										displayName:
-											'⚠️ Complex regex patterns (like nested quantifiers .*+, ()*+, or multiple wildcards) may cause performance issues with large datasets. Consider using simpler patterns like [a-z]+ or \\w+ for better performance.',
-										name: 'performanceWarning',
-										type: 'notice',
-										default: '',
-									},
-									{
 										displayName: 'Regular Expression',
 										name: 'searchRegex',
 										type: 'string',
@@ -153,6 +146,17 @@ export class RenameKeys implements INodeType {
 						],
 					},
 				],
+			},
+		],
+		hints: [
+			{
+				type: 'warning',
+				message:
+					'Complex regex patterns like nested quantifiers .*+, ()*+, or multiple wildcards may cause performance issues. Consider using simpler patterns like [a-z]+ or \\w+ for better performance.',
+				displayCondition:
+					'={{ $parameter.additionalOptions.regexReplacement.replacements && $parameter.additionalOptions.regexReplacement.replacements.some(r => r.searchRegex && /(\\.\\*\\+|\\)\\*\\+|\\+\\*|\\*.*\\*|\\+.*\\+|\\?.*\\?|\\{[0-9]+,\\}|\\*{2,}|\\+{2,}|\\?{2,}|[a-zA-Z0-9]{4,}[\\*\\+]|\\([^)]*\\|[^)]*\\)[\\*\\+])/.test(r.searchRegex)) }}',
+				whenToDisplay: 'always',
+				location: 'outputPane',
 			},
 		],
 	};
