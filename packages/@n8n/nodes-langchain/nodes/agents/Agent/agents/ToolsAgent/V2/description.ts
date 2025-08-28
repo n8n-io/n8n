@@ -12,6 +12,31 @@ const enableStreaminOption: INodeProperties = {
 	description: 'Whether this agent will stream the response in real-time as it generates text',
 };
 
+const streamingFormatOption: INodeProperties = {
+	displayName: 'Streaming Format',
+	name: 'streamingFormat',
+	type: 'options',
+	options: [
+		{
+			name: 'JSONL',
+			value: 'jsonl',
+			description: 'Default: newline-delimited JSON objects',
+		},
+		{
+			name: 'SSE',
+			value: 'sse',
+			description: 'Server-Sent Events (EventSource-compatible, data: <payload>\\n\\n)',
+		},
+	],
+	default: 'jsonl',
+	description: 'Format to use when streaming responses',
+	displayOptions: {
+		show: {
+			'/options.enableStreaming': [true],
+		},
+	},
+};
+
 export const getToolsAgentProperties = ({
 	withStreaming,
 }: { withStreaming: boolean }): INodeProperties[] => [
