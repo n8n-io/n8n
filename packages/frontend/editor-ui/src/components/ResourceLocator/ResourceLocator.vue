@@ -272,7 +272,7 @@ const currentRequestParams = computed(() => {
 		parameters: props.node?.parameters ?? {},
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
-		projectId: projectsStore.currentProject?.id,
+		projectId: projectsStore.currentProjectId,
 	};
 });
 
@@ -725,7 +725,7 @@ async function loadResources() {
 			methodName: loadOptionsMethod,
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
-			projectId: projectsStore.currentProject?.id,
+			projectId: projectsStore.currentProjectId,
 		};
 
 		if (params.filter) {
