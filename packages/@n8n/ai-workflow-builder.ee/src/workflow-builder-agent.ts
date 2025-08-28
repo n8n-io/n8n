@@ -128,7 +128,7 @@ export class WorkflowBuilderAgent {
 
 			if (estimatedTokens > MAX_INPUT_TOKENS) {
 				throw new WorkflowStateError(
-					'The current conversation and workflow state is too large to process. Please simplify the workflow and try again.',
+					'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.',
 				);
 			}
 
