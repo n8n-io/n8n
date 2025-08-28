@@ -4,7 +4,7 @@ import type { useNDVStore } from '@/stores/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -555,5 +555,52 @@ describe('ParameterInput.vue', () => {
 
 		eventBus.emit('optionSelected', 'removeExpression');
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: '{{ }}' })]);
+	});
+
+	test('should maintain focus after changing to expression', async () => {
+		const { rerender, getByRole, getByTestId } = renderComponent({
+			props: {
+				path: 'name',
+				parameter: {
+					displayName: 'Name',
+					name: 'name',
+					type: 'string',
+				},
+				modelValue: 'test',
+			},
+		});
+		const input = getByRole('textbox');
+		expect(input).toBeInTheDocument();
+		await userEvent.click(input);
+		await rerender({ modelValue: '={{ $json.foo }}' });
+
+		const expressionEditor = getByTestId('inline-expression-editor-input');
+		expect(expressionEditor).toBeInTheDocument();
+		const expressionEditorInput = within(expressionEditor).getByRole('textbox');
+		await waitFor(() => expect(expressionEditorInput).toHaveFocus());
+	});
+
+	describe('when not in focus', () => {
+		test('should not focus after changing to expression ', async () => {
+			const { rerender, getByRole, getByTestId } = renderComponent({
+				props: {
+					path: 'name',
+					parameter: {
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+					},
+					modelValue: 'test',
+				},
+			});
+			const input = getByRole('textbox');
+			expect(input).toBeInTheDocument();
+			await rerender({ modelValue: '={{ $json.foo }}' });
+
+			const expressionEditor = getByTestId('inline-expression-editor-input');
+			expect(expressionEditor).toBeInTheDocument();
+			const expressionEditorInput = within(expressionEditor).getByRole('textbox');
+			await waitFor(() => expect(expressionEditorInput).not.toHaveFocus());
+		});
 	});
 });

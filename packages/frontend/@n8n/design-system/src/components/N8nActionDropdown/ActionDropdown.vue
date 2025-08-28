@@ -199,6 +199,7 @@ defineExpose({ open, close });
 }
 
 .icon {
+	display: flex;
 	text-align: center;
 	margin-right: var(--spacing-2xs);
 

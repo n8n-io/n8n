@@ -32,7 +32,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['DataStore', 'DataStoreColumn', 'Project', 'ProjectRelation']);
+	await testDb.truncate(['DataTable', 'DataTableColumn', 'Project', 'ProjectRelation']);
 
 	owner = await createOwner();
 	member = await createMember();

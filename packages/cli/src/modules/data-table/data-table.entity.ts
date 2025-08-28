@@ -1,11 +1,11 @@
 import { Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from '@n8n/typeorm';
 
-import { DataStoreColumn } from './data-store-column.entity';
+import { DataTableColumn } from './data-table-column.entity';
 
 @Entity()
 @Index(['name', 'projectId'], { unique: true })
-export class DataStore extends WithTimestampsAndStringId {
+export class DataTable extends WithTimestampsAndStringId {
 	constructor() {
 		super();
 	}
@@ -14,13 +14,13 @@ export class DataStore extends WithTimestampsAndStringId {
 	name: string;
 
 	@OneToMany(
-		() => DataStoreColumn,
-		(dataStoreColumn) => dataStoreColumn.dataStore,
+		() => DataTableColumn,
+		(dataTableColumn) => dataTableColumn.dataTable,
 		{
 			cascade: true,
 		},
 	)
-	columns: DataStoreColumn[];
+	columns: DataTableColumn[];
 
 	@ManyToOne(() => Project)
 	@JoinColumn({ name: 'projectId' })
@@ -28,7 +28,4 @@ export class DataStore extends WithTimestampsAndStringId {
 
 	@Column()
 	projectId: string;
-
-	@Column({ type: 'int', default: 0 })
-	sizeBytes: number;
 }
