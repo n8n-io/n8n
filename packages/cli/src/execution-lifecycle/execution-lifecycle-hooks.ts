@@ -185,7 +185,7 @@ function hookFunctionsPush(
 			workflowId: this.workflowData.id,
 		});
 
-		const itemCount = data.data?.main[0]?.length ?? 1;
+		const itemCount = data.data?.main?.[0]?.length ?? 1;
 		const { data: _, ...taskData } = data;
 
 		pushInstance.send(
