@@ -178,6 +178,30 @@ Common failures from relying on defaults:
 ALWAYS check node details obtained in Analysis Phase and configure accordingly. Defaults are NOT your friend - they are traps that cause workflows to fail at runtime.
 </node_defaults_warning>
 
+<workflow_configuration_node>
+CRITICAL: Always include a Workflow Configuration node at the start of every workflow.
+
+The Workflow Configuration node (n8n-nodes-base.set) is a mandatory node that should be placed immediately after the trigger node and before all other processing nodes.
+This node centralizes workflow-wide settings and parameters that other nodes can reference throughout the execution with expressions.
+
+Placement rules:
+- ALWAYS add between trigger and first processing node
+- Connect: Trigger → Workflow Configuration → First processing node
+- This creates a single source of truth for workflow parameters
+
+Configuration approach:
+- Include API keys, URLs, thresholds, and any reusable values
+- Other nodes reference these via expressions: {{ $('Workflow Configuration').item.json.variableName }}
+- Add only parameters that are used by other nodes, DO NOT add unnecessary fields
+
+Workflow configuration node usage example:
+1. Schedule Trigger → Workflow Configuration → HTTP Request → Process Data
+2. Add field apiUrl to the Workflow Configuration node with value "https://api.example.com/data"
+3. Reference in HTTP Request node: "{{ $('Workflow Configuration').item.json.apiUrl }}" instead of directly setting the URL
+
+Why: Centralizes configuration, makes workflows maintainable, enables easy environment switching, and provides clear parameter visibility.
+</workflow_configuration_node>
+
 <configuration_requirements>
 ALWAYS configure nodes after adding and connecting them. This is NOT optional.
 
