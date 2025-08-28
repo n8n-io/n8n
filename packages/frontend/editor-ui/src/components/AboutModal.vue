@@ -8,6 +8,7 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useDebugInfo } from '@/composables/useDebugInfo';
 import { useI18n } from '@n8n/i18n';
 import { useFileDownload } from '@/composables/useFileDownload';
+import { getThirdPartyLicensesDownloadUrl } from '@n8n/rest-api-client';
 
 const modalBus = createEventBus();
 const toast = useToast();
@@ -22,9 +23,8 @@ const closeDialog = () => {
 };
 
 const downloadThirdPartyLicenses = () => {
-	downloadFile(`${rootStore.restApiContext.baseUrl}/third-party-licenses`, undefined, {
-		'push-ref': rootStore.restApiContext.pushRef,
-	});
+	const url = getThirdPartyLicensesDownloadUrl(rootStore.restApiContext);
+	downloadFile(url, undefined, { 'push-ref': rootStore.restApiContext.pushRef });
 };
 
 const copyDebugInfoToClipboard = async () => {
