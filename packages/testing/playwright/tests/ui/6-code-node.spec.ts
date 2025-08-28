@@ -1,6 +1,10 @@
 import { nanoid } from 'nanoid';
 
-import { CODE_NODE_NAME, MANUAL_TRIGGER_NODE_NAME } from '../../config/constants';
+import {
+	CODE_NODE_DISPLAY_NAME,
+	CODE_NODE_NAME,
+	MANUAL_TRIGGER_NODE_NAME,
+} from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
 
 test.describe('Code node', () => {
@@ -9,7 +13,7 @@ test.describe('Code node', () => {
 			await n8n.goHome();
 			await n8n.workflows.clickAddWorkflowButton();
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-			await n8n.canvas.addNode(CODE_NODE_NAME);
+			await n8n.canvas.addNodeWithSubItem(CODE_NODE_NAME, CODE_NODE_DISPLAY_NAME);
 		});
 
 		test('should show correct placeholders switching modes', async ({ n8n }) => {
@@ -53,17 +57,17 @@ test.describe('Code node', () => {
 			await n8n.ndv.getCodeEditor().fill("console.log('code node 1')");
 			await n8n.ndv.close();
 
-			await n8n.canvas.addNode(CODE_NODE_NAME);
+			await n8n.canvas.addNodeWithSubItem(CODE_NODE_NAME, CODE_NODE_DISPLAY_NAME);
 
 			await n8n.ndv.getCodeEditor().fill("console.log('code node 2')");
 			await n8n.ndv.close();
 
-			await n8n.canvas.openNode(CODE_NODE_NAME);
+			await n8n.canvas.openNode(CODE_NODE_DISPLAY_NAME);
 
-			await n8n.ndv.clickFloatingNode('Code1');
+			await n8n.ndv.clickFloatingNode(CODE_NODE_DISPLAY_NAME + '1');
 			await expect(n8n.ndv.getCodeEditor()).toContainText("console.log('code node 2')");
 
-			await n8n.ndv.clickFloatingNode('Code');
+			await n8n.ndv.clickFloatingNode(CODE_NODE_DISPLAY_NAME);
 			await expect(n8n.ndv.getCodeEditor()).toContainText("console.log('code node 1')");
 		});
 
@@ -112,7 +116,10 @@ return []
 				await n8n.goHome();
 				await n8n.workflows.clickAddWorkflowButton();
 				await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-				await n8n.canvas.addNode(CODE_NODE_NAME);
+				await n8n.canvas.clickNodeCreatorPlusButton();
+				await n8n.canvas.fillNodeCreatorSearchBar(CODE_NODE_NAME);
+				await n8n.page.keyboard.press('Enter');
+				await n8n.canvas.clickNodeCreatorItemName(CODE_NODE_DISPLAY_NAME);
 			});
 
 			test('tab should exist if experiment selected and be selectable', async ({ n8n }) => {

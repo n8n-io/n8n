@@ -6,6 +6,13 @@ export const DATA_STORE_STORE = 'dataStoreStore';
 
 export const DEFAULT_DATA_STORE_PAGE_SIZE = 10;
 
+export const DATA_STORE_ID_COLUMN_WIDTH = 46;
+
+export const DATA_STORE_HEADER_HEIGHT = 36;
+export const DATA_STORE_ROW_HEIGHT = 43;
+
+export const ADD_ROW_ROW_ID = '__n8n_add_row__';
+
 export const DATA_STORE_CARD_ACTIONS = {
 	RENAME: 'rename',
 	DELETE: 'delete',
@@ -20,8 +27,9 @@ export const MAX_COLUMN_NAME_LENGTH = 128;
 
 export const COLUMN_NAME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9-]*$/;
 
-export const NO_TABLE_YET_MESSAGE = 'SQLITE_ERROR: no such table:';
-
 export const MIN_LOADING_TIME = 500; // ms
 
-export const DATA_STORE_MODULE_NAME = 'data-store';
+export const NULL_VALUE = 'Null';
+export const EMPTY_VALUE = 'Empty';
+
+export const DATA_STORE_MODULE_NAME = 'data-table';

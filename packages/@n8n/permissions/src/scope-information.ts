@@ -21,7 +21,6 @@ function buildApiKeyScopes() {
 
 export const ALL_SCOPES = buildResourceScopes();
 
-// Keep the type of Scope[] to ensure that ApiKeyScopes are a subset of Scopes!
 export const ALL_API_KEY_SCOPES = buildApiKeyScopes();
 
 export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {

@@ -3,13 +3,16 @@ import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
+import { EditFieldsNode } from './nodes/EditFieldsNode';
 
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
+	readonly editFields: EditFieldsNode;
 
 	constructor(page: Page) {
 		super(page);
 		this.setupHelper = new NodeParameterHelper(this);
+		this.editFields = new EditFieldsNode(page);
 	}
 
 	async clickBackToCanvasButton() {
@@ -442,5 +445,16 @@ export class NodeDetailsViewPage extends BasePage {
 				`Parameter ${parameterName} has value "${actualValue}", expected "${expectedValue}"`,
 			);
 		}
+	}
+
+	getAssignmentCollectionContainer(paramName: string) {
+		return this.page.getByTestId(`assignment-collection-${paramName}`);
+	}
+
+	getAssignmentName(paramName: string, index = 0) {
+		return this.getAssignmentCollectionContainer(paramName)
+			.getByTestId('assignment')
+			.nth(index)
+			.getByTestId('assignment-name');
 	}
 }

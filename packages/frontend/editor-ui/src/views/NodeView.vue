@@ -2160,6 +2160,7 @@ onBeforeUnmount(() => {
 					v-if="!isCanvasReadOnly"
 					:create-node-active="nodeCreatorStore.isCreateNodeActive"
 					:node-view-scale="viewportTransform.zoom"
+					:focus-panel-active="focusPanelStore.focusPanelActive"
 					@toggle-node-creator="onToggleNodeCreator"
 					@add-nodes="onAddNodesAndConnections"
 				/>
