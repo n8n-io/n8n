@@ -355,8 +355,7 @@ export class Workflow {
 		}
 
 		if (Array.isArray(parameterValue)) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const returnArray: any[] = [];
+			const returnArray: NodeParameterValueType[] = [];
 
 			for (const currentValue of parameterValue) {
 				returnArray.push(
@@ -371,8 +370,7 @@ export class Workflow {
 			return returnArray;
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const returnData: any = {};
+		const returnData: INodeParameters = {};
 
 		for (const parameterName of Object.keys(parameterValue || {})) {
 			returnData[parameterName] = this.renameNodeInParameterValue(
