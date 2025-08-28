@@ -376,7 +376,11 @@ const dependentParametersValues = computed<string | null>(() => {
 		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
 
 		const returnValues: string[] = [];
-		for (const parameterPath of loadOptionsDependsOn) {
+		for (let parameterPath of loadOptionsDependsOn) {
+			if (parameterPath.startsWith('&')) {
+				parameterPath = `${props.path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
+			}
+
 			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 		}
 
