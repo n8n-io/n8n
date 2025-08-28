@@ -65,21 +65,24 @@ export class Mindee implements INodeType {
 				name: 'polygon',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to retrieve location data associated with each result',
+				description:
+					'Whether to retrieve location data associated with each result for compatible plans',
 			},
 			{
 				displayName: 'Enable Confidence Scores',
 				name: 'confidence',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to retrieve confidence scores associated with each result',
+				description:
+					'Whether to retrieve confidence scores associated with each result for compatible plans',
 			},
 			{
 				displayName: 'Enable Raw Text',
 				name: 'rawText',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to retrieve the raw OCR/text readings from the file',
+				description:
+					'Whether to retrieve the raw OCR/text readings from the file for compatible plans',
 			},
 			{
 				displayName: 'Polling Timeout (Seconds)',
@@ -104,6 +107,7 @@ export class Mindee implements INodeType {
 		let enqueueResponseData, responseData;
 		for (let i = 0; i < length; i++) {
 			try {
+				const form = new FormData();
 				const modelId = this.getNodeParameter('modelId', i);
 				const alias = this.getNodeParameter('alias', i);
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
@@ -116,7 +120,6 @@ export class Mindee implements INodeType {
 				const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 				const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-				const form = new FormData();
 				form.append('file', dataBuffer, { filename: binaryData.fileName });
 				form.append('model_id', modelId as string);
 				form.append('alias', alias as string);
