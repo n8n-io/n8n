@@ -357,11 +357,16 @@ const onInputItemHover = (e: { itemIndex: number; outputIndex: number } | null) 
 		return;
 	}
 
+	let itemIndex = e.itemIndex;
+	if (ndvStore.searchToInputIndexMap !== null && itemIndex in ndvStore.searchToInputIndexMap) {
+		itemIndex = ndvStore.searchToInputIndexMap[itemIndex];
+	}
+
 	const item = {
 		nodeName: inputNodeName.value,
 		runIndex: inputRun.value,
 		outputIndex: e.outputIndex,
-		itemIndex: e.itemIndex,
+		itemIndex,
 	};
 	ndvStore.setHoveringItem(item);
 };
@@ -575,8 +580,9 @@ const activateOutputPane = () => {
 	isOutputPaneActive.value = true;
 };
 
-const onSearch = (search: string) => {
-	isPairedItemHoveringEnabled.value = !search;
+const onSearch = () => {
+	// TODO: fix this for output panel and refactor
+	isPairedItemHoveringEnabled.value = true;
 };
 
 const registerKeyboardListener = () => {
