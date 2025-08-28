@@ -60,10 +60,10 @@ class ImportValidator(ast.NodeVisitor):
         if isinstance(node.func, ast.Name) and node.func.id == "__import__":
             module_arg = None
 
-            # positional argument
+            # positional arg
             if node.args and isinstance(node.args[0], ast.Constant):
                 module_arg = node.args[0].value
-            # keyword argument
+            # keyword arg
             elif node.keywords:
                 for keyword in node.keywords:
                     if keyword.arg == "name" and isinstance(
@@ -92,10 +92,10 @@ class ImportValidator(ast.NodeVisitor):
         ):
             module_arg = None
 
-            # Check positional argument
+            # positional arg
             if node.args and isinstance(node.args[0], ast.Constant):
                 module_arg = node.args[0].value
-            # Check keyword argument (name="module")
+            # keyword arg
             elif node.keywords:
                 for keyword in node.keywords:
                     if keyword.arg == "name" and isinstance(
