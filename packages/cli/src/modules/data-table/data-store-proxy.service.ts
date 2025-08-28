@@ -15,13 +15,14 @@ import {
 	ListDataStoreRowsOptions,
 	MoveDataStoreColumnOptions,
 	UpdateDataStoreOptions,
+	UpdateDataStoreRowsOptions,
 	UpsertDataStoreRowsOptions,
 	Workflow,
 } from 'n8n-workflow';
 
-import { OwnershipService } from '@/services/ownership.service';
-
 import { DataStoreService } from './data-store.service';
+
+import { OwnershipService } from '@/services/ownership.service';
 
 @Service()
 export class DataStoreProxyService implements DataStoreProxyProvider {
@@ -132,6 +133,10 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 
 			async insertRows(rows: DataStoreRows) {
 				return await dataStoreService.insertRows(dataStoreId, projectId, rows, true);
+			},
+
+			async updateRows(options: UpdateDataStoreRowsOptions) {
+				return await dataStoreService.updateRow(dataStoreId, projectId, options, true);
 			},
 
 			async upsertRows(options: UpsertDataStoreRowsOptions) {
