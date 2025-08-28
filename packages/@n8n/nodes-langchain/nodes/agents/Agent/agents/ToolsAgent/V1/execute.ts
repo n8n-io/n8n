@@ -164,7 +164,9 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				async handleLLMEnd(output: LLMResult, runId: string): Promise<void> {
 					try {
 						const key = this.runToModelKey[runId] ?? 'unknown:unknown';
-						const [modelType, modelName] = key.split(':');
+						const sep = key.indexOf(':');
+						const modelType = sep === -1 ? key : key.slice(0, sep);
+						const modelName = sep === -1 ? '' : key.slice(sep + 1);
 						const completionTokens = (output?.llmOutput as any)?.tokenUsage?.completionTokens ?? 0;
 						const promptTokens = (output?.llmOutput as any)?.tokenUsage?.promptTokens ?? 0;
 						if (completionTokens > 0 || promptTokens > 0) {
