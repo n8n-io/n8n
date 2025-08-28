@@ -248,8 +248,7 @@ describe('JsTaskRunner', () => {
 				inputItems,
 			});
 
-			// When returning an object with json property, it's preserved
-			// When returning other objects, the entire object becomes the json value
+			// if expected has json property, use it, else use entire result
 			const expectedJson =
 				expected !== null && typeof expected === 'object' && 'json' in expected
 					? expected.json
