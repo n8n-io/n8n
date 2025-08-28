@@ -87,6 +87,7 @@ export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
 export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
 export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
+export const PRE_BUILT_AGENTS_MODAL_KEY = 'preBuiltAgents';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
@@ -506,8 +507,6 @@ export const LOCAL_STORAGE_LOGS_SYNC_SELECTION = 'N8N_LOGS_SYNC_SELECTION_ENABLE
 export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL = 'N8N_LOGS_DETAILS_PANEL';
 export const LOCAL_STORAGE_LOGS_PANEL_DETAILS_PANEL_SUB_NODE = 'N8N_LOGS_DETAILS_PANEL_SUB_NODE';
 export const LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY = 'N8N_WORKFLOWS_LIST_PREFERENCES';
-export const LOCAL_STORAGE_EXPERIMENTAL_DOCKED_NODE_SETTINGS =
-	'N8N_EXPERIMENTAL_DOCKED_NODE_SETTINGS';
 export const LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES = 'N8N_READ_WHATS_NEW_ARTICLES';
 export const LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT = 'N8N_DISMISSED_WHATS_NEW_CALLOUT';
 export const LOCAL_STORAGE_NDV_PANEL_WIDTH = 'N8N_NDV_PANEL_WIDTH';
@@ -602,6 +601,7 @@ export const enum VIEWS {
 	SHARED_CREDENTIALS = 'SharedCredentials',
 	ENTITY_NOT_FOUND = 'EntityNotFound',
 	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
+	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -752,6 +752,12 @@ export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
 export const CANVAS_ZOOMED_VIEW_EXPERIMENT = {
 	name: 'canvas_zoomed_view',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const NDV_IN_FOCUS_PANEL_EXPERIMENT = {
+	name: 'ndv_in_focus_panel',
 	control: 'control',
 	variant: 'variant',
 };

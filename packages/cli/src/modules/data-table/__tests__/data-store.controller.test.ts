@@ -11,6 +11,7 @@ import type { Project, User } from '@n8n/db';
 import { ProjectRepository, QueryFailedError } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
+import type { DataStoreRow } from 'n8n-workflow';
 
 import { createDataStore } from '@test-integration/db/data-stores';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
@@ -44,7 +45,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['DataStore', 'DataStoreColumn', 'Project', 'ProjectRelation']);
+	await testDb.truncate(['DataTable', 'DataTableColumn', 'Project', 'ProjectRelation']);
 
 	projectRepository = Container.get(ProjectRepository);
 	dataStoreRepository = Container.get(DataStoreRepository);
@@ -73,7 +74,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -90,7 +91,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: '',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -107,7 +108,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -124,7 +125,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -144,7 +145,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -164,7 +165,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -183,7 +184,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -201,7 +202,7 @@ describe('POST /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-ccolumn',
+					name: 'test_ccolumn',
 					type: 'string',
 				},
 			],
@@ -492,11 +493,11 @@ describe('GET /projects/:projectId/data-stores', () => {
 			name: 'Test Data Store',
 			columns: [
 				{
-					name: 'test-column-1',
+					name: 'test_column_1',
 					type: 'string',
 				},
 				{
-					name: 'test-column-2',
+					name: 'test_column_2',
 					type: 'boolean',
 				},
 			],
@@ -757,7 +758,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		expect(dataStoreInDb).toBeNull();
 	});
 
-	test("should delete data from 'data_store', 'data_store_column' tables and drop 'data_store_user_<id>' table", async () => {
+	test("should delete data from 'data_table', 'data_table_column' tables and drop 'data_table_user_<id>' table", async () => {
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const dataStore = await createDataStore(personalProject, {
 			name: 'Test Data Store',
@@ -778,7 +779,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId', () => {
 		expect(dataStoreInDb).toBeNull();
 
 		const dataStoreColumnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 		});
 		expect(dataStoreColumnInDb).toBeNull();
 
@@ -822,11 +823,11 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'boolean',
 				},
 			],
@@ -837,8 +838,8 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.expect(200);
 
 		expect(response.body.data).toHaveLength(2);
-		expect(response.body.data[0].name).toBe('test-column');
-		expect(response.body.data[1].name).toBe('another-column');
+		expect(response.body.data[0].name).toBe('test_column');
+		expect(response.body.data[1].name).toBe('another_column');
 	});
 
 	test('should list columns if user has project:editor role in team project', async () => {
@@ -847,7 +848,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -858,7 +859,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.expect(200);
 
 		expect(response.body.data).toHaveLength(1);
-		expect(response.body.data[0].name).toBe('test-column');
+		expect(response.body.data[0].name).toBe('test_column');
 	});
 
 	test('should list columns from personal project data store', async () => {
@@ -866,7 +867,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			name: 'Personal Data Store 1',
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -877,7 +878,7 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.expect(200);
 
 		expect(response.body.data).toHaveLength(1);
-		expect(response.body.data[0].name).toBe('test-column');
+		expect(response.body.data[0].name).toBe('test_column');
 	});
 });
 
@@ -898,7 +899,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const project = await createTeamProject('test project', owner);
 
 		const payload = {
-			name: 'test-column',
+			name: 'test_column',
 			type: 'string',
 			index: 0,
 		};
@@ -923,7 +924,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.send(payload)
 			.expect(400);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(0);
 	});
 
@@ -941,7 +942,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.send(payload)
 			.expect(400);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(0);
 	});
 
@@ -949,7 +950,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(ownerProject, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -958,14 +959,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		await authMemberAgent
 			.post(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns`)
 			.send({
-				name: 'new-column',
+				name: 'new_column',
 				type: 'string',
 			})
 			.expect(403);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(1);
-		expect(columnsInDb[0].name).toBe('test-column');
+		expect(columnsInDb[0].name).toBe('test_column');
 	});
 
 	test('should not create column if user has project:viewer role in team project', async () => {
@@ -974,7 +975,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project);
 
 		const payload = {
-			name: 'test-column',
+			name: 'test_column',
 			type: 'string',
 		};
 
@@ -983,7 +984,7 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.send(payload)
 			.expect(403);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(0);
 	});
 
@@ -993,14 +994,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
 		});
 
 		const payload = {
-			name: 'new-column',
+			name: 'new_column',
 			type: 'string',
 			index: 0,
 		};
@@ -1010,9 +1011,9 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.send(payload)
 			.expect(200);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(2);
-		expect(columnsInDb[0].name).toBe('new-column');
+		expect(columnsInDb[0].name).toBe('new_column');
 		expect(columnsInDb[0].type).toBe('string');
 	});
 
@@ -1022,14 +1023,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
 		});
 
 		const payload = {
-			name: 'new-column',
+			name: 'new_column',
 			type: 'boolean',
 			index: 0,
 		};
@@ -1039,11 +1040,11 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.send(payload)
 			.expect(200);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(2);
-		expect(columnsInDb[0].name).toBe('new-column');
+		expect(columnsInDb[0].name).toBe('new_column');
 		expect(columnsInDb[0].type).toBe('boolean');
-		expect(columnsInDb[1].name).toBe('test-column');
+		expect(columnsInDb[1].name).toBe('test_column');
 		expect(columnsInDb[1].type).toBe('string');
 	});
 
@@ -1052,14 +1053,14 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
 		});
 
 		const payload = {
-			name: 'new-column',
+			name: 'new_column',
 			type: 'boolean',
 			index: 0,
 		};
@@ -1069,11 +1070,11 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 			.send(payload)
 			.expect(200);
 
-		const columnsInDb = await dataStoreColumnRepository.findBy({ dataStoreId: dataStore.id });
+		const columnsInDb = await dataStoreColumnRepository.findBy({ dataTableId: dataStore.id });
 		expect(columnsInDb).toHaveLength(2);
-		expect(columnsInDb[0].name).toBe('new-column');
+		expect(columnsInDb[0].name).toBe('new_column');
 		expect(columnsInDb[0].type).toBe('boolean');
-		expect(columnsInDb[1].name).toBe('test-column');
+		expect(columnsInDb[1].name).toBe('test_column');
 		expect(columnsInDb[1].type).toBe('string');
 	});
 
@@ -1082,18 +1083,18 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column-1',
+					name: 'test_column_1',
 					type: 'string',
 				},
 				{
-					name: 'test-column-2',
+					name: 'test_column_2',
 					type: 'string',
 				},
 			],
 		});
 
 		const payload: DataStoreCreateColumnSchema = {
-			name: 'new-column',
+			name: 'new_column',
 			type: 'boolean',
 			index: 1,
 		};
@@ -1106,9 +1107,9 @@ describe('POST /projects/:projectId/data-stores/:dataStoreId/columns', () => {
 		const columns = await dataStoreColumnRepository.getColumns(dataStore.id);
 
 		expect(columns).toHaveLength(3);
-		expect(columns[0].name).toBe('test-column-1');
-		expect(columns[1].name).toBe('new-column');
-		expect(columns[2].name).toBe('test-column-2');
+		expect(columns[0].name).toBe('test_column_1');
+		expect(columns[1].name).toBe('new_column');
+		expect(columns[2].name).toBe('test_column_2');
 	});
 });
 
@@ -1134,7 +1135,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1150,19 +1151,19 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(ownerProject, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
 		});
 
 		await authMemberAgent
-			.delete(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns/test-column`)
+			.delete(`/projects/${ownerProject.id}/data-stores/${dataStore.id}/columns/test_column`)
 			.send()
 			.expect(403);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 		});
 		expect(columnInDb).toBeDefined();
@@ -1173,7 +1174,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1181,12 +1182,12 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		await linkUserToProject(member, project, 'project:viewer');
 
 		await authMemberAgent
-			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/columns/test-column`)
+			.delete(`/projects/${project.id}/data-stores/${dataStore.id}/columns/test_column`)
 			.send()
 			.expect(403);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 		});
 		expect(columnInDb).toBeDefined();
@@ -1199,7 +1200,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1213,7 +1214,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 		});
 		expect(columnInDb).toBeNull();
@@ -1225,7 +1226,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1239,7 +1240,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 		});
 		expect(columnInDb).toBeNull();
@@ -1250,7 +1251,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1264,7 +1265,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 		});
 		expect(columnInDb).toBeNull();
@@ -1274,7 +1275,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 		const dataStore = await createDataStore(memberProject, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1288,7 +1289,7 @@ describe('DELETE /projects/:projectId/data-stores/:dataStoreId/columns/:columnId
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 		});
 		expect(columnInDb).toBeNull();
@@ -1326,7 +1327,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 			],
@@ -1345,11 +1346,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(ownerProject, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1363,7 +1364,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 			.expect(403);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 			index: 0,
 		});
@@ -1376,11 +1377,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1394,7 +1395,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 			.expect(403);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 			index: 0,
 		});
@@ -1407,11 +1408,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1425,7 +1426,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 			index: 1,
 		});
@@ -1438,11 +1439,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1456,7 +1457,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 			index: 1,
 		});
@@ -1469,11 +1470,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(project, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1487,7 +1488,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 			index: 1,
 		});
@@ -1498,11 +1499,11 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 		const dataStore = await createDataStore(memberProject, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1516,7 +1517,7 @@ describe('PATCH /projects/:projectId/data-stores/:dataStoreId/columns/:columnId/
 			.expect(200);
 
 		const columnInDb = await dataStoreColumnRepository.findOneBy({
-			dataStoreId: dataStore.id,
+			dataTableId: dataStore.id,
 			name: 'test-column',
 			index: 1,
 		});
@@ -1542,11 +1543,11 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 		const dataStore = await createDataStore(ownerProject, {
 			columns: [
 				{
-					name: 'test-column',
+					name: 'test_column',
 					type: 'string',
 				},
 				{
-					name: 'another-column',
+					name: 'another_column',
 					type: 'string',
 				},
 			],
@@ -1796,6 +1797,102 @@ describe('GET /projects/:projectId/data-stores/:dataStoreId/rows', () => {
 			],
 		});
 	});
+
+	test.each([
+		['gt', '>', 25, ['Bob'], ['Alice', 'Carol']],
+		['gte', '>=', 25, ['Bob', 'Carol'], ['Alice']],
+		['lt', '<', 25, ['Alice'], ['Bob', 'Carol']],
+		['lte', '<=', 25, ['Alice', 'Carol'], ['Bob']],
+	])(
+		'should filter rows using %s (%s) condition correctly',
+		async (condition, _operator, value, expectedNames, excludedNames) => {
+			const dataStore = await createDataStore(memberProject, {
+				columns: [
+					{
+						name: 'name',
+						type: 'string',
+					},
+					{
+						name: 'age',
+						type: 'number',
+					},
+				],
+				data: [
+					{
+						name: 'Alice',
+						age: 20,
+					},
+					{
+						name: 'Bob',
+						age: 30,
+					},
+					{
+						name: 'Carol',
+						age: 25,
+					},
+				],
+			});
+
+			const filterParam = encodeURIComponent(
+				JSON.stringify({
+					type: 'and',
+					filters: [{ columnName: 'age', value, condition }],
+				}),
+			);
+			const response = await authMemberAgent
+				.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows?filter=${filterParam}`)
+				.expect(200);
+
+			expect(response.body.data.count).toBe(expectedNames.length);
+			const returnedNames = (response.body.data.data as DataStoreRow[]).map((row) => row.name);
+
+			for (const expectedName of expectedNames) {
+				expect(returnedNames).toContain(expectedName);
+			}
+
+			for (const excludedName of excludedNames) {
+				expect(returnedNames).not.toContain(excludedName);
+			}
+		},
+	);
+
+	test.each(['like', 'ilike'])(
+		'should auto-wrap %s filters if no wildcard is present',
+		async (condition) => {
+			const dataStore = await createDataStore(memberProject, {
+				columns: [
+					{
+						name: 'name',
+						type: 'string',
+					},
+				],
+				data: [
+					{
+						name: 'Alice Smith',
+					},
+					{
+						name: 'Bob Jones',
+					},
+					{
+						name: 'Carol Brown',
+					},
+				],
+			});
+
+			const filterParam = encodeURIComponent(
+				JSON.stringify({
+					type: 'and',
+					filters: [{ columnName: 'name', value: 'Alice', condition }],
+				}),
+			);
+			const response = await authMemberAgent
+				.get(`/projects/${memberProject.id}/data-stores/${dataStore.id}/rows?filter=${filterParam}`)
+				.expect(200);
+
+			expect(response.body.data.count).toBe(1);
+			expect(response.body.data.data[0].name).toBe('Alice Smith');
+		},
+	);
 });
 
 describe('POST /projects/:projectId/data-stores/:dataStoreId/insert', () => {
