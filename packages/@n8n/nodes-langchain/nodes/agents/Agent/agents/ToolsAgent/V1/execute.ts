@@ -1,4 +1,4 @@
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+// BaseLanguageModel import removed – not used after refactor
 import { RunnableSequence } from '@langchain/core/runnables';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import omit from 'lodash/omit';
@@ -12,7 +12,9 @@ import type { LLMResult } from '@langchain/core/outputs';
 import { getModelNameForTiktoken } from '@langchain/core/language_models/base';
 import { estimateTokensFromStringList } from '@utils/tokenizer/token-estimator';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, IDataObject } from 'n8n-workflow';
+import assert from 'node:assert';
+import type { TiktokenModel } from 'js-tiktoken';
 
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
@@ -50,7 +52,8 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
-			const model = (await getChatModel(this)) as BaseLanguageModel;
+			const model = await getChatModel(this);
+			assert(model, 'Please connect a model to the Chat Model input');
 			const memory = await getOptionalMemory(this);
 
 			// Token usage collector (per item)
@@ -84,7 +87,11 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				private runToModelKey: Record<string, string> = {};
 				private promptEstimateByRun: Record<string, number> = {};
 
-				constructor(private readonly tiktokenModel: string = getModelNameForTiktoken('gpt-4o')) {
+				constructor(
+					private readonly tiktokenModel: TiktokenModel = getModelNameForTiktoken(
+						'gpt-4o',
+					) as TiktokenModel,
+				) {
 					super();
 				}
 
@@ -94,14 +101,35 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					runId: string,
 				): Promise<void> {
 					try {
-						const llmAny = llm as any;
-						const modelName = llmAny?.kwargs?.model ?? llmAny?.kwargs?.modelName ?? 'unknown';
-						const modelType = llmAny?.id?.[0] ?? llmAny?.lc_namespace?.[0] ?? 'unknown';
+						const modelName = (() => {
+							if (typeof llm === 'object' && llm !== null && 'kwargs' in llm) {
+								const kwargs = (llm as { kwargs?: unknown }).kwargs;
+								if (kwargs && typeof kwargs === 'object') {
+									const k = kwargs as Record<string, unknown>;
+									if (typeof k.model === 'string') return k.model;
+									if (typeof k.modelName === 'string') return k.modelName;
+								}
+							}
+							return 'unknown';
+						})();
+						const modelType = (() => {
+							if (typeof llm === 'object' && llm !== null) {
+								if ('id' in llm) {
+									const idVal = (llm as { id?: unknown }).id;
+									if (Array.isArray(idVal) && typeof idVal[0] === 'string') return idVal[0];
+								}
+								if ('lc_namespace' in llm) {
+									const nsVal = (llm as { lc_namespace?: unknown }).lc_namespace;
+									if (Array.isArray(nsVal) && typeof nsVal[0] === 'string') return nsVal[0];
+								}
+							}
+							return 'unknown';
+						})();
 						const key = `${modelType}:${modelName}`;
 						this.runToModelKey[runId] = key;
 						const estimatedPrompt = await estimateTokensFromStringList(
 							Array.isArray(prompts) ? prompts : [],
-							this.tiktokenModel as any,
+							this.tiktokenModel,
 						);
 						this.promptEstimateByRun[runId] = estimatedPrompt;
 					} catch {}
@@ -167,8 +195,19 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 						const sep = key.indexOf(':');
 						const modelType = sep === -1 ? key : key.slice(0, sep);
 						const modelName = sep === -1 ? '' : key.slice(sep + 1);
-						const completionTokens = (output?.llmOutput as any)?.tokenUsage?.completionTokens ?? 0;
-						const promptTokens = (output?.llmOutput as any)?.tokenUsage?.promptTokens ?? 0;
+						let completionTokens = 0;
+						let promptTokens = 0;
+						const llmOutput = output?.llmOutput;
+						if (llmOutput && typeof llmOutput === 'object' && 'tokenUsage' in llmOutput) {
+							const tokenUsage = (llmOutput as { tokenUsage?: unknown }).tokenUsage;
+							if (tokenUsage && typeof tokenUsage === 'object') {
+								const tu = tokenUsage as Record<string, unknown>;
+								const ct = tu.completionTokens;
+								const pt = tu.promptTokens;
+								if (typeof ct === 'number') completionTokens = ct;
+								if (typeof pt === 'number') promptTokens = pt;
+							}
+						}
 						if (completionTokens > 0 || promptTokens > 0) {
 							this.addUsage(
 								key,
@@ -180,11 +219,23 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 							);
 							return;
 						}
-						const generationsTexts =
-							output?.generations?.flatMap((gen) => gen.map((g) => (g as any).text ?? '')) ?? [];
+						const generationsTexts: string[] = [];
+						const gens = Array.isArray(output?.generations)
+							? (output?.generations as unknown[])
+							: [];
+						for (const gen of gens) {
+							if (Array.isArray(gen)) {
+								for (const g of gen) {
+									if (g && typeof g === 'object' && 'text' in (g as Record<string, unknown>)) {
+										const t = (g as Record<string, unknown>).text;
+										if (typeof t === 'string') generationsTexts.push(t);
+									}
+								}
+							}
+						}
 						const estimatedCompletion = await estimateTokensFromStringList(
 							generationsTexts,
-							this.tiktokenModel as any,
+							this.tiktokenModel,
 						);
 						const estimatedPrompt = this.promptEstimateByRun[runId] ?? 0;
 						this.addUsage(key, modelType, modelName, estimatedPrompt, estimatedCompletion, true);
@@ -250,7 +301,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			});
 
 			// Invoke the executor with the given input and system message.
-			const response: any = await executor.invoke(
+			const response = await executor.invoke(
 				{
 					input,
 					system_message: options.systemMessage ?? SYSTEM_MESSAGE,
@@ -262,45 +313,42 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					...(usageCollector ? { callbacks: [usageCollector] } : {}),
 				},
 			);
-			if (usageCollector) {
-				response.__tokenUsage = usageCollector.getUsageRecords();
-			}
+			const usageRecords = usageCollector?.getUsageRecords();
 
 			// If memory and outputParser are connected, parse the output.
 			if (memory && outputParser) {
-				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(
-					response.output as string,
-				);
-				response.output = parsedOutput?.output ?? parsedOutput;
+				const outputStr =
+					typeof response === 'object' &&
+					response !== null &&
+					'output' in (response as Record<string, unknown>)
+						? ((response as Record<string, unknown>).output as string)
+						: '';
+				const parsedOutput = jsonParse<{ output: Record<string, unknown> }>(outputStr);
+				if (typeof response === 'object' && response !== null) {
+					(response as Record<string, unknown>).output = parsedOutput?.output ?? parsedOutput;
+				}
 			}
 
 			// Omit internal keys before returning the result.
-			const itemResult = {
-				json: omit(
-					response,
-					'system_message',
-					'formatting_instructions',
-					'input',
-					'chat_history',
-					'agent_scratchpad',
-					'__tokenUsageByModel',
-					'__tokenUsage',
-				),
-			};
+			const baseJson: IDataObject =
+				typeof response === 'object' && response !== null
+					? (omit(
+							response as IDataObject,
+							'system_message',
+							'formatting_instructions',
+							'input',
+							'chat_history',
+							'agent_scratchpad',
+							'__tokenUsageByModel',
+							'__tokenUsage',
+						) as IDataObject)
+					: { output: response };
 
-			const usageRecords = response?.__tokenUsage as
-				| Array<{
-						modelType: string;
-						modelName: string;
-						promptTokens: number;
-						completionTokens: number;
-						totalTokens: number;
-						isEstimate: boolean;
-				  }>
-				| undefined;
 			if (usageRecords && usageRecords.length > 0) {
-				(itemResult.json as any).tokenUsage = usageRecords;
+				baseJson.tokenUsage = usageRecords;
 			}
+
+			const itemResult = { json: baseJson };
 
 			returnData.push(itemResult);
 		} catch (error) {
