@@ -46,9 +46,9 @@ export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
 		{ name: 'id - (number)', value: 'id', type: 'number' },
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'createdAt - (date)', value: 'id', type: 'date' },
+		{ name: 'createdAt - (date)', value: 'createdAt', type: 'date' },
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'updatedAt - (date)', value: 'id', type: 'date' },
+		{ name: 'updatedAt - (date)', value: 'updatedAt', type: 'date' },
 	];
 	const proxy = await getDataTableProxyLoadOptions(this);
 	const columns = await proxy.getColumns();
@@ -77,7 +77,7 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 		{ name: 'Not Equals', value: 'neq' },
 	];
 
-	const numberConditions: INodePropertyOptions[] = [
+	const comparableConditions: INodePropertyOptions[] = [
 		{ name: 'Greater Than', value: 'gt' },
 		{ name: 'Greater Than or Equal', value: 'gte' },
 		{ name: 'Less Than', value: 'lt' },
@@ -99,7 +99,7 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 		},
 	];
 
-	const allConditions = [...baseConditions, ...numberConditions, ...stringConditions];
+	const allConditions = [...baseConditions, ...comparableConditions, ...stringConditions];
 
 	// If no column is selected yet, return all conditions
 	if (!keyName) {
@@ -117,16 +117,18 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 		return baseConditions;
 	}
 
+	const conditions = baseConditions;
+
 	// String columns get LIKE operators
 	if (column.type === 'string') {
-		return [...baseConditions, ...stringConditions];
+		conditions.push.apply(conditions, stringConditions);
 	}
 
-	if (column.type === 'number') {
-		return [...baseConditions, ...numberConditions];
+	if (['number', 'date', 'string'].includes(column.type)) {
+		conditions.push.apply(conditions, comparableConditions);
 	}
 
-	return allConditions;
+	return conditions;
 }
 
 export async function getDataTables(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
