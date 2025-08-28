@@ -69,6 +69,7 @@ export * as ExpressionParser from './extensions/expression-parser';
 export { NativeMethods } from './native-methods';
 export * from './node-parameters/filter-parameter';
 export * from './node-parameters/parameter-type-validation';
+export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 
 export type {

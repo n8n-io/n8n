@@ -5,7 +5,12 @@ import type {
 	INodeProperties,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { ADD_FORM_NOTICE, getParameterValueByPath, NodeHelpers } from 'n8n-workflow';
+import {
+	ADD_FORM_NOTICE,
+	getParameterValueByPath,
+	NodeHelpers,
+	resolveRelativePath,
+} from 'n8n-workflow';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
@@ -403,9 +408,8 @@ function getDependentParametersValues(parameter: INodeProperties): string | null
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
-			if (parameterPath.startsWith('&')) {
-				parameterPath = `${props.path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
-			}
+			parameterPath = resolveRelativePath(props.path, parameterPath);
+
 			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 		}
 

@@ -21,7 +21,12 @@ import type {
 	IParameterLabel,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, isResourceLocatorValue, NodeHelpers } from 'n8n-workflow';
+import {
+	CREDENTIAL_EMPTY_VALUE,
+	isResourceLocatorValue,
+	NodeHelpers,
+	resolveRelativePath,
+} from 'n8n-workflow';
 
 import type { CodeNodeLanguageOption } from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -377,9 +382,7 @@ const dependentParametersValues = computed<string | null>(() => {
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
-			if (parameterPath.startsWith('&')) {
-				parameterPath = `${props.path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
-			}
+			parameterPath = resolveRelativePath(props.path, parameterPath);
 
 			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 		}
