@@ -10,7 +10,7 @@ export class SettingsPage extends BasePage {
 	}
 
 	getMenuItemByText(text: string) {
-		return this.page.getByText(text, { exact: true });
+		return this.page.getByTestId('menu-item').getByText(text, { exact: true });
 	}
 
 	async goToSettings() {
