@@ -169,7 +169,7 @@ describe('trimWorkflowJSON', () => {
 			const workflow: SimpleWorkflow = createWorkflow(nodes);
 			const result = trimWorkflowJSON(workflow);
 
-			// All veryLarge and medium parameters should be trimmed
+			// All veryLarge and large parameters should be trimmed
 			result.nodes.forEach((node) => {
 				expect(node.parameters?.veryLarge).toBe('[Large value omitted]');
 				expect(node.parameters?.large).toBe('[Large value omitted]');
