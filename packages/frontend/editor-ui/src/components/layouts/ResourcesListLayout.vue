@@ -5,7 +5,7 @@ import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { useUsersStore } from '@/stores/users.store';
-import type { DatatableColumn } from '@n8n/design-system';
+import { N8nFilters, type DatatableColumn } from '@n8n/design-system';
 import { useDebounce } from '@/composables/useDebounce';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
@@ -595,53 +595,8 @@ defineExpose({
 					<div :class="$style['filters-row']">
 						<div :class="$style.filters">
 							<slot name="breadcrumbs"></slot>
-							<n8n-input
-								v-if="props.uiConfig.searchEnabled"
-								ref="search"
-								:model-value="filtersModel.search"
-								:class="$style.search"
-								:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
-								size="small"
-								clearable
-								data-test-id="resources-list-search"
-								@update:model-value="onSearch"
-							>
-								<template #prefix>
-									<n8n-icon icon="search" />
-								</template>
-							</n8n-input>
-							<div v-if="props.uiConfig.sortEnabled" :class="$style['sort-and-filter']">
-								<n8n-select
-									v-model="sortBy"
-									size="small"
-									data-test-id="resources-list-sort"
-									@change="setSorting(sortBy)"
-								>
-									<n8n-option
-										v-for="sortOption in sortOptions"
-										:key="sortOption"
-										data-test-id="resources-list-sort-item"
-										:value="sortOption"
-										:label="getResourceText(`sort.${sortOption}`, `sort.${sortOption}`)"
-									/>
-								</n8n-select>
-							</div>
-							<div v-if="props.uiConfig.showFiltersDropdown" :class="$style['sort-and-filter']">
-								<ResourceFiltersDropdown
-									:keys="filterKeys"
-									:reset="resetFilters"
-									:model-value="filtersModel"
-									:shareable="shareable"
-									:just-icon="true"
-									@update:model-value="onUpdateFilters"
-									@update:filters-length="onUpdateFiltersLength"
-								>
-									<template #default="resourceFiltersSlotProps">
-										<slot name="filters" v-bind="resourceFiltersSlotProps" />
-									</template>
-								</ResourceFiltersDropdown>
-								<slot name="add-button"></slot>
-							</div>
+
+							<N8nFilters type="chip" />
 						</div>
 					</div>
 
