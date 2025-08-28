@@ -209,7 +209,7 @@ function handleCheckboxChange(
 								<DropdownMenuPortal>
 									<DropdownMenuSubContent class="filter-sub-content filter-sub-content-enhanced">
 										<!-- Search Bar -->
-										<div class="filter-search-container">
+										<div class="filter-search-container" v-if="filterOption.options.length > 10">
 											<N8nInput
 												:modelValue="searchQueries[filterOption.label] || ''"
 												@update:modelValue="
@@ -368,8 +368,14 @@ function handleCheckboxChange(
 	background-color: var(--color-background-base);
 
 	border-radius: var(--border-radius-base);
-	padding: var(--spacing-2xs) var(--spacing-3xs);
+	padding: var(--spacing-3xs) var(--spacing-3xs);
+	height: 30px;
 	font-size: var(--font-size-2xs);
+
+	&:hover {
+		background-color: var(--color-background-xlight);
+		cursor: pointer;
+	}
 }
 
 .filter-name {
@@ -427,7 +433,7 @@ function handleCheckboxChange(
 }
 
 :deep(.filter-sub-content) {
-	padding: var(--spacing-4xs) 0;
+	padding: var(--spacing-3xs);
 	min-width: 160px;
 	box-shadow: var(--box-shadow-light);
 	border-radius: var(--border-radius-base);
@@ -435,20 +441,11 @@ function handleCheckboxChange(
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 }
 
-:deep(.filter-sub-content-enhanced) {
-	padding: 0;
-	min-width: 200px;
-	max-width: 300px;
-}
-
 .filter-search-container {
-	padding: var(--spacing-2xs);
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 }
 
 :deep(.filter-search-input) {
-	width: 100%;
-
 	.el-input__inner {
 		font-size: var(--font-size-2xs);
 		height: 28px;
@@ -466,20 +463,22 @@ function handleCheckboxChange(
 .filter-option-item {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	gap: var(--spacing-4xs);
+	padding: var(--spacing-3xs) var(--spacing-2xs);
+	border-radius: var(--border-radius-small);
 	font-size: var(--font-size-s);
+	margin-bottom: 2px;
 	cursor: pointer;
 	transition: background-color 0.2s ease;
 	position: relative;
 
-	&:hover {
+	&:hover,
+	&:focus {
 		background-color: var(--color-background-base);
 	}
 
 	&.selected {
 		background-color: var(--color-background-base);
-		color: var(--color-primary);
 
 		.check-icon {
 			color: var(--color-success);
@@ -490,6 +489,7 @@ function handleCheckboxChange(
 .filter-checkbox {
 	flex-shrink: 0;
 	margin-right: var(--spacing-4xs);
+	margin-bottom: 0;
 
 	:deep(.el-checkbox__inner) {
 		width: 14px;
@@ -499,13 +499,6 @@ function handleCheckboxChange(
 	:deep(.el-checkbox__label) {
 		display: none;
 	}
-}
-
-.check-icon-spacer {
-	width: 14px;
-	height: 14px;
-	flex-shrink: 0;
-	margin-right: var(--spacing-2xs);
 }
 
 .filter-option-text {
