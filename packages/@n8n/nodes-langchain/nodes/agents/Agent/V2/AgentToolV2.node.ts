@@ -80,6 +80,16 @@ export class AgentToolV2 implements INodeType {
 				},
 				...getToolsAgentProperties({ withStreaming: false }),
 			],
+			hints: [
+				{
+					message:
+						'Collect Token Usage is enabled. This execution returns a tokenUsage array with per-model totals (actual vs estimated).',
+					type: 'info',
+					location: 'outputPane',
+					whenToDisplay: 'afterExecution',
+					displayCondition: '={{ $parameter["options"]["collectTokenUsage"] === true }}',
+				},
+			],
 		};
 	}
 
