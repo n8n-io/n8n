@@ -176,6 +176,12 @@ export class DataStoreService {
 		);
 	}
 
+	async updateRow<T extends boolean | undefined>(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<UpdateDataStoreRowDto, 'returnData'>,
+		returnData?: T,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async updateRow(
 		dataStoreId: string,
 		projectId: string,
@@ -224,7 +230,12 @@ export class DataStoreService {
 	): void {
 		// Include system columns like 'id' if requested
 		const allColumns = includeSystemColumns
-			? [{ name: 'id', type: 'number' }, ...columns]
+			? [
+					{ name: 'id', type: 'number' },
+					{ name: 'createdAt', type: 'date' },
+					{ name: 'updatedAt', type: 'date' },
+					...columns,
+				]
 			: columns;
 		const columnNames = new Set(allColumns.map((x) => x.name));
 		const columnTypeMap = new Map(allColumns.map((x) => [x.name, x.type]));
@@ -232,7 +243,7 @@ export class DataStoreService {
 			const keys = Object.keys(row);
 			for (const key of keys) {
 				if (!columnNames.has(key)) {
-					throw new DataStoreValidationError('unknown column name');
+					throw new DataStoreValidationError(`unknown column name '${key}'`);
 				}
 				this.validateCell(row, key, columnTypeMap);
 			}

@@ -1098,7 +1098,9 @@ describe('dataStore', () => {
 			]);
 
 			// ASSERT
-			await expect(result).rejects.toThrow(new DataStoreValidationError('unknown column name'));
+			await expect(result).rejects.toThrow(
+				new DataStoreValidationError("unknown column name 'cWrong'"),
+			);
 		});
 
 		it('rejects a invalid date string to date column', async () => {
