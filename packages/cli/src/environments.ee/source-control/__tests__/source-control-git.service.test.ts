@@ -1,4 +1,3 @@
-import path from 'path';
 import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { simpleGit } from 'simple-git';
@@ -6,6 +5,7 @@ import type { SimpleGit } from 'simple-git';
 
 import { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlPreferences } from '../types/source-control-preferences';
+import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 
 const MOCK_BRANCHES = {
 	all: ['origin/master', 'origin/feature/branch'],
@@ -109,27 +109,44 @@ describe('SourceControlGitService', () => {
 
 	describe('path normalization', () => {
 		describe('cross-platform path handling', () => {
-			it('should normalize paths correctly based on current OS', () => {
-				// Test the actual production logic behavior on each platform
-				if (process.platform === 'win32') {
-					// On Windows: test Windows path normalization
-					const windowsPath = 'C:\\Users\\Test\\.n8n\\ssh_private_key_temp';
-					const expected = 'C:/Users/Test/.n8n/ssh_private_key_temp';
+			it('should normalize Windows paths to POSIX format for SSH command', async () => {
+				// Arrange
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
+				const windowsPath = 'C:\\Users\\Test\\.n8n\\ssh_private_key_temp';
+				const sshFolder = 'C:\\Users\\Test\\.n8n\\.ssh';
 
-					// This mimics the logic from setGitSshCommand on Windows
-					const normalized = windowsPath.split(path.win32.sep).join(path.posix.sep);
+				// Mock the getPrivateKeyPath to return a Windows path
+				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(windowsPath);
 
-					expect(normalized).toBe(expected);
-					expect(normalized).not.toContain('\\');
-				} else {
-					// On Unix/macOS: test Unix path handling
-					const unixPath = '/home/user/.n8n/ssh_private_key_temp';
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 
-					// This mimics the logic from setGitSshCommand on Unix
-					const normalized = unixPath.split(path.posix.sep).join(path.posix.sep);
+				// Spy on the simpleGit creation to capture the env() calls
+				const mockGit = {
+					env: jest.fn().mockReturnThis(),
+				};
 
-					expect(normalized).toBe(unixPath); // Should remain unchanged
-				}
+				// Mock the simpleGit import to capture the SSH command
+				jest.doMock('simple-git', () => ({
+					simpleGit: jest.fn(() => mockGit),
+				}));
+
+				// Act
+				await gitService.setGitSshCommand('/git/folder', sshFolder);
+
+				// Assert - verify Windows paths are normalized to POSIX format
+				expect(mockGit.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining('C:/Users/Test/.n8n/ssh_private_key_temp'), // Forward slashes
+				);
+				expect(mockGit.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining('C:/Users/Test/.n8n/.ssh/known_hosts'), // Forward slashes
+				);
+				// Ensure no backslashes remain in the SSH command
+				expect(mockGit.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.not.stringContaining('\\'),
+				);
 			});
 
 			it('should create properly quoted SSH command', () => {
@@ -144,26 +161,39 @@ describe('SourceControlGitService', () => {
 				expect(sshCommand).toContain('StrictHostKeyChecking=no');
 			});
 
-			it('should escape double quotes in paths to prevent command injection', () => {
-				// Test paths containing double quotes that could break the command
+			it('should escape double quotes in paths to prevent command injection', async () => {
+				// Arrange
+				const mockPreferencesService = mock<SourceControlPreferencesService>();
 				const pathWithQuotes = 'C:/Users/Test"User/.n8n/ssh_private_key_temp';
-				const knownHostsWithQuotes = 'C:/Users/Test"User/.n8n/.ssh/known_hosts';
+				const sshFolder = 'C:/Users/Test"User/.n8n/.ssh';
 
-				// Apply the same escaping logic as in the production code
-				const escapedPrivateKeyPath = pathWithQuotes.replace(/"/g, '\\"');
-				const escapedKnownHostsPath = knownHostsWithQuotes.replace(/"/g, '\\"');
+				// Mock the getPrivateKeyPath to return a path with quotes
+				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(pathWithQuotes);
 
-				const sshCommand = `ssh -o UserKnownHostsFile="${escapedKnownHostsPath}" -o StrictHostKeyChecking=no -i "${escapedPrivateKeyPath}"`;
+				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 
-				// Verify quotes are properly escaped
-				expect(sshCommand).toContain('C:/Users/Test\\"User/.n8n/ssh_private_key_temp');
-				expect(sshCommand).toContain('C:/Users/Test\\"User/.n8n/.ssh/known_hosts');
+				// Spy on the simpleGit creation to capture the env() calls
+				const mockGit = {
+					env: jest.fn().mockReturnThis(),
+				};
 
-				// Verify that unescaped quotes are replaced with escaped quotes
-				expect(escapedPrivateKeyPath).not.toContain('Test"User'); // Original unescaped quote
-				expect(escapedKnownHostsPath).not.toContain('Test"User'); // Original unescaped quote
-				expect(escapedPrivateKeyPath).toContain('Test\\"User'); // Properly escaped quote
-				expect(escapedKnownHostsPath).toContain('Test\\"User'); // Properly escaped quote
+				// Mock the simpleGit import to capture the SSH command
+				jest.doMock('simple-git', () => ({
+					simpleGit: jest.fn(() => mockGit),
+				}));
+
+				// Act
+				await gitService.setGitSshCommand('/git/folder', sshFolder);
+
+				// Assert - verify the SSH command was properly escaped
+				expect(mockGit.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.stringContaining('Test\\"User'), // Escaped quote
+				);
+				expect(mockGit.env).toHaveBeenCalledWith(
+					'GIT_SSH_COMMAND',
+					expect.not.stringContaining('Test"User'), // No unescaped quote in final command
+				);
 			});
 		});
 	});
