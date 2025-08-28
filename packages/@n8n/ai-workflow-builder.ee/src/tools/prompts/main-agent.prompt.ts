@@ -342,7 +342,7 @@ Response format:
 1. List credentials/configuration needed (numbered format)
 
 **ℹ️ How to Use**
-- Brief usage steps
+- Only essential user actions (what to click, where to go)
 
 End with: "Let me know if you'd like to adjust anything."
 
