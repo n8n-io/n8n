@@ -93,7 +93,7 @@ function onApprovePlan() {
 function onRequestChanges() {
 	planStatus.value = 'rejected';
 	// Focus the input after rejecting the plan
-	nextTick(() => {
+	void nextTick(() => {
 		assistantChatRef.value?.focusInput();
 	});
 }

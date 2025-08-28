@@ -34,6 +34,7 @@ const props = defineProps<Props>();
 const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 const showControlsLocal = ref(props.showControls ?? true);
+const changesRequested = ref(false);
 
 const emit = defineEmits<{
 	approvePlan: [];
@@ -48,6 +49,7 @@ function onApprovePlan() {
 
 function onRequestChanges() {
 	showControlsLocal.value = false;
+	changesRequested.value = true;
 	emit('requestChanges');
 }
 </script>
@@ -91,6 +93,11 @@ function onRequestChanges() {
 				}}</n8n-button>
 			</div>
 		</template>
+		<template v-if="changesRequested">
+			<span :class="$style.followUpMessage">{{
+				i18n.baseText('aiAssistant.builder.plan.whatToChange')
+			}}</span>
+		</template>
 	</BaseMessage>
 </template>
 
@@ -122,5 +129,8 @@ function onRequestChanges() {
 	display: flex;
 	gap: var(--spacing-2xs);
 	margin-top: var(--spacing-xs);
+}
+.followUpMessage {
+	margin-top: var(--spacing-m);
 }
 </style>
