@@ -18,7 +18,7 @@ export class WorkerViewPage extends BasePage {
 	}
 
 	getWorkerMenuItem() {
-		return this.page.getByText('Workers', { exact: true });
+		return this.page.getByTestId('menu-item').getByText('Workers', { exact: true });
 	}
 
 	async visitWorkerView() {

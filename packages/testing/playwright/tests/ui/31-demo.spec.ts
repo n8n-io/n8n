@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures/base';
-import simpleWorkflow from '../../fixtures/Manual_wait_set.json';
-import workflowWithPinned from '../../fixtures/Webhook_set_pinned.json';
 import type { TestRequirements } from '../../Types';
+import simpleWorkflow from '../../workflows/Manual_wait_set.json';
+import workflowWithPinned from '../../workflows/Webhook_set_pinned.json';
 
 const requirements: TestRequirements = {
 	config: {
