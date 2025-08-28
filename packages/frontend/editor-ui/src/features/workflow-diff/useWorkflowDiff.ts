@@ -1,6 +1,6 @@
 import _pick from 'lodash-es/pick';
 import _isEqual from 'lodash-es/isEqual';
-import type { CanvasConnection } from '@/types';
+import type { CanvasConnection, CanvasNode } from '@/types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { MaybeRefOrGetter, Ref, ComputedRef } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -134,15 +134,17 @@ function createWorkflowDiff(
 
 		return {
 			workflow: workflowRef,
-			nodes: nodes.value.map((node) => {
+			nodes: nodes.value.map((node: CanvasNode) => {
 				node.draggable = false;
 				node.selectable = false;
 				node.focusable = false;
 				return node;
 			}),
-			connections: connections.value.map((connection) => {
+			connections: connections.value.map((connection: CanvasConnection) => {
 				connection.selectable = false;
 				connection.focusable = false;
+				// Remove execution data from connection labels in diff context
+				connection.label = '';
 				return connection;
 			}),
 		};

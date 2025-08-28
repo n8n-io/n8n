@@ -924,11 +924,13 @@ export type DataStoreProxyProvider = {
 	getDataStoreAggregateProxy(
 		workflow: Workflow,
 		node: INode,
+		dataStoreProjectId?: string,
 	): Promise<IDataStoreProjectAggregateService>;
 	getDataStoreProxy(
 		workflow: Workflow,
 		node: INode,
 		dataStoreId: string,
+		dataStoreProjectId?: string,
 	): Promise<IDataStoreProjectService>;
 };
 

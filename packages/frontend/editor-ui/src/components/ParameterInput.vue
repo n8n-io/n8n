@@ -1153,7 +1153,7 @@ watch(remoteParameterOptionsLoading, () => {
 
 // Focus input field when changing between fixed and expression
 watch(isModelValueExpression, async (isExpression, wasExpression) => {
-	if (!props.isReadOnly && isExpression !== wasExpression) {
+	if (!props.isReadOnly && isFocused.value && isExpression !== wasExpression) {
 		await nextTick();
 		await setFocus();
 	}

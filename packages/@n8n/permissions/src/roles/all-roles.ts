@@ -1,4 +1,10 @@
 import {
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
+	PROJECT_OWNER_ROLE_SLUG,
+	PROJECT_VIEWER_ROLE_SLUG,
+} from '../constants.ee';
+import {
 	CREDENTIALS_SHARING_SCOPE_MAP,
 	GLOBAL_SCOPE_MAP,
 	PROJECT_SCOPE_MAP,
@@ -11,10 +17,10 @@ const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	'global:owner': 'Owner',
 	'global:admin': 'Admin',
 	'global:member': 'Member',
-	'project:personalOwner': 'Project Owner',
-	'project:admin': 'Project Admin',
-	'project:editor': 'Project Editor',
-	'project:viewer': 'Project Viewer',
+	[PROJECT_OWNER_ROLE_SLUG]: 'Project Owner',
+	[PROJECT_ADMIN_ROLE_SLUG]: 'Project Admin',
+	[PROJECT_EDITOR_ROLE_SLUG]: 'Project Editor',
+	[PROJECT_VIEWER_ROLE_SLUG]: 'Project Viewer',
 	'credential:user': 'Credential User',
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',

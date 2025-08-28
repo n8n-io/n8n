@@ -1,6 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import DataStoreTable from '@/features/dataStore/components/dataGrid/DataStoreTable.vue';
-import { fireEvent, waitFor } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import type { DataStore } from '@/features/dataStore/datastore.types';
@@ -44,6 +43,7 @@ vi.mock('ag-grid-community', () => ({
 	ClientSideRowModelApiModule: {},
 	ValidationModule: {},
 	UndoRedoEditModule: {},
+	CellStyleModule: {},
 }));
 
 // Mock the n8n theme
@@ -137,46 +137,15 @@ describe('DataStoreTable', () => {
 	});
 
 	describe('Component Initialization', () => {
-		it('should render the component with AG Grid and AddColumnPopover', () => {
+		it('should render the component with AG Grid', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('ag-grid-vue')).toBeInTheDocument();
-			expect(getByTestId('add-column-popover')).toBeInTheDocument();
 		});
 
 		it('should render pagination controls', () => {
 			const { getByTestId } = renderComponent();
-
 			expect(getByTestId('data-store-content-pagination')).toBeInTheDocument();
-		});
-
-		it('should render add row button', () => {
-			const { getByTestId } = renderComponent();
-
-			expect(getByTestId('data-store-add-row-button')).toBeInTheDocument();
-		});
-	});
-
-	describe('Add Column Functionality', () => {
-		it('should handle add column event from AddColumnPopover', async () => {
-			const { getByTestId } = renderComponent();
-
-			const addColumnPopover = getByTestId('add-column-popover');
-			const addButton = addColumnPopover.querySelector(
-				'[data-test-id="data-store-add-column-button"]',
-			);
-
-			expect(addButton).toBeInTheDocument();
-
-			await fireEvent.click(addButton!);
-
-			await waitFor(() => {
-				expect(dataStoreStore.addDataStoreColumn).toHaveBeenCalledWith(
-					mockDataStore.id,
-					mockDataStore.projectId,
-					{ name: 'newColumn', type: 'string' },
-				);
-			});
 		});
 	});
 

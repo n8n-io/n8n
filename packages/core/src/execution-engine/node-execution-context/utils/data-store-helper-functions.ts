@@ -14,8 +14,17 @@ export function getDataStoreHelperFunctions(
 	const dataStoreProxyProvider = additionalData.dataStoreProxyProvider;
 	return {
 		getDataStoreAggregateProxy: async () =>
-			await dataStoreProxyProvider.getDataStoreAggregateProxy(workflow, node),
+			await dataStoreProxyProvider.getDataStoreAggregateProxy(
+				workflow,
+				node,
+				additionalData.dataStoreProjectId,
+			),
 		getDataStoreProxy: async (dataStoreId: string) =>
-			await dataStoreProxyProvider.getDataStoreProxy(workflow, node, dataStoreId),
+			await dataStoreProxyProvider.getDataStoreProxy(
+				workflow,
+				node,
+				dataStoreId,
+				additionalData.dataStoreProjectId,
+			),
 	};
 }
