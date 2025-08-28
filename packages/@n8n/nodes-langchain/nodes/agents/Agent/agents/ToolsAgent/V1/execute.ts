@@ -261,7 +261,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				},
 			);
 			if (usageCollector) {
-				response.__tokenUsageRecords = usageCollector.getUsageRecords();
+				response.__tokenUsage = usageCollector.getUsageRecords();
 			}
 
 			// If memory and outputParser are connected, parse the output.
@@ -282,11 +282,11 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					'chat_history',
 					'agent_scratchpad',
 					'__tokenUsageByModel',
-					'__tokenUsageRecords',
+					'__tokenUsage',
 				),
 			};
 
-			const usageRecords = response?.__tokenUsageRecords as
+			const usageRecords = response?.__tokenUsage as
 				| Array<{
 						modelType: string;
 						modelName: string;
@@ -297,7 +297,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				  }>
 				| undefined;
 			if (usageRecords && usageRecords.length > 0) {
-				(itemResult.json as any).tokenUsageRecords = usageRecords;
+				(itemResult.json as any).tokenUsage = usageRecords;
 			}
 
 			returnData.push(itemResult);

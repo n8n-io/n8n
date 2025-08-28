@@ -464,13 +464,13 @@ export async function toolsAgentExecute(
 				// attach usage for later aggregation
 				return {
 					...streamResult,
-					__tokenUsageRecords: usageCollector?.getUsageRecords(),
+					__tokenUsage: usageCollector?.getUsageRecords(),
 				} as any;
 			} else {
 				// Handle regular execution
 				const res: any = await executor.invoke(invokeParams, executeOptions);
 				if (usageCollector) {
-					res.__tokenUsageRecords = usageCollector.getUsageRecords();
+					res.__tokenUsage = usageCollector.getUsageRecords();
 				}
 				return res;
 			}
@@ -513,15 +513,15 @@ export async function toolsAgentExecute(
 					'chat_history',
 					'agent_scratchpad',
 					'__tokenUsageByModel',
-					'__tokenUsageRecords',
+					'__tokenUsage',
 				),
 				pairedItem: { item: itemIndex },
 			};
 
 			// Attach token usage records (estimate vs actual per model)
-			const usageRecords = (response as any)?.__tokenUsageRecords as ModelUsage[] | undefined;
+			const usageRecords = (response as any)?.__tokenUsage as ModelUsage[] | undefined;
 			if (usageRecords && usageRecords.length > 0) {
-				(itemResult.json as any).tokenUsageRecords = usageRecords;
+				(itemResult.json as any).tokenUsage = usageRecords;
 			}
 
 			returnData.push(itemResult);
