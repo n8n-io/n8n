@@ -22,9 +22,9 @@ const closeDialog = () => {
 	modalBus.emit('close');
 };
 
-const downloadThirdPartyLicenses = () => {
+const downloadThirdPartyLicenses = async () => {
 	const url = getThirdPartyLicensesDownloadUrl(rootStore.restApiContext);
-	downloadFile(url, undefined, { 'push-ref': rootStore.restApiContext.pushRef });
+	await downloadFile(url);
 };
 
 const copyDebugInfoToClipboard = async () => {

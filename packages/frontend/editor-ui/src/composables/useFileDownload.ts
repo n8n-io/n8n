@@ -1,8 +1,11 @@
 import { ref, readonly } from 'vue';
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 export function useFileDownload() {
 	const isDownloading = ref(false);
+	const error = ref<Error | null>(null);
+	const rootStore = useRootStore();
 
 	function getBrowserId(): string {
 		let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
@@ -18,6 +21,7 @@ export function useFileDownload() {
 		filename?: string,
 		additionalHeaders?: Record<string, string>,
 	): Promise<void> {
+		error.value = null; // Clear previous errors
 		isDownloading.value = true;
 
 		try {
@@ -25,6 +29,7 @@ export function useFileDownload() {
 
 			if (url.startsWith('/')) {
 				headers['browser-id'] = getBrowserId();
+				headers['push-ref'] = rootStore.restApiContext.pushRef;
 			}
 
 			const response = await fetch(url, { headers });
@@ -49,6 +54,9 @@ export function useFileDownload() {
 			a.download = downloadFilename;
 			a.click();
 			URL.revokeObjectURL(blobUrl);
+		} catch (err) {
+			error.value = err instanceof Error ? err : new Error('Download failed');
+			throw err; // Re-throw for component handling
 		} finally {
 			isDownloading.value = false;
 		}
@@ -56,6 +64,7 @@ export function useFileDownload() {
 
 	return {
 		isDownloading: readonly(isDownloading),
+		error: readonly(error),
 		downloadFile,
 	};
 }
