@@ -59,7 +59,7 @@ export interface DataRequestResponse {
 }
 
 export interface TaskResultData {
-	result: INodeExecutionData[];
+	result: unknown;
 	customData?: Record<string, string>;
 	staticData?: IDataObject;
 }

@@ -249,11 +249,13 @@ describe('JsTaskRunner', () => {
 			});
 
 			// When returning an object with json property, it's preserved
-			// When returning other objects, json becomes undefined
+			// When returning other objects, the entire object becomes the json value
 			const expectedJson =
 				expected && typeof expected === 'object' && 'json' in expected
 					? (expected as any).json
-					: undefined; // TODO
+					: needsWrapping
+						? { val: expected }
+						: expected;
 
 			expect(outcome.result).toEqual([{ json: expectedJson, pairedItem: { item: 0 } }]);
 		};
@@ -434,7 +436,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result.val).toBeCloseTo(helsinkiTimeNow, 1); // TODO
+				expect(outcome.result).toEqual({ val: expect.closeTo(helsinkiTimeNow, 1) });
 			});
 
 			it('should use the default timezone', async () => {
@@ -451,7 +453,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result.val).toBeCloseTo(helsinkiTimeNow, 1); // TODO
+				expect(outcome.result).toEqual({ val: expect.closeTo(helsinkiTimeNow, 1) });
 			});
 		});
 
@@ -485,7 +487,9 @@ describe('JsTaskRunner', () => {
 					}),
 				});
 
-				expect(outcome.result).toEqual([{ json: undefined, pairedItem: { item: 0 } }]); // TODO
+				expect(outcome.result).toEqual([
+					{ json: { val: { key: 'value' } }, pairedItem: { item: 0 } },
+				]);
 			});
 
 			test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
@@ -572,7 +576,9 @@ describe('JsTaskRunner', () => {
 					taskData: createTaskDataWithNodeStaticData({ key: 'value' }),
 				});
 
-				expect(outcome.result).toEqual([{ json: undefined, pairedItem: { item: 0 } }]); // TODO
+				expect(outcome.result).toEqual([
+					{ json: { val: { key: 'value' } }, pairedItem: { item: 0 } },
+				]);
 			});
 
 			test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
@@ -756,7 +762,9 @@ describe('JsTaskRunner', () => {
 				}),
 			});
 
-			expect(outcomePer.result).toEqual([{ json: undefined, pairedItem: { item: 0 } }]); // TODO
+			expect(outcomePer.result).toEqual([
+				{ json: { val: 'test-buffer' }, pairedItem: { item: 0 } },
+			]);
 		});
 	});
 
@@ -892,10 +900,10 @@ describe('JsTaskRunner', () => {
 
 				expect(outcome).toEqual({
 					result: [
-						{ json: undefined, pairedItem: { item: 100 } },
-						{ json: undefined, pairedItem: { item: 101 } },
-						{ json: undefined, pairedItem: { item: 102 } },
-					], // TODO
+						{ json: { a: 1, idx: 100 }, pairedItem: { item: 100 } },
+						{ json: { b: 2, idx: 101 }, pairedItem: { item: 101 } },
+						{ json: { c: 3, idx: 102 }, pairedItem: { item: 102 } },
+					],
 					customData: undefined,
 				});
 			});
@@ -1076,7 +1084,7 @@ describe('JsTaskRunner', () => {
 						runner,
 					});
 
-					expect(outcome.result).toEqual([{ json: undefined, pairedItem: { item: 0 } }]); // TODO
+					expect(outcome.result).toEqual([{ json: { val: expected }, pairedItem: { item: 0 } }]);
 				},
 			);
 
@@ -1138,7 +1146,7 @@ describe('JsTaskRunner', () => {
 						runner,
 					});
 
-					expect(outcome.result).toEqual([{ json: undefined, pairedItem: { item: 0 } }]); // TODO
+					expect(outcome.result).toEqual([{ json: { val: expected }, pairedItem: { item: 0 } }]);
 				},
 			);
 

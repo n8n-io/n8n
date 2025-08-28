@@ -239,7 +239,7 @@ export class JsTaskRunner extends TaskRunner {
 		data: JsTaskData,
 		workflow: Workflow,
 		signal: AbortSignal,
-	): Promise<INodeExecutionData[]> {
+	) {
 		const dataProxy = this.createDataProxy(data, workflow, data.itemIndex);
 		const inputItems = data.connectionInputData;
 
@@ -274,7 +274,7 @@ export class JsTaskRunner extends TaskRunner {
 			});
 
 			if (result === null) {
-				return [];
+				return [] as TaskResultData['result'];
 			}
 
 			return result;
@@ -348,15 +348,19 @@ export class JsTaskRunner extends TaskRunner {
 				}
 
 				if (result) {
+					// for backwards compatibility, if result has json property, use it, else use entire result
+					const hasJsonProperty = result !== null && typeof result === 'object' && 'json' in result;
+					const jsonData = hasJsonProperty ? result.json : result;
+
 					returnData.push(
 						result.binary
 							? {
-									json: result.json,
+									json: jsonData,
 									pairedItem: { item: index },
 									binary: result.binary,
 								}
 							: {
-									json: result.json,
+									json: jsonData,
 									pairedItem: { item: index },
 								},
 					);
