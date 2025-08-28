@@ -251,8 +251,8 @@ describe('JsTaskRunner', () => {
 			// When returning an object with json property, it's preserved
 			// When returning other objects, the entire object becomes the json value
 			const expectedJson =
-				expected && typeof expected === 'object' && 'json' in expected
-					? (expected as any).json
+				expected !== null && typeof expected === 'object' && 'json' in expected
+					? expected.json
 					: needsWrapping
 						? { val: expected }
 						: expected;
