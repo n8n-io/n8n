@@ -54,11 +54,6 @@ export async function execute(
 
 	const row = getAddRow(this, index);
 
-	// Remove system columns
-	delete row['id'];
-	delete row['createdAt'];
-	delete row['updatedAt'];
-
 	const matches = await executeSelectMany(this, index, dataStoreProxy, true);
 
 	if (dryRun) {
@@ -83,6 +78,7 @@ export async function execute(
 		}
 
 		// The input object gets updated in the api call, somehow
+		// And providing this column to the backend causes an unexpected column error
 		// So let's just re-delete the field until we have a more aligned API
 		delete row['updatedAt'];
 
