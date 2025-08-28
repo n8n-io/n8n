@@ -433,7 +433,7 @@ function handleCheckboxChange(
 }
 
 :deep(.filter-sub-content) {
-	padding: var(--spacing-3xs);
+	padding: var(--spacing-4xs);
 	min-width: 160px;
 	box-shadow: var(--box-shadow-light);
 	border-radius: var(--border-radius-base);
