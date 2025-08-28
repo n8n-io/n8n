@@ -27,9 +27,6 @@ export async function mindeeApiRequest(
 		body,
 		qs,
 		url,
-		disableFollowRedirect: true,
-		ignoreHttpStatusErrors: true,
-		json: false,
 	};
 	try {
 		if (Object.keys(body as IDataObject).length === 0) {
@@ -78,30 +75,21 @@ export async function pollMindee(
 			throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject);
 		}
 
-		if (jobStatus === 'Processed') break;
-
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		serverResponse = await mindeeApiRequest.call(funcRef, 'GET', pollUrl);
+		if ('inference' in (serverResponse as JsonObject)) break;
 
-		if (serverResponse.error || !('job' in serverResponse))
+		if (!('job' in serverResponse))
 			throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
-				message: 'Mindee API responded with an error.',
+				message: 'The Mindee API replied with an unexpected reply.',
 			});
 		jobStatus = (serverResponse.job as IDataObject).status as string;
 		await setTimeout(POLL_DELAY_MS);
 	}
 
-	const inferenceUrl = (serverResponse.job as IDataObject).result_url;
-	if (jobStatus !== 'Processed' || inferenceUrl === undefined || inferenceUrl === null)
+	if (!('inference' in (serverResponse as JsonObject)))
 		throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
 			message: `Server polling timed out after ${maxDelayCounter} seconds. Status: ${jobStatus}.`,
-		});
-
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	serverResponse = await mindeeApiRequest.call(funcRef, 'GET', inferenceUrl as string);
-	if ((serverResponse?.job as IDataObject)?.error)
-		throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
-			message: JSON.stringify(serverResponse as JsonObject),
 		});
 	result.push(serverResponse);
 	return result;
