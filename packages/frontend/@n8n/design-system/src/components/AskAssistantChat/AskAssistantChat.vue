@@ -63,6 +63,13 @@ function normalizeMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assistan
 	}));
 }
 
+// filter out these messages so that tool collapsing works correctly
+function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+	return messages.filter(
+		(message) => !['workflow-updated', 'agent-suggestion'].includes(message.type),
+	);
+}
+
 function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
 	const result: ChatUI.AssistantMessage[] = [];
 	let i = 0;
@@ -136,7 +143,7 @@ function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assis
 // Ensure all messages have required id and read properties, and collapse tool messages
 const normalizedMessages = computed(() => {
 	const normalized = normalizeMessages(props.messages);
-	return collapseToolMessages(normalized);
+	return collapseToolMessages(filterOutHiddenMessages(normalized));
 });
 
 const textInputValue = ref<string>('');
