@@ -147,7 +147,7 @@ export function createGetNodeParameterTool(logger?: Logger) {
 		{
 			name: 'get_node_parameter',
 			description:
-				'Get the value of a specific parameter of a specific node. Use this to retrieve parameters omitted in the workflow context because of the size.',
+				'Get the value of a specific parameter of a specific node. Use this ONLY to retrieve parameters omitted in the workflow JSON context because of the size.',
 			schema: getNodeParameterSchema,
 		},
 	);
