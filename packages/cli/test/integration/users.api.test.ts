@@ -1092,7 +1092,7 @@ describe('DELETE /users/:id', () => {
 					id: teamProject.id,
 					projectRelations: {
 						userId: transferee.id,
-						role: 'project:editor',
+						role: { slug: 'project:editor' },
 					},
 				}),
 			).resolves.not.toBeNull(),

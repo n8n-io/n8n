@@ -1,4 +1,4 @@
-import { getRoleScopes } from '@n8n/permissions';
+import { getRoleScopes, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type {
 	GlobalRole,
 	ProjectRole,
@@ -76,8 +76,8 @@ beforeAll(async () => {
 	expectedProjectRoles = [
 		{
 			name: 'Project Owner',
-			role: 'project:personalOwner',
-			scopes: getRoleScopes('project:personalOwner'),
+			role: PROJECT_OWNER_ROLE_SLUG,
+			scopes: getRoleScopes(PROJECT_OWNER_ROLE_SLUG),
 			licensed: true,
 			description: 'Project Owner',
 		},
