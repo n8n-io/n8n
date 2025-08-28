@@ -469,6 +469,7 @@ describe('FilterConditions.vue', () => {
 		expect(emitted('valueChanged')).toBeUndefined();
 
 		vi.spyOn(workFlowHelpers, 'resolveParameter').mockReturnValue({ caseSensitive: false });
+
 		// Change caseSensitive and also change node.parameters to trigger the watcher
 		await rerender({
 			parameter: {
