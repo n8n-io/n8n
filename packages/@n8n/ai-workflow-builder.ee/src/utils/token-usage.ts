@@ -1,4 +1,7 @@
+import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage } from '@langchain/core/messages';
+
+import { AVG_CHARS_PER_TOKEN_ANTHROPIC } from '@/constants';
 
 export type AIMessageWithUsageMetadata = AIMessage & {
 	response_metadata: {
@@ -33,4 +36,33 @@ export function extractLastTokenUsage(messages: unknown[]): TokenUsage | undefin
 	}
 
 	return lastAiAssistantMessage.response_metadata.usage;
+}
+
+function concatenateMessageContent(messages: BaseMessage[]): string {
+	return messages.reduce((acc: string, message) => {
+		if (typeof message.content === 'string') {
+			return acc + message.content;
+		} else if (Array.isArray(message.content)) {
+			return (
+				acc +
+				message.content.reduce((innerAcc: string, item) => {
+					if (typeof item === 'object' && item !== null && 'text' in item) {
+						return innerAcc + item.text;
+					}
+					return innerAcc;
+				}, '')
+			);
+		}
+		return acc;
+	}, '');
+}
+
+export function estimateTokenCountFromString(text: string): number {
+	return Math.ceil(text.length / AVG_CHARS_PER_TOKEN_ANTHROPIC); // Rough estimate
+}
+
+export function estimateTokenCountFromMessages(messages: BaseMessage[]): number {
+	const entireInput = concatenateMessageContent(messages);
+
+	return estimateTokenCountFromString(entireInput);
 }
