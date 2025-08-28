@@ -62,6 +62,9 @@ class AgentTokenUsageCollector extends BaseCallbackHandler {
 	// Track usage per model key
 	usageByModel: Record<string, ModelUsage> = {};
 
+	// Track usage per (model, estimate-kind)
+	private usageByModelAndKind: Record<string, ModelUsage> = {};
+
 	// Track runId -> model key and prompt estimates for fallback
 	private runToModelKey: Record<string, string> = {};
 	private promptEstimateByRun: Record<string, number> = {};
@@ -119,6 +122,27 @@ class AgentTokenUsageCollector extends BaseCallbackHandler {
 		agg.totalTokens += totalTokens;
 		// If any entry is an actual value, mark isEstimate as false
 		if (!isEstimate) agg.isEstimate = false;
+
+		// Aggregate per (model, estimate-kind)
+		const kindKey = `${modelKey}:${isEstimate ? 'estimate' : 'actual'}`;
+		if (!this.usageByModelAndKind[kindKey]) {
+			this.usageByModelAndKind[kindKey] = {
+				modelType,
+				modelName,
+				promptTokens: 0,
+				completionTokens: 0,
+				totalTokens: 0,
+				isEstimate,
+			};
+		}
+		const aggKind = this.usageByModelAndKind[kindKey];
+		aggKind.promptTokens += promptTokens || 0;
+		aggKind.completionTokens += completionTokens || 0;
+		aggKind.totalTokens += totalTokens;
+	}
+
+	getUsageRecords(): ModelUsage[] {
+		return Object.values(this.usageByModelAndKind);
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string): Promise<void> {
@@ -441,11 +465,15 @@ export async function toolsAgentExecute(
 				return {
 					...streamResult,
 					__tokenUsageByModel: usageCollector?.usageByModel,
+					__tokenUsageRecords: usageCollector?.getUsageRecords(),
 				} as any;
 			} else {
 				// Handle regular execution
 				const res: any = await executor.invoke(invokeParams, executeOptions);
-				if (usageCollector) res.__tokenUsageByModel = usageCollector.usageByModel;
+				if (usageCollector) {
+					res.__tokenUsageByModel = usageCollector.usageByModel;
+					res.__tokenUsageRecords = usageCollector.getUsageRecords();
+				}
 				return res;
 			}
 		});
@@ -487,14 +515,19 @@ export async function toolsAgentExecute(
 					'chat_history',
 					'agent_scratchpad',
 					'__tokenUsageByModel',
+					'__tokenUsageRecords',
 				),
 				pairedItem: { item: itemIndex },
 			};
 
 			// Attach aggregated token usage by model to the result
 			const usageMap = (response as any)?.__tokenUsageByModel as Record<string, any> | undefined;
+			const usageRecords = (response as any)?.__tokenUsageRecords as ModelUsage[] | undefined;
 			if (usageMap && Object.keys(usageMap).length > 0) {
 				(itemResult.json as any).tokenUsageByModel = usageMap;
+			}
+			if (usageRecords && usageRecords.length > 0) {
+				(itemResult.json as any).tokenUsageRecords = usageRecords;
 			}
 
 			returnData.push(itemResult);

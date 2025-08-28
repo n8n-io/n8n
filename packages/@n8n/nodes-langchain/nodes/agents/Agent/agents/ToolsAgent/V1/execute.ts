@@ -69,6 +69,18 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					}
 				> = {};
 
+				private usageByModelAndKind: Record<
+					string,
+					{
+						modelType: string;
+						modelName: string;
+						promptTokens: number;
+						completionTokens: number;
+						totalTokens: number;
+						isEstimate: boolean;
+					}
+				> = {};
+
 				private runToModelKey: Record<string, string> = {};
 				private promptEstimateByRun: Record<string, number> = {};
 
@@ -119,6 +131,34 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					agg.completionTokens += completionTokens || 0;
 					agg.totalTokens += total;
 					if (!isEstimate) agg.isEstimate = false;
+
+					// Aggregate per (model, estimate-kind)
+					const kindKey = `${modelKey}:${isEstimate ? 'estimate' : 'actual'}`;
+					if (!this.usageByModelAndKind[kindKey]) {
+						this.usageByModelAndKind[kindKey] = {
+							modelType,
+							modelName,
+							promptTokens: 0,
+							completionTokens: 0,
+							totalTokens: 0,
+							isEstimate,
+						};
+					}
+					const aggKind = this.usageByModelAndKind[kindKey];
+					aggKind.promptTokens += promptTokens || 0;
+					aggKind.completionTokens += completionTokens || 0;
+					aggKind.totalTokens += total;
+				}
+
+				getUsageRecords(): Array<{
+					modelType: string;
+					modelName: string;
+					promptTokens: number;
+					completionTokens: number;
+					totalTokens: number;
+					isEstimate: boolean;
+				}> {
+					return Object.values(this.usageByModelAndKind);
 				}
 
 				async handleLLMEnd(output: LLMResult, runId: string): Promise<void> {
@@ -220,7 +260,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					...(usageCollector ? { callbacks: [usageCollector] } : {}),
 				},
 			);
-			if (usageCollector) response.__tokenUsageByModel = usageCollector.usageByModel;
+			if (usageCollector) {
+				response.__tokenUsageByModel = usageCollector.usageByModel;
+				response.__tokenUsageRecords = usageCollector.getUsageRecords();
+			}
 
 			// If memory and outputParser are connected, parse the output.
 			if (memory && outputParser) {
@@ -240,12 +283,26 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 					'chat_history',
 					'agent_scratchpad',
 					'__tokenUsageByModel',
+					'__tokenUsageRecords',
 				),
 			};
 
 			const usageMap = response?.__tokenUsageByModel as Record<string, any> | undefined;
+			const usageRecords = response?.__tokenUsageRecords as
+				| Array<{
+						modelType: string;
+						modelName: string;
+						promptTokens: number;
+						completionTokens: number;
+						totalTokens: number;
+						isEstimate: boolean;
+				  }>
+				| undefined;
 			if (usageMap && Object.keys(usageMap).length > 0) {
 				(itemResult.json as any).tokenUsageByModel = usageMap;
+			}
+			if (usageRecords && usageRecords.length > 0) {
+				(itemResult.json as any).tokenUsageRecords = usageRecords;
 			}
 
 			returnData.push(itemResult);
