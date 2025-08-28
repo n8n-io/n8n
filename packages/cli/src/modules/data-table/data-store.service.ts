@@ -198,15 +198,35 @@ export class DataStoreService {
 		}
 
 		const { data, filter } = dto;
-		if (!filter || Object.keys(filter).length === 0) {
-			throw new DataStoreValidationError('Filter columns must not be empty for updateRow');
+		if (!filter?.filters || filter.filters.length === 0) {
+			throw new DataStoreValidationError('Filter must not be empty for updateRow');
 		}
 		if (!data || Object.keys(data).length === 0) {
 			throw new DataStoreValidationError('Data columns must not be empty for updateRow');
 		}
 
-		this.validateRowsWithColumns([filter], columns, true);
+		// Validate data columns
 		this.validateRowsWithColumns([data], columns, false);
+
+		// Validate filter column names and values
+		for (const filterItem of filter.filters) {
+			const columnExists =
+				columns.some((col) => col.name === filterItem.columnName) || filterItem.columnName === 'id';
+			if (!columnExists) {
+				throw new DataStoreValidationError(`unknown column name '${filterItem.columnName}'`);
+			}
+
+			// Validate filter value type if not null
+			if (filterItem.value !== null) {
+				const column = columns.find((col) => col.name === filterItem.columnName) || {
+					name: 'id',
+					type: 'number',
+				};
+				const tempRow = { [filterItem.columnName]: filterItem.value };
+				const columnTypeMap = new Map([[column.name, column.type]]);
+				this.validateCell(tempRow, filterItem.columnName, columnTypeMap);
+			}
+		}
 
 		return await this.dataStoreRowsRepository.updateRow(
 			dataStoreId,

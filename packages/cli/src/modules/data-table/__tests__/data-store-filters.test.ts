@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { ListDataStoreContentFilterConditionType } from '@n8n/api-types';
+import type { DataStoreFilterConditionType } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -465,7 +465,7 @@ describe('dataStore filters', () => {
 				]);
 			});
 
-			describe.each(['like', 'ilike'] as ListDataStoreContentFilterConditionType[])(
+			describe.each(['like', 'ilike'] as DataStoreFilterConditionType[])(
 				'%s filter validation',
 				(condition) => {
 					it(`throws error when '${condition}' filter value is null`, async () => {
