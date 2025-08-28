@@ -1,13 +1,13 @@
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
-import { type DataStore } from './data-store.entity';
+import { type DataTable } from './data-table.entity';
 
 @Entity()
-@Index(['dataStoreId', 'name'], { unique: true })
-export class DataStoreColumn extends WithTimestampsAndStringId {
+@Index(['dataTableId', 'name'], { unique: true })
+export class DataTableColumn extends WithTimestampsAndStringId {
 	@Column()
-	dataStoreId: string;
+	dataTableId: string;
 
 	@Column()
 	name: string;
@@ -18,7 +18,7 @@ export class DataStoreColumn extends WithTimestampsAndStringId {
 	@Column({ type: 'int' })
 	index: number;
 
-	@ManyToOne('DataStore', 'columns')
-	@JoinColumn({ name: 'dataStoreId' })
-	dataStore: DataStore;
+	@ManyToOne('DataTable', 'columns')
+	@JoinColumn({ name: 'dataTableId' })
+	dataTable: DataTable;
 }

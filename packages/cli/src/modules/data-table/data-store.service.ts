@@ -42,7 +42,7 @@ export class DataStoreService {
 		return await this.dataStoreRepository.createDataStore(projectId, dto.name, dto.columns);
 	}
 
-	// Currently only renames data stores
+	// Updates data store properties (currently limited to renaming)
 	async updateDataStore(dataStoreId: string, projectId: string, dto: UpdateDataStoreDto) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateUniqueName(dto.name, projectId);
@@ -311,14 +311,14 @@ export class DataStoreService {
 		return existingTable;
 	}
 
-	private async validateColumnExists(dataStoreId: string, columnId: string) {
+	private async validateColumnExists(dataTableId: string, columnId: string) {
 		const existingColumn = await this.dataStoreColumnRepository.findOneBy({
 			id: columnId,
-			dataStoreId,
+			dataTableId,
 		});
 
 		if (existingColumn === null) {
-			throw new DataStoreColumnNotFoundError(dataStoreId, columnId);
+			throw new DataStoreColumnNotFoundError(dataTableId, columnId);
 		}
 
 		return existingColumn;
@@ -355,6 +355,14 @@ export class DataStoreService {
 
 				if (!filter.value.includes('%')) {
 					filter.value = `%${filter.value}%`;
+				}
+			}
+
+			if (['gt', 'gte', 'lt', 'lte'].includes(filter.condition)) {
+				if (filter.value === null || filter.value === undefined) {
+					throw new DataStoreValidationError(
+						`${filter.condition.toUpperCase()} filter value cannot be null or undefined`,
+					);
 				}
 			}
 		}
