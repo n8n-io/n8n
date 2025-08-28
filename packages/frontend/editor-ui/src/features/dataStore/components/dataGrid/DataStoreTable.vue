@@ -342,7 +342,6 @@ const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 	}
 
 	const oldIndex = colDefs.value.findIndex((col) => col.colId === moveEvent.column!.getColId());
-	console.log(moveEvent.toIndex);
 	try {
 		await dataStoreStore.moveDataStoreColumn(
 			props.dataStore.id,

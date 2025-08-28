@@ -65,7 +65,7 @@ const projectName = computed(() => {
 	if (currentProject.value?.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
 	}
-	return currentProject.value?.name || '';
+	return currentProject.value?.name ?? '';
 });
 
 const emptyCalloutDescription = computed(() => {
@@ -82,9 +82,9 @@ const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly
 
 const initialize = async () => {
 	loading.value = true;
-	const projectIdFilter = projectPages.isOverviewSubPage ? '' : currentProject.value?.id || '';
+	const projectIdFilter = projectPages.isOverviewSubPage ? '' : projectsStore.currentProjectId;
 	try {
-		await dataStoreStore.fetchDataStores(projectIdFilter, currentPage.value, pageSize.value);
+		await dataStoreStore.fetchDataStores(projectIdFilter ?? '', currentPage.value, pageSize.value);
 	} catch (error) {
 		toast.showError(error, 'Error loading data stores');
 	} finally {

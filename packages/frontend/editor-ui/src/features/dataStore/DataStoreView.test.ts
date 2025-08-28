@@ -127,7 +127,7 @@ describe('DataStoreView', () => {
 		dataStoreStore.totalCount = 1;
 		dataStoreStore.fetchDataStores = vi.fn().mockResolvedValue(undefined);
 
-		projectsStore.getCurrentProjectId = vi.fn(() => 'test-project');
+		projectsStore.currentProjectId = '';
 		sourceControlStore.isProjectShared = vi.fn(() => false);
 	});
 
@@ -144,6 +144,7 @@ describe('DataStoreView', () => {
 			(useProjectPages as Mock).mockReturnValue({
 				isOverviewSubPage: false,
 			});
+			projectsStore.currentProjectId = 'test-project';
 			projectsStore.currentProject = {
 				id: 'test-project',
 			} as Project;
