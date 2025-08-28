@@ -84,6 +84,7 @@ async function processEventStream(
 	eventStream: IterableReadableStream<StreamEvent>,
 	itemIndex: number,
 	returnIntermediateSteps: boolean = false,
+	streamingFormat: 'jsonl' | 'sse' = 'jsonl',
 ): Promise<{ output: string; intermediateSteps?: any[] }> {
 	const agentResult: { output: string; intermediateSteps?: any[] } = {
 		output: '',
@@ -109,10 +110,16 @@ async function processEventStream(
 					} else if (typeof chunkContent === 'string') {
 						chunkText = chunkContent;
 					}
-					ctx.sendChunk('item', itemIndex, chunkText);
+					if (streamingFormat === 'sse') {
+			// Wrap in SSE format
+			ctx.sendChunk('item', itemIndex, `data: ${JSON.stringify(chunkText)}\n\n`);
+		} else {
+			// Default JSONL behavior
+			ctx.sendChunk('item', itemIndex, chunkText);
+		}
 
-					agentResult.output += chunkText;
-				}
+		agentResult.output += chunkText;
+	}
 				break;
 			case 'on_chat_model_end':
 				// Capture full LLM response with tool calls for intermediate steps
@@ -225,6 +232,7 @@ export async function toolsAgentExecute(
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
+				streamingFormat?: 'jsonl' | 'sse';
 			};
 
 			// Prepare the prompt messages and prompt template.
