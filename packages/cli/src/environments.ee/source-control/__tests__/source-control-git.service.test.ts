@@ -158,10 +158,12 @@ describe('SourceControlGitService', () => {
 				// Verify quotes are properly escaped
 				expect(sshCommand).toContain('C:/Users/Test\\"User/.n8n/ssh_private_key_temp');
 				expect(sshCommand).toContain('C:/Users/Test\\"User/.n8n/.ssh/known_hosts');
-				expect(escapedPrivateKeyPath).not.toContain('"');
-				expect(escapedKnownHostsPath).not.toContain('"');
-				expect(escapedPrivateKeyPath).toContain('\\"');
-				expect(escapedKnownHostsPath).toContain('\\"');
+
+				// Verify that unescaped quotes are replaced with escaped quotes
+				expect(escapedPrivateKeyPath).not.toContain('Test"User'); // Original unescaped quote
+				expect(escapedKnownHostsPath).not.toContain('Test"User'); // Original unescaped quote
+				expect(escapedPrivateKeyPath).toContain('Test\\"User'); // Properly escaped quote
+				expect(escapedKnownHostsPath).toContain('Test\\"User'); // Properly escaped quote
 			});
 		});
 	});
