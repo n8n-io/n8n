@@ -14,6 +14,7 @@ import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Inter
 import { isSharedResource, isResourceSortableByDate } from '@/utils/typeGuards';
 import { useN8nLocalStorage } from '@/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/composables/useResourcesListI18n';
+import { FilterAction, FilterOption } from '@n8n/design-system/components/N8nFilters/Filters.vue';
 
 type UIConfig = {
 	searchEnabled: boolean;
@@ -555,6 +556,84 @@ defineExpose({
 	currentPage,
 	setCurrentPage,
 });
+
+const tempFilters = computed<{
+	options: FilterOption[];
+	primaryAction: string;
+	actions?: FilterAction[];
+}>(() => {
+	let arr: FilterOption[] = [];
+	if (route.path.includes('/workflows')) {
+		arr = [
+			{
+				label: 'Status',
+				options: ['Active', 'Inactive', 'Archived'],
+				type: 'single',
+			},
+			{
+				label: 'Tags',
+				options: [
+					'Tag 1',
+					'Tag 2',
+					'Tag 3',
+					'Tag 4',
+					'Tag 5',
+					'Tag 6',
+					'Tag 7',
+					'Tag 8',
+					'Tag 9',
+					'Tag 10',
+					'Tag 11',
+					'Tag 12',
+					'Tag 13',
+					'Tag 14',
+					'Tag 15',
+				],
+				type: 'multi',
+			},
+		];
+		if (route.path.includes('/home')) {
+			arr = [
+				...arr,
+				{
+					label: 'Owned by',
+					options: ['Me', 'User', 'Project A', 'Project B', 'Project C', 'Project D', 'Project E'],
+					type: 'single',
+				},
+			];
+		}
+	} else if (route.path.includes('/credentials')) {
+		arr = [
+			{
+				label: 'Type',
+				options: Array(100)
+					.fill(0)
+					.map((_, i) => `Type ${i + 1}`),
+				type: 'multi',
+			},
+		];
+		if (route.path.includes('/home')) {
+			arr = [
+				...arr,
+				{
+					label: 'Owned by',
+					options: ['Me', 'User', 'Project A', 'Project B', 'Project C', 'Project D', 'Project E'],
+					type: 'single',
+				},
+			];
+		}
+	}
+	return {
+		options: arr,
+		primaryAction: route.path.includes('/credentials') ? 'Create credential' : 'Create workflow',
+		actions: route.path.includes('/workflows')
+			? undefined
+			: [
+					{ label: 'Search', icon: 'search', tooltip: 'Search' },
+					{ label: 'Sort', icon: 'arrow-up-down', tooltip: 'Sort' },
+				],
+	};
+});
 </script>
 
 <template>
@@ -596,7 +675,13 @@ defineExpose({
 						<div :class="$style.filters">
 							<slot name="breadcrumbs"></slot>
 
-							<N8nFilters type="chip" />
+							<N8nFilters
+								:primary-action-text="tempFilters.primaryAction"
+								:filters="tempFilters.options"
+								:actions="tempFilters.actions"
+								:no-tertiary-actions="tempFilters.primaryAction === 'Create credential'"
+								type="dropdown"
+							/>
 						</div>
 					</div>
 

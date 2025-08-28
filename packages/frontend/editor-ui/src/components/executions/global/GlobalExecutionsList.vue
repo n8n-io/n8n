@@ -16,7 +16,7 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { executionRetryMessage } from '@/utils/executionUtils';
-import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nFilters, N8nTableBase } from '@n8n/design-system';
 import { useIntersectionObserver } from '@vueuse/core';
 import { ElSkeletonItem } from 'element-plus';
 import type { ExecutionSummary } from 'n8n-workflow';
@@ -330,29 +330,20 @@ const goToUpgrade = () => {
 	<div :class="$style.execListWrapper">
 		<slot />
 		<div :class="$style.execListHeaderControls">
-			<ExecutionsFilter
-				:workflows="workflows"
-				class="execFilter"
-				@filter-changed="onFilterChanged"
+			<N8nFilters
+				:filters="
+					Object.entries(props.filters).map(([key, value]) => ({
+						label: key.charAt(0).toUpperCase() + key.slice(1),
+						options: Array.isArray(value) ? value : [value],
+						type: Array.isArray(value) ? 'multi' : 'single',
+					}))
+				"
+				:primary-action-text="undefined"
+				:actions="[]"
+				:type="'dropdown'"
+				no-tertiary-actions
+				@update:filters="onFilterChanged"
 			/>
-
-			<div style="margin-left: auto">
-				<ConcurrentExecutionsHeader
-					v-if="settingsStore.isConcurrencyEnabled"
-					:running-executions-count="runningExecutionsCount"
-					:concurrency-cap="settingsStore.concurrency"
-					:is-cloud-deployment="settingsStore.isCloudDeployment"
-					@go-to-upgrade="goToUpgrade"
-				/>
-				<ElCheckbox
-					v-else
-					v-model="executionsStore.autoRefresh"
-					data-test-id="execution-auto-refresh-checkbox"
-					@update:model-value="onAutoRefreshToggle($event)"
-				>
-					{{ i18n.baseText('executionsList.autoRefresh') }}
-				</ElCheckbox>
-			</div>
 		</div>
 		<div :class="$style.execList">
 			<div :class="$style.execTable">

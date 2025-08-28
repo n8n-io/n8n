@@ -20,12 +20,7 @@ import {
 	DropdownMenuTrigger,
 } from 'reka-ui';
 import { ref, computed } from 'vue';
-
-interface FilterOption {
-	label: string;
-	options: string[];
-	type: 'single' | 'multi';
-}
+import type { FilterOption, FilterAction } from './Filters.vue';
 
 interface ActiveFilter {
 	filterName: string;
@@ -33,32 +28,22 @@ interface ActiveFilter {
 	type: 'single' | 'multi';
 }
 
+interface Props {
+	filters?: FilterOption[];
+	primaryActionText?: string;
+	actions?: FilterAction[];
+	noTertiaryActions: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	filters: () => [],
+	actions: () => [],
+});
+
 const activeFilters = ref<ActiveFilter[]>([]);
 const searchQueries = ref<Record<string, string>>({});
 
-const filterOptions: FilterOption[] = [
-	{
-		label: 'Status',
-		options: ['Active', 'Deactivated', 'Archived'],
-		type: 'single',
-	},
-	{
-		label: 'Tag',
-		options: [
-			...Array(100)
-				.keys()
-				.map((_, i) => `Tag ${i + 1}`),
-		],
-		type: 'multi',
-	},
-	{
-		label: 'Owner',
-		options: ['User 1', 'User 2', 'User 3'],
-		type: 'single',
-	},
-];
-
-console.log('filterOptions', filterOptions);
+const filterOptions = computed(() => props.filters);
 const hasActiveFilters = computed(() => activeFilters.value.length > 0);
 
 function selectFilterValue(filterName: string, value: string, type: 'single' | 'multi') {
@@ -288,29 +273,19 @@ function handleCheckboxChange(
 			</DropdownMenuPortal>
 		</DropdownMenuRoot>
 
-		<N8nTooltip content="Search">
-			<N8nIconButton type="tertiary" icon="search" text />
-		</N8nTooltip>
-		<N8nTooltip content="Sort">
-			<N8nIconButton type="tertiary" icon="arrow-up-down" text />
-		</N8nTooltip>
-		<N8nTooltip content="Add folder">
-			<N8nIconButton type="tertiary" icon="folder-plus" text />
-		</N8nTooltip>
-		<N8nButton size="small">Create workflow</N8nButton>
-		<N8nTooltip content="More actions">
+		<template v-for="action in props.actions" :key="action.label">
+			<N8nTooltip :content="action.tooltip || action.label">
+				<N8nIconButton type="tertiary" :icon="action.icon" text />
+			</N8nTooltip>
+		</template>
+		<N8nButton v-if="primaryActionText" size="small">{{ props.primaryActionText }}</N8nButton>
+		<N8nTooltip v-if="!noTertiaryActions" content="More actions">
 			<N8nIconButton type="tertiary" icon="ellipsis" text />
 		</N8nTooltip>
 	</div>
 </template>
 
 <style scoped lang="scss">
-.filters-wrapper {
-	display: flex;
-	align-items: end;
-	width: 100vw;
-}
-
 .filter-button {
 	padding: 0;
 	background-color: transparent;
@@ -327,26 +302,8 @@ function handleCheckboxChange(
 }
 
 .active {
-	background-color: var(--color-primary-tint-2);
-	color: var(--color-primary);
-}
-
-.active-filters {
-	display: flex;
-	gap: var(--spacing-2xs);
-}
-
-.active-filters-label {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-text-light);
-	text-transform: uppercase;
-}
-
-.filter-tags {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing-2xs);
+	background-color: var(--color-callout-secondary-background);
+	color: var(--color-callout-secondary-font) !important;
 }
 
 .filter-tag {
@@ -366,44 +323,6 @@ function handleCheckboxChange(
 		background-color: var(--color-background-xlight);
 		cursor: pointer;
 	}
-}
-
-.filter-name {
-	font-weight: var(--font-weight-bold);
-	color: var(--color-text-base);
-}
-
-.filter-values {
-	color: var(--color-text-light);
-}
-
-.remove-filter {
-	margin-left: var(--spacing-4xs);
-	opacity: 0.6;
-
-	&:hover {
-		opacity: 1;
-		background-color: var(--color-danger-tint-2);
-		color: var(--color-danger);
-	}
-}
-
-:deep(.filters-dropdown-content) {
-	box-shadow: var(--box-shadow-light);
-	border-radius: var(--border-radius-base);
-	background-color: var(--color-background-xlight);
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
-}
-
-.filters-header {
-	margin-bottom: var(--spacing-s);
-}
-
-.filters-title {
-	margin: 0;
-	font-size: var(--font-size-l);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-text-dark);
 }
 
 .filter-sub-trigger {
@@ -503,20 +422,6 @@ function handleCheckboxChange(
 .filter-separator {
 	margin: var(--spacing-3xs) 0;
 	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
-}
-
-.clear-all-container {
-	padding: var(--spacing-3xs) var(--spacing-xs);
-}
-
-.clear-all-section {
-	margin-top: var(--spacing-3xs);
-}
-
-.clear-all-btn {
-	width: 100%;
-	justify-content: center;
-	gap: var(--spacing-2xs);
 }
 
 // Prevent dropdown from closing when interacting with checkboxes
