@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import type { MfaService } from '@/mfa/mfa.service';
-import { JwtService } from '@/services/jwt.service';
+import type { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
 
 describe('AuthService Browser ID Whitelist', () => {
@@ -14,7 +14,7 @@ describe('AuthService Browser ID Whitelist', () => {
 		const globalConfig = mock<GlobalConfig>({
 			endpoints: { rest: 'rest' },
 		});
-		const jwtService = new JwtService(mock(), globalConfig);
+		const jwtService = mock<JwtService>();
 		const urlService = mock<UrlService>();
 		const userRepository = mock<UserRepository>();
 		const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();

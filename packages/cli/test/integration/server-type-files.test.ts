@@ -28,6 +28,7 @@ describe('Server Type Files Protection', () => {
 					path,
 					mockAuthService.createAuthMiddleware(true),
 					(_req: express.Request, res: express.Response) => {
+						res.setHeader('Cache-Control', 'no-cache, must-revalidate');
 						res.sendFile(path.substring(1), {
 							root: staticCacheDir,
 						});
@@ -53,14 +54,16 @@ describe('Server Type Files Protection', () => {
 			expect(mockAuthService.createAuthMiddleware).toHaveBeenCalledTimes(2);
 		});
 
-		it('should set correct file paths for type files', () => {
+		it('should set correct headers and file paths for type files', () => {
 			const staticCacheDir = '/mock/static/dir';
 			const mockRes = {
+				setHeader: jest.fn(),
 				sendFile: jest.fn(),
 			} as jest.Mocked<Partial<express.Response>>;
 
 			// Simulate the server configuration code for nodes.json
 			const handler = (_req: express.Request, res: express.Response) => {
+				res.setHeader('Cache-Control', 'no-cache, must-revalidate');
 				res.sendFile('types/nodes.json', {
 					root: staticCacheDir,
 				});
@@ -69,7 +72,8 @@ describe('Server Type Files Protection', () => {
 			// Call the handler
 			handler({} as express.Request, mockRes as express.Response);
 
-			// Verify file serving is correct
+			// Verify headers and file serving are correct
+			expect(mockRes.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-cache, must-revalidate');
 			expect(mockRes.sendFile).toHaveBeenCalledWith('types/nodes.json', {
 				root: staticCacheDir,
 			});
@@ -78,12 +82,14 @@ describe('Server Type Files Protection', () => {
 		it('should handle credentials.json path correctly', () => {
 			const staticCacheDir = '/mock/static/dir';
 			const mockRes = {
+				setHeader: jest.fn(),
 				sendFile: jest.fn(),
 			} as jest.Mocked<Partial<express.Response>>;
 
 			// Simulate the server configuration code for credentials.json
 			const path = '/types/credentials.json';
 			const handler = (_req: express.Request, res: express.Response) => {
+				res.setHeader('Cache-Control', 'no-cache, must-revalidate');
 				res.sendFile(path.substring(1), {
 					root: staticCacheDir,
 				});
@@ -92,7 +98,8 @@ describe('Server Type Files Protection', () => {
 			// Call the handler
 			handler({} as express.Request, mockRes as express.Response);
 
-			// Verify file serving is correct
+			// Verify headers and file serving are correct
+			expect(mockRes.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-cache, must-revalidate');
 			expect(mockRes.sendFile).toHaveBeenCalledWith('types/credentials.json', {
 				root: staticCacheDir,
 			});
