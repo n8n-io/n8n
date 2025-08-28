@@ -1,4 +1,4 @@
-import { projectRoleSchema } from '@n8n/permissions';
+import { teamRoleSchema } from '@n8n/permissions';
 import { z } from 'zod';
 
 export const projectNameSchema = z.string().min(1).max(255);
@@ -16,6 +16,6 @@ export const projectDescriptionSchema = z.string().max(512);
 
 export const projectRelationSchema = z.object({
 	userId: z.string().min(1),
-	role: projectRoleSchema.exclude(['project:personalOwner']),
+	role: teamRoleSchema,
 });
 export type ProjectRelation = z.infer<typeof projectRelationSchema>;

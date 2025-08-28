@@ -219,6 +219,7 @@ export class ApiHelpers {
 				emailOrLdapLoginId: credentials.email,
 				password: credentials.password,
 			},
+			maxRetries: 3,
 		});
 
 		if (!response.ok()) {

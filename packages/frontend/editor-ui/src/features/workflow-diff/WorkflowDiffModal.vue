@@ -13,6 +13,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
 import { N8nButton, N8nHeading, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
@@ -86,8 +87,8 @@ const sourceWorkFlow = computed(() => (props.data.direction === 'push' ? remote 
 const targetWorkFlow = computed(() => (props.data.direction === 'push' ? local : remote));
 
 const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
-	computed(() => sourceWorkFlow.value.state.value?.workflow),
-	computed(() => targetWorkFlow.value.state.value?.workflow),
+	computed(() => removeWorkflowExecutionData(sourceWorkFlow.value.state.value?.workflow)),
+	computed(() => removeWorkflowExecutionData(targetWorkFlow.value.state.value?.workflow)),
 );
 
 type SettingsChange = {
