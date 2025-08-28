@@ -272,6 +272,7 @@ const currentRequestParams = computed(() => {
 		parameters: props.node?.parameters ?? {},
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
+		projectId: projectsStore.currentProject?.id,
 	};
 });
 
