@@ -63,7 +63,7 @@ RUN cd /usr/local/lib/node_modules/n8n && \
     chown -R node:node /home/node
 
 # Install npm@11.4.2 to fix brace-expansion vulnerability, remove after vulnerability is fixed in node image
-RUN npm install -g npm@11.4.2
+RUN npm install -g npm@8
 RUN cd /usr/local/lib/node_modules/n8n/node_modules/pdfjs-dist && npm install @napi-rs/canvas
 
 EXPOSE 5678/tcp
