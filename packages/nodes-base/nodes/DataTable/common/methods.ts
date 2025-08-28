@@ -55,6 +55,58 @@ export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	return returnData;
 }
 
+export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
+	const keyName = this.getCurrentNodeParameter('keyName') as string;
+
+	// Base conditions available for all column types
+	const baseConditions: INodePropertyOptions[] = [
+		{ name: 'Equals', value: 'eq' },
+		{ name: 'Not Equals', value: 'neq' },
+		{ name: 'Greater Than', value: 'gt' },
+		{ name: 'Greater Than or Equal', value: 'gte' },
+		{ name: 'Less Than', value: 'lt' },
+		{ name: 'Less Than or Equal', value: 'lte' },
+	];
+
+	const likeConditions: INodePropertyOptions[] = [
+		{
+			name: 'LIKE operator',
+			value: 'like',
+			description:
+				'Case-sensitive pattern matching. Use % as wildcard (e.g., "%Mar%" to match "Anne-Marie").',
+		},
+		{
+			name: 'ILIKE operator',
+			value: 'ilike',
+			description:
+				'Case-insensitive pattern matching. Use % as wildcard (e.g., "%mar%" to match "Anne-Marie").',
+		},
+	];
+
+	const allConditions = [...baseConditions, ...likeConditions];
+
+	// If no column is selected yet, return all conditions
+	if (!keyName) {
+		return allConditions;
+	}
+
+	// Get column type to determine available conditions
+	const proxy = await getDataTableProxyLoadOptions(this);
+	const columns = await proxy.getColumns();
+	const column = columns.find((col) => col.name === keyName);
+
+	if (!column) {
+		return baseConditions;
+	}
+
+	// String columns get LIKE operators
+	if (column.type === 'string') {
+		return allConditions;
+	}
+
+	return baseConditions;
+}
+
 export async function getDataTables(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 	const proxy = await getDataTableProxyLoadOptions(this);
 	const result = await proxy.getColumns();

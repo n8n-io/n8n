@@ -58,47 +58,15 @@ export function getSelectFields(displayOptions: IDisplayOptions): INodePropertie
 							default: 'id',
 						},
 						{
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 							displayName: 'Condition',
 							name: 'condition',
+							// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
 							type: 'options',
-							options: [
-								{
-									name: 'Equals',
-									value: 'eq',
-								},
-								{
-									name: 'Greater Than',
-									value: 'gt',
-								},
-								{
-									name: 'Greater Than or Equal',
-									value: 'gte',
-								},
-								{
-									name: 'ILIKE operator',
-									value: 'ilike',
-									description:
-										'Case-insensitive pattern matching. Use % as wildcard (e.g., "%mar%" to match "Anne-Marie").',
-								},
-								{
-									name: 'Less Than',
-									value: 'lt',
-								},
-								{
-									name: 'Less Than or Equal',
-									value: 'lte',
-								},
-								{
-									name: 'LIKE operator',
-									value: 'like',
-									description:
-										'Case-sensitive pattern matching. Use % as wildcard (e.g., "%Mar%" to match "Anne-Marie").',
-								},
-								{
-									name: 'Not Equals',
-									value: 'neq',
-								},
-							],
+							typeOptions: {
+								loadOptionsDependsOn: ['keyName'],
+								loadOptionsMethod: 'getConditionsForColumn',
+							},
 							default: 'eq',
 						},
 						{
