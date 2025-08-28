@@ -1022,7 +1022,9 @@ describe('dataStore', () => {
 			]);
 
 			// ASSERT
-			await expect(result).rejects.toThrow(new DataStoreValidationError('unknown column name'));
+			await expect(result).rejects.toThrow(
+				new DataStoreValidationError("unknown column name 'cWrong'"),
+			);
 		});
 
 		it('inserts rows with partial data (some columns missing)', async () => {
