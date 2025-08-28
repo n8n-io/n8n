@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useBuilderStore } from '@/stores/builder.store';
 import { useUsersStore } from '@/stores/users.store';
-import { computed, watch, ref } from 'vue';
+import { computed, watch, ref, nextTick } from 'vue';
 import AskAssistantChat from '@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -32,6 +32,7 @@ const workflowSaver = useWorkflowSaving({ router });
 const processedWorkflowUpdates = ref(new Set<string>());
 const trackedTools = ref(new Set<string>());
 const planStatus = ref<'pending' | 'approved' | 'rejected'>();
+const assistantChatRef = ref<InstanceType<typeof AskAssistantChat> | null>(null);
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -91,6 +92,10 @@ function onApprovePlan() {
 
 function onRequestChanges() {
 	planStatus.value = 'rejected';
+	// Focus the input after rejecting the plan
+	nextTick(() => {
+		assistantChatRef.value?.focusInput();
+	});
 }
 
 function shouldShowPlanControls(message: NodesPlanMessageType) {
@@ -188,6 +193,7 @@ watch(currentRoute, () => {
 <template>
 	<div data-test-id="ask-assistant-chat" tabindex="0" :class="$style.container" @keydown.stop>
 		<AskAssistantChat
+			ref="assistantChatRef"
 			:user="user"
 			:messages="builderStore.chatMessages"
 			:streaming="builderStore.streaming"
