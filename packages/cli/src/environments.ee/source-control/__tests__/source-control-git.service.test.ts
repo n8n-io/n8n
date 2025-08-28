@@ -117,7 +117,7 @@ describe('SourceControlGitService', () => {
 					const expected = 'C:/Users/Test/.n8n/ssh_private_key_temp';
 
 					// This mimics the logic from setGitSshCommand on Windows
-					const normalized = windowsPath.split(path.sep).join(path.posix.sep);
+					const normalized = windowsPath.split(path.win32.sep).join(path.posix.sep);
 
 					expect(normalized).toBe(expected);
 					expect(normalized).not.toContain('\\');
@@ -126,7 +126,7 @@ describe('SourceControlGitService', () => {
 					const unixPath = '/home/user/.n8n/ssh_private_key_temp';
 
 					// This mimics the logic from setGitSshCommand on Unix
-					const normalized = unixPath.split(path.sep).join(path.posix.sep);
+					const normalized = unixPath.split(path.posix.sep).join(path.posix.sep);
 
 					expect(normalized).toBe(unixPath); // Should remain unchanged
 				}
