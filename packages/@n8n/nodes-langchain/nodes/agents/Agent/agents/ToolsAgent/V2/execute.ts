@@ -235,6 +235,8 @@ export async function toolsAgentExecute(
 				streamingFormat?: 'jsonl' | 'sse';
 			};
 
+			const streamingFormat = options.streamingFormat ?? 'jsonl';
+
 			// Prepare the prompt messages and prompt template.
 			const messages = await prepareMessages(this, itemIndex, {
 				systemMessage: options.systemMessage,
