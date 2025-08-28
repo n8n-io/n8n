@@ -1,4 +1,4 @@
-// BaseLanguageModel import removed – not used after refactor
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import omit from 'lodash/omit';
@@ -13,7 +13,6 @@ import { getModelNameForTiktoken } from '@langchain/core/language_models/base';
 import { estimateTokensFromStringList } from '@utils/tokenizer/token-estimator';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, IDataObject } from 'n8n-workflow';
-import assert from 'node:assert';
 import type { TiktokenModel } from 'js-tiktoken';
 
 import { getPromptInputByType } from '@utils/helpers';
@@ -52,8 +51,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
-			const model = await getChatModel(this);
-			assert(model, 'Please connect a model to the Chat Model input');
+			const model = (await getChatModel(this)) as BaseLanguageModel;
 			const memory = await getOptionalMemory(this);
 
 			// Token usage collector (per item)
