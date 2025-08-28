@@ -10,5 +10,6 @@
 		"ryanluker.vscode-coverage-gutters",
 		"Vue.volar",
 		"vitest.explorer"
+		"vitest.explorer"
 	]
 }
