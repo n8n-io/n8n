@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/naming-convention */
+// Included with peer dependency eslint
+// eslint-disable-next-line import-x/no-extraneous-dependencies
 import eslint from '@eslint/js';
 import { globalIgnores } from 'eslint/config';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';

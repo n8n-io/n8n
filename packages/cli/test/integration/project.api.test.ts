@@ -398,6 +398,23 @@ describe('POST /projects/', () => {
 		}
 	});
 
+	test('should create a team project with context parameter', async () => {
+		const ownerUser = await createOwner();
+		const ownerAgent = testServer.authAgentFor(ownerUser);
+
+		const resp = await ownerAgent.post('/projects/').send({
+			name: 'Test Team Project with Context',
+			uiContext: 'universal_button',
+		});
+		expect(resp.status).toBe(200);
+		const respProject = resp.body.data as Project;
+		expect(respProject.name).toEqual('Test Team Project with Context');
+		expect(async () => {
+			await findProject(respProject.id);
+		}).not.toThrow();
+		expect(resp.body.data.role).toBe('project:admin');
+	});
+
 	test('should allow to create a team projects if below the quota', async () => {
 		testServer.license.setQuota('quota:maxTeamProjects', 1);
 		const ownerUser = await createOwner();

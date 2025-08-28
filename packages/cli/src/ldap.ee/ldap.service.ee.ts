@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
-import { SettingsRepository } from '@n8n/db';
+import { isValidEmail, SettingsRepository } from '@n8n/db';
 import type { User, RunningMode, SyncStatus } from '@n8n/db';
 import { Service, Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -37,6 +37,7 @@ import {
 	resolveEntryBinaryAttributes,
 	saveLdapSynchronization,
 	validateLdapConfigurationSchema,
+	getUserByLdapId,
 } from '@/ldap.ee/helpers.ee';
 import {
 	getCurrentAuthenticationMethod,
@@ -349,9 +350,25 @@ export class LdapService {
 			localAdUsers,
 		);
 
+		const filteredUsersToCreate = usersToCreate.filter(([id, user]) => {
+			if (!isValidEmail(user.email)) {
+				this.logger.warn(`LDAP - Invalid email format for user ${id}`);
+				return false;
+			}
+			return true;
+		});
+
+		const filteredUsersToUpdate = usersToUpdate.filter(([id, user]) => {
+			if (!isValidEmail(user.email)) {
+				this.logger.warn(`LDAP - Invalid email format for user ${id}`);
+				return false;
+			}
+			return true;
+		});
+
 		this.logger.debug('LDAP - Users to process', {
-			created: usersToCreate.length,
-			updated: usersToUpdate.length,
+			created: filteredUsersToCreate.length,
+			updated: filteredUsersToUpdate.length,
 			disabled: usersToDisable.length,
 		});
 
@@ -361,7 +378,7 @@ export class LdapService {
 
 		try {
 			if (mode === 'live') {
-				await processUsers(usersToCreate, usersToUpdate, usersToDisable);
+				await processUsers(filteredUsersToCreate, filteredUsersToUpdate, usersToDisable);
 			}
 		} catch (error) {
 			if (error instanceof QueryFailedError) {
@@ -373,8 +390,8 @@ export class LdapService {
 		await saveLdapSynchronization({
 			startedAt,
 			endedAt,
-			created: usersToCreate.length,
-			updated: usersToUpdate.length,
+			created: filteredUsersToCreate.length,
+			updated: filteredUsersToUpdate.length,
 			disabled: usersToDisable.length,
 			scanned: adUsers.length,
 			runMode: mode,
@@ -385,7 +402,8 @@ export class LdapService {
 		this.eventService.emit('ldap-general-sync-finished', {
 			type: !this.syncTimer ? 'scheduled' : `manual_${mode}`,
 			succeeded: true,
-			usersSynced: usersToCreate.length + usersToUpdate.length + usersToDisable.length,
+			usersSynced:
+				filteredUsersToCreate.length + filteredUsersToUpdate.length + usersToDisable.length,
 			error: errorMessage,
 		});
 
@@ -487,6 +505,6 @@ export class LdapService {
 		}
 
 		// Retrieve the user again as user's data might have been updated
-		return (await getAuthIdentityByLdapId(ldapId))?.user;
+		return (await getUserByLdapId(ldapId)) ?? undefined;
 	}
 }

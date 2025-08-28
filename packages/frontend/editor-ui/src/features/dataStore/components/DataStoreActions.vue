@@ -12,6 +12,7 @@ import { useToast } from '@/composables/useToast';
 type Props = {
 	dataStore: DataStore;
 	isReadOnly?: boolean;
+	location: 'card' | 'breadcrumbs';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -34,18 +35,23 @@ const i18n = useI18n();
 const message = useMessage();
 const toast = useToast();
 
-const actions = computed<Array<UserAction<IUser>>>(() => [
-	{
-		label: i18n.baseText('generic.rename'),
-		value: DATA_STORE_CARD_ACTIONS.RENAME,
-		disabled: props.isReadOnly,
-	},
-	{
-		label: i18n.baseText('generic.delete'),
-		value: DATA_STORE_CARD_ACTIONS.DELETE,
-		disabled: props.isReadOnly,
-	},
-]);
+const actions = computed<Array<UserAction<IUser>>>(() => {
+	const availableActions = [
+		{
+			label: i18n.baseText('generic.delete'),
+			value: DATA_STORE_CARD_ACTIONS.DELETE,
+			disabled: props.isReadOnly,
+		},
+	];
+	if (props.location === 'breadcrumbs') {
+		availableActions.unshift({
+			label: i18n.baseText('generic.rename'),
+			value: DATA_STORE_CARD_ACTIONS.RENAME,
+			disabled: props.isReadOnly,
+		});
+	}
+	return availableActions;
+});
 
 const onAction = async (action: string) => {
 	switch (action) {

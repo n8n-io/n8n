@@ -299,9 +299,11 @@ describe('GlobalConfig', () => {
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
-			disableIframeSandboxing: false,
+			disableWebhookHtmlSandboxing: false,
 		},
 		executions: {
+			timeout: -1,
+			maxTimeout: 3600,
 			pruneData: true,
 			pruneDataMaxAge: 336,
 			pruneDataMaxCount: 10_000,
@@ -318,6 +320,10 @@ describe('GlobalConfig', () => {
 				interval: 180,
 				batchSize: 100,
 			},
+			saveDataOnError: 'all',
+			saveDataOnSuccess: 'all',
+			saveExecutionProgress: false,
+			saveDataManualExecutions: true,
 		},
 		diagnostics: {
 			enabled: true,

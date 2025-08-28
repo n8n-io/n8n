@@ -38,6 +38,9 @@ export const frontendConfig = tseslint.config(
 		rules: {
 			'import-x/no-extraneous-dependencies': 'warn',
 			'vue/one-component-per-file': 'off',
+
+			// TODO: remove these
+			'n8n-local-rules/no-internal-package-import': 'warn',
 		},
 	},
 	{
@@ -98,6 +101,7 @@ export const frontendConfig = tseslint.config(
 			'vue/no-side-effects-in-computed-properties': 'warn',
 			'vue/no-v-text-v-html-on-component': 'warn',
 			'vue/return-in-computed-property': 'warn',
+			'n8n-local-rules/no-internal-package-import': 'warn',
 		},
 	},
 	eslintConfigPrettier,
