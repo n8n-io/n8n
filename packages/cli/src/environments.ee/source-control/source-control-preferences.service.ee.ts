@@ -101,9 +101,8 @@ export class SourceControlPreferencesService {
 
 		try {
 			// Remove existing file if it exists to avoid permission conflicts
-			await fsRm(tempFilePath).catch(() => {
-				// Ignore errors if file doesn't exist
-			});
+			// Using force: true ignores ENOENT but allows other errors to surface
+			await fsRm(tempFilePath, { force: true });
 
 			// Always use restrictive permissions for SSH private keys (security requirement)
 			await writeFile(tempFilePath, normalizedKey, { mode: 0o600 });
