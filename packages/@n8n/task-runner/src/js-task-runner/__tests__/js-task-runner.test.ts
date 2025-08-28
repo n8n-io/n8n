@@ -488,7 +488,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				expect(outcome.result).toEqual([
-					{ json: { val: { key: 'value' } }, pairedItem: { item: 0 } },
+					withPairedItem(0, wrapIntoJson({ val: { key: 'value' } })),
 				]);
 			});
 
@@ -577,7 +577,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				expect(outcome.result).toEqual([
-					{ json: { val: { key: 'value' } }, pairedItem: { item: 0 } },
+					withPairedItem(0, wrapIntoJson({ val: { key: 'value' } })),
 				]);
 			});
 
@@ -763,7 +763,7 @@ describe('JsTaskRunner', () => {
 			});
 
 			expect(outcomePer.result).toEqual([
-				{ json: { val: 'test-buffer' }, pairedItem: { item: 0 } },
+				{ ...wrapIntoJson({ val: 'test-buffer' }), pairedItem: { item: 0 } },
 			]);
 		});
 	});
@@ -900,9 +900,9 @@ describe('JsTaskRunner', () => {
 
 				expect(outcome).toEqual({
 					result: [
-						{ json: { a: 1, idx: 100 }, pairedItem: { item: 100 } },
-						{ json: { b: 2, idx: 101 }, pairedItem: { item: 101 } },
-						{ json: { c: 3, idx: 102 }, pairedItem: { item: 102 } },
+						withPairedItem(100, wrapIntoJson({ a: 1, idx: 100 })),
+						withPairedItem(101, wrapIntoJson({ b: 2, idx: 101 })),
+						withPairedItem(102, wrapIntoJson({ c: 3, idx: 102 })),
 					],
 					customData: undefined,
 				});
@@ -1084,7 +1084,7 @@ describe('JsTaskRunner', () => {
 						runner,
 					});
 
-					expect(outcome.result).toEqual([{ json: { val: expected }, pairedItem: { item: 0 } }]);
+					expect(outcome.result).toEqual([withPairedItem(0, wrapIntoJson({ val: expected }))]);
 				},
 			);
 
@@ -1146,7 +1146,7 @@ describe('JsTaskRunner', () => {
 						runner,
 					});
 
-					expect(outcome.result).toEqual([{ json: { val: expected }, pairedItem: { item: 0 } }]);
+					expect(outcome.result).toEqual([withPairedItem(0, wrapIntoJson({ val: expected }))]);
 				},
 			);
 
