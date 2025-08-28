@@ -36,7 +36,13 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), { readOnly: false });
 
 const emit = defineEmits<{
-	valueChanged: [value: { name: string; node: string; value: FilterValue }];
+	valueChanged: [
+		value: {
+			name: string;
+			node: string;
+			value: FilterValue;
+		},
+	];
 }>();
 
 const i18n = useI18n();
@@ -120,6 +126,14 @@ watch(
 	},
 );
 
+watch(
+	() => state.paramValue,
+	() => {
+		debouncedEmitChange();
+	},
+	{ deep: true },
+);
+
 function emitChange() {
 	emit('valueChanged', {
 		name: props.path,
@@ -130,22 +144,18 @@ function emitChange() {
 
 function addCondition(): void {
 	state.paramValue.conditions.push(createCondition());
-	debouncedEmitChange();
 }
 
 function onConditionUpdate(index: number, value: FilterConditionValue): void {
 	state.paramValue.conditions[index] = value;
-	debouncedEmitChange();
 }
 
 function onCombinatorChange(combinator: FilterTypeCombinator): void {
 	state.paramValue.combinator = combinator;
-	debouncedEmitChange();
 }
 
 function onConditionRemove(index: number): void {
 	state.paramValue.conditions.splice(index, 1);
-	debouncedEmitChange();
 }
 
 function getIssues(index: number): string[] {

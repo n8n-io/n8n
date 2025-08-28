@@ -209,8 +209,6 @@
 	"aiAssistant.codeUpdated.message.body2": "node to see the changes",
 	"aiAssistant.thinkingSteps.analyzingError": "Analyzing the error...",
 	"aiAssistant.thinkingSteps.thinking": "Thinking...",
-	"aiAssistant.thinkingSteps.runningTools": "Running tools...",
-	"aiAssistant.thinkingSteps.processingResults": "Processing results...",
 	"aiAssistant.prompts.currentView.workflowList": "The user is currently looking at the list of workflows.",
 	"aiAssistant.prompts.currentView.credentialsList": "The user is currently looking at the list of credentials.",
 	"aiAssistant.prompts.currentView.executionsView": "The user is currently looking at the list of executions for the currently open workflow.",
@@ -2705,6 +2703,7 @@
 	"workflows.empty.learnN8n": "Learn n8n",
 	"workflows.empty.button.disabled.tooltip": "Your current role in the project does not allow you to create workflows",
 	"workflows.empty.easyAI": "Test a simple AI Agent example",
+	"workflows.empty.preBuiltAgents": "Try a pre-built agent",
 	"workflows.empty.shared-with-me": "No {resource} has been shared with you",
 	"workflows.empty.shared-with-me.link": "<a href=\"#\">Back to Personal</a>",
 	"workflows.list.easyAI": "Test the power of AI in n8n with this simple AI Agent Workflow",
@@ -2755,6 +2754,8 @@
 	"workflows.readyToRunWorkflows.error": "Error loading n8n collection. Please try again later.",
 	"workflows.archivedOnly.hint": "Archived workflows are hidden in this view. {link}",
 	"workflows.archivedOnly.hint.link": "Update filters",
+	"workflows.preBuiltAgents.callout": "Get started faster with our",
+	"workflows.preBuiltAgents.linkText": "pre-built agents",
 	"workflowSelectorParameterInput.createNewSubworkflow.name": "My Sub-Workflow",
 	"importCurlModal.title": "Import cURL command",
 	"importCurlModal.input.label": "cURL Command",
@@ -3438,5 +3439,8 @@
 	"workflowDiff.deletedWorkflow.remote": "The workflow doesn't exist on remote",
 	"workflowDiff.newWorkflow": "New workflow",
 	"workflowDiff.newWorkflow.database": "The workflow will be created in the database",
-	"workflowDiff.newWorkflow.remote": "The workflow will be created on remote"
+	"workflowDiff.newWorkflow.remote": "The workflow will be created on remote",
+	"preBuiltAgentTemplates.title": "Pre-built agents",
+	"preBuiltAgentTemplates.tutorials": "Tutorial templates",
+	"preBuiltAgentTemplates.viewAllLink": "View all templates"
 }

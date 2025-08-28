@@ -169,6 +169,8 @@ export function useBuilderMessages() {
 				type: 'tool',
 				toolName: msg.toolName,
 				toolCallId: msg.toolCallId,
+				displayTitle: msg.displayTitle,
+				customDisplayTitle: msg.customDisplayTitle,
 				status: msg.status,
 				updates: msg.updates || [],
 				read: false,
@@ -237,10 +239,8 @@ export function useBuilderMessages() {
 	function determineThinkingMessage(messages: ChatUI.AssistantMessage[]): string | undefined {
 		const { hasAnyRunningTools, isStillThinking } = getThinkingState(messages);
 
-		if (hasAnyRunningTools) {
-			return locale.baseText('aiAssistant.thinkingSteps.runningTools');
-		} else if (isStillThinking) {
-			return locale.baseText('aiAssistant.thinkingSteps.processingResults');
+		if (!hasAnyRunningTools && isStillThinking) {
+			return locale.baseText('aiAssistant.thinkingSteps.thinking');
 		}
 
 		return undefined;
@@ -364,6 +364,8 @@ export function useBuilderMessages() {
 				type: 'tool',
 				toolName: message.toolName,
 				toolCallId: message.toolCallId,
+				displayTitle: message.displayTitle,
+				customDisplayTitle: message.customDisplayTitle,
 				status: message.status,
 				updates: message.updates || [],
 				read: false,
