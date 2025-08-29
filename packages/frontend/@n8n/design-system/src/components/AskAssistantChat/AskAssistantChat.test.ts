@@ -387,6 +387,70 @@ describe('AskAssistantChat', () => {
 			});
 		});
 
+		it('should collapse tool messages with same toolName with hidden messages in between', () => {
+			const messages: Array<ChatUI.AssistantMessage & { id: string }> = [
+				createToolMessage({
+					id: '1',
+					status: 'running',
+					displayTitle: 'Searching...',
+					updates: [{ type: 'progress', data: { status: 'Initializing search' } }],
+				}),
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'agent-suggestion',
+					title: 'Agent Suggestion',
+					content: 'This is a suggestion from the agent',
+					suggestionId: 'test',
+					quickReplies: [
+						{ type: 'accept', text: 'Accept suggestion' },
+						{ type: 'reject', text: 'Reject suggestion' },
+					],
+					read: true,
+				},
+				createToolMessage({
+					id: '2',
+					status: 'running',
+					displayTitle: 'Still searching...',
+					customDisplayTitle: 'Custom Search Title',
+					updates: [{ type: 'progress', data: { status: 'Processing results' } }],
+				}),
+				{
+					id: 'test',
+					role: 'assistant',
+					type: 'workflow-updated',
+					codeSnippet: '',
+				},
+				createToolMessage({
+					id: '3',
+					status: 'completed',
+					displayTitle: 'Search Complete',
+					updates: [{ type: 'output', data: { result: 'Found 10 items' } }],
+				}),
+			];
+
+			renderWithMessages(messages);
+
+			expectMessageWrapperCalledTimes(1);
+			const props = getMessageWrapperProps();
+
+			expectToolMessage(props, {
+				id: '3',
+				role: 'assistant',
+				type: 'tool',
+				toolName: 'search',
+				status: 'running',
+				displayTitle: 'Still searching...',
+				customDisplayTitle: 'Custom Search Title',
+				updates: [
+					{ type: 'progress', data: { status: 'Initializing search' } },
+					{ type: 'progress', data: { status: 'Processing results' } },
+					{ type: 'output', data: { result: 'Found 10 items' } },
+				],
+				read: true,
+			});
+		});
+
 		it('should not collapse tool messages with different toolNames', () => {
 			const messages = [
 				createToolMessage({
