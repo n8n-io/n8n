@@ -128,6 +128,25 @@ export class RoleService {
 		return this.dbRoleToRoleDTO(createdRole);
 	}
 
+	async checkRolesExist(
+		roleSlugs: string[],
+		roleType: 'global' | 'project' | 'workflow' | 'credential',
+	) {
+		const uniqueRoleSlugs = new Set(roleSlugs);
+		const roles = await this.roleRepository.findBySlugs(Array.from(uniqueRoleSlugs), roleType);
+
+		if (roles.length < uniqueRoleSlugs.size) {
+			const nonExistentRoles = Array.from(uniqueRoleSlugs).filter(
+				(slug) => !roles.find((role) => role.slug === slug),
+			);
+			throw new BadRequestError(
+				nonExistentRoles.length === 1
+					? `Role ${nonExistentRoles[0]} does not exist`
+					: `Roles ${nonExistentRoles.join(', ')} do not exist`,
+			);
+		}
+	}
+
 	addScopes(
 		rawWorkflow: ListQueryDb.Workflow.WithSharing | ListQueryDb.Workflow.WithOwnedByAndSharedWith,
 		user: User,

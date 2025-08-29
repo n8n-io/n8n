@@ -27,12 +27,12 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { CacheService } from './cache/cache.service';
-import { RoleService } from './role.service';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { CacheService } from './cache/cache.service';
+import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -280,6 +280,12 @@ export class ProjectService {
 		const project = await this.getTeamProjectWithRelations(projectId);
 		this.checkRolesLicensed(project, relations);
 
+		// Check that all roles exist
+		await this.roleService.checkRolesExist(
+			relations.map((r) => r.role),
+			'project',
+		);
+
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			await this.pruneRelations(em, project);
 			await this.addManyRelations(em, project, relations);
@@ -305,6 +311,12 @@ export class ProjectService {
 	) {
 		const project = await this.getTeamProjectWithRelations(projectId);
 		this.checkRolesLicensed(project, relations);
+
+		// Check that project role exists
+		await this.roleService.checkRolesExist(
+			relations.map((r) => r.role),
+			'project',
+		);
 
 		if (project.type === 'personal') {
 			throw new ForbiddenError("Can't add users to personal projects.");
@@ -370,6 +382,10 @@ export class ProjectService {
 		}
 
 		const project = await this.getTeamProjectWithRelations(projectId);
+
+		// Check that project role exists
+		await this.roleService.checkRolesExist([role], 'project');
+
 		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
 
 		const projectUserExists = project.projectRelations.some((r) => r.userId === userId);

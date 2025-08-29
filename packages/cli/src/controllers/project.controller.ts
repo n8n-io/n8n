@@ -220,8 +220,6 @@ export class ProjectController {
 			await this.projectsService.updateProject(projectId, { name, icon, description });
 		}
 		if (relations) {
-			// TODO: validate that the project relations roles exist in db
-			// otherwise throws BadRequest
 			try {
 				const { project, newRelations } = await this.projectsService.syncProjectRelations(
 					projectId,
