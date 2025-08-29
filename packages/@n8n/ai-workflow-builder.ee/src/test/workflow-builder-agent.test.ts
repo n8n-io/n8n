@@ -19,22 +19,24 @@ import {
 } from '@/workflow-builder-agent';
 
 jest.mock('@/tools/add-node.tool', () => ({
-	createAddNodeTool: jest.fn().mockReturnValue({ name: 'add_node' }),
+	createAddNodeTool: jest.fn().mockReturnValue({ tool: { name: 'add_node' } }),
 }));
 jest.mock('@/tools/connect-nodes.tool', () => ({
-	createConnectNodesTool: jest.fn().mockReturnValue({ name: 'connect_nodes' }),
+	createConnectNodesTool: jest.fn().mockReturnValue({ tool: { name: 'connect_nodes' } }),
 }));
 jest.mock('@/tools/node-details.tool', () => ({
-	createNodeDetailsTool: jest.fn().mockReturnValue({ name: 'node_details' }),
+	createNodeDetailsTool: jest.fn().mockReturnValue({ tool: { name: 'node_details' } }),
 }));
 jest.mock('@/tools/node-search.tool', () => ({
-	createNodeSearchTool: jest.fn().mockReturnValue({ name: 'node_search' }),
+	createNodeSearchTool: jest.fn().mockReturnValue({ tool: { name: 'node_search' } }),
 }));
 jest.mock('@/tools/remove-node.tool', () => ({
-	createRemoveNodeTool: jest.fn().mockReturnValue({ name: 'remove_node' }),
+	createRemoveNodeTool: jest.fn().mockReturnValue({ tool: { name: 'remove_node' } }),
 }));
 jest.mock('@/tools/update-node-parameters.tool', () => ({
-	createUpdateNodeParametersTool: jest.fn().mockReturnValue({ name: 'update_node_parameters' }),
+	createUpdateNodeParametersTool: jest
+		.fn()
+		.mockReturnValue({ tool: { name: 'update_node_parameters' } }),
 }));
 jest.mock('@/tools/prompts/main-agent.prompt', () => ({
 	mainAgentPrompt: {

@@ -21,7 +21,7 @@ export const fetchDataStoresApi = async (
 		projectId: string | string[];
 	},
 ) => {
-	const apiEndpoint = projectId ? `/projects/${projectId}/data-stores` : '/data-stores-global';
+	const apiEndpoint = projectId ? `/projects/${projectId}/data-tables` : '/data-tables-global';
 	return await makeRestApiRequest<{ count: number; data: DataStore[] }>(
 		context,
 		'GET',
@@ -42,7 +42,7 @@ export const createDataStoreApi = async (
 	return await makeRestApiRequest<DataStore>(
 		context,
 		'POST',
-		`/projects/${projectId}/data-stores`,
+		`/projects/${projectId}/data-tables`,
 		{
 			name,
 			columns: columns ?? [],
@@ -58,7 +58,7 @@ export const deleteDataStoreApi = async (
 	return await makeRestApiRequest<boolean>(
 		context,
 		'DELETE',
-		`/projects/${projectId}/data-stores/${dataStoreId}`,
+		`/projects/${projectId}/data-tables/${dataStoreId}`,
 		{
 			dataStoreId,
 			projectId,
@@ -75,7 +75,7 @@ export const updateDataStoreApi = async (
 	return await makeRestApiRequest<DataStore>(
 		context,
 		'PATCH',
-		`/projects/${projectId}/data-stores/${dataStoreId}`,
+		`/projects/${projectId}/data-tables/${dataStoreId}`,
 		{
 			name,
 		},
@@ -91,7 +91,7 @@ export const addDataStoreColumnApi = async (
 	return await makeRestApiRequest<DataStoreColumn>(
 		context,
 		'POST',
-		`/projects/${projectId}/data-stores/${dataStoreId}/columns`,
+		`/projects/${projectId}/data-tables/${dataStoreId}/columns`,
 		{
 			...column,
 		},
@@ -107,7 +107,7 @@ export const deleteDataStoreColumnApi = async (
 	return await makeRestApiRequest<boolean>(
 		context,
 		'DELETE',
-		`/projects/${projectId}/data-stores/${dataStoreId}/columns/${columnId}`,
+		`/projects/${projectId}/data-tables/${dataStoreId}/columns/${columnId}`,
 	);
 };
 
@@ -121,7 +121,7 @@ export const moveDataStoreColumnApi = async (
 	return await makeRestApiRequest<boolean>(
 		context,
 		'PATCH',
-		`/projects/${projectId}/data-stores/${dataStoreId}/columns/${columnId}/move`,
+		`/projects/${projectId}/data-tables/${dataStoreId}/columns/${columnId}/move`,
 		{
 			targetIndex,
 		},
@@ -140,7 +140,7 @@ export const getDataStoreRowsApi = async (
 	return await makeRestApiRequest<{
 		count: number;
 		data: DataStoreRow[];
-	}>(context, 'GET', `/projects/${projectId}/data-stores/${dataStoreId}/rows`, {
+	}>(context, 'GET', `/projects/${projectId}/data-tables/${dataStoreId}/rows`, {
 		...(options ?? {}),
 	});
 };
@@ -154,7 +154,7 @@ export const insertDataStoreRowApi = async (
 	return await makeRestApiRequest<Array<{ id: number }>>(
 		context,
 		'POST',
-		`/projects/${projectId}/data-stores/${dataStoreId}/insert`,
+		`/projects/${projectId}/data-tables/${dataStoreId}/insert`,
 		{
 			data: [row],
 		},
@@ -171,7 +171,7 @@ export const updateDataStoreRowsApi = async (
 	return await makeRestApiRequest<boolean>(
 		context,
 		'PATCH',
-		`/projects/${projectId}/data-stores/${dataStoreId}/rows`,
+		`/projects/${projectId}/data-tables/${dataStoreId}/rows`,
 		{
 			filter: { id: rowId },
 			data: rowData,
@@ -188,7 +188,7 @@ export const deleteDataStoreRowsApi = async (
 	return await makeRestApiRequest<boolean>(
 		context,
 		'DELETE',
-		`/projects/${projectId}/data-stores/${dataStoreId}/rows`,
+		`/projects/${projectId}/data-tables/${dataStoreId}/rows`,
 		{
 			ids: rowIds.join(','),
 		},

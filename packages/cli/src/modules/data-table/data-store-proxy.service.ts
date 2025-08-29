@@ -15,13 +15,14 @@ import {
 	ListDataStoreRowsOptions,
 	MoveDataStoreColumnOptions,
 	UpdateDataStoreOptions,
+	UpdateDataStoreRowsOptions,
 	UpsertDataStoreRowsOptions,
 	Workflow,
 } from 'n8n-workflow';
 
-import { OwnershipService } from '@/services/ownership.service';
-
 import { DataStoreService } from './data-store.service';
+
+import { OwnershipService } from '@/services/ownership.service';
 
 @Service()
 export class DataStoreProxyService implements DataStoreProxyProvider {
@@ -47,9 +48,10 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 	async getDataStoreAggregateProxy(
 		workflow: Workflow,
 		node: INode,
+		dataStoreProjectId?: string,
 	): Promise<IDataStoreProjectAggregateService> {
 		this.validateRequest(node);
-		const projectId = await this.getProjectId(workflow);
+		const projectId = dataStoreProjectId ?? (await this.getProjectId(workflow));
 
 		return this.makeAggregateOperations(projectId);
 	}
@@ -58,9 +60,10 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 		workflow: Workflow,
 		node: INode,
 		dataStoreId: string,
+		dataStoreProjectId?: string,
 	): Promise<IDataStoreProjectService> {
 		this.validateRequest(node);
-		const projectId = await this.getProjectId(workflow);
+		const projectId = dataStoreProjectId ?? (await this.getProjectId(workflow));
 
 		return this.makeDataStoreOperations(projectId, dataStoreId);
 	}
@@ -130,6 +133,10 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 
 			async insertRows(rows: DataStoreRows) {
 				return await dataStoreService.insertRows(dataStoreId, projectId, rows, true);
+			},
+
+			async updateRows(options: UpdateDataStoreRowsOptions) {
+				return await dataStoreService.updateRow(dataStoreId, projectId, options, true);
 			},
 
 			async upsertRows(options: UpsertDataStoreRowsOptions) {

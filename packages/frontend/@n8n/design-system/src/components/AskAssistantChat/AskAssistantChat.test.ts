@@ -1,8 +1,11 @@
 import { render } from '@testing-library/vue';
+import { vi } from 'vitest';
 
 import { n8nHtml } from '@n8n/design-system/directives';
 
 import AskAssistantChat from './AskAssistantChat.vue';
+import type { Props as MessageWrapperProps } from './messages/MessageWrapper.vue';
+import type { ChatUI } from '../../types/assistant';
 
 const stubs = ['n8n-avatar', 'n8n-button', 'n8n-icon', 'n8n-icon-button'];
 
@@ -254,5 +257,485 @@ describe('AskAssistantChat', () => {
 		expect(wrapper.container).toMatchSnapshot();
 		const textarea = wrapper.queryByTestId('chat-input');
 		expect(textarea).toHaveAttribute('maxLength', '100');
+	});
+
+	describe('collapseToolMessages', () => {
+		const MessageWrapperMock = vi.fn(() => ({
+			template: '<div data-testid="message-wrapper-mock"></div>',
+		}));
+		const stubsWithMessageWrapper = {
+			...Object.fromEntries(stubs.map((stub) => [stub, true])),
+			MessageWrapper: MessageWrapperMock,
+		};
+
+		const createToolMessage = (
+			overrides: Partial<ChatUI.ToolMessage & { id: string }> = {},
+		): ChatUI.ToolMessage & { id: string } => ({
+			id: '1',
+			role: 'assistant',
+			type: 'tool',
+			toolName: 'search',
+			status: 'completed',
+			displayTitle: 'Search Results',
+			updates: [{ type: 'output', data: { result: 'Found items' } }],
+			...overrides,
+		});
+
+		const renderWithMessages = (messages: ChatUI.AssistantMessage[], extraProps = {}) => {
+			MessageWrapperMock.mockClear();
+			return render(AskAssistantChat, {
+				global: { stubs: stubsWithMessageWrapper },
+				props: {
+					user: { firstName: 'Kobi', lastName: 'Dog' },
+					messages,
+					...extraProps,
+				},
+			});
+		};
+
+		const renderWithDirectives = (messages: ChatUI.AssistantMessage[], extraProps = {}) => {
+			MessageWrapperMock.mockClear();
+			return render(AskAssistantChat, {
+				global: {
+					directives: { n8nHtml },
+					stubs: stubsWithMessageWrapper,
+				},
+				props: {
+					user: { firstName: 'Kobi', lastName: 'Dog' },
+					messages,
+					...extraProps,
+				},
+			});
+		};
+
+		const getMessageWrapperProps = (callIndex = 0): MessageWrapperProps => {
+			const mockCall = MessageWrapperMock.mock.calls[callIndex];
+			expect(mockCall).toBeDefined();
+			return (mockCall as unknown as [props: MessageWrapperProps])[0];
+		};
+
+		const expectMessageWrapperCalledTimes = (times: number) => {
+			expect(MessageWrapperMock).toHaveBeenCalledTimes(times);
+		};
+
+		const expectToolMessage = (
+			props: MessageWrapperProps,
+			expectedProps: Partial<ChatUI.ToolMessage & { id: string; read?: boolean }>,
+		) => {
+			expect(props.message).toEqual(expect.objectContaining(expectedProps));
+		};
+
+		it('should not collapse single tool message', () => {
+			const message = createToolMessage({
+				id: '1',
+				displayTitle: 'Search Results',
+				updates: [{ type: 'output', data: { result: 'Found 10 items' } }],
+			});
+
+			renderWithMessages([message]);
+
+			expectMessageWrapperCalledTimes(1);
+			const props = getMessageWrapperProps();
+
+			expectToolMessage(props, {
+				...message,
+				read: true,
+			});
+		});
+
+		it('should collapse consecutive tool messages with same toolName', () => {
+			const messages = [
+				createToolMessage({
+					id: '1',
+					status: 'running',
+					displayTitle: 'Searching...',
+					updates: [{ type: 'progress', data: { status: 'Initializing search' } }],
+				}),
+				createToolMessage({
+					id: '2',
+					status: 'running',
+					displayTitle: 'Still searching...',
+					customDisplayTitle: 'Custom Search Title',
+					updates: [{ type: 'progress', data: { status: 'Processing results' } }],
+				}),
+				createToolMessage({
+					id: '3',
+					status: 'completed',
+					displayTitle: 'Search Complete',
+					updates: [{ type: 'output', data: { result: 'Found 10 items' } }],
+				}),
+			];
+
+			renderWithMessages(messages);
+
+			expectMessageWrapperCalledTimes(1);
+			const props = getMessageWrapperProps();
+
+			expectToolMessage(props, {
+				id: '3',
+				role: 'assistant',
+				type: 'tool',
+				toolName: 'search',
+				status: 'running',
+				displayTitle: 'Still searching...',
+				customDisplayTitle: 'Custom Search Title',
+				updates: [
+					{ type: 'progress', data: { status: 'Initializing search' } },
+					{ type: 'progress', data: { status: 'Processing results' } },
+					{ type: 'output', data: { result: 'Found 10 items' } },
+				],
+				read: true,
+			});
+		});
+
+		it('should not collapse tool messages with different toolNames', () => {
+			const messages = [
+				createToolMessage({
+					id: '1',
+					toolName: 'search',
+					displayTitle: 'Search Results',
+					updates: [{ type: 'output', data: { result: 'Found 10 items' } }],
+				}),
+				createToolMessage({
+					id: '2',
+					toolName: 'fetch',
+					displayTitle: 'Data Fetched',
+					updates: [{ type: 'output', data: { result: 'Data retrieved' } }],
+				}),
+			];
+
+			renderWithMessages(messages);
+
+			expectMessageWrapperCalledTimes(2);
+
+			const firstProps = getMessageWrapperProps(0);
+			expectToolMessage(firstProps, {
+				id: '1',
+				toolName: 'search',
+				status: 'completed',
+				displayTitle: 'Search Results',
+			});
+
+			const secondProps = getMessageWrapperProps(1);
+			expectToolMessage(secondProps, {
+				id: '2',
+				toolName: 'fetch',
+				status: 'completed',
+				displayTitle: 'Data Fetched',
+			});
+		});
+
+		it('should collapse completed and error statuses', () => {
+			const messages = [
+				createToolMessage({
+					id: '1',
+					status: 'completed',
+					displayTitle: 'Search Complete',
+					updates: [{ type: 'output', data: { result: 'Found some items' } }],
+				}),
+				createToolMessage({
+					id: '2',
+					status: 'error',
+					displayTitle: 'Search error',
+					customDisplayTitle: 'Custom Running Title',
+					updates: [{ type: 'progress', data: { status: 'Processing more results' } }],
+				}),
+				createToolMessage({
+					id: '3',
+					status: 'completed',
+					displayTitle: 'Final Search Complete',
+					updates: [{ type: 'output', data: { result: 'All done' } }],
+				}),
+			];
+
+			renderWithMessages(messages);
+
+			expectMessageWrapperCalledTimes(1);
+			const props = getMessageWrapperProps();
+
+			expectToolMessage(props, {
+				id: '3',
+				status: 'error',
+				displayTitle: 'Search error',
+				customDisplayTitle: undefined,
+				updates: [
+					{ type: 'output', data: { result: 'Found some items' } },
+					{ type: 'progress', data: { status: 'Processing more results' } },
+					{ type: 'output', data: { result: 'All done' } },
+				],
+			});
+		});
+
+		it('should collapse running, completed and error statuses into running', () => {
+			const messages = [
+				createToolMessage({
+					id: '1',
+					status: 'running',
+					displayTitle: 'Search Running',
+					customDisplayTitle: 'Custom Search Title',
+					updates: [{ type: 'output', data: { result: 'Found some items' } }],
+				}),
+				createToolMessage({
+					id: '2',
+					status: 'error',
+					displayTitle: 'Search error',
+					customDisplayTitle: 'Custom Error Title',
+					updates: [{ type: 'progress', data: { status: 'Processing more results' } }],
+				}),
+				createToolMessage({
+					id: '3',
+					status: 'completed',
+					displayTitle: 'Final Search Complete',
+					updates: [{ type: 'output', data: { result: 'All done' } }],
+				}),
+			];
+
+			renderWithMessages(messages);
+
+			expectMessageWrapperCalledTimes(1);
+			const props = getMessageWrapperProps();
+
+			expectToolMessage(props, {
+				id: '3',
+				role: 'assistant',
+				type: 'tool',
+				toolName: 'search',
+				status: 'running',
+				displayTitle: 'Search Running',
+				customDisplayTitle: 'Custom Search Title',
+				updates: [
+					{ type: 'output', data: { result: 'Found some items' } },
+					{ type: 'progress', data: { status: 'Processing more results' } },
+					{ type: 'output', data: { result: 'All done' } },
+				],
+				read: true,
+			});
+		});
+
+		it('should preserve running status when collapsing messages with running status', () => {
+			const messages = [
+				createToolMessage({
+					id: '1',
+					status: 'completed',
+					displayTitle: 'Search Complete',
+					updates: [{ type: 'output', data: { result: 'Found some items' } }],
+				}),
+				createToolMessage({
+					id: '2',
+					status: 'running',
+					displayTitle: 'Still searching...',
+					customDisplayTitle: 'Custom Running Title',
+					updates: [{ type: 'progress', data: { status: 'Processing more results' } }],
+				}),
+				createToolMessage({
+					id: '3',
+					status: 'completed',
+					displayTitle: 'Final Search Complete',
+					updates: [{ type: 'output', data: { result: 'All done' } }],
+				}),
+			];
+
+			renderWithMessages(messages);
+
+			expectMessageWrapperCalledTimes(1);
+			const props = getMessageWrapperProps();
+
+			expectToolMessage(props, {
+				id: '3',
+				status: 'running',
+				displayTitle: 'Still searching...',
+				customDisplayTitle: 'Custom Running Title',
+				updates: [
+					{ type: 'output', data: { result: 'Found some items' } },
+					{ type: 'progress', data: { status: 'Processing more results' } },
+					{ type: 'output', data: { result: 'All done' } },
+				],
+			});
+		});
+
+		it('should combine all updates from collapsed messages', () => {
+			const messages = [
+				createToolMessage({
+					id: '1',
+					status: 'running',
+					displayTitle: 'Searching...',
+					updates: [
+						{ type: 'progress', data: { status: 'Starting search' } },
+						{ type: 'input', data: { query: 'test query' } },
+					],
+				}),
+				createToolMessage({
+					id: '2',
+					status: 'completed',
+					displayTitle: 'Search Complete',
+					updates: [
+						{ type: 'progress', data: { status: 'Processing results' } },
+						{ type: 'output', data: { result: 'Found 10 items' } },
+					],
+				}),
+			];
+
+			renderWithMessages(messages);
+
+			expectMessageWrapperCalledTimes(1);
+			const props = getMessageWrapperProps();
+
+			const toolMessage = props.message as ChatUI.ToolMessage;
+			expect(toolMessage.status).toEqual('running');
+			expect(toolMessage.updates).toEqual([
+				{ type: 'progress', data: { status: 'Starting search' } },
+				{ type: 'input', data: { query: 'test query' } },
+				{ type: 'progress', data: { status: 'Processing results' } },
+				{ type: 'output', data: { result: 'Found 10 items' } },
+			]);
+		});
+
+		it('should not collapse tool messages separated by non-tool messages', () => {
+			const messages = [
+				createToolMessage({
+					id: '1',
+					status: 'completed',
+					displayTitle: 'First Search',
+					updates: [{ type: 'output', data: { result: 'First result' } }],
+				}),
+				{
+					id: '2',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Here are the search results',
+				},
+				createToolMessage({
+					id: '3',
+					status: 'completed',
+					displayTitle: 'Second Search',
+					updates: [{ type: 'output', data: { result: 'Second result' } }],
+				}),
+			];
+
+			renderWithDirectives(messages);
+
+			expectMessageWrapperCalledTimes(3);
+
+			const firstProps = getMessageWrapperProps(0);
+			expectToolMessage(firstProps, {
+				id: '1',
+				type: 'tool',
+				toolName: 'search',
+				displayTitle: 'First Search',
+			});
+
+			const secondProps = getMessageWrapperProps(1);
+			expect(secondProps.message).toEqual(
+				expect.objectContaining({
+					id: '2',
+					type: 'text',
+					content: 'Here are the search results',
+				}),
+			);
+
+			const thirdProps = getMessageWrapperProps(2);
+			expectToolMessage(thirdProps, {
+				id: '3',
+				type: 'tool',
+				toolName: 'search',
+				displayTitle: 'Second Search',
+			});
+		});
+
+		it('should handle customDisplayTitle correctly for running status', () => {
+			const messages = [
+				createToolMessage({
+					id: '1',
+					status: 'completed',
+					displayTitle: 'Search Complete',
+					customDisplayTitle: 'Should be ignored for completed',
+					updates: [{ type: 'output', data: { result: 'Found items' } }],
+				}),
+				createToolMessage({
+					id: '2',
+					status: 'running',
+					displayTitle: 'Searching...',
+					customDisplayTitle: 'Custom Running Title',
+					updates: [{ type: 'progress', data: { status: 'In progress' } }],
+				}),
+			];
+
+			renderWithMessages(messages);
+
+			expectMessageWrapperCalledTimes(1);
+			const props = getMessageWrapperProps();
+
+			expectToolMessage(props, {
+				status: 'running',
+				displayTitle: 'Searching...',
+				customDisplayTitle: 'Custom Running Title',
+			});
+		});
+
+		it('should handle mixed message types correctly', () => {
+			const messages = [
+				{
+					id: '1',
+					role: 'user' as const,
+					type: 'text' as const,
+					content: 'Please search for something',
+				},
+				createToolMessage({
+					id: '2',
+					status: 'running',
+					displayTitle: 'Searching...',
+					updates: [{ type: 'progress', data: { status: 'Starting' } }],
+				}),
+				createToolMessage({
+					id: '3',
+					status: 'completed',
+					displayTitle: 'Search Complete',
+					updates: [{ type: 'output', data: { result: 'Found results' } }],
+				}),
+				{
+					id: '4',
+					role: 'assistant' as const,
+					type: 'text' as const,
+					content: 'Here are your search results',
+				},
+			];
+
+			renderWithDirectives(messages);
+
+			expectMessageWrapperCalledTimes(3);
+
+			const firstProps = getMessageWrapperProps(0);
+			expect(firstProps.message).toEqual(
+				expect.objectContaining({
+					id: '1',
+					role: 'user',
+					type: 'text',
+					content: 'Please search for something',
+				}),
+			);
+
+			const secondProps = getMessageWrapperProps(1);
+			expectToolMessage(secondProps, {
+				id: '3',
+				role: 'assistant',
+				type: 'tool',
+				toolName: 'search',
+				status: 'running',
+				updates: [
+					{ type: 'progress', data: { status: 'Starting' } },
+					{ type: 'output', data: { result: 'Found results' } },
+				],
+			});
+
+			const thirdProps = getMessageWrapperProps(2);
+			expect(thirdProps.message).toEqual(
+				expect.objectContaining({
+					id: '4',
+					role: 'assistant',
+					type: 'text',
+					content: 'Here are your search results',
+				}),
+			);
+		});
 	});
 });

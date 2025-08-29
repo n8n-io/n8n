@@ -8,6 +8,7 @@ declare module 'n8n-workflow' {
 		hooks?: ExecutionLifecycleHooks;
 		externalSecretsProxy: ExternalSecretsProxy;
 		dataStoreProxyProvider?: DataStoreProxyProvider;
+		dataStoreProjectId?: string;
 	}
 }
 

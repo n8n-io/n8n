@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onMounted, ref, nextTick, useTemplateRef } from 'vue';
 import orderBy from 'lodash/orderBy';
 import type {
 	DataStore,
@@ -23,6 +23,7 @@ import type {
 	ValueSetterParams,
 	CellEditingStartedEvent,
 	CellEditingStoppedEvent,
+	CellKeyDownEvent,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -39,6 +40,7 @@ import {
 	ValidationModule,
 	UndoRedoEditModule,
 	CellStyleModule,
+	ScrollApiModule,
 } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
@@ -63,6 +65,8 @@ import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue';
 import { onClickOutside } from '@vueuse/core';
+import { useClipboard } from '@/composables/useClipboard';
+import { reorderItem } from '@/features/dataStore/utils';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -79,6 +83,7 @@ ModuleRegistry.registerModules([
 	ClientSideRowModelApiModule,
 	UndoRedoEditModule,
 	CellStyleModule,
+	ScrollApiModule,
 ]);
 
 type Props = {
@@ -97,6 +102,8 @@ const message = useMessage();
 const { mapToAGCellType } = useDataStoreTypes();
 
 const dataStoreStore = useDataStoreStore();
+
+useClipboard({ onPaste: onClipboardPaste });
 
 // AG Grid State
 const gridApi = ref<GridApi | null>(null);
@@ -144,6 +151,20 @@ const refreshGridData = () => {
 			},
 		]);
 	}
+};
+
+const focusFirstEditableCell = (rowId: number) => {
+	if (!gridApi.value) return;
+
+	const rowNode = gridApi.value.getRowNode(String(rowId));
+	if (rowNode?.rowIndex === null) return;
+
+	const firstEditableCol = colDefs.value[1];
+	if (!firstEditableCol?.colId) return;
+
+	gridApi.value.ensureIndexVisible(rowNode!.rowIndex);
+	gridApi.value.setFocusedCell(rowNode!.rowIndex, firstEditableCol.colId);
+	gridApi.value.startEditingCell({ rowIndex: rowNode!.rowIndex, colKey: firstEditableCol.colId });
 };
 
 const setCurrentPage = async (page: number) => {
@@ -287,6 +308,8 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		// Provide initial value for the editor, otherwise agLargeTextCellEditor breaks
 		columnDef.cellEditorParams = (params: CellEditRequestEvent<DataStoreRow>) => ({
 			value: params.value ?? '',
+			// Rely on the backend to limit the length of the value
+			maxLength: 999999999,
 		});
 		columnDef.valueSetter = (params: ValueSetterParams<DataStoreRow>) => {
 			let originalValue = params.data[col.name];
@@ -341,8 +364,17 @@ const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 			props.dataStore.id,
 			props.dataStore.projectId,
 			moveEvent.column.getColId(),
-			moveEvent.toIndex - 1,
+			moveEvent.toIndex - 2, // ag grid index start from 1 and also we need to account for the id column
 		);
+		// Compute positions within the movable middle section (exclude selection + ID + Add Column)
+		const fromIndex = oldIndex - 1; // exclude ID column
+		const toIndex = moveEvent.toIndex - 2; // exclude selection + ID columns used by AG Grid indices
+		const middleWithIndex = colDefs.value.slice(1, -1).map((col, index) => ({ ...col, index }));
+		const reorderedMiddle = reorderItem(middleWithIndex, fromIndex, toIndex)
+			.sort((a, b) => a.index - b.index)
+			.map(({ index, ...col }) => col);
+		colDefs.value = [colDefs.value[0], ...reorderedMiddle, colDefs.value[colDefs.value.length - 1]];
+		refreshGridData();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.moveColumn.error'));
 		gridApi.value?.moveColumnByIndex(moveEvent.toIndex, oldIndex);
@@ -366,6 +398,8 @@ const onAddRowClick = async () => {
 		rowData.value.push(newRow);
 		totalItems.value += 1;
 		refreshGridData();
+		await nextTick();
+		focusFirstEditableCell(newRowId);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 	} finally {
@@ -518,7 +552,24 @@ const fetchDataStoreContent = async () => {
 
 onClickOutside(gridContainer, () => {
 	resetLastFocusedCell();
+	gridApi.value?.clearFocusedCell();
 });
+
+function onClipboardPaste(data: string) {
+	if (!gridApi.value) return;
+	const focusedCell = gridApi.value.getFocusedCell();
+	const isEditing = gridApi.value.getEditingCells().length > 0;
+	if (!focusedCell || isEditing) return;
+	const row = gridApi.value.getDisplayedRowAtIndex(focusedCell.rowIndex);
+	if (!row) return;
+
+	const colDef = focusedCell.column.getColDef();
+	if (colDef.cellDataType === 'text') {
+		row.setDataValue(focusedCell.column.getColId(), data);
+	} else if (!Number.isNaN(Number(data))) {
+		row.setDataValue(focusedCell.column.getColId(), Number(data));
+	}
+}
 
 const resetLastFocusedCell = () => {
 	lastFocusedCell.value = null;
@@ -560,6 +611,17 @@ const onSelectionChanged = () => {
 	});
 
 	selectedRowIds.value = newSelectedIds;
+};
+
+const onCellKeyDown = async (params: CellKeyDownEvent<DataStoreRow>) => {
+	const key = (params.event as KeyboardEvent).key;
+	if (key !== 'Delete' && key !== 'Backspace') return;
+
+	const isEditing = params.api.getEditingCells().length > 0;
+	if (isEditing || selectedRowIds.value.size === 0) return;
+
+	params.event?.preventDefault();
+	await handleDeleteSelected();
 };
 
 const handleDeleteSelected = async () => {
@@ -639,6 +701,7 @@ defineExpose({
 				@cell-editing-stopped="onCellEditingStopped"
 				@column-header-clicked="resetLastFocusedCell"
 				@selection-changed="onSelectionChanged"
+				@cell-key-down="onCellKeyDown"
 			/>
 		</div>
 		<div :class="$style.footer">
