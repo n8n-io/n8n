@@ -28,16 +28,12 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	// Only folders and projects can be drop targets
 	const activeDropTarget = ref<DropTarget | null>(null);
 
-	/** Cache for folders accessed in the sidebar */
-	const sidebarCache = ref<Record<string, FolderShortInfo>>({});
-
 	/**
 	 * Cache visited folders so we can build breadcrumbs paths without fetching them from the server
 	 */
 	const breadcrumbsCache = ref<Record<string, FolderShortInfo>>({});
 
-	const cacheFolders = (folders: FolderShortInfo[], from?: string) => {
-		console.log(`Caching ${folders.length} folders from ${from || 'unknown source'}`);
+	const cacheFolders = (folders: FolderShortInfo[]) => {
 		folders.forEach((folder) => {
 			if (!breadcrumbsCache.value[folder.id]) {
 				breadcrumbsCache.value[folder.id] = {

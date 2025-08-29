@@ -51,10 +51,6 @@ export function useSidebarItems() {
 	}
 
 	function convertToTreeStructure(projectId: string): IMenuElement[] {
-		if (projectId === 'Pg8kVunsukbhAwGR') {
-			console.log('incoming', folderStore.breadcrumbsCache);
-		}
-
 		const projectFolders = Object.values(folderStore.breadcrumbsCache).filter(
 			(f) => f.projectId === projectId,
 		);
@@ -109,10 +105,6 @@ export function useSidebarItems() {
 		}
 
 		const builtTree = buildTree(projectFolders, projectWorkflows);
-
-		if (projectId === 'Pg8kVunsukbhAwGR') {
-			console.log('Built tree:', builtTree);
-		}
 
 		return builtTree;
 	}
