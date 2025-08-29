@@ -16,6 +16,7 @@ import type {
 	INodeOutputConfiguration,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionCustomData,
 	NodeConnectionType,
 	NodeInputConnections,
 	NodeParameterValueType,
@@ -42,6 +43,7 @@ import {
 import { InstanceSettings } from '@/instance-settings';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
+import { createExecutionCustomData } from './utils/custom-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
@@ -65,6 +67,14 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	@Memoized
 	get logger() {
 		return Container.get(Logger);
+	}
+
+	@Memoized
+	get customData(): IWorkflowExecutionCustomData {
+		return createExecutionCustomData({
+			runExecutionData: this.runExecutionData ?? { resultData: { runData: {} } },
+			mode: this.mode,
+		});
 	}
 
 	getExecutionId() {

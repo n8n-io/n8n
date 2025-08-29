@@ -159,6 +159,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 			triggerNode: payload.triggerNode,
 			nodeData: payload.nodeData,
 			source: payload.source,
+			metadata: payload.metadata,
 		};
 
 		if (workflowsStore.chatPartialExecutionDestinationNode) {

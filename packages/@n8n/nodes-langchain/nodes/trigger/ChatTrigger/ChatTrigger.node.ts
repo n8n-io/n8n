@@ -1,6 +1,10 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import pick from 'lodash/pick';
 import {
+	autoSaveHighlightedDataProperty,
+	getHighlightedInputKey,
+} from 'n8n-nodes-base/dist/utils/highlightedData';
+import {
 	Node,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -430,6 +434,7 @@ export class ChatTrigger extends Node {
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 			// Options for version 1.2 (with streaming)
@@ -456,6 +461,7 @@ export class ChatTrigger extends Node {
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 			{
@@ -481,6 +487,7 @@ export class ChatTrigger extends Node {
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 			{
@@ -516,6 +523,7 @@ export class ChatTrigger extends Node {
 						description: 'When and how to respond to the webhook',
 						displayOptions: { show: { '/mode': ['hostedChat'] } },
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 		],
@@ -538,7 +546,7 @@ export class ChatTrigger extends Node {
 			for (const fileKey of Object.keys(files)) {
 				const processedFiles: MultiPartFormData.File[] = [];
 				if (Array.isArray(files[fileKey])) {
-					processedFiles.push(...files[fileKey]);
+					processedFiles.push.apply(processedFiles, files[fileKey]);
 				} else {
 					processedFiles.push(files[fileKey]);
 				}
@@ -613,6 +621,7 @@ export class ChatTrigger extends Node {
 				allowedFilesMimeTypes: { type: 'string' },
 				customCss: { type: 'string' },
 				responseMode: { type: 'string' },
+				[autoSaveHighlightedDataProperty.name]: { type: 'boolean' },
 			},
 			ctx.getNode(),
 		);
@@ -706,6 +715,13 @@ export class ChatTrigger extends Node {
 					webhookResponse: { data: [] },
 				};
 			}
+		}
+
+		if (
+			ctx.getNodeParameter('options.autoSaveHighlightedData', true) !== false &&
+			typeof bodyData.chatMessage === 'string'
+		) {
+			ctx.customData.set(getHighlightedInputKey(ctx.getNode().name), bodyData.chatMessage);
 		}
 
 		let returnData: INodeExecutionData[];
