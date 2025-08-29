@@ -6,7 +6,8 @@ export * from './scope-information';
 export * from './roles/role-maps.ee';
 export * from './roles/all-roles';
 
-export { projectRoleSchema, teamRoleSchema, roleSchema, Role, scopeSchema } from './schemas.ee';
+export type { Role } from './schemas.ee';
+export { projectRoleSchema, teamRoleSchema, roleSchema, scopeSchema } from './schemas.ee';
 
 export { hasScope } from './utilities/has-scope.ee';
 export { hasGlobalScope } from './utilities/has-global-scope.ee';
