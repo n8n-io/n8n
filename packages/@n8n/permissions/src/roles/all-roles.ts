@@ -27,18 +27,27 @@ const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	'workflow:editor': 'Workflow Editor',
 };
 
-const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(roles: Record<T, Scope[]>) =>
+const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(
+	roles: Record<T, Scope[]>,
+	roleType: 'global' | 'project' | 'credential' | 'workflow',
+) =>
 	(Object.keys(roles) as T[]).map((role) => ({
-		role,
-		name: ROLE_NAMES[role],
+		slug: role,
+		displayName: ROLE_NAMES[role],
 		scopes: getRoleScopes(role),
 		description: ROLE_NAMES[role],
 		licensed: false,
+		systemRole: true,
+		roleType,
 	}));
 
 export const ALL_ROLES: AllRolesMap = {
-	global: mapToRoleObject(GLOBAL_SCOPE_MAP),
-	project: mapToRoleObject(PROJECT_SCOPE_MAP),
-	credential: mapToRoleObject(CREDENTIALS_SHARING_SCOPE_MAP),
-	workflow: mapToRoleObject(WORKFLOW_SHARING_SCOPE_MAP),
+	global: mapToRoleObject(GLOBAL_SCOPE_MAP, 'global'),
+	project: mapToRoleObject(PROJECT_SCOPE_MAP, 'project'),
+	credential: mapToRoleObject(CREDENTIALS_SHARING_SCOPE_MAP, 'credential'),
+	workflow: mapToRoleObject(WORKFLOW_SHARING_SCOPE_MAP, 'workflow'),
+};
+
+export const isBuiltInRole = (role: string): role is AllRoleTypes => {
+	return Object.prototype.hasOwnProperty.call(ROLE_NAMES, role);
 };
