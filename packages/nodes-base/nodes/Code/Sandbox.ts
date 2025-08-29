@@ -27,6 +27,7 @@ export const REQUIRED_N8N_ITEM_KEYS = new Set([
 	'binary',
 	'pairedItem',
 	'error',
+	'metadata',
 
 	/**
 	 * The `index` key was added accidentally to Function, FunctionItem, Gong,
