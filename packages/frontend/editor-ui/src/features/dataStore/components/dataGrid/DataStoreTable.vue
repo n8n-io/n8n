@@ -42,6 +42,7 @@ import {
 	UndoRedoEditModule,
 	CellStyleModule,
 	ScrollApiModule,
+	PinnedRowModule,
 } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
@@ -66,6 +67,7 @@ import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue';
 import { onClickOutside } from '@vueuse/core';
+import type { SortChangedEvent } from 'ag-grid-community';
 import { useClipboard } from '@/composables/useClipboard';
 import { reorderItem } from '@/features/dataStore/utils';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
@@ -85,6 +87,7 @@ ModuleRegistry.registerModules([
 	ClientSideRowModelApiModule,
 	UndoRedoEditModule,
 	CellStyleModule,
+	PinnedRowModule,
 	ScrollApiModule,
 ]);
 
@@ -118,6 +121,8 @@ const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
 	isRowSelectable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 };
 
+const currentSortBy = ref<string>('id');
+const currentSortOrder = ref<'asc' | 'desc'>('asc');
 const contentLoading = ref(false);
 
 // Track the last focused cell so we can start editing when users click on it
@@ -144,15 +149,15 @@ const onGridReady = (params: GridReadyEvent) => {
 };
 
 const refreshGridData = () => {
-	if (gridApi.value) {
-		gridApi.value.setGridOption('columnDefs', colDefs.value);
-		gridApi.value.setGridOption('rowData', [
-			...rowData.value,
-			{
-				id: ADD_ROW_ROW_ID,
-			},
-		]);
-	}
+	if (!gridApi.value) return;
+
+	gridApi.value.setGridOption('columnDefs', colDefs.value);
+
+	// only real rows here
+	gridApi.value.setGridOption('rowData', rowData.value);
+
+	// special "add row" pinned to the bottom
+	gridApi.value.setGridOption('pinnedBottomRowData', [{ id: ADD_ROW_ROW_ID }]);
 };
 
 const focusFirstEditableCell = (rowId: number) => {
@@ -251,7 +256,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		colId: col.id,
 		field: col.name,
 		headerName: col.name,
-		sortable: false,
+		sortable: true,
 		flex: 1,
 		editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 		resizable: true,
@@ -433,6 +438,7 @@ const initColumnDefinitions = () => {
 			},
 			{
 				editable: false,
+				sortable: false,
 				suppressMovable: true,
 				headerComponent: null,
 				lockPosition: true,
@@ -441,12 +447,10 @@ const initColumnDefinitions = () => {
 				resizable: false,
 				cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'id-column'),
 				cellRendererSelector: (params: ICellRendererParams) => {
-					if (params.value === ADD_ROW_ROW_ID) {
+					if (params.node.rowPinned === 'bottom' && params.value === ADD_ROW_ROW_ID) {
 						return {
 							component: AddRowButton,
-							params: {
-								onClick: onAddRowClick,
-							},
+							params: { onClick: onAddRowClick },
 						};
 					}
 					return undefined;
@@ -560,11 +564,13 @@ const onCellClicked = (params: CellClickedEvent<DataStoreRow>) => {
 const fetchDataStoreContent = async () => {
 	try {
 		contentLoading.value = true;
+
 		const fetchedRows = await dataStoreStore.fetchDataStoreContent(
 			props.dataStore.id,
 			props.dataStore.projectId,
 			currentPage.value,
 			pageSize.value,
+			`${currentSortBy.value}:${currentSortOrder.value}`,
 		);
 		rowData.value = fetchedRows.data;
 		totalItems.value = fetchedRows.count;
@@ -608,6 +614,33 @@ const resetLastFocusedCell = () => {
 const initialize = async () => {
 	initColumnDefinitions();
 	await fetchDataStoreContent();
+};
+
+const onSortChanged = async (event: SortChangedEvent) => {
+	const oldSortBy = currentSortBy.value;
+	const oldSortOrder = currentSortOrder.value;
+
+	// Check if any column is sorted
+	const sortedColumn = event.columns?.filter((col) => col.getSort() !== null).pop() ?? null;
+
+	if (sortedColumn) {
+		// A column is sorted by the user
+		const colId = sortedColumn.getColId();
+		const columnDef = colDefs.value.find((col) => col.colId === colId);
+
+		currentSortBy.value = columnDef?.field || colId;
+		currentSortOrder.value = sortedColumn.getSort() as 'asc' | 'desc';
+	} else {
+		// No sort is active - clear the current sort (will use default in fetch)
+		currentSortBy.value = DEFAULT_ID_COLUMN_NAME;
+		currentSortOrder.value = 'asc';
+	}
+
+	// Only fetch if sort actually changed
+	if (oldSortBy !== currentSortBy.value || oldSortOrder !== currentSortOrder.value) {
+		currentPage.value = 1;
+		await fetchDataStoreContent();
+	}
 };
 
 onMounted(async () => {
@@ -723,6 +756,7 @@ defineExpose({
 				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
+				:suppress-multi-sort="true"
 				@grid-ready="onGridReady"
 				@cell-value-changed="onCellValueChanged"
 				@column-moved="onColumnMoved"
@@ -731,6 +765,7 @@ defineExpose({
 				@cell-editing-stopped="onCellEditingStopped"
 				@column-header-clicked="resetLastFocusedCell"
 				@selection-changed="onSelectionChanged"
+				@sort-changed="onSortChanged"
 				@cell-key-down="onCellKeyDown"
 			/>
 		</div>
@@ -798,6 +833,10 @@ defineExpose({
 	:global(.ag-cell) {
 		display: flex;
 		align-items: center;
+	}
+
+	:global(.ag-floating-bottom) {
+		border-top: 1px solid var(--ag-border-color);
 	}
 
 	:global(.ag-header-cell-resize) {
