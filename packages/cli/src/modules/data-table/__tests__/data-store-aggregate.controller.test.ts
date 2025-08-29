@@ -50,9 +50,9 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-describe('GET /data-stores-global', () => {
+describe('GET /data-tables-global', () => {
 	test('should not list data stores when no data stores exist', async () => {
-		const response = await authOwnerAgent.get('/data-stores-global').expect(200);
+		const response = await authOwnerAgent.get('/data-tables-global').expect(200);
 		expect(response.body.data.count).toBe(0);
 		expect(response.body.data.data).toHaveLength(0);
 	});
@@ -61,7 +61,7 @@ describe('GET /data-stores-global', () => {
 		const project = await createTeamProject('test project', owner);
 		await createDataStore(project, { name: 'Test Data Store' });
 
-		const response = await authMemberAgent.get('/data-stores-global').expect(200);
+		const response = await authMemberAgent.get('/data-tables-global').expect(200);
 		expect(response.body.data.count).toBe(0);
 		expect(response.body.data.data).toHaveLength(0);
 	});
@@ -70,7 +70,7 @@ describe('GET /data-stores-global', () => {
 		const project = await createTeamProject('test project', owner);
 		await createDataStore(project, { name: 'Test Data Store' });
 
-		const response = await authAdminAgent.get('/data-stores-global').expect(200);
+		const response = await authAdminAgent.get('/data-tables-global').expect(200);
 		expect(response.body.data.count).toBe(0);
 		expect(response.body.data.data).toHaveLength(0);
 	});
@@ -78,7 +78,7 @@ describe('GET /data-stores-global', () => {
 	test("should not list data stores from another user's personal project", async () => {
 		await createDataStore(ownerProject, { name: 'Personal Data Store' });
 
-		const response = await authAdminAgent.get('/data-stores-global').expect(200);
+		const response = await authAdminAgent.get('/data-tables-global').expect(200);
 		expect(response.body.data.count).toBe(0);
 		expect(response.body.data.data).toHaveLength(0);
 	});
@@ -88,7 +88,7 @@ describe('GET /data-stores-global', () => {
 		await linkUserToProject(member, project, 'project:viewer');
 		await createDataStore(project, { name: 'Test Data Store' });
 
-		const response = await authMemberAgent.get('/data-stores-global').expect(200);
+		const response = await authMemberAgent.get('/data-tables-global').expect(200);
 
 		expect(response.body.data.count).toBe(1);
 		expect(response.body.data.data).toHaveLength(1);
@@ -99,7 +99,7 @@ describe('GET /data-stores-global', () => {
 		await createDataStore(ownerProject, { name: 'Personal Data Store 1' });
 		await createDataStore(ownerProject, { name: 'Personal Data Store 2' });
 
-		const response = await authOwnerAgent.get('/data-stores-global').expect(200);
+		const response = await authOwnerAgent.get('/data-tables-global').expect(200);
 
 		expect(response.body.data.count).toBe(2);
 		expect(response.body.data.data).toHaveLength(2);
@@ -114,7 +114,7 @@ describe('GET /data-stores-global', () => {
 		await createDataStore(memberProject, { name: 'Another Data Store' });
 
 		const response = await authOwnerAgent
-			.get('/data-stores-global')
+			.get('/data-tables-global')
 			.query({ filter: JSON.stringify({ projectId: ownerProject.id }) })
 			.expect(200);
 
@@ -131,7 +131,7 @@ describe('GET /data-stores-global', () => {
 		await createDataStore(memberProject, { name: 'Another Data Store' });
 
 		const response = await authMemberAgent
-			.get('/data-stores-global')
+			.get('/data-tables-global')
 			.query({ filter: JSON.stringify({ projectId: ownerProject.id }) })
 			.expect(200);
 
@@ -147,7 +147,7 @@ describe('GET /data-stores-global', () => {
 		await createDataStore(project, { name: 'Test Something Else' });
 
 		const response = await authOwnerAgent
-			.get('/data-stores-global')
+			.get('/data-tables-global')
 			.query({ filter: JSON.stringify({ name: 'test' }) })
 			.expect(200);
 
@@ -164,7 +164,7 @@ describe('GET /data-stores-global', () => {
 		await createDataStore(ownerProject, { name: 'Data Store 3' });
 
 		const response = await authOwnerAgent
-			.get('/data-stores-global')
+			.get('/data-tables-global')
 			.query({ filter: JSON.stringify({ id: dataStore1.id }) })
 			.expect(200);
 
@@ -181,7 +181,7 @@ describe('GET /data-stores-global', () => {
 		await createDataStore(project, { name: 'Another Store' });
 
 		const response = await authOwnerAgent
-			.get('/data-stores-global')
+			.get('/data-tables-global')
 			.query({ filter: JSON.stringify({ name: ['Store', 'Test'] }) })
 			.expect(200);
 
@@ -201,7 +201,7 @@ describe('GET /data-stores-global', () => {
 			});
 		}
 
-		const response = await authOwnerAgent.get('/data-stores-global').query({ take: 3 }).expect(200);
+		const response = await authOwnerAgent.get('/data-tables-global').query({ take: 3 }).expect(200);
 
 		expect(response.body.data.count).toBe(5); // Total count should be 5
 		expect(response.body.data.data).toHaveLength(3); // But only 3 returned
@@ -223,7 +223,7 @@ describe('GET /data-stores-global', () => {
 			});
 		}
 
-		const response = await authOwnerAgent.get('/data-stores-global').query({ skip: 2 }).expect(200);
+		const response = await authOwnerAgent.get('/data-tables-global').query({ skip: 2 }).expect(200);
 
 		expect(response.body.data.count).toBe(5);
 		expect(response.body.data.data).toHaveLength(3);
@@ -246,7 +246,7 @@ describe('GET /data-stores-global', () => {
 		}
 
 		const response = await authOwnerAgent
-			.get('/data-stores-global')
+			.get('/data-tables-global')
 			.query({ skip: 1, take: 2 })
 			.expect(200);
 
@@ -264,7 +264,7 @@ describe('GET /data-stores-global', () => {
 		await createDataStore(ownerProject, { name: 'M Data Store' });
 
 		const response = await authOwnerAgent
-			.get('/data-stores-global')
+			.get('/data-tables-global')
 			.query({ sortBy: 'name:asc' })
 			.expect(200);
 
@@ -281,7 +281,7 @@ describe('GET /data-stores-global', () => {
 		await createDataStore(ownerProject, { name: 'M Data Store' });
 
 		const response = await authOwnerAgent
-			.get('/data-stores-global')
+			.get('/data-tables-global')
 			.query({ sortBy: 'name:desc' })
 			.expect(200);
 
@@ -307,7 +307,7 @@ describe('GET /data-stores-global', () => {
 		});
 
 		const response = await authOwnerAgent
-			.get('/data-stores-global')
+			.get('/data-tables-global')
 			.query({ sortBy: 'updatedAt:desc' })
 			.expect(200);
 
@@ -323,7 +323,7 @@ describe('GET /data-stores-global', () => {
 		await createDataStore(ownerProject, { name: 'Another Data Store' });
 
 		const response = await authOwnerAgent
-			.get('/data-stores-global')
+			.get('/data-tables-global')
 			.query({ filter: JSON.stringify({ name: 'data', id: dataStore1.id }), sortBy: 'name:asc' })
 			.expect(200);
 
@@ -348,7 +348,7 @@ describe('GET /data-stores-global', () => {
 		});
 
 		const response = await authOwnerAgent
-			.get('/data-stores-global')
+			.get('/data-tables-global')
 			.query({ filter: JSON.stringify({ name: 'test' }) })
 			.expect(200);
 

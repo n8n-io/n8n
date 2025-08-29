@@ -3,7 +3,12 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { router } from './actions/router';
 import * as row from './actions/row/Row.resource';
-import { getDataTableColumns, getDataTables, tableSearch } from './common/methods';
+import {
+	getConditionsForColumn,
+	getDataTableColumns,
+	getDataTables,
+	tableSearch,
+} from './common/methods';
 
 export class DataTable implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,6 +53,7 @@ export class DataTable implements INodeType {
 		},
 		loadOptions: {
 			getDataTableColumns,
+			getConditionsForColumn,
 		},
 		resourceMapping: {
 			getDataTables,

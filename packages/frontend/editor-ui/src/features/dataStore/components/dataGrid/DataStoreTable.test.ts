@@ -44,6 +44,7 @@ vi.mock('ag-grid-community', () => ({
 	ValidationModule: {},
 	UndoRedoEditModule: {},
 	CellStyleModule: {},
+	ScrollApiModule: {},
 }));
 
 // Mock the n8n theme
@@ -109,7 +110,6 @@ const mockDataStore: DataStore = {
 	createdAt: '2024-01-01T00:00:00Z',
 	updatedAt: '2024-01-01T00:00:00Z',
 	sizeBytes: 0,
-	recordCount: 0,
 };
 
 describe('DataStoreTable', () => {

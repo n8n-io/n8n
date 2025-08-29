@@ -52,9 +52,9 @@ export class AuthRolesService {
 		}).filter((scope) => scope !== null);
 
 		if (scopesToUpdate.length > 0) {
-			this.logger.info(`Updating ${scopesToUpdate.length} scopes...`);
+			this.logger.debug(`Updating ${scopesToUpdate.length} scopes...`);
 			await this.scopeRepository.save(scopesToUpdate);
-			this.logger.info('Scopes updated successfully.');
+			this.logger.debug('Scopes updated successfully.');
 		} else {
 			this.logger.debug('No scopes to update.');
 		}
@@ -118,9 +118,9 @@ export class AuthRolesService {
 				})
 				.filter((role) => role !== null);
 			if (rolesToUpdate.length > 0) {
-				this.logger.info(`Updating ${rolesToUpdate.length} ${roleNamespace} roles...`);
+				this.logger.debug(`Updating ${rolesToUpdate.length} ${roleNamespace} roles...`);
 				await this.roleRepository.save(rolesToUpdate);
-				this.logger.info(`${roleNamespace} roles updated successfully.`);
+				this.logger.debug(`${roleNamespace} roles updated successfully.`);
 			} else {
 				this.logger.debug(`No ${roleNamespace} roles to update.`);
 			}
@@ -128,9 +128,9 @@ export class AuthRolesService {
 	}
 
 	async init() {
-		this.logger.info('Initializing AuthRolesService...');
+		this.logger.debug('Initializing AuthRolesService...');
 		await this.syncScopes();
 		await this.syncRoles();
-		this.logger.info('AuthRolesService initialized successfully.');
+		this.logger.debug('AuthRolesService initialized successfully.');
 	}
 }
