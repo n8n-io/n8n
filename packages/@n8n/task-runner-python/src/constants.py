@@ -57,4 +57,6 @@ TASK_REJECTED_REASON_OFFER_EXPIRED = (
 TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capacity"
 
 # Security
-BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,__import__,getattr,object,type"
+BUILTINS_DENY_DEFAULT = (
+    "eval,exec,compile,open,input,breakpoint,__import__,getattr,object,type"
+)
