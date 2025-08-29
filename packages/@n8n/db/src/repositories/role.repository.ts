@@ -1,6 +1,7 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 
 import { Role } from '../entities';
 
@@ -27,7 +28,7 @@ export class RoleRepository extends Repository<Role> {
 	async removeBySlug(slug: string) {
 		const result = await this.delete({ slug });
 		if (result.affected !== 1) {
-			throw new Error(`Failed to delete role "${slug}"`);
+			throw new UserError(`Failed to delete role "${slug}"`);
 		}
 	}
 
@@ -41,23 +42,17 @@ export class RoleRepository extends Repository<Role> {
 			relations: ['scopes'],
 		});
 		if (!role) {
-			throw new Error('Role not found');
+			throw new UserError('Role not found');
 		}
 		if (role.systemRole) {
-			throw new Error('Cannot update system roles');
+			throw new UserError('Cannot update system roles');
 		}
 
 		// Only update fields that are explicitly provided (not undefined)
 		// This preserves existing scopes when scopes is undefined
-		if (newData.displayName !== undefined) {
-			role.displayName = newData.displayName;
-		}
-		if (newData.description !== undefined) {
-			role.description = newData.description;
-		}
-		if (newData.scopes !== undefined) {
-			role.scopes = newData.scopes;
-		}
+		role.displayName = newData.displayName ?? role.displayName;
+		role.description = newData.description ?? role.description;
+		role.scopes = newData.scopes ?? role.scopes;
 
 		return await entityManager.save<Role>(role);
 	}

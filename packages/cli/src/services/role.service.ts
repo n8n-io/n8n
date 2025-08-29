@@ -19,12 +19,13 @@ import {
 	getRoleScopes,
 	isBuiltInRole,
 } from '@n8n/permissions';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { License } from '@/license';
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import e from 'express';
 
 @Service()
 export class RoleService {
@@ -88,13 +89,24 @@ export class RoleService {
 	async updateCustomRole(slug: string, newData: UpdateRoleDto) {
 		const { displayName, description, scopes: scopeSlugs } = newData;
 
-		const updatedRole = await this.roleRepository.updateRole(slug, {
-			displayName,
-			description,
-			scopes: await this.resolveScopes(scopeSlugs),
-		});
+		try {
+			const updatedRole = await this.roleRepository.updateRole(slug, {
+				displayName,
+				description,
+				scopes: await this.resolveScopes(scopeSlugs),
+			});
 
-		return this.dbRoleToRoleDTO(updatedRole);
+			return this.dbRoleToRoleDTO(updatedRole);
+		} catch (error) {
+			if (error instanceof UserError && error.message === 'Role not found') {
+				throw new NotFoundError('Role not found');
+			}
+
+			if (error instanceof UserError && error.message === 'Cannot update system roles') {
+				throw new BadRequestError('Cannot update system roles');
+			}
+			throw error;
+		}
 	}
 
 	async createCustomRole(newRole: CreateRoleDto) {
