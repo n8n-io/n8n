@@ -58,8 +58,8 @@ onMounted(() => {
 .logoContainer {
 	display: flex;
 	align-items: center;
-	height: 20px;
-	margin-bottom: 5px;
+	justify-content: center;
+	gap: var(--spacing-4xs);
 }
 
 .logoText {

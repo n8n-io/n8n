@@ -62,12 +62,12 @@ const {
 		@resizeend="onResizeEnd"
 	>
 		<header class="sidebarHeader">
-			<N8nPopoverReka :enable-scrolling="false">
+			<N8nPopoverReka :enable-scrolling="false" align="start">
 				<template #trigger>
-					<div class="sidebarHeaderLogo">
+					<button class="sidebarHeaderLogo">
 						<N8nLogo location="sidebar" :release-channel="props.releaseChannel" />
 						<N8nIcon color="text-light" icon="chevron-down" />
-					</div>
+					</button>
 				</template>
 				<template #content>
 					<div class="sideHeaderPopover">
@@ -283,13 +283,6 @@ const {
 	gap: var(--spacing-2xs);
 	padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs) var(--spacing-2xs);
 	background-color: var(--color-foreground-xlight);
-
-	&:focus-within {
-		.sidebarHeaderLogo {
-			background-color: var(--color-foreground-light);
-			border-radius: var(--border-radius-base);
-		}
-	}
 }
 
 .sidebarHeaderLogo {
@@ -297,7 +290,10 @@ const {
 	display: flex;
 	gap: var(--spacing-4xs);
 	align-items: center;
-	padding: var(--spacing-5xs) var(--spacing-4xs);
+	padding: var(--spacing-3xs) var(--spacing-4xs);
+	background: none;
+	outline: none;
+	border: none;
 
 	&:hover,
 	&:focus-within {
