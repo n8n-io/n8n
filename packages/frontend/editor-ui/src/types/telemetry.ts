@@ -1,3 +1,5 @@
+import type { ComputedRef } from 'vue';
+
 export type TelemetryNdvType = 'ndv' | 'focus_panel' | 'zoomed_view';
 
 export type TelemetryNdvSource =
@@ -10,5 +12,5 @@ export type TelemetryNdvSource =
 
 export type TelemetryContext = Partial<{
 	view_shown: TelemetryNdvType;
-	ndv_source: TelemetryNdvSource;
+	ndv_source: ComputedRef<TelemetryNdvSource | undefined>;
 }>;

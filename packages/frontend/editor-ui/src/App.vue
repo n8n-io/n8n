@@ -60,7 +60,7 @@ const appGrid = ref<Element | null>(null);
 const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
 const builderSidebarWidth = computed(() => builderStore.chatWidth);
 
-useTelemetryContext({ ndv_source: ndvStore.lastSetActiveNodeSource });
+useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
 
 onMounted(async () => {
 	setAppZIndexes();
