@@ -182,6 +182,7 @@ export class WorkflowBuilderAgent {
 			// Generate the workflow plan
 			const plannerResult = await plannerAgent.plan(lastHumanMessage.content);
 
+			// If we got a structured plan, return it
 			if ('plan' in plannerResult) {
 				const { plan, toolMessages } = plannerResult;
 				this.logger?.debug('Generated workflow plan: ' + JSON.stringify(plan, null, 2));
@@ -189,17 +190,19 @@ export class WorkflowBuilderAgent {
 				return {
 					workflowPlan: plan,
 					planStatus: 'pending' as const,
-					messages: [...messages, ...toolMessages],
-				};
-			} else {
-				return {
-					messages: [
-						new AIMessage({
-							content: plannerResult.text,
-						}),
-					],
+					messages: toolMessages,
 				};
 			}
+
+			// If we didn't get a plan, just return the text response
+			this.logger?.debug('Planner returned text response: ' + plannerResult.text);
+			return {
+				messages: [
+					new AIMessage({
+						content: plannerResult.text,
+					}),
+				],
+			};
 		};
 
 		/**
@@ -260,6 +263,7 @@ export class WorkflowBuilderAgent {
 				planFeedback ?? undefined,
 			);
 
+			// If we get a text response instead of a plan, just return that
 			if ('text' in adjustedPlan) {
 				return {
 					messages: [

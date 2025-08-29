@@ -128,6 +128,7 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 			};
 			return { messages: [planChunk] };
 		} else if ((agentChunk?.create_plan?.messages ?? []).length > 0) {
+			// When planner didn't create a plan, but responded with a message
 			const lastMessage =
 				agentChunk.create_plan!.messages![agentChunk.create_plan!.messages!.length - 1];
 			const messageChunk: AgentMessageChunk = {
