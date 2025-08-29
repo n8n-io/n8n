@@ -39,7 +39,8 @@ const isSelectOpen = ref(false);
 const popoverId = computed(() => props.popoverId ?? 'add-column-popover');
 
 const onAddButtonClicked = async () => {
-	if (!columnName.value || !columnType.value) {
+	validateName();
+	if (!columnName.value || !columnType.value || error.value) {
 		return;
 	}
 	const success = await props.params.onAddColumn({
