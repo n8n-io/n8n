@@ -27,8 +27,14 @@ vi.mock('vue-router', () => ({
 
 vi.mock('@/features/workflow-diff/useViewportSync', () => ({
 	useProvideViewportSync: () => ({
-		selectedDetailId: vi.fn(),
+		selectedDetailId: ref(undefined),
 		onNodeClick: vi.fn(),
+	}),
+	useInjectViewportSync: () => ({
+		triggerViewportChange: vi.fn(),
+		onViewportChange: vi.fn(),
+		selectedDetailId: ref(undefined),
+		triggerNodeClick: vi.fn(),
 	}),
 }));
 
@@ -89,27 +95,6 @@ const renderModal = createComponentRenderer(WorkflowDiffModal, {
 					</div>
 				`,
 			},
-			SyncedWorkflowCanvas: {
-				template: '<div><slot name="node" /><slot name="edge" /></div>',
-			},
-			WorkflowDiffAside: {
-				template: '<div><slot name="default" v-bind="{ outputFormat: \'unified\' }" /></div>',
-			},
-			Node: {
-				template: '<div class="canvas-node" />',
-			},
-			HighlightedEdge: {
-				template: '<div class="canvas-edge" />',
-			},
-			NodeDiff: {
-				template: '<div class="node-diff" />',
-			},
-			DiffBadge: {
-				template: '<span class="diff-badge" />',
-			},
-			NodeIcon: {
-				template: '<span class="node-icon" />',
-			},
 		},
 	},
 });
@@ -137,7 +122,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should mount successfully', async () => {
 		const { container } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -154,7 +138,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should initialize with correct props', () => {
 		const { container } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -173,7 +156,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should display changes button', async () => {
 		const { getByText } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -190,7 +172,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should open changes dropdown when clicking Changes button', async () => {
 		const { getByText } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -212,7 +193,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should render workflow panels', () => {
 		const { container } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -229,7 +209,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should render navigation buttons', () => {
 		const { container } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -258,7 +237,6 @@ describe('WorkflowDiffModal', () => {
 		workflowsStore.fetchWorkflow.mockResolvedValue(localWorkflow);
 
 		const { getByText } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -273,7 +251,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should render back button', () => {
 		const { container } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -289,7 +266,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should handle different workflow directions', () => {
 		const pullComponent = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -300,7 +276,6 @@ describe('WorkflowDiffModal', () => {
 		});
 
 		const pushComponent = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -317,7 +292,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should show empty state when no changes exist in tabs', async () => {
 		const { getByText } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -347,7 +321,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should show empty state for connectors tab when no connector changes', async () => {
 		const { getByText } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -376,7 +349,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should show empty state for settings tab when no settings changes', async () => {
 		const { getByText } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -412,7 +384,6 @@ describe('WorkflowDiffModal', () => {
 			workflowsStore.fetchWorkflow.mockRejectedValue(new Error('Workflow not found'));
 
 			const { getByText } = renderModal({
-				pinia: createTestingPinia(),
 				props: {
 					data: {
 						eventBus,
@@ -433,7 +404,6 @@ describe('WorkflowDiffModal', () => {
 			workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 
 			const { getByText } = renderModal({
-				pinia: createTestingPinia(),
 				props: {
 					data: {
 						eventBus,
@@ -451,7 +421,6 @@ describe('WorkflowDiffModal', () => {
 
 		it('should handle push direction without crashing', async () => {
 			const { getByText } = renderModal({
-				pinia: createTestingPinia(),
 				props: {
 					data: {
 						eventBus,
@@ -468,7 +437,6 @@ describe('WorkflowDiffModal', () => {
 
 		it('should handle pull direction without crashing', async () => {
 			const { getByText } = renderModal({
-				pinia: createTestingPinia(),
 				props: {
 					data: {
 						eventBus,

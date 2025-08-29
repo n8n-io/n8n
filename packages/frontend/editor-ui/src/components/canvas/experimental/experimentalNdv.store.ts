@@ -12,17 +12,22 @@ import {
 } from '@vue-flow/core';
 import { CanvasNodeRenderType, type CanvasNodeData } from '@/types';
 import { usePostHog } from '@/stores/posthog.store';
-import { CANVAS_ZOOMED_VIEW_EXPERIMENT } from '@/constants';
+import { CANVAS_ZOOMED_VIEW_EXPERIMENT, NDV_IN_FOCUS_PANEL_EXPERIMENT } from '@/constants';
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const workflowStore = useWorkflowsStore();
 	const postHogStore = usePostHog();
-	const isEnabled = computed(
+	const isZoomedViewEnabled = computed(
 		() =>
 			postHogStore.getVariant(CANVAS_ZOOMED_VIEW_EXPERIMENT.name) ===
 			CANVAS_ZOOMED_VIEW_EXPERIMENT.variant,
 	);
-	const maxCanvasZoom = computed(() => (isEnabled.value ? 2 : 4));
+	const isNdvInFocusPanelEnabled = computed(
+		() =>
+			postHogStore.getVariant(NDV_IN_FOCUS_PANEL_EXPERIMENT.name) ===
+			NDV_IN_FOCUS_PANEL_EXPERIMENT.variant,
+	);
+	const maxCanvasZoom = computed(() => (isZoomedViewEnabled.value ? 2 : 4));
 
 	const previousViewport = ref<ViewportTransform>();
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
@@ -50,7 +55,7 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	function isActive(canvasZoom: number) {
-		return isEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.000001;
+		return isZoomedViewEnabled.value && Math.abs(canvasZoom - maxCanvasZoom.value) < 0.000001;
 	}
 
 	function setNodeNameToBeFocused(nodeName: string) {
@@ -139,7 +144,8 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	return {
-		isEnabled,
+		isZoomedViewEnabled,
+		isNdvInFocusPanelEnabled,
 		maxCanvasZoom,
 		previousZoom: computed(() => previousViewport.value),
 		collapsedNodes: computed(() => collapsedNodes.value),

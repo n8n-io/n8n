@@ -204,7 +204,7 @@ export class SamlService {
 
 			const user = await this.userRepository.findOne({
 				where: { email: lowerCasedEmail },
-				relations: ['authIdentities'],
+				relations: ['authIdentities', 'role'],
 			});
 			if (user) {
 				// Login path for existing users that are fully set up and that have a SAML authIdentity set up

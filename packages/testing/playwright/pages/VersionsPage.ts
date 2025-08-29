@@ -18,7 +18,7 @@ export class VersionsPage extends BasePage {
 	}
 
 	getWhatsNewMenuItem() {
-		return this.page.getByTestId('menu-item').getByTestId('whats-new');
+		return this.page.getByText('What’s New');
 	}
 
 	async openWhatsNewMenu() {

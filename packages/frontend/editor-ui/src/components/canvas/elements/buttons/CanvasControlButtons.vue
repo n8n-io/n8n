@@ -33,7 +33,7 @@ const experimentalNdvStore = useExperimentalNdvStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(props.zoom));
 
-const isToggleZoomVisible = computed(() => experimentalNdvStore.isEnabled);
+const isToggleZoomVisible = computed(() => experimentalNdvStore.isZoomedViewEnabled);
 
 const isResetZoomVisible = computed(() => !isToggleZoomVisible.value && props.zoom !== 1);
 

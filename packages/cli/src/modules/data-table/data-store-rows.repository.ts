@@ -6,28 +6,43 @@ import { DataSource, DataSourceOptions, QueryRunner, SelectQueryBuilder, In } fr
 import {
 	DataStoreColumnJsType,
 	DataStoreRows,
-	DataStoreRowWithId,
+	DataStoreRowReturn,
 	UnexpectedError,
+	DataStoreRowsReturn,
+	DATA_TABLE_SYSTEM_COLUMNS,
 } from 'n8n-workflow';
 
-import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreUserTableName } from './data-store.types';
+import { DataTableColumn } from './data-table-column.entity';
 import {
 	addColumnQuery,
 	deleteColumnQuery,
+	escapeLikeSpecials,
 	extractInsertedIds,
 	extractReturningData,
-	getPlaceholder,
 	normalizeRows,
 	normalizeValue,
 	quoteIdentifier,
 	splitRowsByExistence,
 	toDslColumns,
+	toSqliteGlobFromPercent,
 } from './utils/sql-utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
 
+/**
+ * Converts filter conditions to SQL WHERE clauses with parameters.
+ *
+ * LIKE / ILIKE rules:
+ * - Only '%' is a wildcard (zero or more chars).
+ * - All other special chars ('_', '*', '?', '[', ']') are treated literally.
+ * - '_' and '\' are escaped in the value; SQL uses `ESCAPE '\'` so `\_` means literal underscore.
+ *
+ * Why the crazy backslashes:
+ * - Postgres/SQLite/Oracle/SQL Server: `ESCAPE '\'` is written as-is.
+ * - MySQL/MariaDB: the SQL literal itself requires two backslashes (`'\\'`) to mean one.
+ */
 function getConditionAndParams(
 	filter: ListDataStoreContentFilter['filters'][number],
 	index: number,
@@ -36,12 +51,82 @@ function getConditionAndParams(
 	const paramName = `filter_${index}`;
 	const column = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(filter.columnName, dbType)}`;
 
-	switch (filter.condition) {
-		case 'eq':
-			return [`${column} = :${paramName}`, { [paramName]: filter.value }];
-		case 'neq':
-			return [`${column} != :${paramName}`, { [paramName]: filter.value }];
+	if (filter.value === null) {
+		switch (filter.condition) {
+			case 'eq':
+				return [`${column} IS NULL`, {}];
+			case 'neq':
+				return [`${column} IS NOT NULL`, {}];
+		}
 	}
+
+	// Handle operators that map directly to SQL operators
+	const operators: Record<string, string> = {
+		eq: '=',
+		neq: '!=',
+		gt: '>',
+		gte: '>=',
+		lt: '<',
+		lte: '<=',
+	};
+
+	if (operators[filter.condition]) {
+		return [
+			`${column} ${operators[filter.condition]} :${paramName}`,
+			{ [paramName]: filter.value },
+		];
+	}
+
+	switch (filter.condition) {
+		// case-sensitive
+		case 'like':
+			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
+				const globValue = toSqliteGlobFromPercent(filter.value as string);
+				return [`${column} GLOB :${paramName}`, { [paramName]: globValue }];
+			}
+
+			if (['mysql', 'mariadb'].includes(dbType)) {
+				const escapedValue = escapeLikeSpecials(filter.value as string);
+				return [`${column} LIKE BINARY :${paramName} ESCAPE '\\\\'`, { [paramName]: escapedValue }];
+			}
+
+			// PostgreSQL: LIKE is case-sensitive
+			if (dbType === 'postgres') {
+				const escapedValue = escapeLikeSpecials(filter.value as string);
+				return [`${column} LIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
+			}
+
+			// Generic fallback
+			return [`${column} LIKE :${paramName}`, { [paramName]: filter.value }];
+
+		// case-insensitive
+		case 'ilike':
+			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
+				const escapedValue = escapeLikeSpecials(filter.value as string);
+				return [
+					`UPPER(${column}) LIKE UPPER(:${paramName}) ESCAPE '\\'`,
+					{ [paramName]: escapedValue },
+				];
+			}
+
+			if (['mysql', 'mariadb'].includes(dbType)) {
+				const escapedValue = escapeLikeSpecials(filter.value as string);
+				return [
+					`UPPER(${column}) LIKE UPPER(:${paramName}) ESCAPE '\\\\'`,
+					{ [paramName]: escapedValue },
+				];
+			}
+
+			if (dbType === 'postgres') {
+				const escapedValue = escapeLikeSpecials(filter.value as string);
+				return [`${column} ILIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
+			}
+
+			return [`UPPER(${column}) LIKE UPPER(:${paramName})`, { [paramName]: filter.value }];
+	}
+
+	// This should never happen as all valid conditions are handled above
+	throw new Error(`Unsupported filter condition: ${filter.condition}`);
 }
 
 @Service()
@@ -53,38 +138,52 @@ export class DataStoreRowsRepository {
 
 	toTableName(dataStoreId: string): DataStoreUserTableName {
 		const { tablePrefix } = this.globalConfig.database;
-		return `${tablePrefix}data_store_user_${dataStoreId}`;
+		return `${tablePrefix}data_table_user_${dataStoreId}`;
 	}
 
+	async insertRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		rows: DataStoreRows,
+		columns: DataTableColumn[],
+		returnData?: T,
+	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	async insertRows(
 		dataStoreId: string,
 		rows: DataStoreRows,
-		columns: DataStoreColumn[],
-		returnData: boolean = false,
-	) {
-		const inserted: DataStoreRowWithId[] = [];
+		columns: DataTableColumn[],
+		returnData?: boolean,
+	): Promise<Array<DataStoreRowReturn | Pick<DataStoreRowReturn, 'id'>>> {
+		const inserted: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
 
 		const table = this.toTableName(dataStoreId);
 		const columnNames = columns.map((c) => c.name);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = ['id', ...escapedColumns];
+		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+			this.dataSource.driver.escape(x),
+		);
+		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
 
 		// We insert one by one as the default behavior of returning the last inserted ID
 		// is consistent, whereas getting all inserted IDs when inserting multiple values is
 		// surprisingly awkward without Entities, e.g. `RETURNING id` explicitly does not aggregate
 		// and the `identifiers` array output of `execute()` is empty
 		for (const row of rows) {
+			// Fill missing columns with null values to support partial data insertion
+			const completeRow = { ...row };
 			for (const column of columns) {
-				row[column.name] = normalizeValue(row[column.name], column.type, dbType);
+				if (!(column.name in completeRow)) {
+					completeRow[column.name] = null;
+				}
+				completeRow[column.name] = normalizeValue(completeRow[column.name], column.type, dbType);
 			}
 
 			const query = this.dataSource
 				.createQueryBuilder()
 				.insert()
 				.into(table, columnNames)
-				.values(row);
+				.values(completeRow);
 
 			if (useReturning) {
 				query.returning(returnData ? selectColumns.join(',') : 'id');
@@ -93,7 +192,9 @@ export class DataStoreRowsRepository {
 			const result = await query.execute();
 
 			if (useReturning) {
-				const returned = normalizeRows(extractReturningData(result.raw), columns);
+				const returned = returnData
+					? normalizeRows(extractReturningData(result.raw), columns)
+					: extractInsertedIds(result.raw, dbType).map((id) => ({ id }));
 				inserted.push.apply(inserted, returned);
 				continue;
 			}
@@ -109,11 +210,7 @@ export class DataStoreRowsRepository {
 				continue;
 			}
 
-			const insertedRows = (await this.getManyByIds(
-				dataStoreId,
-				ids,
-				columns,
-			)) as DataStoreRowWithId[];
+			const insertedRows = await this.getManyByIds(dataStoreId, ids, columns);
 
 			inserted.push(...insertedRows);
 		}
@@ -125,7 +222,7 @@ export class DataStoreRowsRepository {
 		dataStoreId: string,
 		setData: Record<string, DataStoreColumnJsType | null>,
 		whereData: Record<string, DataStoreColumnJsType | null>,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		returnData: boolean = false,
 	) {
 		const dbType = this.dataSource.options.type;
@@ -133,7 +230,10 @@ export class DataStoreRowsRepository {
 
 		const table = this.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = ['id', ...escapedColumns];
+		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+			this.dataSource.driver.escape(x),
+		);
+		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
 
 		for (const column of columns) {
 			if (column.name in setData) {
@@ -144,7 +244,7 @@ export class DataStoreRowsRepository {
 			}
 		}
 
-		let affectedRows: DataStoreRowWithId[] = [];
+		let affectedRows: Array<Pick<DataStoreRowReturn, 'id'>> = [];
 		if (!useReturning && returnData) {
 			// Only Postgres supports RETURNING statement on updates (with our typeorm),
 			// on other engines we must query the list of updates rows later by ID
@@ -179,20 +279,28 @@ export class DataStoreRowsRepository {
 	}
 
 	// TypeORM cannot infer the columns for a dynamic table name, so we use a raw query
+	async upsertRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		matchFields: string[],
+		rows: DataStoreRows,
+		columns: DataTableColumn[],
+		returnData?: T,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async upsertRows(
 		dataStoreId: string,
 		matchFields: string[],
 		rows: DataStoreRows,
-		columns: DataStoreColumn[],
-		returnData = false,
+		columns: DataTableColumn[],
+		returnData?: boolean,
 	) {
+		returnData = returnData ?? false;
 		const { rowsToInsert, rowsToUpdate } = await this.fetchAndSplitRowsByExistence(
 			dataStoreId,
 			matchFields,
 			rows,
 		);
 
-		const output: DataStoreRowWithId[] = [];
+		const output: DataStoreRowReturn[] = [];
 
 		if (rowsToInsert.length > 0) {
 			const result = await this.insertRows(dataStoreId, rowsToInsert, columns, returnData);
@@ -226,18 +334,21 @@ export class DataStoreRowsRepository {
 			return true;
 		}
 
-		const dbType = this.dataSource.options.type;
-		const quotedTableName = quoteIdentifier(this.toTableName(dataStoreId), dbType);
-		const placeholders = ids.map((_, index) => getPlaceholder(index + 1, dbType)).join(', ');
-		const query = `DELETE FROM ${quotedTableName} WHERE id IN (${placeholders})`;
+		const table = this.toTableName(dataStoreId);
 
-		await this.dataSource.query(query, ids);
+		await this.dataSource
+			.createQueryBuilder()
+			.delete()
+			.from(table, 'dataStore')
+			.where({ id: In(ids) })
+			.execute();
+
 		return true;
 	}
 
 	async createTableWithColumns(
 		dataStoreId: string,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		queryRunner: QueryRunner,
 	) {
 		const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
@@ -254,7 +365,7 @@ export class DataStoreRowsRepository {
 
 	async addColumn(
 		dataStoreId: string,
-		column: DataStoreColumn,
+		column: DataTableColumn,
 		queryRunner: QueryRunner,
 		dbType: DataSourceOptions['type'],
 	) {
@@ -272,7 +383,7 @@ export class DataStoreRowsRepository {
 
 	async getManyAndCount(dataStoreId: string, dto: ListDataStoreContentQueryDto) {
 		const [countQuery, query] = this.getManyQuery(dataStoreId, dto);
-		const data: DataStoreRows = await query.select('*').getRawMany();
+		const data: DataStoreRowsReturn = await query.select('*').getRawMany();
 		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 			count: number | string | null;
 		}>();
@@ -281,10 +392,13 @@ export class DataStoreRowsRepository {
 		return { count: count ?? -1, data };
 	}
 
-	async getManyByIds(dataStoreId: string, ids: number[], columns: DataStoreColumn[]) {
+	async getManyByIds(dataStoreId: string, ids: number[], columns: DataTableColumn[]) {
 		const table = this.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
-		const selectColumns = ['id', ...escapedColumns];
+		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
+			this.dataSource.driver.escape(x),
+		);
+		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
 
 		if (ids.length === 0) {
 			return [];
@@ -295,7 +409,7 @@ export class DataStoreRowsRepository {
 			.select(selectColumns)
 			.from(table, 'dataStore')
 			.where({ id: In(ids) })
-			.getRawMany<DataStoreRowWithId>();
+			.getRawMany<DataStoreRowReturn>();
 
 		return normalizeRows(updatedRows, columns);
 	}

@@ -61,7 +61,7 @@ describe('ProjectService', () => {
 			expect(relations[0]).toMatchObject({
 				projectId: project.id,
 				userId: user.id,
-				role: 'project:admin',
+				role: { slug: 'project:admin' },
 			});
 		});
 
@@ -82,7 +82,7 @@ describe('ProjectService', () => {
 			expect(relations[0]).toMatchObject({
 				projectId: project.id,
 				userId: user.id,
-				role: 'project:editor',
+				role: { slug: 'project:editor' },
 			});
 		});
 	});
@@ -103,7 +103,7 @@ describe('ProjectService', () => {
 			expect(relations[0]).toMatchObject({
 				projectId: project.id,
 				userId: user.id,
-				role: 'project:admin',
+				role: { slug: 'project:admin' },
 			});
 		});
 	});

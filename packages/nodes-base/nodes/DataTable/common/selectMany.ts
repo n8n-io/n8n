@@ -1,15 +1,20 @@
-import {
-	NodeOperationError,
-	type IDisplayOptions,
-	type IExecuteFunctions,
-	type INodeProperties,
+import { NodeOperationError } from 'n8n-workflow';
+import type {
+	DataStoreRowReturn,
+	IDataStoreProjectService,
+	IDisplayOptions,
+	IExecuteFunctions,
+	INodeProperties,
 } from 'n8n-workflow';
 
 import type { FilterType } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
 import { buildGetManyFilter, isFieldArray, isMatchType } from './utils';
 
-export function getSelectFields(displayOptions: IDisplayOptions): INodeProperties[] {
+export function getSelectFields(
+	displayOptions: IDisplayOptions,
+	requireCondition = false,
+): INodeProperties[] {
 	return [
 		{
 			displayName: 'Must Match',
@@ -34,6 +39,7 @@ export function getSelectFields(displayOptions: IDisplayOptions): INodePropertie
 			type: 'fixedCollection',
 			typeOptions: {
 				multipleValues: true,
+				minRequiredFields: requireCondition ? 1 : 0,
 			},
 			displayOptions,
 			default: {},
@@ -56,19 +62,15 @@ export function getSelectFields(displayOptions: IDisplayOptions): INodePropertie
 							default: 'id',
 						},
 						{
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 							displayName: 'Condition',
 							name: 'condition',
+							// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
 							type: 'options',
-							options: [
-								{
-									name: 'Equals',
-									value: 'eq',
-								},
-								{
-									name: 'Not Equals',
-									value: 'neq',
-								},
-							],
+							typeOptions: {
+								loadOptionsDependsOn: ['&keyName'],
+								loadOptionsMethod: 'getConditionsForColumn',
+							},
 							default: 'eq',
 						},
 						{
@@ -97,4 +99,47 @@ export function getSelectFilter(ctx: IExecuteFunctions, index: number) {
 	}
 
 	return buildGetManyFilter(fields, matchType);
+}
+
+export async function executeSelectMany(
+	ctx: IExecuteFunctions,
+	index: number,
+	dataStoreProxy: IDataStoreProjectService,
+	rejectEmpty = false,
+): Promise<Array<{ json: DataStoreRowReturn }>> {
+	const filter = getSelectFilter(ctx, index);
+
+	if (rejectEmpty && filter.filters.length === 0) {
+		throw new NodeOperationError(ctx.getNode(), 'At least one condition is required');
+	}
+
+	let take = 1000;
+	const result: Array<{ json: DataStoreRowReturn }> = [];
+	let totalCount = undefined;
+	do {
+		const response = await dataStoreProxy.getManyRowsAndCount({
+			skip: result.length,
+			take,
+			filter,
+		});
+		const data = response.data.map((json) => ({ json }));
+
+		// Optimize common path of <1000 results
+		if (response.count === response.data.length) {
+			return data;
+		}
+
+		if (totalCount !== undefined && response.count !== totalCount) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'synchronization error: result count changed during pagination',
+			);
+		}
+		totalCount = response.count;
+
+		result.push.apply(result, data);
+		take = Math.min(take, response.count - result.length);
+	} while (take > 0);
+
+	return result;
 }
