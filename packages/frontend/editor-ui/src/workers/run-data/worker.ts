@@ -1,16 +1,16 @@
 import * as Comlink from 'comlink';
 import { databaseConfig } from '@/workers/run-data/db';
 import { useDatabase } from '@/workers/database';
-import type { Promiser } from '@sqlite.org/sqlite-wasm';
+import type { Promiser, DbId } from '@sqlite.org/sqlite-wasm';
 
 const state: {
 	initialized: boolean;
-	promiser: Promiser | null;
-	dbId: string | null;
+	promiser: Promiser | undefined;
+	dbId: DbId;
 } = {
 	initialized: false,
-	promiser: null,
-	dbId: null,
+	promiser: undefined,
+	dbId: undefined,
 };
 
 export const actions = {

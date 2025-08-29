@@ -1,5 +1,5 @@
 import { sqlite3Worker1Promiser } from '@sqlite.org/sqlite-wasm';
-import type { Promiser } from '@sqlite.org/sqlite-wasm';
+import type { Promiser, DbId } from '@sqlite.org/sqlite-wasm';
 
 export type DatabaseTable = {
 	name: string;
@@ -12,11 +12,8 @@ export type DatabaseConfig = {
 };
 
 export async function useDatabase(config: DatabaseConfig) {
-	let promiser: Promiser | null = null;
-	let dbId: string | null = null;
-
 	// Initialize the SQLite worker
-	promiser = await new Promise((resolve) => {
+	const promiser: Promiser = await new Promise((resolve) => {
 		const _promiser = sqlite3Worker1Promiser({
 			onready: () => resolve(_promiser),
 		});
@@ -34,7 +31,7 @@ export async function useDatabase(config: DatabaseConfig) {
 		throw new Error(openResponse.result.message);
 	}
 
-	dbId = openResponse.result.dbId as string;
+	const dbId: DbId = openResponse.result.dbId;
 
 	for (const table of Object.values(config.tables)) {
 		await promiser('exec', {
