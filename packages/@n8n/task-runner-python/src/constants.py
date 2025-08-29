@@ -83,6 +83,9 @@ ALWAYS_BLOCKED_ATTRIBUTES = {
     "__thisclass__",
     "__self_class__",
 }
+# Attributes blocked only in certain contexts:
+# - In attribute chains (e.g., x.__class__.__bases__)
+# - On literals (e.g., "".__class__)
 CONDITIONALLY_BLOCKED_ATTRIBUTES = {
     "__class__",
     "__bases__",

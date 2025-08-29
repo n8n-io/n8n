@@ -64,13 +64,8 @@ class SecurityValidator(ast.NodeVisitor):
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
                 )
-            # Block only in attribute chains (e.g., x.__class__.__bases__)
-            elif isinstance(node.value, ast.Attribute):
-                self._add_violation(
-                    node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
-                )
-            # Block only on literals (e.g., "".__class__)
-            elif node.attr == "__class__" and isinstance(node.value, (ast.Constant)):
+            # Block in attribute chains (e.g., x.__class__.__bases__) or on literals (e.g., "".__class__)
+            elif isinstance(node.value, (ast.Attribute, ast.Constant)):
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
                 )
