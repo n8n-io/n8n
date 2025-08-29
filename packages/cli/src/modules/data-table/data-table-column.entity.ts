@@ -1,5 +1,6 @@
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import type { DataStoreColumnType } from 'n8n-workflow';
 
 import { type DataTable } from './data-table.entity';
 
@@ -13,7 +14,7 @@ export class DataTableColumn extends WithTimestampsAndStringId {
 	name: string;
 
 	@Column({ type: 'varchar' })
-	type: 'string' | 'number' | 'boolean' | 'date';
+	type: DataStoreColumnType;
 
 	@Column({ type: 'int' })
 	index: number;

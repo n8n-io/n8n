@@ -1,10 +1,7 @@
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import type {
-	AGGridCellType,
-	DataStoreColumnType,
-	DataStoreValue,
-} from '@/features/dataStore/datastore.types';
+import type { AGGridCellType, DataStoreValue } from '@/features/dataStore/datastore.types';
 import { isAGGridCellType } from '@/features/dataStore/typeGuards';
+import type { DataStoreColumnType } from 'n8n-workflow';
 
 /* eslint-disable id-denylist */
 const COLUMN_TYPE_ICONS: Record<DataStoreColumnType, IconName> = {

@@ -5,8 +5,6 @@ export type DataStore = DS & {
 	project?: Project;
 };
 
-export type DataStoreColumnType = 'string' | 'number' | 'boolean' | 'date';
-
 export type AGGridCellType = 'text' | 'number' | 'boolean' | 'date' | 'dateString' | 'object';
 
 export type DataStoreColumn = Exclude<DSC, 'dataTableId'>;
