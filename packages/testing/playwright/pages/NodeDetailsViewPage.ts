@@ -77,7 +77,10 @@ export class NodeDetailsViewPage extends BasePage {
 	async activateParameterExpressionEditor(parameterName: string) {
 		const parameterInput = this.getParameterInput(parameterName);
 		await parameterInput.click();
-		await this.page.keyboard.press('=');
+		await this.page
+			.getByTestId(`${parameterName}-parameter-input-options-container`)
+			.getByTestId('radio-button-expression')
+			.click();
 	}
 
 	getEditPinnedDataButton() {
@@ -530,7 +533,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceMapperParameterInputs() {
-		return this.getResourceMapperFieldsContainer().locator('[data-test-id="parameter-input"]');
+		return this.getResourceMapperFieldsContainer().getByTestId('parameter-input');
 	}
 
 	getResourceMapperSelectColumn() {
@@ -553,8 +556,8 @@ export class NodeDetailsViewPage extends BasePage {
 		const selectColumn = this.getResourceMapperSelectColumn();
 		await selectColumn.hover();
 		await selectColumn.getByTestId('action-toggle').click();
-		await expect(this.getVisiblePopper().locator('li').last()).toBeVisible();
-		await this.getVisiblePopper().locator('li').last().click();
+		await expect(this.getVisiblePopper().getByTestId('action-refreshFieldList')).toBeVisible();
+		await this.getVisiblePopper().getByTestId('action-refreshFieldList').click();
 	}
 
 	getAddValueButton() {
