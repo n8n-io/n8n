@@ -37,8 +37,6 @@ export const dataStoreSchema = z.object({
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
 });
-export type DataStore = z.infer<typeof dataStoreSchema>;
-export type DataStoreColumn = z.infer<typeof dataStoreColumnSchema>;
 
 export type DataStoreListFilter = {
 	id?: string | string[];

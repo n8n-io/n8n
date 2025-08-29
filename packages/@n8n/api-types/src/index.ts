@@ -49,8 +49,6 @@ export {
 
 export {
 	DATA_STORE_COLUMN_REGEX,
-	type DataStore,
-	type DataStoreColumn,
 	type DataStoreCreateColumnSchema,
 	type DataStoreListFilter,
 	type DataStoreListOptions,
