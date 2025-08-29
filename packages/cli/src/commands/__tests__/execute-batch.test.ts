@@ -1,19 +1,19 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { WorkflowRepository, DbConnection } from '@n8n/db';
+import { WorkflowRepository, DbConnection, AuthRolesService } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type SelectQueryBuilder } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
-import { CommunityPackagesService } from '@/community-packages/community-packages.service';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
@@ -39,6 +39,7 @@ mockInstance(CommunityPackagesService);
 const dbConnection = mockInstance(DbConnection);
 dbConnection.init.mockResolvedValue(undefined);
 dbConnection.migrate.mockResolvedValue(undefined);
+mockInstance(AuthRolesService);
 
 test('should start a task runner when task runners are enabled', async () => {
 	// arrange

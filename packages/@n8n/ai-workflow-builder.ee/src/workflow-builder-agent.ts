@@ -13,11 +13,17 @@ import {
 	type NodeExecutionSchema,
 } from 'n8n-workflow';
 
-import { workflowNameChain } from '@/chains/workflow-name';
-import { DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS, MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
+import {
+	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
+	MAX_AI_BUILDER_PROMPT_LENGTH,
+	MAX_INPUT_TOKENS,
+} from '@/constants';
+import { createGetNodeParameterTool } from '@/tools/get-node-parameter.tool';
+import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 import { conversationCompactChain } from './chains/conversation-compact';
-import { LLMServiceError, ValidationError } from './errors';
+import { workflowNameChain } from './chains/workflow-name';
+import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
 import { createAddNodeTool } from './tools/add-node.tool';
 import { createConnectNodesTool } from './tools/connect-nodes.tool';
 import { createNodeDetailsTool } from './tools/node-details.tool';
@@ -27,8 +33,8 @@ import { createRemoveNodeTool } from './tools/remove-node.tool';
 import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import type { SimpleWorkflow } from './types/workflow';
 import { processOperations } from './utils/operations-processor';
-import { createStreamProcessor, formatMessages } from './utils/stream-processor';
-import { extractLastTokenUsage } from './utils/token-usage';
+import { createStreamProcessor, formatMessages, type BuilderTool } from './utils/stream-processor';
+import { estimateTokenCountFromMessages, extractLastTokenUsage } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
 
@@ -40,6 +46,7 @@ export interface WorkflowBuilderAgentConfig {
 	checkpointer?: MemorySaver;
 	tracer?: LangChainTracer;
 	autoCompactThresholdTokens?: number;
+	instanceUrl?: string;
 }
 
 export interface ChatPayload {
@@ -59,6 +66,7 @@ export class WorkflowBuilderAgent {
 	private logger?: Logger;
 	private tracer?: LangChainTracer;
 	private autoCompactThresholdTokens: number;
+	private instanceUrl?: string;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -69,17 +77,31 @@ export class WorkflowBuilderAgent {
 		this.tracer = config.tracer;
 		this.autoCompactThresholdTokens =
 			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
+		this.instanceUrl = config.instanceUrl;
 	}
 
-	private createWorkflow() {
-		const tools = [
+	private getBuilderTools(): BuilderTool[] {
+		return [
 			createNodeSearchTool(this.parsedNodeTypes),
 			createNodeDetailsTool(this.parsedNodeTypes),
 			createAddNodeTool(this.parsedNodeTypes),
 			createConnectNodesTool(this.parsedNodeTypes, this.logger),
 			createRemoveNodeTool(this.logger),
-			createUpdateNodeParametersTool(this.parsedNodeTypes, this.llmComplexTask, this.logger),
+			createUpdateNodeParametersTool(
+				this.parsedNodeTypes,
+				this.llmComplexTask,
+				this.logger,
+				this.instanceUrl,
+			),
+			createGetNodeParameterTool(),
 		];
+	}
+
+	private createWorkflow() {
+		const builderTools = this.getBuilderTools();
+
+		// Extract just the tools for LLM binding
+		const tools = builderTools.map((bt) => bt.tool);
 
 		// Create a map for quick tool lookup
 		const toolMap = new Map(tools.map((tool) => [tool.name, tool]));
@@ -96,9 +118,20 @@ export class WorkflowBuilderAgent {
 
 			const prompt = await mainAgentPrompt.invoke({
 				...state,
+				workflowJSON: trimWorkflowJSON(state.workflowJSON),
 				executionData: state.workflowContext?.executionData ?? {},
 				executionSchema: state.workflowContext?.executionSchema ?? [],
+				instanceUrl: this.instanceUrl,
 			});
+
+			const estimatedTokens = estimateTokenCountFromMessages(prompt.messages);
+
+			if (estimatedTokens > MAX_INPUT_TOKENS) {
+				throw new WorkflowStateError(
+					'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.',
+				);
+			}
+
 			const response = await this.llmSimpleTask.bindTools(tools).invoke(prompt);
 
 			return { messages: [response] };
@@ -476,7 +509,7 @@ export class WorkflowBuilderAgent {
 
 					sessions.push({
 						sessionId: threadId,
-						messages: formatMessages(messages),
+						messages: formatMessages(messages, this.getBuilderTools()),
 						lastUpdated: checkpoint.checkpoint.ts,
 					});
 				}

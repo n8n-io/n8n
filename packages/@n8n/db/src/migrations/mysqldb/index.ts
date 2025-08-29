@@ -1,4 +1,5 @@
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
+import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 import { InitialMigration1588157391238 } from './1588157391238-InitialMigration';
 import { WebhookModel1592447867632 } from './1592447867632-WebhookModel';
 import { CreateIndexStoppedAt1594902918301 } from './1594902918301-CreateIndexStoppedAt';
@@ -91,8 +92,10 @@ import { AddLastActiveAtColumnToUser1750252139166 } from '../common/175025213916
 import { AddScopeTables1750252139166 } from '../common/1750252139166-AddScopeTables';
 import { AddRolesTables1750252139167 } from '../common/1750252139167-AddRolesTables';
 import { LinkRoleToUserTable1750252139168 } from '../common/1750252139168-LinkRoleToUserTable';
+import { RemoveOldRoleColumn1750252139170 } from '../common/1750252139170-RemoveOldRoleColumn';
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
 import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
+import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
 
@@ -193,4 +196,7 @@ export const mysqlMigrations: Migration[] = [
 	LinkRoleToUserTable1750252139168,
 	AddInputsOutputsToTestCaseExecution1752669793000,
 	CreateDataStoreTables1754475614601,
+	RemoveOldRoleColumn1750252139170,
+	ReplaceDataStoreTablesWithDataTables1754475614602,
+	LinkRoleToProjectRelationTable1753953244168,
 ];

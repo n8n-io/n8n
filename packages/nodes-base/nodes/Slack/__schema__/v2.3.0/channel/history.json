@@ -40,10 +40,10 @@
                 }
             }
         },
-        "bot_id": {
+        "client_msg_id": {
             "type": "string"
         },
-        "client_msg_id": {
+        "subtype": {
             "type": "string"
         },
         "team": {
@@ -62,5 +62,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

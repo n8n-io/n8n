@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "AccountId": {
+            "type": "string"
+        },
         "attributes": {
             "type": "object",
             "properties": {
@@ -15,9 +18,9 @@
         "Id": {
             "type": "string"
         },
-        "StageName": {
+        "Name": {
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

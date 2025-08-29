@@ -6,7 +6,8 @@ import { CanvasPage } from './CanvasPage';
 import { CredentialsPage } from './CredentialsPage';
 import { ExecutionsPage } from './ExecutionsPage';
 import { IframePage } from './IframePage';
-import { NodeDisplayViewPage } from './NodeDisplayViewPage';
+import { InteractionsPage } from './InteractionsPage';
+import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
@@ -34,7 +35,8 @@ export class n8nPage {
 	readonly canvas: CanvasPage;
 
 	readonly iframe: IframePage;
-	readonly ndv: NodeDisplayViewPage;
+	readonly interactions: InteractionsPage;
+	readonly ndv: NodeDetailsViewPage;
 	readonly npsSurvey: NpsSurveyPage;
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settings: SettingsPage;
@@ -66,7 +68,8 @@ export class n8nPage {
 		this.canvas = new CanvasPage(page);
 
 		this.iframe = new IframePage(page);
-		this.ndv = new NodeDisplayViewPage(page);
+		this.interactions = new InteractionsPage(page);
+		this.ndv = new NodeDetailsViewPage(page);
 		this.npsSurvey = new NpsSurveyPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settings = new SettingsPage(page);

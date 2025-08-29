@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "first_name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "last_name": {
+            "type": "string"
+        },
+        "type": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}
