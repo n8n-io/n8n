@@ -40,6 +40,13 @@ describe('useWorkflowResourcesLocator', () => {
 				expectedCalledWith: 'Execute Workflow',
 			},
 			{
+				activeNodeName: 'Call n8n Workflow Tool',
+				workflowId: 'workflow-id',
+				mockedWorkflow: { name: 'Test Workflow' },
+				expectedRename: "Call 'Test Workflow'",
+				expectedCalledWith: 'Call n8n Workflow Tool',
+			},
+			{
 				activeNodeName: "Call 'Old Workflow'",
 				workflowId: 'workflow-id',
 				mockedWorkflow: { name: 'New Workflow' },

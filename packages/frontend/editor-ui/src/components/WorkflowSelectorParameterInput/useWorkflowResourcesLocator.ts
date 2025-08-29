@@ -101,6 +101,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 		const nodeName = ndvStore.activeNodeName;
 		if (
 			nodeName === 'Execute Workflow' ||
+			nodeName === 'Call n8n Workflow Tool' ||
 			(nodeName?.startsWith("Call '") && nodeName?.endsWith("'"))
 		) {
 			const baseName = getWorkflowBaseName(workflowId);
