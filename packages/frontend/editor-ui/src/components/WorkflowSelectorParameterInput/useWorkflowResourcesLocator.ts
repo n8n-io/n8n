@@ -5,9 +5,15 @@ import type { Router } from 'vue-router';
 import { VIEWS } from '@/constants';
 
 import type { IWorkflowDb } from '@/Interface';
+import type { NodeParameterValue } from 'n8n-workflow';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
 
 export function useWorkflowResourcesLocator(router: Router) {
 	const workflowsStore = useWorkflowsStore();
+	const ndvStore = useNDVStore();
+	const { renameNode } = useCanvasOperations();
+
 	const workflowsResources = ref<Array<{ name: string; value: string; url: string }>>([]);
 	const isLoadingResources = ref(true);
 	const searchFilter = ref('');
@@ -77,8 +83,32 @@ export function useWorkflowResourcesLocator(router: Router) {
 		return id;
 	}
 
+	function getWorkflowBaseName(id: string): string | null {
+		const workflow = workflowsStore.getWorkflowById(id);
+		if (workflow) {
+			return workflow.name;
+		}
+		return null;
+	}
+
 	function onSearchFilter(filter: string) {
 		searchFilter.value = filter;
+	}
+
+	function renameDefaultNodeName(workflowId: NodeParameterValue) {
+		if (typeof workflowId !== 'string') return;
+
+		const nodeName = ndvStore.activeNodeName;
+		if (
+			nodeName === 'Execute Workflow' ||
+			nodeName === 'Call n8n Workflow Tool' ||
+			(nodeName?.startsWith("Call '") && nodeName?.endsWith("'"))
+		) {
+			const baseName = getWorkflowBaseName(workflowId);
+			if (baseName !== null) {
+				void renameNode(nodeName, `Call '${baseName}'`);
+			}
+		}
 	}
 
 	return {
@@ -91,6 +121,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 		getWorkflowUrl,
 		onSearchFilter,
 		getWorkflowName,
+		renameDefaultNodeName,
 		populateNextWorkflowsPage,
 		setWorkflowsResources,
 	};
