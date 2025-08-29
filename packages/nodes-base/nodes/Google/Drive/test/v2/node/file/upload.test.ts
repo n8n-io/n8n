@@ -65,9 +65,9 @@ describe('test GoogleDriveV2: file upload', () => {
 			'POST',
 			'/upload/drive/v3/files',
 			expect.any(Buffer),
-			{ uploadType: 'media' },
+			{ uploadType: 'multipart', supportsAllDrives: true },
 			undefined,
-			{ headers: { 'Content-Length': '123', 'Content-Type': 'text/plain' } },
+			{ headers: { 'Content-Length': 498, 'Content-Type': 'multipart/related; boundary=...' } },
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
@@ -124,7 +124,7 @@ describe('test GoogleDriveV2: file upload', () => {
 			'POST',
 			'/upload/drive/v3/files',
 			undefined,
-			{ uploadType: 'resumable' },
+			{ uploadType: 'resumable', supportsAllDrives: true },
 			undefined,
 			{ returnFullResponse: true, headers: { 'X-Upload-Content-Type': 'image/jpg' } },
 		);

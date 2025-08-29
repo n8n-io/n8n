@@ -61,9 +61,9 @@ describe('test GoogleDriveV2: file createFromText', () => {
 			'POST',
 			'/upload/drive/v3/files',
 			expect.anything(), // Buffer of content goes here
-			{ uploadType: 'media' },
+			{ uploadType: 'multipart', supportsAllDrives: true },
 			undefined,
-			{ headers: { 'Content-Length': 12, 'Content-Type': 'text/plain' } },
+			{ headers: { 'Content-Length': 503, 'Content-Type': 'multipart/related; boundary=...' } },
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
