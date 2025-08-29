@@ -360,6 +360,10 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-wrapper');
 	}
 
+	toggleFocusPanelButton(): Locator {
+		return this.page.getByTestId('toggle-focus-panel-button');
+	}
+
 	// Actions
 
 	async addInitialNodeToCanvas(nodeName: string): Promise<void> {

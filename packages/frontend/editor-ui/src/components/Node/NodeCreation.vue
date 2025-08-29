@@ -145,6 +145,7 @@ function onAskAssistantButtonClick() {
 				icon="panel-right"
 				:class="focusPanelActive ? $style.activeButton : ''"
 				:active="focusPanelActive"
+				data-test-id="toggle-focus-panel-button"
 				@click="toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>

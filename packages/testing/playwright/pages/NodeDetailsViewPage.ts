@@ -20,7 +20,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterByLabel(labelName: string) {
-		return this.page.locator('.parameter-item').filter({ hasText: labelName });
+		return this.getContainer().locator('.parameter-item').filter({ hasText: labelName });
 	}
 
 	/**
