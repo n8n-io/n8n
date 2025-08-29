@@ -11,6 +11,7 @@ import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
+import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();
 
@@ -61,6 +62,11 @@ function normalizeMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assistan
 		id: msg.id || `msg-${index}`,
 		read: msg.read ?? true,
 	}));
+}
+
+// filter out these messages so that tool collapsing works correctly
+function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+	return messages.filter((message) => Boolean(getSupportedMessageComponent(message.type)));
 }
 
 function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
@@ -136,7 +142,17 @@ function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assis
 // Ensure all messages have required id and read properties, and collapse tool messages
 const normalizedMessages = computed(() => {
 	const normalized = normalizeMessages(props.messages);
-	return collapseToolMessages(normalized);
+	return collapseToolMessages(filterOutHiddenMessages(normalized));
+});
+
+// Get quickReplies from the last message in the original messages (before filtering)
+const lastMessageQuickReplies = computed(() => {
+	if (!props.messages?.length || props.streaming) return [];
+
+	const lastMessage = props.messages[props.messages.length - 1];
+	return 'quickReplies' in lastMessage && lastMessage.quickReplies?.length
+		? lastMessage.quickReplies
+		: [];
 });
 
 const textInputValue = ref<string>('');
@@ -252,18 +268,17 @@ watch(
 						/>
 
 						<div
-							v-if="
-								!streaming &&
-								'quickReplies' in message &&
-								message.quickReplies?.length &&
-								i === normalizedMessages.length - 1
-							"
+							v-if="lastMessageQuickReplies.length && i === normalizedMessages.length - 1"
 							:class="$style.quickReplies"
 						>
 							<div :class="$style.quickRepliesTitle">
 								{{ t('assistantChat.quickRepliesTitle') }}
 							</div>
-							<div v-for="opt in message.quickReplies" :key="opt.type" data-test-id="quick-replies">
+							<div
+								v-for="opt in lastMessageQuickReplies"
+								:key="opt.type"
+								data-test-id="quick-replies"
+							>
 								<N8nButton
 									v-if="opt.text"
 									type="secondary"

@@ -86,6 +86,25 @@ describe('stream-processor', () => {
 				expect(message.text).toBe('Last message to display');
 			});
 
+			it('should handle compact_messages with object content', () => {
+				const chunk = {
+					compact_messages: {
+						messages: [
+							{ content: 'First message' },
+							{ content: { type: 'text', data: 'some data' } }, // Object content
+						],
+					},
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toEqual({
+					messages: [
+						{ role: 'assistant', text: { data: 'some data', type: 'text' }, type: 'message' },
+					],
+				});
+			});
+
 			it('should handle process_operations with workflow update', () => {
 				const workflowData = {
 					nodes: [{ id: 'node1', name: 'Test Node' }],

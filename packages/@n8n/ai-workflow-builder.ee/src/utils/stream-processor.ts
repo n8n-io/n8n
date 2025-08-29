@@ -59,6 +59,7 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 		if ((agentChunk?.compact_messages?.messages ?? []).length > 0) {
 			const lastMessage =
 				agentChunk.compact_messages!.messages![agentChunk.compact_messages!.messages!.length - 1];
+
 			const messageChunk: AgentMessageChunk = {
 				role: 'assistant',
 				type: 'message',
@@ -83,13 +84,17 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 					content = lastMessage.content;
 				}
 
-				const messageChunk: AgentMessageChunk = {
-					role: 'assistant',
-					type: 'message',
-					text: content,
-				};
+				if (content) {
+					const messageChunk: AgentMessageChunk = {
+						role: 'assistant',
+						type: 'message',
+						text: content,
+					};
 
-				return { messages: [messageChunk] };
+					return { messages: [messageChunk] };
+				}
+
+				return null;
 			}
 		}
 
