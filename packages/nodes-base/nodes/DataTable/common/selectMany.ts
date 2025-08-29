@@ -62,19 +62,15 @@ export function getSelectFields(
 							default: 'id',
 						},
 						{
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 							displayName: 'Condition',
 							name: 'condition',
+							// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
 							type: 'options',
-							options: [
-								{
-									name: 'Equals',
-									value: 'eq',
-								},
-								{
-									name: 'Not Equals',
-									value: 'neq',
-								},
-							],
+							typeOptions: {
+								loadOptionsDependsOn: ['&keyName'],
+								loadOptionsMethod: 'getConditionsForColumn',
+							},
 							default: 'eq',
 						},
 						{
