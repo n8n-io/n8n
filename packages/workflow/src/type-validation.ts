@@ -167,6 +167,7 @@ const ALLOWED_FORM_FIELDS_KEYS = [
 	'acceptFileTypes',
 	'formatDate',
 	'requiredField',
+	'fieldValue',
 ];
 
 const ALLOWED_FIELD_TYPES = [
@@ -179,6 +180,9 @@ const ALLOWED_FIELD_TYPES = [
 	'text',
 	'textarea',
 	'checkbox',
+	'radio',
+	'html',
+	'hiddenField',
 ];
 
 export const tryToParseJsonToFormFields = (value: unknown): FormFieldsParameter => {
