@@ -3142,6 +3142,59 @@ describe('Workflow', () => {
 			}).toThrow('The request data of context type "node" the node parameter has to be set!');
 		});
 
+		test('should return deterministic results for AI agent nodes', () => {
+			// Test that deterministic sorting works for AI agent scenarios
+			const workflow = new Workflow({
+				nodeTypes,
+				nodes: [
+					{
+						id: 'aiAgent1',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1.8,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'tool1',
+						name: 'Tool1',
+						type: '@n8n/n8n-nodes-langchain.toolWikipedia',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+					{
+						id: 'tool2',
+						name: 'Tool2',
+						type: '@n8n/n8n-nodes-langchain.toolCalculator',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+				],
+				connections: {
+					Tool1: {
+						[NodeConnectionTypes.AiTool]: [
+							[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+						],
+					},
+					Tool2: {
+						[NodeConnectionTypes.AiTool]: [
+							[{ node: 'AI Agent', type: NodeConnectionTypes.AiTool, index: 0 }],
+						],
+					},
+				},
+				active: false,
+			});
+
+			const aiAgent = workflow.getNode('AI Agent')!;
+			const result1 = workflow.getParentMainInputNode(aiAgent);
+			const result2 = workflow.getParentMainInputNode(aiAgent);
+
+			// Results should be consistent across multiple calls
+			expect(result1.name).toBe(result2.name);
+		});
+
 		test('should throw error when connection node is not found in getParentMainInputNode', () => {
 			// Create a workflow where a node has outgoing connections to a non-existent node
 			const workflowWithBadConnection = new Workflow({

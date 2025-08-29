@@ -695,23 +695,29 @@ export class Workflow {
 			}
 
 			// Get non-main connection types that this node connects TO (outgoing connections)
+			// This uses actual execution data, not node type definitions
 			const nonMainConnectionTypes = Object.keys(nodeConnections)
 				.filter((type) => type !== NodeConnectionTypes.Main)
 				.sort(); // Deterministic ordering for consistent AI agent behavior
 
 			if (nonMainConnectionTypes.length > 0) {
+				// Collect all connected nodes from non-main outputs
+				const nonMainNodesConnected: string[] = [];
 				for (const type of nonMainConnectionTypes) {
-					for (const connectionsByIndex of nodeConnections[type]) {
-						if (connectionsByIndex) {
-							for (const connection of connectionsByIndex) {
-								const returnNode = this.getNode(connection.node);
-								if (!returnNode) {
-									throw new ApplicationError(`Node "${connection.node}" not found`);
-								}
-								return this.getParentMainInputNode(returnNode);
-							}
-						}
+					const childNodes = this.getChildNodes(node.name, type as NodeConnectionType);
+					if (childNodes.length > 0) {
+						nonMainNodesConnected.push(...childNodes);
 					}
+				}
+
+				if (nonMainNodesConnected.length) {
+					// Sort for deterministic behavior, then get first node
+					nonMainNodesConnected.sort();
+					const returnNode = this.getNode(nonMainNodesConnected[0]);
+					if (!returnNode) {
+						throw new ApplicationError(`Node "${nonMainNodesConnected[0]}" not found`);
+					}
+					return this.getParentMainInputNode(returnNode);
 				}
 			}
 		}
