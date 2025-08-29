@@ -175,9 +175,9 @@ function onListItemSelected(value: NodeParameterValue) {
 	telemetry.track('User chose sub-workflow', {});
 	onInputChange(value);
 	hideDropdown();
-	// we rename defaults here to allow selecting the same workflow
-	// to update the name as we don't eagerly update a changed workflow name
-	// but rather only on changed id elsewhere
+	// we rename defaults here to allow selecting the same workflow to
+	// update the name, as we don't eagerly update a changed workflow name
+	// but rather only react on changed id elsewhere
 	renameDefaultNodeName(value);
 }
 
