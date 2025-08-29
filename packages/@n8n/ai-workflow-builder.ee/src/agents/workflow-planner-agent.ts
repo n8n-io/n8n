@@ -60,6 +60,7 @@ const SYSTEM_PROMPT = `You are a Workflow Planning Assistant for n8n. Your task 
 - Be thorough in your search - search for different keywords and concepts
 - Use exact node type identifiers (e.g., "n8n-nodes-base.httpRequest")
 - Order nodes logically from trigger/start to final output
+- Place sub-nodes (e.g., AI tools) immediately after their root node (e.g. AI Agent)
 - Only include nodes that directly fulfill the user's requirements
 - Consider data transformation needs between nodes
 - For AI workflows, search for AI-related nodes and sub-nodes
