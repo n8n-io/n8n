@@ -17,6 +17,7 @@ import { N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from '@n8n/design-syst
 import { storeToRefs } from 'pinia';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { I18nT } from 'vue-i18n';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -78,6 +79,7 @@ const workflowsStore = useWorkflowsStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext();
 const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
 const {
@@ -323,6 +325,7 @@ function onDragEnd(column: string, src: string, depth = '0') {
 			src_view: 'table',
 			src_element: src,
 			success: false,
+			view_shown: telemetryContext.view_shown,
 			...mappingTelemetry,
 		};
 
