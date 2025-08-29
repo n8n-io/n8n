@@ -2604,6 +2604,7 @@ export interface IWorkflowSettings {
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
 	timeSavedPerExecution?: number;
+	availableInMCP?: boolean;
 }
 
 export interface WorkflowFEMeta {
