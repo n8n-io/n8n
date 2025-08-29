@@ -1,5 +1,6 @@
 import { NodeOperationError } from 'n8n-workflow';
 import type {
+	DataStoreFilter,
 	DataStoreRowReturn,
 	IDataStoreProjectService,
 	IDisplayOptions,
@@ -94,7 +95,7 @@ export function getSelectFields(
 	];
 }
 
-export function getSelectFilter(ctx: IExecuteFunctions, index: number) {
+export function getSelectFilter(ctx: IExecuteFunctions, index: number): DataStoreFilter {
 	const fields = ctx.getNodeParameter('filters.conditions', index, []);
 	const matchType = ctx.getNodeParameter('matchType', index, ANY_CONDITION);
 	const node = ctx.getNode();
