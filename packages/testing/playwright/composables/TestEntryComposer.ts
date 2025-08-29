@@ -40,6 +40,7 @@ export class TestEntryComposer {
 		const projectId = response.id;
 		await this.n8n.page.goto(`workflow/new?projectId=${projectId}`);
 		await this.n8n.canvas.canvasPane().isVisible();
+		return projectId;
 	}
 
 	/**

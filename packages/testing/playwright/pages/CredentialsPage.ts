@@ -62,4 +62,18 @@ export class CredentialsPage extends BasePage {
 		await this.page.getByText('Connection tested successfully').waitFor({ state: 'visible' });
 		await this.closeCredentialDialog();
 	}
+
+	getOauthConnectButton() {
+		return this.page.getByTestId('oauth-connect-button');
+	}
+
+	getOauthConnectSuccessBanner() {
+		return this.page.getByText('Connected successfully').or(this.page.getByText('OAuth connected'));
+	}
+
+	getSaveButton() {
+		return this.page
+			.getByRole('button', { name: 'Save' })
+			.or(this.page.getByRole('button', { name: 'Saved' }));
+	}
 }
