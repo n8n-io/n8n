@@ -1,7 +1,6 @@
+import { n8nHtml } from '@n8n/design-system/directives';
 import { render } from '@testing-library/vue';
 import { vi } from 'vitest';
-
-import { n8nHtml } from '@n8n/design-system/directives';
 
 import AskAssistantChat from './AskAssistantChat.vue';
 import type { Props as MessageWrapperProps } from './messages/MessageWrapper.vue';
@@ -736,6 +735,186 @@ describe('AskAssistantChat', () => {
 					content: 'Here are your search results',
 				}),
 			);
+		});
+	});
+
+	describe('Quick Replies', () => {
+		const renderWithQuickReplies = (
+			messages: ChatUI.AssistantMessage[],
+			streaming = false,
+			loadingMessage?: string,
+		) => {
+			return render(AskAssistantChat, {
+				global: {
+					directives: { n8nHtml },
+					stubs: {
+						...Object.fromEntries(stubs.map((stub) => [stub, true])),
+						'n8n-button': { template: '<button><slot></button' },
+					},
+				},
+				props: {
+					user: { firstName: 'Kobi', lastName: 'Dog' },
+					messages,
+					streaming,
+					loadingMessage,
+				},
+			});
+		};
+
+		it('should render quick replies for code-diff message', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Here is a solution',
+					read: true,
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'code-diff',
+					description: 'Code solution',
+					codeDiff: 'diff content',
+					suggestionId: 'test',
+					quickReplies: [
+						{ type: 'new-suggestion', text: 'Give me another solution' },
+						{ type: 'resolved', text: 'All good' },
+					],
+					read: true,
+				},
+			];
+
+			const wrapper = renderWithQuickReplies(messages);
+
+			// Quick replies should be rendered (2 buttons found)
+			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(2);
+			// Quick reply title should be visible
+			expect(wrapper.container.textContent).toContain('Quick reply');
+			expect(wrapper.container).toHaveTextContent('Give me another solution');
+			expect(wrapper.container).toHaveTextContent('All good');
+		});
+
+		it('should render quick replies for agent-suggestion messages', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Here is a solution',
+					read: true,
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'agent-suggestion',
+					title: 'Agent Suggestion',
+					content: 'This is a suggestion from the agent',
+					suggestionId: 'test',
+					quickReplies: [
+						{ type: 'accept', text: 'Accept suggestion' },
+						{ type: 'reject', text: 'Reject suggestion' },
+					],
+					read: true,
+				},
+			];
+
+			const wrapper = renderWithQuickReplies(messages);
+
+			// Quick replies should still be rendered even though agent-suggestion is filtered out
+			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(2);
+			// Quick reply title should be visible
+			expect(wrapper.container.textContent).toContain('Quick reply');
+
+			expect(wrapper.container).toHaveTextContent('Accept suggestion');
+			expect(wrapper.container).toHaveTextContent('Reject suggestion');
+		});
+
+		it('should not render quick replies when streaming', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'code-diff',
+					description: 'Code solution',
+					codeDiff: 'diff content',
+					suggestionId: 'test',
+					quickReplies: [{ type: 'new-suggestion', text: 'Give me another solution' }],
+					read: true,
+				},
+			];
+
+			const wrapper = renderWithQuickReplies(messages, true);
+
+			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
+			expect(wrapper.container.textContent).not.toContain('Quick reply');
+			expect(wrapper.container.textContent).not.toContain('Give me another solution');
+		});
+
+		it('should not render quick replies for non-last messages', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'code-diff',
+					description: 'Code solution',
+					codeDiff: 'diff content',
+					suggestionId: 'test',
+					quickReplies: [{ type: 'new-suggestion', text: 'Give me another solution' }],
+					read: true,
+				},
+				{
+					id: '2',
+					role: 'assistant',
+					type: 'text',
+					content: 'Follow up message',
+					read: true,
+				},
+			];
+
+			const wrapper = renderWithQuickReplies(messages);
+
+			// Quick replies should not be rendered since the message with quick replies is not last
+			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
+			expect(wrapper.container.textContent).not.toContain('Quick reply');
+			expect(wrapper.container.textContent).not.toContain('Give me another solution');
+		});
+
+		it('should not render quick replies when last message has no quickReplies', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'text',
+					content: 'Simple text message',
+					read: true,
+				},
+			];
+
+			const wrapper = renderWithQuickReplies(messages);
+
+			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
+			expect(wrapper.container.textContent).not.toContain('Quick reply');
+		});
+
+		it('should not render quick replies when last message has empty quickReplies array', () => {
+			const messages: ChatUI.AssistantMessage[] = [
+				{
+					id: '1',
+					role: 'assistant',
+					type: 'code-diff',
+					description: 'Code solution',
+					codeDiff: 'diff content',
+					suggestionId: 'test',
+					quickReplies: [],
+					read: true,
+				},
+			];
+
+			const wrapper = renderWithQuickReplies(messages);
+
+			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
+			expect(wrapper.container.textContent).not.toContain('Quick reply');
 		});
 	});
 });

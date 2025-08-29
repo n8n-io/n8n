@@ -11,7 +11,6 @@ import AssistantText from '../AskAssistantText/AssistantText.vue';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
-import { getSupportedMessageComponent } from './messages/helpers';
 
 const { t } = useI18n();
 
@@ -66,7 +65,8 @@ function normalizeMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assistan
 
 // filter out these messages so that tool collapsing works correctly
 function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
-	return messages.filter((message) => Boolean(getSupportedMessageComponent(message.type)));
+	return messages;
+	// return messages.filter((message) => Boolean(getSupportedMessageComponent(message.type)));
 }
 
 function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
