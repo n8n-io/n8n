@@ -16,15 +16,10 @@ export async function fetchInstalledPackageInfo(
 	if (!installedPackage) {
 		return undefined;
 	}
-	if (installedPackage?.updateAvailable && communityNodeType) {
-		const unverifiedUpdate = semver.gt(
-			installedPackage.updateAvailable,
-			communityNodeType.npmVersion,
-		);
-		return {
-			...installedPackage,
-			unverifiedUpdate,
-		};
-	}
-	return { ...installedPackage, unverifiedUpdate: false };
+	const checkIsUnverifiedUpdate = () => {
+		if (!installedPackage?.updateAvailable || !communityNodeType) return false;
+		return semver.gt(installedPackage.updateAvailable, communityNodeType.npmVersion);
+	};
+
+	return { ...installedPackage, unverifiedUpdate: checkIsUnverifiedUpdate() };
 }
