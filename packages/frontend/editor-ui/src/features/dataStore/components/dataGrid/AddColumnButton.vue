@@ -13,7 +13,7 @@ import { useDebounce } from '@/composables/useDebounce';
 const props = defineProps<{
 	// the params key is needed so that we can pass this directly to ag-grid as column
 	params: {
-		onAddColumn: (column: DataStoreColumnCreatePayload) => void;
+		onAddColumn: (column: DataStoreColumnCreatePayload) => Promise<boolean>;
 	};
 	popoverId?: string;
 	useTextTrigger?: boolean;
@@ -38,11 +38,17 @@ const isSelectOpen = ref(false);
 
 const popoverId = computed(() => props.popoverId ?? 'add-column-popover');
 
-const onAddButtonClicked = () => {
+const onAddButtonClicked = async () => {
 	if (!columnName.value || !columnType.value) {
 		return;
 	}
-	props.params.onAddColumn({ name: columnName.value, type: columnType.value });
+	const success = await props.params.onAddColumn({
+		name: columnName.value,
+		type: columnType.value,
+	});
+	if (!success) {
+		return;
+	}
 	columnName.value = '';
 	columnType.value = 'string';
 	popoverOpen.value = false;

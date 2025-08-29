@@ -239,8 +239,10 @@ const onAddColumn = async (column: DataStoreColumnCreatePayload) => {
 			return { ...row, [newColumn.name]: null };
 		});
 		refreshGridData();
+		return true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
+		return false;
 	}
 };
 
