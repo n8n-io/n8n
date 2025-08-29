@@ -21,8 +21,8 @@ CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
 
 
-class ImportValidator(ast.NodeVisitor):
-    """AST visitor that enforces import allowlists."""
+class SecurityValidator(ast.NodeVisitor):
+    """AST visitor that enforces import allowlists and blocks dangerous attribute access."""
 
     def __init__(self, stdlib_allow: Set[str], external_allow: Set[str]):
         self.checked_modules: Set[str] = set()
@@ -152,13 +152,13 @@ class TaskAnalyzer:
 
         tree = ast.parse(code)
 
-        import_validator = ImportValidator(self._stdlib_allow, self._external_allow)
-        import_validator.visit(tree)
+        security_validator = SecurityValidator(self._stdlib_allow, self._external_allow)
+        security_validator.visit(tree)
 
-        self._set_in_cache(cache_key, import_validator.violations)
+        self._set_in_cache(cache_key, security_validator.violations)
 
-        if import_validator.violations:
-            self._raise_security_error(import_validator.violations)
+        if security_validator.violations:
+            self._raise_security_error(security_validator.violations)
 
     def _raise_security_error(self, violations: CachedViolations) -> None:
         message = ERROR_SECURITY_VIOLATIONS.format(violations="\n".join(violations))
