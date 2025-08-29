@@ -25,7 +25,6 @@ import { License } from '@/license';
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import e from 'express';
 
 @Service()
 export class RoleService {

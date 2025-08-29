@@ -28,7 +28,7 @@ export class RoleRepository extends Repository<Role> {
 	async removeBySlug(slug: string) {
 		const result = await this.delete({ slug });
 		if (result.affected !== 1) {
-			throw new UserError(`Failed to delete role "${slug}"`);
+			throw new Error(`Failed to delete role "${slug}"`);
 		}
 	}
 
@@ -50,9 +50,17 @@ export class RoleRepository extends Repository<Role> {
 
 		// Only update fields that are explicitly provided (not undefined)
 		// This preserves existing scopes when scopes is undefined
-		role.displayName = newData.displayName ?? role.displayName;
-		role.description = newData.description ?? role.description;
-		role.scopes = newData.scopes ?? role.scopes;
+		if (newData.displayName !== undefined) {
+			role.displayName = newData.displayName;
+		}
+
+		if (newData.description !== undefined) {
+			role.description = newData.description;
+		}
+
+		if (newData.scopes !== undefined) {
+			role.scopes = newData.scopes;
+		}
 
 		return await entityManager.save<Role>(role);
 	}
