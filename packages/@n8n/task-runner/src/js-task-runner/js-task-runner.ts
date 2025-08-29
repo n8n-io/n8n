@@ -348,9 +348,15 @@ export class JsTaskRunner extends TaskRunner {
 				}
 
 				if (result) {
-					// if result has json property, use it, else use entire result
-					const hasJsonProperty = result !== null && typeof result === 'object' && 'json' in result;
-					const jsonData = hasJsonProperty ? result.json : result;
+					let jsonData;
+					if (isObject(result) && 'json' in result) {
+						jsonData = result.json;
+					} else if (isObject(result) && 'binary' in result) {
+						const { binary: _, ...rest } = result as object & { binary: unknown };
+						jsonData = rest;
+					} else {
+						jsonData = result;
+					}
 
 					returnData.push(
 						result.binary
