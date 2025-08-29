@@ -113,7 +113,7 @@ export class DataStoreService {
 		// a renamed/removed column appearing here (or added column missing) if the store was
 		// modified between when the frontend sent the request and we received it
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		const result = await this.dataStoreRowsRepository.getManyAndCount(dataStoreId, dto);
+		const result = await this.dataStoreRowsRepository.getManyAndCount(dataStoreId, dto, columns);
 		return {
 			count: result.count,
 			data: normalizeRows(result.data, columns),

@@ -262,18 +262,22 @@ export function normalizeRows(rows: DataStoreRowsReturn, columns: DataTableColum
 export function normalizeValue(
 	value: DataStoreColumnJsType,
 	columnType: string | undefined,
-	dbType: DataSourceOptions['type'],
 ): DataStoreColumnJsType {
-	if (['mysql', 'mariadb'].includes(dbType)) {
-		if (columnType === 'date') {
-			if (value instanceof Date) {
-				return value;
-			} else if (typeof value === 'string') {
-				const date = new Date(value);
-				if (!isNaN(date.getTime())) {
-					return date;
-				}
-			}
+	if (columnType !== 'date' || value === null) {
+		return value;
+	}
+
+	// Convert Date objects to ISO strings for consistent database parameter binding
+	// This matches TypeORM's automatic behavior and ensures consistent comparisons
+	if (value instanceof Date) {
+		return value.toISOString();
+	}
+
+	if (typeof value === 'string') {
+		const date = new Date(value);
+		if (!isNaN(date.getTime())) {
+			// Convert parsed date strings to ISO strings for consistency
+			return date.toISOString();
 		}
 	}
 
