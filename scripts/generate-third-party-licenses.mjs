@@ -10,6 +10,7 @@
 
 import { $, echo, fs, chalk } from 'zx';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 
 // Disable verbose zx output
@@ -26,22 +27,17 @@ const config = {
 		root: rootDir,
 		cliRoot: path.join(rootDir, 'packages', 'cli'),
 		formatConfig: path.join(scriptDir, 'third-party-license-format.json'),
-		tempLicenses: path.join(rootDir, 'licenses.json'),
+		tempLicenses: path.join(os.tmpdir(), 'licenses.json'),
 		output: path.join(rootDir, 'packages', 'cli', 'THIRD_PARTY_LICENSES.md'),
 	},
 };
 
-/**
- * Validates that license-checker is available
- */
+// #region ===== Helper Functions =====
+
 async function validateLicenseChecker() {
-	try {
-		await $`pnpm exec license-checker --version`.nothrow();
-		echo(chalk.green('✅ license-checker is available'));
-	} catch (error) {
-		echo(chalk.red('❌ license-checker not found. Run: pnpm install'));
-		throw new Error('license-checker validation failed');
-	}
+	// Skip version check as license-checker outputs to stderr which complicates validation
+	// The actual license-checker command will fail naturally if the package isn't available
+	echo(chalk.green('✅ license-checker validation skipped (will be tested during execution)'));
 }
 
 async function generateLicenseData() {
@@ -124,52 +120,32 @@ function getFallbackLicenseText(licenseType, packages = []) {
 	return fallbacks[licenseType] || null;
 }
 
-function processPackages(packages) {
-	const licenseGroups = new Map();
-	const licenseTexts = new Map();
-	let processedCount = 0;
+function cleanLicenseText(text) {
+	return text
+		.replaceAll('\\n', '\n')
+		.replaceAll('\\"', '"')
+		.replaceAll('\r\n', '\n')
+		.trim();
+}
 
-	for (const [packageKey, pkg] of Object.entries(packages)) {
-		const { packageName, version } = parsePackageKey(packageKey);
-
-		if (shouldExcludePackage(packageName)) {
-			continue;
-		}
-
-		const licenseType = pkg.licenses || 'Unknown';
-		processedCount++;
-
-		// Group packages by license
-		if (!licenseGroups.has(licenseType)) {
-			licenseGroups.set(licenseType, []);
-		}
-
-		licenseGroups.get(licenseType).push({
-			name: packageName,
-			version,
-			repository: pkg.repository,
-			copyright: pkg.copyright,
-		});
-
-		// Store license text (use first non-empty occurrence)
-		if (!licenseTexts.has(licenseType)) {
-			licenseTexts.set(licenseType, null); // Initialize as null
-		}
-		
-		if (!licenseTexts.get(licenseType) && pkg.licenseText && pkg.licenseText.trim()) {
-			// Only use license text if it comes from a valid license file
-			if (isValidLicenseFile(pkg.licenseFile)) {
-				const cleanText = pkg.licenseText
-					.replace(/\\n/g, '\n')
-					.replace(/\\"/g, '"')
-					.replace(/\r\n/g, '\n')
-					.trim();
-				licenseTexts.set(licenseType, cleanText);
-			}
-		}
+function addPackageToGroup(licenseGroups, licenseType, packageInfo) {
+	if (!licenseGroups.has(licenseType)) {
+		licenseGroups.set(licenseType, []);
 	}
+	licenseGroups.get(licenseType).push(packageInfo);
+}
 
-	// Apply fallback license texts for missing ones
+function processLicenseText(licenseTexts, licenseType, pkg) {
+	if (!licenseTexts.has(licenseType)) {
+		licenseTexts.set(licenseType, null);
+	}
+	
+	if (!licenseTexts.get(licenseType) && pkg.licenseText?.trim() && isValidLicenseFile(pkg.licenseFile)) {
+		licenseTexts.set(licenseType, cleanLicenseText(pkg.licenseText));
+	}
+}
+
+function applyFallbackLicenseTexts(licenseTexts, licenseGroups) {
 	const missingTexts = [];
 	const fallbacksUsed = [];
 	
@@ -186,7 +162,11 @@ function processPackages(packages) {
 		}
 	}
 
-	echo(chalk.cyan(`📦 Processed ${processedCount} packages in ${licenseGroups.size} license groups`));
+	return { missingTexts, fallbacksUsed };
+}
+
+function logProcessingResults(processedCount, licenseGroupCount, fallbacksUsed, missingTexts) {
+	echo(chalk.cyan(`📦 Processed ${processedCount} packages in ${licenseGroupCount} license groups`));
 	
 	if (fallbacksUsed.length > 0) {
 		echo(chalk.blue(`ℹ️  Used fallback texts for: ${fallbacksUsed.join(', ')}`));
@@ -197,9 +177,46 @@ function processPackages(packages) {
 	} else {
 		echo(chalk.green(`✅ All license types have texts`));
 	}
+}
+
+function processPackages(packages) {
+	const licenseGroups = new Map();
+	const licenseTexts = new Map();
+	let processedCount = 0;
+
+	for (const [packageKey, pkg] of Object.entries(packages)) {
+		const { packageName, version } = parsePackageKey(packageKey);
+
+		if (shouldExcludePackage(packageName)) {
+			continue;
+		}
+
+		const licenseType = pkg.licenses || 'Unknown';
+		processedCount++;
+
+		// Group packages by license
+		addPackageToGroup(licenseGroups, licenseType, {
+			name: packageName,
+			version,
+			repository: pkg.repository,
+			copyright: pkg.copyright,
+		});
+
+		// Store license text (use first non-empty occurrence)
+		processLicenseText(licenseTexts, licenseType, pkg);
+	}
+
+	// Apply fallback license texts for missing ones
+	const { missingTexts, fallbacksUsed } = applyFallbackLicenseTexts(licenseTexts, licenseGroups);
+
+	logProcessingResults(processedCount, licenseGroups.size, fallbacksUsed, missingTexts);
 
 	return { licenseGroups, licenseTexts, processedCount };
 }
+
+// #endregion ===== Helper Functions =====
+
+// #region ===== Document Generation =====
 
 function createPackageSection(licenseType, packages) {
 	const sortedPackages = [...packages].sort((a, b) => a.name.localeCompare(b.name));
@@ -263,6 +280,8 @@ function buildMarkdownDocument(packages) {
 
 	return { content: document, processedCount };
 }
+
+// #endregion ===== Document Generation =====
 
 async function generateThirdPartyLicenses() {
 	echo(chalk.blue('🚀 Generating third-party licenses for n8n...'));
