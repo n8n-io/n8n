@@ -10,12 +10,11 @@ FROM alpine:3.22.0 AS app-artifact-processor
 COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 # ==============================================================================
-# STAGE 2: Python runner build (@n8n/task-runner-python) via uv
-# Produces a relocatable venv under /opt/runners/python/.venv tied to python:3.13-slim
+# STAGE 2: Python runner build (@n8n/task-runner-python) with uv
+# Produces a relocatable venv tied to PYTHON_IMAGE
 # ==============================================================================
 FROM ${PYTHON_IMAGE} AS python-runner-builder
 
-# System deps needed during sync/build; kept out of final stage
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl ca-certificates build-essential pkg-config git \
     && rm -rf /var/lib/apt/lists/*
@@ -75,12 +74,17 @@ ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl gnupg ca-certificates tini \
-	&& rm -rf /var/lib/apt/lists/* \
-	&& curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg \
-	&& echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_VERSION}.x nodistro main" > /etc/apt/sources.list.d/nodesource.list \
-	&& apt-get update && apt-get install -y --no-install-recommends nodejs \
-	&& rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends curl gnupg ca-certificates tini \
+	&& mkdir -p /etc/apt/keyrings \
+	&& curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+		| gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+	&& echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_VERSION}.x nodistro main" \
+		> /etc/apt/sources.list.d/nodesource.list \
+	&& apt-get update \
+	&& apt-get install -y --no-install-recommends nodejs \
+	&& apt-get clean \
+	&& rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
 
 RUN useradd -m -u 1000 runner
 WORKDIR /home/runner
@@ -89,26 +93,17 @@ COPY --from=app-artifact-processor /app/task-runner-javascript /opt/runners/task
 COPY --from=python-runner-builder /app/task-runner-python /opt/runners/task-runner-python
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 
-RUN set -eux; \
-  printf '#!/usr/bin/env bash\nexec node /opt/runners/js/dist/index.js "$@"\n' \
-    > /usr/local/bin/n8n-task-runner-javascript && chmod +x /usr/local/bin/n8n-task-runner-javascript
-
-RUN set -eux; \
-  printf '#!/usr/bin/env bash\nexec node /opt/runners/task-runner-javascript/dist/index.js "$@"\n' \
-    > /usr/local/bin/n8n-task-runner-javascript && \
-  chmod +x /usr/local/bin/n8n-task-runner-javascript
-
 COPY docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
 
-EXPOSE 5680/tcp
 RUN chown -R runner:runner /opt/runners /home/runner
 USER runner
 
+EXPOSE 5680/tcp
 ENTRYPOINT ["tini", "--", "/usr/local/bin/task-runner-launcher"]
 CMD ["javascript", "python"]
 
-LABEL org.opencontainers.image.title="n8n Task runners (JS + Python)" \
-      org.opencontainers.image.description="Sidecar image providing n8n task runners for JavaScript and Python execution" \
+LABEL org.opencontainers.image.title="n8n Task runners" \
+      org.opencontainers.image.description="Sidecar image providing n8n task runners for JavaScript and Python code execution" \
       org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
       org.opencontainers.image.url="https://n8n.io" \
       org.opencontainers.image.version="${LAUNCHER_VERSION}"
