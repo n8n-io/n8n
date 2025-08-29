@@ -829,7 +829,7 @@ describe('JsTaskRunner', () => {
 			});
 		});
 
-		it('should wrap single item into an array and json', async () => {
+		it('should not wrap single item into an array and json', async () => {
 			const outcome = await executeForAllItems({
 				code: 'return {b: 1}',
 				inputItems: [{ a: 1 }],
