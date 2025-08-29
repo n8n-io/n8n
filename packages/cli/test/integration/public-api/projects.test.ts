@@ -564,23 +564,20 @@ describe('Projects in Public API', () => {
 
 				expect(projectAfter.length).toEqual(3);
 				const adminRelation = projectAfter.find(
-					(relation) => relation.userId === owner.id && relation.role === 'project:admin',
+					(relation) => relation.userId === owner.id && relation.role.slug === 'project:admin',
 				);
-				expect(adminRelation).toEqual(
-					expect.objectContaining({ userId: owner.id, role: 'project:admin' }),
-				);
+				expect(adminRelation!.userId).toBe(owner.id);
+				expect(adminRelation!.role.slug).toBe('project:admin');
 				const viewerRelation = projectAfter.find(
-					(relation) => relation.userId === member.id && relation.role === 'project:viewer',
+					(relation) => relation.userId === member.id && relation.role.slug === 'project:viewer',
 				);
-				expect(viewerRelation).toEqual(
-					expect.objectContaining({ userId: member.id, role: 'project:viewer' }),
-				);
+				expect(viewerRelation!.userId).toBe(member.id);
+				expect(viewerRelation!.role.slug).toBe('project:viewer');
 				const editorRelation = projectAfter.find(
-					(relation) => relation.userId === member2.id && relation.role === 'project:editor',
+					(relation) => relation.userId === member2.id && relation.role.slug === 'project:editor',
 				);
-				expect(editorRelation).toEqual(
-					expect.objectContaining({ userId: member2.id, role: 'project:editor' }),
-				);
+				expect(editorRelation!.userId).toBe(member2.id);
+				expect(editorRelation!.role.slug).toBe('project:editor');
 			});
 
 			it('should reject with 400 if license does not include user role', async () => {
@@ -797,8 +794,12 @@ describe('Projects in Public API', () => {
 
 				expect(response.status).toBe(204);
 				expect(projectBefore.length).toEqual(2);
-				expect(projectBefore.find((p) => p.role === 'project:admin')?.userId).toEqual(owner.id);
-				expect(projectBefore.find((p) => p.role === 'project:viewer')?.userId).toEqual(member.id);
+				expect(projectBefore.find((p) => p.role.slug === 'project:admin')?.userId).toEqual(
+					owner.id,
+				);
+				expect(projectBefore.find((p) => p.role.slug === 'project:viewer')?.userId).toEqual(
+					member.id,
+				);
 
 				expect(projectAfter.length).toEqual(1);
 				expect(projectAfter[0].userId).toEqual(owner.id);

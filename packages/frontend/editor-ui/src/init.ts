@@ -205,12 +205,14 @@ function registerAuthenticationHooks() {
 	const npsSurveyStore = useNpsSurveyStore();
 	const telemetry = useTelemetry();
 	const RBACStore = useRBACStore();
+	const settingsStore = useSettingsStore();
 
 	usersStore.registerLoginHook((user) => {
 		RBACStore.setGlobalScopes(user.globalScopes ?? []);
 		telemetry.identify(rootStore.instanceId, user.id);
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
+		void settingsStore.getModuleSettings();
 	});
 
 	usersStore.registerLogoutHook(() => {

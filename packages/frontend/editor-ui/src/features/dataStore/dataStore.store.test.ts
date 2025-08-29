@@ -29,7 +29,6 @@ describe('dataStore.store', () => {
 					id: datastoreId,
 					name: 'Test',
 					sizeBytes: 0,
-					recordCount: 0,
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-01T00:00:00.000Z',
 					projectId,
@@ -88,5 +87,23 @@ describe('dataStore.store', () => {
 			columnId,
 		);
 		expect(dataStoreStore.dataStores[0].columns.find((c) => c.id === columnId)).toBeUndefined();
+	});
+
+	it('can delete rows', async () => {
+		const datastoreId = faker.string.alphanumeric(10);
+		const projectId = 'p1';
+		const rowIds = [1, 2, 3];
+
+		vi.spyOn(dataStoreApi, 'deleteDataStoreRowsApi').mockResolvedValue(true);
+
+		const result = await dataStoreStore.deleteRows(datastoreId, projectId, rowIds);
+
+		expect(result).toBe(true);
+		expect(dataStoreApi.deleteDataStoreRowsApi).toHaveBeenCalledWith(
+			rootStore.restApiContext,
+			datastoreId,
+			rowIds,
+			projectId,
+		);
 	});
 });

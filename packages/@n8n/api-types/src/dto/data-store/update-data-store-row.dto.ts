@@ -17,6 +17,7 @@ const updateDataStoreRowShape = {
 		.refine((obj) => Object.keys(obj).length > 0, {
 			message: 'data must not be empty',
 		}),
+	returnData: z.boolean().default(false),
 };
 
 export class UpdateDataStoreRowDto extends Z.class(updateDataStoreRowShape) {}

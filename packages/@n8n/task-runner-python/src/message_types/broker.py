@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from typing import Literal, Union, List, Dict, Any
 
-from ..constants import (
+from src.constants import (
     BROKER_INFO_REQUEST,
     BROKER_RUNNER_REGISTERED,
     BROKER_TASK_CANCEL,
     BROKER_TASK_OFFER_ACCEPT,
     BROKER_TASK_SETTINGS,
+    BROKER_RPC_RESPONSE,
 )
 
 
@@ -54,10 +55,19 @@ class BrokerTaskCancel:
     type: Literal["broker:taskcancel"] = BROKER_TASK_CANCEL
 
 
+@dataclass
+class BrokerRpcResponse:
+    call_id: str
+    task_id: str
+    status: str
+    type: Literal["broker:rpcresponse"] = BROKER_RPC_RESPONSE
+
+
 BrokerMessage = Union[
     BrokerInfoRequest,
     BrokerRunnerRegistered,
     BrokerTaskOfferAccept,
     BrokerTaskSettings,
     BrokerTaskCancel,
+    BrokerRpcResponse,
 ]

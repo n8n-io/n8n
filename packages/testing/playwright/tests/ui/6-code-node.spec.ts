@@ -1,6 +1,10 @@
 import { nanoid } from 'nanoid';
 
-import { CODE_NODE_NAME, MANUAL_TRIGGER_NODE_NAME } from '../../config/constants';
+import {
+	CODE_NODE_DISPLAY_NAME,
+	CODE_NODE_NAME,
+	MANUAL_TRIGGER_NODE_NAME,
+} from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
 
 test.describe('Code node', () => {
@@ -9,7 +13,7 @@ test.describe('Code node', () => {
 			await n8n.goHome();
 			await n8n.workflows.clickAddWorkflowButton();
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-			await n8n.canvas.addNode(CODE_NODE_NAME);
+			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
 		});
 
 		test('should show correct placeholders switching modes', async ({ n8n }) => {
@@ -50,21 +54,21 @@ test.describe('Code node', () => {
 		});
 
 		test('should allow switching between sibling code nodes', async ({ n8n }) => {
-			await n8n.ndv.getCodeEditor().fill("console.log('code node 1')");
+			await n8n.ndv.getCodeEditor().fill("console.log('Code in JavaScript1')");
 			await n8n.ndv.close();
 
-			await n8n.canvas.addNode(CODE_NODE_NAME);
+			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
 
-			await n8n.ndv.getCodeEditor().fill("console.log('code node 2')");
+			await n8n.ndv.getCodeEditor().fill("console.log('Code in JavaScript2')");
 			await n8n.ndv.close();
 
-			await n8n.canvas.openNode(CODE_NODE_NAME);
+			await n8n.canvas.openNode(CODE_NODE_DISPLAY_NAME);
 
-			await n8n.ndv.clickFloatingNode('Code1');
-			await expect(n8n.ndv.getCodeEditor()).toContainText("console.log('code node 2')");
+			await n8n.ndv.clickFloatingNode(CODE_NODE_DISPLAY_NAME + '1');
+			await expect(n8n.ndv.getCodeEditor()).toContainText("console.log('Code in JavaScript2')");
 
-			await n8n.ndv.clickFloatingNode('Code');
-			await expect(n8n.ndv.getCodeEditor()).toContainText("console.log('code node 1')");
+			await n8n.ndv.clickFloatingNode(CODE_NODE_DISPLAY_NAME);
+			await expect(n8n.ndv.getCodeEditor()).toContainText("console.log('Code in JavaScript1')");
 		});
 
 		test('should show lint errors in `runOnceForAllItems` mode', async ({ n8n }) => {
@@ -85,25 +89,31 @@ return
 				'`.itemMatching()` expects an item index to be passed in as its argument.',
 			);
 		});
+	});
 
-		test('should show lint errors in `runOnceForEachItem` mode', async ({ n8n }) => {
-			await n8n.ndv.getParameterInput('mode').click();
-			await n8n.page.getByRole('option', { name: 'Run Once for Each Item' }).click();
+	test.describe
+		.serial('Run Once for Each Item', () => {
+			test('should show lint errors in `runOnceForEachItem` mode', async ({ n8n }) => {
+				await n8n.start.fromHome();
+				await n8n.workflows.clickAddWorkflowButton();
+				await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+				await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
+				await n8n.ndv.toggleCodeMode('Run Once for Each Item');
 
-			await n8n.ndv.getCodeEditor().fill(`$input.itemMatching()
+				await n8n.ndv.getCodeEditor().fill(`$input.itemMatching()
 $input.all()
 $input.first()
 $input.item()
 
 return []
 `);
-			await expect(n8n.ndv.getLintErrors()).toHaveCount(5);
-			await n8n.ndv.getParameterInput('jsCode').getByText('all').hover();
-			await expect(n8n.ndv.getLintTooltip()).toContainText(
-				"Method `$input.all()` is only available in the 'Run Once for All Items' mode.",
-			);
+				await expect(n8n.ndv.getLintErrors()).toHaveCount(7);
+				await n8n.ndv.getParameterInput('jsCode').getByText('all').hover();
+				await expect(n8n.ndv.getLintTooltip()).toContainText(
+					"Method `$input.all()` is only available in the 'Run Once for All Items' mode.",
+				);
+			});
 		});
-	});
 
 	test.describe('Ask AI', () => {
 		test.describe('Enabled', () => {
@@ -112,7 +122,7 @@ return []
 				await n8n.goHome();
 				await n8n.workflows.clickAddWorkflowButton();
 				await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-				await n8n.canvas.addNode(CODE_NODE_NAME);
+				await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
 			});
 
 			test('tab should exist if experiment selected and be selectable', async ({ n8n }) => {

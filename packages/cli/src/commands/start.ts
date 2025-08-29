@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { AuthRolesService, ExecutionRepository, SettingsRepository } from '@n8n/db';
+import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import glob from 'fast-glob';
@@ -12,8 +12,6 @@ import path from 'path';
 import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
 import { z } from 'zod';
-
-import { BaseCommand } from './base-command';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -33,6 +31,8 @@ import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
+
+import { BaseCommand } from './base-command';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -172,8 +172,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		await super.init();
-
-		await Container.get(AuthRolesService).init();
 
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
