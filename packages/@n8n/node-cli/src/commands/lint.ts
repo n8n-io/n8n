@@ -1,6 +1,6 @@
 import { Command, Flags } from '@oclif/core';
 
-import { ChildProcessError, runWithDependencies } from '../utils/child-process';
+import { ChildProcessError, runCommand } from '../utils/child-process';
 
 export default class Lint extends Command {
 	static override description = 'Lint the node in the current directory. Includes auto-fixing.';
@@ -19,7 +19,7 @@ export default class Lint extends Command {
 		}
 
 		try {
-			await runWithDependencies('eslint', args, { stdio: 'inherit' });
+			await runCommand('eslint', args, { context: 'local', stdio: 'inherit' });
 		} catch (error: unknown) {
 			if (error instanceof ChildProcessError) {
 				if (error.signal) {

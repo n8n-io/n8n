@@ -22,48 +22,6 @@ export function commands() {
 	process.on('SIGINT', () => cleanup('SIGINT'));
 	process.on('SIGTERM', () => cleanup('SIGTERM'));
 
-	async function runCommand(
-		cmd: string,
-		args: string[],
-		opts: {
-			cwd?: string;
-			env?: NodeJS.ProcessEnv;
-		} = {},
-	): Promise<void> {
-		return await new Promise((resolve, reject) => {
-			const child = spawn(cmd, args, {
-				cwd: opts.cwd,
-				env: { ...process.env, ...opts.env },
-				stdio: ['ignore', 'pipe', 'pipe'],
-			});
-
-			const stdoutBuffers: Buffer[] = [];
-			const stderrBuffers: Buffer[] = [];
-
-			child.stdout.on('data', (data: Buffer) => {
-				stdoutBuffers.push(data);
-			});
-			child.stderr.on('data', (data: Buffer) => {
-				stderrBuffers.push(data);
-			});
-
-			child.on('close', (code) => {
-				if (code === 0) resolve();
-				else {
-					for (const buffer of stdoutBuffers) {
-						process.stdout.write(buffer);
-					}
-					for (const buffer of stderrBuffers) {
-						process.stderr.write(buffer);
-					}
-					reject(new Error(`${cmd} exited with code ${code}`));
-				}
-			});
-
-			registerChild(child);
-		});
-	}
-
 	function runPersistentCommand(
 		cmd: string,
 		args: string[],
@@ -116,7 +74,6 @@ export function commands() {
 	}
 
 	return {
-		runCommand,
 		runPersistentCommand,
 	};
 }

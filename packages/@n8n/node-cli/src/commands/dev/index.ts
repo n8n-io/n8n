@@ -11,6 +11,7 @@ import { ensureN8nPackage, onCancel } from '../../utils/prompts';
 import { validateNodeName } from '../../utils/validation';
 import { copyStaticFiles } from '../build';
 import { commands, readPackageName } from './utils';
+import { runCommand } from '../../utils/child-process';
 
 export default class Dev extends Command {
 	static override description = 'Run n8n with the node and rebuild on changes for live preview';
@@ -36,7 +37,7 @@ export default class Dev extends Command {
 		const { flags } = await this.parse(Dev);
 
 		const packageManager = (await detectPackageManager()) ?? 'npm';
-		const { runCommand, runPersistentCommand } = commands();
+		const { runPersistentCommand } = commands();
 
 		intro(picocolors.inverse(' n8n-node dev '));
 

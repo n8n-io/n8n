@@ -1,4 +1,4 @@
-import { cancel, intro, outro, spinner } from '@clack/prompts';
+import { cancel, intro, log, outro, spinner } from '@clack/prompts';
 import { Command } from '@oclif/core';
 import glob from 'fast-glob';
 import { cp, mkdir } from 'node:fs/promises';
@@ -6,7 +6,7 @@ import path from 'node:path';
 import picocolors from 'picocolors';
 import { rimraf } from 'rimraf';
 
-import { runWithDependencies } from '../utils/child-process';
+import { runCommand } from '../utils/child-process';
 import { ensureN8nPackage } from '../utils/prompts';
 
 export default class Build extends Command {
@@ -44,7 +44,12 @@ export default class Build extends Command {
 }
 
 async function runTscBuild(): Promise<void> {
-	return await runWithDependencies('tsc');
+	return await runCommand('tsc', [], {
+		context: 'local',
+		printOutput: ({ stdout, stderr }) => {
+			log.error(stdout.concat(stderr).toString());
+		},
+	});
 }
 
 export async function copyStaticFiles() {
