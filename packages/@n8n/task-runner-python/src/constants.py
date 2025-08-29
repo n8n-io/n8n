@@ -82,6 +82,8 @@ ALWAYS_BLOCKED_ATTRIBUTES = {
     "cr_code",
     "ag_frame",
     "ag_code",
+    "__thisclass__",
+    "__self_class__",
 }
 CONDITIONALLY_BLOCKED_ATTRIBUTES = {
     "__class__",
