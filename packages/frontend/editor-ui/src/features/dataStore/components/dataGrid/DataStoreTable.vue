@@ -652,10 +652,9 @@ const handleCopyFocusedCell = async (params: CellKeyDownEvent<DataStoreRow>) => 
 		return;
 	}
 	const row = params.api.getDisplayedRowAtIndex(focused.rowIndex);
-	if (row) {
-		const colDef = focused.column.getColDef();
-		const field = (colDef.field as string) ?? focused.column.getColId();
-		const rawValue = (row.data as Record<string, unknown>)[field as string];
+	const colDef = focused.column.getColDef();
+	if (row?.data && colDef.field) {
+		const rawValue = row.data[colDef.field];
 		const text = rawValue === null || rawValue === undefined ? '' : String(rawValue);
 		await copyToClipboard(text);
 	}
