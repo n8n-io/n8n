@@ -16,8 +16,8 @@ exports[`WorkflowHistoryButton > should be enabled if the feature is enabled and
       loading="false"
       outline="false"
       size="medium"
-      text="true"
-      type="tertiary"
+      text="false"
+      type="highlight"
     />
     
   </div>
