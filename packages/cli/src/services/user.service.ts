@@ -16,6 +16,7 @@ import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { PublicApiKeyService } from './public-api-key.service';
+import { RoleService } from './role.service';
 
 @Service()
 export class UserService {
@@ -26,6 +27,7 @@ export class UserService {
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
 		private readonly publicApiKeyService: PublicApiKeyService,
+		private readonly roleService: RoleService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -210,6 +212,12 @@ export class UserService {
 				: 'Creating 1 user shell...',
 		);
 
+		// Check that all roles in the invitations exist in the database
+		await this.roleService.checkRolesExist(
+			invitations.map(({ role }) => role),
+			'global',
+		);
+
 		try {
 			await this.getManager().transaction(
 				async (transactionManager) =>
@@ -246,6 +254,9 @@ export class UserService {
 	}
 
 	async changeUserRole(user: User, targetUser: User, newRole: RoleChangeRequestDto) {
+		// Check that new role exists
+		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
+
 		return await this.userRepository.manager.transaction(async (trx) => {
 			await trx.update(User, { id: targetUser.id }, { role: { slug: newRole.newRoleName } });
 

@@ -1,6 +1,6 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager, In, Repository } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { Role } from '../entities';
@@ -21,6 +21,13 @@ export class RoleRepository extends Repository<Role> {
 	async findBySlug(slug: string) {
 		return await this.findOne({
 			where: { slug },
+			relations: ['scopes'],
+		});
+	}
+
+	async findBySlugs(slugs: string[], roleType: 'global' | 'project' | 'workflow' | 'credential') {
+		return await this.find({
+			where: { slug: In(slugs), roleType },
 			relations: ['scopes'],
 		});
 	}

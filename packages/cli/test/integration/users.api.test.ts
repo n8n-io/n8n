@@ -41,6 +41,7 @@ import { createAdmin, createMember, createOwner, createUser, getUserById } from 
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 import { validateUser } from './shared/utils/users';
+import { createRole } from '@test-integration/db/roles';
 
 mockInstance(Telemetry);
 mockInstance(ExecutionService);
@@ -1572,5 +1573,31 @@ describe('PATCH /users/:id/role', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toStrictEqual({ success: true });
+	});
+
+	test('should fail to change to non-existing role', async () => {
+		const customRole = 'custom:project-role';
+		await createRole({ slug: customRole, displayName: 'Custom Role', roleType: 'project' });
+		const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
+			newRoleName: customRole,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('Role custom:project-role does not exist');
+	});
+
+	test('should change to existing custom role', async () => {
+		const customRole = 'custom:role';
+		await createRole({ slug: customRole, displayName: 'Custom Role', roleType: 'global' });
+		const response = await ownerAgent.patch(`/users/${member.id}/role`).send({
+			newRoleName: customRole,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toStrictEqual({ success: true });
+
+		const user = await getUserById(member.id);
+
+		expect(user.role.slug).toBe(customRole);
 	});
 });
