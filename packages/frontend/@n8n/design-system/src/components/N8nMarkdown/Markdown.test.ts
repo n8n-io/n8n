@@ -120,7 +120,6 @@ describe('components', () => {
 			const textOccurrences = (html.match(/Test item/g) || []).length;
 
 			// Should appear exactly twice: once as checkbox label, once as continuation text
-			// Not 4 times as in the bug
 			expect(textOccurrences).toBe(2);
 
 			// Should have exactly one checkbox
