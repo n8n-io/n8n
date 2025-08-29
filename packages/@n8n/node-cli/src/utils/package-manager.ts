@@ -54,7 +54,7 @@ export async function installDependencies({
 	return await new Promise((resolve, reject) => {
 		const child = spawn(packageManager, ['install'], {
 			cwd: dir,
-			stdio: [null, 'pipe', 'pipe'],
+			stdio: ['ignore', 'pipe', 'pipe'],
 			shell: true,
 		});
 

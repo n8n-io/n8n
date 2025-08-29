@@ -90,7 +90,7 @@ n8n-node dev [--external-n8n] [--custom-user-folder <value>]
 | Flag | Description |
 |------|-------------|
 | `--external-n8n` | Run n8n externally instead of in a subprocess |
-| `--custom-user-folder <path>` | Folder to use to store user-specific n8n data (default: `~/.n8n-node-cli/.n8n/custom`) |
+| `--custom-user-folder <path>` | Folder to use to store user-specific n8n data (default: `~/.n8n-node-cli`) |
 
 This command:
 - Starts n8n on `http://localhost:5678` (unless using `--external-n8n`)
@@ -165,31 +165,6 @@ This command handles the complete release process using [release-it](https://git
 - Creates git tags
 - Creates GitHub releases
 - Publishes to npm
-
-#### `n8n-node new`
-
-Create a new node project.
-
-```bash
-n8n-node new [NAME] [OPTIONS]
-```
-
-**Flags:**
-| Flag | Description |
-|------|-------------|
-| `-f, --force` | Overwrite destination folder if it already exists |
-| `--skip-install` | Skip installing dependencies |
-| `--template <template>` | Choose template: `declarative/custom`, `declarative/github-issues`, `programmatic/example` |
-
-**Examples:**
-```bash
-n8n-node new
-n8n-node new n8n-nodes-my-app --skip-install
-n8n-node new n8n-nodes-my-app --force
-n8n-node new n8n-nodes-my-app --template declarative/custom
-```
-
-> **Note:** This command is used internally by `pnpm create @n8n/node` to provide the interactive scaffolding experience.
 
 ## 🔄 Development Workflow
 

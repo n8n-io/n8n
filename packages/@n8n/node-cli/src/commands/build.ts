@@ -1,13 +1,12 @@
-import { cancel, intro, log, outro, spinner } from '@clack/prompts';
+import { cancel, intro, outro, spinner } from '@clack/prompts';
 import { Command } from '@oclif/core';
-import { spawn } from 'child_process';
 import glob from 'fast-glob';
 import { cp, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import picocolors from 'picocolors';
 import { rimraf } from 'rimraf';
 
-import { detectPackageManager } from '../utils/package-manager';
+import { runWithDependencies } from '../utils/child-process';
 import { ensureN8nPackage } from '../utils/prompts';
 
 export default class Build extends Command {
@@ -45,38 +44,7 @@ export default class Build extends Command {
 }
 
 async function runTscBuild(): Promise<void> {
-	const packageManager = (await detectPackageManager()) ?? 'npm';
-	return await new Promise((resolve, reject) => {
-		const child = spawn(packageManager, ['exec', '--', 'tsc'], {
-			stdio: [null, 'pipe', 'pipe'],
-			shell: true,
-		});
-
-		let stderr = '';
-		let stdout = '';
-
-		child.stdout.on('data', (chunk: Buffer) => {
-			stdout += chunk.toString();
-		});
-
-		child.stderr.on('data', (chunk: Buffer) => {
-			stderr += chunk.toString();
-		});
-
-		child.on('error', (error) => {
-			log.error(`${stdout.trim()}\n${stderr.trim()}`);
-			reject(error);
-		});
-
-		child.on('close', (code) => {
-			if (code === 0) {
-				resolve();
-			} else {
-				log.error(`${stdout.trim()}\n${stderr.trim()}`);
-				reject(new Error(`tsc exited with code ${code}`));
-			}
-		});
-	});
+	return await runWithDependencies('tsc');
 }
 
 export async function copyStaticFiles() {

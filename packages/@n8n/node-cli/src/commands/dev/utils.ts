@@ -34,23 +34,27 @@ export function commands() {
 			const child = spawn(cmd, args, {
 				cwd: opts.cwd,
 				env: { ...process.env, ...opts.env },
-				stdio: [null, 'pipe', 'pipe'],
+				stdio: ['ignore', 'pipe', 'pipe'],
 			});
 
-			const output: Buffer[] = [];
+			const stdoutBuffers: Buffer[] = [];
+			const stderrBuffers: Buffer[] = [];
 
-			const handleOutput = (data: Buffer): void => {
-				output.push(data);
-			};
-
-			child.stdout.on('data', handleOutput);
-			child.stderr.on('data', handleOutput);
+			child.stdout.on('data', (data: Buffer) => {
+				stdoutBuffers.push(data);
+			});
+			child.stderr.on('data', (data: Buffer) => {
+				stderrBuffers.push(data);
+			});
 
 			child.on('close', (code) => {
 				if (code === 0) resolve();
 				else {
-					for (const buffer of output) {
-						console.log(buffer);
+					for (const buffer of stdoutBuffers) {
+						process.stdout.write(buffer);
+					}
+					for (const buffer of stderrBuffers) {
+						process.stderr.write(buffer);
 					}
 					reject(new Error(`${cmd} exited with code ${code}`));
 				}

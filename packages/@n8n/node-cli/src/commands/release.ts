@@ -1,6 +1,6 @@
 import { Command } from '@oclif/core';
-import { spawn } from 'node:child_process';
 
+import { ChildProcessError, runWithDependencies } from '../utils/child-process';
 import { detectPackageManager } from '../utils/package-manager';
 
 export default class Release extends Command {
@@ -13,34 +13,32 @@ export default class Release extends Command {
 
 		const pm = (await detectPackageManager()) ?? 'npm';
 
-		const child = spawn(
-			pm,
-			[
-				'exec',
-				'--',
+		try {
+			await runWithDependencies(
 				'release-it',
-				'--git.requireBranch=main',
-				'--git.requireCleanWorkingDir',
-				'--git.requireUpstream',
-				'--git.requireCommits',
-				`--hooks.before:init="${pm} lint && ${pm} build"`,
-			],
-			{
-				stdio: 'inherit',
-				cwd: process.cwd(),
-				env: {
-					...process.env,
-					RELEASE_MODE: 'true',
+				[
+					'--git.requireBranch=main',
+					'--git.requireCleanWorkingDir',
+					'--git.requireUpstream',
+					'--git.requireCommits',
+					`--hooks.before:init="${pm} run lint && ${pm} run build"`,
+				],
+				{
+					stdio: 'inherit',
+					env: {
+						RELEASE_MODE: 'true',
+					},
 				},
-			},
-		);
-
-		child.on('exit', (code, signal) => {
-			if (signal) {
-				process.kill(process.pid, signal);
-			} else {
-				process.exit(code ?? 0);
+			);
+		} catch (error) {
+			if (error instanceof ChildProcessError) {
+				if (error.signal) {
+					process.kill(process.pid, error.signal);
+				} else {
+					process.exit(error.code ?? 0);
+				}
 			}
-		});
+			throw error;
+		}
 	}
 }

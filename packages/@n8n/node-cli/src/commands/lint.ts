@@ -1,7 +1,6 @@
 import { Command, Flags } from '@oclif/core';
-import { spawn } from 'node:child_process';
 
-import { detectPackageManager } from '../utils/package-manager';
+import { ChildProcessError, runWithDependencies } from '../utils/child-process';
 
 export default class Lint extends Command {
 	static override description = 'Lint the node in the current directory. Includes auto-fixing.';
@@ -13,23 +12,23 @@ export default class Lint extends Command {
 	async run(): Promise<void> {
 		const { flags } = await this.parse(Lint);
 
-		const commands = ['exec', '--', 'eslint', '.'];
+		const args = ['.'];
 
 		if (flags.fix) {
-			commands.push('--fix');
+			args.push('--fix');
 		}
 
-		const child = spawn((await detectPackageManager()) ?? 'npm', commands, {
-			stdio: 'inherit',
-			cwd: process.cwd(),
-		});
-
-		child.on('exit', (code, signal) => {
-			if (signal) {
-				process.kill(process.pid, signal);
-			} else {
-				process.exit(code ?? 0);
+		try {
+			await runWithDependencies('eslint', args, { stdio: 'inherit' });
+		} catch (error: unknown) {
+			if (error instanceof ChildProcessError) {
+				if (error.signal) {
+					process.kill(process.pid, error.signal);
+				} else {
+					process.exit(error.code ?? 0);
+				}
 			}
-		});
+			throw error;
+		}
 	}
 }
