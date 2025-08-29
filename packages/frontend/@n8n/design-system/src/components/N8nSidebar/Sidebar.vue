@@ -3,7 +3,7 @@ import N8nLogo from '../N8nLogo';
 import N8nText from '../N8nText';
 import SidebarItem from './SidebarItem.vue';
 import N8nResizeWrapper from '../N8nResizeWrapper';
-import { N8nIconButton, N8nRoute, N8nTooltip } from '..';
+import { N8nIcon, N8nIconButton, N8nPopoverReka, N8nRoute, N8nTooltip } from '..';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 import { useSidebarLayout } from './useSidebarLayout';
 import { IMenuItem, IMenuElement, isCustomMenuItem } from '@n8n/design-system/types';
@@ -41,6 +41,10 @@ const {
 	peakMouseOver,
 	subMenuOpen,
 } = useSidebarLayout({});
+// TODO hide signout and settings, move to name dropdown
+// TODO check scroll behavior of header
+// Make help button bigger
+// Use n8nPopover
 </script>
 
 <template>
@@ -62,11 +66,38 @@ const {
 		@resizeend="onResizeEnd"
 	>
 		<header class="sidebarHeader">
-			<N8nLogo
-				class="sidebarHeaderLogo"
-				location="sidebar"
-				:release-channel="props.releaseChannel"
-			/>
+			<N8nPopoverReka :enable-scrolling="false">
+				<template #trigger>
+					<div class="sidebarHeaderLogo">
+						<N8nLogo location="sidebar" :release-channel="props.releaseChannel" />
+						<N8nIcon color="text-light" icon="chevron-down" />
+					</div>
+				</template>
+				<template #content>
+					<div class="sideHeaderPopover">
+						<N8nText class="userName" size="small" bold>{{ userName }}</N8nText>
+						<SidebarItem
+							:item="{
+								id: 'settings',
+								label: 'Settings',
+								type: 'other',
+								route: { to: `/settings` },
+								icon: 'settings',
+							}"
+						/>
+						<SidebarItem
+							@click="$emit('logout')"
+							:item="{
+								id: 'sign-out',
+								label: 'Sign out',
+								type: 'other',
+								icon: 'door-open',
+							}"
+						/>
+					</div>
+				</template>
+			</N8nPopoverReka>
+
 			<slot name="createButton" />
 			<N8nTooltip placement="right">
 				<template #content>
@@ -117,37 +148,6 @@ const {
 		<slot name="creatorCallout" />
 		<slot name="sourceControl" />
 		<div class="sidebarUserArea">
-			<N8nText class="userName" size="small" bold>{{ userName }}</N8nText>
-			<N8nTooltip placement="top">
-				<template #content>
-					<N8nText size="small">Sign out</N8nText>
-				</template>
-				<N8nIconButton
-					@click="$emit('logout')"
-					aria-label="Sign out"
-					icon-size="large"
-					size="xmini"
-					icon="door-open"
-					type="secondary"
-					text
-					square
-				/>
-			</N8nTooltip>
-			<N8nTooltip placement="top">
-				<template #content>
-					<N8nText size="small">Settings</N8nText>
-				</template>
-				<N8nRoute to="/settings">
-					<N8nIconButton
-						icon-size="large"
-						size="xmini"
-						icon="settings"
-						type="secondary"
-						text
-						square
-					/>
-				</N8nRoute>
-			</N8nTooltip>
 			<SidebarSubMenu @update:open="(state) => (subMenuOpen = state)" :subMenuOpen="subMenuOpen">
 				<template #trigger>
 					<N8nIconButton
@@ -285,12 +285,36 @@ const {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing-2xs);
-	padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs);
+	padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs) var(--spacing-2xs);
 	background-color: var(--color-foreground-xlight);
+
+	&:focus-within {
+		.sidebarHeaderLogo {
+			background-color: var(--color-foreground-light);
+			border-radius: var(--border-radius-base);
+		}
+	}
 }
 
 .sidebarHeaderLogo {
 	margin-right: auto;
+	display: flex;
+	gap: var(--spacing-4xs);
+	align-items: center;
+	padding: var(--spacing-5xs) var(--spacing-4xs);
+
+	&:hover,
+	&:focus-within {
+		background-color: var(--color-foreground-light);
+		border-radius: var(--border-radius-base);
+		cursor: pointer;
+	}
+}
+
+.sideHeaderPopover {
+	padding: var(--spacing-2xs);
+	min-width: 200px;
+	height: fit-content;
 }
 
 .sidebarSubheader {
@@ -333,6 +357,9 @@ const {
 
 .userName {
 	margin-right: auto;
+	display: block;
+	margin-bottom: var(--spacing-4xs);
+	padding: var(--spacing-4xs);
 }
 
 .sidebarSubMenuSection:first-of-type {
