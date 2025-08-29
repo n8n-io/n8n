@@ -7,7 +7,6 @@ import { N8nIcon, N8nIconButton, N8nPopoverReka, N8nTooltip } from '..';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 import { useSidebarLayout } from './useSidebarLayout';
 import { IMenuItem, IMenuElement, isCustomMenuItem } from '@n8n/design-system/types';
-import SidebarSubMenu from './SidebarSubMenu.vue';
 import SidebarProjectsEmpty from './SidebarProjectsEmpty.vue';
 import SidebarTree from './SidebarTree.vue';
 
@@ -143,8 +142,12 @@ const {
 		</nav>
 		<slot name="creatorCallout" />
 		<slot name="sourceControl" />
-		<div class="sidebarUserArea">
-			<SidebarSubMenu @update:open="(state) => (subMenuOpen = state)" :subMenuOpen="subMenuOpen">
+		<div class="sidebarHelpArea">
+			<N8nPopoverReka
+				@update:open="(state) => (subMenuOpen = state)"
+				:open="subMenuOpen"
+				align="start"
+			>
 				<template #trigger>
 					<N8nIconButton
 						icon-size="large"
@@ -156,31 +159,37 @@ const {
 					/>
 				</template>
 				<template #content>
-					<div v-for="item in helpItems" :key="item.id" class="sidebarSubMenuSection">
-						<N8nText
-							v-if="!isCustomMenuItem(item)"
-							class="sidebarSubMenuSectionHeader"
-							size="small"
-							bold
-							color="text-light"
-							>{{ item.label }}</N8nText
-						>
-						<div v-if="!isCustomMenuItem(item)" v-for="subItem in item.children" :key="subItem.id">
-							<component
-								v-if="isCustomMenuItem(subItem)"
-								:is="subItem.component"
-								v-bind="subItem.props || {}"
-							/>
-							<SidebarItem
-								v-else
-								:item="subItem"
-								@click="handleSelect ? handleSelect(subItem.id) : undefined"
-								:ariaLabel="`Go to ${subItem.label}`"
-							/>
+					<div class="sidebarSubMenuPopover">
+						<div v-for="item in helpItems" :key="item.id" class="sidebarSubMenuSection">
+							<N8nText
+								v-if="!isCustomMenuItem(item)"
+								class="sidebarSubMenuSectionHeader"
+								size="small"
+								bold
+								color="text-light"
+								>{{ item.label }}</N8nText
+							>
+							<div
+								v-if="!isCustomMenuItem(item)"
+								v-for="subItem in item.children"
+								:key="subItem.id"
+							>
+								<component
+									v-if="isCustomMenuItem(subItem)"
+									:is="subItem.component"
+									v-bind="subItem.props || {}"
+								/>
+								<SidebarItem
+									v-else
+									:item="subItem"
+									@click="handleSelect ? handleSelect(subItem.id) : undefined"
+									:ariaLabel="`Go to ${subItem.label}`"
+								/>
+							</div>
 						</div>
 					</div>
 				</template>
-			</SidebarSubMenu>
+			</N8nPopoverReka>
 		</div>
 	</N8nResizeWrapper>
 	<div
@@ -200,6 +209,7 @@ const {
 	overflow-x: hidden;
 	overflow-y: auto;
 	border-right: var(--border-base);
+	border-color: var(--color-foreground-light);
 	display: flex;
 	flex-direction: column;
 
@@ -309,6 +319,11 @@ const {
 	height: fit-content;
 }
 
+.sidebarSubMenuPopover {
+	width: 300px;
+	padding: var(--spacing-xs);
+}
+
 .sidebarSubheader {
 	display: block;
 	padding-top: var(--spacing-s);
@@ -337,14 +352,16 @@ const {
 	gap: var(--spacing-2xs);
 }
 
-.sidebarUserArea {
+.sidebarHelpArea {
 	position: relative;
 	padding: var(--spacing-3xs) var(--spacing-xs) var(--spacing-2xs) var(--spacing-xs);
 	background-color: var(--color-foreground-xlight);
 	border-top: var(--border-base);
+	border-color: var(--color-foreground-light);
 	display: flex;
 	gap: var(--spacing-2xs);
-	align-items: center;
+
+	justify-content: flex-end;
 }
 
 .userName {
