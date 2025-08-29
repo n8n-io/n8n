@@ -24,6 +24,7 @@ import type {
 	CellEditingStartedEvent,
 	CellEditingStoppedEvent,
 	CellKeyDownEvent,
+	ValueFormatterParams,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -67,6 +68,7 @@ import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/Null
 import { onClickOutside } from '@vueuse/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { reorderItem } from '@/features/dataStore/utils';
+import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -255,8 +257,8 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		resizable: true,
 		lockPinned: true,
 		headerComponent: ColumnHeader,
+		headerComponentParams: { onDelete: onDeleteColumn, allowMenuActions: true },
 		cellEditorPopup: false,
-		headerComponentParams: { onDelete: onDeleteColumn },
 		cellDataType: mapToAGCellType(col.type),
 		cellClass: (params) => {
 			if (params.data?.id === ADD_ROW_ROW_ID) {
@@ -389,17 +391,13 @@ const onAddRowClick = async () => {
 		}
 		contentLoading.value = true;
 		emit('toggleSave', true);
-		const newRowId = await dataStoreStore.insertEmptyRow(props.dataStore);
-		const newRow: DataStoreRow = { id: newRowId };
-		// Add nulls for the rest of the columns
-		props.dataStore.columns.forEach((col) => {
-			newRow[col.name] = null;
-		});
+		const insertedRow = await dataStoreStore.insertEmptyRow(props.dataStore);
+		const newRow: DataStoreRow = insertedRow;
 		rowData.value.push(newRow);
 		totalItems.value += 1;
 		refreshGridData();
 		await nextTick();
-		focusFirstEditableCell(newRowId);
+		focusFirstEditableCell(newRow.id as number);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 	} finally {
@@ -409,6 +407,20 @@ const onAddRowClick = async () => {
 };
 
 const initColumnDefinitions = () => {
+	const systemDateColumnOptions: Partial<ColDef> = {
+		editable: false,
+		suppressMovable: true,
+		lockPinned: true,
+		lockPosition: 'right',
+		headerComponentParams: {
+			allowMenuActions: false,
+		},
+		valueFormatter: (params: ValueFormatterParams<DataStoreRow>) => {
+			if (!params.value) return '';
+			const { date, time } = convertToDisplayDate(params.value as Date | string | number);
+			return `${date}, ${time}`;
+		},
+	};
 	colDefs.value = [
 		// Always add the ID column, it's not returned by the back-end but all data stores have it
 		// We use it as a placeholder for new datastores
@@ -446,6 +458,24 @@ const initColumnDefinitions = () => {
 		createColumnDef(
 			{
 				index: props.dataStore.columns.length + 1,
+				id: 'createdAt',
+				name: 'createdAt',
+				type: 'date',
+			},
+			systemDateColumnOptions,
+		),
+		createColumnDef(
+			{
+				index: props.dataStore.columns.length + 2,
+				id: 'updatedAt',
+				name: 'updatedAt',
+				type: 'date',
+			},
+			systemDateColumnOptions,
+		),
+		createColumnDef(
+			{
+				index: props.dataStore.columns.length + 3,
 				id: 'add-column',
 				name: 'Add Column',
 				type: 'string',
