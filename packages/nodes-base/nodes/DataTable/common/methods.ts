@@ -45,9 +45,9 @@ export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	const returnData: Array<INodePropertyOptions & { type: string }> = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
 		{ name: 'id - (number)', value: 'id', type: 'number' },
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 		{ name: 'createdAt - (date)', value: 'createdAt', type: 'date' },
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 		{ name: 'updatedAt - (date)', value: 'updatedAt', type: 'date' },
 	];
 	const proxy = await getDataTableProxyLoadOptions(this);
