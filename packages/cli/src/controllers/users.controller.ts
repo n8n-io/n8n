@@ -5,6 +5,7 @@ import {
 	usersListSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import {
 	Project,
@@ -48,6 +49,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 @RestController('/users')
 export class UsersController {
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
@@ -223,6 +225,10 @@ export class UsersController {
 		let transfereeId;
 
 		if (transferId) {
+			if (this.globalConfig.credentials.disableSharing) {
+				throw new BadRequestError('Credential sharing is disabled on this instance.');
+			}
+
 			const transfereeProject = await this.projectRepository.findOneBy({ id: transferId });
 
 			if (!transfereeProject) {

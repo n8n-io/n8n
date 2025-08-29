@@ -482,6 +482,10 @@ export class WorkflowsController {
 	@Put('/:workflowId/share')
 	@ProjectScope('workflow:share')
 	async share(req: WorkflowRequest.Share) {
+		if (this.globalConfig.workflows.disableSharing) {
+			throw new BadRequestError('Workflow sharing is disabled on this instance.');
+		}
+
 		const { workflowId } = req.params;
 		const { shareWithIds } = req.body;
 
@@ -554,12 +558,18 @@ export class WorkflowsController {
 		@Param('workflowId') workflowId: string,
 		@Body body: TransferWorkflowBodyDto,
 	) {
+		if (this.globalConfig.workflows.disableSharing) {
+			throw new BadRequestError('Workflow sharing is disabled on this instance.');
+		}
+
+		const { destinationProjectId, shareCredentials, destinationParentFolderId } = body;
+
 		return await this.enterpriseWorkflowService.transferWorkflow(
 			req.user,
 			workflowId,
-			body.destinationProjectId,
-			body.shareCredentials,
-			body.destinationParentFolderId,
+			destinationProjectId,
+			shareCredentials,
+			destinationParentFolderId,
 		);
 	}
 

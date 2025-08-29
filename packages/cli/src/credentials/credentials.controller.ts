@@ -300,6 +300,10 @@ export class CredentialsController {
 	@Put('/:credentialId/share')
 	@ProjectScope('credential:share')
 	async shareCredentials(req: CredentialRequest.Share) {
+		if (this.globalConfig.credentials.disableSharing) {
+			throw new BadRequestError('Credential sharing is disabled on this instance.');
+		}
+
 		const { credentialId } = req.params;
 		const { shareWithIds } = req.body;
 
@@ -378,6 +382,10 @@ export class CredentialsController {
 	@Put('/:credentialId/transfer')
 	@ProjectScope('credential:move')
 	async transfer(req: CredentialRequest.Transfer) {
+		if (this.globalConfig.credentials.disableSharing) {
+			throw new BadRequestError('Credential sharing is disabled on this instance.');
+		}
+
 		const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
 
 		return await this.enterpriseCredentialsService.transferOne(

@@ -96,6 +96,7 @@ describe('GlobalConfig', () => {
 		},
 		credentials: {
 			defaultName: 'My credentials',
+			disableSharing: false,
 			overwrite: {
 				data: '{}',
 				endpoint: '',
@@ -167,6 +168,7 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
+			disableSharing: false,
 		},
 		endpoints: {
 			metrics: {
