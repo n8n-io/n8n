@@ -591,7 +591,12 @@ const fetchWorkflows = async () => {
 		foldersStore.cacheFolders(
 			fetchedResources
 				.filter((resource) => resource.resource === 'folder')
-				.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
+				.map((r) => ({
+					id: r.id,
+					name: r.name,
+					parentFolder: r.parentFolder?.id,
+					projectId: routeProjectId ?? homeProjectFilter,
+				})),
 		);
 
 		// This is for the case when user lands straight on a folder page

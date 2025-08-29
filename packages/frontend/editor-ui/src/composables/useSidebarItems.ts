@@ -37,7 +37,6 @@ export function useSidebarItems() {
 	});
 
 	function workflowToMenuItem(workflow: IWorkflowDb): IMenuElement {
-		console.log(workflow.name, workflow);
 		return {
 			id: workflow.id,
 			label: workflow.name,
@@ -51,7 +50,11 @@ export function useSidebarItems() {
 		await workflowsStore.fetchAllWorkflows(id, true);
 	}
 
-	const convertToTreeStructure = computed(() => (projectId: string): IMenuElement[] => {
+	function convertToTreeStructure(projectId: string): IMenuElement[] {
+		if (projectId === 'Pg8kVunsukbhAwGR') {
+			console.log('incoming', folderStore.breadcrumbsCache);
+		}
+
 		const projectFolders = Object.values(folderStore.breadcrumbsCache).filter(
 			(f) => f.projectId === projectId,
 		);
@@ -105,8 +108,14 @@ export function useSidebarItems() {
 			return tree;
 		}
 
-		return buildTree(projectFolders, projectWorkflows);
-	});
+		const builtTree = buildTree(projectFolders, projectWorkflows);
+
+		if (projectId === 'Pg8kVunsukbhAwGR') {
+			console.log('Built tree:', builtTree);
+		}
+
+		return builtTree;
+	}
 
 	const sharedWorkflows = computed(() =>
 		workflowsStore.allWorkflows
@@ -118,37 +127,39 @@ export function useSidebarItems() {
 			}),
 	);
 
-	const topItems = computed<IMenuElement[]>(() => [
-		{
-			id: 'overview',
-			label: 'Overview',
-			icon: 'house',
-			route: { to: '/home/workflows' },
-			type: 'other',
-			available: true,
-		},
-		{
-			id: projectsStore.personalProject?.id as string,
-			label: 'Personal',
-			icon: 'user',
-			route: { to: `/projects/${projectsStore.personalProject?.id}/workflows` },
-			children: convertToTreeStructure.value(projectsStore.personalProject?.id as string),
-			type: 'project',
-			available: true,
-		},
-		{
-			id: 'shared',
-			label: 'Shared with you',
-			icon: 'share',
-			route: { to: '/shared/workflows' },
-			available: showShared.value,
-			type: 'project',
-			children:
-				sharedWorkflows.value.length > 0
-					? sharedWorkflows.value
-					: [{ id: 'empty', label: 'No shared workflows', type: 'empty', available: false }],
-		},
-	]);
+	const topItems = computed<IMenuElement[]>(() => {
+		return [
+			{
+				id: 'overview',
+				label: 'Overview',
+				icon: 'house',
+				route: { to: '/home/workflows' },
+				type: 'other',
+				available: true,
+			},
+			{
+				id: projectsStore.personalProject?.id as string,
+				label: 'Personal',
+				icon: 'user',
+				route: { to: `/projects/${projectsStore.personalProject?.id}/workflows` },
+				children: convertToTreeStructure(projectsStore.personalProject?.id as string),
+				type: 'project',
+				available: true,
+			},
+			{
+				id: 'shared',
+				label: 'Shared with you',
+				icon: 'share',
+				route: { to: '/shared/workflows' },
+				available: showShared.value,
+				type: 'project',
+				children:
+					sharedWorkflows.value.length > 0
+						? sharedWorkflows.value
+						: [{ id: 'empty', label: 'No shared workflows', type: 'empty', available: false }],
+			},
+		];
+	});
 
 	const topItemsFiltered = computed(() => topItems.value.filter((item) => item.available));
 
@@ -156,7 +167,7 @@ export function useSidebarItems() {
 		projectsStore.myProjects
 			.filter((p) => p.type === 'team')
 			.map((project) => {
-				const children = convertToTreeStructure.value(project.id);
+				const children = convertToTreeStructure(project.id);
 				return {
 					id: project.id,
 					label: project.name as string,
@@ -164,7 +175,7 @@ export function useSidebarItems() {
 					route: { to: `/projects/${project.id}/workflows` },
 					children:
 						children.length > 0
-							? convertToTreeStructure.value(project.id)
+							? convertToTreeStructure(project.id)
 							: [
 									{
 										id: 'empty',

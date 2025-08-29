@@ -28,12 +28,16 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	// Only folders and projects can be drop targets
 	const activeDropTarget = ref<DropTarget | null>(null);
 
+	/** Cache for folders accessed in the sidebar */
+	const sidebarCache = ref<Record<string, FolderShortInfo>>({});
+
 	/**
 	 * Cache visited folders so we can build breadcrumbs paths without fetching them from the server
 	 */
 	const breadcrumbsCache = ref<Record<string, FolderShortInfo>>({});
 
-	const cacheFolders = (folders: FolderShortInfo[]) => {
+	const cacheFolders = (folders: FolderShortInfo[], from?: string) => {
+		console.log(`Caching ${folders.length} folders from ${from || 'unknown source'}`);
 		folders.forEach((folder) => {
 			if (!breadcrumbsCache.value[folder.id]) {
 				breadcrumbsCache.value[folder.id] = {
@@ -126,27 +130,16 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	}
 
 	async function fetchProjectFolders(projectId: string) {
-		const { data } = await workflowsApi.getWorkflowsAndFolders(
-			rootStore.restApiContext,
-			{ projectId, isArchived: false },
-			undefined,
+		const { data } = await workflowsApi.getProjectFolders(rootStore.restApiContext, projectId);
 
-			true,
-		);
-		console.log('For cache:', data);
-		const forCache: FolderShortInfo[] = data
-			.filter((f) => f.resource === 'folder')
-			.map((folder) => ({
-				id: folder.id,
-				name: folder.name,
-				parentFolder: folder.parentFolder?.id,
-				projectId,
-			}));
-
-		console.log('For cache:', forCache);
+		const forCache: FolderShortInfo[] = data.map((folder) => ({
+			id: folder.id,
+			name: folder.name,
+			parentFolder: folder.parentFolder?.id,
+			projectId,
+		}));
 
 		cacheFolders(forCache);
-		return;
 	}
 
 	async function fetchFoldersAvailableForMove(
