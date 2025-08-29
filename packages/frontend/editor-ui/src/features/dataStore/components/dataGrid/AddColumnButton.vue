@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
-import type {
-	DataStoreColumnCreatePayload,
-	DataStoreColumnType,
-} from '@/features/dataStore/datastore.types';
+import type { DataStoreColumnCreatePayload } from '@/features/dataStore/datastore.types';
 import { useI18n } from '@n8n/i18n';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { COLUMN_NAME_REGEX, MAX_COLUMN_NAME_LENGTH } from '@/features/dataStore/constants';
 import Tooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
 import { useDebounce } from '@/composables/useDebounce';
+import type { DataStoreColumnType } from 'n8n-workflow';
 
 const props = defineProps<{
 	// the params key is needed so that we can pass this directly to ag-grid as column

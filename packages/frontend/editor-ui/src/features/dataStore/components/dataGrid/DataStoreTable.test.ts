@@ -98,14 +98,16 @@ vi.mock('@/features/dataStore/composables/useDataStoreTypes', () => ({
 	}),
 }));
 
+const dataTableId = 'test-datastore-1';
+
 const mockDataStore: DataStore = {
-	id: 'test-datastore-1',
+	id: dataTableId,
 	name: 'Test DataStore',
 	projectId: 'project-1',
 	columns: [
-		{ id: 'col1', name: 'firstName', type: 'string', index: 1 },
-		{ id: 'col2', name: 'age', type: 'number', index: 2 },
-		{ id: 'col3', name: 'isActive', type: 'boolean', index: 3 },
+		{ id: 'col1', name: 'firstName', type: 'string', index: 1, dataTableId },
+		{ id: 'col2', name: 'age', type: 'number', index: 2, dataTableId },
+		{ id: 'col3', name: 'isActive', type: 'boolean', index: 3, dataTableId },
 	],
 	createdAt: '2024-01-01T00:00:00Z',
 	updatedAt: '2024-01-01T00:00:00Z',

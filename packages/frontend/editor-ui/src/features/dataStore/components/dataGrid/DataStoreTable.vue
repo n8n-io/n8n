@@ -3,7 +3,6 @@ import { computed, onMounted, ref, nextTick, useTemplateRef } from 'vue';
 import orderBy from 'lodash/orderBy';
 import type {
 	DataStore,
-	DataStoreColumn,
 	DataStoreColumnCreatePayload,
 	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
@@ -68,6 +67,7 @@ import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/Null
 import { onClickOutside } from '@vueuse/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { reorderItem } from '@/features/dataStore/utils';
+import type { DataStoreColumn } from 'n8n-workflow';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 
 // Register only the modules we actually use
@@ -430,6 +430,7 @@ const initColumnDefinitions = () => {
 				id: DEFAULT_ID_COLUMN_NAME,
 				name: DEFAULT_ID_COLUMN_NAME,
 				type: 'string',
+				dataTableId: props.dataStore.id,
 			},
 			{
 				editable: false,
@@ -461,6 +462,7 @@ const initColumnDefinitions = () => {
 				id: 'createdAt',
 				name: 'createdAt',
 				type: 'date',
+				dataTableId: props.dataStore.id,
 			},
 			systemDateColumnOptions,
 		),
@@ -470,6 +472,7 @@ const initColumnDefinitions = () => {
 				id: 'updatedAt',
 				name: 'updatedAt',
 				type: 'date',
+				dataTableId: props.dataStore.id,
 			},
 			systemDateColumnOptions,
 		),
@@ -479,6 +482,7 @@ const initColumnDefinitions = () => {
 				id: 'add-column',
 				name: 'Add Column',
 				type: 'string',
+				dataTableId: props.dataStore.id,
 			},
 			{
 				editable: false,
