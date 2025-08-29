@@ -45,6 +45,7 @@ vi.mock('ag-grid-community', () => ({
 	UndoRedoEditModule: {},
 	CellStyleModule: {},
 	ScrollApiModule: {},
+	PinnedRowModule: {},
 }));
 
 // Mock the n8n theme
