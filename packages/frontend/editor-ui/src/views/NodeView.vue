@@ -122,7 +122,10 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import {
+	createCanvasConnectionHandleString,
+	shouldIgnoreCanvasShortcut,
+} from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getSampleWorkflowByTemplateId } from '@/utils/templates/workflowSamples';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
@@ -917,7 +920,7 @@ async function onOpenRenameNodeModal(id: string) {
 
 	const activeElement = document.activeElement;
 
-	if (activeElement && activeElement.tagName === 'INPUT') {
+	if (activeElement && shouldIgnoreCanvasShortcut(activeElement)) {
 		// If an input is focused, do not open the rename modal
 		return;
 	}
