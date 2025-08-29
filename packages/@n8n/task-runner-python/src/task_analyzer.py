@@ -5,63 +5,20 @@ from typing import Set, Tuple
 from collections import OrderedDict
 
 from src.errors import SecurityViolationError
-from src.constants import MAX_VALIDATION_CACHE_SIZE
+from src.constants import (
+    MAX_VALIDATION_CACHE_SIZE,
+    ERROR_RELATIVE_IMPORT,
+    ERROR_STDLIB_DISALLOWED,
+    ERROR_EXTERNAL_DISALLOWED,
+    ERROR_DANGEROUS_ATTRIBUTE,
+    ERROR_SECURITY_VIOLATIONS,
+    ALWAYS_BLOCKED_ATTRIBUTES,
+    UNSAFE_ATTRIBUTES,
+)
 
 CacheKey = Tuple[str, Tuple]  # (code_hash, allowlists_tuple)
 CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
-
-ERROR_RELATIVE_IMPORT = "Relative imports are disallowed."
-ERROR_STDLIB_DISALLOWED = "Import of standard library module '{module}' is disallowed. Allowed stdlib modules: {allowed}"
-ERROR_EXTERNAL_DISALLOWED = "Import of external package '{module}' is disallowed. Allowed external packages: {allowed}"
-ERROR_DANGEROUS_ATTRIBUTE = "Access to attribute '{attr}' is disallowed, because it can be used to bypass security restrictions."
-ERROR_SECURITY_VIOLATIONS = "Security violations detected:\n{violations}"
-
-ALWAYS_BLOCKED_ATTRIBUTES = {
-    "__subclasses__",
-    "__globals__",
-    "__builtins__",
-    "__traceback__",
-    "tb_frame",
-    "tb_next",
-    "f_back",
-    "f_globals",
-    "f_locals",
-    "f_code",
-    "f_builtins",
-    "__getattribute__",
-    "__qualname__",
-    "__module__",
-    "gi_frame",
-    "gi_code",
-    "gi_yieldfrom",
-    "cr_frame",
-    "cr_code",
-    "ag_frame",
-    "ag_code",
-}
-
-CONDITIONALLY_BLOCKED_ATTRIBUTES = {
-    "__class__",
-    "__bases__",
-    "__code__",
-    "__closure__",
-    "__loader__",
-    "__cached__",
-    "__dict__",
-    "__import__",
-    "__mro__",
-    "__init_subclass__",
-    "__getattr__",
-    "__setattr__",
-    "__delattr__",
-    "__self__",
-    "__func__",
-    "__wrapped__",
-    "__annotations__",
-}
-
-UNSAFE_ATTRIBUTES = ALWAYS_BLOCKED_ATTRIBUTES | CONDITIONALLY_BLOCKED_ATTRIBUTES
 
 
 class ImportValidator(ast.NodeVisitor):
