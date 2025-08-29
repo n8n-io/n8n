@@ -169,6 +169,7 @@ const ALLOWED_FORM_FIELDS_KEYS = [
 	'requiredField',
 	'fieldValue',
 	'elementName',
+	'html',
 ];
 
 const ALLOWED_FIELD_TYPES = [
@@ -204,7 +205,7 @@ export const tryToParseJsonToFormFields = (value: unknown): FormFieldsParameter 
 					!['string', 'number', 'boolean'].includes(typeof field[key])
 				) {
 					field[key] = String(field[key]);
-				} else if (typeof field[key] === 'string') {
+				} else if (typeof field[key] === 'string' && key !== 'html') {
 					field[key] = field[key].replace(/</g, '&lt;').replace(/>/g, '&gt;');
 				}
 
@@ -249,7 +250,6 @@ export const tryToParseJsonToFormFields = (value: unknown): FormFieldsParameter 
 
 		throw new ApplicationError('Value is not valid JSON');
 	}
-
 	return fields;
 };
 
