@@ -76,7 +76,20 @@ class SecurityValidator(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         """Detect calls to __import__() that could bypass security restrictions."""
 
-        if isinstance(node.func, ast.Name) and node.func.id == "__import__":
+        is_import_call = (
+            # __import__()
+            (isinstance(node.func, ast.Name) and node.func.id == "__import__")
+            or
+            # builtins.__import__() or __builtins__.__import__()
+            (
+                isinstance(node.func, ast.Attribute)
+                and node.func.attr == "__import__"
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id in {"builtins", "__builtins__"}
+            )
+        )
+
+        if is_import_call:
             if (
                 node.args
                 and isinstance(node.args[0], ast.Constant)
