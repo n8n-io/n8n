@@ -144,6 +144,8 @@ const rows = ref<DataStoreRow[]>([]);
 const selectedRowIds = ref<Set<number>>(new Set());
 const selectedCount = computed(() => selectedRowIds.value.size);
 
+const hasRecords = computed(() => rowData.value.length > 0);
+
 const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
 };
@@ -742,7 +744,11 @@ defineExpose({
 
 <template>
 	<div :class="$style.wrapper">
-		<div ref="gridContainer" :class="$style['grid-container']" data-test-id="data-store-grid">
+		<div
+			ref="gridContainer"
+			:class="[$style['grid-container'], { [$style['has-records']]: hasRecords }]"
+			data-test-id="data-store-grid"
+		>
 			<AgGridVue
 				style="width: 100%"
 				:dom-layout="'autoHeight'"
@@ -833,10 +839,6 @@ defineExpose({
 	:global(.ag-cell) {
 		display: flex;
 		align-items: center;
-	}
-
-	:global(.ag-floating-bottom) {
-		border-top: 1px solid var(--ag-border-color);
 	}
 
 	:global(.ag-header-cell-resize) {
@@ -933,6 +935,12 @@ defineExpose({
 
 	:global(.ag-cell-focus) {
 		background-color: var(--grid-row-selected-background);
+	}
+
+	&.has-records {
+		:global(.ag-floating-bottom) {
+			border-top: 1px solid var(--ag-border-color);
+		}
 	}
 }
 
