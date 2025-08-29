@@ -123,7 +123,7 @@ const contentLoading = ref(false);
 const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
 const isTextEditorOpen = ref(false);
 
-const gridContainer = useTemplateRef('gridContainer');
+const gridContainer = useTemplateRef<HTMLDivElement>('gridContainer');
 
 // Pagination
 const pageSizeOptions = [10, 20, 50];
@@ -139,6 +139,11 @@ const selectedCount = computed(() => selectedRowIds.value.size);
 
 const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
+	// Ensure popups (e.g., agLargeTextCellEditor) are positioned relative to the grid container
+	// to avoid misalignment when the page scrolls.
+	if (gridContainer?.value) {
+		params.api.setGridOption('popupParent', gridContainer.value as unknown as HTMLElement);
+	}
 };
 
 const refreshGridData = () => {
@@ -307,6 +312,9 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
 		columnDef.cellEditor = 'agLargeTextCellEditor';
+		// Use popup editor so it is not clipped by the grid viewport and positions correctly
+		columnDef.cellEditorPopup = true;
+		columnDef.cellEditorPopupPosition = 'over';
 		// Provide initial value for the editor, otherwise agLargeTextCellEditor breaks
 		columnDef.cellEditorParams = (params: CellEditRequestEvent<DataStoreRow>) => ({
 			value: params.value ?? '',
@@ -689,8 +697,9 @@ const handleDeleteSelected = async () => {
 
 		await fetchDataStoreContent();
 
-		toast.showMessage({
+		toast.showToast({
 			title: i18n.baseText('dataStore.deleteRows.success'),
+			message: '',
 			type: 'success',
 		});
 	} catch (error) {
@@ -864,7 +873,8 @@ defineExpose({
 	}
 
 	:global(.ag-large-text-input) {
-		position: fixed;
+		position: absolute;
+		min-width: 420px;
 		padding: 0;
 
 		textarea {
