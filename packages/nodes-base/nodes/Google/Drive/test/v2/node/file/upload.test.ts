@@ -67,7 +67,12 @@ describe('test GoogleDriveV2: file upload', () => {
 			expect.any(Buffer),
 			{ uploadType: 'multipart', supportsAllDrives: true },
 			undefined,
-			{ headers: { 'Content-Length': 498, 'Content-Type': 'multipart/related; boundary=...' } },
+			{
+				headers: {
+					'Content-Length': 498,
+					'Content-Type': expect.stringMatching(/^multipart\/related; boundary=(\\S)*/),
+				},
+			},
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
@@ -79,6 +84,7 @@ describe('test GoogleDriveV2: file upload', () => {
 				corpora: 'allDrives',
 				includeItemsFromAllDrives: true,
 				spaces: 'appDataFolder, drive',
+				uploadType: 'multipart',
 			},
 		);
 
