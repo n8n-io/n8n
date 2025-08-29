@@ -9,6 +9,7 @@ import type { IUser } from 'n8n-workflow';
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+import { UrlService } from '@/services/url.service';
 
 /**
  * This service wraps the actual AiWorkflowBuilderService to avoid circular dependencies.
@@ -23,6 +24,7 @@ export class WorkflowBuilderService {
 		private readonly license: License,
 		private readonly config: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly urlService: UrlService,
 	) {}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
@@ -43,14 +45,19 @@ export class WorkflowBuilderService {
 				});
 			}
 
-			this.service = new AiWorkflowBuilderService(this.nodeTypes, client, this.logger);
+			this.service = new AiWorkflowBuilderService(
+				this.nodeTypes,
+				client,
+				this.logger,
+				this.urlService.getInstanceBaseUrl(),
+			);
 		}
 		return this.service;
 	}
 
-	async *chat(payload: ChatPayload, user: IUser) {
+	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
 		const service = await this.getService();
-		yield* service.chat(payload, user);
+		yield* service.chat(payload, user, abortSignal);
 	}
 
 	async getSessions(workflowId: string | undefined, user: IUser) {

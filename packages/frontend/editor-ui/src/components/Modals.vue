@@ -34,6 +34,7 @@ import {
 	TAGS_MANAGER_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WHATS_NEW_MODAL_KEY,
+	PRE_BUILT_AGENTS_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_DIFF_MODAL_KEY,
@@ -41,6 +42,7 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -82,6 +84,8 @@ import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflow-diff/WorkflowDiffModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
+import DynamicModalLoader from './DynamicModalLoader.vue';
+import NodeRecommendationModal from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 </script>
 
 <template>
@@ -340,5 +344,20 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 				<WhatsNewModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="EXPERIMENT_TEMPLATE_RECO_V2_KEY">
+			<template #default="{ modalName, data }">
+				<NodeRecommendationModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="PRE_BUILT_AGENTS_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<PreBuiltAgentsModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<!-- Dynamic modals from modules -->
+		<DynamicModalLoader />
 	</div>
 </template>

@@ -1,11 +1,19 @@
 import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
-import Continue from './custom/Continue.svg';
-import EmptyOutput from './custom/EmptyOutput.svg';
+import Continue from './custom/continue.svg';
+import EmptyOutput from './custom/empty-output.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import NodeDirty from './custom/node-dirty.svg';
+import NodeEllipsis from './custom/node-ellipsis.svg';
+import NodeError from './custom/node-error.svg';
+import NodePin from './custom/node-pin.svg';
+import NodePlay from './custom/node-play.svg';
+import NodePower from './custom/node-power.svg';
+import NodeSuccess from './custom/node-success.svg';
+import NodeTrash from './custom/node-trash.svg';
 import PopOut from './custom/pop-out.svg';
-import Retry from './custom/Retry.svg';
-import RunOnce from './custom/RunOnce.svg';
+import Retry from './custom/retry.svg';
+import RunOnce from './custom/run-once.svg';
 import Schema from './custom/schema.svg';
 import Spinner from './custom/spinner.svg';
 import StatusCanceled from './custom/status-canceled.svg';
@@ -33,6 +41,7 @@ import IconLucideAtSign from '~icons/lucide/at-sign';
 import IconLucideBan from '~icons/lucide/ban';
 import IconLucideBell from '~icons/lucide/bell';
 import IconLucideBook from '~icons/lucide/book';
+import IconLucideBookOpen from '~icons/lucide/book-open';
 import IconLucideBot from '~icons/lucide/bot';
 import IconLucideBox from '~icons/lucide/box';
 import IconLucideBraces from '~icons/lucide/braces';
@@ -155,6 +164,7 @@ import IconLucideScissors from '~icons/lucide/scissors';
 import IconLucideSearch from '~icons/lucide/search';
 import IconLucideSend from '~icons/lucide/send';
 import IconLucideServer from '~icons/lucide/server';
+import IconLucideSettings from '~icons/lucide/settings';
 import IconLucideShare from '~icons/lucide/share';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
@@ -169,9 +179,11 @@ import IconLucideTags from '~icons/lucide/tags';
 import IconLucideTerminal from '~icons/lucide/terminal';
 import IconLucideThumbsDown from '~icons/lucide/thumbs-down';
 import IconLucideThumbsUp from '~icons/lucide/thumbs-up';
+import IconLucideToggleRight from '~icons/lucide/toggle-right';
 import IconLucideTrash2 from '~icons/lucide/trash-2';
 import IconLucideTreePine from '~icons/lucide/tree-pine';
 import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
+import IconLucideType from '~icons/lucide/type';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
 import IconLucideUnlink from '~icons/lucide/unlink';
 import IconLucideUser from '~icons/lucide/user';
@@ -420,6 +432,14 @@ export const updatedIconSet = {
 	text: Text,
 	toolbox: Toolbox,
 	spinner: Spinner,
+	'node-dirty': NodeDirty,
+	'node-ellipsis': NodeEllipsis,
+	'node-error': NodeError,
+	'node-pin': NodePin,
+	'node-play': NodePlay,
+	'node-power': NodePower,
+	'node-success': NodeSuccess,
+	'node-trash': NodeTrash,
 
 	// lucide
 	'align-right': IconLucideAlignRight,
@@ -435,6 +455,7 @@ export const updatedIconSet = {
 	ban: IconLucideBan,
 	bell: IconLucideBell,
 	book: IconLucideBook,
+	'book-open': IconLucideBookOpen,
 	bot: IconLucideBot,
 	box: IconLucideBox,
 	brain: IconLucideBrain,
@@ -554,6 +575,7 @@ export const updatedIconSet = {
 	scale: IconLucideScale,
 	scissors: IconLucideScissors,
 	search: IconLucideSearch,
+	settings: IconLucideSettings,
 	send: IconLucideSend,
 	server: IconLucideServer,
 	share: IconLucideShare,
@@ -573,6 +595,8 @@ export const updatedIconSet = {
 	'trash-2': IconLucideTrash2,
 	'tree-pine': IconLucideTreePine,
 	'triangle-alert': IconLucideTriangleAlert,
+	type: IconLucideType,
+	'toggle-right': IconLucideToggleRight,
 	'undo-2': IconLucideUndo2,
 	unlink: IconLucideUnlink,
 	user: IconLucideUser,

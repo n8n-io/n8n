@@ -1,0 +1,113 @@
+{
+	"createdAt": "2021-02-22T11:10:50.078Z",
+	"updatedAt": "2021-02-22T11:10:50.078Z",
+	"id": "55",
+	"name": "Hunter: domainSearch emailFinder emailVerifier",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "71b4c90c-bc69-40af-ae0d-4148c869e90f"
+		},
+		{
+			"parameters": {
+				"domain": "n8n.io",
+				"limit": 1,
+				"filters": {}
+			},
+			"name": "Hunter",
+			"type": "n8n-nodes-base.hunter",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"credentials": {
+				"hunterApi": {
+					"id": "40",
+					"name": "Hunter creds"
+				}
+			},
+			"id": "1d897521-8f0d-4e5b-8c16-e4db83af76de"
+		},
+		{
+			"parameters": {
+				"operation": "emailFinder",
+				"domain": "n8n.io",
+				"firstname": "hosting",
+				"lastname": "test"
+			},
+			"name": "Hunter1",
+			"type": "n8n-nodes-base.hunter",
+			"typeVersion": 1,
+			"position": [600, 300],
+			"credentials": {
+				"hunterApi": {
+					"id": "40",
+					"name": "Hunter creds"
+				}
+			},
+			"id": "e3d7ac81-0e2f-4c1c-947e-99539c16049f"
+		},
+		{
+			"parameters": {
+				"operation": "emailVerifier",
+				"email": "nodeqa@n8n.io"
+			},
+			"name": "Hunter2",
+			"type": "n8n-nodes-base.hunter",
+			"typeVersion": 1,
+			"position": [750, 300],
+			"credentials": {
+				"hunterApi": {
+					"id": "40",
+					"name": "Hunter creds"
+				}
+			},
+			"id": "6882fbb1-7af6-4585-90f3-d2881e1c07aa"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Hunter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hunter": {
+			"main": [
+				[
+					{
+						"node": "Hunter1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hunter1": {
+			"main": [
+				[
+					{
+						"node": "Hunter2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

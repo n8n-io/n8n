@@ -1,4 +1,4 @@
-import { getRoleScopes } from '@n8n/permissions';
+import { getRoleScopes, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type {
 	GlobalRole,
 	ProjectRole,
@@ -23,17 +23,20 @@ let expectedGlobalRoles: Array<{
 	role: GlobalRole;
 	scopes: Scope[];
 	licensed: boolean;
+	description: string;
 }>;
 let expectedProjectRoles: Array<{
 	name: string;
 	role: ProjectRole;
 	scopes: Scope[];
 	licensed: boolean;
+	description: string;
 }>;
 let expectedCredentialRoles: Array<{
 	name: string;
 	role: CredentialSharingRole;
 	scopes: Scope[];
+	description: string;
 	licensed: boolean;
 }>;
 let expectedWorkflowRoles: Array<{
@@ -41,6 +44,7 @@ let expectedWorkflowRoles: Array<{
 	role: WorkflowSharingRole;
 	scopes: Scope[];
 	licensed: boolean;
+	description: string;
 }>;
 
 beforeAll(async () => {
@@ -52,38 +56,44 @@ beforeAll(async () => {
 			role: 'global:owner',
 			scopes: getRoleScopes('global:owner'),
 			licensed: true,
+			description: 'Owner',
 		},
 		{
 			name: 'Admin',
 			role: 'global:admin',
 			scopes: getRoleScopes('global:admin'),
 			licensed: false,
+			description: 'Admin',
 		},
 		{
 			name: 'Member',
 			role: 'global:member',
 			scopes: getRoleScopes('global:member'),
 			licensed: true,
+			description: 'Member',
 		},
 	];
 	expectedProjectRoles = [
 		{
 			name: 'Project Owner',
-			role: 'project:personalOwner',
-			scopes: getRoleScopes('project:personalOwner'),
+			role: PROJECT_OWNER_ROLE_SLUG,
+			scopes: getRoleScopes(PROJECT_OWNER_ROLE_SLUG),
 			licensed: true,
+			description: 'Project Owner',
 		},
 		{
 			name: 'Project Admin',
 			role: 'project:admin',
 			scopes: getRoleScopes('project:admin'),
 			licensed: false,
+			description: 'Project Admin',
 		},
 		{
 			name: 'Project Editor',
 			role: 'project:editor',
 			scopes: getRoleScopes('project:editor'),
 			licensed: false,
+			description: 'Project Editor',
 		},
 	];
 	expectedCredentialRoles = [
@@ -92,12 +102,14 @@ beforeAll(async () => {
 			role: 'credential:owner',
 			scopes: getRoleScopes('credential:owner'),
 			licensed: true,
+			description: 'Credential Owner',
 		},
 		{
 			name: 'Credential User',
 			role: 'credential:user',
 			scopes: getRoleScopes('credential:user'),
 			licensed: true,
+			description: 'Credential User',
 		},
 	];
 	expectedWorkflowRoles = [
@@ -106,12 +118,14 @@ beforeAll(async () => {
 			role: 'workflow:owner',
 			scopes: getRoleScopes('workflow:owner'),
 			licensed: true,
+			description: 'Workflow Owner',
 		},
 		{
 			name: 'Workflow Editor',
 			role: 'workflow:editor',
 			scopes: getRoleScopes('workflow:editor'),
 			licensed: true,
+			description: 'Workflow Editor',
 		},
 	];
 });

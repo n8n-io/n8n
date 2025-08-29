@@ -1,6 +1,11 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { AI_CATEGORY_AGENTS, AI_CATEGORY_CHAINS, AI_TRANSFORM_NODE_TYPE } from '@/constants';
+import {
+	AI_CATEGORY_AGENTS,
+	AI_CATEGORY_CHAINS,
+	AI_TRANSFORM_NODE_TYPE,
+	PRE_BUILT_AGENTS_EXPERIMENT,
+} from '@/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { START_NODE_TYPE } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -55,7 +60,14 @@ describe('viewsData', () => {
 		setActivePinia(createTestingPinia());
 
 		posthogStore = usePostHog();
-		vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
+
+		vi.spyOn(posthogStore, 'isVariantEnabled').mockImplementation((experiment) => {
+			if (experiment === PRE_BUILT_AGENTS_EXPERIMENT.name) {
+				return false;
+			}
+
+			return true;
+		});
 
 		const templatesStore = useTemplatesStore();
 

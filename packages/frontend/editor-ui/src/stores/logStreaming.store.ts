@@ -33,19 +33,74 @@ export interface DestinationSettingsStore {
 	[key: string]: DestinationStoreItem;
 }
 
+const eventGroupFromEventName = (eventName: string): string | undefined => {
+	const matches = eventName.match(/^[\w\s]+\.[\w\s]+/);
+	if (matches && matches?.length > 0) {
+		return matches[0];
+	}
+	return undefined;
+};
+
+const prettifyEventName = (label: string, group = ''): string => {
+	label = label.replace(group + '.', '');
+	if (label.length > 0) {
+		label = label[0].toUpperCase() + label.substring(1);
+		label = label.replaceAll('.', ' ');
+	}
+	return label;
+};
+
+const eventGroupsFromStringList = (
+	dottedList: Set<string>,
+	selectionList: Set<string> = new Set(),
+) => {
+	const result = [] as EventSelectionGroup[];
+	const eventNameArray = Array.from(dottedList.values());
+
+	const groups: Set<string> = new Set<string>();
+
+	// since a Set returns iteration items on the order they were added, we can make sure workflow and nodes come first
+	groups.add('n8n.workflow');
+	groups.add('n8n.node');
+
+	for (const eventName of eventNameArray) {
+		const matches = eventName.match(/^[\w\s]+\.[\w\s]+/);
+		if (matches && matches?.length > 0) {
+			groups.add(matches[0]);
+		}
+	}
+
+	for (const group of groups) {
+		const collection: EventSelectionGroup = {
+			children: [],
+			label: group,
+			name: group,
+			selected: selectionList.has(group),
+			indeterminate: false,
+		};
+		const eventsOfGroup = eventNameArray.filter((e) => e.startsWith(group));
+		for (const event of eventsOfGroup) {
+			if (!collection.selected && selectionList.has(event)) {
+				collection.indeterminate = true;
+			}
+			const subCollection: EventSelectionItem = {
+				label: prettifyEventName(event, group),
+				name: event,
+				selected: selectionList.has(event),
+				indeterminate: false,
+			};
+			collection.children.push(subCollection);
+		}
+		result.push(collection);
+	}
+	return result;
+};
+
 export const useLogStreamingStore = defineStore('logStreaming', () => {
 	const items = ref<DestinationSettingsStore>({});
 	const eventNames = ref(new Set<string>());
 
 	const rootStore = useRootStore();
-
-	const addDestination = (destination: MessageEventBusDestinationOptions) => {
-		if (destination.id && items.value[destination.id]) {
-			items.value[destination.id].destination = destination;
-		} else {
-			setSelectionAndBuildItems(destination);
-		}
-	};
 
 	const setSelectionAndBuildItems = (destination: MessageEventBusDestinationOptions) => {
 		if (destination.id) {
@@ -70,6 +125,14 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 		}
 	};
 
+	const addDestination = (destination: MessageEventBusDestinationOptions) => {
+		if (destination.id && items.value[destination.id]) {
+			items.value[destination.id].destination = destination;
+		} else {
+			setSelectionAndBuildItems(destination);
+		}
+	};
+
 	const getDestination = (destinationId: string) => {
 		if (items.value[destinationId]) {
 			return items.value[destinationId].destination;
@@ -79,10 +142,9 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 	};
 
 	const getAllDestinations = () => {
-		const destinations: MessageEventBusDestinationOptions[] = [];
-		for (const key of Object.keys(items)) {
-			destinations.push(items.value[key].destination);
-		}
+		const destinations: MessageEventBusDestinationOptions[] = Object.values(items.value).map(
+			(item) => item.destination,
+		);
 		return destinations;
 	};
 
@@ -102,6 +164,45 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 		eventNames.value.clear();
 	};
 
+	const setSelectedInGroup = (destinationId: string, name: string, isSelected: boolean) => {
+		if (!items.value[destinationId]) return;
+
+		const groupName = eventGroupFromEventName(name);
+		const group = items.value[destinationId].eventGroups.find((e) => e.name === groupName);
+		if (!group) return;
+
+		const children = group.children;
+		if (groupName === name) {
+			group.selected = isSelected;
+			group.indeterminate = false;
+			// if the whole group is toggled, all children are unselected
+			children.forEach((e) => (e.selected = false));
+			return;
+		}
+
+		const event = children.find((e) => e.name === name);
+		if (!event) return;
+
+		event.selected = isSelected;
+
+		// If whole group is selected and the event is unselected,
+		// we unselect the group but keep other children selected
+		if (!isSelected && group.selected) {
+			group.selected = false;
+			group.children.filter((e) => e !== event).forEach((e) => (e.selected = true));
+		}
+
+		// If all children are selected, we select the group
+		// and unselect all children
+		const selectedChildren = children.filter((e) => e.selected);
+		if (isSelected && selectedChildren.length === children.length) {
+			group.selected = true;
+			group.children.forEach((e) => (e.selected = false));
+		}
+
+		group.indeterminate = selectedChildren.length > 0 && selectedChildren.length < children.length;
+	};
+
 	const addSelectedEvent = (id: string, name: string) => {
 		items.value[id]?.selectedEvents?.add(name);
 		setSelectedInGroup(id, name, true);
@@ -110,44 +211,6 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 	const removeSelectedEvent = (id: string, name: string) => {
 		items.value[id]?.selectedEvents?.delete(name);
 		setSelectedInGroup(id, name, false);
-	};
-
-	const setSelectedInGroup = (destinationId: string, name: string, isSelected: boolean) => {
-		if (items.value[destinationId]) {
-			const groupName = eventGroupFromEventName(name);
-			const groupIndex = items.value[destinationId].eventGroups.findIndex(
-				(e) => e.name === groupName,
-			);
-
-			if (groupIndex > -1) {
-				if (groupName === name) {
-					items.value[destinationId].eventGroups[groupIndex].selected = isSelected;
-				} else {
-					const eventIndex = items.value[destinationId].eventGroups[groupIndex].children.findIndex(
-						(e) => e.name === name,
-					);
-					if (eventIndex > -1) {
-						items.value[destinationId].eventGroups[groupIndex].children[eventIndex].selected =
-							isSelected;
-						if (isSelected) {
-							items.value[destinationId].eventGroups[groupIndex].indeterminate = isSelected;
-						} else {
-							let anySelected = false;
-							for (
-								let i = 0;
-								i < items.value[destinationId].eventGroups[groupIndex].children.length;
-								i++
-							) {
-								anySelected =
-									anySelected ||
-									items.value[destinationId].eventGroups[groupIndex].children[i].selected;
-							}
-							items.value[destinationId].eventGroups[groupIndex].indeterminate = anySelected;
-						}
-					}
-				}
-			}
-		}
 	};
 
 	const removeDestinationItemTree = (id: string) => {
@@ -194,7 +257,7 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 			await saveDestinationToDb(rootStore.restApiContext, destination, selectedEvents);
 			updateDestination(destination);
 			return true;
-		} catch (e) {
+		} catch {
 			return false;
 		}
 	};
@@ -247,66 +310,3 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 		items,
 	};
 });
-
-export const eventGroupFromEventName = (eventName: string): string | undefined => {
-	const matches = eventName.match(/^[\w\s]+\.[\w\s]+/);
-	if (matches && matches?.length > 0) {
-		return matches[0];
-	}
-	return undefined;
-};
-
-const prettifyEventName = (label: string, group = ''): string => {
-	label = label.replace(group + '.', '');
-	if (label.length > 0) {
-		label = label[0].toUpperCase() + label.substring(1);
-		label = label.replaceAll('.', ' ');
-	}
-	return label;
-};
-
-export const eventGroupsFromStringList = (
-	dottedList: Set<string>,
-	selectionList: Set<string> = new Set(),
-) => {
-	const result = [] as EventSelectionGroup[];
-	const eventNameArray = Array.from(dottedList.values());
-
-	const groups: Set<string> = new Set<string>();
-
-	// since a Set returns iteration items on the order they were added, we can make sure workflow and nodes come first
-	groups.add('n8n.workflow');
-	groups.add('n8n.node');
-
-	for (const eventName of eventNameArray) {
-		const matches = eventName.match(/^[\w\s]+\.[\w\s]+/);
-		if (matches && matches?.length > 0) {
-			groups.add(matches[0]);
-		}
-	}
-
-	for (const group of groups) {
-		const collection: EventSelectionGroup = {
-			children: [],
-			label: group,
-			name: group,
-			selected: selectionList.has(group),
-			indeterminate: false,
-		};
-		const eventsOfGroup = eventNameArray.filter((e) => e.startsWith(group));
-		for (const event of eventsOfGroup) {
-			if (!collection.selected && selectionList.has(event)) {
-				collection.indeterminate = true;
-			}
-			const subCollection: EventSelectionItem = {
-				label: prettifyEventName(event, group),
-				name: event,
-				selected: selectionList.has(event),
-				indeterminate: false,
-			};
-			collection.children.push(subCollection);
-		}
-		result.push(collection);
-	}
-	return result;
-};

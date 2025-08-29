@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "due": {
-            "type": "string"
-        },
         "etag": {
             "type": "string"
         },
@@ -30,6 +27,9 @@
                 }
             }
         },
+        "notes": {
+            "type": "string"
+        },
         "position": {
             "type": "string"
         },
@@ -49,5 +49,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

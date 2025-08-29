@@ -40,6 +40,7 @@ export const mockNode = ({
 	issues = undefined,
 	typeVersion = 1,
 	parameters = {},
+	draggable = true,
 }: {
 	id?: INodeUi['id'];
 	name: INodeUi['name'];
@@ -49,10 +50,13 @@ export const mockNode = ({
 	issues?: INodeIssues;
 	typeVersion?: INodeUi['typeVersion'];
 	parameters?: INodeUi['parameters'];
-}) => mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters });
+	draggable?: INodeUi['draggable'];
+}) =>
+	mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters, draggable });
 
 export const mockNodeTypeDescription = ({
 	name = SET_NODE_TYPE,
+	displayName = name,
 	icon = 'fa:pen',
 	version = 1,
 	credentials = [],
@@ -63,8 +67,10 @@ export const mockNodeTypeDescription = ({
 	group,
 	hidden,
 	description,
+	webhooks,
 }: {
 	name?: INodeTypeDescription['name'];
+	displayName?: INodeTypeDescription['displayName'];
 	icon?: INodeTypeDescription['icon'];
 	version?: INodeTypeDescription['version'];
 	credentials?: INodeTypeDescription['credentials'];
@@ -75,11 +81,12 @@ export const mockNodeTypeDescription = ({
 	group?: INodeTypeDescription['group'];
 	hidden?: INodeTypeDescription['hidden'];
 	description?: INodeTypeDescription['description'];
+	webhooks?: INodeTypeDescription['webhooks'];
 } = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		icon,
-		displayName: name,
+		displayName,
 		description: description ?? '',
 		version,
 		defaults: {
@@ -95,7 +102,7 @@ export const mockNodeTypeDescription = ({
 		credentials,
 		documentationUrl: 'https://docs',
 		iconUrl: 'nodes/test-node/icon.svg',
-		webhooks: undefined,
+		webhooks,
 		parameterPane: undefined,
 		hidden,
 	});
@@ -242,6 +249,7 @@ export function createMockEnterpriseSettings(
 		workerView: false,
 		advancedPermissions: false,
 		apiKeyScopes: false,
+		workflowDiffs: false,
 		projects: {
 			team: {
 				limit: 0,

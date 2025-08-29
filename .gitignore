@@ -18,6 +18,7 @@ nodelinter.config.json
 packages/**/.turbo
 .turbo
 *.tsbuildinfo
+.stylelintcache
 *.swp
 CHANGELOG-*.md
 *.mdx
@@ -33,5 +34,9 @@ test-results/
 compiled_app_output
 trivy_report*
 compiled
-jest.config.js
 packages/cli/src/modules/my-feature
+.secrets
+packages/testing/**/.cursor/rules/
+.venv
+.ruff_cache
+__pycache__

@@ -16,7 +16,7 @@ import { watchOnce } from '@vueuse/core';
 import { isFromAIOverrideValue } from '@/utils/fromAIOverrideUtils';
 
 // matches NodeCreator to ensure they fully overlap by default when both are open
-const DEFAULT_PANEL_WIDTH = 385;
+const DEFAULT_PANEL_WIDTH = 500;
 
 type FocusedNodeParameter = {
 	nodeId: string;
@@ -147,6 +147,10 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		_setOptions({ isActive: false });
 	}
 
+	function unsetParameters() {
+		_setOptions({ parameters: [] });
+	}
+
 	function toggleFocusPanel() {
 		_setOptions({ isActive: !focusPanelActive.value });
 	}
@@ -193,5 +197,6 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		toggleFocusPanel,
 		onNewWorkflowSave,
 		updateWidth,
+		unsetParameters,
 	};
 });

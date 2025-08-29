@@ -48,9 +48,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 	const currentSessionId = ref<string>(uuid().replace(/-/g, ''));
 
 	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
-	const chatTriggerNode = computed(
-		() => Object.values(workflowsStore.allNodes).find(isChatNode) ?? null,
-	);
+	const chatTriggerNode = computed(() => workflowsStore.allNodes.find(isChatNode) ?? null);
 	const allowFileUploads = computed(
 		() =>
 			(chatTriggerNode.value?.parameters?.options as INodeParameters)?.allowFileUploads === true,

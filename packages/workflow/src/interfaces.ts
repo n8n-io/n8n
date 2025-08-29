@@ -13,6 +13,10 @@ import type { SecureContextOptions } from 'tls';
 import type { URLSearchParams } from 'url';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './constants';
+import type {
+	IDataStoreProjectAggregateService,
+	IDataStoreProjectService,
+} from './data-store.types';
 import type { IDeferredPromise } from './deferred-promise';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
@@ -843,8 +847,27 @@ type CronUnit = number | '*' | `*/${number}`;
 export type CronExpression =
 	`${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit}`;
 
+type CronRecurrenceRule =
+	| { activated: false }
+	| {
+			activated: true;
+			index: number;
+			intervalSize: number;
+			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
+	  };
+
+export type CronContext = {
+	nodeId: string;
+	workflowId: string;
+	timezone: string;
+	expression: CronExpression;
+	recurrence?: CronRecurrenceRule;
+};
+
+export type Cron = { expression: CronExpression; recurrence?: CronRecurrenceRule };
+
 export interface SchedulingFunctions {
-	registerCron(cronExpression: CronExpression, onTick: () => void): void;
+	registerCron(cron: Cron, onTick: () => void): void;
 }
 
 export type NodeTypeAndVersion = {
@@ -870,6 +893,10 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
+	/** Get the waiting resume url signed with the signature token */
+	getSignedResumeUrl(parameters?: Record<string, string>): string;
+	/** Set requirement in the execution for signature token validation */
+	setSignatureValidationRequired(): void;
 	getChildNodes(
 		nodeName: string,
 		options?: { includeNodeParameters?: boolean },
@@ -892,6 +919,26 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 };
 
 export type ContextType = 'flow' | 'node';
+
+export type DataStoreProxyProvider = {
+	getDataStoreAggregateProxy(
+		workflow: Workflow,
+		node: INode,
+		dataStoreProjectId?: string,
+	): Promise<IDataStoreProjectAggregateService>;
+	getDataStoreProxy(
+		workflow: Workflow,
+		node: INode,
+		dataStoreId: string,
+		dataStoreProjectId?: string,
+	): Promise<IDataStoreProjectService>;
+};
+
+export type DataStoreProxyFunctions = {
+	// These are optional to account for situations where the data-store module is disabled
+	getDataStoreAggregateProxy?(): Promise<IDataStoreProjectAggregateService>;
+	getDataStoreProxy?(dataStoreId: string): Promise<IDataStoreProjectService>;
+};
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
@@ -955,7 +1002,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			BinaryHelperFunctions &
 			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
-			SSHTunnelFunctions & {
+			SSHTunnelFunctions &
+			DataStoreProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],
@@ -1039,7 +1087,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions;
+	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataStoreProxyFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
@@ -1321,11 +1369,24 @@ export type NodePropertyAction = {
 	target?: string;
 };
 
-export type CalloutActionType = 'openRagStarterTemplate';
-export interface CalloutAction {
-	type: CalloutActionType;
+export interface CalloutActionBase {
+	type: string;
 	label: string;
+	icon?: string;
 }
+
+export interface CalloutActionOpenPreBuiltAgentsCollection extends CalloutActionBase {
+	type: 'openPreBuiltAgentsCollection';
+}
+
+export interface CalloutActionOpenSampleWorkflowTemplate extends CalloutActionBase {
+	type: 'openSampleWorkflowTemplate';
+	templateId: string;
+}
+
+export type CalloutAction =
+	| CalloutActionOpenPreBuiltAgentsCollection
+	| CalloutActionOpenSampleWorkflowTemplate;
 
 export interface INodePropertyTypeOptions {
 	// Supported by: button
@@ -1380,6 +1441,7 @@ export interface ResourceMapperTypeOptionsBase {
 		hint?: string;
 	};
 	showTypeConversionOptions?: boolean;
+	allowEmptyValues?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
@@ -2236,6 +2298,11 @@ export interface IRunExecutionData {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/**
+	 * This is used to prevent breaking change
+	 * for waiting executions started before signature validation was added
+	 */
+	validateSignature?: boolean;
 	waitTill?: Date;
 	pushRef?: string;
 
@@ -2815,6 +2882,10 @@ export type FormFieldsParameter = Array<{
 	placeholder?: string;
 	fieldName?: string;
 	fieldValue?: string;
+	limitSelection?: 'exact' | 'range' | 'unlimited';
+	numberOfSelections?: number;
+	minSelections?: number;
+	maxSelections?: number;
 }>;
 
 export type FieldTypeMap = {

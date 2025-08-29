@@ -1,6 +1,6 @@
 import type { DateTime } from 'luxon';
 
-import { ApplicationError } from '../errors/application.error';
+import { ApplicationError } from '@n8n/errors';
 import type {
 	FilterConditionValue,
 	FilterOperatorType,

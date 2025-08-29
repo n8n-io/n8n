@@ -97,7 +97,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 			runIndex: 0,
 			currentNodeName: nodes[0].name,
 			activeNodeName: nodes[1].name,
-			workflow: workflowObject,
+			workflowObject,
 			displayMode: 'schema',
 			focusedMappableInput: '',
 			isMappingOnboarded: false,

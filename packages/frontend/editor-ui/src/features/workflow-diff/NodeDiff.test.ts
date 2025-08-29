@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import NodeDiff from '@/features/workflow-diff/NodeDiff.vue';
+import { createTestingPinia } from '@pinia/testing';
 
 // Mock the v-code-diff library
 vi.mock('v-code-diff', () => ({
@@ -42,6 +43,10 @@ const renderComponent = createComponentRenderer(NodeDiff, {
 });
 
 describe('NodeDiff', () => {
+	beforeEach(() => {
+		createTestingPinia();
+	});
+
 	it('should render with required props', () => {
 		const { container } = renderComponent({
 			props: {
@@ -152,18 +157,6 @@ describe('NodeDiff', () => {
 		});
 
 		expect(container.querySelector('.code-diff-mock')).toBeInTheDocument();
-	});
-
-	it('should have correct CSS class', () => {
-		const { container } = renderComponent({
-			props: {
-				oldString: 'test',
-				newString: 'test2',
-			},
-		});
-
-		const wrapper = container.querySelector('.code-diff');
-		expect(wrapper).toBeInTheDocument();
 	});
 
 	it('should handle complex JSON differences', () => {

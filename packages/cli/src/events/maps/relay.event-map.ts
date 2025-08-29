@@ -1,6 +1,5 @@
 import type { AuthenticationMethod, ProjectRelation } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
-import type { GlobalRole } from '@n8n/permissions';
 import type {
 	IPersonalizationSurveyAnswersV4,
 	IRun,
@@ -17,7 +16,9 @@ export type UserLike = {
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	role: string;
+	role: {
+		slug: string;
+	};
 };
 
 export type RelayEventMap = {
@@ -60,6 +61,7 @@ export type RelayEventMap = {
 		publicApi: boolean;
 		projectId: string;
 		projectType: string;
+		uiContext?: string;
 	};
 
 	'workflow-deleted': {
@@ -291,6 +293,7 @@ export type RelayEventMap = {
 		publicApi: boolean;
 		projectId?: string;
 		projectType?: string;
+		uiContext?: string;
 	};
 
 	'credentials-shared': {
@@ -368,14 +371,14 @@ export type RelayEventMap = {
 
 	'team-project-updated': {
 		userId: string;
-		role: GlobalRole;
+		role: string;
 		members: ProjectRelation[];
 		projectId: string;
 	};
 
 	'team-project-deleted': {
 		userId: string;
-		role: GlobalRole;
+		role: string;
 		projectId: string;
 		removalType: 'transfer' | 'delete';
 		targetProjectId?: string;
@@ -383,7 +386,8 @@ export type RelayEventMap = {
 
 	'team-project-created': {
 		userId: string;
-		role: GlobalRole;
+		role: string;
+		uiContext?: string;
 	};
 
 	// #endregion

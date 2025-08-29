@@ -28,12 +28,16 @@ export class SidebarPage {
 
 	async openNewCredentialDialogForProject(projectName: string) {
 		await this.universalAdd();
-		await this.page.getByTestId('universal-add').getByText('Credential').click();
+		await this.page.getByTestId('universal-add').getByText('Credential', { exact: true }).click();
 		await this.page.getByTestId('universal-add').getByRole('link', { name: projectName }).click();
 	}
 
 	getProjectMenuItems(): Locator {
 		return this.page.getByTestId('project-menu-item');
+	}
+
+	async clickProjectMenuItem(projectName: string) {
+		await this.getProjectMenuItems().filter({ hasText: projectName }).click();
 	}
 
 	getAddFirstProjectButton(): Locator {

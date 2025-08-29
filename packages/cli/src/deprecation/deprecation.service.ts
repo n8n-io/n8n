@@ -48,6 +48,12 @@ export class DeprecationService {
 			checkValue: (value: string) => ['mysqldb', 'mariadb'].includes(value),
 		},
 		{
+			envVar: 'DB_SQLITE_POOL_SIZE',
+			message:
+				'Running SQLite without a pool of read connections is deprecated. Please set `DB_SQLITE_POOL_SIZE` to a value higher than zero. See: https://docs.n8n.io/hosting/configuration/environment-variables/database/#sqlite',
+			checkValue: (_: string) => this.globalConfig.database.isLegacySqlite,
+		},
+		{
 			envVar: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 			message: `n8n no longer deregisters webhooks at startup and shutdown. ${SAFE_TO_REMOVE}`,
 		},
@@ -96,6 +102,12 @@ export class DeprecationService {
 			message:
 				'n8n does not support `own` mode since May 2023. Please remove this environment variable to allow n8n to start. If you need the isolation and performance gains, please consider queue mode: https://docs.n8n.io/hosting/scaling/queue-mode/',
 			checkValue: (value: string) => value === 'own',
+		},
+		{
+			envVar: 'N8N_BLOCK_ENV_ACCESS_IN_NODE',
+			message:
+				'The default value of N8N_BLOCK_ENV_ACCESS_IN_NODE will be changed from false to true in a future version. If you need to access environment variables from the Code Node or from expressions, please set N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Learn more: https://docs.n8n.io/hosting/configuration/environment-variables/security/',
+			checkValue: (value: string | undefined) => value === undefined || value === '',
 		},
 	];
 

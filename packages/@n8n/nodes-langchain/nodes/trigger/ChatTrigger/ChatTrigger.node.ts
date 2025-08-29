@@ -1,6 +1,13 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import pick from 'lodash/pick';
-import { Node, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	Node,
+	NodeConnectionTypes,
+	NodeOperationError,
+	assertParamIsBoolean,
+	validateNodeParameters,
+	assertParamIsString,
+} from 'n8n-workflow';
 import type {
 	IDataObject,
 	IWebhookFunctions,
@@ -15,7 +22,7 @@ import type {
 import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
 import { createPage } from './templates';
-import type { LoadPreviousSessionChatOption } from './types';
+import { assertValidLoadPreviousSessionOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
 const allowFileUploadsOption: INodeProperties = {
@@ -48,7 +55,7 @@ const lastNodeResponseMode = {
 };
 
 const streamingResponseMode = {
-	name: 'Streaming Response',
+	name: 'Streaming',
 	value: 'streaming',
 	description: 'Streaming response from specified nodes (e.g. Agents)',
 };
@@ -495,7 +502,7 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: [lastNodeResponseMode, respondToWebhookResponseMode],
+						options: [lastNodeResponseMode, streamingResponseMode, respondToWebhookResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['webhook'] } },
@@ -504,7 +511,7 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: [lastNodeResponseMode, respondNodesResponseMode],
+						options: [lastNodeResponseMode, streamingResponseMode, respondNodesResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
 						displayOptions: { show: { '/mode': ['hostedChat'] } },
@@ -579,8 +586,12 @@ export class ChatTrigger extends Node {
 	async webhook(ctx: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const res = ctx.getResponseObject();
 
-		const isPublic = ctx.getNodeParameter('public', false) as boolean;
-		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat') as string;
+		const isPublic = ctx.getNodeParameter('public', false);
+		assertParamIsBoolean('public', isPublic, ctx.getNode());
+
+		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
+		assertParamIsString('mode', nodeMode, ctx.getNode());
+
 		if (!isPublic) {
 			res.status(404).end();
 			return {
@@ -588,18 +599,26 @@ export class ChatTrigger extends Node {
 			};
 		}
 
-		const options = ctx.getNodeParameter('options', {}) as {
-			getStarted?: string;
-			inputPlaceholder?: string;
-			loadPreviousSession?: LoadPreviousSessionChatOption;
-			showWelcomeScreen?: boolean;
-			subtitle?: string;
-			title?: string;
-			allowFileUploads?: boolean;
-			allowedFilesMimeTypes?: string;
-			customCss?: string;
-			responseMode?: string;
-		};
+		const options = ctx.getNodeParameter('options', {});
+		validateNodeParameters(
+			options,
+			{
+				getStarted: { type: 'string' },
+				inputPlaceholder: { type: 'string' },
+				loadPreviousSession: { type: 'string' },
+				showWelcomeScreen: { type: 'boolean' },
+				subtitle: { type: 'string' },
+				title: { type: 'string' },
+				allowFileUploads: { type: 'boolean' },
+				allowedFilesMimeTypes: { type: 'string' },
+				customCss: { type: 'string' },
+				responseMode: { type: 'string' },
+			},
+			ctx.getNode(),
+		);
+
+		const loadPreviousSession = options.loadPreviousSession;
+		assertValidLoadPreviousSessionOption(loadPreviousSession, ctx.getNode());
 
 		const enableStreaming = options.responseMode === 'streaming';
 
@@ -623,29 +642,36 @@ export class ChatTrigger extends Node {
 		if (nodeMode === 'hostedChat') {
 			// Show the chat on GET request
 			if (webhookName === 'setup') {
-				const webhookUrlRaw = ctx.getNodeWebhookUrl('default') as string;
+				const webhookUrlRaw = ctx.getNodeWebhookUrl('default');
+				if (!webhookUrlRaw) {
+					throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
+				}
+
 				const webhookUrl =
 					mode === 'test' ? webhookUrlRaw.replace('/webhook', '/webhook-test') : webhookUrlRaw;
 				const authentication = ctx.getNodeParameter('authentication') as
 					| 'none'
 					| 'basicAuth'
 					| 'n8nUserAuth';
-				const initialMessagesRaw = ctx.getNodeParameter('initialMessages', '') as string;
-				const initialMessages = initialMessagesRaw
-					.split('\n')
-					.filter((line) => line)
-					.map((line) => line.trim());
+				const initialMessagesRaw = ctx.getNodeParameter('initialMessages', '');
+				assertParamIsString('initialMessage', initialMessagesRaw, ctx.getNode());
 				const instanceId = ctx.getInstanceId();
 
-				const i18nConfig = pick(options, ['getStarted', 'inputPlaceholder', 'subtitle', 'title']);
+				const i18nConfig: Record<string, string> = {};
+				const keys = ['getStarted', 'inputPlaceholder', 'subtitle', 'title'] as const;
+				for (const key of keys) {
+					if (options[key] !== undefined) {
+						i18nConfig[key] = options[key];
+					}
+				}
 
 				const page = createPage({
 					i18n: {
 						en: i18nConfig,
 					},
 					showWelcomeScreen: options.showWelcomeScreen,
-					loadPreviousSession: options.loadPreviousSession,
-					initialMessages,
+					loadPreviousSession,
+					initialMessages: initialMessagesRaw,
 					webhookUrl,
 					mode,
 					instanceId,

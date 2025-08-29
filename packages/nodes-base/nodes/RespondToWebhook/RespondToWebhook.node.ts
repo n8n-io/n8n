@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import set from 'lodash/set';
-import { isHtmlRenderedContentType, sandboxHtmlResponse } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -23,9 +22,9 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
-import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
-import { configuredOutputs } from './utils/outputs';
 import { getBinaryResponse } from './utils/binary';
+import { configuredOutputs } from './utils/outputs';
+import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
 
 const respondWithProperty: INodeProperties = {
 	displayName: 'Respond With',
@@ -252,7 +251,18 @@ export class RespondToWebhook implements INodeType {
 				},
 				description: 'The name of the node input field with the binary data',
 			},
-
+			{
+				displayName:
+					'To avoid unexpected behavior, add a "Content-Type" response header with the appropriate value',
+				name: 'contentTypeNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						respondWith: ['text'],
+					},
+				},
+			},
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -391,9 +401,6 @@ export class RespondToWebhook implements INodeType {
 				}
 			}
 
-			const hasHtmlContentType =
-				headers['content-type'] && isHtmlRenderedContentType(headers['content-type'] as string);
-
 			let statusCode = (options.responseCode as number) || 200;
 			let responseBody: IN8nHttpResponse | Readable;
 			if (respondWith === 'json') {
@@ -469,13 +476,9 @@ export class RespondToWebhook implements INodeType {
 					this.sendChunk('end', 0);
 				}
 			} else if (respondWith === 'text') {
-				// If a user doesn't set the content-type header and uses html, the html can still be rendered on the browser
 				const rawBody = this.getNodeParameter('responseBody', 0) as string;
-				if (hasHtmlContentType || !headers['content-type']) {
-					responseBody = sandboxHtmlResponse(rawBody);
-				} else {
-					responseBody = rawBody;
-				}
+				responseBody = rawBody;
+
 				// Send the raw body to the stream
 				if (shouldStream) {
 					this.sendChunk('begin', 0);
@@ -551,15 +554,6 @@ export class RespondToWebhook implements INodeType {
 
 				await this.putExecutionToWait(WAIT_INDEFINITELY);
 				return [[{ json: {}, sendMessage: message }]];
-			}
-
-			if (
-				hasHtmlContentType &&
-				respondWith !== 'text' &&
-				respondWith !== 'binary' &&
-				responseBody
-			) {
-				responseBody = sandboxHtmlResponse(JSON.stringify(responseBody as string));
 			}
 
 			response = {

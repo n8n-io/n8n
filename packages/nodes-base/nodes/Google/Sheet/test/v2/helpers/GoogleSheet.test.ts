@@ -122,6 +122,36 @@ describe('GoogleSheet', () => {
 				{ name: 'Jane', age: '25' },
 			]);
 		});
+
+		it('should handle zero values correctly', () => {
+			const data = [
+				['name', 'age'],
+				['John', 30],
+				['Jane', 0],
+			];
+
+			const result = googleSheet.convertSheetDataArrayToObjectArray(data, 1, ['name', 'age']);
+
+			expect(result).toEqual([
+				{ name: 'John', age: 30 },
+				{ name: 'Jane', age: 0 },
+			]);
+		});
+
+		it('should handle nullish values correctly', () => {
+			const data = [
+				['name', 'age'],
+				['John', null as unknown as number],
+				['Jane', undefined as unknown as number],
+			];
+
+			const result = googleSheet.convertSheetDataArrayToObjectArray(data, 1, ['name', 'age']);
+
+			expect(result).toEqual([
+				{ name: 'John', age: '' },
+				{ name: 'Jane', age: '' },
+			]);
+		});
 	});
 
 	describe('lookupValues', () => {

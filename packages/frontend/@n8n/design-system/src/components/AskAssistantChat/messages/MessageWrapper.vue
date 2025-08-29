@@ -11,7 +11,7 @@ import TextMessage from './TextMessage.vue';
 import ToolMessage from './ToolMessage.vue';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 
-interface Props {
+export interface Props {
 	message: ChatUI.AssistantMessage;
 	isFirstOfRole: boolean;
 	user?: {

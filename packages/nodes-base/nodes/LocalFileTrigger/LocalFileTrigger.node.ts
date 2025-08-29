@@ -1,4 +1,5 @@
 import { watch } from 'chokidar';
+import type { EventName } from 'chokidar/handler';
 import {
 	type ITriggerFunctions,
 	type IDataObject,
@@ -233,11 +234,11 @@ export class LocalFileTrigger implements INodeType {
 		const path = this.getNodeParameter('path') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
-		let events: string[];
+		let events: EventName[];
 		if (triggerOn === 'file') {
 			events = ['change'];
 		} else {
-			events = this.getNodeParameter('events', []) as string[];
+			events = this.getNodeParameter('events', []) as EventName[];
 		}
 		const ignored = options.ignored === '' ? undefined : (options.ignored as string);
 		const watcher = watch(path, {
@@ -259,7 +260,7 @@ export class LocalFileTrigger implements INodeType {
 		};
 
 		for (const eventName of events) {
-			watcher.on(eventName, (pathString) => executeTrigger(eventName, pathString as string));
+			watcher.on(eventName, (pathString: string) => executeTrigger(eventName, pathString));
 		}
 
 		async function closeFunction() {

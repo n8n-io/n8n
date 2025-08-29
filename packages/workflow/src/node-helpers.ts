@@ -2,12 +2,11 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable prefer-spread */
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
-import { ApplicationError } from './errors/application.error';
+import { ApplicationError } from '@n8n/errors';
 import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
@@ -1587,6 +1586,15 @@ function resolveResourceAndOperation(
 	nodeParameters: INodeParameters,
 	nodeTypeDescription: INodeTypeDescription,
 ) {
+	if (nodeTypeDescription.name === 'n8n-nodes-base.code') {
+		const language = nodeParameters.language as string;
+		const langProp = nodeTypeDescription.properties.find((p) => p.name === 'language');
+		if (langProp?.options && isINodePropertyOptionsList(langProp.options)) {
+			const found = langProp.options.find((o) => o.value === language);
+			if (found?.action) return { action: found.action };
+		}
+	}
+
 	const resource = nodeParameters.resource as string;
 	const operation = nodeParameters.operation as string;
 	const nodeTypeOperation = nodeTypeDescription.properties.find(
@@ -1702,13 +1710,9 @@ export function isDefaultNodeName(
 	nodeType: INodeTypeDescription,
 	parameters: INodeParameters,
 ): boolean {
-	const legacyDefaultName = nodeType.defaults.name ?? nodeType.displayName;
 	const currentDefaultName = makeNodeName(parameters, nodeType);
-	for (const defaultName of [legacyDefaultName, currentDefaultName]) {
-		if (name.startsWith(defaultName) && /^\d*$/.test(name.slice(defaultName.length))) return true;
-	}
 
-	return false;
+	return name.startsWith(currentDefaultName) && /^\d*$/.test(name.slice(currentDefaultName.length));
 }
 
 /**

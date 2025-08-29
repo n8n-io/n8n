@@ -1,155 +1,34 @@
 {
-	"$schema": "https://turbo.build/schema.json",
-	"ui": "stream",
-	"remoteCache": {
-		"enabled": true,
-		"timeout": 90,
-		"uploadTimeout": 90
-	},
 	"globalEnv": ["CI", "COVERAGE_ENABLED"],
 	"tasks": {
-		"clean": {
-			"cache": false
-		},
-		"build:playwright": {
-			"dependsOn": ["install-browsers:ci", "build"]
-		},
-		"build:backend": {
-			"dependsOn": ["n8n#build"]
-		},
-		"build:frontend": {
-			"dependsOn": ["n8n-editor-ui#build"]
-		},
-		"build:nodes": {
-			"dependsOn": ["n8n-nodes-base#build", "@n8n/n8n-nodes-langchain#build"]
-		},
+		"clean": { "cache": false },
 		"build": {
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**"]
 		},
 		"typecheck": {
-			"dependsOn": ["^typecheck"]
+			"dependsOn": ["^typecheck", "^build"]
 		},
 		"format": {},
 		"format:check": {},
-		"lint:backend": {
-			"dependsOn": [
-				"@n8n/eslint-config#build",
-				"^build",
-				"@n8n/api-types#lint",
-				"@n8n/config#lint",
-				"@n8n/decorators#lint",
-				"@n8n/constants#lint",
-				"@n8n/backend-common#lint",
-				"@n8n/backend-test-utils#lint",
-				"@n8n/db#lint",
-				"@n8n/di#lint",
-				"@n8n/client-oauth2#lint",
-				"@n8n/imap#lint",
-				"@n8n/permissions#lint",
-				"@n8n/task-runner#lint",
-				"n8n-workflow#lint",
-				"n8n-core#lint",
-				"n8n-node-dev#lint",
-				"n8n#lint"
-			]
-		},
-		"lint:frontend": {
-			"dependsOn": [
-				"@n8n/eslint-config#build",
-				"^build",
-				"@n8n/rest-api-client#lint",
-				"@n8n/api-types#lint",
-				"@n8n/constants#lint",
-				"@n8n/i18n#lint",
-				"@n8n/permissions#lint",
-				"@n8n/stores#lint",
-				"@n8n/utils#lint",
-				"@n8n/chat#lint",
-				"@n8n/codemirror-lang#lint",
-				"@n8n/storybook#lint",
-				"n8n-cypress#lint",
-				"@n8n/composables#build",
-				"@n8n/design-system#lint",
-				"n8n-editor-ui#lint"
-			]
-		},
-		"lint:nodes": {
-			"dependsOn": [
-				"@n8n/eslint-config#build",
-				"^build",
-				"n8n-nodes-base#lint",
-				"@n8n/n8n-nodes-langchain#lint",
-				"@n8n/json-schema-to-zod#lint"
-			]
-		},
-		"lint:testing": {
-			"dependsOn": [
-				"@n8n/eslint-config#build",
-				"^build",
-				"n8n-playwright#lint",
-				"n8n-containers#lint"
-			]
-		},
 		"lint": {
 			"dependsOn": ["^build", "@n8n/eslint-config#build"]
 		},
-		"lintfix": {},
-		"test:backend": {
-			"dependsOn": [
-				"@n8n/api-types#test",
-				"@n8n/config#test",
-				"@n8n/decorators#test",
-				"@n8n/db#test",
-				"@n8n/di#test",
-				"@n8n/client-oauth2#test",
-				"@n8n/imap#test",
-				"@n8n/permissions#test",
-				"@n8n/task-runner#test",
-				"n8n-workflow#test",
-				"n8n-core#test",
-				"n8n#test"
-			],
-			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"],
-			"inputs": ["jest.config.*", "package.json", "pnpm-lock.yaml"]
+		"lint:fix": {},
+		"lint:styles": {
+			"dependsOn": ["@n8n/stylelint-config#build"]
 		},
-		"test:frontend": {
-			"dependsOn": [
-				"@n8n/rest-api-client#test",
-				"@n8n/api-types#test",
-				"@n8n/constants#test",
-				"@n8n/i18n#test",
-				"@n8n/permissions#test",
-				"@n8n/stores#test",
-				"@n8n/utils#test",
-				"@n8n/chat#test",
-				"@n8n/codemirror-lang#test",
-				"@n8n/composables#build",
-				"@n8n/design-system#test",
-				"n8n-editor-ui#test"
-			],
-			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"],
-			"inputs": ["jest.config.*", "package.json", "pnpm-lock.yaml"]
-		},
-		"test:nodes": {
-			"dependsOn": [
-				"n8n-nodes-base#test",
-				"@n8n/n8n-nodes-langchain#test",
-				"@n8n/json-schema-to-zod#test"
-			],
-			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"],
-			"inputs": ["jest.config.*", "package.json", "pnpm-lock.yaml"]
+		"lint:styles:fix": {
+			"dependsOn": ["@n8n/stylelint-config#build"]
 		},
 		"test": {
-			"outputs": ["coverage/**", "junit.xml", "cobertura-coverage.xml"]
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
 		},
-		"watch": {
-			"cache": false,
-			"persistent": true
-		},
-		"dev": {
-			"cache": false,
-			"persistent": true
+		"watch": { "cache": false, "persistent": true },
+		"dev": { "cache": false, "persistent": true },
+		"build:playwright": {
+			"dependsOn": ["install-browsers:ci", "build"]
 		},
 		"install-browsers:ci": {
 			"cache": true,
@@ -161,8 +40,9 @@
 			"cache": false,
 			"inputs": ["package.json"]
 		},
-		"test:standard": {
+		"test:container:standard": {
 			"dependsOn": ["install-browsers:local"],
+			"env": ["E2E_TESTS"],
 			"cache": false
 		}
 	}

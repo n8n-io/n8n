@@ -1,6 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { ApiKeyRepository, UserRepository } from '@n8n/db';
+import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
 import type { Response, NextFunction } from 'express';
@@ -36,7 +36,7 @@ const securitySchema = mock<OpenAPIV3.ApiKeySecurityScheme>({
 	name: 'X-N8N-API-KEY',
 });
 
-const jwtService = new JwtService(instanceSettings);
+const jwtService = new JwtService(instanceSettings, mock());
 
 let userRepository: UserRepository;
 let apiKeyRepository: ApiKeyRepository;
@@ -427,7 +427,9 @@ describe('PublicApiKeyService', () => {
 			// Act
 
 			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
-				'global:owner',
+				{
+					role: GLOBAL_OWNER_ROLE,
+				},
 				ownerOnlyScopes,
 			);
 
@@ -443,7 +445,9 @@ describe('PublicApiKeyService', () => {
 			// Act
 
 			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
-				'global:member',
+				{
+					role: GLOBAL_MEMBER_ROLE,
+				},
 				ownerOnlyScopes,
 			);
 

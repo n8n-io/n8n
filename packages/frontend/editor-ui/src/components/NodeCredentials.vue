@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ICredentialsResponse, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
-	HTTP_REQUEST_NODE_TYPE,
 	type ICredentialType,
 	type INodeCredentialDescription,
 	type INodeCredentialsDetails,
@@ -15,7 +14,7 @@ import { useToast } from '@/composables/useToast';
 import TitledList from '@/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { CREDENTIAL_ONLY_NODE_PREFIX, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { CREDENTIAL_ONLY_NODE_PREFIX } from '@/constants';
 import { ndvEventBus } from '@/event-bus';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -24,11 +23,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { assert } from '@n8n/utils/assert';
 import {
-	getAllNodeCredentialForAuthType,
 	getAuthTypeForNodeCredential,
-	getMainAuthField,
 	getNodeCredentialForSelectedAuthType,
-	isRequiredCredential,
 	updateNodeAuthType,
 } from '@/utils/nodeTypesUtils';
 import {
@@ -41,10 +37,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { isEmpty } from '@/utils/typesUtils';
-
-interface CredentialDropdownOption extends ICredentialsResponse {
-	typeDisplayName: string;
-}
+import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
 
 type Props = {
 	node: INodeUi;
@@ -85,40 +78,39 @@ const filter = ref('');
 const listeningForAuthChange = ref(false);
 const selectRefs = ref<Array<InstanceType<typeof N8nSelect>>>([]);
 
-const credentialTypesNodeDescriptions = computed(() =>
-	credentialsStore.getCredentialTypesNodeDescriptions(props.overrideCredType, nodeType.value),
+const node = computed(() => props.node);
+
+const nodeType = computed(() =>
+	nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
 );
 
-const credentialTypesNode = computed(() =>
-	credentialTypesNodeDescriptions.value.map(
-		(credentialTypeDescription) => credentialTypeDescription.name,
-	),
-);
-
-const credentialTypesNodeDescriptionDisplayed = computed(() =>
-	credentialTypesNodeDescriptions.value
-		.filter((credentialTypeDescription) => displayCredentials(credentialTypeDescription))
-		.map((type) => ({ type, options: getCredentialOptions(getAllRelatedCredentialTypes(type)) })),
+const {
+	mainNodeAuthField,
+	credentialTypesNodeDescriptionDisplayed,
+	credentialTypesNodeDescriptions,
+	isCredentialExisting,
+	showMixedCredentials,
+} = useNodeCredentialOptions(
+	node,
+	nodeType,
+	computed(() => props.overrideCredType),
 );
 
 const credentialTypeNames = computed(() => {
 	const returnData: Record<string, string> = {};
-	for (const credentialTypeName of credentialTypesNode.value) {
-		const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
-		returnData[credentialTypeName] = credentialType
-			? credentialType.displayName
-			: credentialTypeName;
+
+	for (const { name } of credentialTypesNodeDescriptions.value) {
+		const credentialType = credentialsStore.getCredentialTypeByName(name);
+		returnData[name] = credentialType ? credentialType.displayName : name;
 	}
+
 	return returnData;
 });
 
 const selected = computed<Record<string, INodeCredentialsDetails>>(
 	() => props.node.credentials ?? {},
 );
-const nodeType = computed(() =>
-	nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion),
-);
-const mainNodeAuthField = computed(() => getMainAuthField(nodeType.value));
+
 watch(
 	() => props.node.parameters,
 	(newValue, oldValue) => {
@@ -228,44 +220,9 @@ onBeforeUnmount(() => {
 	ndvEventBus.off('credential.createNew', onCreateAndAssignNewCredential);
 });
 
-function getAllRelatedCredentialTypes(credentialType: INodeCredentialDescription): string[] {
-	const credentialIsRequired = showMixedCredentials(credentialType);
-	if (credentialIsRequired) {
-		if (mainNodeAuthField.value) {
-			const credentials = getAllNodeCredentialForAuthType(
-				nodeType.value,
-				mainNodeAuthField.value.name,
-			);
-			return credentials.map((cred) => cred.name);
-		}
-	}
-	return [credentialType.name];
-}
-
-function getCredentialOptions(types: string[]): CredentialDropdownOption[] {
-	let options: CredentialDropdownOption[] = [];
-	types.forEach((type) => {
-		options = options.concat(
-			credentialsStore.allUsableCredentialsByType[type].map(
-				(option: ICredentialsResponse) =>
-					({
-						...option,
-						typeDisplayName: credentialsStore.getCredentialTypeByName(type)?.displayName,
-					}) as CredentialDropdownOption,
-			),
-		);
-	});
-
-	if (ndvStore.activeNode?.type === HTTP_REQUEST_NODE_TYPE) {
-		options = options.filter((option) => !option.isManaged);
-	}
-
-	return options;
-}
-
-function getSelectedId(type: string) {
+function getSelectedId(type: INodeCredentialDescription) {
 	if (isCredentialExisting(type)) {
-		return selected.value[type].id;
+		return selected.value[type.name].id;
 	}
 	return undefined;
 }
@@ -295,7 +252,6 @@ function clearSelectedCredential(credentialType: string) {
 		name: props.node.name,
 		properties: {
 			credentials,
-			position: props.node.position,
 		},
 	};
 
@@ -412,24 +368,10 @@ function onCredentialSelected(
 		name: props.node.name,
 		properties: {
 			credentials,
-			position: props.node.position,
 		},
 	};
 
 	emit('credentialSelected', updateInformation);
-}
-
-function displayCredentials(credentialTypeDescription: INodeCredentialDescription): boolean {
-	if (credentialTypeDescription.displayOptions === undefined) {
-		// If it is not defined no need to do a proper check
-		return true;
-	}
-	return nodeHelpers.displayParameter(
-		props.node.parameters,
-		credentialTypeDescription,
-		'',
-		props.node,
-	);
 }
 
 function getIssues(credentialTypeName: string): string[] {
@@ -445,16 +387,6 @@ function getIssues(credentialTypeName: string): string[] {
 	return node.issues.credentials[credentialTypeName];
 }
 
-function isCredentialExisting(credentialType: string): boolean {
-	if (!props.node.credentials?.[credentialType]?.id) {
-		return false;
-	}
-	const { id } = props.node.credentials[credentialType];
-	const options = getCredentialOptions([credentialType]);
-
-	return !!options.find((option: ICredentialsResponse) => option.id === id);
-}
-
 function editCredential(credentialType: string): void {
 	const credential = props.node.credentials?.[credentialType];
 	assert(credential?.id);
@@ -468,12 +400,6 @@ function editCredential(credentialType: string): void {
 		workflow_id: workflowsStore.workflowId,
 	});
 	subscribedToCredentialType.value = credentialType;
-}
-
-function showMixedCredentials(credentialType: INodeCredentialDescription): boolean {
-	const isRequired = isRequiredCredential(nodeType.value, credentialType);
-
-	return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(props.node.type ?? '') && isRequired;
 }
 
 function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
@@ -500,7 +426,7 @@ function setFilter(newFilter = '') {
 }
 
 function matches(needle: string, haystack: string) {
-	return haystack.toLocaleLowerCase().includes(needle);
+	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
 }
 
 async function onClickCreateCredential(type: ICredentialType | INodeCredentialDescription) {
@@ -538,7 +464,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 				>
 					<N8nSelect
 						ref="selectRefs"
-						:model-value="getSelectedId(type.name)"
+						:model-value="getSelectedId(type)"
 						:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
 						size="small"
 						filterable
@@ -587,7 +513,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 					</div>
 
 					<div
-						v-if="selected[type.name] && isCredentialExisting(type.name)"
+						v-if="selected[type.name] && isCredentialExisting(type)"
 						:class="$style.edit"
 						data-test-id="credential-edit-button"
 					>
