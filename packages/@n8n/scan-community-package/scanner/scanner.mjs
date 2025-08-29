@@ -152,14 +152,18 @@ export const analyzePackageByName = async (packageName, version) => {
 			packageName,
 			exactVersion,
 		);
-		stdout.clearLine(0);
-		stdout.cursorTo(0);
-		stdout.write(`✅ Downloaded ${label} \n`);
+		if (stdout.TTY){
+			stdout.clearLine(0);
+			stdout.cursorTo(0);
+		}
+			stdout.write(`✅ Downloaded ${label} \n`);
 
 		stdout.write(`Analyzing ${label}...`);
 		const analysisResult = await analyzePackage(packageDir);
-		stdout.clearLine(0);
-		stdout.cursorTo(0);
+		if (stdout.TTY) {
+			stdout.clearLine(0);
+			stdout.cursorTo(0);
+		}
 		stdout.write(`✅ Analyzed ${label} \n`);
 
 		return {
