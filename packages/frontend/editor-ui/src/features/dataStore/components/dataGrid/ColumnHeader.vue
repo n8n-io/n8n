@@ -7,6 +7,7 @@ import { isAGGridCellType } from '@/features/dataStore/typeGuards';
 
 type HeaderParamsWithDelete = IHeaderParams & {
 	onDelete: (columnId: string) => void;
+	allowMenuActions: boolean;
 };
 
 const props = defineProps<{
@@ -42,7 +43,7 @@ const onDropdownVisibleChange = (visible: boolean) => {
 };
 
 const isDropdownVisible = computed(() => {
-	return isHovered.value || isDropdownOpen.value;
+	return props.params.allowMenuActions && (isHovered.value || isDropdownOpen.value);
 });
 
 const typeIcon = computed(() => {

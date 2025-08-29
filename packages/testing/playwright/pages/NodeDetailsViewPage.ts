@@ -70,6 +70,19 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('parameter-expression-preview-value');
 	}
 
+	getInlineExpressionEditorPreview() {
+		return this.page.getByTestId('inline-expression-editor-output');
+	}
+
+	async activateParameterExpressionEditor(parameterName: string) {
+		const parameterInput = this.getParameterInput(parameterName);
+		await parameterInput.click();
+		await this.page
+			.getByTestId(`${parameterName}-parameter-input-options-container`)
+			.getByTestId('radio-button-expression')
+			.click();
+	}
+
 	getEditPinnedDataButton() {
 		return this.page.getByTestId('ndv-edit-pinned-data');
 	}
@@ -210,7 +223,7 @@ export class NodeDetailsViewPage extends BasePage {
 	 * @param parameterName - The name of the parameter
 	 */
 	getParameterInputField(parameterName: string) {
-		return this.getParameterInput(parameterName).getByTestId('parameter-input-field');
+		return this.getParameterInput(parameterName).locator('input');
 	}
 
 	/**
@@ -267,9 +280,7 @@ export class NodeDetailsViewPage extends BasePage {
 	 * Ported from Cypress pattern with Playwright selectors
 	 */
 	getVisiblePopper() {
-		return this.page
-			.locator('.el-popper')
-			.filter({ hasNot: this.page.locator('[aria-hidden="true"]') });
+		return this.page.locator('.el-popper:visible');
 	}
 
 	/**
@@ -515,6 +526,38 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment')
 			.nth(index)
 			.getByTestId('assignment-name');
+	}
+
+	getResourceMapperFieldsContainer() {
+		return this.page.getByTestId('mapping-fields-container');
+	}
+
+	getResourceMapperParameterInputs() {
+		return this.getResourceMapperFieldsContainer().getByTestId('parameter-input');
+	}
+
+	getResourceMapperSelectColumn() {
+		return this.page.getByTestId('matching-column-select');
+	}
+
+	getResourceMapperColumnsOptionsButton() {
+		return this.page.getByTestId('columns-parameter-input-options-container');
+	}
+
+	getResourceMapperRemoveFieldButton(fieldName: string) {
+		return this.page.getByTestId(`remove-field-button-${fieldName}`);
+	}
+
+	getResourceMapperRemoveAllFieldsOption() {
+		return this.page.getByTestId('action-removeAllFields');
+	}
+
+	async refreshResourceMapperColumns() {
+		const selectColumn = this.getResourceMapperSelectColumn();
+		await selectColumn.hover();
+		await selectColumn.getByTestId('action-toggle').click();
+		await expect(this.getVisiblePopper().getByTestId('action-refreshFieldList')).toBeVisible();
+		await this.getVisiblePopper().getByTestId('action-refreshFieldList').click();
 	}
 
 	getAddValueButton() {
