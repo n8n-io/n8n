@@ -185,7 +185,7 @@ function hookFunctionsPush(
 			workflowId: this.workflowData.id,
 		});
 
-		const itemCount = data.data?.main?.[0]?.length ?? 1;
+		const itemCount = data.data?.main?.[0]?.length ?? 0;
 		const { data: _, ...taskData } = data;
 
 		pushInstance.send(
@@ -193,9 +193,14 @@ function hookFunctionsPush(
 			pushRef,
 		);
 
+		const asBinary = true;
 		pushInstance.send(
-			{ type: 'nodeExecuteAfterData', data: { executionId, nodeName, data } },
+			{
+				type: 'nodeExecuteAfterData',
+				data: { executionId, nodeName, itemCount, data },
+			},
 			pushRef,
+			asBinary,
 		);
 	});
 	hooks.addHandler('workflowExecuteBefore', function (_workflow, data) {

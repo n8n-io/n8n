@@ -117,10 +117,19 @@ export function runMockWorkflowExecution({
 			nodeName,
 			data: pick(nodeRunData, ['startTime', 'executionIndex', 'source', 'hints']),
 		});
+		const { data: _, ...taskData } = nodeRunData;
+		const itemCount = nodeRunData.data?.main?.[0]?.length ?? 0;
 		cy.push('nodeExecuteAfter', {
 			executionId,
 			nodeName,
+			data: taskData,
+			itemCount,
+		});
+		cy.push('nodeExecuteAfterData', {
+			executionId,
+			nodeName,
 			data: nodeRunData,
+			itemCount,
 		});
 	});
 

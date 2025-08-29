@@ -352,8 +352,12 @@ describe('Execution Lifecycle Hooks', () => {
 
 				expect(push.send).toHaveBeenNthCalledWith(
 					2,
-					{ type: 'nodeExecuteAfterData', data: { executionId, nodeName, data: mockTaskData } },
+					{
+						type: 'nodeExecuteAfterData',
+						data: { executionId, nodeName, itemCount: 1, data: mockTaskData },
+					},
 					pushRef,
+					true,
 				);
 			});
 

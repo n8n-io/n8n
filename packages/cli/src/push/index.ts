@@ -32,7 +32,7 @@ type PushEvents = {
  * Max allowed size of a push message in bytes. Events going through the pubsub
  * channel are trimmed if exceeding this size.
  */
-const MAX_PAYLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5 MiB
+const MAX_PAYLOAD_SIZE_BYTES = 1 * 1024 * 1024; // 5 MiB
 
 /**
  * Push service for uni- or bi-directional communication with frontend clients.
@@ -164,13 +164,18 @@ export class Push extends TypedEmitter<PushEvents> {
 		return this.backend.hasPushRef(pushRef);
 	}
 
-	send(pushMsg: PushMessage, pushRef: string) {
+	/**
+	 * Send a push message to a specific push ref.
+	 *
+	 * @param asBinary - Whether to send the message as a binary frames or text frames
+	 */
+	send(pushMsg: PushMessage, pushRef: string, asBinary: boolean = false) {
 		if (this.shouldRelayViaPubSub(pushRef)) {
-			this.relayViaPubSub(pushMsg, pushRef);
+			this.relayViaPubSub(pushMsg, pushRef, asBinary);
 			return;
 		}
 
-		this.backend.sendToOne(pushMsg, pushRef);
+		this.backend.sendToOne(pushMsg, pushRef, asBinary);
 	}
 
 	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
@@ -206,9 +211,13 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	@OnPubSubEvent('relay-execution-lifecycle-event', { instanceType: 'main' })
-	handleRelayExecutionLifecycleEvent({ pushRef, ...pushMsg }: PushMessage & { pushRef: string }) {
+	handleRelayExecutionLifecycleEvent({
+		pushRef,
+		asBinary,
+		...pushMsg
+	}: PushMessage & { asBinary: boolean; pushRef: string }) {
 		if (!this.hasPushRef(pushRef)) return;
-		this.send(pushMsg, pushRef);
+		this.send(pushMsg, pushRef, asBinary);
 	}
 
 	/**
@@ -217,13 +226,13 @@ export class Push extends TypedEmitter<PushEvents> {
 	 *
 	 * See {@link shouldRelayViaPubSub} for more details.
 	 */
-	private relayViaPubSub(pushMsg: PushMessage, pushRef: string) {
+	private relayViaPubSub(pushMsg: PushMessage, pushRef: string, asBinary: boolean = false) {
 		const eventSizeBytes = new TextEncoder().encode(JSON.stringify(pushMsg.data)).length;
 
 		if (eventSizeBytes <= MAX_PAYLOAD_SIZE_BYTES) {
 			void this.publisher.publishCommand({
 				command: 'relay-execution-lifecycle-event',
-				payload: { ...pushMsg, pushRef },
+				payload: { ...pushMsg, pushRef, asBinary },
 			});
 			return;
 		}
@@ -247,7 +256,7 @@ export class Push extends TypedEmitter<PushEvents> {
 
 		void this.publisher.publishCommand({
 			command: 'relay-execution-lifecycle-event',
-			payload: { ...pushMsgCopy, pushRef },
+			payload: { ...pushMsgCopy, pushRef, asBinary },
 		});
 	}
 }
