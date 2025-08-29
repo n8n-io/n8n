@@ -226,11 +226,11 @@ describe('selectMany utils', () => {
 				expect(result).toEqual([{ json: { id: 1, name: 'Anne-Marie' } }]);
 			});
 
-			it('should handle multiple conditions with ANY_FILTER', async () => {
+			it('should handle multiple conditions with ANY_FILTER (OR logic - matches records satisfying either condition)', async () => {
 				// ARRANGE
 				filters = [
 					{ condition: 'eq', keyName: 'status', keyValue: 'active' },
-					{ condition: 'gt', keyName: 'age', keyValue: 18 },
+					{ condition: 'gt', keyName: 'age', keyValue: 50 },
 				];
 				getManyRowsAndCount.mockReturnValue({
 					data: [{ id: 1, status: 'active', age: 25 }],
@@ -244,7 +244,7 @@ describe('selectMany utils', () => {
 				expect(result).toEqual([{ json: { id: 1, status: 'active', age: 25 } }]);
 			});
 
-			it('should handle multiple conditions with ALL_FILTERS', async () => {
+			it('should handle multiple conditions with ALL_FILTERS (AND logic - matches records satisfying all conditions)', async () => {
 				// ARRANGE
 				filters = [
 					{ condition: 'eq', keyName: 'status', keyValue: 'active' },
@@ -258,6 +258,62 @@ describe('selectMany utils', () => {
 							return filters;
 						case 'matchType':
 							return ALL_FILTERS;
+					}
+				});
+				getManyRowsAndCount.mockReturnValue({
+					data: [{ id: 1, status: 'active', age: 25 }],
+					count: 1,
+				});
+
+				// ACT
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+
+				// ASSERT
+				expect(result).toEqual([{ json: { id: 1, status: 'active', age: 25 } }]);
+			});
+
+			it('should handle ALL_FILTERS excluding records that match only one condition (proves AND logic)', async () => {
+				// ARRANGE
+				filters = [
+					{ condition: 'eq', keyName: 'status', keyValue: 'inactive' },
+					{ condition: 'gte', keyName: 'age', keyValue: 21 },
+				];
+				mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((field) => {
+					switch (field) {
+						case DATA_TABLE_ID_FIELD:
+							return dataTableId;
+						case 'filters.conditions':
+							return filters;
+						case 'matchType':
+							return ALL_FILTERS;
+					}
+				});
+				getManyRowsAndCount.mockReturnValue({
+					data: [],
+					count: 0,
+				});
+
+				// ACT
+				const result = await executeSelectMany(mockExecuteFunctions, 0, dataStoreProxy);
+
+				// ASSERT
+				expect(result).toEqual([]);
+			});
+
+			it('should handle ANY_FILTER including records that match only one condition (proves OR logic)', async () => {
+				// ARRANGE
+				filters = [
+					{ condition: 'eq', keyName: 'status', keyValue: 'inactive' },
+					{ condition: 'gte', keyName: 'age', keyValue: 21 },
+				];
+				mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((field) => {
+					switch (field) {
+						case DATA_TABLE_ID_FIELD:
+							return dataTableId;
+						case 'filters.conditions':
+							return filters;
+						case 'matchType':
+							return ANY_FILTER;
 					}
 				});
 				getManyRowsAndCount.mockReturnValue({
