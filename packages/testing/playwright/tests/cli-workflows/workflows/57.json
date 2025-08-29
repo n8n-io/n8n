@@ -1,92 +1,55 @@
 {
-	"createdAt": "2021-02-22T13:24:15.920Z",
-	"updatedAt": "2021-07-14T13:33:54.633Z",
-	"id": "57",
-	"name": "Mindee:receipt:predict:invoice:predict",
+	"createdAt": "2025-08-25T07:40:46.331Z",
+	"updatedAt": "2025-08-28T15:55:44.000Z",
+	"id": "0ntXdsmmrZOGRxjL",
+	"name": "Mindee V2",
 	"active": false,
+	"isArchived": false,
 	"nodes": [
 		{
 			"parameters": {},
-			"name": "Start",
-			"type": "n8n-nodes-base.start",
+			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [330, 230],
-			"id": "a2fb028a-a712-440d-b273-88e18c86f688"
+			"position": [272, 272],
+			"id": "2afeaf1e-5ba6-43cc-8a33-82d0a352f7c1",
+			"name": "When clicking ‘Execute workflow’"
 		},
 		{
 			"parameters": {},
-			"name": "Mindee",
 			"type": "n8n-nodes-base.mindee",
-			"typeVersion": 1,
-			"position": [650, 150],
+			"typeVersion": 4,
+			"position": [896, 272],
+			"id": "f2ad9974-7016-4266-9cc1-c8691a50d8aa",
+			"name": "Mindee",
 			"credentials": {
-				"mindeeReceiptApi": {
-					"id": "44",
-					"name": "Mindee Receipt creds"
+				"mindeeV2Api": {
+					"id": "MNzaDBYtrc44WNYc",
+					"name": "Mindee V2 account"
 				}
-			},
-			"id": "d1c7c807-0f46-48d7-a6a8-07c6fbd9298e"
+			}
 		},
 		{
 			"parameters": {
 				"url": "https://upload.wikimedia.org/wikipedia/commons/0/0b/ReceiptSwiss.jpg",
-				"responseFormat": "file",
-				"options": {},
-				"headerParametersUi": {
-					"parameter": [
-						{
-							"name": "User-agent",
-							"value": "n8n-io app"
-						}
-					]
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
 				}
 			},
-			"name": "HTTP Request",
 			"type": "n8n-nodes-base.httpRequest",
-			"typeVersion": 1,
-			"position": [500, 150],
-			"id": "8313ed3a-96d5-4f34-8d5c-76bcdc7be95a"
-		},
-		{
-			"parameters": {
-				"resource": "invoice"
-			},
-			"name": "Mindee1",
-			"type": "n8n-nodes-base.mindee",
-			"typeVersion": 1,
-			"position": [650, 300],
-			"credentials": {
-				"mindeeInvoiceApi": {
-					"id": "45",
-					"name": "Mindee Invoice creds"
-				}
-			},
-			"id": "1632bf97-ed0a-49cc-8c55-be7be333c91b"
-		},
-		{
-			"parameters": {
-				"url": "https://www.invoicesimple.com/wp-content/uploads/2018/06/Sample-Invoice-printable.png",
-				"responseFormat": "file",
-				"options": {}
-			},
-			"name": "HTTP Request1",
-			"type": "n8n-nodes-base.httpRequest",
-			"typeVersion": 1,
-			"position": [500, 300],
-			"id": "72d76ab1-1074-42ca-af84-cf8dc7eef32f"
+			"typeVersion": 4.2,
+			"position": [576, 272],
+			"id": "2a3128a6-ebb8-4ea1-abd4-f457f57a5b7f",
+			"name": "HTTP Request"
 		}
 	],
 	"connections": {
-		"Start": {
+		"When clicking ‘Execute workflow’": {
 			"main": [
 				[
 					{
 						"node": "HTTP Request",
-						"type": "main",
-						"index": 0
-					},
-					{
-						"node": "HTTP Request1",
 						"type": "main",
 						"index": 0
 					}
@@ -103,24 +66,17 @@
 					}
 				]
 			]
-		},
-		"HTTP Request1": {
-			"main": [
-				[
-					{
-						"node": "Mindee1",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
 		}
 	},
-	"settings": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
 	"staticData": null,
-	"meta": null,
-	"pinData": null,
-	"versionId": null,
+	"meta": {
+		"templateCredsSetupCompleted": true
+	},
+	"pinData": {},
+	"versionId": "cb43f723-f704-4161-a4a2-85c61e243987",
 	"triggerCount": 0,
 	"tags": []
 }
