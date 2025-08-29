@@ -48,7 +48,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 	workflowsStore.nodeMetadata[node.name] = { pristine: true };
 
 	if (isActiveNode) {
-		ndvStore.activeNodeName = node.name;
+		ndvStore.setActiveNodeName(node.name, 'other');
 	}
 
 	await useSettingsStore().getSettings();
@@ -173,7 +173,7 @@ describe('NodeDetailsView', () => {
 				pinia,
 			});
 
-			ndvStore.activeNodeName = nodeName;
+			ndvStore.setActiveNodeName(nodeName, 'other');
 
 			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 			await waitFor(() => expect(queryByTestId('ndv-modal')).toBeInTheDocument());
