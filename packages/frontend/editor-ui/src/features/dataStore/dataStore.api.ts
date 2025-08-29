@@ -151,11 +151,12 @@ export const insertDataStoreRowApi = async (
 	row: DataStoreRow,
 	projectId: string,
 ) => {
-	return await makeRestApiRequest<Array<{ id: number }>>(
+	return await makeRestApiRequest<DataStoreRow[]>(
 		context,
 		'POST',
 		`/projects/${projectId}/data-tables/${dataStoreId}/insert`,
 		{
+			returnData: true,
 			data: [row],
 		},
 	);
