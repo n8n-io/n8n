@@ -13,7 +13,6 @@ import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
-import { TRIMMED_TASK_DATA_CONNECTIONS } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TypedEmitter } from '@/typed-emitter';
@@ -32,7 +31,7 @@ type PushEvents = {
  * Max allowed size of a push message in bytes. Events going through the pubsub
  * channel are trimmed if exceeding this size.
  */
-const MAX_PAYLOAD_SIZE_BYTES = 1 * 1024 * 1024; // 5 MiB
+const MAX_PAYLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5 MiB
 
 /**
  * Push service for uni- or bi-directional communication with frontend clients.
@@ -239,18 +238,27 @@ export class Push extends TypedEmitter<PushEvents> {
 
 		// too large for pubsub channel, trim it
 
-		const pushMsgCopy = deepCopy(pushMsg);
-
+		const { type } = pushMsg;
 		const toMb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(0);
 		const eventMb = toMb(eventSizeBytes);
 		const maxMb = toMb(MAX_PAYLOAD_SIZE_BYTES);
-		const { type } = pushMsgCopy;
+
+		if (type === 'nodeExecuteAfterData') {
+			this.logger.warn(
+				`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Skipping...`,
+			);
+			// In case of nodeExecuteAfterData, we omit the message entirely. We
+			// already include the amount of items in the nodeExecuteAfter message,
+			// based on which the FE will construct placeholder data. The actual
+			// data is then fetched at the end of the execution.
+			return;
+		}
 
 		this.logger.warn(`Size of "${type}" (${eventMb} MB) exceeds max size ${maxMb} MB. Trimming...`);
 
-		if (type === 'nodeExecuteAfterData') {
-			pushMsgCopy.data.data.data = TRIMMED_TASK_DATA_CONNECTIONS;
-		} else if (type === 'executionFinished') {
+		const pushMsgCopy = deepCopy(pushMsg);
+
+		if (pushMsgCopy.type === 'executionFinished') {
 			pushMsgCopy.data.rawData = ''; // prompt client to fetch from DB
 		}
 
