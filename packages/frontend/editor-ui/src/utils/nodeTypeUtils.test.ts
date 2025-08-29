@@ -1,5 +1,9 @@
 import type { ResourceMapperField } from 'n8n-workflow';
-import { isCommunityPackageName, isResourceMapperFieldListStale } from './nodeTypesUtils';
+import {
+	isCommunityPackageName,
+	isResourceMapperFieldListStale,
+	parseResourceMapperFieldName,
+} from './nodeTypesUtils';
 
 describe('isResourceMapperFieldListStale', () => {
 	const baseField: ResourceMapperField = {
@@ -125,5 +129,29 @@ describe('isCommunityPackageName', () => {
 		expect(isCommunityPackageName('@user/n8n-nodes-example')).toBe(true);
 		expect(isCommunityPackageName('n8n-nodes-base')).toBe(false);
 		expect(isCommunityPackageName('@test-scope/n8n-nodes-test')).toBe(true);
+	});
+});
+
+describe('parseResourceMapperFieldName', () => {
+	test.each([
+		{ input: 'value["fieldName"]', expected: 'fieldName', desc: 'basic field name' },
+		{
+			input: 'value["field with spaces"]',
+			expected: 'field with spaces',
+			desc: 'field with spaces',
+		},
+		{
+			input: 'value["field\nwith\nactual\nnewlines"]',
+			expected: 'field\nwith\nactual\nnewlines',
+			desc: 'field with newlines',
+		},
+		{
+			input: 'value["field\\"with\\"quotes"]',
+			expected: 'field\\"with\\"quotes',
+			desc: 'field with escaped quotes',
+		},
+		{ input: 'fieldName', expected: 'fieldName', desc: 'no value wrapper' },
+	])('should parse $desc', ({ input, expected }) => {
+		expect(parseResourceMapperFieldName(input)).toBe(expected);
 	});
 });
