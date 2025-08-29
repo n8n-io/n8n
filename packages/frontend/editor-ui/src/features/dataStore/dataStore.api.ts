@@ -4,9 +4,9 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	DataStoreColumnCreatePayload,
 	DataStore,
-	DataStoreColumn,
 	DataStoreRow,
 } from '@/features/dataStore/datastore.types';
+import type { DataStoreColumn } from 'n8n-workflow';
 
 export const fetchDataStoresApi = async (
 	context: IRestApiContext,
