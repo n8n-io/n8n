@@ -441,11 +441,11 @@ describe('AI Assistant Credential Help', () => {
 		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
 		ndv.getters.copyInput().should('not.exist');
 		credentialsModal.getters.oauthConnectButton().should('have.length', 1);
-		credentialsModal.getters.credentialInputs().should('have.length', 0);
+		credentialsModal.getters.credentialInputs().should('have.length', 2);
 		aiAssistant.getters.credentialEditAssistantButton().should('not.exist');
 
 		credentialsModal.getters.credentialAuthTypeRadioButtons().eq(1).click();
-		credentialsModal.getters.credentialInputs().should('have.length', 3);
+		credentialsModal.getters.credentialInputs().should('have.length', 4);
 		aiAssistant.getters.credentialEditAssistantButton().should('exist');
 	});
 
@@ -473,7 +473,7 @@ describe('AI Assistant Credential Help', () => {
 		wf.getters.nodeCredentialsCreateOption().click();
 		ndv.getters.copyInput().should('not.exist');
 		credentialsModal.getters.oauthConnectButton().should('have.length', 1);
-		credentialsModal.getters.credentialInputs().should('have.length', 1);
+		credentialsModal.getters.credentialInputs().should('have.length', 2);
 		aiAssistant.getters.credentialEditAssistantButton().should('not.exist');
 	});
 });
