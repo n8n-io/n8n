@@ -126,7 +126,7 @@ export class UsersController {
 					...user,
 					projectRelations: u.projectRelations?.map((pr) => ({
 						id: pr.projectId,
-						role: pr.role, // normalize role for frontend
+						role: pr.role.slug, // normalize role for frontend
 						name: pr.project.name,
 					})),
 				};

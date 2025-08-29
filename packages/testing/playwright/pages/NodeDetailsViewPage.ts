@@ -106,8 +106,13 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getOutputTableRow(row).locator('td').nth(col);
 	}
 
+	/**
+	 * Get a cell from the output table body, this doesn't include the header row
+	 * @param row - The row index
+	 * @param col - The column index
+	 */
 	getOutputTbodyCell(row: number, col: number) {
-		return this.getOutputTableRow(row).locator('td').nth(col);
+		return this.getOutputTable().locator('tbody tr').nth(row).locator('td').nth(col);
 	}
 
 	// Pin data operations
@@ -447,8 +452,62 @@ export class NodeDetailsViewPage extends BasePage {
 		}
 	}
 
+	async switchInputMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary'): Promise<void> {
+		await this.getInputPanel().getByRole('radio', { name: mode }).click();
+	}
+
+	async switchOutputMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary'): Promise<void> {
+		await this.getOutputPanel().getByRole('radio', { name: mode }).click();
+	}
+
 	getAssignmentCollectionContainer(paramName: string) {
 		return this.page.getByTestId(`assignment-collection-${paramName}`);
+	}
+
+	getJsonDataContainer() {
+		return this.getInputPanel().locator('.json-data');
+	}
+
+	getInputJsonProperty(propertyName: string) {
+		return this.getInputPanel()
+			.locator('.json-data')
+			.locator('span')
+			.filter({ hasText: new RegExp(`^"${propertyName}"$`) })
+			.first();
+	}
+
+	getInputJsonPropertyContaining(text: string) {
+		return this.getInputPanel()
+			.locator('.json-data')
+			.locator('span')
+			.filter({ hasText: `"${text}"` })
+			.first();
+	}
+
+	getInputSchemaItem(text: string) {
+		return this.getInputPanel()
+			.getByTestId('run-data-schema-item')
+			.locator('span')
+			.filter({ hasText: new RegExp(`^${text}$`) })
+			.first();
+	}
+
+	async selectInputNode(nodeName: string) {
+		const inputSelect = this.getInputPanel().getByTestId('ndv-input-select');
+		await inputSelect.click();
+		await this.page.getByRole('option', { name: nodeName }).click();
+	}
+
+	getInputTableHeader(index: number = 0) {
+		return this.getInputPanel().locator('table th').nth(index);
+	}
+
+	getInputTableCell(row: number, col: number) {
+		return this.getInputPanel().locator('table tbody tr').nth(row).locator('td').nth(col);
+	}
+
+	getInputTbodyCell(row: number, col: number) {
+		return this.getInputTableCell(row, col);
 	}
 
 	getAssignmentName(paramName: string, index = 0) {
@@ -456,5 +515,41 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment')
 			.nth(index)
 			.getByTestId('assignment-name');
+	}
+
+	getAddValueButton() {
+		return this.getNodeParameters().locator('input[placeholder*="Add Value"]');
+	}
+
+	getParameterSwitch(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.el-switch');
+	}
+
+	getParameterTextInput(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('input[type="text"]');
+	}
+
+	getInlineExpressionEditorContent() {
+		return this.getInlineExpressionEditorInput().locator('.cm-content');
+	}
+
+	getInputTable() {
+		return this.getInputPanel().locator('table');
+	}
+
+	getInputTableCellSpan(row: number, col: number, dataName: string) {
+		return this.getInputTableCell(row, col).locator(`span[data-name="${dataName}"]`).first();
+	}
+
+	getAddFieldToSortByButton() {
+		return this.getNodeParameters().getByText('Add Field To Sort By');
+	}
+
+	async toggleCodeMode(switchTo: 'Run Once for Each Item' | 'Run Once for All Items') {
+		await this.getParameterInput('mode').click();
+		await this.page.getByRole('option', { name: switchTo }).click();
+		// This is a workaround to wait for the code editor to reinitialize after the mode switch
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(2500);
 	}
 }

@@ -36,7 +36,7 @@ import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { DataStoreRowReturn } from 'n8n-workflow';
 
-@RestController('/projects/:projectId/data-stores')
+@RestController('/projects/:projectId/data-tables')
 export class DataStoreController {
 	constructor(private readonly dataStoreService: DataStoreService) {}
 

@@ -170,15 +170,20 @@ export class DataStoreRowsRepository {
 		// surprisingly awkward without Entities, e.g. `RETURNING id` explicitly does not aggregate
 		// and the `identifiers` array output of `execute()` is empty
 		for (const row of rows) {
+			// Fill missing columns with null values to support partial data insertion
+			const completeRow = { ...row };
 			for (const column of columns) {
-				row[column.name] = normalizeValue(row[column.name], column.type, dbType);
+				if (!(column.name in completeRow)) {
+					completeRow[column.name] = null;
+				}
+				completeRow[column.name] = normalizeValue(completeRow[column.name], column.type, dbType);
 			}
 
 			const query = this.dataSource
 				.createQueryBuilder()
 				.insert()
 				.into(table, columnNames)
-				.values(row);
+				.values(completeRow);
 
 			if (useReturning) {
 				query.returning(returnData ? selectColumns.join(',') : 'id');
