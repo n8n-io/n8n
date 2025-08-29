@@ -11,7 +11,7 @@ import {
 
 import type { Role } from 'entities';
 
-export function buildInRoleToRoleObject(
+export function builtInRoleToRoleObject(
 	role: RoleDTO,
 	roleType: 'global' | 'project' | 'workflow' | 'credential',
 ): Role {
@@ -41,21 +41,21 @@ function toRoleMap(allRoles: Role[]): Record<string, Role> {
 	);
 }
 
-export const ALL_BUILDIN_ROLES = toRoleMap([
-	...ALL_ROLES.global.map((role) => buildInRoleToRoleObject(role, 'global')),
-	...ALL_ROLES.project.map((role) => buildInRoleToRoleObject(role, 'project')),
-	...ALL_ROLES.credential.map((role) => buildInRoleToRoleObject(role, 'credential')),
-	...ALL_ROLES.workflow.map((role) => buildInRoleToRoleObject(role, 'workflow')),
+export const ALL_BUILTIN_ROLES = toRoleMap([
+	...ALL_ROLES.global.map((role) => builtInRoleToRoleObject(role, 'global')),
+	...ALL_ROLES.project.map((role) => builtInRoleToRoleObject(role, 'project')),
+	...ALL_ROLES.credential.map((role) => builtInRoleToRoleObject(role, 'credential')),
+	...ALL_ROLES.workflow.map((role) => builtInRoleToRoleObject(role, 'workflow')),
 ]);
 
-export const GLOBAL_OWNER_ROLE = ALL_BUILDIN_ROLES['global:owner'];
-export const GLOBAL_ADMIN_ROLE = ALL_BUILDIN_ROLES['global:admin'];
-export const GLOBAL_MEMBER_ROLE = ALL_BUILDIN_ROLES['global:member'];
+export const GLOBAL_OWNER_ROLE = ALL_BUILTIN_ROLES['global:owner'];
+export const GLOBAL_ADMIN_ROLE = ALL_BUILTIN_ROLES['global:admin'];
+export const GLOBAL_MEMBER_ROLE = ALL_BUILTIN_ROLES['global:member'];
 
-export const PROJECT_OWNER_ROLE = ALL_BUILDIN_ROLES[PROJECT_OWNER_ROLE_SLUG];
-export const PROJECT_ADMIN_ROLE = ALL_BUILDIN_ROLES[PROJECT_ADMIN_ROLE_SLUG];
-export const PROJECT_EDITOR_ROLE = ALL_BUILDIN_ROLES[PROJECT_EDITOR_ROLE_SLUG];
-export const PROJECT_VIEWER_ROLE = ALL_BUILDIN_ROLES[PROJECT_VIEWER_ROLE_SLUG];
+export const PROJECT_OWNER_ROLE = ALL_BUILTIN_ROLES[PROJECT_OWNER_ROLE_SLUG];
+export const PROJECT_ADMIN_ROLE = ALL_BUILTIN_ROLES[PROJECT_ADMIN_ROLE_SLUG];
+export const PROJECT_EDITOR_ROLE = ALL_BUILTIN_ROLES[PROJECT_EDITOR_ROLE_SLUG];
+export const PROJECT_VIEWER_ROLE = ALL_BUILTIN_ROLES[PROJECT_VIEWER_ROLE_SLUG];
 
 export const GLOBAL_ROLES: Record<GlobalRole, Role> = {
 	'global:owner': GLOBAL_OWNER_ROLE,

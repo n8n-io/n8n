@@ -23,8 +23,7 @@ describe('RoleRepository', () => {
 	beforeEach(async () => {
 		// Truncate in the correct order to respect foreign key constraints
 		// user table references role via roleSlug
-		// project_relation references role
-		// role_scope is a junction table, truncate before role and scope
+		// ProjectRelation references role
 		await testDb.truncate(['User', 'ProjectRelation', 'Role', 'Scope']);
 	});
 

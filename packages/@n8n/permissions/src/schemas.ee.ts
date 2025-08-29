@@ -38,7 +38,7 @@ export const roleSchema = z.object({
 	displayName: z.string().min(1),
 	description: z.string().nullable(),
 	systemRole: z.boolean(),
-	roleType: z.enum(['global', 'project', 'workflow', 'credential']),
+	roleType: roleNamespaceSchema,
 	licensed: z.boolean(),
 	scopes: z.array(scopeSchema),
 });

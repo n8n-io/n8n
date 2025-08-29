@@ -49,5 +49,5 @@ export const ALL_ROLES: AllRolesMap = {
 };
 
 export const isBuiltInRole = (role: string): role is AllRoleTypes => {
-	return role in ROLE_NAMES;
+	return Object.prototype.hasOwnProperty.call(ROLE_NAMES, role);
 };
