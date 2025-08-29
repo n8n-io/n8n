@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { VIEWS } from '@/constants';
+import { captureException } from '@sentry/vue';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { captureException } from '@sentry/vue';
-import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import type { PublicInstalledPackage } from 'n8n-workflow';
 
-import { N8nText, N8nLink } from '@n8n/design-system';
+import { N8nLink, N8nText } from '@n8n/design-system';
+import { fetchInstalledPackageInfo, type ExtendedPublicInstalledPackage } from './utils';
 
 export interface Props {
 	packageName: string;
@@ -17,7 +16,7 @@ const props = defineProps<Props>();
 const router = useRouter();
 
 const bugsUrl = ref<string>(`https://registry.npmjs.org/${props.packageName}`);
-const installedPackage = ref<PublicInstalledPackage | undefined>(undefined);
+const installedPackage = ref<ExtendedPublicInstalledPackage | undefined>(undefined);
 
 async function openSettingsPage() {
 	await router.push({ name: VIEWS.COMMUNITY_NODES });
@@ -52,7 +51,7 @@ async function getBugsUrl(packageName: string) {
 onMounted(async () => {
 	if (props.packageName) {
 		await getBugsUrl(props.packageName);
-		installedPackage.value = await useCommunityNodesStore().getInstalledPackage(props.packageName);
+		installedPackage.value = await fetchInstalledPackageInfo(props.packageName);
 	}
 });
 </script>
@@ -63,7 +62,9 @@ onMounted(async () => {
 		<div :class="$style.container">
 			<N8nText v-if="installedPackage" size="small" color="text-light" style="margin-right: auto">
 				Package version {{ installedPackage.installedVersion }} ({{
-					installedPackage.updateAvailable ? 'Legacy' : 'Latest'
+					installedPackage.updateAvailable && !installedPackage.unverifiedUpdate
+						? 'Legacy'
+						: 'Latest'
 				}})
 			</N8nText>
 			<template v-if="props.showManage">
