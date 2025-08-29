@@ -218,18 +218,21 @@ class TaskRunner:
             self.analyzer.validate(task_settings.code)
 
             process, queue = self.executor.create_process(
-                task_settings.code,
-                task_settings.node_mode,
-                task_settings.items,
-                self.opts.stdlib_allow,
-                self.opts.external_allow,
-                self.opts.builtins_deny,
+                code=task_settings.code,
+                node_mode=task_settings.node_mode,
+                items=task_settings.items,
+                stdlib_allow=self.opts.stdlib_allow,
+                external_allow=self.opts.external_allow,
+                builtins_deny=self.opts.builtins_deny,
             )
 
             task_state.process = process
 
             result, print_args = self.executor.execute_process(
-                process, queue, self.opts.task_timeout, task_settings.continue_on_fail
+                process=process,
+                queue=queue,
+                task_timeout=self.opts.task_timeout,
+                continue_on_fail=task_settings.continue_on_fail,
             )
 
             for print_args_per_call in print_args:
