@@ -115,7 +115,7 @@ async function createPiniaWithActiveNode() {
 		},
 	};
 
-	ndvStore.activeNodeName = node.name;
+	ndvStore.setActiveNodeName(node.name, 'other');
 
 	return {
 		pinia,
