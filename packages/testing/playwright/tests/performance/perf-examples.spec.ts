@@ -3,8 +3,7 @@ import type { n8nPage } from '../../pages/n8nPage';
 import { getAllPerformanceMetrics, measurePerformance } from '../../utils/performance-helper';
 
 async function setupPerformanceTest(n8n: n8nPage, size: number) {
-	await n8n.goHome();
-	await n8n.workflows.clickNewWorkflowCard();
+	await n8n.start.fromNewProject();
 	await n8n.canvas.importWorkflow('large.json', 'Large Workflow');
 	await n8n.notifications.closeNotificationByText('Successful');
 
