@@ -108,12 +108,14 @@ describe('ScheduleTrigger', () => {
 		});
 
 		it('should emit when manually executed', async () => {
-			const { emit } = await testTriggerNode(ScheduleTrigger, {
+			const { emit, manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
 				mode: 'manual',
 				timezone,
 				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } } },
 				workflowStaticData: { recurrenceRules: [] },
 			});
+
+			await manualTriggerFunction?.();
 
 			expect(emit).toHaveBeenCalledTimes(1);
 
@@ -134,25 +136,26 @@ describe('ScheduleTrigger', () => {
 		});
 
 		it('should throw on invalid cron expressions in manual mode', async () => {
-			await expect(
-				testTriggerNode(ScheduleTrigger, {
-					mode: 'manual',
-					timezone,
-					node: {
-						parameters: {
-							rule: {
-								interval: [
-									{
-										field: 'cronExpression',
-										expression: '@daily *', // adding extra fields to shorthand not allowed -> invalid
-									},
-								],
-							},
+			const { manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
+				mode: 'manual',
+				timezone,
+				node: {
+					parameters: {
+						rule: {
+							interval: [
+								{
+									field: 'cronExpression',
+									expression: '@daily *', // adding extra fields to shorthand not allowed -> invalid
+								},
+							],
 						},
 					},
-					workflowStaticData: {},
-				}),
-			).rejects.toBeInstanceOf(n8nWorkflow.NodeOperationError);
+				},
+				workflowStaticData: {},
+			});
+			await expect(manualTriggerFunction?.()).rejects.toBeInstanceOf(
+				n8nWorkflow.NodeOperationError,
+			);
 		});
 	});
 });
