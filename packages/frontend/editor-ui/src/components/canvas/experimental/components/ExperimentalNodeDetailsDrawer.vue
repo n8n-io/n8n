@@ -2,23 +2,34 @@
 import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { type INodeUi } from '@/Interface';
-import { N8nText } from '@n8n/design-system';
+import { N8nButton, N8nText } from '@n8n/design-system';
 import { type GraphNode } from '@vue-flow/core';
 import { computed, provide } from 'vue';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
+import { useContextMenu } from '@/composables/useContextMenu';
 
 const { node, nodes } = defineProps<{ node: INodeUi; nodes: GraphNode[] }>();
 
 const emit = defineEmits<{ openNdv: [] }>();
 
 const expressionResolveCtx = useExpressionResolveCtx(computed(() => node));
+const contextMenu = useContextMenu();
 
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 </script>
 
 <template>
 	<div :class="$style.component">
-		<N8nText v-if="nodes.length > 1" color="text-base"> {{ nodes.length }} nodes selected </N8nText>
+		<N8nText v-if="nodes.length > 1" color="text-base">
+			<div>{{ nodes.length }} nodes selected</div>
+			<ul>
+				<li v-for="action of contextMenu.actions.value" :key="action.id">
+					<N8nButton text type="tertiary">
+						{{ action.label }}
+					</N8nButton>
+				</li>
+			</ul>
+		</N8nText>
 		<ExperimentalCanvasNodeSettings v-else-if="node" :key="node.id" :node-id="node.id">
 			<template #actions>
 				<N8nIconButton
