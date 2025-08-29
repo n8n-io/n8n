@@ -8,9 +8,7 @@ import { inject, provide } from 'vue';
  * Intended for populating telemetry payload in reusable components to include
  * contextual information that depends on which part of UI it is used.
  */
-export function useTelemetryContext(
-	overrides: Partial<TelemetryContext> = {},
-): Partial<TelemetryContext> {
+export function useTelemetryContext(overrides: TelemetryContext = {}): TelemetryContext {
 	const ctx = inject(TelemetryContextSymbol, {});
 	const merged = { ...ctx, ...overrides };
 

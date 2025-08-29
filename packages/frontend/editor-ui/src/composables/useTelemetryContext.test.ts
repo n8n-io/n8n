@@ -7,67 +7,76 @@ describe(useTelemetryContext, () => {
 		const TestComponent = defineComponent({
 			setup() {
 				const context = useTelemetryContext();
-				return () => h('div', context.view_shown);
+				return () => h('div', JSON.stringify(context));
 			},
 		});
 
-		expect(mount(TestComponent).text()).toBe('');
+		expect(mount(TestComponent).text()).toBe('{}');
 	});
 
 	it('should return context with overrides when overrides are provided', () => {
 		const TestComponent = defineComponent({
 			setup() {
 				const context = useTelemetryContext({ view_shown: 'ndv' });
-				return () => h('div', context.view_shown);
+				return () => h('div', JSON.stringify(context));
 			},
 		});
 
-		expect(mount(TestComponent).text()).toBe('ndv');
+		expect(mount(TestComponent).text()).toBe('{"view_shown":"ndv"}');
 	});
 
 	it('should inherit context from parent and merge with overrides', () => {
 		const ChildComponent = defineComponent({
 			setup() {
 				const childCtx = useTelemetryContext({ view_shown: 'ndv' });
-				return () => h('div', childCtx.view_shown);
+				return () => h('div', JSON.stringify(childCtx));
 			},
 		});
 		const ParentComponent = defineComponent({
 			setup() {
-				useTelemetryContext({ view_shown: 'focus_panel' });
+				useTelemetryContext({ view_shown: 'focus_panel', ndv_source: 'added_new_node' });
 				return () => h('div', [h(ChildComponent)]);
 			},
 		});
 
-		expect(mount(ParentComponent).text()).toBe('ndv');
+		expect(mount(ParentComponent).text()).toBe(
+			'{"view_shown":"ndv","ndv_source":"added_new_node"}',
+		);
 	});
 
 	it('should handle multiple nested contexts correctly', () => {
 		const Level4Component = defineComponent({
 			setup() {
 				const ctx = useTelemetryContext();
-				return () => h('div', ctx.view_shown);
+				return () => h('div', JSON.stringify(ctx));
 			},
 		});
 		const Level3Component = defineComponent({
 			setup() {
 				const ctx = useTelemetryContext({ view_shown: 'ndv' });
-				return () => h('div', [h('div', ctx.view_shown), h('div', ','), h(Level4Component)]);
+				return () => h('div', [h('div', JSON.stringify(ctx)), h(Level4Component)]);
 			},
 		});
 		const Level2Component = defineComponent({
 			setup() {
-				const ctx = useTelemetryContext({});
-				return () => h('div', [h('div', ctx.view_shown), h('div', ','), h(Level3Component)]);
+				const ctx = useTelemetryContext({ ndv_source: 'other' });
+				return () => h('div', [h('div', JSON.stringify(ctx)), h(Level3Component)]);
 			},
 		});
 		const Level1Component = defineComponent({
 			setup() {
 				const ctx = useTelemetryContext({ view_shown: 'focus_panel' });
-				return () => h('div', [h('div', ctx.view_shown), h('div', ','), h(Level2Component)]);
+				return () => h('div', [h('div', JSON.stringify(ctx)), h(Level2Component)]);
 			},
 		});
 
-		expect(mount(Level1Component).text()).toBe('focus_panel,focus_panel,ndv,ndv');
+		expect(mount(Level1Component).text()).toBe(
+			[
+				'{"view_shown":"focus_panel"}',
+				'{"view_shown":"focus_panel","ndv_source":"other"}',
+				'{"view_shown":"ndv","ndv_source":"other"}',
+				'{"view_shown":"ndv","ndv_source":"other"}',
+			].join(''),
+		);
 	});
 });

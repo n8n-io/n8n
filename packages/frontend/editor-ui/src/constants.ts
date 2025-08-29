@@ -981,8 +981,7 @@ export const PopOutWindowKey: InjectionKey<Ref<Window | undefined>> = Symbol('Po
 export const ExpressionLocalResolveContextSymbol: InjectionKey<
 	ComputedRef<ExpressionLocalResolveContext | undefined>
 > = Symbol('ExpressionLocalResolveContext');
-export const TelemetryContextSymbol: InjectionKey<Partial<TelemetryContext>> =
-	Symbol('TelemetryContext');
+export const TelemetryContextSymbol: InjectionKey<TelemetryContext> = Symbol('TelemetryContext');
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 export const CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID = 'cm-tooltip-container';

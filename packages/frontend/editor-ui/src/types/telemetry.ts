@@ -8,6 +8,7 @@ export type TelemetryNdvSource =
 	| 'logs_view'
 	| 'other';
 
-export interface TelemetryContext {
+export type TelemetryContext = Partial<{
 	view_shown: TelemetryNdvType;
-}
+	ndv_source: TelemetryNdvSource;
+}>;
