@@ -15,13 +15,15 @@
         "type": "git",
         "url": ""
     },
-    "scripts": {
-        "build": "n8n-node build",
-        "build:watch": "tsc --watch",
-        "dev": "n8n-node dev",
-        "lint": "eslint .",
-        "release": "release-it"
-    },
+   "scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease"
+	},
     "files": [
         "dist"
     ],
@@ -31,11 +33,6 @@
         "nodes": [
             "dist/nodes/Example/Example.node.js"
         ]
-    },
-    "release-it": {
-        "hooks": {
-            "before:init": "{{packageManager.name}} run lint && {{packageManager.name}} run build"
-        }
     },
     "devDependencies": {
         "@n8n/node-cli": "*",
