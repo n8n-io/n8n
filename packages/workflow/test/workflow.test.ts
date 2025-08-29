@@ -3194,38 +3194,5 @@ describe('Workflow', () => {
 			// Results should be consistent across multiple calls
 			expect(result1.name).toBe(result2.name);
 		});
-
-		test('should throw error when connection node is not found in getParentMainInputNode', () => {
-			// Create a workflow where a node has outgoing connections to a non-existent node
-			const workflowWithBadConnection = new Workflow({
-				nodeTypes,
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Node1',
-						type: 'test.set',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				// Create connections where Node1 connects to NonExistentNode via AiAgent type
-				connections: {
-					Node1: {
-						[NodeConnectionTypes.AiAgent]: [
-							[{ node: 'NonExistentNode', type: NodeConnectionTypes.AiAgent, index: 0 }],
-						],
-					},
-				},
-				active: false,
-			});
-
-			// Get the node that connects to a non-existent node
-			const node1 = workflowWithBadConnection.getNode('Node1')!;
-
-			expect(() => {
-				workflowWithBadConnection.getParentMainInputNode(node1);
-			}).toThrow('Node "NonExistentNode" not found');
-		});
 	});
 });

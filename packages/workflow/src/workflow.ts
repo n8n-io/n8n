@@ -689,24 +689,33 @@ export class Workflow {
 
 	getParentMainInputNode(node: INode): INode {
 		if (node) {
-			const nodeConnections = this.connectionsBySourceNode[node.name];
-			if (!nodeConnections) {
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			if (!nodeType?.description.outputs) {
 				return node;
 			}
 
-			// Get non-main connection types that this node connects TO (outgoing connections)
-			// This uses actual execution data, not node type definitions
-			const nonMainConnectionTypes = Object.keys(nodeConnections)
-				.filter((type) => type !== NodeConnectionTypes.Main)
+			// Get all non-main output types from node type definition (broader compatibility)
+			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
+			if (!Array.isArray(outputs)) {
+				return node;
+			}
+			const nonMainConnectionTypes = outputs
+				.map((output) => (typeof output === 'string' ? output : output.type))
+				.filter((type): type is NodeConnectionType => type !== NodeConnectionTypes.Main)
 				.sort(); // Deterministic ordering for consistent AI agent behavior
 
 			if (nonMainConnectionTypes.length > 0) {
-				// Collect all connected nodes from non-main outputs
+				// Collect all connected nodes from non-main outputs, but filter by actual execution data
 				const nonMainNodesConnected: string[] = [];
+				const nodeConnections = this.connectionsBySourceNode[node.name];
+
 				for (const type of nonMainConnectionTypes) {
-					const childNodes = this.getChildNodes(node.name, type as NodeConnectionType);
-					if (childNodes.length > 0) {
-						nonMainNodesConnected.push(...childNodes);
+					// Only include connection types that exist in actual execution data
+					if (nodeConnections?.[type]) {
+						const childNodes = this.getChildNodes(node.name, type);
+						if (childNodes.length > 0) {
+							nonMainNodesConnected.push(...childNodes);
+						}
 					}
 				}
 
