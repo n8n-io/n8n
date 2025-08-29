@@ -29,6 +29,16 @@ ALWAYS_BLOCKED_ATTRIBUTES = {
     "f_locals",
     "f_code",
     "f_builtins",
+    "__getattribute__",
+    "__qualname__",
+    "__module__",
+    "gi_frame",
+    "gi_code",
+    "gi_yieldfrom",
+    "cr_frame",
+    "cr_code",
+    "ag_frame",
+    "ag_code",
 }
 
 CONDITIONALLY_BLOCKED_ATTRIBUTES = {
@@ -45,6 +55,10 @@ CONDITIONALLY_BLOCKED_ATTRIBUTES = {
     "__getattr__",
     "__setattr__",
     "__delattr__",
+    "__self__",
+    "__func__",
+    "__wrapped__",
+    "__annotations__",
 }
 
 UNSAFE_ATTRIBUTES = ALWAYS_BLOCKED_ATTRIBUTES | CONDITIONALLY_BLOCKED_ATTRIBUTES
