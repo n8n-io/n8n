@@ -1,8 +1,8 @@
-import { n8nHtml } from '@n8n/design-system/directives';
 import { render } from '@testing-library/vue';
 import { vi } from 'vitest';
 
 import AskAssistantChat from './AskAssistantChat.vue';
+import { n8nHtml } from '../../directives';
 import type { Props as MessageWrapperProps } from './messages/MessageWrapper.vue';
 import type { ChatUI } from '../../types/assistant';
 
