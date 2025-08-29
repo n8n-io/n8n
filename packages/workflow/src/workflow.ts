@@ -687,29 +687,29 @@ export class Workflow {
 		return returnConns;
 	}
 
-	getParentMainInputNode(node: INode | null | undefined): INode | null | undefined {
-		if (!node) return node;
+	getParentMainInputNode(node: INode): INode {
+		if (node) {
+			const nodeConnections = this.connectionsBySourceNode[node.name];
+			if (!nodeConnections) {
+				return node;
+			}
 
-		const nodeConnections = this.connectionsBySourceNode[node.name];
-		if (!nodeConnections) {
-			return node;
-		}
+			// Get non-main connection types that this node connects TO (outgoing connections)
+			const nonMainConnectionTypes = Object.keys(nodeConnections)
+				.filter((type) => type !== NodeConnectionTypes.Main)
+				.sort(); // Deterministic ordering for consistent AI agent behavior
 
-		// Get non-main connection types that this node connects TO (outgoing connections)
-		const nonMainConnectionTypes = Object.keys(nodeConnections).filter(
-			(type) => type !== NodeConnectionTypes.Main,
-		);
-
-		if (nonMainConnectionTypes.length > 0) {
-			for (const type of nonMainConnectionTypes) {
-				for (const connectionsByIndex of nodeConnections[type]) {
-					if (connectionsByIndex) {
-						for (const connection of connectionsByIndex) {
-							const returnNode = this.getNode(connection.node);
-							if (!returnNode) {
-								throw new ApplicationError(`Node "${connection.node}" not found`);
+			if (nonMainConnectionTypes.length > 0) {
+				for (const type of nonMainConnectionTypes) {
+					for (const connectionsByIndex of nodeConnections[type]) {
+						if (connectionsByIndex) {
+							for (const connection of connectionsByIndex) {
+								const returnNode = this.getNode(connection.node);
+								if (!returnNode) {
+									throw new ApplicationError(`Node "${connection.node}" not found`);
+								}
+								return this.getParentMainInputNode(returnNode);
 							}
-							return this.getParentMainInputNode(returnNode);
 						}
 					}
 				}

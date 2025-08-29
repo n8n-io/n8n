@@ -1029,6 +1029,7 @@ describe('WorkflowDataProxy', () => {
 			);
 
 			// Test last() method
+			error = undefined;
 			try {
 				proxy.$('Start Node').last();
 			} catch (e) {
@@ -1041,6 +1042,7 @@ describe('WorkflowDataProxy', () => {
 			);
 
 			// Test all() method
+			error = undefined;
 			try {
 				proxy.$('Start Node').all();
 			} catch (e) {
