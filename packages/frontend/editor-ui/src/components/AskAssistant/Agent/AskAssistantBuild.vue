@@ -87,11 +87,21 @@ function isNodesPlanMessage(message: ChatUI.AssistantMessage): message is NodesP
 
 function onApprovePlan() {
 	planStatus.value = 'approved';
+
+	telemetry.track('User clicked Approve plan', {
+		session_id: builderStore.trackingSessionId,
+	});
+
 	void onUserMessage(PLAN_APPROVAL_MESSAGE);
 }
 
 function onRequestChanges() {
 	planStatus.value = 'rejected';
+
+	telemetry.track('User clicked Request changes', {
+		session_id: builderStore.trackingSessionId,
+	});
+
 	// Focus the input after rejecting the plan
 	void nextTick(() => {
 		assistantChatRef.value?.focusInput();
