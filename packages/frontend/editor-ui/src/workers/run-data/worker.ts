@@ -1,6 +1,6 @@
 import * as Comlink from 'comlink';
 import { databaseConfig } from '@/workers/run-data/db';
-import { database } from '@/workers/database';
+import { initializeDatabase } from '@/workers/database';
 import type { Promiser, DbId } from '@sqlite.org/sqlite-wasm';
 
 const state: {
@@ -17,7 +17,7 @@ export const actions = {
 	async initialize() {
 		if (state.initialized) return;
 
-		const { promiser, dbId } = await database(databaseConfig);
+		const { promiser, dbId } = await initializeDatabase(databaseConfig);
 
 		state.promiser = promiser;
 		state.dbId = dbId;
