@@ -245,7 +245,7 @@ describe('AddColumnButton', () => {
 	});
 
 	it('should not close popover if submission fails', async () => {
-		const { getByPlaceholderText, getByTestId, queryByText } = renderComponent();
+		const { getByPlaceholderText, getByTestId } = renderComponent();
 		addColumnHandler.mockResolvedValueOnce(false);
 		const addButton = getByTestId('data-store-add-column-trigger-button');
 
