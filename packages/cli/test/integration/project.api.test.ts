@@ -20,12 +20,14 @@ import {
 	SharedWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { getRoleScopes, type GlobalRole, type ProjectRole, type Scope } from '@n8n/permissions';
+import {
+	getRoleScopes,
+	PROJECT_OWNER_ROLE_SLUG,
+	type GlobalRole,
+	type ProjectRole,
+	type Scope,
+} from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
-import { CacheService } from '@/services/cache/cache.service';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
@@ -35,6 +37,10 @@ import {
 } from './shared/db/credentials';
 import { createMember, createOwner, createUser } from './shared/db/users';
 import * as utils from './shared/utils/';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
+import { CacheService } from '@/services/cache/cache.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -193,7 +199,7 @@ describe('GET /projects/my-projects', () => {
 			[
 				personalProject1,
 				{
-					role: 'project:personalOwner',
+					role: PROJECT_OWNER_ROLE_SLUG,
 					scopes: ['project:list', 'project:read', 'credential:create'],
 				},
 			],
@@ -270,7 +276,7 @@ describe('GET /projects/my-projects', () => {
 			[
 				ownerProject,
 				{
-					role: 'project:personalOwner',
+					role: PROJECT_OWNER_ROLE_SLUG,
 					scopes: [
 						'project:list',
 						'project:create',
@@ -596,15 +602,15 @@ describe('PATCH /projects/:projectId', () => {
 
 			expect(tp1Relations.find((p) => p.userId === testUser1.id)).not.toBeUndefined();
 			expect(tp1Relations.find((p) => p.userId === testUser2.id)).toBeUndefined();
-			expect(tp1Relations.find((p) => p.userId === testUser1.id)?.role).toBe('project:admin');
-			expect(tp1Relations.find((p) => p.userId === testUser3.id)?.role).toBe('project:editor');
-			expect(tp1Relations.find((p) => p.userId === ownerUser.id)?.role).toBe('project:viewer');
+			expect(tp1Relations.find((p) => p.userId === testUser1.id)?.role.slug).toBe('project:admin');
+			expect(tp1Relations.find((p) => p.userId === testUser3.id)?.role.slug).toBe('project:editor');
+			expect(tp1Relations.find((p) => p.userId === ownerUser.id)?.role.slug).toBe('project:viewer');
 
 			// Check we haven't modified the other team project
 			expect(tp2Relations.find((p) => p.userId === testUser2.id)).not.toBeUndefined();
 			expect(tp2Relations.find((p) => p.userId === testUser1.id)).toBeUndefined();
-			expect(tp2Relations.find((p) => p.userId === testUser2.id)?.role).toBe('project:editor');
-			expect(tp2Relations.find((p) => p.userId === ownerUser.id)?.role).toBe('project:editor');
+			expect(tp2Relations.find((p) => p.userId === testUser2.id)?.role.slug).toBe('project:editor');
+			expect(tp2Relations.find((p) => p.userId === ownerUser.id)?.role.slug).toBe('project:editor');
 		});
 
 		test.each([['project:viewer'], ['project:editor']] as const)(
@@ -656,8 +662,14 @@ describe('PATCH /projects/:projectId', () => {
 				expect(tp1Relations.length).toBe(2);
 				expect(tp1Relations).toMatchObject(
 					expect.arrayContaining([
-						expect.objectContaining({ userId: actor.id, role }),
-						expect.objectContaining({ userId: projectEditor.id, role: 'project:editor' }),
+						expect.objectContaining({
+							userId: actor.id,
+							role: expect.objectContaining({ slug: role }),
+						}),
+						expect.objectContaining({
+							userId: projectEditor.id,
+							role: expect.objectContaining({ slug: 'project:editor' }),
+						}),
 					]),
 				);
 			},
@@ -692,7 +704,10 @@ describe('PATCH /projects/:projectId', () => {
 				expect(tpRelations.length).toBe(1);
 				expect(tpRelations).toMatchObject(
 					expect.arrayContaining([
-						expect.objectContaining({ userId: projectAdmin.id, role: 'project:admin' }),
+						expect.objectContaining({
+							userId: projectAdmin.id,
+							role: expect.objectContaining({ slug: 'project:admin' }),
+						}),
 					]),
 				);
 			},
@@ -730,9 +745,9 @@ describe('PATCH /projects/:projectId', () => {
 
 			expect(tpRelations.find((p) => p.userId === testUser1.id)).not.toBeUndefined();
 			expect(tpRelations.find((p) => p.userId === testUser2.id)).not.toBeUndefined();
-			expect(tpRelations.find((p) => p.userId === testUser1.id)?.role).toBe('project:admin');
-			expect(tpRelations.find((p) => p.userId === testUser2.id)?.role).toBe('project:admin');
-			expect(tpRelations.find((p) => p.userId === testUser3.id)?.role).toBe('project:admin');
+			expect(tpRelations.find((p) => p.userId === testUser1.id)?.role?.slug).toBe('project:admin');
+			expect(tpRelations.find((p) => p.userId === testUser2.id)?.role?.slug).toBe('project:admin');
+			expect(tpRelations.find((p) => p.userId === testUser3.id)?.role?.slug).toBe('project:admin');
 		});
 
 		test("should  edit a relation of a project when changing a user's role to an licensed role but unlicensed roles are present", async () => {
@@ -768,9 +783,9 @@ describe('PATCH /projects/:projectId', () => {
 			expect(tpRelations.find((p) => p.userId === testUser1.id)).not.toBeUndefined();
 			expect(tpRelations.find((p) => p.userId === testUser2.id)).not.toBeUndefined();
 			expect(tpRelations.find((p) => p.userId === testUser3.id)).not.toBeUndefined();
-			expect(tpRelations.find((p) => p.userId === testUser1.id)?.role).toBe('project:viewer');
-			expect(tpRelations.find((p) => p.userId === testUser2.id)?.role).toBe('project:admin');
-			expect(tpRelations.find((p) => p.userId === testUser3.id)?.role).toBe('project:admin');
+			expect(tpRelations.find((p) => p.userId === testUser1.id)?.role?.slug).toBe('project:viewer');
+			expect(tpRelations.find((p) => p.userId === testUser2.id)?.role?.slug).toBe('project:admin');
+			expect(tpRelations.find((p) => p.userId === testUser3.id)?.role?.slug).toBe('project:admin');
 		});
 
 		test('should not add or remove users from a personal project', async () => {
@@ -782,7 +797,7 @@ describe('PATCH /projects/:projectId', () => {
 
 			const resp = await memberAgent.patch(`/projects/${personalProject.id}`).send({
 				relations: [
-					{ userId: testUser1.id, role: 'project:personalOwner' },
+					{ userId: testUser1.id, role: PROJECT_OWNER_ROLE_SLUG },
 					{ userId: testUser2.id, role: 'project:admin' },
 				] as Array<{
 					userId: string;

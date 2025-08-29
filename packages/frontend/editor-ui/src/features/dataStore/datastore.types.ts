@@ -4,7 +4,6 @@ export type DataStore = {
 	id: string;
 	name: string;
 	sizeBytes: number;
-	recordCount: number;
 	columns: DataStoreColumn[];
 	createdAt: string;
 	updatedAt: string;

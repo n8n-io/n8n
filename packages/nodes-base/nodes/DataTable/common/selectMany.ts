@@ -11,7 +11,10 @@ import type { FilterType } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
 import { buildGetManyFilter, isFieldArray, isMatchType } from './utils';
 
-export function getSelectFields(displayOptions: IDisplayOptions): INodeProperties[] {
+export function getSelectFields(
+	displayOptions: IDisplayOptions,
+	requireCondition = false,
+): INodeProperties[] {
 	return [
 		{
 			displayName: 'Must Match',
@@ -36,6 +39,7 @@ export function getSelectFields(displayOptions: IDisplayOptions): INodePropertie
 			type: 'fixedCollection',
 			typeOptions: {
 				multipleValues: true,
+				minRequiredFields: requireCondition ? 1 : 0,
 			},
 			displayOptions,
 			default: {},
@@ -58,19 +62,15 @@ export function getSelectFields(displayOptions: IDisplayOptions): INodePropertie
 							default: 'id',
 						},
 						{
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 							displayName: 'Condition',
 							name: 'condition',
+							// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
 							type: 'options',
-							options: [
-								{
-									name: 'Equals',
-									value: 'eq',
-								},
-								{
-									name: 'Not Equals',
-									value: 'neq',
-								},
-							],
+							typeOptions: {
+								loadOptionsDependsOn: ['&keyName'],
+								loadOptionsMethod: 'getConditionsForColumn',
+							},
 							default: 'eq',
 						},
 						{
@@ -105,8 +105,13 @@ export async function executeSelectMany(
 	ctx: IExecuteFunctions,
 	index: number,
 	dataStoreProxy: IDataStoreProjectService,
+	rejectEmpty = false,
 ): Promise<Array<{ json: DataStoreRowReturn }>> {
 	const filter = getSelectFilter(ctx, index);
+
+	if (rejectEmpty && filter.filters.length === 0) {
+		throw new NodeOperationError(ctx.getNode(), 'At least one condition is required');
+	}
 
 	let take = 1000;
 	const result: Array<{ json: DataStoreRowReturn }> = [];

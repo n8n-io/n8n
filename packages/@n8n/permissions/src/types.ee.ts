@@ -58,6 +58,7 @@ export type CredentialSharingRole = z.infer<typeof credentialSharingRoleSchema>;
 export type WorkflowSharingRole = z.infer<typeof workflowSharingRoleSchema>;
 export type TeamProjectRole = z.infer<typeof teamRoleSchema>;
 export type ProjectRole = z.infer<typeof projectRoleSchema>;
+export type CustomRole = string;
 
 /** Union of all possible role types in the system */
 export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole;

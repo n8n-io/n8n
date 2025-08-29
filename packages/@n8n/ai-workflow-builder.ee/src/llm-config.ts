@@ -1,4 +1,6 @@
 // Different LLMConfig type for this file - specific to LLM providers
+import { MAX_OUTPUT_TOKENS } from '@/constants';
+
 interface LLMProviderConfig {
 	apiKey: string;
 	baseUrl?: string;
@@ -51,7 +53,7 @@ export const anthropicClaudeSonnet4 = async (config: LLMProviderConfig) => {
 		model: 'claude-sonnet-4-20250514',
 		apiKey: config.apiKey,
 		temperature: 0,
-		maxTokens: 16000,
+		maxTokens: MAX_OUTPUT_TOKENS,
 		anthropicApiUrl: config.baseUrl,
 		clientOptions: {
 			defaultHeaders: config.headers,
