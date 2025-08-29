@@ -149,7 +149,7 @@ export class AmqpTrigger implements INodeType {
 		const containerId = options.containerId as string;
 		const containerReconnect = (options.reconnect as boolean) || true;
 		// Keep reconnecting (exponential backoff) forever unless user sets a limit
-		const containerReconnectLimit = (options.reconnectLimit as number) || undefined;
+		const containerReconnectLimit = (options.reconnectLimit as number) ?? undefined;
 
 		if (sink === '') {
 			throw new NodeOperationError(this.getNode(), 'Queue or Topic required!');
@@ -230,7 +230,7 @@ export class AmqpTrigger implements INodeType {
 		});
 
 		/*
-			Values are documente here: https://github.com/amqp/rhea#container
+			Values are documented here: https://github.com/amqp/rhea#container
 		 */
 		const connectOptions: ConnectionOptions = {
 			host: credentials.hostname,
