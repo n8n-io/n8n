@@ -458,10 +458,10 @@ const goToUpgrade = () => {
 
 <style module lang="scss">
 .execListWrapper {
-	padding: var(--spacing-l) var(--spacing-2xl);
+	padding: var(--spacing-m) var(--spacing-m) 0;
 	display: flex;
 	flex-direction: column;
-	overflow: hidden;
+
 	width: 100%;
 	max-width: var(--content-container-width);
 }

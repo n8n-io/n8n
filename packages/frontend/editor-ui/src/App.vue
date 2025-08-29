@@ -153,6 +153,7 @@ watch(
 // with app grid and assistant sidebar as children
 .container {
 	height: 100vh;
+	max-width: 100%;
 	overflow: hidden;
 	display: grid;
 	grid-template-columns: 1fr auto;

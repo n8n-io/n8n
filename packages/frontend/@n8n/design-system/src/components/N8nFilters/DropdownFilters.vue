@@ -240,7 +240,7 @@ function handleBlur() {
 									</N8nText></DropdownMenuSubTrigger
 								>
 								<DropdownMenuPortal>
-									<DropdownMenuSubContent class="filter-dropdown">
+									<DropdownMenuSubContent :side-offset="4" class="filter-dropdown">
 										<!-- Search Bar -->
 										<div v-if="filterOption.options.length > 10">
 											<N8nInput
@@ -291,6 +291,16 @@ function handleBlur() {
 												<DropdownMenuItem
 													class="filter-item"
 													:class="{ selected: isValueSelected(filterOption.label, option) }"
+													@keydown="
+														(event: KeyboardEvent) => {
+															if (event.key === 'Enter') {
+																selectFilterValue(filterOption.label, option, filterOption.type);
+															} else if (event.key === ' ' && filterOption.type === 'multi') {
+																event.preventDefault();
+																selectFilterValue(filterOption.label, option, filterOption.type);
+															}
+														}
+													"
 												>
 													<!-- Checkbox for multi-select filters -->
 													<N8nCheckbox
@@ -427,7 +437,7 @@ function handleBlur() {
 	box-shadow: var(--box-shadow-light);
 	border-radius: var(--border-radius-base);
 	background-color: var(--color-background-xlight);
-	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
+	border: var(--border-base);
 }
 
 .filter-item {
@@ -440,7 +450,9 @@ function handleBlur() {
 	cursor: pointer;
 	transition: background-color 0.2s ease;
 
-	&:hover {
+	&:hover,
+	&:focus-visible,
+	&:focus {
 		background-color: var(--color-background-base);
 	}
 }

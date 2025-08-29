@@ -314,10 +314,15 @@ const onSelect = (action: string) => {
 			<div :class="$style.projectDetails">
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div :class="$style.headerActions">
-					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge" data-test-id="project-name">{{
+					<N8nHeading v-if="projectName" bold tag="h2" size="small" data-test-id="project-name">{{
 						projectName
 					}}</N8nHeading>
-					<N8nText v-if="sectionDescription" color="text-light" data-test-id="project-subtitle">
+					<N8nText
+						v-if="sectionDescription"
+						color="text-light"
+						size="small"
+						data-test-id="project-subtitle"
+					>
 						{{ sectionDescription }}
 					</N8nText>
 					<template v-else-if="projectDescription">
@@ -350,8 +355,7 @@ const onSelect = (action: string) => {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	padding-bottom: var(--spacing-m);
-	min-height: var(--spacing-3xl);
+	margin-bottom: var(--spacing-xs);
 }
 
 .projectDetails {
@@ -360,7 +364,21 @@ const onSelect = (action: string) => {
 }
 
 .actions {
-	padding: var(--spacing-2xs) 0 var(--spacing-xs);
+	padding-top: var(--spacing-2xs);
+	margin-bottom: var(--spacing-xs);
+	position: relative;
+
+	&::after {
+		content: '';
+		height: 1px;
+		background-color: var(--color-foreground-base);
+		position: absolute;
+		bottom: 2px;
+		width: 100vw;
+		left: 50%;
+		transform: translate(-50%, 0);
+		z-index: -1;
+	}
 }
 
 .projectDescriptionWrapper {

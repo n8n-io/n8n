@@ -132,6 +132,7 @@ function onSelectTab(value: string | number) {
 		:model-value="selectedTabLabel"
 		:options="options"
 		data-test-id="project-tabs"
+		size="small"
 		@update:model-value="onSelectTab"
 	/>
 </template>

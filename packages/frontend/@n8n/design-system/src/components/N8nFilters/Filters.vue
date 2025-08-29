@@ -43,35 +43,9 @@ const props = withDefaults(defineProps<Props>(), {
 		:actions="props.actions"
 		:noTertiaryActions="props.noTertiaryActions"
 	/>
-	<ChipFilters
-		v-else-if="type === 'chip'"
-		:filters="props.filters"
-		:primaryActionText="props.primaryActionText"
-		:actions="props.actions"
-		:noTertiaryActions="props.noTertiaryActions"
-	/>
+
 	<div class="story-wrapper" v-else>
 		<N8nDropdownFilters
-			:filters="[
-				{ label: 'Status', options: ['Active', 'Inactive'], type: 'multi' },
-				{
-					label: 'Owner',
-					options: ['John Doe', 'Jane Doe'],
-					type: 'single',
-					allowCustomValues: true,
-				},
-				{
-					label: 'Tag',
-					options: ['Tag 1', 'Tag 2', 'Tag 3'],
-					type: 'multi',
-					allowCustomValues: true,
-				},
-			]"
-			primaryActionText="Create workflow"
-			:actions="props.actions"
-			:noTertiaryActions="props.noTertiaryActions"
-		/>
-		<ChipFilters
 			:filters="[
 				{ label: 'Status', options: ['Active', 'Inactive'], type: 'multi' },
 				{
