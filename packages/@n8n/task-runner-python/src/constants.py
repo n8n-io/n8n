@@ -58,5 +58,5 @@ TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capac
 
 # Security
 BUILTINS_DENY_DEFAULT = (
-    "eval,exec,compile,open,input,breakpoint,__import__,getattr,object,type"
+    "eval,exec,compile,open,input,breakpoint,__import__,getattr,object,type,vars,setattr,delattr,hasattr,dir"
 )
