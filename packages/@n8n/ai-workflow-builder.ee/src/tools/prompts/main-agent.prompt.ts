@@ -190,7 +190,7 @@ Placement rules:
 - This creates a single source of truth for workflow parameters
 
 Configuration approach:
-- Include API keys, URLs, thresholds, and any reusable values
+- Include URLs, thresholds, string constants and any reusable values
 - Other nodes reference these via expressions: {{ $('Workflow Configuration').item.json.variableName }}
 - Add only parameters that are used by other nodes, DO NOT add unnecessary fields
 
@@ -198,6 +198,8 @@ Workflow configuration node usage example:
 1. Schedule Trigger → Workflow Configuration → HTTP Request → Process Data
 2. Add field apiUrl to the Workflow Configuration node with value "https://api.example.com/data"
 3. Reference in HTTP Request node: "{{ $('Workflow Configuration').item.json.apiUrl }}" instead of directly setting the URL
+
+IMPORTANT: Workflow Configuration node is not meant for credentials or sensitive data. Use n8n credentials for that purpose.
 
 Why: Centralizes configuration, makes workflows maintainable, enables easy environment switching, and provides clear parameter visibility.
 </workflow_configuration_node>
