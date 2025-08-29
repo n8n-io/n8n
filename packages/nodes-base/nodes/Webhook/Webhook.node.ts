@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
 import { createWriteStream } from 'fs';
-import { stat } from 'fs/promises';
+import { rm, stat } from 'fs/promises';
 import isbot from 'isbot';
 import type {
 	IWebhookFunctions,
@@ -362,6 +362,9 @@ export class Webhook extends Node {
 					file.originalFilename ?? file.newFilename,
 					file.mimetype,
 				);
+
+				// Delete original file to prevent tmp directory from growing too large
+				await rm(file.filepath, { force: true });
 
 				count += 1;
 			}

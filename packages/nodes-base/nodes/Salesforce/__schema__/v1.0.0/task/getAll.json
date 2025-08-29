@@ -1,6 +1,12 @@
 {
     "type": "object",
     "properties": {
+        "AccountId": {
+            "type": "string"
+        },
+        "ActivityDate__c": {
+            "type": "string"
+        },
         "attributes": {
             "type": "object",
             "properties": {
@@ -15,12 +21,12 @@
         "Id": {
             "type": "string"
         },
-        "Priority": {
-            "type": "string"
+        "Type": {
+            "type": "null"
         },
-        "Status": {
+        "WhatId": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

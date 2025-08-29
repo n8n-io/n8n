@@ -35,7 +35,7 @@ type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
 	runIndex: number;
-	workflow: Workflow;
+	workflowObject: Workflow;
 	pushRef: string;
 	activeNodeName: string;
 	currentNodeName?: string;
@@ -49,6 +49,7 @@ export type Props = {
 	disableDisplayModeSelection?: boolean;
 	focusedMappableInput: string;
 	isMappingOnboarded: boolean;
+	nodeNotRunMessageVariant?: 'default' | 'simple';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -57,6 +58,7 @@ const props = withDefaults(defineProps<Props>(), {
 	readOnly: false,
 	isProductionExecutionPreview: false,
 	isPaneActive: false,
+	nodeNotRunMessageVariant: 'default',
 });
 
 const emit = defineEmits<{
@@ -103,7 +105,7 @@ const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeN
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return props.workflow.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
+	return props.workflowObject.getChildNodes(activeNode.value.name, 'ALL').at(0) ?? null;
 });
 
 const hasRootNodeRun = computed(() => {
@@ -134,12 +136,12 @@ const isActiveNodeConfig = computed(() => {
 	let inputs = activeNodeType.value?.inputs ?? [];
 	let outputs = activeNodeType.value?.outputs ?? [];
 
-	if (props.workflow && activeNode.value) {
-		const node = props.workflow.getNode(activeNode.value.name);
+	if (props.workflowObject && activeNode.value) {
+		const node = props.workflowObject.getNode(activeNode.value.name);
 
 		if (node && activeNodeType.value) {
-			inputs = NodeHelpers.getNodeInputs(props.workflow, node, activeNodeType.value);
-			outputs = NodeHelpers.getNodeOutputs(props.workflow, node, activeNodeType.value);
+			inputs = NodeHelpers.getNodeInputs(props.workflowObject, node, activeNodeType.value);
+			outputs = NodeHelpers.getNodeOutputs(props.workflowObject, node, activeNodeType.value);
 		}
 	}
 
@@ -192,7 +194,7 @@ const isExecutingPrevious = computed(() => {
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return props.workflow.getParentNodesByDepth(rootNode.value);
+	return props.workflowObject.getParentNodesByDepth(rootNode.value);
 });
 
 const currentNode = computed(() => {
@@ -219,7 +221,7 @@ const parentNodes = computed(() => {
 		return [];
 	}
 
-	const parents = props.workflow
+	const parents = props.workflowObject
 		.getParentNodesByDepth(activeNode.value.name)
 		.filter((parent) => parent.name !== activeNode.value?.name);
 	return uniqBy(parents, (parent) => parent.name);
@@ -247,6 +249,10 @@ const isNDVV2 = computed(() =>
 		NDV_UI_OVERHAUL_EXPERIMENT.name,
 		NDV_UI_OVERHAUL_EXPERIMENT.variant,
 	),
+);
+
+const nodeNameToExecute = computed(
+	() => (isActiveNodeConfig.value ? rootNode.value : activeNode.value?.name) ?? '',
 );
 
 watch(
@@ -376,7 +382,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		:class="[$style.runData, { [$style.runDataV2]: isNDVV2 }]"
 		:node="currentNode"
 		:nodes="isMappingMode ? rootNodesParents : parentNodes"
-		:workflow="workflow"
+		:workflow-object="workflowObject"
 		:run-index="isMappingMode ? 0 : runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="!mappedNode && canLinkRuns"
@@ -430,7 +436,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<InputNodeSelect
 				v-if="parentNodes.length && currentNodeName"
 				:model-value="currentNodeName"
-				:workflow="workflow"
+				:workflow="workflowObject"
 				:nodes="parentNodes"
 				@update:model-value="onInputNodeChange"
 			/>
@@ -444,7 +450,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<div :class="$style.mappedNode">
 				<InputNodeSelect
 					:model-value="mappedNode"
-					:workflow="workflow"
+					:workflow="workflowObject"
 					:nodes="rootNodesParents"
 					@update:model-value="onMappedNodeSelected"
 				/>
@@ -455,7 +461,23 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
 				:class="$style.noOutputData"
 			>
-				<template v-if="isNDVV2">
+				<N8nText v-if="nodeNotRunMessageVariant === 'simple'" color="text-base" size="small">
+					<I18nT scope="global" keypath="ndv.input.noOutputData.embeddedNdv.description">
+						<template #link>
+							<NodeExecuteButton
+								:class="$style.executeButton"
+								size="medium"
+								:node-name="nodeNameToExecute"
+								:label="i18n.baseText('ndv.input.noOutputData.embeddedNdv.link')"
+								text
+								telemetry-source="inputs"
+								hide-icon
+							/>
+						</template>
+					</I18nT>
+				</N8nText>
+
+				<template v-else-if="isNDVV2">
 					<NDVEmptyState
 						v-if="isMappingEnabled || hasRootNodeRun"
 						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
@@ -470,7 +492,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 										hide-icon
 										transparent
 										type="secondary"
-										:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
+										:node-name="nodeNameToExecute"
 										:label="i18n.baseText('ndv.input.noOutputData.v2.action')"
 										:tooltip="i18n.baseText('ndv.input.noOutputData.v2.tooltip')"
 										tooltip-placement="bottom"
@@ -537,7 +559,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						type="secondary"
 						hide-icon
 						:transparent="true"
-						:node-name="(isActiveNodeConfig ? rootNode : activeNode?.name) ?? ''"
+						:node-name="nodeNameToExecute"
 						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
 						class="mt-m"
 						telemetry-source="inputs"
@@ -706,5 +728,9 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 .titleV2 {
 	letter-spacing: 2px;
 	font-size: var(--font-size-xs);
+}
+
+.executeButton {
+	padding: 0;
 }
 </style>

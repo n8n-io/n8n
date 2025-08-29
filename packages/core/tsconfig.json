@@ -4,6 +4,7 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
+		"lib": ["es2022"],
 		"rootDir": ".",
 		"baseUrl": "src",
 		"paths": {

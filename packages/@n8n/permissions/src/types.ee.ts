@@ -6,10 +6,17 @@ import type {
 	credentialSharingRoleSchema,
 	globalRoleSchema,
 	projectRoleSchema,
+	Role,
 	roleNamespaceSchema,
 	teamRoleSchema,
 	workflowSharingRoleSchema,
 } from './schemas.ee';
+import { ALL_API_KEY_SCOPES } from './scope-information';
+
+export type ScopeInformation = {
+	displayName: string;
+	description?: string | null;
+};
 
 /** Represents a resource that can have permissions applied to it */
 export type Resource = keyof typeof RESOURCES;
@@ -52,22 +59,25 @@ export type CredentialSharingRole = z.infer<typeof credentialSharingRoleSchema>;
 export type WorkflowSharingRole = z.infer<typeof workflowSharingRoleSchema>;
 export type TeamProjectRole = z.infer<typeof teamRoleSchema>;
 export type ProjectRole = z.infer<typeof projectRoleSchema>;
+export type CustomRole = string;
 
 /** Union of all possible role types in the system */
 export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole;
 
-type RoleObject<T extends AllRoleTypes> = {
-	role: T;
-	name: string;
-	scopes: Scope[];
-	licensed: boolean;
+export type AllRolesMap = {
+	global: Role[];
+	project: Role[];
+	credential: Role[];
+	workflow: Role[];
 };
 
-export type AllRolesMap = {
-	global: Array<RoleObject<GlobalRole>>;
-	project: Array<RoleObject<ProjectRole>>;
-	credential: Array<RoleObject<CredentialSharingRole>>;
-	workflow: Array<RoleObject<WorkflowSharingRole>>;
+export type DbScope = {
+	slug: Scope;
+};
+
+export type DbRole = {
+	slug: string;
+	scopes: DbScope[];
 };
 
 /**
@@ -75,7 +85,7 @@ export type AllRolesMap = {
  * @property role - The global role this principal has
  */
 export type AuthPrincipal = {
-	role: GlobalRole;
+	role: DbRole;
 };
 
 // #region Public API
@@ -94,5 +104,10 @@ type AllApiKeyScopesObject = {
 };
 
 export type ApiKeyScope = AllApiKeyScopesObject[PublicApiKeyResources];
+
+export function isApiKeyScope(scope: Scope): scope is ApiKeyScope {
+	// We are casting with as for runtime type checking
+	return ALL_API_KEY_SCOPES.has(scope as ApiKeyScope);
+}
 
 // #endregion

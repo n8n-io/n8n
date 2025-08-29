@@ -159,6 +159,10 @@ export class LicenseState {
 		return this.isLicensed('feat:insights:viewHourlyData');
 	}
 
+	isWorkflowDiffsLicensed() {
+		return this.isLicensed('feat:workflowDiffs');
+	}
+
 	// --------------------
 	//      integers
 	// --------------------

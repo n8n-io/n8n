@@ -169,6 +169,7 @@ export class McpClientToolV2 implements INodeType {
 		) as McpAuthenticationOption;
 
 		const node = this.getNode();
+		const timeout = this.getNodeParameter('options.timeout', itemIndex, 60000) as number;
 
 		const serverTransport = this.getNodeParameter(
 			'serverTransport',
@@ -245,7 +246,7 @@ export class McpClientToolV2 implements INodeType {
 			logWrapper(
 				mcpToolToDynamicTool(
 					tool,
-					createCallTool(tool.name, client.result, (errorMessage) => {
+					createCallTool(tool.name, client.result, timeout, (errorMessage) => {
 						const error = new NodeOperationError(node, errorMessage, { itemIndex });
 						void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
 						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });

@@ -2,14 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import {
+	isWebhookHtmlSandboxingDisabled,
+	getWebhookSandboxCSP,
 	isHtmlRenderedContentType,
-	sandboxHtmlResponse,
-	createHtmlSandboxTransformStream,
 } from 'n8n-core';
 import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
 import { finished } from 'stream/promises';
-
-import { WebhookService } from './webhook.service';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as ResponseHelper from '@/response-helper';
@@ -24,6 +22,7 @@ import {
 	isWebhookResponse,
 	isWebhookStreamResponse,
 } from '@/webhooks/webhook-response';
+import { WebhookService } from '@/webhooks/webhook.service';
 import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
@@ -126,12 +125,8 @@ class WebhookRequestHandler {
 		this.setResponseStatus(res, code);
 		this.setResponseHeaders(res, headers);
 
-		const contentType = res.getHeader('content-type') as string | undefined;
-		const needsSandbox = contentType && isHtmlRenderedContentType(contentType);
-
-		const streamToSend = needsSandbox ? stream.pipe(createHtmlSandboxTransformStream()) : stream;
-		streamToSend.pipe(res, { end: false });
-		await finished(streamToSend);
+		stream.pipe(res, { end: false });
+		await finished(stream);
 
 		process.nextTick(() => res.end());
 	}
@@ -142,19 +137,10 @@ class WebhookRequestHandler {
 		this.setResponseStatus(res, code);
 		this.setResponseHeaders(res, headers);
 
-		const contentType = res.getHeader('content-type') as string | undefined;
-
 		if (typeof body === 'string') {
-			const needsSandbox = !contentType || isHtmlRenderedContentType(contentType);
-			const bodyToSend = needsSandbox ? sandboxHtmlResponse(body) : body;
-			res.send(bodyToSend);
+			res.send(body);
 		} else {
-			const needsSandbox = contentType && isHtmlRenderedContentType(contentType);
-			if (needsSandbox) {
-				res.send(sandboxHtmlResponse(JSON.stringify(body)));
-			} else {
-				res.json(body);
-			}
+			res.json(body);
 		}
 	}
 
@@ -169,6 +155,13 @@ class WebhookRequestHandler {
 			for (const [name, value] of headers.entries()) {
 				res.setHeader(name, value);
 			}
+		}
+
+		const contentType = res.getHeader('content-type') as string | undefined;
+		const needsSandbox = !contentType || isHtmlRenderedContentType(contentType);
+
+		if (needsSandbox && !isWebhookHtmlSandboxingDisabled()) {
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 		}
 	}
 

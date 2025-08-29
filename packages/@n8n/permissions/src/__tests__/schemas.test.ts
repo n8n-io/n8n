@@ -1,4 +1,11 @@
 import {
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
+	PROJECT_OWNER_ROLE_SLUG,
+	PROJECT_VIEWER_ROLE_SLUG,
+} from '@/constants.ee';
+
+import {
 	roleNamespaceSchema,
 	globalRoleSchema,
 	assignableGlobalRoleSchema,
@@ -53,10 +60,26 @@ describe('assignableGlobalRoleSchema', () => {
 
 describe('projectRoleSchema', () => {
 	test.each([
-		{ name: 'valid role: project:personalOwner', value: 'project:personalOwner', expected: true },
-		{ name: 'valid role: project:admin', value: 'project:admin', expected: true },
-		{ name: 'valid role: project:editor', value: 'project:editor', expected: true },
-		{ name: 'valid role: project:viewer', value: 'project:viewer', expected: true },
+		{
+			name: `valid role: ${PROJECT_OWNER_ROLE_SLUG}`,
+			value: PROJECT_OWNER_ROLE_SLUG,
+			expected: true,
+		},
+		{
+			name: `valid role: ${PROJECT_ADMIN_ROLE_SLUG}`,
+			value: PROJECT_ADMIN_ROLE_SLUG,
+			expected: true,
+		},
+		{
+			name: `valid role: ${PROJECT_EDITOR_ROLE_SLUG}`,
+			value: PROJECT_EDITOR_ROLE_SLUG,
+			expected: true,
+		},
+		{
+			name: `valid role: ${PROJECT_VIEWER_ROLE_SLUG}`,
+			value: PROJECT_VIEWER_ROLE_SLUG,
+			expected: true,
+		},
 		{ name: 'invalid role', value: 'invalid-role', expected: false },
 	])('should validate $name', ({ value, expected }) => {
 		const result = projectRoleSchema.safeParse(value);

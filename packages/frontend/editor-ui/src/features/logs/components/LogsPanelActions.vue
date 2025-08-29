@@ -71,7 +71,7 @@ function handleSelectMenuItem(selected: string) {
 			activator-icon="ellipsis"
 			activator-size="small"
 			:items="menuItems"
-			:teleported="false /* for PiP window */"
+			:teleported="false /* for pop-out window */"
 			@select="handleSelectMenuItem"
 		/>
 		<KeyboardShortcutTooltip

@@ -21,7 +21,7 @@ export interface Props {
 	node: INodeUi;
 	runIndex?: number;
 	slim?: boolean;
-	workflow: Workflow;
+	workflowObject: Workflow;
 }
 const props = withDefaults(defineProps<Props>(), { runIndex: 0 });
 const workflowsStore = useWorkflowsStore();
@@ -33,7 +33,7 @@ const i18n = useI18n();
 const aiData = computed<AIResult[]>(() =>
 	createAiData(
 		props.node.name,
-		props.workflow.connectionsBySourceNode,
+		props.workflowObject.connectionsBySourceNode,
 		workflowsStore.getWorkflowResultDataByNodeName,
 	),
 );
@@ -41,7 +41,7 @@ const aiData = computed<AIResult[]>(() =>
 const executionTree = computed<TreeNode[]>(() =>
 	getTreeNodeData(
 		props.node.name,
-		props.workflow.connectionsBySourceNode,
+		props.workflowObject.connectionsBySourceNode,
 		aiData.value,
 		props.runIndex,
 	),

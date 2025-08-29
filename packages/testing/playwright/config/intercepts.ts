@@ -1,18 +1,36 @@
-import type { FrontendSettings } from '@n8n/api-types';
 import type { BrowserContext, Route } from '@playwright/test';
 import cloneDeep from 'lodash/cloneDeep';
 import merge from 'lodash/merge';
 
-export let settings: Partial<FrontendSettings>;
+const contextSettings = new Map<BrowserContext, Partial<Record<string, unknown>>>();
+
+export function setContextSettings(
+	context: BrowserContext,
+	settings: Partial<Record<string, unknown>>,
+) {
+	contextSettings.set(context, settings);
+}
+
+export function getContextSettings(context: BrowserContext) {
+	return contextSettings.get(context);
+}
 
 export async function setupDefaultInterceptors(target: BrowserContext) {
+	// Global /rest/settings intercept - always active like Cypress
 	await target.route('**/rest/settings', async (route: Route) => {
 		try {
 			const originalResponse = await route.fetch();
 			const originalJson = await originalResponse.json();
 
+			// Get settings stored for this specific context
+			const testSettings = getContextSettings(target);
+
+			// Deep merge test settings with backend settings (like Cypress)
 			const modifiedData = {
-				data: merge(cloneDeep(originalJson.data), settings),
+				data:
+					testSettings && Object.keys(testSettings).length > 0
+						? merge(cloneDeep(originalJson.data), testSettings)
+						: originalJson.data,
 			};
 
 			await route.fulfill({

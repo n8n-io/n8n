@@ -1,4 +1,5 @@
-import { PiPWindowSymbol } from '@/constants';
+import { PopOutWindowKey } from '@/constants';
+import { shouldIgnoreCanvasShortcut } from '@/utils/canvasUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import type { MaybeRefOrGetter } from 'vue';
@@ -30,22 +31,15 @@ export const useKeybindings = (
 		disabled: MaybeRefOrGetter<boolean>;
 	},
 ) => {
-	const pipWindow = inject(PiPWindowSymbol, ref<Window | undefined>());
-	const activeElement = useActiveElement({ window: pipWindow?.value });
+	const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
+	const activeElement = useActiveElement({ window: popOutWindow?.value });
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
 	const isDisabled = computed(() => toValue(options?.disabled));
 
-	const ignoreKeyPresses = computed(() => {
-		if (!activeElement.value) return false;
-
-		const active = activeElement.value;
-		const isInput = ['INPUT', 'TEXTAREA'].includes(active.tagName);
-		const isContentEditable = active.closest('[contenteditable]') !== null;
-		const isIgnoreClass = active.closest('.ignore-key-press-canvas') !== null;
-
-		return isInput || isContentEditable || isIgnoreClass;
-	});
+	const ignoreKeyPresses = computed(
+		() => activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value),
+	);
 
 	const normalizedKeymap = computed(() =>
 		Object.fromEntries(
@@ -150,5 +144,5 @@ export const useKeybindings = (
 		}
 	}
 
-	useEventListener(pipWindow?.value?.document ?? document, 'keydown', onKeyDown);
+	useEventListener(popOutWindow?.value?.document ?? document, 'keydown', onKeyDown);
 };

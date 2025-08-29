@@ -64,7 +64,6 @@ import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
-
 import { MfaService } from './mfa/mfa.service';
 
 @Service()
@@ -91,6 +90,7 @@ export class Server extends AbstractServer {
 		if (!this.globalConfig.endpoints.disableUi) {
 			const { FrontendService } = await import('@/services/frontend.service');
 			this.frontendService = Container.get(FrontendService);
+			await import('@/controllers/module-settings.controller');
 		}
 
 		this.presetCredentialsLoaded = false;
@@ -116,11 +116,6 @@ export class Server extends AbstractServer {
 			const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
 			await import('@/ldap.ee/ldap.controller.ee');
 			await Container.get(LdapService).init();
-		}
-
-		if (this.globalConfig.nodes.communityPackages.enabled) {
-			await import('@/controllers/community-packages.controller');
-			await import('@/controllers/community-node-types.controller');
 		}
 
 		if (inE2ETests) {
@@ -279,12 +274,6 @@ export class Server extends AbstractServer {
 				ResponseHelper.send(async () => frontendService.getSettings()),
 			);
 
-			// Returns settings for all loaded modules
-			this.app.get(
-				`/${this.restEndpoint}/module-settings`,
-				ResponseHelper.send(async () => frontendService.getModuleSettings()),
-			);
-
 			this.app.get(`/${this.restEndpoint}/config.js`, (_req, res) => {
 				const frontendSentryConfig = JSON.stringify({
 					dsn: this.globalConfig.sentry.frontendDsn,
@@ -293,7 +282,6 @@ export class Server extends AbstractServer {
 					release: `n8n@${N8N_VERSION}`,
 				});
 				const frontendConfig = [
-					`window.BASE_PATH = '${this.globalConfig.path}';`,
 					`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
 					`window.sentry = ${frontendSentryConfig};`,
 				].join('\n');

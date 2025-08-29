@@ -12,5 +12,3 @@ export default {
 		/>
 	</svg>
 </template>
-
-<style lang="scss"></style>

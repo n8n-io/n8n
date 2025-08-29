@@ -1,5 +1,5 @@
 import type { Scope, ProjectRole } from '@n8n/permissions';
-import type { IUserResponse } from '@/Interface';
+import type { IUserResponse } from '@n8n/rest-api-client/api/users';
 
 export const ProjectTypes = {
 	Personal: 'personal',
@@ -11,7 +11,7 @@ type ProjectTypeKeys = typeof ProjectTypes;
 
 export type ProjectType = ProjectTypeKeys[keyof ProjectTypeKeys];
 export type ProjectRelation = Pick<IUserResponse, 'id' | 'email' | 'firstName' | 'lastName'> & {
-	role: ProjectRole;
+	role: string;
 };
 export type ProjectRelationPayload = { userId: string; role: ProjectRole };
 export type ProjectSharingData = {

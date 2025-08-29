@@ -4,12 +4,13 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 import { createHmac } from 'crypto';
 import { Toolkit } from 'langchain/agents';
 import {
+	type IRequestOptionsSimplified,
 	createResultError,
 	createResultOk,
-	IRequestOptionsSimplified,
 	jsonParse,
 	type IDataObject,
 	type IExecuteFunctions,
@@ -18,8 +19,6 @@ import {
 import clientOAuth1 from 'oauth-1.0a';
 import type { Token } from 'oauth-1.0a';
 import { z } from 'zod';
-
-import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
 import type {
 	McpAuthenticationOption,
@@ -84,7 +83,8 @@ export const getErrorDescriptionFromToolCall = (result: unknown): string | undef
 };
 
 export const createCallTool =
-	(name: string, client: Client, onError: (error: string) => void) => async (args: IDataObject) => {
+	(name: string, client: Client, timeout: number, onError: (error: string) => void) =>
+	async (args: IDataObject) => {
 		let result: Awaited<ReturnType<Client['callTool']>>;
 
 		function handleError(error: unknown) {
@@ -95,7 +95,9 @@ export const createCallTool =
 		}
 
 		try {
-			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema);
+			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema, {
+				timeout,
+			});
 		} catch (error) {
 			return handleError(error);
 		}

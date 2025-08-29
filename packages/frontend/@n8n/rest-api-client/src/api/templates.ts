@@ -114,6 +114,7 @@ export interface ITemplatesQuery {
 	categories: string[];
 	search: string;
 	apps?: string[];
+	nodes?: string[];
 	sort?: string;
 	combineWith?: string;
 }
@@ -160,6 +161,7 @@ export async function getWorkflows(
 		search: string;
 		sort?: string;
 		apps?: string[];
+		nodes?: string[];
 		combineWith?: string;
 	},
 	headers?: RawAxiosRequestHeaders,
@@ -168,11 +170,12 @@ export async function getWorkflows(
 	workflows: ITemplatesWorkflow[];
 	filters: TemplateSearchFacet[];
 }> {
-	const { apps, sort, combineWith, categories, ...restQuery } = query;
+	const { apps, sort, combineWith, categories, nodes, ...restQuery } = query;
 	const finalQuery = {
 		...restQuery,
 		category: stringifyArray(categories),
-		...(apps && { app: stringifyArray(apps) }),
+		...(apps && { apps: stringifyArray(apps) }),
+		...(nodes && { nodes: stringifyArray(nodes) }),
 		...(sort && { sort }),
 		...(combineWith && { combineWith }),
 	};

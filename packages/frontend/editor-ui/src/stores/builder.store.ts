@@ -1,5 +1,6 @@
 import type { VIEWS } from '@/constants';
 import {
+	DEFAULT_NEW_WORKFLOW_NAME,
 	ASK_AI_SLIDE_OUT_DURATION_MS,
 	EDITABLE_CANVAS_VIEWS,
 	WORKFLOW_BUILDER_EXPERIMENT,
@@ -36,6 +37,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const chatWindowOpen = ref<boolean>(false);
 	const streaming = ref<boolean>(false);
 	const assistantThinkingMessage = ref<string | undefined>();
+	const streamingAbortController = ref<AbortController | null>(null);
+	const initialGeneration = ref<boolean>(false);
 
 	// Store dependencies
 	const settings = useSettingsStore();
@@ -51,9 +54,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const {
 		processAssistantMessages,
 		createUserMessage,
+		createAssistantMessage,
 		createErrorMessage,
 		clearMessages,
 		mapAssistantMessageToUI,
+		clearRatingLogic,
 	} = useBuilderMessages();
 
 	// Computed properties
@@ -98,6 +103,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function resetBuilderChat() {
 		chatMessages.value = clearMessages();
 		assistantThinkingMessage.value = undefined;
+		initialGeneration.value = false;
 	}
 
 	/**
@@ -151,6 +157,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	function stopStreaming() {
 		streaming.value = false;
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+			streamingAbortController.value = null;
+		}
 	}
 
 	// Error handling
@@ -166,11 +176,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		stopStreaming();
 		assistantThinkingMessage.value = undefined;
 
+		if (e.name === 'AbortError') {
+			// Handle abort errors as they are expected when stopping streaming
+			const userMsg = createAssistantMessage('[Task aborted]', 'aborted-streaming');
+			chatMessages.value = [...chatMessages.value, userMsg];
+			return;
+		}
+
 		const errorMessage = createErrorMessage(
 			locale.baseText('aiAssistant.serviceError.message', { interpolate: { message: e.message } }),
 			id,
 			retry,
 		);
+
 		chatMessages.value = [...chatMessages.value, errorMessage];
 
 		telemetry.track('Workflow generation errored', {
@@ -189,7 +207,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function prepareForStreaming(userMessage: string, messageId: string) {
 		const userMsg = createUserMessage(userMessage, messageId);
-		chatMessages.value = [...chatMessages.value, userMsg];
+		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
 	}
@@ -219,12 +237,18 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		text: string;
 		source?: 'chat' | 'canvas';
 		quickReplyType?: string;
+		initialGeneration?: boolean;
 	}) {
 		if (streaming.value) {
 			return;
 		}
 
 		const { text, source = 'chat', quickReplyType } = options;
+
+		// Set initial generation flag if provided
+		if (options.initialGeneration !== undefined) {
+			initialGeneration.value = options.initialGeneration;
+		}
 		const messageId = generateMessageId();
 
 		const currentWorkflowJson = getWorkflowSnapshot();
@@ -247,6 +271,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		});
 		const retry = createRetryHandler(messageId, async () => sendChatMessage(options));
 
+		// Abort previous streaming request if any
+		if (streamingAbortController.value) {
+			streamingAbortController.value.abort();
+		}
+
+		streamingAbortController.value = new AbortController();
 		try {
 			chatWithBuilder(
 				rootStore.restApiContext,
@@ -256,6 +286,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 						chatMessages.value,
 						response.messages,
 						generateMessageId(),
+						retry,
 					);
 					chatMessages.value = result.messages;
 
@@ -269,6 +300,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				},
 				() => stopStreaming(),
 				(e) => handleServiceError(e, messageId, retry),
+				streamingAbortController.value?.signal,
 			);
 		} catch (e: unknown) {
 			handleServiceError(e, messageId, retry);
@@ -348,11 +380,21 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		// Capture current state before clearing
-		const { nodePositions } = captureCurrentWorkflowState();
+		const { nodePositions, existingNodeIds } = captureCurrentWorkflowState();
 
 		// Clear existing workflow
 		workflowsStore.removeAllConnections({ setStateDirty: false });
 		workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
+
+		// For the initial generation, we want to apply auto-generated workflow name
+		// but only if the workflow has default name
+		if (
+			workflowData.name &&
+			initialGeneration.value &&
+			workflowsStore.workflow.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
+		) {
+			workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+		}
 
 		// Restore positions for nodes that still exist and identify new nodes
 		const nodesIdsToTidyUp: string[] = [];
@@ -369,7 +411,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			});
 		}
 
-		return { success: true, workflowData, newNodeIds: nodesIdsToTidyUp };
+		return {
+			success: true,
+			workflowData,
+			newNodeIds: nodesIdsToTidyUp,
+			oldNodeIds: Array.from(existingNodeIds),
+		};
 	}
 
 	function getWorkflowSnapshot() {
@@ -393,9 +440,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		toolMessages,
 		workflowMessages,
 		trackingSessionId,
+		streamingAbortController,
+		initialGeneration,
 
 		// Methods
 		updateWindowWidth,
+		stopStreaming,
 		closeChat,
 		openChat,
 		resetBuilderChat,

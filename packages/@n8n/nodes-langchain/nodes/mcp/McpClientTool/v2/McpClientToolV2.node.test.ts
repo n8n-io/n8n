@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { mock } from 'jest-mock-extended';
 import { NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
@@ -8,11 +9,11 @@ import type {
 	INode,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import nock from 'nock';
 
 import { getTools } from './loadOptions';
 import { McpClientToolV2 } from './McpClientToolV2.node';
 import { McpToolkit } from './utils';
-import nock from 'nock';
 
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
@@ -459,6 +460,53 @@ describe('McpClientToolV2', () => {
 				0,
 				new NodeOperationError(supplyDataFunctions.getNode(), 'Weather unknown at location'),
 			);
+		});
+
+		it('should support setting a timeout', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			const callToolSpy = jest
+				.spyOn(Client.prototype, 'callTool')
+				.mockRejectedValue(
+					new McpError(ErrorCode.RequestTimeout, 'Request timed out', { timeout: 200 }),
+				);
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'SlowTool',
+						description: 'SlowTool throws a timeout',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const supplyDataFunctions = mock<ISupplyDataFunctions>({
+				getNode: jest.fn(() =>
+					mock<INode>({
+						typeVersion: 2,
+					}),
+				),
+				getNodeParameter: jest.fn((key, _index) => {
+					const parameters: Record<string, any> = {
+						endpointUrl: 'https://my-mcp-endpoint.ai/mcp',
+						'options.timeout': 200,
+					};
+					return parameters[key];
+				}),
+				logger: { debug: jest.fn(), error: jest.fn() },
+				addInputData: jest.fn(() => ({ index: 0 })),
+			});
+			const supplyDataResult = await buildNode().supplyData.call(supplyDataFunctions, 0);
+
+			const tools = (supplyDataResult.response as McpToolkit).getTools();
+
+			await expect(tools[0].invoke({ input: 'foo' })).resolves.toEqual(
+				'MCP error -32001: Request timed out',
+			);
+			expect(callToolSpy).toHaveBeenCalledWith(
+				expect.any(Object), // params
+				expect.any(Object), // schema
+				expect.objectContaining({ timeout: 200 }),
+			); // options
 		});
 	});
 });

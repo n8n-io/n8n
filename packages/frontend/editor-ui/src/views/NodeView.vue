@@ -67,6 +67,7 @@ import {
 	VIEWS,
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	ABOUT_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -121,9 +122,12 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import {
+	createCanvasConnectionHandleString,
+	shouldIgnoreCanvasShortcut,
+} from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
-import { getEasyAiWorkflowJson, getRagStarterWorkflowJson } from '@/utils/easyAiWorkflowUtils';
+import { getSampleWorkflowByTemplateId } from '@/utils/templates/workflowSamples';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { useBuilderStore } from '@/stores/builder.store';
@@ -138,6 +142,8 @@ import { canvasEventBus } from '@/event-bus/canvas';
 import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
+import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useKeybindings } from '@/composables/useKeybindings';
 
 defineOptions({
 	name: 'NodeView',
@@ -199,6 +205,7 @@ const posthogStore = usePostHog();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
+const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -252,6 +259,9 @@ const {
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
+useKeybindings({
+	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
+});
 
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
@@ -336,6 +346,8 @@ async function initializeData() {
 
 	try {
 		await Promise.all(loadPromises);
+		//We don't need to await this as community node previews are not critical and needed only in nodes search panel
+		void nodeTypesStore.fetchCommunityNodePreviews();
 	} catch (error) {
 		toast.showError(
 			error,
@@ -387,27 +399,24 @@ async function initializeRoute(force = false) {
 	if (isBlankRedirect.value) {
 		isBlankRedirect.value = false;
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
-		const templateId = route.params.id;
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
+		const templateId = route.params.id;
+		if (!templateId) {
+			return;
+		}
 
 		if (loadWorkflowFromJSON) {
-			const easyAiWorkflowJson = getEasyAiWorkflowJson();
-			const ragStarterWorkflowJson = getRagStarterWorkflowJson();
-
-			switch (templateId) {
-				case easyAiWorkflowJson.meta.templateId:
-					await openTemplateFromWorkflowJSON(easyAiWorkflowJson);
-					break;
-				case ragStarterWorkflowJson.meta.templateId:
-					await openTemplateFromWorkflowJSON(ragStarterWorkflowJson);
-					break;
-				default:
-					toast.showError(
-						new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
-						i18n.baseText('nodeView.couldntImportWorkflow'),
-					);
-					await router.replace({ name: VIEWS.NEW_WORKFLOW });
+			const workflow = getSampleWorkflowByTemplateId(templateId.toString());
+			if (!workflow) {
+				toast.showError(
+					new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
+					i18n.baseText('nodeView.couldntImportWorkflow'),
+				);
+				await router.replace({ name: VIEWS.NEW_WORKFLOW });
+				return;
 			}
+
+			await openTemplateFromWorkflowJSON(workflow);
 		} else {
 			await openWorkflowTemplate(templateId.toString());
 		}
@@ -501,6 +510,12 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 
 		if (workflowData.meta?.templateId?.startsWith('035_template_onboarding')) {
 			aiTemplatesStarterCollectionStore.trackUserOpenedWorkflow(
+				workflowData.meta.templateId.split('-').pop() ?? '',
+			);
+		}
+
+		if (workflowData.meta?.templateId?.startsWith('37_onboarding_experiments_batch_aug11')) {
+			readyToRunWorkflowsStore.trackOpenWorkflow(
 				workflowData.meta.templateId.split('-').pop() ?? '',
 			);
 		}
@@ -601,7 +616,11 @@ async function openTemplateFromWorkflowJSON(workflow: WorkflowDataWithTemplateId
 		query: { templateId, parentFolderId },
 	});
 
-	await importTemplate({ id: templateId, name: workflow.name, workflow });
+	await importTemplate({
+		id: templateId,
+		name: workflow.name,
+		workflow,
+	});
 
 	uiStore.stateIsDirty = true;
 
@@ -753,7 +772,7 @@ function onSetNodeActivated(id: string, event?: MouseEvent) {
 		}
 	}
 
-	setNodeActive(id);
+	setNodeActive(id, 'canvas_default_view');
 }
 
 function onOpenSubWorkflow(id: string) {
@@ -901,7 +920,7 @@ async function onOpenRenameNodeModal(id: string) {
 
 	const activeElement = document.activeElement;
 
-	if (activeElement && activeElement.tagName === 'INPUT') {
+	if (activeElement && shouldIgnoreCanvasShortcut(activeElement)) {
 		// If an input is focused, do not open the rename modal
 		return;
 	}
@@ -1196,7 +1215,7 @@ function onSwitchActiveNode(nodeName: string) {
 	const node = workflowsStore.getNodeByName(nodeName);
 	if (!node) return;
 
-	setNodeActiveByName(nodeName);
+	setNodeActiveByName(nodeName, 'other');
 	selectNodes([node.id]);
 }
 
@@ -1757,7 +1776,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'openNodeDetail',
 		action: ({ node }: { node: string }) => {
-			setNodeActiveByName(node);
+			setNodeActiveByName(node, 'other');
 		},
 	});
 
@@ -1779,7 +1798,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'showNodeCreator',
 		action: () => {
-			ndvStore.activeNodeName = null;
+			ndvStore.unsetActiveNodeName();
 
 			void nextTick(() => {
 				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
@@ -1808,7 +1827,7 @@ function showAddFirstStepIfEnabled() {
 function updateNodeRoute(nodeId: string) {
 	const nodeUi = workflowsStore.findNodeByPartialId(nodeId);
 	if (nodeUi) {
-		setNodeActive(nodeUi.id);
+		setNodeActive(nodeUi.id, 'other');
 	} else {
 		toast.showToast({
 			title: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.title'),
@@ -1873,7 +1892,7 @@ watch(
 watch(
 	() => route.params.nodeId,
 	async (newId) => {
-		if (typeof newId !== 'string' || newId === '') ndvStore.activeNodeName = null;
+		if (typeof newId !== 'string' || newId === '') ndvStore.unsetActiveNodeName();
 		else {
 			updateNodeRoute(newId);
 		}
@@ -2132,13 +2151,19 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
-			<CanvasThinkingPill v-if="builderStore.streaming" :class="$style.thinkingPill" />
+			<CanvasThinkingPill
+				v-if="builderStore.streaming"
+				:class="$style.thinkingPill"
+				show-stop
+				@stop="builderStore.stopStreaming"
+			/>
 
 			<Suspense>
 				<LazyNodeCreation
 					v-if="!isCanvasReadOnly"
 					:create-node-active="nodeCreatorStore.isCreateNodeActive"
 					:node-view-scale="viewportTransform.zoom"
+					:focus-panel-active="focusPanelStore.focusPanelActive"
 					@toggle-node-creator="onToggleNodeCreator"
 					@add-nodes="onAddNodesAndConnections"
 				/>

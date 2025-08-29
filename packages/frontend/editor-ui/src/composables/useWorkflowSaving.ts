@@ -1,6 +1,6 @@
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useUIStore } from '@/stores/ui.store';
-import type { NavigationGuardNext, useRouter } from 'vue-router';
+import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -41,12 +41,8 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
 
-	const {
-		getWorkflowDataToSave,
-		checkConflictingWebhooks,
-		getWorkflowProjectRole,
-		getCurrentWorkflow,
-	} = useWorkflowHelpers();
+	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
+		useWorkflowHelpers();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -160,6 +156,13 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 		return undefined;
 	}
 
+	function getQueryParam(query: LocationQuery, key: string): string | undefined {
+		const value = query[key];
+		if (Array.isArray(value)) return value[0] ?? undefined;
+		if (value === null) return undefined;
+		return value;
+	}
+
 	async function saveCurrentWorkflow(
 		{ id, name, tags }: { id?: string; name?: string; tags?: string[] } = {},
 		redirect = true,
@@ -171,11 +174,12 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 		}
 
 		const isLoading = useCanvasStore().isLoading;
-		const currentWorkflow = id || (router.currentRoute.value.params.name as string);
-		const parentFolderId = router.currentRoute.value.query.parentFolderId as string;
+		const currentWorkflow = id ?? getQueryParam(router.currentRoute.value.params, 'name');
+		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
+		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId }, redirect));
+			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId, uiContext }, redirect));
 		}
 
 		// Workflow exists already so update it
@@ -296,6 +300,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			resetNodeIds,
 			openInNewWindow,
 			parentFolderId,
+			uiContext,
 			data,
 		}: {
 			name?: string;
@@ -304,6 +309,7 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			openInNewWindow?: boolean;
 			resetNodeIds?: boolean;
 			parentFolderId?: string;
+			uiContext?: string;
 			data?: WorkflowDataCreate;
 		} = {},
 		redirect = true,
@@ -344,6 +350,11 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			if (parentFolderId) {
 				workflowDataRequest.parentFolderId = parentFolderId;
 			}
+
+			if (uiContext) {
+				workflowDataRequest.uiContext = uiContext;
+			}
+
 			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
 
 			workflowsStore.addWorkflow(workflowData);
@@ -414,7 +425,6 @@ export function useWorkflowSaving({ router }: { router: ReturnType<typeof useRou
 			uiStore.stateIsDirty = false;
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
-			getCurrentWorkflow(true); // refresh cache
 			return workflowData.id;
 		} catch (e) {
 			uiStore.removeActiveAction('workflowSaving');

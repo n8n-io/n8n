@@ -696,3 +696,32 @@ export function collectSettings(node: INodeUi, nodeSettings: INodeProperties[]):
 
 	return ret;
 }
+
+export function collectParametersByTab(parameters: INodeProperties[], isEmbeddedInCanvas: boolean) {
+	const ret: Record<'settings' | 'action' | 'params', INodeProperties[]> = {
+		settings: [],
+		action: [],
+		params: [],
+	};
+
+	for (const item of parameters) {
+		if (item.isNodeSetting) {
+			ret.settings.push(item);
+			continue;
+		}
+
+		if (!isEmbeddedInCanvas) {
+			ret.params.push(item);
+			continue;
+		}
+
+		if (item.name === 'resource' || item.name === 'operation') {
+			ret.action.push(item);
+			continue;
+		}
+
+		ret.params.push(item);
+	}
+
+	return ret;
+}

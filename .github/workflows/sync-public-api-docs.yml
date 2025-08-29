@@ -49,10 +49,10 @@ jobs:
         run: |
           if [[ -f "packages/cli/dist/public-api/v1/openapi.yml" ]]; then
             echo "OpenAPI file found: packages/cli/dist/public-api/v1/openapi.yml"
-            echo "file_exists=true" >> $GITHUB_OUTPUT
+            echo "file_exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "ERROR: OpenAPI file not found at packages/cli/dist/public-api/v1/openapi.yml after build."
-            echo "file_exists=false" >> $GITHUB_OUTPUT
+            echo "file_exists=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Generate GitHub App Token
@@ -86,7 +86,7 @@ jobs:
         if: steps.verify_file.outputs.file_exists == 'true'
 
         # Pin v7.0.8
-        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e
+        uses: peter-evans/create-pull-request@18e469570b1cf0dfc11d60ec121099f8ff3e617a
         with:
           token: ${{ steps.generate_token.outputs.token }}
 
