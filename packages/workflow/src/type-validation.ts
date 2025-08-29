@@ -168,6 +168,7 @@ const ALLOWED_FORM_FIELDS_KEYS = [
 	'formatDate',
 	'requiredField',
 	'fieldValue',
+	'elementName',
 ];
 
 const ALLOWED_FIELD_TYPES = [
