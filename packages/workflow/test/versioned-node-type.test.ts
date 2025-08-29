@@ -1,6 +1,6 @@
-import type { INodeType, INodeTypeBaseDescription, IVersionedNodeType } from '../src/Interfaces';
+import type { INodeType, INodeTypeBaseDescription, IVersionedNodeType } from '../src/interfaces';
 import { deepCopy } from '../src/utils';
-import { VersionedNodeType } from '../src/VersionedNodeType';
+import { VersionedNodeType } from '../src/versioned-node-type';
 
 describe('VersionedNodeType', () => {
 	const mockNodeTypeV1: INodeType = {
