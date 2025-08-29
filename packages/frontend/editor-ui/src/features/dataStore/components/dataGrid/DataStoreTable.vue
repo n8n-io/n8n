@@ -121,7 +121,7 @@ const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
 	isRowSelectable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 };
 
-const currentSortBy = ref<string>('id');
+const currentSortBy = ref<string>(DEFAULT_ID_COLUMN_NAME);
 const currentSortOrder = ref<'asc' | 'desc'>('asc');
 const contentLoading = ref(false);
 

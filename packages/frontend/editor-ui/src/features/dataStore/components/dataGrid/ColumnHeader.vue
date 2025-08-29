@@ -19,6 +19,7 @@ const i18n = useI18n();
 
 const isHovered = ref(false);
 const isDropdownOpen = ref(false);
+const dropdownRef = ref<HTMLElement>();
 
 const enum ItemAction {
 	Delete = 'delete',
@@ -72,21 +73,17 @@ const isSortable = computed(() => {
 });
 
 const showSortIndicator = computed(() => {
-	return isSortable.value && (currentSort.value || isHovered.value);
+	return isSortable.value && Boolean(currentSort.value);
 });
 
 const onHeaderClick = (event: MouseEvent) => {
-	// Don't trigger sort if clicking on the dropdown
 	const target = event.target as HTMLElement;
-	if (
-		target.closest('.n8n-action-dropdown') ||
-		target.closest('[data-test-id="data-store-column-header-actions"]')
-	) {
+	// Check if the dropdown component's root element contains the target
+	if (dropdownRef.value?.$el?.contains(target)) {
 		return;
 	}
 
 	if (isSortable.value) {
-		// Get next sort direction
 		const currentSortDirection = currentSort.value;
 		let nextSort: 'asc' | 'desc' | null;
 
@@ -95,10 +92,9 @@ const onHeaderClick = (event: MouseEvent) => {
 		} else if (currentSortDirection === 'asc') {
 			nextSort = 'desc';
 		} else {
-			nextSort = null; // Clear sort
+			nextSort = null;
 		}
 
-		// Apply sort
 		props.params.setSort(nextSort, false);
 	}
 };
@@ -118,27 +114,15 @@ const onHeaderClick = (event: MouseEvent) => {
 				props.params.displayName
 			}}</span>
 
-			<!-- Sort indicator - now shows on hover too -->
 			<div v-if="showSortIndicator" class="sort-indicator">
-				<N8nIcon
-					v-if="currentSort === 'asc'"
-					icon="chevron-up"
-					class="sort-icon sort-icon-active"
-				/>
-				<N8nIcon
-					v-else-if="currentSort === 'desc'"
-					icon="chevron-down"
-					class="sort-icon sort-icon-active"
-				/>
-				<div v-else class="sort-arrows">
-					<N8nIcon icon="chevron-up" class="sort-icon sort-icon-inactive" />
-					<N8nIcon icon="chevron-down" class="sort-icon sort-icon-inactive" />
-				</div>
+				<N8nIcon v-if="currentSort === 'asc'" icon="arrow-up" class="sort-icon-active" />
+				<N8nIcon v-else-if="currentSort === 'desc'" icon="arrow-down" class="sort-icon-active" />
 			</div>
 		</div>
 
 		<N8nActionDropdown
 			v-show="isDropdownVisible"
+			ref="dropdownRef"
 			data-test-id="data-store-column-header-actions"
 			:items="columnActionItems"
 			:placement="'bottom-start'"
@@ -160,12 +144,6 @@ const onHeaderClick = (event: MouseEvent) => {
 
 	&.sortable {
 		cursor: pointer;
-
-		&:hover {
-			.sort-icon-inactive {
-				opacity: 0.8;
-			}
-		}
 	}
 }
 
@@ -198,27 +176,11 @@ const onHeaderClick = (event: MouseEvent) => {
 	align-items: center;
 	margin-left: var(--spacing-2xs);
 
-	.sort-arrows {
-		display: flex;
-		flex-direction: column;
-		line-height: 0.5;
-		gap: 0;
-	}
-
-	.sort-icon {
-		font-size: 10px;
+	.sort-icon-active {
+		font-size: 12px;
 		line-height: 1;
-
-		&.sort-icon-active {
-			color: var(--color-text-light);
-			font-size: 12px;
-		}
-
-		&.sort-icon-inactive {
-			color: var(--color-text-lighter);
-			opacity: 0.3;
-			transition: opacity 0.2s ease;
-		}
+		color: var(--color-text-base);
+		font-weight: bold;
 	}
 }
 </style>
