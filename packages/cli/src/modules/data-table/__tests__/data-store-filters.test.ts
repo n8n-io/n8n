@@ -176,7 +176,7 @@ describe('dataStore filters', () => {
 
 	describe('getManyRowsAndCount', () => {
 		describe('equals and not equals filters', () => {
-			it.only("retrieves rows with 'equals' filter correctly", async () => {
+			it("retrieves rows with 'equals' filter correctly", async () => {
 				// ARRANGE
 				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
 					name: 'dataStore',

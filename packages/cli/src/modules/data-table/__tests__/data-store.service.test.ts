@@ -1851,7 +1851,7 @@ describe('dataStore', () => {
 			);
 		});
 
-		it.only('should be able to update by date column', async () => {
+		it('should be able to update by date column', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
