@@ -1,6 +1,7 @@
+import { assignableGlobalRoleSchema } from '@n8n/permissions';
 import { z } from 'zod';
 
-const roleSchema = z.enum(['global:member', 'global:admin']);
+const roleSchema = assignableGlobalRoleSchema;
 
 const invitedUserSchema = z.object({
 	email: z.string().email(),

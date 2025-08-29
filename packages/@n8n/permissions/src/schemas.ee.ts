@@ -7,8 +7,18 @@ export const roleNamespaceSchema = z.enum(['global', 'project', 'credential', 'w
 
 export const globalRoleSchema = z.enum(['global:owner', 'global:admin', 'global:member']);
 
-export const assignableGlobalRoleSchema = globalRoleSchema.exclude([
-	'global:owner', // Owner cannot be changed
+const customGlobalRoleSchema = z
+	.string()
+	.nonempty()
+	.refine((val) => !globalRoleSchema.safeParse(val).success, {
+		message: 'This global role value is not assignable',
+	});
+
+export const assignableGlobalRoleSchema = z.union([
+	globalRoleSchema.exclude([
+		'global:owner', // Owner cannot be changed
+	]),
+	customGlobalRoleSchema,
 ]);
 
 export const personalRoleSchema = z.enum([
@@ -23,7 +33,7 @@ export const customProjectRoleSchema = z
 	.string()
 	.nonempty()
 	.refine((val) => val !== PROJECT_OWNER_ROLE_SLUG && !teamRoleSchema.safeParse(val).success, {
-		message: 'This role value is not assignable',
+		message: 'This global role value is not assignable',
 	});
 
 // Those are all the system roles for projects

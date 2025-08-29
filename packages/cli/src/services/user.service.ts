@@ -210,6 +210,8 @@ export class UserService {
 				: 'Creating 1 user shell...',
 		);
 
+		// TODO: check that roles exists in db
+
 		try {
 			await this.getManager().transaction(
 				async (transactionManager) =>
@@ -246,6 +248,8 @@ export class UserService {
 	}
 
 	async changeUserRole(user: User, targetUser: User, newRole: RoleChangeRequestDto) {
+		// TODO: check that new role  exists in db
+
 		return await this.userRepository.manager.transaction(async (trx) => {
 			await trx.update(User, { id: targetUser.id }, { role: { slug: newRole.newRoleName } });
 

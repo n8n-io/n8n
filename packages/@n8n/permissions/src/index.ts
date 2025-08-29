@@ -7,12 +7,13 @@ export * from './roles/role-maps.ee';
 export * from './roles/all-roles';
 
 export {
+	systemProjectRoleSchema,
+	assignableProjectRoleSchema,
+	assignableGlobalRoleSchema,
 	projectRoleSchema,
 	teamRoleSchema,
 	roleSchema,
 	type Role,
-	systemProjectRoleSchema,
-	assignableProjectRoleSchema,
 	scopeSchema,
 } from './schemas.ee';
 
