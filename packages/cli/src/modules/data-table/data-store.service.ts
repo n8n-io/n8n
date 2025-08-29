@@ -11,7 +11,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { DataStoreRow, DataStoreRows } from 'n8n-workflow';
+import type { DataStoreRow, DataStoreRowReturn, DataStoreRows } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
@@ -42,7 +42,7 @@ export class DataStoreService {
 		return await this.dataStoreRepository.createDataStore(projectId, dto.name, dto.columns);
 	}
 
-	// Currently only renames data stores
+	// Updates data store properties (currently limited to renaming)
 	async updateDataStore(dataStoreId: string, projectId: string, dto: UpdateDataStoreDto) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateUniqueName(dto.name, projectId);
@@ -107,6 +107,7 @@ export class DataStoreService {
 		dto: ListDataStoreContentQueryDto,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
+		this.validateAndTransformFilters(dto);
 
 		// unclear if we should validate here, only use case would be to reduce the chance of
 		// a renamed/removed column appearing here (or added column missing) if the store was
@@ -125,11 +126,17 @@ export class DataStoreService {
 		return await this.dataStoreColumnRepository.getColumns(dataStoreId);
 	}
 
+	async insertRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		projectId: string,
+		rows: DataStoreRows,
+		returnData?: T,
+	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	async insertRows(
 		dataStoreId: string,
 		projectId: string,
 		rows: DataStoreRows,
-		returnData: boolean = false,
+		returnData?: boolean,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateRows(dataStoreId, rows);
@@ -138,6 +145,12 @@ export class DataStoreService {
 		return await this.dataStoreRowsRepository.insertRows(dataStoreId, rows, columns, returnData);
 	}
 
+	async upsertRows<T extends boolean | undefined>(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<UpsertDataStoreRowsDto, 'returnData'>,
+		returnData?: T,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async upsertRows(
 		dataStoreId: string,
 		projectId: string,
@@ -145,7 +158,7 @@ export class DataStoreService {
 		returnData: boolean = false,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
-		await this.validateRows(dataStoreId, dto.rows);
+		await this.validateRows(dataStoreId, dto.rows, true);
 
 		if (dto.rows.length === 0) {
 			throw new DataStoreValidationError('No rows provided for upsertRows');
@@ -163,6 +176,12 @@ export class DataStoreService {
 		);
 	}
 
+	async updateRow<T extends boolean | undefined>(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<UpdateDataStoreRowDto, 'returnData'>,
+		returnData?: T,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async updateRow(
 		dataStoreId: string,
 		projectId: string,
@@ -186,8 +205,8 @@ export class DataStoreService {
 			throw new DataStoreValidationError('Data columns must not be empty for updateRow');
 		}
 
-		this.validateRowsWithColumns([filter], columns, true, true);
-		this.validateRowsWithColumns([data], columns, true, false);
+		this.validateRowsWithColumns([filter], columns, true);
+		this.validateRowsWithColumns([data], columns, false);
 
 		return await this.dataStoreRowsRepository.updateRow(
 			dataStoreId,
@@ -207,23 +226,24 @@ export class DataStoreService {
 	private validateRowsWithColumns(
 		rows: DataStoreRows,
 		columns: Array<{ name: string; type: string }>,
-		allowPartial = false,
 		includeSystemColumns = false,
 	): void {
 		// Include system columns like 'id' if requested
 		const allColumns = includeSystemColumns
-			? [{ name: 'id', type: 'number' }, ...columns]
+			? [
+					{ name: 'id', type: 'number' },
+					{ name: 'createdAt', type: 'date' },
+					{ name: 'updatedAt', type: 'date' },
+					...columns,
+				]
 			: columns;
 		const columnNames = new Set(allColumns.map((x) => x.name));
 		const columnTypeMap = new Map(allColumns.map((x) => [x.name, x.type]));
 		for (const row of rows) {
 			const keys = Object.keys(row);
-			if (!allowPartial && columnNames.size !== keys.length) {
-				throw new DataStoreValidationError('mismatched key count');
-			}
 			for (const key of keys) {
 				if (!columnNames.has(key)) {
-					throw new DataStoreValidationError('unknown column name');
+					throw new DataStoreValidationError(`unknown column name '${key}'`);
 				}
 				this.validateCell(row, key, columnTypeMap);
 			}
@@ -233,11 +253,10 @@ export class DataStoreService {
 	private async validateRows(
 		dataStoreId: string,
 		rows: DataStoreRows,
-		allowPartial = false,
 		includeSystemColumns = false,
 	): Promise<void> {
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		this.validateRowsWithColumns(rows, columns, allowPartial, includeSystemColumns);
+		this.validateRowsWithColumns(rows, columns, includeSystemColumns);
 	}
 
 	private validateCell(row: DataStoreRow, key: string, columnTypeMap: Map<string, string>) {
@@ -298,14 +317,14 @@ export class DataStoreService {
 		return existingTable;
 	}
 
-	private async validateColumnExists(dataStoreId: string, columnId: string) {
+	private async validateColumnExists(dataTableId: string, columnId: string) {
 		const existingColumn = await this.dataStoreColumnRepository.findOneBy({
 			id: columnId,
-			dataStoreId,
+			dataTableId,
 		});
 
 		if (existingColumn === null) {
-			throw new DataStoreColumnNotFoundError(dataStoreId, columnId);
+			throw new DataStoreColumnNotFoundError(dataTableId, columnId);
 		}
 
 		return existingColumn;
@@ -319,6 +338,39 @@ export class DataStoreService {
 
 		if (hasNameClash) {
 			throw new DataStoreNameConflictError(name);
+		}
+	}
+
+	private validateAndTransformFilters(dto: ListDataStoreContentQueryDto): void {
+		if (!dto.filter?.filters) {
+			return;
+		}
+
+		for (const filter of dto.filter.filters) {
+			if (['like', 'ilike'].includes(filter.condition)) {
+				if (filter.value === null || filter.value === undefined) {
+					throw new DataStoreValidationError(
+						`${filter.condition.toUpperCase()} filter value cannot be null or undefined`,
+					);
+				}
+				if (typeof filter.value !== 'string') {
+					throw new DataStoreValidationError(
+						`${filter.condition.toUpperCase()} filter value must be a string`,
+					);
+				}
+
+				if (!filter.value.includes('%')) {
+					filter.value = `%${filter.value}%`;
+				}
+			}
+
+			if (['gt', 'gte', 'lt', 'lte'].includes(filter.condition)) {
+				if (filter.value === null || filter.value === undefined) {
+					throw new DataStoreValidationError(
+						`${filter.condition.toUpperCase()} filter value cannot be null or undefined`,
+					);
+				}
+			}
 		}
 	}
 }

@@ -17,7 +17,7 @@ export class AccessService {
 
 	/** Whether a user has read access to a workflow based on their project and scope. */
 	async hasReadAccess(userId: User['id'], workflowId: Workflow['id']) {
-		const user = await this.userRepository.findOneBy({ id: userId });
+		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
 
 		if (!user) return false;
 

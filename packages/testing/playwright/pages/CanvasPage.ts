@@ -205,15 +205,17 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-tags').locator('.el-tag');
 	}
 	async activateWorkflow() {
+		const switchElement = this.page.getByTestId('workflow-activate-switch');
+		const statusElement = this.page.getByTestId('workflow-activator-status');
+
 		const responsePromise = this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
 		);
 
-		await this.page.getByTestId('workflow-activate-switch').click();
+		await switchElement.click();
+		await statusElement.locator('span').filter({ hasText: 'Active' }).waitFor({ state: 'visible' });
 		await responsePromise;
-
-		await this.page.waitForTimeout(200);
 	}
 
 	async clickZoomToFitButton(): Promise<void> {
@@ -472,5 +474,10 @@ export class CanvasPage extends BasePage {
 		await this.page.clock.setFixedTime(timestamp);
 
 		await this.page.goto('/workflow/new');
+	}
+
+	async addNodeWithSubItem(searchText: string, subItemText: string): Promise<void> {
+		await this.addNode(searchText);
+		await this.nodeCreatorSubItem(subItemText).click();
 	}
 }

@@ -162,6 +162,37 @@ const showProjectIcon = computed(() => {
 	);
 });
 
+function isCredentialsListView(routeName: string) {
+	const CREDENTIAL_VIEWS: string[] = [
+		VIEWS.PROJECTS_CREDENTIALS,
+		VIEWS.CREDENTIALS,
+		VIEWS.SHARED_CREDENTIALS,
+	];
+
+	return CREDENTIAL_VIEWS.includes(routeName);
+}
+
+function isWorkflowListView(routeName: string) {
+	const WORKFLOWS_VIEWS: string[] = [
+		VIEWS.PROJECTS_WORKFLOWS,
+		VIEWS.WORKFLOWS,
+		VIEWS.SHARED_WORKFLOWS,
+		VIEWS.PROJECTS_FOLDERS,
+	];
+
+	return WORKFLOWS_VIEWS.includes(routeName);
+}
+
+function getUIContext(routeName: string) {
+	if (isCredentialsListView(routeName)) {
+		return 'credentials_list';
+	} else if (isWorkflowListView(routeName)) {
+		return 'workflow_list';
+	} else {
+		return;
+	}
+}
+
 const actions: Record<ActionTypes, (projectId: string) => void> = {
 	[ACTION_TYPES.WORKFLOW]: (projectId: string) => {
 		void router.push({
@@ -169,6 +200,7 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			query: {
 				projectId,
 				parentFolderId: route.params.folderId as string,
+				uiContext: getUIContext(route.name?.toString() ?? ''),
 			},
 		});
 	},
@@ -178,6 +210,9 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			params: {
 				projectId,
 				credentialId: 'create',
+			},
+			query: {
+				uiContext: getUIContext(route.name?.toString() ?? ''),
 			},
 		});
 	},
@@ -206,9 +241,17 @@ const sectionDescription = computed(() => {
 	if (projectPages.isSharedSubPage) {
 		return i18n.baseText('projects.header.shared.subtitle');
 	} else if (projectPages.isOverviewSubPage) {
-		return i18n.baseText('projects.header.overview.subtitle');
+		return i18n.baseText(
+			settingsStore.isDataStoreFeatureEnabled
+				? 'projects.header.overview.subtitleWithDataTables'
+				: 'projects.header.overview.subtitle',
+		);
 	} else if (isPersonalProject.value) {
-		return i18n.baseText('projects.header.personal.subtitle');
+		return i18n.baseText(
+			settingsStore.isDataStoreFeatureEnabled
+				? 'projects.header.personal.subtitleWithDataTables'
+				: 'projects.header.personal.subtitle',
+		);
 	}
 
 	return null;

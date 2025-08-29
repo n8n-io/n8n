@@ -145,6 +145,38 @@ describe('POST /workflows', () => {
 		);
 	});
 
+	test('should create workflow with uiContext parameter', async () => {
+		const payload = {
+			name: 'testing with context',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {},
+			active: false,
+			uiContext: 'workflow_list',
+		};
+
+		const response = await authMemberAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id, name },
+		} = response.body;
+
+		expect(id).toBeDefined();
+		expect(name).toBe('testing with context');
+	});
+
 	test('should create workflow history version when licensed', async () => {
 		license.enable('feat:workflowHistory');
 		const payload = {
@@ -657,7 +689,7 @@ describe('GET /workflows', () => {
 
 	test('should return workflows with scopes when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		const teamProject = await createTeamProject(undefined, member1);
@@ -1474,7 +1506,7 @@ describe('GET /workflows?includeFolders=true', () => {
 
 	test('should return workflows with scopes and folders when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		const teamProject = await createTeamProject(undefined, member1);
@@ -2164,6 +2196,8 @@ describe('PATCH /workflows/:workflowId', () => {
 		};
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		console.log(response.body);
 
 		const {
 			data: { id },

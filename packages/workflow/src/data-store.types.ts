@@ -5,7 +5,7 @@ export type DataStoreColumn = {
 	name: string;
 	type: DataStoreColumnType;
 	index: number;
-	dataStoreId: string;
+	dataTableId: string;
 };
 
 export type DataStore = {
@@ -15,7 +15,6 @@ export type DataStore = {
 	createdAt: Date;
 	updatedAt: Date;
 	projectId: string;
-	sizeBytes: number;
 };
 
 export type CreateDataStoreColumnOptions = Pick<DataStoreColumn, 'name' | 'type'> &
@@ -46,7 +45,7 @@ export type ListDataStoreContentFilter = {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq';
+		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
 		value: DataStoreColumnJsType;
 	}>;
 };
@@ -56,6 +55,11 @@ export type ListDataStoreRowsOptions = {
 	sortBy?: [string, 'ASC' | 'DESC'];
 	take?: number;
 	skip?: number;
+};
+
+export type UpdateDataStoreRowsOptions = {
+	filter: Record<string, DataStoreColumnJsType>;
+	data: DataStoreRow;
 };
 
 export type UpsertDataStoreRowsOptions = {
@@ -72,12 +76,22 @@ export type AddDataStoreColumnOptions = Pick<DataStoreColumn, 'name' | 'type'> &
 
 export type DataStoreColumnJsType = string | number | boolean | Date | null;
 
+export const DATA_TABLE_SYSTEM_COLUMNS = ['id', 'createdAt', 'updatedAt'] as const;
+
+export type DataStoreRowReturnBase = {
+	id: number;
+	createdAt: Date;
+	updatedAt: Date;
+};
 export type DataStoreRow = Record<string, DataStoreColumnJsType>;
 export type DataStoreRows = DataStoreRow[];
-export type DataStoreRowWithId = DataStoreRow & { id: number };
+export type DataStoreRowReturn = DataStoreRow & DataStoreRowReturnBase;
+export type DataStoreRowsReturn = DataStoreRowReturn[];
 
 // APIs for a data store service operating on a specific projectId
 export interface IDataStoreProjectAggregateService {
+	getProjectId(): string;
+
 	createDataStore(options: CreateDataStoreOptions): Promise<DataStore>;
 
 	getManyAndCount(options: ListDataStoreOptions): Promise<{ count: number; data: DataStore[] }>;
@@ -100,9 +114,13 @@ export interface IDataStoreProjectService {
 
 	getManyRowsAndCount(
 		dto: Partial<ListDataStoreRowsOptions>,
-	): Promise<{ count: number; data: DataStoreRows }>;
+	): Promise<{ count: number; data: DataStoreRowsReturn }>;
 
-	insertRows(rows: DataStoreRows): Promise<Array<{ id: number }>>;
+	insertRows(rows: DataStoreRows): Promise<DataStoreRowReturn[]>;
 
-	upsertRows(options: UpsertDataStoreRowsOptions): Promise<boolean | DataStoreRowWithId[]>;
+	updateRows(options: UpdateDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
+
+	upsertRows(options: UpsertDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
+
+	deleteRows(ids: number[]): Promise<boolean>;
 }

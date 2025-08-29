@@ -686,6 +686,9 @@
 	// Params
 	--color-icon-base: var(--color-text-light);
 	--color-icon-hover: var(--p-color-primary-320);
+
+	/* Ag Grid */
+	--grid-row-selected-background: var(--p-color-secondary-070);
 }
 
 :root {

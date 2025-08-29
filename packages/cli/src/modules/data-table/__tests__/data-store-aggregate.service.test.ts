@@ -1,5 +1,13 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, type Project, type User } from '@n8n/db';
+import {
+	type Role,
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	ProjectRelationRepository,
+	type Project,
+	type User,
+	PROJECT_ADMIN_ROLE,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
@@ -15,7 +23,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['DataStore', 'DataStoreColumn']);
+	await testDb.truncate(['DataTable', 'DataTableColumn']);
 });
 
 afterAll(async () => {
@@ -41,7 +49,7 @@ describe('dataStoreAggregate', () => {
 	beforeEach(async () => {
 		project1 = await createTeamProject();
 		project2 = await createTeamProject();
-		user = await createUser({ role: 'global:owner' });
+		user = await createUser({ role: GLOBAL_OWNER_ROLE });
 	});
 
 	afterEach(async () => {
@@ -65,7 +73,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project1.id,
-					role: 'project:admin',
+					role: PROJECT_ADMIN_ROLE,
 					user,
 					project: project1,
 					createdAt: new Date(),
@@ -75,7 +83,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project2.id,
-					role: 'project:viewer',
+					role: { slug: 'project:viewer' } as Role,
 					user,
 					project: project2,
 					createdAt: new Date(),
@@ -108,7 +116,7 @@ describe('dataStoreAggregate', () => {
 
 		it('should return an empty array if user has no access to any project', async () => {
 			// ARRANGE
-			const currentUser = await createUser({ role: 'global:member' });
+			const currentUser = await createUser({ role: GLOBAL_MEMBER_ROLE });
 
 			await dataStoreService.createDataStore(project1.id, {
 				name: 'store1',
@@ -141,7 +149,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project1.id,
-					role: 'project:admin',
+					role: PROJECT_ADMIN_ROLE,
 					user,
 					project: project1,
 					createdAt: new Date(),
@@ -151,7 +159,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project2.id,
-					role: 'project:viewer',
+					role: { slug: 'project:viewer' } as Role,
 					user,
 					project: project2,
 					createdAt: new Date(),
@@ -190,7 +198,7 @@ describe('dataStoreAggregate', () => {
 				{
 					userId: user.id,
 					projectId: project1.id,
-					role: 'project:admin',
+					role: PROJECT_ADMIN_ROLE,
 					user,
 					project: project1,
 					createdAt: new Date(),

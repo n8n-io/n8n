@@ -15,6 +15,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
 const LazyRunDataJsonActions = defineAsyncComponent(
 	async () => await import('@/components/RunDataJsonActions.vue'),
@@ -44,6 +45,7 @@ const ndvStore = useNDVStore();
 
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext();
 
 const selectedJsonPath = ref(nonExistingJsonPath);
 const draggingPath = ref<null | string>(null);
@@ -103,6 +105,7 @@ const onDragEnd = (el: HTMLElement) => {
 		src_view: 'json',
 		src_element: el,
 		success: false,
+		view_shown: telemetryContext.view_shown,
 		...mappingTelemetry,
 	};
 
