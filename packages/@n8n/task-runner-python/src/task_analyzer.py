@@ -11,6 +11,7 @@ from src.constants import (
     ERROR_STDLIB_DISALLOWED,
     ERROR_EXTERNAL_DISALLOWED,
     ERROR_DANGEROUS_ATTRIBUTE,
+    ERROR_DYNAMIC_IMPORT,
     ERROR_SECURITY_VIOLATIONS,
     ALWAYS_BLOCKED_ATTRIBUTES,
     UNSAFE_ATTRIBUTES,
@@ -56,7 +57,7 @@ class SecurityValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
-        """Detect access to unsafe attributes that could bypass security."""
+        """Detect access to unsafe attributes that could bypass security restrictions."""
 
         if node.attr in UNSAFE_ATTRIBUTES:
             # Block regardless of context
@@ -69,6 +70,35 @@ class SecurityValidator(ast.NodeVisitor):
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
                 )
+
+        self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> None:
+        """Detect calls to __import__() that could bypass security restrictions."""
+
+        is_import_call = (
+            # __import__()
+            (isinstance(node.func, ast.Name) and node.func.id == "__import__")
+            or
+            # builtins.__import__() or __builtins__.__import__()
+            (
+                isinstance(node.func, ast.Attribute)
+                and node.func.attr == "__import__"
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id in {"builtins", "__builtins__"}
+            )
+        )
+
+        if is_import_call:
+            if (
+                node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+            ):
+                module_name = node.args[0].value
+                self._validate_import(module_name, node.lineno)
+            else:
+                self._add_violation(node.lineno, ERROR_DYNAMIC_IMPORT)
 
         self.generic_visit(node)
 
