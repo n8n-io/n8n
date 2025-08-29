@@ -37,6 +37,7 @@ import { TemplateClickSource, trackTemplatesClick } from '@/utils/experiments';
 import { I18nT } from 'vue-i18n';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { useKeybindings } from '@/composables/useKeybindings';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -58,6 +59,7 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
+const calloutHelpers = useCalloutHelpers();
 
 useKeybindings({
 	ctrl_alt_o: () => handleSelect('about'),
@@ -98,12 +100,27 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
 	{
+		// Link to in-app pre-built agent templates, available experiment is enabled
+		id: 'templates',
+		icon: 'package-open',
+		label: i18n.baseText('mainSidebar.templates'),
+		position: 'bottom',
+		available:
+			settingsStore.isTemplatesEnabled &&
+			calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+			!personalizedTemplatesV2Store.isFeatureEnabled(),
+		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
+	},
+	{
 		// Link to templateRecoV2 modal, available when experiment is enabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('mainSidebar.templates'),
 		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && personalizedTemplatesV2Store.isFeatureEnabled(),
+		available:
+			settingsStore.isTemplatesEnabled &&
+			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+			personalizedTemplatesV2Store.isFeatureEnabled(),
 	},
 	{
 		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
@@ -113,6 +130,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		position: 'bottom',
 		available:
 			settingsStore.isTemplatesEnabled &&
+			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			templatesStore.hasCustomTemplatesHost &&
 			!personalizedTemplatesV2Store.isFeatureEnabled(),
 		route: { to: { name: VIEWS.TEMPLATES } },
@@ -125,6 +143,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		position: 'bottom',
 		available:
 			settingsStore.isTemplatesEnabled &&
+			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			!templatesStore.hasCustomTemplatesHost &&
 			!personalizedTemplatesV2Store.isFeatureEnabled(),
 		link: {
