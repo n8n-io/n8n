@@ -105,7 +105,7 @@ const { mapToAGCellType } = useDataStoreTypes();
 
 const dataStoreStore = useDataStoreStore();
 
-useClipboard({ onPaste: onClipboardPaste });
+const { copy: copyToClipboard } = useClipboard({ onPaste: onClipboardPaste });
 
 // AG Grid State
 const gridApi = ref<GridApi | null>(null);
@@ -125,7 +125,7 @@ const contentLoading = ref(false);
 const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
 const isTextEditorOpen = ref(false);
 
-const gridContainer = useTemplateRef('gridContainer');
+const gridContainer = useTemplateRef<HTMLDivElement>('gridContainer');
 
 // Pagination
 const pageSizeOptions = [10, 20, 50];
@@ -141,6 +141,11 @@ const selectedCount = computed(() => selectedRowIds.value.size);
 
 const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
+	// Ensure popups (e.g., agLargeTextCellEditor) are positioned relative to the grid container
+	// to avoid misalignment when the page scrolls.
+	if (gridContainer?.value) {
+		params.api.setGridOption('popupParent', gridContainer.value as unknown as HTMLElement);
+	}
 };
 
 const refreshGridData = () => {
@@ -241,8 +246,10 @@ const onAddColumn = async (column: DataStoreColumnCreatePayload) => {
 			return { ...row, [newColumn.name]: null };
 		});
 		refreshGridData();
+		return true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
+		return false;
 	}
 };
 
@@ -307,6 +314,9 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 	// Enable large text editor for text columns
 	if (col.type === 'string') {
 		columnDef.cellEditor = 'agLargeTextCellEditor';
+		// Use popup editor so it is not clipped by the grid viewport and positions correctly
+		columnDef.cellEditorPopup = true;
+		columnDef.cellEditorPopupPosition = 'over';
 		// Provide initial value for the editor, otherwise agLargeTextCellEditor breaks
 		columnDef.cellEditorParams = (params: CellEditRequestEvent<DataStoreRow>) => ({
 			value: params.value ?? '',
@@ -596,8 +606,20 @@ function onClipboardPaste(data: string) {
 	const colDef = focusedCell.column.getColDef();
 	if (colDef.cellDataType === 'text') {
 		row.setDataValue(focusedCell.column.getColId(), data);
-	} else if (!Number.isNaN(Number(data))) {
-		row.setDataValue(focusedCell.column.getColId(), Number(data));
+	} else if (colDef.cellDataType === 'number') {
+		if (!Number.isNaN(Number(data))) {
+			row.setDataValue(focusedCell.column.getColId(), Number(data));
+		}
+	} else if (colDef.cellDataType === 'date') {
+		if (!Number.isNaN(Date.parse(data))) {
+			row.setDataValue(focusedCell.column.getColId(), new Date(data));
+		}
+	} else if (colDef.cellDataType === 'boolean') {
+		if (data === 'true') {
+			row.setDataValue(focusedCell.column.getColId(), true);
+		} else if (data === 'false') {
+			row.setDataValue(focusedCell.column.getColId(), false);
+		}
 	}
 }
 
@@ -644,14 +666,36 @@ const onSelectionChanged = () => {
 };
 
 const onCellKeyDown = async (params: CellKeyDownEvent<DataStoreRow>) => {
-	const key = (params.event as KeyboardEvent).key;
-	if (key !== 'Delete' && key !== 'Backspace') return;
+	if (params.api.getEditingCells().length > 0) {
+		return;
+	}
 
-	const isEditing = params.api.getEditingCells().length > 0;
-	if (isEditing || selectedRowIds.value.size === 0) return;
+	const event = params.event as KeyboardEvent;
+	if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c') {
+		event.preventDefault();
+		await handleCopyFocusedCell(params);
+		return;
+	}
 
-	params.event?.preventDefault();
+	if ((event.key !== 'Delete' && event.key !== 'Backspace') || selectedRowIds.value.size === 0) {
+		return;
+	}
+	event.preventDefault();
 	await handleDeleteSelected();
+};
+
+const handleCopyFocusedCell = async (params: CellKeyDownEvent<DataStoreRow>) => {
+	const focused = params.api.getFocusedCell();
+	if (!focused) {
+		return;
+	}
+	const row = params.api.getDisplayedRowAtIndex(focused.rowIndex);
+	const colDef = focused.column.getColDef();
+	if (row?.data && colDef.field) {
+		const rawValue = row.data[colDef.field];
+		const text = rawValue === null || rawValue === undefined ? '' : String(rawValue);
+		await copyToClipboard(text);
+	}
 };
 
 const handleDeleteSelected = async () => {
@@ -683,8 +727,9 @@ const handleDeleteSelected = async () => {
 
 		await fetchDataStoreContent();
 
-		toast.showMessage({
+		toast.showToast({
 			title: i18n.baseText('dataStore.deleteRows.success'),
+			message: '',
 			type: 'success',
 		});
 	} catch (error) {
@@ -858,7 +903,8 @@ defineExpose({
 	}
 
 	:global(.ag-large-text-input) {
-		position: fixed;
+		position: absolute;
+		min-width: 420px;
 		padding: 0;
 
 		textarea {

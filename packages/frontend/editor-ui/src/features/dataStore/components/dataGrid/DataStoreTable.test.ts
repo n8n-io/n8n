@@ -20,6 +20,7 @@ vi.mock('ag-grid-vue3', () => ({
 				api: {
 					refreshHeader: vi.fn(),
 					applyTransaction: vi.fn(),
+					setGridOption: vi.fn(),
 				},
 			});
 		},

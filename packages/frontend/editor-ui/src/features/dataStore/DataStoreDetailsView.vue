@@ -82,8 +82,11 @@ const onToggleSave = (value: boolean) => {
 	}
 };
 
-const onAddColumn = (column: DataStoreColumnCreatePayload) => {
-	dataStoreTableRef.value?.addColumn(column);
+const onAddColumn = async (column: DataStoreColumnCreatePayload) => {
+	if (!dataStoreTableRef.value) {
+		return false;
+	}
+	return await dataStoreTableRef.value.addColumn(column);
 };
 
 onMounted(async () => {
