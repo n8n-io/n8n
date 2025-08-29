@@ -3,7 +3,7 @@ import N8nLogo from '../N8nLogo';
 import N8nText from '../N8nText';
 import SidebarItem from './SidebarItem.vue';
 import N8nResizeWrapper from '../N8nResizeWrapper';
-import { N8nIcon, N8nIconButton, N8nPopoverReka, N8nRoute, N8nTooltip } from '..';
+import { N8nIcon, N8nIconButton, N8nPopoverReka, N8nTooltip } from '..';
 import N8nKeyboardShortcut from '../N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 import { useSidebarLayout } from './useSidebarLayout';
 import { IMenuItem, IMenuElement, isCustomMenuItem } from '@n8n/design-system/types';
@@ -41,10 +41,6 @@ const {
 	peakMouseOver,
 	subMenuOpen,
 } = useSidebarLayout({});
-// TODO hide signout and settings, move to name dropdown
-// TODO check scroll behavior of header
-// Make help button bigger
-// Use n8nPopover
 </script>
 
 <template>
