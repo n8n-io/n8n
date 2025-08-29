@@ -36,10 +36,12 @@ export async function useDatabase(config: DatabaseConfig) {
 
 	dbId = openResponse.result.dbId as string;
 
-	await promiser('exec', {
-		dbId,
-		sql: config.tables.executions.schema,
-	});
+	for (const table of Object.values(config.tables)) {
+		await promiser('exec', {
+			dbId,
+			sql: table.schema,
+		});
+	}
 
 	return {
 		promiser,
