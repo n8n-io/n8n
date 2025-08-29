@@ -243,8 +243,11 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Message Timestamp',
 		name: 'timestamp',
 		required: true,
-		type: 'number',
-		default: undefined,
+		type: 'resourceLocator',
+		default: {
+			mode: 'id',
+			value: '',
+		},
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -252,7 +255,42 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description: 'Timestamp of the message to message',
-		placeholder: '1663233118.856619',
+		modes: [
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[0-9]+(\\.[0-9]+)?$',
+							errorMessage: 'Not a valid timestamp',
+						},
+					},
+				],
+				placeholder: '1663233118.856619',
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://example.slack.com/archives/CH1234567/p1663233118856619',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'https?://.*/archives/.*/p([0-9]{16,})',
+							errorMessage: 'Not a valid Slack Thread URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https?://.*/archives/.*/p([0-9]{16,})',
+				},
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -513,10 +551,48 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Message Timestamp',
 				name: 'ts',
-				type: 'number',
-				default: 0,
+				type: 'resourceLocator',
+				default: {
+					mode: 'id',
+					value: '',
+				},
 				description: 'Timestamp of the message to post',
-				placeholder: '1663233118.856619',
+				modes: [
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '^[0-9]+(\\.[0-9]+)?$',
+									errorMessage: 'Not a valid timestamp',
+								},
+							},
+						],
+						placeholder: '1663233118.856619',
+					},
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://example.slack.com/archives/CH1234567/p1663233118856619',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https?://.*/archives/.*/p([0-9]{16,})',
+									errorMessage: 'Not a valid Slack Thread URL',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: 'https?://.*/archives/.*/p([0-9]{16,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Fields',
@@ -666,11 +742,49 @@ export const messageFields: INodeProperties[] = [
 							{
 								displayName: 'Message Timestamp to Reply To',
 								name: 'thread_ts',
-								type: 'number',
-								default: undefined,
-								placeholder: '1663233118.856619',
+								type: 'resourceLocator',
+								default: {
+									mode: 'id',
+									value: '',
+								},
 								description:
 									'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
+								modes: [
+									{
+										displayName: 'By ID',
+										name: 'id',
+										type: 'string',
+										validation: [
+											{
+												type: 'regex',
+												properties: {
+													regex: '^[0-9]+(\\.[0-9]+)?$',
+													errorMessage: 'Not a valid timestamp',
+												},
+											},
+										],
+										placeholder: '1663233118.856619',
+									},
+									{
+										displayName: 'By URL',
+										name: 'url',
+										type: 'string',
+										placeholder: 'https://example.slack.com/archives/CH1234567/p1663233118856619',
+										validation: [
+											{
+												type: 'regex',
+												properties: {
+													regex: 'https?://.*/archives/.*/p([0-9]{16,})',
+													errorMessage: 'Not a valid Slack Thread URL',
+												},
+											},
+										],
+										extractValue: {
+											type: 'regex',
+											regex: 'https?://.*/archives/.*/p([0-9]{16,})',
+										},
+									},
+								],
 							},
 							{
 								displayName: 'Also Send to Channel',
@@ -863,8 +977,11 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Message Timestamp',
 		name: 'ts',
 		required: true,
-		type: 'number',
-		default: undefined,
+		type: 'resourceLocator',
+		default: {
+			mode: 'id',
+			value: '',
+		},
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -872,7 +989,42 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description: 'Timestamp of the message to update',
-		placeholder: '1663233118.856619',
+		modes: [
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[0-9]+(\\.[0-9]+)?$',
+							errorMessage: 'Not a valid timestamp',
+						},
+					},
+				],
+				placeholder: '1663233118.856619',
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://example.slack.com/archives/CH1234567/p1663233118856619',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'https?://.*/archives/.*/p([0-9]{16,})',
+							errorMessage: 'Not a valid Slack Thread URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https?://.*/archives/.*/p([0-9]{16,})',
+				},
+			},
+		],
 	},
 	{
 		displayName: 'Message Type',
@@ -1156,8 +1308,11 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Message Timestamp',
 		name: 'timestamp',
 		required: true,
-		type: 'number',
-		default: undefined,
+		type: 'resourceLocator',
+		default: {
+			mode: 'id',
+			value: '',
+		},
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -1166,6 +1321,42 @@ export const messageFields: INodeProperties[] = [
 		},
 		description: 'Timestamp of the message to delete',
 		placeholder: '1663233118.856619',
+		modes: [
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^[0-9]+(\\.[0-9]+)?$',
+							errorMessage: 'Not a valid timestamp',
+						},
+					},
+				],
+				placeholder: '1663233118.856619',
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://example.slack.com/archives/CH1234567/p1663233118856619',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'https?://.*/archives/.*/p([0-9]{16,})',
+							errorMessage: 'Not a valid Slack Thread URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https?://.*/archives/.*/p([0-9]{16,})',
+				},
+			},
+		],
 	},
 
 	/* ----------------------------------------------------------------------- */

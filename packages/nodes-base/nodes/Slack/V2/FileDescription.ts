@@ -162,10 +162,49 @@ export const fileFields: INodeProperties[] = [
 			{
 				displayName: 'Thread Timestamp',
 				name: 'threadTs',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: {
+					mode: 'id',
+					value: '',
+				},
 				description:
 					"Provide another message's Timestamp value to upload this file as a reply. Never use a reply's Timestamp value; use its parent instead.",
+				modes: [
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '^[0-9]+(\\.[0-9]+)?$',
+									errorMessage: 'Not a valid timestamp',
+								},
+							},
+						],
+						placeholder: '1663233118.856619',
+					},
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://example.slack.com/archives/CH1234567/p1663233118856619',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https?://.*/archives/.*/p([0-9]{16,})',
+									errorMessage: 'Not a valid Slack Thread URL',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: 'https?://.*/archives/.*/p([0-9]{16,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Title',
