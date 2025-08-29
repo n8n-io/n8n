@@ -23,7 +23,7 @@ test.describe('SUG-121 Fields reset after closing NDV', () => {
 		await n8n.ndv.getParameterByLabel('JavaScript').getByRole('textbox').fill('alert(1)');
 		await n8n.ndv.close();
 		await n8n.canvas.nodeByName('Code').dblclick();
-		expect(await n8n.ndv.getParameterByLabel('JavaScript').getByRole('textbox').textContent()).toBe(
+		expect(await n8n.ndv.getParameterByLabel('JavaScript').getByRole('textbox')).toHaveText(
 			'alert(1)',
 		);
 	});
