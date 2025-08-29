@@ -1,13 +1,11 @@
-import type { ProjectRole } from '@n8n/api-types';
+import { testDb } from '@n8n/backend-test-utils';
+import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
-
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectService } from '@/services/project.service.ee';
+import { PROJECT_OWNER_ROLE_SLUG, type ProjectRole, type Scope } from '@n8n/permissions';
 
 import { createMember } from '../shared/db/users';
-import * as testDb from '../shared/test-db';
+
+import { ProjectService } from '@/services/project.service.ee';
 
 let projectRepository: ProjectRepository;
 let projectService: ProjectService;
@@ -35,7 +33,7 @@ describe('ProjectService', () => {
 			'project:viewer',
 			'project:admin',
 			'project:editor',
-			'project:personalOwner',
+			PROJECT_OWNER_ROLE_SLUG,
 		] as ProjectRole[])(
 			'creates a relation between the user and the project using the role %s',
 			async (role) => {
@@ -53,13 +51,13 @@ describe('ProjectService', () => {
 				//
 				// ACT
 				//
-				await projectService.addUser(project.id, member.id, role);
+				await projectService.addUser(project.id, { userId: member.id, role });
 
 				//
 				// ASSERT
 				//
 				await projectRelationRepository.findOneOrFail({
-					where: { userId: member.id, projectId: project.id, role },
+					where: { userId: member.id, projectId: project.id, role: { slug: role } },
 				});
 			},
 		);
@@ -75,26 +73,27 @@ describe('ProjectService', () => {
 					type: 'team',
 				}),
 			);
-			await projectService.addUser(project.id, member.id, 'project:viewer');
+			await projectService.addUser(project.id, { userId: member.id, role: 'project:viewer' });
 
 			await projectRelationRepository.findOneOrFail({
-				where: { userId: member.id, projectId: project.id, role: 'project:viewer' },
+				where: { userId: member.id, projectId: project.id, role: { slug: 'project:viewer' } },
 			});
 
 			//
 			// ACT
 			//
-			await projectService.addUser(project.id, member.id, 'project:admin');
+			await projectService.addUser(project.id, { userId: member.id, role: 'project:admin' });
 
 			//
 			// ASSERT
 			//
 			const relationships = await projectRelationRepository.find({
 				where: { userId: member.id, projectId: project.id },
+				relations: { role: true },
 			});
 
 			expect(relationships).toHaveLength(1);
-			expect(relationships[0]).toHaveProperty('role', 'project:admin');
+			expect(relationships[0]).toHaveProperty('role.slug', 'project:admin');
 		});
 	});
 
@@ -118,7 +117,7 @@ describe('ProjectService', () => {
 						type: 'team',
 					}),
 				);
-				await projectService.addUser(project.id, projectOwner.id, role);
+				await projectService.addUser(project.id, { userId: projectOwner.id, role });
 
 				//
 				// ACT
@@ -158,7 +157,7 @@ describe('ProjectService', () => {
 						type: 'team',
 					}),
 				);
-				await projectService.addUser(project.id, projectViewer.id, role);
+				await projectService.addUser(project.id, { userId: projectViewer.id, role });
 
 				//
 				// ACT
@@ -199,6 +198,46 @@ describe('ProjectService', () => {
 			// ASSERT
 			//
 			expect(projectFromService).toBeNull();
+		});
+	});
+
+	describe('deleteUserFromProject', () => {
+		it('should not allow project owner to be removed from the project', async () => {
+			const role = PROJECT_OWNER_ROLE_SLUG;
+
+			const user = await createMember();
+			const project = await projectRepository.save(
+				projectRepository.create({
+					name: 'Team Project',
+					type: 'team',
+				}),
+			);
+			await projectService.addUser(project.id, { userId: user.id, role });
+
+			await expect(projectService.deleteUserFromProject(project.id, user.id)).rejects.toThrowError(
+				/^Project owner cannot be removed from the project$/,
+			);
+		});
+
+		it('should remove user from project if not owner', async () => {
+			const role = 'project:editor';
+
+			const user = await createMember();
+			const project = await projectRepository.save(
+				projectRepository.create({
+					name: 'Team Project',
+					type: 'team',
+				}),
+			);
+			await projectService.addUser(project.id, { userId: user.id, role });
+
+			await projectService.deleteUserFromProject(project.id, user.id);
+
+			const relations = await projectRelationRepository.findOne({
+				where: { userId: user.id, projectId: project.id, role: { slug: role } },
+			});
+
+			expect(relations).toBeNull();
 		});
 	});
 });

@@ -11,6 +11,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	allowedModules: {},
 	communityNodesEnabled: false,
+	unverifiedCommunityNodesEnabled: true,
 	defaultLocale: '',
 	endpointForm: '',
 	endpointFormTest: '',
@@ -23,7 +24,9 @@ export const defaultSettings: FrontendSettings = {
 	enterprise: {
 		sharing: false,
 		ldap: false,
+		oidc: false,
 		saml: false,
+		mfaEnforcement: false,
 		logStreaming: false,
 		debugInEditor: false,
 		advancedExecutionFilters: false,
@@ -37,16 +40,15 @@ export const defaultSettings: FrontendSettings = {
 		workerView: false,
 		advancedPermissions: false,
 		apiKeyScopes: false,
+		workflowDiffs: false,
 		projects: {
 			team: {
 				limit: 1,
 			},
 		},
 	},
-	expressions: {
-		evaluator: 'tournament',
-	},
 	executionMode: 'regular',
+	isMultiMain: false,
 	executionTimeout: 0,
 	hideUsagePage: false,
 	hiringBannerEnabled: false,
@@ -79,6 +81,7 @@ export const defaultSettings: FrontendSettings = {
 	sso: {
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
+		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },
 	},
 	telemetry: {
 		enabled: false,
@@ -103,6 +106,8 @@ export const defaultSettings: FrontendSettings = {
 		enabled: true,
 		endpoint: '',
 		infoUrl: '',
+		whatsNewEnabled: true,
+		whatsNewEndpoint: '',
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
@@ -119,6 +124,7 @@ export const defaultSettings: FrontendSettings = {
 	previewMode: false,
 	mfa: {
 		enabled: false,
+		enforced: false,
 	},
 	askAi: {
 		enabled: false,
@@ -144,9 +150,9 @@ export const defaultSettings: FrontendSettings = {
 	folders: {
 		enabled: false,
 	},
-	insights: {
-		enabled: false,
-		summary: true,
-		dashboard: false,
+	evaluation: {
+		quota: 0,
 	},
+	activeModules: [],
+	envFeatureFlags: {},
 };

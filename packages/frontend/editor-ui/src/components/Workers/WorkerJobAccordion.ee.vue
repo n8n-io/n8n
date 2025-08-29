@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RunningJobSummary } from '@n8n/api-types';
 import WorkerAccordion from './WorkerAccordion.ee.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	items: RunningJobSummary[];
@@ -20,7 +20,7 @@ function runningSince(started: Date): string {
 </script>
 
 <template>
-	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="true">
+	<WorkerAccordion icon="list-checks" icon-color="text-dark" :initial-expanded="true">
 		<template #title>
 			{{ i18n.baseText('workerList.item.jobListTitle') }} ({{ items.length }})
 		</template>

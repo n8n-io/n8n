@@ -1,5 +1,6 @@
 export namespace ChatUI {
 	export interface TextMessage {
+		id?: string;
 		role: 'assistant' | 'user';
 		type: 'text';
 		content: string;
@@ -13,7 +14,7 @@ export namespace ChatUI {
 		content: string;
 	}
 
-	interface CodeDiffMessage {
+	export interface CodeDiffMessage {
 		role: 'assistant';
 		type: 'code-diff';
 		description?: string;
@@ -24,10 +25,22 @@ export namespace ChatUI {
 		suggestionId: string;
 	}
 
-	interface EndSessionMessage {
+	export interface EndSessionMessage {
 		role: 'assistant';
 		type: 'event';
 		eventName: 'end-session';
+	}
+
+	export interface SessionTimeoutMessage {
+		role: 'assistant';
+		type: 'event';
+		eventName: 'session-timeout';
+	}
+
+	export interface SessionErrorMessage {
+		role: 'assistant';
+		type: 'event';
+		eventName: 'session-error';
 	}
 
 	export interface QuickReply {
@@ -37,6 +50,7 @@ export namespace ChatUI {
 	}
 
 	export interface ErrorMessage {
+		id?: string;
 		role: 'assistant';
 		type: 'error';
 		content: string;
@@ -51,6 +65,28 @@ export namespace ChatUI {
 		suggestionId: string;
 	}
 
+	export interface WorkflowUpdatedMessage {
+		role: 'assistant';
+		type: 'workflow-updated';
+		codeSnippet: string;
+	}
+
+	export interface ToolMessage {
+		id?: string;
+		role: 'assistant';
+		type: 'tool';
+		toolName: string;
+		toolCallId?: string;
+		displayTitle?: string; // tool display name like "Searching for node"
+		customDisplayTitle?: string; // tool call specific custom title like "Searching for OpenAI"
+		status: 'running' | 'completed' | 'error';
+		updates: Array<{
+			type: 'input' | 'output' | 'progress' | 'error';
+			data: Record<string, unknown>;
+			timestamp?: string;
+		}>;
+	}
+
 	type MessagesWithReplies = (
 		| TextMessage
 		| CodeDiffMessage
@@ -61,12 +97,98 @@ export namespace ChatUI {
 	};
 
 	export type AssistantMessage = (
+		| TextMessage
 		| MessagesWithReplies
 		| ErrorMessage
 		| EndSessionMessage
+		| SessionTimeoutMessage
+		| SessionErrorMessage
 		| AgentSuggestionMessage
+		| WorkflowUpdatedMessage
+		| ToolMessage
 	) & {
-		id: string;
-		read: boolean;
+		id?: string;
+		read?: boolean;
+		showRating?: boolean;
+		ratingStyle?: 'regular' | 'minimal';
+		showFeedback?: boolean;
 	};
+}
+
+export type RatingFeedback = { rating?: 'up' | 'down'; feedback?: string };
+
+// Type guards for ChatUI messages
+export function isTextMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.TextMessage & { id?: string; read?: boolean; quickReplies?: ChatUI.QuickReply[] } {
+	return msg.type === 'text';
+}
+
+export function isSummaryBlock(msg: ChatUI.AssistantMessage): msg is ChatUI.SummaryBlock & {
+	id?: string;
+	read?: boolean;
+	quickReplies?: ChatUI.QuickReply[];
+} {
+	return msg.type === 'block';
+}
+
+export function isCodeDiffMessage(msg: ChatUI.AssistantMessage): msg is ChatUI.CodeDiffMessage & {
+	id?: string;
+	read?: boolean;
+	quickReplies?: ChatUI.QuickReply[];
+} {
+	return msg.type === 'code-diff';
+}
+
+export function isErrorMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.ErrorMessage & { id?: string; read?: boolean } {
+	return msg.type === 'error';
+}
+
+export function isEndSessionMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.EndSessionMessage & { id?: string; read?: boolean } {
+	return msg.type === 'event' && msg.eventName === 'end-session';
+}
+
+export function isSessionTimeoutMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.SessionTimeoutMessage & { id?: string; read?: boolean } {
+	return msg.type === 'event' && msg.eventName === 'session-timeout';
+}
+
+export function isSessionErrorMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.SessionErrorMessage & { id?: string; read?: boolean } {
+	return msg.type === 'event' && msg.eventName === 'session-error';
+}
+
+export function isAgentSuggestionMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.AgentSuggestionMessage & {
+	id?: string;
+	read?: boolean;
+	quickReplies?: ChatUI.QuickReply[];
+} {
+	return msg.type === 'agent-suggestion';
+}
+
+export function isWorkflowUpdatedMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.WorkflowUpdatedMessage & { id?: string; read?: boolean } {
+	return msg.type === 'workflow-updated';
+}
+
+export function isToolMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.ToolMessage & { id?: string; read?: boolean } {
+	return msg.type === 'tool';
+}
+
+// Helper to ensure message has required id and read properties
+export function hasRequiredProps<T extends ChatUI.AssistantMessage>(
+	msg: T,
+): msg is T & { id: string; read: boolean } {
+	return typeof msg.id === 'string' && typeof msg.read === 'boolean';
 }

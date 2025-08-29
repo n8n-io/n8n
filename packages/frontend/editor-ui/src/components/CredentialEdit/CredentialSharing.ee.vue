@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import type { AllRolesMap, PermissionsRecord } from '@n8n/permissions';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { EnterpriseEditionFeature } from '@/constants';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '@/Interface';
-import type { PermissionsRecord } from '@/permissions';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useRolesStore } from '@/stores/roles.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -12,7 +12,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
-import type { RoleMap } from '@/types/roles.types';
 import { splitName } from '@/utils/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -82,12 +81,13 @@ const credentialRoleTranslations = computed<Record<string, string>>(() => {
 	};
 });
 
-const credentialRoles = computed<RoleMap['credential']>(() => {
-	return rolesStore.processedCredentialRoles.map(({ role, scopes, licensed }) => ({
+const credentialRoles = computed<AllRolesMap['credential']>(() => {
+	return rolesStore.processedCredentialRoles.map(({ role, scopes, licensed, description }) => ({
 		role,
 		name: credentialRoleTranslations.value[role],
 		scopes,
 		licensed,
+		description,
 	}));
 });
 

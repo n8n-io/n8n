@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import type { ResourceLocatorRequestDto } from '@n8n/api-types';
+import type { ResourceLocatorRequestDto, ActionResultRequestDto } from '@n8n/api-types';
 import type { IResourceLocatorResultExpanded, IUpdateInformation } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useDebounce } from '@/composables/useDebounce';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
@@ -18,19 +19,19 @@ import {
 	getMainAuthField,
 	hasOnlyListMode as hasOnlyListModeUtil,
 } from '@/utils/nodeTypesUtils';
-import { isResourceLocatorValue } from '@/utils/typeGuards';
 import stringify from 'fast-json-stable-stringify';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type {
-	INode,
-	INodeListSearchItems,
-	INodeParameterResourceLocator,
-	INodeParameters,
-	INodeProperties,
-	INodePropertyMode,
-	INodePropertyModeTypeOptions,
-	NodeParameterValue,
+import {
+	isResourceLocatorValue,
+	type INode,
+	type INodeListSearchItems,
+	type INodeParameterResourceLocator,
+	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyMode,
+	type INodePropertyModeTypeOptions,
+	type NodeParameterValue,
 } from 'n8n-workflow';
 import {
 	computed,
@@ -42,7 +43,6 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
-import { useRouter } from 'vue-router';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
@@ -54,6 +54,8 @@ import {
 	type FromAIOverride,
 } from '../../utils/fromAIOverrideUtils';
 import { N8nNotice } from '@n8n/design-system';
+import { completeExpressionSyntax } from '@/utils/expressions';
+import { useProjectsStore } from '@/stores/projects.store';
 
 /**
  * Regular expression to check if the error message contains credential-related phrases.
@@ -122,8 +124,7 @@ const emit = defineEmits<{
 	modalOpenerClick: [];
 }>();
 
-const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
 const { callDebounced } = useDebounce();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -144,6 +145,7 @@ const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
 
 const appName = computed(() => {
 	if (!props.node) {
@@ -186,8 +188,9 @@ const hasCredentialError = computed(() => {
 	);
 });
 
-const credentialsNotSet = computed(() => {
+const credentialsRequiredAndNotSet = computed(() => {
 	if (!props.node) return false;
+	if (skipCredentialsCheckInRLC.value) return false;
 	const nodeType = nodeTypesStore.getNodeType(props.node.type);
 	if (nodeType) {
 		const usesCredentials = nodeType.credentials !== undefined && nodeType.credentials.length > 0;
@@ -220,9 +223,9 @@ const hasMultipleModes = computed(() => {
 });
 
 const hasOnlyListMode = computed(() => hasOnlyListModeUtil(props.parameter));
-const valueToDisplay = computed<NodeParameterValue>(() => {
+const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	if (typeof props.modelValue !== 'object') {
-		return props.modelValue;
+		return `${props.modelValue}`;
 	}
 
 	if (isListMode.value) {
@@ -269,6 +272,7 @@ const currentRequestParams = computed(() => {
 		parameters: props.node?.parameters ?? {},
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
+		projectId: projectsStore.currentProjectId,
 	};
 });
 
@@ -315,6 +319,10 @@ const currentQueryError = computed(() => {
 
 const isSearchable = computed(() => !!getPropertyArgument(currentMode.value, 'searchable'));
 
+const skipCredentialsCheckInRLC = computed(
+	() => !!getPropertyArgument(currentMode.value, 'skipCredentialsCheckInRLC'),
+);
+
 const requiresSearchFilter = computed(
 	() => !!getPropertyArgument(currentMode.value, 'searchFilterRequired'),
 );
@@ -345,6 +353,73 @@ const showOverrideButton = computed(
 	() => canBeContentOverride.value && !isContentOverride.value && !props.isReadOnly,
 );
 
+const allowNewResources = computed(() => {
+	if (!props.node) {
+		return undefined;
+	}
+
+	const addNewResourceOptions = getPropertyArgument(currentMode.value, 'allowNewResource');
+
+	if (!addNewResourceOptions || typeof addNewResourceOptions !== 'object') {
+		return undefined;
+	}
+
+	return {
+		label: i18n.baseText(addNewResourceOptions.label as BaseTextKey, {
+			interpolate: {
+				resourceName: searchFilter.value ? searchFilter.value : addNewResourceOptions.defaultName,
+			},
+		}),
+		method: addNewResourceOptions.method,
+	};
+});
+
+const handleAddResourceClick = async () => {
+	if (!props.node || !allowNewResources.value) {
+		return;
+	}
+
+	const { method: addNewResourceMethodName } = allowNewResources.value;
+	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+		props.parameter,
+		currentRequestParams.value.parameters,
+	);
+
+	if (!resolvedNodeParameters || !addNewResourceMethodName) {
+		return;
+	}
+
+	const requestParams: ActionResultRequestDto = {
+		nodeTypeAndVersion: {
+			name: props.node.type,
+			version: props.node.typeVersion,
+		},
+		path: props.path,
+		currentNodeParameters: resolvedNodeParameters,
+		credentials: props.node.credentials,
+		handler: addNewResourceMethodName,
+		payload: {
+			name: searchFilter.value,
+		},
+	};
+
+	const newResource = (await nodeTypesStore.getNodeParameterActionResult(
+		requestParams,
+	)) as NodeParameterValue;
+	if (typeof newResource === 'boolean') {
+		return;
+	}
+
+	refreshList();
+	await loadResources();
+	searchFilter.value = '';
+	onListItemSelected(newResource);
+};
+
+const onAddResourceClicked = computed(() =>
+	allowNewResources.value ? handleAddResourceClick : undefined,
+);
+
 watch(currentQueryError, (curr, prev) => {
 	if (resourceDropdownVisible.value && curr && !prev) {
 		if (inputRef.value) {
@@ -355,10 +430,12 @@ watch(currentQueryError, (curr, prev) => {
 
 watch(
 	() => props.isValueExpression,
-	(newValue) => {
+	async (newValue) => {
 		if (newValue) {
 			switchFromListMode();
 		}
+		await nextTick();
+		inputRef.value?.focus();
 	},
 );
 
@@ -450,7 +527,7 @@ function openResource(url: string) {
 function getPropertyArgument(
 	parameter: INodePropertyMode,
 	argumentName: keyof INodePropertyModeTypeOptions,
-): string | number | boolean | undefined {
+): string | number | boolean | INodePropertyModeTypeOptions['allowNewResource'] | undefined {
 	return parameter.typeOptions?.[argumentName];
 }
 
@@ -497,7 +574,7 @@ function findModeByName(name: string): INodePropertyMode | null {
 	return null;
 }
 
-function getModeLabel(mode: INodePropertyMode): string | null {
+function getModeLabel(mode: INodePropertyMode): string | undefined {
 	if (mode.name === 'id' || mode.name === 'url' || mode.name === 'list') {
 		return i18n.baseText(`resourceLocator.mode.${mode.name}`);
 	}
@@ -505,7 +582,7 @@ function getModeLabel(mode: INodePropertyMode): string | null {
 	return mode.displayName;
 }
 
-function onInputChange(value: NodeParameterValue): void {
+function onInputChange(value: INodeParameterResourceLocator['value']): void {
 	const params: INodeParameterResourceLocator = { __rl: true, value, mode: selectedMode.value };
 	if (isListMode.value) {
 		const resource = currentQueryResults.value.find((result) => result.value === value);
@@ -516,6 +593,8 @@ function onInputChange(value: NodeParameterValue): void {
 		if (resource?.url) {
 			params.cachedResultUrl = resource.url;
 		}
+	} else {
+		params.value = completeExpressionSyntax(value);
 	}
 	emit('update:modelValue', params);
 }
@@ -529,15 +608,11 @@ function onModeSelected(value: string): void {
 			mode: value,
 			value: props.modelValue.cachedResultUrl,
 		});
-	} else if (
-		value === 'id' &&
-		selectedMode.value === 'list' &&
-		props.modelValue &&
-		props.modelValue.value
-	) {
+	} else if (value === 'id' && selectedMode.value === 'list' && props.modelValue?.value) {
 		emit('update:modelValue', { __rl: true, mode: value, value: props.modelValue.value });
 	} else {
-		emit('update:modelValue', { __rl: true, mode: value, value: '' });
+		const currentValue = props.modelValue?.value ?? '';
+		emit('update:modelValue', { __rl: true, mode: value, value: currentValue });
 	}
 
 	trackEvent('User changed resource locator mode', { mode: value });
@@ -585,9 +660,13 @@ function loadResourcesDebounced() {
 }
 
 function setResponse(paramsKey: string, response: Partial<IResourceLocatorQuery>) {
+	// Force reactivity by creating a completely new cached responses object
+	const existingResponse = cachedResponses.value[paramsKey] || {};
+	const newResponse = { ...existingResponse, ...response };
+
 	cachedResponses.value = {
 		...cachedResponses.value,
-		[paramsKey]: { ...cachedResponses.value[paramsKey], ...response },
+		[paramsKey]: newResponse,
 	};
 }
 
@@ -596,7 +675,7 @@ async function loadResources() {
 	const paramsKey = currentRequestKey.value;
 	const cachedResponse = cachedResponses.value[paramsKey];
 
-	if (credentialsNotSet.value) {
+	if (credentialsRequiredAndNotSet.value) {
 		setResponse(paramsKey, { error: true });
 		return;
 	}
@@ -646,6 +725,7 @@ async function loadResources() {
 			methodName: loadOptionsMethod,
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
+			projectId: projectsStore.currentProjectId,
 		};
 
 		if (params.filter) {
@@ -658,19 +738,28 @@ async function loadResources() {
 
 		const response = await nodeTypesStore.getResourceLocatorResults(requestParams);
 
-		setResponse(paramsKey, {
+		const responseData = {
 			results: (cachedResponse?.results ?? []).concat(response.results),
 			nextPageToken: response.paginationToken ?? null,
 			loading: false,
 			error: false,
-		});
+		};
+
+		// Store response under the original key to prevent cache pollution
+		setResponse(paramsKey, responseData);
+
+		// If the key changed during the request, also store under current key to prevent infinite loading
+		const currentKey = currentRequestKey.value;
+		if (currentKey !== paramsKey) {
+			setResponse(currentKey, responseData);
+		}
 
 		if (params.filter && !hasCompletedASearch.value) {
 			hasCompletedASearch.value = true;
 			trackEvent('User searched resource locator list');
 		}
 	} catch (e) {
-		setResponse(paramsKey, {
+		const errorData = {
 			loading: false,
 			error: true,
 			errorDetails: {
@@ -679,7 +768,16 @@ async function loadResources() {
 				httpCode: e.httpCode,
 				stackTrace: e.stacktrace,
 			},
-		});
+		};
+
+		// Store error under the original key
+		setResponse(paramsKey, errorData);
+
+		// If the key changed during the request, also store under current key to prevent infinite loading
+		const currentKey = currentRequestKey.value;
+		if (currentKey !== paramsKey) {
+			setResponse(currentKey, errorData);
+		}
 	}
 }
 
@@ -755,7 +853,7 @@ function showResourceDropdown() {
 	resourceDropdownVisible.value = true;
 }
 
-function onListItemSelected(value: NodeParameterValue) {
+function onListItemSelected(value: INodeParameterResourceLocator['value']) {
 	onInputChange(value);
 	hideResourceDropdown();
 }
@@ -776,14 +874,10 @@ function onInputBlur(event: FocusEvent) {
 function applyOverride() {
 	if (!props.node || !fromAIOverride.value) return;
 
-	telemetry.track(
-		'User turned on fromAI override',
-		{
-			nodeType: props.node.type,
-			parameter: props.path,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User turned on fromAI override', {
+		nodeType: props.node.type,
+		parameter: props.path,
+	});
 	updateFromAIOverrideValues(fromAIOverride.value, props.modelValue.value?.toString() ?? '');
 
 	emit('update:modelValue', {
@@ -795,14 +889,10 @@ function applyOverride() {
 function removeOverride() {
 	if (!props.node || !fromAIOverride.value) return;
 
-	telemetry.track(
-		'User turned off fromAI override',
-		{
-			nodeType: props.node.type,
-			parameter: props.path,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User turned off fromAI override', {
+		nodeType: props.node.type,
+		parameter: props.path,
+	});
 	emit('update:modelValue', {
 		...props.modelValue,
 		value: buildValueFromOverride(fromAIOverride.value, props, false),
@@ -833,14 +923,16 @@ function removeOverride() {
 			:error-view="currentQueryError"
 			:width="width"
 			:event-bus="eventBus"
+			:allow-new-resources="allowNewResources"
 			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
 			@load-more="loadResourcesDebounced"
+			@add-resource-click="onAddResourceClicked"
 		>
 			<template #error>
 				<div :class="$style.errorContainer" data-test-id="rlc-error-container">
 					<n8n-text
-						v-if="credentialsNotSet || currentResponse.errorDetails"
+						v-if="credentialsRequiredAndNotSet || currentResponse.errorDetails"
 						color="text-dark"
 						align="center"
 						tag="div"
@@ -864,9 +956,12 @@ function removeOverride() {
 							{{ currentResponse.errorDetails.description }}
 						</N8nNotice>
 					</div>
-					<div v-if="hasCredentialError || credentialsNotSet" data-test-id="permission-error-link">
+					<div
+						v-if="hasCredentialError || credentialsRequiredAndNotSet"
+						data-test-id="permission-error-link"
+					>
 						<a
-							v-if="credentialsNotSet"
+							v-if="credentialsRequiredAndNotSet"
 							:class="$style['credential-link']"
 							@click="createNewCredential"
 						>
@@ -978,6 +1073,7 @@ function removeOverride() {
 									@update:model-value="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
+									@mousedown.prevent
 								>
 									<template v-if="isListMode" #suffix>
 										<i
@@ -1003,7 +1099,7 @@ function removeOverride() {
 					/>
 					<div v-else-if="urlValue" :class="$style.openResourceLink">
 						<n8n-link theme="text" @click.stop="openResource(urlValue)">
-							<font-awesome-icon icon="external-link-alt" :title="getLinkAlt(valueToDisplay)" />
+							<n8n-icon icon="external-link" :title="getLinkAlt(valueToDisplay)" />
 						</n8n-link>
 					</div>
 				</div>
@@ -1021,5 +1117,5 @@ function removeOverride() {
 </template>
 
 <style lang="scss" module>
-@import './resourceLocator.scss';
+@use './resourceLocator.scss';
 </style>

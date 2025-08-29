@@ -1,14 +1,9 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-import { getWorkflowFilenames, initBinaryDataService, testWorkflows } from '@test/nodes/Helpers';
-
 describe('GraphQL Node', () => {
-	const baseUrl = 'https://api.n8n.io/';
-
-	beforeAll(async () => {
-		await initBinaryDataService();
-
+	describe('valid request', () => {
+		const baseUrl = 'https://api.n8n.io/';
 		nock(baseUrl)
 			.matchHeader('accept', 'application/json')
 			.matchHeader('content-type', 'application/json')
@@ -58,8 +53,61 @@ describe('GraphQL Node', () => {
 					},
 				},
 			});
+
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['workflow.json'],
+		});
 	});
 
-	const workflows = getWorkflowFilenames(__dirname);
-	testWorkflows(workflows);
+	describe('invalid expression', () => {
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['workflow.error_invalid_expression.json'],
+		});
+	});
+
+	describe('oauth2 refresh token', () => {
+		const credentials = {
+			oAuth2Api: {
+				scope: '',
+				accessTokenUrl: 'http://test/token',
+				clientId: 'dummy_client_id',
+				clientSecret: 'dummy_client_secret',
+				oauthTokenData: {
+					access_token: 'dummy_access_token',
+					refresh_token: 'dummy_refresh_token',
+				},
+			},
+		};
+		const baseUrl = 'http://test';
+		nock(baseUrl)
+			.post('/graphql', '{"query":"query { foo }","variables":{},"operationName":null}')
+			.reply(401, {
+				errors: [
+					{
+						message: 'Unauthorized',
+					},
+				],
+			});
+		nock(baseUrl)
+			.post('/token', {
+				refresh_token: 'dummy_refresh_token',
+				grant_type: 'refresh_token',
+			})
+			.reply(200, {
+				access_token: 'dummy_access_token',
+				refresh_token: 'dummy_refresh_token',
+				expires_in: 3600,
+			});
+		nock(baseUrl)
+			.post('/graphql', '{"query":"query { foo }","variables":{},"operationName":null}')
+			.reply(200, {
+				data: {
+					foo: 'bar',
+				},
+			});
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['workflow.refresh_token.json'],
+			credentials,
+		});
+	});
 });

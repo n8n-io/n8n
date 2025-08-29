@@ -2,7 +2,7 @@
 import type { ExternalSecretsProvider } from '@/Interface';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 
@@ -68,7 +68,7 @@ async function onUpdateConnected(value: boolean) {
 		<n8n-icon
 			v-if="provider.state === 'error'"
 			color="danger"
-			icon="exclamation-triangle"
+			icon="triangle-alert"
 			class="mr-2xs"
 		/>
 		<n8n-text :color="connectedTextColor" bold class="mr-2xs">

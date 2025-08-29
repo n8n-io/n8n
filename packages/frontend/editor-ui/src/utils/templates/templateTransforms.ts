@@ -1,4 +1,8 @@
-import type { IWorkflowTemplateNode, IWorkflowTemplateNodeCredentials } from '@/Interface';
+import type {
+	IWorkflowTemplateNode,
+	IWorkflowTemplateNodeCredentials,
+} from '@n8n/rest-api-client/api/templates';
+
 import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/utils/nodes/nodeTransforms';
 import type { NormalizedTemplateNodeCredentials } from '@/utils/templates/templateTypes';

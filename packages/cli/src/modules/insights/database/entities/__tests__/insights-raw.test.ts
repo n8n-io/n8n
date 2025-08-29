@@ -1,9 +1,6 @@
+import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
-
-import { createTeamProject } from '@test-integration/db/projects';
-import { createWorkflow } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
 
 import { createMetadata, createRawInsightsEvent } from './db-utils';
 import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
@@ -13,6 +10,7 @@ import type { TypeUnit } from '../insights-shared';
 let insightsRawRepository: InsightsRawRepository;
 
 beforeAll(async () => {
+	await testModules.loadModules(['insights']);
 	await testDb.init();
 	insightsRawRepository = Container.get(InsightsRawRepository);
 });

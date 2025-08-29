@@ -1,6 +1,10 @@
 import { DateTime, Duration, Interval } from 'luxon';
-import type { IBinaryData } from 'n8n-workflow';
-import { setGlobalState, type CodeExecutionMode, type IDataObject } from 'n8n-workflow';
+import {
+	type IBinaryData,
+	setGlobalState,
+	type CodeExecutionMode,
+	type IDataObject,
+} from 'n8n-workflow';
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 
@@ -26,6 +30,7 @@ import {
 	withPairedItem,
 	wrapIntoJson,
 } from './test-data';
+import { ReservedKeyFoundError } from '../errors/reserved-key-not-found.error';
 
 jest.mock('ws');
 
@@ -33,7 +38,7 @@ const defaultConfig = new MainConfig();
 defaultConfig.jsRunnerConfig ??= {
 	allowedBuiltInModules: '',
 	allowedExternalModules: '',
-	allowPrototypeMutation: true, // needed for jest
+	insecureMode: false,
 };
 
 describe('JsTaskRunner', () => {
@@ -805,6 +810,15 @@ describe('JsTaskRunner', () => {
 					}),
 				).rejects.toThrow(ValidationError);
 			});
+
+			it('should throw a ReservedKeyFoundError if there are unknown keys alongside reserved keys', async () => {
+				await expect(
+					executeForAllItems({
+						code: 'return [{json: {b: 1}, objectId: "123"}]',
+						inputItems: [{ a: 1 }],
+					}),
+				).rejects.toThrow(ReservedKeyFoundError);
+			});
 		});
 
 		it('should return static items', async () => {
@@ -994,7 +1008,7 @@ describe('JsTaskRunner', () => {
 							code: `return require('${module}')`,
 							inputItems,
 						}),
-					).rejects.toThrow(`Cannot find module '${module}'`);
+					).rejects.toThrow(`Module '${module}' is disallowed`);
 				},
 			);
 
@@ -1006,7 +1020,7 @@ describe('JsTaskRunner', () => {
 							code: `return require('${module}')`,
 							inputItems,
 						}),
-					).rejects.toThrow(`Cannot find module '${module}'`);
+					).rejects.toThrow(`Module '${module}' is disallowed`);
 				},
 			);
 		});
@@ -1124,7 +1138,7 @@ describe('JsTaskRunner', () => {
 							inputItems,
 							runner,
 						}),
-					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+					).rejects.toThrow(`Module '${moduleName}' is disallowed`);
 				},
 			);
 
@@ -1137,7 +1151,7 @@ describe('JsTaskRunner', () => {
 							inputItems,
 							runner,
 						}),
-					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+					).rejects.toThrow(`Module '${moduleName}' is disallowed`);
 				},
 			);
 		});
@@ -1186,7 +1200,7 @@ describe('JsTaskRunner', () => {
 							inputItems,
 							runner,
 						}),
-					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+					).rejects.toThrow(`Module '${moduleName}' is disallowed`);
 				},
 			);
 
@@ -1199,7 +1213,7 @@ describe('JsTaskRunner', () => {
 							inputItems,
 							runner,
 						}),
-					).rejects.toThrow(`Cannot find module '${moduleName}'`);
+					).rejects.toThrow(`Module '${moduleName}' is disallowed`);
 				},
 			);
 		});
@@ -1441,9 +1455,9 @@ describe('JsTaskRunner', () => {
 			expect(Duration.fromObject({ hours: 1 }).maliciousKey).toBeUndefined();
 		});
 
-		it('should allow prototype mutation when `allowPrototypeMutation` is true', async () => {
+		it('should allow prototype mutation when `insecureMode` is true', async () => {
 			const runner = createRunnerWithOpts({
-				allowPrototypeMutation: true,
+				insecureMode: true,
 			});
 
 			const outcome = await executeForAllItems({

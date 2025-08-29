@@ -45,6 +45,9 @@
         "$layout_id": {
             "type": "object",
             "properties": {
+                "display_label": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -79,12 +82,6 @@
         "$state": {
             "type": "string"
         },
-        "Assistant": {
-            "type": "null"
-        },
-        "Asst_Phone": {
-            "type": "null"
-        },
         "Created_By": {
             "type": "object",
             "properties": {
@@ -107,6 +104,9 @@
         },
         "Full_Name": {
             "type": "string"
+        },
+        "Home_Phone": {
+            "type": "null"
         },
         "id": {
             "type": "string"
@@ -134,10 +134,7 @@
         "Modified_Time": {
             "type": "string"
         },
-        "Other_Street": {
-            "type": "null"
-        },
-        "Other_Zip": {
+        "Other_Phone": {
             "type": "null"
         },
         "Owner": {
@@ -159,7 +156,10 @@
         },
         "Unsubscribed_Time": {
             "type": "null"
+        },
+        "Vendor_Name": {
+            "type": "null"
         }
     },
-    "version": 2
+    "version": 6
 }

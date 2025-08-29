@@ -1,11 +1,7 @@
+import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-
-import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-
-import { createWorkflow } from '../../shared/db/workflows';
-import * as testDb from '../../shared/test-db';
 
 describe('ExecutionRepository', () => {
 	beforeAll(async () => {
@@ -13,7 +9,7 @@ describe('ExecutionRepository', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['Workflow', 'Execution']);
+		await testDb.truncate(['WorkflowEntity', 'ExecutionEntity']);
 	});
 
 	afterAll(async () => {

@@ -27,7 +27,9 @@ describe('Workflow Selector Parameter', () => {
 		getVisiblePopper()
 			.should('have.length', 1)
 			.findChildByTestId('rlc-item')
-			.should('have.length', 3);
+			.should('have.length', 2);
+
+		getVisiblePopper().findChildByTestId('rlc-item-add-resource').should('have.length', 1);
 	});
 
 	it('should show required parameter warning', () => {
@@ -44,8 +46,8 @@ describe('Workflow Selector Parameter', () => {
 		getVisiblePopper()
 			.should('have.length', 1)
 			.findChildByTestId('rlc-item')
-			.should('have.length', 2)
-			.eq(1)
+			.should('have.length', 1)
+			.eq(0)
 			.click();
 
 		ndv.getters
@@ -91,14 +93,14 @@ describe('Workflow Selector Parameter', () => {
 		ndv.getters.resourceLocator('workflowId').should('be.visible');
 		ndv.getters.resourceLocatorInput('workflowId').click();
 
-		getVisiblePopper().findChildByTestId('rlc-item').eq(0).should('exist');
+		getVisiblePopper().findChildByTestId('rlc-item-add-resource').eq(0).should('exist');
 		getVisiblePopper()
-			.findChildByTestId('rlc-item')
+			.findChildByTestId('rlc-item-add-resource')
 			.eq(0)
 			.find('span')
 			.should('contain.text', 'Create a'); // Due to some inconsistency we're sometimes in a project and sometimes not, this covers both cases
 
-		getVisiblePopper().findChildByTestId('rlc-item').eq(0).click();
+		getVisiblePopper().findChildByTestId('rlc-item-add-resource').eq(0).click();
 
 		cy.wait('@createSubworkflow').then((interception) => {
 			expect(interception.request.body).to.have.property('name').that.includes('Sub-Workflow');

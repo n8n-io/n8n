@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from './constants';
-import type { FolderResource } from '../layouts/ResourcesListLayout.vue';
 import { ProjectTypes, type Project } from '@/types/projects.types';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
-import type { UserAction } from '@/Interface';
+import type { FolderResource, UserAction } from '@/Interface';
 import { ResourceType } from '@/utils/projects.utils';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '@/stores/folders.store';
+import { type IUser } from 'n8n-workflow';
 
 type Props = {
 	data: FolderResource;
 	personalProject: Project | null;
-	actions: UserAction[];
+	actions: Array<UserAction<IUser>>;
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
 };
@@ -36,6 +36,7 @@ const emit = defineEmits<{
 }>();
 
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
+
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
 const resourceTypeLabel = computed(() => i18n.baseText('generic.folder').toLowerCase());
@@ -129,6 +130,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 						:class="$style['folder-icon']"
 						icon="folder"
 						size="xlarge"
+						:stroke-width="1"
 					/>
 				</template>
 				<template #header>

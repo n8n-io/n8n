@@ -1,20 +1,26 @@
-import config from '@/config';
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 
 import { toSaveSettings } from '../to-save-settings';
 
+const globalConfig = Container.get(GlobalConfig);
+
 afterEach(() => {
-	config.load(config.default);
+	globalConfig.executions.saveDataOnError = 'all';
+	globalConfig.executions.saveDataOnSuccess = 'all';
+	globalConfig.executions.saveExecutionProgress = false;
+	globalConfig.executions.saveDataManualExecutions = true;
 });
 
 describe('failed production executions', () => {
 	it('should favor workflow settings over defaults', () => {
-		config.set('executions.saveDataOnError', 'none');
+		globalConfig.executions.saveDataOnError = 'none';
 
 		const saveSettings = toSaveSettings({ saveDataErrorExecution: 'all' });
 
 		expect(saveSettings.error).toBe(true);
 
-		config.set('executions.saveDataOnError', 'all');
+		globalConfig.executions.saveDataOnError = 'all';
 
 		const _saveSettings = toSaveSettings({ saveDataErrorExecution: 'none' });
 
@@ -22,13 +28,13 @@ describe('failed production executions', () => {
 	});
 
 	it('should fall back to default if no workflow setting', () => {
-		config.set('executions.saveDataOnError', 'all');
+		globalConfig.executions.saveDataOnError = 'all';
 
 		const saveSettings = toSaveSettings();
 
 		expect(saveSettings.error).toBe(true);
 
-		config.set('executions.saveDataOnError', 'none');
+		globalConfig.executions.saveDataOnError = 'none';
 
 		const _saveSettings = toSaveSettings();
 
@@ -38,13 +44,13 @@ describe('failed production executions', () => {
 
 describe('successful production executions', () => {
 	it('should favor workflow settings over defaults', () => {
-		config.set('executions.saveDataOnSuccess', 'none');
+		globalConfig.executions.saveDataOnSuccess = 'none';
 
 		const saveSettings = toSaveSettings({ saveDataSuccessExecution: 'all' });
 
 		expect(saveSettings.success).toBe(true);
 
-		config.set('executions.saveDataOnSuccess', 'all');
+		globalConfig.executions.saveDataOnSuccess = 'all';
 
 		const _saveSettings = toSaveSettings({ saveDataSuccessExecution: 'none' });
 
@@ -52,13 +58,13 @@ describe('successful production executions', () => {
 	});
 
 	it('should fall back to default if no workflow setting', () => {
-		config.set('executions.saveDataOnSuccess', 'all');
+		globalConfig.executions.saveDataOnSuccess = 'all';
 
 		const saveSettings = toSaveSettings();
 
 		expect(saveSettings.success).toBe(true);
 
-		config.set('executions.saveDataOnSuccess', 'none');
+		globalConfig.executions.saveDataOnSuccess = 'none';
 
 		const _saveSettings = toSaveSettings();
 
@@ -68,13 +74,13 @@ describe('successful production executions', () => {
 
 describe('manual executions', () => {
 	it('should favor workflow setting over default', () => {
-		config.set('executions.saveDataManualExecutions', false);
+		globalConfig.executions.saveDataManualExecutions = false;
 
 		const saveSettings = toSaveSettings({ saveManualExecutions: true });
 
 		expect(saveSettings.manual).toBe(true);
 
-		config.set('executions.saveDataManualExecutions', true);
+		globalConfig.executions.saveDataManualExecutions = true;
 
 		const _saveSettings = toSaveSettings({ saveManualExecutions: false });
 
@@ -82,13 +88,13 @@ describe('manual executions', () => {
 	});
 
 	it('should favor fall back to default if workflow setting is explicit default', () => {
-		config.set('executions.saveDataManualExecutions', true);
+		globalConfig.executions.saveDataManualExecutions = true;
 
 		const saveSettings = toSaveSettings({ saveManualExecutions: 'DEFAULT' });
 
 		expect(saveSettings.manual).toBe(true);
 
-		config.set('executions.saveDataManualExecutions', false);
+		globalConfig.executions.saveDataManualExecutions = false;
 
 		const _saveSettings = toSaveSettings({ saveManualExecutions: 'DEFAULT' });
 
@@ -96,13 +102,13 @@ describe('manual executions', () => {
 	});
 
 	it('should fall back to default if no workflow setting', () => {
-		config.set('executions.saveDataManualExecutions', true);
+		globalConfig.executions.saveDataManualExecutions = true;
 
 		const saveSettings = toSaveSettings();
 
 		expect(saveSettings.manual).toBe(true);
 
-		config.set('executions.saveDataManualExecutions', false);
+		globalConfig.executions.saveDataManualExecutions = false;
 
 		const _saveSettings = toSaveSettings();
 
@@ -112,13 +118,13 @@ describe('manual executions', () => {
 
 describe('execution progress', () => {
 	it('should favor workflow setting over default', () => {
-		config.set('executions.saveExecutionProgress', false);
+		globalConfig.executions.saveExecutionProgress = false;
 
 		const saveSettings = toSaveSettings({ saveExecutionProgress: true });
 
 		expect(saveSettings.progress).toBe(true);
 
-		config.set('executions.saveExecutionProgress', true);
+		globalConfig.executions.saveExecutionProgress = true;
 
 		const _saveSettings = toSaveSettings({ saveExecutionProgress: false });
 
@@ -126,13 +132,13 @@ describe('execution progress', () => {
 	});
 
 	it('should favor fall back to default if workflow setting is explicit default', () => {
-		config.set('executions.saveExecutionProgress', true);
+		globalConfig.executions.saveExecutionProgress = true;
 
 		const saveSettings = toSaveSettings({ saveExecutionProgress: 'DEFAULT' });
 
 		expect(saveSettings.progress).toBe(true);
 
-		config.set('executions.saveExecutionProgress', false);
+		globalConfig.executions.saveExecutionProgress = false;
 
 		const _saveSettings = toSaveSettings({ saveExecutionProgress: 'DEFAULT' });
 
@@ -140,16 +146,34 @@ describe('execution progress', () => {
 	});
 
 	it('should fall back to default if no workflow setting', () => {
-		config.set('executions.saveExecutionProgress', true);
+		globalConfig.executions.saveExecutionProgress = true;
 
 		const saveSettings = toSaveSettings();
 
 		expect(saveSettings.progress).toBe(true);
 
-		config.set('executions.saveExecutionProgress', false);
+		globalConfig.executions.saveExecutionProgress = false;
 
 		const _saveSettings = toSaveSettings();
 
 		expect(_saveSettings.progress).toBe(false);
+	});
+});
+
+describe('null workflow settings', () => {
+	it('should handle null workflow settings without throwing', () => {
+		expect(() => toSaveSettings(null)).not.toThrow();
+
+		// Should use defaults from config when settings are null
+		globalConfig.executions.saveDataOnError = 'all';
+		globalConfig.executions.saveDataOnSuccess = 'all';
+		globalConfig.executions.saveDataManualExecutions = true;
+		globalConfig.executions.saveExecutionProgress = true;
+
+		const settingsWithNull = toSaveSettings(null);
+		expect(settingsWithNull.error).toBe(true);
+		expect(settingsWithNull.success).toBe(true);
+		expect(settingsWithNull.manual).toBe(true);
+		expect(settingsWithNull.progress).toBe(true);
 	});
 });

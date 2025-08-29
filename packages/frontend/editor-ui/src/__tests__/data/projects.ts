@@ -6,10 +6,11 @@ import type {
 	ProjectType,
 } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
+import { MAX_NAME_LENGTH } from '@/utils/projects.utils';
 
 export const createProjectSharingData = (projectType?: ProjectType): ProjectSharingData => ({
 	id: faker.string.uuid(),
-	name: faker.lorem.words({ min: 1, max: 3 }),
+	name: faker.lorem.words({ min: 1, max: 3 }).slice(0, MAX_NAME_LENGTH).trimEnd(),
 	icon: { type: 'icon', value: 'folder' },
 	type: projectType ?? ProjectTypes.Personal,
 	createdAt: faker.date.past().toISOString(),

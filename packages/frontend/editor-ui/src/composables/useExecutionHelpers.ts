@@ -1,6 +1,6 @@
 import type { ExecutionSummary, RelatedExecution } from 'n8n-workflow';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useTelemetry } from './useTelemetry';
@@ -25,7 +25,7 @@ export function useExecutionHelpers() {
 		const status = {
 			name: 'unknown',
 			createdAt: execution.createdAt?.toString() ?? '',
-			startTime: formatDate(execution.startedAt),
+			startTime: formatDate(execution.startedAt ?? execution.createdAt),
 			label: 'Status unknown',
 			runningTime: '',
 			showTimestamp: true,

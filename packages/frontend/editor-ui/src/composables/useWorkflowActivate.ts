@@ -12,15 +12,17 @@ import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { useWorkflowSaving } from './useWorkflowSaving';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
 
 	const router = useRouter();
-	const workflowHelpers = useWorkflowHelpers({ router });
+	const workflowHelpers = useWorkflowHelpers();
+	const workflowSaving = useWorkflowSaving({ router });
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
@@ -41,7 +43,7 @@ export function useWorkflowActivate() {
 
 		let currWorkflowId: string | undefined = workflowId;
 		if (!currWorkflowId || currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			const saved = await workflowHelpers.saveCurrentWorkflow();
+			const saved = await workflowSaving.saveCurrentWorkflow();
 			if (!saved) {
 				updatingWorkflowActivation.value = false;
 				return false; // Return false if save failed

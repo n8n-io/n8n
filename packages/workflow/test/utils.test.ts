@@ -1,15 +1,20 @@
-import { ALPHABET } from '@/Constants';
-import { ApplicationError } from '@/errors/application.error';
+import { ALPHABET } from '../src/constants';
+import { ApplicationError } from '@n8n/errors';
+import { ExecutionCancelledError } from '../src/errors/execution-cancelled.error';
 import {
 	jsonParse,
 	jsonStringify,
 	deepCopy,
+	isDomainAllowed,
 	isObjectEmpty,
 	fileTypeFromMimeType,
 	randomInt,
 	randomString,
 	hasKey,
-} from '@/utils';
+	isSafeObjectProperty,
+	setSafeObjectProperty,
+	sleepWithAbort,
+} from '../src/utils';
 
 describe('isObjectEmpty', () => {
 	it('should handle null and undefined', () => {
@@ -65,7 +70,7 @@ describe('isObjectEmpty', () => {
 	});
 
 	it('should not call Object.keys unless a plain object', () => {
-		const keySpy = jest.spyOn(Object, 'keys');
+		const keySpy = vi.spyOn(Object, 'keys');
 		const { calls } = keySpy.mock;
 
 		const assertCalls = (count: number) => {
@@ -364,5 +369,226 @@ describe('hasKey', () => {
 			const z: Expect<Equal<typeof x, unknown>> = true;
 			z;
 		}
+	});
+});
+
+describe('isSafeObjectProperty', () => {
+	it.each([
+		['__proto__', false],
+		['prototype', false],
+		['constructor', false],
+		['getPrototypeOf', false],
+		['safeKey', true],
+		['anotherKey', true],
+		['toString', true],
+	])('should return %s for key "%s"', (key, expected) => {
+		expect(isSafeObjectProperty(key)).toBe(expected);
+	});
+});
+
+describe('setSafeObjectProperty', () => {
+	it.each([
+		['safeKey', 123, { safeKey: 123 }],
+		['__proto__', 456, {}],
+		['constructor', 'test', {}],
+	])('should set property "%s" safely', (key, value, expected) => {
+		const obj: Record<string, unknown> = {};
+		setSafeObjectProperty(obj, key, value);
+		expect(obj).toEqual(expected);
+	});
+});
+
+describe('sleepWithAbort', () => {
+	it('should resolve after the specified time when not aborted', async () => {
+		const start = Date.now();
+		await sleepWithAbort(100);
+		const end = Date.now();
+		const elapsed = end - start;
+
+		// Allow some tolerance for timing
+		expect(elapsed).toBeGreaterThanOrEqual(90);
+		expect(elapsed).toBeLessThan(200);
+	});
+
+	it('should reject immediately if abort signal is already aborted', async () => {
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
+			ExecutionCancelledError,
+		);
+	});
+
+	it('should reject when abort signal is triggered during sleep', async () => {
+		const abortController = new AbortController();
+
+		// Start the sleep and abort after 50ms
+		setTimeout(() => abortController.abort(), 50);
+
+		const start = Date.now();
+		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
+			ExecutionCancelledError,
+		);
+		const end = Date.now();
+		const elapsed = end - start;
+
+		// Should have been aborted after ~50ms, not the full 1000ms
+		expect(elapsed).toBeLessThan(200);
+	});
+
+	it('should work without abort signal', async () => {
+		const start = Date.now();
+		await sleepWithAbort(100, undefined);
+		const end = Date.now();
+		const elapsed = end - start;
+
+		expect(elapsed).toBeGreaterThanOrEqual(90);
+		expect(elapsed).toBeLessThan(200);
+	});
+
+	it('should clean up timeout when aborted during sleep', async () => {
+		const abortController = new AbortController();
+		const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+
+		// Start the sleep and abort after 50ms
+		const sleepPromise = sleepWithAbort(1000, abortController.signal);
+		setTimeout(() => abortController.abort(), 50);
+
+		await expect(sleepPromise).rejects.toThrow(ExecutionCancelledError);
+
+		// clearTimeout should have been called to clean up
+		expect(clearTimeoutSpy).toHaveBeenCalled();
+
+		clearTimeoutSpy.mockRestore();
+	});
+});
+
+describe('isDomainAllowed', () => {
+	describe('when no allowed domains are specified', () => {
+		it('should allow all domains when allowedDomains is empty', () => {
+			expect(isDomainAllowed('https://example.com', { allowedDomains: '' })).toBe(true);
+		});
+
+		it('should allow all domains when allowedDomains contains only whitespace', () => {
+			expect(isDomainAllowed('https://example.com', { allowedDomains: '   ' })).toBe(true);
+		});
+	});
+
+	describe('in strict validation mode', () => {
+		it('should allow exact domain matches', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should allow domains from a comma-separated list', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'test.com,example.com,other.org',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle whitespace in allowed domains list', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: ' test.com , example.com , other.org ',
+				}),
+			).toBe(true);
+		});
+
+		it('should block non-matching domains', () => {
+			expect(
+				isDomainAllowed('https://malicious.com', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should block subdomains not set', () => {
+			expect(
+				isDomainAllowed('https://sub.example.com', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(false);
+		});
+	});
+
+	describe('with wildcard domains', () => {
+		it('should allow matching wildcard domains', () => {
+			expect(
+				isDomainAllowed('https://test.example.com', {
+					allowedDomains: '*.example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should allow nested subdomains with wildcards', () => {
+			expect(
+				isDomainAllowed('https://deep.nested.example.com', {
+					allowedDomains: '*.example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should block non-matching domains with wildcards', () => {
+			expect(
+				isDomainAllowed('https://example.org', {
+					allowedDomains: '*.example.com',
+				}),
+			).toBe(false);
+		});
+	});
+
+	describe('edge cases', () => {
+		it('should handle invalid URLs safely', () => {
+			expect(
+				isDomainAllowed('not-a-valid-url', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should handle URLs with ports', () => {
+			expect(
+				isDomainAllowed('https://example.com:8080/path', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle URLs with authentication', () => {
+			expect(
+				isDomainAllowed('https://user:pass@example.com', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle URLs with query parameters and fragments', () => {
+			expect(
+				isDomainAllowed('https://example.com/path?query=test#fragment', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle IP addresses', () => {
+			expect(
+				isDomainAllowed('https://192.168.1.1', {
+					allowedDomains: '192.168.1.1',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle empty URLs', () => {
+			expect(
+				isDomainAllowed('', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(false);
+		});
 	});
 });

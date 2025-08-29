@@ -1,8 +1,7 @@
+import { StatisticsNames, type WorkflowStatistics } from '@n8n/db';
+import { WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Workflow } from 'n8n-workflow';
-
-import { StatisticsNames, type WorkflowStatistics } from '@/databases/entities/workflow-statistics';
-import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
 
 export async function createWorkflowStatisticsItem(
 	workflowId: Workflow['id'],
@@ -16,6 +15,7 @@ export async function createWorkflowStatisticsItem(
 		workflowId,
 	});
 
+	// @ts-ignore CAT-957
 	await Container.get(WorkflowStatisticsRepository).insert(entity);
 
 	return entity;

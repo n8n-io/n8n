@@ -110,7 +110,7 @@ export const description: INodeProperties[] = [
 					{
 						name: 'Load',
 						value: 'load',
-						description: "Wait until the page dom and it's assets have loaded",
+						description: 'Wait until the page dom and its assets have loaded',
 					},
 					{
 						name: 'DOM Content Loaded',

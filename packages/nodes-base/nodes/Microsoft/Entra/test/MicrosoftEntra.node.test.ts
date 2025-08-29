@@ -1,23 +1,24 @@
-import type {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	IHttpRequestOptions,
-	ILoadOptionsFunctions,
-	WorkflowTestData,
-} from 'n8n-workflow';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import type { ILoadOptionsFunctions, WorkflowTestData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-
-import { CredentialsHelper } from '@test/nodes/credentials-helper';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 import { MicrosoftEntra } from '../MicrosoftEntra.node';
 
 describe('Microsoft Entra Node', () => {
+	const testHarness = new NodeTestHarness();
 	const baseUrl = 'https://graph.microsoft.com/v1.0';
 
 	describe('Credentials', () => {
+		const credentials = {
+			microsoftEntraOAuth2Api: {
+				scope: '',
+				oauthTokenData: {
+					access_token: 'ACCESSTOKEN',
+				},
+			},
+		};
+
 		const tests: WorkflowTestData[] = [
 			{
 				description: 'should use correct credentials',
@@ -30,7 +31,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [0, 0],
 								id: '1307e408-a8a5-464e-b858-494953e2f43b',
-								name: "When clicking 'Test workflow'",
+								name: 'When clicking ‘Execute workflow’',
 							},
 							{
 								parameters: {
@@ -49,7 +50,7 @@ describe('Microsoft Entra Node', () => {
 								typeVersion: 1,
 								position: [220, 0],
 								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
-								name: 'Micosoft Entra ID',
+								name: 'Microsoft Entra ID',
 								credentials: {
 									microsoftEntraOAuth2Api: {
 										id: 'Hot2KwSMSoSmMVqd',
@@ -59,11 +60,11 @@ describe('Microsoft Entra Node', () => {
 							},
 						],
 						connections: {
-							"When clicking 'Test workflow'": {
+							'When clicking ‘Execute workflow’': {
 								main: [
 									[
 										{
-											node: 'Micosoft Entra ID',
+											node: 'Microsoft Entra ID',
 											type: NodeConnectionTypes.Main,
 											index: 0,
 										},
@@ -74,9 +75,8 @@ describe('Microsoft Entra Node', () => {
 					},
 				},
 				output: {
-					nodeExecutionOrder: ['Start'],
 					nodeData: {
-						'Micosoft Entra ID': [microsoftEntraNodeResponse.getGroup],
+						'Microsoft Entra ID': [microsoftEntraNodeResponse.getGroup],
 					},
 				},
 				nock: {
@@ -95,38 +95,9 @@ describe('Microsoft Entra Node', () => {
 			},
 		];
 
-		beforeAll(() => {
-			jest
-				.spyOn(CredentialsHelper.prototype, 'authenticate')
-				.mockImplementation(
-					async (
-						credentials: ICredentialDataDecryptedObject,
-						typeName: string,
-						requestParams: IHttpRequestOptions,
-					): Promise<IHttpRequestOptions> => {
-						if (typeName === 'microsoftEntraOAuth2Api') {
-							return {
-								...requestParams,
-								headers: {
-									authorization:
-										'bearer ' + (credentials.oauthTokenData as IDataObject).access_token,
-								},
-							};
-						} else {
-							return requestParams;
-						}
-					},
-				);
-		});
-
-		test.each(tests)('$description', async (testData) => {
-			const { result } = await executeWorkflow(testData);
-			const resultNodeData = Helpers.getResultNodeData(result, testData);
-			resultNodeData.forEach(({ nodeName, resultData }) =>
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-			);
-			expect(result.status).toEqual('success');
-		});
+		for (const testData of tests) {
+			testHarness.setupTest(testData, { credentials });
+		}
 	});
 
 	describe('Load options', () => {

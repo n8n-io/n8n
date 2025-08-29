@@ -30,7 +30,7 @@ let settingsStore: MockedStore<typeof useSettingsStore>;
 let sourceControlStore: MockedStore<typeof useSourceControlStore>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
-let fetchAllWorkflowsSpy: MockInstance<(typeof workflowsStore)['fetchAllWorkflows']>;
+let searchWorkflowsSpy: MockInstance<(typeof workflowsStore)['searchWorkflows']>;
 
 const createComponent = createComponentRenderer(WorkflowSettingsVue, {
 	global: {
@@ -55,11 +55,12 @@ describe('WorkflowSettingsVue', () => {
 		} as FrontendSettings;
 		workflowsStore.workflowName = 'Test Workflow';
 		workflowsStore.workflowId = '1';
-		fetchAllWorkflowsSpy = workflowsStore.fetchAllWorkflows.mockResolvedValue([
+		searchWorkflowsSpy = workflowsStore.searchWorkflows.mockResolvedValue([
 			{
 				id: '1',
 				name: 'Test Workflow',
 				active: true,
+				isArchived: false,
 				nodes: [],
 				connections: {},
 				createdAt: 1,
@@ -71,6 +72,7 @@ describe('WorkflowSettingsVue', () => {
 			id: '1',
 			name: 'Test Workflow',
 			active: true,
+			isArchived: false,
 			nodes: [],
 			connections: {},
 			createdAt: 1,
@@ -132,8 +134,12 @@ describe('WorkflowSettingsVue', () => {
 		// first is `- No Workflow -`, second is the workflow returned by
 		// `workflowsStore.fetchAllWorkflows`
 		expect(dropdownItems).toHaveLength(2);
-		expect(fetchAllWorkflowsSpy).toHaveBeenCalledTimes(1);
-		expect(fetchAllWorkflowsSpy).toHaveBeenCalledWith();
+		expect(searchWorkflowsSpy).toHaveBeenCalledTimes(1);
+		expect(searchWorkflowsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: undefined,
+			}),
+		);
 	});
 
 	it('should not remove valid workflow ID characters', async () => {
@@ -273,6 +279,7 @@ describe('WorkflowSettingsVue', () => {
 			id: '1',
 			name: 'Test Workflow',
 			active: true,
+			isArchived: false,
 			nodes: [],
 			connections: {},
 			createdAt: 1,

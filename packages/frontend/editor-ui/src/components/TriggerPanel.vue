@@ -21,7 +21,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { isTriggerPanelObject } from '@/utils/typeGuards';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 const props = withDefaults(
@@ -45,7 +45,7 @@ const workflowsStore = useWorkflowsStore();
 const ndvStore = useNDVStore();
 
 const router = useRouter();
-const workflowHelpers = useWorkflowHelpers({ router });
+const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
@@ -78,9 +78,12 @@ const hideContent = computed(() => {
 	}
 
 	if (node.value) {
-		const hideContentValue = workflowHelpers
-			.getCurrentWorkflow()
-			.expression.getSimpleParameterValue(node.value, hideContent, 'internal', {});
+		const hideContentValue = workflowsStore.workflowObject.expression.getSimpleParameterValue(
+			node.value,
+			hideContent,
+			'internal',
+			{},
+		);
 
 		if (typeof hideContentValue === 'boolean') {
 			return hideContentValue;
@@ -151,20 +154,24 @@ const isPollingNode = computed(() => {
 });
 
 const isListeningForEvents = computed(() => {
-	const waitingOnWebhook = workflowsStore.executionWaitingForWebhook;
+	if (!node.value || node.value.disabled || !isWebhookBasedNode.value) {
+		return false;
+	}
+
+	if (!workflowsStore.executionWaitingForWebhook) {
+		return false;
+	}
+
 	const executedNode = workflowsStore.executedNode;
-	return (
-		!!node.value &&
-		!node.value.disabled &&
-		isWebhookBasedNode.value &&
-		waitingOnWebhook &&
-		(!executedNode || executedNode === props.nodeName)
-	);
+	const isCurrentNodeExecuted = executedNode === props.nodeName;
+	const isChildNodeExecuted = executedNode
+		? workflowsStore.workflowObject.getParentNodes(executedNode).includes(props.nodeName)
+		: false;
+
+	return !executedNode || isCurrentNodeExecuted || isChildNodeExecuted;
 });
 
-const workflowRunning = computed(() => {
-	return uiStore.isActionActive.workflowRunning;
-});
+const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 
 const isActivelyPolling = computed(() => {
 	const triggeredNode = workflowsStore.executedNode;
@@ -369,7 +376,7 @@ const onNodeExecute = () => {
 	<div :class="$style.container">
 		<transition name="fade" mode="out-in">
 			<div v-if="hasIssues || hideContent" key="empty"></div>
-			<div v-else-if="isListeningForEvents" key="listening">
+			<div v-else-if="isListeningForEvents" key="listening" data-test-id="trigger-listening">
 				<n8n-pulse>
 					<NodeIcon :node-type="nodeType" :size="40"></NodeIcon>
 				</n8n-pulse>
@@ -433,7 +440,7 @@ const onNodeExecute = () => {
 				</div>
 
 				<div :class="$style.action">
-					<div :class="$style.header">
+					<div data-test-id="trigger-header" :class="$style.header">
 						<n8n-heading v-if="header" tag="h1" bold>
 							{{ header }}
 						</n8n-heading>
@@ -479,7 +486,7 @@ const onNodeExecute = () => {
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-background-base);
+	background-color: var(--color-run-data-background);
 	display: flex;
 	flex-direction: column;
 

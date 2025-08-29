@@ -1,7 +1,19 @@
 import * as create from '../../../actions/session/create.operation';
-import { ERROR_MESSAGES } from '../../../constants';
+import { ERROR_MESSAGES, SESSION_STATUS } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
+
+const mockCreatedSession = {
+	data: { id: 'test-session-123', status: SESSION_STATUS.RUNNING },
+};
+
+const baseNodeParameters = {
+	resource: 'session',
+	operation: 'create',
+	profileName: 'test-profile',
+	timeoutMinutes: 10,
+	saveProfileOnTermination: false,
+};
 
 jest.mock('../../../transport', () => {
 	const originalModule = jest.requireActual<typeof transport>('../../../transport');
@@ -9,8 +21,7 @@ jest.mock('../../../transport', () => {
 		...originalModule,
 		apiRequest: jest.fn(async function () {
 			return {
-				sessionId: 'test-session-123',
-				status: 'success',
+				...mockCreatedSession,
 			};
 		}),
 	};
@@ -24,47 +35,42 @@ describe('Test Airtop, session create operation', () => {
 	afterEach(() => {
 		jest.clearAllMocks();
 	});
-
+	/**
+	 * Minimal parameters
+	 */
 	it('should create a session with minimal parameters', async () => {
 		const nodeParameters = {
-			resource: 'session',
-			operation: 'create',
-			profileName: 'test-profile',
-			timeoutMinutes: 10,
-			saveProfileOnTermination: false,
+			...baseNodeParameters,
 			proxy: 'none',
 		};
 
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith(
-			'POST',
-			'https://portal-api.airtop.ai/integrations/v1/no-code/create-session',
-			{
-				configuration: {
-					profileName: 'test-profile',
-					timeoutMinutes: 10,
-					proxy: false,
-				},
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+			configuration: {
+				profileName: 'test-profile',
+				solveCaptcha: false,
+				timeoutMinutes: 10,
+				proxy: false,
 			},
-		);
+		});
 
 		expect(result).toEqual([
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
 	});
-
+	/**
+	 * Profiles
+	 */
 	it('should create a session with save profile enabled', async () => {
 		const nodeParameters = {
-			resource: 'session',
-			operation: 'create',
-			profileName: 'test-profile',
-			timeoutMinutes: 15,
+			...baseNodeParameters,
 			saveProfileOnTermination: true,
 			proxy: 'none',
 		};
@@ -72,18 +78,14 @@ describe('Test Airtop, session create operation', () => {
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
-		expect(transport.apiRequest).toHaveBeenNthCalledWith(
-			1,
-			'POST',
-			'https://portal-api.airtop.ai/integrations/v1/no-code/create-session',
-			{
-				configuration: {
-					profileName: 'test-profile',
-					timeoutMinutes: 15,
-					proxy: false,
-				},
+		expect(transport.apiRequest).toHaveBeenNthCalledWith(1, 'POST', '/sessions', {
+			configuration: {
+				profileName: 'test-profile',
+				solveCaptcha: false,
+				timeoutMinutes: 10,
+				proxy: false,
 			},
-		);
+		});
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'PUT',
@@ -94,109 +96,175 @@ describe('Test Airtop, session create operation', () => {
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
 	});
-
-	it('should create a session with integrated proxy', async () => {
+	/**
+	 * Proxy
+	 */
+	it('should create a session with integrated proxy and empty config', async () => {
 		const nodeParameters = {
-			resource: 'session',
-			operation: 'create',
-			profileName: 'test-profile',
-			timeoutMinutes: 10,
-			saveProfileOnTermination: false,
+			...baseNodeParameters,
 			proxy: 'integrated',
+			proxyConfig: {}, // simulate integrated proxy with empty config
 		};
 
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith(
-			'POST',
-			'https://portal-api.airtop.ai/integrations/v1/no-code/create-session',
-			{
-				configuration: {
-					profileName: 'test-profile',
-					timeoutMinutes: 10,
-					proxy: true,
-				},
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+			configuration: {
+				profileName: 'test-profile',
+				solveCaptcha: false,
+				timeoutMinutes: 10,
+				proxy: true,
 			},
-		);
+		});
 
 		expect(result).toEqual([
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
 	});
 
-	it('should create a session with custom proxy', async () => {
+	it('should create a session with integrated proxy and proxy configuration', async () => {
 		const nodeParameters = {
-			resource: 'session',
-			operation: 'create',
-			profileName: 'test-profile',
-			timeoutMinutes: 10,
-			saveProfileOnTermination: false,
-			proxy: 'custom',
+			...baseNodeParameters,
+			proxy: 'integrated',
+			proxyConfig: { country: 'US', sticky: true },
+		};
+
+		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+			configuration: {
+				profileName: 'test-profile',
+				solveCaptcha: false,
+				timeoutMinutes: 10,
+				proxy: { country: 'US', sticky: true },
+			},
+		});
+
+		expect(result).toEqual([
+			{
+				json: {
+					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
+				},
+			},
+		]);
+	});
+
+	it('should create a session with proxy URL', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			proxy: 'proxyUrl',
 			proxyUrl: 'http://proxy.example.com:8080',
 		};
 
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith(
-			'POST',
-			'https://portal-api.airtop.ai/integrations/v1/no-code/create-session',
-			{
-				configuration: {
-					profileName: 'test-profile',
-					timeoutMinutes: 10,
-					proxy: 'http://proxy.example.com:8080',
-				},
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+			configuration: {
+				profileName: 'test-profile',
+				solveCaptcha: false,
+				timeoutMinutes: 10,
+				proxy: 'http://proxy.example.com:8080',
 			},
-		);
+		});
 
 		expect(result).toEqual([
 			{
 				json: {
 					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
 				},
 			},
 		]);
 	});
 
-	it('should throw error when custom proxy URL is invalid', async () => {
-		const nodeParameters = {
-			resource: 'session',
-			operation: 'create',
-			profileName: 'test-profile',
-			timeoutMinutes: 10,
-			saveProfileOnTermination: false,
-			proxy: 'custom',
-			proxyUrl: 'invalid-url',
-		};
-
-		await expect(create.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
-			ERROR_MESSAGES.PROXY_URL_INVALID,
-		);
-	});
-
 	it('should throw error when custom proxy URL is empty', async () => {
 		const nodeParameters = {
-			resource: 'session',
-			operation: 'create',
-			profileName: 'test-profile',
-			timeoutMinutes: 10,
-			saveProfileOnTermination: false,
-			proxy: 'custom',
+			...baseNodeParameters,
+			proxy: 'proxyUrl',
 			proxyUrl: '',
 		};
 
 		await expect(create.execute.call(createMockExecuteFunction(nodeParameters), 0)).rejects.toThrow(
 			ERROR_MESSAGES.PROXY_URL_REQUIRED,
 		);
+	});
+	/**
+	 * Auto solve captcha
+	 */
+	it('should create a session with auto solve captcha enabled', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			additionalFields: {
+				solveCaptcha: true,
+			},
+		};
+
+		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+			configuration: {
+				profileName: 'test-profile',
+				solveCaptcha: true,
+				timeoutMinutes: 10,
+				proxy: false,
+			},
+		});
+
+		expect(result).toEqual([
+			{
+				json: {
+					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
+				},
+			},
+		]);
+	});
+	/**
+	 * Chrome extensions
+	 */
+	it('should create a session with chrome extensions enabled', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			additionalFields: {
+				extensionIds: 'extId1, extId2',
+			},
+		};
+
+		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+			configuration: {
+				profileName: 'test-profile',
+				solveCaptcha: false,
+				timeoutMinutes: 10,
+				proxy: false,
+				extensionIds: ['extId1', 'extId2'],
+			},
+		});
+
+		expect(result).toEqual([
+			{
+				json: {
+					sessionId: 'test-session-123',
+					data: { ...mockCreatedSession.data },
+				},
+			},
+		]);
 	});
 });

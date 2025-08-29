@@ -1,21 +1,26 @@
+import type { WorkflowEntity } from '@n8n/db';
+import {
+	generateNanoId,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+	UserRepository,
+	GLOBAL_OWNER_ROLE,
+} from '@n8n/db';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Flags } from '@oclif/core';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import glob from 'fast-glob';
 import fs from 'fs';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
-
-import { UM_FIX_INSTRUCTION } from '@/constants';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { generateNanoId } from '@/databases/utils/generators';
-import type { IWorkflowToImport } from '@/interfaces';
-import { ImportService } from '@/services/import.service';
+import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
+
+import { UM_FIX_INSTRUCTION } from '@/constants';
+import type { IWorkflowToImport } from '@/interfaces';
+import { ImportService } from '@/services/import.service';
 
 function assertHasWorkflowsToImport(
 	workflows: unknown[],
@@ -31,36 +36,38 @@ function assertHasWorkflowsToImport(
 	}
 }
 
-export class ImportWorkflowsCommand extends BaseCommand {
-	static description = 'Import workflows';
+const flagsSchema = z.object({
+	input: z
+		.string()
+		.alias('i')
+		.describe('Input file name or directory if --separate is used')
+		.optional(),
+	separate: z
+		.boolean()
+		.describe('Imports *.json files from directory provided by --input')
+		.default(false),
+	userId: z.string().describe('The ID of the user to assign the imported workflows to').optional(),
+	projectId: z
+		.string()
+		.describe('The ID of the project to assign the imported workflows to')
+		.optional(),
+});
 
-	static examples = [
-		'$ n8n import:workflow --input=file.json',
-		'$ n8n import:workflow --separate --input=backups/latest/',
-		'$ n8n import:workflow --input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
-		'$ n8n import:workflow --input=file.json --projectId=Ox8O54VQrmBrb4qL',
-		'$ n8n import:workflow --separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
-	];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		input: Flags.string({
-			char: 'i',
-			description: 'Input file name or directory if --separate is used',
-		}),
-		separate: Flags.boolean({
-			description: 'Imports *.json files from directory provided by --input',
-		}),
-		userId: Flags.string({
-			description: 'The ID of the user to assign the imported workflows to',
-		}),
-		projectId: Flags.string({
-			description: 'The ID of the project to assign the imported workflows to',
-		}),
-	};
-
+@Command({
+	name: 'import:workflow',
+	description: 'Import workflows',
+	examples: [
+		'--input=file.json',
+		'--separate --input=backups/latest/',
+		'--input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'--input=file.json --projectId=Ox8O54VQrmBrb4qL',
+		'--separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+	],
+	flagsSchema,
+})
+export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run(): Promise<void> {
-		const { flags } = await this.parse(ImportWorkflowsCommand);
+		const { flags } = this;
 
 		if (!flags.input) {
 			this.logger.info('An input file or directory with --input must be provided');
@@ -161,7 +168,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		if (sharing && sharing.project.type === 'personal') {
 			const user = await Container.get(UserRepository).findOneByOrFail({
 				projectRelations: {
-					role: 'project:personalOwner',
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					projectId: sharing.projectId,
 				},
 			});
@@ -212,7 +219,9 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		}
 
 		if (!userId) {
-			const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+			const owner = await Container.get(UserRepository).findOneBy({
+				role: { slug: GLOBAL_OWNER_ROLE.slug },
+			});
 			if (!owner) {
 				throw new UserError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 			}

@@ -5,6 +5,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
+import { NDV_UI_OVERHAUL_EXPERIMENT } from '@/constants';
+import { usePostHog } from '@/stores/posthog.store';
 
 interface Props {
 	rootNode: INodeUi;
@@ -17,7 +19,7 @@ const enum FloatingNodePosition {
 const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
-const workflow = workflowsStore.getCurrentWorkflow();
+const posthogStore = usePostHog();
 const emit = defineEmits<{
 	switchSelectedNode: [nodeName: string];
 }>();
@@ -26,6 +28,14 @@ interface NodeConfig {
 	node: INodeUi;
 	nodeType: INodeTypeDescription;
 }
+
+const isNDVV2 = computed(() =>
+	posthogStore.isVariantEnabled(
+		NDV_UI_OVERHAUL_EXPERIMENT.name,
+		NDV_UI_OVERHAUL_EXPERIMENT.variant,
+	),
+);
+
 function moveNodeDirection(direction: FloatingNodePosition) {
 	const matchedDirectionNode = connectedNodes.value[direction][0];
 	if (matchedDirectionNode) {
@@ -66,16 +76,18 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 const connectedNodes = computed<
 	Record<FloatingNodePosition, Array<{ node: INodeUi; nodeType: INodeTypeDescription }>>
 >(() => {
+	const workflowObject = workflowsStore.workflowObject;
 	const rootName = props.rootNode.name;
+
 	return {
 		[FloatingNodePosition.top]: getINodesFromNames(
-			workflow.getChildNodes(rootName, 'ALL_NON_MAIN'),
+			workflowObject.getChildNodes(rootName, 'ALL_NON_MAIN'),
 		),
 		[FloatingNodePosition.right]: getINodesFromNames(
-			workflow.getChildNodes(rootName, NodeConnectionTypes.Main, 1),
+			workflowObject.getChildNodes(rootName, NodeConnectionTypes.Main, 1),
 		).reverse(),
 		[FloatingNodePosition.left]: getINodesFromNames(
-			workflow.getParentNodes(rootName, NodeConnectionTypes.Main, 1),
+			workflowObject.getParentNodes(rootName, NodeConnectionTypes.Main, 1),
 		).reverse(),
 	};
 });
@@ -104,7 +116,7 @@ defineExpose({
 </script>
 
 <template>
-	<aside :class="$style.floatingNodes">
+	<aside :class="[$style.floatingNodes, { [$style.v2]: isNDVV2 }]" data-test-id="floating-nodes">
 		<ul
 			v-for="connectionGroup in connectionGroups"
 			:key="connectionGroup"
@@ -116,7 +128,7 @@ defineExpose({
 					:key="node.name"
 					:placement="tooltipPositionMapper[connectionGroup]"
 					:teleported="false"
-					:offset="60"
+					:offset="isNDVV2 ? 16 : 60"
 				>
 					<template #content>{{ node.name }}</template>
 
@@ -131,7 +143,7 @@ defineExpose({
 							:node-type="nodeType"
 							:node-name="node.name"
 							:tooltip-position="tooltipPositionMapper[connectionGroup]"
-							:size="35"
+							:size="isNDVV2 ? 24 : 35"
 							circle
 						/>
 					</li>
@@ -150,9 +162,6 @@ defineExpose({
 	left: 0;
 	z-index: 10;
 	pointer-events: none;
-}
-.floatingNodes {
-	right: 0;
 }
 
 .nodesList {
@@ -177,9 +186,11 @@ defineExpose({
 	}
 	&.outputSub {
 		top: 0;
+		transform: translateY(-50%);
 	}
 	&.inputSub {
 		bottom: 0;
+		transform: translateY(50%);
 	}
 	&.outputMain,
 	&.inputMain {
@@ -188,22 +199,11 @@ defineExpose({
 	}
 	&.outputMain {
 		right: 0;
+		transform: translateX(50%);
 	}
 	&.inputMain {
 		left: 0;
-	}
-
-	&.outputMain {
-		transform: translateX(50%);
-	}
-	&.outputSub {
-		transform: translateY(-50%);
-	}
-	&.inputMain {
 		transform: translateX(-50%);
-	}
-	&.inputSub {
-		transform: translateY(50%);
 	}
 }
 .connectedNode {
@@ -229,6 +229,7 @@ defineExpose({
 		left: -15%;
 		z-index: -1;
 	}
+
 	.outputMain &,
 	.inputMain & {
 		border-radius: var(--border-radius-large);
@@ -236,6 +237,7 @@ defineExpose({
 		align-items: center;
 		justify-content: center;
 	}
+
 	.outputMain & {
 		&:hover {
 			transform: scale(1.2) translateX(-50%);
@@ -254,6 +256,19 @@ defineExpose({
 	.inputSub & {
 		&:hover {
 			transform: scale(1.2) translateY(-50%);
+		}
+	}
+
+	// V2 styles override
+	.v2 & {
+		padding: var(--spacing-xs);
+
+		&::after {
+			display: none;
+		}
+
+		&:hover {
+			transform: scale(1.1);
 		}
 	}
 }

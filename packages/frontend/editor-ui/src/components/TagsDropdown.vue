@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { onClickOutside } from '@vueuse/core';
-import type { ITag } from '@/Interface';
+import type { ITag } from '@n8n/rest-api-client/api/tags';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { v4 as uuid } from 'uuid';
 import { useToast } from '@/composables/useToast';
 
@@ -59,7 +59,9 @@ const container = ref<HTMLDivElement>();
 const dropdownId = uuid();
 
 const options = computed<ITag[]>(() => {
-	return props.allTags.filter((tag: ITag) => tag && tag.name.includes(filter.value));
+	return props.allTags.filter(
+		(tag: ITag) => tag && tag.name.toLowerCase().includes(filter.value.toLowerCase()),
+	);
 });
 
 const appliedTags = computed<string[]>(() => {
@@ -70,12 +72,14 @@ const containerClasses = computed(() => {
 	return { 'tags-container': true, focused: focused.value };
 });
 
-const dropdownClasses = computed(() => ({
-	'tags-dropdown': true,
-	[`tags-dropdown-${dropdownId}`]: true,
-	'tags-dropdown-create-enabled': props.createEnabled,
-	'tags-dropdown-manage-enabled': props.manageEnabled,
-}));
+const dropdownClasses = computed(() =>
+	[
+		'tags-dropdown',
+		`tags-dropdown-${dropdownId}`,
+		props.createEnabled ? 'tags-dropdown-create-enabled' : '',
+		props.manageEnabled ? 'tags-dropdown-manage-enabled' : '',
+	].join(' '),
+);
 
 watch(
 	() => props.allTags,
@@ -233,17 +237,17 @@ onClickOutside(
 				:value="CREATE_KEY"
 				class="ops"
 			>
-				<font-awesome-icon icon="plus-circle" />
+				<n8n-icon icon="circle-plus" />
 				<span>
 					{{ i18n.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
 				</span>
 			</N8nOption>
 			<N8nOption v-else-if="options.length === 0" value="message" disabled>
 				<span v-if="createEnabled">{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
-				<span v-if="allTags.length > 0">{{
+				<span v-else-if="allTags.length > 0">{{
 					i18n.baseText('tagsDropdown.noMatchingTagsExist')
 				}}</span>
-				<span v-else-if="filter">{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
+				<span v-else>{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
 			</N8nOption>
 
 			<N8nOption
@@ -257,7 +261,7 @@ onClickOutside(
 			/>
 
 			<N8nOption v-if="manageEnabled" :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
-				<font-awesome-icon icon="cog" />
+				<n8n-icon icon="cog" />
 				<span>{{ i18n.baseText('tagsDropdown.manageTags') }}</span>
 			</N8nOption>
 		</N8nSelect>
@@ -282,7 +286,7 @@ onClickOutside(
 
 	.el-tag {
 		padding: var(--spacing-5xs) var(--spacing-4xs);
-		color: var(--color-text-dark);
+		color: var(--color-text-base);
 		background-color: var(--color-background-base);
 		border-radius: var(--border-radius-base);
 		font-size: var(--font-size-2xs);

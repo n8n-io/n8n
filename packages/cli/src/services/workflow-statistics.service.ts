@@ -1,14 +1,48 @@
+import { Logger } from '@n8n/backend-common';
+import { StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
-import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	INode,
+	IRun,
+	IWorkflowBase,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 
-import { StatisticsNames } from '@/databases/entities/workflow-statistics';
-import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
 import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 import { OwnershipService } from './ownership.service';
+
+const isStatusRootExecution = {
+	success: true,
+	crashed: true,
+	error: true,
+
+	canceled: false,
+	new: false,
+	running: false,
+	unknown: false,
+	waiting: false,
+} satisfies Record<ExecutionStatus, boolean>;
+
+const isModeRootExecution = {
+	cli: true,
+	error: true,
+	retry: true,
+	trigger: true,
+	webhook: true,
+	evaluation: true,
+
+	// sub workflows
+	integrated: false,
+
+	// error workflows
+	internal: false,
+
+	manual: false,
+} satisfies Record<WorkflowExecuteMode, boolean>;
 
 type WorkflowStatisticsEvents = {
 	nodeFetchedData: { workflowId: string; node: INode };
@@ -52,11 +86,13 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 	async workflowExecutionCompleted(workflowData: IWorkflowBase, runData: IRun): Promise<void> {
 		// Determine the name of the statistic
-		const finished = runData.finished ? runData.finished : false;
+		const isSuccess = runData.status === 'success';
 		const manual = runData.mode === 'manual';
 		let name: StatisticsNames;
+		const isRootExecution =
+			isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
 
-		if (finished) {
+		if (isSuccess) {
 			if (manual) name = StatisticsNames.manualSuccess;
 			else name = StatisticsNames.productionSuccess;
 		} else {
@@ -69,7 +105,11 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		if (!workflowId) return;
 
 		try {
-			const upsertResult = await this.repository.upsertWorkflowStatistics(name, workflowId);
+			const upsertResult = await this.repository.upsertWorkflowStatistics(
+				name,
+				workflowId,
+				isRootExecution,
+			);
 
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
 				const project = await this.ownershipService.getWorkflowProjectCached(workflowId);

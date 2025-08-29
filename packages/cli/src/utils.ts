@@ -39,22 +39,9 @@ export const findSubworkflowStart = findWorkflowStart('integrated');
 
 export const findCliWorkflowStart = findWorkflowStart('cli');
 
-export const separate = <T>(array: T[], test: (element: T) => boolean) => {
-	const pass: T[] = [];
-	const fail: T[] = [];
-
-	array.forEach((i) => (test(i) ? pass : fail).push(i));
-
-	return [pass, fail];
-};
-
 export const toError = (maybeError: unknown) =>
 	// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 	maybeError instanceof Error ? maybeError : new Error(`${maybeError}`);
-
-export function isStringArray(value: unknown): value is string[] {
-	return Array.isArray(value) && value.every((item) => typeof item === 'string');
-}
 
 export const isIntegerString = (value: string) => /^\d+$/.test(value);
 
@@ -102,6 +89,36 @@ export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
 		!nodeType.poll &&
 		!nodeType.trigger &&
 		(!nodeType.webhook || isDeclarativeNode) &&
-		!nodeType.methods
+		(!nodeType.methods || isDeclarativeNode)
 	);
+};
+
+/**
+ * Recursively gets all key paths of an object or array, filtered by the provided value filter.
+ * @param obj - The object or array to search.
+ * @param keys - The array to store matching keys.
+ * @param valueFilter - A function to filter values.
+ * @returns The array of matching key paths.
+ */
+export const getAllKeyPaths = (
+	obj: unknown,
+	currentPath = '',
+	paths: string[] = [],
+	valueFilter: (value: string) => boolean,
+): string[] => {
+	if (Array.isArray(obj)) {
+		obj.forEach((item, index) =>
+			getAllKeyPaths(item, `${currentPath}[${index}]`, paths, valueFilter),
+		);
+	} else if (obj && typeof obj === 'object') {
+		for (const [key, value] of Object.entries(obj)) {
+			const newPath = currentPath ? `${currentPath}.${key}` : key;
+			if (typeof value === 'string' && valueFilter(value)) {
+				paths.push(newPath);
+			} else {
+				getAllKeyPaths(value, newPath, paths, valueFilter);
+			}
+		}
+	}
+	return paths;
 };

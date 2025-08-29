@@ -1,6 +1,6 @@
 import type { Plugin } from 'vue';
 import { AxiosError } from 'axios';
-import { ResponseError } from '@/utils/apiUtils';
+import { ResponseError } from '@n8n/rest-api-client';
 import * as Sentry from '@sentry/vue';
 
 const ignoredErrors = [
@@ -54,6 +54,9 @@ export const SentryPlugin: Plugin = {
 			release,
 			environment,
 			integrations: [
+				Sentry.captureConsoleIntegration({
+					levels: ['error'],
+				}),
 				Sentry.rewriteFramesIntegration({
 					prefix: '',
 					root: window.location.origin + '/',

@@ -27,9 +27,8 @@ import {
 	SIMULATE_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { CanvasNodeRenderType } from '@/types';
-import { type TreeNode } from '@/components/RunDataAi/utils';
 import type { FrontendSettings } from '@n8n/api-types';
 
 export const mockNode = ({
@@ -41,6 +40,7 @@ export const mockNode = ({
 	issues = undefined,
 	typeVersion = 1,
 	parameters = {},
+	draggable = true,
 }: {
 	id?: INodeUi['id'];
 	name: INodeUi['name'];
@@ -50,10 +50,13 @@ export const mockNode = ({
 	issues?: INodeIssues;
 	typeVersion?: INodeUi['typeVersion'];
 	parameters?: INodeUi['parameters'];
-}) => mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters });
+	draggable?: INodeUi['draggable'];
+}) =>
+	mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters, draggable });
 
 export const mockNodeTypeDescription = ({
 	name = SET_NODE_TYPE,
+	displayName = name,
 	icon = 'fa:pen',
 	version = 1,
 	credentials = [],
@@ -62,8 +65,12 @@ export const mockNodeTypeDescription = ({
 	codex = undefined,
 	properties = [],
 	group,
+	hidden,
+	description,
+	webhooks,
 }: {
 	name?: INodeTypeDescription['name'];
+	displayName?: INodeTypeDescription['displayName'];
 	icon?: INodeTypeDescription['icon'];
 	version?: INodeTypeDescription['version'];
 	credentials?: INodeTypeDescription['credentials'];
@@ -72,12 +79,15 @@ export const mockNodeTypeDescription = ({
 	codex?: INodeTypeDescription['codex'];
 	properties?: INodeTypeDescription['properties'];
 	group?: INodeTypeDescription['group'];
+	hidden?: INodeTypeDescription['hidden'];
+	description?: INodeTypeDescription['description'];
+	webhooks?: INodeTypeDescription['webhooks'];
 } = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		icon,
-		displayName: name,
-		description: '',
+		displayName,
+		description: description ?? '',
 		version,
 		defaults: {
 			name,
@@ -92,7 +102,9 @@ export const mockNodeTypeDescription = ({
 		credentials,
 		documentationUrl: 'https://docs',
 		iconUrl: 'nodes/test-node/icon.svg',
-		webhooks: undefined,
+		webhooks,
+		parameterPane: undefined,
+		hidden,
 	});
 
 export const mockLoadedNodeType = (name: string) =>
@@ -125,14 +137,18 @@ export const defaultNodeDescriptions = Object.values(defaultNodeTypes).map(
 	({ type }) => type.description,
 ) as INodeTypeDescription[];
 
-const nodeTypes = mock<INodeTypes>({
-	getByName(nodeType) {
-		return defaultNodeTypes[nodeType].type;
-	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(defaultNodeTypes[nodeType].type, version);
-	},
-});
+export function createMockNodeTypes(data: INodeTypeData) {
+	return mock<INodeTypes>({
+		getByName(nodeType) {
+			return data[nodeType].type;
+		},
+		getByNameAndVersion(nodeType: string, version?: number): INodeType {
+			return NodeHelpers.getVersionedNodeType(data[nodeType].type, version);
+		},
+	});
+}
+
+const nodeTypes = createMockNodeTypes(defaultNodeTypes);
 
 export function createTestWorkflowObject({
 	id = uuid(),
@@ -143,6 +159,7 @@ export function createTestWorkflowObject({
 	staticData = {},
 	settings = {},
 	pinData = {},
+	...rest
 }: {
 	id?: string;
 	name?: string;
@@ -152,6 +169,7 @@ export function createTestWorkflowObject({
 	staticData?: IDataObject;
 	settings?: IWorkflowSettings;
 	pinData?: IPinData;
+	nodeTypes?: INodeTypes;
 } = {}) {
 	return new Workflow({
 		id,
@@ -162,7 +180,7 @@ export function createTestWorkflowObject({
 		staticData,
 		settings,
 		pinData,
-		nodeTypes,
+		nodeTypes: rest.nodeTypes ?? nodeTypes,
 	});
 }
 
@@ -172,6 +190,7 @@ export function createTestWorkflow({
 	nodes = [],
 	connections = {},
 	active = false,
+	isArchived = false,
 	settings = {
 		timezone: 'DEFAULT',
 		executionOrder: 'v1',
@@ -187,6 +206,7 @@ export function createTestWorkflow({
 		nodes,
 		connections,
 		active,
+		isArchived,
 		settings,
 		versionId: '1',
 		meta: {},
@@ -214,6 +234,8 @@ export function createMockEnterpriseSettings(
 		sharing: false,
 		ldap: false,
 		saml: false,
+		oidc: false,
+		mfaEnforcement: false,
 		logStreaming: false,
 		advancedExecutionFilters: false,
 		variables: false,
@@ -227,6 +249,7 @@ export function createMockEnterpriseSettings(
 		workerView: false,
 		advancedPermissions: false,
 		apiKeyScopes: false,
+		workflowDiffs: false,
 		projects: {
 			team: {
 				limit: 0,
@@ -236,7 +259,7 @@ export function createMockEnterpriseSettings(
 	};
 }
 
-export function createTestTaskData(partialData: Partial<ITaskData>): ITaskData {
+export function createTestTaskData(partialData: Partial<ITaskData> = {}): ITaskData {
 	return {
 		startTime: 0,
 		executionTime: 1,
@@ -248,15 +271,22 @@ export function createTestTaskData(partialData: Partial<ITaskData>): ITaskData {
 	};
 }
 
-export function createTestLogEntry(data: Partial<TreeNode>): TreeNode {
+export function createTestWorkflowExecutionResponse(
+	data: Partial<IExecutionResponse> = {},
+): IExecutionResponse {
 	return {
-		node: 'test node',
-		runIndex: 0,
-		id: uuid(),
-		children: [],
-		consumedTokens: { completionTokens: 0, totalTokens: 0, promptTokens: 0, isEstimate: false },
-		depth: 0,
-		startTime: 0,
+		id: 'test-exec-id',
+		finished: true,
+		mode: 'manual',
+		status: 'error',
+		workflowData: createTestWorkflow(),
+		data: {
+			resultData: {
+				runData: {},
+			},
+		},
+		createdAt: '2025-04-16T00:00:00.000Z',
+		startedAt: '2025-04-16T00:00:01.000Z',
 		...data,
 	};
 }

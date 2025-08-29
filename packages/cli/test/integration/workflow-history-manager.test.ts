@@ -1,16 +1,14 @@
+import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { WorkflowHistoryRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 
-import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { License } from '@/license';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
 
 import { createManyWorkflowHistoryItems } from './shared/db/workflow-history';
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
-import { mockInstance } from '../shared/mocking';
 
 describe('Workflow History Manager', () => {
 	const license = mockInstance(License);
@@ -26,7 +24,7 @@ describe('Workflow History Manager', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['Workflow']);
+		await testDb.truncate(['WorkflowEntity']);
 		jest.clearAllMocks();
 
 		globalConfig.workflowHistory.enabled = true;

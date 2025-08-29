@@ -7,7 +7,7 @@ import {
 	type IconNodeType,
 } from './nodeIcon';
 
-vi.mock('../stores/root.store', () => ({
+vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(() => ({
 		baseUrl: 'https://example.com/',
 	})),
@@ -57,6 +57,29 @@ describe('util: Node Icon', () => {
 				getNodeIconUrl(mock<IconNodeType>({ icon: 'foo', iconUrl: undefined })),
 			).toBeUndefined();
 		});
+
+		it('should return the iconUrl from nodeType when using https', () => {
+			expect(
+				getNodeIconUrl(
+					mock<IconNodeType>({
+						iconUrl: 'https://my-site.com/icon.svg',
+					}),
+				),
+			).toBe('https://my-site.com/icon.svg');
+		});
+
+		it('should return the iconUrl from nodeType when using https with themed values', () => {
+			expect(
+				getNodeIconUrl(
+					mock<IconNodeType>({
+						iconUrl: {
+							light: 'https://my-site.com/light-icon.svg',
+							dark: 'https://my-site.com/dark-icon.svg',
+						},
+					}),
+				),
+			).toBe('https://my-site.com/light-icon.svg');
+		});
 	});
 
 	describe('getBadgeIconUrl', () => {
@@ -105,7 +128,9 @@ describe('util: Node Icon', () => {
 		});
 
 		it('should create a file source from iconUrl if available', () => {
-			const result = getNodeIconSource(mock<IconNodeType>({ iconUrl: 'images/node-icon.svg' }));
+			const result = getNodeIconSource(
+				mock<IconNodeType>({ iconUrl: 'images/node-icon.svg', name: undefined }),
+			);
 			expect(result).toEqual({
 				type: 'file',
 				src: 'https://example.com/images/node-icon.svg',
@@ -120,6 +145,7 @@ describe('util: Node Icon', () => {
 					iconColor: 'blue',
 					iconData: undefined,
 					iconUrl: undefined,
+					name: undefined,
 				}),
 			);
 			expect(result).toEqual({
@@ -130,7 +156,9 @@ describe('util: Node Icon', () => {
 		});
 
 		it('should include badge if available', () => {
-			const result = getNodeIconSource(mock<IconNodeType>({ badgeIconUrl: 'images/badge.svg' }));
+			const result = getNodeIconSource(
+				mock<IconNodeType>({ badgeIconUrl: 'images/badge.svg', name: undefined }),
+			);
 			expect(result?.badge).toEqual({
 				type: 'file',
 				src: 'https://example.com/images/badge.svg',

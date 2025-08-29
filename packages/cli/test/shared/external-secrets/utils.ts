@@ -1,7 +1,10 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
-import { SecretsProvider } from '@/interfaces';
-import type { SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
+import { SecretsProvider } from '@/modules/external-secrets.ee/types';
+import type {
+	SecretsProviderSettings,
+	SecretsProviderState,
+} from '@/modules/external-secrets.ee/types';
 
 export class MockProviders {
 	providers: Record<string, { new (): SecretsProvider }> = {
@@ -12,8 +15,8 @@ export class MockProviders {
 		this.providers = providers;
 	}
 
-	getProvider(name: string): { new (): SecretsProvider } | null {
-		return this.providers[name] ?? null;
+	getProvider(name: string): { new (): SecretsProvider } {
+		return this.providers[name];
 	}
 
 	hasProvider(name: string) {
@@ -93,6 +96,10 @@ export class DummyProvider extends SecretsProvider {
 	}
 }
 
+export class AnotherDummyProvider extends DummyProvider {
+	name = 'another_dummy';
+}
+
 export class ErrorProvider extends SecretsProvider {
 	secrets: Record<string, string> = {};
 
@@ -112,7 +119,7 @@ export class ErrorProvider extends SecretsProvider {
 	}
 
 	async disconnect(): Promise<void> {
-		throw new Error();
+		// no-op
 	}
 
 	async update(): Promise<void> {

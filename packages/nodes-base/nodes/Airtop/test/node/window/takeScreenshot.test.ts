@@ -19,6 +19,14 @@ const mockResponse = {
 
 const mockBinaryBuffer = Buffer.from('mock-binary-data');
 
+const expectedJsonResult = {
+	json: {
+		sessionId: 'test-session-123',
+		windowId: 'win-123',
+		image: 'base64-encoded-image-data',
+	},
+};
+
 const expectedBinaryResult = {
 	binary: {
 		data: {
@@ -61,7 +69,7 @@ describe('Test Airtop, take screenshot operation', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should take screenshot successfully', async () => {
+	it('should take screenshot in base64 format', async () => {
 		const result = await takeScreenshot.execute.call(
 			createMockExecuteFunction({ ...baseNodeParameters }),
 			0,
@@ -73,23 +81,14 @@ describe('Test Airtop, take screenshot operation', () => {
 			'/sessions/test-session-123/windows/win-123/screenshot',
 		);
 
-		expect(result).toEqual([
-			{
-				json: {
-					sessionId: 'test-session-123',
-					windowId: 'win-123',
-					status: 'success',
-					...mockResponse,
-				},
-				...expectedBinaryResult,
-			},
-		]);
+		expect(result).toEqual([{ ...expectedJsonResult }]);
 	});
 
-	it('should transform screenshot to binary data', async () => {
+	it('should take screenshot in binary format', async () => {
 		const result = await takeScreenshot.execute.call(
 			createMockExecuteFunction({
 				...baseNodeParameters,
+				outputImageAsBinary: true,
 			}),
 			0,
 		);
@@ -106,12 +105,7 @@ describe('Test Airtop, take screenshot operation', () => {
 
 		expect(result).toEqual([
 			{
-				json: {
-					sessionId: 'test-session-123',
-					windowId: 'win-123',
-					status: 'success',
-					...mockResponse,
-				},
+				json: { ...expectedJsonResult.json, image: '' },
 				...expectedBinaryResult,
 			},
 		]);

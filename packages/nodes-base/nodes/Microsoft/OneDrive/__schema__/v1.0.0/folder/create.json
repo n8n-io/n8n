@@ -42,9 +42,6 @@
                         },
                         "email": {
                             "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
                         }
                     }
                 }
@@ -117,9 +114,6 @@
                         },
                         "email": {
                             "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
                         }
                     }
                 }
@@ -178,5 +172,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

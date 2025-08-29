@@ -7,9 +7,10 @@ import {
 	foldGutter,
 	indentOnInput,
 } from '@codemirror/language';
-import { Prec } from '@codemirror/state';
+import { Prec, EditorState } from '@codemirror/state';
 import {
 	dropCursor,
+	EditorView,
 	highlightActiveLine,
 	highlightActiveLineGutter,
 	keymap,
@@ -20,34 +21,37 @@ import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
 import htmlParser from 'prettier/plugins/html';
 import cssParser from 'prettier/plugins/postcss';
-import { computed, onBeforeUnmount, onMounted, ref, toRaw, toValue, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, toValue } from 'vue';
 
 import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { htmlEditorEventBus } from '@/event-bus';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
-import { editorKeymap } from '@/plugins/codemirror/keymap';
-import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
-import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
-import { codeEditorTheme } from '../CodeNodeEditor/theme';
-import type { Range, Section } from './types';
-import { nonTakenRanges } from './utils';
 import { dropInExpressionEditor, mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 import {
 	expressionCloseBrackets,
 	expressionCloseBracketsConfig,
 } from '@/plugins/codemirror/expressionCloseBrackets';
+import { editorKeymap } from '@/plugins/codemirror/keymap';
+import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
+import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
+import { codeEditorTheme } from '../CodeNodeEditor/theme';
+import type { Range, Section } from './types';
+import { nonTakenRanges, pasteHandler } from './utils';
+import type { TargetNodeParameterContext } from '@/Interface';
 
 type Props = {
 	modelValue: string;
 	rows?: number;
 	isReadOnly?: boolean;
 	fullscreen?: boolean;
+	targetNodeParameterContext?: TargetNodeParameterContext;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 4,
 	isReadOnly: false,
 	fullscreen: false,
+	targetNodeParameterContext: undefined,
 });
 
 const emit = defineEmits<{
@@ -55,7 +59,6 @@ const emit = defineEmits<{
 }>();
 
 const htmlEditor = ref<HTMLElement>();
-const editorValue = ref<string>(props.modelValue);
 const extensions = computed(() => [
 	bracketMatching(),
 	n8nAutocompletion(),
@@ -65,6 +68,7 @@ const extensions = computed(() => [
 	]),
 	autoCloseTags,
 	expressionCloseBrackets(),
+	pasteSanitizer(),
 	Prec.highest(keymap.of(editorKeymap)),
 	indentOnInput(),
 	codeEditorTheme({
@@ -81,16 +85,20 @@ const extensions = computed(() => [
 	indentOnInput(),
 	highlightActiveLine(),
 	mappingDropCursor(),
+	...(props.isReadOnly ? [EditorState.readOnly.of(true)] : []),
 ]);
 const {
 	editor: editorRef,
-	segments,
 	readEditorValue,
-	isDirty,
+	focus,
 } = useExpressionEditor({
 	editorRef: htmlEditor,
-	editorValue,
+	editorValue: () => props.modelValue,
 	extensions,
+	targetNodeParameterContext: props.targetNodeParameterContext,
+	onChange: () => {
+		emit('update:model-value', readEditorValue());
+	},
 });
 
 const sections = computed(() => {
@@ -225,16 +233,17 @@ async function formatHtml() {
 	});
 }
 
-watch(segments.display, () => {
-	emit('update:model-value', readEditorValue());
-});
+function pasteSanitizer() {
+	return EditorView.domEventHandlers({
+		paste: pasteHandler,
+	});
+}
 
 onMounted(() => {
 	htmlEditorEventBus.on('format-html', formatHtml);
 });
 
 onBeforeUnmount(() => {
-	if (isDirty.value) emit('update:model-value', readEditorValue());
 	htmlEditorEventBus.off('format-html', formatHtml);
 });
 
@@ -243,6 +252,10 @@ async function onDrop(value: string, event: MouseEvent) {
 
 	await dropInExpressionEditor(toRaw(editorRef.value), event, value);
 }
+
+defineExpose({
+	focus,
+});
 </script>
 
 <template>

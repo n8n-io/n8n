@@ -1,23 +1,25 @@
 import type {
-	INodeParameterResourceLocator,
 	INodeTypeDescription,
 	NodeConnectionType,
 	TriggerPanelDefinition,
 } from 'n8n-workflow';
 import { nodeConnectionTypes } from 'n8n-workflow';
-import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } from '@/Interface';
-import type { Connection as VueFlowConnection } from '@vue-flow/core';
-import type { RouteLocationRaw } from 'vue-router';
-import type { CanvasConnectionMode } from '@/types';
-import { canvasConnectionModes } from '@/types';
-import type { ComponentPublicInstance } from 'vue';
 import type {
+	IExecutionResponse,
+	ICredentialsResponse,
+	NewCredentialsModal,
 	CredentialsResource,
 	FolderResource,
 	Resource,
 	VariableResource,
 	WorkflowResource,
-} from '@/components/layouts/ResourcesListLayout.vue';
+} from '@/Interface';
+import type { Connection as VueFlowConnection } from '@vue-flow/core';
+import type { RouteLocationRaw } from 'vue-router';
+import type { CanvasConnectionMode } from '@/types';
+import { canvasConnectionModes } from '@/types';
+import type { ComponentPublicInstance } from 'vue';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 
 /*
 	Type guards used in editor-ui project
@@ -26,10 +28,6 @@ import type {
 export const checkExhaustive = (value: never): never => {
 	throw new Error(`Unhandled value: ${value}`);
 };
-
-export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
-	return Boolean(typeof value === 'object' && value && 'mode' in value && 'value' in value);
-}
 
 export function isNotNull<T>(value: T | null): value is T {
 	return value !== null;
@@ -132,4 +130,17 @@ export function isResourceSortableByDate(
 	value: Resource,
 ): value is WorkflowResource | FolderResource | CredentialsResource {
 	return isWorkflowResource(value) || isFolderResource(value) || isCredentialsResource(value);
+}
+
+// Check if i18n key is a valid BaseTextKey
+export function isBaseTextKey(key: string): key is BaseTextKey {
+	const i18n = useI18n();
+	try {
+		// Attempt to access the base text to check if the key is valid
+		i18n.baseText(key as BaseTextKey);
+		return true;
+	} catch {
+		// If an error is thrown, the key is not valid
+		return false;
+	}
 }

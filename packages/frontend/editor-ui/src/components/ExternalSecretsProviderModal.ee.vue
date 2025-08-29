@@ -4,7 +4,7 @@ import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants'
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useExternalSecretsProvider } from '@/composables/useExternalSecretsProvider';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
@@ -18,6 +18,7 @@ import type { IParameterLabel } from 'n8n-workflow';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { I18nT } from 'vue-i18n';
 
 const props = defineProps<{
 	data: { eventBus: EventBus; name: string };
@@ -226,13 +227,14 @@ async function onConnectionStateChange() {
 						}}
 						<span v-if="provider.connected">
 							<br />
-							<i18n-t
+							<I18nT
 								keypath="settings.externalSecrets.provider.testConnection.success.connected.usage"
+								scope="global"
 							>
 								<template #code>
 									<code>{{ `\{\{ \$secrets\.${provider.name}\.secret_name \}\}` }}</code>
 								</template>
-							</i18n-t>
+							</I18nT>
 							<n8n-link :href="i18n.baseText('settings.externalSecrets.docs.use')" size="small">
 								{{
 									i18n.baseText(

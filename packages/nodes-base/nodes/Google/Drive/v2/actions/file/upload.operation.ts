@@ -126,6 +126,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			undefined,
 			{
 				returnFullResponse: true,
+				headers: {
+					'X-Upload-Content-Type': mimeType,
+				},
 			},
 		);
 

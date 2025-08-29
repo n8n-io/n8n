@@ -1,18 +1,18 @@
-import type { Scope } from '@n8n/permissions';
+import type { User, ExecutionSummaries } from '@n8n/db';
+import { Get, Patch, Post, RestController } from '@n8n/decorators';
+import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
-import type { User } from '@/databases/entities/user';
-import { Get, Patch, Post, RestController } from '@/decorators';
+import { ExecutionService } from './execution.service';
+import { EnterpriseExecutionsService } from './execution.service.ee';
+import { ExecutionRequest } from './execution.types';
+import { parseRangeQuery } from './parse-range-query.middleware';
+import { validateExecutionUpdatePayload } from './validation';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
-
-import { ExecutionService } from './execution.service';
-import { EnterpriseExecutionsService } from './execution.service.ee';
-import { ExecutionRequest, type ExecutionSummaries } from './execution.types';
-import { parseRangeQuery } from './parse-range-query.middleware';
-import { validateExecutionUpdatePayload } from './validation';
 
 @RestController('/executions')
 export class ExecutionsController {
@@ -29,7 +29,7 @@ export class ExecutionsController {
 		} else {
 			return await this.workflowSharingService.getSharedWorkflowIds(user, {
 				workflowRoles: ['workflow:owner'],
-				projectRoles: ['project:personalOwner'],
+				projectRoles: [PROJECT_OWNER_ROLE_SLUG],
 			});
 		}
 	}
@@ -96,7 +96,9 @@ export class ExecutionsController {
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		return await this.executionService.stop(req.params.id);
+		const executionId = req.params.id;
+
+		return await this.executionService.stop(executionId, workflowIds);
 	}
 
 	@Post('/:id/retry')

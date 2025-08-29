@@ -1,19 +1,26 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { UserAction } from '@n8n/design-system';
+import { useElementSize, useResizeObserver } from '@vueuse/core';
+import type { TabOptions, UserAction } from '@n8n/design-system';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
-import { useI18n } from '@/composables/useI18n';
-import { type ProjectIcon as ProjectIconType, ProjectTypes } from '@/types/projects.types';
+import { useI18n } from '@n8n/i18n';
+import { ProjectTypes } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import ProjectIcon from '@/components/Projects/ProjectIcon.vue';
-import { getResourcePermissions } from '@/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { VIEWS } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import ProjectCreateResource from '@/components/Projects/ProjectCreateResource.vue';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useOverview } from '@/composables/useOverview';
+import { useProjectPages } from '@/composables/useProjectPages';
+import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IUser } from 'n8n-workflow';
+import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { useUIStore } from '@/stores/ui.store';
+import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 
 const route = useRoute();
 const router = useRouter();
@@ -21,25 +28,34 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
-const overview = useOverview();
+const uiStore = useUIStore();
+
+const projectPages = useProjectPages();
 
 const emit = defineEmits<{
 	createFolder: [];
 }>();
 
-const headerIcon = computed((): ProjectIconType => {
+const headerIcon = computed((): IconOrEmoji => {
 	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
 	} else if (projectsStore.currentProject?.name) {
-		return projectsStore.currentProject.icon ?? { type: 'icon', value: 'layer-group' };
+		return isIconOrEmoji(projectsStore.currentProject.icon)
+			? projectsStore.currentProject.icon
+			: { type: 'icon', value: 'layers' };
 	} else {
-		return { type: 'icon', value: 'home' };
+		return { type: 'icon', value: 'house' };
 	}
 });
 
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
-		return i18n.baseText('projects.menu.overview');
+		if (projectPages.isSharedSubPage) {
+			return i18n.baseText('projects.header.shared.title');
+		} else if (projectPages.isOverviewSubPage) {
+			return i18n.baseText('projects.menu.overview');
+		}
+		return null;
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
 	} else {
@@ -60,6 +76,10 @@ const showSettings = computed(
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
+const isPersonalProject = computed(() => {
+	return homeProject.value?.type === ProjectTypes.Personal;
+});
+
 const showFolders = computed(() => {
 	return (
 		settingsStore.isFoldersFeatureEnabled &&
@@ -67,24 +87,43 @@ const showFolders = computed(() => {
 	);
 });
 
+const customProjectTabs = computed((): Array<TabOptions<string>> => {
+	// Determine the type of tab based on the current project page
+	let tabType: 'shared' | 'overview' | 'project';
+	if (projectPages.isSharedSubPage) {
+		tabType = 'shared';
+	} else if (projectPages.isOverviewSubPage) {
+		tabType = 'overview';
+	} else {
+		tabType = 'project';
+	}
+	// Only pick up tabs from active modules
+	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter(
+		settingsStore.isModuleActive,
+	);
+	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+});
+
 const ACTION_TYPES = {
 	WORKFLOW: 'workflow',
 	CREDENTIAL: 'credential',
 	FOLDER: 'folder',
+	DATA_STORE: 'dataStore',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
 const createWorkflowButton = computed(() => ({
 	value: ACTION_TYPES.WORKFLOW,
 	label: i18n.baseText('projects.header.create.workflow'),
-	icon: sourceControlStore.preferences.branchReadOnly ? 'lock' : undefined,
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
 	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||
 		!getResourcePermissions(homeProject.value?.scopes).workflow.create,
 }));
+
 const menu = computed(() => {
-	const items: UserAction[] = [
+	const items: Array<UserAction<IUser>> = [
 		{
 			value: ACTION_TYPES.CREDENTIAL,
 			label: i18n.baseText('projects.header.create.credential'),
@@ -102,8 +141,57 @@ const menu = computed(() => {
 				!getResourcePermissions(homeProject.value?.scopes).folder.create,
 		});
 	}
+
+	if (settingsStore.isDataStoreFeatureEnabled) {
+		// TODO: this should probably be moved to the module descriptor as a setting
+		items.push({
+			value: ACTION_TYPES.DATA_STORE,
+			label: i18n.baseText('dataStore.add.button.label'),
+			disabled:
+				sourceControlStore.preferences.branchReadOnly ||
+				!getResourcePermissions(homeProject.value?.scopes)?.dataStore?.create,
+		});
+	}
+
 	return items;
 });
+
+const showProjectIcon = computed(() => {
+	return (
+		!projectPages.isOverviewSubPage && !projectPages.isSharedSubPage && !isPersonalProject.value
+	);
+});
+
+function isCredentialsListView(routeName: string) {
+	const CREDENTIAL_VIEWS: string[] = [
+		VIEWS.PROJECTS_CREDENTIALS,
+		VIEWS.CREDENTIALS,
+		VIEWS.SHARED_CREDENTIALS,
+	];
+
+	return CREDENTIAL_VIEWS.includes(routeName);
+}
+
+function isWorkflowListView(routeName: string) {
+	const WORKFLOWS_VIEWS: string[] = [
+		VIEWS.PROJECTS_WORKFLOWS,
+		VIEWS.WORKFLOWS,
+		VIEWS.SHARED_WORKFLOWS,
+		VIEWS.PROJECTS_FOLDERS,
+	];
+
+	return WORKFLOWS_VIEWS.includes(routeName);
+}
+
+function getUIContext(routeName: string) {
+	if (isCredentialsListView(routeName)) {
+		return 'credentials_list';
+	} else if (isWorkflowListView(routeName)) {
+		return 'workflow_list';
+	} else {
+		return;
+	}
+}
 
 const actions: Record<ActionTypes, (projectId: string) => void> = {
 	[ACTION_TYPES.WORKFLOW]: (projectId: string) => {
@@ -112,6 +200,7 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			query: {
 				projectId,
 				parentFolderId: route.params.folderId as string,
+				uiContext: getUIContext(route.name?.toString() ?? ''),
 			},
 		});
 	},
@@ -122,44 +211,132 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 				projectId,
 				credentialId: 'create',
 			},
+			query: {
+				uiContext: getUIContext(route.name?.toString() ?? ''),
+			},
 		});
 	},
-	[ACTION_TYPES.FOLDER]: async () => {
+	[ACTION_TYPES.FOLDER]: () => {
 		emit('createFolder');
 	},
+	[ACTION_TYPES.DATA_STORE]: (projectId: string) => {
+		void router.push({
+			name: PROJECT_DATA_STORES,
+			params: { projectId, new: 'new' },
+		});
+	},
 } as const;
+
+const pageType = computed(() => {
+	if (projectPages.isSharedSubPage) {
+		return 'shared';
+	} else if (projectPages.isOverviewSubPage) {
+		return 'overview';
+	} else {
+		return 'project';
+	}
+});
+
+const sectionDescription = computed(() => {
+	if (projectPages.isSharedSubPage) {
+		return i18n.baseText('projects.header.shared.subtitle');
+	} else if (projectPages.isOverviewSubPage) {
+		return i18n.baseText(
+			settingsStore.isDataStoreFeatureEnabled
+				? 'projects.header.overview.subtitleWithDataTables'
+				: 'projects.header.overview.subtitle',
+		);
+	} else if (isPersonalProject.value) {
+		return i18n.baseText(
+			settingsStore.isDataStoreFeatureEnabled
+				? 'projects.header.personal.subtitleWithDataTables'
+				: 'projects.header.personal.subtitle',
+		);
+	}
+
+	return null;
+});
+
+const projectDescription = computed(() => {
+	if (projectPages.isProjectsSubPage) {
+		return projectsStore.currentProject?.description;
+	}
+
+	return null;
+});
+
+const projectHeaderRef = ref<HTMLElement | null>(null);
+const { width: projectHeaderWidth } = useElementSize(projectHeaderRef);
+
+const headerActionsRef = ref<HTMLElement | null>(null);
+const { width: headerActionsWidth } = useElementSize(headerActionsRef);
+
+const projectSubtitleFontSizeInPxs = ref<number | null>(null);
+
+useResizeObserver(projectHeaderRef, () => {
+	if (!projectHeaderRef.value) {
+		return;
+	}
+
+	const projectSubtitleEl = projectHeaderRef.value.querySelector(
+		'span[data-test-id="project-subtitle"]',
+	);
+	if (projectSubtitleEl) {
+		const computedStyle = window.getComputedStyle(projectSubtitleEl);
+		projectSubtitleFontSizeInPxs.value = parseFloat(computedStyle.fontSize);
+	}
+});
+
+const projectDescriptionTruncated = computed(() => {
+	if (!projectDescription.value) {
+		return '';
+	}
+
+	const availableTextWidth = projectHeaderWidth.value - headerActionsWidth.value;
+	// Fallback to N8nText component default font-size, small
+	const fontSizeInPixels = projectSubtitleFontSizeInPxs.value ?? 14;
+	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
+});
 
 const onSelect = (action: string) => {
 	const executableAction = actions[action as ActionTypes];
 	if (!homeProject.value) {
 		return;
 	}
+
 	executableAction(homeProject.value.id);
 };
 </script>
 
 <template>
 	<div>
-		<div :class="$style.projectHeader">
+		<div ref="projectHeaderRef" :class="$style.projectHeader">
 			<div :class="$style.projectDetails">
-				<ProjectIcon
-					v-if="!overview.isOverviewSubPage"
-					:icon="headerIcon"
-					:border-less="true"
-					size="medium"
-				/>
+				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div :class="$style.headerActions">
-					<N8nHeading bold tag="h2" size="xlarge">{{ projectName }}</N8nHeading>
-					<N8nText color="text-light">
-						<slot name="subtitle">
-							<span v-if="!projectsStore.currentProject">{{
-								i18n.baseText('projects.header.subtitle')
-							}}</span>
-						</slot>
+					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge" data-test-id="project-name">{{
+						projectName
+					}}</N8nHeading>
+					<N8nText v-if="sectionDescription" color="text-light" data-test-id="project-subtitle">
+						{{ sectionDescription }}
 					</N8nText>
+					<template v-else-if="projectDescription">
+						<div :class="$style.projectDescriptionWrapper">
+							<N8nText color="text-light" data-test-id="project-subtitle">
+								{{ projectDescriptionTruncated || projectDescription }}
+							</N8nText>
+							<div v-if="projectDescriptionTruncated" :class="$style.tooltip">
+								<N8nText color="text-light">{{ projectDescription }}</N8nText>
+							</div>
+						</div>
+					</template>
 				</div>
 			</div>
-			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
+			<div
+				v-if="route.name !== VIEWS.PROJECT_SETTINGS"
+				ref="headerActionsRef"
+				:class="[$style.headerActions]"
+			>
 				<N8nTooltip
 					:disabled="!sourceControlStore.preferences.branchReadOnly"
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
@@ -181,14 +358,18 @@ const onSelect = (action: string) => {
 		</div>
 		<slot></slot>
 		<div :class="$style.actions">
-			<ProjectTabs :show-settings="showSettings" />
+			<ProjectTabs
+				:page-type="pageType"
+				:show-executions="!projectPages.isSharedSubPage"
+				:show-settings="showSettings"
+				:additional-tabs="customProjectTabs"
+			/>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-.projectHeader,
-.projectDescription {
+.projectHeader {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
@@ -203,6 +384,28 @@ const onSelect = (action: string) => {
 
 .actions {
 	padding: var(--spacing-2xs) 0 var(--spacing-xs);
+}
+
+.projectDescriptionWrapper {
+	position: relative;
+	display: inline-block;
+
+	&:hover .tooltip {
+		display: block;
+	}
+}
+
+.tooltip {
+	display: none;
+	position: absolute;
+	top: 0;
+	left: calc(-1 * var(--spacing-3xs));
+	background-color: var(--color-background-light);
+	padding: 0 var(--spacing-3xs) var(--spacing-3xs);
+	z-index: 10;
+	white-space: normal;
+	border-radius: 6px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 @include mixins.breakpoint('xs-only') {

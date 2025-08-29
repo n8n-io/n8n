@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
-import type { ITemplatesWorkflow } from '@/Interface';
+import type { ITemplatesWorkflow } from '@n8n/rest-api-client/api/templates';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useTemplateWorkflow } from '@/utils/templates/templateActions';
@@ -13,7 +13,7 @@ import { isFullTemplatesCollection } from '@/utils/templates/typeGuards';
 import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
@@ -134,8 +134,16 @@ onMounted(async () => {
 				<div :class="$style.mainContent">
 					<div v-if="loading || isFullTemplatesCollection(collection)" :class="$style.markdown">
 						<n8n-markdown
-							:content="isFullTemplatesCollection(collection) && collection.description"
-							:images="isFullTemplatesCollection(collection) && collection.image"
+							:content="
+								isFullTemplatesCollection(collection) && collection.description
+									? collection.description
+									: ''
+							"
+							:images="
+								isFullTemplatesCollection(collection) && collection.image
+									? collection.image
+									: undefined
+							"
 							:loading="loading"
 						/>
 					</div>

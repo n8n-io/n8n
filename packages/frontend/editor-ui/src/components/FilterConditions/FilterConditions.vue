@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { isEmpty, isEqual } from 'lodash-es';
+import isEmpty from 'lodash/isEmpty';
+import isEqual from 'lodash/isEqual';
 
 import {
 	type FilterConditionValue,
@@ -17,7 +18,7 @@ import {
 	DEFAULT_MAX_CONDITIONS,
 	DEFAULT_OPERATOR_VALUE,
 } from './constants';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useDebounce } from '@/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
@@ -35,7 +36,13 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), { readOnly: false });
 
 const emit = defineEmits<{
-	valueChanged: [value: { name: string; node: string; value: FilterValue }];
+	valueChanged: [
+		value: {
+			name: string;
+			node: string;
+			value: FilterValue;
+		},
+	];
 }>();
 
 const i18n = useI18n();
@@ -119,6 +126,14 @@ watch(
 	},
 );
 
+watch(
+	() => state.paramValue,
+	() => {
+		debouncedEmitChange();
+	},
+	{ deep: true },
+);
+
 function emitChange() {
 	emit('valueChanged', {
 		name: props.path,
@@ -129,22 +144,18 @@ function emitChange() {
 
 function addCondition(): void {
 	state.paramValue.conditions.push(createCondition());
-	debouncedEmitChange();
 }
 
 function onConditionUpdate(index: number, value: FilterConditionValue): void {
 	state.paramValue.conditions[index] = value;
-	debouncedEmitChange();
 }
 
 function onCombinatorChange(combinator: FilterTypeCombinator): void {
 	state.paramValue.combinator = combinator;
-	debouncedEmitChange();
 }
 
 function onConditionRemove(index: number): void {
 	state.paramValue.conditions.splice(index, 1);
-	debouncedEmitChange();
 }
 
 function getIssues(index: number): string[] {

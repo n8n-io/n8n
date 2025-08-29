@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import type {
 	DeclarativeRestApiSettings,
 	IExecuteData,
@@ -19,9 +19,11 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { NodeHelpers, Workflow } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
+import type { ICredentialsDecrypted } from 'n8n-workflow/src';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
+import { DirectoryLoader } from '@/nodes-loader';
 import { NodeTypes } from '@test/helpers';
 
 import { RoutingNode } from '../routing-node';
@@ -80,29 +82,24 @@ const getExecuteSingleFunctions = (
 					},
 				};
 			},
+			async httpRequestWithAuthentication(
+				_credentialType: string,
+				requestOptions: IHttpRequestOptions,
+			): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+				return {
+					body: {
+						headers: {},
+						statusCode: 200,
+						requestOptions,
+					},
+				};
+			},
 		}),
 	});
 
 describe('RoutingNode', () => {
 	const nodeTypes = NodeTypes();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
-
-	test('applyDeclarativeNodeOptionParameters', () => {
-		const nodeTypes = NodeTypes();
-		const nodeType = nodeTypes.getByNameAndVersion('test.setMulti');
-
-		NodeHelpers.applyDeclarativeNodeOptionParameters(nodeType);
-
-		const options = nodeType.description.properties.find(
-			(property) => property.name === 'requestOptions',
-		);
-
-		expect(options?.options).toBeDefined;
-
-		const optionNames = options!.options!.map((option) => option.name);
-
-		expect(optionNames).toEqual(['batching', 'allowUnauthorizedCerts', 'proxy', 'timeout']);
-	});
 
 	describe('getRequestOptionsFromParameters', () => {
 		const tests: Array<{
@@ -1825,6 +1822,159 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
+				description: 'single parameter, postReceive: rootProperty, filter',
+				input: {
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+							url: '/test-url',
+						},
+						properties: [
+							{
+								displayName: 'JSON Data',
+								name: 'jsonData',
+								type: 'string',
+								routing: {
+									send: {
+										property: 'jsonData',
+										type: 'body',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'requestOptions',
+												},
+											},
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'body.jsonData.root',
+												},
+											},
+											{
+												type: 'filter',
+												properties: {
+													pass: '={{ $responseItem.age > 40 }}',
+												},
+											},
+										],
+									},
+								},
+								default: '',
+							},
+						],
+					},
+					node: {
+						parameters: {
+							jsonData: {
+								root: [
+									{
+										name: 'Jim',
+										age: 34,
+									},
+									{
+										name: 'James',
+										age: 44,
+									},
+								],
+							},
+						},
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								name: 'James',
+								age: 44,
+							},
+						},
+					],
+				],
+			},
+			{
+				description:
+					'single parameter, postReceive: rootProperty, filter with expression containing $credentials',
+				input: {
+					nodeType: {
+						credentials: [
+							{
+								name: 'testCredentials',
+								required: true,
+							},
+						],
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+							url: '/test-url',
+						},
+						properties: [
+							{
+								displayName: 'JSON Data',
+								name: 'jsonData',
+								type: 'string',
+								routing: {
+									send: {
+										property: 'jsonData',
+										type: 'body',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'requestOptions',
+												},
+											},
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'body.jsonData.root',
+												},
+											},
+											{
+												type: 'filter',
+												properties: {
+													pass: "={{ $credentials.baseUrl.startsWith('https://example.com') && $responseItem.age > 40 }}",
+												},
+											},
+										],
+									},
+								},
+								default: '',
+							},
+						],
+					},
+					node: {
+						parameters: {
+							jsonData: {
+								root: [
+									{
+										name: 'Jim',
+										age: 34,
+									},
+									{
+										name: 'James',
+										age: 44,
+									},
+								],
+							},
+						},
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								name: 'James',
+								age: 44,
+							},
+						},
+					],
+				],
+			},
+			{
 				description: 'single parameter, multiple postReceive: rootProperty, setKeyValue, sort',
 				input: {
 					nodeType: {
@@ -1921,7 +2071,7 @@ describe('RoutingNode', () => {
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
-		NodeHelpers.applyDeclarativeNodeOptionParameters(nodeType);
+		DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
 
 		const propertiesOriginal = nodeType.description.properties;
 
@@ -2009,7 +2159,17 @@ describe('RoutingNode', () => {
 						? testData.input.node.parameters[parameterName]
 						: (getNodeParameter(parameterName) ?? {});
 
-				const routingNode = new RoutingNode(executeFunctions, nodeType);
+				const mockCredentials = mock<ICredentialsDecrypted>({
+					data: {
+						apiKey: 'testApiKey',
+						baseUrl: 'https://example.com',
+					},
+				});
+
+				const routingNode = nodeType.description.credentials
+					? new RoutingNode(executeFunctions, nodeType, mockCredentials)
+					: new RoutingNode(executeFunctions, nodeType);
+
 				const result = await routingNode.runNode();
 
 				if (testData.input.specialTestOptions?.sleepCalls) {

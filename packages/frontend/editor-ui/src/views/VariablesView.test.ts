@@ -4,13 +4,15 @@ import { useUsersStore } from '@/stores/users.store';
 import { useRBACStore } from '@/stores/rbac.store';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { createComponentRenderer } from '@/__tests__/render';
-import { EnterpriseEditionFeature, STORES } from '@/constants';
+import { EnterpriseEditionFeature } from '@/constants';
+import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createRouter, createWebHistory } from 'vue-router';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
-import type { IUser, EnvironmentVariable } from '@/Interface';
+import type { EnvironmentVariable } from '@/Interface';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import type { Scope } from '@n8n/permissions';
 
 const router = createRouter({

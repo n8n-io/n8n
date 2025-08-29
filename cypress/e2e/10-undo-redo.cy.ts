@@ -1,17 +1,15 @@
 import { getCanvasNodes } from '../composables/workflow';
 import {
 	SCHEDULE_TRIGGER_NODE_NAME,
-	CODE_NODE_NAME,
 	SET_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+	CODE_NODE_DISPLAY_NAME,
 } from '../constants';
-import { MessageBox as MessageBoxClass } from '../pages/modals/message-box';
 import { NDV } from '../pages/ndv';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
-const messageBox = new MessageBoxClass();
 const ndv = new NDV();
 
 describe('Undo/Redo', () => {
@@ -21,9 +19,9 @@ describe('Undo/Redo', () => {
 
 	it('should undo/redo deleting node using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.addCodeNodeToCanvas();
 		WorkflowPage.actions.zoomToFit();
-		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_NAME, {
+		WorkflowPage.actions.deleteNodeFromContextMenu(CODE_NODE_DISPLAY_NAME, {
 			method: 'right-click',
 			anchor: 'topLeft',
 		});
@@ -39,8 +37,8 @@ describe('Undo/Redo', () => {
 
 	it('should undo/redo deleting node using keyboard shortcut', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).click();
+		WorkflowPage.actions.addCodeNodeToCanvas();
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_DISPLAY_NAME).click();
 		cy.get('body').type('{backspace}');
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
@@ -54,9 +52,9 @@ describe('Undo/Redo', () => {
 
 	it('should undo/redo deleting node between two connected nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.addCodeNodeToCanvas();
 		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
-		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).click();
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.zoomToFit();
 		cy.get('body').type('{backspace}');
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
@@ -71,7 +69,7 @@ describe('Undo/Redo', () => {
 
 	it('should undo/redo deleting whole workflow', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.addCodeNodeToCanvas();
 		cy.get('body').type('{esc}');
 		cy.get('body').type('{esc}');
 		WorkflowPage.actions.hitDeleteAllNodes();
@@ -87,7 +85,7 @@ describe('Undo/Redo', () => {
 	it('should undo/redo moving nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.addCodeNodeToCanvas();
 
 		WorkflowPage.actions.zoomToFit();
 
@@ -96,19 +94,10 @@ describe('Undo/Redo', () => {
 			.then(($node) => {
 				const { x: x1, y: y1 } = $node[0].getBoundingClientRect();
 
-				cy.ifCanvasVersion(
-					() => {
-						cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], {
-							clickToFinish: true,
-						});
-					},
-					() => {
-						cy.drag(getCanvasNodes().last(), [50, 150], {
-							realMouse: true,
-							abs: true,
-						});
-					},
-				);
+				cy.drag(getCanvasNodes().last(), [50, 150], {
+					realMouse: true,
+					abs: true,
+				});
 
 				getCanvasNodes()
 					.last()
@@ -142,8 +131,8 @@ describe('Undo/Redo', () => {
 
 	it('should undo/redo deleting a connection using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.deleteNodeBetweenNodes(SCHEDULE_TRIGGER_NODE_NAME, CODE_NODE_NAME);
+		WorkflowPage.actions.addCodeNodeToCanvas();
+		WorkflowPage.actions.deleteNodeBetweenNodes(SCHEDULE_TRIGGER_NODE_NAME, CODE_NODE_DISPLAY_NAME);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
@@ -153,8 +142,8 @@ describe('Undo/Redo', () => {
 
 	it('should undo/redo disabling a node using context menu', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.disableNode(CODE_NODE_NAME);
+		WorkflowPage.actions.addCodeNodeToCanvas();
+		WorkflowPage.actions.disableNode(CODE_NODE_DISPLAY_NAME);
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
@@ -164,7 +153,7 @@ describe('Undo/Redo', () => {
 
 	it('should undo/redo disabling a node using keyboard shortcut', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.addCodeNodeToCanvas();
 		WorkflowPage.getters.canvasNodes().last().click();
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
@@ -176,7 +165,7 @@ describe('Undo/Redo', () => {
 
 	it('should undo/redo disabling multiple nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.addCodeNodeToCanvas();
 		cy.get('body').type('{esc}');
 		cy.get('body').type('{esc}');
 		WorkflowPage.actions.hitSelectAll();
@@ -190,8 +179,8 @@ describe('Undo/Redo', () => {
 
 	it('should undo/redo duplicating a node', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.duplicateNode(CODE_NODE_NAME);
+		WorkflowPage.actions.addCodeNodeToCanvas();
+		WorkflowPage.actions.duplicateNode(CODE_NODE_DISPLAY_NAME);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.actions.hitRedo();
@@ -220,6 +209,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 		cy.get(WorkflowPage.getters.getEndpointSelector('input', 'Switch')).should('have.length', 1);
 
+		cy.wait(1000); // Clipboard paste is throttled
 		cy.fixture('Test_workflow_form_switch.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -256,11 +246,11 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.workflowMenuItemImportFromURLItem().should('be.visible');
 		WorkflowPage.getters.workflowMenuItemImportFromURLItem().click();
 		// Try while prompt is open
-		messageBox.getters.header().click();
+		WorkflowPage.getters.inputURLImportWorkflowFromURL().click();
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
 		// Close prompt and try again
-		messageBox.actions.cancel();
+		WorkflowPage.getters.cancelActionImportWorkflowFromURL().click();
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
 	});

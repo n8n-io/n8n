@@ -4,7 +4,8 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { outputSchemaField } from '../common/fields';
+import { outputSchemaField, parseJsonOutputField } from '../common/fields';
+import { parseJsonIfPresent } from '../common/output.utils';
 import { executeRequestWithSessionManagement } from '../common/session.utils';
 
 export const description: INodeProperties[] = [
@@ -42,6 +43,16 @@ export const description: INodeProperties[] = [
 			{
 				...outputSchemaField,
 			},
+			{
+				...parseJsonOutputField,
+			},
+			{
+				displayName: 'Include Visual Analysis',
+				name: 'includeVisualAnalysis',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to analyze the web page visually when fulfilling the request',
+			},
 		],
 	},
 ];
@@ -51,16 +62,24 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const prompt = this.getNodeParameter('prompt', index, '') as string;
-	const additionalFields = this.getNodeParameter('additionalFields', index);
+	const additionalFields = this.getNodeParameter('additionalFields', index, {});
+	const outputSchema = additionalFields.outputSchema;
+	const includeVisualAnalysis = additionalFields.includeVisualAnalysis;
 
-	return await executeRequestWithSessionManagement.call(this, index, {
+	const result = await executeRequestWithSessionManagement.call(this, index, {
 		method: 'POST',
 		path: '/sessions/{sessionId}/windows/{windowId}/page-query',
 		body: {
 			prompt,
 			configuration: {
-				...additionalFields,
+				experimental: {
+					includeVisualAnalysis: includeVisualAnalysis ? 'enabled' : 'disabled',
+				},
+				...(outputSchema ? { outputSchema } : {}),
 			},
 		},
 	});
+
+	const nodeOutput = parseJsonIfPresent.call(this, index, result);
+	return this.helpers.returnJsonArray(nodeOutput);
 }

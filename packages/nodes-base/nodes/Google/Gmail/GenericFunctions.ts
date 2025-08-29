@@ -250,7 +250,7 @@ export async function encodeEmail(email: IEmail) {
 
 	const mailBody = await mail.build();
 
-	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
+	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 export async function googleApiRequestAllItems(

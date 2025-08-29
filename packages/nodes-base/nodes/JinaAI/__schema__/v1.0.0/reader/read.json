@@ -1,0 +1,34 @@
+{
+    "type": "object",
+    "properties": {
+        "content": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "og:description": {
+                    "type": "string"
+                }
+            }
+        },
+        "title": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "usage": {
+            "type": "object",
+            "properties": {
+                "tokens": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "version": 2
+}

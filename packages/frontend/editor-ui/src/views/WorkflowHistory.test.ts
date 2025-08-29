@@ -1,4 +1,5 @@
 import type { MockInstance } from 'vitest';
+import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -10,12 +11,13 @@ import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import WorkflowHistoryPage from '@/views/WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { STORES, VIEWS } from '@/constants';
+import { STORES } from '@n8n/stores';
+import { VIEWS } from '@/constants';
 import {
 	workflowHistoryDataFactory,
 	workflowVersionDataFactory,
 } from '@/stores/__tests__/utils/workflowHistoryTestUtils';
-import type { WorkflowVersion } from '@/types/workflowHistory';
+import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 import type { IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/plugins/telemetry';
 
@@ -228,5 +230,37 @@ describe('WorkflowHistory', () => {
 				workflow_id: workflowId,
 			});
 		});
+	});
+
+	it('should display archived tag on header if workflow is archived', async () => {
+		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			id: workflowId,
+			name: 'Test Workflow',
+			isArchived: true,
+		} as IWorkflowDb);
+
+		route.params.workflowId = workflowId;
+
+		const { container, getByTestId } = renderComponent({ pinia });
+		await flushPromises();
+
+		expect(getByTestId('workflow-archived-tag')).toBeInTheDocument();
+		expect(container.textContent).toContain('Test Workflow');
+	});
+
+	it('should not display archived tag on header if workflow is not archived', async () => {
+		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			id: workflowId,
+			name: 'Test Workflow',
+			isArchived: false,
+		} as IWorkflowDb);
+
+		route.params.workflowId = workflowId;
+
+		const { queryByTestId, container } = renderComponent({ pinia });
+		await flushPromises();
+
+		expect(queryByTestId('workflow-archived-tag')).not.toBeInTheDocument();
+		expect(container.textContent).toContain('Test Workflow');
 	});
 });

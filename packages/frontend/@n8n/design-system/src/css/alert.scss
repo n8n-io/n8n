@@ -122,7 +122,7 @@
 
 	& .el-alert__description {
 		font-size: var.$alert-description-font-size;
-		margin: 5px 0 0 0;
+		margin: 5px 0 0;
 	}
 
 	@include mixins.e(closebtn) {

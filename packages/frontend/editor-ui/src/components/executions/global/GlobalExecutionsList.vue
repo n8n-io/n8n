@@ -2,15 +2,16 @@
 import ConcurrentExecutionsHeader from '@/components/executions/ConcurrentExecutionsHeader.vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
-import { useI18n } from '@/composables/useI18n';
+import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
+import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/composables/useMessage';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type { ExecutionFilterType, ExecutionSummaryWithScopes, IWorkflowDb } from '@/Interface';
-import type { PermissionsRecord } from '@/permissions';
-import { getResourcePermissions } from '@/permissions';
+import type { PermissionsRecord } from '@n8n/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -438,7 +439,7 @@ const goToUpgrade = () => {
 								<template v-else-if="total > executions.length || estimated">
 									<N8nButton
 										ref="loadMoreButton"
-										icon="sync"
+										icon="refresh-cw"
 										:title="i18n.baseText('executionsList.loadMore')"
 										:label="i18n.baseText('executionsList.loadMore')"
 										:loading="executionsStore.loading"
@@ -455,32 +456,11 @@ const goToUpgrade = () => {
 				</N8nTableBase>
 			</div>
 		</div>
-		<div
-			v-if="selectedCount > 0"
-			:class="$style.selectionOptions"
-			data-test-id="selected-executions-info"
-		>
-			<span>
-				{{
-					i18n.baseText('executionsList.selected', {
-						adjustToNumber: selectedCount,
-						interpolate: { count: `${selectedCount}` },
-					})
-				}}
-			</span>
-			<N8nButton
-				:label="i18n.baseText('generic.delete')"
-				type="tertiary"
-				data-test-id="delete-selected-button"
-				@click="handleDeleteSelected"
-			/>
-			<N8nButton
-				:label="i18n.baseText('executionsList.clearSelection')"
-				type="tertiary"
-				data-test-id="clear-selection-button"
-				@click="handleClearSelection"
-			/>
-		</div>
+		<SelectedItemsInfo
+			:selected-count="selectedCount"
+			@delete-selected="handleDeleteSelected"
+			@clear-selection="handleClearSelection"
+		/>
 	</div>
 </template>
 
@@ -505,25 +485,6 @@ const goToUpgrade = () => {
 	align-items: center;
 	justify-content: flex-start;
 	margin-bottom: var(--spacing-s);
-}
-
-.selectionOptions {
-	display: flex;
-	align-items: center;
-	position: absolute;
-	padding: var(--spacing-2xs);
-	z-index: 2;
-	left: 50%;
-	transform: translateX(-50%);
-	bottom: var(--spacing-3xl);
-	background: var(--execution-selector-background);
-	border-radius: var(--border-radius-base);
-	color: var(--execution-selector-text);
-	font-size: var(--font-size-2xs);
-
-	button {
-		margin-left: var(--spacing-2xs);
-	}
 }
 
 .execTable {

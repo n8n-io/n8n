@@ -1,16 +1,27 @@
+import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
+import { generateUrlSignature, prepareUrlForSigning, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse } from '@/interfaces';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
-import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from '@/webhooks/webhook.types';
+import type { WaitingWebhookRequest } from '@/webhooks/webhook.types';
 
 describe('WaitingWebhooks', () => {
+	const SIGNING_SECRET = 'test-secret';
 	const executionRepository = mock<ExecutionRepository>();
-	const waitingWebhooks = new WaitingWebhooks(mock(), mock(), executionRepository, mock());
+	const mockInstanceSettings = mock<InstanceSettings>({
+		hmacSignatureSecret: SIGNING_SECRET,
+	});
+	const waitingWebhooks = new WaitingWebhooks(
+		mock(),
+		mock(),
+		executionRepository,
+		mock(),
+		mockInstanceSettings,
+	);
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
@@ -80,24 +91,110 @@ describe('WaitingWebhooks', () => {
 		await expect(promise).rejects.toThrowError(ConflictError);
 	});
 
-	it('should mark as test webhook when execution mode is manual', async () => {
-		jest
-			// @ts-expect-error Protected method
-			.spyOn(waitingWebhooks, 'getWebhookExecutionData')
-			// @ts-expect-error Protected method
-			.mockResolvedValue(mock<IWebhookResponseCallbackData>());
+	describe('validateSignatureInRequest', () => {
+		const EXAMPLE_HOST = 'example.com';
+		const generateValidSignature = (host = EXAMPLE_HOST) =>
+			generateUrlSignature(
+				prepareUrlForSigning(new URL('/webhook/test', `http://${host}`)),
+				SIGNING_SECRET,
+			);
 
-		const execution = mock<IExecutionResponse>({
-			finished: false,
-			mode: 'manual',
-			data: {
-				resultData: { lastNodeExecuted: 'someNode', error: undefined },
-			},
+		const createMockRequest = (opts: { host?: string; signature: string }) =>
+			mock<express.Request>({
+				url: `/webhook/test?${WAITING_TOKEN_QUERY_PARAM}=` + opts.signature,
+				host: opts.host ?? EXAMPLE_HOST,
+				query: { [WAITING_TOKEN_QUERY_PARAM]: opts.signature },
+				headers: { host: opts.host ?? EXAMPLE_HOST },
+			});
+
+		it('should validate signature correctly', () => {
+			/* Arrange */
+			const signature = generateValidSignature();
+			const mockReq = createMockRequest({ signature });
+
+			/* Act */
+			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
+
+			/* Assert */
+			expect(result).toBe(true);
 		});
-		executionRepository.findSingleExecution.mockResolvedValue(execution);
 
-		await waitingWebhooks.executeWebhook(mock<WaitingWebhookRequest>(), mock<express.Response>());
+		it('should validate signature correctly when host contains a port', () => {
+			/* Arrange */
+			const signature = generateValidSignature('example.com:8080');
+			const mockReq = createMockRequest({
+				signature,
+				host: 'example.com:8080',
+			});
 
-		expect(execution.data.isTestWebhook).toBe(true);
+			/* Act */
+			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
+
+			/* Assert */
+			expect(result).toBe(true);
+		});
+
+		it('should validate signature correctly when n8n is behind a reverse proxy', () => {
+			/* Arrange */
+			const signature = generateValidSignature('proxy.example.com');
+			const mockReq = mock<express.Request>({
+				url: `/webhook/test?${WAITING_TOKEN_QUERY_PARAM}=` + signature,
+				host: 'proxy.example.com',
+				query: { [WAITING_TOKEN_QUERY_PARAM]: signature },
+				headers: {
+					host: 'localhost',
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					'x-forwarded-host': 'proxy.example.com',
+				},
+			});
+
+			/* Act */
+			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
+
+			/* Assert */
+			expect(result).toBe(true);
+		});
+
+		it('should return false when signature is missing', () => {
+			/* Arrange */
+			const mockReq = mock<express.Request>({
+				url: '/webhook/test',
+				hostname: 'example.com',
+				query: {},
+			});
+
+			/* Act */
+			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
+
+			/* Assert */
+			expect(result).toBe(false);
+		});
+
+		it('should return false when signature is empty', () => {
+			/* Arrange */
+			const mockReq = mock<express.Request>({
+				url: `/webhook/test?${WAITING_TOKEN_QUERY_PARAM}=`,
+				hostname: 'example.com',
+				query: { [WAITING_TOKEN_QUERY_PARAM]: '' },
+			});
+
+			/* Act */
+			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
+
+			/* Assert */
+			expect(result).toBe(false);
+		});
+
+		it('should return false when signatures do not match', () => {
+			/* Arrange */
+			const wrongSignature = 'wrong-signature';
+			const mockReq = createMockRequest({ signature: wrongSignature });
+
+			/* Act */
+			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
+
+			/* Assert */
+			expect(result).toBe(false);
+		});
 	});
 });

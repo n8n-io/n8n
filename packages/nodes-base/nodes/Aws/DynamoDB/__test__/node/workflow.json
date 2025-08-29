@@ -1,0 +1,261 @@
+{
+	"name": "AWS DynamoDB",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, -40],
+			"id": "efd3f04e-8695-4f2c-8f8d-0b0166390d3f",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"tableName": "n8n-testing",
+				"keyConditionExpression": "id = :idVal",
+				"eavUi": {
+					"eavValues": [
+						{
+							"attribute": ":idVal",
+							"value": "foo"
+						}
+					]
+				},
+				"select": "SPECIFIC_ATTRIBUTES",
+				"options": {
+					"projectionExpression": "#time",
+					"eanUi": {
+						"eanValues": [
+							{
+								"key": "#time",
+								"value": "timestamp"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.awsDynamoDb",
+			"typeVersion": 1,
+			"position": [220, -340],
+			"id": "fe8a7fbf-83af-45bb-ae58-77f143ce2f30",
+			"name": "Get many items",
+			"credentials": {
+				"aws": {
+					"id": "UamouRLgIHQY0AXg",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"tableName": "n8n-testing",
+				"keysUi": {
+					"keyValues": [
+						{
+							"key": "id",
+							"value": "foo"
+						},
+						{
+							"key": "timestamp",
+							"value": "2025-01-01"
+						}
+					]
+				},
+				"additionalFields": {
+					"projectionExpression": "#time",
+					"eanUi": {
+						"eanValues": [
+							{
+								"key": "#time",
+								"value": "timestamp"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.awsDynamoDb",
+			"typeVersion": 1,
+			"position": [220, -140],
+			"id": "4cbddd91-c851-4ef6-b76a-d84d84f1d598",
+			"name": "Get an item",
+			"credentials": {
+				"aws": {
+					"id": "UamouRLgIHQY0AXg",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"tableName": "n8n-testing",
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "id",
+							"fieldValue": "foo"
+						},
+						{
+							"fieldId": "timestamp",
+							"fieldValue": "2025-01-01"
+						},
+						{
+							"fieldId": "data",
+							"fieldValue": "payload"
+						}
+					]
+				},
+				"additionalFields": {
+					"eavUi": {
+						"eavValues": [
+							{
+								"attribute": ":v",
+								"value": "lorem ipsum"
+							}
+						]
+					},
+					"conditionExpression": "#d = :v",
+					"eanUi": {
+						"eanValues": [
+							{
+								"key": "#d",
+								"value": "data"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.awsDynamoDb",
+			"typeVersion": 1,
+			"position": [220, 60],
+			"id": "17eee2d1-6547-4d99-b168-74d407cc252c",
+			"name": "Create or update an item",
+			"credentials": {
+				"aws": {
+					"id": "UamouRLgIHQY0AXg",
+					"name": "AWS account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"tableName": "n8n-testing",
+				"keysUi": {
+					"keyValues": [
+						{
+							"key": "id",
+							"value": "foo"
+						},
+						{
+							"key": "timestamp",
+							"value": "2025-01-01"
+						}
+					]
+				},
+				"additionalFields": {
+					"conditionExpression": "#d = :v",
+					"eanUi": {
+						"eanValues": [
+							{
+								"key": "#d",
+								"value": "data"
+							}
+						]
+					},
+					"expressionAttributeUi": {
+						"expressionAttributeValues": [
+							{
+								"attribute": ":v",
+								"value": "payload"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.awsDynamoDb",
+			"typeVersion": 1,
+			"position": [220, 260],
+			"id": "6d266500-16b0-4ee9-a3b2-a4300bc23b1f",
+			"name": "Delete an item",
+			"credentials": {
+				"aws": {
+					"id": "UamouRLgIHQY0AXg",
+					"name": "AWS account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get many items": [
+			{
+				"json": {
+					"timestamp": "2025-01-01"
+				}
+			}
+		],
+		"Get an item": [
+			{
+				"json": {
+					"timestamp": "2025-01-01"
+				}
+			}
+		],
+		"Create or update an item": [
+			{
+				"json": {
+					"id": "foo",
+					"timestamp": "2025-01-01",
+					"data": "payload"
+				}
+			}
+		],
+		"Delete an item": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get many items",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get an item",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create or update an item",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete an item",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "ada45c19-f09e-43e5-8e5c-d66f54f78d4f",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
+	},
+	"id": "Ffm7CA1AIhKGiOlK",
+	"tags": []
+}

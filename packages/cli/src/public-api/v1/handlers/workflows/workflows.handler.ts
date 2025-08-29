@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { WorkflowEntity, ProjectRepository, TagRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Like, QueryFailedError } from '@n8n/typeorm';
@@ -9,14 +10,10 @@ import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -83,7 +80,7 @@ export = {
 
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
 
-			await Container.get(EnterpriseWorkflowService).transferOne(
+			await Container.get(EnterpriseWorkflowService).transferWorkflow(
 				req.user,
 				workflowId,
 				body.destinationProjectId,
@@ -98,7 +95,7 @@ export = {
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId } = req.params;
 
-			const workflow = await Container.get(WorkflowService).delete(req.user, workflowId);
+			const workflow = await Container.get(WorkflowService).delete(req.user, workflowId, true);
 			if (!workflow) {
 				// user trying to access a workflow they do not own
 				// or workflow does not exist
@@ -115,7 +112,7 @@ export = {
 			const { id } = req.params;
 			const { excludePinnedData = false } = req.query;
 
-			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
 				req.user,
 				['workflow:read'],
@@ -160,7 +157,7 @@ export = {
 				...(name !== undefined && { name: Like('%' + name.trim() + '%') }),
 			};
 
-			if (['global:owner', 'global:admin'].includes(req.user.role)) {
+			if (['global:owner', 'global:admin'].includes(req.user.role.slug)) {
 				if (tags) {
 					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
 						parseTagNames(tags),
@@ -169,7 +166,7 @@ export = {
 				}
 
 				if (projectId) {
-					const workflows = await Container.get(SharedWorkflowRepository).findAllWorkflowsForUser(
+					const workflows = await Container.get(WorkflowFinderService).findAllWorkflowsForUser(
 						req.user,
 						['workflow:read'],
 					);
@@ -189,7 +186,7 @@ export = {
 					);
 				}
 
-				let workflows = await Container.get(SharedWorkflowRepository).findAllWorkflowsForUser(
+				let workflows = await Container.get(WorkflowFinderService).findAllWorkflowsForUser(
 					req.user,
 					['workflow:read'],
 				);
@@ -214,11 +211,37 @@ export = {
 				where.id = In(workflowsIds);
 			}
 
+			const selectFields: (keyof WorkflowEntity)[] = [
+				'id',
+				'name',
+				'active',
+				'createdAt',
+				'updatedAt',
+				'isArchived',
+				'nodes',
+				'connections',
+				'settings',
+				'staticData',
+				'meta',
+				'versionId',
+				'triggerCount',
+				'shared',
+			];
+
+			if (!excludePinnedData) {
+				selectFields.push('pinData');
+			}
+
+			const relations = ['shared'];
+			if (!Container.get(GlobalConfig).tags.disabled) {
+				relations.push('tags');
+			}
 			const [workflows, count] = await Container.get(WorkflowRepository).findAndCount({
 				skip: offset,
 				take: limit,
+				select: selectFields,
+				relations,
 				where,
-				...(!Container.get(GlobalConfig).tags.disabled && { relations: ['tags'] }),
 			});
 
 			if (excludePinnedData) {
@@ -252,7 +275,7 @@ export = {
 			updateData.id = id;
 			updateData.versionId = uuid();
 
-			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
 				req.user,
 				['workflow:update'],
@@ -319,7 +342,7 @@ export = {
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
 				req.user,
 				['workflow:update'],
@@ -358,7 +381,7 @@ export = {
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
 				req.user,
 				['workflow:update'],
@@ -396,7 +419,7 @@ export = {
 				return res.status(400).json({ message: 'Workflow Tags Disabled' });
 			}
 
-			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
 				req.user,
 				['workflow:read'],
@@ -424,7 +447,7 @@ export = {
 				return res.status(400).json({ message: 'Workflow Tags Disabled' });
 			}
 
-			const sharedWorkflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
+			const sharedWorkflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
 				req.user,
 				['workflow:update'],

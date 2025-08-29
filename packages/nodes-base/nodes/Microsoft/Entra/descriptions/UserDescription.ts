@@ -1,4 +1,4 @@
-import { merge } from 'lodash';
+import merge from 'lodash/merge';
 import type { DateTime } from 'luxon';
 import {
 	NodeOperationError,

@@ -55,7 +55,7 @@ const openAiNode: INodeUi = {
 
 describe('NodeCredentials', () => {
 	const defaultRenderOptions: RenderOptions = {
-		pinia: createTestingPinia(),
+		pinia: createTestingPinia({ stubActions: false }),
 		props: {
 			overrideCredType: 'openAiApi',
 			node: httpNode,
@@ -229,6 +229,15 @@ describe('NodeCredentials', () => {
 
 		const credentialSearch = credentialsSelect.querySelector('input') as HTMLElement;
 		await userEvent.type(credentialSearch, 'test');
+
+		expect(screen.queryByText('OpenAi account')).not.toBeInTheDocument();
+		expect(screen.queryByText('Test OpenAi account')).toBeInTheDocument();
+
+		await userEvent.keyboard('{Escape}');
+
+		await userEvent.click(credentialsSelect);
+
+		await userEvent.type(credentialSearch, 'Test');
 
 		expect(screen.queryByText('OpenAi account')).not.toBeInTheDocument();
 		expect(screen.queryByText('Test OpenAi account')).toBeInTheDocument();

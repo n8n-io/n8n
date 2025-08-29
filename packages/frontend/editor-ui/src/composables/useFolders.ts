@@ -4,7 +4,7 @@ import {
 	FOLDER_NAME_ONLY_DOTS_REGEX,
 	ILLEGAL_FOLDER_CHARACTERS,
 } from '@/constants';
-import { useI18n } from './useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useFoldersStore } from '@/stores/folders.store';
 import { computed } from 'vue';
 
@@ -133,12 +133,8 @@ export function useFolders() {
 	}
 
 	/**
-	 * Get the drag or drop target element from the event target and store
+	 * Handle the drop event by getting the dragged resource and drop target
 	 * @param event
-	 * @returns {
-	 * 	draggedResource: DragTarget | undefined;
-	 * 	dropTarget: DropTarget | undefined;
-	 * }
 	 */
 	function handleDrop(event: MouseEvent): {
 		draggedResource?: DragTarget;

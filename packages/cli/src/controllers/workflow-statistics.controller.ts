@@ -1,13 +1,12 @@
+import { Logger } from '@n8n/backend-common';
+import type { WorkflowStatistics } from '@n8n/db';
+import { StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
+import { Get, Middleware, RestController } from '@n8n/decorators';
 import { Response, NextFunction } from 'express';
-import { Logger } from 'n8n-core';
 
-import type { WorkflowStatistics } from '@/databases/entities/workflow-statistics';
-import { StatisticsNames } from '@/databases/entities/workflow-statistics';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
-import { Get, Middleware, RestController } from '@/decorators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IWorkflowStatisticsDataLoaded } from '@/interfaces';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { StatisticsRequest } from './workflow-statistics.types';
 
@@ -21,7 +20,7 @@ interface WorkflowStatisticsData<T> {
 @RestController('/workflow-stats')
 export class WorkflowStatisticsController {
 	constructor(
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
 		private readonly logger: Logger,
 	) {}
@@ -35,7 +34,7 @@ export class WorkflowStatisticsController {
 		const { user } = req;
 		const workflowId = req.params.id;
 
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
 		]);
 

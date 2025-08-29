@@ -3,11 +3,12 @@ import userEvent from '@testing-library/user-event';
 import type { UserAction } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
-import type { WorkflowHistoryActionTypes } from '@/types/workflowHistory';
+import type { WorkflowHistoryActionTypes } from '@n8n/rest-api-client/api/workflowHistory';
 import { workflowHistoryDataFactory } from '@/stores/__tests__/utils/workflowHistoryTestUtils';
+import { type IUser } from 'n8n-workflow';
 
 const actionTypes: WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
-const actions: UserAction[] = actionTypes.map((value) => ({
+const actions: Array<UserAction<IUser>> = actionTypes.map((value) => ({
 	label: value,
 	disabled: false,
 	value,

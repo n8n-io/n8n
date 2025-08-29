@@ -1,0 +1,53 @@
+name: Test Workflows - Reusable
+
+on:
+  workflow_call:
+    inputs:
+      git_ref:
+        description: 'The Git ref (branch, tag, or SHA) to checkout and test.'
+        required: true
+        type: string
+      compare_schemas:
+        description: 'Set to "true" to enable schema comparison during tests.'
+        required: false
+        default: 'true'
+        type: string
+    secrets:
+      ENCRYPTION_KEY:
+        description: 'Encryption key for n8n operations.'
+        required: true
+      CURRENTS_RECORD_KEY:
+        description: 'Currents record key for uploading test results.'
+        required: true
+
+env:
+  NODE_OPTIONS: --max-old-space-size=3072
+
+jobs:
+  run_workflow_tests:
+    name: Run Workflow Tests with Snapshots
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      - name: Set up Environment
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
+      - name: Set up Workflow Tests
+        run: pnpm --filter=n8n-playwright test:workflows:setup
+        env:
+          N8N_ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+
+      - name: Run Workflow Tests
+        run: pnpm --filter=n8n-playwright test:workflows --workers 4
+        env:
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+
+      - name: Run Workflow Schema Tests
+        if: ${{ inputs.compare_schemas == 'true' }}
+        run: pnpm --filter=n8n-playwright test:workflows:schema
+        env:
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}

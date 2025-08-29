@@ -17,8 +17,8 @@ import {
 	LOCAL_STORAGE_NDV_INPUT_PANEL_DISPLAY_MODE,
 	LOCAL_STORAGE_NDV_OUTPUT_PANEL_DISPLAY_MODE,
 	LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED,
-	STORES,
 } from '@/constants';
+import { STORES } from '@n8n/stores';
 import type { INodeIssues } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore } from 'pinia';
@@ -59,6 +59,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		'schema',
 	);
 	const output = ref<OutputPanel>({
+		run: undefined,
 		branch: undefined,
 		data: {
 			isEmpty: true,
@@ -148,9 +149,8 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const ndvNodeInputNumber = computed(() => {
 		const returnData: { [nodeName: string]: number[] } = {};
-		const workflow = workflowsStore.getCurrentWorkflow();
 		const activeNodeConections = (
-			workflow.connectionsByDestinationNode[activeNode.value?.name || ''] ?? {}
+			workflowsStore.connectionsByDestinationNode[activeNode.value?.name || ''] ?? {}
 		).main;
 
 		if (!activeNodeConections || activeNodeConections.length < 2) return returnData;
@@ -180,8 +180,11 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		if (!activeNode.value || !inputNodeName) {
 			return false;
 		}
-		const workflow = workflowsStore.getCurrentWorkflow();
-		const parentNodes = workflow.getParentNodes(activeNode.value.name, NodeConnectionTypes.Main, 1);
+		const parentNodes = workflowsStore.workflowObject.getParentNodes(
+			activeNode.value.name,
+			NodeConnectionTypes.Main,
+			1,
+		);
 		return parentNodes.includes(inputNodeName);
 	});
 
@@ -222,6 +225,10 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const setInputRunIndex = (run?: number): void => {
 		input.value.run = run;
+	};
+
+	const setOutputRunIndex = (run?: number): void => {
+		output.value.run = run;
 	};
 
 	const setMainPanelDimensions = (params: {
@@ -407,6 +414,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		setActiveNodeName,
 		setInputNodeName,
 		setInputRunIndex,
+		setOutputRunIndex,
 		setMainPanelDimensions,
 		setNDVPushRef,
 		resetNDVPushRef,

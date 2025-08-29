@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, watch } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { SETUP_CREDENTIALS_MODAL_KEY } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -63,7 +63,7 @@ onBeforeUnmount(() => {
 		:label="i18n.baseText('nodeView.setupTemplate')"
 		data-test-id="setup-credentials-button"
 		size="large"
-		icon="box-open"
+		icon="package-open"
 		type="secondary"
 		@click="handleClick()"
 	/>

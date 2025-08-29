@@ -3,7 +3,7 @@ import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { computed, ref, useCssModule } from 'vue';
 import type { CanvasNodeDefaultRender } from '@/types';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const emit = defineEmits<{
 	add: [];
@@ -125,7 +125,8 @@ function onClickAdd() {
 .outputLabel {
 	top: 50%;
 	left: var(--spacing-m);
-	transform: translate(0, -50%);
+	transform: translate(0, -50%) scale(var(--canvas-zoom-compensation-factor, 1));
+	transform-origin: center left;
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
 }
@@ -133,8 +134,9 @@ function onClickAdd() {
 .runDataLabel {
 	position: absolute;
 	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -150%);
+	left: calc(50% * var(--canvas-zoom-compensation-factor, 1));
+	transform: translate(-50%, -50%) scale(var(--canvas-zoom-compensation-factor, 1))
+		translate(0, -100%);
 	font-size: var(--font-size-xs);
 	color: var(--color-text-base);
 }

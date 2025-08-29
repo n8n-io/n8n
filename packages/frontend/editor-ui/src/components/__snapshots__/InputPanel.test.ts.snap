@@ -8,68 +8,75 @@ exports[`InputPanel > should render 1`] = `
     data-v-2e5cd75c=""
   >
     <!--v-if-->
-    <!--v-if-->
     <div
       class="header"
       data-v-2e5cd75c=""
     >
-      
       <div
-        class="titleSection"
+        class="title"
+        data-v-2e5cd75c=""
       >
-        <span
-          class="title"
-        >
-          Input
-        </span>
+        
         <div
-          class="n8n-radio-buttons radioGroup"
-          data-test-id="input-panel-mode"
-          role="radiogroup"
+          class="titleSection"
         >
-          
-          <label
-            aria-checked="true"
-            class="n8n-radio-button container hoverable"
-            role="radio"
-            tabindex="-1"
+          <span
+            class="n8n-text text-light size-medium bold title title"
           >
-            <div
-              class="button active medium"
-              data-test-id="radio-button-mapping"
-            >
-              
-              Mapping
-              
-            </div>
-          </label>
-          <label
-            aria-checked="false"
-            class="n8n-radio-button container hoverable"
-            role="radio"
-            tabindex="-1"
+            
+            Input
+            
+          </span>
+          <div
+            class="n8n-radio-buttons radioGroup"
+            data-test-id="input-panel-mode"
+            role="radiogroup"
           >
-            <div
-              class="button medium"
-              data-test-id="radio-button-debugging"
+            
+            <label
+              aria-checked="true"
+              class="n8n-radio-button container hoverable"
+              role="radio"
+              tabindex="-1"
             >
-              
-              Debugging
-              
-            </div>
-          </label>
-          
+              <div
+                class="button active medium"
+                data-test-id="radio-button-mapping"
+              >
+                
+                Mapping
+                
+              </div>
+            </label>
+            <label
+              aria-checked="false"
+              class="n8n-radio-button container hoverable"
+              role="radio"
+              tabindex="-1"
+            >
+              <div
+                class="button medium"
+                data-test-id="radio-button-debugging"
+              >
+                
+                From AI
+                
+              </div>
+            </label>
+            
+          </div>
         </div>
+        
       </div>
-      
       <div
         class="displayModes"
         data-test-id="run-data-pane-header"
         data-v-2e5cd75c=""
       >
         <!---->
+        <!--v-if-->
         <div
-          class="n8n-radio-buttons radioGroup displayModeSelect"
+          class="n8n-radio-buttons radioGroup"
           data-test-id="ndv-run-data-display-mode"
           data-v-2e5cd75c=""
           role="radiogroup"
@@ -124,7 +131,6 @@ exports[`InputPanel > should render 1`] = `
         </div>
         <!--v-if-->
         <!--v-if-->
-        <!--v-if-->
         <div
           class="editModeActions"
           data-v-2e5cd75c=""
@@ -137,9 +143,7 @@ exports[`InputPanel > should render 1`] = `
           >
             <!--v-if-->
             <span>
-              
               Cancel
-              
             </span>
           </button>
           <button
@@ -149,26 +153,31 @@ exports[`InputPanel > should render 1`] = `
           >
             <!--v-if-->
             <span>
-              
               Save
-              
             </span>
           </button>
         </div>
       </div>
+      <!--v-if-->
     </div>
-    <!--v-if-->
-    <!--v-if-->
-    <!--v-if-->
-    <!--v-if-->
-    
-    
-    <!--v-if-->
+    <div
+      data-v-2e5cd75c=""
+    >
+      <!--v-if-->
+      <!--v-if-->
+      <!--v-if-->
+      <!--v-if-->
+      <!--v-if-->
+      
+      
+      <!--v-if-->
+    </div>
     <div
       class="dataContainer"
       data-test-id="ndv-data-container"
       data-v-2e5cd75c=""
     >
+      <!--v-if-->
       <!---->
     </div>
     <!--v-if-->

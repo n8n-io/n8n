@@ -12,7 +12,7 @@ describe('Canvas Actions', () => {
 	});
 
 	it('adds sticky to canvas with default text and position', () => {
-		workflowPage.getters.addStickyButton().should('not.be.visible');
+		workflowPage.getters.addStickyButton().should('be.visible');
 
 		addDefaultSticky();
 		workflowPage.actions.deselectAll();

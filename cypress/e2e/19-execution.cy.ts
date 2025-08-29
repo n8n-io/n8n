@@ -9,7 +9,6 @@ import {
 import { SCHEDULE_TRIGGER_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
 import { NDV, WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass } from '../pages';
 import { clearNotifications, errorToast, successToast } from '../pages/notifications';
-import { isCanvasV2 } from '../utils/workflowUtils';
 
 const workflowPage = new WorkflowPageClass();
 const executionsTab = new WorkflowExecutionsTab();
@@ -42,33 +41,33 @@ describe('Execution', () => {
 		// Check canvas nodes after 1st step (workflow passed the manual trigger node
 		workflowPage.getters
 			.canvasNodeByName('Manual')
-			.within(() => cy.get('.fa-check'))
+			.within(() => cy.get('svg[data-icon=node-success]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-check').should('not.exist'));
+			.within(() => cy.get('svg[data-icon=node-success]').should('not.exist'));
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-sync-alt'))
+			.within(() => cy.get('svg[data-icon=refresh-cw]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
-			.within(() => cy.get('.fa-check').should('not.exist'));
+			.within(() => cy.get('svg[data-icon=node-success]').should('not.exist'));
 
 		cy.wait(2000);
 
 		// Check canvas nodes after 2nd step (waiting node finished its execution and the http request node is about to start)
 		workflowPage.getters
 			.canvasNodeByName('Manual')
-			.within(() => cy.get('.fa-check'))
+			.within(() => cy.get('svg[data-icon=node-success]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-check'))
+			.within(() => cy.get('svg[data-icon=node-success]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
-			.within(() => cy.get('.fa-check'))
+			.within(() => cy.get('svg[data-icon=node-success]'))
 			.should('exist');
 
 		successToast().should('be.visible');
@@ -102,18 +101,18 @@ describe('Execution', () => {
 		// Check canvas nodes after 1st step (workflow passed the manual trigger node
 		workflowPage.getters
 			.canvasNodeByName('Manual')
-			.within(() => cy.get('.fa-check'))
+			.within(() => cy.get('svg[data-icon=node-success]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-check').should('not.exist'));
+			.within(() => cy.get('svg[data-icon=node-success]').should('not.exist'));
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-sync-alt'))
+			.within(() => cy.get('svg[data-icon=refresh-cw]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
-			.within(() => cy.get('.fa-check').should('not.exist'));
+			.within(() => cy.get('svg[data-icon=node-success]').should('not.exist'));
 
 		successToast().should('be.visible');
 		clearNotifications();
@@ -124,22 +123,16 @@ describe('Execution', () => {
 		// Check canvas nodes after workflow stopped
 		workflowPage.getters
 			.canvasNodeByName('Manual')
-			.within(() => cy.get('.fa-check'))
+			.within(() => cy.get('svg[data-icon=node-success]'))
 			.should('exist');
 
-		if (isCanvasV2()) {
-			workflowPage.getters
-				.canvasNodeByName('Wait')
-				.within(() => cy.get('.fa-sync-alt').should('not.exist'));
-		} else {
-			workflowPage.getters
-				.canvasNodeByName('Wait')
-				.within(() => cy.get('.fa-sync-alt').should('not.be.visible'));
-		}
+		workflowPage.getters
+			.canvasNodeByName('Wait')
+			.within(() => cy.get('svg[data-icon=refresh-cw]').should('not.exist'));
 
 		workflowPage.getters
 			.canvasNodeByName('Set')
-			.within(() => cy.get('.fa-check').should('not.exist'));
+			.within(() => cy.get('svg[data-icon=node-success]').should('not.exist'));
 
 		successToast().should('be.visible');
 
@@ -188,29 +181,29 @@ describe('Execution', () => {
 		// Check canvas nodes after 1st step (workflow passed the manual trigger node
 		workflowPage.getters
 			.canvasNodeByName('Webhook')
-			.within(() => cy.get('.fa-check'))
+			.within(() => cy.get('svg[data-icon=node-success]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-check').should('not.exist'));
+			.within(() => cy.get('svg[data-icon=node-success]').should('not.exist'));
 		workflowPage.getters
 			.canvasNodeByName('Wait')
-			.within(() => cy.get('.fa-sync-alt'))
+			.within(() => cy.get('svg[data-icon=refresh-cw]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
-			.within(() => cy.get('.fa-check').should('not.exist'));
+			.within(() => cy.get('svg[data-icon=node-success]').should('not.exist'));
 
 		cy.wait(2000);
 
 		// Check canvas nodes after 2nd step (waiting node finished its execution and the http request node is about to start)
 		workflowPage.getters
 			.canvasNodeByName('Webhook')
-			.within(() => cy.get('.fa-check'))
+			.within(() => cy.get('svg[data-icon=node-success]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Set')
-			.within(() => cy.get('.fa-check'))
+			.within(() => cy.get('svg[data-icon=node-success]'))
 			.should('exist');
 
 		successToast().should('be.visible');
@@ -473,17 +466,6 @@ describe('Execution', () => {
 	});
 
 	it('should send proper payload for node rerun', () => {
-		const mockUserData = [
-			{
-				firstname: 'Lawrence',
-				lastname: 'Kertzmann',
-			},
-		];
-		cy.intercept('GET', 'https://internal.users.n8n.cloud/webhook/random-data-api', {
-			statusCode: 200,
-			body: mockUserData,
-		}).as('getRandomUsers');
-
 		cy.createFixtureWorkflow('Multiple_trigger_node_rerun.json', 'Multiple trigger node rerun');
 
 		workflowPage.getters.zoomToFitButton().click();
@@ -494,19 +476,16 @@ describe('Execution', () => {
 		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters
-			.canvasNodeByName('do something with them')
+			.canvasNodeByName('Process The Data')
 			.findChildByTestId('execute-node-button')
 			.click({ force: true });
 
 		cy.wait('@workflowRun').then((interception) => {
 			expect(interception.request.body).to.have.property('runData').that.is.an('object');
-			const expectedKeys = [
-				'When clicking ‘Test workflow’',
-				'fetch 5 random users',
-				'do something with them',
-			];
 
-			const { runData } = interception.request.body as Record<string, object>;
+			const expectedKeys = ['Start on Schedule', 'Edit Fields', 'Process The Data'];
+
+			const { runData } = interception.request.body;
 			expect(Object.keys(runData)).to.have.lengthOf(expectedKeys.length);
 			expect(runData).to.include.all.keys(expectedKeys);
 		});
@@ -599,11 +578,11 @@ describe('Execution', () => {
 		// Check that the previous nodes executed successfully
 		workflowPage.getters
 			.canvasNodeByName('DebugHelper')
-			.within(() => cy.get('.fa-check'))
+			.within(() => cy.get('svg[data-icon=node-success]'))
 			.should('exist');
 		workflowPage.getters
 			.canvasNodeByName('Filter')
-			.within(() => cy.get('.fa-check'))
+			.within(() => cy.get('svg[data-icon=node-success]'))
 			.should('exist');
 
 		errorToast().should('contain', 'Problem in node ‘Telegram‘');
@@ -617,7 +596,7 @@ describe('Execution', () => {
 
 		workflowPage.getters
 			.canvasNodeByName('Edit Fields')
-			.within(() => cy.get('.fa-check'))
+			.within(() => cy.get('svg[data-icon=node-success]'))
 			.should('exist');
 
 		workflowPage.getters.canvasNodeByName('Edit Fields').dblclick();

@@ -1,49 +1,117 @@
 <script lang="ts" setup>
-import type { FontAwesomeIconProps } from '@fortawesome/vue-fontawesome';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { computed, useCssModule } from 'vue';
 
 import type { IconSize, IconColor } from '@n8n/design-system/types/icon';
 
-import N8nText from '../N8nText';
+import type { IconName } from './icons';
+import { deprecatedIconSet, updatedIconSet } from './icons';
 
 interface IconProps {
-	icon: FontAwesomeIconProps['icon'];
-	size?: IconSize;
-	spin?: FontAwesomeIconProps['spin'];
+	// component supports both deprecated and updated icon set to support project icons
+	// but only allow new icon names to be used in the future
+	icon: IconName;
+	size?: IconSize | number;
+	spin?: boolean;
 	color?: IconColor;
+	strokeWidth?: number | undefined;
 }
 
 defineOptions({ name: 'N8nIcon' });
-withDefaults(defineProps<IconProps>(), {
-	size: 'medium',
+
+const props = withDefaults(defineProps<IconProps>(), {
 	spin: false,
+	size: undefined,
+	color: undefined,
+});
+
+const $style = useCssModule();
+const classes = computed(() => {
+	const applied: string[] = [];
+	if (props.spin) {
+		applied.push('spin');
+	}
+
+	if (props.strokeWidth) {
+		applied.push('strokeWidth');
+	}
+
+	return ['n8n-icon', ...applied.map((c) => $style[c])];
+});
+
+const sizesInPixels: Record<IconSize, number> = {
+	xsmall: 10,
+	small: 12,
+	medium: 14,
+	large: 16,
+	xlarge: 20,
+};
+
+const size = computed((): { height: string; width: string } => {
+	let sizeToApply = '1em';
+	if (props.size) {
+		sizeToApply = `${typeof props.size === 'number' ? props.size : sizesInPixels[props.size]}px`;
+	}
+
+	return {
+		height: sizeToApply,
+		width: sizeToApply,
+	};
+});
+
+const styles = computed(() => {
+	const stylesToApply: Record<string, string> = {};
+
+	if (props.color) {
+		stylesToApply.color = `var(--color-${props.color})`;
+	}
+
+	if (props.strokeWidth) {
+		stylesToApply['--n8n-icon-stroke-width'] = `${props.strokeWidth}px`;
+	}
+
+	return stylesToApply;
 });
 </script>
 
 <template>
-	<N8nText :size="size" :color="color" :compact="true" class="n8n-icon" v-bind="$attrs">
-		<FontAwesomeIcon :icon="icon" :spin="spin" :class="$style[size]" />
-	</N8nText>
+	<Component
+		:is="
+			updatedIconSet[icon as keyof typeof updatedIconSet] ??
+			deprecatedIconSet[icon as keyof typeof deprecatedIconSet]
+		"
+		v-if="
+			updatedIconSet[icon as keyof typeof updatedIconSet] ??
+			deprecatedIconSet[icon as keyof typeof deprecatedIconSet]
+		"
+		:class="classes"
+		aria-hidden="true"
+		focusable="false"
+		role="img"
+		:height="size.height"
+		:width="size.width"
+		:data-icon="props.icon"
+		:style="styles"
+	/>
 </template>
 
 <style lang="scss" module>
-.xlarge {
-	width: var(--font-size-xl) !important;
+.strokeWidth {
+	rect,
+	path {
+		stroke-width: var(--n8n-icon-stroke-width);
+	}
 }
 
-.large {
-	width: var(--font-size-m) !important;
+.spin {
+	animation: spin 1s linear infinite;
 }
 
-.medium {
-	width: var(--font-size-s) !important;
-}
-
-.small {
-	width: var(--font-size-2xs) !important;
-}
-
-.xsmall {
-	width: var(--font-size-3xs) !important;
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
 </style>

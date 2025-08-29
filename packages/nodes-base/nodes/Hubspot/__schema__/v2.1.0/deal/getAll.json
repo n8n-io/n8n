@@ -9,21 +9,7 @@
         },
         "portalId": {
             "type": "integer"
-        },
-        "stateChanges": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "changeFlag": {
-                        "type": "string"
-                    },
-                    "timestamp": {
-                        "type": "integer"
-                    }
-                }
-            }
         }
     },
-    "version": 2
+    "version": 6
 }

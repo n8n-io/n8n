@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import type { Router } from 'vue-router';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -197,15 +197,11 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				workflow_id: createdWorkflow.id,
 			});
 
-			telemetry.track(
-				'User inserted workflow template',
-				{
-					source: 'workflow',
-					template_id: tryToParseNumber(templateId.value),
-					wf_template_repo_session_id: templatesStore.currentSessionId,
-				},
-				{ withPostHog: true },
-			);
+			telemetry.track('User inserted workflow template', {
+				source: 'workflow',
+				template_id: tryToParseNumber(templateId.value),
+				wf_template_repo_session_id: templatesStore.currentSessionId,
+			});
 
 			telemetry.track('User saved new workflow from template', {
 				template_id: tryToParseNumber(templateId.value),

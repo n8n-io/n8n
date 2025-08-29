@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
@@ -9,8 +7,10 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
+import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
@@ -18,7 +18,7 @@ import { N8nLlmTracing } from '../N8nLlmTracing';
 export class LmChatDeepSeek implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'DeepSeek Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatDeepSeek',
 		icon: 'file:deepseek.svg',
 		group: ['transform'],
@@ -41,9 +41,9 @@ export class LmChatDeepSeek implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
@@ -228,11 +228,14 @@ export class LmChatDeepSeek implements INodeType {
 
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			fetchOptions: {
+				dispatcher: getProxyAgent(credentials.url),
+			},
 		};
 
 		const model = new ChatOpenAI({
-			openAIApiKey: credentials.apiKey,
-			modelName,
+			apiKey: credentials.apiKey,
+			model: modelName,
 			...options,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { useI18n } from '@/composables/useI18n';
 import Modal from '@/components/Modal.vue';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	modalName: string;
@@ -16,6 +16,8 @@ const i18n = useI18n();
 			<n8n-text>
 				{{ i18n.baseText('executionsList.debug.paywall.content') }}
 				<br />
+				<br />
+				{{ i18n.baseText('executionsList.debug.paywall.subContent') }}
 				<n8n-link :to="i18n.baseText('executionsList.debug.paywall.link.url')" new-window>
 					{{ i18n.baseText('executionsList.debug.paywall.link.text') }}
 				</n8n-link>

@@ -1,4 +1,4 @@
-import { isObject } from 'lodash-es';
+import isObject from 'lodash/isObject';
 import type { AssignmentValue, IDataObject } from 'n8n-workflow';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';

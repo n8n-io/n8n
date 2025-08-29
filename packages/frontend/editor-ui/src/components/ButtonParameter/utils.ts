@@ -5,7 +5,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { executionDataToJson } from '@/utils/nodeTypesUtils';
 import { generateCodeForPrompt } from '@/api/ai';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { type AskAiRequest } from '@/types/assistant.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { format } from 'prettier';
@@ -19,12 +19,11 @@ export type TextareaRowData = {
 
 export function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
-	const { getCurrentWorkflow, getNodeByName } = useWorkflowsStore();
-	const workflow = getCurrentWorkflow();
+	const { workflowObject, getNodeByName } = useWorkflowsStore();
 
-	if (!activeNode || !workflow) return [];
+	if (!activeNode || !workflowObject) return [];
 
-	return workflow
+	return workflowObject
 		.getParentNodesByDepth(activeNode?.name)
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
@@ -207,7 +206,7 @@ export async function generateCodeForAiTransform(prompt: string, path: string, r
 				code = generatedCode;
 				break;
 			} catch (e) {
-				if (e.message.includes('maximum context length')) {
+				if (typeof e.message === 'string' && e.message.includes('maximum context length')) {
 					reducePayloadSizeOrThrow(payload, e);
 					continue;
 				}

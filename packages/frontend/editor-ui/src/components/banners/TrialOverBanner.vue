@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@n8n/i18n';
 
 function onUpdatePlanClick() {
 	void usePageRedirectionHelper().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
@@ -9,7 +9,7 @@ function onUpdatePlanClick() {
 </script>
 
 <template>
-	<BaseBanner custom-icon="info-circle" theme="warning" name="TRIAL_OVER">
+	<BaseBanner custom-icon="info" theme="warning" name="TRIAL_OVER">
 		<template #mainContent>
 			<span>{{ locale.baseText('banners.trialOver.message') }}</span>
 		</template>

@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import type {
 	Workflow,
 	INode,
@@ -140,6 +140,10 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			result.data,
 		);
 		return { ...result, data };
+	}
+
+	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {
+		return await this.additionalData.getRunExecutionData(executionId);
 	}
 
 	protected getInputItems(inputIndex: number, connectionType: NodeConnectionType) {

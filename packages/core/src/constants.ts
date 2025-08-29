@@ -1,8 +1,3 @@
-const { NODE_ENV } = process.env;
-export const inProduction = NODE_ENV === 'production';
-export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
-export const inTest = NODE_ENV === 'test';
-
 export const CUSTOM_EXTENSION_ENV = 'N8N_CUSTOM_EXTENSIONS';
 export const PLACEHOLDER_EMPTY_EXECUTION_ID = '__UNKNOWN__';
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
@@ -24,3 +19,5 @@ export const CREDENTIAL_ERRORS = {
 	INVALID_JSON: 'Decrypted credentials data is not valid JSON.',
 	INVALID_DATA: 'Credentials data is not in a valid format.',
 };
+
+export const WAITING_TOKEN_QUERY_PARAM = 'signature';

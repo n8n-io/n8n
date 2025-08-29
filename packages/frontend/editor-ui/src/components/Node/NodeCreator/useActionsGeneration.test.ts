@@ -1,5 +1,10 @@
 import { NodeConnectionTypes, type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
 import { useActionsGenerator } from './composables/useActionsGeneration';
+import { usePostHog } from '@/stores/posthog.store';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+
+let posthogStore: ReturnType<typeof usePostHog>;
 
 describe('useActionsGenerator', () => {
 	const { generateMergedNodesAndActions } = useActionsGenerator();
@@ -18,6 +23,16 @@ describe('useActionsGenerator', () => {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [],
 	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+
+		const pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
+
+		posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
+	});
 
 	describe('App actions for resource category', () => {
 		const resourcePropertyWithUser: INodeProperties = {
@@ -288,7 +303,6 @@ describe('useActionsGenerator', () => {
 						noDataExpression: true,
 						displayOptions: {
 							show: {
-								// eslint-disable-next-line @typescript-eslint/naming-convention
 								'@version': [1],
 								resource: ['user'],
 							},
@@ -309,7 +323,6 @@ describe('useActionsGenerator', () => {
 						noDataExpression: true,
 						displayOptions: {
 							show: {
-								// eslint-disable-next-line @typescript-eslint/naming-convention
 								'@version': [2],
 								resource: ['user'],
 							},
@@ -354,7 +367,6 @@ describe('useActionsGenerator', () => {
 						noDataExpression: true,
 						displayOptions: {
 							show: {
-								// eslint-disable-next-line @typescript-eslint/naming-convention
 								'@version': [1, 2],
 								resource: ['user'],
 							},

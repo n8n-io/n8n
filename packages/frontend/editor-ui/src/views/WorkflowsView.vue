@@ -1,84 +1,96 @@
 <script lang="ts" setup>
-import { computed, onMounted, watch, ref, onBeforeUnmount } from 'vue';
+import Draggable from '@/components/Draggable.vue';
+import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import type {
-	Resource,
-	BaseFilters,
-	FolderResource,
-	WorkflowResource,
-} from '@/components/layouts/ResourcesListLayout.vue';
+import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
-import Draggable from '@/components/Draggable.vue';
+import { useDebounce } from '@/composables/useDebounce';
+import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import type { DragTarget, DropTarget } from '@/composables/useFolders';
+import { useFolders } from '@/composables/useFolders';
+import { useMessage } from '@/composables/useMessage';
+import { useProjectPages } from '@/composables/useProjectPages';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
+import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import {
-	EASY_AI_WORKFLOW_EXPERIMENT,
-	EnterpriseEditionFeature,
-	VIEWS,
-	DEFAULT_WORKFLOW_PAGE_SIZE,
-	MODAL_CONFIRM,
 	COMMUNITY_PLUS_ENROLLMENT_MODAL,
+	DEFAULT_WORKFLOW_PAGE_SIZE,
+	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
+	VIEWS,
 } from '@/constants';
+import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
+import SuggestedWorkflowCard from '@/experiments/personalizedTemplates/components/SuggestedWorkflowCard.vue';
+import SuggestedWorkflows from '@/experiments/personalizedTemplates/components/SuggestedWorkflows.vue';
+import { usePersonalizedTemplatesStore } from '@/experiments/personalizedTemplates/stores/personalizedTemplates.store';
+import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
+import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
+import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
+import { useInsightsStore } from '@/features/insights/insights.store';
 import type {
-	IUser,
-	UserAction,
-	WorkflowListResource,
-	WorkflowListItem,
-	FolderPathItem,
+	BaseFilters,
 	FolderListItem,
+	FolderResource,
+	Resource,
+	SortingAndPaginationUpdates,
+	UserAction,
+	WorkflowListItem,
+	WorkflowListResource,
+	WorkflowResource,
 } from '@/Interface';
-import { useUIStore } from '@/stores/ui.store';
+import { useFoldersStore } from '@/stores/folders.store';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useProjectsStore } from '@/stores/projects.store';
-import { getResourcePermissions } from '@/permissions';
-import { usePostHog } from '@/stores/posthog.store';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useI18n } from '@/composables/useI18n';
-import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { type Project, type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
+import { getEasyAiWorkflowJson } from '@/utils/templates/workflowSamples';
 import {
+	isExtraTemplateLinksExperimentEnabled,
+	TemplateClickSource,
+	trackTemplatesClick,
+} from '@/utils/experiments';
+import {
+	N8nButton,
 	N8nCard,
 	N8nHeading,
 	N8nIcon,
+	N8nInlineTextEdit,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
-import { getEasyAiWorkflowJson } from '@/utils/easyAiWorkflowUtils';
-import { useDebounce } from '@/composables/useDebounce';
-import { createEventBus } from '@n8n/utils/event-bus';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { type ProjectSharingData, ProjectTypes } from '@/types/projects.types';
-import { FOLDER_LIST_ITEM_ACTIONS } from '@/components/Folders/constants';
-import { debounce } from 'lodash-es';
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { useFoldersStore } from '@/stores/folders.store';
-import type { DragTarget, DropTarget } from '@/composables/useFolders';
-import { useFolders } from '@/composables/useFolders';
-import { useUsageStore } from '@/stores/usage.store';
-import { useInsightsStore } from '@/features/insights/insights.store';
-import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
-import { useOverview } from '@/composables/useOverview';
-import { PROJECT_ROOT } from 'n8n-workflow';
+import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
+import { createEventBus } from '@n8n/utils/event-bus';
+import debounce from 'lodash/debounce';
+import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
 const SEARCH_DEBOUNCE_TIME = 300;
 const FILTERS_DEBOUNCE_TIME = 100;
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
+	showArchived: boolean;
 	tags: string[];
 }
 
 const StatusFilter = {
+	ALL: '',
 	ACTIVE: 'active',
 	DEACTIVATED: 'deactivated',
-	ALL: '',
 };
 
 /** Maps sort values from the ResourcesListLayout component to values expected by workflows endpoint */
@@ -95,12 +107,12 @@ const router = useRouter();
 const message = useMessage();
 const toast = useToast();
 const folderHelpers = useFolders();
+const calloutHelpers = useCalloutHelpers();
 
 const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const uiStore = useUIStore();
@@ -108,17 +120,25 @@ const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
 const usageStore = useUsageStore();
 const insightsStore = useInsightsStore();
+const templatesStore = useTemplatesStore();
+const aiStarterTemplatesStore = useAITemplatesStarterCollectionStore();
+const personalizedTemplatesStore = usePersonalizedTemplatesStore();
+const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
+const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
-const overview = useOverview();
+const projectPages = useProjectPages();
 
-const loading = ref(false);
+// We render component in a loading state until initialization is done
+// This will prevent any additional workflow fetches while initializing
+const loading = ref(true);
 const breadcrumbsLoading = ref(false);
 const filters = ref<Filters>({
 	search: '',
 	homeProject: '',
 	status: StatusFilter.ALL,
+	showArchived: false,
 	tags: [],
 });
 
@@ -143,7 +163,7 @@ const showCardsBadge = ref(false);
  * 'onlyAvailableOn' is used to specify where the action should be available, if not specified it will be available on both
  */
 const folderActions = computed<
-	Array<UserAction & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>
+	Array<UserAction<IUser> & { onlyAvailableOn?: 'mainBreadcrumbs' | 'card' }>
 >(() => [
 	{
 		label: i18n.baseText('generic.open'),
@@ -178,20 +198,21 @@ const folderActions = computed<
 	},
 ]);
 
-const folderCardActions = computed(() =>
-	folderActions.value.filter(
-		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'card',
-	),
+const folderCardActions = computed(
+	(): Array<UserAction<IUser>> =>
+		folderActions.value.filter(
+			(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'card',
+		),
 );
 
-const mainBreadcrumbsActions = computed(() =>
-	folderActions.value.filter(
-		(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'mainBreadcrumbs',
-	),
+const mainBreadcrumbsActions = computed(
+	(): Array<UserAction<IUser>> =>
+		folderActions.value.filter(
+			(action) => !action.onlyAvailableOn || action.onlyAvailableOn === 'mainBreadcrumbs',
+		),
 );
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
-const isOverviewPage = computed(() => route.name === VIEWS.WORKFLOWS);
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -206,11 +227,17 @@ const teamProjectsEnabled = computed(() => {
 });
 
 const showFolders = computed(() => {
-	return foldersEnabled.value && !isOverviewPage.value;
+	return foldersEnabled.value && !projectPages.isOverviewSubPage && !projectPages.isSharedSubPage;
 });
 
 const currentFolder = computed(() => {
 	return currentFolderId.value ? foldersStore.breadcrumbsCache[currentFolderId.value] : null;
+});
+
+const currentFolderParent = computed(() => {
+	return currentFolder.value?.parentFolder
+		? foldersStore.breadcrumbsCache[currentFolder.value.parentFolder]
+		: null;
 });
 
 const isDragging = computed(() => {
@@ -257,6 +284,10 @@ const currentParentName = computed(() => {
 	return projectName.value;
 });
 
+const personalProject = computed<Project | null>(() => {
+	return projectsStore.personalProject;
+});
+
 const workflowListResources = computed<Resource[]>(() => {
 	const resources: Resource[] = (workflowsAndFolders.value || []).map((resource) => {
 		if (resource.resource === 'folder') {
@@ -267,17 +298,17 @@ const workflowListResources = computed<Resource[]>(() => {
 				createdAt: resource.createdAt.toString(),
 				updatedAt: resource.updatedAt.toString(),
 				homeProject: resource.homeProject,
-				sharedWithProjects: resource.sharedWithProjects,
 				workflowCount: resource.workflowCount,
 				subFolderCount: resource.subFolderCount,
 				parentFolder: resource.parentFolder,
-			} as FolderResource;
+			} satisfies FolderResource;
 		} else {
 			return {
 				resourceType: 'workflow',
 				id: resource.id,
 				name: resource.name,
 				active: resource.active ?? false,
+				isArchived: resource.isArchived,
 				updatedAt: resource.updatedAt.toString(),
 				createdAt: resource.createdAt.toString(),
 				homeProject: resource.homeProject,
@@ -286,7 +317,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
-			} as WorkflowResource;
+			} satisfies WorkflowResource;
 		}
 	});
 	return resources;
@@ -308,16 +339,31 @@ const statusFilterOptions = computed(() => [
 ]);
 
 const showEasyAIWorkflowCallout = computed(() => {
-	const isEasyAIWorkflowExperimentEnabled =
-		posthogStore.getVariant(EASY_AI_WORKFLOW_EXPERIMENT.name) ===
-		EASY_AI_WORKFLOW_EXPERIMENT.variant;
 	const easyAIWorkflowOnboardingDone = usersStore.isEasyAIWorkflowOnboardingDone;
-	return isEasyAIWorkflowExperimentEnabled && !easyAIWorkflowOnboardingDone;
+	return !easyAIWorkflowOnboardingDone;
+});
+
+const templatesCardEnabled = computed(() => {
+	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
 });
 
 const projectPermissions = computed(() => {
 	return getResourcePermissions(
-		projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
+		projectsStore.currentProject?.scopes ?? personalProject.value?.scopes,
+	);
+});
+
+const showReadyToRunWorkflowsCallout = computed(() => {
+	const isEnabled = readyToRunWorkflowsStore.isFeatureEnabled;
+	const isDismissed = readyToRunWorkflowsStore.isCalloutDismissed;
+
+	return (
+		isEnabled &&
+		!isDismissed &&
+		!loading.value &&
+		!readOnlyEnv.value &&
+		(projectPages.isOverviewSubPage ||
+			(hasPermissionToCreateFolders.value && hasPermissionToCreateWorkflows.value))
 	);
 });
 
@@ -335,7 +381,19 @@ const hasFilters = computed(() => {
 	return !!(
 		filters.value.search ||
 		filters.value.status !== StatusFilter.ALL ||
+		filters.value.showArchived ||
 		filters.value.tags.length
+	);
+});
+
+// When there are no visible results but the project contains archived workflows,
+// inform the user how to reveal them
+const showArchivedOnlyHint = computed(() => {
+	return (
+		workflowsAndFolders.value.length === 0 &&
+		!hasFilters.value &&
+		!filters.value.showArchived &&
+		foldersStore.totalWorkflowCount > 0
 	);
 });
 
@@ -349,22 +407,50 @@ const showRegisteredCommunityCTA = computed(
 	() => isSelfHostedDeployment.value && !foldersEnabled.value && canUserRegisterCommunityPlus.value,
 );
 
+const showAIStarterCollectionCallout = computed(() => {
+	return (
+		!loading.value &&
+		aiStarterTemplatesStore.isFeatureEnabled &&
+		!aiStarterTemplatesStore.calloutDismissed &&
+		!readOnlyEnv.value &&
+		// We want to show the callout only if the user has permissions to create folders and workflows
+		// but also on the overview page
+		(projectPages.isOverviewSubPage ||
+			(hasPermissionToCreateFolders.value && hasPermissionToCreateWorkflows.value))
+	);
+});
+
+const showPrebuiltAgentsCallout = computed(() => {
+	return (
+		!loading.value &&
+		calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+		!calloutHelpers.isCalloutDismissed('preBuiltAgentsModalCallout') &&
+		!readOnlyEnv.value &&
+		// We want to show the callout only if the user has permissions to create folders and workflows
+		// but also on the overview page
+		(projectPages.isOverviewSubPage ||
+			(hasPermissionToCreateFolders.value && hasPermissionToCreateWorkflows.value))
+	);
+});
+
+const showPersonalizedTemplates = computed(
+	() => !loading.value && personalizedTemplatesStore.isFeatureEnabled(),
+);
+
 /**
  * WATCHERS, STORE SUBSCRIPTIONS AND EVENT BUS HANDLERS
  */
 
-watch(
-	() => route.params?.projectId,
-	async () => {
-		await initialize();
-	},
-);
+watch([() => route.params?.projectId, () => route.name], async () => {
+	loading.value = true;
+});
 
 watch(
 	() => route.params?.folderId,
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
 		filters.value.search = '';
+		saveFiltersOnQueryString();
 		await fetchWorkflows();
 	},
 );
@@ -374,7 +460,7 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
-const onWorkflowDeleted = async () => {
+const refreshWorkflows = async () => {
 	await Promise.all([
 		fetchWorkflows(),
 		foldersStore.fetchTotalWorkflowsAndFoldersCount(route.params.projectId as string | undefined),
@@ -408,6 +494,18 @@ const onFolderDeleted = async (payload: {
 	});
 };
 
+const showInsights = computed(() => {
+	return (
+		projectPages.isOverviewSubPage &&
+		insightsStore.isSummaryEnabled &&
+		(!personalizedTemplatesV2Store.isFeatureEnabled() || workflowListResources.value.length > 0)
+	);
+});
+
+const showTemplateRecommendationV2 = computed(() => {
+	return personalizedTemplatesV2Store.isFeatureEnabled() && !loading.value;
+});
+
 /**
  * LIFE-CYCLE HOOKS
  */
@@ -420,7 +518,9 @@ onMounted(async () => {
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.on('folder-deleted', onFolderDeleted);
 	workflowListEventBus.on('folder-moved', moveFolder);
+	workflowListEventBus.on('folder-transferred', onFolderTransferred);
 	workflowListEventBus.on('workflow-moved', onWorkflowMoved);
+	workflowListEventBus.on('workflow-transferred', onWorkflowTransferred);
 });
 
 onBeforeUnmount(() => {
@@ -428,7 +528,9 @@ onBeforeUnmount(() => {
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);
 	workflowListEventBus.off('folder-moved', moveFolder);
+	workflowListEventBus.off('folder-transferred', onFolderTransferred);
 	workflowListEventBus.off('workflow-moved', onWorkflowMoved);
+	workflowListEventBus.off('workflow-transferred', onWorkflowTransferred);
 });
 
 /**
@@ -473,10 +575,13 @@ const fetchWorkflows = async () => {
 	const tags = filters.value.tags.length
 		? filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name)
 		: [];
+
 	const activeFilter =
 		filters.value.status === StatusFilter.ALL
 			? undefined
 			: filters.value.status === StatusFilter.ACTIVE;
+
+	const archivedFilter = filters.value.showArchived ? undefined : false;
 
 	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
 	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
@@ -490,12 +595,12 @@ const fetchWorkflows = async () => {
 			{
 				name: filters.value.search || undefined,
 				active: activeFilter,
+				isArchived: archivedFilter,
 				tags: tags.length ? tags : undefined,
-				parentFolderId:
-					parentFolder ??
-					(isOverviewPage.value ? undefined : filters?.value.search ? undefined : PROJECT_ROOT), // Sending 0 will only show one level of folders
+				parentFolderId: getParentFolderId(parentFolder),
 			},
 			fetchFolders,
+			projectPages.isSharedSubPage,
 		);
 
 		foldersStore.cacheFolders(
@@ -504,6 +609,7 @@ const fetchWorkflows = async () => {
 				.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
 		);
 
+		// This is for the case when user lands straight on a folder page
 		const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder ?? ''] !== undefined;
 		const needToFetchFolderPath = parentFolder && !isCurrentFolderCached && routeProjectId;
 
@@ -516,7 +622,8 @@ const fetchWorkflows = async () => {
 		workflowsAndFolders.value = fetchedResources;
 
 		// Toggle ownership cards visibility only after we have fetched the workflows
-		showCardsBadge.value = isOverviewPage.value || filters.value.search !== '';
+		showCardsBadge.value =
+			projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters.value.search !== '';
 
 		return fetchedResources;
 	} catch (error) {
@@ -533,23 +640,31 @@ const fetchWorkflows = async () => {
 	}
 };
 
-// Filter and sort methods
-
-const onSortUpdated = async (sort: string) => {
-	currentSort.value =
-		WORKFLOWS_SORT_MAP[sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
-	if (currentSort.value !== 'updatedAt:desc') {
-		void router.replace({ query: { ...route.query, sort } });
-	} else {
-		void router.replace({ query: { ...route.query, sort: undefined } });
+/**
+ * Get parent folder id for filtering requests
+ */
+const getParentFolderId = (routeId?: string) => {
+	// If parentFolder is defined in route, use it
+	if (routeId !== null && routeId !== undefined) {
+		return routeId;
 	}
-	await fetchWorkflows();
+
+	// If we're on overview/shared page or searching, don't filter by parent folder
+	if (projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters?.value.search) {
+		return undefined;
+	}
+
+	// Default: 0 will only show one level of folders
+	return PROJECT_ROOT;
 };
 
+// Filter and sort methods
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
-	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+	if (!loading.value) {
+		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+	}
 };
 
 const onSearchUpdated = async (search: string) => {
@@ -563,14 +678,23 @@ const onSearchUpdated = async (search: string) => {
 	}
 };
 
-const setCurrentPage = async (page: number) => {
-	currentPage.value = page;
-	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
-};
-
-const setPageSize = async (size: number) => {
-	pageSize.value = size;
-	await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
+	if (payload.page) {
+		currentPage.value = payload.page;
+	}
+	if (payload.pageSize) {
+		pageSize.value = payload.pageSize;
+	}
+	if (payload.sort) {
+		currentSort.value =
+			WORKFLOWS_SORT_MAP[payload.sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
+	}
+	// Don't fetch workflows if we are loading
+	// This will prevent unnecessary API calls when changing sort and pagination from url/local storage
+	// when switching between projects
+	if (!loading.value) {
+		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
+	}
 };
 
 const onClickTag = async (tagId: string) => {
@@ -601,6 +725,12 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.status;
 	}
 
+	if (filters.value.showArchived) {
+		currentQuery.showArchived = 'true';
+	} else {
+		delete currentQuery.showArchived;
+	}
+
 	if (filters.value.tags.length) {
 		currentQuery.tags = filters.value.tags.join(',');
 	} else {
@@ -620,7 +750,7 @@ const saveFiltersOnQueryString = () => {
 
 const setFiltersFromQueryString = async () => {
 	const newQuery: LocationQueryRaw = { ...route.query };
-	const { tags, status, search, homeProject, sort } = route.query ?? {};
+	const { tags, status, search, homeProject, sort, showArchived } = route.query ?? {};
 
 	// Helper to check if string value is not empty
 	const isValidString = (value: unknown): value is string =>
@@ -665,8 +795,7 @@ const setFiltersFromQueryString = async () => {
 	}
 
 	// Handle status
-	const validStatusValues = ['true', 'false'];
-	if (isValidString(status) && validStatusValues.includes(status)) {
+	if (isValidString(status)) {
 		newQuery.status = status;
 		filters.value.status = status === 'true' ? StatusFilter.ACTIVE : StatusFilter.DEACTIVATED;
 	} else {
@@ -680,6 +809,14 @@ const setFiltersFromQueryString = async () => {
 		currentSort.value = newSort;
 	} else {
 		delete newQuery.sort;
+	}
+
+	if (isValidString(showArchived)) {
+		newQuery.showArchived = showArchived;
+		filters.value.showArchived = showArchived === 'true';
+	} else {
+		delete newQuery.showArchived;
+		filters.value.showArchived = false;
 	}
 
 	void router.replace({ query: newQuery });
@@ -700,6 +837,17 @@ const addWorkflow = () => {
 	trackEmptyCardClick('blank');
 };
 
+const openTemplatesRepository = async () => {
+	trackTemplatesClick(TemplateClickSource.emptyInstanceCard);
+
+	if (templatesStore.hasCustomTemplatesHost) {
+		await router.push({ name: VIEWS.TEMPLATES });
+		return;
+	}
+
+	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
+};
+
 const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
 	telemetry.track('User clicked empty page option', {
 		option,
@@ -710,15 +858,107 @@ function isValidProjectId(projectId: string) {
 	return projectsStore.availableProjects.some((project) => project.id === projectId);
 }
 
+const createAIStarterWorkflows = async (source: 'card' | 'callout') => {
+	try {
+		const projectId = projectPages.isOverviewSubPage
+			? personalProject.value?.id
+			: (route.params.projectId as string);
+		if (typeof projectId !== 'string') {
+			toast.showError(new Error(), i18n.baseText('workflows.ai.starter.collection.error'));
+			return;
+		}
+		const newFolder = await aiStarterTemplatesStore.createStarterWorkflows(
+			projectId,
+			currentFolderId.value ?? undefined,
+		);
+		// If we are on the overview page, navigate to the new folder
+		if (projectPages.isOverviewSubPage) {
+			await router.push({
+				name: VIEWS.PROJECTS_FOLDERS,
+				params: { projectId, folderId: newFolder.id },
+			});
+		} else {
+			// If we are in a specific folder, just add the new folder to the list
+			workflowsAndFolders.value.unshift({
+				id: newFolder.id,
+				name: newFolder.name,
+				resource: 'folder',
+				createdAt: newFolder.createdAt,
+				updatedAt: newFolder.updatedAt,
+				subFolderCount: 0,
+				workflowCount: 3,
+				parentFolder: newFolder.parentFolder,
+			});
+		}
+		aiStarterTemplatesStore.trackUserCreatedStarterCollection(source);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflows.ai.starter.collection.error'));
+		return;
+	}
+};
+
+const openPrebuiltAgentsModal = (source: 'workflowsEmptyState' | 'workflowsList') => {
+	void calloutHelpers.openPreBuiltAgentsModal(source);
+};
+
+const handleCreateReadyToRunWorkflows = async (source: 'card' | 'callout') => {
+	try {
+		const projectId = projectPages.isOverviewSubPage
+			? personalProject.value?.id
+			: (route.params.projectId as string);
+		if (typeof projectId !== 'string') {
+			toast.showError(new Error(), i18n.baseText('workflows.readyToRunWorkflows.error'));
+			return;
+		}
+		const newFolder = await readyToRunWorkflowsStore.createWorkflows(
+			projectId,
+			currentFolderId.value ?? undefined,
+		);
+		readyToRunWorkflowsStore.trackCreateWorkflows(source);
+
+		// If we are on the overview page, navigate to the new folder
+		if (projectPages.isOverviewSubPage) {
+			await router.push({
+				name: VIEWS.PROJECTS_FOLDERS,
+				params: { projectId, folderId: newFolder.id },
+			});
+		} else {
+			// If we are in a specific folder, just add the new folder to the list
+			workflowsAndFolders.value.unshift({
+				id: newFolder.id,
+				name: newFolder.name,
+				resource: 'folder',
+				createdAt: newFolder.createdAt,
+				updatedAt: newFolder.updatedAt,
+				subFolderCount: 0,
+				workflowCount: 4,
+				parentFolder: newFolder.parentFolder,
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflows.readyToRunWorkflows.error'));
+		return;
+	}
+};
+
+const dismissStarterCollectionCallout = () => {
+	aiStarterTemplatesStore.dismissCallout();
+	aiStarterTemplatesStore.trackUserDismissedCallout();
+};
+
+const dismissEasyAICallout = () => {
+	easyAICalloutVisible.value = false;
+};
+
+const dismissPreBuiltAgentsCallout = () => {
+	void calloutHelpers.dismissCallout('preBuiltAgentsModalCallout');
+};
+
 const openAIWorkflow = async (source: string) => {
 	dismissEasyAICallout();
-	telemetry.track(
-		'User clicked test AI workflow',
-		{
-			source,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User clicked test AI workflow', {
+		source,
+	});
 
 	const easyAiWorkflowJson = getEasyAiWorkflowJson();
 
@@ -729,8 +969,14 @@ const openAIWorkflow = async (source: string) => {
 	});
 };
 
-const dismissEasyAICallout = () => {
-	easyAICalloutVisible.value = false;
+const onShowArchived = async () => {
+	filters.value.showArchived = true;
+	await onFiltersUpdated();
+};
+
+const handleDismissReadyToRunCallout = () => {
+	readyToRunWorkflowsStore.dismissCallout();
+	readyToRunWorkflowsStore.trackDismissCallout();
 };
 
 const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
@@ -857,63 +1103,6 @@ const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DropT
 
 // Breadcrumbs methods
 
-/**
- * Breadcrumbs: Calculate visible and hidden items for both main breadcrumbs and card breadcrumbs
- * We do this here and pass to each component to avoid recalculating in each card
- */
-const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
-	if (!currentFolder.value) return [];
-	const items: FolderPathItem[] = [];
-	const parent = foldersStore.getCachedFolder(currentFolder.value.parentFolder ?? '');
-	if (parent) {
-		items.push({
-			id: parent.id,
-			label: parent.name,
-			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
-			parentFolder: parent.parentFolder,
-		});
-	}
-	items.push({
-		id: currentFolder.value.id,
-		label: currentFolder.value.name,
-		parentFolder: parent?.parentFolder,
-	});
-	return items;
-});
-
-const hiddenBreadcrumbsItems = computed<FolderPathItem[]>(() => {
-	const lastVisibleParent: FolderPathItem =
-		visibleBreadcrumbsItems.value[visibleBreadcrumbsItems.value.length - 1];
-	if (!lastVisibleParent) return [];
-	const items: FolderPathItem[] = [];
-	// Go through all the parent folders and add them to the hidden items
-	let parentFolder = lastVisibleParent.parentFolder;
-	while (parentFolder) {
-		const parent = foldersStore.getCachedFolder(parentFolder);
-
-		if (!parent) break;
-		items.unshift({
-			id: parent.id,
-			label: parent.name,
-			href: `/projects/${route.params.projectId}/folders/${parent.id}/workflows`,
-			parentFolder: parent.parentFolder,
-		});
-		parentFolder = parent.parentFolder;
-	}
-	return items;
-});
-
-/**
- * Main breadcrumbs items that show on top of the list
- * These show path to the current folder with up to 2 parents visible
- */
-const mainBreadcrumbs = computed(() => {
-	return {
-		visibleItems: visibleBreadcrumbsItems.value,
-		hiddenItems: hiddenBreadcrumbsItems.value,
-	};
-});
-
 const onBreadcrumbItemClick = (item: PathItem) => {
 	if (item.href) {
 		loading.value = true;
@@ -958,8 +1147,7 @@ const onBreadCrumbsAction = async (action: string) => {
 			);
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
-			if (!route.params.folderId) return;
-			await renameFolder(route.params.folderId as string);
+			onNameToggle();
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.MOVE:
 			if (!currentFolder.value) return;
@@ -1090,7 +1278,6 @@ const createFolder = async (
 							createdAt: newFolder.createdAt,
 							updatedAt: newFolder.updatedAt,
 							homeProject: projectsStore.currentProject as ProjectSharingData,
-							sharedWithProjects: [],
 							workflowCount: 0,
 							subFolderCount: 0,
 						},
@@ -1188,11 +1375,12 @@ const moveFolder = async (payload: {
 	};
 }) => {
 	if (!route.params.projectId) return;
+
 	try {
 		await foldersStore.moveFolder(
 			route.params.projectId as string,
 			payload.folder.id,
-			payload.newParent.type === 'project' ? '0' : payload.newParent.id,
+			payload.newParent.type === 'folder' ? payload.newParent.id : '0',
 		);
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
 
@@ -1200,7 +1388,7 @@ const moveFolder = async (payload: {
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: {
 				projectId: route.params.projectId,
-				folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
+				folderId: payload.newParent.type === 'folder' ? payload.newParent.id : undefined,
 			},
 		}).href;
 		if (isCurrentFolder && !payload.options?.skipNavigation) {
@@ -1211,7 +1399,10 @@ const moveFolder = async (payload: {
 			toast.showToast({
 				title: i18n.baseText('folders.move.success.title'),
 				message: i18n.baseText('folders.move.success.message', {
-					interpolate: { folderName: payload.folder.name, newFolderName: payload.newParent.name },
+					interpolate: {
+						folderName: payload.folder.name,
+						newFolderName: payload.newParent.name,
+					},
 				}),
 				onClick: (event: MouseEvent | undefined) => {
 					if (event?.target instanceof HTMLAnchorElement) {
@@ -1230,10 +1421,94 @@ const moveFolder = async (payload: {
 	}
 };
 
+const onFolderTransferred = async (payload: {
+	source: {
+		projectId: string;
+		folder: { id: string; name: string };
+	};
+	destination: {
+		projectId: string;
+		parentFolder: { id: string | undefined; name: string };
+		canAccess: boolean;
+	};
+	shareCredentials?: string[];
+}) => {
+	try {
+		await foldersStore.moveFolderToProject(
+			payload.source.projectId,
+			payload.source.folder.id,
+			payload.destination.projectId,
+			payload.destination.parentFolder.id,
+			payload.shareCredentials,
+		);
+
+		const isCurrentFolder = currentFolderId.value === payload.source.folder.id;
+		const newFolderURL = router.resolve({
+			name: VIEWS.PROJECTS_FOLDERS,
+			params: {
+				projectId: payload.destination.canAccess
+					? payload.destination.projectId
+					: payload.source.projectId,
+				folderId: payload.destination.canAccess ? payload.source.folder.id : undefined,
+			},
+		}).href;
+
+		if (isCurrentFolder) {
+			if (payload.destination.canAccess) {
+				// If we just moved the current folder and can access the destination navigate there
+				void router.push(newFolderURL);
+			} else {
+				// Otherwise navigate to the workflows page of the source project
+				void router.push({
+					name: VIEWS.PROJECTS_WORKFLOWS,
+					params: {
+						projectId: payload.source.projectId,
+					},
+				});
+			}
+		} else {
+			await refreshWorkflows();
+
+			if (payload.destination.canAccess) {
+				toast.showToast({
+					title: i18n.baseText('folders.move.success.title'),
+					message: i18n.baseText('folders.move.success.message', {
+						interpolate: {
+							folderName: payload.source.folder.name,
+							newFolderName: payload.destination.parentFolder.name,
+						},
+					}),
+					onClick: (event: MouseEvent | undefined) => {
+						if (event?.target instanceof HTMLAnchorElement) {
+							event.preventDefault();
+							void router.push(newFolderURL);
+						}
+					},
+					type: 'success',
+				});
+			} else {
+				toast.showToast({
+					title: i18n.baseText('folders.move.success.title'),
+					message: i18n.baseText('folders.move.success.messageNoAccess', {
+						interpolate: {
+							folderName: payload.source.folder.name,
+							newFolderName: payload.destination.parentFolder.name,
+						},
+					}),
+					type: 'success',
+				});
+			}
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('folders.move.error.title'));
+	}
+};
+
 const moveWorkflowToFolder = async (payload: {
 	id: string;
 	name: string;
 	parentFolderId?: string;
+	sharedWithProjects?: ProjectSharingData[];
 }) => {
 	if (showRegisteredCommunityCTA.value) {
 		uiStore.openModalWithData({
@@ -1244,9 +1519,77 @@ const moveWorkflowToFolder = async (payload: {
 	}
 	uiStore.openMoveToFolderModal(
 		'workflow',
-		{ id: payload.id, name: payload.name, parentFolderId: payload.parentFolderId },
+		{
+			id: payload.id,
+			name: payload.name,
+			parentFolderId: payload.parentFolderId,
+			sharedWithProjects: payload.sharedWithProjects,
+		},
 		workflowListEventBus,
 	);
+};
+
+const onWorkflowTransferred = async (payload: {
+	source: {
+		projectId: string;
+		workflow: { id: string; name: string };
+	};
+	destination: {
+		projectId: string;
+		parentFolder: { id: string | undefined; name: string };
+		canAccess: boolean;
+	};
+	shareCredentials?: string[];
+}) => {
+	try {
+		await projectsStore.moveResourceToProject(
+			'workflow',
+			payload.source.workflow.id,
+			payload.destination.projectId,
+			payload.destination.parentFolder.id,
+			payload.shareCredentials,
+		);
+
+		await refreshWorkflows();
+
+		if (payload.destination.canAccess) {
+			toast.showToast({
+				title: i18n.baseText('folders.move.workflow.success.title'),
+				message: i18n.baseText('folders.move.workflow.success.message', {
+					interpolate: {
+						workflowName: payload.source.workflow.name,
+						newFolderName: payload.destination.parentFolder.name,
+					},
+				}),
+				onClick: (event: MouseEvent | undefined) => {
+					if (event?.target instanceof HTMLAnchorElement) {
+						event.preventDefault();
+						void router.push({
+							name: VIEWS.PROJECTS_FOLDERS,
+							params: {
+								projectId: payload.destination.projectId,
+								folderId: payload.destination.parentFolder.id,
+							},
+						});
+					}
+				},
+				type: 'success',
+			});
+		} else {
+			toast.showToast({
+				title: i18n.baseText('folders.move.workflow.success.title'),
+				message: i18n.baseText('folders.move.workflow.success.messageNoAccess', {
+					interpolate: {
+						workflowName: payload.source.workflow.name,
+						newFolderName: payload.destination.parentFolder.name,
+					},
+				}),
+				type: 'success',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
+	}
 };
 
 const onWorkflowMoved = async (payload: {
@@ -1262,14 +1605,14 @@ const onWorkflowMoved = async (payload: {
 			name: VIEWS.PROJECTS_FOLDERS,
 			params: {
 				projectId: route.params.projectId,
-				folderId: payload.newParent.type === 'project' ? undefined : payload.newParent.id,
+				folderId: payload.newParent.type === 'folder' ? payload.newParent.id : undefined,
 			},
 		}).href;
 		const workflowResource = workflowsAndFolders.value.find(
 			(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
 		);
 		await workflowsStore.updateWorkflow(payload.workflow.id, {
-			parentFolderId: payload.newParent.type === 'project' ? '0' : payload.newParent.id,
+			parentFolderId: payload.newParent.type === 'folder' ? payload.newParent.id : '0',
 			versionId: workflowResource?.versionId,
 		});
 		if (!payload.options?.skipFetch) {
@@ -1278,7 +1621,10 @@ const onWorkflowMoved = async (payload: {
 		toast.showToast({
 			title: i18n.baseText('folders.move.workflow.success.title'),
 			message: i18n.baseText('folders.move.workflow.success.message', {
-				interpolate: { workflowName: payload.workflow.name, newFolderName: payload.newParent.name },
+				interpolate: {
+					workflowName: payload.workflow.name,
+					newFolderName: payload.newParent.name,
+				},
 			}),
 			onClick: (event: MouseEvent | undefined) => {
 				if (event?.target instanceof HTMLAnchorElement) {
@@ -1307,6 +1653,63 @@ const onCreateWorkflowClick = () => {
 		},
 	});
 };
+
+const renameInput = useTemplateRef('renameInput');
+function onNameToggle() {
+	setTimeout(() => {
+		if (renameInput.value?.forceFocus) {
+			renameInput.value.forceFocus();
+		}
+	}, 0);
+}
+
+const onNameSubmit = async (name: string) => {
+	if (!currentFolder.value || !currentProject.value) return;
+
+	const newName = name.trim();
+	if (!newName) {
+		toast.showMessage({
+			title: i18n.baseText('renameAction.emptyName.title'),
+			message: i18n.baseText('renameAction.emptyName.message'),
+			type: 'error',
+		});
+
+		return;
+	}
+
+	if (newName === currentFolder.value.name) {
+		renameInput.value?.forceCancel();
+		return;
+	}
+
+	const validationResult = folderHelpers.validateFolderName(newName);
+	if (typeof validationResult === 'string') {
+		toast.showMessage({
+			title: i18n.baseText('renameAction.invalidName.title'),
+			message: validationResult,
+			type: 'error',
+		});
+		renameInput.value?.forceCancel();
+		return;
+	} else {
+		try {
+			await foldersStore.renameFolder(currentProject.value?.id, currentFolder.value.id, newName);
+			foldersStore.breadcrumbsCache[currentFolder.value.id].name = newName;
+			toast.showMessage({
+				title: i18n.baseText('folders.rename.success.message', {
+					interpolate: { folderName: newName },
+				}),
+				type: 'success',
+			});
+			telemetry.track('User renamed folder', {
+				folder_id: currentFolder.value.id,
+			});
+		} catch (error) {
+			toast.showError(error, i18n.baseText('folders.rename.error.title'));
+			renameInput.value?.forceCancel();
+		}
+	}
+};
 </script>
 
 <template>
@@ -1327,28 +1730,38 @@ const onCreateWorkflowClick = () => {
 		:has-empty-state="foldersStore.totalWorkflowCount === 0 && !currentFolderId"
 		@click:add="addWorkflow"
 		@update:search="onSearchUpdated"
-		@update:current-page="setCurrentPage"
-		@update:page-size="setPageSize"
 		@update:filters="onFiltersUpdated"
-		@sort="onSortUpdated"
+		@update:pagination-and-sort="setPaginationAndSort"
 		@mouseleave="folderHelpers.resetDropTarget"
 	>
 		<template #header>
 			<ProjectHeader @create-folder="createFolderInCurrent">
 				<InsightsSummary
-					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
-					:loading="insightsStore.summary.isLoading"
-					:summary="insightsStore.summary.state"
+					v-if="showInsights"
+					:loading="insightsStore.weeklySummary.isLoading"
+					:summary="insightsStore.weeklySummary.state"
+					time-range="week"
 				/>
 			</ProjectHeader>
 		</template>
 		<template v-if="foldersEnabled || showRegisteredCommunityCTA" #add-button>
 			<N8nTooltip
 				placement="top"
-				:disabled="!(isOverviewPage || (!readOnlyEnv && hasPermissionToCreateFolders))"
+				:disabled="
+					!(
+						projectPages.isOverviewSubPage ||
+						projectPages.isSharedSubPage ||
+						(!readOnlyEnv && hasPermissionToCreateFolders)
+					)
+				"
 			>
 				<template #content>
-					<span v-if="isOverviewPage && !showRegisteredCommunityCTA">
+					<span
+						v-if="
+							(projectPages.isOverviewSubPage || projectPages.isSharedSubPage) &&
+							!showRegisteredCommunityCTA
+						"
+					>
 						<span v-if="teamProjectsEnabled">
 							{{ i18n.baseText('folders.add.overview.withProjects.message') }}
 						</span>
@@ -1379,28 +1792,98 @@ const onCreateWorkflowClick = () => {
 		</template>
 		<template #callout>
 			<N8nCallout
-				v-if="showEasyAIWorkflowCallout && easyAICalloutVisible"
+				v-if="showPrebuiltAgentsCallout"
 				theme="secondary"
-				icon="robot"
+				icon="bot"
+				icon-size="large"
 				:class="$style['easy-ai-workflow-callout']"
 			>
-				{{ i18n.baseText('workflows.list.easyAI') }}
+				<N8nText size="small">
+					{{ i18n.baseText('workflows.preBuiltAgents.callout') }}
+					{{ ' ' }}
+					<N8nLink
+						theme="secondary"
+						size="small"
+						:bold="true"
+						:underline="true"
+						@click="openPrebuiltAgentsModal('workflowsEmptyState')"
+					>
+						{{ i18n.baseText('workflows.preBuiltAgents.linkText') }}
+					</N8nLink>
+				</N8nText>
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
-						<n8n-button
+						<N8nIcon
+							size="small"
+							icon="x"
+							:title="i18n.baseText('generic.dismiss')"
+							class="clickable"
+							@click="dismissPreBuiltAgentsCallout()"
+						/>
+					</div>
+				</template>
+			</N8nCallout>
+			<N8nCallout
+				v-else-if="showAIStarterCollectionCallout"
+				theme="secondary"
+				icon="gift"
+				:class="$style['easy-ai-workflow-callout']"
+			>
+				{{ i18n.baseText('workflows.ai.starter.collection.callout') }}
+				<template #trailingContent>
+					<div :class="$style['callout-trailing-content']">
+						<N8nButton
 							data-test-id="easy-ai-button"
 							size="small"
 							type="secondary"
-							@click="openAIWorkflow('callout')"
+							@click="createAIStarterWorkflows('callout')"
 						>
-							{{ i18n.baseText('generic.tryNow') }}
-						</n8n-button>
+							{{ i18n.baseText('generic.startNow') }}
+						</N8nButton>
 						<N8nIcon
 							size="small"
-							icon="times"
+							icon="x"
 							:title="i18n.baseText('generic.dismiss')"
 							class="clickable"
-							@click="dismissEasyAICallout"
+							@click="dismissStarterCollectionCallout"
+						/>
+					</div>
+				</template>
+			</N8nCallout>
+			<SuggestedWorkflows v-else-if="showPersonalizedTemplates">
+				<SuggestedWorkflowCard
+					v-for="workflow in personalizedTemplatesStore.suggestedWorkflows"
+					:key="workflow.id"
+					data-test-id="resource-list-item-suggested-workflow"
+					:data="{
+						id: workflow.id,
+						name: workflow.name,
+					}"
+				/>
+			</SuggestedWorkflows>
+			<N8nCallout
+				v-if="showReadyToRunWorkflowsCallout"
+				theme="secondary"
+				icon="bolt-filled"
+				:class="$style['easy-ai-workflow-callout']"
+			>
+				{{ readyToRunWorkflowsStore.getCalloutText() }}
+				<template #trailingContent>
+					<div :class="$style['callout-trailing-content']">
+						<N8nButton
+							data-test-id="easy-ai-button"
+							size="small"
+							type="secondary"
+							@click="handleCreateReadyToRunWorkflows('callout')"
+						>
+							{{ i18n.baseText('generic.startNow') }}
+						</N8nButton>
+						<N8nIcon
+							size="small"
+							icon="x"
+							:title="i18n.baseText('generic.dismiss')"
+							class="clickable"
+							@click="handleDismissReadyToRunCallout"
 						/>
 					</div>
 				</template>
@@ -1416,14 +1899,30 @@ const onCreateWorkflowClick = () => {
 				data-test-id="main-breadcrumbs"
 			>
 				<FolderBreadcrumbs
-					:breadcrumbs="mainBreadcrumbs"
+					:current-folder="currentFolderParent"
 					:actions="mainBreadcrumbsActions"
 					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
+					:current-folder-as-link="true"
 					@item-selected="onBreadcrumbItemClick"
 					@action="onBreadCrumbsAction"
 					@item-drop="onBreadCrumbsItemDrop"
 					@project-drop="moveFolderToProjectRoot"
-				/>
+				>
+					<template #append>
+						<span :class="$style['path-separator']">/</span>
+						<N8nInlineTextEdit
+							ref="renameInput"
+							:key="currentFolder?.id"
+							data-test-id="breadcrumbs-item-current"
+							:placeholder="i18n.baseText('folders.rename.placeholder')"
+							:model-value="currentFolder.name"
+							:max-length="30"
+							:read-only="readOnlyEnv || !hasPermissionToUpdateFolders"
+							:class="{ [$style.name]: true, [$style['pointer-disabled']]: isDragging }"
+							@update:model-value="onNameSubmit"
+						/>
+					</template>
+				</FolderBreadcrumbs>
 			</div>
 		</template>
 		<template #item="{ item: data, index }">
@@ -1449,7 +1948,7 @@ const onCreateWorkflowClick = () => {
 					:read-only="
 						readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)
 					"
-					:personal-project="projectsStore.personalProject"
+					:personal-project="personalProject"
 					:data-resourceid="(data as FolderResource).id"
 					:data-resourcename="(data as FolderResource).name"
 					:class="{
@@ -1502,7 +2001,9 @@ const onCreateWorkflowClick = () => {
 					:show-ownership-badge="showCardsBadge"
 					data-target="workflow"
 					@click:tag="onClickTag"
-					@workflow:deleted="onWorkflowDeleted"
+					@workflow:deleted="refreshWorkflows"
+					@workflow:archived="refreshWorkflows"
+					@workflow:unarchived="refreshWorkflows"
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:active-toggle="onWorkflowActiveToggle"
@@ -1512,47 +2013,145 @@ const onCreateWorkflowClick = () => {
 			</Draggable>
 		</template>
 		<template #empty>
-			<div class="text-center mt-s" data-test-id="list-empty-state">
-				<N8nHeading tag="h2" size="xlarge" class="mb-2xs">
-					{{
-						currentUser.firstName
-							? i18n.baseText('workflows.empty.heading', {
-									interpolate: { name: currentUser.firstName },
-								})
-							: i18n.baseText('workflows.empty.heading.userNotSetup')
-					}}
-				</N8nHeading>
-				<N8nText size="large" color="text-base">
-					{{ emptyListDescription }}
-				</N8nText>
-			</div>
-			<div
-				v-if="!readOnlyEnv && projectPermissions.workflow.create"
-				:class="['text-center', 'mt-2xl', $style.actionsContainer]"
-			>
-				<N8nCard
-					:class="$style.emptyStateCard"
-					hoverable
-					data-test-id="new-workflow-card"
-					@click="addWorkflow"
-				>
-					<N8nIcon :class="$style.emptyStateCardIcon" icon="file" />
-					<N8nText size="large" class="mt-xs" color="text-dark">
-						{{ i18n.baseText('workflows.empty.startFromScratch') }}
+			<EmptySharedSectionActionBox
+				v-if="projectPages.isSharedSubPage && personalProject"
+				:personal-project="personalProject"
+				resource-type="workflows"
+			/>
+			<div v-else>
+				<div class="text-center mt-s" data-test-id="list-empty-state">
+					<N8nHeading tag="h2" size="xlarge" class="mb-2xs">
+						{{
+							currentUser.firstName
+								? i18n.baseText('workflows.empty.heading', {
+										interpolate: { name: currentUser.firstName },
+									})
+								: i18n.baseText('workflows.empty.heading.userNotSetup')
+						}}
+					</N8nHeading>
+					<N8nText size="large" color="text-base">
+						{{ emptyListDescription }}
 					</N8nText>
-				</N8nCard>
-				<N8nCard
-					v-if="showEasyAIWorkflowCallout"
-					:class="$style.emptyStateCard"
-					hoverable
-					data-test-id="easy-ai-workflow-card"
-					@click="openAIWorkflow('empty')"
+				</div>
+				<div
+					v-if="!readOnlyEnv && projectPermissions.workflow.create"
+					:class="['text-center', 'mt-2xl', $style.actionsContainer]"
 				>
-					<N8nIcon :class="$style.emptyStateCardIcon" icon="robot" />
-					<N8nText size="large" class="mt-xs pl-2xs pr-2xs" color="text-dark">
-						{{ i18n.baseText('workflows.empty.easyAI') }}
-					</N8nText>
-				</N8nCard>
+					<N8nCard
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="new-workflow-card"
+						@click="addWorkflow"
+					>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								icon="file"
+								color="foreground-dark"
+								:stroke-width="1.5"
+							/>
+							<N8nText size="large" class="mt-xs">
+								{{ i18n.baseText('workflows.empty.startFromScratch') }}
+							</N8nText>
+						</div>
+					</N8nCard>
+					<N8nCard
+						v-if="showPrebuiltAgentsCallout"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="prebuilt-agents-card"
+						@click="openPrebuiltAgentsModal('workflowsList')"
+					>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								:stroke-width="1.5"
+								icon="bot"
+								color="foreground-dark"
+							/>
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
+								{{ i18n.baseText('workflows.empty.preBuiltAgents') }}
+							</N8nText>
+						</div>
+					</N8nCard>
+					<N8nCard
+						v-else-if="showAIStarterCollectionCallout"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="easy-ai-workflow-card"
+						@click="createAIStarterWorkflows('card')"
+					>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								:stroke-width="1.5"
+								icon="gift"
+								color="foreground-dark"
+							/>
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
+								{{ i18n.baseText('workflows.ai.starter.collection.card') }}
+							</N8nText>
+						</div>
+					</N8nCard>
+					<N8nCard
+						v-else-if="showEasyAIWorkflowCallout"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="easy-ai-workflow-card"
+						@click="openAIWorkflow('empty')"
+					>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								:stroke-width="1.5"
+								icon="bot"
+								color="foreground-dark"
+							/>
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
+								{{ i18n.baseText('workflows.empty.easyAI') }}
+							</N8nText>
+						</div>
+					</N8nCard>
+					<N8nCard
+						v-if="showReadyToRunWorkflowsCallout"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="ready-to-run-workflows-card"
+						@click="handleCreateReadyToRunWorkflows('card')"
+					>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								:stroke-width="1.5"
+								icon="package-open"
+								color="foreground-dark"
+							/>
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
+								{{ readyToRunWorkflowsStore.getCardText() }}
+							</N8nText>
+						</div>
+					</N8nCard>
+					<N8nCard
+						v-if="templatesCardEnabled"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="new-workflow-from-template-card"
+						@click="openTemplatesRepository"
+					>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								:stroke-width="1.5"
+								icon="package-open"
+								color="foreground-dark"
+							/>
+							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
+								{{ i18n.baseText('workflows.empty.startWithTemplate') }}
+							</N8nText>
+						</div>
+					</N8nCard>
+				</div>
+				<TemplateRecommendationV2 v-if="showTemplateRecommendationV2" />
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
@@ -1594,14 +2193,35 @@ const onCreateWorkflowClick = () => {
 					</N8nOption>
 				</N8nSelect>
 			</div>
+			<div class="mb-s">
+				<N8nCheckbox
+					:label="i18n.baseText('workflows.filters.showArchived')"
+					:model-value="filters.showArchived || false"
+					data-test-id="show-archived-checkbox"
+					@update:model-value="setKeyValue('showArchived', $event)"
+				/>
+			</div>
 		</template>
 		<template #postamble>
+			<!-- Empty states for shared section and folders -->
 			<div
-				v-if="workflowsAndFolders.length === 0 && currentFolder && !hasFilters"
+				v-if="workflowsAndFolders.length === 0 && !hasFilters"
 				:class="$style['empty-folder-container']"
 				data-test-id="empty-folder-container"
 			>
-				<n8n-action-box
+				<N8nInfoTip v-if="showArchivedOnlyHint" :bold="false">
+					{{ i18n.baseText('workflows.archivedOnly.hint') }}
+					<N8nLink size="small" data-test-id="show-archived-link" @click="onShowArchived">
+						{{ i18n.baseText('workflows.archivedOnly.hint.link') }}
+					</N8nLink>
+				</N8nInfoTip>
+				<EmptySharedSectionActionBox
+					v-if="projectPages.isSharedSubPage && personalProject"
+					:personal-project="personalProject"
+					resource-type="workflows"
+				/>
+				<N8nActionBox
+					v-else-if="currentFolder"
 					data-test-id="empty-folder-action-box"
 					:heading="
 						i18n.baseText('folders.empty.actionbox.title', {
@@ -1619,7 +2239,7 @@ const onCreateWorkflowClick = () => {
 								? i18n.baseText('readOnlyEnv.cantAdd.workflow')
 								: i18n.baseText('generic.missing.permissions')
 						}}
-					</template></n8n-action-box
+					</template></N8nActionBox
 				>
 			</div>
 		</template>
@@ -1662,12 +2282,17 @@ const onCreateWorkflowClick = () => {
 	}
 }
 
+.emptyStateCardContent {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
 .emptyStateCardIcon {
 	font-size: 48px;
 
 	svg {
-		width: 48px !important;
-		color: var(--color-foreground-dark);
 		transition: color 0.3s ease;
 	}
 }
@@ -1714,6 +2339,22 @@ const onCreateWorkflowClick = () => {
 		border-color: var(--color-secondary);
 		background-color: var(--color-callout-secondary-background);
 	}
+}
+
+.path-separator {
+	font-size: var(--font-size-xl);
+	color: var(--color-foreground-base);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+}
+
+.name {
+	color: $custom-font-dark;
+	font-size: var(--font-size-s);
+	padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+}
+
+.pointer-disabled {
+	pointer-events: none;
 }
 </style>
 
