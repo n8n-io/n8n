@@ -11,7 +11,7 @@ export type DatabaseConfig = {
 	tables: Record<string, DatabaseTable>;
 };
 
-export async function useDatabase(config: DatabaseConfig) {
+export async function database(config: DatabaseConfig) {
 	// Initialize the SQLite worker
 	const promiser: Promiser = await new Promise((resolve) => {
 		const _promiser = sqlite3Worker1Promiser({

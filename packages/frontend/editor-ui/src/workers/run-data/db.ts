@@ -1,4 +1,4 @@
-import type { DatabaseConfig } from '@/workers/database/useDatabase';
+import type { DatabaseConfig } from '@/workers/database';
 
 export const databaseConfig: DatabaseConfig = {
 	filename: 'file:n8n.sqlite3?vfs=opfs',
