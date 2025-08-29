@@ -38,12 +38,6 @@ export const dataStoreSchema = z.object({
 	updatedAt: z.string().datetime(),
 });
 
-export type DataStoreListFilter = {
-	id?: string | string[];
-	projectId?: string | string[];
-	name?: string;
-};
-
 export type DataStoreListOptions = Partial<ListDataStoreQueryDto> & {
 	filter: { projectId: string };
 };

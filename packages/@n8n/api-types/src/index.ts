@@ -50,7 +50,6 @@ export {
 export {
 	DATA_STORE_COLUMN_REGEX,
 	type DataStoreCreateColumnSchema,
-	type DataStoreListFilter,
 	type DataStoreListOptions,
 	dateTimeSchema,
 } from './schemas/data-store.schema';
