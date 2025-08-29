@@ -48,6 +48,7 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 			create_plan?: {
 				workflowPlan?: unknown;
 				planStatus?: string;
+				messages?: Array<{ content: string | Array<{ type: string; text: string }> }>;
 			};
 			review_plan?: {
 				planStatus?: string;
@@ -126,6 +127,16 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 				message: workflowPlan.intro,
 			};
 			return { messages: [planChunk] };
+		} else if ((agentChunk?.create_plan?.messages ?? []).length > 0) {
+			const lastMessage =
+				agentChunk.create_plan!.messages![agentChunk.create_plan!.messages!.length - 1];
+			const messageChunk: AgentMessageChunk = {
+				role: 'assistant',
+				type: 'message',
+				text: lastMessage.content as string,
+			};
+
+			return { messages: [messageChunk] };
 		}
 
 		if (agentChunk?.adjust_plan?.workflowPlan) {

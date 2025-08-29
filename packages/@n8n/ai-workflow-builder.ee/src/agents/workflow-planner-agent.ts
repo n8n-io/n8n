@@ -257,10 +257,13 @@ export function createWorkflowPlannerAgent(llm: BaseChatModel, nodeTypes: INodeT
 			userRequest: string,
 			previousPlan?: WorkflowPlan,
 			feedback?: string,
-		): Promise<{
-			plan: WorkflowPlan;
-			toolMessages: BaseMessage[];
-		}> {
+		): Promise<
+			| {
+					plan: WorkflowPlan;
+					toolMessages: BaseMessage[];
+			  }
+			| { text: string }
+		> {
 			// Prepare the initial messages
 			const systemMessage = new SystemMessage(SYSTEM_PROMPT);
 
@@ -276,6 +279,7 @@ export function createWorkflowPlannerAgent(llm: BaseChatModel, nodeTypes: INodeT
 			const result = await app.invoke({
 				messages: [systemMessage, humanMessage],
 			});
+
 			// Extract tools messages
 			const toolMessages = result.messages.filter((msg) => {
 				if (['system', 'human'].includes(msg.getType())) {
@@ -295,7 +299,17 @@ export function createWorkflowPlannerAgent(llm: BaseChatModel, nodeTypes: INodeT
 			});
 
 			if (!workflowPlanToolCall) {
-				throw new ToolExecutionError('No workflow plan tool call found in the result');
+				const lastAiMessage = result.messages.findLast((msg) => {
+					return isAIMessage(msg) && (msg.tool_calls ?? []).length === 0;
+				});
+
+				if (lastAiMessage) {
+					return {
+						text: lastAiMessage.text,
+					};
+				}
+
+				throw new ToolExecutionError('Invalid response from agent - no plan generated');
 			}
 
 			try {
