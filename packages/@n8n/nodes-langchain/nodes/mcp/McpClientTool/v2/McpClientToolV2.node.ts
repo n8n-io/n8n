@@ -170,6 +170,7 @@ export class McpClientToolV2 implements INodeType {
 
 		const node = this.getNode();
 		const timeout = this.getNodeParameter('options.timeout', itemIndex, 60000) as number;
+		const genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
 
 		const serverTransport = this.getNodeParameter(
 			'serverTransport',
@@ -192,7 +193,12 @@ export class McpClientToolV2 implements INodeType {
 			}
 		}
 
-		const { headers } = await getAuthHeaders(this, authentication, itemIndex);
+		const { headers } = await getAuthHeaders(
+			this,
+			authentication,
+			genericCredentialType,
+			itemIndex,
+		);
 		const client = await connectMcpClient({
 			serverTransport,
 			endpointUrl,

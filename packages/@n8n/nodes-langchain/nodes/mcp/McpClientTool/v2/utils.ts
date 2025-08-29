@@ -219,15 +219,15 @@ export async function connectMcpClient({
 }
 
 export async function getAuthHeaders(
-	ctx: Pick<IExecuteFunctions, 'getCredentials' | 'getNodeParameter' | 'logger'>,
+	ctx: Pick<IExecuteFunctions, 'getCredentials' | 'logger'>,
 	authentication: McpAuthenticationOption,
+	genericCredentialType?: string,
 	itemIndex?: number,
 ): Promise<{ headers?: Record<string, string> }> {
 	switch (authentication) {
 		case 'genericCredentialType': {
-			const genericCredentialType = ctx.getNodeParameter('genericAuthType', 0);
-
-			const credentials = await ctx.getCredentials(genericCredentialType as string, itemIndex);
+			if (!genericCredentialType) return {};
+			const credentials = await ctx.getCredentials(genericCredentialType, itemIndex);
 			ctx.logger.error(JSON.stringify(credentials));
 			if (!credentials) {
 				return {};

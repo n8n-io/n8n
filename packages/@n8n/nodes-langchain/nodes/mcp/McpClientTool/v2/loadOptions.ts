@@ -12,7 +12,9 @@ export async function getTools(this: ILoadOptionsFunctions): Promise<INodeProper
 	const node = this.getNode();
 	const serverTransport = this.getNodeParameter('serverTransport') as McpServerTransport;
 	const endpointUrl = this.getNodeParameter('endpointUrl') as string;
-	const { headers } = await getAuthHeaders(this, authentication);
+	const genericCredentialType = this.getNodeParameter('genericAuthType') as string;
+
+	const { headers } = await getAuthHeaders(this, authentication, genericCredentialType);
 	const client = await connectMcpClient({
 		serverTransport,
 		endpointUrl,
