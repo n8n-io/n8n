@@ -1,5 +1,5 @@
 import get from 'lodash/get';
-import { ApplicationError, Workflow } from 'n8n-workflow';
+import { ApplicationError, resolveRelativePath, Workflow } from 'n8n-workflow';
 import type {
 	INodeParameterResourceLocator,
 	IWorkflowExecuteAdditionalData,
@@ -61,9 +61,7 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 	getCurrentNodeParameter(parameterPath: string): NodeParameterValueType | object | undefined {
 		const nodeParameters = this.additionalData.currentNodeParameters;
 
-		if (parameterPath.startsWith('&')) {
-			parameterPath = `${this.path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
-		}
+		parameterPath = resolveRelativePath(this.path, parameterPath);
 
 		return get(nodeParameters, parameterPath);
 	}
