@@ -87,7 +87,9 @@ describe('Test AirtableV2, update operation', () => {
 				mappingMode: 'autoMapInputData',
 				matchingColumns: ['id'],
 			},
-			options: {},
+			options: {
+				returnFieldsByFieldId: false,
+			},
 		};
 
 		const items = [
@@ -109,7 +111,7 @@ describe('Test AirtableV2, update operation', () => {
 
 		expect(transport.batchUpdate).toHaveBeenCalledWith(
 			'appYoLbase/tblltable',
-			{ typecast: false },
+			{ typecast: false, returnFieldsByFieldId: false },
 			[{ fields: { bar: 'bar 1', foo: 'foo 1' }, id: 'recXXX' }],
 		);
 	});
@@ -121,7 +123,9 @@ describe('Test AirtableV2, update operation', () => {
 				mappingMode: 'autoMapInputData',
 				matchingColumns: ['foo'],
 			},
-			options: {},
+			options: {
+				returnFieldsByFieldId: false,
+			},
 		};
 
 		const items = [
@@ -143,7 +147,7 @@ describe('Test AirtableV2, update operation', () => {
 
 		expect(transport.batchUpdate).toHaveBeenCalledWith(
 			'appYoLbase/tblltable',
-			{ typecast: false },
+			{ typecast: false, returnFieldsByFieldId: false },
 			[{ fields: { bar: 'bar 1', foo: 'foo 1', id: 'recXXX' }, id: 'recXXX' }],
 		);
 	});
