@@ -5,16 +5,17 @@ import type { ListDataStoreQueryDto } from '../dto';
 export const dataStoreNameSchema = z.string().trim().min(1).max(128);
 export const dataStoreIdSchema = z.string().max(36);
 
-export const DATA_STORE_COLUMN_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9-]*$/;
+// Postgres does not allow leading numbers or -
+export const DATA_STORE_COLUMN_REGEX = /^[a-zA-Z][a-zA-Z0-9_]*$/;
 
 export const dataStoreColumnNameSchema = z
 	.string()
 	.trim()
 	.min(1)
-	.max(128)
+	.max(63) // Postgres has a maximum of 63 characters
 	.regex(
 		DATA_STORE_COLUMN_REGEX,
-		'Only alphanumeric characters and non-leading dashes are allowed for column names',
+		'Only alphabetical characters and non-leading numbers and underscores are allowed for column names',
 	);
 export const dataStoreColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 

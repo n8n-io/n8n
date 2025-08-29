@@ -13,6 +13,8 @@ import { findNodeType } from './helpers/validation';
 import type { AddedNode } from '../types/nodes';
 import type { AddNodeOutput, ToolError } from '../types/tools';
 
+const DISPLAY_TITLE = 'Adding node';
+
 /**
  * Schema for node creation input
  */
@@ -64,13 +66,32 @@ function buildResponseMessage(addedNode: AddedNode, nodeTypes: INodeTypeDescript
 	return `Successfully added "${addedNode.name}" (${addedNode.displayName ?? addedNode.type})${nodeTypeInfo} with ID ${addedNode.id}`;
 }
 
+function getCustomNodeTitle(
+	input: Record<string, unknown>,
+	nodeTypes: INodeTypeDescription[],
+): string {
+	if ('nodeType' in input && typeof input['nodeType'] === 'string') {
+		const nodeType = nodeTypes.find((type) => type.name === input.nodeType);
+		if (nodeType) {
+			return `Adding ${nodeType.displayName} node`;
+		}
+	}
+
+	return DISPLAY_TITLE;
+}
+
 /**
  * Factory function to create the add node tool
  */
 export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
-	return tool(
+	const dynamicTool = tool(
 		async (input, config) => {
-			const reporter = createProgressReporter(config, 'add_nodes');
+			const reporter = createProgressReporter(
+				config,
+				'add_nodes',
+				DISPLAY_TITLE,
+				getCustomNodeTitle(input, nodeTypes),
+			);
 
 			try {
 				// Validate input using Zod schema
@@ -194,4 +215,10 @@ Think through the connectionParametersReasoning FIRST, then set connectionParame
 			schema: nodeCreationSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		displayTitle: DISPLAY_TITLE,
+		getCustomDisplayTitle: (input: Record<string, unknown>) => getCustomNodeTitle(input, nodeTypes),
+	};
 }

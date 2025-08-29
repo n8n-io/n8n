@@ -64,6 +64,7 @@ import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
 import { isJsonCompatible } from '@/utils/is-json-compatible';
 
+import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import { ExecuteContext, PollContext } from './node-execution-context';
 import {
 	DirectedGraph,
@@ -1513,6 +1514,46 @@ export class WorkflowExecute {
 		}
 	}
 
+	private checkForWorkflowIssues(workflow: Workflow): void {
+		this.assertExecutionDataExists(this.runExecutionData.executionData, workflow);
+		// Node execution stack will be empty for an execution containing only Chat
+		// Trigger.
+		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
+
+		let destinationNode: string | undefined;
+		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
+			destinationNode = this.runExecutionData.startData.destinationNode;
+		}
+		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
+		const workflowIssues = this.checkReadyForExecution(workflow, {
+			startNode,
+			destinationNode,
+			pinDataNodeNames,
+		});
+		if (workflowIssues !== null) {
+			throw new WorkflowHasIssuesError();
+		}
+	}
+
+	private setupExecution(): {
+		startedAt: Date;
+		hooks: ExecutionLifecycleHooks;
+	} {
+		this.status = 'running';
+
+		const { hooks } = this.additionalData;
+		assert.ok(hooks, 'Failed to run workflow due to missing execution lifecycle hooks');
+
+		// NOTE: As far as I can tell this code is dead.
+		// FIXME: Fix the types to make sure startData is always set and remove the
+		// code.
+		if (this.runExecutionData.startData === undefined) {
+			this.runExecutionData.startData = {};
+		}
+
+		return { startedAt: new Date(), hooks };
+	}
+
 	/**
 	 * Runs the given execution data.
 	 *
@@ -1523,55 +1564,15 @@ export class WorkflowExecute {
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
 		Logger.debug('Workflow execution started', { workflowId: workflow.id });
-
-		const startedAt = new Date();
-
-		this.status = 'running';
-
-		const { hooks, executionId } = this.additionalData;
-		assert.ok(hooks, 'Failed to run workflow due to missing execution lifecycle hooks');
-
-		if (!this.runExecutionData.executionData) {
-			throw new ApplicationError('Failed to run workflow due to missing execution data', {
-				extra: {
-					workflowId: workflow.id,
-					executionId,
-					mode: this.mode,
-				},
-			});
-		}
-
-		/** Node execution stack will be empty for an execution containing only Chat Trigger. */
-		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
-
-		let destinationNode: string | undefined;
-		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
-			destinationNode = this.runExecutionData.startData.destinationNode;
-		}
-
-		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
-
-		const workflowIssues = this.checkReadyForExecution(workflow, {
-			startNode,
-			destinationNode,
-			pinDataNodeNames,
-		});
-		if (workflowIssues !== null) {
-			throw new WorkflowHasIssuesError();
-		}
+		const { startedAt, hooks } = this.setupExecution();
+		this.checkForWorkflowIssues(workflow);
+		this.handleWaitingState(workflow);
 
 		// Variables which hold temporary data for each node-execution
 		let executionData: IExecuteData;
 		let executionError: ExecutionBaseError | undefined;
 		let executionNode: INode;
 		let runIndex: number;
-
-		if (this.runExecutionData.startData === undefined) {
-			this.runExecutionData.startData = {};
-		}
-
-		this.handleWaitingState(workflow);
-
 		let currentExecutionTry = '';
 		let lastExecutionTry = '';
 		let closeFunction: Promise<void> | undefined;

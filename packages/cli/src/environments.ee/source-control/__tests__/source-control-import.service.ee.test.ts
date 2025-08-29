@@ -80,7 +80,7 @@ describe('SourceControlImportService', () => {
 			};
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
-			sourceControlScopedService.getAdminProjectsFromContext.mockResolvedValueOnce([]);
+			sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValueOnce([]);
 
 			const result = await service.getRemoteVersionIdsFromFiles(globalAdminContext);
 			expect(fsReadFile).toHaveBeenCalledWith(mockWorkflowFile, { encoding: 'utf8' });
@@ -312,7 +312,7 @@ describe('SourceControlImportService', () => {
 				],
 			};
 
-			sourceControlScopedService.getAdminProjectsFromContext.mockResolvedValue([
+			sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValue([
 				Object.assign(new Project(), {
 					id: 'project1',
 				}),

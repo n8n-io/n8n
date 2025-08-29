@@ -43,3 +43,8 @@ export const API_KEY_RESOURCES = {
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
 } as const;
+
+export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
+export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
+export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';
+export const PROJECT_VIEWER_ROLE_SLUG = 'project:viewer';
