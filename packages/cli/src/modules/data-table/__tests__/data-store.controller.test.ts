@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { DataStore, DataStoreCreateColumnSchema } from '@n8n/api-types';
+import type { DataStoreCreateColumnSchema } from '@n8n/api-types';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -11,7 +11,7 @@ import type { Project, User } from '@n8n/db';
 import { ProjectRepository, QueryFailedError } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
-import type { DataStoreRow } from 'n8n-workflow';
+import type { DataStoreRow, DataStore } from 'n8n-workflow';
 
 import { createDataStore } from '@test-integration/db/data-stores';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
