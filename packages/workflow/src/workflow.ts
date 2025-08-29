@@ -687,17 +687,8 @@ export class Workflow {
 		return returnConns;
 	}
 
-	getParentMainInputNode(
-		node: INode | null | undefined,
-		visitedNodes: Set<string> = new Set(),
-	): INode | null | undefined {
+	getParentMainInputNode(node: INode | null | undefined): INode | null | undefined {
 		if (!node) return node;
-
-		// Prevent infinite recursion by tracking visited nodes
-		if (visitedNodes.has(node.name)) {
-			return node;
-		}
-		visitedNodes.add(node.name);
 
 		const nodeConnections = this.connectionsBySourceNode[node.name];
 		if (!nodeConnections) {
@@ -718,7 +709,7 @@ export class Workflow {
 							if (!returnNode) {
 								throw new ApplicationError(`Node "${connection.node}" not found`);
 							}
-							return this.getParentMainInputNode(returnNode, visitedNodes);
+							return this.getParentMainInputNode(returnNode);
 						}
 					}
 				}
