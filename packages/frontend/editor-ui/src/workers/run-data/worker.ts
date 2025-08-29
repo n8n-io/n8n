@@ -1,3 +1,4 @@
+import * as Comlink from 'comlink';
 import { databaseConfig } from '@/workers/run-data/db';
 import { useDatabase } from '@/workers/database';
 import type { Promiser } from '@sqlite.org/sqlite-wasm';
@@ -20,3 +21,5 @@ export const actions = {
 };
 
 export type RunDataWorker = typeof actions;
+
+Comlink.expose(actions);
