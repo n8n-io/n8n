@@ -2,17 +2,20 @@ import asyncio
 from dataclasses import dataclass
 import logging
 import time
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Set
 from urllib.parse import urlparse
 import websockets
 import random
 
 
-from src.errors import WebsocketConnectionError, TaskMissingError
+from src.errors import (
+    WebsocketConnectionError,
+    TaskMissingError,
+)
 from src.message_types.broker import TaskSettings
 from src.nanoid_utils import nanoid
 
-from .constants import (
+from src.constants import (
     RUNNER_NAME,
     TASK_REJECTED_REASON_AT_CAPACITY,
     TASK_REJECTED_REASON_OFFER_EXPIRED,
@@ -24,7 +27,7 @@ from .constants import (
     TASK_BROKER_WS_PATH,
     RPC_BROWSER_CONSOLE_LOG_METHOD,
 )
-from .message_types import (
+from src.message_types import (
     BrokerMessage,
     RunnerMessage,
     BrokerInfoRequest,
@@ -41,9 +44,10 @@ from .message_types import (
     RunnerTaskError,
     RunnerRpcCall,
 )
-from .message_serde import MessageSerde
-from .task_state import TaskState, TaskStatus
-from .task_executor import TaskExecutor
+from src.message_serde import MessageSerde
+from src.task_state import TaskState, TaskStatus
+from src.task_executor import TaskExecutor
+from src.task_analyzer import TaskAnalyzer
 
 
 class TaskOffer:
@@ -56,13 +60,16 @@ class TaskOffer:
         return time.time() > self.valid_until
 
 
-@dataclass()
+@dataclass
 class TaskRunnerOpts:
     grant_token: str
     task_broker_uri: str
     max_concurrency: int
     max_payload_size: int
     task_timeout: int
+    stdlib_allow: Set[str]
+    external_allow: Set[str]
+    builtins_deny: Set[str]
 
 
 class TaskRunner:
@@ -85,6 +92,7 @@ class TaskRunner:
         self.offers_coroutine: Optional[asyncio.Task] = None
         self.serde = MessageSerde()
         self.executor = TaskExecutor()
+        self.analyzer = TaskAnalyzer(opts.stdlib_allow, opts.external_allow)
         self.logger = logging.getLogger(__name__)
 
         self.task_broker_uri = opts.task_broker_uri
@@ -207,14 +215,24 @@ class TaskRunner:
             if task_state is None:
                 raise TaskMissingError(task_id)
 
+            self.analyzer.validate(task_settings.code)
+
             process, queue = self.executor.create_process(
-                task_settings.code, task_settings.node_mode, task_settings.items
+                code=task_settings.code,
+                node_mode=task_settings.node_mode,
+                items=task_settings.items,
+                stdlib_allow=self.opts.stdlib_allow,
+                external_allow=self.opts.external_allow,
+                builtins_deny=self.opts.builtins_deny,
             )
 
             task_state.process = process
 
             result, print_args = self.executor.execute_process(
-                process, queue, self.opts.task_timeout, task_settings.continue_on_fail
+                process=process,
+                queue=queue,
+                task_timeout=self.opts.task_timeout,
+                continue_on_fail=task_settings.continue_on_fail,
             )
 
             for print_args_per_call in print_args:
