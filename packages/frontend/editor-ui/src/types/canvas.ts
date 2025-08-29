@@ -125,7 +125,7 @@ export interface CanvasNodeData {
 		waitingForNext?: boolean;
 	};
 	runData: {
-		outputMap: ExecutionOutputMap;
+		outputMap?: ExecutionOutputMap;
 		iterations: number;
 		visible: boolean;
 	};
