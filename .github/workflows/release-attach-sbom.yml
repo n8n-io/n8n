@@ -1,0 +1,101 @@
+name: 'Release: Attach SBOM'
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  generate-and-attach-sbom:
+    name: Generate and Attach SBOM to Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
+
+      - name: Install dependencies (pnpm)
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate CycloneDX SBOM with Syft
+        uses: anchore/sbom-action@b9a8bc8d2c19e9396f663e53c7b55848e98cf17c # v0.17.6
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom-npm.cdx.json
+
+      - name: Validate SBOM
+        run: |
+          # Comprehensive SBOM validation
+          if [[ ! -f "sbom-npm.cdx.json" ]]; then
+            echo "Error: SBOM file 'sbom-npm.cdx.json' not found in workspace"
+            ls -la
+            exit 1
+          fi
+          
+          # Validate JSON structure
+          if ! jq empty sbom-npm.cdx.json 2>/dev/null; then
+            echo "Error: SBOM file contains invalid JSON syntax"
+            echo "File contents preview:"
+            head -10 sbom-npm.cdx.json
+            exit 1
+          fi
+          
+          # Check for required CycloneDX fields
+          COMPONENT_COUNT=$(jq '.components | length' sbom-npm.cdx.json 2>/dev/null || echo "0")
+          BOM_FORMAT=$(jq -r '.bomFormat // "unknown"' sbom-npm.cdx.json 2>/dev/null)
+          SPEC_VERSION=$(jq -r '.specVersion // "unknown"' sbom-npm.cdx.json 2>/dev/null)
+          
+          if [[ "$BOM_FORMAT" != "CycloneDX" ]]; then
+            echo "Error: Invalid bomFormat '$BOM_FORMAT', expected 'CycloneDX'"
+            exit 1
+          fi
+          
+          if [[ "$SPEC_VERSION" == "unknown" ]]; then
+            echo "Error: Missing required field 'specVersion' in CycloneDX SBOM"
+            exit 1
+          fi
+          
+          if [[ "$COMPONENT_COUNT" == "0" ]]; then
+            echo "Warning: SBOM contains no components, this may indicate an issue with generation"
+          fi
+          
+          echo "SBOM validation successful: $COMPONENT_COUNT components, format: $BOM_FORMAT, spec: $SPEC_VERSION"
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@9e9de2292db7abb3f51b7f4808d98f0d347a8919 # v3.7.0
+
+      - name: Sign SBOM (keyless)
+        run: |
+          # Sign SBOM using Cosign keyless signing with GitHub OIDC
+          # This provides cryptographic proof of authenticity and integrity
+          cosign sign-blob --yes --output-signature sbom-npm.cdx.sig --output-certificate sbom-npm.cdx.pem sbom-npm.cdx.json
+
+      - name: Attach SBOM files to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMPONENT_COUNT=$(jq '.components | length' sbom-npm.cdx.json)
+          
+          # Upload SBOM files to the existing release
+          gh release upload "${{ github.event.release.tag_name }}" \
+            sbom-npm.cdx.json \
+            sbom-npm.cdx.sig \
+            sbom-npm.cdx.pem \
+            --clobber
+          
+          echo "✅ SBOM files attached to release ${{ github.event.release.tag_name }}"
+          echo "📊 SBOM contains $COMPONENT_COUNT components"
