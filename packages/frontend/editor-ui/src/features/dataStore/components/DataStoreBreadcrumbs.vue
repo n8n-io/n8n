@@ -5,11 +5,11 @@ import { useI18n } from '@n8n/i18n';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useRouter } from 'vue-router';
 import DataStoreActions from '@/features/dataStore/components/DataStoreActions.vue';
-import { DATA_STORE_VIEW } from '@/features/dataStore/constants';
+import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 
-const BREADCRUMBS_SEPARATOR = '›';
+const BREADCRUMBS_SEPARATOR = '/';
 
 type Props = {
 	dataStore: DataStore;
@@ -17,7 +17,7 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const renameInput = useTemplateRef<{ forceFocus?: () => void }>('renameInput');
+const renameInput = useTemplateRef<{ forceFocus: () => void }>('renameInput');
 
 const dataStoreStore = useDataStoreStore();
 
@@ -39,7 +39,7 @@ const breadcrumbs = computed<PathItem[]>(() => {
 		{
 			id: 'datastores',
 			label: i18n.baseText('dataStore.dataStores'),
-			href: `/projects/${project.value.id}/datastores`,
+			href: `/projects/${project.value.id}/datatables`,
 		},
 	];
 });
@@ -51,14 +51,17 @@ const onItemClicked = async (item: PathItem) => {
 };
 
 const onDelete = async () => {
-	await router.push({ name: DATA_STORE_VIEW, params: { projectId: props.dataStore.projectId } });
+	await router.push({
+		name: PROJECT_DATA_STORES,
+		params: { projectId: props.dataStore.projectId },
+	});
 };
 
 const onRename = async () => {
 	// Focus rename input if the action is rename
 	// We need this timeout to ensure action toggle is closed before focusing
 	await nextTick();
-	if (renameInput.value?.forceFocus) {
+	if (renameInput.value && typeof renameInput.value.forceFocus === 'function') {
 		renameInput.value.forceFocus();
 	}
 };
@@ -94,6 +97,7 @@ watch(
 		<n8n-breadcrumbs
 			:items="breadcrumbs"
 			:separator="BREADCRUMBS_SEPARATOR"
+			:highlight-last-item="false"
 			@item-selected="onItemClicked"
 		>
 			<template #prepend>
@@ -115,7 +119,12 @@ watch(
 			</template>
 		</n8n-breadcrumbs>
 		<div :class="$style['data-store-actions']">
-			<DataStoreActions :data-store="props.dataStore" @rename="onRename" @on-deleted="onDelete" />
+			<DataStoreActions
+				:data-store="props.dataStore"
+				location="breadcrumbs"
+				@rename="onRename"
+				@on-deleted="onDelete"
+			/>
 		</div>
 	</div>
 </template>

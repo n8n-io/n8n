@@ -9,6 +9,10 @@ export class SettingsPage extends BasePage {
 		return this.page.getByTestId('menu-item').getByTestId(id);
 	}
 
+	getMenuItemByText(text: string) {
+		return this.page.getByTestId('menu-item').getByText(text, { exact: true });
+	}
+
 	async goToSettings() {
 		await this.page.goto('/settings');
 	}

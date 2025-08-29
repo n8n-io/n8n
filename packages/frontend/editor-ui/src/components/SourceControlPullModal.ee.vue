@@ -2,12 +2,11 @@
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS, WORKFLOW_DIFF_MODAL_KEY } from '@/constants';
+import { SOURCE_CONTROL_PULL_MODAL_KEY, VIEWS } from '@/constants';
 import { sourceControlEventBus } from '@/event-bus/source-control';
-import EnvFeatureFlag from '@/features/env-feature-flag/EnvFeatureFlag.vue';
 import { useProjectsStore } from '@/stores/projects.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useUIStore } from '@/stores/ui.store';
 import type { ProjectListItem } from '@/types/projects.types';
 import {
 	getPullPriorityByStatus,
@@ -19,11 +18,10 @@ import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-ty
 import { N8nBadge, N8nButton, N8nHeading, N8nInfoTip, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { createEventBus } from '@n8n/utils/event-bus';
 import dateformat from 'dateformat';
 import orderBy from 'lodash/orderBy';
-import { computed, onBeforeMount, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { computed, onBeforeMount, onMounted, ref } from 'vue';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from './Modal.vue';
@@ -32,17 +30,58 @@ type SourceControlledFileType = SourceControlledFile['type'];
 type SourceControlledFileWithProject = SourceControlledFile & { project?: ProjectListItem };
 
 const props = defineProps<{
-	data: { eventBus: EventBus; status: SourceControlledFile[] };
+	data: { eventBus: EventBus; status?: SourceControlledFile[] };
 }>();
 
 const telemetry = useTelemetry();
 const loadingService = useLoadingService();
-const uiStore = useUIStore();
 const toast = useToast();
 const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 const projectsStore = useProjectsStore();
+const route = useRoute();
+const router = useRouter();
+const settingsStore = useSettingsStore();
 
+const isWorkflowDiffsEnabled = computed(() => settingsStore.settings.enterprise.workflowDiffs);
+
+// Reactive status state - starts with props data or empty, then loads fresh data
+const status = ref<SourceControlledFile[]>(props.data.status || []);
+const isLoading = ref(false);
+
+const responseStatuses = {
+	CONFLICT: 409,
+};
+
+// Load fresh source control status when modal opens
+async function loadSourceControlStatus() {
+	if (isLoading.value) return;
+
+	isLoading.value = true;
+	loadingService.startLoading();
+	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
+
+	try {
+		const freshStatus = await sourceControlStore.pullWorkfolder(false);
+		await notifyUserAboutPullWorkFolderOutcome(freshStatus, toast);
+		sourceControlEventBus.emit('pull');
+		close();
+	} catch (error) {
+		// only show the modal when there are conflicts
+		const errorResponse = error.response;
+
+		if (errorResponse?.status === responseStatuses.CONFLICT) {
+			status.value = errorResponse.data.data || [];
+		} else {
+			toast.showError(error, 'Error');
+			close();
+		}
+	} finally {
+		isLoading.value = false;
+		loadingService.stopLoading();
+		loadingService.setLoadingText(i18n.baseText('genericHelpers.loading'));
+	}
+}
 onBeforeMount(() => {
 	void projectsStore.getAvailableProjects();
 });
@@ -52,18 +91,10 @@ const activeTab = ref<
 	typeof SOURCE_CONTROL_FILE_TYPE.workflow | typeof SOURCE_CONTROL_FILE_TYPE.credential
 >(SOURCE_CONTROL_FILE_TYPE.workflow);
 
-// Group files by type with project information
-const filesWithProjects = computed(() =>
-	props.data.status.map((file) => {
-		const project = projectsStore.availableProjects.find(({ id }) => id === file.owner?.projectId);
-		return { ...file, project };
-	}),
-);
-
 const groupedFilesByType = computed(() => {
 	const grouped: Partial<Record<SourceControlledFileType, SourceControlledFileWithProject[]>> = {};
 
-	filesWithProjects.value.forEach((file) => {
+	status.value.forEach((file) => {
 		if (!grouped[file.type]) {
 			grouped[file.type] = [];
 		}
@@ -156,17 +187,19 @@ const otherFiles = computed(() => {
 });
 
 function close() {
-	uiStore.closeModal(SOURCE_CONTROL_PULL_MODAL_KEY);
+	// Navigate back in history to maintain proper browser navigation
+	// The global route watcher will handle closing the modal
+	router.back();
 }
 
 async function pullWorkfolder() {
-	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.pull'));
+	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
 	close();
 
 	try {
-		const status = await sourceControlStore.pullWorkfolder(true);
+		const pullStatus = await sourceControlStore.pullWorkfolder(true);
 
-		await notifyUserAboutPullWorkFolderOutcome(status, toast);
+		await notifyUserAboutPullWorkFolderOutcome(pullStatus, toast);
 
 		sourceControlEventBus.emit('pull');
 	} catch (error) {
@@ -190,16 +223,19 @@ function renderUpdatedAt(file: SourceControlledFile) {
 	});
 }
 
-const workflowDiffEventBus = createEventBus();
-
 function openDiffModal(id: string) {
 	telemetry.track('User clicks compare workflows', {
 		workflow_id: id,
 		context: 'source_control_pull',
 	});
-	uiStore.openModalWithData({
-		name: WORKFLOW_DIFF_MODAL_KEY,
-		data: { eventBus: workflowDiffEventBus, workflowId: id, direction: 'pull' },
+
+	// Only update route - modal will be opened by route watcher
+	void router.push({
+		query: {
+			...route.query,
+			diff: id,
+			direction: 'pull',
+		},
 	});
 }
 
@@ -209,15 +245,25 @@ const modalHeight = computed(() =>
 		? 'min(80vh, 850px)'
 		: 'auto',
 );
+
+// Load data when modal opens
+onMounted(() => {
+	// Only load fresh data if we don't have any initial data
+	if (!props.data.status || props.data.status.length === 0) {
+		void loadSourceControlStatus();
+	}
+});
 </script>
 
 <template>
 	<Modal
+		v-if="!isLoading"
 		width="812px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
 		:height="modalHeight"
 		:custom-class="$style.sourceControlPull"
+		:before-close="close"
 	>
 		<template #header>
 			<N8nHeading tag="h1" size="xlarge">
@@ -227,7 +273,6 @@ const modalHeight = computed(() =>
 			<div :class="[$style.filtersRow]" class="mt-l">
 				<N8nText tag="div" class="mb-xs">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.description') }}
-					<br />
 					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
 						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
 					</N8nLink>
@@ -235,16 +280,7 @@ const modalHeight = computed(() =>
 			</div>
 		</template>
 		<template #content>
-			<div v-if="!tabs.some((tab) => tab.total > 0)">
-				<N8nText tag="div" class="mb-xs">
-					{{ i18n.baseText('settings.sourceControl.modals.pull.description') }}
-					<br />
-					<N8nLink :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
-						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
-					</N8nLink>
-				</N8nText>
-			</div>
-			<div v-else style="display: flex; height: 100%">
+			<div style="display: flex; height: 100%">
 				<div :class="$style.tabs">
 					<template v-for="tab in tabs" :key="tab.value">
 						<button
@@ -318,14 +354,14 @@ const modalHeight = computed(() =>
 												<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
 													{{ getStatusText(file.status) }}
 												</N8nBadge>
-												<EnvFeatureFlag name="SOURCE_CONTROL_WORKFLOW_DIFF">
+												<template v-if="isWorkflowDiffsEnabled">
 													<N8nIconButton
 														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
 														icon="file-diff"
 														type="secondary"
 														@click="openDiffModal(file.id)"
 													/>
-												</EnvFeatureFlag>
+												</template>
 											</span>
 										</div>
 									</DynamicScrollerItem>

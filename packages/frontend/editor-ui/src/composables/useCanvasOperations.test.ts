@@ -51,11 +51,15 @@ import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/composables/useToast';
 import * as nodeHelpers from '@/composables/useNodeHelpers';
 
+import { TelemetryHelpers } from 'n8n-workflow';
+
 vi.mock('n8n-workflow', async (importOriginal) => {
-	const actual = await importOriginal<{}>();
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const actual = await importOriginal<typeof import('n8n-workflow')>();
 	return {
 		...actual,
 		TelemetryHelpers: {
+			...actual.TelemetryHelpers,
 			generateNodesGraph: vi.fn().mockReturnValue({
 				nodeGraph: {
 					nodes: [],
@@ -253,7 +257,9 @@ describe('useCanvasOperations', () => {
 				{ openNDV: true },
 			);
 
-			await waitFor(() => expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Test Name'));
+			await waitFor(() =>
+				expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Test Name', 'added_new_node'),
+			);
 		});
 
 		it('should not set sticky node type as active node', async () => {
@@ -1223,7 +1229,7 @@ describe('useCanvasOperations', () => {
 			await renameNode(oldName, newName);
 
 			expect(workflowObject.renameNode).toHaveBeenCalledWith(oldName, newName);
-			expect(ndvStore.activeNodeName).toBe(newName);
+			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(newName, expect.any(String));
 		});
 
 		it('should not rename node when new name is same as old name', async () => {
@@ -1287,7 +1293,7 @@ describe('useCanvasOperations', () => {
 			const { revertRenameNode } = useCanvasOperations();
 			await revertRenameNode(currentName, oldName);
 
-			expect(ndvStore.activeNodeName).toBe(oldName);
+			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(oldName, expect.any(String));
 		});
 
 		it('should not revert node renaming when old name is same as new name', async () => {
@@ -1314,9 +1320,9 @@ describe('useCanvasOperations', () => {
 			ndvStore.activeNodeName = '';
 
 			const { setNodeActive } = useCanvasOperations();
-			setNodeActive(nodeId);
+			setNodeActive(nodeId, 'other');
 
-			expect(ndvStore.activeNodeName).toBe(nodeName);
+			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(nodeName, expect.any(String));
 		});
 
 		it('should not change active node name when node does not exist', () => {
@@ -1327,7 +1333,7 @@ describe('useCanvasOperations', () => {
 			ndvStore.activeNodeName = 'Existing Node';
 
 			const { setNodeActive } = useCanvasOperations();
-			setNodeActive(nodeId);
+			setNodeActive(nodeId, 'other');
 
 			expect(ndvStore.activeNodeName).toBe('Existing Node');
 		});
@@ -1339,7 +1345,7 @@ describe('useCanvasOperations', () => {
 			workflowsStore.getNodeById.mockImplementation(() => node);
 
 			const { setNodeActive } = useCanvasOperations();
-			setNodeActive(node.id);
+			setNodeActive(node.id, 'other');
 
 			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(node.name, false);
 		});
@@ -1352,9 +1358,9 @@ describe('useCanvasOperations', () => {
 			ndvStore.activeNodeName = '';
 
 			const { setNodeActiveByName } = useCanvasOperations();
-			setNodeActiveByName(nodeName);
+			setNodeActiveByName(nodeName, 'other');
 
-			expect(ndvStore.activeNodeName).toBe(nodeName);
+			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(nodeName, expect.any(String));
 		});
 	});
 
@@ -2726,34 +2732,6 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
-	describe('duplicateNodes', () => {
-		it('should duplicate nodes', async () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			const nodeTypesStore = useNodeTypesStore();
-			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
-
-			nodeTypesStore.nodeTypes = {
-				[SET_NODE_TYPE]: { 1: nodeTypeDescription },
-			};
-
-			const nodes = buildImportNodes();
-			workflowsStore.setNodes(nodes);
-			workflowsStore.getNodesByIds.mockReturnValue(nodes);
-			workflowsStore.outgoingConnectionsByNodeName.mockReturnValue({});
-
-			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
-			workflowsStore.workflowObject = workflowObject;
-			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
-
-			const canvasOperations = useCanvasOperations();
-			const duplicatedNodeIds = await canvasOperations.duplicateNodes(['1', '2']);
-
-			expect(duplicatedNodeIds.length).toBe(2);
-			expect(duplicatedNodeIds).not.toContain('1');
-			expect(duplicatedNodeIds).not.toContain('2');
-		});
-	});
-
 	describe('copyNodes', () => {
 		it('should copy nodes', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
@@ -3189,7 +3167,7 @@ describe('useCanvasOperations', () => {
 			await openExecution(executionId, nodeId);
 
 			expect(workflowsStore.getNodeById).toHaveBeenCalledWith(nodeId);
-			expect(ndvStore.activeNodeName).toBe(mockNode.name);
+			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(mockNode.name, expect.any(String));
 		});
 
 		it('should show error when nodeId is provided but node does not exist', async () => {
@@ -3417,6 +3395,69 @@ describe('useCanvasOperations', () => {
 			connectAdjacentNodes(nodeB.id);
 
 			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('duplicateNodes', () => {
+		it('should duplicate nodes', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+
+			const nodes = buildImportNodes();
+			workflowsStore.setNodes(nodes);
+			workflowsStore.getNodesByIds.mockReturnValue(nodes);
+			workflowsStore.outgoingConnectionsByNodeName.mockReturnValue({});
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
+
+			const canvasOperations = useCanvasOperations();
+			const duplicatedNodeIds = await canvasOperations.duplicateNodes(['1', '2']);
+
+			expect(duplicatedNodeIds.length).toBe(2);
+			expect(duplicatedNodeIds).not.toContain('1');
+			expect(duplicatedNodeIds).not.toContain('2');
+		});
+
+		it('should not crash when TelemetryHelpers.generateNodesGraph throws error', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const telemetry = useTelemetry();
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE });
+
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+
+			const nodes = buildImportNodes();
+			workflowsStore.setNodes(nodes);
+			workflowsStore.getNodesByIds.mockReturnValue(nodes);
+			workflowsStore.outgoingConnectionsByNodeName.mockReturnValue({});
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
+
+			// Mock TelemetryHelpers.generateNodesGraph to throw an error for this test
+			vi.mocked(TelemetryHelpers.generateNodesGraph).mockImplementationOnce(() => {
+				throw new Error('Telemetry generation failed');
+			});
+
+			// This should not throw even when telemetry fails
+			const canvasOperations = useCanvasOperations();
+			await expect(canvasOperations.duplicateNodes(['1', '2'])).resolves.not.toThrow();
+
+			// Telemetry should not be tracked when generation fails
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				'User imported workflow',
+				expect.any(Object),
+			);
 		});
 	});
 

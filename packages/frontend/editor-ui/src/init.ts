@@ -14,7 +14,7 @@ import { useToast } from '@/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import SourceControlInitializationErrorMessage from '@/components/SourceControlInitializationErrorMessage.vue';
 import { useSSOStore } from '@/stores/sso.store';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { UserManagementAuthenticationMethod } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import type { BannerName } from '@n8n/api-types';
@@ -111,6 +111,7 @@ export async function initializeCore() {
  */
 export async function initializeAuthenticatedFeatures(
 	initialized: boolean = authenticatedFeaturesInitialized,
+	routeName?: string,
 ) {
 	if (initialized) {
 		return;
@@ -175,7 +176,8 @@ export async function initializeAuthenticatedFeatures(
 		void insightsStore.weeklySummary.execute();
 	}
 
-	if (!settingsStore.isPreviewMode) {
+	// Don't check for new versions in preview mode or demo view (ex: executions iframe)
+	if (!settingsStore.isPreviewMode && routeName !== VIEWS.DEMO) {
 		void versionsStore.checkForNewVersions();
 	}
 
@@ -203,12 +205,14 @@ function registerAuthenticationHooks() {
 	const npsSurveyStore = useNpsSurveyStore();
 	const telemetry = useTelemetry();
 	const RBACStore = useRBACStore();
+	const settingsStore = useSettingsStore();
 
 	usersStore.registerLoginHook((user) => {
 		RBACStore.setGlobalScopes(user.globalScopes ?? []);
 		telemetry.identify(rootStore.instanceId, user.id);
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
+		void settingsStore.getModuleSettings();
 	});
 
 	usersStore.registerLogoutHook(() => {

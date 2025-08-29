@@ -48,10 +48,17 @@ const BASE_ENV: Record<string, string> = {
 	N8N_LICENSE_ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY ?? '',
 };
 
-// Wait strategy for n8n containers
-const N8N_WAIT_STRATEGY = Wait.forAll([
+// Wait strategy for n8n main containers
+const N8N_MAIN_WAIT_STRATEGY = Wait.forAll([
 	Wait.forListeningPorts(),
-	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(90000),
+	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(30000),
+	Wait.forLogMessage('Editor is now accessible via').withStartupTimeout(30000),
+]);
+
+// Wait strategy for n8n worker containers
+const N8N_WORKER_WAIT_STRATEGY = Wait.forAll([
+	Wait.forListeningPorts(),
+	Wait.forLogMessage('n8n worker is now ready').withStartupTimeout(30000),
 ]);
 
 // --- Interfaces ---
@@ -66,6 +73,10 @@ export interface N8NConfig {
 		  };
 	env?: Record<string, string>;
 	projectName?: string;
+	resourceQuota?: {
+		memory?: number; // in GB
+		cpu?: number; // in cores
+	};
 }
 
 export interface N8NStack {
@@ -97,7 +108,7 @@ export interface N8NStack {
  * });
  */
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
-	const { postgres = false, queueMode = false, env = {}, projectName } = config;
+	const { postgres = false, queueMode = false, env = {}, projectName, resourceQuota } = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const usePostgres = postgres || !!queueConfig;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
@@ -195,6 +206,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			uniqueProjectName,
 			environment,
 			network,
+			resourceQuota,
 		});
 		containers.push(...instances);
 
@@ -216,6 +228,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			environment,
 			network,
 			directPort: assignedPort,
+			resourceQuota,
 		});
 		containers.push(...instances);
 	}
@@ -285,6 +298,10 @@ interface CreateInstancesOptions {
 	environment: Record<string, string>;
 	network?: StartedNetwork;
 	directPort?: number;
+	resourceQuota?: {
+		memory?: number; // in GB
+		cpu?: number; // in cores
+	};
 }
 
 async function createN8NInstances({
@@ -295,10 +312,11 @@ async function createN8NInstances({
 	network,
 	/** The host port to use for the main instance */
 	directPort,
+	resourceQuota,
 }: CreateInstancesOptions): Promise<StartedTestContainer[]> {
 	const instances: StartedTestContainer[] = [];
 
-	// Create main instances
+	// Create main instances sequentially to avoid database migration conflicts
 	for (let i = 1; i <= mainCount; i++) {
 		const name = mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
 		const networkAlias = mainCount > 1 ? name : `${uniqueProjectName}-n8n-main-1`;
@@ -311,6 +329,7 @@ async function createN8NInstances({
 			instanceNumber: i,
 			networkAlias,
 			directPort: i === 1 ? directPort : undefined, // Only first main gets direct port
+			resourceQuota,
 		});
 		instances.push(container);
 	}
@@ -325,6 +344,7 @@ async function createN8NInstances({
 			network,
 			isWorker: true,
 			instanceNumber: i,
+			resourceQuota,
 		});
 		instances.push(container);
 	}
@@ -341,6 +361,10 @@ interface CreateContainerOptions {
 	instanceNumber: number;
 	networkAlias?: string;
 	directPort?: number;
+	resourceQuota?: {
+		memory?: number; // in GB
+		cpu?: number; // in cores
+	};
 }
 
 async function createN8NContainer({
@@ -352,6 +376,7 @@ async function createN8NContainer({
 	instanceNumber,
 	networkAlias,
 	directPort,
+	resourceQuota,
 }: CreateContainerOptions): Promise<StartedTestContainer> {
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
@@ -367,8 +392,14 @@ async function createN8NContainer({
 		.withPullPolicy(new N8nImagePullPolicy(N8N_IMAGE))
 		.withName(name)
 		.withLogConsumer(consumer)
-		.withName(name)
 		.withReuse();
+
+	if (resourceQuota) {
+		container = container.withResourcesQuota({
+			memory: resourceQuota.memory,
+			cpu: resourceQuota.cpu,
+		});
+	}
 
 	if (network) {
 		container = container.withNetwork(network);
@@ -378,12 +409,14 @@ async function createN8NContainer({
 	}
 
 	if (isWorker) {
-		container = container.withCommand(['worker']);
+		container = container.withCommand(['worker']).withWaitStrategy(N8N_WORKER_WAIT_STRATEGY);
 	} else {
-		container = container.withExposedPorts(5678).withWaitStrategy(N8N_WAIT_STRATEGY);
+		container = container.withExposedPorts(5678).withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
 
 		if (directPort) {
-			container = container.withExposedPorts({ container: 5678, host: directPort });
+			container = container
+				.withExposedPorts({ container: 5678, host: directPort })
+				.withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
 		}
 	}
 

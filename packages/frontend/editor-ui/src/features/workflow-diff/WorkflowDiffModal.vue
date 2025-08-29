@@ -13,6 +13,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
 import { N8nButton, N8nHeading, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
@@ -20,7 +21,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useAsyncState } from '@vueuse/core';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { computed, ref, useCssModule } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useCssModule } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import HighlightedEdge from './HighlightedEdge.vue';
 import WorkflowDiffAside from './WorkflowDiffAside.vue';
 
@@ -35,6 +37,8 @@ const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
+const router = useRouter();
+const route = useRoute();
 
 const workflowsStore = useWorkflowsStore();
 
@@ -83,8 +87,8 @@ const sourceWorkFlow = computed(() => (props.data.direction === 'push' ? remote 
 const targetWorkFlow = computed(() => (props.data.direction === 'push' ? local : remote));
 
 const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
-	computed(() => sourceWorkFlow.value.state.value?.workflow),
-	computed(() => targetWorkFlow.value.state.value?.workflow),
+	computed(() => removeWorkflowExecutionData(sourceWorkFlow.value.state.value?.workflow)),
+	computed(() => removeWorkflowExecutionData(targetWorkFlow.value.state.value?.workflow)),
 );
 
 type SettingsChange = {
@@ -117,6 +121,17 @@ const settingsDiff = computed(() => {
 		}
 		return acc;
 	}, []);
+
+	const sourceName = sourceWorkFlow.value.state.value?.workflow?.name;
+	const targetName = targetWorkFlow.value.state.value?.workflow?.name;
+
+	if (sourceName && targetName && sourceName !== targetName) {
+		settings.unshift({
+			name: 'name',
+			before: sourceName,
+			after: targetName,
+		});
+	}
 
 	const sourceTags = (sourceWorkFlow.value.state.value?.workflow?.tags ?? []).map((tag) =>
 		typeof tag === 'string' ? tag : tag.name,
@@ -260,7 +275,36 @@ const nodeDiffs = computed(() => {
 
 function handleBeforeClose() {
 	selectedDetailId.value = undefined;
+
+	// Check if we have history to go back to avoid empty navigation issues
+	if (window.history.length > 1) {
+		// Use router.back() to maintain proper navigation flow when possible
+		router.back();
+	} else {
+		// Fallback to query parameter manipulation when no navigation history
+		const newQuery = { ...route.query };
+		delete newQuery.diff;
+		delete newQuery.direction;
+		void router.replace({ query: newQuery });
+	}
 }
+
+// Handle ESC key since Element Plus Dialog doesn't trigger before-close on ESC
+function handleEscapeKey(event: KeyboardEvent) {
+	if (event.key === 'Escape') {
+		event.preventDefault();
+		event.stopPropagation();
+		handleBeforeClose();
+	}
+}
+
+onMounted(() => {
+	document.addEventListener('keydown', handleEscapeKey, true);
+});
+
+onUnmounted(() => {
+	document.removeEventListener('keydown', handleEscapeKey, true);
+});
 
 const changesCount = computed(
 	() => nodeChanges.value.length + connectionsDiff.value.size + settingsDiff.value.length,
@@ -342,9 +386,10 @@ const modifiers = [
 		width="100%"
 		max-width="100%"
 		max-height="100%"
+		:close-on-press-escape="false"
 		@before-close="handleBeforeClose"
 	>
-		<template #header="{ closeDialog }">
+		<template #header>
 			<div :class="$style.header">
 				<div :class="$style.headerLeft">
 					<N8nIconButton
@@ -352,7 +397,7 @@ const modifiers = [
 						type="secondary"
 						:class="[$style.backButton, 'mr-xs']"
 						icon-size="large"
-						@click="closeDialog"
+						@click="handleBeforeClose"
 					></N8nIconButton>
 					<N8nHeading tag="h1" size="xlarge">
 						{{
@@ -362,7 +407,7 @@ const modifiers = [
 					</N8nHeading>
 				</div>
 
-				<div>
+				<div :class="$style.headerRight">
 					<ElDropdown
 						trigger="click"
 						:popper-options="{
@@ -875,8 +920,8 @@ const modifiers = [
 }
 
 .dropdownContent {
-	width: 320px;
-	padding: 2px 0 2px 12px;
+	min-width: 320px;
+	padding: 0 12px;
 
 	ul {
 		list-style: none;
@@ -938,7 +983,8 @@ const modifiers = [
 	}
 }
 
-.headerLeft {
+.headerLeft,
+.headerRight {
 	display: flex;
 	align-items: center;
 }

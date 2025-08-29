@@ -79,10 +79,10 @@ const projects = computed(() =>
 const projectRoles = computed(() =>
 	rolesStore.processedProjectRoles.map((role) => ({
 		...role,
-		name: projectRoleTranslations.value[role.role],
+		displayName: projectRoleTranslations.value[role.slug],
 	})),
 );
-const firstLicensedRole = computed(() => projectRoles.value.find((role) => role.licensed)?.role);
+const firstLicensedRole = computed(() => projectRoles.value.find((role) => role.licensed)?.slug);
 
 const onAddMember = (userId: string) => {
 	isDirty.value = true;
@@ -387,19 +387,19 @@ onMounted(() => {
 						<div :class="$style.buttons">
 							<N8nSelect
 								class="mr-2xs"
-								:model-value="user?.role || projectRoles[0].role"
+								:model-value="user?.role || projectRoles[0].slug"
 								size="small"
 								data-test-id="projects-settings-user-role-select"
 								@update:model-value="onRoleAction(user.id, $event)"
 							>
 								<N8nOption
 									v-for="role in projectRoles"
-									:key="role.role"
-									:value="role.role"
-									:label="role.name"
+									:key="role.slug"
+									:value="role.slug"
+									:label="role.displayName"
 									:disabled="!role.licensed"
 								>
-									{{ role.name
+									{{ role.displayName
 									}}<span
 										v-if="!role.licensed"
 										:class="$style.upgrade"

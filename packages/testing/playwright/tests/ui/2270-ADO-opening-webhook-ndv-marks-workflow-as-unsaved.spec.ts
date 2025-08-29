@@ -15,6 +15,6 @@ test.describe('ADO-2270 Save button resets on webhook node open', () => {
 
 		await n8n.ndv.clickBackToCanvasButton();
 
-		await expect(n8n.canvas.workflowSaveButton()).toContainText('Saved');
+		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 	});
 });

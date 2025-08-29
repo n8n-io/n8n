@@ -57,7 +57,7 @@ export class WebhookService {
 			return dbStaticWebhook;
 		}
 
-		return await this.findDynamicWebhook(method, path);
+		return await this.findDynamicWebhook(path, method);
 	}
 
 	/**
@@ -71,7 +71,7 @@ export class WebhookService {
 	 * Find a matching webhook with one or more dynamic path segments, e.g. `<uuid>/user/:id/posts`.
 	 * It is mandatory for dynamic webhooks to have `<uuid>/` at the base.
 	 */
-	private async findDynamicWebhook(method: Method, path: string) {
+	private async findDynamicWebhook(path: string, method?: Method) {
 		const [uuidSegment, ...otherSegments] = path.split('/');
 
 		const dynamicWebhooks = await this.webhookRepository.findBy({
@@ -133,10 +133,19 @@ export class WebhookService {
 		return await this.webhookRepository.remove(webhooks);
 	}
 
-	async getWebhookMethods(path: string) {
-		return await this.webhookRepository
-			.find({ select: ['method'], where: { webhookPath: path } })
+	async getWebhookMethods(rawPath: string) {
+		// Try to find static webhooks first
+		const staticMethods = await this.webhookRepository
+			.find({ select: ['method'], where: { webhookPath: rawPath } })
 			.then((rows) => rows.map((r) => r.method));
+
+		if (staticMethods.length > 0) {
+			return staticMethods;
+		}
+
+		// Otherwise, try to find dynamic webhooks based on path only
+		const dynamicWebhooks = await this.findDynamicWebhook(rawPath);
+		return dynamicWebhooks ? [dynamicWebhooks.method] : [];
 	}
 
 	private isDynamicPath(rawPath: string) {

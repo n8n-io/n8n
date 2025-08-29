@@ -23,9 +23,12 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
+import { useWorkflowDiffRouting } from '@/composables/useWorkflowDiffRouting';
 import { useStyles } from './composables/useStyles';
 import { locale } from '@n8n/design-system';
 import axios from 'axios';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
+import { useNDVStore } from '@/stores/ndv.store';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -34,11 +37,15 @@ const builderStore = useBuilderStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const ndvStore = useNDVStore();
 
 const { setAppZIndexes } = useStyles();
 
 // Initialize undo/redo
 useHistoryHelper(route);
+
+// Initialize workflow diff routing management
+useWorkflowDiffRouting();
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
@@ -52,6 +59,8 @@ const appGrid = ref<Element | null>(null);
 
 const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
 const builderSidebarWidth = computed(() => builderStore.chatWidth);
+
+useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
 
 onMounted(async () => {
 	setAppZIndexes();
