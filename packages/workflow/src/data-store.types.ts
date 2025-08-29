@@ -57,6 +57,11 @@ export type ListDataStoreRowsOptions = {
 	skip?: number;
 };
 
+export type UpdateDataStoreRowsOptions = {
+	filter: Record<string, DataStoreColumnJsType>;
+	data: DataStoreRow;
+};
+
 export type UpsertDataStoreRowsOptions = {
 	rows: DataStoreRows;
 	matchFields: string[];
@@ -112,6 +117,8 @@ export interface IDataStoreProjectService {
 	): Promise<{ count: number; data: DataStoreRowsReturn }>;
 
 	insertRows(rows: DataStoreRows): Promise<DataStoreRowReturn[]>;
+
+	updateRows(options: UpdateDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
 
 	upsertRows(options: UpsertDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
 

@@ -158,7 +158,7 @@ export class DataStoreService {
 		returnData: boolean = false,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
-		await this.validateRows(dataStoreId, dto.rows);
+		await this.validateRows(dataStoreId, dto.rows, true);
 
 		if (dto.rows.length === 0) {
 			throw new DataStoreValidationError('No rows provided for upsertRows');
@@ -176,6 +176,12 @@ export class DataStoreService {
 		);
 	}
 
+	async updateRow<T extends boolean | undefined>(
+		dataStoreId: string,
+		projectId: string,
+		dto: Omit<UpdateDataStoreRowDto, 'returnData'>,
+		returnData?: T,
+	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async updateRow(
 		dataStoreId: string,
 		projectId: string,
@@ -199,8 +205,8 @@ export class DataStoreService {
 			throw new DataStoreValidationError('Data columns must not be empty for updateRow');
 		}
 
-		this.validateRowsWithColumns([filter], columns, true, true);
-		this.validateRowsWithColumns([data], columns, true, false);
+		this.validateRowsWithColumns([filter], columns, true);
+		this.validateRowsWithColumns([data], columns, false);
 
 		return await this.dataStoreRowsRepository.updateRow(
 			dataStoreId,
@@ -220,23 +226,24 @@ export class DataStoreService {
 	private validateRowsWithColumns(
 		rows: DataStoreRows,
 		columns: Array<{ name: string; type: string }>,
-		allowPartial = false,
 		includeSystemColumns = false,
 	): void {
 		// Include system columns like 'id' if requested
 		const allColumns = includeSystemColumns
-			? [{ name: 'id', type: 'number' }, ...columns]
+			? [
+					{ name: 'id', type: 'number' },
+					{ name: 'createdAt', type: 'date' },
+					{ name: 'updatedAt', type: 'date' },
+					...columns,
+				]
 			: columns;
 		const columnNames = new Set(allColumns.map((x) => x.name));
 		const columnTypeMap = new Map(allColumns.map((x) => [x.name, x.type]));
 		for (const row of rows) {
 			const keys = Object.keys(row);
-			if (!allowPartial && columnNames.size !== keys.length) {
-				throw new DataStoreValidationError('mismatched key count');
-			}
 			for (const key of keys) {
 				if (!columnNames.has(key)) {
-					throw new DataStoreValidationError('unknown column name');
+					throw new DataStoreValidationError(`unknown column name '${key}'`);
 				}
 				this.validateCell(row, key, columnTypeMap);
 			}
@@ -246,11 +253,10 @@ export class DataStoreService {
 	private async validateRows(
 		dataStoreId: string,
 		rows: DataStoreRows,
-		allowPartial = false,
 		includeSystemColumns = false,
 	): Promise<void> {
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
-		this.validateRowsWithColumns(rows, columns, allowPartial, includeSystemColumns);
+		this.validateRowsWithColumns(rows, columns, includeSystemColumns);
 	}
 
 	private validateCell(row: DataStoreRow, key: string, columnTypeMap: Map<string, string>) {

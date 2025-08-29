@@ -269,7 +269,7 @@ function getValueToRender(value: unknown): string {
 		return i18n.baseText('runData.emptyObject');
 	}
 	if (value === null || value === undefined) {
-		return `[${value}]`;
+		return `${value}`;
 	}
 	if (value === true || value === false || typeof value === 'number') {
 		return value.toString();
@@ -957,6 +957,7 @@ th.isCollapsingColumn + th {
 
 .empty {
 	color: var(--color-danger);
+	font-style: italic;
 }
 
 .limitColWidth {

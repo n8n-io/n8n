@@ -2,8 +2,6 @@ import type { User } from '@n8n/db';
 import { ProjectRepository, SharedCredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope, rolesWithScope, type Scope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -30,21 +28,21 @@ export async function userHasScopes(
 
 	if (globalOnly) return false;
 
-	// Find which project roles are defined to contain the required scopes.
-	// Then find projects having this user and having those project roles.
-
-	const projectRoles = rolesWithScope('project', scopes);
+	// Find which projects the user has access to with the required scopes.
+	// This is done by finding the projects where the user has a role with at least the required scopes
 	const userProjectIds = (
-		await Container.get(ProjectRepository).find({
-			where: {
-				projectRelations: {
-					userId: user.id,
-					role: In(projectRoles),
-				},
-			},
-			select: ['id'],
-		})
-	).map((p) => p.id);
+		await Container.get(ProjectRepository)
+			.createQueryBuilder('project')
+			.innerJoin('project.projectRelations', 'relation')
+			.innerJoin('relation.role', 'role')
+			.innerJoin('role.scopes', 'scope')
+			.where('relation.userId = :userId', { userId: user.id })
+			.andWhere('scope.slug IN (:...scopes)', { scopes })
+			.groupBy('project.id')
+			.having('COUNT(DISTINCT scope.slug) = :scopeCount', { scopeCount: scopes.length })
+			.select(['project.id AS id'])
+			.getRawMany()
+	).map((row: { id: string }) => row.id);
 
 	// Find which resource roles are defined to contain the required scopes.
 	// Then find at least one of the above qualifying projects having one of
