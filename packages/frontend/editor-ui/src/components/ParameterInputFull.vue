@@ -318,6 +318,7 @@ function removeOverride(clearField = false) {
 		:options-position="optionsPosition"
 		:bold="false"
 		:size="label.size"
+		:input-name="parameter.name"
 		color="text-dark"
 		@mouseenter="onWrapperMouseEnter"
 		@mouseleave="onWrapperMouseLeave"
