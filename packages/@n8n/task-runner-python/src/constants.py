@@ -23,7 +23,7 @@ OFFER_INTERVAL = 0.25  # 250ms
 OFFER_VALIDITY = 5000  # ms
 OFFER_VALIDITY_MAX_JITTER = 500  # ms
 OFFER_VALIDITY_LATENCY_BUFFER = 0.1  # 100ms
-MAX_VALIDATION_CACHE_SIZE = 1000  # cached validation results
+MAX_VALIDATION_CACHE_SIZE = 500  # cached validation results
 
 # Executor
 EXECUTOR_USER_OUTPUT_KEY = "__n8n_internal_user_output__"
