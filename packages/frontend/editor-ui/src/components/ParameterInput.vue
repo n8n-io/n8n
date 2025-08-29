@@ -944,7 +944,14 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 	emit('blur');
 	isFocused.value = false;
 
-	if (event?.target instanceof Node && !mapperElRef.value?.contains(event.target)) {
+	if (
+		!(event?.target instanceof Node && mapperElRef.value?.contains(event.target)) &&
+		!(
+			event instanceof FocusEvent &&
+			event.relatedTarget instanceof Node &&
+			mapperElRef.value?.contains(event.relatedTarget)
+		)
+	) {
 		isMapperShown.value = false;
 	}
 }
