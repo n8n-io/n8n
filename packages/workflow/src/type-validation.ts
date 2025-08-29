@@ -178,6 +178,7 @@ const ALLOWED_FIELD_TYPES = [
 	'password',
 	'text',
 	'textarea',
+	'checkbox',
 ];
 
 export const tryToParseJsonToFormFields = (value: unknown): FormFieldsParameter => {
