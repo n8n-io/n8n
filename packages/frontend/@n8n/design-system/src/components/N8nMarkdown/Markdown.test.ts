@@ -102,5 +102,30 @@ describe('components', () => {
 				'<p><iframe width="100%" src="https://www.youtube-nocookie.com/embed/ZCuL2e4zC_4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe></p>',
 			);
 		});
+
+		it('should not duplicate checkbox text when followed by text without blank line', () => {
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: '- [ ] Test item\nTest item',
+				},
+			});
+
+			const html = wrapper.html();
+			// Count occurrences of the text in the rendered HTML
+			const textOccurrences = (html.match(/Test item/g) || []).length;
+
+			// Should appear exactly twice: once as checkbox label, once as continuation text
+			// Not 4 times as in the bug
+			expect(textOccurrences).toBe(2);
+
+			// Should have exactly one checkbox
+			const checkboxes = wrapper.getAllByRole('checkbox');
+			expect(checkboxes).toHaveLength(1);
+		});
 	});
 });
