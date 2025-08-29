@@ -60,6 +60,7 @@ export class DataStoreColumnRepository extends Repository<DataTableColumn> {
 				dataTableId,
 			});
 
+			// @ts-ignore
 			await em.insert(DataTableColumn, column);
 
 			const queryRunner = em.queryRunner;

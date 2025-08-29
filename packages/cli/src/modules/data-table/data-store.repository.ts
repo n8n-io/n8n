@@ -28,6 +28,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 		let dataTableId: string | undefined;
 		await this.manager.transaction(async (em) => {
 			const dataStore = em.create(DataTable, { name, columns, projectId });
+			// @ts-ignore
 			await em.insert(DataTable, dataStore);
 			dataTableId = dataStore.id;
 
