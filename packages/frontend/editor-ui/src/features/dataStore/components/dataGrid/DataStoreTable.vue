@@ -103,7 +103,7 @@ const { mapToAGCellType } = useDataStoreTypes();
 
 const dataStoreStore = useDataStoreStore();
 
-useClipboard({ onPaste: onClipboardPaste });
+const { copy: copyToClipboard } = useClipboard({ onPaste: onClipboardPaste });
 
 // AG Grid State
 const gridApi = ref<GridApi | null>(null);
@@ -568,8 +568,20 @@ function onClipboardPaste(data: string) {
 	const colDef = focusedCell.column.getColDef();
 	if (colDef.cellDataType === 'text') {
 		row.setDataValue(focusedCell.column.getColId(), data);
-	} else if (!Number.isNaN(Number(data))) {
-		row.setDataValue(focusedCell.column.getColId(), Number(data));
+	} else if (colDef.cellDataType === 'number') {
+		if (!Number.isNaN(Number(data))) {
+			row.setDataValue(focusedCell.column.getColId(), Number(data));
+		}
+	} else if (colDef.cellDataType === 'date') {
+		if (!Number.isNaN(Date.parse(data))) {
+			row.setDataValue(focusedCell.column.getColId(), new Date(data));
+		}
+	} else if (colDef.cellDataType === 'boolean') {
+		if (data === 'true') {
+			row.setDataValue(focusedCell.column.getColId(), true);
+		} else if (data === 'false') {
+			row.setDataValue(focusedCell.column.getColId(), false);
+		}
 	}
 }
 
@@ -616,14 +628,37 @@ const onSelectionChanged = () => {
 };
 
 const onCellKeyDown = async (params: CellKeyDownEvent<DataStoreRow>) => {
-	const key = (params.event as KeyboardEvent).key;
-	if (key !== 'Delete' && key !== 'Backspace') return;
+	if (params.api.getEditingCells().length > 0) {
+		return;
+	}
 
-	const isEditing = params.api.getEditingCells().length > 0;
-	if (isEditing || selectedRowIds.value.size === 0) return;
+	const event = params.event as KeyboardEvent;
+	if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'c') {
+		event.preventDefault();
+		await handleCopyFocusedCell(params);
+		return;
+	}
 
-	params.event?.preventDefault();
+	if ((event.key !== 'Delete' && event.key !== 'Backspace') || selectedRowIds.value.size === 0) {
+		return;
+	}
+	event.preventDefault();
 	await handleDeleteSelected();
+};
+
+const handleCopyFocusedCell = async (params: CellKeyDownEvent<DataStoreRow>) => {
+	const focused = params.api.getFocusedCell();
+	if (!focused) {
+		return;
+	}
+	const row = params.api.getDisplayedRowAtIndex(focused.rowIndex);
+	if (row) {
+		const colDef = focused.column.getColDef();
+		const field = (colDef.field as string) ?? focused.column.getColId();
+		const rawValue = (row.data as Record<string, unknown>)[field as string];
+		const text = rawValue === null || rawValue === undefined ? '' : String(rawValue);
+		await copyToClipboard(text);
+	}
 };
 
 const handleDeleteSelected = async () => {
