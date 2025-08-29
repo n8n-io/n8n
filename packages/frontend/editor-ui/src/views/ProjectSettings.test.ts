@@ -12,6 +12,7 @@ import { createProjectListItem } from '@/__tests__/data/projects';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import { ProjectTypes } from '@/types/projects.types';
+import { useRolesStore } from '@/stores/roles.store';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -40,6 +41,7 @@ let router: ReturnType<typeof useRouter>;
 let projectsStore: ReturnType<typeof useProjectsStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
+let rolesStore: ReturnType<typeof useRolesStore>;
 
 describe('ProjectSettings', () => {
 	beforeEach(() => {
@@ -49,6 +51,7 @@ describe('ProjectSettings', () => {
 		projectsStore = useProjectsStore();
 		usersStore = useUsersStore();
 		settingsStore = useSettingsStore();
+		rolesStore = useRolesStore();
 
 		vi.spyOn(usersStore, 'fetchUsers').mockImplementation(async () => await Promise.resolve());
 		vi.spyOn(projectsStore, 'getAvailableProjects').mockImplementation(async () => {});
@@ -66,12 +69,49 @@ describe('ProjectSettings', () => {
 				enabled: false,
 			},
 		} as FrontendSettings);
+		vi.spyOn(rolesStore, 'processedProjectRoles', 'get').mockReturnValue([
+			{
+				slug: 'project:admin',
+				displayName: 'Project Admin',
+				description: 'Can manage project settings',
+				licensed: true,
+				roleType: 'project',
+				scopes: ['project:read', 'project:write', 'project:delete'],
+				systemRole: true,
+			},
+			{
+				slug: 'project:editor',
+				displayName: 'Project Editor',
+				description: 'Can edit project settings',
+				licensed: true,
+				roleType: 'project',
+				scopes: ['project:read', 'project:write'],
+				systemRole: true,
+			},
+			{
+				slug: 'project:custom',
+				displayName: 'Custom',
+				description: 'Can do some custom actions',
+				licensed: true,
+				roleType: 'project',
+				scopes: ['workflow:list'],
+				systemRole: false,
+			},
+		]);
 		projectsStore.setCurrentProject({
 			id: '123',
 			type: 'team',
 			name: 'Test Project',
 			icon: { type: 'icon', value: 'folder' },
-			relations: [],
+			relations: [
+				{
+					id: '1',
+					lastName: 'Doe',
+					firstName: 'John',
+					role: 'project:admin',
+					email: 'admin@example.com',
+				},
+			],
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 			scopes: [],
@@ -131,5 +171,16 @@ describe('ProjectSettings', () => {
 		await userEvent.click(confirmButton);
 		expect(deleteProjectSpy).toHaveBeenCalledWith('123', undefined);
 		expect(router.push).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
+	});
+
+	it('should show role dropdown', async () => {
+		const { getByTestId } = renderComponent();
+		const roleDropdown = getByTestId('projects-settings-user-role-select');
+		expect(roleDropdown).toBeVisible();
+		const roleDropdownItems = await getDropdownItems(roleDropdown);
+		expect(roleDropdownItems).toHaveLength(3);
+		expect(roleDropdownItems[0]).toHaveTextContent('Admin');
+		expect(roleDropdownItems[1]).toHaveTextContent('Editor');
+		expect(roleDropdownItems[2]).toHaveTextContent('Custom');
 	});
 });
