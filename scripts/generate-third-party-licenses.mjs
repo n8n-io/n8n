@@ -34,11 +34,6 @@ const config = {
 
 // #region ===== Helper Functions =====
 
-async function validateLicenseChecker() {
-	// Skip version check as license-checker outputs to stderr which complicates validation
-	// The actual license-checker command will fail naturally if the package isn't available
-	echo(chalk.green('✅ license-checker validation skipped (will be tested during execution)'));
-}
 
 async function generateLicenseData() {
 	echo(chalk.yellow('📊 Running license-checker...'));
@@ -287,8 +282,6 @@ async function generateThirdPartyLicenses() {
 	echo(chalk.blue('🚀 Generating third-party licenses for n8n...'));
 
 	try {
-		await validateLicenseChecker();
-
 		const licensesJsonPath = await generateLicenseData();
 		const packages = await readLicenseData(licensesJsonPath);
 
