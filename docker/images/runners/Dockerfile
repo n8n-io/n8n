@@ -1,12 +1,9 @@
 ARG PYTHON_IMAGE=python:3.13-slim
-ARG NODE_VERSION=22
-ARG LAUNCHER_VERSION=1.3.0
-ARG TARGETPLATFORM
 
 # ==============================================================================
-# STAGE 2: JavaScript runner (@n8n/task-runner) artifact from CI
+# STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
 # ==============================================================================
-FROM alpine:3.22.0 AS app-artifact-processor
+FROM alpine:3.22.1 AS app-artifact-processor
 COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 # ==============================================================================
@@ -14,13 +11,26 @@ COPY ./dist/task-runner-javascript /app/task-runner-javascript
 # Produces a relocatable venv tied to PYTHON_IMAGE
 # ==============================================================================
 FROM ${PYTHON_IMAGE} AS python-runner-builder
+ARG TARGETPLATFORM
+ARG UV_VERSION=0.8.14
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl ca-certificates build-essential pkg-config git \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -LsSf https://astral.sh/uv/0.8.14/install.sh | sh
-RUN ln -s /root/.local/bin/uv /usr/local/bin/uv
+RUN set -e; \
+  case "$TARGETPLATFORM" in \
+    "linux/amd64") UV_ARCH="x86_64-unknown-linux-gnu" ;; \
+    "linux/arm64") UV_ARCH="aarch64-unknown-linux-gnu" ;; \
+    *) echo "Unsupported platform: $TARGETPLATFORM" >&2; exit 1 ;; \
+  esac; \
+  mkdir -p /tmp/uv && cd /tmp/uv; \
+  curl -fsSLO "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}.tar.gz"; \
+  curl -fsSLO "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}.tar.gz.sha256"; \
+  sha256sum -c "uv-${UV_ARCH}.tar.gz.sha256"; \
+	tar -xzf "uv-${UV_ARCH}.tar.gz"; \
+  install -m 0755 "uv-${UV_ARCH}/uv" /usr/local/bin/uv; \
+  cd / && rm -rf /tmp/uv
 
 WORKDIR /app/task-runner-python
 
@@ -41,7 +51,7 @@ RUN uv sync \
       --no-editable
 
 # ==============================================================================
-# STAGE 2: Task Runner Launcher download
+# STAGE 3: Task Runner Launcher download
 # ==============================================================================
 FROM alpine:3.22.0 AS launcher-downloader
 ARG TARGETPLATFORM
@@ -63,7 +73,7 @@ RUN set -e; \
     cd / && rm -rf /launcher-temp
 
 # ==============================================================================
-# STAGE 3: Runtime
+# STAGE 4: Runtime
 # ==============================================================================
 FROM ${PYTHON_IMAGE} AS runtime
 ARG NODE_VERSION=22
