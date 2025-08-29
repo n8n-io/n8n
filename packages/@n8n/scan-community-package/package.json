@@ -9,7 +9,7 @@
 	],
 	"dependencies": {
 		"eslint": "^9.22.0",
-		"fast-glob": "catalog",
+		"fast-glob": "3.2.12",
 		"axios": "^1.8.4",
 		"semver": "^7.5.4",
 		"tmp": "0.2.4"
