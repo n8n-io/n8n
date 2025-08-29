@@ -8,11 +8,9 @@
 		"scanner"
 	],
 	"dependencies": {
-		"eslint": "^9.22.0",
-		"fast-glob": "^3.3.3",
-		"express": "^4.21.2",
-		"body-parser": "^1.20.3",
-		"axios": "^1.8.4",
+		"eslint": "catalog",
+		"fast-glob": "catalog",
+		"axios": "catalog",
 		"semver": "^7.5.4",
 		"tmp": "0.2.4"
 	}
