@@ -40,7 +40,6 @@ export type ContextMenuAction =
 const position = ref<XYPosition>([0, 0]);
 const isOpen = ref(false);
 const target = ref<ContextMenuTarget>();
-const actions = ref<ActionDropdownItem[]>([]);
 const actionCallback = ref<ContextMenuActionCallback>(() => {});
 
 export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) => {
@@ -105,7 +104,6 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const close = () => {
 		target.value = undefined;
 		isOpen.value = false;
-		actions.value = [];
 		position.value = [0, 0];
 	};
 
@@ -137,7 +135,9 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		target.value = menuTarget;
 		position.value = getMousePosition(event);
 		isOpen.value = true;
+	};
 
+	const actions = computed(() => {
 		const nodes = targetNodes.value;
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
 
@@ -187,7 +187,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		];
 
 		if (nodes.length === 0) {
-			actions.value = [
+			return [
 				{
 					id: 'add_node',
 					shortcut: { keys: ['Tab'] },
@@ -290,20 +290,15 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				menuActions.unshift(...singleNodeActions);
 			}
 
-			actions.value = menuActions;
+			return menuActions;
 		}
-	};
+	});
 
 	const _dispatchAction = (a: ContextMenuAction) => {
 		actionCallback.value(a, targetNodeIds.value);
 	};
 
-	watch(
-		() => uiStore.nodeViewOffsetPosition,
-		() => {
-			close();
-		},
-	);
+	watch(() => uiStore.nodeViewOffsetPosition, close);
 
 	return {
 		isOpen,
