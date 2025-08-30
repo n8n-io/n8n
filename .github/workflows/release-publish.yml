@@ -10,7 +10,7 @@ on:
 jobs:
   publish-to-npm:
     name: Publish to NPM
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     if: github.event.pull_request.merged == true
     timeout-minutes: 15
     permissions:
