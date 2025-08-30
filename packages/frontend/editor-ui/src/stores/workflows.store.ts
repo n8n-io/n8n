@@ -989,7 +989,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-	function pinData(payload: { node: INodeUi; data: INodeExecutionData[] }): void {
+	function pinData(payload: {
+		node: INodeUi;
+		data: INodeExecutionData[];
+		isRestoration?: boolean;
+	}): void {
 		const nodeName = payload.node.name;
 
 		if (!workflow.value.pinData) {
@@ -1000,13 +1004,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			payload.data = [payload.data];
 		}
 
-		if ((workflow.value.pinData?.[nodeName] ?? []).length > 0 && nodeMetadata.value[nodeName]) {
+		if (
+			(workflow.value.pinData?.[nodeName] ?? []).length > 0 &&
+			nodeMetadata.value[nodeName] &&
+			!payload.isRestoration
+		) {
 			// Updating existing pinned data
 			nodeMetadata.value[nodeName].pinnedDataLastUpdatedAt = Date.now();
+		} else if (payload.isRestoration && nodeMetadata.value[nodeName]) {
+			// Clear timestamps during restoration to prevent incorrect dirty marking
+			delete nodeMetadata.value[nodeName].pinnedDataLastUpdatedAt;
+			delete nodeMetadata.value[nodeName].pinnedDataLastRemovedAt;
 		}
 
 		const storedPinData = payload.data.map((item) =>
-			isJsonKeyObject(item) ? { json: item.json } : { json: item },
+			isJsonKeyObject(item)
+				? { json: item.json, ...(item.binary && { binary: item.binary }) }
+				: { json: item },
 		);
 
 		workflow.value.pinData[nodeName] = storedPinData;
