@@ -60,14 +60,20 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	 * Process a newly received message
 	 */
 	async function onMessage(data: unknown) {
-		let receivedData: PushMessage;
+		// The `nodeExecuteAfterData` message is sent as binary data
+		// to be handled by a web worker in the future.
+		if (data instanceof ArrayBuffer) {
+			data = new TextDecoder('utf-8').decode(new Uint8Array(data));
+		}
+
+		let parsedData: PushMessage;
 		try {
-			receivedData = JSON.parse(data as string);
+			parsedData = JSON.parse(data as string);
 		} catch (error) {
 			return;
 		}
 
-		onMessageReceivedHandlers.value.forEach((handler) => handler(receivedData));
+		onMessageReceivedHandlers.value.forEach((handler) => handler(parsedData));
 	}
 
 	const url = getConnectionUrl();

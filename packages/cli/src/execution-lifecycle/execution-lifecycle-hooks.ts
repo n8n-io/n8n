@@ -185,7 +185,23 @@ function hookFunctionsPush(
 			workflowId: this.workflowData.id,
 		});
 
-		pushInstance.send({ type: 'nodeExecuteAfter', data: { executionId, nodeName, data } }, pushRef);
+		const itemCount = data.data?.main?.[0]?.length ?? 0;
+		const { data: _, ...taskData } = data;
+
+		pushInstance.send(
+			{ type: 'nodeExecuteAfter', data: { executionId, nodeName, itemCount, data: taskData } },
+			pushRef,
+		);
+
+		const asBinary = true;
+		pushInstance.send(
+			{
+				type: 'nodeExecuteAfterData',
+				data: { executionId, nodeName, itemCount, data },
+			},
+			pushRef,
+			asBinary,
+		);
 	});
 	hooks.addHandler('workflowExecuteBefore', function (_workflow, data) {
 		const { executionId } = this;

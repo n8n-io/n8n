@@ -1546,7 +1546,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		];
 	}
 
-	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfter'>): void {
+	function updateNodeExecutionData(pushData: PushPayload<'nodeExecuteAfterData'>): void {
 		if (!workflowExecutionData.value?.data) {
 			throw new Error('The "workflowExecutionData" is not initialized!');
 		}
