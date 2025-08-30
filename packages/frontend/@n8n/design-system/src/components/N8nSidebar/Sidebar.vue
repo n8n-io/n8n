@@ -360,7 +360,6 @@ const {
 	border-color: var(--color-foreground-light);
 	display: flex;
 	gap: var(--spacing-2xs);
-
 	justify-content: flex-end;
 }
 
