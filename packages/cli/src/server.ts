@@ -91,6 +91,7 @@ export class Server extends AbstractServer {
 			const { FrontendService } = await import('@/services/frontend.service');
 			this.frontendService = Container.get(FrontendService);
 			await import('@/controllers/module-settings.controller');
+			await import('@/controllers/third-party-licenses.controller');
 		}
 
 		this.presetCredentialsLoaded = false;

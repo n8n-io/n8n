@@ -16,6 +16,7 @@ export * from './module-settings';
 export * from './sso';
 export type * from './tags';
 export * from './templates';
+export * from './third-party-licenses';
 export * from './ui';
 export * from './users';
 export * from './versions';

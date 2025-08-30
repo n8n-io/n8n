@@ -97,7 +97,20 @@ try {
 	buildProcess.pipe(process.stdout);
 	await buildProcess;
 
+	// Generate third-party licenses for production build
+	echo(chalk.yellow('INFO: Generating third-party licenses...'));
+	try {
+		const licenseProcess = $`cd ${config.rootDir} && node scripts/generate-third-party-licenses.mjs`;
+		licenseProcess.pipe(process.stdout);
+		await licenseProcess;
+		echo(chalk.green('✅ Third-party licenses generated successfully'));
+	} catch (error) {
+		echo(chalk.yellow('⚠️  Warning: Third-party license generation failed, continuing build...'));
+		echo(chalk.red(`ERROR: License generation failed: ${error.message}`));
+	}
+
 	echo(chalk.green('✅ pnpm install and build completed'));
+
 } catch (error) {
 	console.error(chalk.red('\n🛑 BUILD PROCESS FAILED!'));
 	console.error(chalk.red('An error occurred during the build process:'));
