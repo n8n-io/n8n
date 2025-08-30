@@ -169,7 +169,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		} else {
 			// Handle team projects
 			projectNavActiveId.value = homeProject?.id ?? null;
-			if (homeProject?.id && !currentProjectId.value) {
+			if (homeProject?.id && homeProject?.id !== currentProjectId.value) {
 				await getProject(homeProject?.id);
 			}
 		}

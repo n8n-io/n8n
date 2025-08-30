@@ -498,7 +498,7 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
-		openWorkflow(workflowData);
+		await openWorkflow(workflowData);
 
 		if (workflowData.parentFolder) {
 			workflowsStore.setParentFolder(workflowData.parentFolder);
@@ -555,11 +555,17 @@ function updateNodesIssues() {
  * Workflow
  */
 
-function openWorkflow(data: IWorkflowDb) {
+async function openWorkflow(data: IWorkflowDb) {
 	resetWorkspace();
 	workflowHelpers.setDocumentTitle(data.name, 'IDLE');
+	console.log('Opening workflow', data);
 
 	initializeWorkspace(data);
+
+	// Update current project to match the workflow's project
+	if (data.homeProject) {
+		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(data.homeProject);
+	}
 
 	void externalHooks.run('workflow.open', {
 		workflowId: data.id,
@@ -1535,7 +1541,7 @@ async function onSourceControlPull() {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
 				workflowHelpers.setDocumentTitle(workflowData.name, 'IDLE');
-				openWorkflow(workflowData);
+				await openWorkflow(workflowData);
 			}
 		}
 	} catch (error) {
