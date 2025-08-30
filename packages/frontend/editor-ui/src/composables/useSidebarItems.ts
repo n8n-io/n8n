@@ -46,6 +46,8 @@ export function useSidebarItems() {
 	}
 
 	async function openProject(id: string) {
+		console.log(id);
+		if (id === 'shared') return;
 		await folderStore.fetchProjectFolders(id);
 		await workflowsStore.fetchAllWorkflows(id, true);
 	}

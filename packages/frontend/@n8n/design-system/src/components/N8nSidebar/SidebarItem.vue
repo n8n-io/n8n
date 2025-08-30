@@ -20,6 +20,7 @@ function click(event: MouseEvent) {
 	event.preventDefault();
 
 	if (typeof props.click === 'function') {
+		console.log(props.item);
 		props.click();
 	}
 }

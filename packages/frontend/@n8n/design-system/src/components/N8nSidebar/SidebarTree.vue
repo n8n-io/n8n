@@ -5,12 +5,6 @@ import SidebarItem from './SidebarItem.vue';
 import N8nText from '../N8nText';
 
 defineProps<{ items: IMenuElement[]; openProject?: (id: string) => Promise<void> }>();
-
-function preventDefault<T>(event: TreeItemToggleEvent<T>) {
-	if (event.detail.originalEvent.type === 'click') {
-		event.detail.originalEvent.preventDefault();
-	}
-}
 </script>
 
 <template>
@@ -20,10 +14,9 @@ function preventDefault<T>(event: TreeItemToggleEvent<T>) {
 				as-child
 				:key="item.value.id"
 				v-slot="{ isExpanded, handleToggle }"
-				@toggle="preventDefault"
-				@select="preventDefault"
-				@click="preventDefault"
 				class="item"
+				@toggle.prevent
+				@click.prevent
 				v-bind="item.bind"
 			>
 				<div v-if="item.value.type === 'empty'">
