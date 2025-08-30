@@ -67,7 +67,7 @@ export function useSidebarItems() {
 			(f) => f.projectId === projectId,
 		);
 		const projectWorkflows = workflowsStore.allWorkflows.filter(
-			(w) => w.homeProject?.id === projectId,
+			(w) => w.homeProject?.id === projectId && !w.isArchived,
 		);
 
 		function buildTree(
