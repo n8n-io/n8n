@@ -114,7 +114,6 @@ const {
 		</header>
 		<nav
 			:class="{ sidebar: true, sidebarHidden: state === 'hidden', sidebarPeak: state === 'peak' }"
-			class="sidebar"
 			:style="{ width: `${sidebarWidth}px` }"
 			@mouseleave="peakMouseOver"
 		>
@@ -259,6 +258,7 @@ const {
 	border-top-right-radius: var(--border-radius-large);
 	border-top: var(--border-base);
 	border-bottom: var(--border-base);
+	border-color: var(--color-foreground-light);
 }
 
 /* exit */
@@ -274,8 +274,7 @@ const {
 }
 
 .sidebar {
-	padding: var(--spacing-2xs);
-	padding-right: var(--spacing-5xs);
+	padding: var(--spacing-xs);
 	padding-top: var(--spacing-5xs);
 	background-color: var(--color-foreground-xlight);
 	position: relative;
@@ -291,7 +290,7 @@ const {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing-2xs);
-	padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs) var(--spacing-2xs);
+	padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) var(--spacing-xs);
 	background-color: var(--color-foreground-xlight);
 }
 
