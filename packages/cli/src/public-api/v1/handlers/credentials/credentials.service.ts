@@ -96,6 +96,65 @@ export async function saveCredential(
 	return result;
 }
 
+export async function updateCredential(
+	user: User,
+	credentialId: string,
+	properties: Partial<CredentialRequest.CredentialProperties>,
+): Promise<CredentialsEntity> {
+	// Get existing credential
+	const existingCredential = await getCredentials(credentialId);
+	if (!existingCredential) {
+		throw new Error('Credential not found');
+	}
+
+	// Check if user has permission to update this credential
+	if (!['global:owner', 'global:admin'].includes(user.role)) {
+		const shared = await getSharedCredentials(user.id, credentialId);
+		if (!shared || !['credential:owner', 'credential:editor'].includes(shared.role)) {
+			throw new Error('Insufficient permissions to update credential');
+		}
+	}
+
+	// Update credential properties
+	if (properties.name !== undefined) {
+		existingCredential.name = properties.name;
+	}
+
+	// Encrypt the data if provided
+	let encryptedData: ICredentialsDb | undefined;
+	if (properties.data) {
+		// Create a temporary credential entity with the new data for encryption
+		const tempCredential = new CredentialsEntity();
+		tempCredential.id = existingCredential.id;
+		tempCredential.name = existingCredential.name;
+		tempCredential.type = existingCredential.type;
+		// Temporarily assign the decrypted data (will be encrypted by encryptCredential)
+		(tempCredential as any).data = properties.data;
+
+		encryptedData = await encryptCredential(tempCredential);
+		existingCredential.data = encryptedData.data;
+	}
+
+	// Save the updated credential
+	const savedCredential = await Container.get(CredentialsRepository).save(existingCredential);
+
+	if (encryptedData) {
+		await Container.get(ExternalHooks).run('credentials.update', [encryptedData]);
+	}
+
+	const project = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
+		credentialId,
+	);
+
+	Container.get(EventService).emit('credentials-updated', {
+		user,
+		credentialType: savedCredential.type,
+		credentialId: savedCredential.id,
+	});
+
+	return savedCredential;
+}
+
 export async function removeCredential(
 	user: User,
 	credentials: CredentialsEntity,
