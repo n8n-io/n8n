@@ -50,11 +50,13 @@ export function abbreviateNumber(num: number) {
 }
 
 export function convertToDisplayDate(epochTime: number) {
-	return dateformat(epochTime, 'yyyy-mm-dd HH:MM:ss');
+	const date = new Date(epochTime);
+	return dateformat(date, 'yyyy-mm-dd HH:MM:ss');
 }
 
 export function convertToHumanReadableDate(epochTime: number) {
-	return dateformat(epochTime, 'd mmmm, yyyy @ HH:MM Z');
+	const date = new Date(epochTime);
+	return dateformat(date, 'd mmmm, yyyy @ HH:MM Z');
 }
 
 export function stringSizeInBytes(input: string | IDataObject | IDataObject[] | undefined): number {
