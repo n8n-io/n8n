@@ -23,6 +23,7 @@ interface Props {
 	};
 	messages?: ChatUI.AssistantMessage[];
 	streaming?: boolean;
+	disabled?: boolean;
 	loadingMessage?: string;
 	sessionId?: string;
 	title?: string;
@@ -149,7 +150,7 @@ const sessionEnded = computed(() => {
 });
 
 const sendDisabled = computed(() => {
-	return !textInputValue.value || props.streaming || sessionEnded.value;
+	return !textInputValue.value || props.streaming || sessionEnded.value || props.disabled;
 });
 
 const showPlaceholder = computed(() => {
@@ -210,6 +211,13 @@ watch(
 	},
 	{ immediate: true, deep: true },
 );
+
+// Expose focusInput method to parent components
+defineExpose({
+	focusInput: () => {
+		chatInput.value?.focus();
+	},
+});
 </script>
 
 <template>
@@ -249,7 +257,11 @@ watch(
 							@code-replace="() => emit('codeReplace', i)"
 							@code-undo="() => emit('codeUndo', i)"
 							@feedback="onRateMessage"
-						/>
+						>
+							<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
+								<slot name="custom-message" v-bind="customMessageProps" />
+							</template>
+						</MessageWrapper>
 
 						<div
 							v-if="
@@ -321,8 +333,8 @@ watch(
 					ref="chatInput"
 					v-model="textInputValue"
 					class="ignore-key-press-node-creator ignore-key-press-canvas"
-					:class="{ [$style.disabled]: sessionEnded || streaming }"
-					:disabled="sessionEnded || streaming"
+					:class="{ [$style.disabled]: sessionEnded || streaming || disabled }"
+					:disabled="sessionEnded || streaming || disabled"
 					:placeholder="placeholder ?? t('assistantChat.inputPlaceholder')"
 					rows="1"
 					wrap="hard"
