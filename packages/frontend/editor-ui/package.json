@@ -48,6 +48,7 @@
     "@n8n/utils": "workspace:*",
     "@replit/codemirror-indentation-markers": "^6.5.3",
     "@sentry/vue": "catalog:frontend",
+    "@sqlite.org/sqlite-wasm": "3.50.4-build1",
     "@types/semver": "^7.7.0",
     "@typescript/vfs": "^1.6.0",
     "@vue-flow/background": "^1.3.2",

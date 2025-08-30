@@ -9,17 +9,18 @@ import {
 } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import glob from 'fast-glob';
 import fs from 'fs';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { BaseCommand } from '../base-command';
+
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import type { IWorkflowToImport } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
-
-import { BaseCommand } from '../base-command';
 
 function assertHasWorkflowsToImport(
 	workflows: unknown[],
@@ -167,7 +168,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		if (sharing && sharing.project.type === 'personal') {
 			const user = await Container.get(UserRepository).findOneByOrFail({
 				projectRelations: {
-					role: 'project:personalOwner',
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					projectId: sharing.projectId,
 				},
 			});

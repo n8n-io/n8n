@@ -13,6 +13,7 @@ import type {
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
 import { DATA_STORE_MODULE_NAME } from './features/dataStore/constants';
+import type { TelemetryContext } from './types/telemetry';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -87,6 +88,7 @@ export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
 export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
 export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
+export const PRE_BUILT_AGENTS_MODAL_KEY = 'preBuiltAgents';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
@@ -600,6 +602,7 @@ export const enum VIEWS {
 	SHARED_CREDENTIALS = 'SharedCredentials',
 	ENTITY_NOT_FOUND = 'EntityNotFound',
 	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
+	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -980,6 +983,7 @@ export const PopOutWindowKey: InjectionKey<Ref<Window | undefined>> = Symbol('Po
 export const ExpressionLocalResolveContextSymbol: InjectionKey<
 	ComputedRef<ExpressionLocalResolveContext | undefined>
 > = Symbol('ExpressionLocalResolveContext');
+export const TelemetryContextSymbol: InjectionKey<TelemetryContext> = Symbol('TelemetryContext');
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 export const CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID = 'cm-tooltip-container';

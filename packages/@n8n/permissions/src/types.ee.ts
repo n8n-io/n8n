@@ -6,6 +6,7 @@ import type {
 	credentialSharingRoleSchema,
 	globalRoleSchema,
 	projectRoleSchema,
+	Role,
 	roleNamespaceSchema,
 	teamRoleSchema,
 	workflowSharingRoleSchema,
@@ -58,23 +59,16 @@ export type CredentialSharingRole = z.infer<typeof credentialSharingRoleSchema>;
 export type WorkflowSharingRole = z.infer<typeof workflowSharingRoleSchema>;
 export type TeamProjectRole = z.infer<typeof teamRoleSchema>;
 export type ProjectRole = z.infer<typeof projectRoleSchema>;
+export type CustomRole = string;
 
 /** Union of all possible role types in the system */
 export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole;
 
-type RoleObject<T extends AllRoleTypes> = {
-	role: T;
-	name: string;
-	description?: string | null;
-	scopes: Scope[];
-	licensed: boolean;
-};
-
 export type AllRolesMap = {
-	global: Array<RoleObject<GlobalRole>>;
-	project: Array<RoleObject<ProjectRole>>;
-	credential: Array<RoleObject<CredentialSharingRole>>;
-	workflow: Array<RoleObject<WorkflowSharingRole>>;
+	global: Role[];
+	project: Role[];
+	credential: Role[];
+	workflow: Role[];
 };
 
 export type DbScope = {

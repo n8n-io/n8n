@@ -26,14 +26,14 @@ jest.mock('@langchain/langgraph', () => ({
 }));
 
 describe('RemoveNodeTool', () => {
-	let removeNodeTool: ReturnType<typeof createRemoveNodeTool>;
+	let removeNodeTool: ReturnType<typeof createRemoveNodeTool>['tool'];
 	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
 		typeof getCurrentTaskInput
 	>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		removeNodeTool = createRemoveNodeTool();
+		removeNodeTool = createRemoveNodeTool().tool;
 	});
 
 	afterEach(() => {

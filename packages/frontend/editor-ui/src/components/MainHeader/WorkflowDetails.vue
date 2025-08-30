@@ -62,8 +62,13 @@ import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
-const WORKFLOW_NAME_MAX_WIDTH_SMALL_SCREENS = 150;
-const WORKFLOW_NAME_MAX_WIDTH_WIDE_SCREENS = 200;
+const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
+	XS: 150,
+	SM: 200,
+	MD: 250,
+	LG: 500,
+	XL: 1000,
+};
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -736,11 +741,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 							class="name"
 							:model-value="name"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
-							:max-width="
-								['XS', 'SM'].includes(bp)
-									? WORKFLOW_NAME_MAX_WIDTH_SMALL_SCREENS
-									: WORKFLOW_NAME_MAX_WIDTH_WIDE_SCREENS
-							"
+							:max-width="WORKFLOW_NAME_BP_TO_WIDTH[bp]"
 							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							@update:model-value="onNameSubmit"

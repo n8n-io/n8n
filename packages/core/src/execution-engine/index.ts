@@ -7,12 +7,13 @@ declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
 		hooks?: ExecutionLifecycleHooks;
 		externalSecretsProxy: ExternalSecretsProxy;
-		dataStoreProxyProvider?: DataStoreProxyProvider;
+		'data-table'?: { dataStoreProxyProvider: DataStoreProxyProvider };
+		dataStoreProjectId?: string;
 	}
 }
 
 export * from './active-workflows';
-export * from './interfaces';
+export type * from './interfaces';
 export * from './routing-node';
 export * from './node-execution-context';
 export * from './partial-execution-utils';
