@@ -160,11 +160,13 @@ const helpMenuItems = ref<IMenuElement[]>([
 		icon: 'circle-help',
 		label: i18n.baseText('mainSidebar.help'),
 		position: 'bottom',
+		type: 'other',
 		children: [
 			{
 				id: 'quickstart',
 				icon: 'video',
 				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
+				type: 'other',
 				link: {
 					href: 'https://www.youtube.com/watch?v=4cQWJViybAQ',
 					target: '_blank',
@@ -174,6 +176,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 				id: 'docs',
 				icon: 'book',
 				label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
+				type: 'other',
 				link: {
 					href: 'https://docs.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
 					target: '_blank',
@@ -183,6 +186,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 				id: 'forum',
 				icon: 'users',
 				label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
+				type: 'other',
 				link: {
 					href: 'https://community.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
 					target: '_blank',
@@ -192,6 +196,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 				id: 'examples',
 				icon: 'graduation-cap',
 				label: i18n.baseText('mainSidebar.helpMenuItems.course'),
+				type: 'other',
 				link: {
 					href: 'https://docs.n8n.io/courses/',
 					target: '_blank',
@@ -201,6 +206,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 				id: 'report-bug',
 				icon: 'bug',
 				label: i18n.baseText('mainSidebar.helpMenuItems.reportBug'),
+				type: 'other',
 				link: {
 					href: getReportingURL(),
 					target: '_blank',
@@ -210,6 +216,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 				id: 'about',
 				icon: 'info',
 				label: i18n.baseText('mainSidebar.aboutN8n'),
+				type: 'other',
 				position: 'bottom',
 			},
 		],
@@ -219,6 +226,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 		icon: 'bell',
 		notification: showWhatsNewNotification.value,
 		label: i18n.baseText('mainSidebar.whatsNew'),
+		type: 'other',
 		position: 'bottom',
 		available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
 		children: [
@@ -229,6 +237,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 						label: article.title,
 						size: 'small',
 						customIconSize: 'small',
+						type: 'other',
 						icon: 'dot',
 					}) satisfies IMenuItem,
 			),
@@ -236,6 +245,7 @@ const helpMenuItems = ref<IMenuElement[]>([
 				id: 'full-changelog',
 				icon: 'external-link',
 				label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
+				type: 'other',
 				link: {
 					href: RELEASE_NOTES_URL,
 					target: '_blank',

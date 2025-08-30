@@ -66,7 +66,7 @@ const icon = computed<IconName>(() => {
 				</div>
 			</div>
 			<button
-				v-if="item.type !== 'other'"
+				v-if="item.type !== 'other' && item.type !== 'workflow'"
 				class="sidebarItemDropdownButton"
 				@click="click"
 				:aria-label="ariaLabel"
@@ -160,7 +160,6 @@ const icon = computed<IconName>(() => {
 	width: var(--spacing-s);
 	height: var(--spacing-s);
 	border-radius: 0 var(--border-radius-small) var(--border-radius-small) 0;
-	border-left: var(--color-foreground-xlight) 1px solid;
 	position: absolute;
 	right: 0;
 	top: 0;
