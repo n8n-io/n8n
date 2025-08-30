@@ -16,7 +16,7 @@ import { z } from 'zod';
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { EDITOR_UI_DIST_DIR } from '@/constants';
+import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -117,6 +117,28 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.exitSuccessFully();
 	}
 
+	/**
+	 * Generates the JS script that injects the instance configuration
+	 * values into the FE window object (REST endpoint path and Sentry config).
+	 */
+	private generateConfigScript() {
+		const frontendSentryConfig = JSON.stringify({
+			dsn: this.globalConfig.sentry.frontendDsn,
+			environment: process.env.ENVIRONMENT || 'development',
+			serverName: process.env.DEPLOYMENT_NAME,
+			release: `n8n@${N8N_VERSION}`,
+		});
+
+		const frontendConfigScript = [
+			'<script>',
+			`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
+			`window.sentry = ${frontendSentryConfig};`,
+			'</script>',
+		].join('');
+
+		return frontendConfigScript;
+	}
+
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = this.globalConfig.path;
@@ -138,6 +160,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				await mkdir(path.dirname(destFile), { recursive: true });
 				const streams = [
 					createReadStream(filePath, 'utf-8'),
+					replaceStream('%CONFIG_SCRIPT%', this.generateConfigScript(), { ignoreCase: false }),
 					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, { ignoreCase: false }),
