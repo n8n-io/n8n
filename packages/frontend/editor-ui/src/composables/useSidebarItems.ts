@@ -46,10 +46,20 @@ export function useSidebarItems() {
 	}
 
 	async function openProject(id: string) {
-		console.log(id);
-		if (id === 'shared') return;
-		await folderStore.fetchProjectFolders(id);
-		await workflowsStore.fetchAllWorkflows(id, true);
+		if (id === 'shared') {
+			await workflowsStore.fetchWorkflowsPage(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				true,
+			);
+		} else {
+			await folderStore.fetchProjectFolders(id);
+			await workflowsStore.fetchAllWorkflows(id, true);
+		}
 	}
 
 	function convertToTreeStructure(projectId: string): IMenuElement[] {

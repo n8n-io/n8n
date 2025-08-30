@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { IMenuElement, IMenuItem } from '@n8n/design-system/types';
-import { TreeItem, TreeItemToggleEvent, TreeRoot, TreeVirtualizer } from 'reka-ui';
+import { TreeItem, TreeRoot, TreeVirtualizer } from 'reka-ui';
 import SidebarItem from './SidebarItem.vue';
 import N8nText from '../N8nText';
 

@@ -353,7 +353,7 @@ const {
 
 .sidebarHelpArea {
 	position: relative;
-	padding: var(--spacing-3xs) var(--spacing-xs) var(--spacing-2xs) var(--spacing-xs);
+	padding: var(--spacing-2xs);
 	background-color: var(--color-foreground-xlight);
 	border-top: var(--border-base);
 	border-color: var(--color-foreground-light);
