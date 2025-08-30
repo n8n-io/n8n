@@ -25,7 +25,7 @@ export class MicrosoftSharePointOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'string',
-			default: '=openid offline_access https://{{$self.subdomain}}.sharepoint.com/.default Sites.Read.All Sites.ReadWrite.All Files.Read.All Files.ReadWrite.All',
+			default: '=openid offline_access Sites.ReadWrite.All Files.ReadWrite.All User.Read',
   			description: 'Scopes to request from Microsoft Graph/SharePoint API',
 		},
 		{
