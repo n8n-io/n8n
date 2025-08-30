@@ -20,7 +20,6 @@ function click(event: MouseEvent) {
 	event.preventDefault();
 
 	if (typeof props.click === 'function') {
-		console.log(props.item);
 		props.click();
 	}
 }
@@ -65,15 +64,15 @@ const icon = computed<IconName>(() => {
 					>
 					<N8nIcon v-else-if="item.icon" :icon="icon" />
 				</div>
-				<button
-					v-if="item.type !== 'other'"
-					class="sidebarItemDropdownButton"
-					@click="click"
-					:aria-label="ariaLabel"
-				>
-					<N8nIcon color="foreground-xdark" :icon="open ? 'chevron-down' : 'chevron-right'" />
-				</button>
 			</div>
+			<button
+				v-if="item.type !== 'other'"
+				class="sidebarItemDropdownButton"
+				@click="click"
+				:aria-label="ariaLabel"
+			>
+				<N8nIcon color="foreground-xdark" :icon="open ? 'chevron-down' : 'chevron-right'" />
+			</button>
 			<N8nText size="small" class="sidebarItemText">{{ item.label }}</N8nText>
 		</N8nRoute>
 	</div>
@@ -114,8 +113,7 @@ const icon = computed<IconName>(() => {
 	color: var(--color-text-dark);
 }
 
-.sidebarItem:focus-visible,
-.sidebarItem:has(:focus-visible) {
+.sidebarItem:focus-visible {
 	outline: 1px solid var(--color-secondary);
 	outline-offset: -1px;
 }
@@ -149,13 +147,6 @@ const icon = computed<IconName>(() => {
 		pointer-events: none;
 		color: var(--color-foreground-dark);
 	}
-
-	&:not(.other) {
-		&:hover .sidebarItemDropdownIcon,
-		&:has(:focus-visible) .sidebarItemDropdownIcon {
-			opacity: 0;
-		}
-	}
 }
 
 .sidebarItemDropdownButton {
@@ -168,9 +159,19 @@ const icon = computed<IconName>(() => {
 	border: none;
 	width: var(--spacing-s);
 	height: var(--spacing-s);
-	border-radius: var(--border-radius-small);
+	border-radius: 0 var(--border-radius-small) var(--border-radius-small) 0;
+	border-left: var(--color-foreground-xlight) 1px solid;
+	position: absolute;
+	right: 0;
+	top: 0;
 	padding: 0;
 	opacity: 0;
+	width: 28px;
+	height: 28px;
+}
+
+.sidebarItem:hover > .sidebarItemDropdownButton {
+	opacity: 1;
 }
 
 .sidebarItemDropdownButton:hover {
