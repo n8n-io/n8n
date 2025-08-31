@@ -430,7 +430,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:streamGenerateContent?key=AIzaSyCemYr8CW9H1e_4lCA_EXoE2Yn20tIOM9o",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:streamGenerateContent?key=
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n \"contents\": [\n  {\n   \"role\": \"user\",\n   \"parts\": [\n    {\n     \"text\": \"{{ $('Formatter').item.json.text }}\"\n    }\n   ]\n  }\n ],\n \"generationConfig\": {\n  \"responseModalities\": [ \n   \"audio\"\n  ],\n  \"temperature\": 1,\n  \"speech_config\": {\n   \"voice_config\": {\n    \"prebuilt_voice_config\": {\n     \"voice_name\": \"{{ $json.output.voice_name }}\"\n    }\n   }\n  }\n }\n}",
