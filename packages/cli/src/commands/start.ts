@@ -128,11 +128,11 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			serverName: process.env.DEPLOYMENT_NAME,
 			release: `n8n@${N8N_VERSION}`,
 		});
-		const toB64 = (value: string) => Buffer.from(value).toString('base64');
+		const b64Encode = (value: string) => Buffer.from(value).toString('base64');
 
 		// Base64 encode the configuration values
-		const restEndpointEncoded = toB64(this.globalConfig.endpoints.rest);
-		const sentryConfigEncoded = toB64(frontendSentryConfig);
+		const restEndpointEncoded = b64Encode(this.globalConfig.endpoints.rest);
+		const sentryConfigEncoded = b64Encode(frontendSentryConfig);
 
 		const configMetaTags = [
 			`<meta name="n8n:config:rest-endpoint" content="${restEndpointEncoded}">`,
