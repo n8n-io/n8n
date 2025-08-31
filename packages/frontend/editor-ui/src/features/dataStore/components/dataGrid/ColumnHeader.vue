@@ -4,6 +4,7 @@ import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStore
 import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isAGGridCellType } from '@/features/dataStore/typeGuards';
+import { N8nActionDropdown } from '@n8n/design-system';
 
 type HeaderParamsWithDelete = IHeaderParams & {
 	onDelete: (columnId: string) => void;
@@ -19,7 +20,7 @@ const i18n = useI18n();
 
 const isHovered = ref(false);
 const isDropdownOpen = ref(false);
-const dropdownRef = ref<HTMLElement>();
+const dropdownRef = ref<InstanceType<typeof N8nActionDropdown>>();
 
 const enum ItemAction {
 	Delete = 'delete',
