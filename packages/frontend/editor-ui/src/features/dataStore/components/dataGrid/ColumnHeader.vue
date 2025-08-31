@@ -179,7 +179,7 @@ const onHeaderClick = (event: MouseEvent) => {
 		font-size: var(--font-size-2xs);
 		line-height: 1;
 		color: var(--color-text-base);
-		font-weight: bold;
+		font-weight: var(--font-weight-bold);
 	}
 }
 </style>
