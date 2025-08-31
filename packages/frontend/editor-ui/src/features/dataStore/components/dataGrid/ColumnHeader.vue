@@ -166,14 +166,13 @@ const onHeaderClick = (event: MouseEvent) => {
 .ag-header-cell-text {
 	@include mixins.utils-ellipsis;
 	min-width: 0;
-	flex: 1;
 }
 
 .sort-indicator {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	margin-left: var(--spacing-2xs);
+	flex-shrink: 0;
 
 	.sort-icon-active {
 		font-size: var(--font-size-2xs);
