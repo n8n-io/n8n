@@ -1,0 +1,1981 @@
+{
+  "name": "BATA2",
+  "nodes": [
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"array\",\n  \"items\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"Prompt\": {\n        \"type\": \"string\",\n        \"description\": \"A detailed prompt describing a scene\"\n      }\n    },\n    \"required\": [\"Prompt\"]\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        1200
+      ],
+      "id": "577217df-d372-46b3-bb44-b9b765cf8e5a",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "05c8d19f-67c2-4e9e-b1fc-102c807dada8",
+              "name": "text",
+              "value": "={{ $json[\"text\"].replace(/\\n/g, \" \") }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1328,
+        192
+      ],
+      "id": "50d051ce-06ea-4d3a-84c0-7f5cfc81ca8a",
+      "name": "Formatter"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2032,
+        272
+      ],
+      "id": "602f79bc-ffad-48be-aadb-caed7e6c177c",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "40dc6e90-ddd9-447e-8db0-6a7bb1906f9d",
+              "name": "prompt",
+              "value": "={{ $('สร้างรูปกัน').item.json.output }}",
+              "type": "array"
+            },
+            {
+              "id": "cbceb8b0-b983-41cd-b318-38f190a8f6fe",
+              "name": "FileName",
+              "value": "=http://host.docker.internal:9000/bed-time-stories/{{ $('Generate UUID').item.json.UUID }}.png\n",
+              "type": "string"
+            },
+            {
+              "id": "f411eb6e-d07f-4bd1-b186-f1e91897213d",
+              "name": "Clip Duration",
+              "value": "={{ $('Get Audio Duration').item.json.response[0].duration / $json.picture }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1232,
+        1024
+      ],
+      "id": "1a151ace-507c-4167-a6c4-cf90c11d7cf0",
+      "name": "Set Prompt & url"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "response"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1888,
+        960
+      ],
+      "id": "6a539760-f20e-4513-b3ce-f845785b68bd",
+      "name": "Aggregate2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8080/v1/image/transform/video",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"id\": \"image-zoom-out\",\n  \"image_url\": \"{{ $('Set Prompt & url').item.json.FileName.replace(/\\n/g, '') }}\",\n  \"length\": {{ parseInt($('Set Prompt & url').item.json['Clip Duration']) }},\n  \"frame_rate\": 25,\n  \"zoom_speed\": 1.5\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        960
+      ],
+      "id": "9c063fe2-3423-4d4d-bedf-795ef78a9308",
+      "name": "Create Video Clips",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "maxTries": 5,
+      "alwaysOutputData": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "oeN02ofdXo0QSnyS",
+          "name": "NCA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract the array of URLs\nconst urls =  $input.first().json.response || [];\n\n// Map URLs into the required structure\nconst formattedURLs = urls.map(url => ({ \"video_url\": url }));\n\n// Return the transformed data\nreturn [{\n    json: {\n        \"video_urls\": formattedURLs\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        960
+      ],
+      "id": "858d8392-60b4-42b7-9b8b-085a82895b48",
+      "name": "Video url to array"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8080/v1/video/concatenate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"video_urls\": {{ JSON.stringify($json.video_urls) }},\n    \"id\": \"Job\"\n}",
+        "options": {
+          "timeout": 50000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2320,
+        960
+      ],
+      "id": "2cfda25d-9ced-4bd8-a247-c4cdc8fd0695",
+      "name": "Create Video",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "maxTries": 5,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "oeN02ofdXo0QSnyS",
+          "name": "NCA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8080/v1/ffmpeg/compose",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"id\": \"audio-layering\",\n    \"inputs\": [\n        {\n            \"file_url\": \"{{ $json.response }}\"\n        },\n        {\n            \"file_url\": \"{{ $('Get Audio Duration').item.json.response[0].file_url }}\"\n        }\n    ],\n    \"filters\": [\n        {\n            \"filter\": \"[1:a]volume=1[outa]\"\n        }\n    ],\n    \"outputs\": [\n        {\n            \"options\": [\n                {\n                    \"option\": \"-map\",\n                    \"argument\": \"0:v\"\n                },\n                {\n                    \"option\": \"-map\",\n                    \"argument\": \"[outa]\"\n                },\n                {\n                    \"option\": \"-c:v\",\n                    \"argument\": \"copy\"\n                },\n                {\n                    \"option\": \"-c:a\",\n                    \"argument\": \"aac\"\n                }\n            ]\n        }\n    ]\n}\n",
+        "options": {
+          "timeout": 50000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2528,
+        960
+      ],
+      "id": "75ef23cb-67b8-4a40-b7ff-7bea7223938c",
+      "name": "Add TTS To Video",
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 3,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "oeN02ofdXo0QSnyS",
+          "name": "NCA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "bed-time-stories",
+        "fileName": "={{ $('Generate UUID').item.json.UUID }}.png",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        2880,
+        288
+      ],
+      "id": "518bf81b-3440-412b-9d31-31eacc17061f",
+      "name": "Upload Image",
+      "credentials": {
+        "s3": {
+          "id": "8Sl6cEcS8Vyqv4Mj",
+          "name": "S3 account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        768,
+        1024
+      ],
+      "id": "ea6a09a9-047b-40ef-9c12-f18c84cffb74",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const original = item.json.text || \"\";\n\n  const cleaned = original\n    // 1. Remove emojis\n    .replace(/\\p{Extended_Pictographic}/gu, \"\")\n    // 2. Strip out HTML tags\n    .replace(/<[^>]*>/g, \"\")\n    // 3. Remove ellipses (...)\n    .replace(/\\.{3,}/g, \"\")\n    // 4. Remove any remaining dots\n    .replace(/\\./g, \"\")\n    // 5. Remove all quotation marks (single, double, curly)\n    .replace(/['\"“”‘’]/g, \"\")\n    // 6. Collapse multiple whitespace into single spaces\n    .replace(/\\s+/g, \" \")\n    // 7. Remove control characters\n    .replace(/[\\x00-\\x09\\x0B-\\x1F\\x7F]/g, \"\")\n    // 8. Trim leading/trailing spaces\n    .trim();\n\n  item.json.text = cleaned;\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        192
+      ],
+      "id": "481e8f45-5303-4ed8-b1fb-a5203528db32",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=เลือก 1 เสียงที่ควรใช้ เอาแค่ชื่ออย่างเดียวนะไม่เอา character\n\n\"\nalgenib — มั่นใจ\nalgieba — ลึกลับ\naoede — นุ่มนวล\nautonoe — อิสระ\ncallirrhoe — ชวนฝัน\ndespina — บอบบาง\nerinome — เข้มแข็ง\nfenrir — ดุดัน\niapetus — ใจร้อน\nkore — บริสุทธิ์\nlaomedeia — ละเอียดอ่อน\nleda — สง่างาม\norus — หนักแน่น\nsadaltager — รอบคอบ\nschedar — สดใส\numbriel — เงียบขรึม\nvindemiatrix — ปราดเปรียว\nzephyr — เบาสบาย\nzubenelgenubi — แปลกใหม่\n\"",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=คุณมีหน้าที่ต้องเลือกเสียง 1 เสียงให้เหมาะสมกับเรื่องราว\n\n\"\"\nalgenib — มั่นใจ\nalgieba — ลึกลับ\naoede — นุ่มนวล\nautonoe — อิสระ\ncallirrhoe — ชวนฝัน\ndespina — บอบบาง\nerinome — เข้มแข็ง\nfenrir — ดุดัน\niapetus — ใจร้อน\nkore — บริสุทธิ์\nlaomedeia — ละเอียดอ่อน\nleda — สง่างาม\norus — หนักแน่น\nsadaltager — รอบคอบ\nschedar — สดใส\numbriel — เงียบขรึม\nvindemiatrix — ปราดเปรียว\nzephyr — เบาสบาย\nzubenelgenubi — แปลกใหม่\n\"\"\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        320,
+        528
+      ],
+      "id": "4b3aa56c-8251-4f0f-a31e-ca98c2c11f43",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t  \"voice_name\": \"\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        752
+      ],
+      "id": "0630d4cb-6023-4554-84d5-f0fa941b6b51",
+      "name": "Structured Output Parser2"
+    },
+    {
+      "parameters": {
+        "action": "generate",
+        "dataPropertyName": "UUID"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        928,
+        1024
+      ],
+      "id": "35c92454-b968-48ff-af73-1c8c3189e44f",
+      "name": "Generate UUID"
+    },
+    {
+      "parameters": {
+        "amount": 45
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2272,
+        288
+      ],
+      "id": "5e19a278-de8c-4d1a-ba5b-3205032fd11f",
+      "name": "Wait",
+      "webhookId": "b1f36eb7-b5fa-4162-893d-1755d5d9a5ff",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.output.story_topic }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=# Realistic Horror Story Prompt for Cinematic YouTube Shorts\n\nYou are a professional horror story concept writer. Your task is to generate one deeply unsettling horror story idea designed for a 16:9 horizontal YouTube Shorts video. The story must feel grounded in reality, whether inspired by real places, cultural taboos, historical mysteries, or unexplained phenomena.\n\nYour stories must **not** include fantasy magic or superhero elements. They must focus on **psychological tension, fear of the unknown, isolation, urban legends, true crime, or dark folklore**. The setting must be an actual place on Earth — from abandoned schools in Eastern Europe to haunted temples in Southeast Asia.\n\n🧠 Focus areas:\n- Abandoned buildings, villages, tunnels, or religious places\n- Disappearances, forbidden rituals, strange cultural practices\n- Travel horror (lost tourists, locals with secrets)\n- Historical horror (war experiments, secret labs, propaganda sites)\n- Entities or threats that feel possible (cults, haunted spaces, reclusive people, rumors)\n\n📌 Your Output Requirements:\n- Language: English\n- Format: Only 1 horror story topic per run\n- Detail Level: Rich enough to inspire a full YouTube script\n- Tone: Realistic, eerie, serious\n- Story should be cinematic and have viral potential (based on fear, mystery, or disturbing truths)\n- No fantasy tropes (e.g. no witches, magic, vampires)\n- Main character(s): Human or unexplained but realistic entities\n- Setting: Real location with cultural, visual or historical significance\n\n🎯 Example Output Structure (do not reuse, just follow format):\n\n**Title:** \"The Last Patient of Ward 6 — Romania's Forgotten Asylum\"\n\n**Story Concept:** In the hills of Transylvania lies an abandoned mental asylum decommissioned in 1982. But locals whisper that one patient was never removed. When a YouTuber enters the compound to film a challenge, strange recordings start playing through the hospital intercom… recordings that respond to what he says out loud.\n\n---\n\nYour job is to generate a **unique**, **realistic horror story idea** every time. Avoid overused clichés and aim to leave the viewer disturbed — but curious to learn more.\n"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        848,
+        192
+      ],
+      "id": "b1a7c73f-6aec-498d-88f6-9d1edc2c1b1f",
+      "name": "สร้างเนื้อเรื่อง",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Based on \n{{ $('Code1').item.json.text }}\nstory, create detailed image generation english prompts that capture the key visual scenes for maximum viral potential.",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "={\n  \"spec_version\": \"CinematicHorrorPrompt.v4.1-LongClip10m-FastCut\",\n  \"purpose\": \"Build varied, single-line English prompts that look photographic and non-AI, with fast scene changes for a ~10min grounded-horror video.\",\n  \"pacing\": {\n    \"target_clip_duration_sec\": 600,\n    \"scene_duration_sec_range\": { \"min\": 45, \"max\": 55 },\n    \"scenes_count_range\": { \"min\": 9, \"max\": 16 },\n    \"note\": \"If total exceeds 600s, trim last cooldown scene first.\"\n  },\n  \"render_defaults\": {\n    \"aspect_ratio_primary\": \"16:9\",\n    \"aspect_ratio_alt\": \"9:16\",\n    \"width\": 2560,\n    \"height\": 1440,\n    \"style_hint\": \"photographic realism, subtle film grain, natural color response\",\n    \"lens_default\": { \"focal_length_mm\": 35, \"aperture_fstop\": 2.8 },\n    \"white_balance\": \"slightly cool\",\n    \"vignette\": \"subtle\",\n    \"sensor_noise_iso_equiv\": 640\n  },\n  \"character\": {\n    \"derive_from_story\": true,\n    \"gender\": [\"female\", \"male\"],\n    \"age_rule\": \"20+ (always clothed, non-sexualized)\",\n    \"baseline_face\": \"natural asymmetry, visible pores, faint eye bags\",\n    \"hair_rule\": \"gravity-consistent; flyaway baby hairs; wind/wetness follows weather\",\n    \"wardrobe\": {\n      \"type_examples\": [\"work jacket + cotton shirt + trousers + boots\", \"hooded parka + denim + trail shoes\"],\n      \"degradation_curve\": [\"clean\", \"dust/rain marks\", \"creased cuffs\", \"damp hem\", \"scuffed elbows\"]\n    }\n  },\n  \"safety_guards\": [\n    \"No sexual or alluring framing\",\n    \"No graphic gore\",\n    \"No supernatural powers or fantasy creatures\",\n    \"Adults only\",\n    \"Hands always 5 fingers each; correct joints/proportions\"\n  },\n  \"realism_boosters\": {\n    \"skin\": [\"micro pores\", \"subsurface scatter at ears/nose in backlight\", \"non-uniform micro-shadows\"],\n    \"fabric\": [\"visible seam stitching\", \"light pilling at cuffs\", \"crease memory at elbows\"],\n    \"physics\": [\"wind direction consistent across hair/loose fabric/foliage\", \"wet areas darken fabric realistically\", \"footprints or water drips where plausible\"],\n    \"lens\": [\"cat-eye bokeh toward edges\", \"mild field curvature\", \"tiny chromatic aberration on high-contrast edges\"],\n    \"environment_contacts\": [\"mud on boots\", \"salt crust near sea\", \"condensation on glass when cold/wet\"]\n  },\n  \"negative_terms\": [\n    \"AI-looking plastic skin\",\n    \"over-saturated neon\",\n    \"cartoon/anime\",\n    \"excessive bloom/HDR crunch\",\n    \"watermarks/letters/logos\",\n    \"extra fingers/warped limbs\",\n    \"light leak (unless explicitly requested)\"\n  },\n  \"locale_profile\": {\n    \"signage\": \"shapes only, illegible marks (no readable text)\",\n    \"markers_examples\": [\"monsoon moss\", \"sea salt crust\", \"fir needles\", \"concrete spalling\"],\n    \"respect_note\": \"Use plausible local history/rituals; avoid stereotypes.\"\n  },\n  \"camera_lighting\": {\n    \"angles\": [\"low-angle\", \"wide\", \"OTS\", \"POV\", \"close-up\"],\n    \"lighting\": [\"natural dim\", \"off-axis diffused flash\", \"practical lamps\", \"candle/flicker\"],\n    \"flash_rule\": \"Prefer off-axis or bounced flash; avoid on-camera hard flash unless for deliberate shock.\"\n  },\n  \"continuity_rules\": [\n    \"Same protagonist across all scenes (face/hair/body/wardrobe base locked)\",\n    \"Wardrobe degrades gradually per scene index\",\n    \"Lighting grammar consistent with location/time\",\n    \"All causes realistic; no magic\"\n  },\n  \"pacing_curve\": [\"low\", \"low→medium\", \"medium\", \"medium spike\", \"cooldown\", \"medium-high\", \"high spike\", \"cooldown\", \"climax\", \"denouement\"],\n  \"prompt_output\": {\n    \"type\": \"single-line-minified-prompt\",\n    \"quote_style\": \"single\",\n    \"joiner\": \" \",\n    \"must_contain\": [\"Scene 1:\", \"Same protagonist from Scene 1\"],\n    \"variety_rules\": {\n      \"synonyms_subject\": [\"protagonist\", \"drifter\", \"investigator\", \"night worker\"],\n      \"synonyms_walk\": [\"treads\", \"edges forward\", \"advances slowly\"],\n      \"synonyms_light\": [\"off-axis flash\", \"dim utility lamp\", \"sodium vapor spill\", \"candle flicker\"],\n      \"synonyms_mood\": [\"wary\", \"frayed\", \"on edge\", \"hollow-eyed\"],\n      \"synonyms_texture\": [\"salt bloom\", \"peeling paint\", \"oil sheen\", \"dust motes\"]\n    }\n  },\n  \"scene_schema\": {\n    \"required\": [\n      \"scene_number\", \"duration_sec\", \"time_of_day\", \"weather\",\n      \"location.macro\", \"location.micro\", \"camera\", \"lighting\",\n      \"composition\", \"action\", \"props\", \"emotion\", \"micro_realism\"\n    ],\n    \"camera\": { \"angle\": \"[pick from camera_lighting.angles]\", \"focal\": 28, \"fstop\": 2.8, \"framing\": \"rule-of-thirds or centered for tension\" }\n  },\n  \"auto_build_rules\": {\n    \"wrap_with_single_quotes\": true,\n    \"header_template\": \"Title: [[title]].\",\n    \"scene_template_variants\": [\n      \"Scene [[n]] ([[duration]]s): [[char_prefix]][[subject]] ([[gender]], [[age]]); [[emotion]]; at [[macro]], [[micro]], [[time]], [[weather]]; lighting [[light]]; camera [[angle]], [[focal]]mm f/[[fstop]], [[framing]]; composition [[composition]]; action [[action]]; props [[props]]; textures [[textures]]; realism [[micro]].\",\n      \"Scene [[n]] ([[duration]]s): [[char_prefix]][[subject]] ([[gender]], [[age]]); posture [[posture]]; [[macro]] • [[micro]] • [[time]] • [[weather]]; [[style]] look, [[tone]]; light [[light]]; cam [[angle]] [[focal]]mm f/[[fstop]]; comp [[composition]]; does [[action]]; symbols [[props]]; traces [[textures]]; micro [[micro]].\"\n    ],\n    \"character_prefix\": { \"scene_1\": \"\", \"scene_n\": \"Same protagonist from Scene 1, \" }\n  },\n  \"gender_profiles\": {\n    \"female\": {\n      \"face\": \"oval, soft jawline, slight asymmetry\",\n      \"hair\": \"shoulder-length straight or loose waves, dark brown/black\",\n      \"wardrobe_example\": \"work jacket, cotton shirt, dark trousers, worn boots\"\n    },\n    \"male\": {\n      \"face\": \"angular, faint stubble, slight asymmetry\",\n      \"hair\": \"short crop or messy fringe, dark brown/black\",\n      \"wardrobe_example\": \"oilskin jacket, wool shirt, cargo pants, work boots\"\n    }\n  },\n  \"example_fill_minimal\": {\n    \"title\": \"Echo in the Service Tunnel\",\n    \"protagonist_gender\": \"female\",\n    \"scenes\": [\n      {\n        \"scene_number\": 1,\n        \"duration_sec\": 50,\n        \"time_of_day\": \"blue hour\",\n        \"weather\": \"mist after rain\",\n        \"location\": { \"macro\": \"derelict transit tunnel\", \"micro\": \"flaking tiled wall, puddles\" },\n        \"camera\": { \"angle\": \"wide\", \"focal\": 28, \"fstop\": 3.2, \"framing\": \"deep negative space\" },\n        \"lighting\": \"dim utility lamps with off-axis flash fill\",\n        \"composition\": \"leading lines down tunnel; protagonist near third line\",\n        \"action\": \"edges forward, listening to intermittent drip\",\n        \"props\": [\"discarded timetable sheet, unreadable\", \"orange traffic cone scuffed\"],\n        \"emotion\": \"wary\",\n        \"micro_realism\": [\"wet boot seams\", \"condensation breath\", \"salt bloom on tiles\"]\n      },\n      {\n        \"scene_number\": 2,\n        \"duration_sec\": 47,\n        \"time_of_day\": \"night\",\n        \"weather\": \"still air\",\n        \"location\": { \"macro\": \"maintenance alcove\", \"micro\": \"steel panel with worn screws\" },\n        \"camera\": { \"angle\": \"OTS\", \"focal\": 35, \"fstop\": 2.8, \"framing\": \"tight hands + beam cone\" },\n        \"lighting\": \"hand torch plus sodium spill from corridor\",\n        \"composition\": \"hands pry panel; shallow depth behind\",\n        \"action\": \"treads carefully, reads etched serial (not legible)\",\n        \"props\": [\"bent tag\", \"old tape residue\"],\n        \"emotion\": \"on edge\",\n        \"micro_realism\": [\"finger ridges on dusty metal\", \"tiny CA on high-contrast edges\"]\n      }\n    ]\n  }\n}\n"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        416,
+        1024
+      ],
+      "id": "9ccc0178-3e23-448d-955f-f5adf349e19b",
+      "name": "สร้างรูปกัน",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7db19b87-3e8d-4130-8627-f10376b882ea",
+              "name": "picture",
+              "value": "={{ $('สร้างรูปกัน').item.json.output.length}}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1072,
+        1024
+      ],
+      "id": "fac0e009-f9fe-4e60-b7f4-db0d93c88c82",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "audioData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        528
+      ],
+      "id": "f8fc0990-c13f-49c8-b112-03339d3081db",
+      "name": "Convert to File1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ultra-fast minimal processing with WAV conversion\n// เร็วที่สุด แต่แปลงเป็น WAV\n\ntry {\n  const inputData = $input.first().json;\n  \n  // หา base64 data แบบเร็ว\n  const base64Data = inputData.body?.[0]?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || \n                    inputData.data || \n                    inputData.audio;\n  \n  if (!base64Data) throw new Error('No audio data');\n  \n  // แปลง base64 เป็น buffer\n  const audioBuffer = Buffer.from(base64Data, 'base64');\n  \n  // ตรวจสอบว่าเป็น WAV อยู่แล้วหรือไม่ (4 bytes แรก)\n  if (audioBuffer.subarray(0, 4).toString() === 'RIFF') {\n    // เป็น WAV อยู่แล้ว ส่งต่อเลย\n    return [{\n      json: {\n        success: true,\n        fileName: 'audio.wav',\n        audioData: base64Data,\n        mimeType: 'audio/wav',\n        note: 'Already WAV format'\n      },\n      binary: {\n        audio: {\n          data: base64Data,\n          mimeType: 'audio/wav',\n          fileName: 'audio.wav'\n        }\n      }\n    }];\n  }\n  \n  // สร้าง WAV header แบบเร็ว (44 bytes)\n  const dataSize = audioBuffer.length;\n  const header = Buffer.from([\n    // RIFF header\n    0x52, 0x49, 0x46, 0x46, // \"RIFF\"\n    (36 + dataSize) & 0xff, ((36 + dataSize) >> 8) & 0xff, ((36 + dataSize) >> 16) & 0xff, ((36 + dataSize) >> 24) & 0xff,\n    0x57, 0x41, 0x56, 0x45, // \"WAVE\"\n    \n    // fmt chunk\n    0x66, 0x6d, 0x74, 0x20, // \"fmt \"\n    0x10, 0x00, 0x00, 0x00, // fmt chunk size (16)\n    0x01, 0x00,             // PCM format\n    0x01, 0x00,             // mono\n    0xc0, 0x5d, 0x00, 0x00, // sample rate (24000)\n    0x80, 0xbb, 0x00, 0x00, // byte rate\n    0x02, 0x00,             // block align\n    0x10, 0x00,             // 16 bits\n    \n    // data chunk\n    0x64, 0x61, 0x74, 0x61, // \"data\"\n    dataSize & 0xff, (dataSize >> 8) & 0xff, (dataSize >> 16) & 0xff, (dataSize >> 24) & 0xff\n  ]);\n  \n  // รวม header + audio data\n  const wavFile = Buffer.concat([header, audioBuffer]);\n  const wavBase64 = wavFile.toString('base64');\n  \n  return [{\n    json: {\n      success: true,\n      fileName: 'audio.wav',\n      audioData: wavBase64,\n      mimeType: 'audio/wav',\n      size: wavFile.length\n    },\n    binary: {\n      audio: {\n        data: wavBase64,\n        mimeType: 'audio/wav',\n        fileName: 'audio.wav'\n      }\n    }\n  }];\n  \n} catch (error) {\n  return [{ json: { success: false, error: error.message } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        528
+      ],
+      "id": "34d4823f-05bd-47b6-aa5e-c5ed41c39709",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:streamGenerateContent?key=AIzaSyCemYr8CW9H1e_4lCA_EXoE2Yn20tIOM9o",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n \"contents\": [\n  {\n   \"role\": \"user\",\n   \"parts\": [\n    {\n     \"text\": \"{{ $('Formatter').item.json.text }}\"\n    }\n   ]\n  }\n ],\n \"generationConfig\": {\n  \"responseModalities\": [ \n   \"audio\"\n  ],\n  \"temperature\": 1,\n  \"speech_config\": {\n   \"voice_config\": {\n    \"prebuilt_voice_config\": {\n     \"voice_name\": \"{{ $json.output.voice_name }}\"\n    }\n   }\n  }\n }\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 15000
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        768,
+        528
+      ],
+      "id": "6bb144f7-59ba-435a-9208-739f4e85d225",
+      "name": "HTTP Request",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "maxTries": 5
+    },
+    {
+      "parameters": {
+        "content": "## สร้างวิดิโอ",
+        "height": 240,
+        "width": 600,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        880
+      ],
+      "id": "d2e10a19-4d7f-4fb9-bf4a-f8a107fe83a5",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "# สร้างภาพด้วย Flux API Free!\n## ขนาด short: 954x1696\n## ขนาด video: 1536x864",
+        "height": 760,
+        "width": 1740,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1648,
+        112
+      ],
+      "id": "140c953b-0507-4bab-8a65-df58ba1c4fd3",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## พร็อพสร้างภาพสำหรับคลิป",
+        "height": 400,
+        "width": 980,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        352,
+        944
+      ],
+      "id": "d12103cd-8281-4885-b015-214f6f3594ef",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "# สร้างเสียง\n",
+        "height": 440,
+        "width": 1120
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        400,
+        448
+      ],
+      "typeVersion": 1,
+      "id": "6f4f3ffb-796e-4a41-b5ab-da980cb79dec",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "# สร้างบทความ\n",
+        "height": 320,
+        "width": 960,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        480,
+        80
+      ],
+      "id": "2cf8507e-3697-415e-9c38-a4c685557cec",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8080/v1/ffmpeg/compose",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"id\": \"get-audio-duration\",\n  \"inputs\": [\n    {\n      \"file_url\": \"http://host.docker.internal:9000/bed-time-stories/{{ $('สร้าง topic').item.json.output.UUID }}.wav\"\n    }\n  ],\n  \"outputs\": [\n    {\n      \"options\": [\n        {\n          \"option\": \"-f\",\n          \"argument\": \"wav\"\n        }\n      ]\n    }\n  ],\n  \"metadata\": {\n    \"duration\": true\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        528
+      ],
+      "id": "ef21d053-d547-4676-a9b5-d76fe7f37d13",
+      "name": "Get Audio Duration",
+      "notesInFlow": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "oeN02ofdXo0QSnyS",
+          "name": "NCA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "bed-time-stories",
+        "fileName": "={{ $('สร้าง topic').item.json.output.UUID }}.wav",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        528
+      ],
+      "id": "b39126c6-72e8-402a-81d5-fccdcfeef4ad",
+      "name": "Upload Audio S3",
+      "credentials": {
+        "s3": {
+          "id": "8Sl6cEcS8Vyqv4Mj",
+          "name": "S3 account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://fal.run/fal-ai/flux/schnell",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"endpoint\": \"fal-ai/text-to-scene:1.0.0\",\n  \"input\": {\n    \"prompt\": \"{{ $json.prompt }}\",\n    \"scene_type\": \"2d_top_down\",\n    \"width\": {{ $json.width }},\n    \"height\": {{ $json.height }},\n    \"seed\": {{ $json.seed }},\n    \"language\": \"{{ $json.language }}\",\n    \"negative_prompt\": \"dark, night, gloomy, sad\"\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        288
+      ],
+      "id": "7b846a05-711b-4eb7-bbf8-0a2444ba6097",
+      "name": "Generate Scene",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true,
+      "maxTries": 5,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "9Z27JqQjVQYcHFJR",
+          "name": "FAL ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "{{$json.images?.[0]?.b64_json || $json.image?.b64_json || $json.b64_json}}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2688,
+        288
+      ],
+      "id": "27d694cb-815f-45b2-a1de-c55351d4c954",
+      "name": "Convert to File2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=from {{ $('สร้างเนื้อเรื่อง').item.json.text }} create SEO tags, title, and description with SEO-friendly keywords separated by commas to attract more people.\n\nWrite the output in English, tailored for SEO targeting that country—specifically the USA—not limited to Thailand but for the whole world.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are an expert AI assistant specializing in YouTube content strategy. Your task is to generate metadata for a YouTube video based on the provided content.\n\nAnalyze the video content and generate the following metadata in a valid JSON format:\n\ntitle: A compelling and SEO-friendly title.\n\ndescription: A detailed description of the video.\n\ncategory_id: The most appropriate category ID from the list below.\n\ntags: A JSON array of relevant SEO keywords (tags).\n\nVideo Content to Analyze:\n{{ $('Create Video').item.json.story }}\n\nAvailable Category IDs:\n\n2: Cars & Vehicles\n\n23: Comedy\n\n27: Education\n\n24: Entertainment\n\n1: Film & Animation\n\n20: Gaming\n\n26: How-to & Style\n\n10: Music\n\n25: News & Politics\n\n29: Non-profits & Activism\n\n22: People & Blogs\n\n15: Pets & Animals\n\n28: Science & Technology\n\n17: Sport\n\n19: Travel & Events\n\nOutput Requirements:\n\nThe final output MUST be a single, valid JSON object.\n\nThe title should be concise and engaging.\n\nThe description should be informative.\n\nThe category_id MUST be one of the numbers from the list above.\n\nThe tags field MUST be a JSON array of strings.\n\nEach tag in the array should be a short keyword or phrase relevant to the content.\n\nThe tags array may contain no more than 25 entries, and the combined length of all tags (including spaces) must not exceed 450 characters.\n\nDo not include any text, explanations, or markdown formatting outside of the final JSON object.\nExample of expected JSON output format:\n{\n  \"title\": \"Example Title\",\n  \"description\": \"This is an example description for the video.\",\n  \"category_id\": 24,\n  \"tags\": [\"example tag 1\", \"example tag 2\", \"example tag 3\"]\n}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        2688,
+        960
+      ],
+      "id": "5f82ffa4-5fe6-4c39-a27c-8d1312cbcfc4",
+      "name": "AI Agent1",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dd47ff90-4343-4ea8-b3fd-2e2307c72ba4",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "COMPLETED",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2688,
+        544
+      ],
+      "id": "b2066a05-621c-4edb-9022-a0938b1a0dee",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "url": "=https://queue.fal.run/fal-ai/bytedance/requests/{{ $json.request_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        608
+      ],
+      "id": "813e22a5-39ae-4d75-842c-e5bb9512617b",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CwXAuJh33fdKWzTe",
+          "name": "Fal ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://queue.fal.run/fal-ai/bytedance/requests/{{ $json.request_id }}/status ",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2528,
+        544
+      ],
+      "id": "82101453-7e5d-4a83-a9e6-ea9033489c96",
+      "name": "HTTP Request7",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 3,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CwXAuJh33fdKWzTe",
+          "name": "Fal ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 4
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2368,
+        544
+      ],
+      "id": "cda2382f-1ab5-4339-9199-9f50f0646c16",
+      "name": "Wait1",
+      "webhookId": "e08b787a-ec70-4bfe-be62-a3ffa00309ec"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://queue.fal.run/fal-ai/bytedance/seedream/v3/text-to-image",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "prompt",
+              "value": "={{ $('Split Out').item.json.Prompt }}"
+            },
+            {
+              "name": "aspect_ratio",
+              "value": "16:9"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2192,
+        608
+      ],
+      "id": "8f5e32b0-7fa7-4a19-93f7-dc6277e560ef",
+      "name": "HTTP Request2",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CwXAuJh33fdKWzTe",
+          "name": "Fal ai"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.images[0].url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3040,
+        608
+      ],
+      "id": "1769280c-224b-48b6-9953-67f4df2c0d14",
+      "name": "HTTP Request3",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a414f52b-be26-4671-a726-d59b7285d287",
+              "leftValue": "={{ $('สร้าง topic').item.json.output.model }}",
+              "rightValue": "free",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1728,
+        400
+      ],
+      "id": "f58a620f-9b38-478b-8247-eefcbee1e0d0",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1968,
+        544
+      ],
+      "id": "8bae40e3-e6ac-42be-b498-0f8cf7cb8741",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "bed-time-stories",
+        "fileName": "={{ $('Generate UUID').item.json.UUID }}.png",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        3200,
+        608
+      ],
+      "id": "66b9d228-01ab-4f3c-9563-6f690c8dc488",
+      "name": "Upload Image1",
+      "credentials": {
+        "s3": {
+          "id": "8Sl6cEcS8Vyqv4Mj",
+          "name": "S3 account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1afzZkjbEG1oMBfFPcxkBVUm3rRGci7OEgRBkNQfaE6A",
+          "mode": "list",
+          "cachedResultName": "​ autopost contentA1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1afzZkjbEG1oMBfFPcxkBVUm3rRGci7OEgRBkNQfaE6A/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "ชีต1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZoO4K4MWmtHPO9rhM-8j0s2M8TerFfiJDqLydOh0ExI/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Title": "={{ $json.output.title }}",
+            "Description": "={{ $json.output.description}}\n{{ $json.output.seo_hashtag }}",
+            "Temp_Video": "={{ $('Add TTS To Video').item.json.job_id }}_output_0.mp4",
+            "SEO": "={{ $json.output.seo_comma }}",
+            "ID": "==ROW()-1"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Video_link",
+              "displayName": "Video_link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Temp_Video",
+              "displayName": "Temp_Video",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "SEO",
+              "displayName": "SEO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        3040,
+        960
+      ],
+      "id": "10a6674b-a211-4ed7-8578-8d9312db4ecd",
+      "name": "Append row in sheet",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "lN9h2k6rW3vmXVtc",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "bucketName": "nca-toolkit",
+        "fileKey": "={{ $('Add TTS To Video').item.json.job_id }}_output_0.mp4"
+      },
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        3248,
+        960
+      ],
+      "id": "b6e3acc7-53f2-4a60-b535-70be25359f84",
+      "name": "Download a file",
+      "credentials": {
+        "s3": {
+          "id": "8Sl6cEcS8Vyqv4Mj",
+          "name": "S3 account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1afzZkjbEG1oMBfFPcxkBVUm3rRGci7OEgRBkNQfaE6A",
+          "mode": "list",
+          "cachedResultName": "​ autopost contentA1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1afzZkjbEG1oMBfFPcxkBVUm3rRGci7OEgRBkNQfaE6A/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "ชีต1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZoO4K4MWmtHPO9rhM-8j0s2M8TerFfiJDqLydOh0ExI/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Video_link": "={{ $json.body }}",
+            "Title": "={{ $('AI Agent1').item.json.output.title }}"
+          },
+          "matchingColumns": [
+            "Title"
+          ],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Video_link",
+              "displayName": "Video_link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Temp_Video",
+              "displayName": "Temp_Video",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "SEO",
+              "displayName": "SEO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        3632,
+        960
+      ],
+      "id": "9b4a135d-4e37-4f87-b24d-56e6b81db257",
+      "name": "Append or update row in sheet",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "lN9h2k6rW3vmXVtc",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const binaryData = items[0].binary.data;\nbinaryData.mimeType = 'video/mp4';\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3424,
+        1168
+      ],
+      "id": "8906d785-cd0b-43da-b829-166764584c6c",
+      "name": "Transform to mp4"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"title\": \"หัวข้อวิดีโอ\",\n  \"description\": \"คำอธิบายวิดีโอ\",\n  \"seo_hashtag\": \"#video #trend #บ้านเฮา\",\n  \"seo_comma\": \"คำสำคัญคั่นด้วยคอมม่า\",\n  \"category_id\": \"ประเภทวิดีโอ\"\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        2864,
+        1168
+      ],
+      "id": "e05f09c9-be30-46cb-b5ce-0a8448d1c6a3",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t  \"story_topic\": \"\",\n      \"model\": \"\",\n      \"UUID\": \"\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        704,
+        368
+      ],
+      "id": "024d9a00-eb79-496e-bd8a-b35f8dcc22cb",
+      "name": "Structured Output Parser3"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Create 1 Viral Content Headlines Focus on Interesting and Trending Topics and output model = free, UUID = 20 digit random numbers and letters",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=\nYou are a professional horror story topic generator. Your role is to generate original, realistic horror story concepts designed for an 3 minute cinematic narrative in horizontal 9:16 YouTube format. These stories must be grounded in real locations, cultures, and human fears, and told with slow-building tension, atmospheric visuals, and emotionally engaging character arcs.\n\nEach concept should feel like a true story — whether inspired by real-world locations, local taboos, or unsettling cultural legends. The pacing must support a narrative length of 3 minutes when fully developed, with a clear structure: beginning, eerie development, climax, and unsettling resolution.\n\n🧩 OUTPUT REQUIREMENTS:\nLanguage: English\n\nOutput: Exactly 1 horror story topic per run\n\nLength: Unlimited in generation, but concept must support 8–10 minutes of narration\n\nTone: Serious, eerie, grounded in realism or culturally supported lore\n\nFormat: 16:9 cinematic video for YouTube storytelling\n\nCharacters: Humans or unexplained but realistic entities (no fantasy or superheroes)\n\nSetting: Real locations on Earth with cultural, historical, or psychological significance\n\nViral Potential: Emotionally resonant, deeply human, disturbing yet relatable\n\nVisual Suitability: Scenes must be cinematic, atmospheric, and visually memorable\n\n🧠 GENRE CATEGORIES TO ROTATE THROUGH:\nReal Haunted Places\n\nCultural Rituals and Forbidden Traditions\n\nUrban Legends with Real-World Evidence\n\nLost Villages, Abandoned Buildings, Ghost Towns\n\nPsychological Horror involving Human Fear\n\nCrime Horror – Disappearances, Murders, Obsessions\n\nTravel Horror – Tourists encountering the unexplained\n\nSurvival Horror based on Nature or Isolation\n\nHistorical Horror – War Camps, Secret Labs, Forbidden Research\n\n“Based on a True Story”–style experiences with a horror twist\n\n🔍 STORY CREATION NOTES:\nUse diverse global settings (e.g., Filipino mountain towns, Turkish ruins, South American jungle roads)\n\nWeave in culture-specific beliefs, languages, clothing, history, or taboos\n\nFocus on atmosphere, psychological tension, and fear of the unknown\n\nAvoid fantasy creatures (e.g. vampires, werewolves, witches)\n\nDesign for slow buildup: unsettling environments, strange behavior, isolation, or moral discomfort\n\nEnsure the concept contains enough narrative beats to sustain 8–10 minutes of video storytelling\n\n🎯 FORMAT EXAMPLE (DO NOT COPY, JUST FOLLOW STRUCTURE):\nTitle: “The Basement That Wasn't on the Blueprints – Istanbul, Turkey”\n\nConcept: A restoration crew uncovers a sealed basement beneath a 19th-century Ottoman-era hospital. There is no record of its construction. The deeper they go, the less they remember of why they came.\n\n⚠️ Final Reminder:\nYour goal is to generate one deeply unsettling, realistically grounded horror story concept that lasts 8–10 minutes when told. Prioritize slow pacing, emotional realism, cultural context, and disturbing truths that leave the viewer haunted.\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        528,
+        192
+      ],
+      "id": "a3625ffb-039b-4c4a-9d51-2193ae608430",
+      "name": "สร้าง topic",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        400,
+        1200
+      ],
+      "id": "b5a45d30-eb4c-4355-9c30-1b1fc540e325",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VWv4vTC1tZX52dsU",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        464,
+        368
+      ],
+      "id": "88b9cfc1-f44b-4280-a5c3-68335bb6af70",
+      "name": "Google Gemini Chat Model2",
+      "notesInFlow": false,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VWv4vTC1tZX52dsU",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        432,
+        752
+      ],
+      "id": "5e6ad61d-e81a-4e38-8e86-46d4bf8d883e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VWv4vTC1tZX52dsU",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2672,
+        1168
+      ],
+      "id": "b460610c-35e8-4436-af57-52e323897870",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "VWv4vTC1tZX52dsU",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $('AI Agent1').item.json.output.title }}",
+        "regionCode": "TH",
+        "categoryId": "={{ $('AI Agent1').item.json.output.category_id }}",
+        "options": {
+          "description": "={{ $('AI Agent1').item.json.output.description }}\\n . \\n{{ $('AI Agent1').item.json.output.seo_hashtag }}",
+          "notifySubscribers": true,
+          "privacyStatus": "public",
+          "selfDeclaredMadeForKids": false,
+          "tags": "={{ $('AI Agent1').item.json.output.seo_comma }}"
+        }
+      },
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        3632,
+        1168
+      ],
+      "id": "a1fa252e-6b2f-4be2-a745-488c6d2e221b",
+      "name": "Upload a video",
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "mIR1G3pnN1GQoZ3X",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v23.0/102610869281272/videos",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "access_token"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "source",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "description",
+              "value": "={{ $('AI Agent1').item.json.output.description }}\n{{ $('AI Agent1').item.json.output.seo_hashtag }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3664,
+        1344
+      ],
+      "id": "0a29a856-11df-47ae-86a1-b9fb124b6b82",
+      "name": "Post FB"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite-preview-06-17",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        128
+      ],
+      "id": "67c6b3e8-e386-489f-988c-f5577b48ab10",
+      "name": "Google Gemini Chat Model5"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-5-chat",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        912,
+        368
+      ],
+      "id": "e109af3e-5e2d-4362-a05f-d3bdd2fccac1",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "dgukK2t5F1V99TgT",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 60
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        336,
+        64
+      ],
+      "id": "83a7fe75-3dee-4a3c-9d82-2368063208d3",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "amount": "={{ 8 + Math.floor(Math.random()*5) }}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        608,
+        528
+      ],
+      "id": "c2740f9c-0bd5-4884-9780-fd7b49250e51",
+      "name": "Wait2",
+      "webhookId": "1b12a538-06e9-4b18-9218-1d993930ccab",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "สร้างรูปกัน",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatter": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Create Video Clips",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Prompt & url": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate2": {
+      "main": [
+        [
+          {
+            "node": "Video url to array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Video Clips": {
+      "main": [
+        [
+          {
+            "node": "Aggregate2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video url to array": {
+      "main": [
+        [
+          {
+            "node": "Create Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Video": {
+      "main": [
+        [
+          {
+            "node": "Add TTS To Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add TTS To Video": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Image": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Generate UUID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate UUID": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Generate Scene",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "สร้างเนื้อเรื่อง": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "สร้างรูปกัน": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Set Prompt & url",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File1": {
+      "main": [
+        [
+          {
+            "node": "Upload Audio S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Convert to File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Audio Duration": {
+      "main": [
+        [
+          {
+            "node": "สร้างรูปกัน",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Audio S3": {
+      "main": [
+        [
+          {
+            "node": "Get Audio Duration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Scene": {
+      "main": [
+        [
+          {
+            "node": "Convert to File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File2": {
+      "main": [
+        [
+          {
+            "node": "Upload Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request7": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "Upload Image1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Create Video Clips",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Image1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Download a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download a file": {
+      "main": [
+        [
+          {
+            "node": "Transform to mp4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform to mp4": {
+      "main": [
+        [
+          {
+            "node": "Upload a video",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post FB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser3": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "สร้าง topic",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "สร้าง topic": {
+      "main": [
+        [
+          {
+            "node": "สร้างเนื้อเรื่อง",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "สร้างรูปกัน",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "สร้าง topic",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "สร้างเนื้อเรื่อง",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "สร้าง topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "30094c52-ebcd-43d4-be08-940744aff32d",
+  "meta": {
+    "instanceId": "0f304f59d764c46704d8d4a3033f0f14eb1c598e57814d11270da6e1f7dcde12"
+  },
+  "id": "vlfshaNRj3ZPwgi0",
+  "tags": []
+}
