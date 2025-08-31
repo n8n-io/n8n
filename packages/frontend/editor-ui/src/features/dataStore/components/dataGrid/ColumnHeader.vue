@@ -78,7 +78,6 @@ const showSortIndicator = computed(() => {
 
 const onHeaderClick = (event: MouseEvent) => {
 	const target = event.target as HTMLElement;
-	// Check if the dropdown component's root element contains the target
 	if (dropdownRef.value?.$el?.contains(target)) {
 		return;
 	}
@@ -177,7 +176,7 @@ const onHeaderClick = (event: MouseEvent) => {
 	margin-left: var(--spacing-2xs);
 
 	.sort-icon-active {
-		font-size: 12px;
+		font-size: var(--font-size-2xs);
 		line-height: 1;
 		color: var(--color-text-base);
 		font-weight: bold;
