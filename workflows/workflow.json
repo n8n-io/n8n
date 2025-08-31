@@ -1,0 +1,144 @@
+{
+  "name": "Crypto Telegram Bot Full Fixed",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Cron Daily Trigger",
+      "type": "n8n-nodes-base.cron",
+      "parameters": {
+        "triggerTimes": [{"hour":9,"minute":0}]
+      },
+      "typeVersion": 1,
+      "position": [200,50]
+    },
+    {
+      "id": "2",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "parameters": {
+        "updateTypes":["message","callback_query"]
+      },
+      "typeVersion": 1,
+      "position": [200,250],
+      "credentials":{"telegramApi":{"id":"your-telegram-bot-token-credential-id"}}
+    },
+    {
+      "id": "3",
+      "name": "Map Callback or Text",
+      "type": "n8n-nodes-base.function",
+      "parameters": {
+        "functionCode":"let text = '';\nif(items[0].json.message && items[0].json.message.text){\n  text = items[0].json.message.text;\n} else if(items[0].json.callback_query && items[0].json.callback_query.data){\n  text = items[0].json.callback_query.data;\n}\nreturn [{ json: { message: { text }, chatId: items[0].json.message ? items[0].json.message.chat.id : items[0].json.callback_query.message.chat.id } }];"
+      },
+      "typeVersion": 1,
+      "position": [400,250]
+    },
+    {
+      "id": "4",
+      "name": "Fetch Trending Tokens",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "url": "https://api.coingecko.com/api/v3/search/trending",
+        "method": "GET",
+        "jsonParameters": true
+      },
+      "typeVersion": 2,
+      "position": [400,100]
+    },
+    {
+      "id": "5",
+      "name": "Parse Trending Tokens",
+      "type": "n8n-nodes-base.function",
+      "parameters": {
+        "functionCode":"const coins = items[0].json.coins || [];\nconst gainers = coins.filter(c => c.item.price_change_percentage_24h >= 10).map(c => ({ name: c.item.name, symbol: c.item.symbol, change: c.item.price_change_percentage_24h }));\nconst losers = coins.filter(c => c.item.price_change_percentage_24h <= -10).map(c => ({ name: c.item.name, symbol: c.item.symbol, change: c.item.price_change_percentage_24h }));\nreturn [{ json: { gainers, losers, trending: coins } }];"
+      },
+      "typeVersion": 1,
+      "position": [600,100]
+    },
+    {
+      "id": "6",
+      "name": "Prepare TopCoins Message (Trigger)",
+      "type": "n8n-nodes-base.function",
+      "parameters": {
+        "functionCode":"const gainers = items[0].json.gainers || [];\nconst losers = items[0].json.losers || [];\nlet message = '*Trending Coins (x30-x50 potential)*\\n\\n';\nif(gainers.length>0){message+='*Top Gainers (+10% 24h)*\\n';gainers.forEach(c=>{message+=`${c.name} (${c.symbol}) +${c.change.toFixed(2)}%\\n`;});message+='\\n';}\nif(losers.length>0){message+='*Top Losers (-10% 24h)*\\n';losers.forEach(c=>{message+=`${c.name} (${c.symbol}) ${c.change.toFixed(2)}%\\n`;});message+='\\n';}\nif(gainers.length===0 && losers.length===0){message+='No significant movements today.';}\nreturn [{ json: { message } }];"
+      },
+      "typeVersion": 1,
+      "position": [800,150]
+    },
+    {
+      "id": "7",
+      "name": "Prepare Airdrops Message (Trigger)",
+      "type": "n8n-nodes-base.function",
+      "parameters": {
+        "functionCode":"const trending = items[0].json.trending || [];\nlet message = '*Potential Airdrops / Trending Tokens*\\n\\n';\nif(trending.length>0){trending.forEach(c=>{message+=`${c.item.name} (${c.item.symbol})\\n`;});} else {message+='No trending tokens found today.';}\nreturn [{ json: { message } }];"
+      },
+      "typeVersion": 1,
+      "position": [800,300]
+    },
+    {
+      "id": "8",
+      "name": "Decide Command",
+      "type": "n8n-nodes-base.switch",
+      "parameters": {
+        "propertyName": "message.text",
+        "rules": [
+          {"type":"equal","value":"/topcoins"},
+          {"type":"equal","value":"/airdrops"},
+          {"type":"equal","value":"topcoins_button"},
+          {"type":"equal","value":"airdrops_button"}
+        ]
+      },
+      "typeVersion": 1,
+      "position": [1000,200]
+    },
+    {
+      "id": "9",
+      "name": "Send Telegram Message (Trigger)",
+      "type": "n8n-nodes-base.telegram",
+      "parameters": {
+        "operation":"sendMessage",
+        "chatId":"={{$json[\"chatId\"]}}",
+        "text":"={{$json[\"message\"]}}",
+        "optionsUi":{"blockUi":false,"options":{"reply_markup":{"inline_keyboard":[[{"text":"Top Coins","callback_data":"topcoins_button"},{"text":"Airdrops","callback_data":"airdrops_button"}]]}}}
+      },
+      "typeVersion": 1,
+      "position": [1200,200],
+      "credentials":{"telegramApi":{"id":"your-telegram-bot-token-credential-id"}}
+    },
+    {
+      "id": "10",
+      "name": "Prepare TopCoins Message (Daily)",
+      "type": "n8n-nodes-base.function",
+      "parameters": {
+        "functionCode":"const gainers = items[0].json.gainers || [];\nconst losers = items[0].json.losers || [];\nlet message = '*Daily Trending Coins Update (x30-x50 potential)*\\n\\n';\nif(gainers.length>0){message+='*Top Gainers (+10% 24h)*\\n';gainers.forEach(c=>{message+=`${c.name} (${c.symbol}) +${c.change.toFixed(2)}%\\n`;});message+='\\n';}\nif(losers.length>0){message+='*Top Losers (-10% 24h)*\\n';losers.forEach(c=>{message+=`${c.name} (${c.symbol}) ${c.change.toFixed(2)}%\\n`;});message+='\\n';}\nif(gainers.length===0 && losers.length===0){message+='No significant movements today.';}\nreturn [{ json: { message } }];"
+      },
+      "typeVersion": 1,
+      "position": [800,50]
+    },
+    {
+      "id": "11",
+      "name": "Send Telegram Message (Daily)",
+      "type": "n8n-nodes-base.telegram",
+      "parameters": {
+        "operation":"sendMessage",
+        "chatId":"7205380589",
+        "text":"={{$json[\"message\"]}}",
+        "optionsUi":{"blockUi":false}
+      },
+      "typeVersion": 1,
+      "position": [1000,50],
+      "credentials":{"telegramApi":{"id":"your-telegram-bot-token-credential-id"}}
+    }
+  ],
+  "connections": {
+    "Cron Daily Trigger":{"main":[[[{"node":"Fetch Trending Tokens"}]]]},
+    "Fetch Trending Tokens":{"main":[[{"node":"Parse Trending Tokens"}]]},
+    "Parse Trending Tokens":{"main":[[{"node":"Prepare TopCoins Message (Trigger)"},{"node":"Prepare Airdrops Message (Trigger)"},{"node":"Prepare TopCoins Message (Daily)"}]]},
+    "Prepare TopCoins Message (Trigger)":{"main":[[{"node":"Send Telegram Message (Trigger)"}]]},
+    "Prepare Airdrops Message (Trigger)":{"main":[[{"node":"Send Telegram Message (Trigger)"}]]},
+    "Prepare TopCoins Message (Daily)":{"main":[[{"node":"Send Telegram Message (Daily)"}]]},
+    "Telegram Trigger":{"main":[[{"node":"Map Callback or Text"}]]},
+    "Map Callback or Text":{"main":[[{"node":"Decide Command"}]]},
+    "Decide Command":{"main":[[{"node":"Prepare TopCoins Message (Trigger)"}],[{"node":"Prepare Airdrops Message (Trigger)"}]]}
+  },
+  "active": false
+}

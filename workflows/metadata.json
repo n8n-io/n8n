@@ -1,0 +1,37 @@
+{
+  "title": "Telegram Crypto Alerts \u2014 Daily Gainers/Losers + Watchlist + Memecoins",
+  "slug": "telegram-crypto-alerts-n8n-daily-gainers-losers-watchlist-memecoins",
+  "version": "2.0.0",
+  "author": "Oldest2905",
+  "description": "Daily and on\u2011demand crypto alerts to Telegram with CoinGecko primary and CoinPaprika failover. Includes Top 5 Gainers/Losers, Speculative Watchlist, Memecoin watchlist, and commands /topcoins, /airdrops, /watchlist, /memecoins.",
+  "categories": [
+    "Messaging",
+    "Notifications",
+    "Finance"
+  ],
+  "tags": [
+    "telegram",
+    "crypto",
+    "gainers",
+    "losers",
+    "watchlist",
+    "memecoin",
+    "coingecko",
+    "coinpaprika",
+    "alerts",
+    "n8n",
+    "workflow"
+  ],
+  "credentials": [
+    "Telegram"
+  ],
+  "environmentVariables": [
+    "TELEGRAM_CREDENTIAL_NAME",
+    "TELEGRAM_CHAT_ID"
+  ],
+  "screenshots": [
+    "screenshot.png"
+  ],
+  "readme": "README.md",
+  "license": "MIT"
+}
