@@ -1,0 +1,13 @@
+{
+	"type": "object",
+	"properties": {
+		"url": {
+			"type": "string"
+		},
+		"b64_json": {
+			"type": "string",
+			"description": "Base64-encoded image data (present if response_format=b64_json)"
+		}
+	},
+	"version": 1
+}
