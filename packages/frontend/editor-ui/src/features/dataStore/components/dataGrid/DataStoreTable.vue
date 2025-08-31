@@ -622,23 +622,19 @@ const onSortChanged = async (event: SortChangedEvent) => {
 	const oldSortBy = currentSortBy.value;
 	const oldSortOrder = currentSortOrder.value;
 
-	// Check if any column is sorted
 	const sortedColumn = event.columns?.filter((col) => col.getSort() !== null).pop() ?? null;
 
 	if (sortedColumn) {
-		// A column is sorted by the user
 		const colId = sortedColumn.getColId();
 		const columnDef = colDefs.value.find((col) => col.colId === colId);
 
 		currentSortBy.value = columnDef?.field || colId;
 		currentSortOrder.value = sortedColumn.getSort() as 'asc' | 'desc';
 	} else {
-		// No sort is active - clear the current sort (will use default in fetch)
 		currentSortBy.value = DEFAULT_ID_COLUMN_NAME;
 		currentSortOrder.value = 'asc';
 	}
 
-	// Only fetch if sort actually changed
 	if (oldSortBy !== currentSortBy.value || oldSortOrder !== currentSortOrder.value) {
 		currentPage.value = 1;
 		await fetchDataStoreContent();
