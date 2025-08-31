@@ -176,7 +176,7 @@
 	--color-json-highlight: var(--color-background-base);
 	--color-code-background: var(--p-gray-820);
 	--color-code-background-readonly: var(--p-gray-740);
-	--color-code-lineHighlight: var(--p-gray-320-alpha-010);
+	--color-code-lineHighlight: var(--p-gray-320-a-010);
 	--color-code-foreground: var(--p-gray-070);
 	--color-code-caret: var(--p-gray-010);
 	--color-code-selection: #3392ff44;
@@ -208,14 +208,14 @@
 
 	// Button secondary
 	--color-button-secondary-font: var(--p-gray-070);
-	--color-button-secondary-border: var(--p-gray-070);
-	--color-button-secondary-background: transparent;
+	--color-button-secondary-border: var(--color-foreground-base);
+	--color-button-secondary-background: var(--color-background-light);
 	--color-button-secondary-hover-active-focus-font: var(--p-color-primary-220);
-	--color-button-secondary-hover-background: transparent;
+	--color-button-secondary-hover-background: var(--color-background-light);
 	--color-button-secondary-active-focus-background: var(--p-color-primary-320-a-010);
 	--color-button-secondary-focus-outline: var(--p-color-primary-320-a-035);
 	--color-button-secondary-disabled-font: var(--p-white-a-030);
-	--color-button-secondary-disabled-border: var(--p-white-a-030);
+	--color-button-secondary-disabled-border: var(--color-foreground-base);
 
 	// Button highlight
 	--color-button-highlight-font: var(--prim-gray-320);
@@ -226,7 +226,7 @@
 	--color-button-highlight-hover-background: var(--prim-gray-670);
 	--color-button-highlight-active-focus-background: var(--prim-gray-670);
 	--color-button-highlight-focus-outline: var(--prim-gray-670);
-	--color-button-highlight-disabled-font: var(--prim-gray-0-alpha-010);
+	--color-button-highlight-disabled-font: var(--prim-gray-0-a-010);
 	--color-button-highlight-disabled-border: transparent;
 
 	// Button success, warning, danger
@@ -259,8 +259,8 @@
 	// Execution
 	--execution-card-background: var(--color-foreground-light);
 	--execution-card-background-hover: var(--color-foreground-base);
-	--execution-selector-background: var(--p-gray-740);
-	--execution-selector-text: var(--color-text-base);
+	--execution-selector-background: var(--color-background-dark);
+	--execution-selector-text: var(--color-text-xlight);
 	--execution-select-all-text: var(--color-text-base);
 	--execution-card-text-waiting: var(--p-color-secondary-370);
 

@@ -86,6 +86,7 @@ import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/exp
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -150,6 +151,7 @@ const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
+const experimentalNdvStore = useExperimentalNdvStore();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -1034,10 +1036,19 @@ async function optionSelected(command: string) {
 
 		case 'focus':
 			nodeSettingsParameters.handleFocus(node.value, props.path, props.parameter);
-			telemetry.track('User opened focus panel', {
-				source: 'parameterButton',
-				parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
-			});
+
+			if (experimentalNdvStore.isNdvInFocusPanelEnabled) {
+				telemetry.track('User added focused param', {
+					source: 'parameterButton',
+					parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+				});
+			} else {
+				telemetry.track('User opened focus panel', {
+					source: 'parameterButton',
+					parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+				});
+			}
+
 			return;
 	}
 
@@ -1241,6 +1252,7 @@ onClickOutside(wrapper, onBlur);
 				},
 			]"
 			:style="parameterInputWrapperStyle"
+			:data-parameter-path="path"
 		>
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"

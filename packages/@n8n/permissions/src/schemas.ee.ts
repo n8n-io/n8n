@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { PROJECT_OWNER_ROLE_SLUG } from './constants.ee';
+import { ALL_SCOPES } from './scope-information';
 
 export const roleNamespaceSchema = z.enum(['global', 'project', 'credential', 'workflow']);
 
@@ -25,3 +26,21 @@ export const projectRoleSchema = z.union([personalRoleSchema, teamRoleSchema]);
 export const credentialSharingRoleSchema = z.enum(['credential:owner', 'credential:user']);
 
 export const workflowSharingRoleSchema = z.enum(['workflow:owner', 'workflow:editor']);
+
+const ALL_SCOPES_LOOKUP_SET = new Set(ALL_SCOPES as string[]);
+
+export const scopeSchema = z.string().refine((val) => ALL_SCOPES_LOOKUP_SET.has(val), {
+	message: 'Invalid scope',
+});
+
+export const roleSchema = z.object({
+	slug: z.string().min(1),
+	displayName: z.string().min(1),
+	description: z.string().nullable(),
+	systemRole: z.boolean(),
+	roleType: roleNamespaceSchema,
+	licensed: z.boolean(),
+	scopes: z.array(scopeSchema),
+});
+
+export type Role = z.infer<typeof roleSchema>;

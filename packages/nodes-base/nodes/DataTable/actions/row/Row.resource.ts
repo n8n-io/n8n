@@ -21,12 +21,6 @@ export const description: INodeProperties[] = [
 			},
 		},
 		options: [
-			// 	{
-			// 		name: 'Create or Update',
-			// 		value: 'upsert',
-			// 		description: 'Create a new record, or update the current one if it already exists (upsert)',
-			// 		action: 'Create or update a row',
-			// 	},
 			{
 				name: 'Delete',
 				value: deleteRows.FIELD,
@@ -39,12 +33,6 @@ export const description: INodeProperties[] = [
 				description: 'Get row(s)',
 				action: 'Get row(s)',
 			},
-			// 	{
-			// 		name: 'Get Many',
-			// 		value: 'getAll',
-			// 		description: 'Get many rows',
-			// 		action: 'Get many rows',
-			// 	},
 			{
 				name: 'Insert',
 				value: insert.FIELD,

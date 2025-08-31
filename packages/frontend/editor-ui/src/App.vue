@@ -27,6 +27,8 @@ import { useWorkflowDiffRouting } from '@/composables/useWorkflowDiffRouting';
 import { useStyles } from './composables/useStyles';
 import { locale } from '@n8n/design-system';
 import axios from 'axios';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
+import { useNDVStore } from '@/stores/ndv.store';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -35,6 +37,7 @@ const builderStore = useBuilderStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const ndvStore = useNDVStore();
 
 const { setAppZIndexes } = useStyles();
 
@@ -56,6 +59,8 @@ const appGrid = ref<Element | null>(null);
 
 const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
 const builderSidebarWidth = computed(() => builderStore.chatWidth);
+
+useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
 
 onMounted(async () => {
 	setAppZIndexes();

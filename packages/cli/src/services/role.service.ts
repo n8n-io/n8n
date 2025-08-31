@@ -1,4 +1,4 @@
-import type {
+import {
 	CredentialsEntity,
 	SharedCredentials,
 	SharedWorkflow,
@@ -6,25 +6,122 @@ import type {
 	ListQueryDb,
 	ScopesField,
 	ProjectRelation,
+	RoleRepository,
+	Role,
+	Scope as DBScope,
+	ScopeRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { CustomRole, ProjectRole, Scope } from '@n8n/permissions';
-import { ALL_ROLES, combineScopes, getAuthPrincipalScopes, getRoleScopes } from '@n8n/permissions';
-import { UnexpectedError } from 'n8n-workflow';
+import type { CustomRole, ProjectRole, Scope, Role as RoleDTO } from '@n8n/permissions';
+import {
+	combineScopes,
+	getAuthPrincipalScopes,
+	getRoleScopes,
+	isBuiltInRole,
+} from '@n8n/permissions';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { License } from '@/license';
+import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Service()
 export class RoleService {
-	constructor(private readonly license: License) {}
+	constructor(
+		private readonly license: License,
+		private readonly roleRepository: RoleRepository,
+		private readonly scopeRepository: ScopeRepository,
+	) {}
 
-	getAllRoles() {
-		Object.values(ALL_ROLES).forEach((entries) => {
-			entries.forEach((entry) => {
-				entry.licensed = this.isRoleLicensed(entry.role);
+	private dbRoleToRoleDTO(role: Role): RoleDTO {
+		return {
+			...role,
+			scopes: role.scopes.map((s) => s.slug),
+			licensed: this.isRoleLicensed(role.slug),
+		};
+	}
+
+	async getAllRoles(): Promise<RoleDTO[]> {
+		const roles = await this.roleRepository.findAll();
+		return roles.map((r) => this.dbRoleToRoleDTO(r));
+	}
+
+	async getRole(slug: string): Promise<RoleDTO> {
+		const role = await this.roleRepository.findBySlug(slug);
+		if (role) {
+			return this.dbRoleToRoleDTO(role);
+		}
+		throw new NotFoundError('Role not found');
+	}
+
+	async removeCustomRole(slug: string) {
+		const role = await this.roleRepository.findBySlug(slug);
+		if (!role) {
+			throw new NotFoundError('Role not found');
+		}
+		if (role.systemRole) {
+			throw new BadRequestError('Cannot delete system roles');
+		}
+		await this.roleRepository.removeBySlug(slug);
+		return this.dbRoleToRoleDTO(role);
+	}
+
+	private async resolveScopes(scopeSlugs: string[] | undefined): Promise<DBScope[] | undefined> {
+		if (!scopeSlugs) {
+			return undefined;
+		}
+
+		if (scopeSlugs.length === 0) {
+			return [];
+		}
+
+		const scopes = await this.scopeRepository.findByList(scopeSlugs);
+		if (scopes.length !== scopeSlugs.length) {
+			const invalidScopes = scopeSlugs.filter((slug) => !scopes.some((s) => s.slug === slug));
+			throw new Error(`The following scopes are invalid: ${invalidScopes.join(', ')}`);
+		}
+
+		return scopes;
+	}
+
+	async updateCustomRole(slug: string, newData: UpdateRoleDto) {
+		const { displayName, description, scopes: scopeSlugs } = newData;
+
+		try {
+			const updatedRole = await this.roleRepository.updateRole(slug, {
+				displayName,
+				description,
+				scopes: await this.resolveScopes(scopeSlugs),
 			});
-		});
-		return ALL_ROLES;
+
+			return this.dbRoleToRoleDTO(updatedRole);
+		} catch (error) {
+			if (error instanceof UserError && error.message === 'Role not found') {
+				throw new NotFoundError('Role not found');
+			}
+
+			if (error instanceof UserError && error.message === 'Cannot update system roles') {
+				throw new BadRequestError('Cannot update system roles');
+			}
+			throw error;
+		}
+	}
+
+	async createCustomRole(newRole: CreateRoleDto) {
+		const role = new Role();
+		role.displayName = newRole.displayName;
+		if (newRole.description) {
+			role.description = newRole.description;
+		}
+		const scopes = await this.resolveScopes(newRole.scopes);
+		if (scopes === undefined) throw new BadRequestError('Scopes are required');
+		role.scopes = scopes;
+		role.systemRole = false;
+		role.roleType = newRole.roleType;
+		role.slug = `${newRole.roleType}:${newRole.displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.random().toString(36).substring(2, 8)}`;
+		const createdRole = await this.roleRepository.save(role);
+		return this.dbRoleToRoleDTO(createdRole);
 	}
 
 	addScopes(
@@ -114,6 +211,14 @@ export class RoleService {
 
 	isRoleLicensed(role: ProjectRole | CustomRole) {
 		// TODO: move this info into FrontendSettings
+
+		if (!isBuiltInRole(role)) {
+			// This is a custom role, there for we need to check if
+			// custom roles are licensed
+			// TODO: add license check for custom roles
+			return true;
+		}
+
 		switch (role) {
 			case 'project:admin':
 				return this.license.isProjectRoleAdminLicensed();
