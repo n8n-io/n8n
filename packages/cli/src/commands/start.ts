@@ -118,25 +118,28 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	/**
-	 * Generates the JS script that injects the instance configuration
-	 * values into the FE window object (REST endpoint path and Sentry config).
+	 * Generates meta tags with base64-encoded configuration values
+	 * for REST endpoint path and Sentry config.
 	 */
-	private generateConfigScript() {
+	private generateConfigTags() {
 		const frontendSentryConfig = JSON.stringify({
 			dsn: this.globalConfig.sentry.frontendDsn,
 			environment: process.env.ENVIRONMENT || 'development',
 			serverName: process.env.DEPLOYMENT_NAME,
 			release: `n8n@${N8N_VERSION}`,
 		});
+		const toB64 = (value: string) => Buffer.from(value).toString('base64');
 
-		const frontendConfigScript = [
-			'<script>',
-			`window.REST_ENDPOINT = '${this.globalConfig.endpoints.rest}';`,
-			`window.sentry = ${frontendSentryConfig};`,
-			'</script>',
+		// Base64 encode the configuration values
+		const restEndpointEncoded = toB64(this.globalConfig.endpoints.rest);
+		const sentryConfigEncoded = toB64(frontendSentryConfig);
+
+		const configMetaTags = [
+			`<meta name="n8n:config:rest-endpoint" content="${restEndpointEncoded}">`,
+			`<meta name="n8n:config:sentry" content="${sentryConfigEncoded}">`,
 		].join('');
 
-		return frontendConfigScript;
+		return configMetaTags;
 	}
 
 	private async generateStaticAssets() {
@@ -160,7 +163,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				await mkdir(path.dirname(destFile), { recursive: true });
 				const streams = [
 					createReadStream(filePath, 'utf-8'),
-					replaceStream('%CONFIG_SCRIPT%', this.generateConfigScript(), { ignoreCase: false }),
+					replaceStream('%CONFIG_TAGS%', this.generateConfigTags(), { ignoreCase: false }),
 					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, { ignoreCase: false }),
