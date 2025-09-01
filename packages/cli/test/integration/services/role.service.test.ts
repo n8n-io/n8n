@@ -508,31 +508,81 @@ describe('RoleService', () => {
 			{ role: 'project:editor', licenseMethod: 'isProjectRoleEditorLicensed' },
 			{ role: 'project:viewer', licenseMethod: 'isProjectRoleViewerLicensed' },
 			{ role: 'global:admin', licenseMethod: 'isAdvancedPermissionsLicensed' },
-		] as const)('should check license for built-in role $role', async ({ role, licenseMethod }) => {
-			//
-			// ARRANGE
-			//
-			const mockLicenseResult = Math.random() > 0.5; // Random boolean
-			jest.spyOn(licenseState, licenseMethod).mockReturnValue(mockLicenseResult);
+		] as const)(
+			'should pass license check for built-in role $role',
+			async ({ role, licenseMethod }) => {
+				//
+				// ARRANGE
+				//
+				const mockLicenseResult = true;
+				jest.spyOn(licenseState, licenseMethod).mockReturnValue(mockLicenseResult);
 
-			//
-			// ACT
-			//
-			const result = roleService.isRoleLicensed(role);
+				//
+				// ACT
+				//
+				const result = roleService.isRoleLicensed(role);
 
-			//
-			// ASSERT
-			//
-			expect(result).toBe(mockLicenseResult);
-			expect(licenseState[licenseMethod]).toHaveBeenCalledTimes(1);
-		});
+				//
+				// ASSERT
+				//
+				expect(result).toBe(mockLicenseResult);
+				expect(licenseState[licenseMethod]).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it.each([
+			{ role: 'project:admin', licenseMethod: 'isProjectRoleAdminLicensed' },
+			{ role: 'project:editor', licenseMethod: 'isProjectRoleEditorLicensed' },
+			{ role: 'project:viewer', licenseMethod: 'isProjectRoleViewerLicensed' },
+			{ role: 'global:admin', licenseMethod: 'isAdvancedPermissionsLicensed' },
+		] as const)(
+			'should fail license state check for built-in role $role',
+			async ({ role, licenseMethod }) => {
+				//
+				// ARRANGE
+				//
+				const mockLicenseResult = false;
+				jest.spyOn(licenseState, licenseMethod).mockReturnValue(mockLicenseResult);
+
+				//
+				// ACT
+				//
+				const result = roleService.isRoleLicensed(role);
+
+				//
+				// ASSERT
+				//
+				expect(result).toBe(mockLicenseResult);
+				expect(licenseState[licenseMethod]).toHaveBeenCalledTimes(1);
+			},
+		);
 
 		it('should return true for custom roles if licensed', async () => {
 			//
 			// ARRANGE
 			//
 			const customRoleSlug = 'custom:test-role';
-			const mockLicenseResult = Math.random() > 0.5; // Random boolean
+			const mockLicenseResult = true; // Random boolean
+			jest.spyOn(licenseState, 'isCustomRolesLicensed').mockReturnValue(mockLicenseResult);
+
+			//
+			// ACT
+			//
+			const result = roleService.isRoleLicensed(customRoleSlug as any);
+
+			//
+			// ASSERT
+			//
+			expect(result).toBe(mockLicenseResult);
+			expect(licenseState.isCustomRolesLicensed).toHaveBeenCalledTimes(1);
+		});
+
+		it('should return false for custom roles if not licensed', async () => {
+			//
+			// ARRANGE
+			//
+			const customRoleSlug = 'custom:test-role';
+			const mockLicenseResult = false; // Random boolean
 			jest.spyOn(licenseState, 'isCustomRolesLicensed').mockReturnValue(mockLicenseResult);
 
 			//

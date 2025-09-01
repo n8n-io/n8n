@@ -650,11 +650,6 @@ describe('RoleController', () => {
 
 				// Verify service method was not called due to license check
 				expect(roleService.createCustomRole).not.toHaveBeenCalled();
-
-				//
-				// CLEANUP
-				//
-				testServer.license.enable('feat:customRoles');
 			});
 		});
 
@@ -678,11 +673,6 @@ describe('RoleController', () => {
 
 				// Verify service method was not called due to license check
 				expect(roleService.updateCustomRole).not.toHaveBeenCalled();
-
-				//
-				// CLEANUP
-				//
-				testServer.license.enable('feat:customRoles');
 			});
 		});
 
@@ -702,11 +692,6 @@ describe('RoleController', () => {
 
 				// Verify service method was not called due to license check
 				expect(roleService.removeCustomRole).not.toHaveBeenCalled();
-
-				//
-				// CLEANUP
-				//
-				testServer.license.enable('feat:customRoles');
 			});
 		});
 
@@ -742,11 +727,6 @@ describe('RoleController', () => {
 			roleService.getRole.mockResolvedValue(mockRole);
 			await ownerAgent.get('/roles/project:admin').expect(200);
 			expect(roleService.getRole).toHaveBeenCalledTimes(1);
-
-			//
-			// CLEANUP
-			//
-			testServer.license.enable('feat:customRoles');
 		});
 	});
 });
