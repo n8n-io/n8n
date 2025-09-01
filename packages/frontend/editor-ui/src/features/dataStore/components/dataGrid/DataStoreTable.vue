@@ -450,7 +450,7 @@ const initColumnDefinitions = () => {
 				resizable: false,
 				cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'id-column'),
 				cellRendererSelector: (params: ICellRendererParams) => {
-					if (params.node.rowPinned === 'bottom' && params.value === ADD_ROW_ROW_ID) {
+					if (params.value === ADD_ROW_ROW_ID) {
 						return {
 							component: AddRowButton,
 							params: { onClick: onAddRowClick },
@@ -938,6 +938,10 @@ defineExpose({
 		:global(.ag-floating-bottom) {
 			border-top: var(--border-width-base) var(--border-style-base) var(--ag-border-color);
 		}
+	}
+
+	:global(.ag-row[row-id='__n8n_add_row__']) {
+		border-bottom: none;
 	}
 }
 
