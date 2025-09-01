@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type {
 	IDataObject,
 	INode,
@@ -6,12 +7,21 @@ import type {
 	IDataStoreProjectService,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	DataStoreColumnJsType,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { FieldEntry, FilterType } from './constants';
 import { ALL_FILTERS, ANY_FILTER } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
+
+type DateLike = { toISOString: () => string };
+
+function isDateLike(v: unknown): v is DateLike {
+	return (
+		v !== null && typeof v === 'object' && 'toISOString' in v && typeof v.toISOString === 'function'
+	);
+}
 
 // We need two functions here since the available getNodeParameter
 // overloads vary with the index
@@ -87,9 +97,13 @@ export function isFieldArray(value: unknown): value is FieldEntry[] {
 	);
 }
 
-export function dataObjectToApiInput(data: IDataObject, node: INode, row: number) {
+export function dataObjectToApiInput(
+	data: IDataObject,
+	node: INode,
+	row: number,
+): Record<string, DataStoreColumnJsType> {
 	return Object.fromEntries(
-		Object.entries(data).map(([k, v]) => {
+		Object.entries(data).map(([k, v]): [string, DataStoreColumnJsType] => {
 			if (v === undefined || v === null) return [k, null];
 
 			if (Array.isArray(v)) {
@@ -99,7 +113,28 @@ export function dataObjectToApiInput(data: IDataObject, node: INode, row: number
 				);
 			}
 
-			if (!(v instanceof Date) && typeof v === 'object') {
+			if (v instanceof Date) {
+				return [k, v];
+			}
+
+			if (typeof v === 'object') {
+				// Luxon DateTime
+				if (DateTime.isDateTime(v)) {
+					return [k, v.toJSDate()];
+				}
+
+				if (isDateLike(v)) {
+					try {
+						const dateObj = new Date(v.toISOString());
+						if (isNaN(dateObj.getTime())) {
+							throw new Error('Invalid date');
+						}
+						return [k, dateObj];
+					} catch {
+						// Fall through
+					}
+				}
+
 				throw new NodeOperationError(
 					node,
 					`unexpected object input '${JSON.stringify(v)}' in row ${row}`,
