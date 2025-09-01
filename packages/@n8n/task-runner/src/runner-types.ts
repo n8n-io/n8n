@@ -59,7 +59,8 @@ export interface DataRequestResponse {
 }
 
 export interface TaskResultData {
-	result: unknown; // raw user output (not yet validated or normalized)
+	/** Raw user output, i.e. not yet validated or normalized. */
+	result: unknown;
 	customData?: Record<string, string>;
 	staticData?: IDataObject;
 }
