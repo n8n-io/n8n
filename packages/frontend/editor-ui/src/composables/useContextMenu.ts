@@ -124,15 +124,6 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		return NodeHelpers.isExecutable(workflowObject.value, workflowNode, nodeType);
 	};
 
-	const isNodeOutdated = (node: INodeUi) => {
-		const nodeVersions = nodeTypesStore.getNodeVersions(node.type);
-		if (nodeVersions.length === 0) {
-			return false;
-		}
-		const latestVersion = Math.max(...nodeVersions);
-		return node.typeVersion < latestVersion;
-	};
-
 	const open = (event: MouseEvent, menuTarget: ContextMenuTarget) => {
 		event.stopPropagation();
 

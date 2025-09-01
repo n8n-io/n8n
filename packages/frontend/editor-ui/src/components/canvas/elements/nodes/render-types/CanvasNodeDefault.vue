@@ -37,7 +37,6 @@ const {
 	hasRunData,
 	hasIssues,
 	render,
-	isOutdated,
 } = useCanvasNode();
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
