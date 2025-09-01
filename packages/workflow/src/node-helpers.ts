@@ -1053,7 +1053,9 @@ export function getNodeOutputs(
 				'internal',
 				{},
 			);
-			outputs = Array.isArray(result) ? result : [];
+			outputs = Array.isArray(result)
+				? (result as Array<NodeConnectionType | INodeOutputConfiguration>)
+				: [];
 		} catch (e) {
 			console.warn('Could not calculate outputs dynamically for node: ', node.name);
 		}
