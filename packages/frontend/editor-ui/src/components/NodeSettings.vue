@@ -15,7 +15,7 @@ import type {
 	IUpdateInformation,
 } from '@/Interface';
 
-import { BASE_NODE_SURVEY_URL } from '@/constants';
+import { BASE_NODE_SURVEY_URL, FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from '@/constants';
 
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
@@ -47,7 +47,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { importCurlEventBus, ndvEventBus } from '@/event-bus';
+import { formPreviewEventBus, importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { ProjectTypes } from '@/types/projects.types';
 import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 import { useResizeObserver } from '@vueuse/core';
@@ -58,6 +58,7 @@ import NodeSettingsInvalidNodeWarning from '@/components/NodeSettingsInvalidNode
 import type { NodeSettingsTab } from '@/types/nodeSettings';
 import NodeActionsList from '@/components/NodeActionsList.vue';
 import { useNodeCredentialOptions } from '@/composables/useNodeCredentialOptions';
+import debounce from 'lodash/debounce';
 
 const props = withDefaults(
 	defineProps<{
@@ -273,6 +274,8 @@ const hasOutputConnection = computed(() => {
 	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
 });
 
+const emitFormUpdate = debounce(() => formPreviewEventBus.emit('parameter-updated'), 500);
+
 const valueChanged = (parameterData: IUpdateInformation) => {
 	let newValue: NodeParameterValue;
 
@@ -391,6 +394,9 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			isToolNode.value,
 		);
+		if (nodeType.value && [FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(nodeType.value.name)) {
+			emitFormUpdate();
+		}
 	} else {
 		// A property on the node itself changed
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue';
 import { NodeConnectionTypes, type IRunData, type Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
@@ -22,6 +22,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
 import { useExecutionData } from '@/composables/useExecutionData';
+import { formPreviewEventBus } from '@/event-bus';
 
 // Types
 
@@ -280,9 +281,18 @@ const onRunIndexChange = (run: number) => {
 	emit('runChange', run);
 };
 
+function onFormUpdate() {
+	console.log('OutputPanel.vue: form updated');
+}
+
 // Set the initial output mode when the component is mounted
 onMounted(() => {
 	outputMode.value = defaultOutputMode.value;
+	formPreviewEventBus.on('parameter-updated', onFormUpdate);
+});
+
+onBeforeUnmount(() => {
+	formPreviewEventBus.off('parameter-updated', onFormUpdate);
 });
 
 // In case the output panel was opened when the node has not run yet,
