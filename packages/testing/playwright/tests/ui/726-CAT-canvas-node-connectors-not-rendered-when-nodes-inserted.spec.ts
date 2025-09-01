@@ -1,8 +1,7 @@
 import { EDIT_FIELDS_SET_NODE_NAME } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
 
-// This test is skipped due to a bug ADO-4046. The Replace Me node is being put on top of the  Edit Fields node. So it's not visible.
-test.skip('CAT-726 Node connectors not rendered when nodes inserted on the canvas', () => {
+test.describe('CAT-726 Node connectors not rendered when nodes inserted on the canvas', () => {
 	test('should correctly append a No Op node when Loop Over Items node is added (from add button)', async ({
 		n8n,
 	}) => {
@@ -25,7 +24,7 @@ test.skip('CAT-726 Node connectors not rendered when nodes inserted on the canva
 			.soft(n8n.canvas.connectionBetweenNodes('Loop Over Items', 'Replace Me'))
 			.toBeVisible();
 		await expect
-			.soft(n8n.canvas.connectionBetweenNodes('Edit Fields', 'Loop Over Items'))
+			.soft(n8n.canvas.connectionBetweenNodes('Loop Over Items', 'Edit Fields'))
 			.toBeVisible();
 		await expect
 			.soft(n8n.canvas.connectionBetweenNodes('Replace Me', 'Loop Over Items'))

@@ -17,5 +17,15 @@ test.describe('OAuth Credentials', () => {
 		const popupUrl = popup.url();
 		expect(popupUrl).toContain('accounts.google.com');
 		expect(popupUrl).toContain('client_id=test-key');
+
+		await popup.close();
+
+		await page.evaluate(() => {
+			const channel = new BroadcastChannel('oauth-callback');
+			channel.postMessage('success');
+		});
+
+		await expect(n8n.credentials.getSaveButton()).toContainText('Saved');
+		await expect(n8n.credentials.getOauthConnectSuccessBanner()).toContainText('Account connected');
 	});
 });
