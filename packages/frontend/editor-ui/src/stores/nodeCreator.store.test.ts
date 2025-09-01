@@ -21,9 +21,6 @@ const node_type = 'node-type';
 const node_id = 'node-id';
 const node_version = 1;
 const input_node_type = 'input-node-type';
-const action = 'action';
-const source_mode = 'source-mode';
-const resource = 'resource';
 const actions = ['action1'];
 
 vi.mock('@/composables/useTelemetry', () => {
