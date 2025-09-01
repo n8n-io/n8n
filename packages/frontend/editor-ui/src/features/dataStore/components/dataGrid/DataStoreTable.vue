@@ -25,6 +25,7 @@ import type {
 	CellEditingStoppedEvent,
 	CellKeyDownEvent,
 	ValueFormatterParams,
+	SortDirection,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -122,7 +123,7 @@ const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
 };
 
 const currentSortBy = ref<string>(DEFAULT_ID_COLUMN_NAME);
-const currentSortOrder = ref<'asc' | 'desc'>('asc');
+const currentSortOrder = ref<SortDirection>('asc');
 const contentLoading = ref(false);
 
 // Track the last focused cell so we can start editing when users click on it
@@ -629,7 +630,7 @@ const onSortChanged = async (event: SortChangedEvent) => {
 		const columnDef = colDefs.value.find((col) => col.colId === colId);
 
 		currentSortBy.value = columnDef?.field || colId;
-		currentSortOrder.value = sortedColumn.getSort() as 'asc' | 'desc';
+		currentSortOrder.value = sortedColumn.getSort() ?? 'asc';
 	} else {
 		currentSortBy.value = DEFAULT_ID_COLUMN_NAME;
 		currentSortOrder.value = 'asc';
@@ -935,7 +936,7 @@ defineExpose({
 
 	&.has-records {
 		:global(.ag-floating-bottom) {
-			border-top: 1px solid var(--ag-border-color);
+			border-top: var(--border-width-base) var(--border-style-base) var(--ag-border-color);
 		}
 	}
 }

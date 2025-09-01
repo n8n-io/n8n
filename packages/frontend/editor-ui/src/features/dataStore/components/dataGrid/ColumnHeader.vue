@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { IHeaderParams } from 'ag-grid-community';
+import type { IHeaderParams, SortDirection } from 'ag-grid-community';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
@@ -85,14 +85,12 @@ const onHeaderClick = (event: MouseEvent) => {
 
 	if (isSortable.value) {
 		const currentSortDirection = currentSort.value;
-		let nextSort: 'asc' | 'desc' | null;
+		let nextSort: SortDirection = null;
 
 		if (!currentSortDirection) {
 			nextSort = 'asc';
 		} else if (currentSortDirection === 'asc') {
 			nextSort = 'desc';
-		} else {
-			nextSort = null;
 		}
 
 		props.params.setSort(nextSort, false);
