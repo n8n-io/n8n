@@ -169,10 +169,12 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		projectId: string,
 		page: number,
 		pageSize: number,
+		sortBy: string,
 	) => {
 		return await getDataStoreRowsApi(rootStore.restApiContext, datastoreId, projectId, {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
+			sortBy,
 		});
 	};
 

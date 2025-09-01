@@ -232,6 +232,7 @@ const {
 	copyNodes,
 	cutNodes,
 	duplicateNodes,
+	updateNodeVersion,
 	revertDeleteNode,
 	addNodes,
 	importTemplate,
@@ -862,6 +863,14 @@ async function onDuplicateNodes(ids: string[]) {
 	});
 
 	selectNodes(newIds);
+}
+
+async function onUpdateNodeVersion(id: string) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	await updateNodeVersion(id);
 }
 
 function onPinNodes(ids: string[], source: PinDataSource) {
@@ -2080,6 +2089,7 @@ onBeforeUnmount(() => {
 			@update:nodes:enabled="onToggleNodesDisabled"
 			@update:nodes:pin="onPinNodes"
 			@duplicate:nodes="onDuplicateNodes"
+			@update:node:version="onUpdateNodeVersion"
 			@copy:nodes="onCopyNodes"
 			@cut:nodes="onCutNodes"
 			@run:workflow="runEntireWorkflow('main')"

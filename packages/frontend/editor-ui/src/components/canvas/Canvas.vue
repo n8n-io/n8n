@@ -85,6 +85,7 @@ const emit = defineEmits<{
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
 	'duplicate:nodes': [ids: string[]];
+	'update:node:version': [id: string];
 	'update:nodes:pin': [ids: string[], source: PinDataSource];
 	'cut:nodes': [ids: string[]];
 	'delete:connection': [connection: Connection];
@@ -447,11 +448,7 @@ function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select'
 
 		const newViewport = updateViewportToContainNodes(viewport.value, dimensions.value, nodes, 100);
 
-		void setViewport(newViewport, {
-			duration: 200,
-			// TODO: restore when re-upgrading vue-flow to >= 1.45
-			// interpolate: 'linear',
-		});
+		void setViewport(newViewport, { duration: 200, interpolate: 'linear' });
 	}
 }
 
@@ -469,10 +466,16 @@ function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>)
 
 function onUpdateNodeInputs(id: string) {
 	emit('update:node:inputs', id);
+
+	// Let VueFlow update connection paths to match the new handle position
+	void nextTick(() => vueFlow.updateNodeInternals([id]));
 }
 
 function onUpdateNodeOutputs(id: string) {
 	emit('update:node:outputs', id);
+
+	// Let VueFlow update connection paths to match the new handle position
+	void nextTick(() => vueFlow.updateNodeInternals([id]));
 }
 
 function onFocusNode(id: string) {
@@ -732,6 +735,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return clearSelectedNodes();
 		case 'duplicate':
 			return emit('duplicate:nodes', nodeIds);
+		case 'update_node_version':
+			return emit('update:node:version', nodeIds[0]);
 		case 'toggle_pin':
 			return emit('update:nodes:pin', nodeIds, 'context-menu');
 		case 'execute':

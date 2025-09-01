@@ -2150,6 +2150,42 @@ export function useCanvasOperations() {
 		return result.nodes?.map((node) => node.id).filter(isPresent) ?? [];
 	}
 
+	async function updateNodeVersion(id: string) {
+		const originalNode = workflowsStore.getNodeById(id);
+		if (!originalNode) {
+			return;
+		}
+
+		const workflowData = deepCopy(getNodesToSave([originalNode]));
+		const originalPosition = originalNode.position;
+		const verticalOffset = 80;
+		if (workflowData.nodes && workflowData.nodes.length > 0) {
+			workflowData.nodes[0].name = `${originalNode.name} (Legacy)`;
+		}
+
+		const result = await importWorkflowData(workflowData, 'update', {
+			importTags: false,
+		});
+
+		if (result.nodes && result.nodes.length > 0) {
+			const latestVersion = Math.max(...nodeTypesStore.getNodeVersions(originalNode.type));
+			workflowsStore.setNodeValue({
+				name: originalNode.name,
+				key: 'typeVersion',
+				value: latestVersion,
+			});
+			workflowsStore.setNodePositionById(id, [
+				originalPosition[0],
+				originalPosition[1] + verticalOffset,
+			]);
+			// HACK: set the position afterwards
+			workflowsStore.setNodePositionById(result.nodes[0].id, [
+				originalPosition[0],
+				originalPosition[1] - verticalOffset,
+			]);
+		}
+	}
+
 	async function copyNodes(ids: string[]) {
 		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
 
@@ -2299,6 +2335,7 @@ export function useCanvasOperations() {
 		copyNodes,
 		cutNodes,
 		duplicateNodes,
+		updateNodeVersion,
 		getNodesToSave,
 		revertDeleteNode,
 		addConnections,

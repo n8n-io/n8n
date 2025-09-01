@@ -1003,6 +1003,62 @@ describe('dataStore', () => {
 			]);
 		});
 
+		it('inserts in correct order even with different column order', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'myDataStore',
+				columns: [
+					{ name: 'c4', type: 'date' },
+					{ name: 'c3', type: 'boolean' },
+					{ name: 'c2', type: 'string' },
+					{ name: 'c1', type: 'number' },
+				],
+			});
+
+			const now = new Date();
+
+			// Insert initial row
+			const ids = await dataStoreService.insertRows(
+				dataStoreId,
+				project1.id,
+				[
+					{ c1: 1, c2: 'foo', c3: true, c4: now },
+					{ c2: 'bar', c1: 2, c3: false, c4: now },
+					{ c1: null, c2: null, c3: null, c4: null },
+				],
+				true,
+			);
+			expect(ids).toEqual([
+				{
+					id: 1,
+					c1: 1,
+					c2: 'foo',
+					c3: true,
+					c4: now,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+				{
+					id: 2,
+					c1: 2,
+					c2: 'bar',
+					c3: false,
+					c4: now,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+				{
+					id: 3,
+					c1: null,
+					c2: null,
+					c3: null,
+					c4: null,
+					createdAt: expect.any(Date),
+					updatedAt: expect.any(Date),
+				},
+			]);
+		});
+
 		it('rejects a mismatched row with unknown column', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {

@@ -5,8 +5,13 @@ export const ALL_FILTERS = 'allFilters';
 
 export type FilterType = typeof ANY_FILTER | typeof ALL_FILTERS;
 
-export type FieldEntry = {
-	keyName: string;
-	condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
-	keyValue: DataStoreColumnJsType;
-};
+export type FieldEntry =
+	| {
+			keyName: string;
+			condition: 'isEmpty' | 'isNotEmpty';
+	  }
+	| {
+			keyName: string;
+			condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
+			keyValue: DataStoreColumnJsType;
+	  };
