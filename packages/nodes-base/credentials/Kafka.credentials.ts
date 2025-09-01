@@ -30,7 +30,7 @@ export class Kafka implements ICredentialType {
 			default: true,
 		},
 		{
-			displayName: 'SSL CA',
+			displayName: 'SSL CA Certificate',
 			name: 'sslCa',
 			type: 'string',
 			displayOptions: {
@@ -41,7 +41,7 @@ export class Kafka implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Ignore SSL Issues',
+			displayName: 'Ignore SSL Issues (insecure)',
 			name: 'ignoreSslIssues',
 			type: 'boolean',
 			displayOptions: {
@@ -52,8 +52,8 @@ export class Kafka implements ICredentialType {
 			default: false,
 		},
 		{
-			displayName: 'SSL Cert',
-			name: 'sslCert',
+			displayName: 'SSL Client Certificate',
+			name: 'sslClientCertificate',
 			type: 'string',
 			displayOptions: {
 				show: {
@@ -63,8 +63,8 @@ export class Kafka implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'SSL Key',
-			name: 'sslKey',
+			displayName: 'SSL Client Key',
+			name: 'sslClientKey',
 			type: 'string',
 			displayOptions: {
 				show: {
@@ -77,13 +77,13 @@ export class Kafka implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'SSL Key Password',
-			name: 'sslKeyPassword',
+			displayName: 'SSL Client Key Passphrase',
+			name: 'sslClientKeyPassphrase',
 			type: 'string',
 			displayOptions: {
 				show: {
 					ssl: [true],
-					sslKey: [{_cnd: { exists: true}}],
+					sslKey: [{ _cnd: { exists: true } }],
 				},
 			},
 			typeOptions: {
