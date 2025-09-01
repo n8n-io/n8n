@@ -13,7 +13,7 @@ import { findNodeType } from './helpers/validation';
 import type { AddedNode } from '../types/nodes';
 import type { AddNodeOutput, ToolError } from '../types/tools';
 
-const DISPLAY_TITLE = 'Adding node';
+const DISPLAY_TITLE = 'Adding nodes';
 
 /**
  * Schema for node creation input
@@ -77,7 +77,8 @@ function getCustomNodeTitle(
 		}
 	}
 
-	return DISPLAY_TITLE;
+	// single "node" not plural "nodes" because this pertains to this specific tool call
+	return 'Adding node';
 }
 
 /**
