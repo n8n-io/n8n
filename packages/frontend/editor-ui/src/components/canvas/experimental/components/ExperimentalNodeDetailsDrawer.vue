@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
+import { ContextMenuAction, useContextMenuItems } from '@/composables/useContextMenuItems';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { type INodeUi } from '@/Interface';
 import { N8nButton, N8nKeyboardShortcut, N8nText } from '@n8n/design-system';
-import { type GraphNode } from '@vue-flow/core';
 import { computed, provide } from 'vue';
 import ExperimentalCanvasNodeSettings from './ExperimentalCanvasNodeSettings.vue';
-import { ContextMenuAction, useContextMenuItems } from '@/composables/useContextMenuItems';
 
-const { node, nodes } = defineProps<{ node: INodeUi; nodes: GraphNode[] }>();
+const { node, nodeIds } = defineProps<{ node: INodeUi; nodeIds: string[] }>();
 
 const emit = defineEmits<{
 	openNdv: [];
@@ -16,16 +15,15 @@ const emit = defineEmits<{
 }>();
 
 const expressionResolveCtx = useExpressionResolveCtx(computed(() => node));
-const nodeIds = computed(() => nodes.map((n) => n.id));
-const contextMenuItems = useContextMenuItems(nodeIds);
+const contextMenuItems = useContextMenuItems(computed(() => nodeIds));
 
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 </script>
 
 <template>
 	<div :class="$style.component">
-		<N8nText v-if="nodes.length > 1" tag="div" color="text-base" :class="$style.multipleNodes">
-			<div>{{ nodes.length }} nodes selected</div>
+		<N8nText v-if="nodeIds.length > 1" tag="div" color="text-base" :class="$style.multipleNodes">
+			<div>{{ nodeIds.length }} nodes selected</div>
 			<ul :class="$style.multipleNodesActions">
 				<li v-for="action of contextMenuItems" :key="action.id" :class="$style.multipleNodesAction">
 					<N8nButton
@@ -86,7 +84,11 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		border-color: var(--border-color-light) !important;
+		border-color: var(--border-color-light);
+
+		&:disabled {
+			border-color: var(--border-color-light);
+		}
 	}
 
 	&:first-of-type button {

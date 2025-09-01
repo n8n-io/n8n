@@ -207,6 +207,8 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 
 const isNodeExecuting = computed(() => workflowsStore.isNodeExecuting(node.value?.name ?? ''));
 
+const selectedNodeIds = computed(() => vueFlow.getSelectedNodes.value.map((n) => n.id));
+
 const { resolvedExpression } = useResolvedExpression({
 	expression,
 	additionalData: resolvedAdditionalExpressionData,
@@ -573,7 +575,7 @@ function onOpenNdv() {
 				<ExperimentalNodeDetailsDrawer
 					v-else-if="node && experimentalNdvStore.isNdvInFocusPanelEnabled"
 					:node="node"
-					:nodes="vueFlow.getSelectedNodes.value"
+					:node-ids="selectedNodeIds"
 					@open-ndv="onOpenNdv"
 					@context-menu-action="(action, nodeIds) => emit('contextMenuAction', action, nodeIds)"
 				/>
