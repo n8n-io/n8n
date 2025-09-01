@@ -1,27 +1,35 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import OpenAI from 'openai';
 
-import { getProxyAgent } from '@utils/httpProxyAgent';
-
 export async function searchModels(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('zAiApi');
-	const baseURL = credentials.url as string;
+	const baseURL =
+		(this.getNodeParameter('options.baseURL', '') as string) ||
+		(credentials.url as string) ||
+		'https://api.z.ai/api/paas/v4';
 
 	const openai = new OpenAI({
-		baseURL: credentials.url as string,
+		baseURL,
 		apiKey: credentials.apiKey as string,
-		fetchOptions: {
-			dispatcher: getProxyAgent(credentials.url as string),
-		},
 	});
 	const { data: models = [] } = await openai.models.list();
 
 	const filteredModels = models.filter((model: { id: string }) => {
-		// Filter out non-chat models if needed
-		const isInvalidModel = false; // Z.ai specific filtering logic can be added here
+		// Filter out TTS, embedding, image generation, and other models
+		const isInvalidModel =
+			model.id.startsWith('cogview') ||
+			model.id.startsWith('vidu') ||
+			model.id.startsWith('embedding') ||
+			model.id.startsWith('char') ||
+			model.id.startsWith('emohaa') ||
+			model.id.startsWith('cogtts') ||
+			model.id.startsWith('rerank') ||
+			model.id.endsWith('voice') ||
+			model.id.endsWith('realtime') ||
+			model.id.endsWith('asr');
 
 		if (!filter) return !isInvalidModel;
 

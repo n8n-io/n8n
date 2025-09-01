@@ -80,7 +80,7 @@ export class LmChatZAi implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: 'z-chat-v1' },
+				default: { mode: 'list', value: 'glm-4.5' },
 				required: true,
 				modes: [
 					{
@@ -97,11 +97,11 @@ export class LmChatZAi implements INodeType {
 						displayName: 'ID',
 						name: 'id',
 						type: 'string',
-						placeholder: 'z-chat-v1',
+						placeholder: 'glm-4.5',
 					},
 				],
 				description:
-					'The model which will generate the completion. <a href="https://z.ai/docs/models">Learn more</a>.',
+					'The model which will generate the completion. <a href="https://docs.z.ai/guides/overview/overview">Learn more</a>.',
 			},
 			{
 				displayName: 'Options',
@@ -112,23 +112,14 @@ export class LmChatZAi implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Frequency Penalty',
-						name: 'frequencyPenalty',
-						default: 0,
-						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-						description:
-							"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
-						type: 'number',
-					},
-					{
 						displayName: 'Maximum Number of Tokens',
 						name: 'maxTokens',
-						default: -1,
+						default: 1024,
 						description:
 							'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768).',
 						type: 'number',
 						typeOptions: {
-							maxValue: 32768,
+							maxValue: 98304,
 						},
 					},
 					{
@@ -151,35 +142,12 @@ export class LmChatZAi implements INodeType {
 						],
 					},
 					{
-						displayName: 'Presence Penalty',
-						name: 'presencePenalty',
-						default: 0,
-						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-						description:
-							"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
-						type: 'number',
-					},
-					{
 						displayName: 'Sampling Temperature',
 						name: 'temperature',
 						default: 0.7,
 						typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
 						description:
 							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
-						type: 'number',
-					},
-					{
-						displayName: 'Timeout',
-						name: 'timeout',
-						default: 360000,
-						description: 'Maximum amount of time a request is allowed to take in milliseconds',
-						type: 'number',
-					},
-					{
-						displayName: 'Max Retries',
-						name: 'maxRetries',
-						default: 2,
-						description: 'Maximum number of retries to attempt',
 						type: 'number',
 					},
 					{

@@ -26,7 +26,7 @@ export class ZAiApi implements ICredentialType {
 			name: 'url',
 			type: 'string',
 			required: true,
-			default: 'https://api.z.ai/api',
+			default: 'https://api.z.ai/api/paas/v4',
 			description: 'The base URL for Z.AI API',
 		},
 	];
