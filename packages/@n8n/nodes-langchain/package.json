@@ -137,6 +137,7 @@
       "dist/nodes/vector_store/VectorStorePinecone/VectorStorePinecone.node.js",
       "dist/nodes/vector_store/VectorStorePineconeInsert/VectorStorePineconeInsert.node.js",
       "dist/nodes/vector_store/VectorStorePineconeLoad/VectorStorePineconeLoad.node.js",
+      "dist/nodes/vector_store/VectorStoreRedis/VectorStoreRedis.node.js",
       "dist/nodes/vector_store/VectorStoreQdrant/VectorStoreQdrant.node.js",
       "dist/nodes/vector_store/VectorStoreSupabase/VectorStoreSupabase.node.js",
       "dist/nodes/vector_store/VectorStoreSupabaseInsert/VectorStoreSupabaseInsert.node.js",
