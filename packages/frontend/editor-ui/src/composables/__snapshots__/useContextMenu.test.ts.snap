@@ -272,7 +272,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
     },
   },
   {
-    "disabled": true,
+    "disabled": false,
     "id": "duplicate",
     "label": "Duplicate",
     "shortcut": {
@@ -394,7 +394,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     },
   },
   {
-    "disabled": true,
+    "disabled": false,
     "id": "duplicate",
     "label": "Duplicate",
     "shortcut": {
@@ -487,7 +487,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     },
   },
   {
-    "disabled": true,
+    "disabled": false,
     "id": "duplicate",
     "label": "Duplicate",
     "shortcut": {
@@ -621,7 +621,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     },
   },
   {
-    "disabled": true,
+    "disabled": false,
     "id": "duplicate",
     "label": "Duplicate",
     "shortcut": {
@@ -755,7 +755,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     },
   },
   {
-    "disabled": true,
+    "disabled": false,
     "id": "duplicate",
     "label": "Duplicate",
     "shortcut": {
@@ -889,7 +889,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
     },
   },
   {
-    "disabled": true,
+    "disabled": false,
     "id": "duplicate",
     "label": "Duplicate",
     "shortcut": {
@@ -1023,7 +1023,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
     },
   },
   {
-    "disabled": true,
+    "disabled": false,
     "id": "duplicate",
     "label": "Duplicate",
     "shortcut": {
@@ -1121,7 +1121,7 @@ exports[`useContextMenu > should support opening and closing (default = right cl
     },
   },
   {
-    "disabled": true,
+    "disabled": false,
     "id": "duplicate",
     "label": "Duplicate 2 nodes",
     "shortcut": {

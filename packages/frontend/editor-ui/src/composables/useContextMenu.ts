@@ -243,7 +243,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 					!isLatestNodeVersion(nodes[0]) && {
 						id: 'update_node_version',
 						label: i18n.baseText('contextMenu.updateNodeVersion'),
-						disabled: isReadOnly.value || !canDuplicateNode(nodes[0]),
+						disabled: isReadOnly.value,
 					},
 				...layoutActions,
 				...extractionActions,
