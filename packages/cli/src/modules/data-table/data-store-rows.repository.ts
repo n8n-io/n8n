@@ -63,7 +63,7 @@ function getConditionAndParams(
 
 	// Find the column type to normalize the value consistently
 	const columnInfo = columns?.find((col) => col.name === filter.columnName);
-	const value = columnInfo ? normalizeValue(filter.value, columnInfo?.type) : filter.value;
+	const value = columnInfo ? normalizeValue(filter.value, columnInfo?.type, dbType) : filter.value;
 
 	// Handle operators that map directly to SQL operators
 	const operators: Record<string, string> = {
@@ -178,7 +178,7 @@ export class DataStoreRowsRepository {
 				if (!(column.name in completeRow)) {
 					completeRow[column.name] = null;
 				}
-				completeRow[column.name] = normalizeValue(completeRow[column.name], column.type);
+				completeRow[column.name] = normalizeValue(completeRow[column.name], column.type, dbType);
 			}
 
 			const query = this.dataSource
@@ -239,10 +239,10 @@ export class DataStoreRowsRepository {
 
 		for (const column of columns) {
 			if (column.name in setData) {
-				setData[column.name] = normalizeValue(setData[column.name], column.type);
+				setData[column.name] = normalizeValue(setData[column.name], column.type, dbType);
 			}
 			if (column.name in whereData) {
-				whereData[column.name] = normalizeValue(whereData[column.name], column.type);
+				whereData[column.name] = normalizeValue(whereData[column.name], column.type, dbType);
 			}
 		}
 
@@ -258,7 +258,7 @@ export class DataStoreRowsRepository {
 				.getRawMany<{ id: number }>();
 		}
 
-		setData.updatedAt = normalizeValue(new Date(), 'date');
+		setData.updatedAt = normalizeValue(new Date(), 'date', dbType);
 
 		const query = this.dataSource.createQueryBuilder().update(table).set(setData).where(whereData);
 
