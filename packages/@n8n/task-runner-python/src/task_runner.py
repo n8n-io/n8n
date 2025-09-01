@@ -13,7 +13,7 @@ from src.errors import (
     TaskMissingError,
 )
 from src.message_types.broker import TaskSettings
-from src.nanoid_utils import nanoid
+from src.nanoid import nanoid
 
 from src.constants import (
     RUNNER_NAME,
@@ -26,6 +26,10 @@ from src.constants import (
     OFFER_VALIDITY_LATENCY_BUFFER,
     TASK_BROKER_WS_PATH,
     RPC_BROWSER_CONSOLE_LOG_METHOD,
+    LOG_TASK_COMPLETE,
+    LOG_TASK_CANCEL,
+    LOG_TASK_CANCEL_UNKNOWN,
+    LOG_TASK_CANCEL_WAITING,
 )
 from src.message_types import (
     BrokerMessage,
@@ -126,6 +130,8 @@ class TaskRunner:
             await self.websocket_connection.close()
             self.logger.info("Disconnected from broker")
 
+        self.logger.info("Runner stopped")
+
     # ========== Messages ==========
 
     async def _listen_for_messages(self) -> None:
@@ -204,11 +210,18 @@ class TaskRunner:
             )
             return
 
+        task_state.workflow_name = message.settings.workflow_name
+        task_state.workflow_id = message.settings.workflow_id
+        task_state.node_name = message.settings.node_name
+        task_state.node_id = message.settings.node_id
+
         task_state.status = TaskStatus.RUNNING
         asyncio.create_task(self._execute_task(message.task_id, message.settings))
         self.logger.info(f"Received task {message.task_id}")
 
     async def _execute_task(self, task_id: str, task_settings: TaskSettings) -> None:
+        start_time = time.time()
+
         try:
             task_state = self.running_tasks.get(task_id)
 
@@ -224,6 +237,7 @@ class TaskRunner:
                 stdlib_allow=self.opts.stdlib_allow,
                 external_allow=self.opts.external_allow,
                 builtins_deny=self.opts.builtins_deny,
+                can_log=task_settings.can_log,
             )
 
             task_state.process = process
@@ -242,7 +256,14 @@ class TaskRunner:
 
             response = RunnerTaskDone(task_id=task_id, data={"result": result})
             await self._send_message(response)
-            self.logger.info(f"Completed task {task_id}")
+
+            self.logger.info(
+                LOG_TASK_COMPLETE.format(
+                    task_id=task_id,
+                    duration=self._get_duration(start_time),
+                    **task_state.context(),
+                )
+            )
 
         except Exception as e:
             response = RunnerTaskError(task_id=task_id, error={"message": str(e)})
@@ -252,22 +273,26 @@ class TaskRunner:
             self.running_tasks.pop(task_id, None)
 
     async def _handle_task_cancel(self, message: BrokerTaskCancel) -> None:
-        task_state = self.running_tasks.get(message.task_id)
+        task_id = message.task_id
+        task_state = self.running_tasks.get(task_id)
 
         if task_state is None:
-            self.logger.warning(
-                f"Received cancel for unknown task: {message.task_id}. Discarding message."
-            )
+            self.logger.warning(LOG_TASK_CANCEL_UNKNOWN.format(task_id=task_id))
             return
 
         if task_state.status == TaskStatus.WAITING_FOR_SETTINGS:
-            self.running_tasks.pop(message.task_id, None)
+            self.running_tasks.pop(task_id, None)
+            self.logger.info(LOG_TASK_CANCEL_WAITING.format(task_id=task_id))
             await self._send_offers()
             return
 
         if task_state.status == TaskStatus.RUNNING:
             task_state.status = TaskStatus.ABORTING
             self.executor.stop_process(task_state.process)
+
+            self.logger.info(
+                LOG_TASK_CANCEL.format(task_id=task_id, **task_state.context())
+            )
 
     async def _send_rpc_message(self, task_id: str, method_name: str, params: list):
         message = RunnerRpcCall(
@@ -282,6 +307,17 @@ class TaskRunner:
 
         serialized = self.serde.serialize_runner_message(message)
         await self.websocket_connection.send(serialized)
+
+    def _get_duration(self, start_time: float) -> str:
+        elapsed = time.time() - start_time
+
+        if elapsed < 1:
+            return f"{int(elapsed * 1000)}ms"
+
+        if elapsed < 60:
+            return f"{int(elapsed)}s"
+
+        return f"{int(elapsed) // 60}m"
 
     # ========== Offers ==========
 

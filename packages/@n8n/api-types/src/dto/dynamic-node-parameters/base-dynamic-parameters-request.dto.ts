@@ -15,4 +15,5 @@ export class BaseDynamicParametersRequestDto extends Z.class({
 	credentials: z.record(z.string(), z.any()).optional() satisfies z.ZodType<
 		INodeCredentials | undefined
 	>,
+	projectId: z.string().optional(),
 }) {}
