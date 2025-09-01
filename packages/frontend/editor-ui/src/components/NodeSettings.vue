@@ -624,7 +624,6 @@ function handleSelectAction(params: INodeParameters) {
 				<div class="version-update-container">
 					<NodeUpdateVersionButton
 						v-if="isExecutable && !blockUI && node && nodeValid && !isLatestNodeVersion"
-						:node-name="node.name"
 						type="warning"
 						size="small"
 					/>
@@ -661,6 +660,7 @@ function handleSelectAction(params: INodeParameters) {
 			:hide-tabs="!nodeValid"
 			:hide-docs="props.hideDocs"
 			:push-ref="pushRef"
+			:is-latest-node-version="isLatestNodeVersion"
 			@execute="onNodeExecute"
 			@stop-execution="onStopExecution"
 			@value-changed="valueChanged"

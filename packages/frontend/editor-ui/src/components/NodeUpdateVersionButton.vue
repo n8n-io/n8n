@@ -7,7 +7,6 @@ import type { ButtonType } from '@n8n/design-system';
 
 withDefaults(
 	defineProps<{
-		nodeName: string;
 		disabled?: boolean;
 		type?: ButtonType;
 		size?: ButtonSize;

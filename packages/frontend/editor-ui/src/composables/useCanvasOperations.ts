@@ -2169,6 +2169,7 @@ export function useCanvasOperations() {
 
 		if (result.nodes && result.nodes.length > 0) {
 			const latestVersion = Math.max(...nodeTypesStore.getNodeVersions(originalNode.type));
+			// TODO: migrate the node parameters from the old node to the new node
 			workflowsStore.setNodeValue({
 				name: originalNode.name,
 				key: 'typeVersion',

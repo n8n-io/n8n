@@ -736,6 +736,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'duplicate':
 			return emit('duplicate:nodes', nodeIds);
 		case 'update_node_version':
+			// TODO: open a modal instead of calling the function directly
 			return emit('update:node:version', nodeIds[0]);
 		case 'toggle_pin':
 			return emit('update:nodes:pin', nodeIds, 'context-menu');

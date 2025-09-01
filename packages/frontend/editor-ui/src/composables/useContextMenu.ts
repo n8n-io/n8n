@@ -103,6 +103,11 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		return !!workflowsStore.pinDataByNodeName(node.name);
 	};
 
+	const isLatestNodeVersion = (node: INode): boolean => {
+		const latestVersion = Math.max(...nodeTypesStore.getNodeVersions(node.type));
+		return node.typeVersion === latestVersion;
+	};
+
 	const close = () => {
 		target.value = undefined;
 		isOpen.value = false;
@@ -244,7 +249,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				},
 				nodes.length === 1 &&
 					!onlyStickies &&
-					isNodeOutdated(nodes[0]) && {
+					!isLatestNodeVersion(nodes[0]) && {
 						id: 'update_node_version',
 						label: i18n.baseText('contextMenu.updateNodeVersion'),
 						disabled: isReadOnly.value,
