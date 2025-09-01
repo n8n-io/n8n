@@ -116,7 +116,7 @@ export class LmChatZAi implements INodeType {
 						name: 'maxTokens',
 						default: 1024,
 						description:
-							'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768).',
+							'The maximum number of tokens to generate in the completion. The glm-4.5 serials support 98,304 maximum output.',
 						type: 'number',
 						typeOptions: {
 							maxValue: 98304,
