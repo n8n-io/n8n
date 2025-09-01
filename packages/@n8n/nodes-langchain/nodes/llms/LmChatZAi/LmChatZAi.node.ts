@@ -144,8 +144,8 @@ export class LmChatZAi implements INodeType {
 					{
 						displayName: 'Sampling Temperature',
 						name: 'temperature',
-						default: 0.7,
-						typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
+						default: 0.6,
+						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 2 },
 						description:
 							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
 						type: 'number',
@@ -154,7 +154,7 @@ export class LmChatZAi implements INodeType {
 						displayName: 'Top P',
 						name: 'topP',
 						default: 1,
-						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 2 },
 						description:
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
