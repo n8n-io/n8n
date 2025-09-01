@@ -159,6 +159,20 @@ export class LmChatZAi implements INodeType {
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
 					},
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						default: 360000,
+						description: 'Maximum amount of time a request is allowed to take in milliseconds',
+						type: 'number',
+					},
+					{
+						displayName: 'Max Retries',
+						name: 'maxRetries',
+						default: 2,
+						description: 'Maximum number of retries to attempt',
+						type: 'number',
+					},
 				],
 			},
 		],
@@ -170,11 +184,9 @@ export class LmChatZAi implements INodeType {
 		const modelName = this.getNodeParameter('model.value', itemIndex) as string;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			frequencyPenalty?: number;
 			maxTokens?: number;
 			maxRetries: number;
 			timeout: number;
-			presencePenalty?: number;
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
