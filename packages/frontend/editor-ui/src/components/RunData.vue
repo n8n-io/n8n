@@ -1886,6 +1886,14 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
+			<div v-else-if="hasNodeRun && displayMode === 'preview'">
+				<div style="padding: 20px; text-align: center; background: var(--color-background-light)">
+					<p>Iframe preview placeholder</p>
+					<p>Node: {{ node?.name }}</p>
+					<p>Input Data: {{ inputData?.length || 0 }}</p>
+				</div>
+			</div>
+
 			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
 				<LazyRunDataSchema
 					:nodes="nodes"
