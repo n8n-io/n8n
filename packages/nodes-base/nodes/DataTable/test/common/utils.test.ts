@@ -206,7 +206,7 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 	it('should translate isEmpty to eq with null value', () => {
 		const fieldEntries = [{ keyName: 'name', condition: 'isEmpty' as const, keyValue: 'ignored' }];
 
-		const result = buildGetManyFilter(fieldEntries, 'allFilters');
+		const result = buildGetManyFilter(fieldEntries, 'allConditions');
 
 		expect(result).toEqual({
 			type: 'and',
@@ -225,7 +225,7 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 			{ keyName: 'email', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
 		];
 
-		const result = buildGetManyFilter(fieldEntries, 'anyFilter');
+		const result = buildGetManyFilter(fieldEntries, 'anyCondition');
 
 		expect(result).toEqual({
 			type: 'or',
@@ -246,7 +246,7 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 			{ keyName: 'phone', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
 		];
 
-		const result = buildGetManyFilter(fieldEntries, 'allFilters');
+		const result = buildGetManyFilter(fieldEntries, 'allConditions');
 
 		expect(result).toEqual({
 			type: 'and',
@@ -276,7 +276,7 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 			{ keyName: 'name', condition: 'like' as const, keyValue: '%john%' },
 		];
 
-		const result = buildGetManyFilter(fieldEntries, 'anyFilter');
+		const result = buildGetManyFilter(fieldEntries, 'anyCondition');
 
 		expect(result).toEqual({
 			type: 'or',
