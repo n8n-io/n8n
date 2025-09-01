@@ -72,7 +72,7 @@ export async function getDataTableAggregateProxy(
 
 export function isFieldEntry(obj: unknown): obj is FieldEntry {
 	if (obj === null || typeof obj !== 'object') return false;
-	return 'keyName' in obj && 'condition' in obj && 'keyValue' in obj;
+	return 'keyName' in obj && 'condition' in obj; // keyValue is optional
 }
 
 export function isMatchType(obj: unknown): obj is FilterType {
@@ -83,11 +83,28 @@ export function buildGetManyFilter(
 	fieldEntries: FieldEntry[],
 	matchType: FilterType,
 ): ListDataStoreContentFilter {
-	const filters = fieldEntries.map((x) => ({
-		columnName: x.keyName,
-		condition: x.condition,
-		value: x.keyValue,
-	}));
+	const filters = fieldEntries.map((x) => {
+		switch (x.condition) {
+			case 'isEmpty':
+				return {
+					columnName: x.keyName,
+					condition: 'eq' as const,
+					value: null,
+				};
+			case 'isNotEmpty':
+				return {
+					columnName: x.keyName,
+					condition: 'neq' as const,
+					value: null,
+				};
+			default:
+				return {
+					columnName: x.keyName,
+					condition: x.condition,
+					value: x.keyValue,
+				};
+		}
+	});
 	return { type: matchType === 'allFilters' ? 'and' : 'or', filters };
 }
 
