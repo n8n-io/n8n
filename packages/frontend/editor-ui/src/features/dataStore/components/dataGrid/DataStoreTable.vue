@@ -361,16 +361,8 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 	if (col.type === 'date') {
 		columnDef.cellEditor = 'agDateCellEditor';
 		columnDef.cellEditorPopup = false;
-		// Add the same date formatter used for system date columns
-		columnDef.valueFormatter = (params: ValueFormatterParams<DataStoreRow>) => {
-			if (!params.value) return '';
-			const { date, time } = convertToDisplayDate(params.value as Date | string | number);
-			// Check if time is midnight (00:00:00) - if so, don't show the time
-			if (time === '00:00:00') {
-				return date;
-			}
-			return `${date}, ${time}`;
-		};
+		columnDef.valueFormatter = (params: ValueFormatterParams<DataStoreRow>) =>
+			formatDateValue(params.value);
 	}
 	return {
 		...columnDef,
@@ -434,6 +426,18 @@ const onAddRowClick = async () => {
 	}
 };
 
+// Reusable date formatter function
+const formatDateValue = (value: any): string => {
+	if (!value) return '';
+
+	if (!(value instanceof Date || typeof value === 'string' || typeof value === 'number')) {
+		return String(value);
+	}
+
+	const dateObj = value instanceof Date ? value : new Date(value);
+	return dateObj.toISOString();
+};
+
 const initColumnDefinitions = () => {
 	const systemDateColumnOptions: Partial<ColDef> = {
 		editable: false,
@@ -443,11 +447,7 @@ const initColumnDefinitions = () => {
 		headerComponentParams: {
 			allowMenuActions: false,
 		},
-		valueFormatter: (params: ValueFormatterParams<DataStoreRow>) => {
-			if (!params.value) return '';
-			const { date, time } = convertToDisplayDate(params.value as Date | string | number);
-			return `${date}, ${time}`;
-		},
+		valueFormatter: (params: ValueFormatterParams<DataStoreRow>) => formatDateValue(params.value),
 	};
 	colDefs.value = [
 		// Always add the ID column, it's not returned by the back-end but all data stores have it
