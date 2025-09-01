@@ -25,6 +25,7 @@ import { useAssistantStore } from '@/stores/assistant.store';
 type Props = {
 	nodeViewScale: number;
 	createNodeActive?: boolean;
+	focusPanelActive: boolean;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -84,10 +85,13 @@ function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
 function toggleFocusPanel() {
 	focusPanelStore.toggleFocusPanel();
 
-	telemetry.track(`User ${focusPanelStore.focusPanelActive ? 'opened' : 'closed'} focus panel`, {
-		source: 'canvasButton',
-		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
-	});
+	telemetry.track(
+		focusPanelStore.focusPanelActive ? 'User opened focus panel' : 'User closed focus panel',
+		{
+			source: 'canvasButton',
+			parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+		},
+	);
 }
 
 function onAskAssistantButtonClick() {
@@ -135,7 +139,15 @@ function onAskAssistantButtonClick() {
 			:shortcut="{ keys: ['f'], shiftKey: true }"
 			placement="left"
 		>
-			<n8n-icon-button type="tertiary" size="large" icon="panel-right" @click="toggleFocusPanel" />
+			<n8n-icon-button
+				type="tertiary"
+				size="large"
+				icon="panel-right"
+				:class="focusPanelActive ? $style.activeButton : ''"
+				:active="focusPanelActive"
+				data-test-id="toggle-focus-panel-button"
+				@click="toggleFocusPanel"
+			/>
 		</KeyboardShortcutTooltip>
 		<n8n-tooltip v-if="assistantStore.canShowAssistantButtonsOnCanvas" placement="left">
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
@@ -184,5 +196,9 @@ function onAskAssistantButtonClick() {
 	svg {
 		display: block;
 	}
+}
+
+.activeButton {
+	background-color: var(--button-hover-background-color) !important;
 }
 </style>

@@ -8,13 +8,18 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed } from 'vue';
 
-const { nodeId, isReadOnly, subTitle } = defineProps<{
+const { nodeId, isReadOnly, subTitle, isEmbeddedInCanvas } = defineProps<{
 	nodeId: string;
 	isReadOnly?: boolean;
 	subTitle?: string;
+	isEmbeddedInCanvas?: boolean;
 }>();
 
 defineSlots<{ actions?: {} }>();
+
+const emit = defineEmits<{
+	dblclickHeader: [MouseEvent];
+}>();
 
 const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
@@ -33,12 +38,6 @@ const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForW
 function handleValueChanged(parameterData: IUpdateInformation) {
 	if (parameterData.name === 'name' && parameterData.oldValue) {
 		void renameNode(parameterData.oldValue as string, parameterData.value as string);
-	}
-}
-
-function handleDoubleClickHeader() {
-	if (activeNode.value) {
-		ndvStore.setActiveNodeName(activeNode.value.name);
 	}
 }
 
@@ -75,13 +74,17 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 		:read-only="isReadOnly"
 		:block-u-i="blockUi"
 		:executable="!isReadOnly"
-		is-embedded-in-canvas
+		:is-embedded-in-canvas="isEmbeddedInCanvas"
 		:sub-title="subTitle"
 		extra-tabs-class-name="nodrag"
 		extra-parameter-wrapper-class-name="nodrag"
+		is-ndv-v2
+		hide-execute
+		:hide-docs="false"
+		hide-sub-connections
 		@value-changed="handleValueChanged"
 		@capture-wheel-body="handleCaptureWheelEvent"
-		@dblclick-header="handleDoubleClickHeader"
+		@dblclick-header="emit('dblclickHeader', $event)"
 	>
 		<template #actions>
 			<slot name="actions" />

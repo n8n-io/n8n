@@ -1,4 +1,4 @@
-import type { GlobalRole, Scope } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
 import type { FindOperator } from '@n8n/typeorm';
 import type express from 'express';
 import type {
@@ -105,7 +105,7 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
-	role?: GlobalRole;
+	role?: string;
 	globalScopes?: Scope[];
 	signInType: AuthProviderType;
 	disabled: boolean;
@@ -326,12 +326,6 @@ export namespace ListQuery {
 		sortBy?: string;
 	};
 }
-
-export type ProjectRole =
-	| 'project:personalOwner'
-	| 'project:admin'
-	| 'project:editor'
-	| 'project:viewer';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;

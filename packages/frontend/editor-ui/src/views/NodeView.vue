@@ -67,6 +67,7 @@ import {
 	VIEWS,
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	ABOUT_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -121,7 +122,10 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import {
+	createCanvasConnectionHandleString,
+	shouldIgnoreCanvasShortcut,
+} from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getSampleWorkflowByTemplateId } from '@/utils/templates/workflowSamples';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
@@ -139,6 +143,7 @@ import CanvasChatButton from '@/components/canvas/elements/buttons/CanvasChatBut
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useKeybindings } from '@/composables/useKeybindings';
 
 defineOptions({
 	name: 'NodeView',
@@ -254,6 +259,9 @@ const {
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
+useKeybindings({
+	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
+});
 
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
@@ -338,6 +346,8 @@ async function initializeData() {
 
 	try {
 		await Promise.all(loadPromises);
+		//We don't need to await this as community node previews are not critical and needed only in nodes search panel
+		void nodeTypesStore.fetchCommunityNodePreviews();
 	} catch (error) {
 		toast.showError(
 			error,
@@ -762,7 +772,7 @@ function onSetNodeActivated(id: string, event?: MouseEvent) {
 		}
 	}
 
-	setNodeActive(id);
+	setNodeActive(id, 'canvas_default_view');
 }
 
 function onOpenSubWorkflow(id: string) {
@@ -910,7 +920,7 @@ async function onOpenRenameNodeModal(id: string) {
 
 	const activeElement = document.activeElement;
 
-	if (activeElement && activeElement.tagName === 'INPUT') {
+	if (activeElement && shouldIgnoreCanvasShortcut(activeElement)) {
 		// If an input is focused, do not open the rename modal
 		return;
 	}
@@ -1205,7 +1215,7 @@ function onSwitchActiveNode(nodeName: string) {
 	const node = workflowsStore.getNodeByName(nodeName);
 	if (!node) return;
 
-	setNodeActiveByName(nodeName);
+	setNodeActiveByName(nodeName, 'other');
 	selectNodes([node.id]);
 }
 
@@ -1766,7 +1776,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'openNodeDetail',
 		action: ({ node }: { node: string }) => {
-			setNodeActiveByName(node);
+			setNodeActiveByName(node, 'other');
 		},
 	});
 
@@ -1788,7 +1798,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'showNodeCreator',
 		action: () => {
-			ndvStore.activeNodeName = null;
+			ndvStore.unsetActiveNodeName();
 
 			void nextTick(() => {
 				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
@@ -1817,7 +1827,7 @@ function showAddFirstStepIfEnabled() {
 function updateNodeRoute(nodeId: string) {
 	const nodeUi = workflowsStore.findNodeByPartialId(nodeId);
 	if (nodeUi) {
-		setNodeActive(nodeUi.id);
+		setNodeActive(nodeUi.id, 'other');
 	} else {
 		toast.showToast({
 			title: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.title'),
@@ -1882,7 +1892,7 @@ watch(
 watch(
 	() => route.params.nodeId,
 	async (newId) => {
-		if (typeof newId !== 'string' || newId === '') ndvStore.activeNodeName = null;
+		if (typeof newId !== 'string' || newId === '') ndvStore.unsetActiveNodeName();
 		else {
 			updateNodeRoute(newId);
 		}
@@ -2153,6 +2163,7 @@ onBeforeUnmount(() => {
 					v-if="!isCanvasReadOnly"
 					:create-node-active="nodeCreatorStore.isCreateNodeActive"
 					:node-view-scale="viewportTransform.zoom"
+					:focus-panel-active="focusPanelStore.focusPanelActive"
 					@toggle-node-creator="onToggleNodeCreator"
 					@add-nodes="onAddNodesAndConnections"
 				/>

@@ -1,3 +1,5 @@
+import { nanoid } from 'nanoid';
+
 import type { n8nPage } from '../pages/n8nPage';
 
 /**
@@ -34,7 +36,14 @@ export class WorkflowComposer {
 	async createWorkflow(workflowName = 'My New Workflow') {
 		await this.n8n.workflows.clickAddWorkflowButton();
 		await this.n8n.canvas.setWorkflowName(workflowName);
+
+		const responsePromise = this.n8n.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/workflows') && response.request().method() === 'POST',
+		);
 		await this.n8n.canvas.saveWorkflow();
+
+		await responsePromise;
 	}
 
 	/**
@@ -47,7 +56,7 @@ export class WorkflowComposer {
 		fileName: string,
 		name?: string,
 	): Promise<{ workflowName: string }> {
-		const workflowName = name ?? `Imported Workflow ${Date.now()}`;
+		const workflowName = name ?? `Imported Workflow ${nanoid(8)}`;
 		await this.n8n.goHome();
 		await this.n8n.workflows.clickAddWorkflowButton();
 		await this.n8n.canvas.importWorkflow(fileName, workflowName);

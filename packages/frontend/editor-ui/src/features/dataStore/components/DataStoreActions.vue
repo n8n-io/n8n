@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DataStoreEntity } from '@/features/dataStore/datastore.types';
+import type { DataStore } from '@/features/dataStore/datastore.types';
 import type { IUser, UserAction } from '@n8n/design-system';
 import { DATA_STORE_CARD_ACTIONS } from '@/features/dataStore/constants';
 import { useI18n } from '@n8n/i18n';
@@ -10,8 +10,9 @@ import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
 
 type Props = {
-	dataStore: DataStoreEntity;
+	dataStore: DataStore;
 	isReadOnly?: boolean;
+	location: 'card' | 'breadcrumbs';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -21,7 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	rename: [
 		value: {
-			dataStore: DataStoreEntity;
+			dataStore: DataStore;
 			action: string;
 		},
 	];
@@ -34,18 +35,23 @@ const i18n = useI18n();
 const message = useMessage();
 const toast = useToast();
 
-const actions = computed<Array<UserAction<IUser>>>(() => [
-	{
-		label: i18n.baseText('generic.rename'),
-		value: DATA_STORE_CARD_ACTIONS.RENAME,
-		disabled: props.isReadOnly,
-	},
-	{
-		label: i18n.baseText('generic.delete'),
-		value: DATA_STORE_CARD_ACTIONS.DELETE,
-		disabled: props.isReadOnly,
-	},
-]);
+const actions = computed<Array<UserAction<IUser>>>(() => {
+	const availableActions = [
+		{
+			label: i18n.baseText('generic.delete'),
+			value: DATA_STORE_CARD_ACTIONS.DELETE,
+			disabled: props.isReadOnly,
+		},
+	];
+	if (props.location === 'breadcrumbs') {
+		availableActions.unshift({
+			label: i18n.baseText('generic.rename'),
+			value: DATA_STORE_CARD_ACTIONS.RENAME,
+			disabled: props.isReadOnly,
+		});
+	}
+	return availableActions;
+});
 
 const onAction = async (action: string) => {
 	switch (action) {

@@ -8,15 +8,33 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { createTestWorkflow } from '@/__tests__/mocks';
 
 const eventBus = createEventBus();
 
+const mockRoute = reactive({
+	name: '',
+	params: {},
+	fullPath: '',
+});
+
+vi.mock('vue-router', () => ({
+	useRoute: () => mockRoute,
+	RouterLink: vi.fn(),
+	useRouter: vi.fn(),
+}));
+
 vi.mock('@/features/workflow-diff/useViewportSync', () => ({
 	useProvideViewportSync: () => ({
-		selectedDetailId: vi.fn(),
+		selectedDetailId: ref(undefined),
 		onNodeClick: vi.fn(),
+	}),
+	useInjectViewportSync: () => ({
+		triggerViewportChange: vi.fn(),
+		onViewportChange: vi.fn(),
+		selectedDetailId: ref(undefined),
+		triggerNodeClick: vi.fn(),
 	}),
 }));
 
@@ -77,27 +95,6 @@ const renderModal = createComponentRenderer(WorkflowDiffModal, {
 					</div>
 				`,
 			},
-			SyncedWorkflowCanvas: {
-				template: '<div><slot name="node" /><slot name="edge" /></div>',
-			},
-			WorkflowDiffAside: {
-				template: '<div><slot name="default" v-bind="{ outputFormat: \'unified\' }" /></div>',
-			},
-			Node: {
-				template: '<div class="canvas-node" />',
-			},
-			HighlightedEdge: {
-				template: '<div class="canvas-edge" />',
-			},
-			NodeDiff: {
-				template: '<div class="node-diff" />',
-			},
-			DiffBadge: {
-				template: '<span class="diff-badge" />',
-			},
-			NodeIcon: {
-				template: '<span class="node-icon" />',
-			},
 		},
 	},
 });
@@ -125,7 +122,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should mount successfully', async () => {
 		const { container } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -142,7 +138,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should initialize with correct props', () => {
 		const { container } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -161,7 +156,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should display changes button', async () => {
 		const { getByText } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -178,7 +172,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should open changes dropdown when clicking Changes button', async () => {
 		const { getByText } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -200,7 +193,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should render workflow panels', () => {
 		const { container } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -217,7 +209,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should render navigation buttons', () => {
 		const { container } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -246,7 +237,6 @@ describe('WorkflowDiffModal', () => {
 		workflowsStore.fetchWorkflow.mockResolvedValue(localWorkflow);
 
 		const { getByText } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -261,7 +251,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should render back button', () => {
 		const { container } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -277,7 +266,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should handle different workflow directions', () => {
 		const pullComponent = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -288,7 +276,6 @@ describe('WorkflowDiffModal', () => {
 		});
 
 		const pushComponent = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -305,7 +292,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should show empty state when no changes exist in tabs', async () => {
 		const { getByText } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -335,7 +321,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should show empty state for connectors tab when no connector changes', async () => {
 		const { getByText } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -364,7 +349,6 @@ describe('WorkflowDiffModal', () => {
 
 	it('should show empty state for settings tab when no settings changes', async () => {
 		const { getByText } = renderModal({
-			pinia: createTestingPinia(),
 			props: {
 				data: {
 					eventBus,
@@ -388,6 +372,83 @@ describe('WorkflowDiffModal', () => {
 		// Should show "No changes" when there are no settings changes
 		await waitFor(() => {
 			expect(getByText('No changes')).toBeInTheDocument();
+		});
+	});
+
+	describe('missing workflow scenarios', () => {
+		it('should handle missing source workflow without crashing', async () => {
+			sourceControlStore.getRemoteWorkflow.mockResolvedValue({
+				content: mockWorkflow,
+				type: 'workflow',
+			});
+			workflowsStore.fetchWorkflow.mockRejectedValue(new Error('Workflow not found'));
+
+			const { getByText } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'new-workflow-id',
+						direction: 'pull',
+					},
+				},
+			});
+
+			// Component should render successfully even with missing workflow
+			await waitFor(() => {
+				expect(getByText('Changes')).toBeInTheDocument();
+			});
+		});
+
+		it('should handle missing target workflow without crashing', async () => {
+			sourceControlStore.getRemoteWorkflow.mockRejectedValue(new Error('Workflow not found'));
+			workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+
+			const { getByText } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'missing-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			// Component should render successfully even with missing workflow
+			await waitFor(() => {
+				expect(getByText('Changes')).toBeInTheDocument();
+			});
+		});
+
+		it('should handle push direction without crashing', async () => {
+			const { getByText } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'push',
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Changes')).toBeInTheDocument();
+			});
+		});
+
+		it('should handle pull direction without crashing', async () => {
+			const { getByText } = renderModal({
+				props: {
+					data: {
+						eventBus,
+						workflowId: 'test-workflow-id',
+						direction: 'pull',
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Changes')).toBeInTheDocument();
+			});
 		});
 	});
 });

@@ -19,6 +19,7 @@ export const LOG_SCOPES = [
 	'insights',
 	'workflow-activation',
 	'ssh-client',
+	'data-table',
 	'cron',
 	'community-nodes',
 	'legacy-sqlite-execution-recovery',

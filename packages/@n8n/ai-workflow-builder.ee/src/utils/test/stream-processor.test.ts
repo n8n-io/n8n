@@ -1,4 +1,5 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
+import type { DynamicStructuredTool } from '@langchain/core/tools';
 
 import type {
 	AgentMessageChunk,
@@ -469,6 +470,431 @@ describe('stream-processor', () => {
 			expect(result[0].updates?.[0]).toEqual({
 				type: 'input',
 				data: {},
+			});
+		});
+
+		it('should handle AIMessage with array content (multi-part messages)', () => {
+			const message = new AIMessage('');
+			// Manually set the content to array format since LangChain constructor might not accept arrays directly
+			message.content = [
+				{ type: 'text', text: 'First part' },
+				{ type: 'text', text: 'Second part' },
+				{ type: 'image', url: 'http://example.com/image.png' },
+			];
+
+			const messages = [message];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toEqual({
+				role: 'assistant',
+				type: 'message',
+				text: 'First part',
+			});
+			expect(result[1]).toEqual({
+				role: 'assistant',
+				type: 'message',
+				text: 'Second part',
+			});
+		});
+
+		it('should handle AIMessage with array content containing no text', () => {
+			const message = new AIMessage('');
+			message.content = [
+				{ type: 'image', url: 'http://example.com/image.png' },
+				{ type: 'video', url: 'http://example.com/video.mp4' },
+			];
+
+			const messages = [message];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(0);
+		});
+
+		it('should handle AIMessage with empty array content', () => {
+			const message = new AIMessage('');
+			message.content = [];
+
+			const messages = [message];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(0);
+		});
+
+		it('should handle AIMessage with empty string content', () => {
+			const messages = [new AIMessage('')];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(0);
+		});
+
+		it('should handle AIMessage with null content', () => {
+			const message = new AIMessage('');
+			// Test the function's robustness by simulating a corrupted message
+			Object.defineProperty(message, 'content', { value: null, writable: true });
+
+			const messages = [message];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(0);
+		});
+
+		it('should use builder tool display titles', () => {
+			const builderTools = [
+				{
+					tool: { name: 'add_nodes' } as DynamicStructuredTool,
+					displayTitle: 'Add Node',
+				},
+				{
+					tool: { name: 'connect_nodes' } as DynamicStructuredTool,
+					displayTitle: 'Connect Nodes',
+				},
+			];
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'add_nodes',
+					args: { nodeType: 'n8n-nodes-base.code' },
+					type: 'tool_call',
+				},
+			];
+
+			const messages = [aiMessage];
+
+			const result = formatMessages(messages, builderTools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				id: 'call-1',
+				toolCallId: 'call-1',
+				role: 'assistant',
+				type: 'tool',
+				toolName: 'add_nodes',
+				displayTitle: 'Add Node',
+				status: 'completed',
+				updates: [
+					{
+						type: 'input',
+						data: { nodeType: 'n8n-nodes-base.code' },
+					},
+				],
+			});
+		});
+
+		it('should use custom display titles from builder tools', () => {
+			const builderTools = [
+				{
+					tool: { name: 'add_nodes' } as DynamicStructuredTool,
+					displayTitle: 'Add Node',
+					getCustomDisplayTitle: (values: Record<string, unknown>) =>
+						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+						`Add ${values.nodeType} Node`,
+				},
+			];
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'add_nodes',
+					args: { nodeType: 'Code' },
+					type: 'tool_call',
+				},
+			];
+
+			const messages = [aiMessage];
+
+			const result = formatMessages(messages, builderTools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				id: 'call-1',
+				toolCallId: 'call-1',
+				role: 'assistant',
+				type: 'tool',
+				toolName: 'add_nodes',
+				displayTitle: 'Add Node',
+				customDisplayTitle: 'Add Code Node',
+				status: 'completed',
+				updates: [
+					{
+						type: 'input',
+						data: { nodeType: 'Code' },
+					},
+				],
+			});
+		});
+
+		it('should handle custom display title when args is null/undefined', () => {
+			const builderTools = [
+				{
+					tool: { name: 'clear_workflow' } as DynamicStructuredTool,
+					displayTitle: 'Clear Workflow',
+					getCustomDisplayTitle: (values: Record<string, unknown>) =>
+						`Custom: ${Object.keys(values).length} args`,
+				},
+			];
+
+			const aiMessage = new AIMessage('');
+			const toolCall = {
+				id: 'call-1',
+				name: 'clear_workflow',
+				args: {} as Record<string, unknown>,
+				type: 'tool_call' as const,
+			};
+			// Simulate a corrupted tool call with null args
+			Object.defineProperty(toolCall, 'args', { value: null, writable: true });
+			aiMessage.tool_calls = [toolCall];
+
+			const messages = [aiMessage];
+
+			const result = formatMessages(messages, builderTools);
+
+			expect(result[0].customDisplayTitle).toBeNull();
+		});
+
+		it('should handle tool call with undefined args', () => {
+			const aiMessage = new AIMessage('');
+			const toolCall = {
+				id: 'call-1',
+				name: 'clear_workflow',
+				args: {} as Record<string, unknown>,
+				type: 'tool_call' as const,
+			};
+			// Simulate a corrupted tool call with undefined args
+			Object.defineProperty(toolCall, 'args', { value: undefined, writable: true });
+			aiMessage.tool_calls = [toolCall];
+
+			const messages = [aiMessage];
+
+			const result = formatMessages(messages);
+
+			// @ts-expect-error Lnagchain types are not propagated
+			expect(result[0].updates?.[0]).toEqual({
+				type: 'input',
+				data: {},
+			});
+		});
+
+		it('should handle ToolMessage with no matching tool call', () => {
+			const toolMessage = new ToolMessage({
+				content: 'Orphaned tool result',
+				tool_call_id: 'non-existent-call',
+			});
+
+			const messages = [toolMessage];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(0);
+		});
+
+		it('should handle multiple ToolMessages for the same tool call', () => {
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'add_nodes',
+					args: { nodeType: 'n8n-nodes-base.code' },
+					type: 'tool_call',
+				},
+			];
+
+			const toolMessage1 = new ToolMessage({
+				content: 'First result',
+				tool_call_id: 'call-1',
+			});
+
+			const toolMessage2 = new ToolMessage({
+				content: 'Second result',
+				tool_call_id: 'call-1',
+			});
+
+			const messages = [aiMessage, toolMessage1, toolMessage2];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].updates).toHaveLength(3);
+			// @ts-expect-error Lnagchain types are not propagated
+			expect(result[0].updates?.[1]).toEqual({
+				type: 'output',
+				data: { result: 'First result' },
+			});
+			// @ts-expect-error Lnagchain types are not propagated
+			expect(result[0].updates?.[2]).toEqual({
+				type: 'output',
+				data: { result: 'Second result' },
+			});
+		});
+
+		it('should handle ToolMessage appearing before corresponding AIMessage tool call', () => {
+			const toolMessage = new ToolMessage({
+				content: 'Tool result',
+				tool_call_id: 'call-1',
+			});
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'add_nodes',
+					args: { nodeType: 'n8n-nodes-base.code' },
+					type: 'tool_call',
+				},
+			];
+
+			const messages = [toolMessage, aiMessage];
+
+			const result = formatMessages(messages);
+
+			// When ToolMessage comes before AIMessage, the ToolMessage cannot find the tool call to attach to
+			// so it gets ignored, and only the tool call from AIMessage is processed
+			expect(result).toHaveLength(1);
+			expect(result[0].updates).toHaveLength(1); // Only the input, no output since ToolMessage came before
+			// @ts-expect-error Lnagchain types are not propagated
+			expect(result[0].updates?.[0]).toEqual({
+				type: 'input',
+				data: { nodeType: 'n8n-nodes-base.code' },
+			});
+		});
+
+		it('should handle empty messages array', () => {
+			const result = formatMessages([]);
+
+			expect(result).toHaveLength(0);
+		});
+
+		it('should handle messages with unknown message type', () => {
+			// Create an object that doesn't match any of the expected message types
+			const unknownMessage = {
+				content: 'Unknown message type',
+				type: 'unknown',
+			};
+
+			const result = formatMessages([
+				unknownMessage as unknown as AIMessage | HumanMessage | ToolMessage,
+			]);
+
+			expect(result).toHaveLength(0);
+		});
+
+		it('should preserve initialization of updates array when undefined', () => {
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'add_nodes',
+					args: { nodeType: 'n8n-nodes-base.code' },
+					type: 'tool_call',
+				},
+			];
+
+			const toolMessage = new ToolMessage({
+				content: 'Tool result',
+				tool_call_id: 'call-1',
+			});
+
+			const messages = [aiMessage, toolMessage];
+
+			const result = formatMessages(messages);
+
+			expect(result[0].updates).toBeDefined();
+			expect(Array.isArray(result[0].updates)).toBe(true);
+			expect(result[0].updates).toHaveLength(2);
+		});
+
+		it('should handle complex scenario with multiple message types and builder tools', () => {
+			const builderTools = [
+				{
+					tool: { name: 'add_nodes' } as DynamicStructuredTool,
+					displayTitle: 'Add Node',
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+					getCustomDisplayTitle: (values: Record<string, unknown>) => `Add ${values.nodeType} Node`,
+				},
+				{
+					tool: { name: 'connect_nodes' } as DynamicStructuredTool,
+					displayTitle: 'Connect Nodes',
+				},
+			];
+
+			const humanMessage = new HumanMessage('Please create a workflow');
+
+			const aiMessage1 = new AIMessage('');
+			aiMessage1.content = [
+				{ type: 'text', text: 'I will help you create a workflow.' },
+				{ type: 'text', text: 'Let me add some nodes.' },
+			];
+
+			const aiMessage2 = new AIMessage('');
+			aiMessage2.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'add_nodes',
+					args: { nodeType: 'Code' },
+					type: 'tool_call',
+				},
+				{
+					id: 'call-2',
+					name: 'connect_nodes',
+					args: { source: 'node1', target: 'node2' },
+					type: 'tool_call',
+				},
+			];
+			const toolMessage1 = new ToolMessage({
+				content: 'Node added successfully',
+				tool_call_id: 'call-1',
+			});
+			const toolMessage2 = new ToolMessage({
+				// @ts-expect-error Lnagchain types are not propagated
+				content: { success: true, connectionId: 'conn-1' },
+				tool_call_id: 'call-2',
+			});
+
+			const messages = [humanMessage, aiMessage1, aiMessage2, toolMessage1, toolMessage2];
+
+			const result = formatMessages(messages, builderTools);
+
+			expect(result).toHaveLength(5); // 1 user + 2 text messages + 2 tool calls
+
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Please create a workflow',
+			});
+
+			expect(result[1]).toEqual({
+				role: 'assistant',
+				type: 'message',
+				text: 'I will help you create a workflow.',
+			});
+
+			expect(result[2]).toEqual({
+				role: 'assistant',
+				type: 'message',
+				text: 'Let me add some nodes.',
+			});
+
+			expect(result[3].toolName).toBe('add_nodes');
+			expect(result[3].displayTitle).toBe('Add Node');
+			expect(result[3].customDisplayTitle).toBe('Add Code Node');
+			expect(result[3].updates).toHaveLength(2);
+
+			expect(result[4].toolName).toBe('connect_nodes');
+			expect(result[4].displayTitle).toBe('Connect Nodes');
+			expect(result[4].customDisplayTitle).toBeUndefined();
+			expect(result[4].updates).toHaveLength(2);
+			// @ts-expect-error Lnagchain types are not propagated
+			expect(result[4].updates?.[1]).toEqual({
+				type: 'output',
+				data: { success: true, connectionId: 'conn-1' },
 			});
 		});
 	});
