@@ -351,9 +351,6 @@ export class JsTaskRunner extends TaskRunner {
 					let jsonData;
 					if (isObject(result) && 'json' in result) {
 						jsonData = result.json;
-					} else if (isObject(result) && 'binary' in result) {
-						const { binary: _, ...rest } = result as object & { binary: unknown };
-						jsonData = rest;
 					} else {
 						jsonData = result;
 					}
