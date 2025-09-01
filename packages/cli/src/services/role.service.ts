@@ -1,3 +1,4 @@
+import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import {
 	CredentialsEntity,
 	SharedCredentials,
@@ -10,21 +11,24 @@ import {
 	Role,
 	Scope as DBScope,
 	ScopeRepository,
+	GLOBAL_ADMIN_ROLE,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { CustomRole, ProjectRole, Scope, Role as RoleDTO } from '@n8n/permissions';
+import type { Scope, Role as RoleDTO, AssignableProjectRole } from '@n8n/permissions';
 import {
 	combineScopes,
 	getAuthPrincipalScopes,
 	getRoleScopes,
 	isBuiltInRole,
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
+	PROJECT_VIEWER_ROLE_SLUG,
 } from '@n8n/permissions';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { License } from '@/license';
-import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { License } from '@/license';
 
 @Service()
 export class RoleService {
@@ -124,6 +128,25 @@ export class RoleService {
 		return this.dbRoleToRoleDTO(createdRole);
 	}
 
+	async checkRolesExist(
+		roleSlugs: string[],
+		roleType: 'global' | 'project' | 'workflow' | 'credential',
+	) {
+		const uniqueRoleSlugs = new Set(roleSlugs);
+		const roles = await this.roleRepository.findBySlugs(Array.from(uniqueRoleSlugs), roleType);
+
+		if (roles.length < uniqueRoleSlugs.size) {
+			const nonExistentRoles = Array.from(uniqueRoleSlugs).filter(
+				(slug) => !roles.find((role) => role.slug === slug),
+			);
+			throw new BadRequestError(
+				nonExistentRoles.length === 1
+					? `Role ${nonExistentRoles[0]} does not exist`
+					: `Roles ${nonExistentRoles.join(', ')} do not exist`,
+			);
+		}
+	}
+
 	addScopes(
 		rawWorkflow: ListQueryDb.Workflow.WithSharing | ListQueryDb.Workflow.WithOwnedByAndSharedWith,
 		user: User,
@@ -209,7 +232,7 @@ export class RoleService {
 		return [...scopesSet].sort();
 	}
 
-	isRoleLicensed(role: ProjectRole | CustomRole) {
+	isRoleLicensed(role: AssignableProjectRole) {
 		// TODO: move this info into FrontendSettings
 
 		if (!isBuiltInRole(role)) {
@@ -220,13 +243,13 @@ export class RoleService {
 		}
 
 		switch (role) {
-			case 'project:admin':
+			case PROJECT_ADMIN_ROLE_SLUG:
 				return this.license.isProjectRoleAdminLicensed();
-			case 'project:editor':
+			case PROJECT_EDITOR_ROLE_SLUG:
 				return this.license.isProjectRoleEditorLicensed();
-			case 'project:viewer':
+			case PROJECT_VIEWER_ROLE_SLUG:
 				return this.license.isProjectRoleViewerLicensed();
-			case 'global:admin':
+			case GLOBAL_ADMIN_ROLE.slug:
 				return this.license.isAdvancedPermissionsLicensed();
 			default:
 				// TODO: handle custom roles licensing

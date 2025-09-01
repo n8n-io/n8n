@@ -37,12 +37,20 @@ def _get_node_mode(node_mode_str: str) -> NodeMode:
 
 def _parse_task_settings(d: dict) -> BrokerTaskSettings:
     try:
+        # required
         task_id = d["taskId"]
         settings_dict = d["settings"]
         code = settings_dict["code"]
         node_mode = _get_node_mode(settings_dict["nodeMode"])
-        continue_on_fail = settings_dict.get("continueOnFail", False)
         items = settings_dict["items"]
+
+        # optional
+        continue_on_fail = settings_dict.get("continueOnFail", False)
+        workflow_name = settings_dict.get("workflowName", "Unknown")
+        workflow_id = settings_dict.get("workflowId", "Unknown")
+        node_name = settings_dict.get("nodeName", "Unknown")
+        node_id = settings_dict.get("nodeId", "Unknown")
+        can_log = settings_dict.get("canLog", False)
     except KeyError as e:
         raise ValueError(f"Missing field in task settings message: {e}")
 
@@ -53,6 +61,11 @@ def _parse_task_settings(d: dict) -> BrokerTaskSettings:
             node_mode=node_mode,
             continue_on_fail=continue_on_fail,
             items=items,
+            workflow_name=workflow_name,
+            workflow_id=workflow_id,
+            node_name=node_name,
+            node_id=node_id,
+            can_log=can_log,
         ),
     )
 

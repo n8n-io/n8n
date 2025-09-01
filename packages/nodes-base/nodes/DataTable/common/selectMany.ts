@@ -78,6 +78,11 @@ export function getSelectFields(
 							name: 'keyValue',
 							type: 'string',
 							default: '',
+							displayOptions: {
+								hide: {
+									condition: ['isEmpty', 'isNotEmpty'],
+								},
+							},
 						},
 					],
 				},
@@ -89,13 +94,14 @@ export function getSelectFields(
 
 export function getSelectFilter(ctx: IExecuteFunctions, index: number) {
 	const fields = ctx.getNodeParameter('filters.conditions', index, []);
-	const matchType = ctx.getNodeParameter('matchType', index, []);
+	const matchType = ctx.getNodeParameter('matchType', index, 'anyFilter');
+	const node = ctx.getNode();
 
 	if (!isMatchType(matchType)) {
-		throw new NodeOperationError(ctx.getNode(), 'unexpected match type');
+		throw new NodeOperationError(node, 'unexpected match type');
 	}
 	if (!isFieldArray(fields)) {
-		throw new NodeOperationError(ctx.getNode(), 'unexpected fields input');
+		throw new NodeOperationError(node, 'unexpected fields input');
 	}
 
 	return buildGetManyFilter(fields, matchType);

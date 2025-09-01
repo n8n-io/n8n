@@ -35,6 +35,7 @@ class TaskExecutor:
         stdlib_allow: Set[str],
         external_allow: Set[str],
         builtins_deny: set[str],
+        can_log: bool,
     ):
         """Create a subprocess for executing a Python code task and a queue for communication."""
 
@@ -47,7 +48,15 @@ class TaskExecutor:
         queue = MULTIPROCESSING_CONTEXT.Queue()
         process = MULTIPROCESSING_CONTEXT.Process(
             target=fn,
-            args=(code, items, queue, stdlib_allow, external_allow, builtins_deny),
+            args=(
+                code,
+                items,
+                queue,
+                stdlib_allow,
+                external_allow,
+                builtins_deny,
+                can_log,
+            ),
         )
 
         return process, queue
@@ -114,6 +123,7 @@ class TaskExecutor:
         stdlib_allow: Set[str],
         external_allow: Set[str],
         builtins_deny: set[str],
+        can_log: bool,
     ):
         """Execute a Python code task in all-items mode."""
 
@@ -129,7 +139,9 @@ class TaskExecutor:
             globals = {
                 "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
                 "_items": items,
-                "print": TaskExecutor._create_custom_print(print_args),
+                "print": TaskExecutor._create_custom_print(print_args)
+                if can_log
+                else print,
             }
 
             exec(code, globals)
@@ -149,6 +161,7 @@ class TaskExecutor:
         stdlib_allow: Set[str],
         external_allow: Set[str],
         builtins_deny: set[str],
+        can_log: bool,
     ):
         """Execute a Python code task in per-item mode."""
 
@@ -167,7 +180,9 @@ class TaskExecutor:
                 globals = {
                     "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
                     "_item": item,
-                    "print": TaskExecutor._create_custom_print(print_args),
+                    "print": TaskExecutor._create_custom_print(print_args)
+                    if can_log
+                    else print,
                 }
 
                 exec(compiled_code, globals)
