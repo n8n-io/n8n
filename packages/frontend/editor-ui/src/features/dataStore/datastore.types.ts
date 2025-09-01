@@ -1,29 +1,17 @@
 import type { Project } from '@/types/projects.types';
+import type { DataStoreColumnJsType, DataStore as DS, DataStoreColumn } from 'n8n-workflow';
 
-export type DataStore = {
-	id: string;
-	name: string;
+export type DataStore = Omit<DS, 'createdAt' | 'updatedAt'> & {
 	sizeBytes: number;
-	columns: DataStoreColumn[];
+	project?: Project;
 	createdAt: string;
 	updatedAt: string;
-	projectId: string;
-	project?: Project;
 };
-
-export type DataStoreColumnType = 'string' | 'number' | 'boolean' | 'date';
 
 export type AGGridCellType = 'text' | 'number' | 'boolean' | 'date' | 'dateString' | 'object';
 
-export type DataStoreColumn = {
-	id: string;
-	name: string;
-	type: DataStoreColumnType;
-	index: number;
-};
-
 export type DataStoreColumnCreatePayload = Pick<DataStoreColumn, 'name' | 'type'>;
 
-export type DataStoreValue = string | number | boolean | Date | null;
+export type DataStoreValue = DataStoreColumnJsType;
 
 export type DataStoreRow = Record<string, DataStoreValue>;

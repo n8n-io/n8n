@@ -48,8 +48,8 @@ const DEFAULT_DATA_STORE: DataStore = {
 	name: 'Test Data Store',
 	sizeBytes: 2048,
 	columns: [
-		{ id: '1', name: 'id', type: 'string', index: 0 },
-		{ id: '2', name: 'name', type: 'string', index: 1 },
+		{ id: '1', name: 'id', type: 'string', index: 0, dataTableId: 'ds1' },
+		{ id: '2', name: 'name', type: 'string', index: 1, dataTableId: 'ds1' },
 	],
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),

@@ -1,4 +1,3 @@
-import type { DataStore } from '@n8n/api-types';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -12,6 +11,7 @@ import { createDataStore } from '@test-integration/db/data-stores';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
+import type { DataStore } from 'n8n-workflow';
 
 let owner: User;
 let member: User;
