@@ -1738,6 +1738,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			usersStore.setEasyAIWorkflowOnboardingDone();
 		}
 
+		workflowsById.value[id] = updatedWorkflow;
+
 		return updatedWorkflow;
 	}
 
