@@ -27,7 +27,7 @@ export function getSelectFields(
 				},
 				{
 					name: 'All Conditions',
-					value: 'allCondition',
+					value: 'allConditions',
 				},
 			] satisfies Array<{ value: FilterType; name: string }>,
 			displayOptions,
