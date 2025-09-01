@@ -267,9 +267,16 @@ const nodeDiffs = computed(() => {
 	const targetNode = targetWorkFlow.value?.state.value?.workflow?.nodes.find(
 		(node) => node.id === selectedDetailId.value,
 	);
+	function replacer(key: string, value: unknown) {
+		if (key === 'position') {
+			return undefined; // exclude this property
+		}
+		return value;
+	}
+
 	return {
-		oldString: JSON.stringify(sourceNode, null, 2) ?? '',
-		newString: JSON.stringify(targetNode, null, 2) ?? '',
+		oldString: JSON.stringify(sourceNode, replacer, 2) ?? '',
+		newString: JSON.stringify(targetNode, replacer, 2) ?? '',
 	};
 });
 
