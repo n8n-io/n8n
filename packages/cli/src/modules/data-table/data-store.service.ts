@@ -207,26 +207,12 @@ export class DataStoreService {
 
 		// Validate data columns
 		this.validateRowsWithColumns([data], columns, false);
-
-		// Validate filter column names and values
-		for (const filterItem of filter.filters) {
-			const columnExists =
-				columns.some((col) => col.name === filterItem.columnName) || filterItem.columnName === 'id';
-			if (!columnExists) {
-				throw new DataStoreValidationError(`unknown column name '${filterItem.columnName}'`);
-			}
-
-			// Validate filter value type if not null
-			if (filterItem.value !== null) {
-				const column = columns.find((col) => col.name === filterItem.columnName) || {
-					name: 'id',
-					type: 'number',
-				};
-				const tempRow = { [filterItem.columnName]: filterItem.value };
-				const columnTypeMap = new Map([[column.name, column.type]]);
-				this.validateCell(tempRow, filterItem.columnName, columnTypeMap);
-			}
-		}
+		// Validate filter columns
+		this.validateRowsWithColumns(
+			filter.filters.map((filter) => ({ [filter.columnName]: filter.value })),
+			columns,
+			true,
+		);
 
 		return await this.dataStoreRowsRepository.updateRow(
 			dataStoreId,
