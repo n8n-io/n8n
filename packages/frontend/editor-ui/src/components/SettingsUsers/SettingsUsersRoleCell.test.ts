@@ -55,7 +55,7 @@ const mockRoles = {
 	[ROLE.Default]: { label: 'Default', desc: '' },
 };
 
-const mockActions: ActionDropdownItem[] = [
+const mockActions: ActionDropdownItem<string>[] = [
 	{ id: ROLE.Member, label: 'Member' },
 	{ id: ROLE.Admin, label: 'Admin' },
 	{ id: 'delete', label: 'Delete User', divided: true },

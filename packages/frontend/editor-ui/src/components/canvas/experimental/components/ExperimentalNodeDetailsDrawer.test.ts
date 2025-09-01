@@ -1,7 +1,6 @@
 import { createTestNode, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
@@ -13,7 +12,6 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
-	let uiStore: ReturnType<typeof useUIStore>;
 
 	const mockNodes = [
 		createTestNode({ id: 'node1', name: 'Node 1' }),
@@ -30,7 +28,6 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 		workflowsStore = useWorkflowsStore(pinia);
 		workflowsStore.setNodes(mockNodes);
 		nodeTypesStore = useNodeTypesStore(pinia);
-		uiStore = useUIStore(pinia);
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	});
 
