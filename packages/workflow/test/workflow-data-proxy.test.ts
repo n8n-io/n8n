@@ -272,7 +272,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual("Node 'Impossible' isn't executed");
+				expect(exprError.message).toEqual("Node 'Impossible' hasn't been executed");
 				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
@@ -284,7 +284,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual("Node 'NoInputConnection' isn't executed");
+				expect(exprError.message).toEqual("Node 'NoInputConnection' hasn't been executed");
 				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
@@ -296,7 +296,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual("Node 'Impossible if' isn't executed");
+				expect(exprError.message).toEqual("Node 'Impossible if' hasn't been executed");
 				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
@@ -308,7 +308,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual("Node 'Impossible' isn't executed");
+				expect(exprError.message).toEqual("Node 'Impossible' hasn't been executed");
 				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
@@ -899,7 +899,7 @@ describe('WorkflowDataProxy', () => {
 
 			expect(error).toBeDefined();
 			expect(error).toBeInstanceOf(ExpressionError);
-			expect(error!.message).toBe("Node 'Telegram Trigger' isn't executed");
+			expect(error!.message).toBe("Node 'Telegram Trigger' hasn't been executed");
 			expect(error!.context.type).toBe('no_execution_data');
 			expect(error!.context.messageTemplate).toBe(
 				'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
@@ -962,7 +962,7 @@ describe('WorkflowDataProxy', () => {
 			}
 
 			expect(error).toBeDefined();
-			expect(error!.message).toBe("Node 'HTTP Request' isn't executed");
+			expect(error!.message).toBe("Node 'HTTP Request' hasn't been executed");
 			expect(error!.context.type).toBe('no_execution_data');
 			expect(error!.context.messageTemplate).toBe(
 				'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
@@ -1023,7 +1023,7 @@ describe('WorkflowDataProxy', () => {
 				error = e as ExpressionError;
 			}
 			expect(error).toBeDefined();
-			expect(error!.message).toBe("Node 'Start Node' isn't executed");
+			expect(error!.message).toBe("Node 'Start Node' hasn't been executed");
 			expect(error!.context.messageTemplate).toBe(
 				'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
 			);
@@ -1036,7 +1036,7 @@ describe('WorkflowDataProxy', () => {
 				error = e as ExpressionError;
 			}
 			expect(error).toBeDefined();
-			expect(error!.message).toBe("Node 'Start Node' isn't executed");
+			expect(error!.message).toBe("Node 'Start Node' hasn't been executed");
 			expect(error!.context.messageTemplate).toBe(
 				'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
 			);
@@ -1049,7 +1049,7 @@ describe('WorkflowDataProxy', () => {
 				error = e as ExpressionError;
 			}
 			expect(error).toBeDefined();
-			expect(error!.message).toBe("Node 'Start Node' isn't executed");
+			expect(error!.message).toBe("Node 'Start Node' hasn't been executed");
 			expect(error!.context.messageTemplate).toBe(
 				'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
 			);

@@ -402,7 +402,7 @@ export class WorkflowDataProxy {
 				!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName) &&
 				!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 			) {
-				throw new ExpressionError(`Node '${nodeName}' isn't executed`, {
+				throw new ExpressionError(`Node '${nodeName}' hasn't been executed`, {
 					messageTemplate:
 						'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
 					functionality: 'pairedItem',
@@ -526,7 +526,7 @@ export class WorkflowDataProxy {
 
 						// Ultra-simple execution-based validation: if no execution data exists, throw error
 						if (executionData.length === 0) {
-							throw new ExpressionError(`Node '${nodeName}' isn't executed`, {
+							throw new ExpressionError(`Node '${nodeName}' hasn't been executed`, {
 								messageTemplate:
 									'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
 								functionality: 'pairedItem',
@@ -1081,7 +1081,7 @@ export class WorkflowDataProxy {
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!getPinDataIfManualExecution(that.workflow, nodeName, that.mode)
 					) {
-						throw createExpressionError(`Node '${nodeName}' isn't executed`, {
+						throw createExpressionError(`Node '${nodeName}' hasn't been executed`, {
 							messageTemplate:
 								'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
 							functionality: 'pairedItem',

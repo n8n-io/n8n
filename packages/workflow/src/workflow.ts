@@ -694,18 +694,27 @@ export class Workflow {
 				return node;
 			}
 
-			// Get all non-main output types from node type definition (broader compatibility)
 			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
-			if (!Array.isArray(outputs)) {
-				return node;
+			const nonMainConnectionTypes: NodeConnectionType[] = [];
+
+			// Defensive check: NodeHelpers.getNodeOutputs should always return an array,
+			// but in some edge cases (particularly during testing with incomplete node setup),
+			// it may return undefined or null
+			if (Array.isArray(outputs)) {
+				for (const output of outputs) {
+					const type = typeof output === 'string' ? output : output.type;
+					if (type !== NodeConnectionTypes.Main) {
+						nonMainConnectionTypes.push(type);
+					}
+				}
 			}
-			const nonMainConnectionTypes = outputs
-				.map((output) => (typeof output === 'string' ? output : output.type))
-				.filter((type): type is NodeConnectionType => type !== NodeConnectionTypes.Main)
-				.sort(); // Deterministic ordering for consistent AI agent behavior
+
+			// Sort for deterministic behavior: prevents non-deterministic selection when multiple
+			// non-main outputs exist (AI agents with multiple tools). Object.keys() ordering
+			// can vary across runs, causing inconsistent first-choice selection.
+			nonMainConnectionTypes.sort();
 
 			if (nonMainConnectionTypes.length > 0) {
-				// Collect all connected nodes from non-main outputs, but filter by actual execution data
 				const nonMainNodesConnected: string[] = [];
 				const nodeConnections = this.connectionsBySourceNode[node.name];
 

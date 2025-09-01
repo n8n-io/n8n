@@ -273,7 +273,7 @@ export const baseFixtures: ExpressionTestFixture[] = [
 			{
 				type: 'evaluation',
 				input: [],
-				error: new ExpressionError("Node 'node' isn't executed", {
+				error: new ExpressionError("Node 'node' hasn't been executed", {
 					runIndex: 0,
 					itemIndex: -1,
 					type: 'no_execution_data',
