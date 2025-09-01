@@ -68,12 +68,6 @@ const commonClasses = computed(() => [
 				<N8nIcon icon="clock" :size="size" />
 			</N8nTooltip>
 		</div>
-		<div
-			v-if="spinnerLayout === 'absolute'"
-			:class="[...commonClasses, $style['node-waiting-spinner']]"
-		>
-			<N8nIcon icon="refresh-cw" spin />
-		</div>
 	</div>
 	<div
 		v-else-if="isNodeExecuting"
@@ -166,7 +160,6 @@ const commonClasses = computed(() => [
 	color: var(--color-secondary);
 }
 
-.node-waiting-spinner,
 .running {
 	color: hsl(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l));
 
