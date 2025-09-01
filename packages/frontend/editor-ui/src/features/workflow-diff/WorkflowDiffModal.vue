@@ -399,7 +399,7 @@ const modifiers = [
 						icon-size="large"
 						@click="handleBeforeClose"
 					></N8nIconButton>
-					<N8nHeading tag="h1" size="xlarge">
+					<N8nHeading tag="h4" size="medium">
 						{{
 							sourceWorkFlow.state.value?.workflow?.name ||
 							targetWorkFlow.state.value?.workflow?.name
