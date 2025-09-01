@@ -51,7 +51,7 @@ export function getSelectFields(
 					values: [
 						{
 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-							displayName: 'Column Name',
+							displayName: 'Column',
 							name: 'keyName',
 							type: 'options',
 							// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
@@ -76,7 +76,7 @@ export function getSelectFields(
 							default: 'eq',
 						},
 						{
-							displayName: 'Column Value',
+							displayName: 'Value',
 							name: 'keyValue',
 							type: 'string',
 							default: '',
