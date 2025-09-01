@@ -735,6 +735,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return clearSelectedNodes();
 		case 'duplicate':
 			return emit('duplicate:nodes', nodeIds);
+		case 'update_node_version':
+			return emit('update:node:version', nodeIds[0]);
 		case 'toggle_pin':
 			return emit('update:nodes:pin', nodeIds, 'context-menu');
 		case 'execute':
