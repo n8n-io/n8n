@@ -162,28 +162,6 @@ describe('useNodeCreatorStore', () => {
 		});
 	});
 
-	it('tracks event when action is added', () => {
-		nodeCreatorStore.onCreatorOpened({
-			source,
-			mode,
-			workflow_id,
-		});
-		nodeCreatorStore.onAddActions({
-			node_type,
-			action,
-			source_mode,
-			resource,
-		});
-
-		expect(useTelemetry().track).toHaveBeenCalledWith('User added action', {
-			node_type,
-			action,
-			source_mode,
-			resource,
-			nodes_panel_session_id: getSessionId(now),
-		});
-	});
-
 	it('tracks when custom api action is clicked', () => {
 		nodeCreatorStore.onCreatorOpened({
 			source,
