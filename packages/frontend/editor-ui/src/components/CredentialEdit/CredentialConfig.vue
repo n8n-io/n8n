@@ -270,13 +270,19 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				data-test-id="oauth-connect-success-banner"
 				@click="$emit('oauth')"
 			>
-				<template v-if="isGoogleOAuthType" #button>
-					<p
-						:class="$style.googleReconnectLabel"
-						v-text="`${i18n.baseText('credentialEdit.credentialConfig.reconnect')}:`"
-					/>
-					<GoogleAuthButton @click="$emit('oauth')" />
-				</template>
+				<template v-if="isGoogleOAuthType && !isOAuthConnected" #button>
+	<p :class="$style.googleReconnectLabel">
+		{{ i18n.baseText('credentialEdit.credentialConfig.signInWithGoogle') }}
+	</p>
+	<GoogleAuthButton @click="$emit('oauth')" />
+</template>
+
+<template v-else #button>
+	<n8n-button size="small" @click="$emit('oauth')">
+		{{ i18n.baseText('credentialEdit.credentialConfig.reconnect') }}
+	</n8n-button>
+</template>
+
 			</Banner>
 
 			<Banner
