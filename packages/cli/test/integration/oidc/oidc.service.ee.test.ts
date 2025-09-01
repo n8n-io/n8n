@@ -177,6 +177,8 @@ describe('OIDC service', () => {
 				'initial-client-id',
 			);
 
+			discoveryMock.mockReset();
+			discoveryMock.mockClear();
 			discoveryMock.mockResolvedValue(mockConfiguration);
 			await oidcService.updateConfig(initialConfig);
 
