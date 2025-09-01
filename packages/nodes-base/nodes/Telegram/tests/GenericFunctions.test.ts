@@ -302,7 +302,7 @@ describe('Telegram > GenericFunctions', () => {
 			]);
 
 			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
-				(paramName: string, index: number, defaultValue?: any) => {
+				(paramName: string, _index: number, defaultValue?: any) => {
 					switch (paramName) {
 						case 'operation':
 							return 'sendMessage';
@@ -341,7 +341,7 @@ describe('Telegram > GenericFunctions', () => {
 			const keyboardJson = JSON.stringify([[{ text: 'Yes' }, { text: 'No' }]]);
 
 			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
-				(paramName: string, index: number, defaultValue?: any) => {
+				(paramName: string, _index: number, defaultValue?: any) => {
 					switch (paramName) {
 						case 'operation':
 							return 'sendMessage';
@@ -379,7 +379,7 @@ describe('Telegram > GenericFunctions', () => {
 			const invalidJson = '{ invalid json }';
 
 			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
-				(paramName: string, index: number, defaultValue?: any) => {
+				(paramName: string, _index: number, defaultValue?: any) => {
 					switch (paramName) {
 						case 'operation':
 							return 'sendMessage';
@@ -411,7 +411,7 @@ describe('Telegram > GenericFunctions', () => {
 			const invalidJson = '{"text": "Button"}';
 
 			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
-				(paramName: string, index: number, defaultValue?: any) => {
+				(paramName: string, _index: number, defaultValue?: any) => {
 					switch (paramName) {
 						case 'operation':
 							return 'sendMessage';
