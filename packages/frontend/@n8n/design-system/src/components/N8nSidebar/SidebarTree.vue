@@ -51,7 +51,6 @@ defineProps<{ items: IMenuElement[]; openProject?: (id: string) => Promise<void>
 	position: relative;
 	display: flex;
 	align-items: center;
-	max-width: 100%;
 }
 
 .sidebarEmptyState {
