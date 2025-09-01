@@ -3183,6 +3183,9 @@ importers:
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.67
 
   packages/workflow:
     dependencies:

@@ -34,6 +34,7 @@
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
-    "tsx": "catalog:"
+    "tsx": "catalog:",
+    "zod": "catalog:"
   }
 }
