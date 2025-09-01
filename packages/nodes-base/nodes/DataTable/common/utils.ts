@@ -22,7 +22,7 @@ function isDateLike(v: unknown): v is DateLike {
 		v !== null &&
 		typeof v === 'object' &&
 		'toISOString' in v &&
-		typeof (v as { toISOString?: unknown }).toISOString === 'function'
+		typeof Reflect.get(Object(v), 'toISOString') === 'function'
 	);
 }
 
