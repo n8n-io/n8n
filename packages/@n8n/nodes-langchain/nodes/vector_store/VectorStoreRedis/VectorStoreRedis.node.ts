@@ -1,0 +1,373 @@
+import type { EmbeddingsInterface } from '@langchain/core/embeddings';
+import { RedisVectorStore } from '@langchain/redis';
+import type { RedisVectorStoreConfig } from '@langchain/redis/dist/vectorstores';
+import type { RedisClient } from 'n8n-nodes-base/nodes/Redis/types';
+import {
+	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type INodeProperties,
+	type ISupplyDataFunctions,
+	NodeOperationError,
+} from 'n8n-workflow';
+import type { RedisClientOptions } from 'redis';
+import { createClient } from 'redis';
+
+import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+
+/**
+ * Constants for the name of the credentials and Node parameters.
+ */
+export const REDIS_CREDENTIALS = 'redis';
+export const REDIS_INDEX_NAME = 'redisIndex';
+export const REDIS_KEY_PREFIX = 'keyPrefix';
+export const REDIS_OVERWRITE_DOCUMENTS = 'overwriteDocuments';
+export const REDIS_METADATA_KEY = 'metadataKey';
+export const REDIS_METADATA_FILTER = 'metadataFilter';
+export const REDIS_CONTENT_KEY = 'contentKey';
+export const REDIS_EMBEDDING_KEY = 'vectorKey';
+export const REDIS_TTL = 'ttl';
+
+export const redisIndexRLC: INodeProperties = {
+	displayName: 'Redis Index',
+	name: REDIS_INDEX_NAME,
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'redisIndexSearch',
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+		},
+	],
+};
+
+const metadataFilterField: INodeProperties = {
+	displayName: 'Metadata Filter',
+	name: REDIS_METADATA_FILTER,
+	type: 'string',
+	description:
+		'The comma-separated list of words by which to apply additional full-text metadata filtering',
+	placeholder: 'Item1,Item2,Item3',
+	default: '',
+};
+
+const metadataKeyField: INodeProperties = {
+	displayName: 'Metadata Key',
+	name: REDIS_METADATA_KEY,
+	type: 'string',
+	description: 'The hash key to be used to store the metadata of the document',
+	placeholder: 'metadata',
+	default: '',
+};
+
+const contentKeyField: INodeProperties = {
+	displayName: 'Content Key',
+	name: REDIS_CONTENT_KEY,
+	type: 'string',
+	description: 'The hash key to be used to store the content of the document',
+	placeholder: 'content',
+	default: '',
+};
+
+const embeddingKeyField: INodeProperties = {
+	displayName: 'Embedding Key',
+	name: REDIS_EMBEDDING_KEY,
+	type: 'string',
+	description: 'The hash key to be used to store the embedding of the document',
+	placeholder: 'content_vector',
+	default: '',
+};
+
+const overwriteDocuments: INodeProperties = {
+	displayName: 'Overwrite Documents',
+	name: REDIS_OVERWRITE_DOCUMENTS,
+	type: 'boolean',
+	description: 'Whether existing documents and the index should be overwritten',
+	default: false,
+};
+
+const keyPrefixField: INodeProperties = {
+	displayName: 'Key Prefix',
+	name: REDIS_KEY_PREFIX,
+	type: 'string',
+	description: 'Prefix for Redis keys storing the documents',
+	placeholder: 'doc',
+	default: '',
+};
+
+const ttlField: INodeProperties = {
+	displayName: 'Time-To-Live',
+	name: REDIS_TTL,
+	description: 'Time-to-live for the documents in seconds',
+	placeholder: '0',
+	type: 'number',
+	default: '',
+};
+
+const sharedFields: INodeProperties[] = [redisIndexRLC];
+
+const insertFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			keyPrefixField,
+			overwriteDocuments,
+			metadataKeyField,
+			contentKeyField,
+			embeddingKeyField,
+			ttlField,
+		],
+	},
+];
+
+const retrieveFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			metadataFilterField,
+			keyPrefixField,
+			metadataKeyField,
+			contentKeyField,
+			embeddingKeyField,
+		],
+	},
+];
+
+export const redisConfig = {
+	client: null as RedisClient | null,
+	connectionString: '',
+};
+
+/**
+ * Type used for cleaner, more intentional typing.
+ */
+type IFunctionsContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions;
+
+/**
+ * Get the Redis client.
+ * @param context - The context.
+ * @returns the Redis client for the node.
+ */
+export async function getRedisClient(context: IFunctionsContext) {
+	const credentials = await context.getCredentials(REDIS_CREDENTIALS);
+
+	// Create client configuration object
+	const config: RedisClientOptions = {
+		socket: {
+			host: (credentials.host as string) || 'localhost',
+			port: (credentials.port as number) || 6379,
+			tls: credentials.ssl === true,
+		},
+		username: credentials.user as string,
+		password: credentials.password as string,
+		database: credentials.database as number,
+		clientInfoTag: 'n8n-langchainjs',
+	};
+
+	if (!redisConfig.client || redisConfig.connectionString !== JSON.stringify(config)) {
+		if (redisConfig.client) {
+			await redisConfig.client.disconnect();
+		}
+
+		redisConfig.connectionString = JSON.stringify(config);
+		redisConfig.client = createClient(config);
+
+		redisConfig.client.on('error', async (error: Error) => {
+			await redisConfig.client.quit();
+			throw new NodeOperationError('Redis reported an error: ' + error.message);
+		});
+
+		await redisConfig.client.connect();
+	}
+	return redisConfig.client;
+}
+
+/**
+ * Get the complete list of indices from Redis.
+ * @param this - The context.
+ * @returns The list of indices.
+ */
+export async function listIndices(this: ILoadOptionsFunctions) {
+	const client = await getRedisClient(this);
+
+	try {
+		// Get all indices using FT._LIST command
+		const indices = await client.sendCommand(['FT._LIST']);
+
+		const results = (indices as string[]).map((index) => ({
+			name: index,
+			value: index,
+		}));
+
+		return { results };
+	} catch (error) {
+		this.logger.info('Failed to get Redis indices: ' + error.message);
+		return { results: [] };
+	}
+}
+
+/**
+ * Get a parameter from the context.
+ * @param key - The key of the parameter.
+ * @param context - The context.
+ * @param itemIndex - The index.
+ * @returns The value.
+ */
+export function getParameter(key: string, context: IFunctionsContext, itemIndex: number): string {
+	return context.getNodeParameter(key, itemIndex, '', {
+		extractValue: true,
+	}) as string;
+}
+
+/**
+ * Extended RedisVectorStore class to handle custom filtering.
+ *
+ * This wrapper is necessary because when used as a retriever, the similaritySearchVectorWithScore should
+ * use a processed filter
+ */
+class ExtendedRedisVectorSearch extends RedisVectorStore {
+	defaultFilter: string[];
+
+	constructor(embeddings: EmbeddingsInterface, options: RedisVectorStoreConfig, filter: string[]) {
+		super(embeddings, options);
+		this.defaultFilter = filter;
+	}
+
+	async similaritySearchVectorWithScore(query: number[], k: number) {
+		return await super.similaritySearchVectorWithScore(query, k, this.defaultFilter);
+	}
+}
+
+export const getIndexName = getParameter.bind(null, REDIS_INDEX_NAME);
+export const getKeyPrefix = getParameter.bind(null, 'options.' + REDIS_KEY_PREFIX);
+export const getOverwrite = getParameter.bind(null, 'options.' + REDIS_OVERWRITE_DOCUMENTS);
+export const getContentKey = getParameter.bind(null, 'options.' + REDIS_CONTENT_KEY);
+export const getMetadataFilter = getParameter.bind(null, 'options.' + REDIS_METADATA_FILTER);
+export const getMetadataKey = getParameter.bind(null, 'options.' + REDIS_METADATA_KEY);
+export const getEmbeddingKey = getParameter.bind(null, 'options.' + REDIS_EMBEDDING_KEY);
+export const getTtl = getParameter.bind(null, 'options.' + REDIS_TTL);
+
+export class VectorStoreRedis extends createVectorStoreNode({
+	meta: {
+		displayName: 'Redis Vector Store',
+		name: 'vectorStoreRedis',
+		description: 'Work with your data in a Redis vector index',
+		icon: { light: 'file:redis.svg', dark: 'file:redis.dark.svg' },
+		docsUrl:
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreredis/',
+		credentials: [
+			{
+				name: REDIS_CREDENTIALS,
+				required: true,
+			},
+		],
+		operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
+	},
+	methods: { listSearch: { redisIndexSearch: listIndices } },
+	retrieveFields,
+	loadFields: retrieveFields,
+	insertFields,
+	sharedFields,
+	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
+		try {
+			const client = await getRedisClient(context);
+			const indexField = getIndexName(context, itemIndex);
+			const keyPrefixField = getKeyPrefix(context, itemIndex);
+			const metadataField = getMetadataKey(context, itemIndex);
+			const contentField = getContentKey(context, itemIndex);
+			const embeddingField = getEmbeddingKey(context, itemIndex);
+			const filter = getMetadataFilter(context, itemIndex);
+
+			// Check if index exists by trying to get info about it
+			try {
+				await client.sendCommand(['FT.INFO', indexField]);
+			} catch (error) {
+				throw new NodeOperationError(context.getNode(), `Index ${indexField} not found`, {
+					itemIndex,
+					description: 'Please check that the index exists in your Redis instance',
+				});
+			}
+
+			return new ExtendedRedisVectorSearch(
+				embeddings,
+				{
+					redisClient: client,
+					indexName: indexField,
+					...(keyPrefixField?.trim() ? { keyPrefix: keyPrefixField } : {}),
+					...(metadataField?.trim() ? { metadataKey: metadataField } : {}),
+					...(contentField?.trim() ? { contentKey: contentField } : {}),
+					...(embeddingField?.trim() ? { vectorKey: embeddingField } : {}),
+				},
+				filter ? filter.split(',') : null,
+			);
+		} catch (error) {
+			if (error instanceof NodeOperationError) {
+				throw error;
+			}
+			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
+				itemIndex,
+				description: 'Please check your Redis connection details',
+			});
+		}
+	},
+	async populateVectorStore(context, embeddings, documents, itemIndex) {
+		try {
+			const client = await getRedisClient(context);
+			const indexField = getIndexName(context, itemIndex);
+			const overwrite = getOverwrite(context, itemIndex);
+			const keyPrefixField = getKeyPrefix(context, itemIndex);
+			const metadataField = getMetadataKey(context, itemIndex);
+			const contentField = getContentKey(context, itemIndex);
+			const embeddingField = getEmbeddingKey(context, itemIndex);
+			const embeddingBatchSize = context.getNodeParameter('embeddingBatchSize', 0, 200) as number;
+			const ttl = getTtl(context, itemIndex);
+
+			if (overwrite) {
+				await client.sendCommand(['FT.DROPINDEX', indexField]);
+
+				const keys = await client.sendCommand(['KEYS', `${keyPrefixField}*`]);
+				await client.sendCommand(['DEL', ...keys]);
+			}
+
+			await ExtendedRedisVectorSearch.fromDocuments(
+				documents,
+				embeddings,
+				{
+					redisClient: client,
+					indexName: indexField,
+					...(keyPrefixField?.trim() ? { keyPrefix: keyPrefixField } : {}),
+					...(metadataField?.trim() ? { metadataKey: metadataField } : {}),
+					...(contentField?.trim() ? { contentKey: contentField } : {}),
+					...(embeddingField?.trim() ? { vectorKey: embeddingField } : {}),
+					...(ttl ? { ttl } : {}),
+				},
+				{
+					batchSize: embeddingBatchSize,
+				},
+			);
+		} catch (error) {
+			context.logger.info(`Error while populating the store: ${error.message}`);
+			throw new NodeOperationError(context.getNode(), `Error: ${error.message}`, {
+				itemIndex,
+				description: 'Please check your Redis connection details',
+			});
+		}
+	},
+}) {}
