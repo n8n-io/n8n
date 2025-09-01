@@ -19,7 +19,7 @@ import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 const TRIGGER = ['click', 'hover'] as const;
 
 interface ActionDropdownProps {
-	items: ActionDropdownItem<T>[];
+	items: Array<ActionDropdownItem<T>>;
 	placement?: Placement;
 	activatorIcon?: IconName;
 	activatorSize?: ButtonSize;
