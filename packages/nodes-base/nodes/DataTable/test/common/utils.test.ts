@@ -2,18 +2,18 @@ import { DateTime } from 'luxon';
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { dataObjectToApiInput } from '../../common/utils';
+import { dataObjectToApiInput, buildGetManyFilter } from '../../common/utils';
+
+const mockNode: INode = {
+	id: 'test-node',
+	name: 'Test Node',
+	type: 'test',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+};
 
 describe('dataObjectToApiInput', () => {
-	const mockNode: INode = {
-		id: 'test-node',
-		name: 'Test Node',
-		type: 'test',
-		typeVersion: 1,
-		position: [0, 0],
-		parameters: {},
-	};
-
 	describe('primitive types', () => {
 		it('should handle string values', () => {
 			const input = { name: 'John', email: 'john@example.com' };
@@ -199,5 +199,112 @@ describe('dataObjectToApiInput', () => {
 			expect(result.deletedAt).toBe(null);
 			expect(result.description).toBe(null);
 		});
+	});
+});
+
+describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
+	it('should translate isEmpty to eq with null value', () => {
+		const fieldEntries = [{ keyName: 'name', condition: 'isEmpty' as const, keyValue: 'ignored' }];
+
+		const result = buildGetManyFilter(fieldEntries, 'allFilters', mockNode);
+
+		expect(result).toEqual({
+			type: 'and',
+			filters: [
+				{
+					columnName: 'name',
+					condition: 'eq',
+					value: null,
+				},
+			],
+		});
+	});
+
+	it('should translate isNotEmpty to neq with null value', () => {
+		const fieldEntries = [
+			{ keyName: 'email', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
+		];
+
+		const result = buildGetManyFilter(fieldEntries, 'anyFilter', mockNode);
+
+		expect(result).toEqual({
+			type: 'or',
+			filters: [
+				{
+					columnName: 'email',
+					condition: 'neq',
+					value: null,
+				},
+			],
+		});
+	});
+
+	it('should handle mixed conditions including isEmpty/isNotEmpty', () => {
+		const fieldEntries = [
+			{ keyName: 'name', condition: 'eq' as const, keyValue: 'John' },
+			{ keyName: 'email', condition: 'isEmpty' as const, keyValue: 'ignored' },
+			{ keyName: 'phone', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
+		];
+
+		const result = buildGetManyFilter(fieldEntries, 'allFilters', mockNode);
+
+		expect(result).toEqual({
+			type: 'and',
+			filters: [
+				{
+					columnName: 'name',
+					condition: 'eq',
+					value: 'John',
+				},
+				{
+					columnName: 'email',
+					condition: 'eq',
+					value: null,
+				},
+				{
+					columnName: 'phone',
+					condition: 'neq',
+					value: null,
+				},
+			],
+		});
+	});
+
+	it('should preserve existing conditions unchanged', () => {
+		const fieldEntries = [
+			{ keyName: 'age', condition: 'gt' as const, keyValue: 18 },
+			{ keyName: 'name', condition: 'like' as const, keyValue: '%john%' },
+		];
+
+		const result = buildGetManyFilter(fieldEntries, 'anyFilter', mockNode);
+
+		expect(result).toEqual({
+			type: 'or',
+			filters: [
+				{
+					columnName: 'age',
+					condition: 'gt',
+					value: 18,
+				},
+				{
+					columnName: 'name',
+					condition: 'like',
+					value: '%john%',
+				},
+			],
+		});
+	});
+
+	it('should throw error when keyValue is undefined for conditions that require it', () => {
+		const fieldEntries = [
+			{ keyName: 'name', condition: 'eq' as const }, // keyValue is undefined
+		];
+
+		expect(() => buildGetManyFilter(fieldEntries, 'allFilters', mockNode)).toThrow(
+			NodeOperationError,
+		);
+		expect(() => buildGetManyFilter(fieldEntries, 'allFilters', mockNode)).toThrow(
+			"Condition 'eq' requires a value for column 'name'",
+		);
 	});
 });

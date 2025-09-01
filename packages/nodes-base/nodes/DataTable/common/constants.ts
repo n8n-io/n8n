@@ -7,6 +7,16 @@ export type FilterType = typeof ANY_FILTER | typeof ALL_FILTERS;
 
 export type FieldEntry = {
 	keyName: string;
-	condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
-	keyValue: DataStoreColumnJsType;
+	condition:
+		| 'eq'
+		| 'neq'
+		| 'like'
+		| 'ilike'
+		| 'gt'
+		| 'gte'
+		| 'lt'
+		| 'lte'
+		| 'isEmpty'
+		| 'isNotEmpty';
+	keyValue?: DataStoreColumnJsType;
 };
