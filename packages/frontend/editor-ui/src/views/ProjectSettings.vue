@@ -79,7 +79,7 @@ const projects = computed(() =>
 const projectRoles = computed(() =>
 	rolesStore.processedProjectRoles.map((role) => ({
 		...role,
-		displayName: projectRoleTranslations.value[role.slug],
+		displayName: projectRoleTranslations.value[role.slug] ?? role.displayName,
 	})),
 );
 const firstLicensedRole = computed(() => projectRoles.value.find((role) => role.licensed)?.slug);

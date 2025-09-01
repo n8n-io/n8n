@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { IHeaderParams } from 'ag-grid-community';
+import type { IHeaderParams, SortDirection } from 'ag-grid-community';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isAGGridCellType } from '@/features/dataStore/typeGuards';
+import { N8nActionDropdown } from '@n8n/design-system';
 
 type HeaderParamsWithDelete = IHeaderParams & {
 	onDelete: (columnId: string) => void;
@@ -19,6 +20,7 @@ const i18n = useI18n();
 
 const isHovered = ref(false);
 const isDropdownOpen = ref(false);
+const dropdownRef = ref<InstanceType<typeof N8nActionDropdown>>();
 
 const enum ItemAction {
 	Delete = 'delete',
@@ -62,22 +64,63 @@ const columnActionItems = [
 		customClass: 'data-store-column-header-action-item',
 	} as const,
 ];
+
+const currentSort = computed(() => {
+	return props.params.column.getSort();
+});
+
+const isSortable = computed(() => {
+	return props.params.column.getColDef().sortable;
+});
+
+const showSortIndicator = computed(() => {
+	return isSortable.value && Boolean(currentSort.value);
+});
+
+const onHeaderClick = (event: MouseEvent) => {
+	const target = event.target as HTMLElement;
+	if (dropdownRef.value?.$el?.contains(target)) {
+		return;
+	}
+
+	if (isSortable.value) {
+		const currentSortDirection = currentSort.value;
+		let nextSort: SortDirection = null;
+
+		if (!currentSortDirection) {
+			nextSort = 'asc';
+		} else if (currentSortDirection === 'asc') {
+			nextSort = 'desc';
+		}
+
+		props.params.setSort(nextSort, false);
+	}
+};
 </script>
+
 <template>
 	<div
-		class="ag-header-cell-label data-store-column-header-wrapper"
+		:class="['ag-header-cell-label', 'data-store-column-header-wrapper', { sortable: isSortable }]"
 		data-test-id="data-store-column-header"
 		@mouseenter="onMouseEnter"
 		@mouseleave="onMouseLeave"
+		@click="onHeaderClick"
 	>
 		<div class="data-store-column-header-icon-wrapper">
 			<N8nIcon v-if="typeIcon" :icon="typeIcon" />
 			<span class="ag-header-cell-text" data-test-id="data-store-column-header-text">{{
 				props.params.displayName
 			}}</span>
+
+			<div v-if="showSortIndicator" class="sort-indicator">
+				<N8nIcon v-if="currentSort === 'asc'" icon="arrow-up" class="sort-icon-active" />
+				<N8nIcon v-else-if="currentSort === 'desc'" icon="arrow-down" class="sort-icon-active" />
+			</div>
 		</div>
+
 		<N8nActionDropdown
 			v-show="isDropdownVisible"
+			ref="dropdownRef"
 			data-test-id="data-store-column-header-actions"
 			:items="columnActionItems"
 			:placement="'bottom-start'"
@@ -94,6 +137,12 @@ const columnActionItems = [
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	width: 100%;
+	cursor: default;
+
+	&.sortable {
+		cursor: pointer;
+	}
 }
 
 .data-store-column-header-action-item {
@@ -116,6 +165,19 @@ const columnActionItems = [
 .ag-header-cell-text {
 	@include mixins.utils-ellipsis;
 	min-width: 0;
-	flex: 1;
+}
+
+.sort-indicator {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	flex-shrink: 0;
+
+	.sort-icon-active {
+		font-size: var(--font-size-2xs);
+		line-height: 1;
+		color: var(--color-text-base);
+		font-weight: var(--font-weight-bold);
+	}
 }
 </style>

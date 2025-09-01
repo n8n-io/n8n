@@ -7,6 +7,7 @@ import { useToast } from '@/composables/useToast';
 import { useClipboard } from '@/composables/useClipboard';
 import { useDebugInfo } from '@/composables/useDebugInfo';
 import { useI18n } from '@n8n/i18n';
+import { getThirdPartyLicenses } from '@n8n/rest-api-client';
 
 const modalBus = createEventBus();
 const toast = useToast();
@@ -17,6 +18,23 @@ const rootStore = useRootStore();
 
 const closeDialog = () => {
 	modalBus.emit('close');
+};
+
+const downloadThirdPartyLicenses = async () => {
+	try {
+		const thirdPartyLicenses = await getThirdPartyLicenses(rootStore.restApiContext);
+
+		const blob = new File([thirdPartyLicenses], 'THIRD_PARTY_LICENSES.md', {
+			type: 'text/markdown',
+		});
+		window.open(URL.createObjectURL(blob));
+	} catch (error) {
+		toast.showToast({
+			title: i18n.baseText('about.thirdPartyLicenses.downloadError'),
+			message: error.message,
+			type: 'error',
+		});
+	}
 };
 
 const copyDebugInfoToClipboard = async () => {
@@ -63,6 +81,16 @@ const copyDebugInfoToClipboard = async () => {
 					<el-col :span="16">
 						<n8n-link to="https://github.com/n8n-io/n8n/blob/master/LICENSE.md">
 							{{ i18n.baseText('about.n8nLicense') }}
+						</n8n-link>
+					</el-col>
+				</el-row>
+				<el-row>
+					<el-col :span="8" class="info-name">
+						<n8n-text>{{ i18n.baseText('about.thirdPartyLicenses') }}</n8n-text>
+					</el-col>
+					<el-col :span="16">
+						<n8n-link @click="downloadThirdPartyLicenses">
+							{{ i18n.baseText('about.thirdPartyLicensesLink') }}
 						</n8n-link>
 					</el-col>
 				</el-row>

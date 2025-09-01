@@ -1657,11 +1657,14 @@ export function isTool(
 	}
 
 	// Check for other tool nodes
-	for (const output of nodeTypeDescription.outputs) {
-		if (typeof output === 'string') {
-			return output === NodeConnectionTypes.AiTool;
-		} else if (output?.type && output.type === NodeConnectionTypes.AiTool) {
-			return true;
+	if (Array.isArray(nodeTypeDescription.outputs)) {
+		// Handle static outputs (array case)
+		for (const output of nodeTypeDescription.outputs) {
+			if (typeof output === 'string') {
+				return output === NodeConnectionTypes.AiTool;
+			} else if (output?.type && output.type === NodeConnectionTypes.AiTool) {
+				return true;
+			}
 		}
 	}
 
