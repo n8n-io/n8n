@@ -26,6 +26,8 @@ const {
 	hasPinnedData,
 	issues,
 	hasIssues,
+	hasExecutionErrors,
+	hasValidationErrors,
 	executionStatus,
 	executionWaiting,
 	executionWaitingForNext,
@@ -84,7 +86,7 @@ const commonClasses = computed(() => [
 		<N8nIcon icon="power" :size="size" />
 	</div>
 	<div
-		v-else-if="hasIssues && !hideNodeIssues"
+		v-else-if="hasExecutionErrors && !hideNodeIssues"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-issues"
 	>
@@ -93,6 +95,18 @@ const commonClasses = computed(() => [
 				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
 			</template>
 			<N8nIcon icon="node-error" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
+		v-else-if="hasValidationErrors && !hideNodeIssues"
+		:class="[...commonClasses, $style.issues]"
+		data-test-id="node-issues"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
+			</template>
+			<N8nIcon icon="node-validation-error" :size="size" />
 		</N8nTooltip>
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">

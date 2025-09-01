@@ -395,41 +395,69 @@ export function useCanvasMapping({
 		{ throttle: CANVAS_EXECUTION_DATA_THROTTLE_DURATION, immediate: true },
 	);
 
-	const nodeIssuesById = computed(() =>
+	const nodeExecutionErrorsById = computed(() =>
 		nodes.value.reduce<Record<string, string[]>>((acc, node) => {
-			const issues: string[] = [];
+			const executionErrors: string[] = [];
 			const nodeExecutionRunData = workflowsStore.getWorkflowRunData?.[node.name];
 			if (nodeExecutionRunData) {
 				nodeExecutionRunData.forEach((executionRunData) => {
 					if (executionRunData?.error) {
 						const { message, description } = executionRunData.error;
 						const issue = `${message}${description ? ` (${description})` : ''}`;
-						issues.push(sanitizeHtml(issue));
+						executionErrors.push(sanitizeHtml(issue));
 					}
 				});
 			}
 
-			if (node?.issues !== undefined) {
-				issues.push(...nodeHelpers.nodeIssuesToString(node.issues, node));
-			}
-
-			acc[node.id] = issues;
+			acc[node.id] = executionErrors;
 
 			return acc;
 		}, {}),
 	);
 
+	const nodeValidationErrorsById = computed(() =>
+		nodes.value.reduce<Record<string, string[]>>((acc, node) => {
+			const validationErrors: string[] = [];
+
+			if (node?.issues !== undefined) {
+				validationErrors.push(...nodeHelpers.nodeIssuesToString(node.issues, node));
+			}
+
+			acc[node.id] = validationErrors;
+
+			return acc;
+		}, {}),
+	);
+
+	const nodeIssuesById = computed(() =>
+		nodes.value.reduce<Record<string, { execution: string[]; validation: string[] }>>(
+			(acc, node) => {
+				acc[node.id] = {
+					execution: nodeExecutionErrorsById.value[node.id] ?? [],
+					validation: nodeValidationErrorsById.value[node.id] ?? [],
+				};
+
+				return acc;
+			},
+			{},
+		),
+	);
+
 	const nodeHasIssuesById = computed(() =>
 		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
+			const hasExecutionErrors = nodeExecutionErrorsById.value[node.id]?.length > 0;
+			const hasValidationErrors = nodeValidationErrorsById.value[node.id]?.length > 0;
+
 			if (['crashed', 'error'].includes(nodeExecutionStatusById.value[node.id])) {
 				acc[node.id] = true;
 			} else if (nodePinnedDataById.value[node.id]) {
 				acc[node.id] = false;
-			} else if (node.issues && nodeHelpers.nodeIssuesToString(node.issues, node).length) {
+			} else if (hasValidationErrors) {
+				acc[node.id] = true;
+			} else if (hasExecutionErrors) {
 				acc[node.id] = true;
 			} else {
 				const tasks = workflowsStore.getWorkflowRunData?.[node.name] ?? [];
-
 				acc[node.id] = Boolean(tasks.at(-1)?.error);
 			}
 
@@ -605,7 +633,8 @@ export function useCanvasMapping({
 						[CanvasConnectionMode.Output]: outputConnections,
 					},
 					issues: {
-						items: nodeIssuesById.value[node.id],
+						execution: nodeIssuesById.value[node.id].execution,
+						validation: nodeIssuesById.value[node.id].validation,
 						visible: nodeHasIssuesById.value[node.id],
 					},
 					pinnedData: {
