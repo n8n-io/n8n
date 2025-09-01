@@ -237,6 +237,7 @@ class TaskRunner:
                 stdlib_allow=self.opts.stdlib_allow,
                 external_allow=self.opts.external_allow,
                 builtins_deny=self.opts.builtins_deny,
+                can_log=task_settings.can_log,
             )
 
             task_state.process = process
