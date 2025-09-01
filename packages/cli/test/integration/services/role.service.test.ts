@@ -1,4 +1,5 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
 import { RoleRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -21,6 +22,7 @@ import { createMember } from '../shared/db/users';
 let roleService: RoleService;
 let roleRepository: RoleRepository;
 let license: License;
+let licenseState: LicenseState;
 
 const ALL_ROLES_SET = ALL_ROLES.global.concat(
 	ALL_ROLES.project,
@@ -34,6 +36,8 @@ beforeAll(async () => {
 	roleService = Container.get(RoleService);
 	roleRepository = Container.get(RoleRepository);
 	license = Container.get(License);
+	licenseState = Container.get(LicenseState);
+	licenseState.setLicenseProvider(license);
 });
 
 afterAll(async () => {
@@ -509,7 +513,7 @@ describe('RoleService', () => {
 			// ARRANGE
 			//
 			const mockLicenseResult = Math.random() > 0.5; // Random boolean
-			jest.spyOn(license, licenseMethod).mockReturnValue(mockLicenseResult);
+			jest.spyOn(licenseState, licenseMethod).mockReturnValue(mockLicenseResult);
 
 			//
 			// ACT
@@ -520,14 +524,16 @@ describe('RoleService', () => {
 			// ASSERT
 			//
 			expect(result).toBe(mockLicenseResult);
-			expect(license[licenseMethod]).toHaveBeenCalledTimes(1);
+			expect(licenseState[licenseMethod]).toHaveBeenCalledTimes(1);
 		});
 
-		it('should return true for custom roles', async () => {
+		it('should return true for custom roles if licensed', async () => {
 			//
 			// ARRANGE
 			//
 			const customRoleSlug = 'custom:test-role';
+			const mockLicenseResult = Math.random() > 0.5; // Random boolean
+			jest.spyOn(licenseState, 'isCustomRolesLicensed').mockReturnValue(mockLicenseResult);
 
 			//
 			// ACT
@@ -537,24 +543,8 @@ describe('RoleService', () => {
 			//
 			// ASSERT
 			//
-			expect(result).toBe(true);
-		});
-
-		it('should return true for unknown role types', async () => {
-			//
-			// ARRANGE
-			//
-			const unknownRole = 'unknown:role' as any;
-
-			//
-			// ACT
-			//
-			const result = roleService.isRoleLicensed(unknownRole);
-
-			//
-			// ASSERT
-			//
-			expect(result).toBe(true);
+			expect(result).toBe(mockLicenseResult);
+			expect(licenseState.isCustomRolesLicensed).toHaveBeenCalledTimes(1);
 		});
 	});
 
