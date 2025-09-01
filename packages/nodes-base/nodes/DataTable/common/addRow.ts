@@ -1,8 +1,9 @@
-import type {
-	IDataObject,
-	IDisplayOptions,
-	IExecuteFunctions,
-	INodeProperties,
+import {
+	DATA_TABLE_SYSTEM_COLUMNS,
+	type IDataObject,
+	type IDisplayOptions,
+	type IExecuteFunctions,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import { DATA_TABLE_ID_FIELD } from './fields';
@@ -44,7 +45,12 @@ export function getAddRow(ctx: IExecuteFunctions, index: number) {
 	let data: IDataObject;
 
 	if (dataMode === 'autoMapInputData') {
-		data = items[index].json;
+		data = { ...items[index].json };
+		// We automatically remove our system columns for better UX when feeding Data Table outputs
+		// into another Data Table node
+		for (const systemColumn of DATA_TABLE_SYSTEM_COLUMNS) {
+			delete data[systemColumn];
+		}
 	} else {
 		const fields = ctx.getNodeParameter('columns.value', index, {}) as IDataObject;
 
