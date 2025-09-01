@@ -14,7 +14,7 @@ RUN \
   find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
 
 # Install essential OS dependencies
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/v3.22/main" >> /etc/apk/repositories && \
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/main" >> /etc/apk/repositories && echo "https://dl-cdn.alpinelinux.org/alpine/v3.22/community" >> /etc/apk/repositories && \
     apk update && \
     apk add --no-cache \
         git \
