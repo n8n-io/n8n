@@ -85,6 +85,7 @@ const emit = defineEmits<{
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
 	'duplicate:nodes': [ids: string[]];
+	'update:node:version': [id: string];
 	'update:nodes:pin': [ids: string[], source: PinDataSource];
 	'cut:nodes': [ids: string[]];
 	'delete:connection': [connection: Connection];
