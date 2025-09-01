@@ -87,6 +87,7 @@ import CssEditor from './CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -152,6 +153,7 @@ const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+const projectsStore = useProjectsStore();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -688,6 +690,7 @@ async function loadRemoteParameterOptions() {
 			loadOptions,
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: node.value.credentials,
+			projectId: projectsStore.currentProjectId,
 		});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
