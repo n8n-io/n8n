@@ -1,6 +1,5 @@
 import { createTestNode, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createAppModals } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -23,7 +22,6 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 	];
 
 	beforeEach(() => {
-		createAppModals();
 		pinia = createTestingPinia({
 			stubActions: false,
 		});
