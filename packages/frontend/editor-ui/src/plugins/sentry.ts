@@ -50,7 +50,6 @@ export function beforeSend(event: Sentry.ErrorEvent, { originalException }: Sent
 
 export const SentryPlugin: Plugin = {
 	install: (app) => {
-		// Try to read from meta tag first, fallback to window object for backward compatibility
 		const sentryConfig = getAndParseConfigFromMetaTag<SentryConfig>('sentry');
 		if (!sentryConfig?.dsn) {
 			return;
