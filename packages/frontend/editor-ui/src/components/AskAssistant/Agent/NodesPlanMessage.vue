@@ -94,9 +94,7 @@ function onRequestChanges() {
 			</div>
 		</template>
 		<template v-if="changesRequested">
-			<span :class="$style.followUpMessage">{{
-				i18n.baseText('aiAssistant.builder.plan.whatToChange')
-			}}</span>
+			<span class="mb-m">{{ i18n.baseText('aiAssistant.builder.plan.whatToChange') }}</span>
 		</template>
 	</BaseMessage>
 </template>
