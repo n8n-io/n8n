@@ -101,6 +101,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
 						'@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
 						'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
+						'@n8n/n8n-nodes-langchain.lmChatZAi',
 						'@n8n/n8n-nodes-langchain.modelSelector',
 					],
 				},

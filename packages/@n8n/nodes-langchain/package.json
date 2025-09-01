@@ -46,6 +46,7 @@
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XAiApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
+      "dist/credentials/ZAiApi.credentials.js",
       "dist/credentials/ZepApi.credentials.js"
     ],
     "nodes": [
@@ -88,6 +89,7 @@
       "dist/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.js",
       "dist/nodes/llms/LmChatVercelAiGateway/LmChatVercelAiGateway.node.js",
       "dist/nodes/llms/LmChatXAiGrok/LmChatXAiGrok.node.js",
+      "dist/nodes/llms/LmChatZAi/LmChatZAi.node.js",
       "dist/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.js",
       "dist/nodes/llms/LMOpenAi/LmOpenAi.node.js",
       "dist/nodes/llms/LMCohere/LmCohere.node.js",
