@@ -1,23 +1,11 @@
 import asyncio
 import logging
-import os
 import sys
+from typing import Optional
 
-os.environ["WEBSOCKETS_MAX_LOG_SIZE"] = "256"
-
-from src.constants import (
-    DEFAULT_MAX_CONCURRENCY,
-    DEFAULT_TASK_TIMEOUT,
-    ENV_MAX_CONCURRENCY,
-    ENV_MAX_PAYLOAD_SIZE,
-    ENV_TASK_BROKER_URI,
-    ENV_GRANT_TOKEN,
-    DEFAULT_TASK_BROKER_URI,
-    DEFAULT_MAX_PAYLOAD_SIZE,
-    ENV_TASK_TIMEOUT,
-)
+from src.env import parse_env_vars
 from src.logs import setup_logging
-from src.task_runner import TaskRunner, TaskRunnerOpts
+from src.task_runner import TaskRunner
 
 
 async def main():
@@ -26,21 +14,26 @@ async def main():
 
     logger.info("Starting runner...")
 
-    grant_token = os.getenv(ENV_GRANT_TOKEN, "")
-
-    if not grant_token:
-        logger.error(f"{ENV_GRANT_TOKEN} environment variable is required")
+    try:
+        task_runner_opts, health_check_opts = parse_env_vars()
+    except ValueError as e:
+        logger.error(str(e))
         sys.exit(1)
 
-    opts = TaskRunnerOpts(
-        grant_token,
-        os.getenv(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
-        int(os.getenv(ENV_MAX_CONCURRENCY, DEFAULT_MAX_CONCURRENCY)),
-        int(os.getenv(ENV_MAX_PAYLOAD_SIZE, DEFAULT_MAX_PAYLOAD_SIZE)),
-        int(os.getenv(ENV_TASK_TIMEOUT, DEFAULT_TASK_TIMEOUT)),
-    )
+    task_runner = TaskRunner(task_runner_opts)
+    health_check_server: Optional["HealthCheckServer"] = None
 
-    task_runner = TaskRunner(opts)
+    if health_check_opts.enabled:
+        from src.health import HealthCheckServer
+
+        health_check_server = HealthCheckServer()
+        try:
+            await health_check_server.start(
+                health_check_opts.host, health_check_opts.port
+            )
+        except OSError as e:
+            logger.error(f"Failed to start health check server: {e}")
+            sys.exit(1)
 
     try:
         await task_runner.start()
@@ -48,7 +41,9 @@ async def main():
         logger.info("Shutting down runner...")
     finally:
         await task_runner.stop()
-        logger.info("Runner stopped")
+
+        if health_check_server:
+            await health_check_server.stop()
 
 
 if __name__ == "__main__":

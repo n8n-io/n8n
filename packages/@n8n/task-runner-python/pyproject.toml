@@ -5,7 +5,6 @@ description = "Native Python task runner for n8n"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "nanoid>=2.0.0",
     "websockets>=15.0.1",
 ]
 

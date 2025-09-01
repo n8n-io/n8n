@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type {
 	IDataObject,
 	INode,
@@ -6,12 +7,21 @@ import type {
 	IDataStoreProjectService,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	DataStoreColumnJsType,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { FieldEntry, FilterType } from './constants';
-import { ALL_FILTERS, ANY_FILTER } from './constants';
+import { ALL_CONDITIONS, ANY_CONDITION } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
+
+type DateLike = { toISOString: () => string };
+
+function isDateLike(v: unknown): v is DateLike {
+	return (
+		v !== null && typeof v === 'object' && 'toISOString' in v && typeof v.toISOString === 'function'
+	);
+}
 
 // We need two functions here since the available getNodeParameter
 // overloads vary with the index
@@ -62,23 +72,40 @@ export async function getDataTableAggregateProxy(
 
 export function isFieldEntry(obj: unknown): obj is FieldEntry {
 	if (obj === null || typeof obj !== 'object') return false;
-	return 'keyName' in obj && 'condition' in obj && 'keyValue' in obj;
+	return 'keyName' in obj && 'condition' in obj; // keyValue is optional
 }
 
 export function isMatchType(obj: unknown): obj is FilterType {
-	return typeof obj === 'string' && (obj === ANY_FILTER || obj === ALL_FILTERS);
+	return typeof obj === 'string' && (obj === ANY_CONDITION || obj === ALL_CONDITIONS);
 }
 
 export function buildGetManyFilter(
 	fieldEntries: FieldEntry[],
 	matchType: FilterType,
 ): ListDataStoreContentFilter {
-	const filters = fieldEntries.map((x) => ({
-		columnName: x.keyName,
-		condition: x.condition,
-		value: x.keyValue,
-	}));
-	return { type: matchType === 'allFilters' ? 'and' : 'or', filters };
+	const filters = fieldEntries.map((x) => {
+		switch (x.condition) {
+			case 'isEmpty':
+				return {
+					columnName: x.keyName,
+					condition: 'eq' as const,
+					value: null,
+				};
+			case 'isNotEmpty':
+				return {
+					columnName: x.keyName,
+					condition: 'neq' as const,
+					value: null,
+				};
+			default:
+				return {
+					columnName: x.keyName,
+					condition: x.condition,
+					value: x.keyValue,
+				};
+		}
+	});
+	return { type: matchType === ALL_CONDITIONS ? 'and' : 'or', filters };
 }
 
 export function isFieldArray(value: unknown): value is FieldEntry[] {
@@ -87,9 +114,13 @@ export function isFieldArray(value: unknown): value is FieldEntry[] {
 	);
 }
 
-export function dataObjectToApiInput(data: IDataObject, node: INode, row: number) {
+export function dataObjectToApiInput(
+	data: IDataObject,
+	node: INode,
+	row: number,
+): Record<string, DataStoreColumnJsType> {
 	return Object.fromEntries(
-		Object.entries(data).map(([k, v]) => {
+		Object.entries(data).map(([k, v]): [string, DataStoreColumnJsType] => {
 			if (v === undefined || v === null) return [k, null];
 
 			if (Array.isArray(v)) {
@@ -99,7 +130,28 @@ export function dataObjectToApiInput(data: IDataObject, node: INode, row: number
 				);
 			}
 
-			if (!(v instanceof Date) && typeof v === 'object') {
+			if (v instanceof Date) {
+				return [k, v];
+			}
+
+			if (typeof v === 'object') {
+				// Luxon DateTime
+				if (DateTime.isDateTime(v)) {
+					return [k, v.toJSDate()];
+				}
+
+				if (isDateLike(v)) {
+					try {
+						const dateObj = new Date(v.toISOString());
+						if (isNaN(dateObj.getTime())) {
+							throw new Error('Invalid date');
+						}
+						return [k, dateObj];
+					} catch {
+						// Fall through
+					}
+				}
+
 				throw new NodeOperationError(
 					node,
 					`unexpected object input '${JSON.stringify(v)}' in row ${row}`,
