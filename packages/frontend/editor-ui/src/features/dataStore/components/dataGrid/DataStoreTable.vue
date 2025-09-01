@@ -25,6 +25,7 @@ import type {
 	CellEditingStoppedEvent,
 	CellKeyDownEvent,
 	ValueFormatterParams,
+	SortDirection,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -42,6 +43,7 @@ import {
 	UndoRedoEditModule,
 	CellStyleModule,
 	ScrollApiModule,
+	PinnedRowModule,
 } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
@@ -66,6 +68,7 @@ import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue';
 import { onClickOutside } from '@vueuse/core';
+import type { SortChangedEvent } from 'ag-grid-community';
 import { useClipboard } from '@/composables/useClipboard';
 import { reorderItem } from '@/features/dataStore/utils';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
@@ -85,6 +88,7 @@ ModuleRegistry.registerModules([
 	ClientSideRowModelApiModule,
 	UndoRedoEditModule,
 	CellStyleModule,
+	PinnedRowModule,
 	ScrollApiModule,
 ]);
 
@@ -118,6 +122,8 @@ const rowSelection: RowSelectionOptions | 'single' | 'multiple' = {
 	isRowSelectable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 };
 
+const currentSortBy = ref<string>(DEFAULT_ID_COLUMN_NAME);
+const currentSortOrder = ref<SortDirection>('asc');
 const contentLoading = ref(false);
 
 // Track the last focused cell so we can start editing when users click on it
@@ -139,6 +145,8 @@ const rows = ref<DataStoreRow[]>([]);
 const selectedRowIds = ref<Set<number>>(new Set());
 const selectedCount = computed(() => selectedRowIds.value.size);
 
+const hasRecords = computed(() => rowData.value.length > 0);
+
 const onGridReady = (params: GridReadyEvent) => {
 	gridApi.value = params.api;
 	// Ensure popups (e.g., agLargeTextCellEditor) are positioned relative to the grid container
@@ -149,15 +157,15 @@ const onGridReady = (params: GridReadyEvent) => {
 };
 
 const refreshGridData = () => {
-	if (gridApi.value) {
-		gridApi.value.setGridOption('columnDefs', colDefs.value);
-		gridApi.value.setGridOption('rowData', [
-			...rowData.value,
-			{
-				id: ADD_ROW_ROW_ID,
-			},
-		]);
-	}
+	if (!gridApi.value) return;
+
+	gridApi.value.setGridOption('columnDefs', colDefs.value);
+
+	// only real rows here
+	gridApi.value.setGridOption('rowData', rowData.value);
+
+	// special "add row" pinned to the bottom
+	gridApi.value.setGridOption('pinnedBottomRowData', [{ id: ADD_ROW_ROW_ID }]);
 };
 
 const focusFirstEditableCell = (rowId: number) => {
@@ -258,7 +266,7 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 		colId: col.id,
 		field: col.name,
 		headerName: col.name,
-		sortable: false,
+		sortable: true,
 		flex: 1,
 		editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
 		resizable: true,
@@ -443,6 +451,7 @@ const initColumnDefinitions = () => {
 			},
 			{
 				editable: false,
+				sortable: false,
 				suppressMovable: true,
 				headerComponent: null,
 				lockPosition: true,
@@ -454,9 +463,7 @@ const initColumnDefinitions = () => {
 					if (params.value === ADD_ROW_ROW_ID) {
 						return {
 							component: AddRowButton,
-							params: {
-								onClick: onAddRowClick,
-							},
+							params: { onClick: onAddRowClick },
 						};
 					}
 					return undefined;
@@ -570,11 +577,13 @@ const onCellClicked = (params: CellClickedEvent<DataStoreRow>) => {
 const fetchDataStoreContent = async () => {
 	try {
 		contentLoading.value = true;
+
 		const fetchedRows = await dataStoreStore.fetchDataStoreContent(
 			props.dataStore.id,
 			props.dataStore.projectId,
 			currentPage.value,
 			pageSize.value,
+			`${currentSortBy.value}:${currentSortOrder.value}`,
 		);
 		rowData.value = fetchedRows.data;
 		totalItems.value = fetchedRows.count;
@@ -630,6 +639,29 @@ const resetLastFocusedCell = () => {
 const initialize = async () => {
 	initColumnDefinitions();
 	await fetchDataStoreContent();
+};
+
+const onSortChanged = async (event: SortChangedEvent) => {
+	const oldSortBy = currentSortBy.value;
+	const oldSortOrder = currentSortOrder.value;
+
+	const sortedColumn = event.columns?.filter((col) => col.getSort() !== null).pop() ?? null;
+
+	if (sortedColumn) {
+		const colId = sortedColumn.getColId();
+		const columnDef = colDefs.value.find((col) => col.colId === colId);
+
+		currentSortBy.value = columnDef?.field || colId;
+		currentSortOrder.value = sortedColumn.getSort() ?? 'asc';
+	} else {
+		currentSortBy.value = DEFAULT_ID_COLUMN_NAME;
+		currentSortOrder.value = 'asc';
+	}
+
+	if (oldSortBy !== currentSortBy.value || oldSortOrder !== currentSortOrder.value) {
+		currentPage.value = 1;
+		await fetchDataStoreContent();
+	}
 };
 
 onMounted(async () => {
@@ -754,7 +786,11 @@ defineExpose({
 
 <template>
 	<div :class="$style.wrapper">
-		<div ref="gridContainer" :class="$style['grid-container']" data-test-id="data-store-grid">
+		<div
+			ref="gridContainer"
+			:class="[$style['grid-container'], { [$style['has-records']]: hasRecords }]"
+			data-test-id="data-store-grid"
+		>
 			<AgGridVue
 				style="width: 100%"
 				:dom-layout="'autoHeight'"
@@ -768,6 +804,7 @@ defineExpose({
 				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
+				:suppress-multi-sort="true"
 				@grid-ready="onGridReady"
 				@cell-value-changed="onCellValueChanged"
 				@column-moved="onColumnMoved"
@@ -776,6 +813,7 @@ defineExpose({
 				@cell-editing-stopped="onCellEditingStopped"
 				@column-header-clicked="resetLastFocusedCell"
 				@selection-changed="onSelectionChanged"
+				@sort-changed="onSortChanged"
 				@cell-key-down="onCellKeyDown"
 			/>
 		</div>
@@ -940,6 +978,16 @@ defineExpose({
 
 	:global(.ag-cell-focus) {
 		background-color: var(--grid-row-selected-background);
+	}
+
+	&.has-records {
+		:global(.ag-floating-bottom) {
+			border-top: var(--border-width-base) var(--border-style-base) var(--ag-border-color);
+		}
+	}
+
+	:global(.ag-row[row-id='__n8n_add_row__']) {
+		border-bottom: none;
 	}
 }
 

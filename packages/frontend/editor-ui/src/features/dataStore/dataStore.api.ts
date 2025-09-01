@@ -135,6 +135,7 @@ export const getDataStoreRowsApi = async (
 	options?: {
 		skip?: number;
 		take?: number;
+		sortBy?: string;
 	},
 ) => {
 	return await makeRestApiRequest<{
