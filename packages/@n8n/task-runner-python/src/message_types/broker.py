@@ -39,6 +39,7 @@ class TaskSettings:
     node_mode: NodeMode
     continue_on_fail: bool
     items: Items
+    can_log: bool
 
 
 @dataclass

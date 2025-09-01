@@ -31,6 +31,9 @@ export class PythonTaskRunnerSandbox {
 			workflowMode: this.workflowMode,
 			continueOnFail: this.executeFunctions.continueOnFail(),
 			items: this.executeFunctions.getInputData(),
+
+			/** Whether this task can log to the browser console. */
+			canLog: this.executeFunctions.getMode() === 'manual',
 		};
 
 		const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(

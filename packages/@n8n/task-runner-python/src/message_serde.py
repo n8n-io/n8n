@@ -43,6 +43,7 @@ def _parse_task_settings(d: dict) -> BrokerTaskSettings:
         node_mode = _get_node_mode(settings_dict["nodeMode"])
         continue_on_fail = settings_dict.get("continueOnFail", False)
         items = settings_dict["items"]
+        can_log = settings_dict.get("canLog", False)
     except KeyError as e:
         raise ValueError(f"Missing field in task settings message: {e}")
 
@@ -53,6 +54,7 @@ def _parse_task_settings(d: dict) -> BrokerTaskSettings:
             node_mode=node_mode,
             continue_on_fail=continue_on_fail,
             items=items,
+            can_log=can_log,
         ),
     )
 
