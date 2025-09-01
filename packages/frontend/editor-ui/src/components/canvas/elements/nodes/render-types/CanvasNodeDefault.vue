@@ -36,7 +36,6 @@ const {
 	executionRunning,
 	hasRunData,
 	hasExecutionErrors,
-	hasValidationErrors,
 	render,
 } = useCanvasNode();
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
