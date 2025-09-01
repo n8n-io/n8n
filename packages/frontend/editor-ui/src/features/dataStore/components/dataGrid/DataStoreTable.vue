@@ -362,9 +362,9 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 			component: ElDatePickerCellEditor,
 		});
 		columnDef.valueFormatter = (params) => {
-			const value = params.value as Date | string | number | null | undefined;
+			const value = params.value as Date | null | undefined;
 			if (value === null || value === undefined) return '';
-			return new Date(value).toISOString();
+			return value.toISOString();
 		};
 	}
 	return {
