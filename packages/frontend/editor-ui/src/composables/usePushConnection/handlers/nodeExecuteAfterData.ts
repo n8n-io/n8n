@@ -10,11 +10,9 @@ export async function nodeExecuteAfterData({ data: pushData }: NodeExecuteAfterD
 	const workflowsStore = useWorkflowsStore();
 	const schemaPreviewStore = useSchemaPreviewStore();
 
-	if (
-		hasTrimmedItem(
-			workflowsStore.workflowExecutionData?.data?.resultData.runData[pushData.nodeName] ?? [],
-		)
-	) {
+	const nodeRunData =
+		workflowsStore.workflowExecutionData?.data?.resultData.runData[pushData.nodeName] ?? [];
+	if (hasTrimmedItem(nodeRunData)) {
 		workflowsStore.clearNodeExecutionData(pushData.nodeName);
 	}
 	workflowsStore.updateNodeExecutionData(pushData);
