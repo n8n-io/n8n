@@ -16,9 +16,6 @@
         "id": {
             "type": "integer"
         },
-        "name": {
-            "type": "string"
-        },
         "notes": {
             "type": "array",
             "items": {
@@ -52,5 +49,5 @@
             "type": "integer"
         }
     },
-    "version": 4
+    "version": 5
 }
