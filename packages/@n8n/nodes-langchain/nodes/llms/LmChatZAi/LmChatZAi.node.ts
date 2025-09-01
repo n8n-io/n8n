@@ -23,7 +23,7 @@ export class LmChatZAi implements INodeType {
 		},
 	};
 	description: INodeTypeDescription = {
-		displayName: 'Z.ai Chat Model',
+		displayName: 'Z.AI Chat Model',
 
 		name: 'lmChatZAi',
 		icon: 'file:zai.svg',
@@ -31,7 +31,7 @@ export class LmChatZAi implements INodeType {
 		version: [1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
-			name: 'Z.ai Chat Model',
+			name: 'Z.AI Chat Model',
 		},
 		codex: {
 			categories: ['AI'],
