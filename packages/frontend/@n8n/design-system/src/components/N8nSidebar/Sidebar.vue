@@ -281,6 +281,7 @@ const {
 	position: relative;
 	max-height: 100%;
 	overflow-y: scroll;
+	overflow-x: hidden;
 	flex-grow: 1;
 	display: flex;
 	flex-direction: column;

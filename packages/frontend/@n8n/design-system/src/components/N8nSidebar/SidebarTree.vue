@@ -55,7 +55,8 @@ defineProps<{ items: IMenuElement[]; openProject?: (id: string) => Promise<void>
 
 .sidebarEmptyState {
 	padding: var(--spacing-3xs) var(--spacing-3xs);
-	width: 100%;
+	max-width: calc(100% - var(--spacing-2xl));
+	min-width: 0;
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
