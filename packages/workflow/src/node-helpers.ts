@@ -1047,12 +1047,13 @@ export function getNodeOutputs(
 	} else {
 		// Calculate the outputs dynamically
 		try {
-			outputs = (workflow.expression.getSimpleParameterValue(
+			const result = workflow.expression.getSimpleParameterValue(
 				node,
 				nodeTypeData.outputs,
 				'internal',
 				{},
-			) || []) as NodeConnectionType[];
+			);
+			outputs = Array.isArray(result) ? result : [];
 		} catch (e) {
 			console.warn('Could not calculate outputs dynamically for node: ', node.name);
 		}
@@ -1079,6 +1080,11 @@ export function getNodeOutputs(
 				displayName: 'Error',
 			},
 		];
+	}
+
+	// Ensure we always return an array
+	if (!Array.isArray(outputs)) {
+		outputs = [];
 	}
 
 	return outputs;
