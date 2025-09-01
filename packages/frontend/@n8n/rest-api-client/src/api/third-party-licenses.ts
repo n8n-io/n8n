@@ -1,5 +1,5 @@
-import { request } from '../utils';
 import type { IRestApiContext } from '../types';
+import { request } from '../utils';
 
 export async function getThirdPartyLicenses(context: IRestApiContext): Promise<string> {
 	return await request({
