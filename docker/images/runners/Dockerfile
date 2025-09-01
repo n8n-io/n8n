@@ -77,8 +77,8 @@ RUN set -e; \
 # ==============================================================================
 FROM ${PYTHON_IMAGE} AS runtime
 ARG NODE_VERSION=22
+ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
-ARG LAUNCHER_VERSION=1.3.0
 
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
@@ -116,4 +116,4 @@ LABEL org.opencontainers.image.title="n8n Task runners" \
       org.opencontainers.image.description="Sidecar image providing n8n task runners for JavaScript and Python code execution" \
       org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
       org.opencontainers.image.url="https://n8n.io" \
-      org.opencontainers.image.version="${LAUNCHER_VERSION}"
+      org.opencontainers.image.version="${N8N_VERSION}"

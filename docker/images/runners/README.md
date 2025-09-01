@@ -32,3 +32,15 @@ docker run --rm -it \
 -p 5680:5680 \
 n8nio/runners
 ```
+
+To build the image, run
+
+```
+docker buildx build --no-cache \
+  -f docker/images/runners/Dockerfile \
+  --build-arg NODE_VERSION=22 \
+	--build-arg PYTHON_IMAGE=python:3.13-slim \
+  --progress=plain \
+  -t n8nio/runners \
+  .
+```
