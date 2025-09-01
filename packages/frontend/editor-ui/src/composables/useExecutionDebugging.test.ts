@@ -48,6 +48,101 @@ describe('useExecutionDebugging()', () => {
 		await expect(executionDebugging.applyExecutionData('1')).resolves.not.toThrowError();
 	});
 
+	it('should pin binary data correctly during debug restoration', async () => {
+		const mockExecution = {
+			data: {
+				resultData: {
+					runData: {
+						TriggerNode: [
+							{
+								data: {
+									main: [
+										[
+											{
+												json: { test: 'data' },
+												binary: {
+													data: {
+														fileName: 'test.txt',
+														mimeType: 'text/plain',
+														data: 'dGVzdCBkYXRh',
+													},
+												},
+											},
+										],
+									],
+								},
+							},
+						],
+					},
+				},
+			},
+		} as unknown as IExecutionResponse;
+
+		const workflowStore = mockedStore(useWorkflowsStore);
+		workflowStore.getNodes.mockReturnValue([{ name: 'TriggerNode' }] as INodeUi[]);
+		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
+		workflowStore.workflowObject = {
+			pinData: {},
+			getParentNodes: vi.fn().mockReturnValue([]),
+		} as unknown as Workflow;
+
+		await executionDebugging.applyExecutionData('1');
+
+		expect(workflowStore.pinData).toHaveBeenCalledWith({
+			node: { name: 'TriggerNode' },
+			data: [
+				{
+					json: { test: 'data' },
+					binary: {
+						data: {
+							fileName: 'test.txt',
+							mimeType: 'text/plain',
+							data: 'dGVzdCBkYXRh',
+						},
+					},
+				},
+			],
+			isRestoration: true,
+		});
+	});
+
+	it('should handle nodes with multiple main outputs during debug restoration', async () => {
+		const mockExecution = {
+			data: {
+				resultData: {
+					runData: {
+						TriggerNode: [
+							{
+								data: {
+									main: [
+										[], // Empty first output
+										[{ json: { test: 'data' } }], // Data in second output
+									],
+								},
+							},
+						],
+					},
+				},
+			},
+		} as unknown as IExecutionResponse;
+
+		const workflowStore = mockedStore(useWorkflowsStore);
+		workflowStore.getNodes.mockReturnValue([{ name: 'TriggerNode' }] as INodeUi[]);
+		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
+		workflowStore.workflowObject = {
+			pinData: {},
+			getParentNodes: vi.fn().mockReturnValue([]),
+		} as unknown as Workflow;
+
+		await executionDebugging.applyExecutionData('1');
+
+		expect(workflowStore.pinData).toHaveBeenCalledWith({
+			node: { name: 'TriggerNode' },
+			data: [{ json: { test: 'data' } }],
+			isRestoration: true,
+		});
+	});
+
 	it('should show missing nodes warning toast', async () => {
 		const mockExecution = {
 			data: {

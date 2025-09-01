@@ -13,7 +13,7 @@ declare module 'n8n-workflow' {
 }
 
 export * from './active-workflows';
-export * from './interfaces';
+export type * from './interfaces';
 export * from './routing-node';
 export * from './node-execution-context';
 export * from './partial-execution-utils';

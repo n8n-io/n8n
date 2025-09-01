@@ -1,11 +1,14 @@
 import os
-from typing import Set
+from dataclasses import dataclass
+from typing import Set, Tuple
 
 from src.constants import (
     DEFAULT_MAX_CONCURRENCY,
     DEFAULT_TASK_TIMEOUT,
     DEFAULT_TASK_BROKER_URI,
     DEFAULT_MAX_PAYLOAD_SIZE,
+    DEFAULT_HEALTH_CHECK_SERVER_HOST,
+    DEFAULT_HEALTH_CHECK_SERVER_PORT,
     BUILTINS_DENY_DEFAULT,
     ENV_MAX_CONCURRENCY,
     ENV_MAX_PAYLOAD_SIZE,
@@ -15,8 +18,18 @@ from src.constants import (
     ENV_BUILTINS_DENY,
     ENV_STDLIB_ALLOW,
     ENV_EXTERNAL_ALLOW,
+    ENV_HEALTH_CHECK_SERVER_ENABLED,
+    ENV_HEALTH_CHECK_SERVER_HOST,
+    ENV_HEALTH_CHECK_SERVER_PORT,
 )
 from src.task_runner import TaskRunnerOpts
+
+
+@dataclass
+class HealthCheckOpts:
+    enabled: bool
+    host: str
+    port: int
 
 
 def parse_allowlist(allowlist_str: str, list_name: str) -> Set[str]:
@@ -45,7 +58,7 @@ def parse_denylist(denylist_str: str) -> Set[str]:
     return {name for raw_name in denylist_str.split(",") if (name := raw_name.strip())}
 
 
-def parse_env_vars() -> TaskRunnerOpts:
+def parse_env_vars() -> Tuple[TaskRunnerOpts, HealthCheckOpts]:
     grant_token = os.getenv(ENV_GRANT_TOKEN, "")
 
     if not grant_token:
@@ -60,7 +73,7 @@ def parse_env_vars() -> TaskRunnerOpts:
     external_allow_str = os.getenv(ENV_EXTERNAL_ALLOW, "")
     external_allow = parse_allowlist(external_allow_str, "external allowlist")
 
-    return TaskRunnerOpts(
+    task_runner_opts = TaskRunnerOpts(
         grant_token=grant_token,
         task_broker_uri=os.getenv(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
         max_concurrency=int(
@@ -74,3 +87,14 @@ def parse_env_vars() -> TaskRunnerOpts:
         external_allow=external_allow,
         builtins_deny=builtins_deny,
     )
+
+    health_check_opts = HealthCheckOpts(
+        enabled=os.getenv(ENV_HEALTH_CHECK_SERVER_ENABLED, "") == "true",
+        host=os.getenv(ENV_HEALTH_CHECK_SERVER_HOST, DEFAULT_HEALTH_CHECK_SERVER_HOST),
+        port=int(
+            os.getenv(ENV_HEALTH_CHECK_SERVER_PORT)
+            or str(DEFAULT_HEALTH_CHECK_SERVER_PORT)
+        ),
+    )
+
+    return task_runner_opts, health_check_opts
