@@ -90,6 +90,7 @@ export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
 export const PRE_BUILT_AGENTS_MODAL_KEY = 'preBuiltAgents';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
+export const NODE_VERSION_UPDATE_MODAL_KEY = 'nodeVersionUpdate';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',

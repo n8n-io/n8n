@@ -46,6 +46,7 @@ import {
 	WORKFLOW_DIFF_MODAL_KEY,
 	PRE_BUILT_AGENTS_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
+	NODE_VERSION_UPDATE_MODAL_KEY,
 } from '@/constants';
 import { STORES } from '@n8n/stores';
 import type {
@@ -129,6 +130,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				IMPORT_WORKFLOW_URL_MODAL_KEY,
 				PRE_BUILT_AGENTS_MODAL_KEY,
 				WORKFLOW_DIFF_MODAL_KEY,
+				NODE_VERSION_UPDATE_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {

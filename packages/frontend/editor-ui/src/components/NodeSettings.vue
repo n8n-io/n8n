@@ -26,6 +26,7 @@ import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import get from 'lodash/get';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import NodeUpdateVersionButton from './NodeUpdateVersionButton.vue';
 import {
 	collectSettings,
 	createCommonNodeSettings,
@@ -620,18 +621,26 @@ function handleSelectAction(params: INodeParameters) {
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
 				/>
-				<NodeExecuteButton
-					v-if="isExecutable && !blockUI && node && nodeValid"
-					data-test-id="node-execute-button"
-					:node-name="node.name"
-					:disabled="outputPanelEditMode.enabled && !isTriggerNode"
-					:tooltip="executeButtonTooltip"
-					size="small"
-					telemetry-source="parameters"
-					@execute="onNodeExecute"
-					@stop-execution="onStopExecution"
-					@value-changed="valueChanged"
-				/>
+				<div class="version-update-container">
+					<NodeUpdateVersionButton
+						v-if="isExecutable && !blockUI && node && nodeValid && !isLatestNodeVersion"
+						:node-name="node.name"
+						type="warning"
+						size="small"
+					/>
+					<NodeExecuteButton
+						v-if="isExecutable && !blockUI && node && nodeValid"
+						data-test-id="node-execute-button"
+						:node-name="node.name"
+						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
+						:tooltip="executeButtonTooltip"
+						size="small"
+						telemetry-source="parameters"
+						@execute="onNodeExecute"
+						@stop-execution="onStopExecution"
+						@value-changed="valueChanged"
+					/>
+				</div>
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
@@ -955,6 +964,11 @@ function handleSelectAction(params: INodeParameters) {
 		box-sizing: border-box;
 		background-color: #793300;
 	}
+}
+
+.version-update-container {
+	display: flex;
+	gap: var(--spacing-xs);
 }
 </style>
 
