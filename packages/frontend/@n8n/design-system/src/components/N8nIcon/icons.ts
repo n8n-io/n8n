@@ -11,6 +11,7 @@ import NodePlay from './custom/node-play.svg';
 import NodePower from './custom/node-power.svg';
 import NodeSuccess from './custom/node-success.svg';
 import NodeTrash from './custom/node-trash.svg';
+import NodeValidationError from './custom/node-validation-error.svg';
 import PopOut from './custom/pop-out.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
@@ -435,6 +436,7 @@ export const updatedIconSet = {
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
 	'node-error': NodeError,
+	'node-validation-error': NodeValidationError,
 	'node-pin': NodePin,
 	'node-play': NodePlay,
 	'node-power': NodePower,
