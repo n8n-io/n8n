@@ -96,7 +96,7 @@ export function getSelectFields(
 
 export function getSelectFilter(ctx: IExecuteFunctions, index: number) {
 	const fields = ctx.getNodeParameter('filters.conditions', index, []);
-	const matchType = ctx.getNodeParameter('matchType', index, 'anyFilter');
+	const matchType = ctx.getNodeParameter('matchType', index, ANY_CONDITION);
 	const node = ctx.getNode();
 
 	if (!isMatchType(matchType)) {
