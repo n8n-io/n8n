@@ -56,7 +56,6 @@ const classes = computed(() => {
 		[$style.disabled]: isDisabled.value,
 		[$style.success]: hasRunData.value,
 		[$style.error]: hasExecutionErrors.value,
-		[$style.validationError]: hasValidationErrors.value && !hasExecutionErrors.value,
 		[$style.pinned]: hasPinnedData.value,
 		[$style.waiting]: executionWaiting.value ?? executionStatus.value === 'waiting',
 		[$style.running]: executionRunning.value || executionWaitingForNext.value,
@@ -287,10 +286,6 @@ function onActivate(event: MouseEvent) {
 
 	&.error {
 		--canvas-node--border-color: var(--color-canvas-node-error-border-color, var(--color-danger));
-	}
-
-	&.validationError {
-		/* --canvas-node--border-color: var(--color-canvas-node-validation-error-border-color, var(--color-warning)); */
 	}
 
 	&.pinned {
