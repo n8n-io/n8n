@@ -129,6 +129,9 @@ export function dataObjectToApiInput(
 				if (isDateLike(v)) {
 					try {
 						const dateObj = new Date(v.toISOString());
+						if (isNaN(dateObj.getTime())) {
+							throw new Error('Invalid date');
+						}
 						return [k, dateObj];
 					} catch {
 						// Fall through
