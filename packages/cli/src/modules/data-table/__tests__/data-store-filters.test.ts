@@ -183,13 +183,17 @@ describe('dataStore filters', () => {
 					columns: [
 						{ name: 'name', type: 'string' },
 						{ name: 'age', type: 'number' },
+						{ name: 'birthday', type: 'date' },
+						{ name: 'isActive', type: 'boolean' },
 					],
 				});
 
+				const maryBirthday = new Date('1998-08-25');
+
 				const rows = [
-					{ name: 'John', age: 30 },
-					{ name: 'Mary', age: 25 },
-					{ name: 'Jack', age: 35 },
+					{ name: 'John', age: 30, birthday: new Date('1994-05-15T00:00:00.000Z'), isActive: true },
+					{ name: 'Mary', age: 25, birthday: maryBirthday, isActive: false },
+					{ name: 'Jack', age: 35, birthday: new Date('1988-12-05T00:00:00.000Z'), isActive: true },
 				];
 
 				await dataStoreService.insertRows(dataStoreId, project.id, rows);
@@ -198,13 +202,25 @@ describe('dataStore filters', () => {
 				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
 					filter: {
 						type: 'and',
-						filters: [{ columnName: 'name', value: 'Mary', condition: 'eq' }],
+						filters: [
+							{ columnName: 'name', value: 'Mary', condition: 'eq' },
+							{ columnName: 'age', value: 25, condition: 'eq' },
+							{ columnName: 'birthday', value: maryBirthday, condition: 'eq' },
+							{ columnName: 'isActive', value: false, condition: 'eq' },
+						],
 					},
 				});
 
 				// ASSERT
 				expect(result.count).toEqual(1);
-				expect(result.data).toEqual([expect.objectContaining({ name: 'Mary', age: 25 })]);
+				expect(result.data).toEqual([
+					expect.objectContaining({
+						name: 'Mary',
+						age: 25,
+						birthday: maryBirthday,
+						isActive: false,
+					}),
+				]);
 			});
 
 			it("retrieves rows with 'not equals' filter correctly", async () => {
