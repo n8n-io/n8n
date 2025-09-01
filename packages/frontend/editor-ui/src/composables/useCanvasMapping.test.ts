@@ -721,7 +721,7 @@ describe('useCanvasMapping', () => {
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([]);
+				expect(nodeIssuesById.value[node.id]).toEqual({ execution: [], validation: [] });
 			});
 
 			it('should handle execution errors', () => {
@@ -754,7 +754,10 @@ describe('useCanvasMapping', () => {
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([`${errorMessage} (${errorDescription})`]);
+				expect(nodeIssuesById.value[node.id]).toEqual({
+					execution: [`${errorMessage} (${errorDescription})`],
+					validation: [],
+				});
 			});
 
 			it('should handle execution error without description', () => {
@@ -786,7 +789,10 @@ describe('useCanvasMapping', () => {
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([errorMessage]);
+				expect(nodeIssuesById.value[node.id]).toEqual({
+					execution: [errorMessage],
+					validation: [],
+				});
 			});
 
 			it('should handle multiple execution errors', () => {
@@ -827,10 +833,10 @@ describe('useCanvasMapping', () => {
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([
-					'Error 1 (Description 1)',
-					'Error 2 (Description 2)',
-				]);
+				expect(nodeIssuesById.value[node.id]).toEqual({
+					execution: ['Error 1 (Description 1)', 'Error 2 (Description 2)'],
+					validation: [],
+				});
 			});
 
 			it('should handle node issues', () => {
@@ -853,9 +859,10 @@ describe('useCanvasMapping', () => {
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([
-					'Node Type "n8n-nodes-base.set" is not known.',
-				]);
+				expect(nodeIssuesById.value[node.id]).toEqual({
+					execution: [],
+					validation: ['Node Type "n8n-nodes-base.set" is not known.'],
+				});
 			});
 
 			it('should combine execution errors and node issues', () => {
@@ -891,10 +898,10 @@ describe('useCanvasMapping', () => {
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node.id]).toEqual([
-					'Execution error (Error description)',
-					'Node Type "n8n-nodes-base.set" is not known.',
-				]);
+				expect(nodeIssuesById.value[node.id]).toEqual({
+					execution: ['Execution error (Error description)'],
+					validation: ['Node Type "n8n-nodes-base.set" is not known.'],
+				});
 			});
 
 			it('should handle multiple nodes with different issues', () => {
@@ -931,10 +938,14 @@ describe('useCanvasMapping', () => {
 					workflowObject: ref(workflowObject) as Ref<Workflow>,
 				});
 
-				expect(nodeIssuesById.value[node1.id]).toEqual([
-					'Node Type "n8n-nodes-base.set" is not known.',
-				]);
-				expect(nodeIssuesById.value[node2.id]).toEqual(['Execution error (Error description)']);
+				expect(nodeIssuesById.value[node1.id]).toEqual({
+					execution: [],
+					validation: ['Node Type "n8n-nodes-base.set" is not known.'],
+				});
+				expect(nodeIssuesById.value[node2.id]).toEqual({
+					execution: ['Execution error (Error description)'],
+					validation: [],
+				});
 			});
 		});
 
