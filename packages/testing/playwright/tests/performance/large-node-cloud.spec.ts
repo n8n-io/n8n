@@ -50,13 +50,8 @@ test.describe('Large Node Performance - Cloud Resources', () => {
 		const average = stats.reduce((a, b) => a + b, 0) / stats.length;
 		console.log(`Average open node duration: ${average.toFixed(1)}ms`);
 
-		// Attach performance metric using helper method (recommended)
+		// Attach performance metric using helper method
 		await attachMetric(testInfo, 'open-node-30000', average, 'ms');
-
-		// Alternative: Direct testInfo.attach (also supported)
-		// await testInfo.attach('metric:open-node-30000', {
-		// 	body: JSON.stringify({ value: average, unit: 'ms' })
-		// });
 
 		expect(average).toBeLessThan(5000);
 	});

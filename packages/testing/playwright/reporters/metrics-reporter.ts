@@ -1,12 +1,12 @@
 import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import gitRevSync from 'git-rev-sync';
+import { strict as assert } from 'assert';
+import { execSync } from 'child_process';
+import { z } from 'zod';
 
-interface MetricData {
-	value: number;
-	unit?: string;
-}
+const metricDataSchema = z.object({
+	value: z.number(),
+	unit: z.string().optional(),
+});
 
 interface Metric {
 	name: string;
@@ -20,6 +20,10 @@ interface ReporterOptions {
 	webhookPassword?: string;
 }
 
+/**
+ * Automatically collect performance metrics from Playwright tests and send them to a Webhook.
+ * If your test contains a testInfo.attach() call with a name starting with 'metric:', the metric will be collected and sent to the Webhook.
+ */
 class MetricsReporter implements Reporter {
 	private webhookUrl: string | undefined;
 	private webhookUser: string | undefined;
@@ -58,7 +62,8 @@ class MetricsReporter implements Reporter {
 			if (attachment.name.startsWith('metric:')) {
 				const metricName = attachment.name.replace('metric:', '');
 				try {
-					const data = JSON.parse(attachment.body?.toString() ?? '') as MetricData;
+					const parsedData = JSON.parse(attachment.body?.toString() ?? '');
+					const data = metricDataSchema.parse(parsedData);
 					metrics.push({
 						name: metricName,
 						value: data.value,
@@ -78,38 +83,43 @@ class MetricsReporter implements Reporter {
 	private async sendMetrics(test: TestCase, metrics: Metric[]): Promise<void> {
 		const gitInfo = this.getGitInfo();
 
-		for (const metric of metrics) {
-			const payload = {
-				test_name: test.title,
+		assert(gitInfo.commit, 'Git commit must be defined');
+		assert(gitInfo.branch, 'Git branch must be defined');
+		assert(gitInfo.author, 'Git author must be defined');
+
+		const payload = {
+			test_name: test.title,
+			git_commit: gitInfo.commit,
+			git_branch: gitInfo.branch,
+			git_author: gitInfo.author,
+			timestamp: new Date().toISOString(),
+			metrics: metrics.map((metric) => ({
 				metric_name: metric.name,
 				metric_value: metric.value,
-				metric_unit: metric.unit ?? '', // Ensure non-null for BigQuery REQUIRED field
-				git_commit: gitInfo.commit ?? 'unknown', // Ensure non-null for BigQuery REQUIRED field
-				git_branch: gitInfo.branch ?? 'unknown', // Ensure non-null for BigQuery REQUIRED field
-				timestamp: new Date().toISOString(),
-			};
+				metric_unit: metric.unit,
+			})),
+		};
 
-			try {
-				const auth = Buffer.from(`${this.webhookUser}:${this.webhookPassword}`).toString('base64');
+		try {
+			const auth = Buffer.from(`${this.webhookUser}:${this.webhookPassword}`).toString('base64');
 
-				const response = await fetch(this.webhookUrl!, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: `Basic ${auth}`,
-					},
-					body: JSON.stringify(payload),
-					signal: AbortSignal.timeout(10000),
-				});
+			const response = await fetch(this.webhookUrl!, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Basic ${auth}`,
+				},
+				body: JSON.stringify(payload),
+				signal: AbortSignal.timeout(10000),
+			});
 
-				if (!response.ok) {
-					console.warn(`[MetricsReporter] Webhook failed (${response.status}): ${metric.name}`);
-				}
-			} catch (e) {
-				console.warn(
-					`[MetricsReporter] Failed to send metric ${metric.name}: ${(e as Error).message}`,
-				);
+			if (!response.ok) {
+				console.warn(`[MetricsReporter] Webhook failed (${response.status}): ${test.title}`);
 			}
+		} catch (e) {
+			console.warn(
+				`[MetricsReporter] Failed to send metrics for test ${test.title}: ${(e as Error).message}`,
+			);
 		}
 	}
 
@@ -119,14 +129,16 @@ class MetricsReporter implements Reporter {
 		}
 	}
 
-	private getGitInfo(): { commit: string | null; branch: string | null } {
+	private getGitInfo(): { commit: string | null; branch: string | null; author: string | null } {
 		try {
 			return {
-				commit: gitRevSync.long(),
-				branch: gitRevSync.branch(),
+				commit: execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim(),
+				branch: execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim(),
+				author: execSync('git log -1 --pretty=format:"%an"', { encoding: 'utf8' }).trim(),
 			};
 		} catch (e) {
-			return { commit: null, branch: null };
+			console.error(`[MetricsReporter] Failed to get Git info: ${(e as Error).message}`);
+			return { commit: null, branch: null, author: null };
 		}
 	}
 }

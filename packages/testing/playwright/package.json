@@ -29,12 +29,12 @@
     "@types/lodash": "catalog:",
     "eslint-plugin-playwright": "2.2.2",
     "generate-schema": "2.6.0",
-    "git-rev-sync": "^3.0.2",
     "n8n": "workspace:*",
     "n8n-containers": "workspace:*",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
-    "tsx": "catalog:"
+    "tsx": "catalog:",
+    "zod": "catalog:"
   }
 }

@@ -1,6 +1,6 @@
 # Metrics Reporter Usage
 
-Automatically collect performance metrics from Playwright tests and send them to BigQuery.
+Automatically collect performance metrics from Playwright tests and send them to a Webhook.
 
 ## Setup
 
