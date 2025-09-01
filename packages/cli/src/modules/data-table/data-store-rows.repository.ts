@@ -12,8 +12,8 @@ import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 } from 'n8n-workflow';
 
-import { DataStoreColumn } from './data-store-column.entity';
 import { DataStoreUserTableName } from './data-store.types';
+import { DataTableColumn } from './data-table-column.entity';
 import {
 	addColumnQuery,
 	deleteColumnQuery,
@@ -47,6 +47,7 @@ function getConditionAndParams(
 	filter: ListDataStoreContentFilter['filters'][number],
 	index: number,
 	dbType: DataSourceOptions['type'],
+	columns?: DataTableColumn[],
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
 	const column = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(filter.columnName, dbType)}`;
@@ -60,38 +61,50 @@ function getConditionAndParams(
 		}
 	}
 
+	// Find the column type to normalize the value consistently
+	const columnInfo = columns?.find((col) => col.name === filter.columnName);
+	const value = columnInfo ? normalizeValue(filter.value, columnInfo?.type, dbType) : filter.value;
+
+	// Handle operators that map directly to SQL operators
+	const operators: Record<string, string> = {
+		eq: '=',
+		neq: '!=',
+		gt: '>',
+		gte: '>=',
+		lt: '<',
+		lte: '<=',
+	};
+
+	if (operators[filter.condition]) {
+		return [`${column} ${operators[filter.condition]} :${paramName}`, { [paramName]: value }];
+	}
+
 	switch (filter.condition) {
-		case 'eq':
-			return [`${column} = :${paramName}`, { [paramName]: filter.value }];
-
-		case 'neq':
-			return [`${column} != :${paramName}`, { [paramName]: filter.value }];
-
 		// case-sensitive
 		case 'like':
 			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
-				const globValue = toSqliteGlobFromPercent(filter.value as string);
+				const globValue = toSqliteGlobFromPercent(value as string);
 				return [`${column} GLOB :${paramName}`, { [paramName]: globValue }];
 			}
 
 			if (['mysql', 'mariadb'].includes(dbType)) {
-				const escapedValue = escapeLikeSpecials(filter.value as string);
+				const escapedValue = escapeLikeSpecials(value as string);
 				return [`${column} LIKE BINARY :${paramName} ESCAPE '\\\\'`, { [paramName]: escapedValue }];
 			}
 
 			// PostgreSQL: LIKE is case-sensitive
 			if (dbType === 'postgres') {
-				const escapedValue = escapeLikeSpecials(filter.value as string);
+				const escapedValue = escapeLikeSpecials(value as string);
 				return [`${column} LIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
 			}
 
 			// Generic fallback
-			return [`${column} LIKE :${paramName}`, { [paramName]: filter.value }];
+			return [`${column} LIKE :${paramName}`, { [paramName]: value }];
 
 		// case-insensitive
 		case 'ilike':
 			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
-				const escapedValue = escapeLikeSpecials(filter.value as string);
+				const escapedValue = escapeLikeSpecials(value as string);
 				return [
 					`UPPER(${column}) LIKE UPPER(:${paramName}) ESCAPE '\\'`,
 					{ [paramName]: escapedValue },
@@ -99,7 +112,7 @@ function getConditionAndParams(
 			}
 
 			if (['mysql', 'mariadb'].includes(dbType)) {
-				const escapedValue = escapeLikeSpecials(filter.value as string);
+				const escapedValue = escapeLikeSpecials(value as string);
 				return [
 					`UPPER(${column}) LIKE UPPER(:${paramName}) ESCAPE '\\\\'`,
 					{ [paramName]: escapedValue },
@@ -107,12 +120,15 @@ function getConditionAndParams(
 			}
 
 			if (dbType === 'postgres') {
-				const escapedValue = escapeLikeSpecials(filter.value as string);
+				const escapedValue = escapeLikeSpecials(value as string);
 				return [`${column} ILIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
 			}
 
-			return [`UPPER(${column}) LIKE UPPER(:${paramName})`, { [paramName]: filter.value }];
+			return [`UPPER(${column}) LIKE UPPER(:${paramName})`, { [paramName]: value }];
 	}
+
+	// This should never happen as all valid conditions are handled above
+	throw new Error(`Unsupported filter condition: ${filter.condition}`);
 }
 
 @Service()
@@ -124,19 +140,19 @@ export class DataStoreRowsRepository {
 
 	toTableName(dataStoreId: string): DataStoreUserTableName {
 		const { tablePrefix } = this.globalConfig.database;
-		return `${tablePrefix}data_store_user_${dataStoreId}`;
+		return `${tablePrefix}data_table_user_${dataStoreId}`;
 	}
 
 	async insertRows<T extends boolean | undefined>(
 		dataStoreId: string,
 		rows: DataStoreRows,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		returnData?: T,
 	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
 	async insertRows(
 		dataStoreId: string,
 		rows: DataStoreRows,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		returnData?: boolean,
 	): Promise<Array<DataStoreRowReturn | Pick<DataStoreRowReturn, 'id'>>> {
 		const inserted: Array<Pick<DataStoreRowReturn, 'id'>> = [];
@@ -144,7 +160,6 @@ export class DataStoreRowsRepository {
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
 
 		const table = this.toTableName(dataStoreId);
-		const columnNames = columns.map((c) => c.name);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 			this.dataSource.driver.escape(x),
@@ -156,15 +171,16 @@ export class DataStoreRowsRepository {
 		// surprisingly awkward without Entities, e.g. `RETURNING id` explicitly does not aggregate
 		// and the `identifiers` array output of `execute()` is empty
 		for (const row of rows) {
+			// Fill missing columns with null values to support partial data insertion
+			const completeRow = { ...row };
 			for (const column of columns) {
-				row[column.name] = normalizeValue(row[column.name], column.type, dbType);
+				if (!(column.name in completeRow)) {
+					completeRow[column.name] = null;
+				}
+				completeRow[column.name] = normalizeValue(completeRow[column.name], column.type, dbType);
 			}
 
-			const query = this.dataSource
-				.createQueryBuilder()
-				.insert()
-				.into(table, columnNames)
-				.values(row);
+			const query = this.dataSource.createQueryBuilder().insert().into(table).values(completeRow);
 
 			if (useReturning) {
 				query.returning(returnData ? selectColumns.join(',') : 'id');
@@ -203,7 +219,7 @@ export class DataStoreRowsRepository {
 		dataStoreId: string,
 		setData: Record<string, DataStoreColumnJsType | null>,
 		whereData: Record<string, DataStoreColumnJsType | null>,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		returnData: boolean = false,
 	) {
 		const dbType = this.dataSource.options.type;
@@ -264,14 +280,14 @@ export class DataStoreRowsRepository {
 		dataStoreId: string,
 		matchFields: string[],
 		rows: DataStoreRows,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		returnData?: T,
 	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async upsertRows(
 		dataStoreId: string,
 		matchFields: string[],
 		rows: DataStoreRows,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		returnData?: boolean,
 	) {
 		returnData = returnData ?? false;
@@ -329,7 +345,7 @@ export class DataStoreRowsRepository {
 
 	async createTableWithColumns(
 		dataStoreId: string,
-		columns: DataStoreColumn[],
+		columns: DataTableColumn[],
 		queryRunner: QueryRunner,
 	) {
 		const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
@@ -346,7 +362,7 @@ export class DataStoreRowsRepository {
 
 	async addColumn(
 		dataStoreId: string,
-		column: DataStoreColumn,
+		column: DataTableColumn,
 		queryRunner: QueryRunner,
 		dbType: DataSourceOptions['type'],
 	) {
@@ -362,8 +378,12 @@ export class DataStoreRowsRepository {
 		await queryRunner.query(deleteColumnQuery(this.toTableName(dataStoreId), columnName, dbType));
 	}
 
-	async getManyAndCount(dataStoreId: string, dto: ListDataStoreContentQueryDto) {
-		const [countQuery, query] = this.getManyQuery(dataStoreId, dto);
+	async getManyAndCount(
+		dataStoreId: string,
+		dto: ListDataStoreContentQueryDto,
+		columns?: DataTableColumn[],
+	) {
+		const [countQuery, query] = this.getManyQuery(dataStoreId, dto, columns);
 		const data: DataStoreRowsReturn = await query.select('*').getRawMany();
 		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 			count: number | string | null;
@@ -373,7 +393,7 @@ export class DataStoreRowsRepository {
 		return { count: count ?? -1, data };
 	}
 
-	async getManyByIds(dataStoreId: string, ids: number[], columns: DataStoreColumn[]) {
+	async getManyByIds(dataStoreId: string, ids: number[], columns: DataTableColumn[]) {
 		const table = this.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
@@ -404,11 +424,12 @@ export class DataStoreRowsRepository {
 	private getManyQuery(
 		dataStoreId: string,
 		dto: ListDataStoreContentQueryDto,
+		columns?: DataTableColumn[],
 	): [QueryBuilder, QueryBuilder] {
 		const query = this.dataSource.createQueryBuilder();
 
 		query.from(this.toTableName(dataStoreId), 'dataStore');
-		this.applyFilters(query, dto);
+		this.applyFilters(query, dto, columns);
 		const countQuery = query.clone().select('COUNT(*)');
 		this.applySorting(query, dto);
 		this.applyPagination(query, dto);
@@ -416,13 +437,17 @@ export class DataStoreRowsRepository {
 		return [countQuery, query];
 	}
 
-	private applyFilters(query: QueryBuilder, dto: ListDataStoreContentQueryDto): void {
+	private applyFilters(
+		query: QueryBuilder,
+		dto: ListDataStoreContentQueryDto,
+		columns?: DataTableColumn[],
+	): void {
 		const filters = dto.filter?.filters ?? [];
 		const filterType = dto.filter?.type ?? 'and';
 
 		const dbType = this.dataSource.options.type;
 		const conditionsAndParams = filters.map((filter, i) =>
-			getConditionAndParams(filter, i, dbType),
+			getConditionAndParams(filter, i, dbType, columns),
 		);
 
 		for (const [condition, params] of conditionsAndParams) {

@@ -10,8 +10,18 @@ export async function setupTestRequirements(
 	context: BrowserContext,
 	requirements: TestRequirements,
 ): Promise<void> {
-	const n8n = new n8nPage(page);
+	// 0. Setup browser storage before creating a new page
+	if (requirements.storage) {
+		await context.addInitScript((storage) => {
+			// Set localStorage items
+			for (const [key, value] of Object.entries(storage)) {
+				window.localStorage.setItem(key, value);
+			}
+		}, requirements.storage);
+	}
+
 	const api = new ApiHelpers(context.request);
+	const n8n = new n8nPage(page, api);
 
 	// 1. Setup frontend settings override
 	if (requirements.config?.settings) {
@@ -56,15 +66,5 @@ export async function setupTestRequirements(
 				throw new TestError(`Failed to create workflow ${name}: ${String(error)}`);
 			}
 		}
-	}
-
-	// 5. Setup browser storage
-	if (requirements.storage) {
-		await context.addInitScript((storage) => {
-			// Set localStorage items
-			for (const [key, value] of Object.entries(storage)) {
-				window.localStorage.setItem(key, value);
-			}
-		}, requirements.storage);
 	}
 }

@@ -77,6 +77,8 @@ export namespace ChatUI {
 		type: 'tool';
 		toolName: string;
 		toolCallId?: string;
+		displayTitle?: string; // tool display name like "Searching for node"
+		customDisplayTitle?: string; // tool call specific custom title like "Searching for OpenAI"
 		status: 'running' | 'completed' | 'error';
 		updates: Array<{
 			type: 'input' | 'output' | 'progress' | 'error';

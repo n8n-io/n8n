@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { BaseEntity } from '@n8n/typeorm';
 
 const YELLOW = '\x1b[33m';
 const CLEAR = '\x1b[0m';
@@ -35,9 +34,15 @@ export class DataStoreModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { DataStore } = await import('./data-store.entity');
-		const { DataStoreColumn } = await import('./data-store-column.entity');
+		const { DataTable } = await import('./data-table.entity');
+		const { DataTableColumn } = await import('./data-table-column.entity');
 
-		return [DataStore, DataStoreColumn] as unknown as Array<new () => BaseEntity>;
+		return [DataTable, DataTableColumn];
+	}
+
+	async context() {
+		const { DataStoreProxyService } = await import('./data-store-proxy.service');
+
+		return { dataStoreProxyProvider: Container.get(DataStoreProxyService) };
 	}
 }

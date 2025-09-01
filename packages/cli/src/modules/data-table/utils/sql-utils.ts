@@ -1,8 +1,4 @@
-import {
-	DATA_STORE_COLUMN_REGEX,
-	type DataStoreCreateColumnSchema,
-	type DataStoreColumn,
-} from '@n8n/api-types';
+import { DATA_STORE_COLUMN_REGEX, type DataStoreCreateColumnSchema } from '@n8n/api-types';
 import { DslColumn } from '@n8n/db';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import type {
@@ -14,6 +10,7 @@ import type {
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { DataStoreUserTableName } from '../data-store.types';
+import type { DataTableColumn } from '../data-table-column.entity';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -213,7 +210,7 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 	}
 }
 
-export function normalizeRows(rows: DataStoreRowsReturn, columns: DataStoreColumn[]) {
+export function normalizeRows(rows: DataStoreRowsReturn, columns: DataTableColumn[]) {
 	// we need to normalize system dates as well
 	const systemColumns = [
 		{ name: 'createdAt', type: 'date' },
@@ -262,21 +259,34 @@ export function normalizeRows(rows: DataStoreRowsReturn, columns: DataStoreColum
 	});
 }
 
+function formatDateForDatabase(date: Date, dbType?: DataSourceOptions['type']): string {
+	// MySQL/MariaDB DATETIME format doesn't accept ISO strings with 'Z' timezone
+	if (dbType === 'mysql' || dbType === 'mariadb') {
+		return date.toISOString().replace('T', ' ').replace('Z', '');
+	}
+	// PostgreSQL and SQLite accept ISO strings
+	return date.toISOString();
+}
+
 export function normalizeValue(
 	value: DataStoreColumnJsType,
 	columnType: string | undefined,
-	dbType: DataSourceOptions['type'],
+	dbType?: DataSourceOptions['type'],
 ): DataStoreColumnJsType {
-	if (['mysql', 'mariadb'].includes(dbType)) {
-		if (columnType === 'date') {
-			if (value instanceof Date) {
-				return value;
-			} else if (typeof value === 'string') {
-				const date = new Date(value);
-				if (!isNaN(date.getTime())) {
-					return date;
-				}
-			}
+	if (columnType !== 'date' || value === null || value === undefined) {
+		return value;
+	}
+
+	// Convert Date objects to appropriate string format for database parameter binding
+	if (value instanceof Date) {
+		return formatDateForDatabase(value, dbType);
+	}
+
+	if (typeof value === 'string') {
+		const date = new Date(value);
+		if (!isNaN(date.getTime())) {
+			// Convert parsed date strings to appropriate format
+			return formatDateForDatabase(date, dbType);
 		}
 	}
 

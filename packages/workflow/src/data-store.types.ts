@@ -5,7 +5,7 @@ export type DataStoreColumn = {
 	name: string;
 	type: DataStoreColumnType;
 	index: number;
-	dataStoreId: string;
+	dataTableId: string;
 };
 
 export type DataStore = {
@@ -15,7 +15,6 @@ export type DataStore = {
 	createdAt: Date;
 	updatedAt: Date;
 	projectId: string;
-	sizeBytes: number;
 };
 
 export type CreateDataStoreColumnOptions = Pick<DataStoreColumn, 'name' | 'type'> &
@@ -46,7 +45,7 @@ export type ListDataStoreContentFilter = {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq';
+		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
 		value: DataStoreColumnJsType;
 	}>;
 };
@@ -56,6 +55,11 @@ export type ListDataStoreRowsOptions = {
 	sortBy?: [string, 'ASC' | 'DESC'];
 	take?: number;
 	skip?: number;
+};
+
+export type UpdateDataStoreRowsOptions = {
+	filter: Record<string, DataStoreColumnJsType>;
+	data: DataStoreRow;
 };
 
 export type UpsertDataStoreRowsOptions = {
@@ -113,6 +117,8 @@ export interface IDataStoreProjectService {
 	): Promise<{ count: number; data: DataStoreRowsReturn }>;
 
 	insertRows(rows: DataStoreRows): Promise<DataStoreRowReturn[]>;
+
+	updateRows(options: UpdateDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
 
 	upsertRows(options: UpsertDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
 

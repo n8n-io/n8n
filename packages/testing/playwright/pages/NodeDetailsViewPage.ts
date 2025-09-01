@@ -20,7 +20,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterByLabel(labelName: string) {
-		return this.page.locator('.parameter-item').filter({ hasText: labelName });
+		return this.getContainer().locator('.parameter-item').filter({ hasText: labelName });
 	}
 
 	/**
@@ -70,6 +70,19 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('parameter-expression-preview-value');
 	}
 
+	getInlineExpressionEditorPreview() {
+		return this.page.getByTestId('inline-expression-editor-output');
+	}
+
+	async activateParameterExpressionEditor(parameterName: string) {
+		const parameterInput = this.getParameterInput(parameterName);
+		await parameterInput.click();
+		await this.page
+			.getByTestId(`${parameterName}-parameter-input-options-container`)
+			.getByTestId('radio-button-expression')
+			.click();
+	}
+
 	getEditPinnedDataButton() {
 		return this.page.getByTestId('ndv-edit-pinned-data');
 	}
@@ -106,8 +119,13 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getOutputTableRow(row).locator('td').nth(col);
 	}
 
+	/**
+	 * Get a cell from the output table body, this doesn't include the header row
+	 * @param row - The row index
+	 * @param col - The column index
+	 */
 	getOutputTbodyCell(row: number, col: number) {
-		return this.getOutputTableRow(row).locator('td').nth(col);
+		return this.getOutputTable().locator('tbody tr').nth(row).locator('td').nth(col);
 	}
 
 	// Pin data operations
@@ -205,7 +223,7 @@ export class NodeDetailsViewPage extends BasePage {
 	 * @param parameterName - The name of the parameter
 	 */
 	getParameterInputField(parameterName: string) {
-		return this.getParameterInput(parameterName).getByTestId('parameter-input-field');
+		return this.getParameterInput(parameterName).locator('input');
 	}
 
 	/**
@@ -262,9 +280,7 @@ export class NodeDetailsViewPage extends BasePage {
 	 * Ported from Cypress pattern with Playwright selectors
 	 */
 	getVisiblePopper() {
-		return this.page
-			.locator('.el-popper')
-			.filter({ hasNot: this.page.locator('[aria-hidden="true"]') });
+		return this.page.locator('.el-popper:visible');
 	}
 
 	/**
@@ -447,8 +463,62 @@ export class NodeDetailsViewPage extends BasePage {
 		}
 	}
 
+	async switchInputMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary'): Promise<void> {
+		await this.getInputPanel().getByRole('radio', { name: mode }).click();
+	}
+
+	async switchOutputMode(mode: 'Schema' | 'Table' | 'JSON' | 'Binary'): Promise<void> {
+		await this.getOutputPanel().getByRole('radio', { name: mode }).click();
+	}
+
 	getAssignmentCollectionContainer(paramName: string) {
 		return this.page.getByTestId(`assignment-collection-${paramName}`);
+	}
+
+	getJsonDataContainer() {
+		return this.getInputPanel().locator('.json-data');
+	}
+
+	getInputJsonProperty(propertyName: string) {
+		return this.getInputPanel()
+			.locator('.json-data')
+			.locator('span')
+			.filter({ hasText: new RegExp(`^"${propertyName}"$`) })
+			.first();
+	}
+
+	getInputJsonPropertyContaining(text: string) {
+		return this.getInputPanel()
+			.locator('.json-data')
+			.locator('span')
+			.filter({ hasText: `"${text}"` })
+			.first();
+	}
+
+	getInputSchemaItem(text: string) {
+		return this.getInputPanel()
+			.getByTestId('run-data-schema-item')
+			.locator('span')
+			.filter({ hasText: new RegExp(`^${text}$`) })
+			.first();
+	}
+
+	async selectInputNode(nodeName: string) {
+		const inputSelect = this.getInputPanel().getByTestId('ndv-input-select');
+		await inputSelect.click();
+		await this.page.getByRole('option', { name: nodeName }).click();
+	}
+
+	getInputTableHeader(index: number = 0) {
+		return this.getInputPanel().locator('table th').nth(index);
+	}
+
+	getInputTableCell(row: number, col: number) {
+		return this.getInputPanel().locator('table tbody tr').nth(row).locator('td').nth(col);
+	}
+
+	getInputTbodyCell(row: number, col: number) {
+		return this.getInputTableCell(row, col);
 	}
 
 	getAssignmentName(paramName: string, index = 0) {
@@ -456,5 +526,108 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment')
 			.nth(index)
 			.getByTestId('assignment-name');
+	}
+
+	getResourceMapperFieldsContainer() {
+		return this.page.getByTestId('mapping-fields-container');
+	}
+
+	getResourceMapperParameterInputs() {
+		return this.getResourceMapperFieldsContainer().getByTestId('parameter-input');
+	}
+
+	getResourceMapperSelectColumn() {
+		return this.page.getByTestId('matching-column-select');
+	}
+
+	getResourceMapperColumnsOptionsButton() {
+		return this.page.getByTestId('columns-parameter-input-options-container');
+	}
+
+	getResourceMapperRemoveFieldButton(fieldName: string) {
+		return this.page.getByTestId(`remove-field-button-${fieldName}`);
+	}
+
+	getResourceMapperRemoveAllFieldsOption() {
+		return this.page.getByTestId('action-removeAllFields');
+	}
+
+	async refreshResourceMapperColumns() {
+		const selectColumn = this.getResourceMapperSelectColumn();
+		await selectColumn.hover();
+		await selectColumn.getByTestId('action-toggle').click();
+		await expect(this.getVisiblePopper().getByTestId('action-refreshFieldList')).toBeVisible();
+		await this.getVisiblePopper().getByTestId('action-refreshFieldList').click();
+	}
+
+	getAddValueButton() {
+		return this.getNodeParameters().locator('input[placeholder*="Add Value"]');
+	}
+
+	getParameterSwitch(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.el-switch');
+	}
+
+	getParameterTextInput(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('input[type="text"]');
+	}
+
+	getInlineExpressionEditorContent() {
+		return this.getInlineExpressionEditorInput().locator('.cm-content');
+	}
+
+	getInputTable() {
+		return this.getInputPanel().locator('table');
+	}
+
+	getInputTableCellSpan(row: number, col: number, dataName: string) {
+		return this.getInputTableCell(row, col).locator(`span[data-name="${dataName}"]`).first();
+	}
+
+	getAddFieldToSortByButton() {
+		return this.getNodeParameters().getByText('Add Field To Sort By');
+	}
+
+	async toggleCodeMode(switchTo: 'Run Once for Each Item' | 'Run Once for All Items') {
+		await this.getParameterInput('mode').click();
+		await this.page.getByRole('option', { name: switchTo }).click();
+		// This is a workaround to wait for the code editor to reinitialize after the mode switch
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(2500);
+	}
+
+	// Pagination methods for output panel
+	getOutputPagination() {
+		return this.getOutputPanel().getByTestId('ndv-data-pagination');
+	}
+
+	getOutputPaginationPages() {
+		return this.getOutputPagination().locator('.el-pager li.number');
+	}
+
+	async navigateToOutputPage(pageNumber: number): Promise<void> {
+		const pages = this.getOutputPaginationPages();
+		await pages.nth(pageNumber - 1).click();
+	}
+
+	async getCurrentOutputPage(): Promise<number> {
+		const activePage = this.getOutputPagination().locator('.el-pager li.is-active').first();
+		const pageText = await activePage.textContent();
+		return parseInt(pageText ?? '1', 10);
+	}
+
+	async getOutputPageContent(row: number = 0, col: number = 0): Promise<string> {
+		return (await this.getOutputTbodyCell(row, col).textContent()) ?? '';
+	}
+
+	/**
+	 * Set parameter input value by clearing and filling (for parameters without standard test-id)
+	 * @param parameterName - The parameter name
+	 * @param value - The value to set
+	 */
+	async setParameterInputValue(parameterName: string, value: string): Promise<void> {
+		const input = this.getParameterInput(parameterName).locator('input');
+		await input.clear();
+		await input.fill(value);
 	}
 }

@@ -10,6 +10,7 @@ import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow'
 
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 @RestController('/dynamic-node-parameters')
 export class DynamicNodeParametersController {
@@ -70,9 +71,21 @@ export class DynamicNodeParametersController {
 			credentials,
 			currentNodeParameters,
 			nodeTypeAndVersion,
+			projectId,
 		} = payload;
 
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
+
+		if (projectId) {
+			if (await userHasScopes(req.user, ['dataStore:listProject'], false, { projectId })) {
+				// Project ID is currently only added on the additionalData if the user
+				// has data store listing permission for that project. We should consider
+				// turning this into a more general check, but as of now data stores are
+				// the only nodes with project specific resource locators where we want to ensure
+				// that only data stores belonging to their respective projects are shown.
+				additionalData.dataStoreProjectId = projectId;
+			}
+		}
 
 		return await this.service.getResourceLocatorResults(
 			methodName,

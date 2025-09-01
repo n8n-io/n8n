@@ -122,7 +122,10 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import {
+	createCanvasConnectionHandleString,
+	shouldIgnoreCanvasShortcut,
+} from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getSampleWorkflowByTemplateId } from '@/utils/templates/workflowSamples';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
@@ -769,7 +772,7 @@ function onSetNodeActivated(id: string, event?: MouseEvent) {
 		}
 	}
 
-	setNodeActive(id);
+	setNodeActive(id, 'canvas_default_view');
 }
 
 function onOpenSubWorkflow(id: string) {
@@ -917,7 +920,7 @@ async function onOpenRenameNodeModal(id: string) {
 
 	const activeElement = document.activeElement;
 
-	if (activeElement && activeElement.tagName === 'INPUT') {
+	if (activeElement && shouldIgnoreCanvasShortcut(activeElement)) {
 		// If an input is focused, do not open the rename modal
 		return;
 	}
@@ -1212,7 +1215,7 @@ function onSwitchActiveNode(nodeName: string) {
 	const node = workflowsStore.getNodeByName(nodeName);
 	if (!node) return;
 
-	setNodeActiveByName(nodeName);
+	setNodeActiveByName(nodeName, 'other');
 	selectNodes([node.id]);
 }
 
@@ -1773,7 +1776,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'openNodeDetail',
 		action: ({ node }: { node: string }) => {
-			setNodeActiveByName(node);
+			setNodeActiveByName(node, 'other');
 		},
 	});
 
@@ -1795,7 +1798,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'showNodeCreator',
 		action: () => {
-			ndvStore.activeNodeName = null;
+			ndvStore.unsetActiveNodeName();
 
 			void nextTick(() => {
 				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
@@ -1824,7 +1827,7 @@ function showAddFirstStepIfEnabled() {
 function updateNodeRoute(nodeId: string) {
 	const nodeUi = workflowsStore.findNodeByPartialId(nodeId);
 	if (nodeUi) {
-		setNodeActive(nodeUi.id);
+		setNodeActive(nodeUi.id, 'other');
 	} else {
 		toast.showToast({
 			title: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.title'),
@@ -1889,7 +1892,7 @@ watch(
 watch(
 	() => route.params.nodeId,
 	async (newId) => {
-		if (typeof newId !== 'string' || newId === '') ndvStore.activeNodeName = null;
+		if (typeof newId !== 'string' || newId === '') ndvStore.unsetActiveNodeName();
 		else {
 			updateNodeRoute(newId);
 		}

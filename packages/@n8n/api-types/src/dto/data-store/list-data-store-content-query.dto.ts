@@ -10,6 +10,10 @@ const FilterConditionSchema = z.union([
 	z.literal('neq'),
 	z.literal('like'),
 	z.literal('ilike'),
+	z.literal('gt'),
+	z.literal('gte'),
+	z.literal('lt'),
+	z.literal('lte'),
 ]);
 export type ListDataStoreContentFilterConditionType = z.infer<typeof FilterConditionSchema>;
 

@@ -37,7 +37,7 @@ const preBuiltAgentsCallout: INodeProperties = {
 			label: 'Voice assistant agent',
 			icon: 'bot',
 			type: 'openSampleWorkflowTemplate',
-			templateId: 'voice_assistant_agent_with_telegram_and_gcal',
+			templateId: 'voice_assistant_agent_with_telegram',
 		},
 	},
 	default: '',

@@ -46,6 +46,7 @@ import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { I18nT } from 'vue-i18n';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -72,6 +73,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext();
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -416,6 +418,7 @@ const onDragEnd = (el: HTMLElement) => {
 			src_has_credential: hasCredential,
 			src_element: el,
 			success: false,
+			view_shown: telemetryContext.view_shown,
 			...mappingTelemetry,
 		};
 
