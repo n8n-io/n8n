@@ -22,16 +22,16 @@ export function getSelectFields(
 			type: 'options',
 			options: [
 				{
-					name: 'Any Filter',
-					value: 'anyFilter',
+					name: 'Any Condition',
+					value: 'anyCondition',
 				},
 				{
-					name: 'All Filters',
-					value: 'allFilters',
+					name: 'All Conditions',
+					value: 'allCondition',
 				},
 			] satisfies Array<{ value: FilterType; name: string }>,
 			displayOptions,
-			default: 'anyFilter',
+			default: 'anyCondition',
 		},
 		{
 			displayName: 'Conditions',
