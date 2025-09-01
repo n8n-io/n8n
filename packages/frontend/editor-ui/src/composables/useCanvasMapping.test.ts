@@ -116,7 +116,8 @@ describe('useCanvasMapping', () => {
 							waitingForNext: false,
 						},
 						issues: {
-							items: [],
+							execution: [],
+							validation: [],
 							visible: false,
 						},
 						pinnedData: {
