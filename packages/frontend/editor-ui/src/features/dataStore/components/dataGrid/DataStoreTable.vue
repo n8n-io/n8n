@@ -361,6 +361,16 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 	if (col.type === 'date') {
 		columnDef.cellEditor = 'agDateCellEditor';
 		columnDef.cellEditorPopup = false;
+		// Add the same date formatter used for system date columns
+		columnDef.valueFormatter = (params: ValueFormatterParams<DataStoreRow>) => {
+			if (!params.value) return '';
+			const { date, time } = convertToDisplayDate(params.value as Date | string | number);
+			// Check if time is midnight (00:00:00) - if so, don't show the time
+			if (time === '00:00:00') {
+				return date;
+			}
+			return `${date}, ${time}`;
+		};
 	}
 	return {
 		...columnDef,
