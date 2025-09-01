@@ -1909,6 +1909,9 @@ describe('dataStore', () => {
 
 		it('should be able to update by date column', async () => {
 			// ARRANGE
+			const aliceBirthday = new Date('1990-01-02');
+			const bobBirthday = new Date('1995-01-01');
+
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
 				columns: [
@@ -1920,17 +1923,18 @@ describe('dataStore', () => {
 			});
 
 			await dataStoreService.insertRows(dataStoreId, project1.id, [
-				{ name: 'Alice', age: 30, active: true, birthday: new Date('1990-01-01') },
-				{ name: 'Bob', age: 25, active: false, birthday: new Date('1995-01-01') },
+				{ name: 'Alice', age: 30, active: true, birthday: aliceBirthday },
+				{ name: 'Bob', age: 25, active: false, birthday: bobBirthday },
 			]);
 
 			// ACT
+			const newBirthday = new Date('1990-01-03');
 			const result = await dataStoreService.updateRow(dataStoreId, project1.id, {
 				filter: {
 					type: 'and',
-					filters: [{ columnName: 'birthday', condition: 'eq', value: new Date('1990-01-01') }],
+					filters: [{ columnName: 'birthday', condition: 'eq', value: aliceBirthday }],
 				},
-				data: { birthday: new Date('1990-01-02') },
+				data: { birthday: newBirthday },
 			});
 
 			// ASSERT
@@ -1944,14 +1948,14 @@ describe('dataStore', () => {
 						name: 'Alice',
 						age: 30,
 						active: true,
-						birthday: new Date('1990-01-02'),
+						birthday: newBirthday,
 					}),
 					expect.objectContaining({
 						id: 2,
 						name: 'Bob',
 						age: 25,
 						active: false,
-						birthday: new Date('1995-01-01'),
+						birthday: bobBirthday,
 					}),
 				]),
 			);

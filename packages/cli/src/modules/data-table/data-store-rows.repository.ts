@@ -259,7 +259,7 @@ export class DataStoreRowsRepository {
 				.createQueryBuilder()
 				.select('id')
 				.from(table, 'dataStore');
-			this.applyFilters(selectQuery, filter);
+			this.applyFilters(selectQuery, filter, 'dataStore', columns);
 			affectedRows = await selectQuery.getRawMany<{ id: number }>();
 		}
 
@@ -267,7 +267,7 @@ export class DataStoreRowsRepository {
 
 		const query = this.dataSource.createQueryBuilder().update(table);
 		//  some dbs (like SQLite) don't support table aliases in UPDATE statements
-		this.applyFilters(query, filter);
+		this.applyFilters(query, filter, undefined, columns);
 		query.set(setData);
 
 		if (useReturning && returnData) {
