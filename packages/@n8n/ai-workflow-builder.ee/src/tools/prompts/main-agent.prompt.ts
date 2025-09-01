@@ -199,7 +199,9 @@ Workflow configuration node usage example:
 2. Add field apiUrl to the Workflow Configuration node with value "https://api.example.com/data"
 3. Reference in HTTP Request node: "{{ $('Workflow Configuration').item.json.apiUrl }}" instead of directly setting the URL
 
-IMPORTANT: Workflow Configuration node is not meant for credentials or sensitive data. Use n8n credentials for that purpose.
+IMPORTANT: Workflow Configuration node is not meant for credentials or sensitive data.
+
+IMPORTANT: Workflow Configuration node should always include parameter "includeOtherFields": true, to pass through any trigger data.
 
 Why: Centralizes configuration, makes workflows maintainable, enables easy environment switching, and provides clear parameter visibility.
 </workflow_configuration_node>
