@@ -17,6 +17,10 @@ const { nodeId, isReadOnly, subTitle, isEmbeddedInCanvas } = defineProps<{
 
 defineSlots<{ actions?: {} }>();
 
+const emit = defineEmits<{
+	dblclickHeader: [MouseEvent];
+}>();
+
 const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
 const { renameNode } = useCanvasOperations();
@@ -34,12 +38,6 @@ const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForW
 function handleValueChanged(parameterData: IUpdateInformation) {
 	if (parameterData.name === 'name' && parameterData.oldValue) {
 		void renameNode(parameterData.oldValue as string, parameterData.value as string);
-	}
-}
-
-function handleDoubleClickHeader() {
-	if (activeNode.value) {
-		ndvStore.setActiveNodeName(activeNode.value.name);
 	}
 }
 
@@ -86,7 +84,7 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 		hide-sub-connections
 		@value-changed="handleValueChanged"
 		@capture-wheel-body="handleCaptureWheelEvent"
-		@dblclick-header="handleDoubleClickHeader"
+		@dblclick-header="emit('dblclickHeader', $event)"
 	>
 		<template #actions>
 			<slot name="actions" />

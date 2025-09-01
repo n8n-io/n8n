@@ -4,6 +4,7 @@ import { AIAssistantPage } from './AIAssistantPage';
 import { BecomeCreatorCTAPage } from './BecomeCreatorCTAPage';
 import { CanvasPage } from './CanvasPage';
 import { CredentialsPage } from './CredentialsPage';
+import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
 import { IframePage } from './IframePage';
 import { InteractionsPage } from './InteractionsPage';
@@ -14,6 +15,7 @@ import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SettingsPage } from './SettingsPage';
 import { SidebarPage } from './SidebarPage';
 import { VersionsPage } from './VersionsPage';
+import { WorkerViewPage } from './WorkerViewPage';
 import { WorkflowActivationModal } from './WorkflowActivationModal';
 import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
@@ -33,7 +35,7 @@ export class n8nPage {
 	readonly aiAssistant: AIAssistantPage;
 	readonly becomeCreatorCTA: BecomeCreatorCTAPage;
 	readonly canvas: CanvasPage;
-
+	readonly demo: DemoPage;
 	readonly iframe: IframePage;
 	readonly interactions: InteractionsPage;
 	readonly ndv: NodeDetailsViewPage;
@@ -41,6 +43,7 @@ export class n8nPage {
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settings: SettingsPage;
 	readonly versions: VersionsPage;
+	readonly workerView: WorkerViewPage;
 	readonly workflows: WorkflowsPage;
 	readonly notifications: NotificationsPage;
 	readonly credentials: CredentialsPage;
@@ -66,7 +69,7 @@ export class n8nPage {
 		this.aiAssistant = new AIAssistantPage(page);
 		this.becomeCreatorCTA = new BecomeCreatorCTAPage(page);
 		this.canvas = new CanvasPage(page);
-
+		this.demo = new DemoPage(page);
 		this.iframe = new IframePage(page);
 		this.interactions = new InteractionsPage(page);
 		this.ndv = new NodeDetailsViewPage(page);
@@ -74,6 +77,7 @@ export class n8nPage {
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settings = new SettingsPage(page);
 		this.versions = new VersionsPage(page);
+		this.workerView = new WorkerViewPage(page);
 		this.workflows = new WorkflowsPage(page);
 		this.notifications = new NotificationsPage(page);
 		this.credentials = new CredentialsPage(page);

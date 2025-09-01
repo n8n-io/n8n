@@ -13,6 +13,7 @@ import type {
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import type { ExpressionLocalResolveContext } from './types/expressions';
 import { DATA_STORE_MODULE_NAME } from './features/dataStore/constants';
+import type { TelemetryContext } from './types/telemetry';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
@@ -982,6 +983,7 @@ export const PopOutWindowKey: InjectionKey<Ref<Window | undefined>> = Symbol('Po
 export const ExpressionLocalResolveContextSymbol: InjectionKey<
 	ComputedRef<ExpressionLocalResolveContext | undefined>
 > = Symbol('ExpressionLocalResolveContext');
+export const TelemetryContextSymbol: InjectionKey<TelemetryContext> = Symbol('TelemetryContext');
 
 export const APP_MODALS_ELEMENT_ID = 'app-modals';
 export const CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID = 'cm-tooltip-container';
