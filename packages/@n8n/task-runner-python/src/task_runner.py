@@ -130,6 +130,8 @@ class TaskRunner:
             await self.websocket_connection.close()
             self.logger.info("Disconnected from broker")
 
+        self.logger.info("Runner stopped")
+
     # ========== Messages ==========
 
     async def _listen_for_messages(self) -> None:
