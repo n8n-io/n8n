@@ -28,6 +28,9 @@ export function getConfigFromMetaTag(configName: string): string | null {
 	}
 }
 
+/**
+ * Utility function to read and parse configuration values from meta tags
+ */
 export function getAndParseConfigFromMetaTag<T>(configName: string): T | null {
 	const config = getConfigFromMetaTag(configName);
 	if (!config) {
