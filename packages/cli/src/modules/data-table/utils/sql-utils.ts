@@ -259,21 +259,34 @@ export function normalizeRows(rows: DataStoreRowsReturn, columns: DataTableColum
 	});
 }
 
+function formatDateForDatabase(date: Date, dbType?: DataSourceOptions['type']): string {
+	// MySQL/MariaDB DATETIME format doesn't accept ISO strings with 'Z' timezone
+	if (dbType === 'mysql' || dbType === 'mariadb') {
+		return date.toISOString().replace('T', ' ').replace('Z', '');
+	}
+	// PostgreSQL and SQLite accept ISO strings
+	return date.toISOString();
+}
+
 export function normalizeValue(
 	value: DataStoreColumnJsType,
 	columnType: string | undefined,
-	dbType: DataSourceOptions['type'],
+	dbType?: DataSourceOptions['type'],
 ): DataStoreColumnJsType {
-	if (['mysql', 'mariadb'].includes(dbType)) {
-		if (columnType === 'date') {
-			if (value instanceof Date) {
-				return value;
-			} else if (typeof value === 'string') {
-				const date = new Date(value);
-				if (!isNaN(date.getTime())) {
-					return date;
-				}
-			}
+	if (columnType !== 'date' || value === null || value === undefined) {
+		return value;
+	}
+
+	// Convert Date objects to appropriate string format for database parameter binding
+	if (value instanceof Date) {
+		return formatDateForDatabase(value, dbType);
+	}
+
+	if (typeof value === 'string') {
+		const date = new Date(value);
+		if (!isNaN(date.getTime())) {
+			// Convert parsed date strings to appropriate format
+			return formatDateForDatabase(date, dbType);
 		}
 	}
 
