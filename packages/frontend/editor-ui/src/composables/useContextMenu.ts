@@ -24,6 +24,7 @@ export type ContextMenuAction =
 	| 'copy'
 	| 'toggle_activation'
 	| 'duplicate'
+	| 'update_node_version'
 	| 'execute'
 	| 'rename'
 	| 'toggle_pin'
@@ -100,6 +101,11 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 
 	const hasPinData = (node: INode): boolean => {
 		return !!workflowsStore.pinDataByNodeName(node.name);
+	};
+
+	const isLatestNodeVersion = (node: INode): boolean => {
+		const latestVersion = Math.max(...nodeTypesStore.getNodeVersions(node.type));
+		return node.typeVersion === latestVersion;
 	};
 
 	const close = () => {
@@ -232,6 +238,13 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 					shortcut: { metaKey: true, keys: ['D'] },
 					disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 				},
+				nodes.length === 1 &&
+					!onlyStickies &&
+					!isLatestNodeVersion(nodes[0]) && {
+						id: 'update_node_version',
+						label: i18n.baseText('contextMenu.updateNodeVersion'),
+						disabled: isReadOnly.value || !canDuplicateNode(nodes[0]),
+					},
 				...layoutActions,
 				...extractionActions,
 				...selectionActions,
