@@ -192,6 +192,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return await this.page.request.get(path);
 	}
 
+	getWebhookUrl() {
+		return this.page.locator('.webhook-url').textContent();
+	}
+
 	getVisiblePoppers() {
 		return this.page.locator('.el-popper:visible');
 	}
@@ -503,8 +507,12 @@ export class NodeDetailsViewPage extends BasePage {
 			.first();
 	}
 
+	getNodeInputOptions() {
+		return this.getInputPanel().getByTestId('ndv-input-select');
+	}
+
 	async selectInputNode(nodeName: string) {
-		const inputSelect = this.getInputPanel().getByTestId('ndv-input-select');
+		const inputSelect = this.getNodeInputOptions();
 		await inputSelect.click();
 		await this.page.getByRole('option', { name: nodeName }).click();
 	}
@@ -629,5 +637,99 @@ export class NodeDetailsViewPage extends BasePage {
 		const input = this.getParameterInput(parameterName).locator('input');
 		await input.clear();
 		await input.fill(value);
+	}
+
+	// Error handling methods for run errors
+	getNodeRunErrorMessage() {
+		return this.page.getByTestId('node-error-message');
+	}
+
+	getNodeRunErrorDescription() {
+		return this.page.getByTestId('node-error-description');
+	}
+
+	getNodeRunErrorIndicator() {
+		return this.page.getByTestId('ndv-data-container').locator('.has-run-error');
+	}
+
+	getNodeRunTooltipIndicator() {
+		return this.page.getByTestId('ndv-data-container').locator('[class*="error"]');
+	}
+
+	// Run selector methods for linking input/output data
+	getInputRunSelector() {
+		return this.getInputPanel().getByTestId('run-selector');
+	}
+
+	getOutputRunSelector() {
+		return this.getOutputPanel().getByTestId('run-selector');
+	}
+
+	async toggleOutputRunLinking() {
+		await this.page.getByTestId('ndv-output-run-linking').click();
+	}
+
+	async changeInputRunSelector(value: string) {
+		const selector = this.getInputRunSelector();
+		await selector.click();
+		await this.page.getByRole('option', { name: value }).click();
+	}
+
+	async changeOutputRunSelector(value: string) {
+		const selector = this.getOutputRunSelector();
+		await selector.click();
+		await this.page.getByRole('option', { name: value }).click();
+	}
+
+	// Schema view methods
+	getOutputDisplayMode() {
+		return this.getOutputPanel().getByTestId('ndv-output-display-mode');
+	}
+
+	getSchemaViewItems() {
+		return this.getOutputPanel().locator('[data-test-id="run-data-schema-item"]');
+	}
+
+	getSchemaItem(key: string) {
+		return this.getSchemaViewItems().filter({ hasText: key });
+	}
+
+	async expandSchemaItem(itemText: string) {
+		const item = this.getSchemaItem(itemText);
+		await item.locator('.toggle').click();
+	}
+
+	getPaginationContainer() {
+		return this.getOutputPanel().locator('[class*="_pagination"]');
+	}
+
+	// Additional NDV methods
+	getExecuteNodeButton() {
+		return this.page.getByTestId('node-execute-button');
+	}
+
+	getTriggerPanelExecuteButton() {
+		return this.page.getByTestId('trigger-execute-button');
+	}
+
+	// Code Editor methods
+	async openCodeEditorFullscreen() {
+		await this.page.getByTestId('code-editor-fullscreen-button').click();
+	}
+
+	getCodeEditorFullscreen() {
+		return this.page.getByTestId('code-editor-fullscreen').locator('.cm-content');
+	}
+
+	getCodeEditorDialog() {
+		return this.page.locator('.el-dialog');
+	}
+
+	async closeCodeEditorDialog() {
+		await this.getCodeEditorDialog().locator('.el-dialog__close').click();
+	}
+
+	getWebhookTriggerListening() {
+		return this.page.getByTestId('trigger-listening');
 	}
 }
