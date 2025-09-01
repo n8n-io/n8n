@@ -131,6 +131,11 @@ export function useSidebarItems() {
 			}),
 	);
 
+	const personalChildrenItems = computed(() => {
+		if (!projectsStore.personalProject) return [];
+		return convertToTreeStructure(projectsStore.personalProject.id);
+	});
+
 	const topItems = computed<IMenuElement[]>(() => {
 		return [
 			{
@@ -146,7 +151,10 @@ export function useSidebarItems() {
 				label: 'Personal',
 				icon: 'user',
 				route: { to: `/projects/${projectsStore.personalProject?.id}/workflows` },
-				children: convertToTreeStructure(projectsStore.personalProject?.id as string),
+				children:
+					personalChildrenItems.value.length > 0
+						? personalChildrenItems.value
+						: [{ id: 'empty', label: 'No workflows or folders', type: 'empty', available: false }],
 				type: 'project',
 				available: true,
 			},
