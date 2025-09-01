@@ -34,6 +34,7 @@ const {
 	runDataIterations,
 	isDisabled,
 	render,
+	isOutdated,
 } = useCanvasNode();
 const { isExecuting } = useCanvas();
 
@@ -123,6 +124,18 @@ const commonClasses = computed(() => [
 		</N8nTooltip>
 	</div>
 	<div
+		v-else-if="isOutdated"
+		data-test-id="canvas-node-status-outdated"
+		:class="[...commonClasses, $style.outdated]"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				{{ i18n.baseText('node.outdated') }}
+			</template>
+			<N8nIcon icon="arrow-up" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
 		v-else-if="hasRunData"
 		data-test-id="canvas-node-status-success"
 		:class="[...commonClasses, $style.runData]"
@@ -192,5 +205,9 @@ const commonClasses = computed(() => [
 
 .disabled {
 	color: var(--color-foreground-xdark);
+}
+
+.outdated {
+	color: var(--color-node-outdated-border);
 }
 </style>

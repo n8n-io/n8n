@@ -37,6 +37,7 @@ const {
 	hasRunData,
 	hasIssues,
 	render,
+	isOutdated,
 } = useCanvasNode();
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
@@ -62,6 +63,7 @@ const classes = computed(() => {
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
+		[$style.outdated]: isOutdated.value,
 	};
 });
 
@@ -313,6 +315,13 @@ function onActivate(event: MouseEvent) {
 		--canvas-node--border-color: var(
 			--color-canvas-node-waiting-border-color,
 			var(--color-secondary)
+		);
+	}
+
+	&.outdated {
+		--canvas-node--border-color: var(
+			--color-canvas-node-outdated-border-color,
+			var(--color-warning-tint-1)
 		);
 	}
 }

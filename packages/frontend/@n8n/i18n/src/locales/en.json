@@ -1253,6 +1253,7 @@
 	"node.issues": "Issues",
 	"node.dirty": "Node configuration changed. Output data may change when this node is run again",
 	"node.subjectToChange": "Because of changes in the workflow, output data may change when this node is run again",
+	"node.outdated": "This node version is outdated. Update to the latest version for new features and improvements",
 	"node.nodeIsExecuting": "Node is executing",
 	"node.nodeIsWaitingTill": "Node is waiting until {date} {time}",
 	"node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall": "The node is waiting for an incoming webhook call (indefinitely)",
