@@ -61,11 +61,11 @@ def _parse_task_settings(d: dict) -> BrokerTaskSettings:
             node_mode=node_mode,
             continue_on_fail=continue_on_fail,
             items=items,
-            can_log=can_log,
             workflow_name=workflow_name,
             workflow_id=workflow_id,
             node_name=node_name,
             node_id=node_id,
+            can_log=can_log,
         ),
     )
 
