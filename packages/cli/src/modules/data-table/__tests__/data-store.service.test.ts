@@ -3,6 +3,7 @@ import type { AddDataStoreColumnDto, CreateDataStoreColumnDto } from '@n8n/api-t
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { DataStoreRow } from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from '../data-store-rows.repository';
 import { DataStoreRepository } from '../data-store.repository';
@@ -842,18 +843,17 @@ describe('dataStore', () => {
 				{},
 			);
 			expect(count).toEqual(4);
-			expect(data).toEqual(
-				rows.map((row, i) =>
-					expect.objectContaining({
+
+			const expected = rows.map(
+				(row, i) =>
+					expect.objectContaining<DataStoreRow>({
 						...row,
 						id: i + 1,
-						c1: row.c1,
-						c2: row.c2,
 						c3: typeof row.c3 === 'string' ? new Date(row.c3) : row.c3,
-						c4: row.c4,
-					}),
-				),
+					}) as jest.AsymmetricMatcher,
 			);
+
+			expect(data).toEqual(expected);
 		});
 
 		it('inserts a row even if it matches with the existing one', async () => {
