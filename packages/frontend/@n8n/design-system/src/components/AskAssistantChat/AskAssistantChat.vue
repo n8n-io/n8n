@@ -67,7 +67,9 @@ function normalizeMessages(messages: ChatUI.AssistantMessage[]): ChatUI.Assistan
 
 // filter out these messages so that tool collapsing works correctly
 function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
-	return messages.filter((message) => Boolean(getSupportedMessageComponent(message.type)));
+	return messages.filter(
+		(message) => Boolean(getSupportedMessageComponent(message.type)) || message.type === 'custom',
+	);
 }
 
 function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
