@@ -50,11 +50,13 @@ export function getSelectFields(
 					name: 'conditions',
 					values: [
 						{
-							displayName: 'Field Name or ID',
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+							displayName: 'Column Name',
 							name: 'keyName',
 							type: 'options',
+							// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 							description:
-								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+								'Choose from the list, or specify using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 							typeOptions: {
 								loadOptionsDependsOn: [DATA_TABLE_ID_FIELD],
 								loadOptionsMethod: 'getDataTableColumns',
@@ -74,7 +76,7 @@ export function getSelectFields(
 							default: 'eq',
 						},
 						{
-							displayName: 'Field Value',
+							displayName: 'Column Value',
 							name: 'keyValue',
 							type: 'string',
 							default: '',
