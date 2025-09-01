@@ -7,8 +7,7 @@ import { useToast } from '@/composables/useToast';
 import { useClipboard } from '@/composables/useClipboard';
 import { useDebugInfo } from '@/composables/useDebugInfo';
 import { useI18n } from '@n8n/i18n';
-import { useFileDownload } from '@/composables/useFileDownload';
-import { getThirdPartyLicensesDownloadUrl } from '@n8n/rest-api-client';
+import { getThirdPartyLicenses } from '@n8n/rest-api-client';
 
 const modalBus = createEventBus();
 const toast = useToast();
@@ -16,15 +15,26 @@ const i18n = useI18n();
 const debugInfo = useDebugInfo();
 const clipboard = useClipboard();
 const rootStore = useRootStore();
-const { downloadFile } = useFileDownload();
 
 const closeDialog = () => {
 	modalBus.emit('close');
 };
 
 const downloadThirdPartyLicenses = async () => {
-	const url = getThirdPartyLicensesDownloadUrl(rootStore.restApiContext);
-	await downloadFile(url);
+	try {
+		const thirdPartyLicenses = await getThirdPartyLicenses(rootStore.restApiContext);
+
+		const blob = new File([thirdPartyLicenses], 'THIRD_PARTY_LICENSES.md', {
+			type: 'text/markdown',
+		});
+		window.open(URL.createObjectURL(blob));
+	} catch (error) {
+		toast.showToast({
+			title: i18n.baseText('about.thirdPartyLicenses.downloadError'),
+			message: error.message,
+			type: 'error',
+		});
+	}
 };
 
 const copyDebugInfoToClipboard = async () => {

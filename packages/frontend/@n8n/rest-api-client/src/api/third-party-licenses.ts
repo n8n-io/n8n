@@ -1,5 +1,10 @@
+import { request } from '../utils';
 import type { IRestApiContext } from '../types';
 
-export function getThirdPartyLicensesDownloadUrl(context: IRestApiContext): string {
-	return `${context.baseUrl}/third-party-licenses`;
+export async function getThirdPartyLicenses(context: IRestApiContext): Promise<string> {
+	return await request({
+		method: 'GET',
+		baseURL: context.baseUrl,
+		endpoint: '/third-party-licenses',
+	});
 }
