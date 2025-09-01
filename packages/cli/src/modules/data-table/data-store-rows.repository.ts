@@ -9,6 +9,7 @@ import {
 	SelectQueryBuilder,
 	UpdateQueryBuilder,
 	In,
+	ObjectLiteral,
 } from '@n8n/typeorm';
 import {
 	DataStoreColumnJsType,
@@ -462,8 +463,8 @@ export class DataStoreRowsRepository {
 		return [countQuery, query];
 	}
 
-	private applyFilters(
-		query: SelectQueryBuilder<any> | UpdateQueryBuilder<any>,
+	private applyFilters<T extends ObjectLiteral>(
+		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T>,
 		filter: DataStoreFilter,
 		tableReference?: string,
 		columns?: DataTableColumn[],
