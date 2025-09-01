@@ -57,6 +57,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	blur: [];
 	update: [value: IUpdateInformation];
+	hover: [hovered: boolean];
 }>();
 
 const i18n = useI18n();
@@ -66,6 +67,7 @@ const eventBus = ref(createEventBus());
 const focused = ref(false);
 const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
+const wrapperHovered = ref(false);
 
 const ndvStore = useNDVStore();
 const telemetry = useTelemetry();
@@ -137,6 +139,14 @@ function onBlur() {
 
 function onMenuExpanded(expanded: boolean) {
 	menuExpanded.value = expanded;
+}
+
+function onWrapperMouseEnter() {
+	wrapperHovered.value = true;
+}
+
+function onWrapperMouseLeave() {
+	wrapperHovered.value = false;
 }
 
 function optionSelected(command: string) {
@@ -249,6 +259,10 @@ watch(
 	},
 );
 
+watch(wrapperHovered, (hovered) => {
+	emit('hover', hovered);
+});
+
 const parameterInputWrapper = useTemplateRef('parameterInputWrapper');
 const isSingleLineInput: ComputedRef<boolean> = computed(
 	() => parameterInputWrapper.value?.isSingleLineInput ?? false,
@@ -304,7 +318,10 @@ function removeOverride(clearField = false) {
 		:options-position="optionsPosition"
 		:bold="false"
 		:size="label.size"
+		:input-name="parameter.name"
 		color="text-dark"
+		@mouseenter="onWrapperMouseEnter"
+		@mouseleave="onWrapperMouseLeave"
 	>
 		<template
 			v-if="showOverrideButton && !isSingleLineInput && optionsPosition === 'top'"
@@ -328,6 +345,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
@@ -390,6 +408,7 @@ function removeOverride(clearField = false) {
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
 				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>

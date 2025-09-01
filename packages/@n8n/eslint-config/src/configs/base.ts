@@ -161,6 +161,8 @@ export const baseConfig = tseslint.config(
 			 */
 			'@typescript-eslint/consistent-type-imports': 'error',
 
+			'@typescript-eslint/consistent-type-exports': 'error',
+
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
 			 */
@@ -369,7 +371,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://eslint.org/docs/rules/prefer-spread
 			 */
-			'prefer-spread': 'error',
+			'prefer-spread': 'off',
 
 			// These are tuned off since we use `noUnusedLocals` and `noUnusedParameters` now
 			'no-unused-vars': 'off',

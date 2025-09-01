@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import set from 'lodash/set';
-import { isHtmlRenderedContentType, sandboxHtmlResponse } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -19,12 +18,13 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	WAIT_NODE_TYPE,
+	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
-import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
-import { configuredOutputs } from './utils/outputs';
 import { getBinaryResponse } from './utils/binary';
+import { configuredOutputs } from './utils/outputs';
+import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
 
 const respondWithProperty: INodeProperties = {
 	displayName: 'Respond With',
@@ -251,7 +251,18 @@ export class RespondToWebhook implements INodeType {
 				},
 				description: 'The name of the node input field with the binary data',
 			},
-
+			{
+				displayName:
+					'To avoid unexpected behavior, add a "Content-Type" response header with the appropriate value',
+				name: 'contentTypeNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						respondWith: ['text'],
+					},
+				},
+			},
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -334,6 +345,14 @@ export class RespondToWebhook implements INodeType {
 		],
 	};
 
+	async onMessage(
+		context: IExecuteFunctions,
+		_data: INodeExecutionData,
+	): Promise<INodeExecutionData[][]> {
+		const inputData = context.getInputData();
+		return [inputData];
+	}
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const nodeVersion = this.getNode().typeVersion;
@@ -347,6 +366,10 @@ export class RespondToWebhook implements INodeType {
 
 		let response: IN8nHttpFullResponse;
 
+		const connectedNodes = this.getParentNodes(this.getNode().name, {
+			includeNodeParameters: true,
+		});
+
 		const options = this.getNodeParameter('options', 0, {});
 
 		const shouldStream =
@@ -354,7 +377,6 @@ export class RespondToWebhook implements INodeType {
 
 		try {
 			if (nodeVersion >= 1.1) {
-				const connectedNodes = this.getParentNodes(this.getNode().name);
 				if (!connectedNodes.some(({ type }) => WEBHOOK_NODE_TYPES.includes(type))) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -378,9 +400,6 @@ export class RespondToWebhook implements INodeType {
 					headers[header.name?.toLowerCase() as string] = header.value?.toString();
 				}
 			}
-
-			const hasHtmlContentType =
-				headers['content-type'] && isHtmlRenderedContentType(headers['content-type'] as string);
 
 			let statusCode = (options.responseCode as number) || 200;
 			let responseBody: IN8nHttpResponse | Readable;
@@ -457,13 +476,9 @@ export class RespondToWebhook implements INodeType {
 					this.sendChunk('end', 0);
 				}
 			} else if (respondWith === 'text') {
-				// If a user doesn't set the content-type header and uses html, the html can still be rendered on the browser
 				const rawBody = this.getNodeParameter('responseBody', 0) as string;
-				if (hasHtmlContentType || !headers['content-type']) {
-					responseBody = sandboxHtmlResponse(rawBody);
-				} else {
-					responseBody = rawBody;
-				}
+				responseBody = rawBody;
+
 				// Send the raw body to the stream
 				if (shouldStream) {
 					this.sendChunk('begin', 0);
@@ -507,13 +522,38 @@ export class RespondToWebhook implements INodeType {
 				);
 			}
 
+			const chatTrigger = connectedNodes.find(
+				(node) => node.type === CHAT_TRIGGER_NODE_TYPE && !node.disabled,
+			);
+
+			const parameters = chatTrigger?.parameters as {
+				options: { responseMode: string };
+			};
+
+			// if workflow is started from chat trigger and responseMode is set to "responseNodes"
+			// response to chat will be send by ChatService
 			if (
-				hasHtmlContentType &&
-				respondWith !== 'text' &&
-				respondWith !== 'binary' &&
-				responseBody
+				chatTrigger &&
+				!chatTrigger.disabled &&
+				parameters.options.responseMode === 'responseNodes'
 			) {
-				responseBody = sandboxHtmlResponse(JSON.stringify(responseBody as string));
+				let message = '';
+
+				if (responseBody && typeof responseBody === 'object' && !Array.isArray(responseBody)) {
+					message =
+						(((responseBody as IDataObject).output ??
+							(responseBody as IDataObject).text ??
+							(responseBody as IDataObject).message) as string) ?? '';
+
+					if (message === '' && Object.keys(responseBody).length > 0) {
+						try {
+							message = JSON.stringify(responseBody, null, 2);
+						} catch (e) {}
+					}
+				}
+
+				await this.putExecutionToWait(WAIT_INDEFINITELY);
+				return [[{ json: {}, sendMessage: message }]];
 			}
 
 			response = {

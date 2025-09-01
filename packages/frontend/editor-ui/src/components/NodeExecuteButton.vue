@@ -66,6 +66,8 @@ const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
 }>();
 
+const slots = defineSlots<{ persistentTooltipContent?: {} }>();
+
 defineOptions({
 	inheritAttrs: false,
 });
@@ -330,7 +332,7 @@ async function onClick() {
 	}
 
 	if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
-		ndvStore.setActiveNodeName(null);
+		ndvStore.unsetActiveNodeName();
 		workflowsStore.chatPartialExecutionDestinationNode = props.nodeName;
 		nodeViewEventBus.emit('openChat');
 	} else if (isListeningForEvents.value) {
@@ -390,9 +392,14 @@ async function onClick() {
 <template>
 	<N8nTooltip
 		:placement="tooltipPlacement ?? 'right'"
-		:disabled="!tooltipText"
-		:content="tooltipText"
+		:disabled="!tooltipText && !slots.persistentTooltipContent"
+		:visible="slots.persistentTooltipContent ? true : undefined"
 	>
+		<template #content>
+			<slot name="persistentTooltipContent">
+				{{ tooltipText }}
+			</slot>
+		</template>
 		<N8nButton
 			v-bind="$attrs"
 			:loading="isLoading"

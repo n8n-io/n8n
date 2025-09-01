@@ -1,16 +1,17 @@
 import { type LlmTokenUsageData, type IAiDataContent } from '@/Interface';
 import { addTokenUsageData, emptyTokenUsageData } from '@/utils/aiUtils';
-import {
-	type INodeExecutionData,
-	type ITaskData,
-	type ITaskDataConnections,
-	type NodeConnectionType,
-	type Workflow,
+import type {
+	IConnections,
+	INodeExecutionData,
+	ITaskData,
+	ITaskDataConnections,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { splitTextBySearch } from '@/utils/stringUtils';
 import { escapeHtml } from 'xss';
 import type MarkdownIt from 'markdown-it';
 import { unescapeAll } from 'markdown-it/lib/common/utils';
+import * as workflowUtils from 'n8n-workflow/common';
 
 export interface AIResult {
 	node: string;
@@ -51,26 +52,28 @@ function createNode(
 
 export function getTreeNodeData(
 	nodeName: string,
-	workflow: Workflow,
+	connectionsBySourceNode: IConnections,
 	aiData: AIResult[] | undefined,
 	runIndex: number,
 ): TreeNode[] {
-	return getTreeNodeDataRec(undefined, nodeName, 0, workflow, aiData, runIndex);
+	return getTreeNodeDataRec(undefined, nodeName, 0, connectionsBySourceNode, aiData, runIndex);
 }
 
 function getTreeNodeDataRec(
 	parent: TreeNode | undefined,
 	nodeName: string,
 	currentDepth: number,
-	workflow: Workflow,
+	connectionsBySourceNode: IConnections,
 	aiData: AIResult[] | undefined,
 	runIndex: number,
 ): TreeNode[] {
-	const connections = workflow.connectionsByDestinationNode[nodeName];
+	const connectionsByDestinationNode =
+		workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
+	const nodeConnections = connectionsByDestinationNode[nodeName];
 	const resultData =
 		aiData?.filter((data) => data.node === nodeName && runIndex === data.runIndex) ?? [];
 
-	if (!connections) {
+	if (!nodeConnections) {
 		return resultData.map((d) => createNode(parent, nodeName, currentDepth, d.runIndex, d));
 	}
 
@@ -88,14 +91,26 @@ function getTreeNodeDataRec(
 	});
 
 	// Get the first level of children
-	const connectedSubNodes = workflow.getParentNodes(nodeName, 'ALL_NON_MAIN', 1);
+	const connectedSubNodes = workflowUtils.getParentNodes(
+		connectionsByDestinationNode,
+		nodeName,
+		'ALL_NON_MAIN',
+		1,
+	);
 
 	const treeNode = createNode(parent, nodeName, currentDepth, runIndex);
 
 	// Only include sub-nodes which have data
 	const children = (filteredAiData ?? []).flatMap((data) =>
 		connectedSubNodes.includes(data.node)
-			? getTreeNodeDataRec(treeNode, data.node, currentDepth + 1, workflow, aiData, data.runIndex)
+			? getTreeNodeDataRec(
+					treeNode,
+					data.node,
+					currentDepth + 1,
+					connectionsBySourceNode,
+					aiData,
+					data.runIndex,
+				)
 			: [],
 	);
 
@@ -112,11 +127,13 @@ function getTreeNodeDataRec(
 
 export function createAiData(
 	nodeName: string,
-	workflow: Workflow,
+	connectionsBySourceNode: IConnections,
 	getWorkflowResultDataByNodeName: (nodeName: string) => ITaskData[] | null,
 ): AIResult[] {
-	return workflow
-		.getParentNodes(nodeName, 'ALL_NON_MAIN')
+	const connectionsByDestinationNode =
+		workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
+	return workflowUtils
+		.getParentNodes(connectionsByDestinationNode, nodeName, 'ALL_NON_MAIN')
 		.flatMap((node) =>
 			(getWorkflowResultDataByNodeName(node) ?? []).map((task, index) => ({ node, task, index })),
 		)

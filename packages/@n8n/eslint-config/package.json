@@ -5,16 +5,16 @@
   "version": "0.0.1",
   "exports": {
     "./base": {
-      "default": "./dist/configs/base.js",
-      "types": "./dist/configs/base.d.js"
+      "types": "./dist/configs/base.d.js",
+      "default": "./dist/configs/base.js"
     },
     "./frontend": {
-      "default": "./dist/configs/frontend.js",
-      "types": "./dist/configs/frontend.d.js"
+      "types": "./dist/configs/frontend.d.js",
+      "default": "./dist/configs/frontend.js"
     },
     "./node": {
-      "default": "./dist/configs/node.js",
-      "types": "./dist/configs/node.d.js"
+      "types": "./dist/configs/node.d.js",
+      "default": "./dist/configs/node.js"
     }
   },
   "scripts": {

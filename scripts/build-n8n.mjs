@@ -14,6 +14,10 @@ import path from 'path';
 // Check if running in a CI environment
 const isCI = process.env.CI === 'true';
 
+// Check if test controller should be excluded (CI + flag not set)
+const excludeTestController =
+	process.env.CI === 'true' && process.env.INCLUDE_TEST_CONTROLLER !== 'true';
+
 // Disable verbose output and force color only if not in CI
 $.verbose = !isCI;
 process.env.FORCE_COLOR = isCI ? '0' : '1';
@@ -24,7 +28,7 @@ const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
 
 // #region ===== Configuration =====
 const config = {
-	compiledAppDir: process.env.BUILD_OUTPUT_DIR || path.join(rootDir, 'compiled'),
+	compiledAppDir: path.join(rootDir, 'compiled'),
 	rootDir: rootDir,
 };
 
@@ -93,7 +97,20 @@ try {
 	buildProcess.pipe(process.stdout);
 	await buildProcess;
 
+	// Generate third-party licenses for production build
+	echo(chalk.yellow('INFO: Generating third-party licenses...'));
+	try {
+		const licenseProcess = $`cd ${config.rootDir} && node scripts/generate-third-party-licenses.mjs`;
+		licenseProcess.pipe(process.stdout);
+		await licenseProcess;
+		echo(chalk.green('✅ Third-party licenses generated successfully'));
+	} catch (error) {
+		echo(chalk.yellow('⚠️  Warning: Third-party license generation failed, continuing build...'));
+		echo(chalk.red(`ERROR: License generation failed: ${error.message}`));
+	}
+
 	echo(chalk.green('✅ pnpm install and build completed'));
+
 } catch (error) {
 	console.error(chalk.red('\n🛑 BUILD PROCESS FAILED!'));
 	console.error(chalk.red('An error occurred during the build process:'));
@@ -168,6 +185,15 @@ echo(chalk.yellow(`INFO: Creating pruned production deployment in '${config.comp
 startTimer('package_deploy');
 
 await fs.ensureDir(config.compiledAppDir);
+
+if (excludeTestController) {
+	const cliPackagePath = path.join(config.rootDir, 'packages/cli/package.json');
+	const content = await fs.readFile(cliPackagePath, 'utf8');
+	const packageJson = JSON.parse(content);
+	packageJson.files.push('!dist/**/e2e.*');
+	await fs.writeFile(cliPackagePath, JSON.stringify(packageJson, null, 2));
+	echo(chalk.gray('  - Excluded test controller from packages/cli/package.json'));
+}
 
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
 

@@ -5,6 +5,7 @@ interface RadioOption {
 	label: string;
 	value: Value;
 	disabled?: boolean;
+	data?: Record<string, string | number | boolean | undefined>;
 }
 
 interface RadioButtonsProps {

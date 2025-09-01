@@ -38,7 +38,7 @@ export const useExecutionDebugging = () => {
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
 		const execution = await workflowsStore.getExecution(executionId);
-		const workflow = workflowsStore.getCurrentWorkflow();
+		const workflowObject = workflowsStore.workflowObject;
 		const workflowNodes = workflowsStore.getNodes();
 
 		if (!execution?.data?.resultData) {
@@ -91,7 +91,7 @@ export const useExecutionDebugging = () => {
 			} else {
 				await router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: workflow.id, executionId },
+					params: { name: workflowObject.id, executionId },
 				});
 				return;
 			}
@@ -103,19 +103,24 @@ export const useExecutionDebugging = () => {
 
 		// Pin data of all nodes which do not have a parent node
 		const pinnableNodes = workflowNodes.filter(
-			(node: INodeUi) => !workflow.getParentNodes(node.name).length,
+			(node: INodeUi) => !workflowObject.getParentNodes(node.name).length,
 		);
 
 		let pinnings = 0;
 
 		pinnableNodes.forEach((node: INodeUi) => {
-			const nodeData = runData[node.name]?.[0]?.data?.main?.[0];
-			if (nodeData) {
-				pinnings++;
-				workflowsStore.pinData({
-					node,
-					data: nodeData,
-				});
+			const taskData = runData[node.name]?.[0];
+			if (taskData?.data?.main) {
+				// Get the first main output that has data, preserving all execution data including binary
+				const nodeData = taskData.data.main.find((output) => output && output.length > 0);
+				if (nodeData) {
+					pinnings++;
+					workflowsStore.pinData({
+						node,
+						data: nodeData,
+						isRestoration: true,
+					});
+				}
 			}
 		});
 

@@ -5,13 +5,14 @@ import type { RouteLocationRaw } from 'vue-router';
 
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import N8nIcon from '../N8nIcon';
-import { type IconName } from '../N8nIcon/icons';
+import type { IconName } from '../N8nIcon/icons';
+import N8nText from '../N8nText';
 
 type BaseItem = {
 	id: string;
 	title: string;
 	disabled?: boolean;
-	icon?: IconName;
+	icon?: IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
 	route?: RouteLocationRaw;
 };
 
@@ -99,7 +100,21 @@ defineExpose({
 									:disabled="subitem.disabled"
 									@click="emit('itemClick', $event)"
 								>
-									<N8nIcon v-if="subitem.icon" :icon="subitem.icon" :class="$style.submenu__icon" />
+									<!-- <N8nIcon v-if="subitem.icon" :icon="subitem.icon" :class="$style.submenu__icon" /> -->
+									<template v-if="subitem.icon">
+										<N8nIcon
+											v-if="typeof subitem.icon === 'string' || subitem.icon.type === 'icon'"
+											:class="$style.submenu__icon"
+											:icon="typeof subitem.icon === 'object' ? subitem.icon.value : subitem.icon"
+										/>
+										<N8nText
+											v-else-if="subitem.icon.type === 'emoji'"
+											:class="$style.submenu__icon"
+										>
+											{{ subitem.icon.value }}
+										</N8nText>
+									</template>
+
 									{{ subitem.title }}
 									<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
 								</ElMenuItem>

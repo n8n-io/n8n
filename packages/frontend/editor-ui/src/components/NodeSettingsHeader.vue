@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { type Tab, default as NodeSettingsTabs } from './NodeSettingsTabs.vue';
+import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import type { NodeSettingsTab } from '@/types/nodeSettings';
 
 type Props = {
 	nodeName: string;
 	hideExecute: boolean;
+	hideDocs: boolean;
 	hideTabs: boolean;
 	disableExecute: boolean;
 	executeButtonTooltip: string;
-	selectedTab: Tab;
+	selectedTab: NodeSettingsTab;
 	nodeType?: INodeTypeDescription | null;
 	pushRef: string;
 };
@@ -21,7 +23,7 @@ const emit = defineEmits<{
 	execute: [];
 	'stop-execution': [];
 	'value-changed': [update: IUpdateInformation];
-	'tab-changed': [tab: Tab];
+	'tab-changed': [tab: NodeSettingsTab];
 }>();
 </script>
 
@@ -29,11 +31,12 @@ const emit = defineEmits<{
 	<div :class="$style.header">
 		<NodeSettingsTabs
 			v-if="!hideTabs"
-			hide-docs
+			:hide-docs="hideDocs"
 			:model-value="selectedTab"
 			:node-type="nodeType"
 			:push-ref="pushRef"
 			:class="$style.tabs"
+			tabs-variant="modern"
 			@update:model-value="emit('tab-changed', $event)"
 		/>
 		<NodeExecuteButton
@@ -54,21 +57,24 @@ const emit = defineEmits<{
 
 <style lang="scss" module>
 .header {
-	--spacing-bottom-tab: calc(var(--spacing-xs));
-	--font-size-tab: var(--font-size-2xs);
 	--color-tabs-arrow-buttons: var(--color-background-xlight);
-	--font-weight-tab: var(--font-weight-bold);
 
 	display: flex;
 	align-items: center;
 	min-height: 40px;
-	padding-right: var(--spacing-s);
 
 	border-bottom: var(--border-base);
 }
 
+.execute {
+	margin-right: var(--spacing-s);
+}
+
 .tabs {
-	padding-top: calc(var(--spacing-xs) + 1px);
-	height: 100%;
+	align-self: flex-end;
+}
+
+.tabs :global(#communityNode) {
+	padding-right: var(--spacing-2xs);
 }
 </style>

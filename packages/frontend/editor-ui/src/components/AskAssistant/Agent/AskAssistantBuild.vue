@@ -44,7 +44,11 @@ async function onUserMessage(content: string) {
 	if (isNewWorkflow) {
 		await workflowSaver.saveCurrentWorkflow();
 	}
-	builderStore.sendChatMessage({ text: content });
+
+	// If the workflow is empty, set the initial generation flag
+	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
+
+	builderStore.sendChatMessage({ text: content, initialGeneration: isInitialGeneration });
 }
 
 // Watch for workflow updates and apply them
@@ -70,6 +74,7 @@ watch(
 							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
 						});
+
 						// Track tool usage for telemetry
 						const newToolMessages = builderStore.toolMessages.filter(
 							(toolMsg) =>
@@ -82,6 +87,7 @@ watch(
 
 						telemetry.track('Workflow modified by builder', {
 							tools_called: newToolMessages.map((toolMsg) => toolMsg.toolName),
+							session_id: builderStore.trackingSessionId,
 							start_workflow_json: currentWorkflowJson,
 							end_workflow_json: msg.codeSnippet,
 							workflow_id: workflowsStore.workflowId,
@@ -91,6 +97,33 @@ watch(
 			});
 	},
 	{ deep: true },
+);
+
+// If this is the initial generation, streaming has ended, and there were workflow updates,
+// we want to save the workflow
+watch(
+	() => builderStore.streaming,
+	async () => {
+		if (
+			builderStore.initialGeneration &&
+			!builderStore.streaming &&
+			workflowsStore.workflow.nodes.length > 0
+		) {
+			// Check if the generation completed successfully (no error or cancellation)
+			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+			const successful =
+				lastMessage &&
+				lastMessage.type !== 'error' &&
+				!(lastMessage.type === 'text' && lastMessage.content === '[Task aborted]');
+
+			builderStore.initialGeneration = false;
+
+			// Only save if generation completed successfully
+			if (successful) {
+				await workflowSaver.saveCurrentWorkflow();
+			}
+		}
+	},
 );
 
 function onNewWorkflow() {
@@ -104,12 +137,14 @@ function onFeedback(feedback: RatingFeedback) {
 		telemetry.track('User rated workflow generation', {
 			helpful: feedback.rating === 'up',
 			workflow_id: workflowsStore.workflowId,
+			session_id: builderStore.trackingSessionId,
 		});
 	}
 	if (feedback.feedback) {
 		telemetry.track('User submitted workflow generation feedback', {
 			feedback: feedback.feedback,
 			workflow_id: workflowsStore.workflowId,
+			session_id: builderStore.trackingSessionId,
 		});
 	}
 }
@@ -129,11 +164,14 @@ watch(currentRoute, () => {
 			:loading-message="loadingMessage"
 			:mode="i18n.baseText('aiAssistant.builder.mode')"
 			:title="'n8n AI'"
+			:show-stop="true"
 			:scroll-on-new-message="true"
 			:placeholder="i18n.baseText('aiAssistant.builder.placeholder')"
+			:max-length="1000"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@feedback="onFeedback"
+			@stop="builderStore.stopStreaming"
 		>
 			<template #header>
 				<slot name="header" />

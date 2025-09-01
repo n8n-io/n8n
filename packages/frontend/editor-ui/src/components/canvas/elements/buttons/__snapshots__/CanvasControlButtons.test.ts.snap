@@ -18,6 +18,7 @@ exports[`CanvasControlButtons > should render correctly 1`] = `
   <!--teleport start-->
   <!--teleport end-->
   <!--v-if-->
+  <!--v-if-->
   <n8n-button-stub block="false" element="button" label="" square="true" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="tertiary" data-test-id="tidy-up-button" class="iconButton el-tooltip__trigger el-tooltip__trigger"></n8n-button-stub>
   <!--teleport start-->
   <!--teleport end-->

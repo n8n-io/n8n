@@ -2,7 +2,7 @@ import type { LOG_DETAILS_PANEL_STATE, LOGS_PANEL_STATE } from '@/features/logs/
 import type { INodeUi, LlmTokenUsageData } from '@/Interface';
 import type { IRunExecutionData, ITaskData, Workflow } from 'n8n-workflow';
 
-export interface LogEntry {
+export type LogEntry = {
 	parent?: LogEntry;
 	node: INodeUi;
 	id: string;
@@ -13,7 +13,7 @@ export interface LogEntry {
 	workflow: Workflow;
 	executionId: string;
 	execution: IRunExecutionData;
-}
+};
 
 export interface LogTreeCreationContext {
 	parent: LogEntry | undefined;

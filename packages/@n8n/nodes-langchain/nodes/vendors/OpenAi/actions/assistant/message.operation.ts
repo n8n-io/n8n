@@ -281,10 +281,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			await memory.saveContext({ input }, { output: response.output });
 
 			if (response.threadId && response.runId) {
-				const threadRun = await client.beta.threads.runs.retrieve(
-					response.threadId,
-					response.runId,
-				);
+				const threadRun = await client.beta.threads.runs.retrieve(response.runId, {
+					thread_id: response.threadId,
+				});
 				response.usage = threadRun.usage;
 			}
 		}

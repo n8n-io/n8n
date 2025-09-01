@@ -7,7 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Ref } from 'vue';
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import type {
 	BoundingBox,
 	CanvasConnection,
@@ -46,6 +46,7 @@ import {
 } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import {
+	CANVAS_EXECUTION_DATA_THROTTLE_DURATION,
 	CUSTOM_API_CALL_KEY,
 	FORM_NODE_TYPE,
 	SIMULATE_NODE_TYPE,
@@ -59,6 +60,8 @@ import { useNodeHelpers } from './useNodeHelpers';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useNodeDirtiness } from '@/composables/useNodeDirtiness';
 import { getNodeIconSource } from '../utils/nodeIcon';
+import * as workflowUtils from 'n8n-workflow/common';
+import { throttledWatch } from '@vueuse/core';
 
 export function useCanvasMapping({
 	nodes,
@@ -354,9 +357,14 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
-	const nodeExecutionRunDataOutputMapById = computed(() =>
-		Object.keys(nodeExecutionRunDataById.value).reduce<Record<string, ExecutionOutputMap>>(
-			(acc, nodeId) => {
+	const nodeExecutionRunDataOutputMapById = ref<Record<string, ExecutionOutputMap>>({});
+
+	throttledWatch(
+		nodeExecutionRunDataById,
+		(value) => {
+			nodeExecutionRunDataOutputMapById.value = Object.keys(value).reduce<
+				Record<string, ExecutionOutputMap>
+			>((acc, nodeId) => {
 				acc[nodeId] = {};
 
 				const outputData = { iterations: 0, total: 0 };
@@ -382,9 +390,9 @@ export function useCanvasMapping({
 				}
 
 				return acc;
-			},
-			{},
-		),
+			}, {});
+		},
+		{ throttle: CANVAS_EXECUTION_DATA_THROTTLE_DURATION, immediate: true },
 	);
 
 	const nodeIssuesById = computed(() =>
@@ -571,56 +579,65 @@ export function useCanvasMapping({
 		}, {});
 	});
 
-	const mappedNodes = computed<CanvasNode[]>(() => [
-		...nodes.value.map<CanvasNode>((node) => {
-			const inputConnections = workflowObject.value.connectionsByDestinationNode[node.name] ?? {};
-			const outputConnections = workflowObject.value.connectionsBySourceNode[node.name] ?? {};
+	const mappedNodes = computed<CanvasNode[]>(() => {
+		const connectionsBySourceNode = connections.value;
+		const connectionsByDestinationNode =
+			workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
 
-			const data: CanvasNodeData = {
-				id: node.id,
-				name: node.name,
-				subtitle: nodeSubtitleById.value[node.id] ?? '',
-				type: node.type,
-				typeVersion: node.typeVersion,
-				disabled: node.disabled,
-				inputs: nodeInputsById.value[node.id] ?? [],
-				outputs: nodeOutputsById.value[node.id] ?? [],
-				connections: {
-					[CanvasConnectionMode.Input]: inputConnections,
-					[CanvasConnectionMode.Output]: outputConnections,
-				},
-				issues: {
-					items: nodeIssuesById.value[node.id],
-					visible: nodeHasIssuesById.value[node.id],
-				},
-				pinnedData: {
-					count: nodePinnedDataById.value[node.id]?.length ?? 0,
-					visible: !!nodePinnedDataById.value[node.id],
-				},
-				execution: {
-					status: nodeExecutionStatusById.value[node.id],
-					waiting: nodeExecutionWaitingById.value[node.id],
-					waitingForNext: nodeExecutionWaitingForNextById.value[node.id],
-					running: nodeExecutionRunningById.value[node.id],
-				},
-				runData: {
-					outputMap: nodeExecutionRunDataOutputMapById.value[node.id],
-					iterations: nodeExecutionRunDataById.value[node.id]?.length ?? 0,
-					visible: !!nodeExecutionRunDataById.value[node.id],
-				},
-				render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
-			};
+		return [
+			...nodes.value.map<CanvasNode>((node) => {
+				const outputConnections = connectionsBySourceNode[node.name] ?? {};
+				const inputConnections = connectionsByDestinationNode[node.name] ?? {};
 
-			return {
-				id: node.id,
-				label: node.name,
-				type: 'canvas-node',
-				position: { x: node.position[0], y: node.position[1] },
-				data,
-				...additionalNodePropertiesById.value[node.id],
-			};
-		}),
-	]);
+				// console.log(node.name, nodeInputsById.value[node.id]);
+
+				const data: CanvasNodeData = {
+					id: node.id,
+					name: node.name,
+					subtitle: nodeSubtitleById.value[node.id] ?? '',
+					type: node.type,
+					typeVersion: node.typeVersion,
+					disabled: node.disabled,
+					inputs: nodeInputsById.value[node.id] ?? [],
+					outputs: nodeOutputsById.value[node.id] ?? [],
+					connections: {
+						[CanvasConnectionMode.Input]: inputConnections,
+						[CanvasConnectionMode.Output]: outputConnections,
+					},
+					issues: {
+						items: nodeIssuesById.value[node.id],
+						visible: nodeHasIssuesById.value[node.id],
+					},
+					pinnedData: {
+						count: nodePinnedDataById.value[node.id]?.length ?? 0,
+						visible: !!nodePinnedDataById.value[node.id],
+					},
+					execution: {
+						status: nodeExecutionStatusById.value[node.id],
+						waiting: nodeExecutionWaitingById.value[node.id],
+						waitingForNext: nodeExecutionWaitingForNextById.value[node.id],
+						running: nodeExecutionRunningById.value[node.id],
+					},
+					runData: {
+						outputMap: nodeExecutionRunDataOutputMapById.value[node.id],
+						iterations: nodeExecutionRunDataById.value[node.id]?.length ?? 0,
+						visible: !!nodeExecutionRunDataById.value[node.id],
+					},
+					render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
+				};
+
+				return {
+					id: node.id,
+					label: node.name,
+					type: 'canvas-node',
+					position: { x: node.position[0], y: node.position[1] },
+					data,
+					...additionalNodePropertiesById.value[node.id],
+					draggable: node.draggable ?? true,
+				};
+			}),
+		];
+	});
 
 	const mappedConnections = computed<CanvasConnection[]>(() => {
 		return mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []).map(

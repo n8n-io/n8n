@@ -13,6 +13,9 @@
         "etag": {
             "type": "string"
         },
+        "eventBasedHold": {
+            "type": "boolean"
+        },
         "generation": {
             "type": "string"
         },
@@ -43,6 +46,9 @@
         "storageClass": {
             "type": "string"
         },
+        "temporaryHold": {
+            "type": "boolean"
+        },
         "timeCreated": {
             "type": "string"
         },
@@ -56,5 +62,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

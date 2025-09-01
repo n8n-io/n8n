@@ -125,7 +125,7 @@ export interface CanvasNodeData {
 		waitingForNext?: boolean;
 	};
 	runData: {
-		outputMap: ExecutionOutputMap;
+		outputMap?: ExecutionOutputMap;
 		iterations: number;
 		visible: boolean;
 	};
@@ -163,6 +163,8 @@ export interface CanvasInjectionData {
 	isExecuting: Ref<boolean | undefined>;
 	connectingHandle: Ref<ConnectStartEvent | undefined>;
 	viewport: Ref<ViewportTransform>;
+	isExperimentalNdvActive: ComputedRef<boolean>;
+	isPaneMoving: Ref<boolean>;
 }
 
 export type CanvasNodeEventBusEvents = {

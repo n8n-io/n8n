@@ -15,7 +15,7 @@
 			"typeVersion": 1,
 			"position": [340, 0],
 			"id": "086a9b07-77ee-4c99-9d4e-05fdb63914a4",
-			"name": "updateResponse"
+			"name": "Update Response"
 		},
 		{
 			"parameters": {
@@ -24,7 +24,8 @@
 				"updateFields": {
 					"title": "New Title",
 					"content": "Some new content",
-					"status": "publish"
+					"status": "publish",
+					"date": "2025-03-27T18:05:01"
 				}
 			},
 			"type": "n8n-nodes-base.wordpress",
@@ -103,14 +104,15 @@
 					"pingStatus": "closed",
 					"format": "standard",
 					"sticky": true,
-					"categories": [1]
+					"categories": [1],
+					"date": "2025-03-27T18:30:04"
 				}
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
 			"position": [120, 400],
 			"id": "3a022ad5-8ce7-4ff2-988f-a449c7f1466e",
-			"name": "Post Create",
+			"name": "Post > Create",
 			"credentials": {
 				"wordpressApi": {
 					"id": "vNOAnwp9mSIq39cD",
@@ -128,7 +130,7 @@
 		}
 	],
 	"pinData": {
-		"updateResponse": [
+		"Update Response": [
 			{
 				"json": {
 					"id": 1,
@@ -711,7 +713,7 @@
 						"index": 0
 					},
 					{
-						"node": "Post Create",
+						"node": "Post > Create",
 						"type": "main",
 						"index": 0
 					}
@@ -722,7 +724,7 @@
 			"main": [
 				[
 					{
-						"node": "updateResponse",
+						"node": "Update Response",
 						"type": "main",
 						"index": 0
 					}
@@ -751,7 +753,7 @@
 				]
 			]
 		},
-		"Post Create": {
+		"Post > Create": {
 			"main": [
 				[
 					{

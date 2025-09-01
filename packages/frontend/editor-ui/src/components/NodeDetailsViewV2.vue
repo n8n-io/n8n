@@ -25,7 +25,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
 import {
 	APP_MODALS_ELEMENT_ID,
-	EnterpriseEditionFeature,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
 	START_NODE_TYPE,
@@ -35,7 +34,6 @@ import type { DataPinningDiscoveryEvent } from '@/event-bus';
 import { dataPinningEventBus } from '@/event-bus';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getNodeIconSource } from '@/utils/nodeIcon';
@@ -46,6 +44,7 @@ import InputPanel from './InputPanel.vue';
 import OutputPanel from './OutputPanel.vue';
 import PanelDragButtonV2 from './PanelDragButtonV2.vue';
 import TriggerPanel from './TriggerPanel.vue';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
 const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
@@ -77,15 +76,14 @@ const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
-const settingsStore = useSettingsStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
 const message = useMessage();
 const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
-const redrawRequired = ref(false);
 const runInputIndex = ref(-1);
 const runOutputIndex = ref(-1);
 const isLinkingEnabled = ref(true);
@@ -310,25 +308,9 @@ const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWait
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 
-const foreignCredentials = computed(() => {
-	const credentials = activeNode.value?.credentials;
-	const usedCredentials = workflowsStore.usedCredentials;
-
-	const foreignCredentialsArray: string[] = [];
-	if (credentials && settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
-		Object.values(credentials).forEach((credential) => {
-			if (
-				credential.id &&
-				usedCredentials[credential.id] &&
-				!usedCredentials[credential.id].currentUserHasAccess
-			) {
-				foreignCredentialsArray.push(credential.id);
-			}
-		});
-	}
-
-	return foreignCredentialsArray;
-});
+const foreignCredentials = computed(() =>
+	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
+);
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
 
@@ -390,7 +372,7 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 };
 
 const onWorkflowActivate = () => {
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	setTimeout(() => {
 		void workflowActivate.activateCurrentWorkflow('ndv');
 	}, 1000);
@@ -511,7 +493,7 @@ const close = async () => {
 		workflow_id: workflowsStore.workflowId,
 	});
 	triggerWaitingWarningEnabled.value = false;
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	ndvStore.resetNDVPushRef();
 };
 
@@ -645,6 +627,7 @@ watch(
 						data_pinning_tooltip_presented: pinDataDiscoveryTooltipVisible.value,
 						input_displayed_row_height_avg: avgInputRowHeight.value,
 						output_displayed_row_height_avg: avgOutputRowHeight.value,
+						source: telemetryContext.ndv_source?.value ?? 'other',
 					});
 				}
 			}, 2000); // wait for RunData to mount and present pindata discovery tooltip
@@ -717,7 +700,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<Teleport v-if="activeNode && activeNodeType" :to="`#${APP_MODALS_ELEMENT_ID}`">
+	<Teleport
+		v-if="activeNode && activeNodeType && !isActiveStickyNode"
+		:to="`#${APP_MODALS_ELEMENT_ID}`"
+	>
 		<div :class="$style.backdrop" :style="{ zIndex: APP_Z_INDEXES.NDV }" @click="close"></div>
 
 		<dialog
@@ -755,7 +741,7 @@ onBeforeUnmount(() => {
 						/>
 						<InputPanel
 							v-else-if="!isTriggerNode"
-							:workflow="workflowObject"
+							:workflow-object="workflowObject"
 							:can-link-runs="canLinkRuns"
 							:run-index="inputRun"
 							:linked-runs="linked"
@@ -816,9 +802,9 @@ onBeforeUnmount(() => {
 								:executable="!readOnly"
 								:input-size="inputSize"
 								:class="$style.settings"
+								is-ndv-v2
 								@execute="onNodeExecute"
 								@stop-execution="onStopExecution"
-								@redraw-required="redrawRequired = true"
 								@activate="onWorkflowActivate"
 								@switch-selected-node="onSwitchSelectedNode"
 								@open-connection-node-creator="onOpenConnectionNodeCreator"
@@ -832,7 +818,7 @@ onBeforeUnmount(() => {
 					>
 						<OutputPanel
 							data-test-id="output-panel"
-							:workflow="workflowObject"
+							:workflow-object="workflowObject"
 							:can-link-runs="canLinkRuns"
 							:run-index="outputRun"
 							:linked-runs="linked"
@@ -863,18 +849,20 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .backdrop {
-	position: fixed;
+	position: absolute;
+	z-index: var(--z-index-ndv);
 	top: 0;
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background-color: var(--color-ndv-overlay-background);
+	background-color: var(--color-dialog-overlay-background-dark);
 }
 
 .dialog {
-	position: fixed;
-	width: calc(100vw - var(--spacing-2xl));
-	height: calc(100vh - var(--spacing-2xl));
+	position: absolute;
+	z-index: var(--z-index-ndv);
+	width: calc(100% - var(--spacing-2xl));
+	height: calc(100% - var(--spacing-2xl));
 	top: var(--spacing-l);
 	left: var(--spacing-l);
 	border: none;
@@ -896,10 +884,13 @@ onBeforeUnmount(() => {
 }
 
 .main {
-	width: 0;
+	width: 100%;
 	flex-grow: 1;
 	display: flex;
 	align-items: stretch;
+	height: 100%;
+	min-height: 0;
+	position: relative;
 }
 
 .column {
@@ -933,14 +924,6 @@ onBeforeUnmount(() => {
 	border-top-right-radius: var(--border-radius-large);
 }
 
-.main {
-	display: flex;
-	width: 100%;
-	height: 100%;
-	min-height: 0;
-	position: relative;
-}
-
 .settings {
 	overflow: hidden;
 	flex-grow: 1;
@@ -953,12 +936,5 @@ onBeforeUnmount(() => {
 	left: 50%;
 	transform: translateX(-50%);
 	height: var(--draggable-height);
-}
-</style>
-
-<style lang="scss">
-// Hide notice(.ndv-connection-hint-notice) warning when node has output connection
-[data-has-output-connection='true'] .ndv-connection-hint-notice {
-	display: none;
 }
 </style>

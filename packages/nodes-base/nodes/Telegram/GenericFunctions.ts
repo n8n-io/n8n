@@ -278,7 +278,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 				config.options.map((option) => {
 					return {
 						text: option.label,
-						url: `${config.url}?approved=${option.value}`,
+						url: option.url,
 					};
 				}),
 			],

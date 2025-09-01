@@ -5,7 +5,6 @@ import set from 'lodash/set';
 import unset from 'lodash/unset';
 
 import type {
-	IDataObject,
 	NodeParameterValue,
 	MessageEventBusDestinationOptions,
 	INodeParameters,
@@ -184,7 +183,7 @@ function onLabelChange(value: string) {
 
 function setupNode(options: MessageEventBusDestinationOptions) {
 	workflowsStore.removeNode(node.value);
-	ndvStore.activeNodeName = options.id ?? 'thisshouldnothappen';
+	ndvStore.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
 	workflowsStore.addNode(destinationToFakeINodeUi(options));
 	nodeParameters.value = options as INodeParameters;
 	logStreamingStore.items[destination.id!].destination = options;
@@ -252,7 +251,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	nodeParameters.value = deepCopy(nodeParametersCopy);
 	workflowsStore.updateNodeProperties({
 		name: node.value.name,
-		properties: { parameters: nodeParameters.value as unknown as IDataObject, position: [0, 0] },
+		properties: { parameters: nodeParameters.value, position: [0, 0] },
 	});
 	if (hasOnceBeenSaved.value) {
 		logStreamingStore.updateDestination(nodeParameters.value);
@@ -295,7 +294,7 @@ function onModalClose() {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}
 	}
-	ndvStore.activeNodeName = null;
+	ndvStore.unsetActiveNodeName();
 	callEventBus('closing', destination.id);
 	uiStore.stateIsDirty = false;
 }

@@ -1,19 +1,23 @@
-import { fireEvent, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { renderComponent } from '@/__tests__/render';
 import LogDetailsPanel from './LogDetailsPanel.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { h } from 'vue';
 import {
+	createMockNodeTypes,
 	createTestNode,
 	createTestTaskData,
 	createTestWorkflow,
 	createTestWorkflowObject,
+	defaultNodeTypes,
+	mockLoadedNodeType,
 } from '@/__tests__/mocks';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/logs/logs.constants';
 import type { LogEntry } from '../logs.types';
 import { createTestLogEntry } from '../__test__/mocks';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { HTML_NODE_TYPE } from '@/constants';
 
 describe('LogDetailsPanel', () => {
 	let pinia: TestingPinia;
@@ -181,5 +185,48 @@ describe('LogDetailsPanel', () => {
 				"No fields - item(s) exist, but they're empty",
 			),
 		).toBeInTheDocument();
+	});
+
+	it('should render output data in HTML mode for HTML node', async () => {
+		const nodeA = createTestNode({ name: 'A' });
+		const nodeB = createTestNode({
+			name: 'B',
+			type: HTML_NODE_TYPE,
+		});
+		const runDataA = createTestTaskData({ data: { [NodeConnectionTypes.Main]: [[{ json: {} }]] } });
+		const runDataB = createTestTaskData({
+			data: { [NodeConnectionTypes.Main]: [[{ json: { html: '<h1>Hi!</h1>' } }]] },
+			source: [{ previousNode: 'A' }],
+		});
+		const workflow = createTestWorkflowObject({
+			nodes: [nodeA, nodeB],
+			nodeTypes: createMockNodeTypes({
+				...defaultNodeTypes,
+				[HTML_NODE_TYPE]: mockLoadedNodeType(HTML_NODE_TYPE),
+			}),
+		});
+		const execution = { resultData: { runData: { A: [runDataA], B: [runDataB] } } };
+		const logA = createLogEntry({ node: nodeA, runData: runDataA, workflow, execution });
+		const logB = createLogEntry({ node: nodeB, runData: runDataB, workflow, execution });
+
+		// HACK: Setting parameters after creating workflow because validation removes parameters that are not define in node types.
+		nodeB.parameters = { operation: 'generateHtmlTemplate' };
+
+		const props = {
+			isOpen: true,
+			panels: LOG_DETAILS_PANEL_STATE.BOTH,
+			collapsingInputTableColumnName: null,
+			collapsingOutputTableColumnName: null,
+		};
+
+		const rendered = render({ ...props, logEntry: logB });
+
+		await waitFor(() => expect(rendered.container.querySelectorAll('iframe')).toHaveLength(1));
+		await rendered.rerender({ ...props, logEntry: logA });
+		await waitFor(() => expect(rendered.container.querySelectorAll('iframe')).toHaveLength(0));
+
+		// Re-selecting node B should render HTML again
+		await rendered.rerender({ ...props, logEntry: logB });
+		await waitFor(() => expect(rendered.container.querySelectorAll('iframe')).toHaveLength(1));
 	});
 });

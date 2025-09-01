@@ -30,7 +30,7 @@ on:
       containers:
         description: 'Number of containers to run tests in.'
         required: false
-        default: '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]'
+        default: '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]'
         type: string
       pr_number:
         description: 'PR number to run tests for.'
@@ -45,7 +45,7 @@ on:
         required: true
 
 env:
-  NODE_OPTIONS: --max-old-space-size=4096
+  NODE_OPTIONS: --max-old-space-size=3072
 
 jobs:
   testing:
@@ -77,7 +77,7 @@ jobs:
           wait-on: 'http://localhost:5678'
           wait-on-timeout: 120
           record: ${{ inputs.record }}
-          parallel: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.parallel || false ) }}
+          parallel: ${{ inputs.spec == 'e2e/*' && inputs.parallel || false }}
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
           ci-build-id: ${{ github.run_id }}-${{ github.run_attempt }}

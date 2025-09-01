@@ -1,0 +1,383 @@
+{
+	"createdAt": "2021-02-17T16:01:29.116Z",
+	"updatedAt": "2021-02-17T18:38:58.265Z",
+	"id": "35",
+	"name": "Slack:User:getPresence info:UserProfile:get update:Message:post getPermalink update postEphermera l delete:Reaction:add get remove",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [220, 550],
+			"id": "994d0931-d8cf-46ec-80dd-afa0d22717a1"
+		},
+		{
+			"parameters": {
+				"resource": "userProfile",
+				"additionalFields": {}
+			},
+			"name": "Slack",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [460, 450],
+			"credentials": {
+				"slackApi": {
+					"id": "18",
+					"name": "Slack Token"
+				}
+			},
+			"id": "f4b748aa-95ac-491d-9aae-438e9d4af174"
+		},
+		{
+			"parameters": {
+				"resource": "userProfile",
+				"operation": "update",
+				"additionalFields": {
+					"status_text": "Testing..."
+				}
+			},
+			"name": "Slack1",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [600, 450],
+			"credentials": {
+				"slackApi": {
+					"id": "18",
+					"name": "Slack Token"
+				}
+			},
+			"id": "79590777-6621-433a-88b2-555078feb8e1"
+		},
+		{
+			"parameters": {
+				"channel": "random",
+				"text": "=Message at{{(new Date().toString())}}",
+				"attachments": [],
+				"otherOptions": {}
+			},
+			"name": "Slack13",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [420, 630],
+			"alwaysOutputData": true,
+			"credentials": {
+				"slackApi": {
+					"id": "18",
+					"name": "Slack Token"
+				}
+			},
+			"id": "1f43049e-8dd6-425f-bb8a-e06edce9418b"
+		},
+		{
+			"parameters": {
+				"operation": "getPermalink",
+				"channelId": "C01MZ82T9TR",
+				"timestamp": "={{$node[\"Slack13\"].json[\"message\"][\"ts\"]}}"
+			},
+			"name": "Slack14",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [1060, 630],
+			"alwaysOutputData": true,
+			"credentials": {
+				"slackApi": {
+					"id": "18",
+					"name": "Slack Token"
+				}
+			},
+			"id": "837e9401-e7f1-49f2-91ab-3f9882b13d89"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"channelId": "C01MZ82T9TR",
+				"text": "Message Updated ",
+				"ts": "={{$node[\"Slack13\"].json[\"message\"][\"ts\"]}}",
+				"updateFields": {},
+				"attachments": []
+			},
+			"name": "Slack15",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [1190, 630],
+			"alwaysOutputData": true,
+			"credentials": {
+				"slackApi": {
+					"id": "18",
+					"name": "Slack Token"
+				}
+			},
+			"id": "afd5e35a-da4c-4167-a208-ea4a4f28cac0"
+		},
+		{
+			"parameters": {
+				"operation": "postEphemeral",
+				"channel": "random",
+				"user": "={{$node[\"Slack13\"].json[\"message\"][\"user\"]}}",
+				"text": "Message for Me Only",
+				"attachments": [],
+				"otherOptions": {}
+			},
+			"name": "Slack16",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [1320, 630],
+			"alwaysOutputData": true,
+			"credentials": {
+				"slackApi": {
+					"id": "18",
+					"name": "Slack Token"
+				}
+			},
+			"id": "1105d27e-18a8-4b77-b081-8127252edfbc"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"channelId": "C01MZ82T9TR",
+				"timestamp": "={{$node[\"Slack13\"].json[\"message\"][\"ts\"]}}"
+			},
+			"name": "Slack17",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [1470, 630],
+			"alwaysOutputData": true,
+			"credentials": {
+				"slackApi": {
+					"id": "18",
+					"name": "Slack Token"
+				}
+			},
+			"id": "fc1412c5-331e-4bcb-a830-3f173d51c9ed"
+		},
+		{
+			"parameters": {
+				"resource": "reaction",
+				"channelId": "C01MZ82T9TR",
+				"name": "+1",
+				"timestamp": "={{$node[\"Slack13\"].json[\"message\"][\"ts\"]}}"
+			},
+			"name": "Slack18",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [580, 700],
+			"alwaysOutputData": true,
+			"credentials": {
+				"slackApi": {
+					"id": "18",
+					"name": "Slack Token"
+				}
+			},
+			"id": "d5f82714-f62e-4124-8a1d-081ef18b6ae2"
+		},
+		{
+			"parameters": {
+				"resource": "reaction",
+				"operation": "get",
+				"channelId": "C01MZ82T9TR",
+				"timestamp": "={{$node[\"Slack13\"].json[\"message\"][\"ts\"]}}"
+			},
+			"name": "Slack19",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [720, 700],
+			"alwaysOutputData": true,
+			"credentials": {
+				"slackApi": {
+					"id": "18",
+					"name": "Slack Token"
+				}
+			},
+			"id": "ad62b51f-a60e-46d8-b174-941f331886fb"
+		},
+		{
+			"parameters": {
+				"resource": "reaction",
+				"operation": "remove",
+				"channelId": "C01MZ82T9TR",
+				"name": "+1",
+				"timestamp": "={{$node[\"Slack13\"].json[\"message\"][\"ts\"]}}"
+			},
+			"name": "Slack20",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [870, 700],
+			"alwaysOutputData": true,
+			"credentials": {
+				"slackApi": {
+					"id": "18",
+					"name": "Slack Token"
+				}
+			},
+			"id": "d865f9ac-2f76-40fe-87e1-9c855cb518ec"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getPresence",
+				"user": "={{$node[\"Slack13\"].json[\"message\"][\"user\"]}}"
+			},
+			"name": "Slack24",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [580, 850],
+			"alwaysOutputData": true,
+			"credentials": {
+				"slackApi": {
+					"id": "18",
+					"name": "Slack Token"
+				}
+			},
+			"id": "6532165d-7578-4b90-b66d-e204955669dd"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"user": "={{$node[\"Slack13\"].json[\"message\"][\"user\"]}}"
+			},
+			"name": "Slack25",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [730, 850],
+			"alwaysOutputData": true,
+			"credentials": {
+				"slackApi": {
+					"id": "18",
+					"name": "Slack Token"
+				}
+			},
+			"id": "f013017c-399b-4692-9dfe-be72138349b4"
+		}
+	],
+	"connections": {
+		"Slack": {
+			"main": [
+				[
+					{
+						"node": "Slack1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Slack13",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack13": {
+			"main": [
+				[
+					{
+						"node": "Slack18",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Slack24",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack15": {
+			"main": [
+				[
+					{
+						"node": "Slack16",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack16": {
+			"main": [
+				[
+					{
+						"node": "Slack17",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack14": {
+			"main": [
+				[
+					{
+						"node": "Slack15",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack18": {
+			"main": [
+				[
+					{
+						"node": "Slack19",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack19": {
+			"main": [
+				[
+					{
+						"node": "Slack20",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack20": {
+			"main": [
+				[
+					{
+						"node": "Slack14",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack24": {
+			"main": [
+				[
+					{
+						"node": "Slack25",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

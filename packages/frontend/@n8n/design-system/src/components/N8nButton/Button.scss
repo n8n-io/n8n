@@ -1,5 +1,6 @@
-@import '../../css/mixins/utils';
-@import '../../css/common/var';
+@use '../../css/mixins/utils';
+@use '../../css/common/var';
+@use 'sass:string';
 
 @mixin n8n-button($override: false) {
 	$important: if($override, !important, '');
@@ -9,13 +10,14 @@
 	white-space: nowrap;
 	cursor: pointer;
 
-	border: var(--border-width-base) $button-border-color var(--border-style-base) unquote($important);
-	color: $button-font-color unquote($important);
-	background-color: $button-background-color unquote($important);
-	font-weight: var(--font-weight-medium) unquote($important);
-	border-radius: $button-border-radius unquote($important);
-	padding: $button-padding-vertical $button-padding-horizontal unquote($important);
-	font-size: $button-font-size unquote($important);
+	border: var(--border-width-base) var.$button-border-color var(--border-style-base)
+		string.unquote($important);
+	color: var.$button-font-color string.unquote($important);
+	background-color: var.$button-background-color string.unquote($important);
+	font-weight: var(--font-weight-medium) string.unquote($important);
+	border-radius: var.$button-border-radius string.unquote($important);
+	padding: var.$button-padding-vertical var.$button-padding-horizontal string.unquote($important);
+	font-size: var.$button-font-size string.unquote($important);
 
 	-webkit-appearance: none;
 	text-align: center;
@@ -30,43 +32,44 @@
 
 	gap: var(--spacing-3xs);
 
-	@include utils-user-select(none);
+	@include utils.utils-user-select(none);
 
 	// Solution for a inside button
 	& a {
-		color: $button-font-color unquote($important);
+		color: var.$button-font-color string.unquote($important);
 	}
 
 	&:hover {
-		color: $button-hover-font-color unquote($important);
-		border-color: $button-hover-border-color unquote($important);
-		background-color: $button-hover-background-color unquote($important);
+		color: var.$button-hover-font-color string.unquote($important);
+		border-color: var.$button-hover-border-color string.unquote($important);
+		background-color: var.$button-hover-background-color string.unquote($important);
 
 		& a {
-			color: $button-hover-font-color unquote($important);
+			color: var.$button-hover-font-color string.unquote($important);
 		}
 	}
 
 	&:active,
 	&.active {
-		color: $button-active-font-color unquote($important);
-		border-color: $button-active-border-color unquote($important);
-		background-color: $button-active-background-color unquote($important);
+		color: var.$button-active-font-color string.unquote($important);
+		border-color: var.$button-active-border-color string.unquote($important);
+		background-color: var.$button-active-background-color string.unquote($important);
 		outline: none;
 
 		& a {
-			color: $button-active-font-color unquote($important);
+			color: var.$button-active-font-color string.unquote($important);
 		}
 	}
 
 	&:focus-visible:not(:active, .active) {
-		color: $button-focus-font-color unquote($important);
-		border-color: $button-focus-border-color unquote($important);
-		background-color: $button-focus-background-color unquote($important);
-		outline: $focus-outline-width solid $button-focus-outline-color unquote($important);
+		color: var.$button-focus-font-color string.unquote($important);
+		border-color: var.$button-focus-border-color string.unquote($important);
+		background-color: var.$button-focus-background-color string.unquote($important);
+		outline: var.$focus-outline-width solid var.$button-focus-outline-color
+			string.unquote($important);
 
 		& a {
-			color: $button-focus-font-color unquote($important);
+			color: var.$button-focus-font-color string.unquote($important);
 		}
 	}
 
@@ -75,12 +78,12 @@
 		&:hover,
 		&:active,
 		&:focus-visible {
-			color: $button-disabled-font-color;
-			border-color: $button-disabled-border-color;
-			background-color: $button-disabled-background-color;
+			color: var.$button-disabled-font-color;
+			border-color: var.$button-disabled-border-color;
+			background-color: var.$button-disabled-background-color;
 
 			& a {
-				color: $button-disabled-font-color;
+				color: var.$button-disabled-font-color;
 			}
 		}
 	}
@@ -90,12 +93,12 @@
 		&:hover,
 		&:active,
 		&:focus-visible {
-			color: $button-loading-font-color;
-			border-color: $button-loading-border-color;
-			background-color: $button-loading-background-color;
+			color: var.$button-loading-font-color;
+			border-color: var.$button-loading-border-color;
+			background-color: var.$button-loading-background-color;
 
 			& a {
-				color: $button-loading-font-color;
+				color: var.$button-loading-font-color;
 			}
 		}
 	}
@@ -140,6 +143,33 @@
 	--button-loading-font-color: var(--color-button-secondary-loading-font);
 	--button-loading-border-color: var(--color-button-secondary-loading-border);
 	--button-loading-background-color: var(--color-button-secondary-loading-background);
+}
+
+@mixin n8n-button-highlight {
+	--button-font-color: var(--color-button-highlight-font);
+	--button-border-color: var(--color-button-highlight-border);
+	--button-background-color: var(--color-button-highlight-background);
+
+	--button-hover-font-color: var(--color-button-highlight-hover-active-focus-font);
+	--button-hover-border-color: var(--color-button-highlight-hover-active-focus-border);
+	--button-hover-background-color: var(--color-button-highlight-hover-background);
+
+	--button-active-font-color: var(--color-button-highlight-hover-active-focus-font);
+	--button-active-border-color: var(--color-button-highlight-hover-active-focus-border);
+	--button-active-background-color: var(--color-button-highlight-active-focus-background);
+
+	--button-focus-font-color: var(--color-button-highlight-hover-active-focus-font);
+	--button-focus-border-color: var(--color-button-highlight-hover-active-focus-border);
+	--button-focus-background-color: var(--color-button-highlight-active-focus-background);
+	--button-focus-outline-color: var(--color-button-highlight-focus-outline);
+
+	--button-disabled-font-color: var(--color-button-highlight-disabled-font);
+	--button-disabled-border-color: var(--color-button-highlight-disabled-border);
+	--button-disabled-background-color: var(--color-button-highlight-disabled-background);
+
+	--button-loading-font-color: var(--color-button-highlight-loading-font);
+	--button-loading-border-color: var(--color-button-highlight-loading-border);
+	--button-loading-background-color: var(--color-button-highlight-loading-background);
 }
 
 @mixin n8n-button-success {

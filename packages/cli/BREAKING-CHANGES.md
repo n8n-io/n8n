@@ -2,6 +2,26 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 1.109.0
+
+### What changed?
+
+Webhook HTML responses were sandboxed to an iframe starting from 1.103.1 due to security. The sandboxing mechanism is now changed to use `Content-Security-Policy` header instead of an `iframe`. The security guarantees stay the same, but the mechanism is less breaking.
+
+### When is action necessary?
+
+If you have workflows that return HTML responses from `Webhook Trigger` node or `Respond to Webhook` node.
+
+# 1.107.0
+
+## What changed?
+
+The CLI flag `--reinstallMissingPackages`, deprecated a year ago in version 1.154.0, has been removed.
+
+### When is action necessary?
+
+If you are using this flag, please switch to the environment variable `N8N_REINSTALL_MISSING_PACKAGES`.
+
 ## 1.103.0
 
 ### What changed?

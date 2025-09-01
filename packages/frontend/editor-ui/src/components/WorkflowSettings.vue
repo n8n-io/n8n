@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
@@ -23,6 +23,7 @@ import { ProjectTypes } from '@/types/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useDebounce } from '@/composables/useDebounce';
 
 const route = useRoute();
 const i18n = useI18n();
@@ -262,8 +263,10 @@ const loadTimezones = async () => {
 	}
 };
 
-const loadWorkflows = async () => {
-	const workflowsData = (await workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
+const loadWorkflows = async (searchTerm?: string) => {
+	const workflowsData = (await workflowsStore.searchWorkflows({
+		name: searchTerm,
+	})) as IWorkflowShortResponse[];
 	workflowsData.sort((a, b) => {
 		if (a.name.toLowerCase() < b.name.toLowerCase()) {
 			return -1;
@@ -281,6 +284,9 @@ const loadWorkflows = async () => {
 
 	workflows.value = workflowsData;
 };
+
+const { debounce } = useDebounce();
+const debouncedLoadWorkflows = debounce(loadWorkflows, { debounceTime: 300, trailing: true });
 
 const convertToHMS = (num: number): ITimeoutHMS => {
 	if (num > 0) {
@@ -479,6 +485,10 @@ onMounted(async () => {
 		workflow_id: workflowsStore.workflowId,
 	});
 });
+
+onBeforeUnmount(() => {
+	debouncedLoadWorkflows.cancel?.();
+});
 </script>
 
 <template>
@@ -498,7 +508,7 @@ onMounted(async () => {
 			<div v-loading="isLoading" class="workflow-settings" data-test-id="workflow-settings-dialog">
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.executionOrder') + ':' }}
+						{{ i18n.baseText('workflowSettings.executionOrder') }}
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
@@ -523,7 +533,7 @@ onMounted(async () => {
 
 				<el-row data-test-id="error-workflow">
 					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.errorWorkflow') + ':' }}
+						{{ i18n.baseText('workflowSettings.errorWorkflow') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-n8n-html="helpTexts.errorWorkflow"></div>
@@ -536,6 +546,9 @@ onMounted(async () => {
 							v-model="workflowSettings.errorWorkflow"
 							placeholder="Select Workflow"
 							filterable
+							remote
+							:remote-method="debouncedLoadWorkflows"
+							remote-show-suffix
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-error-workflow"
@@ -553,7 +566,7 @@ onMounted(async () => {
 				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
 					<el-row>
 						<el-col :span="10" class="setting-name">
-							{{ i18n.baseText('workflowSettings.callerPolicy') + ':' }}
+							{{ i18n.baseText('workflowSettings.callerPolicy') }}
 							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerPolicy"></div>
@@ -582,7 +595,7 @@ onMounted(async () => {
 					</el-row>
 					<el-row v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
 						<el-col :span="10" class="setting-name">
-							{{ i18n.baseText('workflowSettings.callerIds') + ':' }}
+							{{ i18n.baseText('workflowSettings.callerIds') }}
 							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerIds"></div>
@@ -604,7 +617,7 @@ onMounted(async () => {
 				</div>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.timezone') + ':' }}
+						{{ i18n.baseText('workflowSettings.timezone') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.timezone"></div>
@@ -633,7 +646,7 @@ onMounted(async () => {
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.saveDataErrorExecution') + ':' }}
+						{{ i18n.baseText('workflowSettings.saveDataErrorExecution') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveDataErrorExecution"></div>
@@ -662,7 +675,7 @@ onMounted(async () => {
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.saveDataSuccessExecution') + ':' }}
+						{{ i18n.baseText('workflowSettings.saveDataSuccessExecution') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveDataSuccessExecution"></div>
@@ -691,7 +704,7 @@ onMounted(async () => {
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.saveManualExecutions') + ':' }}
+						{{ i18n.baseText('workflowSettings.saveManualExecutions') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveManualExecutions"></div>
@@ -720,7 +733,7 @@ onMounted(async () => {
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.saveExecutionProgress') + ':' }}
+						{{ i18n.baseText('workflowSettings.saveExecutionProgress') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveExecutionProgress"></div>
@@ -749,7 +762,7 @@ onMounted(async () => {
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ i18n.baseText('workflowSettings.timeoutWorkflow') + ':' }}
+						{{ i18n.baseText('workflowSettings.timeoutWorkflow') }}
 						<N8nTooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.executionTimeoutToggle"></div>
@@ -776,7 +789,7 @@ onMounted(async () => {
 				>
 					<el-row>
 						<el-col :span="10" class="setting-name">
-							{{ i18n.baseText('workflowSettings.timeoutAfter') + ':' }}
+							{{ i18n.baseText('workflowSettings.timeoutAfter') }}
 							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.executionTimeout"></div>
@@ -846,7 +859,7 @@ onMounted(async () => {
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						<label for="timeSavedPerExecution">
-							{{ i18n.baseText('workflowSettings.timeSavedPerExecution') + ':' }}
+							{{ i18n.baseText('workflowSettings.timeSavedPerExecution') }}
 							<N8nTooltip placement="top">
 								<template #content>
 									{{ i18n.baseText('workflowSettings.timeSavedPerExecution.tooltip') }}

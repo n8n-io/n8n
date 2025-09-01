@@ -9,11 +9,11 @@ packages:
 catalog:
   '@n8n/typeorm': 0.3.20-12
   '@n8n_io/ai-assistant-sdk': 1.15.0
-  '@langchain/core': 0.3.61
-  '@langchain/openai': 0.5.16
-  '@langchain/anthropic': 0.3.23
-  '@langchain/community': 0.3.47
-  '@sentry/node': 8.52.1
+  '@langchain/core': 0.3.68
+  '@langchain/openai': 0.6.7
+  '@langchain/anthropic': 0.3.26
+  '@langchain/community': 0.3.50
+  '@sentry/node': ^9.42.1
   '@types/basic-auth': ^1.1.3
   '@types/express': ^5.0.1
   '@types/jsonwebtoken': ^9.0.9
@@ -24,7 +24,7 @@ catalog:
   axios: 1.8.3
   basic-auth: 2.0.1
   callsites: 3.1.0
-  chokidar: 4.0.1
+  chokidar: 4.0.3
   fast-glob: 3.2.12
   flatted: 3.2.7
   form-data: 4.0.0
@@ -38,7 +38,7 @@ catalog:
   nanoid: 3.3.8
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
-  rimraf: ^6.0.1
+  rimraf: 6.0.1
   tsup: ^8.5.0
   tsx: ^4.19.3
   uuid: 10.0.0
@@ -50,12 +50,12 @@ catalog:
   xss: 1.0.15
   zod: 3.25.67
   zod-to-json-schema: 3.23.3
-  typescript: 5.8.3
+  typescript: 5.9.2
   eslint: 9.29.0
 
 catalogs:
   frontend:
-    '@sentry/vue': ^8.33.1
+    '@sentry/vue': ^9.42.1
     '@testing-library/jest-dom': ^6.6.3
     '@testing-library/user-event': ^14.6.1
     '@testing-library/vue': ^8.1.0

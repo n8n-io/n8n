@@ -1,12 +1,13 @@
+import { ApplicationError } from '@n8n/errors';
 import { parse as esprimaParse, Syntax } from 'esprima-next';
 import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
 import merge from 'lodash/merge';
 
 import { ALPHABET } from './constants';
-import { ApplicationError } from './errors/application.error';
 import { ExecutionCancelledError } from './errors/execution-cancelled.error';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
+import * as LoggerProxy from './logger-proxy';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
@@ -181,7 +182,18 @@ export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSe
 	knownObjects.add(value);
 	const copy = (Array.isArray(value) ? [] : {}) as T;
 	for (const key in value) {
-		copy[key] = replaceCircularReferences(value[key], knownObjects);
+		try {
+			copy[key] = replaceCircularReferences(value[key], knownObjects);
+		} catch (error: unknown) {
+			if (
+				error instanceof TypeError &&
+				error.message.includes('Cannot assign to read only property')
+			) {
+				LoggerProxy.error('Error while replacing circular references: ' + error.message, { error });
+				continue; // Skip properties that cannot be assigned to (readonly, non-configurable, etc.)
+			}
+			throw error;
+		}
 	}
 	knownObjects.delete(value);
 	return copy;
@@ -344,5 +356,45 @@ export function setSafeObjectProperty(
 ) {
 	if (isSafeObjectProperty(property)) {
 		target[property] = value;
+	}
+}
+
+export function isDomainAllowed(
+	urlString: string,
+	options: {
+		allowedDomains: string;
+	},
+): boolean {
+	if (!options.allowedDomains || options.allowedDomains.trim() === '') {
+		return true; // If no restrictions are set, allow all domains
+	}
+
+	try {
+		const url = new URL(urlString);
+		const hostname = url.hostname;
+
+		const allowedDomainsList = options.allowedDomains
+			.split(',')
+			.map((domain) => domain.trim())
+			.filter(Boolean);
+
+		for (const allowedDomain of allowedDomainsList) {
+			// Handle wildcard domains (*.example.com)
+			if (allowedDomain.startsWith('*.')) {
+				const domainSuffix = allowedDomain.substring(2); // Remove the *. part
+				if (hostname.endsWith(domainSuffix)) {
+					return true;
+				}
+			}
+			// Exact match
+			else if (hostname === allowedDomain) {
+				return true;
+			}
+		}
+
+		return false;
+	} catch (error) {
+		// If URL parsing fails, deny access to be safe
+		return false;
 	}
 }

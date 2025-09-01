@@ -42,9 +42,13 @@ type EndpointGroup =
 	| 'evaluation'
 	| 'ai'
 	| 'folder'
-	| 'insights';
+	| 'insights'
+	| 'data-store'
+	| 'module-settings'
+	| 'data-table'
+	| 'third-party-licenses';
 
-type ModuleName = 'insights' | 'external-secrets';
+type ModuleName = 'insights' | 'external-secrets' | 'community-packages' | 'data-table';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

@@ -64,6 +64,9 @@
                 }
             }
         },
+        "cardRole": {
+            "type": "null"
+        },
         "checkItemStates": {
             "type": "array",
             "items": {
@@ -87,7 +90,7 @@
                 "brightness": {
                     "type": "string"
                 },
-                "color": {
+                "idPlugin": {
                     "type": "null"
                 },
                 "idUploadedBackground": {
@@ -148,6 +151,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "color": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -172,6 +178,9 @@
         "manualCoverAttachment": {
             "type": "boolean"
         },
+        "mirrorSourceId": {
+            "type": "null"
+        },
         "name": {
             "type": "string"
         },
@@ -194,5 +203,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

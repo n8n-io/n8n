@@ -1,3 +1,5 @@
+import type { DataStoreProxyProvider } from 'n8n-workflow';
+
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import type { ExternalSecretsProxy } from './external-secrets-proxy';
 
@@ -5,11 +7,13 @@ declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
 		hooks?: ExecutionLifecycleHooks;
 		externalSecretsProxy: ExternalSecretsProxy;
+		'data-table'?: { dataStoreProxyProvider: DataStoreProxyProvider };
+		dataStoreProjectId?: string;
 	}
 }
 
 export * from './active-workflows';
-export * from './interfaces';
+export type * from './interfaces';
 export * from './routing-node';
 export * from './node-execution-context';
 export * from './partial-execution-utils';
