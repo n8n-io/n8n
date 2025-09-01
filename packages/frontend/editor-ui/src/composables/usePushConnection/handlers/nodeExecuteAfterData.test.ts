@@ -5,8 +5,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mockedStore } from '@/__tests__/utils';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
-import type { IExecutionResponse } from '@/Interface';
-import { createTestWorkflow } from '@/__tests__/mocks';
+import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 
 describe('nodeExecuteAfterData', () => {
 	beforeEach(() => {
@@ -19,14 +18,7 @@ describe('nodeExecuteAfterData', () => {
 	it('should call clearNodeExecutionData if data has trimmed items', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
 
-		workflowsStore.workflowExecutionData = {
-			id: 'exec-1',
-			status: 'waiting',
-			startedAt: '2023-01-01T00:00:00Z',
-			createdAt: '2023-01-01T00:00:00Z',
-			workflowData: createTestWorkflow(),
-			finished: false,
-			mode: 'manual',
+		workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
 			data: {
 				resultData: {
 					runData: {
@@ -44,7 +36,7 @@ describe('nodeExecuteAfterData', () => {
 					},
 				},
 			},
-		} as IExecutionResponse;
+		});
 
 		const event: NodeExecuteAfterData = {
 			type: 'nodeExecuteAfterData',
