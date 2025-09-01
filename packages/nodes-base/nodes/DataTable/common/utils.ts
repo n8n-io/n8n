@@ -19,10 +19,7 @@ type DateLike = { toISOString: () => string };
 
 function isDateLike(v: unknown): v is DateLike {
 	return (
-		v !== null &&
-		typeof v === 'object' &&
-		'toISOString' in v &&
-		typeof Reflect.get(Object(v), 'toISOString') === 'function'
+		v !== null && typeof v === 'object' && 'toISOString' in v && typeof v.toISOString === 'function'
 	);
 }
 
