@@ -20,6 +20,7 @@ vi.mock('ag-grid-vue3', () => ({
 				api: {
 					refreshHeader: vi.fn(),
 					applyTransaction: vi.fn(),
+					setGridOption: vi.fn(),
 				},
 			});
 		},
@@ -45,6 +46,7 @@ vi.mock('ag-grid-community', () => ({
 	UndoRedoEditModule: {},
 	CellStyleModule: {},
 	ScrollApiModule: {},
+	PinnedRowModule: {},
 }));
 
 // Mock the n8n theme

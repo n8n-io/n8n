@@ -82,13 +82,17 @@ const credentialRoleTranslations = computed<Record<string, string>>(() => {
 });
 
 const credentialRoles = computed<AllRolesMap['credential']>(() => {
-	return rolesStore.processedCredentialRoles.map(({ role, scopes, licensed, description }) => ({
-		role,
-		name: credentialRoleTranslations.value[role],
-		scopes,
-		licensed,
-		description,
-	}));
+	return rolesStore.processedCredentialRoles.map(
+		({ slug, scopes, licensed, description, systemRole, roleType }) => ({
+			slug,
+			displayName: credentialRoleTranslations.value[slug],
+			scopes,
+			licensed,
+			description,
+			systemRole,
+			roleType,
+		}),
+	);
 });
 
 const sharingSelectPlaceholder = computed(() =>
