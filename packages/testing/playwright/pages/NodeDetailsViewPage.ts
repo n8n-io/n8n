@@ -648,14 +648,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('node-error-description');
 	}
 
-	getNodeRunErrorIndicator() {
-		return this.page.getByTestId('ndv-data-container').locator('.has-run-error');
-	}
-
-	getNodeRunTooltipIndicator() {
-		return this.page.getByTestId('ndv-data-container').locator('[class*="error"]');
-	}
-
 	// Run selector methods for linking input/output data
 	getInputRunSelector() {
 		return this.getInputPanel().getByTestId('run-selector');
@@ -731,5 +723,48 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getWebhookTriggerListening() {
 		return this.page.getByTestId('trigger-listening');
+	}
+
+	// Execution indicator methods
+	getNodeRunSuccessIndicator() {
+		return this.page.getByTestId('node-run-status-success');
+	}
+
+	getNodeRunErrorIndicator() {
+		return this.page.getByTestId('node-run-status-danger');
+	}
+
+	getNodeRunTooltipIndicator() {
+		return this.page.getByTestId('node-run-info');
+	}
+
+	// Settings methods
+	async openSettings() {
+		await this.page.getByTestId('tab-settings').click();
+	}
+
+	getNodeVersion() {
+		return this.page.getByTestId('node-version');
+	}
+
+	// Search functionality methods
+	getOutputSearchInput() {
+		return this.getOutputPanel().getByTestId('ndv-search');
+	}
+
+	getInputSearchInput() {
+		return this.getInputPanel().getByTestId('ndv-search');
+	}
+
+	async searchOutputData(searchTerm: string) {
+		const searchInput = this.getOutputSearchInput();
+		await searchInput.click();
+		await searchInput.fill(searchTerm);
+	}
+
+	async searchInputData(searchTerm: string) {
+		const searchInput = this.getInputSearchInput();
+		await searchInput.click();
+		await searchInput.fill(searchTerm);
 	}
 }
