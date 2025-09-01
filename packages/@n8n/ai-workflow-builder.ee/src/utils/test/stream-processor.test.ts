@@ -86,23 +86,16 @@ describe('stream-processor', () => {
 				expect(message.text).toBe('Last message to display');
 			});
 
-			it('should handle compact_messages with object content', () => {
+			it('should handle compact_messages with empty content', () => {
 				const chunk = {
-					compact_messages: {
-						messages: [
-							{ content: 'First message' },
-							{ content: { type: 'text', data: 'some data' } }, // Object content
-						],
+					agent: {
+						messages: [{ content: 'First message' }, { content: [{ type: 'text', text: '' }] }],
 					},
 				};
 
 				const result = processStreamChunk('updates', chunk);
 
-				expect(result).toEqual({
-					messages: [
-						{ role: 'assistant', text: { data: 'some data', type: 'text' }, type: 'message' },
-					],
-				});
+				expect(result).toEqual(null);
 			});
 
 			it('should handle process_operations with workflow update', () => {
