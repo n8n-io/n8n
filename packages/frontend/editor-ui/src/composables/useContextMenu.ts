@@ -119,6 +119,15 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		return NodeHelpers.isExecutable(workflowObject.value, workflowNode, nodeType);
 	};
 
+	const isNodeOutdated = (node: INodeUi) => {
+		const nodeVersions = nodeTypesStore.getNodeVersions(node.type);
+		if (nodeVersions.length === 0) {
+			return false;
+		}
+		const latestVersion = Math.max(...nodeVersions);
+		return node.typeVersion < latestVersion;
+	};
+
 	const open = (event: MouseEvent, menuTarget: ContextMenuTarget) => {
 		event.stopPropagation();
 
@@ -234,10 +243,11 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 					disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 				},
 				nodes.length === 1 &&
-					!onlyStickies && {
+					!onlyStickies &&
+					isNodeOutdated(nodes[0]) && {
 						id: 'update_node_version',
 						label: i18n.baseText('contextMenu.updateNodeVersion'),
-						disabled: isReadOnly.value || !canDuplicateNode(nodes[0]),
+						disabled: isReadOnly.value,
 					},
 				...layoutActions,
 				...extractionActions,
