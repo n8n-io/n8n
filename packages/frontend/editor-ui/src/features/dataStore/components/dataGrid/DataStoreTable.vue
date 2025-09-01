@@ -24,7 +24,6 @@ import type {
 	CellEditingStartedEvent,
 	CellEditingStoppedEvent,
 	CellKeyDownEvent,
-	ValueFormatterParams,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -65,10 +64,10 @@ import AddColumnButton from '@/features/dataStore/components/dataGrid/AddColumnB
 import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.vue';
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue';
+import ElDatePickerCellEditor from '@/features/dataStore/components/dataGrid/ElDatePickerCellEditor.vue';
 import { onClickOutside } from '@vueuse/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { reorderItem } from '@/features/dataStore/utils';
-import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -351,8 +350,14 @@ const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {})
 	}
 	// Setup date editor
 	if (col.type === 'date') {
-		columnDef.cellEditor = 'agDateCellEditor';
-		columnDef.cellEditorPopup = false;
+		columnDef.cellEditorSelector = () => ({
+			component: ElDatePickerCellEditor,
+		});
+		columnDef.valueFormatter = (params) => {
+			const value = params.value as Date | string | number | null | undefined;
+			if (value === null || value === undefined) return '';
+			return new Date(value).toISOString();
+		};
 	}
 	return {
 		...columnDef,
@@ -424,11 +429,6 @@ const initColumnDefinitions = () => {
 		lockPosition: 'right',
 		headerComponentParams: {
 			allowMenuActions: false,
-		},
-		valueFormatter: (params: ValueFormatterParams<DataStoreRow>) => {
-			if (!params.value) return '';
-			const { date, time } = convertToDisplayDate(params.value as Date | string | number);
-			return `${date}, ${time}`;
 		},
 	};
 	colDefs.value = [
@@ -838,8 +838,6 @@ defineExpose({
 	--ag-input-background-color: var(--color-text-xlight);
 	--ag-focus-shadow: none;
 
-	--cell-editing-border: 2px solid var(--color-secondary);
-
 	:global(.ag-cell) {
 		display: flex;
 		align-items: center;
@@ -911,7 +909,7 @@ defineExpose({
 			padding-top: var(--spacing-xs);
 
 			&:where(:focus-within, :active) {
-				border: var(--cell-editing-border);
+				border: var(--grid-cell-editing-border);
 			}
 		}
 	}
@@ -930,7 +928,7 @@ defineExpose({
 		box-shadow: none;
 
 		&:global(.boolean-cell) {
-			border: var(--cell-editing-border) !important;
+			border: var(--grid-cell-editing-border) !important;
 
 			&:global(.ag-cell-focus) {
 				background-color: var(--grid-cell-active-background);
