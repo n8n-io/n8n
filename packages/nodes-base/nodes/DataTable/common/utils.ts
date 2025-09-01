@@ -12,7 +12,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { FieldEntry, FilterType } from './constants';
-import { ALL_FILTERS, ANY_FILTER } from './constants';
+import { ALL_CONDITIONS, ANY_CONDITION } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
 
 type DateLike = { toISOString: () => string };
@@ -76,7 +76,7 @@ export function isFieldEntry(obj: unknown): obj is FieldEntry {
 }
 
 export function isMatchType(obj: unknown): obj is FilterType {
-	return typeof obj === 'string' && (obj === ANY_FILTER || obj === ALL_FILTERS);
+	return typeof obj === 'string' && (obj === ANY_CONDITION || obj === ALL_CONDITIONS);
 }
 
 export function buildGetManyFilter(
@@ -105,7 +105,7 @@ export function buildGetManyFilter(
 				};
 		}
 	});
-	return { type: matchType === 'allFilters' ? 'and' : 'or', filters };
+	return { type: matchType === ALL_CONDITIONS ? 'and' : 'or', filters };
 }
 
 export function isFieldArray(value: unknown): value is FieldEntry[] {

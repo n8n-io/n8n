@@ -2,6 +2,7 @@ import { DateTime } from 'luxon';
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { ANY_CONDITION, ALL_CONDITIONS } from '../../common/constants';
 import { dataObjectToApiInput, buildGetManyFilter } from '../../common/utils';
 
 const mockNode: INode = {
@@ -206,7 +207,7 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 	it('should translate isEmpty to eq with null value', () => {
 		const fieldEntries = [{ keyName: 'name', condition: 'isEmpty' as const, keyValue: 'ignored' }];
 
-		const result = buildGetManyFilter(fieldEntries, 'allFilters');
+		const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
 
 		expect(result).toEqual({
 			type: 'and',
@@ -225,7 +226,7 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 			{ keyName: 'email', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
 		];
 
-		const result = buildGetManyFilter(fieldEntries, 'anyFilter');
+		const result = buildGetManyFilter(fieldEntries, ANY_CONDITION);
 
 		expect(result).toEqual({
 			type: 'or',
@@ -246,7 +247,7 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 			{ keyName: 'phone', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
 		];
 
-		const result = buildGetManyFilter(fieldEntries, 'allFilters');
+		const result = buildGetManyFilter(fieldEntries, ALL_CONDITIONS);
 
 		expect(result).toEqual({
 			type: 'and',
@@ -276,7 +277,7 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 			{ keyName: 'name', condition: 'like' as const, keyValue: '%john%' },
 		];
 
-		const result = buildGetManyFilter(fieldEntries, 'anyFilter');
+		const result = buildGetManyFilter(fieldEntries, ANY_CONDITION);
 
 		expect(result).toEqual({
 			type: 'or',
