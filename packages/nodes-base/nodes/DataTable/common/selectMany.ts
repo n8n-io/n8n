@@ -104,7 +104,7 @@ export function getSelectFilter(ctx: IExecuteFunctions, index: number) {
 		throw new NodeOperationError(node, 'unexpected fields input');
 	}
 
-	return buildGetManyFilter(fields, matchType, node);
+	return buildGetManyFilter(fields, matchType);
 }
 
 export async function executeSelectMany(

@@ -82,36 +82,28 @@ export function isMatchType(obj: unknown): obj is FilterType {
 export function buildGetManyFilter(
 	fieldEntries: FieldEntry[],
 	matchType: FilterType,
-	node: INode,
 ): ListDataStoreContentFilter {
 	const filters = fieldEntries.map((x) => {
-		if (x.condition === 'isEmpty') {
-			return {
-				columnName: x.keyName,
-				condition: 'eq' as const,
-				value: null,
-			};
+		switch (x.condition) {
+			case 'isEmpty':
+				return {
+					columnName: x.keyName,
+					condition: 'eq' as const,
+					value: null,
+				};
+			case 'isNotEmpty':
+				return {
+					columnName: x.keyName,
+					condition: 'neq' as const,
+					value: null,
+				};
+			default:
+				return {
+					columnName: x.keyName,
+					condition: x.condition,
+					value: x.keyValue,
+				};
 		}
-		if (x.condition === 'isNotEmpty') {
-			return {
-				columnName: x.keyName,
-				condition: 'neq' as const,
-				value: null,
-			};
-		}
-
-		if (x.keyValue === undefined) {
-			throw new NodeOperationError(
-				node,
-				`Condition '${x.condition}' requires a value for column '${x.keyName}'`,
-			);
-		}
-
-		return {
-			columnName: x.keyName,
-			condition: x.condition,
-			value: x.keyValue,
-		};
 	});
 	return { type: matchType === 'allFilters' ? 'and' : 'or', filters };
 }

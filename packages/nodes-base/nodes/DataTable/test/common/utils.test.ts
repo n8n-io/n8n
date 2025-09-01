@@ -206,7 +206,7 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 	it('should translate isEmpty to eq with null value', () => {
 		const fieldEntries = [{ keyName: 'name', condition: 'isEmpty' as const, keyValue: 'ignored' }];
 
-		const result = buildGetManyFilter(fieldEntries, 'allFilters', mockNode);
+		const result = buildGetManyFilter(fieldEntries, 'allFilters');
 
 		expect(result).toEqual({
 			type: 'and',
@@ -225,7 +225,7 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 			{ keyName: 'email', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
 		];
 
-		const result = buildGetManyFilter(fieldEntries, 'anyFilter', mockNode);
+		const result = buildGetManyFilter(fieldEntries, 'anyFilter');
 
 		expect(result).toEqual({
 			type: 'or',
@@ -246,7 +246,7 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 			{ keyName: 'phone', condition: 'isNotEmpty' as const, keyValue: 'ignored' },
 		];
 
-		const result = buildGetManyFilter(fieldEntries, 'allFilters', mockNode);
+		const result = buildGetManyFilter(fieldEntries, 'allFilters');
 
 		expect(result).toEqual({
 			type: 'and',
@@ -276,7 +276,7 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 			{ keyName: 'name', condition: 'like' as const, keyValue: '%john%' },
 		];
 
-		const result = buildGetManyFilter(fieldEntries, 'anyFilter', mockNode);
+		const result = buildGetManyFilter(fieldEntries, 'anyFilter');
 
 		expect(result).toEqual({
 			type: 'or',
@@ -293,18 +293,5 @@ describe('buildGetManyFilter - isEmpty/isNotEmpty translation', () => {
 				},
 			],
 		});
-	});
-
-	it('should throw error when keyValue is undefined for conditions that require it', () => {
-		const fieldEntries = [
-			{ keyName: 'name', condition: 'eq' as const }, // keyValue is undefined
-		];
-
-		expect(() => buildGetManyFilter(fieldEntries, 'allFilters', mockNode)).toThrow(
-			NodeOperationError,
-		);
-		expect(() => buildGetManyFilter(fieldEntries, 'allFilters', mockNode)).toThrow(
-			"Condition 'eq' requires a value for column 'name'",
-		);
 	});
 });
