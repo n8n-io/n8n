@@ -10,20 +10,30 @@ import { useUIStore } from '@/stores/ui.store';
 import { computed, ref } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useToast } from '@/composables/useToast';
 
 const modalBus = createEventBus();
 
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 const externalHooks = useExternalHooks();
+const toast = useToast();
 
-const nodeName = computed(() => ndvStore.activeNode?.name ?? '');
+const activeNode = computed(() => ndvStore.activeNode);
 
 const loading = ref(false);
 
 const onConfirmButtonClick = async () => {
+	if (!activeNode.value) {
+		toast.showMessage({
+			title: 'No active node',
+			type: 'info',
+		});
+		return;
+	}
 	loading.value = true;
-	console.log('confirm'); // TODO implement
+	await useCanvasOperations().updateNodeVersion(activeNode.value.id);
 	await closeNdv();
 	loading.value = false;
 
@@ -46,7 +56,7 @@ const closeNdv = async () => {
 	<Modal
 		width="540px"
 		:name="NODE_VERSION_UPDATE_MODAL_KEY"
-		:title="`Update ${nodeName} node to the latest version`"
+		:title="`Update ${activeNode?.name} node to the latest version`"
 		:event-bus="modalBus"
 		:center="true"
 		:show-close="true"
