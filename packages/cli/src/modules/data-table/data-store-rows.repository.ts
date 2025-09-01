@@ -160,7 +160,6 @@ export class DataStoreRowsRepository {
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
 
 		const table = this.toTableName(dataStoreId);
-		const columnNames = columns.map((c) => c.name);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 			this.dataSource.driver.escape(x),
@@ -181,11 +180,7 @@ export class DataStoreRowsRepository {
 				completeRow[column.name] = normalizeValue(completeRow[column.name], column.type, dbType);
 			}
 
-			const query = this.dataSource
-				.createQueryBuilder()
-				.insert()
-				.into(table, columnNames)
-				.values(completeRow);
+			const query = this.dataSource.createQueryBuilder().insert().into(table).values(completeRow);
 
 			if (useReturning) {
 				query.returning(returnData ? selectColumns.join(',') : 'id');
