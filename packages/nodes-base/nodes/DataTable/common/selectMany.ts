@@ -7,7 +7,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import type { FilterType } from './constants';
+import { ALL_CONDITIONS, ANY_CONDITION, type FilterType } from './constants';
 import { DATA_TABLE_ID_FIELD } from './fields';
 import { buildGetManyFilter, isFieldArray, isMatchType } from './utils';
 
@@ -23,15 +23,15 @@ export function getSelectFields(
 			options: [
 				{
 					name: 'Any Condition',
-					value: 'anyCondition',
+					value: ANY_CONDITION,
 				},
 				{
 					name: 'All Conditions',
-					value: 'allConditions',
+					value: ALL_CONDITIONS,
 				},
 			] satisfies Array<{ value: FilterType; name: string }>,
 			displayOptions,
-			default: 'anyCondition',
+			default: ANY_CONDITION,
 		},
 		{
 			displayName: 'Conditions',

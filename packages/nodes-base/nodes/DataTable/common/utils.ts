@@ -88,7 +88,7 @@ export function buildGetManyFilter(
 		condition: x.condition,
 		value: x.keyValue,
 	}));
-	return { type: matchType === 'allConditions' ? 'and' : 'or', filters };
+	return { type: matchType === ALL_CONDITIONS ? 'and' : 'or', filters };
 }
 
 export function isFieldArray(value: unknown): value is FieldEntry[] {
