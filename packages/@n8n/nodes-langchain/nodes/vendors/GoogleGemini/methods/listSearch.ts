@@ -64,7 +64,14 @@ export async function imageGenerationModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const results = await baseModelSearch.call(this, (model) => model.includes('image'), filter);
+	const results = await baseModelSearch.call(
+		this,
+		(model) =>
+			model.includes('imagen') ||
+			model.includes('image-generation') ||
+			model.includes('flash-image'),
+		filter,
+	);
 
 	return {
 		results: results.results.map((r) =>
