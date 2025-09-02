@@ -14,7 +14,12 @@ from src.errors import (
 )
 
 from src.message_types.broker import NodeMode, Items
-from src.constants import EXECUTOR_CIRCULAR_REFERENCE_KEY, EXECUTOR_USER_OUTPUT_KEY
+from src.constants import (
+    EXECUTOR_CIRCULAR_REFERENCE_KEY,
+    EXECUTOR_USER_OUTPUT_KEY,
+    EXECUTOR_ALL_ITEMS_FILENAME,
+    EXECUTOR_PER_ITEM_FILENAME,
+)
 from typing import Any, Set
 
 from multiprocessing.context import SpawnProcess
@@ -35,6 +40,7 @@ class TaskExecutor:
         stdlib_allow: Set[str],
         external_allow: Set[str],
         builtins_deny: set[str],
+        can_log: bool,
     ):
         """Create a subprocess for executing a Python code task and a queue for communication."""
 
@@ -47,7 +53,15 @@ class TaskExecutor:
         queue = MULTIPROCESSING_CONTEXT.Queue()
         process = MULTIPROCESSING_CONTEXT.Process(
             target=fn,
-            args=(code, items, queue, stdlib_allow, external_allow, builtins_deny),
+            args=(
+                code,
+                items,
+                queue,
+                stdlib_allow,
+                external_allow,
+                builtins_deny,
+                can_log,
+            ),
         )
 
         return process, queue
@@ -114,6 +128,7 @@ class TaskExecutor:
         stdlib_allow: Set[str],
         external_allow: Set[str],
         builtins_deny: set[str],
+        can_log: bool,
     ):
         """Execute a Python code task in all-items mode."""
 
@@ -124,15 +139,18 @@ class TaskExecutor:
         print_args: PrintArgs = []
 
         try:
-            code = TaskExecutor._wrap_code(raw_code)
+            wrapped_code = TaskExecutor._wrap_code(raw_code)
+            compiled_code = compile(wrapped_code, EXECUTOR_ALL_ITEMS_FILENAME, "exec")
 
             globals = {
                 "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
                 "_items": items,
-                "print": TaskExecutor._create_custom_print(print_args),
+                "print": TaskExecutor._create_custom_print(print_args)
+                if can_log
+                else print,
             }
 
-            exec(code, globals)
+            exec(compiled_code, globals)
 
             queue.put(
                 {"result": globals[EXECUTOR_USER_OUTPUT_KEY], "print_args": print_args}
@@ -149,6 +167,7 @@ class TaskExecutor:
         stdlib_allow: Set[str],
         external_allow: Set[str],
         builtins_deny: set[str],
+        can_log: bool,
     ):
         """Execute a Python code task in per-item mode."""
 
@@ -160,14 +179,16 @@ class TaskExecutor:
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
-            compiled_code = compile(wrapped_code, "<per_item_task_execution>", "exec")
+            compiled_code = compile(wrapped_code, EXECUTOR_PER_ITEM_FILENAME, "exec")
 
             result = []
             for index, item in enumerate(items):
                 globals = {
                     "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
                     "_item": item,
-                    "print": TaskExecutor._create_custom_print(print_args),
+                    "print": TaskExecutor._create_custom_print(print_args)
+                    if can_log
+                    else print,
                 }
 
                 exec(compiled_code, globals)
