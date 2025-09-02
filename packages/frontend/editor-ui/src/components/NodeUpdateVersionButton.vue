@@ -17,7 +17,7 @@ const props = withDefaults(
 	}>(),
 	{
 		disabled: false,
-		type: 'warning',
+		type: 'secondary',
 		size: 'small',
 	},
 );
