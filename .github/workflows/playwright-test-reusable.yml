@@ -40,9 +40,7 @@ env:
   # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
   TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_WORKERS: 3 # We have 2 CPUs on this runner but we can use more workers since it's low CPU intensive
-  QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
-  QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
-  QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
+
 jobs:
   test:
     runs-on: blacksmith-2vcpu-ubuntu-2204
@@ -66,7 +64,7 @@ jobs:
         env:
           INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
 
-      - name: Install Browsers (Docker Build)
+      - name: Install Browsers
         if: inputs.test-mode == 'docker-build'
         run: pnpm turbo install-browsers:ci
 
@@ -78,6 +76,6 @@ jobs:
         env:
           N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
-          QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ env.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
-          QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ env.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
-          QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ env.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
