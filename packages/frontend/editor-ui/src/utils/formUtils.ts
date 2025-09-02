@@ -36,6 +36,7 @@ export function prepareFormData({
 	useResponseData,
 	appendAttribution = true,
 	buttonLabel,
+	customCss,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -71,8 +72,8 @@ export function prepareFormData({
 		useResponseData,
 		appendAttribution,
 		buttonLabel,
-		// TODO:
-		// dangerousCustomCss: ,
+		// TODO: sanitize
+		dangerousCustomCss: customCss,
 	};
 
 	for (const [index, field] of formFields.entries()) {
