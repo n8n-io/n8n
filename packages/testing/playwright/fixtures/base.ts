@@ -1,5 +1,5 @@
 import { test as base, expect } from '@playwright/test';
-import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
+import type { N8NConfig, N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
 
@@ -15,7 +15,7 @@ type TestFixtures = {
 	api: ApiHelpers;
 	baseURL: string;
 	setupRequirements: (requirements: TestRequirements) => Promise<void>;
-	proxyServer?: ProxyServer;
+	proxyServer: ProxyServer;
 };
 
 type WorkerFixtures = {
@@ -68,8 +68,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 				return;
 			}
 
-			console.log('Creating container with config:', containerConfig);
-			const container = await createN8NStack(containerConfig);
+			const config: N8NConfig = { proxyServerEnabled: true, ...containerConfig };
+			console.log('Creating container with config:', config);
+			const container = await createN8NStack(config);
 
 			console.log(`Container URL: ${container.baseUrl}`);
 
@@ -163,11 +164,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 	},
 
 	proxyServer: async ({ n8nContainer }, use) => {
-		if (n8nContainer.proxyServerUrl) {
-			const proxyServer = new ProxyServer(n8nContainer.proxyServerUrl);
+		const proxyServer = new ProxyServer(n8nContainer.proxyServerUrl);
 
-			await use(proxyServer);
-		}
+		await use(proxyServer);
 	},
 });
 

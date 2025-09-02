@@ -116,7 +116,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		postgres = false,
 		queueMode = false,
 		env = {},
-		proxyServerEnabled = true,
+		proxyServerEnabled = false,
 		projectName,
 		resourceQuota,
 	} = config;

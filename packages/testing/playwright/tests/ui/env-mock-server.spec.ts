@@ -4,8 +4,6 @@ import { test, expect } from '../../fixtures/base';
 
 test.describe('Mock server', () => {
 	test('should verify ProxyServer container is running', async ({ proxyServer }) => {
-		assert(proxyServer, 'ProxyServer is not available');
-
 		const mockResponse = await proxyServer.createGetExpectation('/health', {
 			status: 'healthy',
 		});
@@ -25,8 +23,6 @@ test.describe('Mock server', () => {
 	});
 
 	test('should run a simple workflow calling http endpoint', async ({ n8n, proxyServer }) => {
-		assert(proxyServer, 'ProxyServer is not available');
-
 		const mockResponse = { data: 'Hello from ProxyServer!', test: '1' };
 
 		// Create expectation in mockserver to handle the request

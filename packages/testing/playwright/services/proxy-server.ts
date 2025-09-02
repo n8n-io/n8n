@@ -48,7 +48,7 @@ export class ProxyServer {
 	/**
 	 * Create a ProxyServer client instance from a URL
 	 */
-	constructor(proxyServerUrl: string) {
+	constructor(proxyServerUrl: string = '') {
 		this.url = proxyServerUrl;
 		const parsedURL = new URL(proxyServerUrl);
 		this.client = proxyServerClient(parsedURL.hostname, parseInt(parsedURL.port, 10));
