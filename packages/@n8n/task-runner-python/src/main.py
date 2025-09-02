@@ -3,10 +3,11 @@ import logging
 import sys
 from typing import Optional
 
-from src.env import parse_env_vars
+from src.config.health_check_config import HealthCheckConfig
+from src.config.sentry_config import SentryConfig
+from src.config.task_runner_config import TaskRunnerConfig
 from src.logs import setup_logging
 from src.task_runner import TaskRunner
-from src.config.sentry_config import SentryConfig
 
 
 async def main():
@@ -21,28 +22,26 @@ async def main():
 
         sentry = setup_sentry(sentry_config)
 
-    logger.info("Starting runner...")
+    health_check_server: Optional["HealthCheckServer"] = None
+    health_check_config = HealthCheckConfig.from_env()
+    if health_check_config.enabled:
+        from src.health_check_server import HealthCheckServer
+
+        health_check_server = HealthCheckServer()
+        try:
+            await health_check_server.start(health_check_config)
+        except OSError as e:
+            logger.error(f"Failed to start health check server: {e}")
+            sys.exit(1)
 
     try:
-        task_runner_opts, health_check_opts = parse_env_vars()
+        task_runner_config = TaskRunnerConfig.from_env()
     except ValueError as e:
         logger.error(str(e))
         sys.exit(1)
 
-    task_runner = TaskRunner(task_runner_opts)
-    health_check_server: Optional["HealthCheckServer"] = None
-
-    if health_check_opts.enabled:
-        from src.health import HealthCheckServer
-
-        health_check_server = HealthCheckServer()
-        try:
-            await health_check_server.start(
-                health_check_opts.host, health_check_opts.port
-            )
-        except OSError as e:
-            logger.error(f"Failed to start health check server: {e}")
-            sys.exit(1)
+    task_runner = TaskRunner(task_runner_config)
+    logger.info("Starting runner...")
 
     try:
         await task_runner.start()
