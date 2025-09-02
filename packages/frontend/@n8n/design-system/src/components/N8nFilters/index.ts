@@ -1,3 +1,3 @@
-import DropdownFilters from './DropdownFilters.vue';
+import N8nFilters from './Filters.vue';
 
-export default DropdownFilters;
+export default N8nFilters;

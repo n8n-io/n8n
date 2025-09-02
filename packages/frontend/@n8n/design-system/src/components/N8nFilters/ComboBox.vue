@@ -3,78 +3,47 @@ import {
 	ComboboxAnchor,
 	ComboboxContent,
 	ComboboxEmpty,
-	ComboboxGroup,
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxItemIndicator,
-	ComboboxLabel,
 	ComboboxRoot,
-	ComboboxSeparator,
-	ComboboxTrigger,
 	ComboboxViewport,
 } from 'reka-ui';
 import N8nIcon from '../N8nIcon';
+import { ref } from 'vue';
 
-const options = [
-	{
-		name: 'Fruit',
-		children: [
-			{ name: 'Apple' },
-			{ name: 'Banana' },
-			{ name: 'Orange' },
-			{ name: 'Honeydew' },
-			{ name: 'Grapes' },
-			{ name: 'Watermelon' },
-			{ name: 'Cantaloupe' },
-			{ name: 'Pear' },
-		],
-	},
-	{
-		name: 'Vegetable',
-		children: [
-			{ name: 'Cabbage' },
-			{ name: 'Broccoli' },
-			{ name: 'Carrots' },
-			{ name: 'Lettuce' },
-			{ name: 'Spinach' },
-			{ name: 'Bok Choy' },
-			{ name: 'Cauliflower' },
-			{ name: 'Potatoes' },
-		],
-	},
-];
+defineProps<{
+	items: Array<{ label: string; id: number; value: string }>;
+}>();
+
+const open = ref(true);
 </script>
 
 <template>
-	<ComboboxRoot class="ComboboxRoot" :open="true">
+	<ComboboxRoot
+		class="ComboboxRoot"
+		v-bind="items"
+		multiple
+		:open="open"
+		@update:open="() => {}"
+		@highlight="(e) => console.log(e)"
+		@update:modelValue="(e) => console.log(e)"
+	>
 		<ComboboxAnchor class="ComboboxAnchor">
 			<ComboboxInput class="ComboboxInput" placeholder="Placeholder..." />
 		</ComboboxAnchor>
-		<ComboboxContent class="ComboboxContent" defaultOpen>
+		<ComboboxContent class="ComboboxContent">
 			<ComboboxViewport class="ComboboxViewport">
 				<ComboboxEmpty class="ComboboxEmpty" />
-				<template v-for="(group, index) in options" :key="group.name">
-					<ComboboxGroup v-if="group.children.length">
-						<ComboboxSeparator v-if="index !== 0" class="ComboboxSeparator" />
-
-						<ComboboxLabel class="ComboboxLabel">
-							{{ group.name }}
-						</ComboboxLabel>
-
-						<ComboboxItem
-							v-for="option in group.children"
-							:key="option.name"
-							:value="option.name"
-							class="ComboboxItem"
-						>
-							<ComboboxItemIndicator class="ComboboxItemIndicator">
-								<Icon icon="radix-icons:check" />
-							</ComboboxItemIndicator>
-							<span>
-								{{ option.name }}
-							</span>
-						</ComboboxItem>
-					</ComboboxGroup>
+				<template v-for="item in items" :key="item.id">
+					<ComboboxItem :value="item.value" class="ComboboxItem">
+						<ComboboxItemIndicator class="ComboboxItemIndicator">
+							<N8nIcon icon="check" />
+						</ComboboxItemIndicator>
+						<span>
+							{{ item.label }}
+						</span>
+					</ComboboxItem>
 				</template>
 			</ComboboxViewport>
 		</ComboboxContent>
@@ -83,12 +52,12 @@ const options = [
 
 <style lang="scss" scoped>
 /* reset */
-/* button,
+button,
 input {
 	all: unset;
 }
 
-.ComboboxRoot {
+:deep(.ComboboxRoot) {
 	position: relative;
 	max-width: 300px;
 }
@@ -103,18 +72,15 @@ input {
 	padding: 0 15px;
 	gap: 5px;
 	background-color: white;
-	color: var(--grass-11);
+	color: black;
 	border-radius: 4px;
-	box-shadow: 0 2px 10px var(--black-a7);
 }
 .ComboboxAnchor:hover {
-	background-color: var(--mauve-3);
 }
 
 .ComboboxInput {
 	height: 100%;
 	background-color: transparent;
-	color: var(--grass-11);
 }
 .ComboboxInput[data-placeholder] {
 	color: var(--grass-9);
@@ -123,20 +89,15 @@ input {
 .ComboboxIcon {
 	width: 16px;
 	height: 16px;
-	color: var(--grass-11);
 }
 
 .ComboboxContent {
 	z-index: 10;
 	width: 100%;
+	max-width: 300px;
 	position: absolute;
 	overflow: hidden;
 	background-color: white;
-	border-radius: 6px;
-	margin-top: 8px;
-	box-shadow:
-		0 10px 38px -10px rgba(22, 23, 24, 0.35),
-		0 10px 20px -15px rgba(22, 23, 24, 0.2);
 }
 
 .ComboboxViewport {
@@ -163,16 +124,13 @@ input {
 	height: 25px;
 	padding: 0 35px 0 25px;
 	position: relative;
-	user-combobox: none;
 }
 .ComboboxItem[data-disabled] {
-	color: var(--mauve-8);
 	pointer-events: none;
 }
 .ComboboxItem[data-highlighted] {
 	outline: none;
-	background-color: var(--grass-9);
-	color: var(--grass-1);
+	background-color: turquoise;
 }
 
 .ComboboxLabel {
@@ -184,7 +142,7 @@ input {
 
 .ComboboxSeparator {
 	height: 1px;
-	background-color: var(--grass-6);
+
 	margin: 5px;
 }
 
@@ -195,5 +153,6 @@ input {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-} */
+	background-color: turquoise;
+}
 </style>
