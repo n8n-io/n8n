@@ -35,6 +35,7 @@ import { VersionNotificationsConfig } from './configs/version-notifications.conf
 import { WorkflowHistoryConfig } from './configs/workflow-history.config';
 import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
+import { DataTableConfig } from './configs/data-table.config';
 
 export { Config, Env, Nested } from './decorators';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
@@ -209,4 +210,7 @@ export class GlobalConfig {
 
 	@Nested
 	ai: AiConfig;
+
+	@Nested
+	datatable: DataTableConfig;
 }

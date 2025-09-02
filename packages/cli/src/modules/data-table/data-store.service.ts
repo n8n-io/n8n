@@ -21,14 +21,19 @@ import { DataStoreNameConflictError } from './errors/data-store-name-conflict.er
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
 import { normalizeRows } from './utils/sql-utils';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class DataStoreService {
+	lastCacheSizeCheck: Date;
+	pendingSizeCheck: any;
+
 	constructor(
 		private readonly dataStoreRepository: DataStoreRepository,
 		private readonly dataStoreColumnRepository: DataStoreColumnRepository,
 		private readonly dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly logger: Logger,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -138,6 +143,7 @@ export class DataStoreService {
 		rows: DataStoreRows,
 		returnData?: boolean,
 	) {
+		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateRows(dataStoreId, rows);
 
@@ -157,6 +163,7 @@ export class DataStoreService {
 		dto: Omit<UpsertDataStoreRowsDto, 'returnData'>,
 		returnData: boolean = false,
 	) {
+		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataStoreId, projectId);
 		await this.validateRows(dataStoreId, dto.rows, true);
 
@@ -188,6 +195,7 @@ export class DataStoreService {
 		dto: Omit<UpdateDataStoreRowDto, 'returnData'>,
 		returnData = false,
 	) {
+		await this.validateDataTableSize();
 		await this.validateDataStoreExists(dataStoreId, projectId);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
@@ -372,5 +380,95 @@ export class DataStoreService {
 				}
 			}
 		}
+	}
+
+	private async validateDataTableSize() {
+		const now = new Date();
+
+		// If there's already a pending check, wait for it to complete
+		if (this.pendingSizeCheck) {
+			await this.pendingSizeCheck;
+			return;
+		}
+
+		// Check if we need to run the size check
+		const shouldRunCheck =
+			!this.lastCacheSizeCheck || now.getTime() - this.lastCacheSizeCheck.getTime() >= 3 * 1000;
+
+		if (shouldRunCheck) {
+			// Create and store the promise to prevent concurrent checks
+			this.pendingSizeCheck = this.performSizeCheck(now);
+
+			try {
+				await this.pendingSizeCheck;
+			} finally {
+				// Clear the pending check once it's done
+				this.pendingSizeCheck = null;
+			}
+		}
+	}
+
+	private async performSizeCheck(checkTime: Date): Promise<void> {
+		const maxSize = this.globalConfig.datatable.maxSize;
+
+		this.lastCacheSizeCheck = checkTime;
+
+		const currentSizeInMbs = await this.findDataTablesSize();
+
+		if (currentSizeInMbs >= maxSize) {
+			throw new DataStoreValidationError(
+				`Data store size limit exceeded: ${currentSizeInMbs}MB used, limit is ${this.globalConfig.datatable.maxSize}MB`,
+			);
+		}
+	}
+
+	async findDataTablesSize(): Promise<number> {
+		const dbType = this.globalConfig.database.type;
+		const tablePrefix = this.globalConfig.database.tablePrefix || '';
+		const schemaName = this.globalConfig.database.postgresdb.schema;
+
+		let sql = '';
+
+		switch (dbType) {
+			case 'sqlite':
+				sql = `
+					SELECT ROUND(SUM(pgsize) / 1024.0 / 1024.0, 2) AS total_mb
+					FROM dbstat
+					WHERE name LIKE '${tablePrefix}data_table_user_%'
+				`;
+				break;
+
+			case 'postgresdb':
+				sql = `
+					SELECT ROUND(
+						SUM(pg_relation_size(schemaname||'.'||tablename)) / 1024.0 / 1024.0, 2
+					) AS total_mb
+					FROM pg_tables
+					WHERE schemaname = '${schemaName}'
+					AND tablename LIKE '${tablePrefix}data_table_user_%'
+				`;
+				break;
+
+			case 'mysqldb':
+			case 'mariadb':
+				const databaseName = this.globalConfig.database.mysqldb.database;
+				sql = `
+					SELECT ROUND(SUM((DATA_LENGTH + INDEX_LENGTH)) / 1024 / 1024, 1) AS total_mb
+					FROM information_schema.tables
+					WHERE table_schema = '${databaseName}'
+					AND table_name LIKE '${tablePrefix}data_table_user_%'
+				`;
+				break;
+
+			default:
+				this.logger.warn(`Unsupported database type for size calculation: ${dbType}`);
+				return 0;
+		}
+
+		const result = await this.dataStoreRepository.query(sql);
+
+		const currentSizeInMbs = result[0]?.total_mb || 0;
+
+		return currentSizeInMbs;
 	}
 }
