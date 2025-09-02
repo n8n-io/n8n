@@ -124,9 +124,14 @@ describe('ModelSelector Node', () => {
 				},
 			];
 
-			mockSupplyDataFunction.getNodeParameter
-				.mockReturnValueOnce(rules) // rules.rule parameter
-				.mockReturnValueOnce(true); // conditions evaluation
+			mockSupplyDataFunction.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'rules.custom') return [];
+				if (name === 'rules.rule') return rules;
+				if (name === 'rules.predefined') return [];
+				if (name === 'rules.rule[0].conditions' || name === 'rules.custom[0].conditions')
+					return true;
+				return undefined as unknown as never;
+			});
 
 			const result = await node.supplyData.call(mockSupplyDataFunction, 0);
 
@@ -142,9 +147,14 @@ describe('ModelSelector Node', () => {
 				},
 			];
 
-			mockSupplyDataFunction.getNodeParameter
-				.mockReturnValueOnce(rules) // rules.rule parameter
-				.mockReturnValueOnce(true); // conditions evaluation
+			mockSupplyDataFunction.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'rules.custom') return [];
+				if (name === 'rules.rule') return rules;
+				if (name === 'rules.predefined') return [];
+				if (name === 'rules.rule[0].conditions' || name === 'rules.custom[0].conditions')
+					return true;
+				return undefined as unknown as never;
+			});
 
 			const result = await node.supplyData.call(mockSupplyDataFunction, 0);
 
@@ -161,9 +171,14 @@ describe('ModelSelector Node', () => {
 				},
 			];
 
-			mockSupplyDataFunction.getNodeParameter
-				.mockReturnValueOnce(rules) // rules.rule parameter
-				.mockReturnValueOnce(true); // conditions evaluation
+			mockSupplyDataFunction.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'rules.custom') return [];
+				if (name === 'rules.rule') return rules;
+				if (name === 'rules.predefined') return [];
+				if (name === 'rules.rule[0].conditions' || name === 'rules.custom[0].conditions')
+					return true;
+				return undefined as unknown as never;
+			});
 
 			const result = await node.supplyData.call(mockSupplyDataFunction, 0);
 
@@ -186,10 +201,17 @@ describe('ModelSelector Node', () => {
 				},
 			];
 
-			mockSupplyDataFunction.getNodeParameter
-				.mockReturnValueOnce(rules) // rules.rule parameter
-				.mockReturnValueOnce(false) // first rule conditions evaluation
-				.mockReturnValueOnce(true); // second rule conditions evaluation
+			let condCalls = 0;
+			mockSupplyDataFunction.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'rules.custom') return [];
+				if (name === 'rules.rule') return rules;
+				if (name === 'rules.predefined') return [];
+				if (name.startsWith('rules.rule[') || name.startsWith('rules.custom[')) {
+					condCalls += 1;
+					return condCalls === 1 ? false : true;
+				}
+				return undefined as unknown as never;
+			});
 
 			const result = await node.supplyData.call(mockSupplyDataFunction, 0);
 
@@ -209,10 +231,17 @@ describe('ModelSelector Node', () => {
 				},
 			];
 
-			mockSupplyDataFunction.getNodeParameter
-				.mockReturnValueOnce(rules) // rules.rule parameter
-				.mockReturnValueOnce(false) // first rule conditions evaluation
-				.mockReturnValueOnce(false); // second rule conditions evaluation
+			let condCalls = 0;
+			mockSupplyDataFunction.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'rules.custom') return [];
+				if (name === 'rules.rule') return rules;
+				if (name === 'rules.predefined') return [];
+				if (name.startsWith('rules.rule[') || name.startsWith('rules.custom[')) {
+					condCalls += 1;
+					return false;
+				}
+				return undefined as unknown as never;
+			});
 
 			await expect(node.supplyData.call(mockSupplyDataFunction, 0)).rejects.toThrow(
 				NodeOperationError,
@@ -227,9 +256,14 @@ describe('ModelSelector Node', () => {
 				},
 			];
 
-			mockSupplyDataFunction.getNodeParameter
-				.mockReturnValueOnce(rules) // rules.rule parameter
-				.mockReturnValueOnce(true); // conditions evaluation
+			mockSupplyDataFunction.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'rules.custom') return [];
+				if (name === 'rules.rule') return rules;
+				if (name === 'rules.predefined') return [];
+				if (name === 'rules.rule[0].conditions' || name === 'rules.custom[0].conditions')
+					return true;
+				return undefined as unknown as never;
+			});
 
 			await expect(node.supplyData.call(mockSupplyDataFunction, 0)).rejects.toThrow(
 				NodeOperationError,
@@ -244,9 +278,14 @@ describe('ModelSelector Node', () => {
 				},
 			];
 
-			mockSupplyDataFunction.getNodeParameter
-				.mockReturnValueOnce(rules) // rules.rule parameter
-				.mockReturnValueOnce(true); // conditions evaluation
+			mockSupplyDataFunction.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'rules.custom') return [];
+				if (name === 'rules.rule') return rules;
+				if (name === 'rules.predefined') return [];
+				if (name === 'rules.rule[0].conditions' || name === 'rules.custom[0].conditions')
+					return true;
+				return undefined as unknown as never;
+			});
 
 			await expect(node.supplyData.call(mockSupplyDataFunction, 0)).rejects.toThrow(
 				NodeOperationError,
@@ -261,9 +300,14 @@ describe('ModelSelector Node', () => {
 				},
 			];
 
-			mockSupplyDataFunction.getNodeParameter
-				.mockReturnValueOnce(rules) // rules.rule parameter
-				.mockReturnValueOnce(true); // conditions evaluation
+			mockSupplyDataFunction.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'rules.custom') return [];
+				if (name === 'rules.rule') return rules;
+				if (name === 'rules.predefined') return [];
+				if (name === 'rules.rule[0].conditions' || name === 'rules.custom[0].conditions')
+					return true;
+				return undefined as unknown as never;
+			});
 
 			const result = await node.supplyData.call(mockSupplyDataFunction, 0);
 
@@ -279,18 +323,87 @@ describe('ModelSelector Node', () => {
 				},
 			];
 
-			mockSupplyDataFunction.getNodeParameter
-				.mockReturnValueOnce(rules) // rules.rule parameter
-				.mockReturnValueOnce(true); // conditions evaluation
+			mockSupplyDataFunction.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'rules.custom') return [];
+				if (name === 'rules.rule') return rules;
+				if (name === 'rules.predefined') return [];
+				if (name === 'rules.rule[0].conditions' || name === 'rules.custom[0].conditions')
+					return true;
+				return undefined as unknown as never;
+			});
 
 			await node.supplyData.call(mockSupplyDataFunction, 0);
 
-			expect(mockSupplyDataFunction.getNodeParameter).toHaveBeenCalledWith(
-				'rules.rule[0].conditions',
-				0,
-				false,
-				{ extractValue: true },
-			);
+			const calls = mockSupplyDataFunction.getNodeParameter.mock.calls;
+			const hasExpectedCall = calls.some((args) => {
+				const [path, idx, def, opts] = args as [string, number, boolean, { extractValue: boolean }];
+				const isExpectedPath =
+					path === 'rules.rule[0].conditions' || path === 'rules.custom[0].conditions';
+				return isExpectedPath && idx === 0 && !def && opts?.extractValue;
+			});
+			expect(hasExpectedCall).toBe(true);
+		});
+	});
+
+	describe('predefined strategy', () => {
+		it('should return a model with fallbacks when strategy is firstWorking', async () => {
+			const combinedModel = { id: 'combined' } as unknown as BaseChatModel;
+			const primaryWithFallbacks = jest.fn().mockReturnValue(combinedModel);
+			const modelA: Partial<BaseChatModel> = {
+				_llmType: () => 'primary',
+				callbacks: [],
+			} as unknown as BaseChatModel;
+			const modelB: Partial<BaseChatModel> = {
+				_llmType: () => 'fallback',
+				callbacks: [],
+				withFallbacks: primaryWithFallbacks,
+			} as unknown as BaseChatModel;
+
+			// getInputConnectionData is reversed inside supplyData, so order here becomes [modelB, modelA]
+			mockSupplyDataFunction.getInputConnectionData.mockResolvedValue([modelA, modelB]);
+
+			mockSupplyDataFunction.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'rules.custom') return [];
+				if (name === 'rules.rule') return [];
+				if (name === 'rules.predefined') return [{ strategy: 'firstWorking' }];
+				return undefined as unknown as never;
+			});
+
+			const result = await node.supplyData.call(mockSupplyDataFunction, 0);
+			expect(primaryWithFallbacks).toHaveBeenCalledWith([modelA as BaseChatModel]);
+			expect(result.response).toBe(combinedModel);
+		});
+
+		it('should use predefined when custom rules do not match', async () => {
+			const combinedModel = { id: 'combined' } as unknown as BaseChatModel;
+			const primaryWithFallbacks = jest.fn().mockReturnValue(combinedModel);
+			const modelA: Partial<BaseChatModel> = {
+				_llmType: () => 'primary',
+				callbacks: [],
+			} as unknown as BaseChatModel;
+			const modelB: Partial<BaseChatModel> = {
+				_llmType: () => 'fallback',
+				callbacks: [],
+				withFallbacks: primaryWithFallbacks,
+			} as unknown as BaseChatModel;
+
+			mockSupplyDataFunction.getInputConnectionData.mockResolvedValue([modelA, modelB]);
+
+			let condCalls = 0;
+			mockSupplyDataFunction.getNodeParameter.mockImplementation((name: string) => {
+				if (name === 'rules.custom') return [{ modelIndex: 1, conditions: {} }];
+				if (name === 'rules.rule') return [];
+				if (name === 'rules.predefined') return [{ strategy: 'firstWorking' }];
+				if (name.startsWith('rules.custom[')) {
+					condCalls += 1;
+					return false; // custom condition not met
+				}
+				return undefined as unknown as never;
+			});
+
+			const result = await node.supplyData.call(mockSupplyDataFunction, 0);
+			expect(primaryWithFallbacks).toHaveBeenCalledWith([modelA as BaseChatModel]);
+			expect(result.response).toBe(combinedModel);
 		});
 	});
 });
