@@ -64,7 +64,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		secureCookie: settings.value.authCookie.secure,
 	}));
 
-	const isEnterpriseFeatureEnabled = computed(() => settings.value.enterprise);
+	const isEnterpriseFeatureEnabled = computed(() => settings.value.enterprise ?? {});
 
 	const nodeJsVersion = computed(() => settings.value.nodeJsVersion);
 
