@@ -232,10 +232,12 @@ class TaskExecutor:
     @staticmethod
     def _put_error(queue: multiprocessing.Queue, e: Exception, print_args: PrintArgs):
         print_args_to_send = TaskExecutor._truncate_print_args(print_args)
-        queue.put({
-            "error": {"message": str(e), "stack": traceback.format_exc()},
-            "print_args": print_args_to_send
-        })
+        queue.put(
+            {
+                "error": {"message": str(e), "stack": traceback.format_exc()},
+                "print_args": print_args_to_send,
+            }
+        )
 
     @staticmethod
     def _truncate_print_args(print_args: PrintArgs) -> PrintArgs:
@@ -243,9 +245,13 @@ class TaskExecutor:
 
         if not print_args or len(print_args) <= MAX_PRINT_STATEMENTS_ALLOWED:
             return print_args
-        
+
         truncated = print_args[:MAX_PRINT_STATEMENTS_ALLOWED]
-        truncated.append([f"[Output truncated - {len(print_args) - MAX_PRINT_STATEMENTS_ALLOWED} more print statements]"])
+        truncated.append(
+            [
+                f"[Output truncated - {len(print_args) - MAX_PRINT_STATEMENTS_ALLOWED} more print statements]"
+            ]
+        )
 
         return truncated
 
