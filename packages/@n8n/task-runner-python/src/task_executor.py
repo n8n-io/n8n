@@ -22,6 +22,7 @@ from typing import Any, Set
 from multiprocessing.context import SpawnProcess
 
 MULTIPROCESSING_CONTEXT = multiprocessing.get_context("spawn")
+MAX_PRINT_STATEMENTS_ALLOWED = 100
 
 PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
 
@@ -223,16 +224,28 @@ class TaskExecutor:
             pickle.dump(result, f)
             result_file = f.name
 
-        queue.put({"result_file": result_file, "print_args": print_args})
+        print_args_to_send = TaskExecutor._truncate_print_args(print_args)
+        queue.put({"result_file": result_file, "print_args": print_args_to_send})
 
     @staticmethod
     def _put_error(queue: multiprocessing.Queue, e: Exception, print_args: PrintArgs):
-        queue.put(
-            {
-                "error": {"message": str(e), "stack": traceback.format_exc()},
-                "print_args": print_args,
-            }
-        )
+        print_args_to_send = TaskExecutor._truncate_print_args(print_args)
+        queue.put({
+            "error": {"message": str(e), "stack": traceback.format_exc()},
+            "print_args": print_args_to_send
+        })
+
+    @staticmethod
+    def _truncate_print_args(print_args: PrintArgs) -> PrintArgs:
+        """Truncate print_args to prevent pipe buffer overflow."""
+
+        if not print_args or len(print_args) <= MAX_PRINT_STATEMENTS_ALLOWED:
+            return print_args
+        
+        truncated = print_args[:MAX_PRINT_STATEMENTS_ALLOWED]
+        truncated.append([f"[Output truncated - {len(print_args) - MAX_PRINT_STATEMENTS_ALLOWED} more print statements]"])
+
+        return truncated
 
     # ========== print() ==========
 
