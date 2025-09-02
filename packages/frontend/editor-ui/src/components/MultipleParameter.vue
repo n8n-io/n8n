@@ -11,6 +11,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { N8nButton, N8nInputLabel, N8nText } from '@n8n/design-system';
 import { useNDVStore } from '@/stores/ndv.store';
 import { storeToRefs } from 'pinia';
+import { formPreviewEventBus } from '@/event-bus/form-preview';
 
 defineOptions({ name: 'MultipleParameter' });
 
@@ -107,10 +108,17 @@ const moveOptionUp = (index: number) => {
 const valueChanged = (parameterData: IUpdateInformation) => {
 	emit('valueChanged', parameterData);
 };
+
+const onParameterFocus = () => {
+	// Extract field ID from parameter name
+	const fieldId = props.parameter.name;
+	console.log('onParameterFocus', props.parameter);
+	formPreviewEventBus.emit('parameter-focused', { fieldId });
+};
 </script>
 
 <template>
-	<div class="duplicate-parameter" @keydown.stop>
+	<div class="duplicate-parameter" @keydown.stop @click="onParameterFocus">
 		<N8nInputLabel
 			:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 			:tooltip-text="i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)"

@@ -41,13 +41,29 @@ function onFormUpdate() {
 	renderTemplate(html);
 }
 
+function onParameterFocused({ fieldId }: { fieldId: string }) {
+	if (!iframeRef.value?.contentWindow) return;
+
+	// Send focusElement message to iframe
+	iframeRef.value.contentWindow.postMessage(
+		{
+			type: 'focusElement',
+			elementId: fieldId,
+		},
+		'*',
+	);
+}
+
+// Set the initial output mode when the component is mounted
 onMounted(() => {
 	formPreviewEventBus.on('parameter-updated', onFormUpdate);
+	formPreviewEventBus.on('parameter-focused', onParameterFocused);
 	onFormUpdate();
 });
 
 onBeforeUnmount(() => {
 	formPreviewEventBus.off('parameter-updated', onFormUpdate);
+	formPreviewEventBus.off('parameter-focused', onParameterFocused);
 });
 
 watch(() => props.selectedNode, onFormUpdate);
