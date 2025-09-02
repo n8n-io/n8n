@@ -8,6 +8,9 @@ dependencies = [
     "websockets>=15.0.1",
 ]
 
+[project.optional-dependencies]
+sentry = ["sentry-sdk>=2.35.2"]
+
 [dependency-groups]
 dev = [
     "ruff>=0.12.8",

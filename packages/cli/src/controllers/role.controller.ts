@@ -1,9 +1,11 @@
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import {
 	Body,
 	Delete,
 	Get,
 	GlobalScope,
+	Licensed,
 	Param,
 	Patch,
 	Post,
@@ -35,18 +37,21 @@ export class RoleController {
 
 	@Patch('/:slug')
 	@GlobalScope('role:manage')
+	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	async updateRole(@Param('slug') slug: string, @Body body: UpdateRoleDto): Promise<RoleDTO> {
 		return await this.roleService.updateCustomRole(slug, body);
 	}
 
 	@Delete('/:slug')
 	@GlobalScope('role:manage')
+	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	async deleteRole(@Param('slug') slug: string): Promise<RoleDTO> {
 		return await this.roleService.removeCustomRole(slug);
 	}
 
 	@Post('/')
 	@GlobalScope('role:manage')
+	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	async createRole(@Body body: CreateRoleDto): Promise<RoleDTO> {
 		return await this.roleService.createCustomRole(body);
 	}

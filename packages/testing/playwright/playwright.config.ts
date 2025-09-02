@@ -69,6 +69,7 @@ export default defineConfig({
 				['html', { open: 'never' }],
 				['json', { outputFile: 'test-results.json' }],
 				currentsReporter(currentsConfig),
+				['./reporters/metrics-reporter.ts'],
 			]
-		: [['html']],
+		: [['html'], ['./reporters/metrics-reporter.ts']],
 });
