@@ -1887,7 +1887,10 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
-			<FormPreview v-else-if="hasNodeRun && displayMode === 'preview'" />
+			<FormPreview
+				v-else-if="activeNode && hasNodeRun && displayMode === 'preview'"
+				:selected-node="activeNode"
+			/>
 
 			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
 				<LazyRunDataSchema

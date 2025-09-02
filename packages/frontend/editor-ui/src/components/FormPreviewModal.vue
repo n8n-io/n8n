@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { useKeybindings } from '@/composables/useKeybindings';
-import { formPreviewEventBus } from '@/event-bus';
 import { useFormPreviewStore } from '@/stores/formPreview.store';
 import { storeToRefs } from 'pinia';
-import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue';
+import { useTemplateRef, watch } from 'vue';
 import FormPreviewHeader from './FormPreviewHeader.vue';
 import { useVueFlow } from '@vue-flow/core';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -11,7 +10,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 const workflowsStore = useWorkflowsStore();
 const formPreviewStore = useFormPreviewStore();
 const dialogRef = useTemplateRef('dialogRef');
-const previewFrameRef = useTemplateRef('previewFrameRef');
 const vueFlow = useVueFlow(workflowsStore.workflowId);
 
 const { formPreviewActive, selectedFormNode, availableFormNodes } = storeToRefs(formPreviewStore);
@@ -22,24 +20,11 @@ function close() {
 
 useKeybindings({ Escape: close });
 
-function onFormUpdate() {
-	console.log('FormPreview.vue: form updated');
-	previewFrameRef.value?.contentWindow?.location.reload();
-}
-
 function onUpdateSelectedNode(nodeId: string) {
 	const node = vueFlow.findNode(nodeId);
 
 	if (node) vueFlow.addSelectedNodes([node]);
 }
-
-onMounted(() => {
-	formPreviewEventBus.on('parameter-updated', onFormUpdate);
-});
-
-onBeforeUnmount(() => {
-	formPreviewEventBus.off('parameter-updated', onFormUpdate);
-});
 
 watch(selectedFormNode, (node) => {
 	if (node) dialogRef.value?.show();
@@ -57,7 +42,7 @@ watch(selectedFormNode, (node) => {
 					@close="close"
 					@selected-node-update="onUpdateSelectedNode"
 				/>
-				<iframe ref="previewFrameRef" width="100%" height="100%" src="https://n8n.io"></iframe>
+				<FormPreview :selected-node="selectedFormNode" />
 			</div>
 		</dialog>
 	</div>
