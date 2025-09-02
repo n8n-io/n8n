@@ -7,10 +7,10 @@ import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Text Prompt',
+		displayName: 'Prompt',
 		name: 'prompt',
 		type: 'string',
-		placeholder: 'e.g. Make the sky more vibrant and add subtle sun rays',
+		placeholder: 'e.g. combine the first image with the second image',
 		description: 'Instruction describing how to edit the image',
 		default: '',
 		typeOptions: {
@@ -59,13 +59,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const binaryPropertyOutput = this.getNodeParameter('options.binaryPropertyOutput', i, 'data');
 	const outputKey = typeof binaryPropertyOutput === 'string' ? binaryPropertyOutput : 'data';
 
-	const promptLength = typeof prompt === 'string' ? prompt.length : 0;
-	console.log('[Gemini Edit Image] start', { promptLength, binaryPropertyName, outputKey });
-
 	const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 	const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 	const { fileUri, mimeType } = await uploadFile.call(this, buffer, binaryData.mimeType);
-	console.log('[Gemini Edit Image] uploaded', { fileUri, mimeType, inputSize: buffer.byteLength });
 
 	const model = 'models/gemini-2.5-flash-image-preview';
 	const generationConfig = {
@@ -82,19 +78,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		generationConfig,
 	};
 
-	console.log('[Gemini Edit Image] request', { model, parts: body.contents[0].parts.length });
-
 	const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
 		body,
 	})) as GenerateContentResponse;
 
-	console.log('[Gemini Edit Image] response', { candidates: response.candidates?.length ?? 0 });
-
 	const promises = response.candidates.map(async (candidate) => {
 		const imagePart = candidate.content.parts.find((part) => 'inlineData' in part);
-		console.log('[Gemini Edit Image] candidate', {
-			hasImage: Boolean(imagePart?.inlineData?.data),
-		});
 		const bufferOut = Buffer.from(imagePart?.inlineData.data ?? '', 'base64');
 		const binaryOut = await this.helpers.prepareBinaryData(
 			bufferOut,
