@@ -189,6 +189,7 @@ export class DataStoreService {
 		returnData = false,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
+		this.validateAndTransformFilters(dto);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 		if (columns.length === 0) {

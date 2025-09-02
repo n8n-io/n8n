@@ -3726,4 +3726,32 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 			},
 		]);
 	});
+
+	test.each(['like', 'ilike'])(
+		'should auto-wrap %s filters if no wildcard is present',
+		async (condition) => {
+			const dataStore = await createDataStore(memberProject, {
+				columns: [
+					{
+						name: 'name',
+						type: 'string',
+					},
+				],
+				data: [{ name: 'Alice Smith' }, { name: 'Bob Jones' }],
+			});
+
+			const payload = {
+				filter: { type: 'and', filters: [{ columnName: 'name', value: 'Alice', condition }] },
+				data: { name: 'Alice Johnson' },
+				returnData: true,
+			};
+
+			const result = await authMemberAgent
+				.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
+				.send(payload)
+				.expect(200);
+
+			expect(result.body.data).toEqual([expect.objectContaining({ name: 'Alice Johnson' })]);
+		},
+	);
 });
