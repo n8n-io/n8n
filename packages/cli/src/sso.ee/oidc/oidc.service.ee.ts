@@ -79,85 +79,42 @@ export class OidcService {
 		};
 	}
 
-	generateState(): {
-		signed: string;
-		plaintext: string;
-	} {
-		const state = `n8n_state:${randomUUID()}`;
-		return {
-			signed: this.jwtService.sign({ state }, { expiresIn: '15m' }),
-			plaintext: state,
-		};
+	generateState(): string {
+		return `n8n_state:${randomUUID()}`;
 	}
 
-	verifyState(signedState: string): string {
-		let state: string;
-		try {
-			const decodedState = this.jwtService.verify(signedState);
-			state = decodedState?.state;
-		} catch (error) {
-			this.logger.error('Failed to verify state', { error });
-			throw new BadRequestError('Invalid state');
-		}
-
-		if (typeof state !== 'string') {
-			this.logger.error('Provided state has an invalid format');
-			throw new BadRequestError('Invalid state');
-		}
-
-		const splitState = state.split(':');
-
-		if (splitState.length !== 2 || splitState[0] !== 'n8n_state') {
-			this.logger.error('Provided state is missing the well-known prefix');
-			throw new BadRequestError('Invalid state');
-		}
-
-		if (
-			!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-				splitState[1],
-			)
-		) {
-			this.logger.error('Provided state is not formatted correctly');
-			throw new BadRequestError('Invalid state');
-		}
-		return state;
+	generateNonce(): string {
+		return `n8n_nonce:${randomUUID()}`;
 	}
 
-	async generateLoginUrl(): Promise<{ url: URL; state: string }> {
+	async generateLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
 		const configuration = await this.getOidcConfiguration();
 
 		const state = this.generateState();
+		const nonce = this.generateNonce();
 
 		const authorizationURL = client.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
 			response_type: 'code',
 			scope: 'openid email profile',
 			prompt: 'select_account',
-			state: state.signed,
+			state,
+			nonce,
 		});
 
-		return { url: authorizationURL, state: state.plaintext };
+		return { url: authorizationURL, state, nonce };
 	}
 
-	async loginUser(callbackUrl: URL, storedState: string | undefined): Promise<User> {
+	async loginUser(
+		callbackUrl: URL,
+		storedState: string | undefined,
+		storedNonce: string | undefined,
+	): Promise<User> {
 		const configuration = await this.getOidcConfiguration();
 
-		const state = callbackUrl.searchParams.get('state');
-
-		if (!state) {
-			this.logger.error('State is missing');
-			throw new BadRequestError('Invalid state');
-		}
-
-		const plaintext = this.verifyState(state);
-
-		if (plaintext !== storedState) {
-			this.logger.error('State does not match');
-			throw new BadRequestError('Invalid state');
-		}
-
 		const tokens = await client.authorizationCodeGrant(configuration, callbackUrl, {
-			expectedState: state,
+			expectedState: storedState,
+			expectedNonce: storedNonce,
 		});
 
 		const claims = tokens.claims();

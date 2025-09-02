@@ -1,18 +1,19 @@
 import { OidcConfigDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Post, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
+import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthlessRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '../constants';
 import { OidcService } from '../oidc.service.ee';
-import { AuthlessRequest } from '@/requests';
-import { OIDC_STATE_COOKIE_NAME } from '@/constants';
-import { Time } from '@n8n/constants';
-import { GlobalConfig } from '@n8n/config';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/sso/oidc')
 export class OidcController {
@@ -60,6 +61,12 @@ export class OidcController {
 			sameSite: samesite,
 			secure,
 		});
+		res.cookie(OIDC_NONCE_COOKIE_NAME, authorization.nonce, {
+			maxAge: 15 * Time.minutes.toMilliseconds,
+			httpOnly: true,
+			sameSite: samesite,
+			secure,
+		});
 		res.redirect(authorization.url.toString());
 	}
 
@@ -75,9 +82,17 @@ export class OidcController {
 			throw new BadRequestError('Invalid state');
 		}
 
-		const user = await this.oidcService.loginUser(callbackUrl, state);
+		const nonce = req.cookies[OIDC_NONCE_COOKIE_NAME];
+
+		if (typeof nonce !== 'string') {
+			this.logger.error('Nonce is missing');
+			throw new BadRequestError('Invalid nonce');
+		}
+
+		const user = await this.oidcService.loginUser(callbackUrl, state, nonce);
 
 		res.clearCookie(OIDC_STATE_COOKIE_NAME);
+		res.clearCookie(OIDC_NONCE_COOKIE_NAME);
 		this.authService.issueCookie(res, user, true, req.browserId);
 
 		res.redirect('/');
