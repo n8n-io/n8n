@@ -435,6 +435,10 @@ const onAddRowClick = async () => {
 		refreshGridData();
 		await nextTick();
 		focusFirstEditableCell(newRow.id as number);
+		telemetry.track('User added row to data table', {
+			dataTableId: props.dataStore.id,
+			dataTableName: props.dataStore.name,
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 	} finally {
