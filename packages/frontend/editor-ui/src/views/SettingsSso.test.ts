@@ -331,6 +331,11 @@ describe('SettingsSso View', () => {
 			ssoStore.isOidcLoginEnabled = true;
 			ssoStore.isSamlLoginEnabled = false;
 
+			ssoStore.getOidcConfig.mockResolvedValue({
+				...oidcConfig,
+				discoveryEndpoint: '',
+			});
+
 			const { getByTestId, getByRole } = renderView();
 
 			// Set authProtocol component ref to OIDC
