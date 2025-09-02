@@ -53,7 +53,7 @@ RUN uv sync \
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
-FROM alpine:3.22.0 AS launcher-downloader
+FROM alpine:3.22.1 AS launcher-downloader
 ARG TARGETPLATFORM
 ARG LAUNCHER_VERSION=1.3.0
 
@@ -93,6 +93,7 @@ RUN apt-get update \
 		> /etc/apt/sources.list.d/nodesource.list \
 	&& apt-get update \
 	&& apt-get install -y --no-install-recommends nodejs \
+	&& apt-get remove curl -y \
 	&& apt-get clean \
 	&& rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
 
@@ -112,7 +113,7 @@ EXPOSE 5680/tcp
 ENTRYPOINT ["tini", "--", "/usr/local/bin/task-runner-launcher"]
 CMD ["javascript", "python"]
 
-LABEL org.opencontainers.image.title="n8n Task runners" \
+LABEL org.opencontainers.image.title="n8n task runners" \
       org.opencontainers.image.description="Sidecar image providing n8n task runners for JavaScript and Python code execution" \
       org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
       org.opencontainers.image.url="https://n8n.io" \
