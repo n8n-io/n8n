@@ -26,6 +26,8 @@ import { Workflow, UnexpectedError } from 'n8n-workflow';
 import { NodeTypes } from '@/node-types';
 
 import { WorkflowLoaderService } from './workflow-loader.service';
+import { User } from '@n8n/db';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 type LocalResourceMappingMethod = (
 	this: ILocalLoadOptionsFunctions,
@@ -52,9 +54,23 @@ type NodeMethod =
 @Service()
 export class DynamicNodeParametersService {
 	constructor(
+		private logger: Logger,
 		private nodeTypes: NodeTypes,
 		private workflowLoaderService: WorkflowLoaderService,
 	) {}
+
+	async scrubInaccessibleProjectId(user: User, payload: { projectId?: string }) {
+		if (
+			payload.projectId &&
+			!(await userHasScopes(user, ['project:read'], false, { projectId: payload.projectId }))
+		) {
+			this.logger.log(
+				this.logger.WARN,
+				`Scrubbed inaccessible projectId ${payload.projectId} from DynamicNodeParameters request`,
+			);
+			payload.projectId = undefined;
+		}
+	}
 
 	/** Returns the available options via a predefined method */
 	async getOptionsViaMethodName(

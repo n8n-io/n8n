@@ -924,13 +924,13 @@ export type DataStoreProxyProvider = {
 	getDataStoreAggregateProxy(
 		workflow: Workflow,
 		node: INode,
-		dataStoreProjectId?: string,
+		projectId?: string,
 	): Promise<IDataStoreProjectAggregateService>;
 	getDataStoreProxy(
 		workflow: Workflow,
 		node: INode,
 		dataStoreId: string,
-		dataStoreProjectId?: string,
+		projectId?: string,
 	): Promise<IDataStoreProjectService>;
 };
 
@@ -2545,6 +2545,7 @@ export interface IWorkflowExecuteAdditionalData {
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId?: string;
+	projectId?: string;
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
