@@ -9,10 +9,58 @@ test.describe('NDV - Part 2 (Advanced Features)', () => {
 	// This file contains the more complex tests that require additional page object methods
 
 	test.describe('Run Data & Selectors - Advanced', () => {
-		test.skip('can link and unlink run selectors between input and output', async ({ n8n }) => {
-			// TODO: Implement full run selector linking functionality
-			// NEEDS: toggleOutputRunLinking(), changeOutputRunSelector() methods
-			// Original Cypress test at Line 248
+		test('can link and unlink run selectors between input and output', async ({ n8n }) => {
+			await n8n.start.fromImportedWorkflow('Test_workflow_5.json');
+			await n8n.canvas.clickZoomToFitButton();
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
+			await n8n.canvas.openNode('Set3');
+
+			await n8n.ndv.switchInputMode('Table');
+			await n8n.ndv.switchOutputMode('Table');
+
+			// Ensure we start from linked state
+			await n8n.ndv.ensureOutputRunLinking(true);
+			await n8n.ndv.getInputTbodyCell(0, 0).click(); // remove tooltip
+
+			// Verify initial selectors are synced at "2 of 2 (6 items)"
+			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
+			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+
+			// Change output selector and verify input follows (linked behavior)
+			await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
+			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
+			await expect(n8n.ndv.getInputTbodyCell(0, 0)).toHaveText('1111');
+			await expect(n8n.ndv.getOutputTbodyCell(0, 0)).toHaveText('1111');
+
+			await n8n.ndv.getInputTbodyCell(0, 0).click(); // remove tooltip
+
+			// Change input selector and verify output follows (linked behavior)
+			await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
+			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+
+			// Unlink via output and test independent behavior
+			await n8n.ndv.toggleOutputRunLinking();
+			await n8n.ndv.getInputTbodyCell(0, 0).click(); // remove tooltip
+			await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
+			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)'); // Should remain unchanged
+
+			// Link again and verify sync
+			await n8n.ndv.toggleOutputRunLinking();
+			await n8n.ndv.getInputTbodyCell(0, 0).click(); // remove tooltip
+			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)'); // Should sync
+
+			// Unlink via input and test independent behavior
+			await n8n.ndv.toggleInputRunLinking();
+			await n8n.ndv.getInputTbodyCell(0, 0).click(); // remove tooltip
+			await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
+			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('1 of 2 (6 items)'); // Should remain unchanged
+
+			// Link again and verify sync
+			await n8n.ndv.toggleInputRunLinking();
+			await n8n.ndv.getInputTbodyCell(0, 0).click(); // remove tooltip
+			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)'); // Should sync
 		});
 	});
 

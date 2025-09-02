@@ -658,7 +658,32 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async toggleOutputRunLinking() {
-		await this.page.getByTestId('ndv-output-run-linking').click();
+		await this.getOutputPanel().getByTestId('link-run').click();
+	}
+
+	async toggleInputRunLinking() {
+		await this.getInputPanel().getByTestId('link-run').click();
+	}
+
+	getOutputLinkRun() {
+		return this.getOutputPanel().getByTestId('link-run');
+	}
+
+	getInputLinkRun() {
+		return this.getInputPanel().getByTestId('link-run');
+	}
+
+	async isOutputRunLinkingEnabled() {
+		const linkButton = this.getOutputLinkRun();
+		const classList = await linkButton.getAttribute('class');
+		return classList?.includes('linked') ?? false;
+	}
+
+	async ensureOutputRunLinking(shouldBeLinked: boolean = true) {
+		const isLinked = await this.isOutputRunLinkingEnabled();
+		if (isLinked !== shouldBeLinked) {
+			await this.toggleOutputRunLinking();
+		}
 	}
 
 	async changeInputRunSelector(value: string) {
@@ -671,6 +696,14 @@ export class NodeDetailsViewPage extends BasePage {
 		const selector = this.getOutputRunSelector();
 		await selector.click();
 		await this.page.getByRole('option', { name: value }).click();
+	}
+
+	async getInputRunSelectorValue() {
+		return await this.getInputRunSelector().locator('input').inputValue();
+	}
+
+	async getOutputRunSelectorValue() {
+		return await this.getOutputRunSelector().locator('input').inputValue();
 	}
 
 	// Schema view methods
