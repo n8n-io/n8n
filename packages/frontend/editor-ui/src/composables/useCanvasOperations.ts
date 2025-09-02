@@ -115,6 +115,7 @@ import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
+import isEqual from 'lodash/isEqual';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -2158,37 +2159,57 @@ export function useCanvasOperations() {
 
 		const legacyPrefix = 'LEGACY: ';
 
-		const workflowData = deepCopy(getNodesToSave([originalNode]));
+		const workflowData = deepCopy(getNodesToSave([originalNode, originalNode]));
 		const originalPosition = originalNode.position;
 		const verticalOffset = 80;
 
-		if (workflowData.nodes && workflowData.nodes.length > 0) {
-			const insertedNode = workflowData.nodes[0];
-			if (!insertedNode.name.startsWith(legacyPrefix)) {
-				workflowData.nodes[0].name = `${legacyPrefix}${insertedNode.name}`;
+		if (workflowData.nodes && workflowData.nodes.length >= 2) {
+			// Update the name of the legacy node
+			const legacyNode = workflowData.nodes[0];
+			if (!legacyNode.name.startsWith(legacyPrefix)) {
+				workflowData.nodes[0].name = `${legacyPrefix}${legacyNode.name}`;
+			}
+
+			// Update the node to the latest version and copy the parameter values
+			const updatedNode = workflowData.nodes[1];
+			const latestVersion = Math.max(...nodeTypesStore.getNodeVersions(originalNode.type));
+			const oldNodeType = nodeTypesStore.getNodeType(originalNode.type, originalNode.typeVersion);
+			const newNodeType = nodeTypesStore.getNodeType(originalNode.type, latestVersion);
+			const oldNodeParameters = oldNodeType?.properties.map((property) => property.name);
+			updatedNode.typeVersion = latestVersion;
+			updatedNode.parameters = {};
+			// TODO: migrate the node parameters from the old node to the new node
+			if (oldNodeParameters && newNodeType?.properties) {
+				for (const parameter of oldNodeParameters) {
+					const oldProperty = oldNodeType?.properties.find(
+						(property) => property.name === parameter,
+					);
+					const newProperty = newNodeType?.properties.find(
+						(property) => property.name === parameter,
+					);
+					// Only copy the parameter if it is the same as in the old version
+					if (oldProperty && newProperty && isEqual(oldProperty, newProperty)) {
+						updatedNode.parameters[parameter] = originalNode.parameters[parameter];
+					}
+				}
 			}
 		}
 
+		// Remove the old node and import the new nodes
+		workflowsStore.removeNode(originalNode);
 		const result = await importWorkflowData(workflowData, 'update', {
 			importTags: false,
 		});
 
-		if (result.nodes && result.nodes.length > 0) {
-			const latestVersion = Math.max(...nodeTypesStore.getNodeVersions(originalNode.type));
-			// TODO: migrate the node parameters from the old node to the new node
-			workflowsStore.setNodeValue({
-				name: originalNode.name,
-				key: 'typeVersion',
-				value: latestVersion,
-			});
-			workflowsStore.setNodePositionById(id, [
-				originalPosition[0],
-				originalPosition[1] + verticalOffset,
-			]);
-			// HACK: set the position afterwards
+		if (result.nodes && result.nodes.length >= 2) {
+			// Update the position of the new nodes
 			workflowsStore.setNodePositionById(result.nodes[0].id, [
 				originalPosition[0],
 				originalPosition[1] - verticalOffset,
+			]);
+			workflowsStore.setNodePositionById(result.nodes[1].id, [
+				originalPosition[0],
+				originalPosition[1] + verticalOffset,
 			]);
 		}
 	}
