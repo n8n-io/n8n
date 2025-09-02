@@ -25,7 +25,7 @@ export function getInputs(parameters: IDataObject) {
 
 	const needsFallback = parameters?.needsFallback;
 
-	if (needsFallback === undefined || needsFallback === true) {
+	if (needsFallback === true) {
 		inputs.push({
 			displayName: 'Fallback Model',
 			maxConnections: 1,
