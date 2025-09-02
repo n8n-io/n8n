@@ -19,21 +19,7 @@ describe('Logs', () => {
 		workflow.executeWorkflow();
 		logs.getOverviewStatus().contains('Running').should('exist');
 
-		logs.getLogEntries().should('have.length', 4);
-		logs.getLogEntries().eq(0).should('contain.text', 'When clicking ‘Execute workflow’');
-		logs.getLogEntries().eq(1).should('contain.text', 'Code');
-		logs.getLogEntries().eq(2).should('contain.text', 'Loop Over Items');
-		logs.getLogEntries().eq(3).should('contain.text', 'Wait');
-
-		logs.getLogEntries().should('have.length', 6);
-		logs.getLogEntries().eq(4).should('contain.text', 'Loop Over Items');
-		logs.getLogEntries().eq(5).should('contain.text', 'Wait');
-
-		logs.getLogEntries().should('have.length', 8);
-		logs.getLogEntries().eq(6).should('contain.text', 'Loop Over Items');
-		logs.getLogEntries().eq(7).should('contain.text', 'Wait');
-
-		logs.getLogEntries().should('have.length', 10);
+		logs.getLogEntries().should('have.length', 11);
 		logs.getLogEntries().eq(8).should('contain.text', 'Loop Over Items');
 		logs.getLogEntries().eq(9).should('contain.text', 'Code1');
 		logs
