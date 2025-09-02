@@ -6,6 +6,7 @@ import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers'
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
+import { ProxyServer } from '../services/proxy-server';
 import { TestError, type TestRequirements } from '../Types';
 import { setupTestRequirements } from '../utils/requirements';
 
@@ -14,6 +15,7 @@ type TestFixtures = {
 	api: ApiHelpers;
 	baseURL: string;
 	setupRequirements: (requirements: TestRequirements) => Promise<void>;
+	proxyServer?: ProxyServer;
 };
 
 type WorkerFixtures = {
@@ -31,7 +33,7 @@ interface ContainerConfig {
 		workers: number;
 	};
 	env?: Record<string, string>;
-	proxyServer?: boolean;
+	proxyServerEnabled?: boolean;
 }
 
 /**
@@ -158,6 +160,14 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		};
 
 		await use(setupFunction);
+	},
+
+	proxyServer: async ({ n8nContainer }, use) => {
+		if (n8nContainer.proxyServerUrl) {
+			const proxyServer = new ProxyServer(n8nContainer.proxyServerUrl);
+
+			await use(proxyServer);
+		}
 	},
 });
 

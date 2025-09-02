@@ -79,7 +79,7 @@ export interface N8NConfig {
 		memory?: number; // in GB
 		cpu?: number; // in cores
 	};
-	proxyServer?: boolean;
+	proxyServerEnabled?: boolean;
 }
 
 export interface N8NStack {
@@ -116,7 +116,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		postgres = false,
 		queueMode = false,
 		env = {},
-		proxyServer = false,
+		proxyServerEnabled = true,
 		projectName,
 		resourceQuota,
 	} = config;
@@ -127,7 +127,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	const mainCount = queueConfig?.mains ?? 1;
 	const needsLoadBalancer = mainCount > 1;
-	const needsNetwork = usePostgres || !!queueConfig || needsLoadBalancer || proxyServer;
+	const needsNetwork = usePostgres || !!queueConfig || needsLoadBalancer || proxyServerEnabled;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
@@ -194,7 +194,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	let proxyServerContainer: StartedTestContainer | undefined;
 	let proxyServerUrl: string | undefined;
-	if (proxyServer) {
+	if (proxyServerEnabled) {
 		assert(network, 'Network should be created for MockServer');
 		proxyServerContainer = await setupProxyServer({
 			proxyServerImage: MOCKSERVER_IMAGE,

@@ -1,37 +1,36 @@
 import assert from 'node:assert';
 
 import { test, expect } from '../../fixtures/base';
-import { createGetExpectation, verifyGetRequest } from '../services/proxyserver';
 
 test.describe('Mock server', () => {
-	test('should verify ProxyServer container is running', async ({ n8nContainer }) => {
-		const proxyServerUrl = n8nContainer.proxyServerUrl;
-		assert(proxyServerUrl, 'ProxyServer URL not available');
+	test('should verify ProxyServer container is running', async ({ proxyServer }) => {
+		assert(proxyServer, 'ProxyServer is not available');
 
-		const mockResponse = await createGetExpectation(proxyServerUrl, '/health', {
+		const mockResponse = await proxyServer.createGetExpectation('/health', {
 			status: 'healthy',
 		});
 
 		assert(typeof mockResponse !== 'string');
 		expect(mockResponse.statusCode).toBe(201);
 
-		expect(await verifyGetRequest(proxyServerUrl, '/health')).toBe(false);
+		expect(await proxyServer.verifyGetRequest('/health')).toBe(false);
 
 		// Verify the mock endpoint works
-		const healthResponse = await fetch(`${proxyServerUrl}/health`);
+		const healthResponse = await fetch(`${proxyServer.url}/health`);
 		expect(healthResponse.ok).toBe(true);
 		const healthData = await healthResponse.json();
 		expect(healthData.status).toBe('healthy');
 
-		expect(await verifyGetRequest(proxyServerUrl, '/health')).toBe(true);
+		expect(await proxyServer.verifyGetRequest('/health')).toBe(true);
 	});
 
-	test('should run a simple workflow calling http endpoint', async ({ n8n, n8nContainer }) => {
-		const proxyServerUrl = n8nContainer.proxyServerUrl!;
+	test('should run a simple workflow calling http endpoint', async ({ n8n, proxyServer }) => {
+		assert(proxyServer, 'ProxyServer is not available');
+
 		const mockResponse = { data: 'Hello from ProxyServer!', test: '1' };
 
 		// Create expectation in mockserver to handle the request
-		await createGetExpectation(proxyServerUrl, '/data', mockResponse, { test: '1' });
+		await proxyServer.createGetExpectation('/data', mockResponse, { test: '1' });
 
 		await n8n.canvas.openNewWorkflow();
 		await n8n.canvas.importWorkflow('Simple_workflow_with_http_node.json', 'Test');
@@ -40,7 +39,9 @@ test.describe('Mock server', () => {
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
 
 		// Verify the request was handled by mockserver
-		const wasRequestHandled = await verifyGetRequest(proxyServerUrl, '/data', { test: '1' });
+		const wasRequestHandled = await proxyServer.verifyGetRequest('/data', {
+			test: '1',
+		});
 
 		expect(wasRequestHandled).toBe(true);
 	});
