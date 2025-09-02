@@ -263,6 +263,7 @@ describe('GET /executions', () => {
 			stoppedAt,
 			workflowId,
 			waitTill,
+			status,
 		} = response.body.data[0];
 
 		expect(id).toBeDefined();
@@ -274,6 +275,7 @@ describe('GET /executions', () => {
 		expect(stoppedAt).not.toBeNull();
 		expect(workflowId).toBe(successfulExecution.workflowId);
 		expect(waitTill).toBeNull();
+		expect(status).toBe(successfulExecution.status);
 	});
 
 	test('should paginate two executions', async () => {
@@ -317,6 +319,7 @@ describe('GET /executions', () => {
 				stoppedAt,
 				workflowId,
 				waitTill,
+				status,
 			} = executions[i];
 
 			expect(id).toBeDefined();
@@ -328,6 +331,7 @@ describe('GET /executions', () => {
 			expect(stoppedAt).not.toBeNull();
 			expect(workflowId).toBe(successfulExecutions[i].workflowId);
 			expect(waitTill).toBeNull();
+			expect(status).toBe(successfulExecutions[i].status);
 		}
 	});
 
@@ -356,6 +360,7 @@ describe('GET /executions', () => {
 			stoppedAt,
 			workflowId,
 			waitTill,
+			status,
 		} = response.body.data[0];
 
 		expect(id).toBeDefined();
@@ -367,6 +372,7 @@ describe('GET /executions', () => {
 		expect(stoppedAt).not.toBeNull();
 		expect(workflowId).toBe(errorExecution.workflowId);
 		expect(waitTill).toBeNull();
+		expect(status).toBe(errorExecution.status);
 	});
 
 	test('should return all waiting executions', async () => {
@@ -396,6 +402,7 @@ describe('GET /executions', () => {
 			stoppedAt,
 			workflowId,
 			waitTill,
+			status,
 		} = response.body.data[0];
 
 		expect(id).toBeDefined();
@@ -407,6 +414,7 @@ describe('GET /executions', () => {
 		expect(stoppedAt).not.toBeNull();
 		expect(workflowId).toBe(waitingExecution.workflowId);
 		expect(new Date(waitTill).getTime()).toBeGreaterThan(Date.now() - 1000);
+		expect(status).toBe(waitingExecution.status);
 	});
 
 	test('should retrieve all executions of specific workflow', async () => {
@@ -434,6 +442,7 @@ describe('GET /executions', () => {
 				stoppedAt,
 				workflowId,
 				waitTill,
+				status,
 			} = execution;
 
 			expect(savedExecutions.some((exec) => exec.id === id)).toBe(true);
@@ -445,6 +454,7 @@ describe('GET /executions', () => {
 			expect(stoppedAt).not.toBeNull();
 			expect(workflowId).toBe(workflow.id);
 			expect(waitTill).toBeNull();
+			expect(status).toBe(execution.status);
 		}
 	});
 

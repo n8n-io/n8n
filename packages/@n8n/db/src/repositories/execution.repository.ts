@@ -706,6 +706,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 					'workflowId',
 					'waitTill',
 					'finished',
+					'status',
 				],
 				where,
 				order: { id: 'DESC' },
