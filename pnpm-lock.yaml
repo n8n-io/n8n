@@ -1504,6 +1504,9 @@ importers:
       '@n8n_io/license-sdk':
         specifier: 2.23.0
         version: 2.23.0
+      '@parcel/watcher':
+        specifier: ^2.5.1
+        version: 2.5.1
       '@rudderstack/rudder-sdk-node':
         specifier: 2.1.4
         version: 2.1.4(tslib@2.8.1)
@@ -1736,9 +1739,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
-      '@parcel/watcher':
-        specifier: ^2.5.1
-        version: 2.5.1
       '@redocly/cli':
         specifier: ^1.28.5
         version: 1.28.5(encoding@0.1.13)
