@@ -40,12 +40,11 @@ const onSubmit = async () => {
 			route.params.projectId as string,
 		);
 		telemetry.track('User created data table', {
-			dataTableId: newDataStore.id,
-			dataTableName: dataStoreName.value,
-			dataTableProject: {
-				id: newDataStore.project?.id,
-				name: newDataStore.project?.type === 'personal' ? 'Personal' : newDataStore.project?.name,
-			},
+			data_table_id: newDataStore.id,
+			data_table_name: dataStoreName.value,
+			data_table_project_id: newDataStore.project?.id,
+			data_table_project_name:
+				newDataStore.project?.type === 'personal' ? 'personal' : newDataStore.project?.name,
 		});
 		dataStoreName.value = '';
 		uiStore.closeModal(props.modalName);

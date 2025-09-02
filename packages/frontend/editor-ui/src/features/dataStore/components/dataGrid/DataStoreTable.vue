@@ -229,10 +229,10 @@ const onDeleteColumn = async (columnId: string) => {
 			columnId,
 		);
 		telemetry.track('User deleted data table column', {
-			columnId,
-			columnName: columnToDelete.headerName,
-			columnType: columnToDelete.cellDataType,
-			dataTableId: props.dataStore.id,
+			column_id: columnId,
+			column_name: columnToDelete.headerName,
+			column_type: columnToDelete.cellDataType,
+			data_table_id: props.dataStore.id,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.deleteColumn.error'));
@@ -262,10 +262,10 @@ const onAddColumn = async (column: DataStoreColumnCreatePayload) => {
 		});
 		refreshGridData();
 		telemetry.track('User added data table column', {
-			columnId: newColumn.id,
-			columnName: newColumn.name,
-			columnType: newColumn.type,
-			dataTableId: props.dataStore.id,
+			column_id: newColumn.id,
+			column_name: newColumn.name,
+			column_type: newColumn.type,
+			data_table_id: props.dataStore.id,
 		});
 		return true;
 	} catch (error) {
@@ -436,8 +436,8 @@ const onAddRowClick = async () => {
 		await nextTick();
 		focusFirstEditableCell(newRow.id as number);
 		telemetry.track('User added row to data table', {
-			dataTableId: props.dataStore.id,
-			dataTableName: props.dataStore.name,
+			data_table_id: props.dataStore.id,
+			data_table_name: props.dataStore.name,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
@@ -548,12 +548,12 @@ const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) =
 			[fieldName]: value,
 		});
 		telemetry.track('User edited data table content', {
-			dataTableId: props.dataStore.id,
-			dataTableName: props.dataStore.name,
-			columnName: fieldName,
-			columnType: colDef.cellDataType,
-			oldValue,
-			newValue: value,
+			data_table_id: props.dataStore.id,
+			data_table_name: props.dataStore.name,
+			column_name: fieldName,
+			column_type: colDef.cellDataType,
+			old_value: oldValue,
+			new_value: value,
 		});
 	} catch (error) {
 		// Revert cell to original value if the update fails
@@ -792,9 +792,9 @@ const handleDeleteSelected = async () => {
 		});
 
 		telemetry.track('User deleted rows in data table', {
-			dataTableId: props.dataStore.id,
-			dataTableName: props.dataStore.name,
-			deletedRowCount: idsToDelete.length,
+			data_table_id: props.dataStore.id,
+			data_table_name: props.dataStore.name,
+			deleted_row_count: idsToDelete.length,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.deleteRows.error'));
