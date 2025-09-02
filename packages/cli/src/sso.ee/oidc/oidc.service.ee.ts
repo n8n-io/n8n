@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 import * as client from 'openid-client';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -204,10 +204,23 @@ export class OidcService {
 			// Validating that discoveryEndpoint is a valid URL
 			discoveryEndpoint = new URL(newConfig.discoveryEndpoint);
 		} catch (error) {
-			throw new BadRequestError('Provided discovery endpoint is not a valid URL');
+			this.logger.error(`The provided endpoint is not a valid URL: ${newConfig.discoveryEndpoint}`);
+			throw new UserError('Provided discovery endpoint is not a valid URL');
 		}
 		if (newConfig.clientSecret === OIDC_CLIENT_SECRET_REDACTED_VALUE) {
 			newConfig.clientSecret = this.oidcConfig.clientSecret;
+		}
+		try {
+			const discoveredMetadata = await client.discovery(
+				discoveryEndpoint,
+				newConfig.clientId,
+				newConfig.clientSecret,
+			);
+			// TODO: validate Metadata against features
+			this.logger.debug(`Discovered OIDC metadata: ${JSON.stringify(discoveredMetadata)}`);
+		} catch (error) {
+			this.logger.error('Failed to discover OIDC metadata', { error });
+			throw new UserError('Failed to discover OIDC metadata, based on the provided configuration');
 		}
 		await this.settingsRepository.update(
 			{
@@ -230,6 +243,10 @@ export class OidcService {
 			...newConfig,
 			discoveryEndpoint,
 		};
+		this.cachedOidcConfiguration = undefined; // reset cached configuration
+		this.logger.debug(
+			`OIDC login is now ${this.oidcConfig.loginEnabled ? 'enabled' : 'disabled'}.`,
+		);
 
 		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
 	}
@@ -251,19 +268,24 @@ export class OidcService {
 	}
 
 	private cachedOidcConfiguration:
-		| {
+		| ({
 				configuration: Promise<client.Configuration>;
 				validTill: Date;
-		  }
+		  } & OidcRuntimeConfig)
 		| undefined;
 
 	private async getOidcConfiguration(): Promise<client.Configuration> {
 		const now = Date.now();
 		if (
 			this.cachedOidcConfiguration === undefined ||
-			now >= this.cachedOidcConfiguration.validTill.getTime()
+			now >= this.cachedOidcConfiguration.validTill.getTime() ||
+			this.oidcConfig.discoveryEndpoint.toString() !==
+				this.cachedOidcConfiguration.discoveryEndpoint.toString() ||
+			this.oidcConfig.clientId !== this.cachedOidcConfiguration.clientId ||
+			this.oidcConfig.clientSecret !== this.cachedOidcConfiguration.clientSecret
 		) {
 			this.cachedOidcConfiguration = {
+				...this.oidcConfig,
 				configuration: client.discovery(
 					this.oidcConfig.discoveryEndpoint,
 					this.oidcConfig.clientId,
