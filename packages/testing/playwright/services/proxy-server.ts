@@ -2,8 +2,12 @@
  * ProxyServer service helper functions for Playwright tests
  */
 
+import crypto from 'crypto';
+import { promises as fs } from 'fs';
+import type { Expectation, HttpRequest } from 'mockserver-client';
 import { mockServerClient as proxyServerClient } from 'mockserver-client';
 import type { MockServerClient, RequestResponse } from 'mockserver-client/mockServerClient';
+import { join } from 'path';
 
 export interface ProxyServerRequest {
 	method: string;
@@ -44,6 +48,7 @@ export interface RequestLog {
 export class ProxyServer {
 	private client: MockServerClient;
 	url: string;
+	private expectationsDir = './expectations';
 
 	/**
 	 * Create a ProxyServer client instance from a URL
@@ -52,6 +57,37 @@ export class ProxyServer {
 		this.url = proxyServerUrl;
 		const parsedURL = new URL(proxyServerUrl);
 		this.client = proxyServerClient(parsedURL.hostname, parseInt(parsedURL.port, 10));
+	}
+
+	/**
+	 * Load all expectations from the expectations directory and mock them
+	 */
+	async loadExpectations(): Promise<void> {
+		try {
+			const files = await fs.readdir(this.expectationsDir);
+			const tsFiles = files.filter((file) => file.endsWith('.ts') && !file.endsWith('.d.ts'));
+			const expectations: Expectation[] = [];
+
+			for (const file of tsFiles) {
+				try {
+					const modulePath = join(process.cwd(), this.expectationsDir, file);
+					// Dynamic import to load the expectation
+					const module = await import(modulePath);
+					if (module.expectation) {
+						expectations.push(module.expectation);
+					}
+				} catch (importError) {
+					console.log(`Error importing expectation from ${file}:`, importError);
+				}
+			}
+
+			if (expectations.length > 0) {
+				console.log('Loading expectations:', expectations.length);
+				await this.client.mockAnyResponse(expectations);
+			}
+		} catch (error) {
+			console.log('Error loading expectations:', error);
+		}
 	}
 
 	/**
@@ -153,5 +189,63 @@ export class ProxyServer {
 			},
 			numberOfRequests,
 		);
+	}
+
+	/**
+	 * Retrieve recorded expectations and write to files
+	 */
+	async recordExpectations(request?: HttpRequest): Promise<void> {
+		try {
+			// Retrieve recorded expectations from the mock server
+			const recordedExpectations = await this.client.retrieveRecordedExpectations(request);
+
+			// Ensure expectations directory exists
+			await fs.mkdir(this.expectationsDir, { recursive: true });
+
+			for (const expectation of recordedExpectations) {
+				if (
+					!expectation.httpRequest ||
+					!(
+						'method' in expectation.httpRequest &&
+						typeof expectation.httpRequest.method === 'string' &&
+						typeof expectation.httpRequest.path === 'string'
+					)
+				) {
+					continue;
+				}
+
+				// Generate unique filename based on request details
+				const requestData = {
+					method: expectation.httpRequest?.method,
+					path: expectation.httpRequest?.path,
+					queryStringParameters: expectation.httpRequest?.queryStringParameters,
+					headers: expectation.httpRequest?.headers,
+				};
+
+				const hash = crypto
+					.createHash('sha256')
+					.update(JSON.stringify(requestData))
+					.digest('hex')
+					.substring(0, 8);
+
+				const filename = `${expectation.httpRequest?.method?.toString()}-${expectation.httpRequest?.path?.replace(/[^a-zA-Z0-9]/g, '_')}-${hash}.ts`;
+				const filePath = join(this.expectationsDir, filename);
+
+				// Create TypeScript file content
+				const tsContent = `import type { Expectation } from 'mockserver-client';
+
+export const expectation: Expectation = ${JSON.stringify(expectation, null, 2)};
+`;
+
+				// Write expectation to TypeScript file
+				await fs.writeFile(filePath, tsContent);
+			}
+		} catch (error) {
+			throw new Error(`Failed to record expectations: ${JSON.stringify(error)}`);
+		}
+	}
+
+	async getActiveExpectations() {
+		return await this.client.retrieveActiveExpectations({ method: 'GET' });
 	}
 }

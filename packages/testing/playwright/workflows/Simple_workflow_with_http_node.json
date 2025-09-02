@@ -4,8 +4,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [0, 0],
-			"id": "725dc324-fb2f-4098-97eb-abca6860b836",
+			"position": [-688, 272],
+			"id": "2edde9d2-09a3-46dd-8d56-19a0c92654fc",
 			"name": "When clicking ‘Execute workflow’"
 		},
 		{
@@ -20,12 +20,14 @@
 						}
 					]
 				},
-				"options": {}
+				"options": {
+					"allowUnauthorizedCerts": true
+				}
 			},
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.2,
-			"position": [208, 0],
-			"id": "2cd680a7-cead-4974-a769-91580291bce9",
+			"position": [-480, 272],
+			"id": "99de0e7f-20d1-441e-8e8b-2f3cabcacb0c",
 			"name": "HTTP Request"
 		}
 	],

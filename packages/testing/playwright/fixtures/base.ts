@@ -165,6 +165,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
 	proxyServer: async ({ n8nContainer }, use) => {
 		const proxyServer = new ProxyServer(n8nContainer.proxyServerUrl);
+		await proxyServer.loadExpectations();
 
 		await use(proxyServer);
 	},

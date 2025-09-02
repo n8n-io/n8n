@@ -29,6 +29,8 @@ test.describe('Mock server', () => {
 		await proxyServer.createGetExpectation('/data', mockResponse, { test: '1' });
 
 		await n8n.canvas.openNewWorkflow();
+
+		// This is calling a random endpoint http://mock-api.com
 		await n8n.canvas.importWorkflow('Simple_workflow_with_http_node.json', 'Test');
 
 		// Execute workflow - this should now proxy through mockserver
@@ -42,5 +44,15 @@ test.describe('Mock server', () => {
 				test: '1',
 			}),
 		).toBe(true);
+
+		await proxyServer.recordExpectations();
+	});
+
+	test('should use stored expectations respond to api request', async ({ proxyServer }) => {
+		const response = await fetch(`${proxyServer.url}/mock-endpoint`);
+		expect(response.ok).toBe(true);
+		const data = await response.json();
+		expect(data.title).toBe('delectus aut autem');
+		expect(await proxyServer.wasGetRequestMade('/mock-endpoint')).toBe(true);
 	});
 });
