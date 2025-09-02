@@ -1047,12 +1047,15 @@ export function getNodeOutputs(
 	} else {
 		// Calculate the outputs dynamically
 		try {
-			outputs = (workflow.expression.getSimpleParameterValue(
+			const result = workflow.expression.getSimpleParameterValue(
 				node,
 				nodeTypeData.outputs,
 				'internal',
 				{},
-			) || []) as NodeConnectionType[];
+			);
+			outputs = Array.isArray(result)
+				? (result as Array<NodeConnectionType | INodeOutputConfiguration>)
+				: [];
 		} catch (e) {
 			console.warn('Could not calculate outputs dynamically for node: ', node.name);
 		}
