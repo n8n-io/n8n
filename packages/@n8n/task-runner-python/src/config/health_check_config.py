@@ -24,7 +24,7 @@ class HealthCheckConfig:
         port = int(port_str)
         if port < 1 or port > 65535:
             raise ValueError(f"Port must be between 1 and 65535, got {port}")
-        
+
         return cls(
             enabled=os.getenv(ENV_HEALTH_CHECK_SERVER_ENABLED, "false").lower()
             == "true",

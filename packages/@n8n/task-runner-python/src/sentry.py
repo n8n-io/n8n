@@ -18,7 +18,7 @@ class TaskRunnerSentry:
     def init(self) -> None:
         import sentry_sdk
         from sentry_sdk.integrations.logging import LoggingIntegration
-        
+
         sentry_sdk.init(
             dsn=self.config.dsn,
             release=f"n8n@{self.config.n8n_version}",
@@ -36,7 +36,7 @@ class TaskRunnerSentry:
 
     def shutdown(self) -> None:
         import sentry_sdk
-        
+
         sentry_sdk.flush(timeout=2.0)
         self.logger.info("Sentry stopped")
 
