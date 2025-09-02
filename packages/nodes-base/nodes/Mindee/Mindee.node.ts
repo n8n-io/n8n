@@ -1,4 +1,3 @@
-import FormData from 'form-data';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,9 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { mindeeApiRequest, pollMindee } from './GenericFunctions';
+import { cleanData, cleanDataPreviousApiVersions, mindeeApiRequest } from './GenericFunctions';
 
 export class Mindee implements INodeType {
 	description: INodeTypeDescription = {
@@ -16,8 +15,8 @@ export class Mindee implements INodeType {
 		name: 'mindee',
 		icon: 'file:mindee.svg',
 		group: ['input'],
-		version: [1, 2, 3, 4],
-		subtitle: '={{$parameter["modelId"]}}',
+		version: [1, 2, 3],
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Mindee API',
 		defaults: {
 			name: 'Mindee',
@@ -26,75 +25,156 @@ export class Mindee implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
-				name: 'mindeeV2Api',
+				name: 'mindeeReceiptApi',
 				required: true,
+				displayOptions: {
+					show: {
+						resource: ['receipt'],
+					},
+				},
+			},
+			{
+				name: 'mindeeInvoiceApi',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['invoice'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+				options: [
+					{
+						name: '1',
+						value: 1,
+					},
+					{
+						name: '3',
+						value: 3,
+					},
+					{
+						name: '4',
+						value: 4,
+					},
+				],
+				default: 1,
+				description: 'Which Mindee API Version to use',
+			},
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				options: [
+					{
+						name: '1',
+						value: 1,
+					},
+					{
+						name: '3',
+						value: 3,
+					},
+					{
+						name: '4',
+						value: 4,
+					},
+				],
+				default: 3,
+				description: 'Which Mindee API Version to use',
+			},
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [3],
+					},
+				},
+				options: [
+					{
+						name: '1',
+						value: 1,
+					},
+					{
+						name: '3',
+						value: 3,
+					},
+					{
+						name: '4',
+						value: 4,
+					},
+				],
+				default: 4,
+				description: 'Which Mindee API Version to use',
+			},
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Invoice',
+						value: 'invoice',
+					},
+					{
+						name: 'Receipt',
+						value: 'receipt',
+					},
+				],
+				default: 'receipt',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Predict',
+						value: 'predict',
+					},
+				],
+				default: 'predict',
+			},
 			{
 				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
 				default: 'data',
+				displayOptions: {
+					show: {
+						operation: ['predict'],
+						resource: ['receipt', 'invoice'],
+					},
+				},
 				hint: 'The name of the input binary field containing the file to be uploaded',
 			},
 			{
-				displayName: 'Model ID',
-				name: 'modelId',
-				type: 'string',
-				default: '',
-				description: 'ID of the model to poll',
-			},
-			{
-				displayName: 'File Alias (Optional)',
-				name: 'alias',
-				type: 'string',
-				default: '',
-				description: 'Optional alias for the file',
-			},
-			{
-				displayName: 'Enable RAG',
-				name: 'rag',
+				displayName: 'RAW Data',
+				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to enable Retrieval-Augmented Generation for compatible plans',
-			},
-			{
-				displayName: 'Enable Polygons (Location Data)',
-				name: 'polygon',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to retrieve location data associated with each result for compatible plans',
-			},
-			{
-				displayName: 'Enable Confidence Scores',
-				name: 'confidence',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to retrieve confidence scores associated with each result for compatible plans',
-			},
-			{
-				displayName: 'Enable Raw Text',
-				name: 'rawText',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to retrieve the raw OCR/text readings from the file for compatible plans',
-			},
-			{
-				displayName: 'Polling Timeout (Seconds)',
-				name: 'maxDelayCount',
-				type: 'number',
-				typeOptions: {
-					minValue: 5,
-					numberStepSize: 1,
-				},
-				default: 120,
-				description:
-					'How long the polling will last for after the document has been sent tot he server',
+				description: 'Whether to return the data exactly in the way it got received from the API',
 			},
 		],
 	};
@@ -103,42 +183,177 @@ export class Mindee implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const url = 'https://api-v2.mindee.net/v2/inferences/enqueue';
-		let enqueueResponseData, responseData;
+		let responseData;
+		const version = this.getNodeParameter('apiVersion', 0) as number;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
+		let endpoint;
 		for (let i = 0; i < length; i++) {
 			try {
-				const form = new FormData();
-				const modelId = this.getNodeParameter('modelId', i);
-				const alias = this.getNodeParameter('alias', i);
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-				const rag = this.getNodeParameter('rag', i) as boolean;
-				const polygons = this.getNodeParameter('polygon', i) as boolean;
-				const confidence = this.getNodeParameter('confidence', i) as boolean;
-				const rawText = this.getNodeParameter('rawText', i) as boolean;
-				const maxDelayCount = this.getNodeParameter('maxDelayCount', i) as number;
+				if (resource === 'receipt') {
+					if (operation === 'predict') {
+						const rawData = this.getNodeParameter('rawData', i);
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
-				const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-				const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-				form.append('file', dataBuffer, { filename: binaryData.fileName });
-				form.append('model_id', modelId as string);
-				form.append('alias', alias as string);
-				form.append('rag', rag ? 'true' : 'false');
-				form.append('polygons', polygons ? 'true' : 'false');
-				form.append('confidence', confidence ? 'true' : 'false');
-				form.append('raw_text', rawText ? 'true' : 'false');
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				enqueueResponseData = await mindeeApiRequest.call(this, 'POST', url, form);
+						if (version === 1) {
+							responseData = await mindeeApiRequest.call(
+								this,
+								'POST',
+								'/expense_receipts/v2/predict',
+								{},
+								{},
+								{
+									formData: {
+										file: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+									},
+								},
+							);
+						} else if (version === 3) {
+							endpoint = '/expense_receipts/v3/predict';
+							responseData = await mindeeApiRequest.call(
+								this,
+								'POST',
+								endpoint,
+								{},
+								{},
+								{
+									formData: {
+										document: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+									},
+								},
+							);
+						} else if (version === 4) {
+							endpoint = '/expense_receipts/v4/predict';
+							responseData = await mindeeApiRequest.call(
+								this,
+								'POST',
+								endpoint,
+								{},
+								{},
+								{
+									formData: {
+										document: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+									},
+								},
+							);
+						}
+						if (!rawData) {
+							if (version === 1) {
+								responseData = cleanDataPreviousApiVersions(
+									responseData.predictions as IDataObject[],
+								);
+							} else if (version === 3 || version === 4) {
+								responseData = cleanData(responseData.document as IDataObject);
+							}
+						}
+					}
+				}
 
-				responseData = await pollMindee(this, enqueueResponseData as IDataObject, maxDelayCount);
+				if (resource === 'invoice') {
+					if (operation === 'predict') {
+						const rawData = this.getNodeParameter('rawData', i);
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+
+						if (version === 1) {
+							endpoint = '/invoices/v1/predict';
+							responseData = await mindeeApiRequest.call(
+								this,
+								'POST',
+								endpoint,
+								{},
+								{},
+								{
+									formData: {
+										file: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+									},
+								},
+							);
+						} else if (version === 3) {
+							endpoint = '/invoices/v3/predict';
+							responseData = await mindeeApiRequest.call(
+								this,
+								'POST',
+								endpoint,
+								{},
+								{},
+								{
+									formData: {
+										document: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+									},
+								},
+							);
+						} else if (version === 4) {
+							endpoint = '/invoices/v4/predict';
+							responseData = await mindeeApiRequest.call(
+								this,
+								'POST',
+								endpoint,
+								{},
+								{},
+								{
+									formData: {
+										document: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+									},
+								},
+							);
+						} else {
+							throw new NodeOperationError(this.getNode(), 'Invalid API version');
+						}
+						if (!rawData) {
+							if (version === 1) {
+								responseData = cleanDataPreviousApiVersions(
+									responseData.predictions as IDataObject[],
+								);
+							} else if (version === 3 || version === 4) {
+								responseData = cleanData(responseData.document as IDataObject);
+							}
+						}
+					}
+				}
 				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData);
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				} else if (responseData !== undefined) {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as IDataObject).message as string });
+					returnData.push({ error: error.message });
 					continue;
 				}
 				throw error;
