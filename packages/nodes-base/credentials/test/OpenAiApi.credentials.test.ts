@@ -98,7 +98,7 @@ describe('OpenAiApi Credential', () => {
 				Authorization: 'Bearer sk-test123456789',
 				'OpenAI-Organization': undefined,
 			});
-			expect(result.headers['X-Custom-Header']).toBeUndefined();
+			expect(result.headers?.['X-Custom-Header']).toBeUndefined();
 		});
 
 		it('should preserve existing headers', async () => {
@@ -118,7 +118,7 @@ describe('OpenAiApi Credential', () => {
 
 			const raw =
 				typeof (result.headers as any)?.get === 'function'
-					? Object.fromEntries((result.headers as Headers).entries())
+					? Object.fromEntries((result.headers as unknown as Headers).entries())
 					: (result.headers as Record<string, string | undefined>);
 
 			const headers = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k.toLowerCase(), v]));
