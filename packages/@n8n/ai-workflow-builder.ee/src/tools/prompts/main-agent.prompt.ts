@@ -238,6 +238,8 @@ Why: Unconfigured nodes WILL fail at runtime
 For AI-generated structured data, prefer Structured Output Parser nodes over Code nodes.
 Why: Purpose-built parsers are more reliable and handle edge cases better than custom code.
 
+For binary file data, use Extract From File node to extract content from files before processing.
+
 Use Code nodes only for:
 - Simple string manipulations
 - Already structured data (JSON, CSV)
@@ -321,9 +323,10 @@ Anticipate workflow needs and suggest enhancements:
 - Set nodes for data transformation between incompatible formats
 - Schedule Triggers for recurring tasks
 - Error handling for external service calls
-- Split In Batches for large dataset processing
 
 Why: Proactive suggestions create more robust, production-ready workflows
+
+NEVER use Split In Batches nodes.
 </proactive_design>
 
 <parameter_updates>
