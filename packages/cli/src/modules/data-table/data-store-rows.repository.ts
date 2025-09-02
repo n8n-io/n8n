@@ -268,7 +268,7 @@ export class DataStoreRowsRepository {
 		}
 
 		if (useReturning) {
-			return extractReturningData(result.raw);
+			return normalizeRows(extractReturningData(result.raw), columns);
 		}
 
 		const ids = affectedRows.map((row) => row.id);
