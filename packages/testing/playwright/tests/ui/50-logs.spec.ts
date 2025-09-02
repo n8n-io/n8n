@@ -14,25 +14,6 @@ const NODES = {
 	WAIT_NODE: 'Wait node',
 };
 
-// Test requirements for different workflows
-const loopWorkflowRequirements: TestRequirements = {
-	workflow: {
-		'Workflow_loop.json': 'Loop Test Workflow',
-	},
-};
-
-const ifWorkflowRequirements: TestRequirements = {
-	workflow: {
-		'Workflow_if.json': 'If Test Workflow',
-	},
-};
-
-const webhookWorkflowRequirements: TestRequirements = {
-	workflow: {
-		'Workflow_wait_for_webhook.json': 'Webhook Test Workflow',
-	},
-};
-
 test.describe('Logs', () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
@@ -41,7 +22,11 @@ test.describe('Logs', () => {
 		n8n,
 		setupRequirements,
 	}) => {
-		await setupRequirements(loopWorkflowRequirements);
+		await setupRequirements({
+			workflow: {
+				'Workflow_loop.json': 'Loop Test Workflow',
+			},
+		});
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -80,7 +65,11 @@ test.describe('Logs', () => {
 	});
 
 	test('should allow to trigger partial execution', async ({ n8n, setupRequirements }) => {
-		await setupRequirements(ifWorkflowRequirements);
+		await setupRequirements({
+			workflow: {
+				'Workflow_if.json': 'If Test Workflow',
+			},
+		});
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -147,7 +136,11 @@ test.describe('Logs', () => {
 		n8n,
 		setupRequirements,
 	}) => {
-		await setupRequirements(ifWorkflowRequirements);
+		await setupRequirements({
+			workflow: {
+				'Workflow_if.json': 'If Test Workflow',
+			},
+		});
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -198,7 +191,11 @@ test.describe('Logs', () => {
 		n8n,
 		setupRequirements,
 	}) => {
-		await setupRequirements(ifWorkflowRequirements);
+		await setupRequirements({
+			workflow: {
+				'Workflow_if.json': 'If Test Workflow',
+			},
+		});
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -243,7 +240,11 @@ test.describe('Logs', () => {
 		n8n,
 		setupRequirements,
 	}) => {
-		await setupRequirements(webhookWorkflowRequirements);
+		await setupRequirements({
+			workflow: {
+				'Workflow_wait_for_webhook.json': 'Webhook Test Workflow',
+			},
+		});
 
 		// Click canvas to deselect nodes
 		await n8n.page.locator('[data-test-id="canvas"]').click();
