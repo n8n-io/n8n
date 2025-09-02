@@ -445,7 +445,7 @@ describe('SettingsSso View', () => {
 			);
 
 			expect(telemetryTrack).not.toBeCalled();
-			expect(showError).toHaveBeenCalledWith(error, 'settings.sso.settings.save.error_oidc');
+			expect(showError).toHaveBeenCalledWith(error, 'Error saving OIDC SSO configuration');
 		});
 	});
 
