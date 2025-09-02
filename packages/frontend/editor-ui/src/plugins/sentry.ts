@@ -2,6 +2,7 @@ import type { Plugin } from 'vue';
 import { AxiosError } from 'axios';
 import { ResponseError } from '@n8n/rest-api-client';
 import * as Sentry from '@sentry/vue';
+import { getAndParseConfigFromMetaTag } from '@n8n/stores/metaTagConfig';
 
 const ignoredErrors = [
 	{ instanceof: AxiosError },
@@ -13,6 +14,13 @@ const ignoredErrors = [
 	{ instanceof: RangeError, message: /Selection points outside of document$/ },
 	{ instanceof: Error, message: /ResizeObserver/ },
 ] as const;
+
+type SentryConfig = {
+	dsn?: string;
+	environment?: string;
+	serverName?: string;
+	release?: string;
+};
 
 export function beforeSend(event: Sentry.ErrorEvent, { originalException }: Sentry.EventHint) {
 	if (
@@ -42,11 +50,12 @@ export function beforeSend(event: Sentry.ErrorEvent, { originalException }: Sent
 
 export const SentryPlugin: Plugin = {
 	install: (app) => {
-		if (!window.sentry?.dsn) {
+		const sentryConfig = getAndParseConfigFromMetaTag<SentryConfig>('sentry');
+		if (!sentryConfig?.dsn) {
 			return;
 		}
 
-		const { dsn, release, environment, serverName } = window.sentry;
+		const { dsn, release, environment, serverName } = sentryConfig;
 
 		Sentry.init({
 			app,

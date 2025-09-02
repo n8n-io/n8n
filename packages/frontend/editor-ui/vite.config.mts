@@ -126,11 +126,9 @@ const plugins: UserConfig['plugins'] = [
 	{
 		name: 'Insert config script',
 		transformIndexHtml: (html, ctx) => {
-			const replacement = ctx.server
-				? '' // Skip when using Vite dev server
-				: '<script src="/{{BASE_PATH}}/{{REST_ENDPOINT}}/config.js"></script>';
-
-			return html.replace('%CONFIG_SCRIPT%', replacement);
+			// Skip config script when using Vite dev server. Otherwise the BE
+			// will replace it with the actual config script in cli/src/commands/start.ts.
+			return ctx.server ? html.replace('%CONFIG_SCRIPT%', '') : html;
 		},
 	},
 	// For sanitize-html
