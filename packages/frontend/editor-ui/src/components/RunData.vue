@@ -93,6 +93,7 @@ import { parseAiContent } from '@/utils/aiUtils';
 import { usePostHog } from '@/stores/posthog.store';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
+import FormPreview from '@/components/FormPreview.vue';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -1886,13 +1887,7 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
-			<div v-else-if="hasNodeRun && displayMode === 'preview'">
-				<div style="padding: 20px; text-align: center; background: var(--color-background-light)">
-					<p>Iframe preview placeholder</p>
-					<p>Node: {{ node?.name }}</p>
-					<p>Input Data: {{ inputData?.length || 0 }}</p>
-				</div>
-			</div>
+			<FormPreview v-else-if="hasNodeRun && displayMode === 'preview'" />
 
 			<Suspense v-else-if="(hasNodeRun || hasPreviewSchema) && isSchemaView">
 				<LazyRunDataSchema
