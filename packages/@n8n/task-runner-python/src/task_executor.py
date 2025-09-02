@@ -5,6 +5,8 @@ import textwrap
 import json
 import os
 import sys
+import tempfile
+import pickle
 
 from src.errors import (
     TaskResultMissingError,
@@ -92,7 +94,14 @@ class TaskExecutor:
             if "error" in returned:
                 raise TaskRuntimeError(returned["error"])
 
-            result = returned.get("result", [])
+            if "result_file" not in returned:
+                raise TaskResultMissingError()
+
+            result_file = returned["result_file"]
+            with open(result_file, "rb") as f:
+                result = pickle.load(f)
+            os.unlink(result_file)
+
             print_args = returned.get("print_args", [])
 
             return result, print_args
@@ -146,9 +155,8 @@ class TaskExecutor:
 
             exec(code, globals)
 
-            queue.put(
-                {"result": globals[EXECUTOR_USER_OUTPUT_KEY], "print_args": print_args}
-            )
+            result = globals[EXECUTOR_USER_OUTPUT_KEY]
+            TaskExecutor._put_result(queue, result, print_args)
 
         except Exception as e:
             TaskExecutor._put_error(queue, e, print_args)
@@ -195,7 +203,7 @@ class TaskExecutor:
                 user_output["pairedItem"] = {"item": index}
                 result.append(user_output)
 
-            queue.put({"result": result, "print_args": print_args})
+            TaskExecutor._put_result(queue, result, print_args)
 
         except Exception as e:
             TaskExecutor._put_error(queue, e, print_args)
@@ -204,6 +212,18 @@ class TaskExecutor:
     def _wrap_code(raw_code: str) -> str:
         indented_code = textwrap.indent(raw_code, "    ")
         return f"def _user_function():\n{indented_code}\n\n{EXECUTOR_USER_OUTPUT_KEY} = _user_function()"
+
+    @staticmethod
+    def _put_result(
+        queue: multiprocessing.Queue, result: list[Any], print_args: PrintArgs
+    ):
+        with tempfile.NamedTemporaryFile(
+            mode="wb", delete=False, prefix="n8n_result_"
+        ) as f:
+            pickle.dump(result, f)
+            result_file = f.name
+
+        queue.put({"result_file": result_file, "print_args": print_args})
 
     @staticmethod
     def _put_error(queue: multiprocessing.Queue, e: Exception, print_args: PrintArgs):
