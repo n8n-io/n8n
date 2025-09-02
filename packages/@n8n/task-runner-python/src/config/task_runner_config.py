@@ -55,6 +55,10 @@ class TaskRunnerConfig:
         if not grant_token:
             raise ValueError("Environment variable N8N_RUNNERS_GRANT_TOKEN is required")
 
+        task_timeout = int(os.getenv(ENV_TASK_TIMEOUT, str(DEFAULT_TASK_TIMEOUT)))
+        if task_timeout <= 0:
+            raise ValueError(f"Task timeout must be positive, got {task_timeout}")
+
         return cls(
             grant_token=grant_token,
             task_broker_uri=os.getenv(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
@@ -64,7 +68,7 @@ class TaskRunnerConfig:
             max_payload_size=int(
                 os.getenv(ENV_MAX_PAYLOAD_SIZE, str(DEFAULT_MAX_PAYLOAD_SIZE))
             ),
-            task_timeout=int(os.getenv(ENV_TASK_TIMEOUT, str(DEFAULT_TASK_TIMEOUT))),
+            task_timeout=task_timeout,
             stdlib_allow=parse_allowlist(
                 os.getenv(ENV_STDLIB_ALLOW, ""), ENV_STDLIB_ALLOW
             ),
