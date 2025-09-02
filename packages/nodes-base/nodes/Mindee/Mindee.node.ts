@@ -1,4 +1,3 @@
-// eslint-disable-next-line import-x/no-extraneous-dependencies
 import FormData from 'form-data';
 import type {
 	IDataObject,
