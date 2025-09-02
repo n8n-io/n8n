@@ -99,9 +99,11 @@ class TaskExecutor:
                 raise TaskResultMissingError()
 
             result_file = returned["result_file"]
-            with open(result_file, "rb") as f:
-                result = pickle.load(f)
-            os.unlink(result_file)
+            try:
+                with open(result_file, "rb") as f:
+                    result = pickle.load(f)
+            finally:
+                os.unlink(result_file)
 
             print_args = returned.get("print_args", [])
 
