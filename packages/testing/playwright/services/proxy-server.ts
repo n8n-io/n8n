@@ -72,9 +72,9 @@ export class ProxyServer {
 	/**
 	 * Verify that a request was received by ProxyServer
 	 */
-	async verifyRequest(request: ProxyServerRequest): Promise<boolean> {
+	async verifyRequest(request: ProxyServerRequest, numberOfRequests: number): Promise<boolean> {
 		try {
-			await this.client.verify(request, 1);
+			await this.client.verify(request, numberOfRequests);
 			return true;
 		} catch (error) {
 			return false;
@@ -130,7 +130,11 @@ export class ProxyServer {
 	/**
 	 * Verify a GET request was made to ProxyServer
 	 */
-	async verifyGetRequest(path: string, queryParams?: Record<string, string>): Promise<boolean> {
+	async wasGetRequestMade(
+		path: string,
+		queryParams?: Record<string, string>,
+		numberOfRequests = 1,
+	): Promise<boolean> {
 		const queryStringParameters = queryParams
 			? Object.entries(queryParams).reduce(
 					(acc, [key, value]) => {
@@ -141,10 +145,13 @@ export class ProxyServer {
 				)
 			: undefined;
 
-		return await this.verifyRequest({
-			method: 'GET',
-			path,
-			...(queryStringParameters && { queryStringParameters }),
-		});
+		return await this.verifyRequest(
+			{
+				method: 'GET',
+				path,
+				...(queryStringParameters && { queryStringParameters }),
+			},
+			numberOfRequests,
+		);
 	}
 }

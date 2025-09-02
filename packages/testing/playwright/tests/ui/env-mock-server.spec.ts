@@ -11,7 +11,7 @@ test.describe('Mock server', () => {
 		assert(typeof mockResponse !== 'string');
 		expect(mockResponse.statusCode).toBe(201);
 
-		expect(await proxyServer.verifyGetRequest('/health')).toBe(false);
+		expect(await proxyServer.wasGetRequestMade('/health')).toBe(false);
 
 		// Verify the mock endpoint works
 		const healthResponse = await fetch(`${proxyServer.url}/health`);
@@ -19,7 +19,7 @@ test.describe('Mock server', () => {
 		const healthData = await healthResponse.json();
 		expect(healthData.status).toBe('healthy');
 
-		expect(await proxyServer.verifyGetRequest('/health')).toBe(true);
+		expect(await proxyServer.wasGetRequestMade('/health')).toBe(true);
 	});
 
 	test('should run a simple workflow calling http endpoint', async ({ n8n, proxyServer }) => {
@@ -33,12 +33,14 @@ test.describe('Mock server', () => {
 
 		// Execute workflow - this should now proxy through mockserver
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
+		await n8n.canvas.openNode('HTTP Request');
+		await expect(n8n.ndv.getOutputTbodyCell(0, 0)).toContainText('Hello from ProxyServer!');
 
 		// Verify the request was handled by mockserver
-		const wasRequestHandled = await proxyServer.verifyGetRequest('/data', {
-			test: '1',
-		});
-
-		expect(wasRequestHandled).toBe(true);
+		expect(
+			await proxyServer.wasGetRequestMade('/data', {
+				test: '1',
+			}),
+		).toBe(true);
 	});
 });
