@@ -1,10 +1,13 @@
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
-import { getAllPerformanceMetrics, measurePerformance } from '../../utils/performance-helper';
+import {
+	getAllPerformanceMetrics,
+	measurePerformance,
+	attachMetric,
+} from '../../utils/performance-helper';
 
 async function setupPerformanceTest(n8n: n8nPage, size: number) {
-	await n8n.goHome();
-	await n8n.workflows.clickNewWorkflowCard();
+	await n8n.start.fromNewProject();
 	await n8n.canvas.importWorkflow('large.json', 'Large Workflow');
 	await n8n.notifications.closeNotificationByText('Successful');
 
@@ -51,6 +54,8 @@ test.describe('Performance Example: Multiple sets}', () => {
 				});
 			});
 
+			await attachMetric(test.info(), `trigger-workflow-${size}`, triggerDuration, 'ms');
+
 			// Assert trigger performance
 			expect(triggerDuration).toBeLessThan(budgets.triggerWorkflow);
 			console.log(
@@ -61,6 +66,9 @@ test.describe('Performance Example: Multiple sets}', () => {
 			const openNodeDuration = await measurePerformance(n8n.page, 'open-large-node', async () => {
 				await n8n.canvas.openNode('Code');
 			});
+
+			// Attach performance metric using helper method
+			await attachMetric(test.info(), `open-large-node-${size}`, openNodeDuration, 'ms');
 
 			// Assert node opening performance
 			expect(openNodeDuration).toBeLessThan(budgets.openLargeNode);
