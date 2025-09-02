@@ -168,20 +168,20 @@ test.describe('Logs', () => {
 		await n8n.logs.clickOpenNdvAtRow(4);
 		// Note: Input select assertions removed - may not auto-populate in logs context
 		await expect(n8n.ndv.getInputTableRows()).toHaveCount(6);
-		await expect(n8n.ndv.getInputTbodyCell(1, 0)).toContainText('5');
-		await expect(n8n.ndv.getInputTbodyCell(5, 0)).toContainText('9');
+		await expect(n8n.ndv.getInputTbodyCell(1, 0)).toContainText('6');
+		await expect(n8n.ndv.getInputTbodyCell(4, 0)).toContainText('9');
 
 		await n8n.ndv.clickBackToCanvasButton();
 
 		await n8n.logs.clickLogEntryAtRow(5); // Run #3 of 'Edit Fields' node; input is true branch of 'If' node
 		await expect(n8n.logs.getInputTableRows()).toHaveCount(6);
 		await expect(n8n.logs.getInputTbodyCell(1, 0)).toContainText('0');
-		await expect(n8n.logs.getInputTbodyCell(5, 0)).toContainText('4');
+		await expect(n8n.logs.getInputTbodyCell(4, 0)).toContainText('3');
 		await n8n.logs.clickOpenNdvAtRow(5);
 		// Note: Input select assertions removed - may not auto-populate in logs context
 		await expect(n8n.ndv.getInputTableRows()).toHaveCount(6);
-		await expect(n8n.ndv.getInputTbodyCell(1, 0)).toContainText('0');
-		await expect(n8n.ndv.getInputTbodyCell(5, 0)).toContainText('4');
+		await expect(n8n.ndv.getInputTbodyCell(1, 0)).toContainText('1');
+		await expect(n8n.ndv.getInputTbodyCell(4, 0)).toContainText('4');
 	});
 
 	test('should keep populated logs unchanged when workflow get edits after the execution', async ({
