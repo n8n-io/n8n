@@ -1,6 +1,7 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { KafkaConfig, SASLOptions } from 'kafkajs';
 import { Kafka as apacheKafka, logLevel } from 'kafkajs';
+import { ConnectionOptions } from 'tls';
 import type {
 	ITriggerFunctions,
 	IDataObject,
@@ -189,6 +190,22 @@ export class KafkaTrigger implements INodeType {
 
 		const ssl = credentials.ssl as boolean;
 
+		let useSslConnectionOptions = false as boolean;
+		let sslConnectionOptions: ConnectionOptions = {}
+
+		if (ssl === true && (credentials.clientSslCert !== ''  || credentials.clientSslKey !== '')) {
+			useSslConnectionOptions = true;
+			if (credentials.clientSslCert !== '') {
+				sslConnectionOptions.cert = credentials.clientSslCert as string;
+			}
+			if (credentials.clientSslKey !== '') {
+				sslConnectionOptions.key = credentials.clientSslKey as string;
+			}
+			if (credentials.clientSslPassphrase !== '') {
+				sslConnectionOptions.passphrase = credentials.clientSslPassphrase as string;
+			}
+		};
+		
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		options.nodeVersion = this.getNode().typeVersion;
@@ -196,7 +213,7 @@ export class KafkaTrigger implements INodeType {
 		const config: KafkaConfig = {
 			clientId,
 			brokers,
-			ssl,
+			ssl: useSslConnectionOptions ? sslConnectionOptions : ssl,
 			logLevel: logLevel.ERROR,
 		};
 
