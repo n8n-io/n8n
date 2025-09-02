@@ -1,0 +1,1004 @@
+Directory structure:
+└── node-dev/
+    ├── README.md
+    ├── eslint.config.mjs
+    ├── package.json
+    ├── tsconfig.json
+    ├── commands/
+    │   ├── build.ts
+    │   └── new.ts
+    ├── src/
+    │   ├── Build.ts
+    │   ├── Create.ts
+    │   ├── index.ts
+    │   ├── Interfaces.ts
+    │   └── tsconfig-build.json
+    └── templates/
+        ├── credentials/
+        │   └── simple.ts
+        ├── execute/
+        │   └── simple.ts
+        ├── trigger/
+        │   └── simple.ts
+        └── webhook/
+            └── simple.ts
+
+================================================
+FILE: packages/node-dev/README.md
+================================================
+![n8n.io - Workflow Automation](https://user-images.githubusercontent.com/65276001/173571060-9f2f6d7b-bac0-43b6-bdb2-001da9694058.png)
+
+# n8n-node-dev
+
+Currently very simple and not very sophisticated CLI which makes it easier
+to create credentials and nodes in TypeScript for n8n.
+
+```
+npm install n8n-node-dev -g
+```
+
+## Contents
+
+- [Usage](#usage)
+- [Commands](#commands)
+- [Create a node](#create-a-node)
+  - [Node Type](#node-type)
+  - [Node Type Description](#node-type-description)
+  - [Node Properties](#node-properties)
+  - [Node Property Options](#node-property-options)
+- [License](#license)
+
+## Usage
+
+The commandline tool can be started with `n8n-node-dev <COMMAND>`
+
+## Commands
+
+The following commands exist:
+
+### build
+
+Builds credentials and nodes in the current folder and copies them into the
+n8n custom extension folder (`~/.n8n/custom/`) unless destination path is
+overwritten with `--destination <FOLDER_PATH>`
+
+When "--watch" gets set it starts in watch mode and automatically builds and
+copies files whenever they change. To stop press "ctrl + c".
+
+### new
+
+Creates new basic credentials or node of the selected type to have a first starting point.
+
+## Create a node
+
+The easiest way to create a new node is via the "n8n-node-dev" cli. It sets up
+all the basics.
+
+A n8n node is a JavaScript file (normally written in TypeScript) which describes
+some basic information (like name, description, ...) and also at least one method.
+Depending on which method gets implemented defines if it is a regular-, trigger-
+or webhook-node.
+
+A simple regular node which:
+
+- defines one node property
+- sets its value to all items it receives
+
+would look like this:
+
+File named: `MyNode.node.ts`
+
+```TypeScript
+import {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+
+
+export class MyNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'My Node',
+		name: 'myNode',
+		group: ['transform'],
+		version: 1,
+		description: 'Adds "myString" on all items to defined value.',
+		defaults: {
+			name: 'My Node',
+			color: '#772244',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [
+			// Node properties which the user gets displayed and
+			// can change on the node.
+			{
+				displayName: 'My String',
+				name: 'myString',
+				type: 'string',
+				default: '',
+				placeholder: 'Placeholder value',
+				description: 'The description text',
+			}
+		]
+	};
+
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+
+		const items = this.getInputData();
+
+		let item: INodeExecutionData;
+		let myString: string;
+
+		// Itterates over all input items and add the key "myString" with the
+		// value the parameter "myString" resolves to.
+		// (This could be a different value for each item in case it contains an expression)
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			myString = this.getNodeParameter('myString', itemIndex, '') as string;
+			item = items[itemIndex];
+
+			item.json['myString'] = myString;
+		}
+
+		return [items];
+
+	}
+}
+```
+
+The "description" property has to be set on all nodes because it contains all
+the base information. Additionally all nodes have to have exactly one of the
+following methods defined which contains the actual logic:
+
+**Regular node**
+
+Method is called when the workflow gets executed
+
+- `execute`: Executed once no matter how many items
+
+By default, `execute` should always be used, especially when creating a
+third-party integration. The reason for this is that it provides much more
+flexibility and allows, for example, returning a different number of items than
+it received as input. This becomes crucial when a node needs to query data such as _return
+all users_. In such cases, the node typically receives only one input item but returns as
+many items as there are users. Therefore, when in doubt, it is recommended to use `execute`!
+
+**Trigger node**
+
+Method is called once when the workflow gets activated. It can then trigger workflow runs and provide the necessary data by itself.
+
+- `trigger`
+
+**Webhook node**
+
+Method is called when webhook gets called.
+
+- `webhook`
+
+### Node Type
+
+Property overview
+
+- **description** [required]: Describes the node like its name, properties, hooks, ... see `Node Type Description` bellow.
+- **execute** [optional]: Method is called when the workflow gets executed (once).
+- **hooks** [optional]: The hook methods.
+- **methods** [optional]: Additional methods. Currently only "loadOptions" exists which allows loading options for parameters from external services
+- **trigger** [optional]: Method is called once when the workflow gets activated.
+- **webhook** [optional]: Method is called when webhook gets called.
+- **webhookMethods** [optional]: Methods to setup webhooks on external services.
+
+### Node Type Description
+
+The following properties can be set in the node description:
+
+- **credentials** [optional]: Credentials the node requests access to
+- **defaults** [required]: Default "name" and "color" to set on node when it gets created
+- **displayName** [required]: Name to display users in Editor UI
+- **description** [required]: Description to display users in Editor UI
+- **group** [required]: Node group for example "transform" or "trigger"
+- **hooks** [optional]: Methods to execute at different points in time like when the workflow gets activated or deactivated
+- **icon** [optional]: Icon to display (can be an icon or a font awesome icon)
+- **inputs** [required]: Types of inputs the node has (currently only "main" exists) and the amount
+- **outputs** [required]: Types of outputs the node has (currently only "main" exists) and the amount
+- **outputNames** [optional]: In case a node has multiple outputs, names can be set that users know what data to expect
+- **maxNodes** [optional]: If an unlimited number of nodes of that type cannot exist in a workflow, the max-amount can be specified
+- **name** [required]: Name of the node (for n8n to use internally, in camelCase)
+- **properties** [required]: Properties which get displayed in the Editor UI and can be set by the user
+- **subtitle** [optional]: Text which should be displayed underneath the name of the node in the Editor UI (can be an expression)
+- **version** [required]: Version of the node. Currently always "1" (integer). For future usage, does not get used yet
+- **webhooks** [optional]: Webhooks the node should listen to
+
+### Node Properties
+
+The following properties can be set in the node properties:
+
+- **default** [required]: Default value of the property
+- **description** [required]: Description that is displayed to users in the Editor UI
+- **displayName** [required]: Name that is displayed to users in the Editor UI
+- **displayOptions** [optional]: Defines logic to decide if a property should be displayed or not
+- **name** [required]: Name of the property (for n8n to use internally, in camelCase)
+- **options** [optional]: The options the user can select when type of property is "collection", "fixedCollection" or "options"
+- **placeholder** [optional]: Placeholder text that is displayed to users in the Editor UI
+- **type** [required]: Type of the property. If it is for example a "string", "number", ...
+- **typeOptions** [optional]: Additional options for type. Like for example the min or max value of a number
+- **required** [optional]: Defines if the value has to be set or if it can stay empty
+
+### Node Property Options
+
+The following properties can be set in the node property options:
+
+All properties are optional. However, most only work when the node-property is of a specfic type.
+
+- **alwaysOpenEditWindow** [type: json]: If set then the "Editor Window" will always open when the user tries to edit the field. Helpful if long text is typically used in the property
+- **loadOptionsMethod** [type: options]: Method to use to load options from an external service
+- **maxValue** [type: number]: Maximum value of the number
+- **minValue** [type: number]: Minimum value of the number
+- **multipleValues** [type: all]: If set the property gets turned into an Array and the user can add multiple values
+- **multipleValueButtonText** [type: all]: Custom text for add button in case "multipleValues" were set
+- **numberPrecision** [type: number]: The precision of the number. By default, it is "0" and will only allow integers
+- **password** [type: string]: If a password field should be displayed (normally only used by credentials because all node data is not encrypted and gets saved in clear-text)
+- **rows** [type: string]: Number of rows the input field should have. By default it is "1"
+
+## License
+
+You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license)
+
+
+
+================================================
+FILE: packages/node-dev/eslint.config.mjs
+================================================
+import { defineConfig } from 'eslint/config';
+import { baseConfig } from '@n8n/eslint-config/base';
+
+export default defineConfig(baseConfig, {
+	rules: {
+		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
+
+		// TODO: Remove this
+		'unicorn/filename-case': 'warn',
+		'@typescript-eslint/naming-convention': 'warn',
+	},
+});
+
+
+
+================================================
+FILE: packages/node-dev/package.json
+================================================
+{
+  "name": "n8n-node-dev",
+  "version": "1.108.0",
+  "description": "CLI to simplify n8n credentials/node development",
+  "main": "dist/src/index",
+  "types": "dist/src/index.d.ts",
+  "oclif": {
+    "commands": "./dist/commands",
+    "bin": "n8n-node-dev"
+  },
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "build": "tsc --noEmit",
+    "build-node-dev": "tsc",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix",
+    "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b",
+    "watch": "tsc --watch"
+  },
+  "bin": {
+    "n8n-node-dev": "./bin/n8n-node-dev"
+  },
+  "keywords": [
+    "development",
+    "node",
+    "helper",
+    "n8n"
+  ],
+  "files": [
+    "bin",
+    "dist",
+    "templates",
+    "src/tsconfig-build.json"
+  ],
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/inquirer": "^6.5.0"
+  },
+  "dependencies": {
+    "@n8n/di": "workspace:*",
+    "@oclif/core": "4.0.7",
+    "change-case": "^4.1.1",
+    "fast-glob": "catalog:",
+    "inquirer": "^7.0.1",
+    "n8n-core": "workspace:*",
+    "n8n-workflow": "workspace:*",
+    "replace-in-file": "^6.0.0",
+    "tmp-promise": "^3.0.3"
+  }
+}
+
+
+
+================================================
+FILE: packages/node-dev/tsconfig.json
+================================================
+{
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.json",
+		"@n8n/typescript-config/tsconfig.backend.json"
+	],
+	"compilerOptions": {
+		"outDir": "dist",
+		"preserveSymlinks": true,
+		"tsBuildInfoFile": "dist/build.tsbuildinfo",
+		// TODO: remove all options below this line
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["commands/**/*.ts", "src/**/*.ts"]
+}
+
+
+
+================================================
+FILE: packages/node-dev/commands/build.ts
+================================================
+import { Container } from '@n8n/di';
+import { Command, Flags } from '@oclif/core';
+import { InstanceSettings } from 'n8n-core';
+
+import type { IBuildOptions } from '../src';
+import { buildFiles } from '../src';
+
+export class Build extends Command {
+	static description = 'Builds credentials and nodes and copies it to n8n custom extension folder';
+
+	static examples = [
+		'$ n8n-node-dev build',
+		'$ n8n-node-dev build --destination ~/n8n-nodes',
+		'$ n8n-node-dev build --watch',
+	];
+
+	static flags = {
+		help: Flags.help({ char: 'h' }),
+		destination: Flags.string({
+			char: 'd',
+			description: `The path to copy the compiled files to [default: ${
+				Container.get(InstanceSettings).customExtensionDir
+			}]`,
+		}),
+		watch: Flags.boolean({
+			description:
+				'Starts in watch mode and automatically builds and copies file whenever they change',
+		}),
+	};
+
+	async run() {
+		const { flags } = await this.parse(Build);
+
+		this.log('\nBuild credentials and nodes');
+		this.log('=========================');
+
+		try {
+			const options: IBuildOptions = {};
+
+			if (flags.destination) {
+				options.destinationFolder = flags.destination;
+			}
+			if (flags.watch) {
+				options.watch = true;
+			}
+
+			const outputDirectory = await buildFiles(options);
+
+			this.log(`The nodes got built and saved into the following folder:\n${outputDirectory}`);
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			this.log(`\nGOT ERROR: "${error.message}"`);
+			this.log('====================================');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
+			this.log(error.stack);
+		}
+	}
+}
+
+
+
+================================================
+FILE: packages/node-dev/commands/new.ts
+================================================
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Command } from '@oclif/core';
+import * as changeCase from 'change-case';
+import { access } from 'fs/promises';
+import * as inquirer from 'inquirer';
+import { join } from 'path';
+
+import { createTemplate } from '../src';
+
+export class New extends Command {
+	static description = 'Create new credentials/node';
+
+	static examples = ['$ n8n-node-dev new'];
+
+	async run() {
+		try {
+			this.log('\nCreate new credentials/node');
+			this.log('=========================');
+
+			// Ask for the type of not to be created
+			const typeQuestion: inquirer.QuestionCollection = {
+				name: 'type',
+				type: 'list',
+				default: 'Node',
+				message: 'What do you want to create?',
+				choices: ['Credentials', 'Node'],
+			};
+
+			const typeAnswers = await inquirer.prompt(typeQuestion);
+
+			let sourceFolder = '';
+			const sourceFileName = 'simple.ts';
+			let defaultName = '';
+			let getDescription = false;
+
+			if (typeAnswers.type === 'Node') {
+				// Create new node
+
+				getDescription = true;
+
+				const nodeTypeQuestion: inquirer.QuestionCollection = {
+					name: 'nodeType',
+					type: 'list',
+					default: 'Execute',
+					message: 'What kind of node do you want to create?',
+					choices: ['Execute', 'Trigger', 'Webhook'],
+				};
+
+				const nodeTypeAnswers = await inquirer.prompt(nodeTypeQuestion);
+
+				// Choose a the template-source-file depending on user input.
+				sourceFolder = 'execute';
+				defaultName = 'My Node';
+				if (nodeTypeAnswers.nodeType === 'Trigger') {
+					sourceFolder = 'trigger';
+					defaultName = 'My Trigger';
+				} else if (nodeTypeAnswers.nodeType === 'Webhook') {
+					sourceFolder = 'webhook';
+					defaultName = 'My Webhook';
+				}
+			} else {
+				// Create new credentials
+
+				sourceFolder = 'credentials';
+				defaultName = 'My Service API';
+			}
+
+			// Ask additional questions to know with what values the
+			// variables in the template file should be replaced with
+			const additionalQuestions = [
+				{
+					name: 'name',
+					type: 'input',
+					default: defaultName,
+					message: 'How should the node be called?',
+				},
+			];
+
+			if (getDescription) {
+				// Get also a node description
+				additionalQuestions.push({
+					name: 'description',
+					type: 'input',
+					default: 'Node converts input data to chocolate',
+					message: 'What should the node description be?',
+				});
+			}
+
+			const additionalAnswers = await inquirer.prompt(
+				additionalQuestions as inquirer.QuestionCollection,
+			);
+
+			const nodeName = additionalAnswers.name;
+
+			// Define the source file to be used and the location and name of the new
+			// node file
+			const destinationFilePath = join(
+				process.cwd(),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				`${changeCase.pascalCase(nodeName)}.${typeAnswers.type.toLowerCase()}.ts`,
+			);
+
+			const sourceFilePath = join(__dirname, '../../templates', sourceFolder, sourceFileName);
+
+			// Check if node with the same name already exists in target folder
+			// to not overwrite it by accident
+			try {
+				await access(destinationFilePath);
+
+				// File does already exist. So ask if it should be overwritten.
+				const overwriteQuestion: inquirer.QuestionCollection = [
+					{
+						name: 'overwrite',
+						type: 'confirm',
+						default: false,
+						message: `The file "${destinationFilePath}" already exists and would be overwritten. Do you want to proceed and overwrite the file?`,
+					},
+				];
+
+				const overwriteAnswers = await inquirer.prompt(overwriteQuestion);
+
+				if (overwriteAnswers.overwrite === false) {
+					this.log('\nNode creation got canceled!');
+					return;
+				}
+			} catch (error) {
+				// File does not exist. That is exactly what we want so go on.
+			}
+
+			// Make sure that the variables in the template file get formatted
+			// in the correct way
+			const replaceValues = {
+				ClassNameReplace: changeCase.pascalCase(nodeName),
+				DisplayNameReplace: changeCase.capitalCase(nodeName),
+				N8nNameReplace: changeCase.camelCase(nodeName),
+				NodeDescriptionReplace: additionalAnswers.description,
+			};
+
+			await createTemplate(sourceFilePath, destinationFilePath, replaceValues);
+
+			this.log('\nExecution was successful:');
+			this.log('====================================');
+
+			this.log(`Node got created: ${destinationFilePath}`);
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			this.log(`\nGOT ERROR: "${error.message}"`);
+			this.log('====================================');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			this.log(error.stack);
+		}
+	}
+}
+
+
+
+================================================
+FILE: packages/node-dev/src/Build.ts
+================================================
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Container } from '@n8n/di';
+import { spawn } from 'child_process';
+import glob from 'fast-glob';
+import { copyFile, mkdir, readFile, writeFile } from 'fs/promises';
+import { InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
+import { join, dirname, resolve as resolvePath } from 'path';
+import { file as tmpFile } from 'tmp-promise';
+
+import type { IBuildOptions } from './Interfaces';
+
+/**
+ * Create a custom tsconfig file as tsc currently has no way to define a base
+ * directory:
+ * https://github.com/Microsoft/TypeScript/issues/25430
+ */
+
+export async function createCustomTsconfig() {
+	// Get path to simple tsconfig file which should be used for build
+	const tsconfigPath = join(dirname(require.resolve('n8n-node-dev/src')), 'tsconfig-build.json');
+
+	// Read the tsconfig file
+	const tsConfigString = await readFile(tsconfigPath, { encoding: 'utf8' });
+
+	const tsConfig = jsonParse<{ include: string[] }>(tsConfigString);
+
+	// Set absolute include paths
+	const newIncludeFiles = [];
+
+	for (const includeFile of tsConfig.include) {
+		newIncludeFiles.push(join(process.cwd(), includeFile));
+	}
+	tsConfig.include = newIncludeFiles;
+
+	// Write new custom tsconfig file
+	const { path, cleanup } = await tmpFile();
+	await writeFile(path, JSON.stringify(tsConfig, null, 2));
+
+	return {
+		path,
+		cleanup,
+	};
+}
+
+/**
+ * Builds and copies credentials and nodes
+ *
+ * @param {IBuildOptions} [options] Options to overwrite default behavior
+ */
+export async function buildFiles({
+	destinationFolder = Container.get(InstanceSettings).customExtensionDir,
+	watch,
+}: IBuildOptions): Promise<string> {
+	const tscPath = join(dirname(require.resolve('typescript')), 'tsc');
+	const tsconfigData = await createCustomTsconfig();
+
+	await Promise.all(
+		['*.svg', '*.png', '*.node.json'].map(async (filenamePattern) => {
+			const files = await glob(`**/${filenamePattern}`);
+			for (const file of files) {
+				const src = resolvePath(process.cwd(), file);
+				const dest = resolvePath(destinationFolder, file);
+				await mkdir(dirname(dest), { recursive: true });
+				await copyFile(src, dest);
+			}
+		}),
+	);
+
+	// Supply a node base path so that it finds n8n-core and n8n-workflow
+	const nodeModulesPath = join(__dirname, '../../node_modules/');
+	let buildCommand = `${tscPath} --p ${
+		tsconfigData.path
+	} --outDir ${destinationFolder} --rootDir ${process.cwd()} --baseUrl ${nodeModulesPath}`;
+	if (watch) {
+		buildCommand += ' --watch';
+	}
+
+	try {
+		const buildProcess = spawn('node', buildCommand.split(' '), {
+			windowsVerbatimArguments: true,
+			cwd: process.cwd(),
+		});
+
+		// Forward the output of the child process to the main one
+		// that the user can see what is happening
+		buildProcess.stdout.pipe(process.stdout);
+		buildProcess.stderr.pipe(process.stderr);
+
+		// Make sure that the child process gets also always terminated
+		// when the main process does
+		process.on('exit', () => buildProcess.kill());
+
+		await new Promise<void>((resolve) => {
+			buildProcess.on('exit', resolve);
+		});
+	} catch (error) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		let errorMessage = error.message;
+
+		if (error.stdout !== undefined) {
+			errorMessage = `${errorMessage}\nGot following output:\n${error.stdout}`;
+		}
+
+		throw new Error(errorMessage);
+	} finally {
+		// Remove the tmp tsconfig file
+		await tsconfigData.cleanup();
+	}
+
+	return destinationFolder;
+}
+
+
+
+================================================
+FILE: packages/node-dev/src/Create.ts
+================================================
+import { copyFile } from 'fs/promises';
+import type { ReplaceInFileConfig } from 'replace-in-file';
+import { replaceInFile } from 'replace-in-file';
+
+/**
+ * Creates a new credentials or node
+ *
+ * @param {string} sourceFilePath The path to the source template file
+ * @param {string} destinationFilePath The path the write the new file to
+ * @param {object} replaceValues The values to replace in the template file
+ */
+export async function createTemplate(
+	sourceFilePath: string,
+	destinationFilePath: string,
+	replaceValues: object,
+): Promise<void> {
+	// Copy the file to then replace the values in it
+
+	await copyFile(sourceFilePath, destinationFilePath);
+
+	// Replace the variables in the template file
+	const options: ReplaceInFileConfig = {
+		files: [destinationFilePath],
+		from: [],
+		to: [],
+	};
+	options.from = Object.keys(replaceValues).map((key) => {
+		return new RegExp(key, 'g');
+	});
+	options.to = Object.values(replaceValues);
+	await replaceInFile(options);
+}
+
+
+
+================================================
+FILE: packages/node-dev/src/index.ts
+================================================
+export * from './Build';
+export * from './Create';
+export type * from './Interfaces';
+
+
+
+================================================
+FILE: packages/node-dev/src/Interfaces.ts
+================================================
+export interface IBuildOptions {
+	destinationFolder?: string;
+	watch?: boolean;
+}
+
+
+
+================================================
+FILE: packages/node-dev/src/tsconfig-build.json
+================================================
+{
+	"compilerOptions": {
+		"strict": true,
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"target": "es2021",
+		"lib": ["es2021"],
+		"importHelpers": true,
+		"esModuleInterop": true,
+		"declaration": true,
+		"incremental": true,
+		"sourceMap": true
+	},
+	"include": ["**/*.credentials.ts", "**/*.node.ts"]
+}
+
+
+
+================================================
+FILE: packages/node-dev/templates/credentials/simple.ts
+================================================
+import { ICredentialType, NodePropertyTypes, INodeProperties } from 'n8n-workflow';
+
+export class ClassNameReplace implements ICredentialType {
+	name = 'N8nNameReplace';
+
+	displayName = 'DisplayNameReplace';
+
+	properties: INodeProperties[] = [
+		// The credentials to get from user and save encrypted.
+		// Properties can be defined exactly in the same way
+		// as node properties.
+		{
+			displayName: 'User',
+			name: 'user',
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'Access Token',
+			name: 'accessToken',
+			type: 'string',
+			default: '',
+		},
+	];
+}
+
+
+
+================================================
+FILE: packages/node-dev/templates/execute/simple.ts
+================================================
+import {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+
+export class ClassNameReplace implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'DisplayNameReplace',
+		name: 'N8nNameReplace',
+		group: ['transform'],
+		version: 1,
+		description: 'NodeDescriptionReplace',
+		defaults: {
+			name: 'DisplayNameReplace',
+			color: '#772244',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [
+			// Node properties which the user gets displayed and
+			// can change on the node.
+			{
+				displayName: 'My String',
+				name: 'myString',
+				type: 'string',
+				default: '',
+				placeholder: 'Placeholder value',
+				description: 'The description text',
+			},
+		],
+	};
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+
+		let item: INodeExecutionData;
+		let myString: string;
+
+		// Iterates over all input items and add the key "myString" with the
+		// value the parameter "myString" resolves to.
+		// (This could be a different value for each item in case it contains an expression)
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			myString = this.getNodeParameter('myString', itemIndex, '') as string;
+			item = items[itemIndex];
+
+			item.json.myString = myString;
+		}
+
+		return [items];
+	}
+}
+
+
+
+================================================
+FILE: packages/node-dev/templates/trigger/simple.ts
+================================================
+import { ITriggerFunctions, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+
+export class ClassNameReplace implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'DisplayNameReplace',
+		name: 'N8nNameReplace',
+		group: ['trigger'],
+		version: 1,
+		description: 'NodeDescriptionReplace',
+		defaults: {
+			name: 'DisplayNameReplace',
+			color: '#00FF00',
+		},
+		inputs: [],
+		outputs: ['main'],
+		properties: [
+			// Node properties which the user gets displayed and
+			// can change on the node.
+			{
+				displayName: 'Interval',
+				name: 'interval',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
+				default: 1,
+				description: 'Every how many minutes the workflow should be triggered.',
+			},
+		],
+	};
+
+	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const interval = this.getNodeParameter('interval', 1) as number;
+
+		if (interval <= 0) {
+			throw new Error('The interval has to be set to at least 1 or higher!');
+		}
+
+		const executeTrigger = () => {
+			// Every time the emit function gets called a new workflow
+			// executions gets started with the provided entries.
+			const entry = {
+				exampleKey: 'exampleData',
+			};
+			this.emit([this.helpers.returnJsonArray([entry])]);
+		};
+
+		// Sets an interval and triggers the workflow all n seconds
+		// (depends on what the user selected on the node)
+		const intervalValue = interval * 60 * 1000;
+		const intervalObj = setInterval(executeTrigger, intervalValue);
+
+		// The "closeFunction" function gets called by n8n whenever
+		// the workflow gets deactivated and can so clean up.
+		async function closeFunction() {
+			clearInterval(intervalObj);
+		}
+
+		// The "manualTriggerFunction" function gets called by n8n
+		// when a user is in the workflow editor and starts the
+		// workflow manually. So the function has to make sure that
+		// the emit() gets called with similar data like when it
+		// would trigger by itself so that the user knows what data
+		// to expect.
+		async function manualTriggerFunction() {
+			executeTrigger();
+		}
+
+		return {
+			closeFunction,
+			manualTriggerFunction,
+		};
+	}
+}
+
+
+
+================================================
+FILE: packages/node-dev/templates/webhook/simple.ts
+================================================
+import {
+	IDataObject,
+	IWebhookFunctions,
+	INodeTypeDescription,
+	INodeType,
+	IWebhookResponseData,
+} from 'n8n-workflow';
+
+export class ClassNameReplace implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'DisplayNameReplace',
+		name: 'N8nNameReplace',
+		group: ['trigger'],
+		version: 1,
+		description: 'NodeDescriptionReplace',
+		defaults: {
+			name: 'DisplayNameReplace',
+			color: '#885577',
+		},
+		inputs: [],
+		outputs: ['main'],
+		webhooks: [
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+				// Each webhook property can either be hardcoded
+				// like the above ones or referenced from a parameter
+				// like the "path" property bellow
+				path: '={{$parameter["path"]}}',
+			},
+		],
+		properties: [
+			{
+				displayName: 'Path',
+				name: 'path',
+				type: 'string',
+				default: '',
+				placeholder: '',
+				required: true,
+				description: 'The path to listen to',
+			},
+		],
+	};
+
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		// The data to return and so start the workflow with
+		const returnData: IDataObject[] = [];
+		returnData.push({
+			headers: this.getHeaderData(),
+			params: this.getParamsData(),
+			query: this.getQueryData(),
+			body: this.getBodyData(),
+		});
+
+		return {
+			workflowData: [this.helpers.returnJsonArray(returnData)],
+		};
+	}
+}
+
+
