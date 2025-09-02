@@ -14,7 +14,12 @@ from src.errors import (
 )
 
 from src.message_types.broker import NodeMode, Items
-from src.constants import EXECUTOR_CIRCULAR_REFERENCE_KEY, EXECUTOR_USER_OUTPUT_KEY
+from src.constants import (
+    EXECUTOR_CIRCULAR_REFERENCE_KEY,
+    EXECUTOR_USER_OUTPUT_KEY,
+    EXECUTOR_ALL_ITEMS_FILENAME,
+    EXECUTOR_PER_ITEM_FILENAME,
+)
 from typing import Any, Set
 
 from multiprocessing.context import SpawnProcess
@@ -134,7 +139,8 @@ class TaskExecutor:
         print_args: PrintArgs = []
 
         try:
-            code = TaskExecutor._wrap_code(raw_code)
+            wrapped_code = TaskExecutor._wrap_code(raw_code)
+            compiled_code = compile(wrapped_code, EXECUTOR_ALL_ITEMS_FILENAME, "exec")
 
             globals = {
                 "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
@@ -144,7 +150,7 @@ class TaskExecutor:
                 else print,
             }
 
-            exec(code, globals)
+            exec(compiled_code, globals)
 
             queue.put(
                 {"result": globals[EXECUTOR_USER_OUTPUT_KEY], "print_args": print_args}
@@ -173,7 +179,7 @@ class TaskExecutor:
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
-            compiled_code = compile(wrapped_code, "<per_item_task_execution>", "exec")
+            compiled_code = compile(wrapped_code, EXECUTOR_PER_ITEM_FILENAME, "exec")
 
             result = []
             for index, item in enumerate(items):
