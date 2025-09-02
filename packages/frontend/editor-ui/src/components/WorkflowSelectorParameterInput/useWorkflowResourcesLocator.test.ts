@@ -30,7 +30,7 @@ describe('useWorkflowResourcesLocator', () => {
 		useCanvasOperations.mockReturnValue({ renameNode: renameNodeMock });
 	});
 
-	describe('renameDefaultNodeName', () => {
+	describe('applyDefaultExecuteWorkflowNodeName', () => {
 		it.each([
 			{
 				activeNodeName: 'Execute Workflow',
@@ -56,14 +56,14 @@ describe('useWorkflowResourcesLocator', () => {
 		])(
 			'should rename the node correctly for activeNodeName: $activeNodeName',
 			({ activeNodeName, workflowId, mockedWorkflow, expectedRename, expectedCalledWith }) => {
-				const { renameDefaultNodeName } = useWorkflowResourcesLocator(routerMock);
+				const { applyDefaultExecuteWorkflowNodeName } = useWorkflowResourcesLocator(routerMock);
 
 				ndvStoreMock.activeNodeName = activeNodeName;
 				workflowsStoreMock.getWorkflowById.mockReturnValue(
 					mockedWorkflow as unknown as IWorkflowDb,
 				);
 
-				renameDefaultNodeName(workflowId);
+				applyDefaultExecuteWorkflowNodeName(workflowId);
 
 				expect(workflowsStoreMock.getWorkflowById).toHaveBeenCalledWith(workflowId);
 				expect(renameNodeMock).toHaveBeenCalledWith(expectedCalledWith, expectedRename);
@@ -71,30 +71,30 @@ describe('useWorkflowResourcesLocator', () => {
 		);
 
 		it('should not rename the node for invalid workflowId', () => {
-			const { renameDefaultNodeName } = useWorkflowResourcesLocator(routerMock);
+			const { applyDefaultExecuteWorkflowNodeName } = useWorkflowResourcesLocator(routerMock);
 			const workflowId = 123;
 
-			renameDefaultNodeName(workflowId);
+			applyDefaultExecuteWorkflowNodeName(workflowId);
 
 			expect(renameNodeMock).not.toHaveBeenCalled();
 		});
 
 		it('should not rename the node for workflowId: workflow-id with null mockedWorkflow', () => {
-			const { renameDefaultNodeName } = useWorkflowResourcesLocator(routerMock);
+			const { applyDefaultExecuteWorkflowNodeName } = useWorkflowResourcesLocator(routerMock);
 			const workflowId = 'workflow-id';
 			const activeNodeName = 'Execute Workflow';
 
 			ndvStoreMock.activeNodeName = activeNodeName;
 			workflowsStoreMock.getWorkflowById.mockReturnValue(null as unknown as IWorkflowDb);
 
-			renameDefaultNodeName(workflowId);
+			applyDefaultExecuteWorkflowNodeName(workflowId);
 
 			expect(workflowsStoreMock.getWorkflowById).toHaveBeenCalledWith(workflowId);
 			expect(renameNodeMock).not.toHaveBeenCalled();
 		});
 
 		it('should not rename the node for workflowId: workflow-id with activeNodeName: Some Other Node', () => {
-			const { renameDefaultNodeName } = useWorkflowResourcesLocator(routerMock);
+			const { applyDefaultExecuteWorkflowNodeName } = useWorkflowResourcesLocator(routerMock);
 			const workflowId = 'workflow-id';
 			const activeNodeName = 'Some Other Node';
 			const mockedWorkflow = { name: 'Test Workflow' };
@@ -102,7 +102,7 @@ describe('useWorkflowResourcesLocator', () => {
 			ndvStoreMock.activeNodeName = activeNodeName;
 			workflowsStoreMock.getWorkflowById.mockReturnValue(mockedWorkflow as unknown as IWorkflowDb);
 
-			renameDefaultNodeName(workflowId);
+			applyDefaultExecuteWorkflowNodeName(workflowId);
 
 			expect(workflowsStoreMock.getWorkflowById).not.toHaveBeenCalled();
 			expect(renameNodeMock).not.toHaveBeenCalled();
