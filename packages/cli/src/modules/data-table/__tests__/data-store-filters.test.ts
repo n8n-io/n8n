@@ -1053,9 +1053,7 @@ describe('dataStore filters', () => {
 					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
 						filter: {
 							type: 'and',
-							filters: [
-								{ columnName: 'registeredAt', value: baseDate.toISOString(), condition: 'gt' },
-							],
+							filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'gt' }],
 						},
 					});
 
@@ -1073,9 +1071,7 @@ describe('dataStore filters', () => {
 					const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
 						filter: {
 							type: 'and',
-							filters: [
-								{ columnName: 'registeredAt', value: baseDate.toISOString(), condition: 'lte' },
-							],
+							filters: [{ columnName: 'registeredAt', value: baseDate, condition: 'lte' }],
 						},
 					});
 
@@ -1147,6 +1143,186 @@ describe('dataStore filters', () => {
 						});
 					},
 				);
+			});
+		});
+
+		describe('AND filters', () => {
+			it('retrieves rows matching all conditions in AND filter', async () => {
+				// ARRANGE
+				const { id } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'age', type: 'number' },
+						{ name: 'isActive', type: 'boolean' },
+					],
+				});
+
+				await dataStoreService.insertRows(id, project.id, [
+					{ name: 'John', age: 25, isActive: true },
+					{ name: 'Mary', age: 30, isActive: true },
+					{ name: 'Jack', age: 35, isActive: true },
+					{ name: 'Arnold', age: 40, isActive: false },
+					{ name: 'Bob', age: 25, isActive: false },
+				]);
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+					filter: {
+						type: 'and',
+						filters: [
+							{ columnName: 'name', value: '%ar%', condition: 'ilike' },
+							{ columnName: 'isActive', value: true, condition: 'neq' },
+						],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(1);
+				expect(result.data).toEqual([
+					expect.objectContaining({ name: 'Arnold', age: 40, isActive: false }),
+				]);
+			});
+
+			it('returns empty result when no conditions match', async () => {
+				// ARRANGE
+				const { id } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'age', type: 'number' },
+						{ name: 'isActive', type: 'boolean' },
+					],
+				});
+
+				await dataStoreService.insertRows(id, project.id, [
+					{ name: 'John', age: 25, isActive: true },
+					{ name: 'Mary', age: 30, isActive: false },
+					{ name: 'Jack', age: 35, isActive: true },
+					{ name: 'Arnold', age: 40, isActive: false },
+					{ name: 'Bob', age: 25, isActive: false },
+				]);
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+					filter: {
+						type: 'and',
+						filters: [
+							{ columnName: 'name', value: '%ar%', condition: 'ilike' },
+							{ columnName: 'age', value: 50, condition: 'gt' },
+						],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(0);
+				expect(result.data).toEqual([]);
+			});
+		});
+
+		describe('OR filters', () => {
+			it('retrieves rows matching any condition in OR filter', async () => {
+				// ARRANGE
+				const { id } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'age', type: 'number' },
+						{ name: 'isActive', type: 'boolean' },
+					],
+				});
+
+				await dataStoreService.insertRows(id, project.id, [
+					{ name: 'John', age: 25, isActive: true },
+					{ name: 'Mary', age: 30, isActive: false },
+					{ name: 'Jack', age: 35, isActive: true },
+					{ name: 'Arnold', age: 40, isActive: false },
+					{ name: 'Bob', age: 25, isActive: false },
+				]);
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+					filter: {
+						type: 'or',
+						filters: [
+							{ columnName: 'name', value: '%ar%', condition: 'ilike' },
+							{ columnName: 'isActive', value: true, condition: 'eq' },
+						],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(4);
+				expect(result.data).toEqual([
+					expect.objectContaining({ name: 'John', age: 25, isActive: true }),
+					expect.objectContaining({ name: 'Mary', age: 30, isActive: false }),
+					expect.objectContaining({ name: 'Jack', age: 35, isActive: true }),
+					expect.objectContaining({ name: 'Arnold', age: 40, isActive: false }),
+				]);
+			});
+
+			it('retrieves rows when multiple conditions match the same row', async () => {
+				// ARRANGE
+				const { id } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'age', type: 'number' },
+						{ name: 'isActive', type: 'boolean' },
+					],
+				});
+
+				await dataStoreService.insertRows(id, project.id, [
+					{ name: 'John', age: 25, isActive: false },
+					{ name: 'Mary', age: 30, isActive: true },
+					{ name: 'Arnold', age: 35, isActive: false },
+					{ name: 'Alice', age: 40, isActive: false },
+					{ name: 'Bob', age: 25, isActive: false },
+				]);
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+					filter: {
+						type: 'or',
+						filters: [
+							{ columnName: 'name', value: 'Mar%', condition: 'like' },
+							{ columnName: 'isActive', value: true, condition: 'eq' },
+						],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(1);
+				expect(result.data).toEqual([
+					expect.objectContaining({ name: 'Mary', age: 30, isActive: true }),
+				]);
+			});
+
+			it('returns empty result when no conditions match', async () => {
+				// ARRANGE
+				const { id } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'age', type: 'number' },
+						{ name: 'isActive', type: 'boolean' },
+					],
+				});
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(id, project.id, {
+					filter: {
+						type: 'or',
+						filters: [
+							{ columnName: 'name', value: 'NonExistent', condition: 'eq' },
+							{ columnName: 'age', value: 999, condition: 'eq' },
+						],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(0);
+				expect(result.data).toEqual([]);
 			});
 		});
 	});
