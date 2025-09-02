@@ -60,6 +60,7 @@ export class DataStoreColumnRepository extends Repository<DataTableColumn> {
 				dataTableId,
 			});
 
+			// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 			await em.insert(DataTableColumn, column);
 
 			const queryRunner = em.queryRunner;

@@ -124,12 +124,17 @@ const plugins: UserConfig['plugins'] = [
 		renderLegacyChunks: false,
 	}),
 	{
-		name: '[DEV] Resolve config script URL',
-		apply: 'serve',
-		transformIndexHtml: (html) =>
-			html
-				.replaceAll('/{{BASE_PATH}}', '//localhost:5678')
-				.replaceAll('/{{REST_ENDPOINT}}', '/rest'),
+		name: 'Insert config script',
+		transformIndexHtml: (html, ctx) => {
+			// Skip config tags when using Vite dev server. Otherwise the BE
+			// will replace it with the actual config script in cli/src/commands/start.ts.
+			return ctx.server
+				? html
+						.replace('%CONFIG_TAGS%', '')
+						.replaceAll('/{{BASE_PATH}}', '//localhost:5678')
+						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
+				: html;
+		},
 	},
 	// For sanitize-html
 	nodePolyfills({

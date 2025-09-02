@@ -1,2 +1,2 @@
 export * from './define';
-export * from './types';
+export type * from './types';

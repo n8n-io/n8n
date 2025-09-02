@@ -80,6 +80,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'folder:move',
 	'oidc:manage',
 	'dataStore:list',
+	'role:manage',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();

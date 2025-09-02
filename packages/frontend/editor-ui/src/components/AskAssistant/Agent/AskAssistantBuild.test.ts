@@ -26,6 +26,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
+import { PLAN_APPROVAL_MESSAGE } from '@/constants';
 
 vi.mock('@/event-bus', () => ({
 	nodeViewEventBus: {
@@ -974,6 +975,384 @@ describe('AskAssistantBuild', () => {
 			// Verify second generation also saved
 			expect(saveCurrentWorkflowMock).toHaveBeenCalledTimes(2);
 			expect(builderStore.initialGeneration).toBe(false);
+		});
+	});
+
+	describe('NodesPlan message handling', () => {
+		it('should render plan messages with appropriate controls', async () => {
+			const nodesPlanMessage = {
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'custom' as const,
+				customType: 'nodesPlan',
+				message: 'Here is my plan:',
+				data: [
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeName: 'HTTP Request',
+						reasoning: 'To fetch data from an API',
+					},
+				],
+			};
+
+			const regularMessage = {
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'text' as const,
+				content: 'Regular message',
+			};
+
+			// First test with regular message - should not show plan controls
+			builderStore.$patch({
+				chatMessages: [regularMessage],
+			});
+
+			const { queryByText } = renderComponent();
+			await flushPromises();
+
+			// Regular message should not have plan controls
+			expect(queryByText('aiAssistant.builder.plan.approve')).not.toBeInTheDocument();
+
+			// Now test with plan message
+			builderStore.$patch({
+				chatMessages: [nodesPlanMessage],
+			});
+			await flushPromises();
+
+			// Plan message should have controls
+			expect(queryByText('aiAssistant.builder.plan.approve')).toBeInTheDocument();
+		});
+
+		it('should handle plan approval correctly', async () => {
+			// Setup: empty workflow so initialGeneration is true
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			const nodesPlanMessage = {
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'custom' as const,
+				customType: 'nodesPlan',
+				message: 'Here is my plan:',
+				data: [
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeName: 'HTTP Request',
+						reasoning: 'To fetch data from an API',
+					},
+				],
+			};
+
+			builderStore.$patch({
+				chatMessages: [nodesPlanMessage],
+			});
+
+			const { getByText } = renderComponent();
+			await flushPromises();
+
+			// Find and click the approve button
+			const approveButton = getByText('aiAssistant.builder.plan.approve');
+			await fireEvent.click(approveButton);
+			await flushPromises();
+
+			// Verify that sendChatMessage was called with approval message
+			expect(builderStore.sendChatMessage).toHaveBeenCalledWith({
+				text: PLAN_APPROVAL_MESSAGE,
+				initialGeneration: true,
+			});
+		});
+
+		it('should handle plan rejection correctly', async () => {
+			const nodesPlanMessage = {
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'custom' as const,
+				customType: 'nodesPlan',
+				message: 'Here is my plan:',
+				data: [
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeName: 'HTTP Request',
+						reasoning: 'To fetch data from an API',
+					},
+				],
+			};
+
+			builderStore.$patch({
+				chatMessages: [nodesPlanMessage],
+			});
+
+			const { getByText, queryByText } = renderComponent();
+			await flushPromises();
+
+			// Find and click the reject button
+			const rejectButton = getByText('aiAssistant.builder.plan.reject');
+			await fireEvent.click(rejectButton);
+			await flushPromises();
+
+			// Verify plan controls are hidden after rejection
+			expect(queryByText('aiAssistant.builder.plan.approve')).not.toBeInTheDocument();
+			expect(queryByText('aiAssistant.builder.plan.reject')).not.toBeInTheDocument();
+		});
+
+		it('should show plan controls only for the last plan message', async () => {
+			const planMessage1 = {
+				id: 'plan1',
+				role: 'assistant' as const,
+				type: 'custom' as const,
+				customType: 'nodesPlan',
+				message: 'First plan:',
+				data: [
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeName: 'HTTP Request',
+						reasoning: 'First plan',
+					},
+				],
+			};
+
+			const textMessage = {
+				id: 'text1',
+				role: 'assistant' as const,
+				type: 'text' as const,
+				content: 'Some text',
+			};
+
+			const planMessage2 = {
+				id: 'plan2',
+				role: 'assistant' as const,
+				type: 'custom' as const,
+				customType: 'nodesPlan',
+				message: 'Second plan:',
+				data: [
+					{
+						nodeType: 'n8n-nodes-base.emailSend',
+						nodeName: 'Send Email',
+						reasoning: 'Second plan',
+					},
+				],
+			};
+
+			// First set just the first plan message
+			builderStore.$patch({
+				chatMessages: [planMessage1],
+			});
+
+			const { queryByText } = renderComponent();
+			await flushPromises();
+
+			// First plan should show controls when it's alone
+			expect(queryByText('aiAssistant.builder.plan.approve')).toBeInTheDocument();
+
+			// Now add more messages
+			builderStore.$patch({
+				chatMessages: [planMessage1, textMessage, planMessage2],
+			});
+			await flushPromises();
+
+			// Now only the last plan message should have visible controls
+			// We check this by seeing that approve button is still there (from plan2)
+			expect(queryByText('aiAssistant.builder.plan.approve')).toBeInTheDocument();
+		});
+	});
+
+	describe('Plan status management in workflow messages watcher', () => {
+		it('should disable chat when plan is pending and enable after action', async () => {
+			// Add a nodes plan message as the last message
+			const nodesPlanMessage = {
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'custom' as const,
+				customType: 'nodesPlan',
+				message: 'Plan message',
+				data: [
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeName: 'HTTP Request',
+						reasoning: 'To fetch data',
+					},
+				],
+			};
+
+			builderStore.$patch({
+				chatMessages: [nodesPlanMessage],
+			});
+
+			// Also need to mock workflowMessages getter
+			builderStore.workflowMessages = [];
+
+			const { getByText, queryByRole } = renderComponent();
+			await flushPromises();
+
+			// Trigger the watcher by updating workflowMessages
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: '{}',
+				},
+			];
+
+			await flushPromises();
+
+			// Chat should be disabled while plan is pending
+			const chatInput = queryByRole('textbox');
+			expect(chatInput).toHaveAttribute('disabled');
+
+			// Approve the plan
+			const approveButton = getByText('aiAssistant.builder.plan.approve');
+			await fireEvent.click(approveButton);
+			await flushPromises();
+
+			// Chat should be enabled after approval
+			const chatInputAfter = queryByRole('textbox');
+			expect(chatInputAfter).not.toHaveAttribute('disabled');
+		});
+
+		it('should not disable chat when last message is not a nodes plan', async () => {
+			// Add a regular text message as the last message
+			const textMessage = {
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'text' as const,
+				content: 'Regular message',
+			};
+
+			builderStore.$patch({
+				chatMessages: [textMessage],
+			});
+
+			// Mock workflowMessages getter
+			builderStore.workflowMessages = [];
+
+			const { queryByRole } = renderComponent();
+			await flushPromises();
+
+			// Trigger the watcher
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: '{}',
+				},
+			];
+
+			await flushPromises();
+
+			// Chat should remain enabled
+			const chatInput = queryByRole('textbox');
+			expect(chatInput).not.toHaveAttribute('disabled');
+		});
+	});
+
+	describe('Disabled state when plan is pending', () => {
+		it('should disable chat input when plan status is pending', async () => {
+			const nodesPlanMessage = {
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'custom' as const,
+				customType: 'nodesPlan',
+				message: 'Plan message',
+				data: [
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeName: 'HTTP Request',
+						reasoning: 'To fetch data',
+					},
+				],
+			};
+
+			builderStore.$patch({
+				chatMessages: [nodesPlanMessage],
+			});
+
+			// Mock workflowMessages getter
+			builderStore.workflowMessages = [];
+
+			const { queryByRole } = renderComponent();
+			await flushPromises();
+
+			// Trigger workflow message update to set planStatus to pending
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: '{}',
+				},
+			];
+
+			await flushPromises();
+
+			const chatInput = queryByRole('textbox');
+			expect(chatInput).toHaveAttribute('disabled');
+		});
+
+		it('should enable chat input after plan approval', async () => {
+			const nodesPlanMessage = {
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'custom' as const,
+				customType: 'nodesPlan',
+				message: 'Plan message',
+				data: [
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeName: 'HTTP Request',
+						reasoning: 'To fetch data',
+					},
+				],
+			};
+
+			builderStore.$patch({
+				chatMessages: [nodesPlanMessage],
+			});
+
+			const { queryByRole, getByText } = renderComponent();
+			await flushPromises();
+
+			// Click approve button
+			const approveButton = getByText('aiAssistant.builder.plan.approve');
+			await fireEvent.click(approveButton);
+			await flushPromises();
+
+			// Chat should be enabled after approval
+			const chatInput = queryByRole('textbox');
+			expect(chatInput).not.toHaveAttribute('disabled');
+		});
+
+		it('should enable chat input after plan rejection', async () => {
+			const nodesPlanMessage = {
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'custom' as const,
+				customType: 'nodesPlan',
+				message: 'Plan message',
+				data: [
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeName: 'HTTP Request',
+						reasoning: 'To fetch data',
+					},
+				],
+			};
+
+			builderStore.$patch({
+				chatMessages: [nodesPlanMessage],
+			});
+
+			const { queryByRole, getByText } = renderComponent();
+			await flushPromises();
+
+			// Click reject button
+			const rejectButton = getByText('aiAssistant.builder.plan.reject');
+			await fireEvent.click(rejectButton);
+			await flushPromises();
+
+			// Chat should be enabled after rejection
+			const chatInput = queryByRole('textbox');
+			expect(chatInput).not.toHaveAttribute('disabled');
 		});
 	});
 });

@@ -92,6 +92,7 @@ const {
 	searchFilter,
 	onSearchFilter,
 	getWorkflowName,
+	renameDefaultNodeName,
 	populateNextWorkflowsPage,
 	setWorkflowsResources,
 	reloadWorkflows,
@@ -174,6 +175,10 @@ function onListItemSelected(value: NodeParameterValue) {
 	telemetry.track('User chose sub-workflow', {});
 	onInputChange(value);
 	hideDropdown();
+	// we rename defaults here to allow selecting the same workflow to
+	// update the name, as we don't eagerly update a changed workflow name
+	// but rather only react on changed id elsewhere
+	renameDefaultNodeName(value);
 }
 
 function onInputFocus(): void {
@@ -235,6 +240,19 @@ watch(
 		// Expressions are always in ID mode
 		if (isValueExpression) {
 			onModeSwitched('id');
+		}
+	},
+);
+
+watch(
+	() => props.modelValue,
+	(val, old) => {
+		// We update the name only if the actual ID changed
+		// Because eagerly renaming the node when the target sub-workflow
+		// changed name means the workflow becomes unsaved and changed just by
+		// opening the ExecuteWorkflow node referencing the renamed workflow
+		if (old.value !== val.value) {
+			renameDefaultNodeName(val.value);
 		}
 	},
 );

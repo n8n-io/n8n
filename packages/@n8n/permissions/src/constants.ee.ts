@@ -29,6 +29,7 @@ export const RESOURCES = {
 	dataStore: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
 	execution: ['delete', 'read', 'list', 'get'] as const,
 	workflowTags: ['update', 'list'] as const,
+	role: ['manage'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {

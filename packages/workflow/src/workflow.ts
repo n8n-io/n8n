@@ -35,7 +35,6 @@ import type {
 	INodeConnection,
 	IObservableObject,
 	NodeParameterValueType,
-	INodeOutputConfiguration,
 	NodeConnectionType,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
@@ -691,36 +690,51 @@ export class Workflow {
 	getParentMainInputNode(node: INode): INode {
 		if (node) {
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
+			if (!nodeType?.description.outputs) {
+				return node;
+			}
 
-			if (
-				outputs.find(
-					(output) =>
-						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionTypes.Main,
-				)
-			) {
-				// Get the first node which is connected to a non-main output
-				const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
-					const parentNodes = this.getChildNodes(
-						node.name,
-						(outputName as INodeOutputConfiguration)?.type ?? outputName,
-					);
-					if (parentNodes.length > 0) {
-						acc.push(...parentNodes);
+			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
+			const nonMainConnectionTypes: NodeConnectionType[] = [];
+
+			// Defensive check: NodeHelpers.getNodeOutputs should always return an array,
+			// but in some edge cases (particularly during testing with incomplete node setup),
+			// it may return undefined or null
+			if (Array.isArray(outputs)) {
+				for (const output of outputs) {
+					const type = typeof output === 'string' ? output : output.type;
+					if (type !== NodeConnectionTypes.Main) {
+						nonMainConnectionTypes.push(type);
 					}
-					return acc;
-				}, [] as string[]);
+				}
+			}
+
+			// Sort for deterministic behavior: prevents non-deterministic selection when multiple
+			// non-main outputs exist (AI agents with multiple tools). Object.keys() ordering
+			// can vary across runs, causing inconsistent first-choice selection.
+			nonMainConnectionTypes.sort();
+
+			if (nonMainConnectionTypes.length > 0) {
+				const nonMainNodesConnected: string[] = [];
+				const nodeConnections = this.connectionsBySourceNode[node.name];
+
+				for (const type of nonMainConnectionTypes) {
+					// Only include connection types that exist in actual execution data
+					if (nodeConnections?.[type]) {
+						const childNodes = this.getChildNodes(node.name, type);
+						if (childNodes.length > 0) {
+							nonMainNodesConnected.push(...childNodes);
+						}
+					}
+				}
 
 				if (nonMainNodesConnected.length) {
+					// Sort for deterministic behavior, then get first node
+					nonMainNodesConnected.sort();
 					const returnNode = this.getNode(nonMainNodesConnected[0]);
-					if (returnNode === null) {
-						// This should theoretically never happen as the node is connected
-						// but who knows and it makes TS happy
+					if (!returnNode) {
 						throw new ApplicationError(`Node "${nonMainNodesConnected[0]}" not found`);
 					}
-
-					// The chain of non-main nodes is potentially not finished yet so
-					// keep on going
 					return this.getParentMainInputNode(returnNode);
 				}
 			}

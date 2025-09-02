@@ -23,7 +23,6 @@ import { transformNodeType } from '@/components/Node/NodeCreator/utils';
 import type {
 	IDataObject,
 	INodeInputConfiguration,
-	NodeParameterValueType,
 	NodeConnectionType,
 	Workflow,
 } from 'n8n-workflow';
@@ -43,6 +42,7 @@ import { CanvasConnectionMode } from '@/types';
 import { isVueFlowConnection } from '@/utils/typeGuards';
 import type { PartialBy } from '@/utils/typeHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
+import type { TelemetryNdvType } from '@/types/telemetry';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -107,7 +107,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		const nodeName = node ?? ndvStore.activeNodeName;
 		const nodeData = nodeName ? workflowsStore.getNodeByName(nodeName) : null;
 
-		ndvStore.activeNodeName = null;
+		ndvStore.unsetActiveNodeName();
 
 		setTimeout(() => {
 			if (creatorView) {
@@ -215,7 +215,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}
 
 	function openNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
-		ndvStore.activeNodeName = null;
+		ndvStore.unsetActiveNodeName();
 		setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
 		setShowScrim(true);
 		setNodeCreatorState({
@@ -238,7 +238,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			transformNodeType(a, actionNode.properties.displayName, 'action'),
 		);
 
-		ndvStore.activeNodeName = null;
+		ndvStore.unsetActiveNodeName();
 		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
 		setNodeCreatorState({
 			source: eventSource,
@@ -390,15 +390,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		trackNodeCreatorEvent('User clicked custom API from node actions', properties);
 	}
 
-	function onAddActions(properties: {
-		node_type?: string;
-		action: string;
-		source_mode: string;
-		resource: NodeParameterValueType;
-	}) {
-		trackNodeCreatorEvent('User added action', properties);
-	}
-
 	function onSubcategorySelected(properties: { subcategory: string }) {
 		trackNodeCreatorEvent('User viewed node category', {
 			category_name: properties.subcategory,
@@ -417,6 +408,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		resource?: string;
 		operation?: string;
 		action?: string;
+		next_view_shown?: TelemetryNdvType;
 	}) {
 		trackNodeCreatorEvent('User added node to workflow canvas', properties);
 	}
@@ -457,7 +449,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		onCategoryExpanded,
 		onActionsCustomAPIClicked,
 		onViewActions,
-		onAddActions,
 		onSubcategorySelected,
 		onNodeAddedToCanvas,
 	};
