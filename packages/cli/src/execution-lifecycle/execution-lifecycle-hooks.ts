@@ -193,6 +193,12 @@ function hookFunctionsPush(
 			pushRef,
 		);
 
+		// We send the node execution data as a WS binary message to the FE. Not
+		// because it's more efficient on the wire: the content is a JSON string
+		// so both text and binary would end the same on the wire. The reason
+		// is that the FE can then receive the data directly as an ArrayBuffer,
+		// and we can pass it directly to a web worker for processing without
+		// extra copies.
 		const asBinary = true;
 		pushInstance.send(
 			{
