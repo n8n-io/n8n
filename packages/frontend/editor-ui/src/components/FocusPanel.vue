@@ -37,6 +37,8 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
 import ExperimentalFocusPanelHeader from '@/components/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
+import { useFormPreviewStore } from '@/stores/formPreview.store';
+import { storeToRefs } from 'pinia';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -57,6 +59,7 @@ const wrapperRef = useTemplateRef('wrapper');
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
+const formPreviewStore = useFormPreviewStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
@@ -67,6 +70,8 @@ const ndvStore = useNDVStore();
 const deviceSupport = useDeviceSupport();
 const vueFlow = useVueFlow(workflowsStore.workflowId);
 const activeElement = useActiveElement();
+
+const { isFormPreviewAvailable } = storeToRefs(formPreviewStore);
 
 useTelemetryContext({ view_shown: 'focus_panel' });
 
@@ -419,9 +424,11 @@ function onOpenNdv() {
 					:node="node"
 					:parameter="resolvedParameter?.parameter"
 					:is-executable="isExecutable"
+					:is-form-preview-available="isFormPreviewAvailable"
 					@execute="onExecute"
 					@open-ndv="onOpenNdv"
 					@clear-parameter="closeFocusPanel"
+					@open-form-preview="formPreviewStore.openFormPreview"
 				/>
 				<div v-if="resolvedParameter" :class="$style.content">
 					<div v-if="!experimentalNdvStore.isNdvInFocusPanelEnabled" :class="$style.tabHeader">

@@ -31,6 +31,7 @@ export const STORES = {
 	FOLDERS: 'folders',
 	MODULES: 'modules',
 	FOCUS_PANEL: 'focusPanel',
+	FORM_PREVIEW: 'formPreview',
 	AI_TEMPLATES_STARTER_COLLECTION: 'aiTemplatesStarterCollection',
 	PERSONALIZED_TEMPLATES: 'personalizedTemplates',
 	EXPERIMENT_READY_TO_RUN_WORKFLOWS: 'readyToRunWorkflows',

@@ -10,7 +10,8 @@ import { computed } from 'vue';
 const { node, parameter, isExecutable } = defineProps<{
 	node: INodeUi;
 	parameter?: INodeProperties;
-	isExecutable: boolean;
+	isExecutable?: boolean;
+	isFormPreviewAvailable?: boolean;
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
@@ -19,6 +20,7 @@ const nodeType = computed(() => nodeTypesStore.getNodeType(node.type, node.typeV
 const emit = defineEmits<{
 	execute: [];
 	openNdv: [];
+	openFormPreview: [];
 	clearParameter: [];
 }>();
 </script>
@@ -36,6 +38,14 @@ const emit = defineEmits<{
 			</template>
 			<template v-else>{{ node.name }}</template>
 		</div>
+		<N8nIconButton
+			v-if="isFormPreviewAvailable"
+			icon="eye"
+			size="small"
+			type="tertiary"
+			text
+			@click="emit('openFormPreview')"
+		/>
 		<N8nIconButton
 			v-if="parameter"
 			icon="x"
