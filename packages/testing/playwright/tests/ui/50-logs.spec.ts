@@ -1,12 +1,47 @@
 import { test, expect } from '../../fixtures/base';
+import type { TestRequirements } from '../../Types';
+
+// Node name constants
+const NODES = {
+	MANUAL_TRIGGER: "When clicking 'Execute workflow'",
+	CODE: 'Code',
+	LOOP_OVER_ITEMS: 'Loop Over Items',
+	WAIT: 'Wait',
+	CODE1: 'Code1',
+	SCHEDULE_TRIGGER: 'Schedule Trigger',
+	EDIT_FIELDS: 'Edit Fields',
+	IF: 'If',
+	WAIT_NODE: 'Wait node',
+};
+
+// Test requirements for different workflows
+const loopWorkflowRequirements: TestRequirements = {
+	workflow: {
+		'Workflow_loop.json': 'Loop Test Workflow',
+	},
+};
+
+const ifWorkflowRequirements: TestRequirements = {
+	workflow: {
+		'Workflow_if.json': 'If Test Workflow',
+	},
+};
+
+const webhookWorkflowRequirements: TestRequirements = {
+	workflow: {
+		'Workflow_wait_for_webhook.json': 'Webhook Test Workflow',
+	},
+};
 
 test.describe('Logs', () => {
-	test('should populate logs as manual execution progresses', async ({ n8n }) => {
+	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
-
-		// Import workflow from file
-		await n8n.canvas.importWorkflow('Workflow_loop.json', 'Test Loop Workflow');
+	});
+	test('should populate logs as manual execution progresses', async ({
+		n8n,
+		setupRequirements,
+	}) => {
+		await setupRequirements(loopWorkflowRequirements);
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -17,66 +52,62 @@ test.describe('Logs', () => {
 
 		await expect(n8n.logs.getLogEntries()).toHaveCount(4);
 		await expect(n8n.logs.getLogEntries().nth(0)).toContainText('Execute workflow');
-		await expect(n8n.logs.getLogEntries().nth(1)).toContainText('Code');
-		await expect(n8n.logs.getLogEntries().nth(2)).toContainText('Loop Over Items');
-		await expect(n8n.logs.getLogEntries().nth(3)).toContainText('Wait');
+		await expect(n8n.logs.getLogEntries().nth(1)).toContainText(NODES.CODE);
+		await expect(n8n.logs.getLogEntries().nth(2)).toContainText(NODES.LOOP_OVER_ITEMS);
+		await expect(n8n.logs.getLogEntries().nth(3)).toContainText(NODES.WAIT);
 
 		await expect(n8n.logs.getLogEntries()).toHaveCount(6);
-		await expect(n8n.logs.getLogEntries().nth(4)).toContainText('Loop Over Items');
-		await expect(n8n.logs.getLogEntries().nth(5)).toContainText('Wait');
+		await expect(n8n.logs.getLogEntries().nth(4)).toContainText(NODES.LOOP_OVER_ITEMS);
+		await expect(n8n.logs.getLogEntries().nth(5)).toContainText(NODES.WAIT);
 
 		await expect(n8n.logs.getLogEntries()).toHaveCount(8);
-		await expect(n8n.logs.getLogEntries().nth(6)).toContainText('Loop Over Items');
-		await expect(n8n.logs.getLogEntries().nth(7)).toContainText('Wait');
+		await expect(n8n.logs.getLogEntries().nth(6)).toContainText(NODES.LOOP_OVER_ITEMS);
+		await expect(n8n.logs.getLogEntries().nth(7)).toContainText(NODES.WAIT);
 
 		await expect(n8n.logs.getLogEntries()).toHaveCount(10);
-		await expect(n8n.logs.getLogEntries().nth(8)).toContainText('Loop Over Items');
-		await expect(n8n.logs.getLogEntries().nth(9)).toContainText('Code1');
+		await expect(n8n.logs.getLogEntries().nth(8)).toContainText(NODES.LOOP_OVER_ITEMS);
+		await expect(n8n.logs.getLogEntries().nth(9)).toContainText(NODES.CODE1);
 		await expect(
 			n8n.logs.getOverviewStatus().filter({ hasText: /Error in [\d\.]+s/ }),
 		).toBeVisible();
-		await expect(n8n.logs.getSelectedLogEntry()).toContainText('Code1'); // Errored node is automatically selected
+		await expect(n8n.logs.getSelectedLogEntry()).toContainText(NODES.CODE1); // Errored node is automatically selected
 		await expect(n8n.logs.getNodeErrorMessageHeader()).toContainText('test!!! [line 1]');
-		await expect(n8n.canvas.getNodeIssuesByName('Code1')).toBeVisible();
+		await expect(n8n.canvas.getNodeIssuesByName(NODES.CODE1)).toBeVisible();
 
 		await n8n.logs.pressClearExecutionButton();
 		await expect(n8n.logs.getLogEntries()).toHaveCount(0);
-		await expect(n8n.canvas.getNodeIssuesByName('Code1')).not.toBeVisible();
+		await expect(n8n.canvas.getNodeIssuesByName(NODES.CODE1)).not.toBeVisible();
 	});
 
-	test('should allow to trigger partial execution', async ({ n8n }) => {
-		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
-
-		// Import workflow from file
-		await n8n.canvas.importWorkflow('Workflow_if.json', 'Test If Workflow');
+	test('should allow to trigger partial execution', async ({ n8n, setupRequirements }) => {
+		await setupRequirements(ifWorkflowRequirements);
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
 
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
 		await expect(n8n.logs.getLogEntries()).toHaveCount(6);
-		await expect(n8n.logs.getLogEntries().nth(0)).toContainText('Schedule Trigger');
-		await expect(n8n.logs.getLogEntries().nth(1)).toContainText('Code');
-		await expect(n8n.logs.getLogEntries().nth(2)).toContainText('Edit Fields');
-		await expect(n8n.logs.getLogEntries().nth(3)).toContainText('If');
-		await expect(n8n.logs.getLogEntries().nth(4)).toContainText('Edit Fields');
-		await expect(n8n.logs.getLogEntries().nth(5)).toContainText('Edit Fields');
+		await expect(n8n.logs.getLogEntries().nth(0)).toContainText(NODES.SCHEDULE_TRIGGER);
+		await expect(n8n.logs.getLogEntries().nth(1)).toContainText(NODES.CODE);
+		await expect(n8n.logs.getLogEntries().nth(2)).toContainText(NODES.EDIT_FIELDS);
+		await expect(n8n.logs.getLogEntries().nth(3)).toContainText(NODES.IF);
+		await expect(n8n.logs.getLogEntries().nth(4)).toContainText(NODES.EDIT_FIELDS);
+		await expect(n8n.logs.getLogEntries().nth(5)).toContainText(NODES.EDIT_FIELDS);
 
 		await n8n.logs.clickTriggerPartialExecutionAtRow(3);
 		await expect(n8n.logs.getLogEntries()).toHaveCount(3);
-		await expect(n8n.logs.getLogEntries().nth(0)).toContainText('Schedule Trigger');
-		await expect(n8n.logs.getLogEntries().nth(1)).toContainText('Code');
-		await expect(n8n.logs.getLogEntries().nth(2)).toContainText('If');
+		await expect(n8n.logs.getLogEntries().nth(0)).toContainText(NODES.SCHEDULE_TRIGGER);
+		await expect(n8n.logs.getLogEntries().nth(1)).toContainText(NODES.CODE);
+		await expect(n8n.logs.getLogEntries().nth(2)).toContainText(NODES.IF);
 	});
 
 	// TODO: make it possible to test workflows with AI model end-to-end
-	test.skip('should show input and output data in the selected display mode', async ({ n8n }) => {
-		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
-
-		// Import workflow from file
-		await n8n.canvas.importWorkflow('Workflow_ai_agent.json', 'Test Chat Workflow');
+	test.skip('should show input and output data in the selected display mode', async ({
+		n8n,
+		setupRequirements,
+	}) => {
+		// TODO: Add chat workflow requirements when AI functionality is ready
+		// await setupRequirements(chatWorkflowRequirements);
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -112,12 +143,11 @@ test.describe('Logs', () => {
 		await expect(n8n.logs.getInputPanel()).toContainText('[{"messages": ["Human: Hi!"],');
 	});
 
-	test('should show input and output data of correct run index and branch', async ({ n8n }) => {
-		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
-
-		// Import workflow from file
-		await n8n.canvas.importWorkflow('Workflow_if.json', 'Test If Workflow');
+	test('should show input and output data of correct run index and branch', async ({
+		n8n,
+		setupRequirements,
+	}) => {
+		await setupRequirements(ifWorkflowRequirements);
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -166,31 +196,25 @@ test.describe('Logs', () => {
 
 	test('should keep populated logs unchanged when workflow get edits after the execution', async ({
 		n8n,
+		setupRequirements,
 	}) => {
-		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
-
-		// Import workflow from file
-		await n8n.canvas.importWorkflow('Workflow_if.json', 'Test If Workflow');
+		await setupRequirements(ifWorkflowRequirements);
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
 
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
 		await expect(n8n.logs.getLogEntries()).toHaveCount(6);
-		await n8n.canvas.disableNode('Edit Fields');
+		await n8n.canvas.disableNode(NODES.EDIT_FIELDS);
 		await expect(n8n.logs.getLogEntries()).toHaveCount(6);
-		await n8n.canvas.deleteNode('Edit Fields');
+		await n8n.canvas.deleteNode(NODES.EDIT_FIELDS);
 		await expect(n8n.logs.getLogEntries()).toHaveCount(6);
 	});
 
 	// TODO: make it possible to test workflows with AI model end-to-end
-	test.skip('should show logs for a past execution', async ({ n8n }) => {
-		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
-
-		// Import workflow from file
-		await n8n.canvas.importWorkflow('Workflow_ai_agent.json', 'Test Chat Workflow');
+	test.skip('should show logs for a past execution', async ({ n8n, setupRequirements }) => {
+		// TODO: Add chat workflow requirements when AI functionality is ready
+		// await setupRequirements(chatWorkflowRequirements);
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -215,12 +239,11 @@ test.describe('Logs', () => {
 		await expect(n8n.executions.getLogEntries().nth(2)).toContainText('E2E Chat Model');
 	});
 
-	test('should show logs for a workflow with a node that waits for webhook', async ({ n8n }) => {
-		await n8n.goHome();
-		await n8n.workflows.clickAddWorkflowButton();
-
-		// Import workflow from file
-		await n8n.canvas.importWorkflow('Workflow_wait_for_webhook.json', 'Test Webhook Workflow');
+	test('should show logs for a workflow with a node that waits for webhook', async ({
+		n8n,
+		setupRequirements,
+	}) => {
+		await setupRequirements(webhookWorkflowRequirements);
 
 		// Click canvas to deselect nodes
 		await n8n.page.locator('[data-test-id="canvas"]').click();
@@ -233,9 +256,9 @@ test.describe('Logs', () => {
 		await expect(n8n.canvas.getNodesWithSpinner()).toHaveCount({ min: 1 });
 		await expect(n8n.canvas.getWaitingNodes()).toHaveCount({ min: 1 });
 		await expect(n8n.logs.getLogEntries()).toHaveCount(2);
-		await expect(n8n.logs.getLogEntries().nth(1)).toContainText('Wait node');
+		await expect(n8n.logs.getLogEntries().nth(1)).toContainText(NODES.WAIT_NODE);
 
-		await n8n.canvas.openNode('Wait node');
+		await n8n.canvas.openNode(NODES.WAIT_NODE);
 		const webhookUrl = await n8n.ndv
 			.getOutputPanelDataContainer()
 			.locator('a')
@@ -255,6 +278,6 @@ test.describe('Logs', () => {
 		).toBeVisible();
 		await n8n.logs.getLogEntries().nth(1).click(); // click selected row to deselect
 		await expect(n8n.logs.getLogEntries()).toHaveCount(2);
-		await expect(n8n.logs.getLogEntries().nth(1)).toContainText('Wait node');
+		await expect(n8n.logs.getLogEntries().nth(1)).toContainText(NODES.WAIT_NODE);
 	});
 });
