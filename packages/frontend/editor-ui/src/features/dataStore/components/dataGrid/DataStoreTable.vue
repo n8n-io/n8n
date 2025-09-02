@@ -228,6 +228,12 @@ const onDeleteColumn = async (columnId: string) => {
 			props.dataStore.projectId,
 			columnId,
 		);
+		telemetry.track('User deleted data table column', {
+			columnId,
+			columnName: columnToDelete.headerName,
+			columnType: columnToDelete.cellDataType,
+			dataTableId: props.dataStore.id,
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.deleteColumn.error'));
 		colDefs.value.splice(columnToDeleteIndex, 0, columnToDelete);
