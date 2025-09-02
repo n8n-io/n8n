@@ -34,8 +34,6 @@
 			"health-check-server-port": "5682",
 			"allowed-env": [
 				"PATH",
-				"N8N_RUNNERS_TASK_TIMEOUT",
-				"N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT",
 				"N8N_RUNNERS_LAUNCHER_LOG_LEVEL",
 				"N8N_SENTRY_DSN",
 				"N8N_VERSION",

@@ -43,7 +43,8 @@ RUN uv venv
 RUN uv sync \
 			--frozen \
 			--no-editable \
-			--no-install-project
+			--no-install-project \
+			--all-extras
 
 COPY packages/@n8n/task-runner-python/ ./
 RUN uv sync \
