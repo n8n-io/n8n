@@ -21,6 +21,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/sso.ee/oidc/constants';
 import { OidcService } from '@/sso.ee/oidc/oidc.service.ee';
 import { createUser } from '@test-integration/db/users';
+import { UserError } from 'n8n-workflow';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -113,7 +114,7 @@ describe('OIDC service', () => {
 				loginEnabled: true,
 			};
 
-			await expect(oidcService.updateConfig(newConfig)).rejects.toThrowError(BadRequestError);
+			await expect(oidcService.updateConfig(newConfig)).rejects.toThrowError(UserError);
 		});
 
 		it('should keep current secret if redact value is given in update', async () => {
@@ -136,6 +137,86 @@ describe('OIDC service', () => {
 			);
 			expect(loadedConfig.loginEnabled).toBe(true);
 		});
+
+		it('should throw UserError when OIDC discovery fails during updateConfig', async () => {
+			const newConfig: OidcConfigDto = {
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
+				loginEnabled: true,
+			};
+
+			discoveryMock.mockRejectedValueOnce(new Error('Discovery failed'));
+
+			await expect(oidcService.updateConfig(newConfig)).rejects.toThrowError(UserError);
+			expect(discoveryMock).toHaveBeenCalledWith(
+				expect.any(URL),
+				'test-client-id',
+				'test-client-secret',
+			);
+		});
+
+		it('should invalidate cached configuration when updateConfig is called', async () => {
+			// First, set up a working configuration
+			const initialConfig: OidcConfigDto = {
+				clientId: 'initial-client-id',
+				clientSecret: 'initial-client-secret',
+				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
+				loginEnabled: true,
+			};
+
+			const mockConfiguration = new real_odic_client.Configuration(
+				{
+					issuer: 'https://example.com/auth/realms/n8n',
+					client_id: 'initial-client-id',
+					redirect_uris: ['http://n8n.io/sso/oidc/callback'],
+					response_types: ['code'],
+					scopes: ['openid', 'profile', 'email'],
+					authorization_endpoint: 'https://example.com/auth',
+				},
+				'initial-client-id',
+			);
+
+			discoveryMock.mockReset();
+			discoveryMock.mockClear();
+			discoveryMock.mockResolvedValue(mockConfiguration);
+			await oidcService.updateConfig(initialConfig);
+
+			// Generate a login URL to populate the cache
+			await oidcService.generateLoginUrl();
+			expect(discoveryMock).toHaveBeenCalledTimes(2); // Once in updateConfig, once in generateLoginUrl
+
+			// Update config with new values
+			const newConfig: OidcConfigDto = {
+				clientId: 'new-client-id',
+				clientSecret: 'new-client-secret',
+				discoveryEndpoint: 'https://newprovider.example.com/.well-known/openid-configuration',
+				loginEnabled: true,
+			};
+
+			const newMockConfiguration = new real_odic_client.Configuration(
+				{
+					issuer: 'https://newprovider.example.com/auth/realms/n8n',
+					client_id: 'new-client-id',
+					redirect_uris: ['http://n8n.io/sso/oidc/callback'],
+					response_types: ['code'],
+					scopes: ['openid', 'profile', 'email'],
+					authorization_endpoint: 'https://newprovider.example.com/auth',
+				},
+				'new-client-id',
+			);
+
+			discoveryMock.mockResolvedValue(newMockConfiguration);
+			await oidcService.updateConfig(newConfig);
+
+			// Generate login URL again - should use new configuration
+			const authUrl = await oidcService.generateLoginUrl();
+			expect(authUrl.pathname).toEqual('/auth');
+			expect(authUrl.searchParams.get('client_id')).toEqual('new-client-id');
+
+			// Verify discovery was called again due to cache invalidation
+			expect(discoveryMock).toHaveBeenCalledTimes(4); // Initial config, initial login, new config, new login
+		});
 	});
 	it('should generate a valid callback URL', () => {
 		const callbackUrl = oidcService.getCallbackUrl();
@@ -155,6 +236,15 @@ describe('OIDC service', () => {
 			'test-client-id',
 		);
 		discoveryMock.mockResolvedValue(mockConfiguration);
+
+		const initialConfig: OidcConfigDto = {
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
+			loginEnabled: true,
+		};
+
+		await oidcService.updateConfig(initialConfig);
 
 		const authUrl = await oidcService.generateLoginUrl();
 
