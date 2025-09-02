@@ -1,13 +1,13 @@
 import asyncio
-from dataclasses import dataclass
 import logging
 import time
-from typing import Dict, Optional, Any, Set
+from typing import Dict, Optional, Any
 from urllib.parse import urlparse
 import websockets
 import random
 
 
+from src.config.task_runner_config import TaskRunnerConfig
 from src.errors import (
     WebsocketConnectionError,
     TaskMissingError,
@@ -64,28 +64,14 @@ class TaskOffer:
         return time.time() > self.valid_until
 
 
-@dataclass
-class TaskRunnerOpts:
-    grant_token: str
-    task_broker_uri: str
-    max_concurrency: int
-    max_payload_size: int
-    task_timeout: int
-    stdlib_allow: Set[str]
-    external_allow: Set[str]
-    builtins_deny: Set[str]
-
-
 class TaskRunner:
     def __init__(
         self,
-        opts: TaskRunnerOpts,
+        config: TaskRunnerConfig,
     ):
         self.runner_id = nanoid()
         self.name = RUNNER_NAME
-
-        self.grant_token = opts.grant_token
-        self.opts = opts
+        self.config = config
 
         self.websocket_connection: Optional[Any] = None
         self.can_send_offers = False
@@ -96,23 +82,23 @@ class TaskRunner:
         self.offers_coroutine: Optional[asyncio.Task] = None
         self.serde = MessageSerde()
         self.executor = TaskExecutor()
-        self.analyzer = TaskAnalyzer(opts.stdlib_allow, opts.external_allow)
+        self.analyzer = TaskAnalyzer(config.stdlib_allow, config.external_allow)
         self.logger = logging.getLogger(__name__)
 
-        self.task_broker_uri = opts.task_broker_uri
-        websocket_host = urlparse(opts.task_broker_uri).netloc
+        self.task_broker_uri = config.task_broker_uri
+        websocket_host = urlparse(config.task_broker_uri).netloc
         self.websocket_url = (
             f"ws://{websocket_host}{TASK_BROKER_WS_PATH}?id={self.runner_id}"
         )
 
     async def start(self) -> None:
-        headers = {"Authorization": f"Bearer {self.grant_token}"}
+        headers = {"Authorization": f"Bearer {self.config.grant_token}"}
 
         try:
             self.websocket_connection = await websockets.connect(
                 self.websocket_url,
                 additional_headers=headers,
-                max_size=self.opts.max_payload_size,
+                max_size=self.config.max_payload_size,
             )
 
             self.logger.info("Connected to broker")
@@ -182,7 +168,7 @@ class TaskRunner:
             await self._send_message(response)
             return
 
-        if len(self.running_tasks) >= self.opts.max_concurrency:
+        if len(self.running_tasks) >= self.config.max_concurrency:
             response = RunnerTaskRejected(
                 task_id=message.task_id,
                 reason=TASK_REJECTED_REASON_AT_CAPACITY,
@@ -234,9 +220,9 @@ class TaskRunner:
                 code=task_settings.code,
                 node_mode=task_settings.node_mode,
                 items=task_settings.items,
-                stdlib_allow=self.opts.stdlib_allow,
-                external_allow=self.opts.external_allow,
-                builtins_deny=self.opts.builtins_deny,
+                stdlib_allow=self.config.stdlib_allow,
+                external_allow=self.config.external_allow,
+                builtins_deny=self.config.builtins_deny,
                 can_log=task_settings.can_log,
             )
 
@@ -245,7 +231,7 @@ class TaskRunner:
             result, print_args = self.executor.execute_process(
                 process=process,
                 queue=queue,
-                task_timeout=self.opts.task_timeout,
+                task_timeout=self.config.task_timeout,
                 continue_on_fail=task_settings.continue_on_fail,
             )
 
@@ -266,6 +252,7 @@ class TaskRunner:
             )
 
         except Exception as e:
+            self.logger.error(f"Task {task_id} failed", exc_info=True)
             response = RunnerTaskError(task_id=task_id, error={"message": str(e)})
             await self._send_message(response)
 
@@ -344,7 +331,7 @@ class TaskRunner:
         for offer_id in expired_offer_ids:
             self.open_offers.pop(offer_id, None)
 
-        offers_to_send = self.opts.max_concurrency - (
+        offers_to_send = self.config.max_concurrency - (
             len(self.open_offers) + len(self.running_tasks)
         )
 

@@ -1,4 +1,5 @@
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
 import {
 	CredentialsEntity,
 	SharedCredentials,
@@ -28,12 +29,11 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { License } from '@/license';
 
 @Service()
 export class RoleService {
 	constructor(
-		private readonly license: License,
+		private readonly license: LicenseState,
 		private readonly roleRepository: RoleRepository,
 		private readonly scopeRepository: ScopeRepository,
 	) {}
@@ -238,8 +238,7 @@ export class RoleService {
 		if (!isBuiltInRole(role)) {
 			// This is a custom role, there for we need to check if
 			// custom roles are licensed
-			// TODO: add license check for custom roles
-			return true;
+			return this.license.isCustomRolesLicensed();
 		}
 
 		switch (role) {
