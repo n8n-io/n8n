@@ -130,6 +130,7 @@ describe('GoogleGemini -> listSearch', () => {
 						value: 'models/imagen-3.0-generate-002',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'models/gemini-2.5-flash-image (Nano Banana)',
 						value: 'models/gemini-2.5-flash-image',
 					},
