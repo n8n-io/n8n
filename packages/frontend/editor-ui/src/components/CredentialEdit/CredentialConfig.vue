@@ -229,73 +229,50 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	</n8n-callout>
 	<div v-else>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
-			<Banner
-				v-show="showValidationWarning"
-				theme="danger"
-				:message="
-					i18n.baseText(
-						`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
-							credentialPermissions.update ? '' : '.sharee'
-						}`,
-						{ interpolate: { owner: credentialOwnerName } },
-					)
-				"
-			/>
+			<Banner v-show="showValidationWarning" theme="danger" :message="i18n.baseText(
+				`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${credentialPermissions.update ? '' : '.sharee'
+				}`,
+				{ interpolate: { owner: credentialOwnerName } },
+			)
+				" />
 
-			<Banner
-				v-if="authError && !showValidationWarning"
-				theme="danger"
-				:message="
-					i18n.baseText(
-						`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
-							credentialPermissions.update ? '' : '.sharee'
-						}`,
-						{ interpolate: { owner: credentialOwnerName } },
-					)
-				"
-				:details="authError"
-				:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
+			<Banner v-if="authError && !showValidationWarning" theme="danger" :message="i18n.baseText(
+				`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${credentialPermissions.update ? '' : '.sharee'
+				}`,
+				{ interpolate: { owner: credentialOwnerName } },
+			)
+				" :details="authError" :button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
 				button-loading-label="Retrying"
 				:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
-				:button-loading="isRetesting"
-				@click="$emit('retest')"
-			/>
+				:button-loading="isRetesting" @click="$emit('retest')" />
 
-			<Banner
-				v-show="showOAuthSuccessBanner && !showValidationWarning"
-				theme="success"
+			<Banner v-show="showOAuthSuccessBanner && !showValidationWarning" theme="success"
 				:message="i18n.baseText('credentialEdit.credentialConfig.accountConnected')"
 				:button-label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
 				:button-title="i18n.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
-				data-test-id="oauth-connect-success-banner"
-				@click="$emit('oauth')"
-			>
+				data-test-id="oauth-connect-success-banner" @click="$emit('oauth')">
 				<template v-if="isGoogleOAuthType && !isOAuthConnected" #button>
-	<p :class="$style.googleReconnectLabel">
-		{{ i18n.baseText('credentialEdit.credentialConfig.signInWithGoogle') }}
-	</p>
-	<GoogleAuthButton @click="$emit('oauth')" />
-</template>
+					<p :class="$style.googleReconnectLabel">
+						{{ i18n.baseText('credentialEdit.credentialConfig.signInWithGoogle') }}
+					</p>
+					<GoogleAuthButton @click="$emit('oauth')" />
+				</template>
 
-<template v-else #button>
-	<n8n-button size="small" @click="$emit('oauth')">
-		{{ i18n.baseText('credentialEdit.credentialConfig.reconnect') }}
-	</n8n-button>
-</template>
+				<template v-else #button>
+					<n8n-button size="small" @click="$emit('oauth')">
+						{{ i18n.baseText('credentialEdit.credentialConfig.reconnect') }}
+					</n8n-button>
+				</template>
 
 			</Banner>
 
-			<Banner
-				v-show="testedSuccessfully && !showValidationWarning"
-				theme="success"
+			<Banner v-show="testedSuccessfully && !showValidationWarning" theme="success"
 				:message="i18n.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
 				:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
 				:button-loading-label="i18n.baseText('credentialEdit.credentialConfig.retrying')"
 				:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
-				:button-loading="isRetesting"
-				data-test-id="credentials-config-container-test-success"
-				@click="$emit('retest')"
-			/>
+				:button-loading="isRetesting" data-test-id="credentials-config-container-test-success"
+				@click="$emit('retest')" />
 
 			<template v-if="credentialPermissions.update">
 				<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
@@ -307,36 +284,22 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					</span>
 				</n8n-notice>
 
-				<AuthTypeSelector
-					v-if="showAuthTypeSelector && isNewCredential"
-					:credential-type="credentialType"
-					@auth-type-changed="onAuthTypeChange"
-				/>
+				<AuthTypeSelector v-if="showAuthTypeSelector && isNewCredential" :credential-type="credentialType"
+					@auth-type-changed="onAuthTypeChange" />
 
-				<div
-					v-if="isAskAssistantAvailable"
-					:class="$style.askAssistantButton"
-					data-test-id="credential-edit-ask-assistant-button"
-				>
+				<div v-if="isAskAssistantAvailable" :class="$style.askAssistantButton"
+					data-test-id="credential-edit-ask-assistant-button">
 					<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
 					<span>for setup instructions</span>
 				</div>
 
-				<CopyInput
-					v-if="isOAuthType && !allOAuth2BasePropertiesOverridden"
-					:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
-					:value="oAuthCallbackUrl"
-					:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"
-					:hint="
-						i18n.baseText('credentialEdit.credentialConfig.subtitle', {
-							interpolate: { appName },
-						})
-					"
-					:toast-title="
-						i18n.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
-					"
-					:redact-value="true"
-				/>
+				<CopyInput v-if="isOAuthType && !allOAuth2BasePropertiesOverridden"
+					:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')" :value="oAuthCallbackUrl"
+					:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')" :hint="i18n.baseText('credentialEdit.credentialConfig.subtitle', {
+						interpolate: { appName },
+					})
+						" :toast-title="i18n.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
+						" :redact-value="true" />
 			</template>
 			<EnterpriseEdition v-else :features="[EnterpriseEditionFeature.Sharing]">
 				<div>
@@ -350,26 +313,16 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</div>
 			</EnterpriseEdition>
 
-			<CredentialInputs
-				v-if="credentialType && credentialPermissions.update"
-				:credential-data="credentialData"
-				:credential-properties="credentialProperties"
-				:documentation-url="documentationUrl"
-				:show-validation-warnings="showValidationWarning"
-				@update="onDataChange"
-			/>
+			<CredentialInputs v-if="credentialType && credentialPermissions.update" :credential-data="credentialData"
+				:credential-properties="credentialProperties" :documentation-url="documentationUrl"
+				:show-validation-warnings="showValidationWarning" @update="onDataChange" />
 
-			<OauthButton
-				v-if="
-					isOAuthType &&
-					requiredPropertiesFilled &&
-					!isOAuthConnected &&
-					credentialPermissions.update
-				"
-				:is-google-o-auth-type="isGoogleOAuthType"
-				data-test-id="oauth-connect-button"
-				@click="$emit('oauth')"
-			/>
+			<OauthButton v-if="
+				isOAuthType &&
+				requiredPropertiesFilled &&
+				!isOAuthConnected &&
+				credentialPermissions.update
+			" :is-google-o-auth-type="isGoogleOAuthType" data-test-id="oauth-connect-button" @click="$emit('oauth')" />
 
 			<n8n-text v-if="isMissingCredentials" color="text-base" size="medium">
 				{{ i18n.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
@@ -394,7 +347,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	--notice-margin: 0;
 	flex-grow: 1;
 
-	> * {
+	>* {
 		margin-bottom: var(--spacing-l);
 	}
 }
@@ -406,7 +359,8 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 .askAssistantButton {
 	display: flex;
 	align-items: center;
-	> span {
+
+	>span {
 		margin-left: var(--spacing-3xs);
 		font-size: var(--font-size-s);
 	}
