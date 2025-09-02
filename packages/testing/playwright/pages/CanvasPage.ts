@@ -484,4 +484,50 @@ export class CanvasPage extends BasePage {
 		await this.addNode(searchText);
 		await this.nodeCreatorSubItem(subItemText).click();
 	}
+
+	getRagCalloutTip(): Locator {
+		return this.page.getByText('Tip: Get a feel for vector stores in n8n with our');
+	}
+
+	getRagTemplateLink(): Locator {
+		return this.page.getByText('RAG starter template');
+	}
+
+	async clickRagTemplateLink(): Promise<void> {
+		await this.getRagTemplateLink().click();
+	}
+
+	async rightClickNode(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click({ button: 'right' });
+	}
+
+	async clickContextMenuAction(actionText: string): Promise<void> {
+		await this.page.getByTestId('context-menu').getByText(actionText).click();
+	}
+
+	async executeNodeFromContextMenu(nodeName: string): Promise<void> {
+		await this.rightClickNode(nodeName);
+		await this.clickContextMenuAction('execute');
+	}
+
+	async clearExecutionData(): Promise<void> {
+		await this.page.getByTestId('clear-execution-data-button').click();
+	}
+
+	getManualChatModal(): Locator {
+		return this.page.getByTestId('canvas-chat');
+	}
+
+	getManualChatInput(): Locator {
+		return this.getManualChatModal().locator('.chat-inputs textarea');
+	}
+
+	getManualChatMessages(): Locator {
+		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
+	}
+
+	async sendManualChatMessage(message: string): Promise<void> {
+		await this.getManualChatInput().fill(message);
+		await this.getManualChatModal().locator('.chat-input-send-button').click();
+	}
 }
