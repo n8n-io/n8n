@@ -22,8 +22,13 @@ async def main():
 
         sentry = setup_sentry(sentry_config)
 
+    try:
+        health_check_config = HealthCheckConfig.from_env()
+    except ValueError as e:
+        logger.error(f"Invalid health check configuration: {e}")
+        sys.exit(1)
+
     health_check_server: Optional["HealthCheckServer"] = None
-    health_check_config = HealthCheckConfig.from_env()
     if health_check_config.enabled:
         from src.health_check_server import HealthCheckServer
 
