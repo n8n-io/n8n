@@ -129,6 +129,7 @@ test.describe('Logs', () => {
 		await expect(n8n.logs.getInputPanel()).toContainText('[{"messages": ["Human: Hi!"],');
 	});
 
+	// TODO: This test has input data table count mismatch - may need workflow execution timing adjustment
 	test('should show input and output data of correct run index and branch', async ({
 		n8n,
 		setupRequirements,

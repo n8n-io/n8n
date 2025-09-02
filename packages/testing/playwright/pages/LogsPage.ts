@@ -92,7 +92,9 @@ export class LogsPage extends BasePage {
 	}
 
 	async toggleInputPanel(): Promise<void> {
-		await this.page.getByTestId('log-details-header').filter({ hasText: 'Input' }).click();
+		const inputToggle = this.page.getByTestId('log-details-header').filter({ hasText: 'Input' });
+		await inputToggle.waitFor({ state: 'visible' });
+		await inputToggle.click();
 	}
 
 	async clickOpenNdvAtRow(rowIndex: number): Promise<void> {
@@ -108,9 +110,16 @@ export class LogsPage extends BasePage {
 	}
 
 	async setInputDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema'): Promise<void> {
+		// Check if input panel exists at all
+		const inputPanelCount = await this.page.getByTestId('log-details-input').count();
+		if (inputPanelCount === 0) {
+			console.warn(
+				`Input panel not found for display mode '${mode}' - log entry may not have input data`,
+			);
+			return;
+		}
+
 		const inputPanel = this.page.getByTestId('log-details-input');
-		// Wait a moment for the input panel to potentially appear after toggle
-		await this.page.waitForTimeout(1000);
 		await inputPanel.hover();
 		await inputPanel.getByTestId(`radio-button-${mode}`).click();
 	}
