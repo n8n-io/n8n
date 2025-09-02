@@ -870,6 +870,21 @@ onBeforeUnmount(() => {
 	padding: 0;
 	margin: 0;
 	display: flex;
+
+	// Mobile optimization: use more screen space
+	@media (max-width: 768px) {
+		width: calc(100% - var(--spacing-s));
+		height: calc(100% - var(--spacing-s));
+		top: calc(var(--spacing-s) / 2);
+		left: calc(var(--spacing-s) / 2);
+	}
+
+	@media (max-width: 992px) and (orientation: landscape) {
+		width: calc(100% - var(--spacing-m));
+		height: calc(100% - var(--spacing-m));
+		top: calc(var(--spacing-m) / 2);
+		left: calc(var(--spacing-m) / 2);
+	}
 }
 
 .container {
@@ -891,6 +906,22 @@ onBeforeUnmount(() => {
 	height: 100%;
 	min-height: 0;
 	position: relative;
+
+	// Mobile-first: Stack panels vertically on mobile devices
+	@media (max-width: 768px) {
+		flex-direction: column;
+		align-items: unset;
+		height: auto;
+		min-height: 100%;
+	}
+
+	// Tablet landscape: Also use vertical stacking for better UX
+	@media (max-width: 992px) and (orientation: landscape) {
+		flex-direction: column;
+		align-items: unset;
+		height: auto;
+		min-height: 100%;
+	}
 }
 
 .column {
@@ -898,24 +929,92 @@ onBeforeUnmount(() => {
 
 	+ .column {
 		border-left: var(--border-base);
+
+		// Remove left border on mobile, add top border instead for vertical stacking
+		@media (max-width: 768px) {
+			border-left: none;
+			border-top: var(--border-base);
+		}
+
+		@media (max-width: 992px) and (orientation: landscape) {
+			border-left: none;
+			border-top: var(--border-base);
+		}
 	}
 
 	&:first-child > div {
 		border-bottom-left-radius: var(--border-radius-large);
+
+		// On mobile, adjust border radius for vertical stacking
+		@media (max-width: 768px) {
+			border-bottom-left-radius: 0;
+			border-top-right-radius: var(--border-radius-large);
+		}
+
+		@media (max-width: 992px) and (orientation: landscape) {
+			border-bottom-left-radius: 0;
+			border-top-right-radius: var(--border-radius-large);
+		}
 	}
 
 	&:last-child {
 		border-bottom-right-radius: var(--border-radius-large);
+
+		// On mobile, last column keeps bottom border radius
+		@media (max-width: 768px) {
+			border-bottom-left-radius: var(--border-radius-large);
+		}
+
+		@media (max-width: 992px) and (orientation: landscape) {
+			border-bottom-left-radius: var(--border-radius-large);
+		}
+	}
+
+	// Mobile adjustments for column sizing
+	@media (max-width: 768px) {
+		width: 100% !important; // Override inline styles for vertical stacking
+		max-width: none;
+		flex: none;
+	}
+
+	@media (max-width: 992px) and (orientation: landscape) {
+		width: 100% !important; // Override inline styles for vertical stacking
+		max-width: none;
+		flex: none;
 	}
 }
 
 .input,
 .output {
 	min-width: 280px;
+
+	// On mobile, reduce minimum width constraints for better fit
+	@media (max-width: 768px) {
+		min-width: 0;
+		width: 100%;
+		min-height: 200px; // Set minimum height instead for vertical stacking
+	}
+
+	@media (max-width: 992px) and (orientation: landscape) {
+		min-width: 0;
+		width: 100%;
+		min-height: 150px; // Slightly smaller for landscape orientation
+	}
 }
 
 .dataColumn {
 	overflow-x: auto;
+
+	// On mobile, adjust overflow behavior for vertical stacking
+	@media (max-width: 768px) {
+		overflow-x: hidden; // Prevent horizontal scroll on mobile
+		overflow-y: auto;   // Allow vertical scrolling
+	}
+
+	@media (max-width: 992px) and (orientation: landscape) {
+		overflow-x: hidden; // Prevent horizontal scroll on tablets
+		overflow-y: auto;   // Allow vertical scrolling
+	}
 }
 
 .header {
@@ -936,5 +1035,14 @@ onBeforeUnmount(() => {
 	left: 50%;
 	transform: translateX(-50%);
 	height: var(--draggable-height);
+
+	// Hide drag button on mobile since vertical layout doesn't need resizing
+	@media (max-width: 768px) {
+		display: none;
+	}
+
+	@media (max-width: 992px) and (orientation: landscape) {
+		display: none;
+	}
 }
 </style>
