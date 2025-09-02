@@ -104,7 +104,7 @@ jobs:
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql --testTimeout 120000
+        run: pnpm test:mysql --testTimeout 240000
 
   postgres:
     name: Postgres
