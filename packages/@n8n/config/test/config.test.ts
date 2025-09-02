@@ -52,6 +52,10 @@ describe('GlobalConfig', () => {
 		ssl_key: '',
 		ssl_cert: '',
 		editorBaseUrl: '',
+		datatable: {
+			maxSize: 10,
+			warningThreshold: 95,
+		},
 		database: {
 			logging: {
 				enabled: false,
