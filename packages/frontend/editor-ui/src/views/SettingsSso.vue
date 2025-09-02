@@ -298,7 +298,7 @@ async function onOidcSettingsSave() {
 		clientSecret.value = newConfig.clientSecret;
 		trackUpdateSettings();
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
+		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
 		return;
 	} finally {
 		await getOidcConfig();
