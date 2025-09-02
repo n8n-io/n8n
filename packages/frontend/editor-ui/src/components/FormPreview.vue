@@ -5,7 +5,7 @@ import FormTemplate from '@/assets/templates/form-trigger.handlebars?raw';
 import FormCompletionTemplate from '@/assets/templates/form-trigger-completion.handlebars?raw';
 import { useTemplateRef, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { formPreviewEventBus } from '@/event-bus';
-import { prepareFormData } from '@/utils/formUtils';
+import { prepareFormData, tryToParseJsonToFormFields } from '@/utils/formUtils';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from '@/constants';
 
 interface BaseFormParameters {
@@ -85,6 +85,13 @@ function isFormTriggerParameters(
 }
 
 function renderFormPage(params: PageOperationParameters | FormTriggerNodeParameters) {
+	let fields: { values?: FormFieldsParameter } = {};
+	if (props.selectedNode.parameters.jsonOutput) {
+		fields = { values: tryToParseJsonToFormFields(props.selectedNode.parameters.jsonOutput) };
+	} else {
+		fields = props.selectedNode.parameters?.formFields as { values?: FormFieldsParameter };
+	}
+
 	const data = prepareFormData({
 		formTitle:
 			(isFormTriggerParameters(params) ? params.formTitle : params.options?.formTitle) ?? '',
@@ -94,7 +101,7 @@ function renderFormPage(params: PageOperationParameters | FormTriggerNodeParamet
 				: params.options?.formDescription) ?? '',
 		formSubmittedText: 'Custom submitted text',
 		redirectUrl: 'Custom redirect url',
-		formFields: params.formFields?.values ?? [],
+		formFields: fields.values ?? [],
 		testRun: true,
 		query: {},
 		buttonLabel: params.options?.buttonLabel ?? 'Submit',

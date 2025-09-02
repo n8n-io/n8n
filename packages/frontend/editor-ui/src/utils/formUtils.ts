@@ -1,4 +1,5 @@
 import type { FormFieldsParameter, IDataObject } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import sanitize from 'sanitize-html';
 
 export const prepareFormFields = (fields: FormFieldsParameter) => {
@@ -211,3 +212,93 @@ export function sanitizeHtml(text: string) {
 		},
 	});
 }
+
+const ALLOWED_FORM_FIELDS_KEYS = [
+	'fieldLabel',
+	'fieldType',
+	'placeholder',
+	'fieldOptions',
+	'multiselect',
+	'multipleFiles',
+	'acceptFileTypes',
+	'formatDate',
+	'requiredField',
+];
+
+const ALLOWED_FIELD_TYPES = [
+	'date',
+	'dropdown',
+	'email',
+	'file',
+	'number',
+	'password',
+	'text',
+	'textarea',
+];
+
+export const tryToParseJsonToFormFields = (value: unknown): FormFieldsParameter => {
+	const fields: FormFieldsParameter = [];
+
+	try {
+		const rawFields = jsonParse<Array<{ [key: string]: unknown }>>(value as string, {
+			acceptJSObject: true,
+		});
+
+		for (const [index, field] of rawFields.entries()) {
+			for (const key of Object.keys(field)) {
+				if (!ALLOWED_FORM_FIELDS_KEYS.includes(key)) {
+					throw new Error(`Key '${key}' in field ${index} is not valid for form fields`);
+				}
+				if (
+					key !== 'fieldOptions' &&
+					!['string', 'number', 'boolean'].includes(typeof field[key])
+				) {
+					field[key] = String(field[key]);
+				} else if (typeof field[key] === 'string') {
+					field[key] = field[key].replace(/</g, '&lt;').replace(/>/g, '&gt;');
+				}
+
+				if (key === 'fieldType' && !ALLOWED_FIELD_TYPES.includes(field[key] as string)) {
+					throw new Error(
+						`Field type '${field[key] as string}' in field ${index} is not valid for form fields`,
+					);
+				}
+
+				if (key === 'fieldOptions') {
+					if (Array.isArray(field[key])) {
+						field[key] = { values: field[key] };
+					}
+
+					if (
+						typeof field[key] !== 'object' ||
+						!(field[key] as { [key: string]: unknown }).values
+					) {
+						throw new Error(
+							`Field dropdown in field ${index} does has no 'values' property that contain an array of options`,
+						);
+					}
+
+					for (const [optionIndex, option] of (
+						(field[key] as { [key: string]: unknown }).values as Array<{
+							[key: string]: { option: string };
+						}>
+					).entries()) {
+						if (Object.keys(option).length !== 1 || typeof option.option !== 'string') {
+							throw new Error(
+								`Field dropdown in field ${index} has an invalid option ${optionIndex}`,
+							);
+						}
+					}
+				}
+			}
+
+			fields.push(field as FormFieldsParameter[number]);
+		}
+	} catch (error) {
+		if (error instanceof Error) throw error;
+
+		throw new Error('Value is not valid JSON');
+	}
+
+	return fields;
+};
