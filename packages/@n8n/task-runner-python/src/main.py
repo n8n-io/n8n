@@ -6,11 +6,20 @@ from typing import Optional
 from src.env import parse_env_vars
 from src.logs import setup_logging
 from src.task_runner import TaskRunner
+from src.config.sentry_config import SentryConfig
 
 
 async def main():
     setup_logging()
     logger = logging.getLogger(__name__)
+
+    sentry = None
+    sentry_config = SentryConfig.from_env()
+
+    if sentry_config.enabled:
+        from src.sentry import setup_sentry
+
+        sentry = setup_sentry(sentry_config)
 
     logger.info("Starting runner...")
 
@@ -39,11 +48,17 @@ async def main():
         await task_runner.start()
     except (KeyboardInterrupt, asyncio.CancelledError):
         logger.info("Shutting down runner...")
+    except Exception:
+        logger.error("Unexpected error", exc_info=True)
+        raise
     finally:
         await task_runner.stop()
 
         if health_check_server:
             await health_check_server.stop()
+
+        if sentry:
+            sentry.shutdown()
 
 
 if __name__ == "__main__":
