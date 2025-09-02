@@ -90,7 +90,7 @@ jobs:
           echo "Commit message: $COMMIT_MESSAGE"
           
           # Extract PR number from commit message (format: "title (#1234)")
-          PR_NUMBER=$(echo "$COMMIT_MESSAGE" | grep -oE '\(#[0-9]+\)' | grep -oE '[0-9]+' || echo "")
+          PR_NUMBER=$(echo "$COMMIT_MESSAGE" | grep -om1E '\(#[0-9]+\)' | grep -oE '[0-9]+' || echo "")
           
           if [ -n "$PR_NUMBER" ]; then
             echo "Found PR number: $PR_NUMBER"
