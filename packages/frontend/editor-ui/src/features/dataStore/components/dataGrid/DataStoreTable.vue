@@ -547,6 +547,14 @@ const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) =
 		await dataStoreStore.updateRow(props.dataStore.id, props.dataStore.projectId, id, {
 			[fieldName]: value,
 		});
+		telemetry.track('User edited data table content', {
+			dataTableId: props.dataStore.id,
+			dataTableName: props.dataStore.name,
+			columnName: fieldName,
+			columnType: colDef.cellDataType,
+			oldValue,
+			newValue: value,
+		});
 	} catch (error) {
 		// Revert cell to original value if the update fails
 		const validOldValue = isDataStoreValue(oldValue) ? oldValue : null;
@@ -783,7 +791,7 @@ const handleDeleteSelected = async () => {
 			type: 'success',
 		});
 
-		telemetry.track('User deleted rows in data tables', {
+		telemetry.track('User deleted rows in data table', {
 			dataTableId: props.dataStore.id,
 			dataTableName: props.dataStore.name,
 			deletedRowCount: idsToDelete.length,
