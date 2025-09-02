@@ -8,11 +8,17 @@ import { OidcController } from '../oidc.controller.ee';
 import type { AuthService } from '@/auth/auth.service';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
+import type { GlobalConfig } from '@n8n/config';
+import { OIDC_STATE_COOKIE_NAME } from '@/constants';
+import { max } from 'lodash';
+import { Time } from '@n8n/constants';
 
 const authService = mock<AuthService>();
 const oidcService = mock<OidcService>();
 const urlService = mock<UrlService>();
-const controller = new OidcController(oidcService, authService, urlService);
+const globalConfig = mock<GlobalConfig>();
+const logger = mock<Logger>();
+const controller = new OidcController(oidcService, authService, urlService, globalConfig, logger);
 
 const user = mock<User>({
 	id: '456',
@@ -37,6 +43,9 @@ describe('OidcController', () => {
 			const req = mock<AuthlessRequest>({
 				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
 				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+				},
 			});
 			const res = mock<Response>();
 
@@ -50,7 +59,7 @@ describe('OidcController', () => {
 			await controller.callbackHandler(req, res);
 
 			// Verify that loginUser was called with the correct callback URL
-			expect(oidcService.loginUser).toHaveBeenCalledWith(expectedCallbackUrl);
+			expect(oidcService.loginUser).toHaveBeenCalledWith(expectedCallbackUrl, 'state_value');
 
 			// Verify that issueCookie was called with MFA flag set to true
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, req.browserId);
@@ -64,6 +73,9 @@ describe('OidcController', () => {
 				originalUrl:
 					'/sso/oidc/callback?code=different_code&state=different_state&session_state=session123',
 				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+				},
 			});
 			const res = mock<Response>();
 
@@ -75,7 +87,7 @@ describe('OidcController', () => {
 
 			await controller.callbackHandler(req, res);
 
-			expect(oidcService.loginUser).toHaveBeenCalledWith(expectedCallbackUrl);
+			expect(oidcService.loginUser).toHaveBeenCalledWith(expectedCallbackUrl, 'state_value');
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, req.browserId);
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
@@ -84,6 +96,9 @@ describe('OidcController', () => {
 			const req = mock<AuthlessRequest>({
 				originalUrl: '/sso/oidc/callback',
 				browserId: undefined,
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+				},
 			});
 			const res = mock<Response>();
 
@@ -93,7 +108,7 @@ describe('OidcController', () => {
 
 			await controller.callbackHandler(req, res);
 
-			expect(oidcService.loginUser).toHaveBeenCalledWith(expectedCallbackUrl);
+			expect(oidcService.loginUser).toHaveBeenCalledWith(expectedCallbackUrl, 'state_value');
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, undefined);
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
@@ -101,6 +116,9 @@ describe('OidcController', () => {
 		test('Should propagate errors from OIDC service', async () => {
 			const req = mock<Request>({
 				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+				},
 			});
 			const res = mock<Response>();
 
@@ -119,11 +137,15 @@ describe('OidcController', () => {
 		test('Should redirect to generated authorization URL', async () => {
 			const req = mock<Request>();
 			const res = mock<Response>();
+			globalConfig.auth.cookie = { samesite: 'lax', secure: true };
 
 			const mockAuthUrl = new URL(
 				'https://provider.com/auth?client_id=123&redirect_uri=http://localhost:5678/callback',
 			);
-			oidcService.generateLoginUrl.mockResolvedValueOnce(mockAuthUrl);
+			oidcService.generateLoginUrl.mockResolvedValueOnce({
+				url: mockAuthUrl,
+				state: 'state_value',
+			});
 
 			await controller.redirectToAuthProvider(req, res);
 
@@ -131,6 +153,12 @@ describe('OidcController', () => {
 			expect(res.redirect).toHaveBeenCalledWith(
 				'https://provider.com/auth?client_id=123&redirect_uri=http://localhost:5678/callback',
 			);
+			expect(res.cookie).toHaveBeenCalledWith(OIDC_STATE_COOKIE_NAME, 'state_value', {
+				httpOnly: true,
+				sameSite: 'lax',
+				secure: true,
+				maxAge: 15 * Time.minutes.toMilliseconds,
+			});
 		});
 
 		test('Should propagate errors from OIDC service during URL generation', async () => {

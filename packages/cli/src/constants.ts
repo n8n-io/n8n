@@ -52,6 +52,7 @@ export const RESPONSE_ERROR_MESSAGES = {
 } as const;
 
 export const AUTH_COOKIE_NAME = 'n8n-auth';
+export const OIDC_STATE_COOKIE_NAME = 'n8n-oidc-state';
 
 export const NPM_COMMAND_TOKENS = {
 	NPM_PACKAGE_NOT_FOUND_ERROR: '404 Not Found',
