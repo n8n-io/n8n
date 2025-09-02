@@ -65,19 +65,17 @@ export class ProxyServer {
 	async loadExpectations(): Promise<void> {
 		try {
 			const files = await fs.readdir(this.expectationsDir);
-			const tsFiles = files.filter((file) => file.endsWith('.ts') && !file.endsWith('.d.ts'));
+			const jsonFiles = files.filter((file) => file.endsWith('.json'));
 			const expectations: Expectation[] = [];
 
-			for (const file of tsFiles) {
+			for (const file of jsonFiles) {
 				try {
-					const modulePath = join(process.cwd(), this.expectationsDir, file);
-					// Dynamic import to load the expectation
-					const module = await import(modulePath);
-					if (module.expectation) {
-						expectations.push(module.expectation);
-					}
-				} catch (importError) {
-					console.log(`Error importing expectation from ${file}:`, importError);
+					const filePath = join(this.expectationsDir, file);
+					const fileContent = await fs.readFile(filePath, 'utf8');
+					const expectation = JSON.parse(fileContent);
+					expectations.push(expectation);
+				} catch (parseError) {
+					console.log(`Error parsing expectation from ${file}:`, parseError);
 				}
 			}
 
@@ -228,17 +226,11 @@ export class ProxyServer {
 					.digest('hex')
 					.substring(0, 8);
 
-				const filename = `${expectation.httpRequest?.method?.toString()}-${expectation.httpRequest?.path?.replace(/[^a-zA-Z0-9]/g, '_')}-${hash}.ts`;
+				const filename = `${expectation.httpRequest?.method?.toString()}-${expectation.httpRequest?.path?.replace(/[^a-zA-Z0-9]/g, '_')}-${hash}.json`;
 				const filePath = join(this.expectationsDir, filename);
 
-				// Create TypeScript file content
-				const tsContent = `import type { Expectation } from 'mockserver-client';
-
-export const expectation: Expectation = ${JSON.stringify(expectation, null, 2)};
-`;
-
-				// Write expectation to TypeScript file
-				await fs.writeFile(filePath, tsContent);
+				// Write expectation to JSON file
+				await fs.writeFile(filePath, JSON.stringify(expectation, null, 2));
 			}
 		} catch (error) {
 			throw new Error(`Failed to record expectations: ${JSON.stringify(error)}`);
