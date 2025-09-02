@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { useRoute, useRouter } from 'vue-router';
 import { DATA_STORE_DETAILS, PROJECT_DATA_STORES } from '@/features/dataStore/constants';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 type Props = {
 	modalName: string;
@@ -20,6 +21,7 @@ const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const toast = useToast();
+const telemetry = useTelemetry();
 
 const dataStoreName = ref('');
 const inputRef = ref<HTMLInputElement | null>(null);
@@ -37,14 +39,22 @@ const onSubmit = async () => {
 			dataStoreName.value,
 			route.params.projectId as string,
 		);
+		telemetry.track('User created data table', {
+			dataTableId: newDataStore.id,
+			dataTableName: dataStoreName.value,
+			dataTableProject: {
+				id: newDataStore.project?.id,
+				name: newDataStore.project?.type === 'personal' ? 'Personal' : newDataStore.project?.name,
+			},
+		});
+		dataStoreName.value = '';
+		uiStore.closeModal(props.modalName);
 		void router.push({
 			name: DATA_STORE_DETAILS,
 			params: {
 				id: newDataStore.id,
 			},
 		});
-		dataStoreName.value = '';
-		uiStore.closeModal(props.modalName);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.add.error'));
 	}
