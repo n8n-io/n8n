@@ -782,6 +782,12 @@ const handleDeleteSelected = async () => {
 			message: '',
 			type: 'success',
 		});
+
+		telemetry.track('User deleted rows in data tables', {
+			dataTableId: props.dataStore.id,
+			dataTableName: props.dataStore.name,
+			deletedRowCount: idsToDelete.length,
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.deleteRows.error'));
 	} finally {
