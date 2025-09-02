@@ -57,4 +57,7 @@ export {
 	dateTimeSchema,
 } from './schemas/data-store.schema';
 
-export { DataStoreFilter, DataStoreFilterConditionType } from './schemas/data-store-filter.schema';
+export type {
+	DataStoreFilter,
+	DataStoreFilterConditionType,
+} from './schemas/data-store-filter.schema';
