@@ -63,6 +63,7 @@ import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
+import { useDataStorePagination } from '@/features/dataStore/composables/useDataStorePagination';
 import AddColumnButton from '@/features/dataStore/components/dataGrid/AddColumnButton.vue';
 import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.vue';
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
@@ -133,10 +134,16 @@ const isTextEditorOpen = ref(false);
 const gridContainer = useTemplateRef<HTMLDivElement>('gridContainer');
 
 // Pagination
-const pageSizeOptions = [10, 20, 50];
-const currentPage = ref(1);
-const pageSize = ref(20);
-const totalItems = ref(0);
+const {
+	currentPage,
+	pageSize,
+	pageSizeOptions,
+	totalItems,
+	setTotalItems,
+	setCurrentPage,
+	setPageSize,
+	ensureItemOnPage,
+} = useDataStorePagination({ onChange: fetchDataStoreContent });
 
 // Data store content
 const rows = ref<DataStoreRow[]>([]);
@@ -179,16 +186,6 @@ const focusFirstEditableCell = (rowId: number) => {
 	gridApi.value.ensureIndexVisible(rowNode!.rowIndex);
 	gridApi.value.setFocusedCell(rowNode!.rowIndex, firstEditableCol.colId);
 	gridApi.value.startEditingCell({ rowIndex: rowNode!.rowIndex, colKey: firstEditableCol.colId });
-};
-
-const setCurrentPage = async (page: number) => {
-	currentPage.value = page;
-	await fetchDataStoreContent();
-};
-const setPageSize = async (size: number) => {
-	pageSize.value = size;
-	currentPage.value = 1; // Reset to first page on page size change
-	await fetchDataStoreContent();
 };
 
 const onDeleteColumn = async (columnId: string) => {
@@ -408,16 +405,14 @@ const onColumnMoved = async (moveEvent: ColumnMovedEvent) => {
 
 const onAddRowClick = async () => {
 	try {
-		// Go to last page if we are not there already
-		if (currentPage.value * pageSize.value < totalItems.value + 1) {
-			await setCurrentPage(Math.ceil((totalItems.value + 1) / pageSize.value));
-		}
+		await ensureItemOnPage(totalItems.value + 1);
+
 		contentLoading.value = true;
 		emit('toggleSave', true);
 		const insertedRow = await dataStoreStore.insertEmptyRow(props.dataStore);
 		const newRow: DataStoreRow = insertedRow;
 		rowData.value.push(newRow);
-		totalItems.value += 1;
+		setTotalItems(totalItems.value + 1);
 		refreshGridData();
 		await nextTick();
 		focusFirstEditableCell(newRow.id as number);
@@ -574,7 +569,7 @@ const onCellClicked = (params: CellClickedEvent<DataStoreRow>) => {
 	};
 };
 
-const fetchDataStoreContent = async () => {
+async function fetchDataStoreContent() {
 	try {
 		contentLoading.value = true;
 
@@ -586,7 +581,7 @@ const fetchDataStoreContent = async () => {
 			`${currentSortBy.value}:${currentSortOrder.value}`,
 		);
 		rowData.value = fetchedRows.data;
-		totalItems.value = fetchedRows.count;
+		setTotalItems(fetchedRows.count);
 		refreshGridData();
 		handleClearSelection();
 	} catch (error) {
@@ -597,7 +592,7 @@ const fetchDataStoreContent = async () => {
 			gridApi.value.refreshHeader();
 		}
 	}
-};
+}
 
 onClickOutside(gridContainer, () => {
 	resetLastFocusedCell();
@@ -659,8 +654,7 @@ const onSortChanged = async (event: SortChangedEvent) => {
 	}
 
 	if (oldSortBy !== currentSortBy.value || oldSortOrder !== currentSortOrder.value) {
-		currentPage.value = 1;
-		await fetchDataStoreContent();
+		await setCurrentPage(1);
 	}
 };
 
