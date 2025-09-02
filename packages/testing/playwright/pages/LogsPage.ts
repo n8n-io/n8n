@@ -92,9 +92,7 @@ export class LogsPage extends BasePage {
 	}
 
 	async toggleInputPanel(): Promise<void> {
-		const inputToggle = this.page.getByTestId('log-details-header').filter({ hasText: 'Input' });
-		await inputToggle.waitFor({ state: 'visible' });
-		await inputToggle.click();
+		await this.page.getByTestId('log-details-header').getByText('Input').click();
 	}
 
 	async clickOpenNdvAtRow(rowIndex: number): Promise<void> {
@@ -122,6 +120,12 @@ export class LogsPage extends BasePage {
 		const inputPanel = this.page.getByTestId('log-details-input');
 		await inputPanel.hover();
 		await inputPanel.getByTestId(`radio-button-${mode}`).click();
+
+		// Wait for the display mode change to take effect
+		if (mode === 'table') {
+			// Wait for table to appear
+			await inputPanel.locator('table').waitFor({ state: 'visible', timeout: 5000 });
+		}
 	}
 
 	async setOutputDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema'): Promise<void> {
