@@ -3,6 +3,8 @@ import errno
 import logging
 from typing import Optional
 
+from src.config.health_check_config import HealthCheckConfig
+
 HEALTH_CHECK_RESPONSE = (
     b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nOK"
 )
@@ -13,13 +15,17 @@ class HealthCheckServer:
         self.server: Optional[asyncio.Server] = None
         self.logger = logging.getLogger(__name__)
 
-    async def start(self, host: str, port: int) -> None:
+    async def start(self, config: HealthCheckConfig) -> None:
         try:
-            self.server = await asyncio.start_server(self._handle_request, host, port)
-            self.logger.info(f"Health check server listening on {host}, port {port}")
+            self.server = await asyncio.start_server(
+                self._handle_request, config.host, config.port
+            )
+            self.logger.info(
+                f"Health check server listening on {config.host}, port {config.port}"
+            )
         except OSError as e:
             if e.errno == errno.EADDRINUSE:
-                raise OSError(f"Port {port} is already in use") from e
+                raise OSError(f"Port {config.port} is already in use") from e
             else:
                 raise
 

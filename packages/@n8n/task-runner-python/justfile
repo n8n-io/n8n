@@ -9,6 +9,9 @@ run:
 sync:
     uv sync
 
+sync-all:
+    uv sync --all-extras
+
 lint:
     uv run ruff check
 
