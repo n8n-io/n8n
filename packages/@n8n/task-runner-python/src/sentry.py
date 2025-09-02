@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Optional
 
+from src.errors.task_runtime_error import TaskRuntimeError
 from src.config.sentry_config import SentryConfig
 from src.constants import (
     EXECUTOR_FILENAMES,
@@ -41,9 +42,15 @@ class TaskRunnerSentry:
         self.logger.info("Sentry stopped")
 
     def _filter_out_user_code_errors(self, event: Any, hint: Any) -> Optional[Any]:
+        if "exc_info" in hint:
+            exc_type, _, _ = hint["exc_info"]
+            if exc_type is TaskRuntimeError:
+                return None
+
         for exception in event.get("exception", {}).get("values", []):
             if self._is_from_user_code(exception):
                 return None
+
         return event
 
     def _is_from_user_code(self, exception: dict[str, Any]):
