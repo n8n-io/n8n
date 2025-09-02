@@ -223,13 +223,6 @@ export class CanvasPage extends BasePage {
 	}
 
 	/**
-	 * Get node issues for a specific node
-	 */
-	getNodeIssuesByName(nodeName: string) {
-		return this.nodeByName(nodeName).getByTestId('node-issues');
-	}
-
-	/**
 	 * Add tags to the workflow
 	 * @param count - The number of tags to add
 	 * @returns An array of tag names

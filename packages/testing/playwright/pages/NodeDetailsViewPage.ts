@@ -630,4 +630,17 @@ export class NodeDetailsViewPage extends BasePage {
 		await input.clear();
 		await input.fill(value);
 	}
+
+	// Additional methods needed for logs tests
+	getInputSelect() {
+		return this.getInputPanel().getByTestId('ndv-input-select');
+	}
+
+	getInputTableRows() {
+		return this.getInputTable().locator('tr');
+	}
+
+	getOutputRunSelectorInput() {
+		return this.getOutputPanel().getByTestId('ndv-run-selector');
+	}
 }
