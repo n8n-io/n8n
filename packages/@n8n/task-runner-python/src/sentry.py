@@ -1,10 +1,6 @@
 import logging
 from typing import Any, Optional
 
-import sentry_sdk
-from sentry_sdk.integrations.logging import LoggingIntegration
-from sentry_sdk.types import Event, Hint
-
 from src.config.sentry_config import SentryConfig
 from src.constants import (
     EXECUTOR_FILENAMES,
@@ -20,6 +16,9 @@ class TaskRunnerSentry:
         self.logger = logging.getLogger(__name__)
 
     def init(self) -> None:
+        import sentry_sdk
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        
         sentry_sdk.init(
             dsn=self.config.dsn,
             release=f"n8n@{self.config.n8n_version}",
@@ -36,10 +35,12 @@ class TaskRunnerSentry:
         self.logger.info("Sentry ready")
 
     def shutdown(self) -> None:
+        import sentry_sdk
+        
         sentry_sdk.flush(timeout=2.0)
         self.logger.info("Sentry stopped")
 
-    def _filter_out_user_code_errors(self, event: Event, hint: Hint) -> Optional[Event]:
+    def _filter_out_user_code_errors(self, event: Any, hint: Any) -> Optional[Any]:
         for exception in event.get("exception", {}).get("values", []):
             if self._is_from_user_code(exception):
                 return None
