@@ -8,6 +8,7 @@ import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 type Props = {
 	dataStore: DataStore;
@@ -34,6 +35,7 @@ const dataStoreStore = useDataStoreStore();
 const i18n = useI18n();
 const message = useMessage();
 const toast = useToast();
+const telemetry = useTelemetry();
 
 const actions = computed<Array<UserAction<IUser>>>(() => {
 	const availableActions = [
@@ -93,6 +95,15 @@ const deleteDataStore = async () => {
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
 		emit('onDeleted');
+		telemetry.track('User deleted data store', {
+			dataTableId: props.dataStore.id,
+			dataTableName: props.dataStore.name,
+			dataTableProject: {
+				id: props.dataStore.projectId,
+				name:
+					props.dataStore.project?.type === 'personal' ? 'Personal' : props.dataStore.project?.name,
+			},
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.delete.error'));
 	}
