@@ -75,6 +75,7 @@
     "fast-json-stable-stringify": "^2.1.0",
     "file-saver": "^2.0.2",
     "flatted": "catalog:",
+    "handlebars": "4.7.8",
     "highlight.js": "catalog:frontend",
     "humanize-duration": "^3.27.2",
     "jsonpath": "^1.1.1",

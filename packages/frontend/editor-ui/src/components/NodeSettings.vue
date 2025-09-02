@@ -274,7 +274,10 @@ const hasOutputConnection = computed(() => {
 	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
 });
 
-const emitFormUpdate = debounce(() => formPreviewEventBus.emit('parameter-updated'), 500);
+const emitFormUpdate = debounce(
+	(nodeId: string) => formPreviewEventBus.emit('parameter-updated', { nodeId }),
+	500,
+);
 
 const valueChanged = (parameterData: IUpdateInformation) => {
 	let newValue: NodeParameterValue;
@@ -395,7 +398,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			isToolNode.value,
 		);
 		if (nodeType.value && [FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(nodeType.value.name)) {
-			emitFormUpdate();
+			emitFormUpdate(_node.id);
 		}
 	} else {
 		// A property on the node itself changed
