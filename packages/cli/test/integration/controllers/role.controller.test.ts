@@ -1,6 +1,6 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Role } from '@n8n/permissions';
+import { type Role } from '@n8n/permissions';
 
 import { RoleService } from '@/services/role.service';
 
@@ -314,7 +314,7 @@ describe('RoleController', () => {
 			//
 			expect(response.body).toEqual({ data: mockCreatedRole });
 			// Parameter verification skipped - test framework issue
-			expect(roleService.createCustomRole).toHaveBeenCalledTimes(1);
+			expect(roleService.createCustomRole).toHaveBeenCalledWith(createRoleDto);
 		});
 
 		it('should create role without description', async () => {
@@ -348,6 +348,7 @@ describe('RoleController', () => {
 			// ASSERT
 			//
 			expect(response.body).toEqual({ data: mockCreatedRole });
+			expect(roleService.createCustomRole).toHaveBeenCalledWith(createRoleDto);
 		});
 
 		it('should handle service errors gracefully', async () => {
@@ -398,7 +399,7 @@ describe('RoleController', () => {
 			const updateRoleDto: UpdateRoleDto = {
 				displayName: 'Updated Role Name',
 				description: 'Updated description',
-				scopes: ['workflow:read', 'workflow:edit'],
+				scopes: ['workflow:read', 'workflow:update'],
 			};
 
 			const mockUpdatedRole: Role = {
@@ -423,7 +424,7 @@ describe('RoleController', () => {
 			//
 			expect(response.body).toEqual({ data: mockUpdatedRole });
 			// Parameter verification skipped - test framework issue
-			expect(roleService.updateCustomRole).toHaveBeenCalledTimes(1);
+			expect(roleService.updateCustomRole).toHaveBeenCalledWith(roleSlug, updateRoleDto);
 		});
 
 		it('should update only provided fields', async () => {
@@ -456,6 +457,7 @@ describe('RoleController', () => {
 			// ASSERT
 			//
 			expect(response.body).toEqual({ data: mockUpdatedRole });
+			expect(roleService.updateCustomRole).toHaveBeenCalledWith(roleSlug, updateRoleDto);
 		});
 
 		it('should handle service errors gracefully', async () => {
