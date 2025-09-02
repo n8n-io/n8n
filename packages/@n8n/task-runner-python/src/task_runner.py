@@ -1,5 +1,4 @@
 import asyncio
-from dataclasses import dataclass
 import logging
 import time
 from typing import Dict, Optional, Any
@@ -8,11 +7,15 @@ import websockets
 import random
 
 
-from src.errors import WebsocketConnectionError, TaskMissingError
+from src.config.task_runner_config import TaskRunnerConfig
+from src.errors import (
+    WebsocketConnectionError,
+    TaskMissingError,
+)
 from src.message_types.broker import TaskSettings
-from src.nanoid_utils import nanoid
+from src.nanoid import nanoid
 
-from .constants import (
+from src.constants import (
     RUNNER_NAME,
     TASK_REJECTED_REASON_AT_CAPACITY,
     TASK_REJECTED_REASON_OFFER_EXPIRED,
@@ -23,8 +26,12 @@ from .constants import (
     OFFER_VALIDITY_LATENCY_BUFFER,
     TASK_BROKER_WS_PATH,
     RPC_BROWSER_CONSOLE_LOG_METHOD,
+    LOG_TASK_COMPLETE,
+    LOG_TASK_CANCEL,
+    LOG_TASK_CANCEL_UNKNOWN,
+    LOG_TASK_CANCEL_WAITING,
 )
-from .message_types import (
+from src.message_types import (
     BrokerMessage,
     RunnerMessage,
     BrokerInfoRequest,
@@ -41,9 +48,10 @@ from .message_types import (
     RunnerTaskError,
     RunnerRpcCall,
 )
-from .message_serde import MessageSerde
-from .task_state import TaskState, TaskStatus
-from .task_executor import TaskExecutor
+from src.message_serde import MessageSerde
+from src.task_state import TaskState, TaskStatus
+from src.task_executor import TaskExecutor
+from src.task_analyzer import TaskAnalyzer
 
 
 class TaskOffer:
@@ -56,25 +64,14 @@ class TaskOffer:
         return time.time() > self.valid_until
 
 
-@dataclass()
-class TaskRunnerOpts:
-    grant_token: str
-    task_broker_uri: str
-    max_concurrency: int
-    max_payload_size: int
-    task_timeout: int
-
-
 class TaskRunner:
     def __init__(
         self,
-        opts: TaskRunnerOpts,
+        config: TaskRunnerConfig,
     ):
         self.runner_id = nanoid()
         self.name = RUNNER_NAME
-
-        self.grant_token = opts.grant_token
-        self.opts = opts
+        self.config = config
 
         self.websocket_connection: Optional[Any] = None
         self.can_send_offers = False
@@ -85,22 +82,23 @@ class TaskRunner:
         self.offers_coroutine: Optional[asyncio.Task] = None
         self.serde = MessageSerde()
         self.executor = TaskExecutor()
+        self.analyzer = TaskAnalyzer(config.stdlib_allow, config.external_allow)
         self.logger = logging.getLogger(__name__)
 
-        self.task_broker_uri = opts.task_broker_uri
-        websocket_host = urlparse(opts.task_broker_uri).netloc
+        self.task_broker_uri = config.task_broker_uri
+        websocket_host = urlparse(config.task_broker_uri).netloc
         self.websocket_url = (
             f"ws://{websocket_host}{TASK_BROKER_WS_PATH}?id={self.runner_id}"
         )
 
     async def start(self) -> None:
-        headers = {"Authorization": f"Bearer {self.grant_token}"}
+        headers = {"Authorization": f"Bearer {self.config.grant_token}"}
 
         try:
             self.websocket_connection = await websockets.connect(
                 self.websocket_url,
                 additional_headers=headers,
-                max_size=self.opts.max_payload_size,
+                max_size=self.config.max_payload_size,
             )
 
             self.logger.info("Connected to broker")
@@ -117,6 +115,8 @@ class TaskRunner:
         if self.websocket_connection:
             await self.websocket_connection.close()
             self.logger.info("Disconnected from broker")
+
+        self.logger.info("Runner stopped")
 
     # ========== Messages ==========
 
@@ -168,7 +168,7 @@ class TaskRunner:
             await self._send_message(response)
             return
 
-        if len(self.running_tasks) >= self.opts.max_concurrency:
+        if len(self.running_tasks) >= self.config.max_concurrency:
             response = RunnerTaskRejected(
                 task_id=message.task_id,
                 reason=TASK_REJECTED_REASON_AT_CAPACITY,
@@ -196,25 +196,43 @@ class TaskRunner:
             )
             return
 
+        task_state.workflow_name = message.settings.workflow_name
+        task_state.workflow_id = message.settings.workflow_id
+        task_state.node_name = message.settings.node_name
+        task_state.node_id = message.settings.node_id
+
         task_state.status = TaskStatus.RUNNING
         asyncio.create_task(self._execute_task(message.task_id, message.settings))
         self.logger.info(f"Received task {message.task_id}")
 
     async def _execute_task(self, task_id: str, task_settings: TaskSettings) -> None:
+        start_time = time.time()
+
         try:
             task_state = self.running_tasks.get(task_id)
 
             if task_state is None:
                 raise TaskMissingError(task_id)
 
+            self.analyzer.validate(task_settings.code)
+
             process, queue = self.executor.create_process(
-                task_settings.code, task_settings.node_mode, task_settings.items
+                code=task_settings.code,
+                node_mode=task_settings.node_mode,
+                items=task_settings.items,
+                stdlib_allow=self.config.stdlib_allow,
+                external_allow=self.config.external_allow,
+                builtins_deny=self.config.builtins_deny,
+                can_log=task_settings.can_log,
             )
 
             task_state.process = process
 
             result, print_args = self.executor.execute_process(
-                process, queue, self.opts.task_timeout, task_settings.continue_on_fail
+                process=process,
+                queue=queue,
+                task_timeout=self.config.task_timeout,
+                continue_on_fail=task_settings.continue_on_fail,
             )
 
             for print_args_per_call in print_args:
@@ -224,9 +242,17 @@ class TaskRunner:
 
             response = RunnerTaskDone(task_id=task_id, data={"result": result})
             await self._send_message(response)
-            self.logger.info(f"Completed task {task_id}")
+
+            self.logger.info(
+                LOG_TASK_COMPLETE.format(
+                    task_id=task_id,
+                    duration=self._get_duration(start_time),
+                    **task_state.context(),
+                )
+            )
 
         except Exception as e:
+            self.logger.error(f"Task {task_id} failed", exc_info=True)
             response = RunnerTaskError(task_id=task_id, error={"message": str(e)})
             await self._send_message(response)
 
@@ -234,22 +260,26 @@ class TaskRunner:
             self.running_tasks.pop(task_id, None)
 
     async def _handle_task_cancel(self, message: BrokerTaskCancel) -> None:
-        task_state = self.running_tasks.get(message.task_id)
+        task_id = message.task_id
+        task_state = self.running_tasks.get(task_id)
 
         if task_state is None:
-            self.logger.warning(
-                f"Received cancel for unknown task: {message.task_id}. Discarding message."
-            )
+            self.logger.warning(LOG_TASK_CANCEL_UNKNOWN.format(task_id=task_id))
             return
 
         if task_state.status == TaskStatus.WAITING_FOR_SETTINGS:
-            self.running_tasks.pop(message.task_id, None)
+            self.running_tasks.pop(task_id, None)
+            self.logger.info(LOG_TASK_CANCEL_WAITING.format(task_id=task_id))
             await self._send_offers()
             return
 
         if task_state.status == TaskStatus.RUNNING:
             task_state.status = TaskStatus.ABORTING
             self.executor.stop_process(task_state.process)
+
+            self.logger.info(
+                LOG_TASK_CANCEL.format(task_id=task_id, **task_state.context())
+            )
 
     async def _send_rpc_message(self, task_id: str, method_name: str, params: list):
         message = RunnerRpcCall(
@@ -264,6 +294,17 @@ class TaskRunner:
 
         serialized = self.serde.serialize_runner_message(message)
         await self.websocket_connection.send(serialized)
+
+    def _get_duration(self, start_time: float) -> str:
+        elapsed = time.time() - start_time
+
+        if elapsed < 1:
+            return f"{int(elapsed * 1000)}ms"
+
+        if elapsed < 60:
+            return f"{int(elapsed)}s"
+
+        return f"{int(elapsed) // 60}m"
 
     # ========== Offers ==========
 
@@ -290,7 +331,7 @@ class TaskRunner:
         for offer_id in expired_offer_ids:
             self.open_offers.pop(offer_id, None)
 
-        offers_to_send = self.opts.max_concurrency - (
+        offers_to_send = self.config.max_concurrency - (
             len(self.open_offers) + len(self.running_tasks)
         )
 

@@ -25,12 +25,22 @@ export class PythonTaskRunnerSandbox {
 	async runUsingIncomingItems() {
 		const itemIndex = 0;
 
+		const node = this.executeFunctions.getNode();
+		const workflow = this.executeFunctions.getWorkflow();
+
 		const taskSettings: Record<string, unknown> = {
 			code: this.pythonCode,
 			nodeMode: this.nodeMode,
 			workflowMode: this.workflowMode,
 			continueOnFail: this.executeFunctions.continueOnFail(),
 			items: this.executeFunctions.getInputData(),
+			nodeId: node.id,
+			nodeName: node.name,
+			workflowId: workflow.id,
+			workflowName: workflow.name,
+
+			/** Whether this task can log to the browser console. */
+			canLog: this.executeFunctions.getMode() === 'manual',
 		};
 
 		const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(

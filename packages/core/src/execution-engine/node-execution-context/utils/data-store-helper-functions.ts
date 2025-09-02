@@ -10,8 +10,8 @@ export function getDataStoreHelperFunctions(
 	workflow: Workflow,
 	node: INode,
 ): Partial<DataStoreProxyFunctions> {
-	if (additionalData.dataStoreProxyProvider === undefined) return {};
-	const dataStoreProxyProvider = additionalData.dataStoreProxyProvider;
+	const dataStoreProxyProvider = additionalData['data-table']?.dataStoreProxyProvider;
+	if (!dataStoreProxyProvider) return {};
 	return {
 		getDataStoreAggregateProxy: async () =>
 			await dataStoreProxyProvider.getDataStoreAggregateProxy(

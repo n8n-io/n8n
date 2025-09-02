@@ -47,6 +47,7 @@ function getConditionAndParams(
 	filter: ListDataStoreContentFilter['filters'][number],
 	index: number,
 	dbType: DataSourceOptions['type'],
+	columns?: DataTableColumn[],
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
 	const column = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(filter.columnName, dbType)}`;
@@ -60,6 +61,10 @@ function getConditionAndParams(
 		}
 	}
 
+	// Find the column type to normalize the value consistently
+	const columnInfo = columns?.find((col) => col.name === filter.columnName);
+	const value = columnInfo ? normalizeValue(filter.value, columnInfo?.type, dbType) : filter.value;
+
 	// Handle operators that map directly to SQL operators
 	const operators: Record<string, string> = {
 		eq: '=',
@@ -71,38 +76,35 @@ function getConditionAndParams(
 	};
 
 	if (operators[filter.condition]) {
-		return [
-			`${column} ${operators[filter.condition]} :${paramName}`,
-			{ [paramName]: filter.value },
-		];
+		return [`${column} ${operators[filter.condition]} :${paramName}`, { [paramName]: value }];
 	}
 
 	switch (filter.condition) {
 		// case-sensitive
 		case 'like':
 			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
-				const globValue = toSqliteGlobFromPercent(filter.value as string);
+				const globValue = toSqliteGlobFromPercent(value as string);
 				return [`${column} GLOB :${paramName}`, { [paramName]: globValue }];
 			}
 
 			if (['mysql', 'mariadb'].includes(dbType)) {
-				const escapedValue = escapeLikeSpecials(filter.value as string);
+				const escapedValue = escapeLikeSpecials(value as string);
 				return [`${column} LIKE BINARY :${paramName} ESCAPE '\\\\'`, { [paramName]: escapedValue }];
 			}
 
 			// PostgreSQL: LIKE is case-sensitive
 			if (dbType === 'postgres') {
-				const escapedValue = escapeLikeSpecials(filter.value as string);
+				const escapedValue = escapeLikeSpecials(value as string);
 				return [`${column} LIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
 			}
 
 			// Generic fallback
-			return [`${column} LIKE :${paramName}`, { [paramName]: filter.value }];
+			return [`${column} LIKE :${paramName}`, { [paramName]: value }];
 
 		// case-insensitive
 		case 'ilike':
 			if (['sqlite', 'sqlite-pooled'].includes(dbType)) {
-				const escapedValue = escapeLikeSpecials(filter.value as string);
+				const escapedValue = escapeLikeSpecials(value as string);
 				return [
 					`UPPER(${column}) LIKE UPPER(:${paramName}) ESCAPE '\\'`,
 					{ [paramName]: escapedValue },
@@ -110,7 +112,7 @@ function getConditionAndParams(
 			}
 
 			if (['mysql', 'mariadb'].includes(dbType)) {
-				const escapedValue = escapeLikeSpecials(filter.value as string);
+				const escapedValue = escapeLikeSpecials(value as string);
 				return [
 					`UPPER(${column}) LIKE UPPER(:${paramName}) ESCAPE '\\\\'`,
 					{ [paramName]: escapedValue },
@@ -118,11 +120,11 @@ function getConditionAndParams(
 			}
 
 			if (dbType === 'postgres') {
-				const escapedValue = escapeLikeSpecials(filter.value as string);
+				const escapedValue = escapeLikeSpecials(value as string);
 				return [`${column} ILIKE :${paramName} ESCAPE '\\'`, { [paramName]: escapedValue }];
 			}
 
-			return [`UPPER(${column}) LIKE UPPER(:${paramName})`, { [paramName]: filter.value }];
+			return [`UPPER(${column}) LIKE UPPER(:${paramName})`, { [paramName]: value }];
 	}
 
 	// This should never happen as all valid conditions are handled above
@@ -158,7 +160,6 @@ export class DataStoreRowsRepository {
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
 
 		const table = this.toTableName(dataStoreId);
-		const columnNames = columns.map((c) => c.name);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 			this.dataSource.driver.escape(x),
@@ -179,11 +180,7 @@ export class DataStoreRowsRepository {
 				completeRow[column.name] = normalizeValue(completeRow[column.name], column.type, dbType);
 			}
 
-			const query = this.dataSource
-				.createQueryBuilder()
-				.insert()
-				.into(table, columnNames)
-				.values(completeRow);
+			const query = this.dataSource.createQueryBuilder().insert().into(table).values(completeRow);
 
 			if (useReturning) {
 				query.returning(returnData ? selectColumns.join(',') : 'id');
@@ -381,8 +378,12 @@ export class DataStoreRowsRepository {
 		await queryRunner.query(deleteColumnQuery(this.toTableName(dataStoreId), columnName, dbType));
 	}
 
-	async getManyAndCount(dataStoreId: string, dto: ListDataStoreContentQueryDto) {
-		const [countQuery, query] = this.getManyQuery(dataStoreId, dto);
+	async getManyAndCount(
+		dataStoreId: string,
+		dto: ListDataStoreContentQueryDto,
+		columns?: DataTableColumn[],
+	) {
+		const [countQuery, query] = this.getManyQuery(dataStoreId, dto, columns);
 		const data: DataStoreRowsReturn = await query.select('*').getRawMany();
 		const countResult = await countQuery.select('COUNT(*) as count').getRawOne<{
 			count: number | string | null;
@@ -423,11 +424,12 @@ export class DataStoreRowsRepository {
 	private getManyQuery(
 		dataStoreId: string,
 		dto: ListDataStoreContentQueryDto,
+		columns?: DataTableColumn[],
 	): [QueryBuilder, QueryBuilder] {
 		const query = this.dataSource.createQueryBuilder();
 
 		query.from(this.toTableName(dataStoreId), 'dataStore');
-		this.applyFilters(query, dto);
+		this.applyFilters(query, dto, columns);
 		const countQuery = query.clone().select('COUNT(*)');
 		this.applySorting(query, dto);
 		this.applyPagination(query, dto);
@@ -435,13 +437,17 @@ export class DataStoreRowsRepository {
 		return [countQuery, query];
 	}
 
-	private applyFilters(query: QueryBuilder, dto: ListDataStoreContentQueryDto): void {
+	private applyFilters(
+		query: QueryBuilder,
+		dto: ListDataStoreContentQueryDto,
+		columns?: DataTableColumn[],
+	): void {
 		const filters = dto.filter?.filters ?? [];
 		const filterType = dto.filter?.type ?? 'and';
 
 		const dbType = this.dataSource.options.type;
 		const conditionsAndParams = filters.map((filter, i) =>
-			getConditionAndParams(filter, i, dbType),
+			getConditionAndParams(filter, i, dbType, columns),
 		);
 
 		for (const [condition, params] of conditionsAndParams) {

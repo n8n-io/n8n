@@ -75,6 +75,8 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	const baseConditions: INodePropertyOptions[] = [
 		{ name: 'Equals', value: 'eq' },
 		{ name: 'Not Equals', value: 'neq' },
+		{ name: 'Is Empty', value: 'isEmpty' },
+		{ name: 'Is Not Empty', value: 'isNotEmpty' },
 	];
 
 	const comparableConditions: INodePropertyOptions[] = [

@@ -21,7 +21,7 @@ class ColorFormatter(logging.Formatter):
         self.use_colors = os.getenv("NO_COLOR") is None
 
         # When started by launcher, log level and timestamp are handled by launcher.
-        self.short_form = os.getenv("N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED") == "true"
+        self.short_form = not sys.stdout.isatty()
 
     def format(self, record):
         if self.short_form:
