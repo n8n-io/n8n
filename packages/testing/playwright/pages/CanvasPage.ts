@@ -223,6 +223,13 @@ export class CanvasPage extends BasePage {
 	}
 
 	/**
+	 * Get node issues for a specific node
+	 */
+	getNodeIssuesByName(nodeName: string) {
+		return this.nodeByName(nodeName).getByTestId('node-issues');
+	}
+
+	/**
 	 * Add tags to the workflow
 	 * @param count - The number of tags to add
 	 * @returns An array of tag names
@@ -351,6 +358,10 @@ export class CanvasPage extends BasePage {
 
 	canvasPane(): Locator {
 		return this.page.getByTestId('canvas-wrapper');
+	}
+
+	canvasBody(): Locator {
+		return this.page.getByTestId('canvas');
 	}
 
 	toggleFocusPanelButton(): Locator {
@@ -519,11 +530,6 @@ export class CanvasPage extends BasePage {
 		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
 	}
 
-	async sendManualChatMessage(message: string): Promise<void> {
-		await this.getManualChatInput().fill(message);
-		await this.getManualChatModal().locator('.chat-input-send-button').click();
-	}
-
 	getNodesWithSpinner(): Locator {
 		return this.page.getByTestId('canvas-node').filter({
 			has: this.page.locator('[data-icon=refresh-cw]'),
@@ -536,15 +542,8 @@ export class CanvasPage extends BasePage {
 		});
 	}
 
-	async disableNode(nodeName: string): Promise<void> {
-		await this.nodeDisableButton(nodeName).click();
-	}
-
-	async deleteNode(nodeName: string): Promise<void> {
-		await this.deleteNodeByName(nodeName);
-	}
-
-	getNodeIssuesByName(nodeName: string): Locator {
-		return this.nodeByName(nodeName).locator('[data-test-id="node-issues"]');
+	async sendManualChatMessage(message: string): Promise<void> {
+		await this.getManualChatInput().fill(message);
+		await this.getManualChatModal().locator('.chat-input-send-button').click();
 	}
 }

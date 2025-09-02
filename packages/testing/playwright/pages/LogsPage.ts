@@ -11,14 +11,6 @@ export class LogsPage extends BasePage {
 	 * Accessors
 	 */
 
-	getOverviewPanel(): Locator {
-		return this.page.getByTestId('logs-overview');
-	}
-
-	getOverviewPanelBody(): Locator {
-		return this.page.getByTestId('logs-overview-body');
-	}
-
 	getOverviewStatus(): Locator {
 		return this.page.getByTestId('logs-overview-status');
 	}
@@ -56,10 +48,6 @@ export class LogsPage extends BasePage {
 
 	getOutputPanel(): Locator {
 		return this.page.getByTestId('log-details-output');
-	}
-
-	getOutputTableRows(): Locator {
-		return this.page.getByTestId('log-details-output').locator('table tr');
 	}
 
 	getOutputTbodyCell(row: number, col: number): Locator {

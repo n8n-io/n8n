@@ -631,12 +631,8 @@ export class NodeDetailsViewPage extends BasePage {
 		await input.fill(value);
 	}
 
-	// Additional methods needed for logs tests
 	getInputSelect() {
-		// This is a custom select component, check for selected option text
-		return this.getInputPanel()
-			.getByTestId('ndv-input-select')
-			.locator('.el-select__selected-label, .n8n-select__selected, [role="combobox"]');
+		return this.page.getByTestId('ndv-input-select').locator('input');
 	}
 
 	getInputTableRows() {
@@ -644,7 +640,6 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputRunSelectorInput() {
-		// Look for run selector that shows "X of Y (Z items)" pattern
-		return this.getOutputPanel().locator('text=/\\d+ of \\d+ \\(\\d+ items?\\)/');
+		return this.getOutputPanel().locator('[data-test-id="run-selector"] input');
 	}
 }
