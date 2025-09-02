@@ -71,6 +71,7 @@ import ElDatePickerCellEditor from '@/features/dataStore/components/dataGrid/ElD
 import { onClickOutside } from '@vueuse/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { reorderItem } from '@/features/dataStore/utils';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -105,6 +106,7 @@ const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
 const { mapToAGCellType } = useDataStoreTypes();
+const telemetry = useTelemetry();
 
 const dataStoreStore = useDataStoreStore();
 
@@ -253,6 +255,12 @@ const onAddColumn = async (column: DataStoreColumnCreatePayload) => {
 			return { ...row, [newColumn.name]: null };
 		});
 		refreshGridData();
+		telemetry.track('User added data table column', {
+			columnId: newColumn.id,
+			columnName: newColumn.name,
+			columnType: newColumn.type,
+			dataTableId: props.dataStore.id,
+		});
 		return true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
