@@ -79,7 +79,7 @@ export async function verifyRequest(
 	const client = createProxyServerClient(proxyServerUrl);
 
 	try {
-		await client.verify(request, 2);
+		await client.verify(request, 1);
 		return true;
 	} catch (error) {
 		return false;

@@ -15,6 +15,8 @@ test.describe('Mock server', () => {
 		assert(typeof mockResponse !== 'string');
 		expect(mockResponse.statusCode).toBe(201);
 
+		expect(await verifyGetRequest(proxyServerUrl, '/health')).toBe(false);
+
 		// Verify the mock endpoint works
 		const healthResponse = await fetch(`${proxyServerUrl}/health`);
 		expect(healthResponse.ok).toBe(true);
