@@ -25,23 +25,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5.0.4
-        with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
-
       - name: Set release version in env
         run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> "$GITHUB_ENV"
 
-      - name: Build
-        run: pnpm build
+      - name: Setup Node.js, install dependencies, and build
+        uses: ./.github/actions/setup-nodejs-blacksmith
+        with:
+          node-version: 22.x
 
+      # NOTE: Turborepo caching is handled by setup-nodejs-blacksmith action above
+      # This manual cache may be redundant but kept for safety
       - name: Cache build artifacts
         uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
