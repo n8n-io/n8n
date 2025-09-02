@@ -239,22 +239,6 @@ class TaskExecutor:
             }
         )
 
-    @staticmethod
-    def _truncate_print_args(print_args: PrintArgs) -> PrintArgs:
-        """Truncate print_args to prevent pipe buffer overflow."""
-
-        if not print_args or len(print_args) <= MAX_PRINT_STATEMENTS_ALLOWED:
-            return print_args
-
-        truncated = print_args[:MAX_PRINT_STATEMENTS_ALLOWED]
-        truncated.append(
-            [
-                f"[Output truncated - {len(print_args) - MAX_PRINT_STATEMENTS_ALLOWED} more print statements]"
-            ]
-        )
-
-        return truncated
-
     # ========== print() ==========
 
     @staticmethod
@@ -307,6 +291,22 @@ class TaskExecutor:
                 formatted.append(json.dumps(arg, default=str, ensure_ascii=False))
 
         return formatted
+
+    @staticmethod
+    def _truncate_print_args(print_args: PrintArgs) -> PrintArgs:
+        """Truncate print_args to prevent pipe buffer overflow."""
+
+        if not print_args or len(print_args) <= MAX_PRINT_STATEMENTS_ALLOWED:
+            return print_args
+
+        truncated = print_args[:MAX_PRINT_STATEMENTS_ALLOWED]
+        truncated.append(
+            [
+                f"[Output truncated - {len(print_args) - MAX_PRINT_STATEMENTS_ALLOWED} more print statements]"
+            ]
+        )
+
+        return truncated
 
     # ========== security ==========
 
