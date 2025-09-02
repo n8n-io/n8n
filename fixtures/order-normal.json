@@ -1,0 +1,25 @@
+{
+  "id": 1001,
+  "email": "customer@example.com",
+  "total_price": "49.99",
+  "currency": "USD",
+  "line_items": [
+    { "id": 1, "title": "T-Shirt", "quantity": 1, "price": "29.99" },
+    { "id": 2, "title": "Stickers", "quantity": 2, "price": "10.00" }
+  ]
+}
+
+{
+  "id": 12345,
+  "name": "#1001",
+  "email": "customer@example.com",
+  "line_items": [
+    { "id": 1, "name": "T-shirt", "sku": "TS-001", "quantity": 2, "price": "20.00" },
+    { "id": 2, "name": "Sticker", "sku": "ST-001", "quantity": 3, "price": "2.50" }
+  ],
+  "total_tax": "3.75",
+  "total_price": "50.75"
+}
+
+
+
