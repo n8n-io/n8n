@@ -397,7 +397,6 @@ export const useActions = () => {
 			resource: (action.value as INodeParameters).resource || '',
 		};
 		void useExternalHooks().run('nodeCreateList.addAction', payload);
-		useNodeCreatorStore().onAddActions(payload);
 	}
 
 	return {
