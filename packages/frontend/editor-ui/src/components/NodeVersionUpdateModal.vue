@@ -54,14 +54,16 @@ const closeNdv = async () => {
 	<Modal
 		width="540px"
 		:name="NODE_VERSION_UPDATE_MODAL_KEY"
-		:title="`Update ${data.nodeName} node to the latest version`"
+		:title="`Update the node to the latest version`"
 		:event-bus="modalBus"
 		:center="true"
 		:show-close="true"
 	>
 		<template #content>
 			<N8nText v-if="false" size="medium" color="text-dark" :bold="true">message</N8nText>
-			<n8n-notice content="Make sure to test the node after updating its version!" />
+			<n8n-notice
+				:content="`Make sure to test the ${data.nodeName} node after updating its version!`"
+			/>
 			<div :class="$style.descriptionContainer">
 				<N8nText size="medium" color="text-base">
 					<div class="descriptionText">
