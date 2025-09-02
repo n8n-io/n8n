@@ -258,15 +258,13 @@ test.describe('Logs', () => {
 		await n8n.ndv.clickBackToCanvasButton();
 
 		// Trigger the webhook
-		if (webhookUrl) {
-			const response = await n8n.page.request.get(webhookUrl);
-			expect(response.status()).toBe(200);
-		}
+		const response = await n8n.page.request.get(webhookUrl!);
+		expect(response.status()).toBe(200);
 
 		await expect(n8n.canvas.getNodesWithSpinner()).not.toBeVisible();
 		await expect(n8n.canvas.getWaitingNodes()).not.toBeVisible();
 		await expect(
-			n8n.logs.getOverviewStatus().filter({ hasText: /Success in [\d\.]+m?s/ }),
+			n8n.logs.getOverviewStatus().filter({ hasText: /Success in [\d.]+m?s/ }),
 		).toBeVisible();
 		await n8n.logs.getLogEntries().nth(1).click(); // click selected row to deselect
 		await expect(n8n.logs.getLogEntries()).toHaveCount(2);
