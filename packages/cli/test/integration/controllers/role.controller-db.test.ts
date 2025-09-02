@@ -16,7 +16,6 @@ describe('RoleController - Integration Tests', () => {
 	const testServer = setupTestServer({ endpointGroups: ['role'] });
 	let ownerAgent: SuperAgentTest;
 	let memberAgent: SuperAgentTest;
-	let generatedRoleSlug: string;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -105,14 +104,23 @@ describe('RoleController - Integration Tests', () => {
 				systemRole: false,
 			},
 		});
-
-		generatedRoleSlug = response.body.data.slug;
 	});
 
 	it('should update a custom role', async () => {
 		//
 		// ARRANGE
 		//
+		const createRoleDto: CreateRoleDto = {
+			displayName: 'Custom Project Role',
+			description: 'A custom role for project management',
+			roleType: 'project',
+			scopes: ['workflow:read', 'workflow:create'].sort(),
+		};
+
+		const createResponse = await ownerAgent.post('/roles').send(createRoleDto).expect(200);
+
+		expect(createResponse.body?.data?.slug).toBeDefined();
+
 		const updateRoleDto: UpdateRoleDto = {
 			displayName: 'Custom Project Role Updated',
 			description: 'A custom role for project management - updated',
@@ -122,7 +130,7 @@ describe('RoleController - Integration Tests', () => {
 		// ACT
 		//
 		const response = await ownerAgent
-			.patch(`/roles/${generatedRoleSlug}`)
+			.patch(`/roles/${createResponse.body.data.slug}`)
 			.send(updateRoleDto)
 			.expect(200);
 

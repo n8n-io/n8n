@@ -417,7 +417,7 @@ describe('RoleController', () => {
 			//
 			// ACT
 			//
-			const response = await ownerAgent.patch(`/roles/${roleSlug}`).send(updateRoleDto);
+			const response = await ownerAgent.patch(`/roles/${roleSlug}`).send(updateRoleDto).expect(200);
 
 			//
 			// ASSERT

@@ -37,7 +37,6 @@ export class RoleController {
 		_res: Response,
 		@Param('slug') slug: string,
 	): Promise<RoleDTO> {
-		console.log('getRoleBySlug', slug);
 		return await this.roleService.getRole(slug);
 	}
 
@@ -72,7 +71,6 @@ export class RoleController {
 		_res: Response,
 		@Body createRole: CreateRoleDto,
 	): Promise<RoleDTO> {
-		console.log('createRole', createRole);
 		return await this.roleService.createCustomRole(createRole);
 	}
 }
