@@ -130,7 +130,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				IMPORT_WORKFLOW_URL_MODAL_KEY,
 				PRE_BUILT_AGENTS_MODAL_KEY,
 				WORKFLOW_DIFF_MODAL_KEY,
-				NODE_VERSION_UPDATE_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -226,6 +225,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		[EXPERIMENT_TEMPLATE_RECO_V2_KEY]: {
 			open: false,
 			data: {
+				nodeName: '',
+			},
+		},
+		[NODE_VERSION_UPDATE_MODAL_KEY]: {
+			open: false,
+			data: {
+				nodeId: '',
 				nodeName: '',
 			},
 		},

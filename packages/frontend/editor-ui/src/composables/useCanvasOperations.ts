@@ -2156,11 +2156,17 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		const legacyPrefix = 'LEGACY: ';
+
 		const workflowData = deepCopy(getNodesToSave([originalNode]));
 		const originalPosition = originalNode.position;
 		const verticalOffset = 80;
+
 		if (workflowData.nodes && workflowData.nodes.length > 0) {
-			workflowData.nodes[0].name = `${originalNode.name} (Legacy)`;
+			const insertedNode = workflowData.nodes[0];
+			if (!insertedNode.name.startsWith(legacyPrefix)) {
+				workflowData.nodes[0].name = `${legacyPrefix}${insertedNode.name}`;
+			}
 		}
 
 		const result = await importWorkflowData(workflowData, 'update', {

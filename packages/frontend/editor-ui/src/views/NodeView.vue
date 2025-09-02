@@ -68,6 +68,7 @@ import {
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
+	NODE_VERSION_UPDATE_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -232,7 +233,6 @@ const {
 	copyNodes,
 	cutNodes,
 	duplicateNodes,
-	updateNodeVersion,
 	revertDeleteNode,
 	addNodes,
 	importTemplate,
@@ -870,7 +870,13 @@ async function onUpdateNodeVersion(id: string) {
 		return;
 	}
 
-	await updateNodeVersion(id);
+	useUIStore().openModalWithData({
+		name: NODE_VERSION_UPDATE_MODAL_KEY,
+		data: {
+			nodeId: id,
+			nodeName: workflowsStore.getNodeById(id)?.name,
+		},
+	});
 }
 
 function onPinNodes(ids: string[], source: PinDataSource) {

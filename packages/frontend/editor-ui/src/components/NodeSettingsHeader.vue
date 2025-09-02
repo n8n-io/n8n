@@ -5,9 +5,12 @@ import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import NodeUpdateVersionButton from '@/components/NodeUpdateVersionButton.vue';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
+import { useTemplateRef, ref } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
 
 type Props = {
 	nodeName: string;
+	nodeId: string;
 	hideExecute: boolean;
 	hideDocs: boolean;
 	hideTabs: boolean;
@@ -19,7 +22,19 @@ type Props = {
 	pushRef: string;
 };
 
+const OVERLAP_THRESHOLD = 470;
+
 defineProps<Props>();
+
+const nodeSettingsHeaderWrapper = useTemplateRef('nodeSettingsHeaderWrapper');
+const hideUpdateVersionLablel = ref(false);
+
+useResizeObserver(nodeSettingsHeaderWrapper, () => {
+	if (nodeSettingsHeaderWrapper.value?.offsetWidth) {
+		hideUpdateVersionLablel.value =
+			nodeSettingsHeaderWrapper.value?.offsetWidth <= OVERLAP_THRESHOLD ? true : false;
+	}
+});
 
 const emit = defineEmits<{
 	execute: [];
@@ -30,7 +45,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-	<div :class="$style.header">
+	<div :class="$style.header" ref="nodeSettingsHeaderWrapper">
 		<NodeSettingsTabs
 			v-if="!hideTabs"
 			:hide-docs="hideDocs"
@@ -44,8 +59,9 @@ const emit = defineEmits<{
 		<div :class="$style.update">
 			<NodeUpdateVersionButton
 				v-if="!hideExecute && !isLatestNodeVersion"
-				type="warning"
-				size="small"
+				:node-id="nodeId"
+				:node-name="nodeName"
+				:hide-label="hideUpdateVersionLablel"
 			/>
 			<NodeExecuteButton
 				v-if="!hideExecute"

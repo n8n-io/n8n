@@ -624,8 +624,8 @@ function handleSelectAction(params: INodeParameters) {
 				<div class="version-update-container">
 					<NodeUpdateVersionButton
 						v-if="isExecutable && !blockUI && node && nodeValid && !isLatestNodeVersion"
-						type="warning"
-						size="small"
+						:node-id="node.id"
+						:node-name="node.name"
 					/>
 					<NodeExecuteButton
 						v-if="isExecutable && !blockUI && node && nodeValid"
@@ -653,6 +653,7 @@ function handleSelectAction(params: INodeParameters) {
 			v-else-if="node"
 			:selected-tab="openPanel"
 			:node-name="node.name"
+			:node-id="node.id"
 			:node-type="nodeType"
 			:execute-button-tooltip="executeButtonTooltip"
 			:hide-execute="props.hideExecute || !isExecutable || blockUI || !node || !nodeValid"

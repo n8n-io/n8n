@@ -5,8 +5,10 @@ import { useUIStore } from '@/stores/ui.store';
 
 import type { ButtonType } from '@n8n/design-system';
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
+		nodeName: string;
+		nodeId: string;
 		disabled?: boolean;
 		type?: ButtonType;
 		size?: ButtonSize;
@@ -15,6 +17,8 @@ withDefaults(
 	}>(),
 	{
 		disabled: false,
+		type: 'warning',
+		size: 'small',
 	},
 );
 
@@ -25,7 +29,13 @@ defineOptions({
 });
 
 const openNodeVersionUpdateModal = () => {
-	useUIStore().openModal(NODE_VERSION_UPDATE_MODAL_KEY);
+	useUIStore().openModalWithData({
+		name: NODE_VERSION_UPDATE_MODAL_KEY,
+		data: {
+			nodeId: props.nodeId,
+			nodeName: props.nodeName,
+		},
+	});
 };
 </script>
 
@@ -39,11 +49,12 @@ const openNodeVersionUpdateModal = () => {
 		</template>
 		<N8nButton
 			v-bind="$attrs"
-			label="Update version"
+			:label="hideLabel ? undefined : 'Update version'"
+			:square="hideLabel"
 			:type="type"
 			:size="size"
+			:outline="true"
 			icon="arrow-up"
-			title="title"
 			@click="openNodeVersionUpdateModal"
 		/>
 	</N8nTooltip>

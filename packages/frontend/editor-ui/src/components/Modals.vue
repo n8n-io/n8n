@@ -360,7 +360,9 @@ import NodeVersionUpdateModal from '@/components/NodeVersionUpdateModal.vue';
 		</ModalRoot>
 
 		<ModalRoot :name="NODE_VERSION_UPDATE_MODAL_KEY">
-			<NodeVersionUpdateModal />
+			<template #default="{ modalName, data }">
+				<NodeVersionUpdateModal :modal-name="modalName" :data="data" />
+			</template>
 		</ModalRoot>
 
 		<!-- Dynamic modals from modules -->
