@@ -1,20 +1,27 @@
 import {
+	ActionResultRequestDto,
 	OptionsRequestDto,
+	PreviewNodeRequestDto,
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
-	ActionResultRequestDto,
 } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Post, RestController, Body } from '@n8n/decorators';
+import { Body, Post, RestController } from '@n8n/decorators';
 import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 @RestController('/dynamic-node-parameters')
 export class DynamicNodeParametersController {
-	constructor(private readonly service: DynamicNodeParametersService) {}
+	constructor(
+		private readonly service: DynamicNodeParametersService,
+		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly globalConfig: GlobalConfig,
+	) {}
 
 	@Post('/options')
 	async getOptions(
@@ -185,6 +192,25 @@ export class DynamicNodeParametersController {
 			nodeTypeAndVersion,
 			currentNodeParameters,
 			actionPayload,
+			credentials,
+		);
+	}
+
+	@Post('/preview')
+	async previewNode(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: PreviewNodeRequestDto,
+	) {
+		const { currentNodeParameters, nodeTypeAndVersion, path, credentials } = payload;
+
+		const additionalData = await getBase(req.user.id, currentNodeParameters);
+
+		return await this.service.previewNode(
+			path,
+			additionalData,
+			nodeTypeAndVersion,
+			currentNodeParameters,
 			credentials,
 		);
 	}

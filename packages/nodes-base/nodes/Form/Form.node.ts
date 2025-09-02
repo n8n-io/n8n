@@ -1,6 +1,7 @@
 import type {
 	FormFieldsParameter,
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeProperties,
 	INodeTypeDescription,
@@ -324,6 +325,15 @@ export class Form extends Node {
 			...pageProperties,
 			...completionProperties,
 		],
+	};
+
+	methods = {
+		preview: {
+			async getPreview(this: ILoadOptionsFunctions): Promise<string> {
+				// TODO: render from this.getCurrentNodeParameters
+				return 'Preview';
+			},
+		},
 	};
 
 	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {

@@ -2,6 +2,7 @@ import type {
 	ActionResultRequestDto,
 	CommunityNodeType,
 	OptionsRequestDto,
+	PreviewNodeRequestDto,
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
@@ -73,6 +74,13 @@ export async function getNodeParameterOptions(
 	sendData: OptionsRequestDto,
 ): Promise<INodePropertyOptions[]> {
 	return await makeRestApiRequest(context, 'POST', '/dynamic-node-parameters/options', sendData);
+}
+
+export async function getNodeParameterPreview(
+	context: IRestApiContext,
+	sendData: PreviewNodeRequestDto,
+): Promise<string> {
+	return await makeRestApiRequest(context, 'POST', '/dynamic-node-parameters/preview', sendData);
 }
 
 export async function getResourceLocatorResults(

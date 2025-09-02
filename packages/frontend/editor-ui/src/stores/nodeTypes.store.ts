@@ -2,6 +2,7 @@ import type {
 	ActionResultRequestDto,
 	CommunityNodeType,
 	OptionsRequestDto,
+	PreviewNodeRequestDto,
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
@@ -362,6 +363,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return await nodeTypesApi.getNodeParameterOptions(rootStore.restApiContext, sendData);
 	};
 
+	const getNodeParameterPreview = async (sendData: PreviewNodeRequestDto) => {
+		return await nodeTypesApi.getNodeParameterPreview(rootStore.restApiContext, sendData);
+	};
+
 	const getResourceLocatorResults = async (sendData: ResourceLocatorRequestDto) => {
 		return await nodeTypesApi.getResourceLocatorResults(rootStore.restApiContext, sendData);
 	};
@@ -444,6 +449,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getNodeParameterActionResult,
 		getResourceLocatorResults,
 		getNodeParameterOptions,
+		getNodeParameterPreview,
 		getNodesInformation,
 		getFullNodesProperties,
 		getNodeTypes,

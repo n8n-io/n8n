@@ -45,6 +45,8 @@ export declare namespace WorkflowRequest {
 
 	type Get = AuthenticatedRequest<{ workflowId: string }>;
 
+	type PreviewNode = AuthenticatedRequest<{ workflowId: string; nodeId: string }>;
+
 	type GetMany = AuthenticatedRequest<
 		{},
 		{},

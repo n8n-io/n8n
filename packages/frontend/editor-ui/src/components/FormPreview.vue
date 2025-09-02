@@ -7,6 +7,7 @@ import { useTemplateRef, onMounted, onBeforeUnmount, watch, computed } from 'vue
 import { formPreviewEventBus } from '@/event-bus';
 import { prepareFormData, tryToParseJsonToFormFields } from '@/utils/formUtils';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from '@/constants';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 interface BaseFormParameters {
 	operation: 'page' | 'completion';
@@ -64,6 +65,7 @@ interface FormTriggerNodeParameters {
 const props = defineProps<{ selectedNode: INode }>();
 
 const iframeRef = useTemplateRef('formIframe');
+const nodeTypesStore = useNodeTypesStore();
 
 const renderFormTemplate = computed(() => Handlebars.compile(FormTemplate));
 const renderFormCompletionTemplate = computed(() => Handlebars.compile(FormCompletionTemplate));
@@ -154,11 +156,25 @@ function onParameterFocused({ fieldId }: { fieldId: string }) {
 	);
 }
 
+async function renderPreview() {
+	console.log('node preview', props.selectedNode);
+	const response = await nodeTypesStore.getNodeParameterPreview({
+		nodeTypeAndVersion: {
+			name: props.selectedNode.type,
+			version: props.selectedNode.typeVersion,
+		},
+		path: 'parameters',
+		currentNodeParameters: props.selectedNode.parameters,
+	});
+	console.log('node preview response', response);
+}
+
 // Set the initial output mode when the component is mounted
-onMounted(() => {
+onMounted(async () => {
 	formPreviewEventBus.on('parameter-updated', onFormUpdate);
 	formPreviewEventBus.on('parameter-focused', onParameterFocused);
 	onFormUpdate();
+	await renderPreview();
 });
 
 onBeforeUnmount(() => {
