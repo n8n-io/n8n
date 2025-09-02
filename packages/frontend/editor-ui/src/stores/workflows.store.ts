@@ -84,7 +84,6 @@ import {
 	clearPopupWindowState,
 	findTriggerNodeToAutoSelect,
 	openFormPopupWindow,
-	hasTrimmedItem,
 } from '@/utils/executionUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
