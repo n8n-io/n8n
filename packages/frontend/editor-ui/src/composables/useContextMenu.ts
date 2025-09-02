@@ -56,7 +56,7 @@ export const useContextMenu = () => {
 		isOpen,
 		position,
 		target,
-		actions,
+		actions: computed(() => (isOpen.value ? actions.value : [])),
 		targetNodeIds,
 		open,
 		close,

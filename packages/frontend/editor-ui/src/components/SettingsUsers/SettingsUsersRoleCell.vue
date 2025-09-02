@@ -6,7 +6,7 @@ import { type ActionDropdownItem, N8nActionDropdown, N8nIcon } from '@n8n/design
 const props = defineProps<{
 	data: UsersList['items'][number];
 	roles: Record<Role, { label: string; desc: string }>;
-	actions: ActionDropdownItem<Role | 'delete'>[];
+	actions: Array<ActionDropdownItem<Role | 'delete'>>;
 }>();
 
 const emit = defineEmits<{

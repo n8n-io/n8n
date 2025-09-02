@@ -147,8 +147,8 @@ const onExecutionsTab = computed(() => {
 
 const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
 
-const workflowMenuItems = computed<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>[]>(() => {
-	const actions: ActionDropdownItem<WORKFLOW_MENU_ACTIONS>[] = [
+const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>>>(() => {
+	const actions: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.download'),

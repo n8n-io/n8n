@@ -9,7 +9,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/types';
 import { useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import { ContextMenuAction } from '@/composables/useContextMenuItems';
+import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 
 defineOptions({
 	inheritAttrs: false,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useExpressionResolveCtx } from '@/components/canvas/experimental/composables/useExpressionResolveCtx';
-import { ContextMenuAction, useContextMenuItems } from '@/composables/useContextMenuItems';
+import { type ContextMenuAction, useContextMenuItems } from '@/composables/useContextMenuItems';
 import { ExpressionLocalResolveContextSymbol } from '@/constants';
 import { type INodeUi } from '@/Interface';
 import { N8nButton, N8nKeyboardShortcut, N8nText } from '@n8n/design-system';

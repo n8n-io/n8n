@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import { useContextMenu } from '@/composables/useContextMenu';
-import { ContextMenuAction } from '@/composables/useContextMenuItems';
+import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 import { useStyles } from '@/composables/useStyles';
 import { N8nActionDropdown } from '@n8n/design-system';
 import { ref, watch } from 'vue';
-import { ComponentExposed } from 'vue-component-type-helpers';
+import { type ComponentExposed } from 'vue-component-type-helpers';
 
 const contextMenu = useContextMenu();
 const { position, isOpen, actions, target } = contextMenu;
