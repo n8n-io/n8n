@@ -1,0 +1,49 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "725dc324-fb2f-4098-97eb-abca6860b836",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"url": "http://mock-api.com/data",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "test",
+							"value": "1"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [208, 0],
+			"id": "2cd680a7-cead-4974-a769-91580291bce9",
+			"name": "HTTP Request"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7"
+	}
+}

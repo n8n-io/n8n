@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
 import { resolveFromRoot } from '../utils/path-helper';
+import { ROUTES } from '../config/constants';
 
 export class CanvasPage extends BasePage {
 	saveWorkflowButton(): Locator {
@@ -477,11 +478,15 @@ export class CanvasPage extends BasePage {
 		// Set fixed time using Playwright's clock API
 		await this.page.clock.setFixedTime(timestamp);
 
-		await this.page.goto('/workflow/new');
+		await this.openNewWorkflow();
 	}
 
 	async addNodeWithSubItem(searchText: string, subItemText: string): Promise<void> {
 		await this.addNode(searchText);
 		await this.nodeCreatorSubItem(subItemText).click();
+	}
+
+	async openNewWorkflow() {
+		await this.page.goto(ROUTES.NEW_WORKFLOW_PAGE);
 	}
 }

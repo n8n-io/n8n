@@ -22,6 +22,7 @@ import {
 	setupRedis,
 	setupCaddyLoadBalancer,
 	pollContainerHttpEndpoint,
+	setupProxyServer,
 } from './n8n-test-container-dependencies';
 import { createSilentLogConsumer } from './n8n-test-container-utils';
 
@@ -31,6 +32,7 @@ const POSTGRES_IMAGE = 'postgres:16-alpine';
 const REDIS_IMAGE = 'redis:7-alpine';
 const CADDY_IMAGE = 'caddy:2-alpine';
 const N8N_E2E_IMAGE = 'n8nio/n8n:local';
+const MOCKSERVER_IMAGE = 'mockserver/mockserver:latest';
 
 // Default n8n image (can be overridden via N8N_DOCKER_IMAGE env var)
 const N8N_IMAGE = process.env.N8N_DOCKER_IMAGE ?? N8N_E2E_IMAGE;
@@ -77,12 +79,14 @@ export interface N8NConfig {
 		memory?: number; // in GB
 		cpu?: number; // in cores
 	};
+	proxyServer?: boolean;
 }
 
 export interface N8NStack {
 	baseUrl: string;
 	stop: () => Promise<void>;
 	containers: StartedTestContainer[];
+	proxyServerUrl?: string;
 }
 
 /**
@@ -108,7 +112,14 @@ export interface N8NStack {
  * });
  */
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
-	const { postgres = false, queueMode = false, env = {}, projectName, resourceQuota } = config;
+	const {
+		postgres = false,
+		queueMode = false,
+		env = {},
+		proxyServer = false,
+		projectName,
+		resourceQuota,
+	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const usePostgres = postgres || !!queueConfig;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
@@ -116,7 +127,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	const mainCount = queueConfig?.mains ?? 1;
 	const needsLoadBalancer = mainCount > 1;
-	const needsNetwork = usePostgres || !!queueConfig || needsLoadBalancer;
+	const needsNetwork = usePostgres || !!queueConfig || needsLoadBalancer || proxyServer;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
@@ -181,6 +192,28 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		}
 	}
 
+	let proxyServerContainer: StartedTestContainer | undefined;
+	let proxyServerUrl: string | undefined;
+	if (proxyServer) {
+		assert(network, 'Network should be created for MockServer');
+		proxyServerContainer = await setupProxyServer({
+			proxyServerImage: MOCKSERVER_IMAGE,
+			projectName: uniqueProjectName,
+			network,
+		});
+
+		containers.push(proxyServerContainer);
+		proxyServerUrl = `http://localhost:${proxyServerContainer.getMappedPort(1080)}`;
+
+		// Configure n8n to proxy all HTTP requests through mockserver
+		environment = {
+			...environment,
+			// todo try proxyServerContainer.getHost()
+			HTTP_PROXY: 'http://proxyserver:1080',
+			HTTPS_PROXY: 'http://proxyserver:1080',
+		};
+	}
+
 	let baseUrl: string;
 
 	if (needsLoadBalancer) {
@@ -235,6 +268,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	return {
 		baseUrl,
+		proxyServerUrl,
 		stop: async () => {
 			await stopN8NStack(containers, network, uniqueProjectName);
 		},

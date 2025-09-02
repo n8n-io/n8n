@@ -31,6 +31,7 @@ interface ContainerConfig {
 		workers: number;
 	};
 	env?: Record<string, string>;
+	proxyServer?: boolean;
 }
 
 /**
