@@ -14,7 +14,6 @@
 				"PATH",
 				"GENERIC_TIMEZONE",
 				"N8N_RUNNERS_MAX_CONCURRENCY",
-				"N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST",
 				"NODE_OPTIONS",
 				"N8N_SENTRY_DSN",
 				"N8N_VERSION",
@@ -23,7 +22,8 @@
 			],
 			"env-overrides": {
 				"NODE_FUNCTION_ALLOW_BUILTIN": "crypto",
-				"NODE_FUNCTION_ALLOW_EXTERNAL": "moment"
+				"NODE_FUNCTION_ALLOW_EXTERNAL": "moment",
+				"N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST": "0.0.0.0"
 			}
 		},
 		{
