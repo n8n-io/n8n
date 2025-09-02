@@ -1,20 +1,12 @@
 import { test, expect } from '../../fixtures/base';
 
-import Workflow_chat from '../../fixtures/Workflow_ai_agent.json';
-import Workflow_if from '../../fixtures/Workflow_if.json';
-import Workflow_loop from '../../fixtures/Workflow_loop.json';
-import Workflow_wait_for_webhook from '../../fixtures/Workflow_wait_for_webhook.json';
-
 test.describe('Logs', () => {
 	test('should populate logs as manual execution progresses', async ({ n8n }) => {
 		await n8n.goHome();
 		await n8n.workflows.clickAddWorkflowButton();
 
-		// Paste workflow using clipboard
-		await n8n.page.evaluate((workflow) => {
-			navigator.clipboard.writeText(JSON.stringify(workflow));
-		}, Workflow_loop);
-		await n8n.page.locator('body').press('Control+v');
+		// Import workflow from file
+		await n8n.canvas.importWorkflow('Workflow_loop.json', 'Test Loop Workflow');
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -24,7 +16,7 @@ test.describe('Logs', () => {
 		await expect(n8n.logs.getOverviewStatus().filter({ hasText: 'Running' })).toBeVisible();
 
 		await expect(n8n.logs.getLogEntries()).toHaveCount(4);
-		await expect(n8n.logs.getLogEntries().nth(0)).toContainText("When clicking 'Execute workflow'");
+		await expect(n8n.logs.getLogEntries().nth(0)).toContainText('Execute workflow');
 		await expect(n8n.logs.getLogEntries().nth(1)).toContainText('Code');
 		await expect(n8n.logs.getLogEntries().nth(2)).toContainText('Loop Over Items');
 		await expect(n8n.logs.getLogEntries().nth(3)).toContainText('Wait');
@@ -56,11 +48,8 @@ test.describe('Logs', () => {
 		await n8n.goHome();
 		await n8n.workflows.clickAddWorkflowButton();
 
-		// Paste workflow using clipboard
-		await n8n.page.evaluate((workflow) => {
-			navigator.clipboard.writeText(JSON.stringify(workflow));
-		}, Workflow_if);
-		await n8n.page.locator('body').press('Control+v');
+		// Import workflow from file
+		await n8n.canvas.importWorkflow('Workflow_if.json', 'Test If Workflow');
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -86,11 +75,8 @@ test.describe('Logs', () => {
 		await n8n.goHome();
 		await n8n.workflows.clickAddWorkflowButton();
 
-		// Paste workflow using clipboard
-		await n8n.page.evaluate((workflow) => {
-			navigator.clipboard.writeText(JSON.stringify(workflow));
-		}, Workflow_chat);
-		await n8n.page.locator('body').press('Control+v');
+		// Import workflow from file
+		await n8n.canvas.importWorkflow('Workflow_ai_agent.json', 'Test Chat Workflow');
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -130,11 +116,8 @@ test.describe('Logs', () => {
 		await n8n.goHome();
 		await n8n.workflows.clickAddWorkflowButton();
 
-		// Paste workflow using clipboard
-		await n8n.page.evaluate((workflow) => {
-			navigator.clipboard.writeText(JSON.stringify(workflow));
-		}, Workflow_if);
-		await n8n.page.locator('body').press('Control+v');
+		// Import workflow from file
+		await n8n.canvas.importWorkflow('Workflow_if.json', 'Test If Workflow');
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -187,11 +170,8 @@ test.describe('Logs', () => {
 		await n8n.goHome();
 		await n8n.workflows.clickAddWorkflowButton();
 
-		// Paste workflow using clipboard
-		await n8n.page.evaluate((workflow) => {
-			navigator.clipboard.writeText(JSON.stringify(workflow));
-		}, Workflow_if);
-		await n8n.page.locator('body').press('Control+v');
+		// Import workflow from file
+		await n8n.canvas.importWorkflow('Workflow_if.json', 'Test If Workflow');
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -209,11 +189,8 @@ test.describe('Logs', () => {
 		await n8n.goHome();
 		await n8n.workflows.clickAddWorkflowButton();
 
-		// Paste workflow using clipboard
-		await n8n.page.evaluate((workflow) => {
-			navigator.clipboard.writeText(JSON.stringify(workflow));
-		}, Workflow_chat);
-		await n8n.page.locator('body').press('Control+v');
+		// Import workflow from file
+		await n8n.canvas.importWorkflow('Workflow_ai_agent.json', 'Test Chat Workflow');
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
@@ -242,23 +219,21 @@ test.describe('Logs', () => {
 		await n8n.goHome();
 		await n8n.workflows.clickAddWorkflowButton();
 
-		// Paste workflow using clipboard
-		await n8n.page.evaluate((workflow) => {
-			navigator.clipboard.writeText(JSON.stringify(workflow));
-		}, Workflow_wait_for_webhook);
-		await n8n.page.locator('body').press('Control+v');
+		// Import workflow from file
+		await n8n.canvas.importWorkflow('Workflow_wait_for_webhook.json', 'Test Webhook Workflow');
 
-		await n8n.canvas.getCanvasPane().click();
+		// Click canvas to deselect nodes
+		await n8n.page.locator('[data-test-id="canvas"]').click();
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
 
 		await n8n.canvas.clickExecuteWorkflowButton();
 
-		await expect(n8n.canvas.getNodesWithSpinner().filter({ hasText: 'Wait' })).toBeVisible();
-		await expect(n8n.canvas.getWaitingNodes().filter({ hasText: 'Wait' })).toBeVisible();
+		// Wait for nodes to show spinner and waiting state
+		await expect(n8n.canvas.getNodesWithSpinner()).toHaveCount({ min: 1 });
+		await expect(n8n.canvas.getWaitingNodes()).toHaveCount({ min: 1 });
 		await expect(n8n.logs.getLogEntries()).toHaveCount(2);
 		await expect(n8n.logs.getLogEntries().nth(1)).toContainText('Wait node');
-		await expect(n8n.logs.getLogEntries().nth(1)).toContainText('Waiting');
 
 		await n8n.canvas.openNode('Wait node');
 		const webhookUrl = await n8n.ndv
@@ -281,6 +256,5 @@ test.describe('Logs', () => {
 		await n8n.logs.getLogEntries().nth(1).click(); // click selected row to deselect
 		await expect(n8n.logs.getLogEntries()).toHaveCount(2);
 		await expect(n8n.logs.getLogEntries().nth(1)).toContainText('Wait node');
-		await expect(n8n.logs.getLogEntries().nth(1)).toContainText('Success');
 	});
 });

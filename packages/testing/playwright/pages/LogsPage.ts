@@ -109,6 +109,8 @@ export class LogsPage extends BasePage {
 
 	async setInputDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema'): Promise<void> {
 		const inputPanel = this.page.getByTestId('log-details-input');
+		// Wait for input panel to be visible
+		await inputPanel.waitFor({ state: 'visible' });
 		await inputPanel.hover();
 		await inputPanel.getByTestId(`radio-button-${mode}`).click();
 	}

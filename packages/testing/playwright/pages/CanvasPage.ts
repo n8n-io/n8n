@@ -530,4 +530,29 @@ export class CanvasPage extends BasePage {
 		await this.getManualChatInput().fill(message);
 		await this.getManualChatModal().locator('.chat-input-send-button').click();
 	}
+
+	getNodesWithSpinner(): Locator {
+		return this.page.getByTestId('canvas-node').filter({
+			has: this.page.locator('[data-icon=refresh-cw]'),
+		});
+	}
+
+	getWaitingNodes(): Locator {
+		return this.page.getByTestId('canvas-node').filter({
+			has: this.page.locator('[data-icon=clock]'),
+		});
+	}
+
+	async disableNode(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click({ button: 'right' });
+		await this.page.getByTestId('context-menu').getByText('Disable').click();
+	}
+
+	async deleteNode(nodeName: string): Promise<void> {
+		await this.deleteNodeByName(nodeName);
+	}
+
+	getNodeIssuesByName(nodeName: string): Locator {
+		return this.nodeByName(nodeName).locator('[data-test-id="node-issues"]');
+	}
 }
