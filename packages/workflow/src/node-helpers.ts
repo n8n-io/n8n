@@ -1035,6 +1035,32 @@ export function getNodeInputs(
 	}
 }
 
+/**
+ * Type guard to validate that a value is a valid outputs array
+ */
+function isValidOutputsArray(
+	value: unknown,
+): value is Array<NodeConnectionType | INodeOutputConfiguration> {
+	if (!Array.isArray(value)) {
+		return false;
+	}
+
+	return value.every((item) => {
+		// Check if item is a string (NodeConnectionType)
+		if (typeof item === 'string') {
+			return true;
+		}
+
+		// Check if item is an INodeOutputConfiguration object
+		if (typeof item === 'object' && item !== null && 'type' in item) {
+			const potentialConfig = item as Record<string, unknown>;
+			return typeof potentialConfig.type === 'string';
+		}
+
+		return false;
+	});
+}
+
 export function getNodeOutputs(
 	workflow: Workflow,
 	node: INode,
@@ -1053,9 +1079,7 @@ export function getNodeOutputs(
 				'internal',
 				{},
 			);
-			outputs = Array.isArray(result)
-				? (result as Array<NodeConnectionType | INodeOutputConfiguration>)
-				: [];
+			outputs = isValidOutputsArray(result) ? result : [];
 		} catch (e) {
 			console.warn('Could not calculate outputs dynamically for node: ', node.name);
 		}
@@ -1082,11 +1106,6 @@ export function getNodeOutputs(
 				displayName: 'Error',
 			},
 		];
-	}
-
-	// Ensure we always return an array
-	if (!Array.isArray(outputs)) {
-		outputs = [];
 	}
 
 	return outputs;
