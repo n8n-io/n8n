@@ -8,6 +8,7 @@ import DataStoreActions from '@/features/dataStore/components/DataStoreActions.v
 import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useToast } from '@/composables/useToast';
+import { telemetry } from '@/plugins/telemetry';
 
 const BREADCRUMBS_SEPARATOR = '/';
 
@@ -77,6 +78,14 @@ const onNameSubmit = async (name: string) => {
 			throw new Error(i18n.baseText('generic.unknownError'));
 		}
 		editableName.value = name;
+		telemetry.track('User renamed data table', {
+			data_table_id: props.dataStore.id,
+			data_table_old_name: props.dataStore.name,
+			data_table_new_name: name,
+			data_table_project_id: props.dataStore.projectId,
+			data_table_project_name:
+				props.dataStore.project?.type === 'personal' ? 'personal' : props.dataStore.project?.name,
+		});
 	} catch (error) {
 		// Revert to original name if rename fails
 		editableName.value = props.dataStore.name;
