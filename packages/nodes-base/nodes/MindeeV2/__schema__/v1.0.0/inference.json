@@ -1,0 +1,64 @@
+{
+	"type": "object",
+	"properties": {
+		"inference": {
+			"type": "object",
+			"id": {
+				"type": "string"
+			},
+			"model": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					}
+				}
+			},
+			"file": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"alias": {
+						"type": "string"
+					},
+					"page_count": {
+						"type": "integer"
+					},
+					"mime_type": {
+						"type": "string"
+					}
+				}
+			},
+			"result": {
+				"type": "object",
+				"properties": {
+					"fields": {
+						"type": "object"
+					},
+					"raw_text": {
+						"type": "object"
+					}
+				}
+			},
+			"active_options": {
+				"type": "object",
+				"properties": {
+					"raw_text": {
+						"type": "boolean"
+					},
+					"rag": {
+						"type": "boolean"
+					},
+					"polygon": {
+						"type": "boolean"
+					},
+					"confidence": {
+						"type": "boolean"
+					}
+				}
+			}
+		}
+	}
+}
