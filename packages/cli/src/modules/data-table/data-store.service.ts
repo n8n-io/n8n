@@ -300,12 +300,15 @@ export class DataStoreService {
 				}
 				break;
 			case 'number':
-				if (typeof cell !== 'number') {
-					throw new DataStoreValidationError(
-						`value '${String(cell)}' does not match column type 'number'`,
-					);
+				if (
+					typeof cell === 'number' ||
+					(typeof cell === 'string' && !Number.isNaN(Number(cell))) // allow numeric strings
+				) {
+					break;
 				}
-				break;
+				throw new DataStoreValidationError(
+					`value '${String(cell)}' does not match column type 'number'`,
+				);
 		}
 	}
 
