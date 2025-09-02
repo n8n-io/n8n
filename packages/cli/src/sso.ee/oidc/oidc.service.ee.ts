@@ -27,7 +27,6 @@ import {
 	isOidcCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '../sso-helpers';
-import { JwtService } from '@/services/jwt.service';
 import { randomUUID } from 'crypto';
 
 const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
@@ -58,7 +57,6 @@ export class OidcService {
 		private readonly userRepository: UserRepository,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
-		private readonly jwtService: JwtService,
 	) {}
 
 	async init() {
