@@ -1074,7 +1074,7 @@ describe('dataStore', () => {
 			// ACT
 			const result = dataStoreService.insertRows(dataStoreId, project1.id, [
 				{ c1: 3, c2: true, c3: new Date(), c4: 'hello?' },
-				{ cWrong: 3, c1: 4, c2: true, c3: new Date(), c4: 'hello?' },
+				{ cWrong: 3, c1: 4, c2: true, c3: new Date().toISOString(), c4: 'hello?' },
 			]);
 
 			// ASSERT
