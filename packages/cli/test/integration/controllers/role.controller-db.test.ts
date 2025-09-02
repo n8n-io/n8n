@@ -120,6 +120,7 @@ describe('RoleController - Integration Tests', () => {
 		const createResponse = await ownerAgent.post('/roles').send(createRoleDto).expect(200);
 
 		expect(createResponse.body?.data?.slug).toBeDefined();
+		const generatedRoleSlug = createResponse.body.data.slug;
 
 		const updateRoleDto: UpdateRoleDto = {
 			displayName: 'Custom Project Role Updated',
@@ -130,7 +131,7 @@ describe('RoleController - Integration Tests', () => {
 		// ACT
 		//
 		const response = await ownerAgent
-			.patch(`/roles/${createResponse.body.data.slug}`)
+			.patch(`/roles/${generatedRoleSlug}`)
 			.send(updateRoleDto)
 			.expect(200);
 
