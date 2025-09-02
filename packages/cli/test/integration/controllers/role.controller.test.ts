@@ -25,6 +25,8 @@ describe('RoleController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		// Enable CUSTOM_ROLES license for all tests by default
+		testServer.license.enable('feat:customRoles');
 	});
 
 	afterEach(async () => {
@@ -624,6 +626,107 @@ describe('RoleController', () => {
 			// ASSERT
 			//
 			expect(response.body).toEqual({ data: mockRole });
+		});
+	});
+
+	describe('License enforcement for @Licensed(LICENSE_FEATURES.CUSTOM_ROLES)', () => {
+		describe('POST /roles', () => {
+			it('should return 403 when CUSTOM_ROLES license is disabled', async () => {
+				//
+				// ARRANGE
+				//
+				testServer.license.disable('feat:customRoles');
+
+				const createRoleDto = {
+					displayName: 'Test Role',
+					roleType: 'project' as const,
+					scopes: ['workflow:read'],
+				};
+
+				//
+				// ACT & ASSERT
+				//
+				await ownerAgent.post('/roles').send(createRoleDto).expect(403);
+
+				// Verify service method was not called due to license check
+				expect(roleService.createCustomRole).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('PATCH /roles/:slug', () => {
+			it('should return 403 when CUSTOM_ROLES license is disabled', async () => {
+				//
+				// ARRANGE
+				//
+				testServer.license.disable('feat:customRoles');
+
+				const roleSlug = 'project:test-role';
+				const updateRoleDto = {
+					displayName: 'Updated Role',
+					scopes: ['workflow:read', 'workflow:edit'],
+				};
+
+				//
+				// ACT & ASSERT
+				//
+				await ownerAgent.patch(`/roles/${roleSlug}`).send(updateRoleDto).expect(403);
+
+				// Verify service method was not called due to license check
+				expect(roleService.updateCustomRole).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('DELETE /roles/:slug', () => {
+			it('should return 403 when CUSTOM_ROLES license is disabled', async () => {
+				//
+				// ARRANGE
+				//
+				testServer.license.disable('feat:customRoles');
+
+				const roleSlug = 'project:test-role';
+
+				//
+				// ACT & ASSERT
+				//
+				await ownerAgent.delete(`/roles/${roleSlug}`).expect(403);
+
+				// Verify service method was not called due to license check
+				expect(roleService.removeCustomRole).not.toHaveBeenCalled();
+			});
+		});
+
+		it('should allow non-licensed methods to work when CUSTOM_ROLES is disabled', async () => {
+			//
+			// ARRANGE
+			//
+			testServer.license.disable('feat:customRoles');
+
+			const mockRoles = [
+				{
+					slug: 'project:admin',
+					displayName: 'Project Admin',
+					description: 'Project administrator',
+					systemRole: true,
+					roleType: 'project' as const,
+					scopes: ['project:manage'],
+					licensed: true,
+				},
+			];
+
+			roleService.getAllRoles.mockResolvedValue(mockRoles);
+
+			//
+			// ACT & ASSERT
+			//
+			// GET /roles should work (no @Licensed decorator)
+			await ownerAgent.get('/roles').expect(200);
+			expect(roleService.getAllRoles).toHaveBeenCalledTimes(1);
+
+			// GET /roles/:slug should work (no @Licensed decorator)
+			const mockRole = mockRoles[0];
+			roleService.getRole.mockResolvedValue(mockRole);
+			await ownerAgent.get('/roles/project:admin').expect(200);
+			expect(roleService.getRole).toHaveBeenCalledTimes(1);
 		});
 	});
 });

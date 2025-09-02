@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.109.0",
+  "version": "1.110.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -49,7 +49,6 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@parcel/watcher": "^2.5.1",
     "@redocly/cli": "^1.28.5",
     "@types/aws4": "^1.5.1",
     "@types/bcryptjs": "^2.4.2",
@@ -106,6 +105,7 @@
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "@n8n_io/license-sdk": "2.23.0",
     "@rudderstack/rudder-sdk-node": "2.1.4",
+    "@parcel/watcher": "^2.5.1",
     "@sentry/node": "catalog:",
     "aws4": "1.11.0",
     "axios": "catalog:",

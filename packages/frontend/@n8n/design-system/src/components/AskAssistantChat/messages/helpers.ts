@@ -23,6 +23,7 @@ export function getSupportedMessageComponent(type: ChatUI.AssistantMessage['type
 			return ToolMessage;
 		case 'agent-suggestion':
 		case 'workflow-updated':
+		case 'custom':
 			return null;
 		default:
 			return null;
