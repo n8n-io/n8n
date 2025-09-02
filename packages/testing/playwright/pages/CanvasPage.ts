@@ -544,8 +544,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	async disableNode(nodeName: string): Promise<void> {
-		await this.nodeByName(nodeName).click({ button: 'right' });
-		await this.page.getByTestId('context-menu').getByText('Disable').click();
+		await this.nodeDisableButton(nodeName).click();
 	}
 
 	async deleteNode(nodeName: string): Promise<void> {

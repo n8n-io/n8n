@@ -1,5 +1,4 @@
 import { test, expect } from '../../fixtures/base';
-import type { TestRequirements } from '../../Types';
 
 // Node name constants
 const NODES = {
@@ -18,6 +17,7 @@ test.describe('Logs', () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
 	});
+
 	test('should populate logs as manual execution progresses', async ({
 		n8n,
 		setupRequirements,
@@ -53,7 +53,7 @@ test.describe('Logs', () => {
 		await expect(n8n.logs.getLogEntries().nth(8)).toContainText(NODES.LOOP_OVER_ITEMS);
 		await expect(n8n.logs.getLogEntries().nth(9)).toContainText(NODES.CODE1);
 		await expect(
-			n8n.logs.getOverviewStatus().filter({ hasText: /Error in [\d\.]+s/ }),
+			n8n.logs.getOverviewStatus().filter({ hasText: /Error in [\d.]+s/ }),
 		).toBeVisible();
 		await expect(n8n.logs.getSelectedLogEntry()).toContainText(NODES.CODE1); // Errored node is automatically selected
 		await expect(n8n.logs.getNodeErrorMessageHeader()).toContainText('test!!! [line 1]');
@@ -91,10 +91,7 @@ test.describe('Logs', () => {
 	});
 
 	// TODO: make it possible to test workflows with AI model end-to-end
-	test.skip('should show input and output data in the selected display mode', async ({
-		n8n,
-		setupRequirements,
-	}) => {
+	test.skip('should show input and output data in the selected display mode', async ({ n8n }) => {
 		// TODO: Add chat workflow requirements when AI functionality is ready
 		// await setupRequirements(chatWorkflowRequirements);
 
@@ -160,7 +157,7 @@ test.describe('Logs', () => {
 		await expect(n8n.ndv.getInputTbodyCell(10, 0)).toContainText('9');
 		await expect(n8n.ndv.getOutputRunSelectorInput()).toHaveValue('1 of 3 (10 items)');
 
-		await n8n.ndv.clickGetBackToCanvas();
+		await n8n.ndv.clickBackToCanvasButton();
 
 		await n8n.logs.clickLogEntryAtRow(4); // Run #2 of 'Edit Fields' node; input is false branch of 'If' node
 		await expect(n8n.logs.getInputTableRows()).toHaveCount(6);
@@ -173,7 +170,7 @@ test.describe('Logs', () => {
 		await expect(n8n.ndv.getInputTbodyCell(5, 0)).toContainText('9');
 		await expect(n8n.ndv.getOutputRunSelectorInput()).toHaveValue('2 of 3 (5 items)');
 
-		await n8n.ndv.clickGetBackToCanvas();
+		await n8n.ndv.clickBackToCanvasButton();
 
 		await n8n.logs.clickLogEntryAtRow(5); // Run #3 of 'Edit Fields' node; input is true branch of 'If' node
 		await expect(n8n.logs.getInputTableRows()).toHaveCount(6);
@@ -254,23 +251,18 @@ test.describe('Logs', () => {
 		await n8n.canvas.clickExecuteWorkflowButton();
 
 		// Wait for nodes to show spinner and waiting state
-		await expect(n8n.canvas.getNodesWithSpinner()).toHaveCount({ min: 1 });
-		await expect(n8n.canvas.getWaitingNodes()).toHaveCount({ min: 1 });
+		await expect(n8n.canvas.getNodesWithSpinner()).toHaveCount(1);
+		await expect(n8n.canvas.getWaitingNodes()).toHaveCount(1);
 		await expect(n8n.logs.getLogEntries()).toHaveCount(2);
 		await expect(n8n.logs.getLogEntries().nth(1)).toContainText(NODES.WAIT_NODE);
 
 		await n8n.canvas.openNode(NODES.WAIT_NODE);
-		const webhookUrl = await n8n.ndv
-			.getOutputPanelDataContainer()
-			.locator('a')
-			.getAttribute('href');
-		await n8n.ndv.getBackToCanvasButton().click();
+		const webhookUrl = await n8n.ndv.getOutputDataContainer().locator('a').getAttribute('href');
+		await n8n.ndv.clickBackToCanvasButton();
 
 		// Trigger the webhook
-		if (webhookUrl) {
-			const response = await n8n.page.request.get(webhookUrl);
-			expect(response.status()).toBe(200);
-		}
+		const response = await n8n.page.request.get(webhookUrl);
+		expect(response.status()).toBe(200);
 
 		await expect(n8n.canvas.getNodesWithSpinner()).not.toBeVisible();
 		await expect(n8n.canvas.getWaitingNodes()).not.toBeVisible();
