@@ -18,13 +18,32 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Data Field Name',
-		name: 'binaryPropertyName',
-		type: 'string',
-		default: 'data',
-		placeholder: 'e.g. data',
-		hint: 'The name of the input field containing the binary file data to be processed',
-		description: 'Name of the binary field which contains the image to edit',
+		displayName: 'Images',
+		name: 'images',
+		type: 'fixedCollection',
+		placeholder: 'Add Images',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Image',
+		},
+		default: { values: [{ binaryPropertyName: 'data' }] },
+		description: 'Add one or more binary fields to include images with your prompt',
+		options: [
+			{
+				displayName: 'Image',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Binary Field Name',
+						name: 'binaryPropertyName',
+						type: 'string',
+						default: 'data',
+						placeholder: 'e.g. data',
+						description: 'The name of the binary field containing the image data',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Options',
@@ -55,13 +74,28 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const prompt = this.getNodeParameter('prompt', i, '');
-	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
 	const binaryPropertyOutput = this.getNodeParameter('options.binaryPropertyOutput', i, 'data');
 	const outputKey = typeof binaryPropertyOutput === 'string' ? binaryPropertyOutput : 'data';
 
-	const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-	const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-	const { fileUri, mimeType } = await uploadFile.call(this, buffer, binaryData.mimeType);
+	// Collect image binary field names from collection
+	const imagesUi =
+		(
+			this.getNodeParameter('images', i, { values: [{ binaryPropertyName: 'data' }] }) as {
+				values?: Array<{ binaryPropertyName?: string }>;
+			}
+		).values ?? [];
+	const imageFieldNames = imagesUi
+		.map((v) => v.binaryPropertyName)
+		.filter((n): n is string => Boolean(n));
+
+	// Upload all images and gather fileData parts
+	const fileParts = [] as Array<{ fileData: { fileUri: string; mimeType: string } }>;
+	for (const fieldName of imageFieldNames) {
+		const bin = this.helpers.assertBinaryData(i, fieldName);
+		const buf = await this.helpers.getBinaryDataBuffer(i, fieldName);
+		const uploaded = await uploadFile.call(this, buf, bin.mimeType);
+		fileParts.push({ fileData: { fileUri: uploaded.fileUri, mimeType: uploaded.mimeType } });
+	}
 
 	const model = 'models/gemini-2.5-flash-image-preview';
 	const generationConfig = {
@@ -72,7 +106,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		contents: [
 			{
 				role: 'user',
-				parts: [{ fileData: { fileUri, mimeType } }, { text: prompt }],
+				parts: [...fileParts, { text: prompt }],
 			},
 		],
 		generationConfig,
