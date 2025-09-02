@@ -1,107 +1,129 @@
-import type FormData from 'form-data';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	JsonObject,
 	IHttpRequestMethods,
-	IHttpRequestOptions,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-import { setTimeout } from 'node:timers/promises';
 
-const INITIAL_DELAY_MS = 1500;
-const POLL_DELAY_MS = 1000;
-
-/**
- * Makes an authenticated HTTP request to the Mindee API
- * @param method - HTTP method.
- * @param url - The Mindee API's (complete) URL.
- * @param body - The request body data.
- * @param option - Additional request options (default: empty object)
- * @returns The API response data
- * @throws NodeApiError when the API request fails
- */
 export async function mindeeApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	url: string,
-	body: IDataObject | FormData = {},
+	path: string,
+	body: any = {},
+	qs: IDataObject = {},
 	option = {},
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
-	const options: IHttpRequestOptions = {
+	const resource = this.getNodeParameter('resource', 0);
+
+	let service;
+
+	if (resource === 'receipt') {
+		service = 'mindeeReceiptApi';
+	} else {
+		service = 'mindeeInvoiceApi';
+	}
+
+	const version = this.getNodeParameter('apiVersion', 0) as number;
+	// V1 of mindee is deprecated, we are keeping it for now but now V3 is active
+	const url =
+		version === 1
+			? `https://api.mindee.net/products${path}`
+			: `https://api.mindee.net/v1/products/mindee${path}`;
+
+	const options: IRequestOptions = {
 		headers: {},
 		method,
-		url,
 		body,
+		qs,
+		uri: url,
+		json: true,
 	};
 	try {
-		delete options.qs;
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
+		}
+		if (Object.keys(qs).length === 0) {
+			delete options.qs;
 		}
 		if (Object.keys(option).length !== 0) {
 			Object.assign(options, option);
 		}
-		return await this.helpers.httpRequestWithAuthentication.call(this, 'mindeeV2Api', {
-			...options,
-		});
+
+		return await this.helpers.requestWithAuthentication.call(this, service, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-/**
- * Polls the Mindee API for the result of a job.
- * Automatically follows the redirect on the last poll attempt.
- * @param funcRef The execution function reference.
- * @param initialResponse Initial POST request response from the API.
- * @param maxDelayCounter Maximum number of attempts to poll the API.
- */
-export async function pollMindee(
-	funcRef: IExecuteFunctions,
-	initialResponse: IDataObject,
-	maxDelayCounter: number,
-): Promise<IDataObject[]> {
-	const result: IDataObject[] = [];
-	let serverResponse = initialResponse;
-	const jobId: string | undefined = (serverResponse?.job as IDataObject)?.id as string;
-	if (!jobId || jobId.length === 0) {
-		throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
-			message: 'Mindee POST response does not contain a job id.',
-		});
-	}
-	let jobStatus: string = (serverResponse.job as IDataObject).status as string;
-	const pollUrl = (serverResponse.job as IDataObject).polling_url as string;
+export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
+	const newData: IDataObject = {};
 
-	await setTimeout(INITIAL_DELAY_MS);
+	for (const key of Object.keys(predictions[0])) {
+		const data = predictions[0][key] as IDataObject | IDataObject[];
 
-	for (let i = 0; i < maxDelayCounter; i++) {
-		if (
-			serverResponse.error ||
-			(serverResponse?.job as IDataObject).error ||
-			jobStatus === 'Failed'
-		) {
-			throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject);
+		if (key === 'taxes' && data.length) {
+			newData[key] = {
+				amount: (data as IDataObject[])[0].amount,
+				rate: (data as IDataObject[])[0].rate,
+			};
+		} else if (key === 'locale') {
+			//@ts-ignore
+			newData.currency = data.currency;
+			//@ts-ignore
+			newData.locale = data.value;
+		} else {
+			newData[key] =
+				//@ts-ignore
+				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
 		}
-
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		serverResponse = await mindeeApiRequest.call(funcRef, 'GET', pollUrl);
-		if ('inference' in (serverResponse as JsonObject)) break;
-
-		if (!('job' in serverResponse))
-			throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
-				message: 'The Mindee API replied with an unexpected reply.',
-			});
-		jobStatus = (serverResponse.job as IDataObject).status as string;
-		await setTimeout(POLL_DELAY_MS);
 	}
 
-	if (!('inference' in (serverResponse as JsonObject)))
-		throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
-			message: `Server polling timed out after ${maxDelayCounter} seconds. Status: ${jobStatus}.`,
-		});
-	result.push(serverResponse);
-	return result;
+	return newData;
+}
+
+export function cleanData(document: IDataObject) {
+	// @ts-ignore
+	const prediction = document.inference.prediction as IDataObject;
+	const newData: IDataObject = {};
+	newData.id = document.id;
+	newData.name = document.name;
+	newData.number_of_pages = document.n_pages;
+	for (const key of Object.keys(prediction)) {
+		const data = prediction[key] as IDataObject | IDataObject[];
+
+		if (key === 'taxes' && data.length) {
+			newData[key] = {
+				amount: (data as IDataObject[])[0].amount,
+				rate: (data as IDataObject[])[0].rate,
+			};
+		} else if (key === 'locale') {
+			//@ts-ignore
+			newData.currency = data.currency;
+			//@ts-ignore
+			newData.locale = data.value;
+		} else if (key === 'line_items') {
+			const lineItems: IDataObject[] = [];
+			for (const lineItem of data as IDataObject[]) {
+				lineItems.push({
+					description: lineItem.description,
+					product_code: lineItem.product_code,
+					quantity: lineItem.quantity,
+					tax_amount: lineItem.tax_amount,
+					tax_rate: lineItem.tax_rate,
+					total_amount: lineItem.total_amount,
+					unit_price: lineItem.unit_price,
+				});
+			}
+			newData[key] = lineItems;
+		} else {
+			newData[key] =
+				//@ts-ignore
+				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
+		}
+	}
+
+	return newData;
 }
