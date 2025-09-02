@@ -13,35 +13,34 @@ import N8nIcon from '../N8nIcon';
 import { ref } from 'vue';
 
 defineProps<{
-	items: Array<{ label: string; id: number; value: string }>;
+	items: Array<{ name: string; id: string; value: string }>;
+	placeholder?: string;
 }>();
 
 const open = ref(true);
+const selectedItems = ref([]);
 </script>
 
 <template>
-	<ComboboxRoot
-		class="ComboboxRoot"
-		v-bind="items"
-		multiple
-		:open="open"
-		@update:open="() => {}"
-		@highlight="(e) => console.log(e)"
-		@update:modelValue="(e) => console.log(e)"
-	>
+	<ComboboxRoot class="root" v-model="selectedItems" multiple :open="open" @update:open="() => {}">
 		<ComboboxAnchor class="ComboboxAnchor">
-			<ComboboxInput class="ComboboxInput" placeholder="Placeholder..." />
+			<ComboboxInput
+				:displayValue="(i) => i.name"
+				class="ComboboxInput"
+				:placeholder="placeholder"
+			/>
 		</ComboboxAnchor>
 		<ComboboxContent class="ComboboxContent">
 			<ComboboxViewport class="ComboboxViewport">
 				<ComboboxEmpty class="ComboboxEmpty" />
 				<template v-for="item in items" :key="item.id">
-					<ComboboxItem :value="item.value" class="ComboboxItem">
+					<ComboboxItem :value="item" class="ComboboxItem">
 						<ComboboxItemIndicator class="ComboboxItemIndicator">
-							<N8nIcon icon="check" />
+							<N8nIcon size="small" icon="check" />
 						</ComboboxItemIndicator>
+
 						<span>
-							{{ item.label }}
+							{{ item.name }}
 						</span>
 					</ComboboxItem>
 				</template>
@@ -57,51 +56,25 @@ input {
 	all: unset;
 }
 
-:deep(.ComboboxRoot) {
-	position: relative;
-	max-width: 300px;
-}
-
 .ComboboxAnchor {
 	display: inline-flex;
 	align-items: center;
 	justify-content: between;
-	font-size: 13px;
 	line-height: 1;
-	height: 35px;
-	padding: 0 15px;
-	gap: 5px;
-	background-color: white;
-	color: black;
-	border-radius: 4px;
-}
-.ComboboxAnchor:hover {
-}
-
-.ComboboxInput {
-	height: 100%;
-	background-color: transparent;
-}
-.ComboboxInput[data-placeholder] {
-	color: var(--grass-9);
-}
-
-.ComboboxIcon {
-	width: 16px;
-	height: 16px;
+	font-size: var(--font-size-xs);
+	padding: var(--spacing-2xs) var(--spacing-xs);
+	width: 200px;
+	border-bottom: var(--border-base);
+	background-color: var(--color-foreground-xlight);
+	border-radius: var(--border-radius-base) var(--border-radius-base) 0 0;
 }
 
 .ComboboxContent {
 	z-index: 10;
-	width: 100%;
-	max-width: 300px;
-	position: absolute;
-	overflow: hidden;
-	background-color: white;
-}
-
-.ComboboxViewport {
-	padding: 5px;
+	padding: var(--spacing-4xs);
+	max-width: 200px;
+	background-color: var(--color-foreground-xlight);
+	border-radius: 0 0 var(--border-radius-base) var(--border-radius-base);
 }
 
 .ComboboxEmpty {
@@ -111,48 +84,32 @@ input {
 	font-size: 0.75rem;
 	line-height: 1rem;
 	font-weight: 500;
-	color: var(--mauve-11);
 }
 
 .ComboboxItem {
-	font-size: 13px;
-	line-height: 1;
-	color: var(--grass-11);
-	border-radius: 3px;
 	display: flex;
 	align-items: center;
-	height: 25px;
-	padding: 0 35px 0 25px;
+	padding: var(--spacing-2xs);
+	padding-left: var(--spacing-xl);
+	border-radius: var(--border-radius-base);
 	position: relative;
+	font-size: var(--font-size-xs);
 }
+
 .ComboboxItem[data-disabled] {
 	pointer-events: none;
 }
+
 .ComboboxItem[data-highlighted] {
-	outline: none;
-	background-color: turquoise;
-}
-
-.ComboboxLabel {
-	padding: 0 25px;
-	font-size: 12px;
-	line-height: 25px;
-	color: var(--mauve-11);
-}
-
-.ComboboxSeparator {
-	height: 1px;
-
-	margin: 5px;
+	background-color: var(--color-foreground-light);
 }
 
 .ComboboxItemIndicator {
-	position: absolute;
-	left: 0;
-	width: 25px;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	background-color: turquoise;
+	position: absolute;
+	left: var(--spacing-2xs);
+	outline: 1px solid gray;
 }
 </style>

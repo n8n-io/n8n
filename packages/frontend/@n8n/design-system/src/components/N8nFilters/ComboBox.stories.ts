@@ -26,11 +26,11 @@ export const Default: Story = {
 	}),
 	args: {
 		items: [
-			{ id: 1, label: 'Durward Reynolds', value: '1' },
-			{ id: 2, label: 'Kenton Towne', value: '2' },
-			{ id: 3, label: 'Therese Wunsch', value: '3' },
-			{ id: 4, label: 'Benedict Kessler', value: '4' },
-			{ id: 5, label: 'Katelyn Rohan', value: '5' },
+			{ id: '1', name: 'Durward Reynolds', value: '1' },
+			{ id: '2', name: 'Kenton Towne', value: '2' },
+			{ id: '3', name: 'Therese Wunsch', value: '3' },
+			{ id: 'a', name: 'Benedict Kessler', value: '4' },
+			{ id: '5', name: 'Katelyn Rohan', value: '5' },
 		],
 	},
 };
