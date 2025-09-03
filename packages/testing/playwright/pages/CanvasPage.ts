@@ -2,8 +2,8 @@ import type { Locator } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
-import { resolveFromRoot } from '../utils/path-helper';
 import { ROUTES } from '../config/constants';
+import { resolveFromRoot } from '../utils/path-helper';
 
 export class CanvasPage extends BasePage {
 	saveWorkflowButton(): Locator {
