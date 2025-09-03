@@ -20,9 +20,6 @@ import { ApplicationError, isSubNodeType, UnexpectedError } from 'n8n-workflow';
 import { realpathSync } from 'node:fs';
 import * as path from 'path';
 
-import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
-import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
-
 import {
 	commonCORSParameters,
 	commonDeclarativeNodeOptionParameters,
@@ -30,6 +27,9 @@ import {
 	CUSTOM_NODES_CATEGORY,
 } from './constants';
 import { loadClassInIsolation } from './load-class-in-isolation';
+
+import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
+import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
 
 function toJSON(this: ICredentialType) {
 	return {

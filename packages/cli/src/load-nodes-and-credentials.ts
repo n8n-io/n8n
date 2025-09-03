@@ -209,19 +209,28 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
-	async loadPackage(packageName: string) {
+	async loadPackage(packageName: string, packageVersion: string) {
 		const finalNodeUnpackedPath = path.join(
 			this.instanceSettings.nodesDownloadDir,
-			'node_modules',
-			packageName,
+			`${packageName}@${packageVersion}`,
 		);
-		return await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
+		try {
+			return await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
+		} catch (error) {
+			const backwardCompatiblePath = path.join(
+				this.instanceSettings.nodesDownloadDir,
+				'node_modules',
+				packageName,
+			);
+			return await this.runDirectoryLoader(PackageDirectoryLoader, backwardCompatiblePath);
+		}
 	}
 
-	async unloadPackage(packageName: string) {
-		if (packageName in this.loaders) {
-			this.loaders[packageName].reset();
-			delete this.loaders[packageName];
+	unloadPackage(packageName: string, packageVersion: string) {
+		const loaderName = `${packageName}@${packageVersion}`;
+		if (loaderName in this.loaders) {
+			this.loaders[loaderName].reset();
+			delete this.loaders[loaderName];
 		}
 	}
 

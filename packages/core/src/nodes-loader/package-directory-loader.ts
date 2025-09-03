@@ -18,7 +18,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		super(directory, excludeNodes, includeNodes);
 
 		this.packageJson = this.readJSONSync('package.json');
-		this.packageName = this.packageJson.name;
+		this.packageName = `${this.packageJson.name}@${this.packageJson.version}`;
 		this.excludeNodes = this.extractNodeTypes(excludeNodes);
 		this.includeNodes = this.extractNodeTypes(includeNodes);
 	}

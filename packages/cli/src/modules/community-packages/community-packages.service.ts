@@ -1,3 +1,10 @@
+import {
+	NODE_PACKAGE_PREFIX,
+	NPM_COMMAND_TOKENS,
+	NPM_PACKAGE_STATUS_GOOD,
+	RESPONSE_ERROR_MESSAGES,
+	UNKNOWN_FAILURE_REASON,
+} from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -11,24 +18,18 @@ import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promi
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-import {
-	NODE_PACKAGE_PREFIX,
-	NPM_COMMAND_TOKENS,
-	NPM_PACKAGE_STATUS_GOOD,
-	RESPONSE_ERROR_MESSAGES,
-	UNKNOWN_FAILURE_REASON,
-} from '@/constants';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { toError } from '@/utils';
-
 import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
 import { isVersionExists, verifyIntegrity } from './npm-utils';
+
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { PubSubEventMap } from '@/scaling/pubsub/pubsub.event-map';
+import { toError } from '@/utils';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
@@ -362,12 +363,16 @@ export class CommunityPackagesService {
 		return await this.installOrUpdatePackage(packageName, { installedPackages, version, checksum });
 	}
 
-	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
-		await this.removeNpmPackage(packageName);
+	async removePackage(
+		packageName: string,
+		packageVersion: string,
+		installedPackage: InstalledPackages,
+	): Promise<void> {
+		await this.removeNpmPackage(packageName, packageVersion);
 		await this.removePackageFromDatabase(installedPackage);
 		void this.publisher.publishCommand({
 			command: 'community-package-uninstall',
-			payload: { packageName },
+			payload: { packageName, packageVersion },
 		});
 	}
 
@@ -418,12 +423,12 @@ export class CommunityPackagesService {
 
 		let loader: PackageDirectoryLoader;
 		try {
-			await this.loadNodesAndCredentials.unloadPackage(packageName);
-			loader = await this.loadNodesAndCredentials.loadPackage(packageName);
+			this.loadNodesAndCredentials.unloadPackage(packageName, packageVersion);
+			loader = await this.loadNodesAndCredentials.loadPackage(packageName, packageVersion);
 		} catch (error) {
 			// Remove this package since loading it failed
 			try {
-				await this.deletePackageDirectory(packageName);
+				await this.deletePackageDirectory(packageName, packageVersion);
 			} catch {}
 			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
 		}
@@ -453,7 +458,7 @@ export class CommunityPackagesService {
 		} else {
 			// Remove this package since it contains no loadable nodes
 			try {
-				await this.deletePackageDirectory(packageName);
+				await this.deletePackageDirectory(packageName, packageVersion);
 			} catch {}
 			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
@@ -469,34 +474,41 @@ export class CommunityPackagesService {
 	}
 
 	@OnPubSubEvent('community-package-uninstall')
-	async handleUninstallEvent({ packageName }: { packageName: string }) {
-		await this.removeNpmPackage(packageName);
+	async handleUninstallEvent({
+		packageName,
+		packageVersion,
+	}: PubSubEventMap['community-package-uninstall']) {
+		await this.removeNpmPackage(packageName, packageVersion);
 	}
 
 	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
 		await this.downloadPackage(packageName, packageVersion);
-		await this.loadNodesAndCredentials.loadPackage(packageName);
+		await this.loadNodesAndCredentials.loadPackage(packageName, packageVersion);
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		this.logger.info(`Community package installed: ${packageName}`);
 	}
 
-	private async removeNpmPackage(packageName: string) {
-		await this.deletePackageDirectory(packageName);
-		await this.loadNodesAndCredentials.unloadPackage(packageName);
+	private async removeNpmPackage(packageName: string, packageVersion: string) {
+		await this.deletePackageDirectory(packageName, packageVersion);
+		this.loadNodesAndCredentials.unloadPackage(packageName, packageVersion);
 		await this.loadNodesAndCredentials.postProcessLoaders();
-		this.logger.info(`Community package uninstalled: ${packageName}`);
+		this.logger.info(`Community package uninstalled: ${packageName}@${packageVersion}`);
 	}
 
-	private resolvePackageDirectory(packageName: string) {
+	private resolvePackageDirectoryBackwardsCompat(packageName: string) {
 		return `${this.downloadFolder}/node_modules/${packageName}`;
+	}
+
+	private resolvePackageDirectory(packageName: string, packageVersion: string) {
+		return `${this.downloadFolder}/${packageName}@${packageVersion}`;
 	}
 
 	private async downloadPackage(packageName: string, packageVersion: string): Promise<string> {
 		const registry = this.getNpmRegistry();
-		const packageDirectory = this.resolvePackageDirectory(packageName);
+		const packageDirectory = this.resolvePackageDirectory(packageName, packageVersion);
 
 		// (Re)create the packageDir
-		await this.deletePackageDirectory(packageName);
+		await this.deletePackageDirectory(packageName, packageVersion);
 		await mkdir(packageDirectory, { recursive: true });
 
 		// TODO: make sure that this works for scoped packages as well
@@ -540,9 +552,15 @@ export class CommunityPackagesService {
 		return packageDirectory;
 	}
 
-	private async deletePackageDirectory(packageName: string) {
-		const packageDirectory = this.resolvePackageDirectory(packageName);
-		await rm(packageDirectory, { recursive: true, force: true });
+	private async deletePackageDirectory(packageName: string, packageVersion: string) {
+		const packageDirectory = this.resolvePackageDirectory(packageName, packageVersion);
+		const packageDirectoryBackwardsCompat =
+			this.resolvePackageDirectoryBackwardsCompat(packageName);
+
+		await Promise.all([
+			rm(packageDirectory, { recursive: true, force: true }),
+			rm(packageDirectoryBackwardsCompat, { recursive: true, force: true }),
+		]);
 	}
 
 	async updatePackageJsonDependency(packageName: string, version: string) {
