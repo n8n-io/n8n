@@ -513,12 +513,8 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getInputPanel().locator('table th').nth(index);
 	}
 
-	getInputTableCell(row: number, col: number) {
-		return this.getInputPanel().locator('table tbody tr').nth(row).locator('td').nth(col);
-	}
-
 	getInputTbodyCell(row: number, col: number) {
-		return this.getInputTableCell(row, col);
+		return this.getInputPanel().locator('table tbody tr').nth(row).locator('td').nth(col);
 	}
 
 	getAssignmentName(paramName: string, index = 0) {
@@ -581,7 +577,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInputTableCellSpan(row: number, col: number, dataName: string) {
-		return this.getInputTableCell(row, col).locator(`span[data-name="${dataName}"]`).first();
+		return this.getInputTbodyCell(row, col).locator(`span[data-name="${dataName}"]`).first();
 	}
 
 	getAddFieldToSortByButton() {
@@ -702,10 +698,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getInputRunSelector().locator('input');
 	}
 
-	getOutputRunSelectorInput() {
-		return this.getOutputRunSelector().locator('input');
-	}
-
 	async changeOutputRunSelector(runName: string): Promise<void> {
 		await this.getOutputRunSelector().click();
 		await this.page.getByRole('option', { name: runName }).click();
@@ -713,5 +705,17 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async toggleInputRunLinking(): Promise<void> {
 		await this.getInputPanel().getByTestId('link-run').click();
+	}
+
+	getInputSelect() {
+		return this.page.getByTestId('ndv-input-select').locator('input');
+	}
+
+	getInputTableRows() {
+		return this.getInputTable().locator('tr');
+	}
+
+	getOutputRunSelectorInput() {
+		return this.getOutputPanel().locator('[data-test-id="run-selector"] input');
 	}
 }
