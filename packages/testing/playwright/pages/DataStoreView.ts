@@ -1,8 +1,12 @@
 import { BasePage } from './BasePage';
 
 export class DataStoreView extends BasePage {
-	getDataTableTab() {
+	getDataTableOverviewTab() {
 		return this.page.getByTestId('tab-data-stores');
+	}
+
+	getDataTableProjectTab() {
+		return this.page.getByTestId('tab-project-data-stores');
 	}
 
 	getEmptyStateActionBox() {
@@ -41,8 +45,12 @@ export class DataStoreView extends BasePage {
 		await this.clickByTestId('add-resource');
 	}
 
-	async clickDataTableTab() {
+	async clickDataTableOverviewTab() {
 		await this.clickByTestId('tab-data-stores');
+	}
+
+	async clickDataTableProjectTab() {
+		await this.clickByTestId('tab-project-data-stores');
 	}
 
 	async clickEmptyStateButton() {

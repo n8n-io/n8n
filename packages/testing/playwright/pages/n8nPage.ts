@@ -53,7 +53,7 @@ export class n8nPage {
 	readonly credentials: CredentialsPage;
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
-	readonly dataStore: DataStoreView;
+	readonly dataTable: DataStoreView;
 
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
@@ -91,7 +91,7 @@ export class n8nPage {
 		this.executions = new ExecutionsPage(page);
 		this.sideBar = new SidebarPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
-		this.dataStore = new DataStoreView(page);
+		this.dataTable = new DataStoreView(page);
 
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
