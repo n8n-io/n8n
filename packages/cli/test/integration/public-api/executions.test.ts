@@ -1,20 +1,22 @@
 import {
-	createTeamProject,
 	createManyWorkflows,
+	createTeamProject,
 	createWorkflow,
+	mockInstance,
 	shareWorkflowWithUsers,
 	testDb,
-	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { User, ExecutionEntity } from '@n8n/db';
+import type { ExecutionEntity, User } from '@n8n/db';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { Telemetry } from '@/telemetry';
 
 import {
+	createCanceledExecution,
 	createErrorExecution,
 	createExecution,
 	createManyExecutions,
+	createRunningExecution,
 	createSuccessfulExecution,
 	createWaitingExecution,
 } from '../shared/db/executions';
@@ -344,6 +346,86 @@ describe('GET /executions', () => {
 
 		const response = await authOwnerAgent.get('/executions').query({
 			status: 'error',
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(1);
+		expect(response.body.nextCursor).toBe(null);
+
+		const {
+			id,
+			finished,
+			mode,
+			retryOf,
+			retrySuccessId,
+			startedAt,
+			stoppedAt,
+			workflowId,
+			waitTill,
+			status,
+		} = response.body.data[0];
+
+		expect(id).toBeDefined();
+		expect(finished).toBe(false);
+		expect(mode).toEqual(errorExecution.mode);
+		expect(retrySuccessId).toBeNull();
+		expect(retryOf).toBeNull();
+		expect(startedAt).not.toBeNull();
+		expect(stoppedAt).not.toBeNull();
+		expect(workflowId).toBe(errorExecution.workflowId);
+		expect(waitTill).toBeNull();
+		expect(status).toBe(errorExecution.status);
+	});
+
+	test('should retrieve all canceled executions', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		await createSuccessfulExecution(workflow);
+
+		const errorExecution = await createCanceledExecution(workflow);
+
+		const response = await authOwnerAgent.get('/executions').query({
+			status: 'canceled',
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(1);
+		expect(response.body.nextCursor).toBe(null);
+
+		const {
+			id,
+			finished,
+			mode,
+			retryOf,
+			retrySuccessId,
+			startedAt,
+			stoppedAt,
+			workflowId,
+			waitTill,
+			status,
+		} = response.body.data[0];
+
+		expect(id).toBeDefined();
+		expect(finished).toBe(false);
+		expect(mode).toEqual(errorExecution.mode);
+		expect(retrySuccessId).toBeNull();
+		expect(retryOf).toBeNull();
+		expect(startedAt).not.toBeNull();
+		expect(stoppedAt).not.toBeNull();
+		expect(workflowId).toBe(errorExecution.workflowId);
+		expect(waitTill).toBeNull();
+		expect(status).toBe(errorExecution.status);
+	});
+
+	test('should retrieve all running executions', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		await createSuccessfulExecution(workflow);
+
+		const errorExecution = await createRunningExecution(workflow);
+
+		const response = await authOwnerAgent.get('/executions').query({
+			status: 'running',
 		});
 
 		expect(response.statusCode).toBe(200);

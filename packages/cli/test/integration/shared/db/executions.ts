@@ -104,6 +104,20 @@ export async function createWaitingExecution(workflow: IWorkflowBase) {
 	);
 }
 
+/**
+ * Store a canceled execution in the DB and assign it to a workflow.
+ */
+export async function createCanceledExecution(workflow: IWorkflowBase) {
+	return await createExecution({ finished: false, status: 'canceled' }, workflow);
+}
+
+/**
+ * Store a canceled execution in the DB and assign it to a workflow.
+ */
+export async function createRunningExecution(workflow: IWorkflowBase) {
+	return await createExecution({ finished: false, status: 'running' }, workflow);
+}
+
 export async function annotateExecution(
 	executionId: string,
 	annotation: { vote?: AnnotationVote | null; tags?: string[] },
