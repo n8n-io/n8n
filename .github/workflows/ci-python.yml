@@ -29,7 +29,7 @@ jobs:
         run: uv python install 3.13
 
       - name: Install project dependencies
-        run: uv sync --all-extras
+        run: uv sync --all-extras --group dev
 
       - name: Format check
         run: uv run ruff format --check
@@ -40,10 +40,19 @@ jobs:
       - name: Lint
         run: uv run ruff check
 
+      # - name: Python unit tests
+      #   run: uv run pytest
+
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+
   unit-test:
     name: Unit tests
     runs-on: ubuntu-latest
     needs: lint
     steps:
       - name: Python unit tests
+        # TODO
         run: echo "Skipping unit tests for Python-only changes until we have Python unit tests"
