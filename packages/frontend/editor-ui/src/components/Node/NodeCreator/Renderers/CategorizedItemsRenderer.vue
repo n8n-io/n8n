@@ -129,7 +129,6 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 			v-if="isPreview && expanded"
 			:hint="i18n.baseText('communityNodeItem.actions.hint')"
 		/>
-
 		<!-- Pass through listeners & empty slot to ItemsRenderer -->
 		<ItemsRenderer
 			v-if="expanded"
