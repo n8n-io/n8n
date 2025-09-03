@@ -226,8 +226,8 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
-	unloadPackage(packageName: string, packageVersion: string) {
-		const loaderName = `${packageName}@${packageVersion}`;
+	unloadPackage(packageName: string, packageVersion?: string) {
+		const loaderName = packageVersion ? `${packageName}@${packageVersion}` : packageName;
 		if (loaderName in this.loaders) {
 			this.loaders[loaderName].reset();
 			delete this.loaders[loaderName];

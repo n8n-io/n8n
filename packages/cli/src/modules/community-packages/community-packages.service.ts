@@ -365,8 +365,8 @@ export class CommunityPackagesService {
 
 	async removePackage(
 		packageName: string,
-		packageVersion: string,
 		installedPackage: InstalledPackages,
+		packageVersion?: string,
 	): Promise<void> {
 		await this.removeNpmPackage(packageName, packageVersion);
 		await this.removePackageFromDatabase(installedPackage);
@@ -488,7 +488,7 @@ export class CommunityPackagesService {
 		this.logger.info(`Community package installed: ${packageName}`);
 	}
 
-	private async removeNpmPackage(packageName: string, packageVersion: string) {
+	private async removeNpmPackage(packageName: string, packageVersion?: string) {
 		await this.deletePackageDirectory(packageName, packageVersion);
 		this.loadNodesAndCredentials.unloadPackage(packageName, packageVersion);
 		await this.loadNodesAndCredentials.postProcessLoaders();
@@ -499,8 +499,10 @@ export class CommunityPackagesService {
 		return `${this.downloadFolder}/node_modules/${packageName}`;
 	}
 
-	private resolvePackageDirectory(packageName: string, packageVersion: string) {
-		return `${this.downloadFolder}/${packageName}@${packageVersion}`;
+	private resolvePackageDirectory(packageName: string, packageVersion?: string) {
+		return packageVersion
+			? `${this.downloadFolder}/${packageName}@${packageVersion}`
+			: `${this.downloadFolder}/node_modules/${packageName}`;
 	}
 
 	private async downloadPackage(packageName: string, packageVersion: string): Promise<string> {
@@ -552,15 +554,9 @@ export class CommunityPackagesService {
 		return packageDirectory;
 	}
 
-	private async deletePackageDirectory(packageName: string, packageVersion: string) {
+	private async deletePackageDirectory(packageName: string, packageVersion?: string) {
 		const packageDirectory = this.resolvePackageDirectory(packageName, packageVersion);
-		const packageDirectoryBackwardsCompat =
-			this.resolvePackageDirectoryBackwardsCompat(packageName);
-
-		await Promise.all([
-			rm(packageDirectory, { recursive: true, force: true }),
-			rm(packageDirectoryBackwardsCompat, { recursive: true, force: true }),
-		]);
+		await rm(packageDirectory, { recursive: true, force: true });
 	}
 
 	async updatePackageJsonDependency(packageName: string, version: string) {

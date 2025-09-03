@@ -26,7 +26,7 @@ export type PubSubCommandMap = {
 
 	'community-package-uninstall': {
 		packageName: string;
-		packageVersion: string;
+		packageVersion?: string;
 	};
 
 	// #endregion
