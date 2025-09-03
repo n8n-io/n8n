@@ -320,20 +320,24 @@ export async function setupProxyServer({
 	proxyServerImage,
 	projectName,
 	network,
+	hostname,
+	port,
 }: {
 	proxyServerImage: string;
 	projectName: string;
 	network: StartedNetwork;
+	hostname: string;
+	port: number;
 }): Promise<StartedTestContainer> {
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	try {
 		return await new GenericContainer(proxyServerImage)
 			.withNetwork(network)
-			.withNetworkAliases('proxyserver')
-			.withExposedPorts(1080)
+			.withNetworkAliases(hostname)
+			.withExposedPorts(port)
 			// Wait.forListeningPorts strategy did not work here for some reason
-			.withWaitStrategy(Wait.forLogMessage('INFO 1080 started on port: 1080'))
+			.withWaitStrategy(Wait.forLogMessage(`INFO ${port} started on port: ${port}`))
 			.withLabels({
 				'com.docker.compose.project': projectName,
 				'com.docker.compose.service': 'proxyserver',

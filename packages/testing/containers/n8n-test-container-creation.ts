@@ -195,22 +195,26 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	let proxyServerContainer: StartedTestContainer | undefined;
 	let proxyServerUrl: string | undefined;
 	if (proxyServerEnabled) {
-		assert(network, 'Network should be created for MockServer');
+		assert(network, 'Network should be created for ProxyServer');
+		const hostname = 'proxyserver';
+		const port = 1080;
+		const url = `http://${hostname}:${port}`;
 		proxyServerContainer = await setupProxyServer({
 			proxyServerImage: MOCKSERVER_IMAGE,
 			projectName: uniqueProjectName,
 			network,
+			hostname,
+			port,
 		});
 
 		containers.push(proxyServerContainer);
 		proxyServerUrl = `http://localhost:${proxyServerContainer.getMappedPort(1080)}`;
 
-		// Configure n8n to proxy all HTTP requests through mockserver
 		environment = {
 			...environment,
-			// todo try proxyServerContainer.getHost()
-			HTTP_PROXY: 'http://proxyserver:1080',
-			HTTPS_PROXY: 'http://proxyserver:1080',
+			// Configure n8n to proxy all HTTP requests through ProxyServer
+			HTTP_PROXY: url,
+			HTTPS_PROXY: url,
 			// Ensure https requests can be proxied without SSL issues
 			...(proxyServerEnabled ? { NODE_TLS_REJECT_UNAUTHORIZED: '0' } : {}),
 		};
