@@ -11,10 +11,27 @@ import {
 } from 'reka-ui';
 import N8nIcon from '../N8nIcon';
 import { ref } from 'vue';
+import N8nText from '../N8nText';
 
-defineProps<{
-	items: Array<{ name: string; id: string; value: string }>;
-	placeholder?: string;
+interface Item {
+	name: string;
+	id: string;
+	value: string;
+}
+
+withDefaults(
+	defineProps<{
+		items: Array<Item>;
+		placeholder?: string;
+		multiple?: boolean;
+	}>(),
+	{
+		placeholder: 'Select items...',
+	},
+);
+
+defineEmits<{
+	(e: 'update:modelValue', value: Array<Item>): void;
 }>();
 
 const open = ref(true);
@@ -22,13 +39,9 @@ const selectedItems = ref([]);
 </script>
 
 <template>
-	<ComboboxRoot class="root" v-model="selectedItems" multiple :open="open" @update:open="() => {}">
+	<ComboboxRoot class="root" multiple v-model="selectedItems" :open="open" @update:open="() => {}">
 		<ComboboxAnchor class="ComboboxAnchor">
-			<ComboboxInput
-				:displayValue="(i) => i.name"
-				class="ComboboxInput"
-				:placeholder="placeholder"
-			/>
+			<ComboboxInput class="ComboboxInput" :placeholder="placeholder" />
 		</ComboboxAnchor>
 		<ComboboxContent class="ComboboxContent">
 			<ComboboxViewport class="ComboboxViewport">
@@ -38,10 +51,9 @@ const selectedItems = ref([]);
 						<ComboboxItemIndicator class="ComboboxItemIndicator">
 							<N8nIcon size="small" icon="check" />
 						</ComboboxItemIndicator>
-
-						<span>
+						<N8nText size="small">
 							{{ item.name }}
-						</span>
+						</N8nText>
 					</ComboboxItem>
 				</template>
 			</ComboboxViewport>
@@ -93,7 +105,6 @@ input {
 	padding-left: var(--spacing-xl);
 	border-radius: var(--border-radius-base);
 	position: relative;
-	font-size: var(--font-size-xs);
 }
 
 .ComboboxItem[data-disabled] {

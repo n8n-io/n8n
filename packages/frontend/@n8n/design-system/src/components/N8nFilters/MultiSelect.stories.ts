@@ -1,24 +1,22 @@
 import type { Meta, StoryObj } from '@storybook/vue3';
-import { ref } from 'vue';
-import ComboBox from './ComboBox.vue';
+import MultiSelect from './MultiSelect.vue';
 
-const meta: Meta<typeof ComboBox> = {
-	title: 'Atoms/ComboBox',
-	component: ComboBox,
+const meta: Meta<typeof MultiSelect> = {
+	title: 'Filters/MultiSelect',
+	component: MultiSelect,
 };
 
 export default meta;
-type Story = StoryObj<typeof ComboBox>;
+type Story = StoryObj<typeof MultiSelect>;
 
 export const Default: Story = {
 	render: (args) => ({
-		components: { ComboBox },
+		components: { MultiSelect },
 		setup() {
-			const selectedValue = ref('');
-			return { args, selectedValue };
+			return { args };
 		},
 		template: `
-			<ComboBox
+			<MultiSelect
 				v-bind="args"
 				v-model="selectedValue"
 			/>
