@@ -3,7 +3,8 @@ import type { ProjectRole, TeamProjectRole } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
-import { N8nFormInput } from '@n8n/design-system';
+import { N8nFormInput, N8nInput } from '@n8n/design-system';
+import { useDebounceFn } from '@vueuse/core';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useI18n } from '@n8n/i18n';
@@ -13,12 +14,14 @@ import { useToast } from '@/composables/useToast';
 import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/components/Projects/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '@/components/Projects/ProjectRoleUpgradeDialog.vue';
+import ProjectMembersTable from '@/components/Projects/ProjectMembersTable.vue';
 import { useRolesStore } from '@/stores/roles.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import ProjectHeader from '@/components/Projects/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 
 type FormDataDiff = {
 	name?: string;
@@ -61,6 +64,17 @@ const projectIcon = ref<IconOrEmoji>({
 	value: 'layers',
 });
 
+const search = ref('');
+const membersTableState = ref<TableOptions>({
+	page: 0,
+	itemsPerPage: 10,
+	sortBy: [
+		{ id: 'firstName', desc: false },
+		{ id: 'lastName', desc: false },
+		{ id: 'email', desc: false },
+	],
+});
+
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
 		const isAlreadySharedWithUser = (formData.value.relations || []).find(
@@ -99,13 +113,71 @@ const onAddMember = (userId: string) => {
 	formData.value.relations.push(relation);
 };
 
-const onRoleAction = (userId: string, role?: string) => {
-	isDirty.value = true;
-	const index = formData.value.relations.findIndex((r: ProjectRelation) => r.id === userId);
-	if (role === 'remove') {
-		formData.value.relations.splice(index, 1);
-	} else {
-		formData.value.relations[index].role = role as ProjectRole;
+const onUpdateMemberRole = async ({ userId, role }: { userId: string; role: ProjectRole }) => {
+	if (!projectsStore.currentProject) {
+		return;
+	}
+	try {
+		// Update immediately to avoid admin conflicts
+		const memberIndex = formData.value.relations.findIndex((r) => r.id === userId);
+		if (memberIndex !== -1) {
+			formData.value.relations[memberIndex].role = role;
+			// Save the project with updated role
+			await projectsStore.updateProject(projectsStore.currentProject.id, {
+				name: formData.value.name!,
+				icon: projectIcon.value,
+				description: formData.value.description!,
+				relations: formData.value.relations.map((r: ProjectRelation) => ({
+					userId: r.id,
+					role: r.role as TeamProjectRole,
+				})),
+			});
+			toast.showMessage({
+				type: 'success',
+				title: i18n.baseText('projects.settings.memberRole.updated.title'),
+			});
+			telemetry.track('User changed member role on project', {
+				project_id: projectsStore.currentProject.id,
+				target_user_id: userId,
+				role,
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('projects.settings.memberRole.update.error.title'));
+	}
+};
+
+const onRemoveMember = async ({ userId }: { userId: string }) => {
+	if (!projectsStore.currentProject) {
+		return;
+	}
+
+	try {
+		// Remove member immediately
+		const memberIndex = formData.value.relations.findIndex((r) => r.id === userId);
+		if (memberIndex !== -1) {
+			formData.value.relations.splice(memberIndex, 1);
+			// Save the project with removed member
+			await projectsStore.updateProject(projectsStore.currentProject.id, {
+				name: formData.value.name!,
+				icon: projectIcon.value,
+				description: formData.value.description!,
+				relations: formData.value.relations.map((r: ProjectRelation) => ({
+					userId: r.id,
+					role: r.role as TeamProjectRole,
+				})),
+			});
+			toast.showMessage({
+				type: 'success',
+				title: i18n.baseText('projects.settings.member.removed.title'),
+			});
+			telemetry.track('User removed member from project', {
+				project_id: projectsStore.currentProject.id,
+				target_user_id: userId,
+			});
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('projects.settings.member.remove.error.title'));
 	}
 };
 
@@ -293,17 +365,60 @@ watch(
 );
 
 // Add users property to the relation objects,
-// So that N8nUsersList has access to the full user data
+// So that the table has access to the full user data
 const relationUsers = computed(() =>
 	formData.value.relations.map((relation: ProjectRelation) => {
 		const user = usersStore.usersById[relation.id];
-		if (!user) return relation as ProjectRelation & IUser;
+		if (!user) {
+			return {
+				...relation,
+				role: relation.role as ProjectRole,
+				firstName: null,
+				lastName: null,
+				email: null,
+			};
+		}
 		return {
 			...user,
 			...relation,
+			role: relation.role as ProjectRole, // Cast to ProjectRole for component compatibility
 		};
 	}),
 );
+
+const membersTableData = computed(() => ({
+	items: relationUsers.value,
+	count: relationUsers.value.length,
+}));
+
+const filteredMembersData = computed(() => {
+	if (!search.value.trim()) {
+		return membersTableData.value;
+	}
+	const searchTerm = search.value.toLowerCase();
+	const filtered = relationUsers.value.filter((member) => {
+		const fullName = `${member.firstName || ''} ${member.lastName || ''}`.toLowerCase();
+		const email = (member.email || '').toLowerCase();
+		return fullName.includes(searchTerm) || email.includes(searchTerm);
+	});
+	return {
+		items: filtered,
+		count: filtered.length,
+	};
+});
+
+const debouncedSearch = useDebounceFn(() => {
+	membersTableState.value.page = 0; // Reset to first page on search
+}, 300);
+
+const onSearch = (value: string) => {
+	search.value = value;
+	void debouncedSearch();
+};
+
+const onUpdateMembersTableOptions = (options: TableOptions) => {
+	membersTableState.value = options;
+};
 
 onBeforeMount(async () => {
 	await usersStore.fetchUsers();
@@ -377,49 +492,30 @@ onMounted(() => {
 						<N8nIcon icon="search" />
 					</template>
 				</N8nUserSelect>
-				<N8nUsersList
-					:actions="[]"
-					:users="relationUsers"
-					:current-user-id="usersStore.currentUser?.id"
-					:delete-label="i18n.baseText('workflows.shareModal.list.delete')"
-				>
-					<template #actions="{ user }">
-						<div :class="$style.buttons">
-							<N8nSelect
-								class="mr-2xs"
-								:model-value="user?.role || projectRoles[0].slug"
-								size="small"
-								data-test-id="projects-settings-user-role-select"
-								@update:model-value="onRoleAction(user.id, $event)"
-							>
-								<N8nOption
-									v-for="role in projectRoles"
-									:key="role.slug"
-									:value="role.slug"
-									:label="role.displayName"
-									:disabled="!role.licensed"
-								>
-									{{ role.displayName
-									}}<span
-										v-if="!role.licensed"
-										:class="$style.upgrade"
-										@click="upgradeDialogVisible = true"
-									>
-										&nbsp;-&nbsp;{{ i18n.baseText('generic.upgrade') }}
-									</span>
-								</N8nOption>
-							</N8nSelect>
-							<N8nButton
-								type="tertiary"
-								native-type="button"
-								square
-								icon="trash-2"
-								data-test-id="project-user-remove"
-								@click="onRoleAction(user.id, 'remove')"
-							/>
-						</div>
-					</template>
-				</N8nUsersList>
+				<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
+					<N8nInput
+						:class="$style.search"
+						:model-value="search"
+						:placeholder="i18n.baseText('projects.settings.members.search.placeholder')"
+						clearable
+						data-test-id="project-members-search"
+						@update:model-value="onSearch"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+					<ProjectMembersTable
+						v-model:table-options="membersTableState"
+						data-test-id="project-members-table"
+						:data="filteredMembersData"
+						:current-user-id="usersStore.currentUser?.id"
+						:project-roles="projectRoles"
+						@update:options="onUpdateMembersTableOptions"
+						@update:role="onUpdateMemberRole"
+						@remove:member="onRemoveMember"
+					/>
+				</div>
 			</fieldset>
 			<fieldset :class="$style.buttons">
 				<div>
@@ -511,6 +607,15 @@ onMounted(() => {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
+}
+
+.membersTableContainer {
+	margin-top: var(--spacing-s);
+}
+
+.search {
+	max-width: 300px;
+	margin-bottom: var(--spacing-s);
 }
 
 .project-name {
