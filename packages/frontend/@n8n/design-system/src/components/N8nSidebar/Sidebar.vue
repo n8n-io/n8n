@@ -276,7 +276,7 @@ const {
 .sidebar {
 	padding: var(--spacing-xs);
 	padding-top: var(--spacing-5xs);
-
+	padding-right: var(--spacing-5xs);
 	background-color: var(--color-foreground-xlight);
 	position: relative;
 	max-height: 100%;
