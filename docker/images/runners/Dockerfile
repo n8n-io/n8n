@@ -1,5 +1,5 @@
-ARG PYTHON_IMAGE=python:3.13-alpine
 ARG NODE_VERSION=22
+ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
@@ -9,13 +9,12 @@ COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
-# Produces a relocatable venv tied to PYTHON_IMAGE
+# Produces a relocatable venv tied to the python version used
 # ==============================================================================
-FROM ${PYTHON_IMAGE} AS python-runner-builder
+FROM python:${PYTHON_VERSION}-alpine AS python-runner-builder
 ARG TARGETPLATFORM
 ARG UV_VERSION=0.8.14
 
-RUN apk add --no-cache wget ca-certificates
 RUN set -e; \
   case "$TARGETPLATFORM" in \
     "linux/amd64") UV_ARCH="x86_64-unknown-linux-musl" ;; \
@@ -79,7 +78,7 @@ FROM node:${NODE_VERSION}-alpine AS node-alpine
 # ==============================================================================
 # STAGE 5: Runtime
 # ==============================================================================
-FROM ${PYTHON_IMAGE} AS runtime
+FROM python:${PYTHON_VERSION}-alpine AS runtime
 ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
 
