@@ -1,41 +1,13 @@
 <script setup lang="ts">
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { N8nIconButton } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
 import type { INode } from 'n8n-workflow';
-import { computed } from 'vue';
 
 const emit = defineEmits<{ close: []; 'selected-node-update': [id: string] }>();
 
-const props = defineProps<{
+defineProps<{
 	selectedNodeId: string;
 	nodes: INode[];
 }>();
-
-const nodeTypesStore = useNodeTypesStore();
-
-const i18n = useI18n();
-
-const nodesById = computed(() =>
-	props.nodes.reduce(
-		(acc, node) => {
-			acc[node.id] = node;
-			return acc;
-		},
-		{} as Record<string, INode>,
-	),
-);
-
-const nodesWithType = computed(() =>
-	props.nodes.map((node) => ({
-		node,
-		type: nodeTypesStore.getNodeType(node.type, node.typeVersion),
-	})),
-);
-const selectedNode = computed(() => nodesById.value[props.selectedNodeId]);
-const selectedNodeType = computed(() =>
-	nodeTypesStore.getNodeType(selectedNode.value.type, selectedNode.value.typeVersion),
-);
 </script>
 
 <template>
@@ -47,32 +19,15 @@ const selectedNodeType = computed(() =>
 				filterable
 				@update:model-value="emit('selected-node-update', $event)"
 			>
-				<template #prefix>
-					<NodeIcon
-						:disabled="selectedNode.disabled"
-						:node-type="selectedNodeType"
-						:size="14"
-						:shrink="false"
-					/>
-				</template>
-
 				<N8nOption
-					v-for="{ node, type } of nodesWithType"
+					v-for="node of nodes"
 					:key="node.id"
 					:value="node.id"
 					:class="[$style.node, { [$style.disabled]: node.disabled }]"
 					:label="node.name"
 				>
-					<NodeIcon
-						:disabled="node.disabled"
-						:node-type="type"
-						:size="14"
-						:shrink="false"
-						:class="$style.icon"
-					/>
 					<span :class="$style.title">
 						{{ node.name }}
-						<span v-if="node.disabled">({{ i18n.baseText('node.disabled') }})</span>
 					</span>
 				</N8nOption>
 			</N8nSelect>

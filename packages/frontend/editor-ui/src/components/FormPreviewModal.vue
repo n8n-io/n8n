@@ -60,10 +60,10 @@ watch(selectedFormNode, (node) => {
 
 .dialog {
 	position: absolute;
-	width: calc(100% - var(--spacing-xl));
-	height: calc(100% - var(--spacing-xl));
-	top: var(--spacing-s);
-	left: var(--spacing-s);
+	width: calc(100% - var(--spacing-2xl));
+	height: calc(100% - var(--spacing-2xl));
+	top: calc(var(--spacing-2xl) / 2);
+	left: calc(var(--spacing-2xl) / 2);
 	border: none;
 	background: none;
 	padding: 0;

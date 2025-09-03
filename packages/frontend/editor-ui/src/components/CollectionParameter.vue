@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import type {
+	INode,
 	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
@@ -25,6 +26,7 @@ export interface Props {
 	path: string;
 	values: INodeParameters;
 	isReadOnly?: boolean;
+	node?: INode;
 }
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
@@ -37,9 +39,11 @@ const nodeHelpers = useNodeHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
 
+const node = computed(() => props.node ?? activeNode.value);
+
 const getPlaceholderText = computed(() => {
 	return (
-		i18n.nodeText(activeNode.value?.type).placeholder(props.parameter, props.path) ??
+		i18n.nodeText(node.value?.type).placeholder(props.parameter, props.path) ??
 		i18n.baseText('collectionParameter.choose')
 	);
 });
@@ -55,7 +59,7 @@ function getParameterOptionLabel(
 ): string {
 	if (isNodePropertyCollection(item)) {
 		return i18n
-			.nodeText(activeNode.value?.type)
+			.nodeText(node.value?.type)
 			.collectionOptionDisplayName(props.parameter, item, props.path);
 	}
 
@@ -67,7 +71,8 @@ function displayNodeParameter(parameter: INodeProperties) {
 		// If it is not defined no need to do a proper check
 		return true;
 	}
-	return nodeHelpers.displayParameter(props.nodeValues, parameter, props.path, ndvStore.activeNode);
+
+	return nodeHelpers.displayParameter(props.nodeValues, parameter, props.path, node.value);
 }
 
 function getOptionProperties(optionName: string) {
@@ -174,6 +179,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 
 			<Suspense>
 				<ParameterInputList
+					:node="node"
 					:parameters="getProperties"
 					:node-values="nodeValues"
 					:path="path"
