@@ -3,6 +3,15 @@ revision = 3
 requires-python = ">=3.13"
 
 [[package]]
+name = "certifi"
+version = "2025.8.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/67/960ebe6bf230a96cda2e0abcf73af550ec4f090005363542f0765df162e0/certifi-2025.8.3.tar.gz", hash = "sha256:e564105f78ded564e3ae7c923924435e1daa7463faeab5bb932bc53ffae63407", size = 162386, upload-time = "2025-08-03T03:07:47.08Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e5/48/1549795ba7742c948d2ad169c1c8cdbae65bc450d6cd753d124b17c8cd32/certifi-2025.8.3-py3-none-any.whl", hash = "sha256:f6c12493cfb1b06ba2ff328595af9350c65d6644968e5d3a2ffd78699af217a5", size = 161216, upload-time = "2025-08-03T03:07:45.777Z" },
+]
+
+[[package]]
 name = "ruff"
 version = "0.12.8"
 source = { registry = "https://pypi.org/simple" }
@@ -28,11 +37,29 @@ wheels = [
 ]
 
 [[package]]
+name = "sentry-sdk"
+version = "2.35.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bd/79/0ecb942f3f1ad26c40c27f81ff82392d85c01d26a45e3c72c2b37807e680/sentry_sdk-2.35.2.tar.gz", hash = "sha256:e9e8f3c795044beb59f2c8f4c6b9b0f9779e5e604099882df05eec525e782cc6", size = 343377, upload-time = "2025-09-01T11:00:58.633Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c0/91/a43308dc82a0e32d80cd0dfdcfca401ecbd0f431ab45f24e48bb97b7800d/sentry_sdk-2.35.2-py2.py3-none-any.whl", hash = "sha256:38c98e3cbb620dd3dd80a8d6e39c753d453dd41f8a9df581b0584c19a52bc926", size = 363975, upload-time = "2025-09-01T11:00:56.574Z" },
+]
+
+[[package]]
 name = "task-runner-python"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "websockets" },
+]
+
+[package.optional-dependencies]
+sentry = [
+    { name = "sentry-sdk" },
 ]
 
 [package.dev-dependencies]
@@ -42,7 +69,11 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "websockets", specifier = ">=15.0.1" }]
+requires-dist = [
+    { name = "sentry-sdk", marker = "extra == 'sentry'", specifier = ">=2.35.2" },
+    { name = "websockets", specifier = ">=15.0.1" },
+]
+provides-extras = ["sentry"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -73,6 +104,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ab/90/19dac956ab9f1ad04b4d1a38df856b44f237b3eda5af5b76a29439e64165/ty-0.0.1a17-py3-none-win32.whl", hash = "sha256:c3ba585145c4a019cb31001a1d0bd606e01fe01b285a20188a42eba165dddd50", size = 7617341, upload-time = "2025-08-06T12:13:49.093Z" },
     { url = "https://files.pythonhosted.org/packages/f5/94/08e2b3f6bc0af97abcd3fcc8ea28797a627296613256ae37e98043c871ca/ty-0.0.1a17-py3-none-win_amd64.whl", hash = "sha256:7d00b569ebd4635c58840d2ed9e1d2d8b36f496619c0bc0c8d1777767786b508", size = 8230727, upload-time = "2025-08-06T12:13:50.705Z" },
     { url = "https://files.pythonhosted.org/packages/98/c6/207bbc2f3bb71df4b1aeabe8e9c31a1cd22c72aff0ab9c1a832b9ae54f6e/ty-0.0.1a17-py3-none-win_arm64.whl", hash = "sha256:636eacc1dceaf09325415a70a03cd57eae53e5c7f281813aaa943a698a45cddb", size = 7782847, upload-time = "2025-08-06T12:13:54.243Z" },
+]
+
+[[package]]
+name = "urllib3"
+version = "2.5.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/22/9ee70a2574a4f4599c47dd506532914ce044817c7752a79b6a51286319bc/urllib3-2.5.0.tar.gz", hash = "sha256:3fc47733c7e419d4bc3f6b3dc2b4f890bb743906a30d56ba4a5bfa4bbff92760", size = 393185, upload-time = "2025-06-18T14:07:41.644Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a7/c2/fe1e52489ae3122415c51f387e221dd0773709bad6c6cdaa599e8a2c5185/urllib3-2.5.0-py3-none-any.whl", hash = "sha256:e6b01673c0fa6a13e374b50871808eb3bf7046c4b125b216f6bf1cc604cff0dc", size = 129795, upload-time = "2025-06-18T14:07:40.39Z" },
 ]
 
 [[package]]

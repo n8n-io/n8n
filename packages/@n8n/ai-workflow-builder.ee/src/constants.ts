@@ -34,3 +34,5 @@ export const MAX_WORKFLOW_LENGTH_TOKENS = 30_000; // Tokens
  * Used for rough token count estimation from character counts.
  */
 export const AVG_CHARS_PER_TOKEN_ANTHROPIC = 2.5;
+
+export const PLAN_APPROVAL_MESSAGE = 'Proceed with the plan';
