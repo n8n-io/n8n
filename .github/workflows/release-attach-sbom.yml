@@ -28,36 +28,26 @@ jobs:
           npm i -g corepack@0.33
           corepack enable
 
-      - name: Restore build artifacts from cache
-        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.event.release.target_commitish }}-release:build
-          fail-on-cache-miss: true
+      - name: Install dependencies for SBOM generation
+        run: pnpm install --frozen-lockfile
 
-      - name: Install dependencies and pack packages
-        run: |
-          pnpm install --frozen-lockfile
-          mkdir -p npm-packages
-          pnpm pack -r --pack-destination ./npm-packages
-
-      - name: Generate CycloneDX SBOM with Syft
+      - name: Generate CycloneDX SBOM for source code
         uses: anchore/sbom-action@b9a8bc8d2c19e9396f663e53c7b55848e98cf17c # v0.17.6
         with:
-          path: ./npm-packages
+          path: ./
           format: cyclonedx-json
-          output-file: sbom-npm.cdx.json
+          output-file: sbom-source.cdx.json
 
-      - name: Attest build provenance for npm packages
+      - name: Attest build provenance for source release
         uses: actions/attest-build-provenance@977bb37082e0bfde04bb18e63b0632b7b5a1c4a3 # v3.0.0
         with:
-          subject-path: './npm-packages/*.tgz'
+          subject-path: './package.json'
 
-      - name: Attest SBOM for npm packages
+      - name: Attest SBOM for source release
         uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
         with:
-          subject-path: './npm-packages/*.tgz'
-          sbom-path: 'sbom-npm.cdx.json'
+          subject-path: './package.json'
+          sbom-path: 'sbom-source.cdx.json'
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@9e9de2292db7abb3f51b7f4808d98f0d347a8919 # v3.7.0
@@ -66,7 +56,7 @@ jobs:
         run: |
           # Sign SBOM using Cosign keyless signing with GitHub OIDC
           # This provides cryptographic proof of authenticity and integrity
-          cosign sign-blob --yes --output-signature sbom-npm.cdx.sig --output-certificate sbom-npm.cdx.pem sbom-npm.cdx.json
+          cosign sign-blob --yes --output-signature sbom-source.cdx.sig --output-certificate sbom-source.cdx.pem sbom-source.cdx.json
 
       - name: Attach SBOM files to release
         env:
@@ -74,12 +64,12 @@ jobs:
         run: |
           # Upload SBOM files to the existing release
           gh release upload "${{ github.event.release.tag_name }}" \
-            sbom-npm.cdx.json \
-            sbom-npm.cdx.sig \
-            sbom-npm.cdx.pem \
+            sbom-source.cdx.json \
+            sbom-source.cdx.sig \
+            sbom-source.cdx.pem \
             --clobber
 
-          COMPONENT_COUNT=$(jq '.components | length' sbom-npm.cdx.json 2>/dev/null || echo "unknown")
+          COMPONENT_COUNT=$(jq '.components | length' sbom-source.cdx.json 2>/dev/null || echo "unknown")
           echo "✅ SBOM workflow completed"
           echo "📊 SBOM contains $COMPONENT_COUNT components"
-          echo "🛡️ GitHub attestations created for packages"
+          echo "🛡️ GitHub attestations created for source release"
