@@ -8,21 +8,19 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from 'reka-ui';
-import { ref, computed, useTemplateRef, nextTick } from 'vue';
+import { ref, computed } from 'vue';
 
-import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import SingleSelect from './SingleSelect.vue';
 import type { IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
-import InlineTextEdit from '../N8nInlineTextEdit/InlineTextEdit.vue';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 import MultiSelect from './MultiSelect.vue';
 
 interface ActiveFilter {
 	filterName: string;
-	values: string[];
+	values: FilterItem[];
 	type: 'single' | 'multi';
 }
 
@@ -62,102 +60,43 @@ const activeFilters = ref<ActiveFilter[]>([]);
 const filterOptions = computed(() => props.filters);
 const hasActiveFilters = computed(() => activeFilters.value.length > 0);
 
-function handleSingleSelectChange(filterName: string, value: FilterItem | null) {
-	if (value) {
-		const existingFilterIndex = activeFilters.value.findIndex(
-			(filter) => filter.filterName === filterName,
-		);
+function handleSingleSelectChange(filterName: string, value: FilterItem | null) {}
 
-		if (existingFilterIndex >= 0) {
-			activeFilters.value[existingFilterIndex].values = [value.value];
-		} else {
-			activeFilters.value.push({
-				filterName,
-				values: [value.value],
-				type: 'single',
-			});
+function handleMultiSelectChange(filterName: string, value: FilterItem) {
+	const filterToUpdate = activeFilters.value.find((f) => f.filterName === filterName);
+
+	console.log('filterToUpdate', filterToUpdate);
+
+	if (!filterToUpdate) {
+		activeFilters.value.push({
+			filterName,
+			values: [value],
+			type: 'multi',
+		});
+		return;
+	}
+
+	// Toggle off the value if it's already selected
+	if (filterToUpdate.values.some((v) => v.id === value.id)) {
+		filterToUpdate.values = filterToUpdate.values.filter((v) => v.id !== value.id);
+
+		if (filterToUpdate.values.length === 0) {
+			activeFilters.value = activeFilters.value.filter((f) => f.filterName !== filterName);
 		}
-	} else {
-		removeFilter(filterName);
+
+		return;
 	}
+
+	activeFilters.value = activeFilters.value.map((f) =>
+		f.filterName === filterName ? { ...f, values: [...f.values, value] } : f,
+	);
 }
 
-function handleMultiSelectChange(filterName: string, values: FilterItem[]) {
-	if (values.length === 0) {
-		removeFilter(filterName);
-	} else {
-		const existingFilterIndex = activeFilters.value.findIndex(
-			(filter) => filter.filterName === filterName,
-		);
+function getSelectedSingleValue() {}
 
-		if (existingFilterIndex >= 0) {
-			activeFilters.value[existingFilterIndex].values = values.map((v) => v.value);
-		} else {
-			activeFilters.value.push({
-				filterName,
-				values: values.map((v) => v.value),
-				type: 'multi',
-			});
-		}
-	}
-}
+function getSelectedMultiValues() {}
 
-function getSelectedSingleValue(filterName: string): FilterItem | null {
-	const filter = activeFilters.value.find((f) => f.filterName === filterName);
-	if (filter && filter.values.length > 0) {
-		const value = filter.values[0];
-		return { name: value, id: value, value };
-	}
-	return null;
-}
-
-function getSelectedMultiValues(filterName: string): FilterItem[] {
-	const filter = activeFilters.value.find((f) => f.filterName === filterName);
-	if (filter) {
-		return filter.values.map((value) => ({ name: value, id: value, value }));
-	}
-	return [];
-}
-
-function removeFilter(filterName: string) {
-	const index = activeFilters.value.findIndex((f) => f.filterName === filterName);
-	if (index >= 0) {
-		activeFilters.value.splice(index, 1);
-	}
-}
-
-// function clearAllFilters() {
-// 	activeFilters.value = [];
-// }
-
-const resourceSearch = ref<{ text: string; state: 'visible' | 'hidden' }>({
-	text: '',
-	state: 'hidden',
-});
-const searchInputRef = useTemplateRef('searchInputRef');
-
-async function toggleSearchInput() {
-	if (resourceSearch.value.state === 'hidden') {
-		resourceSearch.value.state = 'visible';
-
-		await nextTick();
-		const inputRef = Array.isArray(searchInputRef.value)
-			? searchInputRef.value[0]
-			: searchInputRef.value;
-		if (inputRef?.forceFocus) {
-			inputRef.forceFocus();
-		}
-	} else {
-		resourceSearch.value.state = 'hidden';
-		resourceSearch.value.text = '';
-	}
-}
-
-function handleBlur() {
-	if (resourceSearch.value.text.trim() === '') {
-		resourceSearch.value.state = 'hidden';
-	}
-}
+// function removeFilter(filterName: string) {}
 </script>
 
 <template>
@@ -166,9 +105,11 @@ function handleBlur() {
 			<!-- Active Filters -->
 			<div v-if="hasActiveFilters" class="active-filters">
 				<template v-for="filter in activeFilters" :key="filter.filterName">
-					<button class="filter-tag active" @click="removeFilter(filter.filterName)">
+					<button class="filter-tag active">
 						<N8nText size="small">{{ filter.filterName }} is</N8nText>
-						<N8nText bold size="small">{{ filter.values.join(', ') }}</N8nText>
+						<N8nText bold size="small">{{
+							filter.values.map(({ name }) => name).join(', ')
+						}}</N8nText>
 						<N8nIcon icon="x" />
 					</button>
 				</template>
@@ -211,8 +152,7 @@ function handleBlur() {
 											:items="filterOption.options"
 											:model-value="getSelectedMultiValues(filterOption.label)"
 											@update:model-value="
-												(values: FilterItem[]) =>
-													handleMultiSelectChange(filterOption.label, values)
+												(values) => handleMultiSelectChange(filterOption.label, values)
 											"
 											:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
 										/>
@@ -224,33 +164,6 @@ function handleBlur() {
 				</DropdownMenuPortal>
 			</DropdownMenuRoot>
 		</div>
-
-		<template v-for="action in props.actions" :key="action.label">
-			<N8nTooltip :content="action.tooltip || action.label">
-				<N8nIconButton type="tertiary" :icon="action.icon" text @click="toggleSearchInput" />
-			</N8nTooltip>
-			<N8nText v-if="action.tooltip === 'Search' && resourceSearch.state === 'visible'">
-				<InlineTextEdit
-					ref="searchInputRef"
-					:placeholder="`Search...`"
-					:max-width="100"
-					:min-width="100"
-					:model-value="resourceSearch.text"
-					@update:state="
-						({ state, value }) => {
-							if (state === 'submit' && value.trim() === '') {
-								handleBlur();
-							}
-						}
-					"
-					@update:model-value="(value: string) => (resourceSearch.text = value)"
-				/>
-			</N8nText>
-		</template>
-		<N8nTooltip v-if="!noTertiaryActions" content="More actions">
-			<N8nIconButton type="tertiary" icon="ellipsis" text />
-		</N8nTooltip>
-		<N8nButton v-if="primaryActionText" size="small">{{ props.primaryActionText }}</N8nButton>
 	</div>
 </template>
 

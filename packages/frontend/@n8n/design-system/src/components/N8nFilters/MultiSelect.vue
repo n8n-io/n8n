@@ -20,7 +20,7 @@ interface Item {
 	value: string;
 }
 
-const props = withDefaults(
+withDefaults(
 	defineProps<{
 		items: Item[];
 		placeholder?: string;
@@ -32,29 +32,20 @@ const props = withDefaults(
 	},
 );
 
-const emit = defineEmits<{
-	'update:modelValue': [value: Item[]];
+defineEmits<{
+	'update:modelValue': [value: Item];
 }>();
 
 const open = ref(true);
-
-function handleValueChange(value: Item) {
-	const currentValues = props.modelValue || [];
-	const isSelected = currentValues.some((item) => item.id === value.id);
-
-	if (isSelected) {
-		const newValues = currentValues.filter((item) => item.id !== value.id);
-		emit('update:modelValue', newValues);
-	} else {
-		emit('update:modelValue', [...currentValues, value]);
-	}
-}
-
-const selectedValues = ref<Item[]>(props.modelValue || []);
 </script>
 
 <template>
-	<ComboboxRoot class="root" v-model="selectedValues" multiple :open="open" @update:open="() => {}">
+	<ComboboxRoot
+		class="root"
+		:open="open"
+		@update:open="() => {}"
+		@update:model-value="(value) => $emit('update:modelValue', value as Item)"
+	>
 		<ComboboxAnchor class="ComboboxAnchor">
 			<ComboboxInput class="ComboboxInput" :placeholder="placeholder" />
 		</ComboboxAnchor>
@@ -62,15 +53,8 @@ const selectedValues = ref<Item[]>(props.modelValue || []);
 			<ComboboxViewport class="ComboboxViewport">
 				<ComboboxEmpty class="ComboboxEmpty" />
 				<template v-for="item in items" :key="item.id">
-					<ComboboxItem :value="item" class="ComboboxItem" @click="handleValueChange(item)">
-						<ComboboxItemIndicator
-							class="ComboboxItemIndicator"
-							:data-state="
-								(modelValue || []).some((selected) => selected.id === item.id)
-									? 'checked'
-									: 'unchecked'
-							"
-						>
+					<ComboboxItem :value="item" class="ComboboxItem">
+						<ComboboxItemIndicator class="ComboboxItemIndicator">
 							<N8nIcon size="small" icon="check" />
 						</ComboboxItemIndicator>
 						<N8nText size="small">
