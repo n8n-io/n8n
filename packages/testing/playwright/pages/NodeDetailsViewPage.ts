@@ -665,6 +665,7 @@ export class NodeDetailsViewPage extends BasePage {
 		for (const [key, val] of Object.entries(values)) {
 			const input = this.page.getByTestId(`parameter-input-${key}`).locator('input, textarea');
 			await input.fill(val);
+			await expect(input).toHaveValue(val);
 		}
 
 		if (save) {

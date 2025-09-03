@@ -2,6 +2,11 @@ import type { Locator } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
+import {
+	createMockNodeExecutionData,
+	runMockWorkflowExecution,
+	type MockWorkflowExecutionOptions,
+} from '../utils/execution-mocks';
 import { resolveFromRoot } from '../utils/path-helper';
 
 export class CanvasPage extends BasePage {
@@ -526,6 +531,12 @@ export class CanvasPage extends BasePage {
 		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
 	}
 
+	getManualChatLatestBotMessage(): Locator {
+		return this.getManualChatModal()
+			.locator('.chat-messages-list .chat-message.chat-message-from-bot')
+			.last();
+	}
+
 	async sendManualChatMessage(message: string): Promise<void> {
 		await this.getManualChatInput().fill(message);
 		await this.getManualChatModal().locator('.chat-input-send-button').click();
@@ -577,7 +588,7 @@ export class CanvasPage extends BasePage {
 			| 'ai_vectorRetriever'
 			| 'ai_vectorStore',
 		parentNodeName: string,
-		exactMatch = false,
+		{ closeNDV = false, exactMatch = false }: { closeNDV?: boolean; exactMatch?: boolean } = {},
 	): Promise<void> {
 		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
 
@@ -586,32 +597,10 @@ export class CanvasPage extends BasePage {
 		} else {
 			await this.nodeCreatorNodeItems().filter({ hasText: childNodeName }).first().click();
 		}
-		await this.page.keyboard.press('Escape');
-	}
 
-	async addLanguageModelNodeToParent(
-		nodeName: string,
-		parentNodeName: string,
-		exactMatch = false,
-	): Promise<void> {
-		await this.addSupplementalNodeToParent(
-			nodeName,
-			'ai_languageModel',
-			parentNodeName,
-			exactMatch,
-		);
-	}
-
-	async addMemoryNodeToParent(nodeName: string, parentNodeName: string): Promise<void> {
-		await this.addSupplementalNodeToParent(nodeName, 'ai_memory', parentNodeName);
-	}
-
-	async addToolNodeToParent(nodeName: string, parentNodeName: string): Promise<void> {
-		await this.addSupplementalNodeToParent(nodeName, 'ai_tool', parentNodeName);
-	}
-
-	async addOutputParserNodeToParent(nodeName: string, parentNodeName: string): Promise<void> {
-		await this.addSupplementalNodeToParent(nodeName, 'ai_outputParser', parentNodeName);
+		if (closeNDV) {
+			await this.page.keyboard.press('Escape');
+		}
 	}
 
 	// Logs panel helpers
@@ -626,4 +615,21 @@ export class CanvasPage extends BasePage {
 	getLogEntries() {
 		return this.page.getByTestId('logs-overview-body').locator('[role="treeitem"]');
 	}
+
+	// Execution mocking helpers
+	async mockWorkflowExecution(options: MockWorkflowExecutionOptions): Promise<void> {
+		await runMockWorkflowExecution(this.page, options);
+	}
+
+	async sendPushEvent(event: string, data: Record<string, unknown>): Promise<void> {
+		await this.page.context().request.post('/rest/e2e/push', {
+			data: {
+				type: event,
+				data,
+			},
+		});
+	}
+
+	// Re-export for convenience
+	createMockNodeExecutionData = createMockNodeExecutionData;
 }
