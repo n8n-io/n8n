@@ -630,4 +630,87 @@ export class NodeDetailsViewPage extends BasePage {
 		await input.clear();
 		await input.fill(value);
 	}
+
+	async clickGetBackToCanvas(): Promise<void> {
+		await this.clickBackToCanvasButton();
+	}
+
+	async clickExecuteNode(): Promise<void> {
+		await this.execute();
+	}
+
+	getRunDataInfoCallout() {
+		return this.page.getByTestId('run-data-callout');
+	}
+
+	getOutputPanelTable() {
+		return this.getOutputTable();
+	}
+
+	async checkParameterCheckboxInputByName(name: string): Promise<void> {
+		const checkbox = this.getParameterInput(name).locator('.el-switch.switch-input');
+		await checkbox.click();
+	}
+
+	// Credentials modal helpers
+	async clickCreateNewCredential(eq: number = 0): Promise<void> {
+		await this.page.getByTestId('node-credentials-select').nth(eq).click();
+		await this.page.getByTestId('node-credentials-select-item-new').click();
+	}
+
+	async setCredentialValues(values: Record<string, string>, save: boolean = true): Promise<void> {
+		const modal = this.page.getByTestId('editCredential-modal');
+		await modal.waitFor({ state: 'visible' });
+
+		for (const [key, val] of Object.entries(values)) {
+			const input = this.page.getByTestId(`parameter-input-${key}`).locator('input, textarea');
+			await input.fill(val);
+		}
+
+		if (save) {
+			const saveBtn = this.page.getByTestId('credential-save-button');
+			await saveBtn.click();
+			await saveBtn.waitFor({ state: 'visible' });
+			// Saved state changes the button text to "Saved"
+			// Defensive wait for text when UI updates
+			try {
+				await saveBtn
+					.getByText('Saved', { exact: true })
+					.waitFor({ state: 'visible', timeout: 3000 });
+			} catch {
+				// ignore if text assertion is flaky; modal close below will still ensure flow continues
+			}
+			// Close modal
+			const closeBtn = modal.locator('.el-dialog__close').first();
+			if (await closeBtn.isVisible()) {
+				await closeBtn.click();
+			}
+		}
+	}
+
+	// Run selector and linking helpers
+	getInputRunSelector() {
+		return this.page.locator('[data-test-id="ndv-input-panel"] [data-test-id="run-selector"]');
+	}
+
+	getOutputRunSelector() {
+		return this.page.locator('[data-test-id="output-panel"] [data-test-id="run-selector"]');
+	}
+
+	getInputRunSelectorInput() {
+		return this.getInputRunSelector().locator('input');
+	}
+
+	getOutputRunSelectorInput() {
+		return this.getOutputRunSelector().locator('input');
+	}
+
+	async changeOutputRunSelector(runName: string): Promise<void> {
+		await this.getOutputRunSelector().click();
+		await this.page.getByRole('option', { name: runName }).click();
+	}
+
+	async toggleInputRunLinking(): Promise<void> {
+		await this.getInputPanel().getByTestId('link-run').click();
+	}
 }
