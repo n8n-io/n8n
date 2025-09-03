@@ -546,8 +546,10 @@ const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) =
 		await dataStoreStore.updateRow(props.dataStore.id, props.dataStore.projectId, id, {
 			[fieldName]: value,
 		});
+
 		telemetry.track('User edited data table content', {
 			data_table_id: props.dataStore.id,
+			column_id: colDef.colId,
 			column_name: fieldName,
 			column_type: colDef.cellDataType,
 		});
