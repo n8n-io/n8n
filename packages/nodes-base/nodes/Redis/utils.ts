@@ -11,12 +11,19 @@ import { createClient } from 'redis';
 import type { RedisCredential, RedisClient } from './types';
 
 export function setupRedisClient(credentials: RedisCredential): RedisClient {
+	const socketConfig: any = {
+		host: credentials.host,
+		port: credentials.port,
+		tls: credentials.ssl === true,
+	};
+
+	// If SSL is enabled and TLS verification should be disabled
+	if (credentials.ssl === true && credentials.disableTlsVerification === true) {
+		socketConfig.rejectUnauthorized = false;
+	}
+
 	return createClient({
-		socket: {
-			host: credentials.host,
-			port: credentials.port,
-			tls: credentials.ssl === true,
-		},
+		socket: socketConfig,
 		database: credentials.database,
 		username: credentials.user || undefined,
 		password: credentials.password || undefined,
@@ -33,6 +40,7 @@ export async function redisConnectionTest(
 		const client = setupRedisClient(credentials);
 		await client.connect();
 		await client.ping();
+		await client.quit();
 		return {
 			status: 'OK',
 			message: 'Connection successful!',

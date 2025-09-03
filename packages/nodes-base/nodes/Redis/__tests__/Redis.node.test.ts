@@ -58,6 +58,61 @@ describe('Redis Node', () => {
 			});
 		});
 
+		it('should configure TLS with verification disabled for self-signed certificates', () => {
+			setupRedisClient({
+				host: 'redis.domain',
+				port: 1234,
+				database: 0,
+				ssl: true,
+				disableTlsVerification: true,
+			});
+			expect(createClient).toHaveBeenCalledWith({
+				database: 0,
+				socket: {
+					host: 'redis.domain',
+					port: 1234,
+					tls: true,
+					rejectUnauthorized: false,
+				},
+			});
+		});
+
+		it('should not set rejectUnauthorized when TLS verification is enabled', () => {
+			setupRedisClient({
+				host: 'redis.domain',
+				port: 1234,
+				database: 0,
+				ssl: true,
+				disableTlsVerification: false,
+			});
+			expect(createClient).toHaveBeenCalledWith({
+				database: 0,
+				socket: {
+					host: 'redis.domain',
+					port: 1234,
+					tls: true,
+				},
+			});
+		});
+
+		it('should not set rejectUnauthorized when SSL is disabled', () => {
+			setupRedisClient({
+				host: 'redis.domain',
+				port: 1234,
+				database: 0,
+				ssl: false,
+				disableTlsVerification: true,
+			});
+			expect(createClient).toHaveBeenCalledWith({
+				database: 0,
+				socket: {
+					host: 'redis.domain',
+					port: 1234,
+					tls: false,
+				},
+			});
+		});
+
 		it('should set user on auth', () => {
 			setupRedisClient({
 				host: 'redis.domain',
@@ -74,6 +129,29 @@ describe('Redis Node', () => {
 					host: 'redis.domain',
 					port: 1234,
 					tls: false,
+				},
+			});
+		});
+
+		it('should configure TLS with disabled verification and auth', () => {
+			setupRedisClient({
+				host: 'redis.domain',
+				port: 1234,
+				database: 0,
+				ssl: true,
+				disableTlsVerification: true,
+				user: 'test_user',
+				password: 'test_password',
+			});
+			expect(createClient).toHaveBeenCalledWith({
+				database: 0,
+				username: 'test_user',
+				password: 'test_password',
+				socket: {
+					host: 'redis.domain',
+					port: 1234,
+					tls: true,
+					rejectUnauthorized: false,
 				},
 			});
 		});
@@ -125,6 +203,40 @@ describe('Redis Node', () => {
 			expect(createClient).toHaveBeenCalledWith(redisOptions);
 			expect(mockClient.connect).toHaveBeenCalled();
 			expect(mockClient.ping).not.toHaveBeenCalled();
+		});
+
+		it('should return success when connection is established with disabled TLS verification', async () => {
+			const credentialsWithTls = mock<ICredentialsDecrypted>({
+				data: {
+					host: 'localhost',
+					port: 6379,
+					ssl: true,
+					disableTlsVerification: true,
+					user: 'username',
+					password: 'password',
+					database: 0,
+				},
+			});
+
+			const result = await redisConnectionTest.call(thisArg, credentialsWithTls);
+
+			expect(result).toEqual({
+				status: 'OK',
+				message: 'Connection successful!',
+			});
+			expect(createClient).toHaveBeenCalledWith({
+				socket: {
+					host: 'localhost',
+					port: 6379,
+					tls: true,
+					rejectUnauthorized: false,
+				},
+				database: 0,
+				username: 'username',
+				password: 'password',
+			});
+			expect(mockClient.connect).toHaveBeenCalled();
+			expect(mockClient.ping).toHaveBeenCalled();
 		});
 	});
 
