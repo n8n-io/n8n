@@ -2410,5 +2410,27 @@ describe('dataStore', () => {
 				},
 			]);
 		});
+
+		it('should fail when filter contains invalid column names', async () => {
+			// ARRANGE
+			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
+				name: 'dataStore',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			await dataStoreService.insertRows(dataStoreId, project1.id, [{ name: 'Alice' }]);
+
+			// ACT
+			const result = dataStoreService.updateRow(dataStoreId, project1.id, {
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'invalidColumn', condition: 'eq', value: 'Alice' }],
+				},
+				data: { name: 'Bob' },
+			});
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreValidationError);
+		});
 	});
 });

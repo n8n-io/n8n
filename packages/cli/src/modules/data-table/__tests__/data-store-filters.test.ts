@@ -326,6 +326,49 @@ describe('dataStore filters', () => {
 					expect.objectContaining({ c1: 'Polo', c2: false }),
 				]);
 			});
+
+			it('should accept a valid numeric string', async () => {
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [{ name: 'age', type: 'number' }],
+				});
+
+				await dataStoreService.insertRows(dataStoreId, project.id, [{ age: null }, { age: 30 }]);
+
+				// ACT
+				const result = await dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'age', condition: 'eq', value: '30' }],
+					},
+				});
+
+				// ASSERT
+				expect(result.count).toEqual(1);
+				expect(result.data).toEqual([expect.objectContaining({ age: 30 })]);
+			});
+
+			it('should throw on invalid numeric string', async () => {
+				const { id: dataStoreId } = await dataStoreService.createDataStore(project.id, {
+					name: 'dataStore',
+					columns: [{ name: 'age', type: 'number' }],
+				});
+
+				await dataStoreService.insertRows(dataStoreId, project.id, [{ age: null }, { age: 30 }]);
+
+				// ACT
+				const result = dataStoreService.getManyRowsAndCount(dataStoreId, project.id, {
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'age', condition: 'eq', value: '30dfddf' }],
+					},
+				});
+
+				// ASSERT
+				await expect(result).rejects.toThrow(
+					new DataStoreValidationError("value '30dfddf' does not match column type 'number'"),
+				);
+			});
 		});
 
 		describe('LIKE filters', () => {

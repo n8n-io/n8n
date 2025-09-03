@@ -11,11 +11,17 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { DataStoreRow, DataStoreRowReturn, DataStoreRows } from 'n8n-workflow';
+import type {
+	DataStoreFilter,
+	DataStoreRow,
+	DataStoreRowReturn,
+	DataStoreRows,
+} from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
+import { DataTableColumn } from './data-table-column.entity';
 import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-found.error';
 import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
@@ -107,12 +113,11 @@ export class DataStoreService {
 		dto: ListDataStoreContentQueryDto,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
-		this.validateAndTransformFilters(dto);
 
-		// unclear if we should validate here, only use case would be to reduce the chance of
-		// a renamed/removed column appearing here (or added column missing) if the store was
-		// modified between when the frontend sent the request and we received it
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+		if (dto.filter) {
+			this.validateAndTransformFilters(dto.filter, columns);
+		}
 		const result = await this.dataStoreRowsRepository.getManyAndCount(dataStoreId, dto, columns);
 		return {
 			count: result.count,
@@ -189,7 +194,6 @@ export class DataStoreService {
 		returnData = false,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);
-		this.validateAndTransformFilters(dto);
 
 		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
 		if (columns.length === 0) {
@@ -206,14 +210,8 @@ export class DataStoreService {
 			throw new DataStoreValidationError('Data columns must not be empty for updateRow');
 		}
 
-		// Validate data columns
 		this.validateRowsWithColumns([data], columns, false);
-		// Validate filter columns
-		this.validateRowsWithColumns(
-			filter.filters.map((filter) => ({ [filter.columnName]: filter.value })),
-			columns,
-			true,
-		);
+		this.validateAndTransformFilters(filter, columns);
 
 		return await this.dataStoreRowsRepository.updateRow(
 			dataStoreId,
@@ -351,12 +349,21 @@ export class DataStoreService {
 		}
 	}
 
-	private validateAndTransformFilters(dto: ListDataStoreContentQueryDto): void {
-		if (!dto.filter?.filters) {
-			return;
-		}
+	private validateAndTransformFilters(
+		filterObject: DataStoreFilter,
+		columns: DataTableColumn[],
+	): void {
+		this.validateRowsWithColumns(
+			filterObject.filters.map((f) => {
+				return {
+					[f.columnName]: f.value,
+				};
+			}),
+			columns,
+			true,
+		);
 
-		for (const filter of dto.filter.filters) {
+		for (const filter of filterObject.filters) {
 			if (['like', 'ilike'].includes(filter.condition)) {
 				if (filter.value === null || filter.value === undefined) {
 					throw new DataStoreValidationError(
