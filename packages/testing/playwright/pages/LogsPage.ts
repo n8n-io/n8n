@@ -15,14 +15,19 @@ export class LogsPage extends BasePage {
 		return this.page.getByTestId('logs-overview-status');
 	}
 
+	getClearExecutionButton(): Locator {
+		return this.page
+			.getByTestId('logs-overview-header')
+			.locator('button')
+			.filter({ hasText: 'Clear execution' });
+	}
+
 	getLogEntries(): Locator {
-		return this.page.getByTestId('logs-overview-body').locator('[role=treeitem]');
+		return this.page.getByTestId('logs-overview-body').getByRole('treeitem');
 	}
 
 	getSelectedLogEntry(): Locator {
-		return this.page
-			.getByTestId('logs-overview-body')
-			.locator('[role=treeitem][aria-selected=true]');
+		return this.page.getByTestId('logs-overview-body').getByRole('treeitem', { selected: true });
 	}
 
 	getInputPanel(): Locator {
@@ -30,20 +35,15 @@ export class LogsPage extends BasePage {
 	}
 
 	getInputTableRows(): Locator {
-		return this.page.getByTestId('log-details-input').locator('table tr');
+		return this.getInputPanel().locator('table tr');
 	}
 
 	getInputTbodyCell(row: number, col: number): Locator {
-		return this.page
-			.getByTestId('log-details-input')
-			.locator('table tr')
-			.nth(row)
-			.locator('td')
-			.nth(col);
+		return this.getInputPanel().locator('table tbody tr').nth(row).locator('td').nth(col);
 	}
 
 	getNodeErrorMessageHeader(): Locator {
-		return this.page.getByTestId('log-details-output').getByTestId('node-error-message');
+		return this.getOutputPanel().getByTestId('node-error-message');
 	}
 
 	getOutputPanel(): Locator {
@@ -51,12 +51,7 @@ export class LogsPage extends BasePage {
 	}
 
 	getOutputTbodyCell(row: number, col: number): Locator {
-		return this.page
-			.getByTestId('log-details-output')
-			.locator('table tr')
-			.nth(row)
-			.locator('td')
-			.nth(col);
+		return this.getOutputPanel().locator('table tbody tr').nth(row).locator('td').nth(col);
 	}
 
 	/**
@@ -65,14 +60,6 @@ export class LogsPage extends BasePage {
 
 	async openLogsPanel(): Promise<void> {
 		await this.page.getByTestId('logs-overview-header').click();
-	}
-
-	async pressClearExecutionButton(): Promise<void> {
-		await this.page
-			.getByTestId('logs-overview-header')
-			.locator('button')
-			.filter({ hasText: 'Clear execution' })
-			.click();
 	}
 
 	async clickLogEntryAtRow(rowIndex: number): Promise<void> {
@@ -84,41 +71,22 @@ export class LogsPage extends BasePage {
 	}
 
 	async clickOpenNdvAtRow(rowIndex: number): Promise<void> {
-		const logEntry = this.getLogEntries().nth(rowIndex);
-		await logEntry.hover();
-		await logEntry.locator('[aria-label="Open..."]').click();
+		await this.getLogEntries().nth(rowIndex).hover();
+		await this.getLogEntries().nth(rowIndex).getByLabel('Open...').click();
 	}
 
 	async clickTriggerPartialExecutionAtRow(rowIndex: number): Promise<void> {
-		const logEntry = this.getLogEntries().nth(rowIndex);
-		await logEntry.hover();
-		await logEntry.locator('[aria-label="Execute step"]').click();
+		await this.getLogEntries().nth(rowIndex).hover();
+		await this.getLogEntries().nth(rowIndex).getByLabel('Execute step').click();
 	}
 
 	async setInputDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema'): Promise<void> {
-		// Check if input panel exists at all
-		const inputPanelCount = await this.page.getByTestId('log-details-input').count();
-		if (inputPanelCount === 0) {
-			console.warn(
-				`Input panel not found for display mode '${mode}' - log entry may not have input data`,
-			);
-			return;
-		}
-
-		const inputPanel = this.page.getByTestId('log-details-input');
-		await inputPanel.hover();
-		await inputPanel.getByTestId(`radio-button-${mode}`).click();
-
-		// Wait for the display mode change to take effect
-		if (mode === 'table') {
-			// Wait for table to appear
-			await inputPanel.locator('table').waitFor({ state: 'visible', timeout: 5000 });
-		}
+		await this.getInputPanel().hover();
+		await this.getInputPanel().getByTestId(`radio-button-${mode}`).click();
 	}
 
 	async setOutputDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema'): Promise<void> {
-		const outputPanel = this.page.getByTestId('log-details-output');
-		await outputPanel.hover();
-		await outputPanel.getByTestId(`radio-button-${mode}`).click();
+		await this.getOutputPanel().hover();
+		await this.getOutputPanel().getByTestId(`radio-button-${mode}`).click();
 	}
 }

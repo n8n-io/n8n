@@ -55,7 +55,7 @@ test.describe('Logs', () => {
 		await expect(n8n.logs.getNodeErrorMessageHeader()).toContainText('test!!! [line 1]');
 		await expect(n8n.canvas.getNodeIssuesByName(NODES.CODE1)).toBeVisible();
 
-		await n8n.logs.pressClearExecutionButton();
+		await n8n.logs.getClearExecutionButton().click();
 		await expect(n8n.logs.getLogEntries()).toHaveCount(0);
 		await expect(n8n.canvas.getNodeIssuesByName(NODES.CODE1)).not.toBeVisible();
 	});
@@ -83,25 +83,29 @@ test.describe('Logs', () => {
 	});
 
 	// TODO: make it possible to test workflows with AI model end-to-end
-	test.skip('should show input and output data in the selected display mode', async ({ n8n }) => {
-		// TODO: Add chat workflow requirements when AI functionality is ready
-		// await setupRequirements(chatWorkflowRequirements);
+	test.skip('should show input and output data in the selected display mode', async ({
+		n8n,
+		setupRequirements,
+	}) => {
+		await setupRequirements({ workflow: 'Workflow_ai_agent.json' });
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
-		// await n8n.logs.sendManualChatMessage('Hi!');
+		await n8n.canvas.sendManualChatMessage('Hi!');
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
-		// await n8n.logs.getManualChatMessages().eq(0).should('contain.text', 'Hi!');
-		// await n8n.logs.getManualChatMessages().eq(1).should('contain.text', 'Hello from e2e model!!!');
+		await expect(n8n.canvas.getManualChatMessages().nth(0)).toContainText('Hi!');
+		await expect(n8n.canvas.getManualChatMessages().nth(1)).toContainText(
+			'Hello from e2e model!!!',
+		);
 		await expect(n8n.logs.getLogEntries().nth(2)).toHaveText('E2E Chat Model');
 		await n8n.logs.getLogEntries().nth(2).click();
 
 		await expect(n8n.logs.getOutputPanel()).toContainText('Hello from e2e model!!!');
 		await n8n.logs.setOutputDisplayMode('table');
-		await expect(n8n.logs.getOutputTbodyCell(1, 0)).toContainText(
+		await expect(n8n.logs.getOutputTbodyCell(0, 0)).toContainText(
 			'text:Hello from **e2e** model!!!',
 		);
-		await expect(n8n.logs.getOutputTbodyCell(1, 1)).toContainText('completionTokens:20');
+		await expect(n8n.logs.getOutputTbodyCell(0, 1)).toContainText('completionTokens:20');
 		await n8n.logs.setOutputDisplayMode('schema');
 		await expect(n8n.logs.getOutputPanel()).toContainText('generations[0]');
 		await expect(n8n.logs.getOutputPanel()).toContainText('Hello from **e2e** model!!!');
@@ -111,7 +115,7 @@ test.describe('Logs', () => {
 		await n8n.logs.toggleInputPanel();
 		await expect(n8n.logs.getInputPanel()).toContainText('Human: Hi!');
 		await n8n.logs.setInputDisplayMode('table');
-		await expect(n8n.logs.getInputTbodyCell(1, 0)).toContainText('0:Human: Hi!');
+		await expect(n8n.logs.getInputTbodyCell(0, 0)).toContainText('0:Human: Hi!');
 		await n8n.logs.setInputDisplayMode('schema');
 		await expect(n8n.logs.getInputPanel()).toContainText('messages[0]');
 		await expect(n8n.logs.getInputPanel()).toContainText('Human: Hi!');
@@ -133,8 +137,8 @@ test.describe('Logs', () => {
 		await n8n.logs.toggleInputPanel();
 		await n8n.logs.setInputDisplayMode('table');
 		await expect(n8n.logs.getInputTableRows()).toHaveCount(11);
-		await expect(n8n.logs.getInputTbodyCell(1, 0)).toContainText('0');
-		await expect(n8n.logs.getInputTbodyCell(10, 0)).toContainText('9');
+		await expect(n8n.logs.getInputTbodyCell(0, 0)).toContainText('0');
+		await expect(n8n.logs.getInputTbodyCell(9, 0)).toContainText('9');
 		await n8n.logs.clickOpenNdvAtRow(2);
 		await n8n.ndv.switchInputMode('Table');
 		await expect(n8n.ndv.getInputSelect()).toHaveValue(`${NODES.CODE} `);
@@ -147,12 +151,12 @@ test.describe('Logs', () => {
 
 		await n8n.logs.clickLogEntryAtRow(4); // Run #2 of 'Edit Fields' node; input is false branch of 'If' node
 		await expect(n8n.logs.getInputTableRows()).toHaveCount(6);
-		await expect(n8n.logs.getInputTbodyCell(1, 0)).toContainText('5');
-		await expect(n8n.logs.getInputTbodyCell(5, 0)).toContainText('9');
+		await expect(n8n.logs.getInputTbodyCell(0, 0)).toContainText('5');
+		await expect(n8n.logs.getInputTbodyCell(4, 0)).toContainText('9');
 		await n8n.logs.clickOpenNdvAtRow(4);
 		await expect(n8n.ndv.getInputSelect()).toHaveValue(`${NODES.IF} `);
 		await expect(n8n.ndv.getInputTableRows()).toHaveCount(6);
-		await expect(n8n.ndv.getInputTbodyCell(1, 0)).toContainText('6');
+		await expect(n8n.ndv.getInputTbodyCell(0, 0)).toContainText('5');
 		await expect(n8n.ndv.getInputTbodyCell(4, 0)).toContainText('9');
 		await expect(n8n.ndv.getOutputRunSelectorInput()).toHaveValue('2 of 3 (5 items)');
 
@@ -160,12 +164,12 @@ test.describe('Logs', () => {
 
 		await n8n.logs.clickLogEntryAtRow(5); // Run #3 of 'Edit Fields' node; input is true branch of 'If' node
 		await expect(n8n.logs.getInputTableRows()).toHaveCount(6);
-		await expect(n8n.logs.getInputTbodyCell(1, 0)).toContainText('0');
-		await expect(n8n.logs.getInputTbodyCell(4, 0)).toContainText('3');
+		await expect(n8n.logs.getInputTbodyCell(0, 0)).toContainText('0');
+		await expect(n8n.logs.getInputTbodyCell(4, 0)).toContainText('4');
 		await n8n.logs.clickOpenNdvAtRow(5);
 		await expect(n8n.ndv.getInputSelect()).toHaveValue(`${NODES.IF} `);
 		await expect(n8n.ndv.getInputTableRows()).toHaveCount(6);
-		await expect(n8n.ndv.getInputTbodyCell(1, 0)).toContainText('1');
+		await expect(n8n.ndv.getInputTbodyCell(0, 0)).toContainText('0');
 		await expect(n8n.ndv.getInputTbodyCell(4, 0)).toContainText('4');
 		await expect(n8n.ndv.getOutputRunSelectorInput()).toHaveValue('3 of 3 (5 items)');
 	});
@@ -188,28 +192,27 @@ test.describe('Logs', () => {
 	});
 
 	// TODO: make it possible to test workflows with AI model end-to-end
-	test.skip('should show logs for a past execution', async ({ n8n }) => {
-		// TODO: Add chat workflow requirements when AI functionality is ready
-		// await setupRequirements(chatWorkflowRequirements);
+	test.skip('should show logs for a past execution', async ({ n8n, setupRequirements }) => {
+		await setupRequirements({ workflow: 'Workflow_ai_agent.json' });
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.logs.openLogsPanel();
 
-		// Note: This test requires manual chat functionality and executions page methods
-		// that need to be implemented in the Playwright page objects for full migration
-
-		// TODO: Implement the following when AI functionality is ready:
-		// await chat.sendManualChatMessage('Hi!');
-		// await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
-		// await n8n.canvas.openExecutions();
-		// await n8n.executions.toggleAutoRefresh();
-		// await expect(n8n.executions.getManualChatMessages().nth(0)).toContainText('Hi!');
-		// await expect(n8n.executions.getManualChatMessages().nth(1)).toContainText('Hello from e2e model!!!');
-		// await expect(n8n.executions.getLogsOverviewStatus().filter({ hasText: /Success in [\d\.]+m?s/ })).toBeVisible();
-		// await expect(n8n.executions.getLogEntries()).toHaveCount(3);
-		// await expect(n8n.executions.getLogEntries().nth(0)).toContainText('When chat message received');
-		// await expect(n8n.executions.getLogEntries().nth(1)).toContainText('AI Agent');
-		// await expect(n8n.executions.getLogEntries().nth(2)).toContainText('E2E Chat Model');
+		await n8n.canvas.sendManualChatMessage('Hi!');
+		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
+		await n8n.canvas.openExecutions();
+		await n8n.executions.getAutoRefreshButton().click();
+		await expect(n8n.executions.getManualChatMessages().nth(0)).toContainText('Hi!');
+		await expect(n8n.executions.getManualChatMessages().nth(1)).toContainText(
+			'Hello from e2e model!!!',
+		);
+		await expect(
+			n8n.executions.getLogsOverviewStatus().filter({ hasText: /Success in [\d.]+m?s/ }),
+		).toBeVisible();
+		await expect(n8n.executions.getLogEntries()).toHaveCount(3);
+		await expect(n8n.executions.getLogEntries().nth(0)).toContainText('When chat message received');
+		await expect(n8n.executions.getLogEntries().nth(1)).toContainText('AI Agent');
+		await expect(n8n.executions.getLogEntries().nth(2)).toContainText('E2E Chat Model');
 	});
 
 	test('should show logs for a workflow with a node that waits for webhook', async ({

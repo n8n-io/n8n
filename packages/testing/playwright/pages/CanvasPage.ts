@@ -546,4 +546,8 @@ export class CanvasPage extends BasePage {
 		await this.getManualChatInput().fill(message);
 		await this.getManualChatModal().locator('.chat-input-send-button').click();
 	}
+
+	async openExecutions() {
+		await this.page.getByTestId('radio-button-executions').click();
+	}
 }
