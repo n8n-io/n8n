@@ -42,10 +42,5 @@ export async function execute(
 		filter,
 	});
 
-	// The input object gets updated in the api call, somehow
-	// And providing this column to the backend causes an unexpected column error
-	// So let's just re-delete the field until we have a more aligned API
-	delete row['updatedAt'];
-
 	return updatedRows.map((json) => ({ json }));
 }
