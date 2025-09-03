@@ -25,6 +25,9 @@ import {
 	ScrollApiModule,
 	PinnedRowModule,
 	ColumnApiModule,
+	TextFilterModule,
+	NumberFilterModule,
+	DateFilterModule,
 } from 'ag-grid-community';
 import { n8nTheme } from '@/features/dataStore/components/dataGrid/n8nTheme';
 import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
@@ -33,6 +36,7 @@ import { useDataStorePagination } from '@/features/dataStore/composables/useData
 import { useDataStoreGridBase } from '@/features/dataStore/composables/useDataStoreGridBase';
 import { useDataStoreSelection } from '@/features/dataStore/composables/useDataStoreSelection';
 import { useDataStoreOperations } from '@/features/dataStore/composables/useDataStoreOperations';
+import { useDataStoreColumnFilters } from '@/features/dataStore/composables/useDataStoreColumnFilters';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -52,6 +56,9 @@ ModuleRegistry.registerModules([
 	PinnedRowModule,
 	ScrollApiModule,
 	ColumnApiModule,
+	TextFilterModule,
+	NumberFilterModule,
+	DateFilterModule,
 ]);
 
 type Props = {
@@ -93,6 +100,13 @@ const {
 });
 const rowData = ref<DataStoreRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
+
+// Column filters
+const { initializeFilters, onFilterChanged, currentFilterJSON } = useDataStoreColumnFilters({
+	gridApi,
+	colDefs,
+	setGridData,
+});
 
 // Pagination
 const {
@@ -142,6 +156,7 @@ const {
 	pageSize,
 	currentSortBy,
 	currentSortOrder,
+	currentFilterJSON,
 	handleClearSelection,
 	selectedRowIds,
 	handleCopyFocusedCell,
@@ -166,10 +181,15 @@ async function fetchDataStoreRowsFunction() {
 const initialize = async (params: GridReadyEvent) => {
 	onGridReady(params);
 	loadColumns(props.dataStore.columns);
+	initializeFilters();
 	await fetchDataStoreRows();
 };
 
 watch([currentSortBy, currentSortOrder], async () => {
+	await setCurrentPage(1);
+});
+
+watch(currentFilterJSON, async () => {
 	await setCurrentPage(1);
 });
 
@@ -210,6 +230,7 @@ defineExpose({
 				@selection-changed="onSelectionChanged"
 				@sort-changed="onSortChanged"
 				@cell-key-down="onCellKeyDown"
+				@filter-changed="onFilterChanged"
 			/>
 		</div>
 		<div :class="$style.footer">

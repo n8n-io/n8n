@@ -21,6 +21,7 @@ const i18n = useI18n();
 const isHovered = ref(false);
 const isDropdownOpen = ref(false);
 const dropdownRef = ref<InstanceType<typeof N8nActionDropdown>>();
+const isFilterOpen = ref(false);
 
 const enum ItemAction {
 	Delete = 'delete',
@@ -45,7 +46,16 @@ const onDropdownVisibleChange = (visible: boolean) => {
 };
 
 const isDropdownVisible = computed(() => {
-	return props.params.allowMenuActions && (isHovered.value || isDropdownOpen.value);
+	return (
+		props.params.allowMenuActions && (isHovered.value || isDropdownOpen.value || isFilterOpen.value)
+	);
+});
+
+const isFilterVisible = computed(() => {
+	return (
+		props.params.column.getColDef().filter &&
+		(isHovered.value || isFilterOpen.value || isDropdownOpen.value)
+	);
 });
 
 const typeIcon = computed(() => {
@@ -96,6 +106,10 @@ const onHeaderClick = (event: MouseEvent) => {
 		props.params.setSort(nextSort, false);
 	}
 };
+const onShowFilter = (e: MouseEvent) => {
+	isFilterOpen.value = true;
+	props.params.showFilter(e.target as HTMLElement);
+};
 </script>
 
 <template>
@@ -104,7 +118,6 @@ const onHeaderClick = (event: MouseEvent) => {
 		data-test-id="data-store-column-header"
 		@mouseenter="onMouseEnter"
 		@mouseleave="onMouseLeave"
-		@click="onHeaderClick"
 	>
 		<div class="data-store-column-header-icon-wrapper">
 			<N8nIcon v-if="typeIcon" :icon="typeIcon" />
@@ -117,6 +130,14 @@ const onHeaderClick = (event: MouseEvent) => {
 				<N8nIcon v-else-if="currentSort === 'desc'" icon="arrow-down" class="sort-icon-active" />
 			</div>
 		</div>
+
+		<N8nIconButton
+			v-show="isFilterVisible"
+			icon="filter"
+			type="tertiary"
+			text
+			@click="onShowFilter"
+		/>
 
 		<N8nActionDropdown
 			v-show="isDropdownVisible"
