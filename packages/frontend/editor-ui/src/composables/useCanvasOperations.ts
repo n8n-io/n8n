@@ -115,6 +115,7 @@ import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -122,6 +123,7 @@ type AddNodeData = Partial<INodeUi> & {
 
 type AddNodeDataWithTypeVersion = AddNodeData & {
 	typeVersion: INodeUi['typeVersion'];
+	packageVersion?: INodeUi['packageVersion'];
 };
 
 type AddNodesBaseOptions = {
@@ -156,6 +158,7 @@ export function useCanvasOperations() {
 	const settingsStore = useSettingsStore();
 	const tagsStore = useTagsStore();
 	const nodeCreatorStore = useNodeCreatorStore();
+	const communityNodesStore = useCommunityNodesStore();
 	const executionsStore = useExecutionsStore();
 	const projectsStore = useProjectsStore();
 	const logsStore = useLogsStore();
@@ -655,14 +658,22 @@ export function useCanvasOperations() {
 		let lastAddedNode: INodeUi | undefined;
 		const addedNodes: INodeUi[] = [];
 
-		const nodesWithTypeVersion = nodes.map((node) => {
-			const typeVersion =
-				node.typeVersion ?? resolveNodeVersion(requireNodeTypeDescription(node.type));
-			return {
-				...node,
-				typeVersion,
-			};
-		});
+		const nodesWithTypeVersion = await Promise.all(
+			nodes.map(async (node) => {
+				const typeDescription = requireNodeTypeDescription(node.type);
+				const typeVersion = node.typeVersion ?? resolveNodeVersion(typeDescription);
+				const packageName = typeDescription.name.split('.').slice(0, -1).join('.');
+				console.log('packageName', packageName);
+				const installedPackage = await communityNodesStore.getInstalledPackage(packageName);
+				const packageVersion = installedPackage?.installedVersion;
+				console.log('packageVersion', packageVersion);
+				return {
+					...node,
+					typeVersion,
+					packageVersion,
+				};
+			}),
+		);
 
 		await loadNodeTypesProperties(nodesWithTypeVersion);
 
@@ -964,6 +975,7 @@ export function useCanvasOperations() {
 			(nodeTypeDescription.defaults.name as string);
 		const type = nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
+		const packageVersion = node.packageVersion;
 		const position =
 			options.forcePosition && node.position
 				? node.position
@@ -979,6 +991,7 @@ export function useCanvasOperations() {
 			name,
 			type,
 			typeVersion,
+			packageVersion,
 			position,
 			disabled,
 			parameters,
@@ -1023,6 +1036,7 @@ export function useCanvasOperations() {
 	}
 
 	function resolveNodeVersion(nodeTypeDescription: INodeTypeDescription) {
+		console.log('resolveNodeVersion', nodeTypeDescription);
 		let nodeVersion = nodeTypeDescription.defaultVersion;
 
 		if (typeof nodeVersion === 'undefined') {

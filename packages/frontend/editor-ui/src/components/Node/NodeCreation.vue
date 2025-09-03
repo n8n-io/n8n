@@ -78,6 +78,7 @@ function closeNodeCreator(hasAddedNodes = false) {
 }
 
 function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
+	console.log('add node', getAddedNodesAndConnections(value));
 	emit('addNodes', getAddedNodesAndConnections(value));
 	closeNodeCreator(true);
 }

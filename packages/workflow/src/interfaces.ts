@@ -1193,6 +1193,7 @@ export interface INode {
 	id: string;
 	name: string;
 	typeVersion: number;
+	packageVersion?: string;
 	type: string;
 	position: [number, number];
 	disabled?: boolean;
