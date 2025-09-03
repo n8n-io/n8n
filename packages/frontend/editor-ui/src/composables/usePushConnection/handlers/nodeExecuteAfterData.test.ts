@@ -3,9 +3,7 @@ import { setActivePinia } from 'pinia';
 import { nodeExecuteAfterData } from './nodeExecuteAfterData';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mockedStore } from '@/__tests__/utils';
-import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
-import { createTestWorkflow, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 
 describe('nodeExecuteAfterData', () => {
 	beforeEach(() => {
