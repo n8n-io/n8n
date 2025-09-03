@@ -1889,7 +1889,9 @@ watch(
 		};
 
 		fallbackNodes.value =
-			builderStore.isAIBuilderEnabled && builderStore.isAssistantEnabled
+			builderStore.isAIBuilderEnabled &&
+			builderStore.isAssistantEnabled &&
+			builderStore.assistantMessages.length === 0
 				? [aiPromptItem]
 				: [addNodesItem];
 	},

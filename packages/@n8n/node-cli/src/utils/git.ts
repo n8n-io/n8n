@@ -1,5 +1,7 @@
 import { execSync } from 'child_process';
 
+import { runCommand } from './child-process';
+
 type GitUser = {
 	name?: string;
 	email?: string;
@@ -31,4 +33,8 @@ export function tryReadGitUser(): GitUser {
 	}
 
 	return user;
+}
+
+export async function initGit(dir: string): Promise<void> {
+	await runCommand('git', ['init', '-b', 'main'], { cwd: dir });
 }

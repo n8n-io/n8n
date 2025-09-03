@@ -54,6 +54,7 @@ Evaluate whether the workflow correctly implements what the user EXPLICITLY requ
   - Missing core functionality explicitly requested
   - Incorrect operation logic that prevents the workflow from working
   - Workflows missing a trigger node when they need to start automatically or by some external event
+  - Using Split In Batches node
 - **Major (-15 to -25 points)**:
   - Missing explicitly required data transformations
   - Incomplete implementation of requested features

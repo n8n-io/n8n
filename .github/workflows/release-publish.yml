@@ -10,7 +10,7 @@ on:
 jobs:
   publish-to-npm:
     name: Publish to NPM
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     if: github.event.pull_request.merged == true
     timeout-minutes: 15
     permissions:
@@ -25,23 +25,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - run: pnpm install --frozen-lockfile
-
       - name: Set release version in env
         run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> "$GITHUB_ENV"
 
-      - name: Build
-        run: pnpm build
+      - name: Setup Node.js, install dependencies, and build
+        uses: ./.github/actions/setup-nodejs-blacksmith
+        with:
+          node-version: 22.x
 
+      # NOTE: Turborepo caching is handled by setup-nodejs-blacksmith action above
+      # This manual cache may be redundant but kept for safety
       - name: Cache build artifacts
         uses: actions/cache/save@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
