@@ -5,6 +5,74 @@ import type { GenerateContentResponse } from '../../helpers/interfaces';
 import { uploadFile } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 
+interface ImagesParameter {
+	values?: Array<{ binaryPropertyName?: string }>;
+}
+
+function isImagesParameter(param: unknown): param is ImagesParameter {
+	if (typeof param !== 'object' || param === null) {
+		return false;
+	}
+
+	const paramObj = param as Record<string, unknown>;
+
+	if (!('values' in paramObj)) {
+		return true; // values is optional
+	}
+
+	if (!Array.isArray(paramObj.values)) {
+		return false;
+	}
+
+	return paramObj.values.every((item: unknown) => {
+		if (typeof item !== 'object' || item === null) {
+			return false;
+		}
+
+		const itemObj = item as Record<string, unknown>;
+
+		if (!('binaryPropertyName' in itemObj)) {
+			return true; // binaryPropertyName is optional
+		}
+
+		return (
+			typeof itemObj.binaryPropertyName === 'string' || itemObj.binaryPropertyName === undefined
+		);
+	});
+}
+
+function isGenerateContentResponse(response: unknown): response is GenerateContentResponse {
+	if (typeof response !== 'object' || response === null) {
+		return false;
+	}
+
+	const responseObj = response as Record<string, unknown>;
+
+	if (!('candidates' in responseObj) || !Array.isArray(responseObj.candidates)) {
+		return false;
+	}
+
+	return responseObj.candidates.every((candidate: unknown) => {
+		if (typeof candidate !== 'object' || candidate === null) {
+			return false;
+		}
+
+		const candidateObj = candidate as Record<string, unknown>;
+
+		if (
+			!('content' in candidateObj) ||
+			typeof candidateObj.content !== 'object' ||
+			candidateObj.content === null
+		) {
+			return false;
+		}
+
+		const contentObj = candidateObj.content as Record<string, unknown>;
+
+		return 'parts' in contentObj && Array.isArray(contentObj.parts);
+	});
+}
+
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Prompt',
@@ -21,7 +89,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Images',
 		name: 'images',
 		type: 'fixedCollection',
-		placeholder: 'Add Images',
+		placeholder: 'Add Image',
 		typeOptions: {
 			multipleValues: true,
 			multipleValueButtonText: 'Add Image',
@@ -74,16 +142,19 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const prompt = this.getNodeParameter('prompt', i, '');
-	const binaryPropertyOutput = this.getNodeParameter('options.binaryPropertyOutput', i, 'data');
+	const binaryPropertyOutput = this.getNodeParameter('options.binaryPropertyOutput', i, 'edited');
 	const outputKey = typeof binaryPropertyOutput === 'string' ? binaryPropertyOutput : 'data';
 
 	// Collect image binary field names from collection
-	const imagesUi =
-		(
-			this.getNodeParameter('images', i, { values: [{ binaryPropertyName: 'data' }] }) as {
-				values?: Array<{ binaryPropertyName?: string }>;
-			}
-		).values ?? [];
+	const imagesParam = this.getNodeParameter('images', i, {
+		values: [{ binaryPropertyName: 'data' }],
+	});
+
+	if (!isImagesParameter(imagesParam)) {
+		throw new Error('Invalid images parameter format');
+	}
+
+	const imagesUi = imagesParam.values ?? [];
 	const imageFieldNames = imagesUi
 		.map((v) => v.binaryPropertyName)
 		.filter((n): n is string => Boolean(n));
@@ -112,17 +183,32 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		generationConfig,
 	};
 
-	const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-		body,
-	})) as GenerateContentResponse;
+	const response: unknown = await apiRequest.call(
+		this,
+		'POST',
+		`/v1beta/${model}:generateContent`,
+		{
+			body,
+		},
+	);
+
+	if (!isGenerateContentResponse(response)) {
+		throw new Error('Invalid response format from Gemini API');
+	}
 
 	const promises = response.candidates.map(async (candidate) => {
 		const imagePart = candidate.content.parts.find((part) => 'inlineData' in part);
-		const bufferOut = Buffer.from(imagePart?.inlineData.data ?? '', 'base64');
+
+		// Check if imagePart exists and has inlineData with actual data
+		if (!imagePart?.inlineData?.data) {
+			throw new Error('No image data returned from Gemini API');
+		}
+
+		const bufferOut = Buffer.from(imagePart.inlineData.data, 'base64');
 		const binaryOut = await this.helpers.prepareBinaryData(
 			bufferOut,
 			'image.png',
-			imagePart?.inlineData.mimeType,
+			imagePart.inlineData.mimeType,
 		);
 		return {
 			binary: {
