@@ -37,6 +37,7 @@ test('postgres only @mode:postgres', ...)            // Mode-specific
 test('needs clean db @db:reset', ...)                // Sequential per worker
 test('chaos test @mode:multi-main @chaostest', ...) // Isolated per worker
 test('cloud resource test @cloud:trial', ...)       // Cloud resource constraints
+test('proxy test @capability:proxy', ...)           // Requires proxy server capability
 ```
 
 ## Fixture Selection
@@ -73,11 +74,32 @@ test('Performance under constraints @cloud:trial', async ({ n8n, api }) => {
 - **utils**: Utility functions (string manipulation, helpers, etc.)
 - **workflows**: Test workflow JSON files for import/reuse
 
-## Recording Proxy Expectations
+## Writing Tests with Proxy
+
+You can use ProxyServer to mock API requests.
+
+```typescript
+import { test, expect } from '../fixtures/base';
+
+// The `@capability:proxy` tag ensures tests only run when proxy infrastructure is available.
+test.describe('Proxy tests @capability:proxy', () => {
+  test('should mock HTTP requests', async ({ proxyServer, n8n }) => {
+    // Create mock expectations
+    await proxyServer.createGetExpectation('/api/data', { result: 'mocked' });
+
+    // Execute workflow that makes HTTP requests
+    await n8n.canvas.openNewWorkflow();
+    // ... test implementation
+
+    // Verify requests were proxied
+    expect(await proxyServer.wasGetRequestMade('/api/data')).toBe(true);
+  });
+});
+```
+
+### Recording and replaying requests
 
 The ProxyServer service supports recording HTTP requests for test mocking and replay. All proxied requests are automatically recorded by the mock server as described in the [Mock Server documentation](https://www.mock-server.com/proxy/record_and_replay.html).
-
-### Using recordExpectations()
 
 ```typescript
 // Record specific requests matching all requests
