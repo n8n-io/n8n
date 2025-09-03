@@ -1,17 +1,6 @@
 <script lang="ts" setup>
-import N8nTooltip from '../N8nTooltip';
-import {
-	N8nButton,
-	N8nIcon,
-	N8nIconButton,
-	N8nText,
-	N8nCheckbox,
-	N8nInput,
-	N8nScrollArea,
-} from '..';
 import {
 	DropdownMenuContent,
-	DropdownMenuItem,
 	DropdownMenuPortal,
 	DropdownMenuRoot,
 	DropdownMenuSub,
@@ -20,8 +9,16 @@ import {
 	DropdownMenuTrigger,
 } from 'reka-ui';
 import { ref, computed, useTemplateRef, nextTick } from 'vue';
+
+import N8nButton from '../N8nButton';
+import N8nIcon from '../N8nIcon';
+import SingleSelect from './SingleSelect.vue';
+import type { IconName } from '../N8nIcon/icons';
+import N8nIconButton from '../N8nIconButton';
 import InlineTextEdit from '../N8nInlineTextEdit/InlineTextEdit.vue';
-import { IconName } from '../N8nIcon/icons';
+import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
+import MultiSelect from './MultiSelect.vue';
 
 interface ActiveFilter {
 	filterName: string;
@@ -31,9 +28,15 @@ interface ActiveFilter {
 
 interface FilterOption {
 	label: string;
-	options: string[];
+	options: FilterItem[];
 	type: 'single' | 'multi';
 	allowCustomValues?: boolean;
+}
+
+interface FilterItem {
+	name: string;
+	id: string;
+	value: string;
 }
 
 interface FilterAction {
@@ -55,53 +58,65 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const activeFilters = ref<ActiveFilter[]>([]);
-const searchQueries = ref<Record<string, string>>({});
-const customInputs = ref<Record<string, string>>({});
 
 const filterOptions = computed(() => props.filters);
 const hasActiveFilters = computed(() => activeFilters.value.length > 0);
 
-function selectFilterValue(filterName: string, value: string, type: 'single' | 'multi') {
-	const existingFilterIndex = activeFilters.value.findIndex(
-		(filter) => filter.filterName === filterName,
-	);
+function handleSingleSelectChange(filterName: string, value: FilterItem | null) {
+	if (value) {
+		const existingFilterIndex = activeFilters.value.findIndex(
+			(filter) => filter.filterName === filterName,
+		);
 
-	if (type === 'single') {
 		if (existingFilterIndex >= 0) {
-			activeFilters.value[existingFilterIndex].values = [value];
+			activeFilters.value[existingFilterIndex].values = [value.value];
 		} else {
 			activeFilters.value.push({
 				filterName,
-				values: [value],
+				values: [value.value],
 				type: 'single',
 			});
 		}
 	} else {
-		if (existingFilterIndex >= 0) {
-			const currentValues = activeFilters.value[existingFilterIndex].values;
-			const valueIndex = currentValues.indexOf(value);
+		removeFilter(filterName);
+	}
+}
 
-			if (valueIndex >= 0) {
-				currentValues.splice(valueIndex, 1);
-				if (currentValues.length === 0) {
-					activeFilters.value.splice(existingFilterIndex, 1);
-				}
-			} else {
-				currentValues.push(value);
-			}
+function handleMultiSelectChange(filterName: string, values: FilterItem[]) {
+	if (values.length === 0) {
+		removeFilter(filterName);
+	} else {
+		const existingFilterIndex = activeFilters.value.findIndex(
+			(filter) => filter.filterName === filterName,
+		);
+
+		if (existingFilterIndex >= 0) {
+			activeFilters.value[existingFilterIndex].values = values.map((v) => v.value);
 		} else {
 			activeFilters.value.push({
 				filterName,
-				values: [value],
+				values: values.map((v) => v.value),
 				type: 'multi',
 			});
 		}
 	}
 }
 
-function isValueSelected(filterName: string, value: string): boolean {
+function getSelectedSingleValue(filterName: string): FilterItem | null {
 	const filter = activeFilters.value.find((f) => f.filterName === filterName);
-	return filter ? filter.values.includes(value) : false;
+	if (filter && filter.values.length > 0) {
+		const value = filter.values[0];
+		return { name: value, id: value, value };
+	}
+	return null;
+}
+
+function getSelectedMultiValues(filterName: string): FilterItem[] {
+	const filter = activeFilters.value.find((f) => f.filterName === filterName);
+	if (filter) {
+		return filter.values.map((value) => ({ name: value, id: value, value }));
+	}
+	return [];
 }
 
 function removeFilter(filterName: string) {
@@ -114,79 +129,6 @@ function removeFilter(filterName: string) {
 // function clearAllFilters() {
 // 	activeFilters.value = [];
 // }
-
-function getFilteredOptions(filterLabel: string, options: string[]) {
-	const searchQuery = searchQueries.value[filterLabel] || '';
-	if (!searchQuery.trim()) {
-		return options;
-	}
-	return options.filter((option) => option.toLowerCase().includes(searchQuery.toLowerCase()));
-}
-
-function updateSearchQuery(filterLabel: string, query: string) {
-	searchQueries.value[filterLabel] = query;
-}
-
-function addCustomValue(filterName: string, type: 'single' | 'multi') {
-	const customValue = customInputs.value[filterName]?.trim();
-	if (!customValue) return;
-
-	selectFilterValue(filterName, customValue, type);
-	customInputs.value[filterName] = '';
-}
-
-function handleCustomInputKeyup(
-	filterName: string,
-	type: 'single' | 'multi',
-	event: KeyboardEvent,
-) {
-	if (event.key === 'Enter') {
-		addCustomValue(filterName, type);
-	}
-}
-
-function handleCheckboxChange(
-	filterName: string,
-	value: string,
-	type: 'single' | 'multi',
-	checked: boolean,
-) {
-	if (type === 'multi') {
-		if (checked) {
-			// Add the value if checked
-			const existingFilterIndex = activeFilters.value.findIndex(
-				(filter) => filter.filterName === filterName,
-			);
-			if (existingFilterIndex >= 0) {
-				const currentValues = activeFilters.value[existingFilterIndex].values;
-				if (!currentValues.includes(value)) {
-					currentValues.push(value);
-				}
-			} else {
-				activeFilters.value.push({
-					filterName,
-					values: [value],
-					type: 'multi',
-				});
-			}
-		} else {
-			// Remove the value if unchecked
-			const existingFilterIndex = activeFilters.value.findIndex(
-				(filter) => filter.filterName === filterName,
-			);
-			if (existingFilterIndex >= 0) {
-				const currentValues = activeFilters.value[existingFilterIndex].values;
-				const valueIndex = currentValues.indexOf(value);
-				if (valueIndex >= 0) {
-					currentValues.splice(valueIndex, 1);
-					if (currentValues.length === 0) {
-						activeFilters.value.splice(existingFilterIndex, 1);
-					}
-				}
-			}
-		}
-	}
-}
 
 const resourceSearch = ref<{ text: string; state: 'visible' | 'hidden' }>({
 	text: '',
@@ -254,107 +196,26 @@ function handleBlur() {
 								>
 								<DropdownMenuPortal>
 									<DropdownMenuSubContent :side-offset="4" class="filter-dropdown">
-										<!-- Search Bar -->
-										<div v-if="filterOption.options.length > 10">
-											<N8nInput
-												:modelValue="searchQueries[filterOption.label] || ''"
-												@update:modelValue="
-													(value: string) => updateSearchQuery(filterOption.label, value)
-												"
-												type="text"
-												size="small"
-												placeholder="Search..."
-												:clearable="true"
-											>
-												<template #prefix>
-													<N8nIcon icon="search" size="small" />
-												</template>
-											</N8nInput>
-										</div>
-
-										<!-- Custom Value Input -->
-										<div v-if="filterOption.allowCustomValues">
-											<N8nInput
-												v-model="customInputs[filterOption.label]"
-												type="text"
-												size="small"
-												:placeholder="`Add custom ${filterOption.label.toLowerCase()}...`"
-												@keyup="
-													(event: KeyboardEvent) =>
-														handleCustomInputKeyup(filterOption.label, filterOption.type, event)
-												"
-											>
-											</N8nInput>
-										</div>
-
-										<!-- Scrollable Options Area -->
-										<N8nScrollArea
-											maxHeight="500px"
-											type="hover"
-											:enableVerticalScroll="true"
-											:enableHorizontalScroll="false"
-										>
-											<template
-												v-for="option in getFilteredOptions(
-													filterOption.label,
-													filterOption.options,
-												)"
-												:key="option"
-											>
-												<DropdownMenuItem
-													class="filter-item"
-													:class="{ selected: isValueSelected(filterOption.label, option) }"
-													@keydown="
-														(event: KeyboardEvent) => {
-															if (event.key === 'Enter') {
-																selectFilterValue(filterOption.label, option, filterOption.type);
-															} else if (event.key === ' ' && filterOption.type === 'multi') {
-																event.preventDefault();
-																selectFilterValue(filterOption.label, option, filterOption.type);
-															}
-														}
-													"
-												>
-													<!-- Checkbox for multi-select filters -->
-													<N8nCheckbox
-														v-if="filterOption.type === 'multi'"
-														:modelValue="isValueSelected(filterOption.label, option)"
-														@update:modelValue="
-															(checked: boolean | string | number) =>
-																handleCheckboxChange(
-																	filterOption.label,
-																	option,
-																	filterOption.type,
-																	Boolean(checked),
-																)
-														"
-														@click.stop
-														class="filter-checkbox"
-													/>
-													<!-- Check icon for single-select filters -->
-													<N8nIcon
-														v-else-if="isValueSelected(filterOption.label, option)"
-														icon="check"
-														size="small"
-														class="check-icon"
-													/>
-													<!-- Spacer for single-select unselected items -->
-													<div v-else class="check-icon-spacer"></div>
-
-													<!-- Clickable text area -->
-													<span
-														@click="
-															selectFilterValue(filterOption.label, option, filterOption.type)
-														"
-														class="filter-option-text"
-													>
-														<N8nText size="small" color="text-dark">
-															{{ option }}
-														</N8nText>
-													</span>
-												</DropdownMenuItem>
-											</template>
-										</N8nScrollArea>
+										<SingleSelect
+											v-if="filterOption.type === 'single'"
+											:items="filterOption.options"
+											:model-value="getSelectedSingleValue(filterOption.label)"
+											@update:model-value="
+												(value: FilterItem | null) =>
+													handleSingleSelectChange(filterOption.label, value)
+											"
+											:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
+										/>
+										<MultiSelect
+											v-else
+											:items="filterOption.options"
+											:model-value="getSelectedMultiValues(filterOption.label)"
+											@update:model-value="
+												(values: FilterItem[]) =>
+													handleMultiSelectChange(filterOption.label, values)
+											"
+											:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
+										/>
 									</DropdownMenuSubContent>
 								</DropdownMenuPortal>
 							</DropdownMenuSub>
@@ -467,44 +328,6 @@ function handleBlur() {
 	&:focus-visible,
 	&:focus {
 		background-color: var(--color-background-base);
-	}
-}
-
-.filter-checkbox {
-	flex-shrink: 0;
-	margin-bottom: 0;
-}
-
-.filter-option-text {
-	flex: 1;
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-}
-
-// Prevent dropdown from closing when interacting with checkboxes
-:deep(.filter-checkbox .el-checkbox) {
-	pointer-events: auto;
-}
-
-:deep(.filter-checkbox .el-checkbox__input) {
-	pointer-events: auto;
-}
-
-.custom-input-container {
-	padding: var(--spacing-4xs);
-	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
-	margin-bottom: var(--spacing-4xs);
-}
-
-:deep(.custom-value-input) {
-	.el-input__inner {
-		font-size: var(--font-size-2xs);
-		height: 28px;
-	}
-
-	.el-input__suffix {
-		align-items: center;
 	}
 }
 </style>

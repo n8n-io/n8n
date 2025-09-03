@@ -24,23 +24,23 @@ withDefaults(
 	defineProps<{
 		items: Item[];
 		placeholder?: string;
-		multiple?: boolean;
+		modelValue?: Item | null;
 	}>(),
 	{
-		placeholder: 'Select items...',
+		placeholder: 'Select item...',
+		modelValue: null,
 	},
 );
 
 defineEmits<{
-	'update:modelValue': [value: Item[]];
+	'update:modelValue': [value: Item | null];
 }>();
 
 const open = ref(true);
-const selectedItems = ref([]);
 </script>
 
 <template>
-	<ComboboxRoot class="root" multiple v-bind="selectedItems" :open="open" @update:open="() => {}">
+	<ComboboxRoot class="root" v-bind="modelValue" :open="open" @update:open="() => {}">
 		<ComboboxAnchor class="ComboboxAnchor">
 			<ComboboxInput class="ComboboxInput" :placeholder="placeholder" />
 		</ComboboxAnchor>

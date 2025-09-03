@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3';
+
 import MultiSelect from './MultiSelect.vue';
 
 const meta: Meta<typeof MultiSelect> = {
