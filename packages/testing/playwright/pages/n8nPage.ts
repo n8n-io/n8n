@@ -4,6 +4,7 @@ import { AIAssistantPage } from './AIAssistantPage';
 import { BecomeCreatorCTAPage } from './BecomeCreatorCTAPage';
 import { CanvasPage } from './CanvasPage';
 import { CredentialsPage } from './CredentialsPage';
+import { DataStoreView } from './DataStoreView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
 import { IframePage } from './IframePage';
@@ -22,6 +23,7 @@ import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
 import { CanvasComposer } from '../composables/CanvasComposer';
+import { DataTableComposer } from '../composables/DataTablesComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
@@ -51,6 +53,7 @@ export class n8nPage {
 	readonly credentials: CredentialsPage;
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
+	readonly dataStore: DataStoreView;
 
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
@@ -62,6 +65,7 @@ export class n8nPage {
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
 	readonly start: TestEntryComposer;
+	readonly dataTableComposer: DataTableComposer;
 
 	constructor(page: Page, api: ApiHelpers) {
 		this.page = page;
@@ -87,6 +91,7 @@ export class n8nPage {
 		this.executions = new ExecutionsPage(page);
 		this.sideBar = new SidebarPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
+		this.dataStore = new DataStoreView(page);
 
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
@@ -97,6 +102,7 @@ export class n8nPage {
 		this.projectComposer = new ProjectComposer(this);
 		this.canvasComposer = new CanvasComposer(this);
 		this.start = new TestEntryComposer(this);
+		this.dataTableComposer = new DataTableComposer(this);
 	}
 
 	async goHome() {

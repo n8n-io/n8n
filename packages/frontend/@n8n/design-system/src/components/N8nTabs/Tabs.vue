@@ -89,6 +89,7 @@ const scrollRight = () => scroll(50);
 			<div
 				v-for="option in options"
 				:id="option.value.toString()"
+				:data-test-id="`tab-${option.value.toString()}`"
 				:key="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>

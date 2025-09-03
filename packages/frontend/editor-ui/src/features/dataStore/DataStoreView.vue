@@ -158,7 +158,7 @@ watch(
 		</template>
 		<template #empty>
 			<n8n-action-box
-				data-test-id="empty-shared-action-box"
+				data-test-id="empty-data-table-action-box"
 				:heading="i18n.baseText('dataStore.empty.label')"
 				:description="emptyCalloutDescription"
 				:button-text="emptyCalloutButtonText"
