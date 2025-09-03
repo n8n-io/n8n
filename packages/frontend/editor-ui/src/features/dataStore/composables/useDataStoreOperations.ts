@@ -18,6 +18,31 @@ import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { MODAL_CONFIRM } from '@/constants';
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 
+export type UseDataStoreOperationsParams = {
+	colDefs: Ref<ColDef[]>;
+	rowData: Ref<DataStoreRow[]>;
+	deleteGridColumn: (columnId: string) => void;
+	addGridColumn: (column: DataStoreColumn) => void;
+	setGridData: (params: { rowData?: DataStoreRow[]; colDefs?: ColDef[] }) => void;
+	insertGridColumn: (column: ColDef, index: number) => void;
+	moveGridColumn: (oldIndex: number, newIndex: number) => void;
+	dataStoreId: string;
+	projectId: string;
+	gridApi: Ref<GridApi>;
+	totalItems: Ref<number>;
+	setTotalItems: (count: number) => void;
+	ensureItemOnPage: (itemIndex: number) => Promise<void>;
+	focusFirstEditableCell: (rowId: number) => void;
+	toggleSave: (value: boolean) => void;
+	currentPage: Ref<number>;
+	pageSize: Ref<number>;
+	currentSortBy: Ref<string>;
+	currentSortOrder: Ref<string | null>;
+	handleClearSelection: () => void;
+	selectedRowIds: Ref<Set<number>>;
+	handleCopyFocusedCell: (params: CellKeyDownEvent<DataStoreRow>) => Promise<void>;
+};
+
 export const useDataStoreOperations = ({
 	colDefs,
 	rowData,
@@ -41,30 +66,7 @@ export const useDataStoreOperations = ({
 	handleClearSelection,
 	selectedRowIds,
 	handleCopyFocusedCell,
-}: {
-	colDefs: Ref<ColDef[]>;
-	rowData: Ref<DataStoreRow[]>;
-	deleteGridColumn: (columnId: string) => void;
-	addGridColumn: (column: DataStoreColumn) => void;
-	setGridData: (params: { rowData: DataStoreRow[]; colDefs: ColDef[] }) => void;
-	insertGridColumn: (column: ColDef, index: number) => void;
-	moveGridColumn: (oldIndex: number, newIndex: number) => void;
-	dataStoreId: string;
-	projectId: string;
-	gridApi: Ref<GridApi>;
-	totalItems: Ref<number>;
-	setTotalItems: (count: number) => void;
-	ensureItemOnPage: (itemIndex: number) => Promise<void>;
-	focusFirstEditableCell: (rowId: number) => void;
-	toggleSave: (value: boolean) => void;
-	currentPage: Ref<number>;
-	pageSize: Ref<number>;
-	currentSortBy: Ref<string>;
-	currentSortOrder: Ref<string | null>;
-	handleClearSelection: () => void;
-	selectedRowIds: Ref<Set<number>>;
-	handleCopyFocusedCell: (params: CellKeyDownEvent<DataStoreRow>) => Promise<void>;
-}) => {
+}: UseDataStoreOperationsParams) => {
 	const i18n = useI18n();
 	const toast = useToast();
 	const message = useMessage();
@@ -111,9 +113,6 @@ export const useDataStoreOperations = ({
 	async function onAddColumn(column: DataStoreColumnCreatePayload) {
 		try {
 			const newColumn = await dataStoreStore.addDataStoreColumn(dataStoreId, projectId, column);
-			if (!newColumn) {
-				throw new Error(i18n.baseText('generic.unknownError'));
-			}
 			addGridColumn(newColumn);
 			rowData.value = rowData.value.map((row) => {
 				return { ...row, [newColumn.name]: null };
