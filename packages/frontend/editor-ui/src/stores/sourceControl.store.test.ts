@@ -160,7 +160,7 @@ describe('useSourceControlStore', () => {
 			sourceControlStore.preferences.branchName = 'main';
 
 			const mockDisconnect = vi.mocked(vcApi.disconnect);
-			mockDisconnect.mockResolvedValue(undefined);
+			mockDisconnect.mockResolvedValue(undefined as any);
 
 			await sourceControlStore.disconnect(false);
 
