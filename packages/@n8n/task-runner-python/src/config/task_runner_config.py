@@ -65,12 +65,12 @@ class TaskRunnerConfig:
         if not grant_token:
             raise ValueError("Environment variable N8N_RUNNERS_GRANT_TOKEN is required")
 
-        task_timeout = int(os.getenv(ENV_TASK_TIMEOUT, str(DEFAULT_TASK_TIMEOUT)))
+        task_timeout = int(os.getenv(ENV_TASK_TIMEOUT, DEFAULT_TASK_TIMEOUT))
         if task_timeout <= 0:
             raise ValueError(f"Task timeout must be positive, got {task_timeout}")
 
         auto_shutdown_timeout = int(
-            os.getenv(ENV_AUTO_SHUTDOWN_TIMEOUT, str(DEFAULT_AUTO_SHUTDOWN_TIMEOUT))
+            os.getenv(ENV_AUTO_SHUTDOWN_TIMEOUT, DEFAULT_AUTO_SHUTDOWN_TIMEOUT)
         )
         if auto_shutdown_timeout < 0:
             raise ValueError(
@@ -78,7 +78,7 @@ class TaskRunnerConfig:
             )
 
         graceful_shutdown_timeout = int(
-            os.getenv(ENV_GRACEFUL_SHUTDOWN_TIMEOUT, str(DEFAULT_SHUTDOWN_TIMEOUT))
+            os.getenv(ENV_GRACEFUL_SHUTDOWN_TIMEOUT, DEFAULT_SHUTDOWN_TIMEOUT)
         )
         if graceful_shutdown_timeout <= 0:
             raise ValueError(
@@ -89,10 +89,10 @@ class TaskRunnerConfig:
             grant_token=grant_token,
             task_broker_uri=os.getenv(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
             max_concurrency=int(
-                os.getenv(ENV_MAX_CONCURRENCY, str(DEFAULT_MAX_CONCURRENCY))
+                os.getenv(ENV_MAX_CONCURRENCY, DEFAULT_MAX_CONCURRENCY)
             ),
             max_payload_size=int(
-                os.getenv(ENV_MAX_PAYLOAD_SIZE, str(DEFAULT_MAX_PAYLOAD_SIZE))
+                os.getenv(ENV_MAX_PAYLOAD_SIZE, DEFAULT_MAX_PAYLOAD_SIZE)
             ),
             task_timeout=task_timeout,
             auto_shutdown_timeout=auto_shutdown_timeout,
