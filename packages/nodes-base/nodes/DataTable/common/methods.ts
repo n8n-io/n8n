@@ -44,11 +44,11 @@ export async function tableSearch(
 export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	const returnData: Array<INodePropertyOptions & { type: string }> = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'id - (number)', value: 'id', type: 'number' },
+		{ name: 'id (number)', value: 'id', type: 'number' },
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'createdAt - (date)', value: 'createdAt', type: 'date' },
+		{ name: 'createdAt (date)', value: 'createdAt', type: 'date' },
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-		{ name: 'updatedAt - (date)', value: 'updatedAt', type: 'date' },
+		{ name: 'updatedAt (date)', value: 'updatedAt', type: 'date' },
 	];
 	const proxy = await getDataTableProxyLoadOptions(this);
 	const columns = await proxy.getColumns();
@@ -88,13 +88,13 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 
 	const stringConditions: INodePropertyOptions[] = [
 		{
-			name: 'LIKE operator',
+			name: 'Contains (Case-Sensitive)',
 			value: 'like',
 			description:
 				'Case-sensitive pattern matching. Use % as wildcard (e.g., "%Mar%" to match "Anne-Marie").',
 		},
 		{
-			name: 'ILIKE operator',
+			name: 'Contains (Case-Insensitive)',
 			value: 'ilike',
 			description:
 				'Case-insensitive pattern matching. Use % as wildcard (e.g., "%mar%" to match "Anne-Marie").',
