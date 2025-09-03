@@ -1,8 +1,14 @@
-import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeParameters,
+	INodeTypeBaseDescription,
+	IVersionedNodeType,
+} from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
 import { SetV1 } from './v1/SetV1.node';
 import { SetV2 } from './v2/SetV2.node';
+import { randomUUID } from 'crypto';
 
 export class Set extends VersionedNodeType {
 	constructor() {
@@ -13,6 +19,29 @@ export class Set extends VersionedNodeType {
 			group: ['input'],
 			description: 'Add or edit fields on an input item and optionally remove other fields',
 			defaultVersion: 3.4,
+			migrations: [
+				{
+					from: 3.2,
+					to: 3.3,
+					transform: (original) => {
+						const values = ((original.fields as IDataObject)?.values ?? []) as IDataObject[];
+						return {
+							assignments: {
+								assignments: values?.map((value) => {
+									const valueType = (value.type as string) ?? 'stringValue';
+									const type = valueType.replace('Value', '');
+									return {
+										id: randomUUID(),
+										name: value.name,
+										type,
+										value: value[valueType],
+									};
+								}),
+							},
+						} as INodeParameters;
+					},
+				},
+			],
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

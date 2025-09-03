@@ -1842,6 +1842,13 @@ export type Icon = IconRef | Themed<IconFile>;
 
 type NodeGroupType = 'input' | 'output' | 'organization' | 'schedule' | 'transform' | 'trigger';
 
+export interface INodeTypeMigration {
+	from: number;
+	to: number;
+	// TODO: better types also allow for declarative transformations later
+	transform: (values: INodeParameters) => INodeParameters;
+}
+
 export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
@@ -1868,6 +1875,8 @@ export interface INodeTypeBaseDescription {
 	 * optionally replacing provided parts of the description
 	 */
 	usableAsTool?: true | UsableAsToolDescription;
+
+	migrations?: INodeTypeMigration[];
 }
 
 /**

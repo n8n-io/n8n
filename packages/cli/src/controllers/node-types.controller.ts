@@ -3,7 +3,7 @@ import { Post, RestController } from '@n8n/decorators';
 import { Request } from 'express';
 import { readFile } from 'fs/promises';
 import get from 'lodash/get';
-import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
+import type { INodeTypeDescription, INodeTypeNameVersion, INodeParameters } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 
@@ -60,5 +60,40 @@ export class NodeTypesController {
 		await Promise.all(promises);
 
 		return nodeTypes;
+	}
+
+	@Post('/migrate')
+	migrateNodeParameters(req: Request) {
+		const {
+			nodeType,
+			typeVersion,
+			targetVersion,
+			parameters,
+		}: {
+			nodeType: string;
+			typeVersion: number;
+			targetVersion: number;
+			parameters: INodeParameters;
+		} = req.body as {
+			nodeType: string;
+			typeVersion: number;
+			targetVersion: number;
+			parameters: INodeParameters;
+		};
+
+		const { description } = this.nodeTypes.getByNameAndVersion(nodeType, targetVersion);
+		let migratedParameters = parameters;
+		for (const migration of description.migrations ?? []) {
+			if (migration.from >= typeVersion && migration.to <= targetVersion) {
+				migratedParameters = {
+					...migratedParameters,
+					...migration.transform(migratedParameters),
+				};
+			}
+		}
+
+		return {
+			migratedParameters,
+		};
 	}
 }

@@ -17,6 +17,7 @@ import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { useDataSchema } from '@/composables/useDataSchema';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { migrateNodeParameters } from '@n8n/rest-api-client/api/nodeTypes';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { type PinDataSource, usePinnedData } from '@/composables/usePinnedData';
@@ -2151,6 +2152,7 @@ export function useCanvasOperations() {
 		return result.nodes?.map((node) => node.id).filter(isPresent) ?? [];
 	}
 
+	// TODO: break this up into smaller functions, perhaps extract helpers
 	async function updateNodeVersion(id: string) {
 		const originalNode = workflowsStore.getNodeById(id);
 		if (!originalNode) {
@@ -2178,7 +2180,6 @@ export function useCanvasOperations() {
 			const updatedNode = workflowData.nodes[1];
 			updatedNode.typeVersion = latestVersion;
 			updatedNode.parameters = {};
-			// TODO: migrate the node parameters from the old node to the new node
 			if (oldNodeParameters && newNodeType?.properties) {
 				for (const parameter of oldNodeParameters) {
 					const oldProperty = oldNodeType?.properties.find(
@@ -2192,6 +2193,20 @@ export function useCanvasOperations() {
 						updatedNode.parameters[parameter] = originalNode.parameters[parameter];
 					}
 				}
+			}
+
+			// Migrate the node parameters using the API
+			if (newNodeType?.migrations?.length) {
+				const migrationResult = await migrateNodeParameters(rootStore.restApiContext, {
+					nodeType: originalNode.type,
+					typeVersion: originalNode.typeVersion,
+					targetVersion: latestVersion,
+					parameters: originalNode.parameters,
+				});
+				updatedNode.parameters = {
+					...updatedNode.parameters,
+					...migrationResult.migratedParameters,
+				};
 			}
 		}
 
@@ -2271,6 +2286,7 @@ export function useCanvasOperations() {
 					}
 				}
 			}
+
 			for (const [type, typeConnections] of Object.entries(outgoingConnections)) {
 				const outputsCount = nodeOutputCounts.get(type as NodeConnectionType) ?? 0;
 				if (outputsCount < typeConnections.length) {

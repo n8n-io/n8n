@@ -14,6 +14,7 @@ import type {
 	INodeTypeNameVersion,
 	NodeParameterValueType,
 	ResourceMapperFields,
+	INodeParameters,
 } from 'n8n-workflow';
 import { sleep } from 'n8n-workflow';
 
@@ -121,4 +122,16 @@ export async function getNodeParameterActionResult(
 		'/dynamic-node-parameters/action-result',
 		sendData,
 	);
+}
+
+export async function migrateNodeParameters(
+	context: IRestApiContext,
+	sendData: {
+		nodeType: string;
+		typeVersion: number;
+		targetVersion: number;
+		parameters: INodeParameters;
+	},
+): Promise<{ migratedParameters: INodeParameters }> {
+	return await makeRestApiRequest(context, 'POST', '/node-types/migrate', sendData);
 }
