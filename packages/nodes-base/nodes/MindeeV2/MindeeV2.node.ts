@@ -8,7 +8,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { mindeeApiRequest, pollMindee } from './GenericFunctions';
+import { buildRequestBody, mindeeApiRequest, pollMindee, readUIParams } from './GenericFunctions';
+
+const API_URL = 'https://api-v2.mindee.net/v2/inferences/enqueue';
 
 export class MindeeV2 implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,50 +34,12 @@ export class MindeeV2 implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Input Type',
-				name: 'inputType',
-				type: 'options',
-				options: [
-					{
-						name: 'Binary Data',
-						value: 'binary',
-						description: 'Upload file from binary data',
-					},
-					{
-						name: 'URL',
-						value: 'url',
-						description: 'Download file from URL',
-					},
-				],
-				default: 'binary',
-				description: 'Choose whether to upload from binary data or download from URL',
-			},
-			{
 				displayName: 'Binary Property Name',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
 				default: 'data',
 				hint: 'The name of the input binary field containing the file to be uploaded',
-				displayOptions: {
-					show: {
-						inputType: ['binary'],
-					},
-				},
-			},
-			{
-				displayName: 'File URL',
-				name: 'fileUrl',
-				type: 'string',
-				required: true,
-				default: '',
-				placeholder: 'https://example.com/document.pdf',
-				description: 'URL pointing to the file to be processed',
-				displayOptions: {
-					show: {
-						inputType: ['url'],
-					},
-				},
 			},
 			{
 				displayName: 'Model ID',
@@ -96,7 +60,7 @@ export class MindeeV2 implements INodeType {
 				name: 'rag',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to enable Retrieval-Augmented Generation for compatible plans',
+				description: 'Enhance extraction accuracy with Retrieval-Augmented Generation',
 			},
 			{
 				displayName: 'Enable Polygons (Location Data)',
@@ -104,7 +68,7 @@ export class MindeeV2 implements INodeType {
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to retrieve location data associated with each result for compatible plans',
+					'Calculate bounding box polygons for all fields, and fill their `locations` attribute',
 			},
 			{
 				displayName: 'Enable Confidence Scores',
@@ -112,7 +76,7 @@ export class MindeeV2 implements INodeType {
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to retrieve confidence scores associated with each result for compatible plans',
+					'Calculate confidence scores for all fields, and fill their `confidence` attribute',
 			},
 			{
 				displayName: 'Enable Raw Text',
@@ -120,7 +84,7 @@ export class MindeeV2 implements INodeType {
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to retrieve the raw OCR/text readings from the file for compatible plans',
+					'Extract the full text content from the document as strings, and fill the `raw_text` attribute',
 			},
 			{
 				displayName: 'Polling Timeout (Seconds)',
@@ -140,48 +104,19 @@ export class MindeeV2 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length;
-		const url = 'https://api-v2.mindee.net/v2/inferences/enqueue';
-		let enqueueResponseData, responseData;
-		for (let i = 0; i < length; i++) {
+		for (let i = 0; i < items.length; i++) {
 			try {
+				const params = readUIParams(this, i);
 				const form = new FormData();
-				const modelId = this.getNodeParameter('modelId', i);
-				const alias = this.getNodeParameter('alias', i);
-				const inputType = this.getNodeParameter('inputType', i);
-				const rag = this.getNodeParameter('rag', i) as boolean;
-				const polygon = this.getNodeParameter('polygon', i) as boolean;
-				const confidence = this.getNodeParameter('confidence', i) as boolean;
-				const rawText = this.getNodeParameter('rawText', i) as boolean;
-				const maxDelayCount = this.getNodeParameter('maxDelayCount', i) as number;
-				if (inputType === 'binary') {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-					form.append('file', dataBuffer, { filename: binaryData.fileName });
-				} else if (inputType === 'url') {
-					const fileUrl = this.getNodeParameter('fileUrl', i);
-					form.append('url', fileUrl as string);
-				}
+				await buildRequestBody(this, i, params, form);
 
-				form.append('model_id', modelId as string);
-				form.append('alias', alias as string);
-				form.append('rag', rag ? 'true' : 'false');
-				form.append('polygon', polygon ? 'true' : 'false');
-				form.append('confidence', confidence ? 'true' : 'false');
-				form.append('raw_text', rawText ? 'true' : 'false');
+				const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form);
+				const result = await pollMindee(this, enqueue, params.maxDelayCount);
 
-				enqueueResponseData = await mindeeApiRequest.call(this, 'POST', url, form);
-
-				responseData = await pollMindee(this, enqueueResponseData as IDataObject, maxDelayCount);
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+				returnData.push(...(Array.isArray(result) ? result : [result]));
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as IDataObject).message as string });
+					returnData.push({ error: (error as Error).message });
 					continue;
 				}
 				throw error;
