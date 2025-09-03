@@ -221,7 +221,7 @@ export class CommunityPackagesController {
 
 		try {
 			for (const installedPackage of installedPackages) {
-				await this.communityPackagesService.removePackage(name, installedPackage);
+				await this.communityPackagesService.removePackage(name, installedPackage, version);
 			}
 		} catch (error) {
 			const message = [
