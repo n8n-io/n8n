@@ -26,6 +26,7 @@ import NodeSettingsHeader from '@/components/NodeSettingsHeader.vue';
 import get from 'lodash/get';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import NodeUpdateVersionButton from './NodeUpdateVersionButton.vue';
 import {
 	collectSettings,
 	createCommonNodeSettings,
@@ -620,18 +621,25 @@ function handleSelectAction(params: INodeParameters) {
 					:read-only="isReadOnly"
 					@update:model-value="nameChanged"
 				/>
-				<NodeExecuteButton
-					v-if="isExecutable && !blockUI && node && nodeValid"
-					data-test-id="node-execute-button"
-					:node-name="node.name"
-					:disabled="outputPanelEditMode.enabled && !isTriggerNode"
-					:tooltip="executeButtonTooltip"
-					size="small"
-					telemetry-source="parameters"
-					@execute="onNodeExecute"
-					@stop-execution="onStopExecution"
-					@value-changed="valueChanged"
-				/>
+				<div class="version-update-container">
+					<NodeUpdateVersionButton
+						v-if="isExecutable && !blockUI && node && nodeValid && !isLatestNodeVersion"
+						:node-id="node.id"
+						:node-name="node.name"
+					/>
+					<NodeExecuteButton
+						v-if="isExecutable && !blockUI && node && nodeValid"
+						data-test-id="node-execute-button"
+						:node-name="node.name"
+						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
+						:tooltip="executeButtonTooltip"
+						size="small"
+						telemetry-source="parameters"
+						@execute="onNodeExecute"
+						@stop-execution="onStopExecution"
+						@value-changed="valueChanged"
+					/>
+				</div>
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
@@ -645,6 +653,7 @@ function handleSelectAction(params: INodeParameters) {
 			v-else-if="node"
 			:selected-tab="openPanel"
 			:node-name="node.name"
+			:node-id="node.id"
 			:node-type="nodeType"
 			:execute-button-tooltip="executeButtonTooltip"
 			:hide-execute="props.hideExecute || !isExecutable || blockUI || !node || !nodeValid"
@@ -652,6 +661,7 @@ function handleSelectAction(params: INodeParameters) {
 			:hide-tabs="!nodeValid"
 			:hide-docs="props.hideDocs"
 			:push-ref="pushRef"
+			:is-latest-node-version="isLatestNodeVersion"
 			@execute="onNodeExecute"
 			@stop-execution="onStopExecution"
 			@value-changed="valueChanged"
@@ -955,6 +965,11 @@ function handleSelectAction(params: INodeParameters) {
 		box-sizing: border-box;
 		background-color: #793300;
 	}
+}
+
+.version-update-container {
+	display: flex;
+	gap: var(--spacing-xs);
 }
 </style>
 

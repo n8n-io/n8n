@@ -3,6 +3,7 @@ import { inject, ref } from 'vue';
 import type { CanvasNodeData, CanvasNodeInjectionData } from '../types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../types';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 vi.mock('vue', async () => {
 	const actual = await vi.importActual('vue');
@@ -11,6 +12,12 @@ vi.mock('vue', async () => {
 		inject: vi.fn(),
 	};
 });
+
+vi.mock('@/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: vi.fn(() => ({
+		getNodeVersions: vi.fn(() => []),
+	})),
+}));
 
 describe('useCanvasNode', () => {
 	it('should return default values when node is not provided', () => {
@@ -36,6 +43,9 @@ describe('useCanvasNode', () => {
 		expect(result.executionWaiting.value).toBeUndefined();
 		expect(result.executionRunning.value).toBe(false);
 		expect(result.render.value).toEqual({ type: CanvasNodeRenderType.Default, options: {} });
+		expect(result.nodeType.value).toBe('');
+		expect(result.nodeTypeVersion.value).toBe(1);
+		expect(result.isOutdated.value).toBe(false);
 	});
 
 	it('should return node data when node is provided', () => {
@@ -96,5 +106,95 @@ describe('useCanvasNode', () => {
 		expect(result.executionWaiting.value).toBe('waiting');
 		expect(result.executionRunning.value).toBe(true);
 		expect(result.render.value).toBe(node.data.value.render);
+		expect(result.nodeType.value).toBe('nodeType1');
+		expect(result.nodeTypeVersion.value).toBe(1);
+		expect(result.isOutdated.value).toBe(false);
+	});
+
+	it('should detect when node version is outdated', () => {
+		const mockStore = {
+			getNodeVersions: vi.fn(() => [1, 2, 3]), // Latest version is 3
+		};
+		vi.mocked(useNodeTypesStore).mockReturnValue(mockStore as any);
+
+		const node = {
+			data: ref({
+				id: 'node1',
+				name: 'Node 1',
+				subtitle: '',
+				type: 'nodeType1',
+				typeVersion: 1, // Using version 1, but latest is 3
+				disabled: false,
+				inputs: [],
+				outputs: [],
+				connections: {
+					[CanvasConnectionMode.Input]: {},
+					[CanvasConnectionMode.Output]: {},
+				},
+				issues: { items: [], visible: false },
+				execution: { running: false },
+				runData: { outputMap: {}, iterations: 0, visible: false },
+				pinnedData: { count: 0, visible: false },
+				render: {
+					type: CanvasNodeRenderType.Default,
+					options: {},
+				},
+			} satisfies CanvasNodeData),
+			id: ref('1'),
+			label: ref('Node 1'),
+			selected: ref(false),
+		} satisfies Partial<CanvasNodeInjectionData>;
+
+		vi.mocked(inject).mockReturnValue(node);
+
+		const result = useCanvasNode();
+
+		expect(result.nodeType.value).toBe('nodeType1');
+		expect(result.nodeTypeVersion.value).toBe(1);
+		expect(result.isOutdated.value).toBe(true);
+		expect(mockStore.getNodeVersions).toHaveBeenCalledWith('nodeType1');
+	});
+
+	it('should not be outdated when using latest version', () => {
+		const mockStore = {
+			getNodeVersions: vi.fn(() => [1, 2, 3]), // Latest version is 3
+		};
+		vi.mocked(useNodeTypesStore).mockReturnValue(mockStore as any);
+
+		const node = {
+			data: ref({
+				id: 'node1',
+				name: 'Node 1',
+				subtitle: '',
+				type: 'nodeType1',
+				typeVersion: 3, // Using latest version 3
+				disabled: false,
+				inputs: [],
+				outputs: [],
+				connections: {
+					[CanvasConnectionMode.Input]: {},
+					[CanvasConnectionMode.Output]: {},
+				},
+				issues: { items: [], visible: false },
+				execution: { running: false },
+				runData: { outputMap: {}, iterations: 0, visible: false },
+				pinnedData: { count: 0, visible: false },
+				render: {
+					type: CanvasNodeRenderType.Default,
+					options: {},
+				},
+			} satisfies CanvasNodeData),
+			id: ref('1'),
+			label: ref('Node 1'),
+			selected: ref(false),
+		} satisfies Partial<CanvasNodeInjectionData>;
+
+		vi.mocked(inject).mockReturnValue(node);
+
+		const result = useCanvasNode();
+
+		expect(result.nodeType.value).toBe('nodeType1');
+		expect(result.nodeTypeVersion.value).toBe(3);
+		expect(result.isOutdated.value).toBe(false);
 	});
 });

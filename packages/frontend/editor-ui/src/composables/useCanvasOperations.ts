@@ -115,6 +115,7 @@ import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
+import isEqual from 'lodash/isEqual';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -2150,6 +2151,149 @@ export function useCanvasOperations() {
 		return result.nodes?.map((node) => node.id).filter(isPresent) ?? [];
 	}
 
+	async function updateNodeVersion(id: string) {
+		const originalNode = workflowsStore.getNodeById(id);
+		if (!originalNode) {
+			return;
+		}
+
+		const legacyPrefix = 'LEGACY: ';
+
+		const workflowData = deepCopy(getNodesToSave([originalNode, originalNode]));
+		const originalPosition = originalNode.position;
+		const verticalOffset = 80;
+		const latestVersion = Math.max(...nodeTypesStore.getNodeVersions(originalNode.type));
+		const oldNodeType = nodeTypesStore.getNodeType(originalNode.type, originalNode.typeVersion);
+		const newNodeType = nodeTypesStore.getNodeType(originalNode.type, latestVersion);
+		const oldNodeParameters = oldNodeType?.properties.map((property) => property.name);
+
+		if (workflowData.nodes && workflowData.nodes.length >= 2) {
+			// Update the name of the legacy node
+			const legacyNode = workflowData.nodes[0];
+			if (!legacyNode.name.startsWith(legacyPrefix)) {
+				workflowData.nodes[0].name = `${legacyPrefix}${legacyNode.name}`;
+			}
+
+			// Update the node to the latest version and copy the parameter values
+			const updatedNode = workflowData.nodes[1];
+			updatedNode.typeVersion = latestVersion;
+			updatedNode.parameters = {};
+			// TODO: migrate the node parameters from the old node to the new node
+			if (oldNodeParameters && newNodeType?.properties) {
+				for (const parameter of oldNodeParameters) {
+					const oldProperty = oldNodeType?.properties.find(
+						(property) => property.name === parameter,
+					);
+					const newProperty = newNodeType?.properties.find(
+						(property) => property.name === parameter,
+					);
+					// Only copy the parameter if it is the same as in the old version
+					if (oldProperty && newProperty && isEqual(oldProperty, newProperty)) {
+						updatedNode.parameters[parameter] = originalNode.parameters[parameter];
+					}
+				}
+			}
+		}
+
+		// Remove the old node and import the new nodes
+		workflowsStore.removeNode(originalNode);
+		const result = await importWorkflowData(workflowData, 'update', {
+			importTags: false,
+		});
+
+		if (result.nodes && result.nodes.length >= 2) {
+			// Update the position of the new nodes
+			workflowsStore.setNodePositionById(result.nodes[0].id, [
+				originalPosition[0],
+				originalPosition[1] - verticalOffset,
+			]);
+			workflowsStore.setNodePositionById(result.nodes[1].id, [
+				originalPosition[0],
+				originalPosition[1] + verticalOffset,
+			]);
+		}
+
+		// Remove extra connections
+		const incomingConnections = workflowsStore.incomingConnectionsByNodeName(originalNode.name);
+		const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(originalNode.name);
+		if (newNodeType) {
+			const nodeInputs = NodeHelpers.getNodeInputs(
+				editableWorkflowObject.value,
+				originalNode,
+				newNodeType,
+			);
+			const nodeOutputs = NodeHelpers.getNodeOutputs(
+				editableWorkflowObject.value,
+				originalNode,
+				newNodeType,
+			);
+			const nodeInputCounts = new Map<NodeConnectionType, number>();
+			const nodeOutputCounts = new Map<NodeConnectionType, number>();
+			for (const input of nodeInputs) {
+				let type: NodeConnectionType;
+				if (typeof input === 'object' && 'type' in input) {
+					type = input.type;
+				} else {
+					type = input;
+				}
+
+				nodeInputCounts.set(type, (nodeInputCounts.get(type) ?? 0) + 1);
+			}
+
+			for (const output of nodeOutputs) {
+				let type: NodeConnectionType;
+				if (typeof output === 'object' && 'type' in output) {
+					type = output.type;
+				} else {
+					type = output;
+				}
+
+				nodeOutputCounts.set(type, (nodeOutputCounts.get(type) ?? 0) + 1);
+			}
+
+			for (const [type, typeConnections] of Object.entries(incomingConnections)) {
+				const inputsCount = nodeInputCounts.get(type as NodeConnectionType) ?? 0;
+				if (inputsCount < typeConnections.length) {
+					for (let i = inputsCount; i < typeConnections.length; i++) {
+						const connections = typeConnections[i] ?? [];
+						for (const connection of connections) {
+							workflowsStore.removeConnection({
+								connection: [
+									connection,
+									{
+										node: result.nodes?.[1]?.name ?? '',
+										type: type as NodeConnectionType,
+										index: i,
+									},
+								],
+							});
+						}
+					}
+				}
+			}
+			for (const [type, typeConnections] of Object.entries(outgoingConnections)) {
+				const outputsCount = nodeOutputCounts.get(type as NodeConnectionType) ?? 0;
+				if (outputsCount < typeConnections.length) {
+					for (let i = outputsCount; i < typeConnections.length; i++) {
+						const connections = typeConnections[i] ?? [];
+						for (const connection of connections) {
+							workflowsStore.removeConnection({
+								connection: [
+									{
+										node: result.nodes?.[1]?.name ?? '',
+										type: type as NodeConnectionType,
+										index: i,
+									},
+									connection,
+								],
+							});
+						}
+					}
+				}
+			}
+		}
+	}
+
 	async function copyNodes(ids: string[]) {
 		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
 
@@ -2299,6 +2443,7 @@ export function useCanvasOperations() {
 		copyNodes,
 		cutNodes,
 		duplicateNodes,
+		updateNodeVersion,
 		getNodesToSave,
 		revertDeleteNode,
 		addConnections,

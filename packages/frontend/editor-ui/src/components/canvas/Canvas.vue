@@ -85,6 +85,7 @@ const emit = defineEmits<{
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
 	'duplicate:nodes': [ids: string[]];
+	'update:node:version': [id: string];
 	'update:nodes:pin': [ids: string[], source: PinDataSource];
 	'cut:nodes': [ids: string[]];
 	'delete:connection': [connection: Connection];
@@ -734,6 +735,9 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return clearSelectedNodes();
 		case 'duplicate':
 			return emit('duplicate:nodes', nodeIds);
+		case 'update_node_version':
+			// TODO: open a modal instead of calling the function directly
+			return emit('update:node:version', nodeIds[0]);
 		case 'toggle_pin':
 			return emit('update:nodes:pin', nodeIds, 'context-menu');
 		case 'execute':

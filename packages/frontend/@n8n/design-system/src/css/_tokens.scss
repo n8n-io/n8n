@@ -106,6 +106,8 @@
 	--color-node-executing-other-background: var(--color-primary-tint-3);
 	--color-node-pinned-border: var(--color-secondary);
 	--color-node-running-border: var(--color-primary);
+	--color-node-outdated-border: #22d3ee;
+	--color-canvas-node-outdated-border-color: var(--color-node-outdated-border);
 	--node-type-main-color: var(--p-gray-490);
 
 	// Sticky

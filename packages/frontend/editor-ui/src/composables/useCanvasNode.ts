@@ -2,9 +2,11 @@ import { CanvasNodeKey } from '@/constants';
 import { computed, inject } from 'vue';
 import type { CanvasNodeData } from '@/types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
+	const nodeTypesStore = useNodeTypesStore();
 	const data = computed(
 		() =>
 			node?.data.value ??
@@ -63,6 +65,23 @@ export function useCanvasNode() {
 
 	const eventBus = computed(() => node?.eventBus.value);
 
+	const nodeType = computed(() => data.value.type);
+	const nodeTypeVersion = computed(() => data.value.typeVersion);
+
+	const isOutdated = computed(() => {
+		if (!nodeType.value || !nodeTypeVersion.value) {
+			return false;
+		}
+
+		const nodeVersions = nodeTypesStore.getNodeVersions(nodeType.value);
+		if (nodeVersions.length === 0) {
+			return false;
+		}
+
+		const latestVersion = Math.max(...nodeVersions);
+		return nodeTypeVersion.value < latestVersion;
+	});
+
 	return {
 		node,
 		id,
@@ -88,5 +107,8 @@ export function useCanvasNode() {
 		executionRunning,
 		render,
 		eventBus,
+		nodeType,
+		nodeTypeVersion,
+		isOutdated,
 	};
 }

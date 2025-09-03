@@ -68,6 +68,7 @@ import {
 	NDV_UI_OVERHAUL_EXPERIMENT,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
+	NODE_VERSION_UPDATE_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -862,6 +863,20 @@ async function onDuplicateNodes(ids: string[]) {
 	});
 
 	selectNodes(newIds);
+}
+
+async function onUpdateNodeVersion(id: string) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	useUIStore().openModalWithData({
+		name: NODE_VERSION_UPDATE_MODAL_KEY,
+		data: {
+			nodeId: id,
+			nodeName: workflowsStore.getNodeById(id)?.name,
+		},
+	});
 }
 
 function onPinNodes(ids: string[], source: PinDataSource) {
@@ -2082,6 +2097,7 @@ onBeforeUnmount(() => {
 			@update:nodes:enabled="onToggleNodesDisabled"
 			@update:nodes:pin="onPinNodes"
 			@duplicate:nodes="onDuplicateNodes"
+			@update:node:version="onUpdateNodeVersion"
 			@copy:nodes="onCopyNodes"
 			@cut:nodes="onCutNodes"
 			@run:workflow="runEntireWorkflow('main')"

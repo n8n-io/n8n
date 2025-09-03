@@ -3,21 +3,38 @@ import type { IUpdateInformation } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeExecuteButton from './NodeExecuteButton.vue';
+import NodeUpdateVersionButton from '@/components/NodeUpdateVersionButton.vue';
 import type { NodeSettingsTab } from '@/types/nodeSettings';
+import { useTemplateRef, ref } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
 
 type Props = {
 	nodeName: string;
+	nodeId: string;
 	hideExecute: boolean;
 	hideDocs: boolean;
 	hideTabs: boolean;
 	disableExecute: boolean;
 	executeButtonTooltip: string;
 	selectedTab: NodeSettingsTab;
+	isLatestNodeVersion: boolean;
 	nodeType?: INodeTypeDescription | null;
 	pushRef: string;
 };
 
+const OVERLAP_THRESHOLD = 470;
+
 defineProps<Props>();
+
+const nodeSettingsHeaderWrapper = useTemplateRef('nodeSettingsHeaderWrapper');
+const hideUpdateVersionLablel = ref(false);
+
+useResizeObserver(nodeSettingsHeaderWrapper, () => {
+	if (nodeSettingsHeaderWrapper.value?.offsetWidth) {
+		hideUpdateVersionLablel.value =
+			nodeSettingsHeaderWrapper.value?.offsetWidth <= OVERLAP_THRESHOLD ? true : false;
+	}
+});
 
 const emit = defineEmits<{
 	execute: [];
@@ -28,7 +45,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-	<div :class="$style.header">
+	<div :class="$style.header" ref="nodeSettingsHeaderWrapper">
 		<NodeSettingsTabs
 			v-if="!hideTabs"
 			:hide-docs="hideDocs"
@@ -39,19 +56,27 @@ const emit = defineEmits<{
 			tabs-variant="modern"
 			@update:model-value="emit('tab-changed', $event)"
 		/>
-		<NodeExecuteButton
-			v-if="!hideExecute"
-			data-test-id="node-execute-button"
-			:node-name="nodeName"
-			:disabled="disableExecute"
-			:tooltip="executeButtonTooltip"
-			:class="$style.execute"
-			size="small"
-			telemetry-source="parameters"
-			@execute="emit('execute')"
-			@stop-execution="emit('stop-execution')"
-			@value-changed="emit('value-changed', $event)"
-		/>
+		<div :class="$style.update">
+			<NodeUpdateVersionButton
+				v-if="!hideExecute && !isLatestNodeVersion"
+				:node-id="nodeId"
+				:node-name="nodeName"
+				:hide-label="hideUpdateVersionLablel"
+			/>
+			<NodeExecuteButton
+				v-if="!hideExecute"
+				data-test-id="node-execute-button"
+				:node-name="nodeName"
+				:disabled="disableExecute"
+				:tooltip="executeButtonTooltip"
+				:class="$style.execute"
+				size="small"
+				telemetry-source="parameters"
+				@execute="emit('execute')"
+				@stop-execution="emit('stop-execution')"
+				@value-changed="emit('value-changed', $event)"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -76,5 +101,11 @@ const emit = defineEmits<{
 
 .tabs :global(#communityNode) {
 	padding-right: var(--spacing-2xs);
+}
+
+.update {
+	display: flex;
+	flex-direction: row;
+	gap: var(--spacing-xs);
 }
 </style>

@@ -6,6 +6,17 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+
+vi.mock('@/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: vi.fn(() => ({
+		getNodeVersions: vi.fn(() => [1]),
+		getNodeType: vi.fn(() => ({
+			name: 'MockNode',
+			group: ['transform'],
+			maxNodes: undefined,
+		})),
+	})),
+}));
 import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	NodeConnectionTypes,
