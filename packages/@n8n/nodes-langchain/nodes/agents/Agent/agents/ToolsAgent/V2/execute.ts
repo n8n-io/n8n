@@ -9,6 +9,14 @@ import {
 	type AgentRunnableSequence,
 	createToolCallingAgent,
 } from 'langchain/agents';
+import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
+import type {
+	Serialized,
+	SerializedNotImplemented,
+	SerializedSecret,
+} from '@langchain/core/load/serializable';
+import type { LLMResult } from '@langchain/core/outputs';
+import { getModelNameForTiktoken } from '@langchain/core/language_models/base';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { DynamicStructuredTool, Tool } from 'langchain/tools';
 import omit from 'lodash/omit';
@@ -21,6 +29,7 @@ import {
 	getOptionalOutputParser,
 	type N8nOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
+import { estimateTokensFromStringList } from '@utils/tokenizer/token-estimator';
 
 import {
 	fixEmptyContentMessage,
@@ -32,6 +41,140 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
+
+/* -----------------------------------------------------------
+   Token Usage Aggregator
+----------------------------------------------------------- */
+type ModelUsage = {
+	modelType: string;
+	modelName: string;
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	isEstimate: boolean;
+};
+
+// helper removed (unused)
+
+class AgentTokenUsageCollector extends BaseCallbackHandler {
+	name = 'AgentTokenUsageCollector';
+
+	// Track usage per model key
+	usageByModel: Record<string, ModelUsage> = {};
+
+	// Track usage per (model, estimate-kind)
+	private usageByModelAndKind: Record<string, ModelUsage> = {};
+
+	// Track runId -> model key and prompt estimates for fallback
+	private runToModelKey: Record<string, string> = {};
+	private promptEstimateByRun: Record<string, number> = {};
+
+	constructor(private readonly tiktokenModel: string = getModelNameForTiktoken('gpt-4o')) {
+		super();
+	}
+
+	async handleLLMStart(
+		llm: Serialized | SerializedSecret | SerializedNotImplemented,
+		prompts: string[],
+		runId: string,
+	): Promise<void> {
+		try {
+			// Serialized object does not expose instance; infer identity from kwargs where possible
+			const llmAny = llm as any;
+			const modelName = llmAny?.kwargs?.model ?? llmAny?.kwargs?.modelName ?? 'unknown';
+			const modelType = llmAny?.id?.[0] ?? llmAny?.lc_namespace?.[0] ?? 'unknown';
+			const key = `${modelType}:${modelName}`;
+			this.runToModelKey[runId] = key;
+
+			// Estimate prompt tokens for fallback when usage is not provided
+			const estimatedPrompt = await estimateTokensFromStringList(
+				Array.isArray(prompts) ? prompts : [],
+				this.tiktokenModel as any,
+			);
+			this.promptEstimateByRun[runId] = estimatedPrompt;
+		} catch {
+			// ignore estimation failures
+		}
+	}
+
+	private addUsage(
+		modelKey: string,
+		modelType: string,
+		modelName: string,
+		promptTokens: number,
+		completionTokens: number,
+		isEstimate: boolean,
+	) {
+		const totalTokens = (promptTokens || 0) + (completionTokens || 0);
+		if (!this.usageByModel[modelKey]) {
+			this.usageByModel[modelKey] = {
+				modelType,
+				modelName,
+				promptTokens: 0,
+				completionTokens: 0,
+				totalTokens: 0,
+				isEstimate,
+			};
+		}
+		const agg = this.usageByModel[modelKey];
+		agg.promptTokens += promptTokens || 0;
+		agg.completionTokens += completionTokens || 0;
+		agg.totalTokens += totalTokens;
+		// If any entry is an actual value, mark isEstimate as false
+		if (!isEstimate) agg.isEstimate = false;
+
+		// Aggregate per (model, estimate-kind)
+		const kindKey = `${modelKey}:${isEstimate ? 'estimate' : 'actual'}`;
+		if (!this.usageByModelAndKind[kindKey]) {
+			this.usageByModelAndKind[kindKey] = {
+				modelType,
+				modelName,
+				promptTokens: 0,
+				completionTokens: 0,
+				totalTokens: 0,
+				isEstimate,
+			};
+		}
+		const aggKind = this.usageByModelAndKind[kindKey];
+		aggKind.promptTokens += promptTokens || 0;
+		aggKind.completionTokens += completionTokens || 0;
+		aggKind.totalTokens += totalTokens;
+	}
+
+	getUsageRecords(): ModelUsage[] {
+		return Object.values(this.usageByModelAndKind);
+	}
+
+	async handleLLMEnd(output: LLMResult, runId: string): Promise<void> {
+		try {
+			const key = this.runToModelKey[runId] ?? 'unknown:unknown';
+			const [modelType, modelName] = key.split(':');
+
+			const completionTokens = (output?.llmOutput as any)?.tokenUsage?.completionTokens ?? 0;
+			const promptTokens = (output?.llmOutput as any)?.tokenUsage?.promptTokens ?? 0;
+
+			if (completionTokens > 0 || promptTokens > 0) {
+				this.addUsage(key, modelType, modelName, promptTokens || 0, completionTokens || 0, false);
+				return;
+			}
+
+			// Fallback: estimate using generations and stored prompt estimate
+			const generationsTexts =
+				output?.generations?.flatMap((gen) => gen.map((g) => (g as any).text ?? '')) ?? [];
+			const estimatedCompletion = await estimateTokensFromStringList(
+				generationsTexts,
+				this.tiktokenModel as any,
+			);
+			const estimatedPrompt = this.promptEstimateByRun[runId] ?? 0;
+			this.addUsage(key, modelType, modelName, estimatedPrompt, estimatedCompletion, true);
+		} catch {
+			// ignore
+		} finally {
+			delete this.runToModelKey[runId];
+			delete this.promptEstimateByRun[runId];
+		}
+	}
+}
 
 /**
  * Creates an agent executor with the given configuration
@@ -84,6 +227,7 @@ async function processEventStream(
 	eventStream: IterableReadableStream<StreamEvent>,
 	itemIndex: number,
 	returnIntermediateSteps: boolean = false,
+	usageCollector?: AgentTokenUsageCollector,
 ): Promise<{ output: string; intermediateSteps?: any[] }> {
 	const agentResult: { output: string; intermediateSteps?: any[] } = {
 		output: '',
@@ -97,6 +241,10 @@ async function processEventStream(
 	for await (const event of eventStream) {
 		// Stream chat model tokens as they come in
 		switch (event.event) {
+			case 'on_chat_model_start': {
+				// Nothing to do here beyond letting the collector record prompt estimates
+				break;
+			}
 			case 'on_chat_model_stream':
 				const chunk = event.data?.chunk as AIMessageChunk;
 				if (chunk?.content) {
@@ -136,6 +284,31 @@ async function processEventStream(
 								},
 							});
 						}
+					}
+				}
+				// Try to capture usage metadata when available in stream events
+				if (usageCollector && event.data) {
+					try {
+						const data: any = event.data;
+						const usage =
+							data?.usage_metadata || (data?.output?.llmOutput?.tokenUsage ?? undefined);
+						const modelName = data?.kwargs?.model ?? data?.model ?? 'unknown';
+						const modelType = event.name ?? 'unknown';
+						if (usage) {
+							const promptTokens = usage.input_tokens ?? usage.promptTokens ?? 0;
+							const completionTokens = usage.output_tokens ?? usage.completionTokens ?? 0;
+							const key = `${modelType}:${modelName}`;
+							(usageCollector as any).addUsage(
+								key,
+								modelType,
+								modelName,
+								promptTokens,
+								completionTokens,
+								false,
+							);
+						}
+					} catch {
+						// ignore
 					}
 				}
 				break;
@@ -225,6 +398,7 @@ export async function toolsAgentExecute(
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
+				collectTokenUsage?: boolean;
 			};
 
 			// Prepare the prompt messages and prompt template.
@@ -245,6 +419,10 @@ export async function toolsAgentExecute(
 				memory,
 				fallbackModel,
 			);
+			// Prepare token usage collector if enabled
+			const collectTokenUsage = options.collectTokenUsage === true;
+			const usageCollector = collectTokenUsage ? new AgentTokenUsageCollector() : undefined;
+
 			// Invoke with fallback logic
 			const invokeParams = {
 				input,
@@ -252,7 +430,8 @@ export async function toolsAgentExecute(
 				formatting_instructions:
 					'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 			};
-			const executeOptions = { signal: this.getExecutionCancelSignal() };
+			const executeOptions: any = { signal: this.getExecutionCancelSignal() };
+			if (usageCollector) executeOptions.callbacks = [usageCollector];
 
 			// Check if streaming is actually available
 			const isStreamingAvailable = 'isStreaming' in this ? this.isStreaming?.() : undefined;
@@ -275,15 +454,25 @@ export async function toolsAgentExecute(
 					},
 				);
 
-				return await processEventStream(
+				const streamResult = await processEventStream(
 					this,
 					eventStream,
 					itemIndex,
 					options.returnIntermediateSteps,
+					usageCollector,
 				);
+				// attach usage for later aggregation
+				return {
+					...streamResult,
+					__tokenUsage: usageCollector?.getUsageRecords(),
+				} as any;
 			} else {
 				// Handle regular execution
-				return await executor.invoke(invokeParams, executeOptions);
+				const res: any = await executor.invoke(invokeParams, executeOptions);
+				if (usageCollector) {
+					res.__tokenUsage = usageCollector.getUsageRecords();
+				}
+				return res;
 			}
 		});
 
@@ -323,9 +512,17 @@ export async function toolsAgentExecute(
 					'input',
 					'chat_history',
 					'agent_scratchpad',
+					'__tokenUsageByModel',
+					'__tokenUsage',
 				),
 				pairedItem: { item: itemIndex },
 			};
+
+			// Attach token usage records (estimate vs actual per model)
+			const usageRecords = (response as any)?.__tokenUsage as ModelUsage[] | undefined;
+			if (usageRecords && usageRecords.length > 0) {
+				(itemResult.json as any).tokenUsage = usageRecords;
+			}
 
 			returnData.push(itemResult);
 		});

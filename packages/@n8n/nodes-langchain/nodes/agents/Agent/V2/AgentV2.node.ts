@@ -123,6 +123,14 @@ export class AgentV2 implements INodeType {
 					whenToDisplay: 'afterExecution',
 					displayCondition: '={{ $parameter["enableStreaming"] === true }}',
 				},
+				{
+					message:
+						'Collect Token Usage is enabled. This execution returns a tokenUsage array with per-model totals (actual vs estimated).',
+					type: 'info',
+					location: 'outputPane',
+					whenToDisplay: 'afterExecution',
+					displayCondition: '={{ $parameter["options"]["collectTokenUsage"] === true }}',
+				},
 			],
 		};
 	}
