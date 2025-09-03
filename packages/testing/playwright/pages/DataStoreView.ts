@@ -41,8 +41,12 @@ export class DataStoreView extends BasePage {
 		return this.page.getByTestId('datastore-header-name-input');
 	}
 
-	async clickAddResourceDropdown() {
-		await this.clickByTestId('add-resource');
+	getAddResourceDropdown() {
+		return this.page.getByTestId('add-resource');
+	}
+
+	getAddDataTableAction() {
+		return this.page.getByTestId('action-dataStore');
 	}
 
 	async clickDataTableOverviewTab() {
@@ -55,5 +59,13 @@ export class DataStoreView extends BasePage {
 
 	async clickEmptyStateButton() {
 		await this.getEmptyStateActionBoxButton().click();
+	}
+
+	async clickAddResourceDropdown() {
+		await this.getAddResourceDropdown().click();
+	}
+
+	async clickAddDataTableAction() {
+		await this.getAddDataTableAction().click();
 	}
 }
