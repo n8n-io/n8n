@@ -1,4 +1,4 @@
-import type { ListDataStoreContentQueryDto, DataStoreFilter } from '@n8n/api-types';
+import type { ListDataStoreContentQueryDto, DataTableFilter } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -52,7 +52,7 @@ type QueryBuilder = SelectQueryBuilder<any>;
  * - MySQL/MariaDB: the SQL literal itself requires two backslashes (`'\\'`) to mean one.
  */
 function getConditionAndParams(
-	filter: DataStoreFilter['filters'][number],
+	filter: DataTableFilter['filters'][number],
 	index: number,
 	dbType: DataSourceOptions['type'],
 	tableReference?: string,
@@ -232,7 +232,7 @@ export class DataStoreRowsRepository {
 	async updateRow(
 		dataStoreId: string,
 		setData: Record<string, DataStoreColumnJsType | null>,
-		filter: DataStoreFilter,
+		filter: DataTableFilter,
 		columns: DataTableColumn[],
 		returnData: boolean = false,
 	) {
@@ -330,8 +330,8 @@ export class DataStoreRowsRepository {
 				const setData = Object.fromEntries(updateKeys.map((key) => [key, row[key]]));
 				const whereData = Object.fromEntries(matchFields.map((key) => [key, row[key]]));
 
-				// Convert whereData object to DataStoreFilter format
-				const filter: DataStoreFilter = {
+				// Convert whereData object to DataTableFilter format
+				const filter: DataTableFilter = {
 					type: 'and',
 					filters: Object.entries(whereData).map(([columnName, value]) => ({
 						columnName,
@@ -465,7 +465,7 @@ export class DataStoreRowsRepository {
 
 	private applyFilters<T extends ObjectLiteral>(
 		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T>,
-		filter: DataStoreFilter,
+		filter: DataTableFilter,
 		tableReference?: string,
 		columns?: DataTableColumn[],
 	): void {

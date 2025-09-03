@@ -28,4 +28,4 @@ export const dataStoreFilterSchema = z.object({
 	filters: z.array(dataStoreFilterRecordSchema).default([]),
 });
 
-export type DataStoreFilter = z.infer<typeof dataStoreFilterSchema>;
+export type DataTableFilter = z.infer<typeof dataStoreFilterSchema>;

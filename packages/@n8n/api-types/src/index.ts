@@ -58,6 +58,6 @@ export {
 } from './schemas/data-store.schema';
 
 export type {
-	DataStoreFilter,
+	DataTableFilter,
 	DataStoreFilterConditionType,
 } from './schemas/data-store-filter.schema';

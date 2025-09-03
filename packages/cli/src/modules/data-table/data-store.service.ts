@@ -12,7 +12,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type {
-	DataStoreFilter,
+	DataTableFilter,
 	DataStoreRow,
 	DataStoreRowReturn,
 	DataStoreRows,
@@ -350,7 +350,7 @@ export class DataStoreService {
 	}
 
 	private validateAndTransformFilters(
-		filterObject: DataStoreFilter,
+		filterObject: DataTableFilter,
 		columns: DataTableColumn[],
 	): void {
 		this.validateRowsWithColumns(
