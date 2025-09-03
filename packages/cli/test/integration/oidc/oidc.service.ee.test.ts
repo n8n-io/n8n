@@ -22,6 +22,7 @@ import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/sso.ee/oidc/constants';
 import { OidcService } from '@/sso.ee/oidc/oidc.service.ee';
 import { createUser } from '@test-integration/db/users';
 import { UserError } from 'n8n-workflow';
+import { JwtService } from '@/services/jwt.service';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -255,9 +256,11 @@ describe('OIDC service', () => {
 		);
 		expect(authUrl.url.searchParams.get('response_type')).toEqual('code');
 		expect(authUrl.url.searchParams.get('scope')).toEqual('openid email profile');
+		expect(authUrl.url.searchParams.get('state')).toBeDefined();
+		expect(authUrl.url.searchParams.get('state')?.startsWith('n8n_state:')).toBe(true);
 
 		expect(authUrl.state).toBeDefined();
-		expect(authUrl.state.startsWith('n8n_state:')).toBe(true);
+		expect(authUrl.nonce).toBeDefined();
 	});
 
 	describe('loginUser', () => {
@@ -265,7 +268,7 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state}`,
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
@@ -293,7 +296,7 @@ describe('OIDC service', () => {
 				email: 'user2@example.com',
 			});
 
-			const user = await oidcService.loginUser(callbackUrl, state, nonce);
+			const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user2@example.com');
 
@@ -311,7 +314,7 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state}`,
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
@@ -331,7 +334,7 @@ describe('OIDC service', () => {
 				expiresIn: () => 3600,
 			} as mocked_oidc_client.TokenEndpointResponse &
 				mocked_oidc_client.TokenEndpointResponseHelpers;
-
+			state;
 			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
 
 			fetchUserInfoMock.mockResolvedValueOnce({
@@ -339,7 +342,7 @@ describe('OIDC service', () => {
 				email: 'user2@example.com',
 			});
 
-			const user = await oidcService.loginUser(callbackUrl, state, nonce);
+			const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user2@example.com');
 			expect(user.id).toEqual(createdUser.id);
@@ -349,7 +352,7 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state}`,
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
@@ -378,7 +381,7 @@ describe('OIDC service', () => {
 				email: 'user1@example.com',
 			});
 
-			const user = await oidcService.loginUser(callbackUrl, state, nonce);
+			const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user1@example.com');
 		});
@@ -387,7 +390,7 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state}`,
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
@@ -416,7 +419,7 @@ describe('OIDC service', () => {
 				email: 'user3@example.com',
 			});
 
-			const user = await oidcService.loginUser(callbackUrl, state, nonce);
+			const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('user3@example.com');
 		});
@@ -425,7 +428,7 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state}`,
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
@@ -453,16 +456,16 @@ describe('OIDC service', () => {
 				email_verified: true,
 			});
 
-			await expect(oidcService.loginUser(callbackUrl, state, nonce)).rejects.toThrowError(
-				BadRequestError,
-			);
+			await expect(
+				oidcService.loginUser(callbackUrl, state.signed, nonce.signed),
+			).rejects.toThrowError(BadRequestError);
 		});
 
 		it('should throw `BadRequestError` if OIDC Idp provides an invalid email format', async () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state}`,
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
@@ -491,7 +494,9 @@ describe('OIDC service', () => {
 				email: 'invalid-email-format',
 			});
 
-			const error = await oidcService.loginUser(callbackUrl, state, nonce).catch((e) => e);
+			const error = await oidcService
+				.loginUser(callbackUrl, state.signed, nonce.signed)
+				.catch((e) => e);
 			expect(error.message).toBe('Invalid email format');
 		});
 
@@ -505,7 +510,7 @@ describe('OIDC service', () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state}`,
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
@@ -532,16 +537,16 @@ describe('OIDC service', () => {
 				email: invalidEmail,
 			});
 
-			await expect(oidcService.loginUser(callbackUrl, state, nonce)).rejects.toThrowError(
-				BadRequestError,
-			);
+			await expect(
+				oidcService.loginUser(callbackUrl, state.signed, nonce.signed),
+			).rejects.toThrowError(BadRequestError);
 		});
 
 		it('should throw `ForbiddenError` if OIDC token does not provide claims', async () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
-				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state}`,
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
 			);
 
 			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
@@ -563,21 +568,51 @@ describe('OIDC service', () => {
 				email_verified: true,
 			});
 
-			await expect(oidcService.loginUser(callbackUrl, state, nonce)).rejects.toThrowError(
-				ForbiddenError,
-			);
+			await expect(
+				oidcService.loginUser(callbackUrl, state.signed, nonce.signed),
+			).rejects.toThrowError(ForbiddenError);
 		});
 	});
 
-	describe('State', () => {
+	describe('State and nonce', () => {
 		it('should generate and verify a valid state', () => {
 			const state = oidcService.generateState();
-			expect(state.startsWith('n8n_state:')).toBe(true);
+			const decoded = oidcService.verifyState(state.signed);
+			expect(decoded).toBe(state.plaintext);
 		});
 
 		it('should generate and verify a valid nonce', () => {
 			const nonce = oidcService.generateNonce();
-			expect(nonce.startsWith('n8n_nonce:')).toBe(true);
+			const decoded = oidcService.verifyNonce(nonce.signed);
+			expect(decoded).toBe(nonce.plaintext);
+		});
+
+		it('should throw an error for an invalid state', () => {
+			expect(() => oidcService.verifyState('invalid_state')).toThrow(BadRequestError);
+		});
+
+		it('should throw an error for an invalid formatted state', () => {
+			const invalid = Container.get(JwtService).sign({ state: 'invalid_state' });
+			expect(() => oidcService.verifyState(invalid)).toThrow(BadRequestError);
+		});
+
+		it('should throw an error for an invalid random part of the state', () => {
+			const invalid = Container.get(JwtService).sign({ state: 'n8n_state:invalid-state' });
+			expect(() => oidcService.verifyState(invalid)).toThrow(BadRequestError);
+		});
+
+		it('should throw an error for an invalid nonce', () => {
+			expect(() => oidcService.verifyNonce('invalid_nonce')).toThrow(BadRequestError);
+		});
+
+		it('should throw an error for an invalid formatted nonce', () => {
+			const invalid = Container.get(JwtService).sign({ nonce: 'invalid_nonce' });
+			expect(() => oidcService.verifyNonce(invalid)).toThrow(BadRequestError);
+		});
+
+		it('should throw an error for an invalid random part of the nonce', () => {
+			const invalid = Container.get(JwtService).sign({ nonce: 'n8n_nonce:invalid-nonce' });
+			expect(() => oidcService.verifyNonce(invalid)).toThrow(BadRequestError);
 		});
 	});
 });
