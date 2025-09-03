@@ -8,7 +8,7 @@ jobs:
   generate-and-attach-sbom:
     name: Generate and Attach SBOM to Release
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: write
       id-token: write
@@ -27,6 +27,13 @@ jobs:
         run: |
           npm i -g corepack@0.33
           corepack enable
+
+      - name: Restore build artifacts from cache
+        uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.event.release.tag_name }}-release:build
+          fail-on-cache-miss: true
 
       - name: Install dependencies and pack packages
         run: |
