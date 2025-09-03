@@ -35,7 +35,11 @@ class Shutdown:
 
         self.is_shutting_down = True
 
-        timeout = timeout or self.task_runner.config.graceful_shutdown_timeout
+        timeout = (
+            timeout
+            if timeout is not None
+            else self.task_runner.config.graceful_shutdown_timeout
+        )
 
         try:
             await asyncio.wait_for(self._perform_shutdown(), timeout=timeout)
