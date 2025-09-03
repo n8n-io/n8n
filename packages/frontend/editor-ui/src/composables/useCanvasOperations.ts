@@ -2268,42 +2268,38 @@ export function useCanvasOperations() {
 
 			for (const [type, typeConnections] of Object.entries(incomingConnections)) {
 				const inputsCount = nodeInputCounts.get(type as NodeConnectionType) ?? 0;
-				if (inputsCount < typeConnections.length) {
-					for (let i = inputsCount; i < typeConnections.length; i++) {
-						const connections = typeConnections[i] ?? [];
-						for (const connection of connections) {
-							workflowsStore.removeConnection({
-								connection: [
-									connection,
-									{
-										node: result.nodes?.[1]?.name ?? '',
-										type: type as NodeConnectionType,
-										index: i,
-									},
-								],
-							});
-						}
+				for (let i = inputsCount; i < typeConnections.length; i++) {
+					const connections = typeConnections[i] ?? [];
+					for (const connection of connections) {
+						workflowsStore.removeConnection({
+							connection: [
+								connection,
+								{
+									node: result.nodes?.[1]?.name ?? '',
+									type: type as NodeConnectionType,
+									index: i,
+								},
+							],
+						});
 					}
 				}
 			}
 
 			for (const [type, typeConnections] of Object.entries(outgoingConnections)) {
 				const outputsCount = nodeOutputCounts.get(type as NodeConnectionType) ?? 0;
-				if (outputsCount < typeConnections.length) {
-					for (let i = outputsCount; i < typeConnections.length; i++) {
-						const connections = typeConnections[i] ?? [];
-						for (const connection of connections) {
-							workflowsStore.removeConnection({
-								connection: [
-									{
-										node: result.nodes?.[1]?.name ?? '',
-										type: type as NodeConnectionType,
-										index: i,
-									},
-									connection,
-								],
-							});
-						}
+				for (let i = outputsCount; i < typeConnections.length; i++) {
+					const connections = typeConnections[i] ?? [];
+					for (const connection of connections) {
+						workflowsStore.removeConnection({
+							connection: [
+								{
+									node: result.nodes?.[1]?.name ?? '',
+									type: type as NodeConnectionType,
+									index: i,
+								},
+								connection,
+							],
+						});
 					}
 				}
 			}
