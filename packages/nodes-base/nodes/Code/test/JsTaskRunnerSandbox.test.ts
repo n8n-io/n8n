@@ -11,6 +11,13 @@ describe('JsTaskRunnerSandbox', () => {
 			const nodeMode = 'runOnceForEachItem';
 			const workflowMode = 'manual';
 			const executeFunctions = mock<IExecuteFunctions>();
+			executeFunctions.helpers = {
+				...executeFunctions.helpers,
+				normalizeItems: jest
+					.fn()
+					.mockImplementation((items) => (Array.isArray(items) ? items : [items])),
+			};
+
 			const sandbox = new JsTaskRunnerSandbox(jsCode, nodeMode, workflowMode, executeFunctions, 2);
 			let i = 1;
 			executeFunctions.startJob.mockResolvedValue(createResultOk([{ json: { item: i++ } }]));

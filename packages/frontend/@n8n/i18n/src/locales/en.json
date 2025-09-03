@@ -3000,6 +3000,7 @@
 	"settings.sso.settings.save.activate.cancel": "Cancel",
 	"settings.sso.settings.save.activate.test": "Test settings",
 	"settings.sso.settings.save.error": "Error saving SAML SSO configuration",
+	"settings.sso.settings.save.error_oidc": "Error saving OIDC SSO configuration",
 	"settings.sso.settings.footer.hint": "Don't forget to activate SAML SSO once you've saved the settings.",
 	"settings.sso.actionBox.title": "Available on the Enterprise plan",
 	"settings.sso.actionBox.description": "Use Single Sign On to consolidate authentication into a single platform to improve security and agility.",

@@ -1,4 +1,4 @@
-import { ValidationError } from './validation-error';
+import { ValidationError } from './ValidationError';
 
 export class ReservedKeyFoundError extends ValidationError {
 	constructor(reservedKey: string, itemIndex: number) {

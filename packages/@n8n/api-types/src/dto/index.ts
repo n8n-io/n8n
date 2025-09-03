@@ -78,8 +78,8 @@ export {
 	USERS_LIST_SORT_OPTIONS,
 } from './user/users-list-filter.dto';
 
-export type { UpdateRoleDto } from './roles/update-role.dto';
-export type { CreateRoleDto } from './roles/create-role.dto';
+export { UpdateRoleDto } from './roles/update-role.dto';
+export { CreateRoleDto } from './roles/create-role.dto';
 
 export { OidcConfigDto } from './oidc/config.dto';
 
