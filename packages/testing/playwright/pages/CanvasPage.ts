@@ -3,7 +3,6 @@ import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
 import {
-	createMockNodeExecutionData,
 	runMockWorkflowExecution,
 	type MockWorkflowExecutionOptions,
 } from '../utils/execution-mocks';
@@ -629,7 +628,4 @@ export class CanvasPage extends BasePage {
 			},
 		});
 	}
-
-	// Re-export for convenience
-	createMockNodeExecutionData = createMockNodeExecutionData;
 }

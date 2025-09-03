@@ -86,7 +86,7 @@ export function createLangchainSystemMessages() {
 /**
  * Creates the input override structure for Langchain agent node execution
  */
-export function createLangchainInputOverride(agentNodeName: string, languageModelNodeName: string) {
+export function createLangchainInputOverride(agentNodeName: string) {
 	return {
 		ai_languageModel: [
 			[
@@ -113,6 +113,6 @@ export function createAgentLLMExecutionData(
 			subRun: [{ node: languageModelNodeName, runIndex: 0 }],
 		},
 		source: [{ previousNode: agentNodeName, previousNodeRun: 0 }],
-		inputOverride: createLangchainInputOverride(agentNodeName, languageModelNodeName),
+		inputOverride: createLangchainInputOverride(agentNodeName),
 	};
 }
