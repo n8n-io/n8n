@@ -14,6 +14,7 @@ import type {
 	INodeExecutionData,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
+	INodeParameters,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
@@ -28,6 +29,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
+	jsonParse,
 	NodeHelpers,
 	NodeOperationError,
 	UnexpectedError,
@@ -386,6 +388,53 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this._getNodeParameter(parameterName, itemIndex, fallbackValue, options);
 	}
 
+	private extractParameterValue(
+		parameters: INodeParameters,
+		parameterPath: string,
+		fallbackValue?: NodeParameterValueType,
+	): NodeParameterValueType {
+		const segments = parameterPath
+			.replace(/\[(\d+)\]/g, '.$1')
+			.split('.')
+			.filter(Boolean);
+
+		if (segments.length === 1) {
+			return get(parameters, parameterPath, fallbackValue);
+		}
+
+		let current: unknown = parameters;
+
+		for (const segment of segments) {
+			if (current === undefined) return fallbackValue;
+
+			if (typeof current === 'string') {
+				const s = current.trim();
+				if (s.startsWith('={{')) {
+					const trimmed = s.replace(/^={{\s*/, '').replace(/\s*}}$/, '');
+					try {
+						current = jsonParse(trimmed, { acceptJSObject: true });
+					} catch {
+						return fallbackValue;
+					}
+				} else {
+					return fallbackValue;
+				}
+			}
+
+			if (Array.isArray(current)) {
+				const idx = Number(segment);
+				if (!Number.isInteger(idx)) return fallbackValue;
+				current = current[idx];
+			} else if (typeof current === 'object' && current !== null) {
+				current = (current as Record<string, unknown>)[segment];
+			} else {
+				return fallbackValue;
+			}
+		}
+
+		return (current as NodeParameterValueType) ?? fallbackValue;
+	}
+
 	protected _getNodeParameter(
 		parameterName: string,
 		itemIndex: number,
@@ -399,7 +448,13 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const value = get(node.parameters, parameterName, fallbackValue);
+		// const value = get(node.parameters, parameterName, fallbackValue);
+
+		const value = this.extractParameterValue(
+			node.parameters,
+			parameterName,
+			fallbackValue as unknown as NodeParameterValueType,
+		);
 
 		if (value === undefined) {
 			throw new ApplicationError('Could not get parameter', { extra: { parameterName } });

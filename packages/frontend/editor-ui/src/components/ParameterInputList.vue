@@ -3,11 +3,13 @@ import type {
 	CalloutAction,
 	INodeParameters,
 	INodeProperties,
+	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
 	ADD_FORM_NOTICE,
 	getParameterValueByPath,
+	jsonParse,
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
@@ -53,6 +55,7 @@ import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
 import { getParameterTypeOption } from '@/utils/nodeSettingsUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { isValueExpression } from '@/utils/nodeTypesUtils';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -372,6 +375,38 @@ function onNoticeAction(action: string) {
 	}
 }
 
+async function onModeSelected(command: string, parameter: INodeProperties) {
+	if (!node.value) return;
+
+	let value: NodeParameterValue;
+
+	switch (command) {
+		case 'addExpression':
+			if (isValueExpression(parameter, getParameterValue(parameter.name))) return;
+			value = `={{ ${JSON.stringify(getParameterValue(parameter.name))} }}`;
+			break;
+
+		case 'removeExpression':
+			if (!isValueExpression(parameter, getParameterValue(parameter.name))) return;
+			value = (getParameterValue(parameter.name) as string)
+				.replace(/^=\{\{/, '')
+				.replace(/\}\}$/, '');
+			value = jsonParse(value, { acceptJSObject: true });
+			break;
+
+		case 'openExpression':
+			return;
+	}
+
+	const parameterData: IUpdateInformation = {
+		node: node.value.name,
+		name: getPath(parameter.name),
+		value,
+	};
+
+	valueChanged(parameterData);
+}
+
 function getParameterIssues(parameter: INodeProperties): string[] {
 	if (!node.value || !showIssuesInLabelFor.includes(parameter.type)) {
 		return [];
@@ -602,6 +637,16 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 					:input-name="parameter.name"
 					color="text-dark"
 				>
+					<template #options>
+						<ParameterOptions
+							:parameter="parameter"
+							:value="getParameterValue(parameter.name)"
+							:is-read-only="isReadOnly as boolean"
+							:show-options="false"
+							static-field-name="Widget"
+							@update:model-value="(command) => onModeSelected(command, parameter)"
+						/>
+					</template>
 					<template
 						v-if="
 							showIssuesInLabelFor.includes(parameter.type) &&
@@ -619,7 +664,11 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						</N8nTooltip>
 					</template>
 				</N8nInputLabel>
-				<Suspense v-if="!asyncLoadingError">
+				<div>{{ nodeValues['' + parameter.name + ''] }}</div>
+				<div v-if="isValueExpression(parameter, getParameterValue(parameter.name))">
+					{{ getParameterValue(parameter.name) }}
+				</div>
+				<Suspense v-else-if="!asyncLoadingError">
 					<template #default>
 						<LazyCollectionParameter
 							v-if="parameter.type === 'collection'"

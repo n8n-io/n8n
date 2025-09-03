@@ -689,7 +689,14 @@ export function getNodeParameters(
 			}
 		}
 
-		if (!['collection', 'fixedCollection'].includes(nodeProperties.type)) {
+		const preserveCollectionValueType =
+			['collection', 'fixedCollection'].includes(nodeProperties.type) &&
+			typeof nodeValues[nodeProperties.name] === 'string';
+
+		if (
+			!['collection', 'fixedCollection'].includes(nodeProperties.type) ||
+			preserveCollectionValueType
+		) {
 			// Is a simple property so can be set as it is
 
 			if (duplicateParameterNames.includes(nodeProperties.name)) {
@@ -740,6 +747,10 @@ export function getNodeParameters(
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				continue;
 			}
+		}
+
+		if (preserveCollectionValueType) {
+			continue;
 		}
 
 		if (onlySimpleTypes) {
