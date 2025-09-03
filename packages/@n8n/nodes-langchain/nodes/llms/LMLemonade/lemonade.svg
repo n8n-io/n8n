@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g fill="#FFD700">
+    <!-- Lemon body -->
+    <ellipse cx="128" cy="140" rx="60" ry="80" fill="#FFF200"/>
+    
+    <!-- Lemon highlight -->
+    <ellipse cx="115" cy="120" rx="15" ry="20" fill="#FFFF80" opacity="0.7"/>
+    
+    <!-- Lemon segments -->
+    <path d="M 88 100 Q 128 80 168 100 Q 128 120 88 100" fill="#FFE000" opacity="0.3"/>
+    <path d="M 88 140 Q 128 120 168 140 Q 128 160 88 140" fill="#FFE000" opacity="0.3"/>
+    <path d="M 88 180 Q 128 160 168 180 Q 128 200 88 180" fill="#FFE000" opacity="0.3"/>
+    
+    <!-- Leaf -->
+    <path d="M 128 60 Q 140 45 155 50 Q 150 65 140 70 Q 135 75 128 80" fill="#4CAF50"/>
+    
+    <!-- Glass outline -->
+    <rect x="80" y="80" width="96" height="120" rx="8" ry="8" fill="none" stroke="#7D7D87" stroke-width="3" opacity="0.6"/>
+    
+    <!-- Straw -->
+    <rect x="150" y="60" width="6" height="40" fill="#FF6B6B" transform="rotate(15 153 80)"/>
+    <rect x="148" y="58" width="10" height="6" rx="3" fill="#FF6B6B" transform="rotate(15 153 61)"/>
+  </g>
+</svg>
