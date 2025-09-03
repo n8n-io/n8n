@@ -86,7 +86,6 @@ export interface N8NStack {
 	baseUrl: string;
 	stop: () => Promise<void>;
 	containers: StartedTestContainer[];
-	proxyServerUrl?: string;
 }
 
 /**
@@ -274,7 +273,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	return {
 		baseUrl,
-		proxyServerUrl,
 		stop: async () => {
 			await stopN8NStack(containers, network, uniqueProjectName);
 		},
