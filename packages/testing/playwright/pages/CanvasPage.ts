@@ -373,6 +373,10 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-wrapper');
 	}
 
+	canvasBody(): Locator {
+		return this.page.getByTestId('canvas');
+	}
+
 	toggleFocusPanelButton(): Locator {
 		return this.page.getByTestId('toggle-focus-panel-button');
 	}
@@ -539,15 +543,30 @@ export class CanvasPage extends BasePage {
 		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
 	}
 
+	getNodesWithSpinner(): Locator {
+		return this.page.getByTestId('canvas-node').filter({
+			has: this.page.locator('[data-icon=refresh-cw]'),
+		});
+	}
+
+	getWaitingNodes(): Locator {
+		return this.page.getByTestId('canvas-node').filter({
+			has: this.page.locator('[data-icon=clock]'),
+		});
+	}
+
 	async sendManualChatMessage(message: string): Promise<void> {
 		await this.getManualChatInput().fill(message);
 		await this.getManualChatModal().locator('.chat-input-send-button').click();
 	}
-
 	/**
 	 * Get all currently selected nodes on the canvas
 	 */
 	getSelectedNodes() {
 		return this.page.locator('[data-test-id="canvas-node"].selected');
+	}
+
+	async openExecutions() {
+		await this.page.getByTestId('radio-button-executions').click();
 	}
 }
