@@ -30,15 +30,15 @@ class Shutdown:
         self._register_handler(signal.SIGINT)
         self._register_handler(signal.SIGTERM)
 
-    async def start_shutdown(self, timeout: Optional[int] = None):
+    async def start_shutdown(self, custom_timeout: Optional[int] = None):
         if self.is_shutting_down:
             return
 
         self.is_shutting_down = True
 
         timeout = (
-            timeout
-            if timeout is not None
+            custom_timeout
+            if custom_timeout is not None
             else self.task_runner.config.graceful_shutdown_timeout
         )
 
