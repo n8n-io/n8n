@@ -437,7 +437,8 @@ export class LoadNodesAndCredentials {
 	}
 
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		// split on the last dot
+		const [packageName, nodeType] = fullNodeType.split(/\.(?=[^\.]+$)/);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		if (!loader) {
