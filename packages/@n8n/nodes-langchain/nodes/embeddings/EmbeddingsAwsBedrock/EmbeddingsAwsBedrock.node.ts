@@ -1,4 +1,5 @@
 import { BedrockEmbeddings } from '@langchain/aws';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -7,6 +8,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getNodeProxyAgent } from '@utils/httpProxyAgent';
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
@@ -111,6 +113,12 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			region: credentials.region as string,
 			model: modelName,
 			maxRetries: 3,
+			clientOptions: {
+				requestHandler: new NodeHttpHandler({
+					httpAgent: getNodeProxyAgent(),
+					httpsAgent: getNodeProxyAgent(),
+				}),
+			},
 			credentials: {
 				secretAccessKey: credentials.secretAccessKey as string,
 				accessKeyId: credentials.accessKeyId as string,
