@@ -15,6 +15,7 @@ FROM ${PYTHON_IMAGE} AS python-runner-builder
 ARG TARGETPLATFORM
 ARG UV_VERSION=0.8.14
 
+RUN apk add --no-cache wget ca-certificates
 RUN set -e; \
   case "$TARGETPLATFORM" in \
     "linux/amd64") UV_ARCH="x86_64-unknown-linux-musl" ;; \
