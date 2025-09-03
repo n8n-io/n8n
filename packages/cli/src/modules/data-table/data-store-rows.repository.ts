@@ -514,7 +514,7 @@ export class DataStoreRowsRepository {
 		const queryBuilder = this.dataSource
 			.createQueryBuilder()
 			.select(matchFields)
-			.from(this.toTableName(dataStoreId), 'dataTable');
+			.from(this.toTableName(dataStoreId), 'datatable');
 
 		rows.forEach((row, index) => {
 			const matchData = Object.fromEntries(matchFields.map((field) => [field, row[field]]));
