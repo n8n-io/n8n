@@ -57,7 +57,9 @@ async def main():
     except Exception:
         logger.error("Unexpected error", exc_info=True)
         await shutdown.start_shutdown()
-        sys.exit(1)
+
+    exit_code = await shutdown.wait_for_shutdown()
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":

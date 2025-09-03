@@ -21,6 +21,8 @@ class Shutdown:
     ):
         self.logger = logging.getLogger(__name__)
         self.is_shutting_down = False
+        self.shutdown_complete = asyncio.Event()
+        self.exit_code = 0
 
         self.task_runner = task_runner
         self.health_check_server = health_check_server
@@ -43,12 +45,19 @@ class Shutdown:
 
         try:
             await asyncio.wait_for(self._perform_shutdown(), timeout=timeout)
+            self.exit_code = 0
         except asyncio.TimeoutError:
             self.logger.warning(f"Shutdown timed out after {timeout}s, forcing exit...")
-            sys.exit(1)
+            self.exit_code = 1
         except Exception as e:
             self.logger.error(f"Error during shutdown: {e}", exc_info=True)
-            sys.exit(1)
+            self.exit_code = 1
+        finally:
+            self.shutdown_complete.set()
+
+    async def wait_for_shutdown(self) -> int:
+        await self.shutdown_complete.wait()
+        return self.exit_code
 
     def _register_handler(self, sig: signal.Signals):
         async def handler():
@@ -66,7 +75,7 @@ class Shutdown:
 
     async def start_auto_shutdown(self):
         self.logger.info("Reached idle timeout, starting shutdown...")
-        await self.start_shutdown(3)  # no grace period, zero tasks to wait for
+        await self.start_shutdown(3)  # no tasks so no grace period
 
     async def _perform_shutdown(self):
         await self.task_runner.stop()
