@@ -130,7 +130,6 @@ const initialize = async () => {
 	await sourceControlStore.getPreferences();
 	if (sourceControlStore.preferences.connected) {
 		isConnected.value = true;
-		// Load connection type from preferences
 		connectionType.value = sourceControlStore.preferences.connectionType || 'ssh';
 		void sourceControlStore.getBranches();
 	}
@@ -153,7 +152,6 @@ function onValidate(key: string, value: boolean) {
 	formValidationStatus[key] = value;
 }
 
-// Dynamic validation rules based on connection type
 const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
 	const baseRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
 
@@ -239,14 +237,11 @@ const onSelectSshKeyType = (value: Validatable) => {
 	sourceControlStore.preferences.keyGeneratorType = sshKeyType;
 };
 
-// Watch connection type changes to reset validation
 watch(connectionType, () => {
-	// Reset validation status when switching connection types
 	formValidationStatus.repoUrl = false;
 	formValidationStatus.httpsUsername = false;
 	formValidationStatus.httpsPassword = false;
 
-	// Clear repository URL if switching types and not connected
 	if (!isConnected.value) {
 		sourceControlStore.preferences.repositoryUrl = '';
 	}
@@ -330,7 +325,6 @@ watch(connectionType, () => {
 				</n8n-notice>
 			</div>
 
-			<!-- HTTPS Credentials -->
 			<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
 				<label for="httpsUsername">Username</label>
 				<n8n-form-input
@@ -370,7 +364,6 @@ watch(connectionType, () => {
 				</n8n-notice>
 			</div>
 
-			<!-- SSH Key (only for SSH connection) -->
 			<div
 				v-if="connectionType === 'ssh' && sourceControlStore.preferences.publicKey"
 				:class="$style.group"
@@ -433,7 +426,6 @@ watch(connectionType, () => {
 				>{{ locale.baseText('settings.sourceControl.button.connect') }}</n8n-button
 			>
 
-			<!-- Connected Settings -->
 			<div v-if="isConnected" data-test-id="source-control-connected-content">
 				<div :class="$style.group">
 					<hr />

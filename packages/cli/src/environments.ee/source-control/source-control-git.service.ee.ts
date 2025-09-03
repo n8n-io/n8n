@@ -115,10 +115,8 @@ export class SourceControlGitService {
 		const { simpleGit } = await import('simple-git');
 
 		if (preferences.connectionType === 'https') {
-			// For HTTPS, we'll handle credentials through the URL
 			this.git = simpleGit(this.gitOptions).env('GIT_TERMINAL_PROMPT', '0');
 		} else {
-			// SSH configuration (existing logic)
 			const privateKeyPath = await this.sourceControlPreferencesService.getPrivateKeyPath();
 			const sshKnownHosts = path.join(sshFolder, 'known_hosts');
 

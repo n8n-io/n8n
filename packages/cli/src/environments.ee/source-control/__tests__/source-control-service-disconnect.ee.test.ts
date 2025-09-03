@@ -28,7 +28,6 @@ describe('SourceControlService - disconnect functionality', () => {
 			mock(),
 		);
 
-		// Mock the private export service
 		(sourceControlService as any).sourceControlExportService = mockExportService;
 	});
 
@@ -50,10 +49,8 @@ describe('SourceControlService - disconnect functionality', () => {
 			mockPreferencesService.deleteHttpsCredentials = jest.fn().mockResolvedValue(undefined);
 			mockExportService.deleteRepositoryFolder.mockResolvedValue();
 
-			// Act
 			await sourceControlService.disconnect();
 
-			// Assert
 			expect(mockPreferencesService.deleteHttpsCredentials).toHaveBeenCalled();
 			expect(mockPreferencesService.setPreferences).toHaveBeenCalledWith({
 				connected: false,
@@ -65,7 +62,6 @@ describe('SourceControlService - disconnect functionality', () => {
 		});
 
 		it('should clean up SSH key pair when connection type is SSH and keepKeyPair is false', async () => {
-			// Arrange
 			const sshPreferences = {
 				connectionType: 'ssh' as const,
 				repositoryUrl: 'git@github.com:user/repo.git',
@@ -77,10 +73,8 @@ describe('SourceControlService - disconnect functionality', () => {
 			mockPreferencesService.deleteKeyPair = jest.fn().mockResolvedValue();
 			mockExportService.deleteRepositoryFolder.mockResolvedValue();
 
-			// Act
 			await sourceControlService.disconnect({ keepKeyPair: false });
 
-			// Assert
 			expect(mockPreferencesService.deleteKeyPair).toHaveBeenCalled();
 			expect(mockPreferencesService.setPreferences).toHaveBeenCalledWith({
 				connected: false,
@@ -92,7 +86,6 @@ describe('SourceControlService - disconnect functionality', () => {
 		});
 
 		it('should keep SSH key pair when connection type is SSH and keepKeyPair is true', async () => {
-			// Arrange
 			const sshPreferences = {
 				connectionType: 'ssh' as const,
 				repositoryUrl: 'git@github.com:user/repo.git',
@@ -104,10 +97,8 @@ describe('SourceControlService - disconnect functionality', () => {
 			mockPreferencesService.deleteKeyPair = jest.fn().mockResolvedValue();
 			mockExportService.deleteRepositoryFolder.mockResolvedValue();
 
-			// Act
 			await sourceControlService.disconnect({ keepKeyPair: true });
 
-			// Assert
 			expect(mockPreferencesService.deleteKeyPair).not.toHaveBeenCalled();
 			expect(mockPreferencesService.setPreferences).toHaveBeenCalledWith({
 				connected: false,
@@ -119,7 +110,6 @@ describe('SourceControlService - disconnect functionality', () => {
 		});
 
 		it('should not delete SSH keys when connection type is HTTPS', async () => {
-			// Arrange
 			const httpsPreferences = {
 				connectionType: 'https' as const,
 				repositoryUrl: 'https://github.com/user/repo.git',
@@ -132,16 +122,13 @@ describe('SourceControlService - disconnect functionality', () => {
 			mockPreferencesService.deleteKeyPair = jest.fn().mockResolvedValue();
 			mockExportService.deleteRepositoryFolder.mockResolvedValue();
 
-			// Act
 			await sourceControlService.disconnect({ keepKeyPair: false });
 
-			// Assert
 			expect(mockPreferencesService.deleteKeyPair).not.toHaveBeenCalled();
 			expect(mockPreferencesService.deleteHttpsCredentials).toHaveBeenCalled();
 		});
 
 		it('should handle errors during disconnect gracefully', async () => {
-			// Arrange
 			const httpsPreferences = {
 				connectionType: 'https' as const,
 				repositoryUrl: 'https://github.com/user/repo.git',
@@ -151,14 +138,12 @@ describe('SourceControlService - disconnect functionality', () => {
 			mockPreferencesService.getPreferences.mockReturnValue(httpsPreferences);
 			mockPreferencesService.setPreferences.mockRejectedValue(new Error('DB error'));
 
-			// Act & Assert
 			await expect(sourceControlService.disconnect()).rejects.toThrow(
 				'Failed to disconnect from source control',
 			);
 		});
 
 		it('should reset connection type to SSH by default', async () => {
-			// Arrange
 			const httpsPreferences = {
 				connectionType: 'https' as const,
 				repositoryUrl: 'https://github.com/user/repo.git',
@@ -170,10 +155,8 @@ describe('SourceControlService - disconnect functionality', () => {
 			mockPreferencesService.deleteHttpsCredentials = jest.fn().mockResolvedValue(undefined);
 			mockExportService.deleteRepositoryFolder.mockResolvedValue();
 
-			// Act
 			await sourceControlService.disconnect();
 
-			// Assert
 			expect(mockPreferencesService.setPreferences).toHaveBeenCalledWith({
 				connected: false,
 				branchName: '',

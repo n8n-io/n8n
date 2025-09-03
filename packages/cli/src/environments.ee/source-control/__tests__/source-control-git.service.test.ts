@@ -124,6 +124,17 @@ describe('SourceControlGitService', () => {
 
 				// Mock the getPrivateKeyPath to return a Windows path
 				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(windowsPath);
+				// Mock getPreferences to return SSH connection type (required for new functionality)
+				mockPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'ssh',
+					connected: true,
+					repositoryUrl: 'git@github.com:user/repo.git',
+					branchName: 'main',
+					branchReadOnly: false,
+					branchColor: '#5296D6',
+					initRepo: false,
+					keyGeneratorType: 'ed25519',
+				});
 
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 
@@ -154,6 +165,17 @@ describe('SourceControlGitService', () => {
 
 				// Mock the getPrivateKeyPath to return a path with spaces
 				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(privateKeyPath);
+				// Mock getPreferences to return SSH connection type
+				mockPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'ssh',
+					connected: true,
+					repositoryUrl: 'git@github.com:user/repo.git',
+					branchName: 'main',
+					branchReadOnly: false,
+					branchColor: '#5296D6',
+					initRepo: false,
+					keyGeneratorType: 'ed25519',
+				});
 
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 
@@ -187,6 +209,17 @@ describe('SourceControlGitService', () => {
 
 				// Mock the getPrivateKeyPath to return a path with quotes
 				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(pathWithQuotes);
+				// Mock getPreferences to return SSH connection type
+				mockPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'ssh',
+					connected: true,
+					repositoryUrl: 'git@github.com:user/repo.git',
+					branchName: 'main',
+					branchReadOnly: false,
+					branchColor: '#5296D6',
+					initRepo: false,
+					keyGeneratorType: 'ed25519',
+				});
 
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 

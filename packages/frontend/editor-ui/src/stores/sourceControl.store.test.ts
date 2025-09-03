@@ -3,12 +3,9 @@ import { vi } from 'vitest';
 
 import * as vcApi from '@/api/sourceControl';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
 
-// Mock the API module
 vi.mock('@/api/sourceControl');
 
-// Mock the root store properly
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(() => ({
 		restApiContext: {},
@@ -50,7 +47,6 @@ describe('useSourceControlStore', () => {
 
 	describe('savePreferences', () => {
 		it('should call API with HTTPS credentials', async () => {
-			// Arrange
 			const preferences = {
 				repositoryUrl: 'https://github.com/user/repo.git',
 				branchName: 'main',
@@ -62,10 +58,8 @@ describe('useSourceControlStore', () => {
 			const mockSavePreferences = vi.mocked(vcApi.savePreferences);
 			mockSavePreferences.mockResolvedValue({} as any);
 
-			// Act
 			await sourceControlStore.savePreferences(preferences);
 
-			// Assert
 			expect(mockSavePreferences).toHaveBeenCalledWith(
 				{}, // restApiContext
 				preferences,
@@ -73,7 +67,6 @@ describe('useSourceControlStore', () => {
 		});
 
 		it('should call API with SSH preferences', async () => {
-			// Arrange
 			const preferences = {
 				repositoryUrl: 'git@github.com:user/repo.git',
 				branchName: 'main',
@@ -84,10 +77,8 @@ describe('useSourceControlStore', () => {
 			const mockSavePreferences = vi.mocked(vcApi.savePreferences);
 			mockSavePreferences.mockResolvedValue({} as any);
 
-			// Act
 			await sourceControlStore.savePreferences(preferences);
 
-			// Assert
 			expect(mockSavePreferences).toHaveBeenCalledWith(
 				{}, // restApiContext
 				preferences,
@@ -95,7 +86,6 @@ describe('useSourceControlStore', () => {
 		});
 
 		it('should update local preferences after successful API call', async () => {
-			// Arrange
 			const preferences = {
 				repositoryUrl: 'https://github.com/user/repo.git',
 				branchName: 'main',
@@ -106,10 +96,8 @@ describe('useSourceControlStore', () => {
 			const mockSavePreferences = vi.mocked(vcApi.savePreferences);
 			mockSavePreferences.mockResolvedValue(preferences as any);
 
-			// Act
 			await sourceControlStore.savePreferences(preferences);
 
-			// Assert
 			expect(sourceControlStore.preferences.repositoryUrl).toBe(preferences.repositoryUrl);
 			expect(sourceControlStore.preferences.branchName).toBe(preferences.branchName);
 			expect(sourceControlStore.preferences.connectionType).toBe(preferences.connectionType);
@@ -119,7 +107,6 @@ describe('useSourceControlStore', () => {
 
 	describe('generateKeyPair', () => {
 		it('should call API and update public key', async () => {
-			// Arrange
 			const keyType = 'ed25519';
 			const mockKeyPair = {
 				publicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest',
@@ -128,31 +115,29 @@ describe('useSourceControlStore', () => {
 			const mockGenerateKeyPair = vi.mocked(vcApi.generateKeyPair);
 			mockGenerateKeyPair.mockResolvedValue(mockKeyPair as any);
 
-			// Act
+			const mockGetPreferences = vi.mocked(vcApi.getPreferences);
+			mockGetPreferences.mockResolvedValue(mockKeyPair as any);
+
 			await sourceControlStore.generateKeyPair(keyType);
 
-			// Assert
 			expect(mockGenerateKeyPair).toHaveBeenCalledWith(
 				{}, // restApiContext
-				{ keyGeneratorType: keyType },
+				keyType,
 			);
 			expect(sourceControlStore.preferences.publicKey).toBe(mockKeyPair.publicKey);
 			expect(sourceControlStore.preferences.keyGeneratorType).toBe(keyType);
 		});
 
 		it('should handle API errors', async () => {
-			// Arrange
 			const mockGenerateKeyPair = vi.mocked(vcApi.generateKeyPair);
 			mockGenerateKeyPair.mockRejectedValue(new Error('API Error'));
 
-			// Act & Assert
 			await expect(sourceControlStore.generateKeyPair('rsa')).rejects.toThrow('API Error');
 		});
 	});
 
 	describe('getBranches', () => {
 		it('should call API and update branches list', async () => {
-			// Arrange
 			const mockBranches = {
 				branches: ['main', 'develop', 'feature/test'],
 				currentBranch: 'main',
@@ -161,10 +146,8 @@ describe('useSourceControlStore', () => {
 			const mockGetBranches = vi.mocked(vcApi.getBranches);
 			mockGetBranches.mockResolvedValue(mockBranches as any);
 
-			// Act
 			await sourceControlStore.getBranches();
 
-			// Assert
 			expect(mockGetBranches).toHaveBeenCalledWith({});
 			expect(sourceControlStore.preferences.branches).toEqual(mockBranches.branches);
 		});
@@ -172,34 +155,23 @@ describe('useSourceControlStore', () => {
 
 	describe('disconnect', () => {
 		it('should call API and reset preferences', async () => {
-			// Arrange
 			sourceControlStore.preferences.connected = true;
 			sourceControlStore.preferences.repositoryUrl = 'https://github.com/user/repo.git';
 			sourceControlStore.preferences.branchName = 'main';
 
 			const mockDisconnect = vi.mocked(vcApi.disconnect);
-			mockDisconnect.mockResolvedValue({
-				connected: false,
-				repositoryUrl: '',
-				branchName: '',
-				connectionType: 'ssh',
-			} as any);
+			mockDisconnect.mockResolvedValue(undefined);
 
-			// Act
-			await sourceControlStore.disconnect();
+			await sourceControlStore.disconnect(false);
 
-			// Assert
-			expect(mockDisconnect).toHaveBeenCalledWith({});
+			expect(mockDisconnect).toHaveBeenCalledWith({}, false);
 			expect(sourceControlStore.preferences.connected).toBe(false);
-			expect(sourceControlStore.preferences.repositoryUrl).toBe('');
-			expect(sourceControlStore.preferences.branchName).toBe('');
-			expect(sourceControlStore.preferences.connectionType).toBe('ssh');
+			expect(sourceControlStore.preferences.branches).toEqual([]);
 		});
 	});
 
 	describe('pushWorkfolder', () => {
 		it('should call API with correct parameters', async () => {
-			// Arrange
 			const data = {
 				commitMessage: 'Test commit',
 				fileNames: [
@@ -221,10 +193,8 @@ describe('useSourceControlStore', () => {
 			const mockPushWorkfolder = vi.mocked(vcApi.pushWorkfolder);
 			mockPushWorkfolder.mockResolvedValue(undefined);
 
-			// Act
 			await sourceControlStore.pushWorkfolder(data);
 
-			// Assert
 			expect(mockPushWorkfolder).toHaveBeenCalledWith(
 				{}, // restApiContext
 				{
@@ -239,11 +209,7 @@ describe('useSourceControlStore', () => {
 
 	describe('pullWorkfolder', () => {
 		it('should call API with correct parameters', async () => {
-			// Arrange
-			const options = {
-				force: true,
-				variables: 'include' as const,
-			};
+			const force = true;
 
 			const mockResult = {
 				statusCode: 200,
@@ -253,18 +219,15 @@ describe('useSourceControlStore', () => {
 			const mockPullWorkfolder = vi.mocked(vcApi.pullWorkfolder);
 			mockPullWorkfolder.mockResolvedValue(mockResult as any);
 
-			// Act
-			const result = await sourceControlStore.pullWorkfolder(options);
+			const result = await sourceControlStore.pullWorkfolder(force);
 
-			// Assert
-			expect(mockPullWorkfolder).toHaveBeenCalledWith({}, options);
+			expect(mockPullWorkfolder).toHaveBeenCalledWith({}, { force });
 			expect(result).toEqual(mockResult);
 		});
 	});
 
 	describe('getAggregatedStatus', () => {
 		it('should call API and return status', async () => {
-			// Arrange
 			const mockStatus = [
 				{
 					id: 'workflow1',
@@ -279,40 +242,13 @@ describe('useSourceControlStore', () => {
 				},
 			];
 
-			const mockGetStatus = vi.mocked(vcApi.getStatus);
-			mockGetStatus.mockResolvedValue(mockStatus as any);
+			const mockGetAggregatedStatus = vi.mocked(vcApi.getAggregatedStatus);
+			mockGetAggregatedStatus.mockResolvedValue(mockStatus as any);
 
-			// Act
 			const result = await sourceControlStore.getAggregatedStatus();
 
-			// Assert
-			expect(mockGetStatus).toHaveBeenCalledWith(
-				{},
-				{
-					direction: 'push',
-					verbose: true,
-					preferLocalVersion: false,
-				},
-			);
+			expect(mockGetAggregatedStatus).toHaveBeenCalledWith({});
 			expect(result).toEqual(mockStatus);
-		});
-
-		it('should allow custom options', async () => {
-			// Arrange
-			const options = {
-				direction: 'pull' as const,
-				verbose: false,
-				preferLocalVersion: true,
-			};
-
-			const mockGetStatus = vi.mocked(vcApi.getStatus);
-			mockGetStatus.mockResolvedValue([]);
-
-			// Act
-			await sourceControlStore.getAggregatedStatus(options);
-
-			// Assert
-			expect(mockGetStatus).toHaveBeenCalledWith({}, options);
 		});
 	});
 });
