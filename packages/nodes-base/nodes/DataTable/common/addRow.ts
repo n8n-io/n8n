@@ -46,8 +46,8 @@ export function getAddRow(ctx: IExecuteFunctions, index: number) {
 
 	if (dataMode === 'autoMapInputData') {
 		data = { ...items[index].json };
-		// We automatically remove our system columns for better UX when feeding Data Table outputs
-		// into another Data Table node
+		// We automatically remove our system columns for better UX when feeding data table outputs
+		// into another data table node
 		for (const systemColumn of DATA_TABLE_SYSTEM_COLUMNS) {
 			delete data[systemColumn];
 		}

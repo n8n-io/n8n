@@ -572,6 +572,110 @@ describe('OIDC service', () => {
 				oidcService.loginUser(callbackUrl, state.signed, nonce.signed),
 			).rejects.toThrowError(ForbiddenError);
 		});
+
+		it('should throw `BadRequestError` with "Invalid authorization code" when authorizationCodeGrant fails', async () => {
+			const state = oidcService.generateState();
+			const nonce = oidcService.generateNonce();
+			const callbackUrl = new URL(
+				`http://localhost:5678/rest/sso/oidc/callback?code=invalid-code&state=${state.plaintext}`,
+			);
+
+			// Mock authorizationCodeGrant to throw an error
+			authorizationCodeGrantMock.mockRejectedValueOnce(
+				new Error('Authorization code exchange failed'),
+			);
+
+			const error = await oidcService
+				.loginUser(callbackUrl, state.signed, nonce.signed)
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error.message).toBe('Invalid authorization code');
+			expect(authorizationCodeGrantMock).toHaveBeenCalledWith(
+				expect.any(Object), // configuration
+				callbackUrl,
+				{
+					expectedState: state.plaintext,
+					expectedNonce: nonce.plaintext,
+				},
+			);
+		});
+
+		it('should throw `BadRequestError` with "Invalid token" when tokens.claims() fails', async () => {
+			const state = oidcService.generateState();
+			const nonce = oidcService.generateNonce();
+			const callbackUrl = new URL(
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+			);
+
+			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
+				mocked_oidc_client.TokenEndpointResponseHelpers = {
+				access_token: 'mock-access-token-claims-error',
+				id_token: 'mock-id-token-claims-error',
+				token_type: 'bearer',
+				claims: (() => {
+					throw new Error('Failed to extract claims');
+				}) as any,
+				expiresIn: () => 3600,
+			} as mocked_oidc_client.TokenEndpointResponse &
+				mocked_oidc_client.TokenEndpointResponseHelpers;
+
+			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+
+			const error = await oidcService
+				.loginUser(callbackUrl, state.signed, nonce.signed)
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error.message).toBe('Invalid token');
+		});
+
+		it('should throw `BadRequestError` with "Invalid token" when fetchUserInfo fails', async () => {
+			const state = oidcService.generateState();
+			const nonce = oidcService.generateNonce();
+			const callbackUrl = new URL(
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+			);
+
+			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
+				mocked_oidc_client.TokenEndpointResponseHelpers = {
+				access_token: 'mock-access-token-userinfo-error',
+				id_token: 'mock-id-token-userinfo-error',
+				token_type: 'bearer',
+				claims: () => {
+					return {
+						sub: 'mock-subject-userinfo-error',
+						iss: 'https://example.com/auth/realms/n8n',
+						aud: 'test-client-id',
+						iat: Math.floor(Date.now() / 1000) - 1000,
+						exp: Math.floor(Date.now() / 1000) + 3600,
+					} as mocked_oidc_client.IDToken;
+				},
+				expiresIn: () => 3600,
+			} as mocked_oidc_client.TokenEndpointResponse &
+				mocked_oidc_client.TokenEndpointResponseHelpers;
+
+			// Reset and setup mocks in the right order
+			authorizationCodeGrantMock.mockReset();
+			fetchUserInfoMock.mockReset();
+
+			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+
+			// Mock fetchUserInfo to throw an error
+			fetchUserInfoMock.mockRejectedValueOnce(new Error('Failed to fetch user info'));
+
+			const error = await oidcService
+				.loginUser(callbackUrl, state.signed, nonce.signed)
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error.message).toBe('Invalid token');
+			expect(fetchUserInfoMock).toHaveBeenCalledWith(
+				expect.any(Object), // configuration
+				'mock-access-token-userinfo-error',
+				'mock-subject-userinfo-error',
+			);
+		});
 	});
 
 	describe('State and nonce', () => {

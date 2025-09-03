@@ -10,8 +10,8 @@ on:
       - packages/@n8n/task-runner-python/**
 
 jobs:
-  lint:
-    name: Lint
+  checks:
+    name: Checks
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -29,7 +29,7 @@ jobs:
         run: uv python install 3.13
 
       - name: Install project dependencies
-        run: uv sync --all-extras
+        run: uv sync --all-extras --group dev
 
       - name: Format check
         run: uv run ruff format --check
@@ -40,10 +40,14 @@ jobs:
       - name: Lint
         run: uv run ruff check
 
-  unit-test:
-    name: Unit tests
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
       - name: Python unit tests
-        run: echo "Skipping unit tests for Python-only changes until we have Python unit tests"
+        run: uv run pytest --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          flags: tests
+          name: task-runner-python
+          fail_ci_if_error: false
