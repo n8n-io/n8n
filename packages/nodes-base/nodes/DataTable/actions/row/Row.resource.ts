@@ -83,4 +83,19 @@ export const description: INodeProperties[] = [
 	...get.description,
 	...update.description,
 	...upsert.description,
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		displayOptions: {
+			show: {
+				operation: [get.FIELD],
+			},
+		},
+		default: null,
+		description: 'Max number of results to return',
+	},
 ];
