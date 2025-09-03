@@ -93,7 +93,7 @@ describe('Execute Wait Node', () => {
 				{
 					unit: 'seconds',
 					amount: -10,
-					error: 'Invalid wait amount. It must be a positive number.',
+					error: 'Invalid wait amount. It must be a non-negative number.',
 				},
 				{
 					unit: 'years',
@@ -103,7 +103,7 @@ describe('Execute Wait Node', () => {
 				{
 					unit: 'minutes',
 					amount: 'test',
-					error: 'Invalid wait amount. It must be a positive number.',
+					error: 'Invalid wait amount. It must be a non-negative number.',
 				},
 			])(
 				'Validate wait unit: $unit, amount: $amount',
