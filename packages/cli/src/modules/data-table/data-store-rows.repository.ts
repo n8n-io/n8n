@@ -259,15 +259,15 @@ export class DataStoreRowsRepository {
 			const selectQuery = this.dataSource
 				.createQueryBuilder()
 				.select('id')
-				.from(table, 'dataStore');
-			this.applyFilters(selectQuery, filter, 'dataStore', columns);
+				.from(table, 'dataTable');
+			this.applyFilters(selectQuery, filter, 'dataTable', columns);
 			affectedRows = await selectQuery.getRawMany<{ id: number }>();
 		}
 
 		setData.updatedAt = normalizeValue(new Date(), 'date', dbType);
 
 		const query = this.dataSource.createQueryBuilder().update(table);
-		//  some dbs (like SQLite) don't support table aliases in UPDATE statements
+		// Some DBs (like SQLite) don't allow using table aliases as column prefixes in UPDATE statements
 		this.applyFilters(query, filter, undefined, columns);
 		query.set(setData);
 
@@ -359,7 +359,7 @@ export class DataStoreRowsRepository {
 		await this.dataSource
 			.createQueryBuilder()
 			.delete()
-			.from(table, 'dataStore')
+			.from(table, 'dataTable')
 			.where({ id: In(ids) })
 			.execute();
 
@@ -431,7 +431,7 @@ export class DataStoreRowsRepository {
 		const updatedRows = await this.dataSource
 			.createQueryBuilder()
 			.select(selectColumns)
-			.from(table, 'dataStore')
+			.from(table, 'dataTable')
 			.where({ id: In(ids) })
 			.getRawMany<DataStoreRowReturn>();
 
@@ -451,7 +451,7 @@ export class DataStoreRowsRepository {
 	): [QueryBuilder, QueryBuilder] {
 		const query = this.dataSource.createQueryBuilder();
 
-		const tableReference = 'dataStore';
+		const tableReference = 'dataTable';
 		query.from(this.toTableName(dataStoreId), tableReference);
 		if (dto.filter) {
 			this.applyFilters(query, dto.filter, tableReference, columns);
@@ -497,7 +497,7 @@ export class DataStoreRowsRepository {
 
 	private applySortingByField(query: QueryBuilder, field: string, direction: 'DESC' | 'ASC'): void {
 		const dbType = this.dataSource.options.type;
-		const quotedField = `${quoteIdentifier('dataStore', dbType)}.${quoteIdentifier(field, dbType)}`;
+		const quotedField = `${quoteIdentifier('dataTable', dbType)}.${quoteIdentifier(field, dbType)}`;
 		query.orderBy(quotedField, direction);
 	}
 
@@ -514,7 +514,7 @@ export class DataStoreRowsRepository {
 		const queryBuilder = this.dataSource
 			.createQueryBuilder()
 			.select(matchFields)
-			.from(this.toTableName(dataStoreId), 'datastore');
+			.from(this.toTableName(dataStoreId), 'dataTable');
 
 		rows.forEach((row, index) => {
 			const matchData = Object.fromEntries(matchFields.map((field) => [field, row[field]]));

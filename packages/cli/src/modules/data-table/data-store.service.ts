@@ -182,23 +182,23 @@ export class DataStoreService {
 	}
 
 	async updateRow<T extends boolean | undefined>(
-		dataStoreId: string,
+		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
 		returnData?: T,
 	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async updateRow(
-		dataStoreId: string,
+		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
 		returnData = false,
 	) {
-		await this.validateDataStoreExists(dataStoreId, projectId);
+		await this.validateDataStoreExists(dataTableId, projectId);
 
-		const columns = await this.dataStoreColumnRepository.getColumns(dataStoreId);
+		const columns = await this.dataStoreColumnRepository.getColumns(dataTableId);
 		if (columns.length === 0) {
 			throw new DataStoreValidationError(
-				'No columns found for this data store or data store not found',
+				'No columns found for this data table or data table not found',
 			);
 		}
 
@@ -214,7 +214,7 @@ export class DataStoreService {
 		this.validateAndTransformFilters(filter, columns);
 
 		return await this.dataStoreRowsRepository.updateRow(
-			dataStoreId,
+			dataTableId,
 			data,
 			filter,
 			columns,

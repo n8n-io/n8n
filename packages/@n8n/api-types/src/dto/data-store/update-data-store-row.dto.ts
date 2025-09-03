@@ -7,7 +7,6 @@ import {
 } from '../../schemas/data-store.schema';
 import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
 
-// Reuse the shared filter schema but require at least one filter for updates
 const updateFilterSchema = dataTableFilterSchema.refine((filter) => filter.filters.length > 0, {
 	message: 'filter must not be empty',
 });

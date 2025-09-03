@@ -6,11 +6,6 @@ import { dataStoreColumnNameSchema } from '../../schemas/data-store.schema';
 import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
 import { paginationSchema } from '../pagination/pagination.dto';
 
-// ---------------------
-// Parameter Validators
-// ---------------------
-
-// Filter parameter validation
 const filterValidator = z
 	.string()
 	.optional()
@@ -38,7 +33,6 @@ const filterValidator = z
 		}
 	});
 
-// SortBy parameter validation
 const sortByValidator = z
 	.string()
 	.optional()
