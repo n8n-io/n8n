@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import { mkdtempSync, readFileSync } from 'fs';
 import { IncomingMessage } from 'http';
-import { mock } from 'jest-mock-extended';
+import { mock, mockFn } from 'jest-mock-extended';
 import type {
 	IBinaryData,
 	INode,
@@ -53,6 +53,8 @@ describe('test binary data helper methods', () => {
 	});
 
 	test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode", async () => {
+		const mockNode = mock<INode>({ name: 'Test Node' });
+
 		// Setup a 'default' binary data manager instance
 		binaryDataConfig.mode = 'default';
 		await binaryDataService.init();
@@ -91,6 +93,7 @@ describe('test binary data helper methods', () => {
 		// Now, lets fetch our data! The item will be item index 0.
 		const getBinaryDataBufferResponse: Buffer = await getBinaryDataBuffer(
 			taskDataConnectionsInput,
+			mockNode,
 			0,
 			'data',
 			0,
@@ -100,6 +103,8 @@ describe('test binary data helper methods', () => {
 	});
 
 	test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
+		const mockNode = mock<INode>({ name: 'Test Node' });
+
 		// Setup a 'filesystem' binary data manager instance
 		binaryDataConfig.mode = 'filesystem';
 		await binaryDataService.init();
@@ -145,6 +150,7 @@ describe('test binary data helper methods', () => {
 		// Now, lets fetch our data! The item will be item index 0.
 		const getBinaryDataBufferResponse: Buffer = await getBinaryDataBuffer(
 			taskDataConnectionsInput,
+			mockNode,
 			0,
 			'data',
 			0,
