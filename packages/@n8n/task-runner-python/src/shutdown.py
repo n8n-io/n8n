@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import signal
-import sys
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
