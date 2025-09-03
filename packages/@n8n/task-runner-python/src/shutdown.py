@@ -55,9 +55,14 @@ class Shutdown:
             self.logger.info(f"Received {sig.name} signal, starting shutdown...")
             await self.start_shutdown(self.task_runner.config.graceful_shutdown_timeout)
 
-        asyncio.get_running_loop().add_signal_handler(
-            sig, lambda: asyncio.create_task(handler())
-        )
+        try:
+            asyncio.get_running_loop().add_signal_handler(
+                sig, lambda: asyncio.create_task(handler())
+            )
+        except NotImplementedError:
+            self.logger.warning(
+                f"Signal handler for {sig.name} not supported on this platform"
+            )  # e.g. Windows
 
     async def start_auto_shutdown(self):
         self.logger.info("Reached idle timeout, starting shutdown...")
