@@ -97,27 +97,13 @@ export class SourceControlGitService {
 	}
 
 	/**
-	 * Update the SSH command with the path to the temp file containing the private key from the DB.
+	 * Update the Git configuration based on connection type (SSH or HTTPS).
 	 */
 	async setGitSshCommand(
 		gitFolder = this.sourceControlPreferencesService.gitFolder,
 		sshFolder = this.sourceControlPreferencesService.sshFolder,
 	) {
-		const privateKeyPath = await this.sourceControlPreferencesService.getPrivateKeyPath();
-
-		const sshKnownHosts = path.join(sshFolder, 'known_hosts');
-
-		// Convert paths to POSIX format for SSH command (works cross-platform)
-		// Use regex to handle both Windows (\) and POSIX (/) separators regardless of current platform
-		const normalizedPrivateKeyPath = privateKeyPath.split(/[/\\]/).join('/');
-		const normalizedKnownHostsPath = sshKnownHosts.split(/[/\\]/).join('/');
-
-		// Escape double quotes to prevent command injection
-		const escapedPrivateKeyPath = normalizedPrivateKeyPath.replace(/"/g, '\\"');
-		const escapedKnownHostsPath = normalizedKnownHostsPath.replace(/"/g, '\\"');
-
-		// Quote paths to handle spaces and special characters
-		const sshCommand = `ssh -o UserKnownHostsFile="${escapedKnownHostsPath}" -o StrictHostKeyChecking=no -i "${escapedPrivateKeyPath}"`;
+		const preferences = this.sourceControlPreferencesService.getPreferences();
 
 		this.gitOptions = {
 			baseDir: gitFolder,
@@ -128,9 +114,30 @@ export class SourceControlGitService {
 
 		const { simpleGit } = await import('simple-git');
 
-		this.git = simpleGit(this.gitOptions)
-			.env('GIT_SSH_COMMAND', sshCommand)
-			.env('GIT_TERMINAL_PROMPT', '0');
+		if (preferences.connectionType === 'https') {
+			// For HTTPS, we'll handle credentials through the URL
+			this.git = simpleGit(this.gitOptions).env('GIT_TERMINAL_PROMPT', '0');
+		} else {
+			// SSH configuration (existing logic)
+			const privateKeyPath = await this.sourceControlPreferencesService.getPrivateKeyPath();
+			const sshKnownHosts = path.join(sshFolder, 'known_hosts');
+
+			// Convert paths to POSIX format for SSH command (works cross-platform)
+			// Use regex to handle both Windows (\) and POSIX (/) separators regardless of current platform
+			const normalizedPrivateKeyPath = privateKeyPath.split(/[/\\]/).join('/');
+			const normalizedKnownHostsPath = sshKnownHosts.split(/[/\\]/).join('/');
+
+			// Escape double quotes to prevent command injection
+			const escapedPrivateKeyPath = normalizedPrivateKeyPath.replace(/"/g, '\\"');
+			const escapedKnownHostsPath = normalizedKnownHostsPath.replace(/"/g, '\\"');
+
+			// Quote paths to handle spaces and special characters
+			const sshCommand = `ssh -o UserKnownHostsFile="${escapedKnownHostsPath}" -o StrictHostKeyChecking=no -i "${escapedPrivateKeyPath}"`;
+
+			this.git = simpleGit(this.gitOptions)
+				.env('GIT_SSH_COMMAND', sshCommand)
+				.env('GIT_TERMINAL_PROMPT', '0');
+		}
 	}
 
 	resetService() {
@@ -158,9 +165,26 @@ export class SourceControlGitService {
 		}
 		try {
 			const remotes = await this.git.getRemotes(true);
-			const foundRemote = remotes.find(
-				(e) => e.name === SOURCE_CONTROL_ORIGIN && e.refs.push === remote,
-			);
+			const foundRemote = remotes.find((e) => {
+				if (e.name !== SOURCE_CONTROL_ORIGIN) return false;
+
+				const normalizeUrl = (url: string) => {
+					try {
+						const urlObj = new URL(url);
+						urlObj.username = '';
+						urlObj.password = '';
+						return urlObj.toString();
+					} catch {
+						return url;
+					}
+				};
+
+				const remoteNormalized = normalizeUrl(e.refs.push);
+				const inputNormalized = normalizeUrl(remote);
+
+				return remoteNormalized === inputNormalized;
+			});
+
 			if (foundRemote) {
 				this.logger.debug(`Git remote found: ${foundRemote.name}: ${foundRemote.refs.push}`);
 				return true;
@@ -176,7 +200,7 @@ export class SourceControlGitService {
 	async initRepository(
 		sourceControlPreferences: Pick<
 			SourceControlPreferences,
-			'repositoryUrl' | 'branchName' | 'initRepo'
+			'repositoryUrl' | 'branchName' | 'initRepo' | 'connectionType'
 		>,
 		user: User,
 	): Promise<void> {
@@ -190,8 +214,21 @@ export class SourceControlGitService {
 				this.logger.debug(`Git init: ${(error as Error).message}`);
 			}
 		}
+
+		let repositoryUrl = sourceControlPreferences.repositoryUrl;
+
+		if (sourceControlPreferences.connectionType === 'https') {
+			const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
+			if (credentials) {
+				const urlObj = new URL(repositoryUrl);
+				urlObj.username = encodeURIComponent(credentials.username);
+				urlObj.password = encodeURIComponent(credentials.password);
+				repositoryUrl = urlObj.toString();
+			}
+		}
+
 		try {
-			await this.git.addRemote(SOURCE_CONTROL_ORIGIN, sourceControlPreferences.repositoryUrl);
+			await this.git.addRemote(SOURCE_CONTROL_ORIGIN, repositoryUrl);
 			this.logger.debug(`Git remote added: ${sourceControlPreferences.repositoryUrl}`);
 		} catch (error) {
 			if ((error as Error).message.includes('remote origin already exists')) {

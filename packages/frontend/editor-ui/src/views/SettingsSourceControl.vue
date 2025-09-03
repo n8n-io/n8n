@@ -50,8 +50,8 @@ const onConnect = async () => {
 		};
 
 		if (connectionType.value === 'https') {
-			connectionData.username = httpsUsername.value;
-			connectionData.password = httpsPassword.value;
+			connectionData.httpsUsername = httpsUsername.value;
+			connectionData.httpsPassword = httpsPassword.value;
 		}
 
 		await sourceControlStore.savePreferences(connectionData);
@@ -332,7 +332,7 @@ watch(connectionType, () => {
 
 			<!-- HTTPS Credentials -->
 			<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
-				<label for="httpsUsername">Username / Access Token</label>
+				<label for="httpsUsername">Username</label>
 				<n8n-form-input
 					id="httpsUsername"
 					v-model="httpsUsername"
@@ -341,16 +341,13 @@ watch(connectionType, () => {
 					type="text"
 					validate-on-blur
 					:validation-rules="httpsCredentialValidationRules"
-					placeholder="Enter your username or personal access token"
+					placeholder="Enter your GitHub username"
 					@validate="(value: boolean) => onValidate('httpsUsername', value)"
 				/>
-				<n8n-notice type="info" class="mt-s">
-					For GitHub, use a Personal Access Token instead of username
-				</n8n-notice>
 			</div>
 
 			<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
-				<label for="httpsPassword">Password / Token Secret</label>
+				<label for="httpsPassword">Personal Access Token</label>
 				<n8n-form-input
 					id="httpsPassword"
 					v-model="httpsPassword"
@@ -359,11 +356,17 @@ watch(connectionType, () => {
 					type="password"
 					validate-on-blur
 					:validation-rules="httpsCredentialValidationRules"
-					placeholder="Enter your password or token secret"
+					placeholder="Enter your Personal Access Token (PAT)"
 					@validate="(value: boolean) => onValidate('httpsPassword', value)"
 				/>
 				<n8n-notice type="warning" class="mt-s">
-					Credentials will be securely stored and encrypted
+					<strong>For GitHub with 2FA enabled:</strong> Use a Personal Access Token instead of your
+					password. Create one at GitHub Settings → Developer settings → Personal access tokens →
+					Tokens (classic). Required scopes: <code>repo</code> for private repositories or
+					<code>public_repo</code> for public ones.
+				</n8n-notice>
+				<n8n-notice type="info" class="mt-s">
+					Credentials are securely encrypted and stored locally
 				</n8n-notice>
 			</div>
 
