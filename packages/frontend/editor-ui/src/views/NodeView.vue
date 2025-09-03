@@ -153,6 +153,10 @@ const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
 );
 
+const LazyFormPreview = defineAsyncComponent(
+	async () => await import('@/components/FormPreviewModal.vue'),
+);
+
 const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/components/NodeDetailsView.vue'),
 );
@@ -2196,6 +2200,10 @@ onBeforeUnmount(() => {
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
 					@save-keyboard-shortcut="onSaveWorkflow"
 				/>
+			</Suspense>
+
+			<Suspense>
+				<LazyFormPreview></LazyFormPreview>
 			</Suspense>
 		</WorkflowCanvas>
 		<FocusPanel

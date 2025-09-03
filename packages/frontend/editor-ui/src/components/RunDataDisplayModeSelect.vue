@@ -22,6 +22,7 @@ const options = computed(() => {
 		{ label: i18n.baseText('runData.schema'), value: 'schema' },
 		{ label: i18n.baseText('runData.table'), value: 'table' },
 		{ label: i18n.baseText('runData.json'), value: 'json' },
+		{ label: i18n.baseText('runData.preview'), value: 'preview' },
 	];
 
 	if (hasBinaryData) {
@@ -67,6 +68,7 @@ watch(
 			<N8nIcon v-else-if="option.value === 'schema'" icon="schema" size="small" />
 			<N8nIcon v-else-if="option.value === 'html'" icon="file-code" size="small" />
 			<N8nIcon v-else-if="option.value === 'ai'" icon="text" size="small" />
+			<N8nIcon v-else-if="option.value === 'preview'" icon="external-link" size="small" />
 			<span v-else>{{ option.label }}</span>
 		</template>
 	</N8nRadioButtons>

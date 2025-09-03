@@ -65,7 +65,7 @@ const LazyCollectionParameter = defineAsyncComponent(
 const showIssuesInLabelFor = ['fixedCollection'];
 
 type Props = {
-	node?: INodeUi;
+	node?: INodeUi | null;
 	nodeValues: INodeParameters;
 	parameters: INodeProperties[];
 	path?: string;
@@ -625,6 +625,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 							v-if="parameter.type === 'collection'"
 							:parameter="parameter"
 							:values="getParameterValue(parameter.name)"
+							:node="node"
 							:node-values="nodeValues"
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"

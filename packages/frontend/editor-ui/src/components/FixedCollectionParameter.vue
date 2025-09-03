@@ -22,6 +22,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import { storeToRefs } from 'pinia';
+import { formPreviewEventBus } from '@/event-bus/form-preview';
 
 const locale = useI18n();
 
@@ -229,6 +230,10 @@ const trackWorkflowInputFieldAdded = () => {
 		node_id: ndvStore.activeNode?.id,
 	});
 };
+
+const onFieldFocus = (fieldId: string) => {
+	formPreviewEventBus.emit('parameter-focused', { fieldId });
+};
 </script>
 
 <template>
@@ -266,7 +271,11 @@ const trackWorkflowInputFieldAdded = () => {
 					@change="onDragChange(property.name)"
 				>
 					<template #item="{ index }">
-						<div :key="property.name + '-' + index" class="parameter-item">
+						<div
+							:key="property.name + '-' + index"
+							class="parameter-item"
+							@click="onFieldFocus(`field-${index}`)"
+						>
 							<div
 								:class="
 									index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'

@@ -181,6 +181,7 @@ export default mergeConfig(
 		worker: {
 			format: 'es',
 		},
+		assetsInclude: ['**/*.handlebars'],
 	}),
 	vitestConfig,
 );

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handlebars Client-Side Renderer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .controls h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .form-data-editor {
+            width: 100%;
+            height: 200px;
+            font-family: 'Courier New', monospace;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+            resize: vertical;
+        }
+        .render-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .render-btn:hover {
+            background: #0056b3;
+        }
+        .render-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-left: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .rendered-output {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-height: 600px;
+        }
+        .form-iframe {
+            width: 100%;
+            height: 800px;
+            border: none;
+            border-radius: 8px;
+            background: white;
+        }
+        .iframe-container {
+            position: relative;
+        }
+        .iframe-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 10;
+        }
+        .render-mode-toggle {
+            margin-left: 10px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .render-mode-toggle:hover {
+            background: #5a6268;
+        }
+        .render-mode-toggle.active {
+            background: #28a745;
+        }
+        .highlight-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        .highlight-section h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #495057;
+        }
+        .highlight-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .element-id-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .send-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        .send-btn:hover {
+            background: #138496;
+        }
+        .send-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .hot-reload-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hot-reload-indicator">🔄 Hot Reload Active</div>
+        
+        <div class="controls">
+            <h2>Handlebars Form Template Renderer</h2>
+            <p>Edit the form data below and click "Render Template" to see the form in action:</p>
+            
+            <textarea id="formDataEditor" class="form-data-editor" placeholder="Loading form data..."></textarea>
+            
+            <button id="renderBtn" class="render-btn">Render Template</button>
+            <span id="status" class="status"></span>
+            
+            <div class="highlight-section">
+                <h3>🎯 Highlight Field</h3>
+                <div class="highlight-controls">
+                    <input 
+                        type="text" 
+                        id="elementIdInput" 
+                        class="element-id-input" 
+                        placeholder="Enter element ID (e.g., fullName, email, message)"
+                        autocomplete="off"
+                    />
+                    <button id="sendFocusBtn" class="send-btn">Send</button>
+                </div>
+                <p style="margin: 8px 0 0 0; font-size: 12px; color: #6c757d;">
+                    Enter a form field ID to focus and highlight it in the iframe
+                </p>
+            </div>
+        </div>
+
+        <div id="renderedOutput" class="rendered-output">
+            <div class="iframe-container">
+                <div class="iframe-overlay">Form Preview</div>
+                <iframe id="formIframe" class="form-iframe" src="about:blank"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Handlebars from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/handlebars@4.7.8/dist/handlebars.min.js"></script>
+    
+    <!-- Load our app -->
+    <script src="app.js"></script>
+    <script src="data.js"></script>
+</body>
+</html>
