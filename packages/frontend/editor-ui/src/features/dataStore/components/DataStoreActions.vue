@@ -97,10 +97,7 @@ const deleteDataStore = async () => {
 		emit('onDeleted');
 		telemetry.track('User deleted data table', {
 			data_table_id: props.dataStore.id,
-			data_table_name: props.dataStore.name,
 			data_table_project_id: props.dataStore.projectId,
-			data_table_project_name:
-				props.dataStore.project?.type === 'personal' ? 'personal' : props.dataStore.project?.name,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.delete.error'));

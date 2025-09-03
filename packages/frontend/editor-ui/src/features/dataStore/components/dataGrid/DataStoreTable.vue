@@ -437,7 +437,6 @@ const onAddRowClick = async () => {
 		focusFirstEditableCell(newRow.id as number);
 		telemetry.track('User added row to data table', {
 			data_table_id: props.dataStore.id,
-			data_table_name: props.dataStore.name,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
@@ -549,11 +548,8 @@ const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) =
 		});
 		telemetry.track('User edited data table content', {
 			data_table_id: props.dataStore.id,
-			data_table_name: props.dataStore.name,
 			column_name: fieldName,
 			column_type: colDef.cellDataType,
-			old_value: oldValue,
-			new_value: value,
 		});
 	} catch (error) {
 		// Revert cell to original value if the update fails
@@ -793,7 +789,6 @@ const handleDeleteSelected = async () => {
 
 		telemetry.track('User deleted rows in data table', {
 			data_table_id: props.dataStore.id,
-			data_table_name: props.dataStore.name,
 			deleted_row_count: idsToDelete.length,
 		});
 	} catch (error) {

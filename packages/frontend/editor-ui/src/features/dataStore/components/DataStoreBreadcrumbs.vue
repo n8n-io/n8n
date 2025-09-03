@@ -80,11 +80,7 @@ const onNameSubmit = async (name: string) => {
 		editableName.value = name;
 		telemetry.track('User renamed data table', {
 			data_table_id: props.dataStore.id,
-			data_table_old_name: props.dataStore.name,
-			data_table_new_name: name,
 			data_table_project_id: props.dataStore.projectId,
-			data_table_project_name:
-				props.dataStore.project?.type === 'personal' ? 'personal' : props.dataStore.project?.name,
 		});
 	} catch (error) {
 		// Revert to original name if rename fails
