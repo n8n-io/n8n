@@ -622,7 +622,7 @@ test.describe('NDV', () => {
 			await expect(n8n.ndv.getContainer()).toBeVisible();
 
 			await n8n.ndv.setRLCValue('documentId', TEST_DOC_ID);
-			await n8n.ndv.changeNodeOperation('Update Row');
+			await n8n.ndv.changeNodeOperation('Append or Update Row');
 			const input = n8n.ndv.getResourceLocatorInput('documentId').locator('input');
 			await expect(input).toHaveValue(TEST_DOC_ID);
 		});

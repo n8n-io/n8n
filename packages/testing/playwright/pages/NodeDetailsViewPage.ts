@@ -321,13 +321,7 @@ export class NodeDetailsViewPage extends BasePage {
 	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {
 		await this.getParameterInput(parameterName).click();
 
-		await this.page.locator('.el-popper:visible').waitFor({ state: 'visible' });
-
-		const option = this.page.locator('[data-test-id="parameter-input-item"]').filter({
-			has: this.page.locator('.option-headline', { hasText: optionText }),
-		});
-
-		await option.first().click();
+		await this.page.getByRole('option', { name: optionText }).click();
 	}
 
 	async changeNodeOperation(operationName: string): Promise<void> {
