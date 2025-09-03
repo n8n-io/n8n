@@ -58,31 +58,87 @@ export class MindeeV2 implements INodeType {
 			{
 				displayName: 'Enable RAG',
 				name: 'rag',
-				type: 'boolean',
-				default: false,
+				type: 'options',
+				options: [
+					{
+						name: 'Use Model Default',
+						value: 'default',
+					},
+					{
+						name: 'Enabled',
+						value: 'true',
+					},
+					{
+						name: 'Disabled',
+						value: 'false',
+					},
+				],
+				default: 'default',
 				description: 'Enhance extraction accuracy with Retrieval-Augmented Generation',
 			},
 			{
 				displayName: 'Enable Polygons (Location Data)',
 				name: 'polygon',
-				type: 'boolean',
-				default: false,
+				type: 'options',
+				options: [
+					{
+						name: 'Use Model Default',
+						value: 'default',
+					},
+					{
+						name: 'Enabled',
+						value: 'true',
+					},
+					{
+						name: 'Disabled',
+						value: 'false',
+					},
+				],
+				default: 'default',
 				description:
 					'Calculate bounding box polygons for all fields, and fill their `locations` attribute',
 			},
 			{
 				displayName: 'Enable Confidence Scores',
 				name: 'confidence',
-				type: 'boolean',
-				default: false,
+				type: 'options',
+				options: [
+					{
+						name: 'Use Model Default',
+						value: 'default',
+					},
+					{
+						name: 'Enabled',
+						value: 'true',
+					},
+					{
+						name: 'Disabled',
+						value: 'false',
+					},
+				],
+				default: 'default',
 				description:
 					'Calculate confidence scores for all fields, and fill their `confidence` attribute',
 			},
 			{
 				displayName: 'Enable Raw Text',
 				name: 'rawText',
-				type: 'boolean',
-				default: false,
+				type: 'options',
+				options: [
+					{
+						name: 'Use Model Default',
+						value: 'default',
+					},
+					{
+						name: 'Enabled',
+						value: true,
+					},
+					{
+						name: 'Disabled',
+						value: false,
+					},
+				],
+				default: 'default',
 				description:
 					'Extract the full text content from the document as strings, and fill the `raw_text` attribute',
 			},
