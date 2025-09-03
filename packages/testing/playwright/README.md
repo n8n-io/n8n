@@ -102,7 +102,7 @@ test.describe('Proxy tests @capability:proxy', () => {
 The ProxyServer service supports recording HTTP requests for test mocking and replay. All proxied requests are automatically recorded by the mock server as described in the [Mock Server documentation](https://www.mock-server.com/proxy/record_and_replay.html).
 
 ```typescript
-// Record specific requests matching all requests
+// Record all requests
 await proxyServer.recordExpectations();
 
 // Record requests with matching criteria
@@ -115,7 +115,7 @@ await proxyServer.recordExpectations({
 });
 ```
 
-Recorded expectations are saved as JSON files in the `expectations/` directory with unique names based on the request details. When creating a new ProxyServer instance, all saved expectations are automatically loaded and mocked for subsequent test runs.
+Recorded expectations are saved as JSON files in the `expectations/` directory with unique names based on the request details. When the ProxyServer fixture initializes, all saved expectations are automatically loaded and mocked for subsequent test runs.
 
 ## Writing Tests
 For guidelines on writing new tests, see [CONTRIBUTING.md](./CONTRIBUTING.md).

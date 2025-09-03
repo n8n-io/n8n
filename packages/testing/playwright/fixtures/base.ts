@@ -163,6 +163,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 	},
 
 	proxyServer: async ({ n8nContainer }, use) => {
+		// n8nContainer is "null" if running tests in "local" mode
+		// proxy server is also not initialized in local mode (only in container modes can it be supported)
+		// tests that require proxy server should have "@capability:proxy" so that they are skipped in local mode
+		if (!n8nContainer?.proxyServerUrl) {
+			throw new TestError(
+				'Testing with Proxy server is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
+			);
+		}
+
 		const proxyServer = new ProxyServer(n8nContainer.proxyServerUrl);
 		await proxyServer.loadExpectations();
 

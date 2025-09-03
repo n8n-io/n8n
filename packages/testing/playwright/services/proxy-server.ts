@@ -53,7 +53,7 @@ export class ProxyServer {
 	/**
 	 * Create a ProxyServer client instance from a URL
 	 */
-	constructor(proxyServerUrl: string = '') {
+	constructor(proxyServerUrl: string) {
 		this.url = proxyServerUrl;
 		const parsedURL = new URL(proxyServerUrl);
 		this.client = proxyServerClient(parsedURL.hostname, parseInt(parsedURL.port, 10));
@@ -99,7 +99,9 @@ export class ProxyServer {
 				times: expectation.times,
 			});
 		} catch (error) {
-			throw new Error(`Failed to create expectation: ${JSON.stringify(error)}`);
+			throw new Error(
+				`Failed to create expectation: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 	}
 
@@ -136,13 +138,10 @@ export class ProxyServer {
 		statusCode: number = 200,
 	): Promise<RequestResponse> {
 		const queryStringParameters = queryParams
-			? Object.entries(queryParams).reduce(
-					(acc, [key, value]) => {
-						acc[key] = [value];
-						return acc;
-					},
-					{} as Record<string, string[]>,
-				)
+			? Object.entries(queryParams).reduce<Record<string, string[]>>((acc, [key, value]) => {
+					acc[key] = [value];
+					return acc;
+				}, {})
 			: undefined;
 
 		return await this.createExpectation({
@@ -170,13 +169,10 @@ export class ProxyServer {
 		numberOfRequests = 1,
 	): Promise<boolean> {
 		const queryStringParameters = queryParams
-			? Object.entries(queryParams).reduce(
-					(acc, [key, value]) => {
-						acc[key] = [value];
-						return acc;
-					},
-					{} as Record<string, string[]>,
-				)
+			? Object.entries(queryParams).reduce<Record<string, string[]>>((acc, [key, value]) => {
+					acc[key] = [value];
+					return acc;
+				}, {})
 			: undefined;
 
 		return await this.verifyRequest(
