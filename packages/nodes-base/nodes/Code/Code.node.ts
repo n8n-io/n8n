@@ -84,14 +84,17 @@ export class Code implements INodeType {
 					{
 						name: 'JavaScript',
 						value: 'javaScript',
+						action: 'Code in JavaScript',
 					},
 					{
 						name: 'Python (Beta)',
 						value: 'python',
+						action: 'Code in Python (Beta)',
 					},
 					{
 						name: 'Python (Native) (Beta)',
 						value: 'pythonNative',
+						action: 'Code in Python (Native) (Beta)',
 					},
 				],
 				default: 'javaScript',
