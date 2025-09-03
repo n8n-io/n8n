@@ -23,8 +23,7 @@ import {
 	clearPopupWindowState,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
-	hasTrimmedData,
-	hasTrimmedItem,
+	isTrimmedTaskData,
 } from '@/utils/executionUtils';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
@@ -217,9 +216,14 @@ export function getRunExecutionData(execution: SimplifiedExecution): IRunExecuti
 	if (workflowsStore.workflowExecutionData?.workflowId === execution.workflowId) {
 		const activeRunData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
 		if (activeRunData) {
-			for (const key of Object.keys(activeRunData)) {
-				if (hasTrimmedItem(activeRunData[key])) continue;
-				runExecutionData.resultData.runData[key] = activeRunData[key];
+			for (const nodeName of Object.keys(activeRunData)) {
+				for (const taskDataIndex of activeRunData[nodeName].keys()) {
+					if (isTrimmedTaskData(activeRunData[nodeName][taskDataIndex])) continue;
+					// If any of the task data is trimmed, we cannot use the active run data
+					// and need to rely on the full data from the final message
+					runExecutionData.resultData.runData[nodeName][taskDataIndex] =
+						activeRunData[nodeName][taskDataIndex];
+				}
 			}
 		}
 	}
@@ -437,9 +441,10 @@ export function setRunExecutionData(
 	// node that did finish. For that reason copy in here the data
 	// which we already have. But if the run data in the store is trimmed,
 	// we skip copying so we use the full data from the final message.
-	if (workflowsStore.getWorkflowRunData && !hasTrimmedData(workflowsStore.getWorkflowRunData)) {
-		runExecutionData.resultData.runData = workflowsStore.getWorkflowRunData;
-	}
+	console.log(runExecutionData);
+	// if (workflowsStore.getWorkflowRunData && !hasTrimmedData(workflowsStore.getWorkflowRunData)) {
+	// 	runExecutionData.resultData.runData = workflowsStore.getWorkflowRunData;
+	// }
 
 	workflowsStore.executingNode.length = 0;
 
