@@ -61,7 +61,7 @@ class Shutdown:
     def _register_handler(self, sig: signal.Signals):
         async def handler():
             self.logger.info(f"Received {sig.name} signal, starting shutdown...")
-            await self.start_shutdown(self.task_runner.config.graceful_shutdown_timeout)
+            await self.start_shutdown()
 
         try:
             asyncio.get_running_loop().add_signal_handler(
