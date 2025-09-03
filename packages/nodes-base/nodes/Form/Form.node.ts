@@ -331,6 +331,8 @@ export class Form extends Node {
 		preview: {
 			async getPreview(this: ILoadOptionsFunctions): Promise<string> {
 				// TODO: render from this.getCurrentNodeParameters
+				// TODO: get access to context to evaluate resolvables
+				const parameters = this.getCurrentNodeParameters();
 				return 'Preview';
 			},
 		},
