@@ -211,6 +211,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			// todo try proxyServerContainer.getHost()
 			HTTP_PROXY: 'http://proxyserver:1080',
 			HTTPS_PROXY: 'http://proxyserver:1080',
+			// Ensure https requests can be proxied without SSL issues
+			...(proxyServerEnabled ? { NODE_TLS_REJECT_UNAUTHORIZED: '0' } : {}),
 		};
 	}
 

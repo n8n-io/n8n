@@ -45,8 +45,6 @@ test.describe('Proxy server @capability:proxy', () => {
 				test: '1',
 			}),
 		).toBe(true);
-
-		await proxyServer.recordExpectations();
 	});
 
 	test('should use stored expectations respond to api request', async ({ proxyServer }) => {
@@ -55,5 +53,15 @@ test.describe('Proxy server @capability:proxy', () => {
 		const data = await response.json();
 		expect(data.title).toBe('delectus aut autem');
 		expect(await proxyServer.wasGetRequestMade('/mock-endpoint')).toBe(true);
+	});
+
+	test('should run a simple workflow proxying HTTPS request', async ({ n8n }) => {
+		await n8n.canvas.openNewWorkflow();
+		await n8n.canvas.importWorkflow('Simple_workflow_with_http_node.json', 'Test');
+
+		await n8n.canvas.openNode('HTTP Request');
+		await n8n.ndv.setParameterInput('url', 'https://jsonplaceholder.typicode.com/todos/1');
+		await n8n.ndv.execute();
+		await expect(n8n.ndv.getOutputTbodyCell(0, 0)).toContainText('1');
 	});
 });
