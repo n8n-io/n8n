@@ -1,3 +1,8 @@
+import {
+	CODE_NODE_NAME,
+	CODE_NODE_DISPLAY_NAME,
+	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+} from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
 
@@ -170,7 +175,6 @@ test.describe('NDV', () => {
 
 		test('should switch to output schema view and validate it', async ({ n8n }) => {
 			await setupSchemaWorkflow(n8n);
-
 			await n8n.ndv.switchOutputMode('Schema');
 
 			for (const key of schemaKeys) {
@@ -180,9 +184,7 @@ test.describe('NDV', () => {
 
 		test('should preserve schema view after execution', async ({ n8n }) => {
 			await setupSchemaWorkflow(n8n);
-
 			await n8n.ndv.switchOutputMode('Schema');
-
 			await n8n.ndv.execute();
 
 			for (const key of schemaKeys) {
@@ -390,5 +392,409 @@ test.describe('NDV', () => {
 		await n8n.ndv.switchOutputMode('JSON');
 
 		await expect(n8n.ndv.getOutputDataContainer().locator('.json-data')).toBeVisible();
+	});
+
+	test.describe('Run Data & Selectors - Advanced', () => {
+		test('can link and unlink run selectors between input and output', async ({ n8n }) => {
+			await n8n.start.fromImportedWorkflow('Test_workflow_5.json');
+			await n8n.canvas.clickZoomToFitButton();
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
+			await n8n.canvas.openNode('Set3');
+
+			await n8n.ndv.switchInputMode('Table');
+			await n8n.ndv.switchOutputMode('Table');
+
+			await n8n.ndv.ensureOutputRunLinking(true);
+			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
+			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+
+			await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
+			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
+			await expect(n8n.ndv.getInputTbodyCell(0, 0)).toHaveText('1111');
+			await expect(n8n.ndv.getOutputTbodyCell(0, 0)).toHaveText('1111');
+
+			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
+			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+
+			await n8n.ndv.toggleOutputRunLinking();
+			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
+			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
+
+			await n8n.ndv.toggleOutputRunLinking();
+			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
+
+			await n8n.ndv.toggleInputRunLinking();
+			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
+			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('1 of 2 (6 items)');
+
+			await n8n.ndv.toggleInputRunLinking();
+			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
+		});
+	});
+
+	test.describe('Remote Options & Network', () => {
+		test('should not retrieve remote options when a parameter value changes', async ({ n8n }) => {
+			let fetchParameterOptionsCallCount = 0;
+			await n8n.page.route('**/rest/dynamic-node-parameters/options', async (route) => {
+				fetchParameterOptionsCallCount++;
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({ data: [] }),
+				});
+			});
+
+			await n8n.canvas.addNode('E2E Test', { action: 'Remote Options' });
+			await expect(n8n.ndv.getContainer()).toBeVisible();
+
+			await n8n.ndv.fillFirstAvailableTextParameterMultipleTimes(['test1', 'test2', 'test3']);
+
+			expect(fetchParameterOptionsCallCount).toBe(1);
+		});
+
+		test('Should show a notice when remote options cannot be fetched because of missing credentials', async ({
+			n8n,
+		}) => {
+			await n8n.page.route('**/rest/dynamic-node-parameters/options', async (route) => {
+				await route.fulfill({ status: 403 });
+			});
+
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Notion', { action: 'Update a database page', closeNDV: false });
+			await expect(n8n.ndv.getContainer()).toBeVisible();
+
+			await n8n.ndv.addItemToFixedCollection('propertiesUi');
+			await expect(
+				n8n.ndv.getParameterInputWithIssues('propertiesUi.propertyValues[0].key'),
+			).toBeVisible();
+		});
+
+		test('Should show error state when remote options cannot be fetched', async ({ n8n }) => {
+			await n8n.page.route('**/rest/dynamic-node-parameters/options', async (route) => {
+				await route.fulfill({ status: 500 });
+			});
+
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Notion', { action: 'Update a database page', closeNDV: false });
+			await expect(n8n.ndv.getContainer()).toBeVisible();
+
+			await n8n.credentials.createAndSaveNewCredential('apiKey', 'sk_test_123');
+			await n8n.ndv.addItemToFixedCollection('propertiesUi');
+			await expect(
+				n8n.ndv.getParameterInputWithIssues('propertiesUi.propertyValues[0].key'),
+			).toBeVisible();
+		});
+	});
+
+	test.describe('Floating Nodes Navigation', () => {
+		test('should traverse floating nodes with mouse', async ({ n8n }) => {
+			await n8n.start.fromImportedWorkflow('Floating_Nodes.json');
+			await n8n.canvas.getCanvasNodes().first().dblclick();
+			await expect(n8n.ndv.getContainer()).toBeVisible();
+
+			await expect(n8n.ndv.getFloatingNodeByPosition('inputMain')).toBeHidden();
+			await expect(n8n.ndv.getFloatingNodeByPosition('outputMain')).toBeVisible();
+			for (let i = 0; i < 4; i++) {
+				await n8n.ndv.clickFloatingNodeByPosition('outputMain');
+				await expect(n8n.ndv.getFloatingNodeByPosition('inputMain')).toBeVisible();
+				await expect(n8n.ndv.getFloatingNodeByPosition('outputMain')).toBeVisible();
+
+				await n8n.ndv.close();
+				await expect(n8n.canvas.getSelectedNodes()).toHaveCount(1);
+
+				await n8n.canvas.getSelectedNodes().first().dblclick();
+				await expect(n8n.ndv.getContainer()).toBeVisible();
+			}
+
+			await n8n.ndv.clickFloatingNodeByPosition('outputMain');
+			await expect(n8n.ndv.getFloatingNodeByPosition('inputMain')).toBeVisible();
+
+			for (let i = 0; i < 4; i++) {
+				await n8n.ndv.clickFloatingNodeByPosition('inputMain');
+				await expect(n8n.ndv.getFloatingNodeByPosition('outputMain')).toBeVisible();
+				await expect(n8n.ndv.getFloatingNodeByPosition('inputMain')).toBeVisible();
+			}
+
+			await n8n.ndv.clickFloatingNodeByPosition('inputMain');
+			await expect(n8n.ndv.getFloatingNodeByPosition('inputMain')).toBeHidden();
+			await expect(n8n.ndv.getFloatingNodeByPosition('inputSub')).toBeHidden();
+			await expect(n8n.ndv.getFloatingNodeByPosition('outputSub')).toBeHidden();
+
+			await n8n.ndv.close();
+			await expect(n8n.canvas.getSelectedNodes()).toHaveCount(1);
+		});
+
+		test('should traverse floating nodes with keyboard', async ({ n8n }) => {
+			await n8n.start.fromImportedWorkflow('Floating_Nodes.json');
+
+			await n8n.canvas.getCanvasNodes().first().dblclick();
+			await expect(n8n.ndv.getContainer()).toBeVisible();
+
+			await expect(n8n.ndv.getFloatingNodeByPosition('inputMain')).toBeHidden();
+			await expect(n8n.ndv.getFloatingNodeByPosition('outputMain')).toBeVisible();
+			for (let i = 0; i < 4; i++) {
+				await n8n.ndv.navigateToNextFloatingNodeWithKeyboard();
+				await expect(n8n.ndv.getFloatingNodeByPosition('inputMain')).toBeVisible();
+				await expect(n8n.ndv.getFloatingNodeByPosition('outputMain')).toBeVisible();
+
+				await n8n.ndv.close();
+				await expect(n8n.canvas.getSelectedNodes()).toHaveCount(1);
+
+				await n8n.canvas.getSelectedNodes().first().dblclick();
+				await expect(n8n.ndv.getContainer()).toBeVisible();
+			}
+
+			await n8n.ndv.navigateToNextFloatingNodeWithKeyboard();
+			await expect(n8n.ndv.getFloatingNodeByPosition('inputMain')).toBeVisible();
+
+			for (let i = 0; i < 4; i++) {
+				await n8n.ndv.navigateToPreviousFloatingNodeWithKeyboard();
+				await expect(n8n.ndv.getFloatingNodeByPosition('outputMain')).toBeVisible();
+				await expect(n8n.ndv.getFloatingNodeByPosition('inputMain')).toBeVisible();
+			}
+
+			await n8n.ndv.navigateToPreviousFloatingNodeWithKeyboard();
+			await expect(n8n.ndv.getFloatingNodeByPosition('inputMain')).toBeHidden();
+			await expect(n8n.ndv.getFloatingNodeByPosition('inputSub')).toBeHidden();
+			await expect(n8n.ndv.getFloatingNodeByPosition('outputSub')).toBeHidden();
+
+			await n8n.ndv.close();
+			await expect(n8n.canvas.getSelectedNodes()).toHaveCount(1);
+		});
+
+		test('should connect floating sub-nodes', async ({ n8n }) => {
+			await n8n.canvas.addNode('AI Agent', { closeNDV: false });
+			await expect(n8n.ndv.getContainer()).toBeVisible();
+
+			await n8n.ndv.connectAISubNode('ai_languageModel', 'Anthropic Chat Model');
+			await n8n.ndv.connectAISubNode('ai_memory', 'Simple Memory');
+			await n8n.ndv.connectAISubNode('ai_tool', 'HTTP Request Tool');
+
+			expect(await n8n.ndv.getNodesWithIssuesCount()).toBeGreaterThanOrEqual(2);
+		});
+
+		test('should have the floating nodes in correct order', async ({ n8n }) => {
+			await n8n.start.fromImportedWorkflow('Floating_Nodes.json');
+
+			await n8n.canvas.openNode('Merge');
+			await expect(n8n.ndv.getContainer()).toBeVisible();
+
+			expect(await n8n.ndv.getFloatingNodeCount('inputMain')).toBe(2);
+			await n8n.ndv.verifyFloatingNodeName('inputMain', 'Edit Fields1', 0);
+			await n8n.ndv.verifyFloatingNodeName('inputMain', 'Edit Fields0', 1);
+
+			await n8n.ndv.close();
+
+			await n8n.canvas.openNode('Merge1');
+			await expect(n8n.ndv.getContainer()).toBeVisible();
+
+			expect(await n8n.ndv.getFloatingNodeCount('inputMain')).toBe(2);
+			await n8n.ndv.verifyFloatingNodeName('inputMain', 'Edit Fields0', 0);
+			await n8n.ndv.verifyFloatingNodeName('inputMain', 'Edit Fields1', 1);
+		});
+	});
+
+	test.describe('Parameter Management - Advanced', () => {
+		test('Should clear mismatched collection parameters', async ({ n8n }) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Notion', { action: 'Create a database page', closeNDV: false });
+			await expect(n8n.ndv.getContainer()).toBeVisible();
+
+			await n8n.ndv.addItemToFixedCollection('propertiesUi');
+			await n8n.ndv.changeNodeOperation('Update');
+
+			await expect(n8n.ndv.getParameterItemWithText('Currently no items exist')).toBeVisible();
+		});
+
+		test('Should keep RLC values after operation change', async ({ n8n }) => {
+			const TEST_DOC_ID = '1111';
+
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Google Sheets', { closeNDV: false, action: 'Append row in sheet' });
+			await expect(n8n.ndv.getContainer()).toBeVisible();
+
+			await n8n.ndv.setRLCValue('documentId', TEST_DOC_ID);
+			await n8n.ndv.changeNodeOperation('Update Row');
+			const input = n8n.ndv.getResourceLocatorInput('documentId').locator('input');
+			await expect(input).toHaveValue(TEST_DOC_ID);
+		});
+
+		test('Should not clear resource/operation after credential change', async ({ n8n }) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Discord', { closeNDV: false, action: 'Delete a message' });
+			await expect(n8n.ndv.getContainer()).toBeVisible();
+
+			await n8n.credentials.createAndSaveNewCredential('botToken', 'sk_test_123');
+			const resourceInput = n8n.ndv.getParameterInputField('resource');
+			const operationInput = n8n.ndv.getParameterInputField('operation');
+
+			await expect(resourceInput).toHaveValue('Message');
+			await expect(operationInput).toHaveValue('Delete');
+		});
+	});
+
+	test.describe('Node Creator Integration', () => {
+		test('Should open appropriate node creator after clicking on connection hint link', async ({
+			n8n,
+		}) => {
+			const hintMapper = {
+				Memory: 'AI Nodes',
+				'Output Parser': 'AI Nodes',
+				'Token Splitter': 'Document Loaders',
+				Tool: 'AI Nodes',
+				Embeddings: 'Vector Stores',
+				'Vector Store': 'Retrievers',
+			};
+
+			await n8n.canvas.importWorkflow(
+				'open_node_creator_for_connection.json',
+				'open_node_creator_for_connection',
+			);
+
+			for (const [node, group] of Object.entries(hintMapper)) {
+				await n8n.canvas.openNode(node);
+
+				await n8n.ndv.clickNodeCreatorInsertOneButton();
+				await expect(n8n.canvas.getNodeCreatorHeader(group)).toBeVisible();
+				await n8n.page.keyboard.press('Escape');
+			}
+		});
+	});
+
+	test.describe('Expression Editor Features', () => {
+		test('should allow selecting item for expressions', async ({ n8n }) => {
+			await n8n.canvas.importWorkflow('Test_workflow_3.json', 'My test workflow 2');
+
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
+
+			await n8n.canvas.openNode('Set');
+
+			await n8n.ndv.getAssignmentValue('assignments').getByText('Expression').click();
+
+			const expressionInput = n8n.ndv.getInlineExpressionEditorInput();
+			await expressionInput.click();
+			await n8n.ndv.clearExpressionEditor();
+			await n8n.ndv.typeInExpressionEditor('{{ $json.input[0].count');
+
+			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('0');
+
+			await n8n.ndv.expressionSelectNextItem();
+			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('1');
+			await expect(n8n.ndv.getInlineExpressionEditorItemInput()).toHaveValue('1');
+
+			await expect(n8n.ndv.getInlineExpressionEditorItemNextButton()).toBeDisabled();
+
+			await n8n.ndv.expressionSelectPrevItem();
+			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('0');
+			await expect(n8n.ndv.getInlineExpressionEditorItemInput()).toHaveValue('0');
+		});
+	});
+
+	test.describe('Schema & Data Views', () => {
+		test('should show data from the correct output in schema view', async ({ n8n }) => {
+			await n8n.canvas.importWorkflow('Test_workflow_multiple_outputs.json', 'Multiple outputs');
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
+
+			await n8n.canvas.openNode('Only Item 1');
+			await expect(n8n.ndv.getInputPanel()).toBeVisible();
+			await n8n.ndv.switchInputMode('Schema');
+			await expect(n8n.ndv.getInputSchemaItem('onlyOnItem1')).toBeVisible();
+			await n8n.ndv.close();
+
+			await n8n.canvas.openNode('Only Item 2');
+			await expect(n8n.ndv.getInputPanel()).toBeVisible();
+			await n8n.ndv.switchInputMode('Schema');
+			await expect(n8n.ndv.getInputSchemaItem('onlyOnItem2')).toBeVisible();
+			await n8n.ndv.close();
+
+			await n8n.canvas.openNode('Only Item 3');
+			await expect(n8n.ndv.getInputPanel()).toBeVisible();
+			await n8n.ndv.switchInputMode('Schema');
+			await expect(n8n.ndv.getInputSchemaItem('onlyOnItem3')).toBeVisible();
+			await n8n.ndv.close();
+		});
+	});
+
+	test.describe('Search Functionality - Advanced', () => {
+		test('should not show items count when searching in schema view', async ({ n8n }) => {
+			await n8n.canvas.importWorkflow('Test_ndv_search.json', 'NDV Search Test');
+			await n8n.canvas.openNode('Edit Fields');
+			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
+
+			await n8n.ndv.execute();
+			await n8n.ndv.switchOutputMode('Schema');
+			await n8n.ndv.searchOutputData('US');
+
+			await expect(n8n.ndv.getOutputItemsCount()).toBeHidden();
+		});
+
+		test('should show additional tooltip when searching in schema view if no matches', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.importWorkflow('Test_ndv_search.json', 'NDV Search Test');
+
+			await n8n.canvas.openNode('Edit Fields');
+			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
+
+			await n8n.ndv.execute();
+			await n8n.ndv.switchOutputMode('Schema');
+			await n8n.ndv.searchOutputData('foo');
+
+			await expect(
+				n8n.ndv.getOutputPanel().getByText('To search field values, switch to table or JSON view.'),
+			).toBeVisible();
+		});
+	});
+
+	test.describe('Complex Edge Cases', () => {
+		test('ADO-2931 - should handle multiple branches of the same input with the first branch empty correctly', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.importWorkflow(
+				'Test_ndv_two_branches_of_same_parent_false_populated.json',
+				'Multiple Branches Test',
+			);
+
+			await n8n.canvas.openNode('DebugHelper');
+			await expect(n8n.ndv.getInputPanel()).toBeVisible();
+			await expect(n8n.ndv.getOutputPanel()).toBeVisible();
+
+			await n8n.ndv.execute();
+
+			await expect(
+				n8n.ndv.getInputPanel().getByTestId('run-data-schema-item').filter({ hasText: 'a1' }),
+			).toBeVisible();
+		});
+	});
+
+	test.describe('Execution Indicators - Multi-Node', () => {
+		test('should properly show node execution indicator for multiple nodes', async ({ n8n }) => {
+			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
+			await n8n.ndv.clickBackToCanvasButton();
+
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
+
+			await n8n.canvas.openNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
+			await expect(n8n.ndv.getNodeRunSuccessIndicator()).toBeVisible();
+			await expect(n8n.ndv.getNodeRunTooltipIndicator()).toBeVisible();
+
+			await n8n.ndv.clickBackToCanvasButton();
+			await n8n.canvas.openNode(CODE_NODE_DISPLAY_NAME);
+			await expect(n8n.ndv.getNodeRunSuccessIndicator()).toBeVisible();
+		});
 	});
 });
