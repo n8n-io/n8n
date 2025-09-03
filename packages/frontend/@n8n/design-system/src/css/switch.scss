@@ -52,7 +52,7 @@
 		margin: 0;
 		&:focus-visible {
 			& ~ .el-switch__core {
-				outline: 2px solid getCssVar('switch-on-color');
+				outline: 2px solid var.$switch-on-color;
 				outline-offset: 1px;
 			}
 		}
@@ -85,7 +85,7 @@
 
 			.is-icon,
 			.is-text {
-				font-size: 12px;
+				font-size: var(--font-size-2xs);
 				color: var(--color-text-dark);
 				user-select: none;
 				@include utils.utils-ellipsis;
