@@ -1,3 +1,14 @@
+## [1.109.2-exp.0](https://github.com/n8n-io/n8n/compare/n8n@1.109.2...n8n@1.109.2-exp.0) (2025-09-03)
+
+
+### Bug Fixes
+
+* **editor:** Add names to tutorial templates ([4ea9eca](https://github.com/n8n-io/n8n/commit/4ea9ecaa087ebdde5844ea1a87f3396133562e8e))
+* **editor:** Adjust telemetry ([477e3ec](https://github.com/n8n-io/n8n/commit/477e3ec17e79b9a117bf44f8deb6f28cb23a4aa7))
+* **editor:** Prevent multiple template experiments from being active at the same time ([b0b9bcd](https://github.com/n8n-io/n8n/commit/b0b9bcda1f88619cda44febe7cf451972f96dc44))
+
+
+
 ## [1.109.2](https://github.com/n8n-io/n8n/compare/n8n@1.109.1...n8n@1.109.2) (2025-09-03)
 
 
