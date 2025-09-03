@@ -332,6 +332,7 @@ export async function setupProxyServer({
 			.withNetwork(network)
 			.withNetworkAliases('proxyserver')
 			.withExposedPorts(1080)
+			// Wait.forListeningPorts strategy did not work here for some reason
 			.withWaitStrategy(Wait.forLogMessage('INFO 1080 started on port: 1080'))
 			.withLabels({
 				'com.docker.compose.project': projectName,
