@@ -13,7 +13,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
-import { createMockNodeExecutionData } from '../../utils/execution-mocks';
+import { createMockNodeExecutionData, runMockWorkflowExecution } from '../../utils/execution-mocks';
 import { createAgentLLMExecutionData } from '../../utils/langchain-test-fixtures';
 
 test.describe('Langchain Integration', () => {
@@ -196,7 +196,7 @@ test.describe('Langchain Integration', () => {
 			const outputMessage = 'Hi there! How can I assist you today?';
 
 			await n8n.ndv.clickExecuteNode();
-			await n8n.canvas.mockWorkflowExecution({
+			await runMockWorkflowExecution(n8n.page, {
 				trigger: async () => await n8n.canvas.sendManualChatMessage(inputMessage),
 				runData: [
 					createMockNodeExecutionData(BASIC_LLM_CHAIN_NODE_NAME, {
@@ -235,7 +235,7 @@ test.describe('Langchain Integration', () => {
 			const outputMessage = 'Hi there! How can I assist you today?';
 
 			await n8n.ndv.clickExecuteNode();
-			await n8n.canvas.mockWorkflowExecution({
+			await runMockWorkflowExecution(n8n.page, {
 				trigger: async () => await n8n.canvas.sendManualChatMessage(inputMessage),
 				runData: [
 					createMockNodeExecutionData(AGENT_NODE_NAME, {
@@ -296,7 +296,7 @@ test.describe('Langchain Integration', () => {
 				}),
 			];
 
-			await n8n.canvas.mockWorkflowExecution({
+			await runMockWorkflowExecution(n8n.page, {
 				trigger: async () => {
 					await n8n.canvas.sendManualChatMessage(inputMessage);
 				},
@@ -352,7 +352,7 @@ test.describe('Langchain Integration', () => {
 
 			await n8n.ndv.clickExecuteNode();
 
-			await n8n.canvas.mockWorkflowExecution({
+			await runMockWorkflowExecution(n8n.page, {
 				trigger: async () => await n8n.canvas.sendManualChatMessage(inputMessage),
 				runData: [
 					createMockNodeExecutionData(AGENT_NODE_NAME, {
@@ -407,7 +407,7 @@ test.describe('Langchain Integration', () => {
 
 			await n8n.ndv.clickExecuteNode();
 
-			await n8n.canvas.mockWorkflowExecution({
+			await runMockWorkflowExecution(n8n.page, {
 				trigger: async () => await n8n.canvas.sendManualChatMessage(inputMessage),
 				runData: [
 					createMockNodeExecutionData(AGENT_NODE_NAME, {
@@ -425,8 +425,6 @@ test.describe('Langchain Integration', () => {
 
 			await n8n.canvas.closeManualChatModal();
 			await n8n.canvas.openNode(AGENT_NODE_NAME);
-			// This waits to ensure the output panel is rendered
-			n8n.ndv.getOutputPanelTable();
 
 			await expect(n8n.ndv.getRunDataInfoCallout()).toBeHidden();
 		});

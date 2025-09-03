@@ -2,10 +2,6 @@ import type { Locator } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
-import {
-	runMockWorkflowExecution,
-	type MockWorkflowExecutionOptions,
-} from '../utils/execution-mocks';
 import { resolveFromRoot } from '../utils/path-helper';
 
 export class CanvasPage extends BasePage {
@@ -629,20 +625,6 @@ export class CanvasPage extends BasePage {
 
 	getLogEntries() {
 		return this.page.getByTestId('logs-overview-body').locator('[role="treeitem"]');
-	}
-
-	// Execution mocking helpers
-	async mockWorkflowExecution(options: MockWorkflowExecutionOptions): Promise<void> {
-		await runMockWorkflowExecution(this.page, options);
-	}
-
-	async sendPushEvent(event: string, data: Record<string, unknown>): Promise<void> {
-		await this.page.context().request.post('/rest/e2e/push', {
-			data: {
-				type: event,
-				data,
-			},
-		});
 	}
 
 	async openExecutions() {
