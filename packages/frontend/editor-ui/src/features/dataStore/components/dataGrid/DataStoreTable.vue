@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick, useTemplateRef } from 'vue';
+import { computed, ref, nextTick, useTemplateRef, watch } from 'vue';
 import type {
 	DataStore,
 	DataStoreColumnCreatePayload,
@@ -10,10 +10,8 @@ import type {
 	ColumnMovedEvent,
 	CellValueChangedEvent,
 	GetRowIdParams,
-	CellClickedEvent,
 	CellKeyDownEvent,
-	SortDirection,
-	SortChangedEvent,
+	GridReadyEvent,
 } from 'ag-grid-community';
 import {
 	ModuleRegistry,
@@ -39,17 +37,11 @@ import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
 import { useDataStoreStore } from '@/features/dataStore/dataStore.store';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import {
-	DEFAULT_ID_COLUMN_NAME,
-	DATA_STORE_HEADER_HEIGHT,
-	DATA_STORE_ROW_HEIGHT,
-} from '@/features/dataStore/constants';
+import { DATA_STORE_HEADER_HEIGHT, DATA_STORE_ROW_HEIGHT } from '@/features/dataStore/constants';
 import { useMessage } from '@/composables/useMessage';
 import { MODAL_CONFIRM } from '@/constants';
 import { useDataStorePagination } from '@/features/dataStore/composables/useDataStorePagination';
 import { isDataStoreValue } from '@/features/dataStore/typeGuards';
-import { onClickOutside } from '@vueuse/core';
-import { useClipboard } from '@/composables/useClipboard';
 import { useDataStoreGridBase } from '@/features/dataStore/composables/useDataStoreGridBase';
 import { useDataStoreSelection } from '@/features/dataStore/composables/useDataStoreSelection';
 
@@ -89,11 +81,8 @@ const message = useMessage();
 
 const dataStoreStore = useDataStoreStore();
 
-const { copy: copyToClipboard } = useClipboard({ onPaste: onClipboardPaste });
-
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
 
-// AG Grid State
 const {
 	gridApi,
 	onGridReady,
@@ -107,6 +96,12 @@ const {
 	insertColumn: insertGridColumn,
 	addColumn: addGridColumn,
 	moveColumn: moveGridColumn,
+	handleCopyFocusedCell,
+	onCellClicked,
+	resetLastFocusedCell,
+	currentSortBy,
+	currentSortOrder,
+	onSortChanged,
 } = useDataStoreGridBase({
 	gridContainerRef,
 	onDeleteColumn,
@@ -115,13 +110,7 @@ const {
 });
 const rowData = ref<DataStoreRow[]>([]);
 
-const currentSortBy = ref<string>(DEFAULT_ID_COLUMN_NAME);
-const currentSortOrder = ref<SortDirection>('asc');
 const contentLoading = ref(false);
-
-// Track the last focused cell so we can start editing when users click on it
-// AG Grid doesn't provide cell blur event so we need to reset this manually
-const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
 
 // Pagination
 const {
@@ -133,10 +122,9 @@ const {
 	setCurrentPage,
 	setPageSize,
 	ensureItemOnPage,
-} = useDataStorePagination({ onChange: fetchDataStoreContent });
+} = useDataStorePagination({ onChange: fetchDataStoreRows });
 
 // Data store content
-const rows = ref<DataStoreRow[]>([]);
 const { rowSelection, onSelectionChanged, handleClearSelection, selectedRowIds, selectedCount } =
 	useDataStoreSelection({
 		gridApi,
@@ -286,39 +274,7 @@ const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) =
 	}
 };
 
-// Start editing when users click on already focused cells
-const onCellClicked = (params: CellClickedEvent<DataStoreRow>) => {
-	const clickedCellColumn = params.column.getColId();
-	const clickedCellRow = params.rowIndex;
-
-	if (
-		clickedCellRow === null ||
-		params.api.isEditing({ rowIndex: clickedCellRow, column: params.column, rowPinned: null })
-	)
-		return;
-
-	// Check if this is the same cell that was focused before this click
-	const wasAlreadyFocused =
-		lastFocusedCell.value &&
-		lastFocusedCell.value.rowIndex === clickedCellRow &&
-		lastFocusedCell.value.colId === clickedCellColumn;
-
-	if (wasAlreadyFocused && params.column.getColDef()?.editable) {
-		// Cell was already selected, start editing
-		params.api.startEditingCell({
-			rowIndex: clickedCellRow,
-			colKey: clickedCellColumn,
-		});
-	}
-
-	// Update the last focused cell for next click
-	lastFocusedCell.value = {
-		rowIndex: clickedCellRow,
-		colId: clickedCellColumn,
-	};
-};
-
-async function fetchDataStoreContent() {
+async function fetchDataStoreRows() {
 	try {
 		contentLoading.value = true;
 
@@ -340,72 +296,11 @@ async function fetchDataStoreContent() {
 	}
 }
 
-onClickOutside(gridContainerRef, () => {
-	resetLastFocusedCell();
-	gridApi.value.clearFocusedCell();
-});
-
-function onClipboardPaste(data: string) {
-	const focusedCell = gridApi.value.getFocusedCell();
-	const isEditing = gridApi.value.getEditingCells().length > 0;
-	if (!focusedCell || isEditing) return;
-	const row = gridApi.value.getDisplayedRowAtIndex(focusedCell.rowIndex);
-	if (!row) return;
-
-	const colDef = focusedCell.column.getColDef();
-	if (colDef.cellDataType === 'text') {
-		row.setDataValue(focusedCell.column.getColId(), data);
-	} else if (colDef.cellDataType === 'number') {
-		if (!Number.isNaN(Number(data))) {
-			row.setDataValue(focusedCell.column.getColId(), Number(data));
-		}
-	} else if (colDef.cellDataType === 'date') {
-		if (!Number.isNaN(Date.parse(data))) {
-			row.setDataValue(focusedCell.column.getColId(), new Date(data));
-		}
-	} else if (colDef.cellDataType === 'boolean') {
-		if (data === 'true') {
-			row.setDataValue(focusedCell.column.getColId(), true);
-		} else if (data === 'false') {
-			row.setDataValue(focusedCell.column.getColId(), false);
-		}
-	}
-}
-
-const resetLastFocusedCell = () => {
-	lastFocusedCell.value = null;
-};
-
-const initialize = async () => {
+const initialize = async (params: GridReadyEvent) => {
+	onGridReady(params);
 	loadColumns(props.dataStore.columns);
-	await fetchDataStoreContent();
+	await fetchDataStoreRows();
 };
-
-const onSortChanged = async (event: SortChangedEvent) => {
-	const oldSortBy = currentSortBy.value;
-	const oldSortOrder = currentSortOrder.value;
-
-	const sortedColumn = event.columns?.filter((col) => col.getSort() !== null).pop() ?? null;
-
-	if (sortedColumn) {
-		const colId = sortedColumn.getColId();
-		const columnDef = colDefs.value.find((col) => col.colId === colId);
-
-		currentSortBy.value = columnDef?.field || colId;
-		currentSortOrder.value = sortedColumn.getSort() ?? 'asc';
-	} else {
-		currentSortBy.value = DEFAULT_ID_COLUMN_NAME;
-		currentSortOrder.value = 'asc';
-	}
-
-	if (oldSortBy !== currentSortBy.value || oldSortOrder !== currentSortOrder.value) {
-		await setCurrentPage(1);
-	}
-};
-
-onMounted(async () => {
-	await initialize();
-});
 
 const onCellKeyDown = async (params: CellKeyDownEvent<DataStoreRow>) => {
 	if (params.api.getEditingCells().length > 0) {
@@ -424,20 +319,6 @@ const onCellKeyDown = async (params: CellKeyDownEvent<DataStoreRow>) => {
 	}
 	event.preventDefault();
 	await handleDeleteSelected();
-};
-
-const handleCopyFocusedCell = async (params: CellKeyDownEvent<DataStoreRow>) => {
-	const focused = params.api.getFocusedCell();
-	if (!focused) {
-		return;
-	}
-	const row = params.api.getDisplayedRowAtIndex(focused.rowIndex);
-	const colDef = focused.column.getColDef();
-	if (row?.data && colDef.field) {
-		const rawValue = row.data[colDef.field];
-		const text = rawValue === null || rawValue === undefined ? '' : String(rawValue);
-		await copyToClipboard(text);
-	}
 };
 
 const handleDeleteSelected = async () => {
@@ -463,11 +344,7 @@ const handleDeleteSelected = async () => {
 		emit('toggleSave', true);
 		const idsToDelete = Array.from(selectedRowIds.value);
 		await dataStoreStore.deleteRows(props.dataStore.id, props.dataStore.projectId, idsToDelete);
-
-		rows.value = rows.value.filter((row) => !selectedRowIds.value.has(row.id as number));
-		rowData.value = rows.value;
-
-		await fetchDataStoreContent();
+		await fetchDataStoreRows();
 
 		toast.showToast({
 			title: i18n.baseText('dataStore.deleteRows.success'),
@@ -480,6 +357,10 @@ const handleDeleteSelected = async () => {
 		emit('toggleSave', false);
 	}
 };
+
+watch([currentSortBy, currentSortOrder], async () => {
+	await setCurrentPage(1);
+});
 
 defineExpose({
 	addRow: onAddRowClick,
@@ -508,7 +389,7 @@ defineExpose({
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
 				:suppress-multi-sort="true"
-				@grid-ready="onGridReady"
+				@grid-ready="initialize"
 				@cell-value-changed="onCellValueChanged"
 				@column-moved="onColumnMoved"
 				@cell-clicked="onCellClicked"

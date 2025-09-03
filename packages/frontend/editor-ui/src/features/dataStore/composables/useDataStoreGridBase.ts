@@ -1,12 +1,16 @@
 import { computed, ref, type Ref } from 'vue';
 import type {
+	CellClickedEvent,
 	CellEditingStartedEvent,
 	CellEditingStoppedEvent,
 	CellEditRequestEvent,
+	CellKeyDownEvent,
 	ColDef,
 	GridApi,
 	GridReadyEvent,
 	ICellRendererParams,
+	SortChangedEvent,
+	SortDirection,
 	ValueGetterParams,
 	ValueSetterParams,
 } from 'ag-grid-community';
@@ -31,6 +35,8 @@ import orderBy from 'lodash/orderBy';
 import AddColumnButton from '@/features/dataStore/components/dataGrid/AddColumnButton.vue';
 import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.vue';
 import { reorderItem } from '@/features/dataStore/utils';
+import { useClipboard } from '@/composables/useClipboard';
+import { onClickOutside } from '@vueuse/core';
 
 export const useDataStoreGridBase = ({
 	gridContainerRef,
@@ -47,6 +53,13 @@ export const useDataStoreGridBase = ({
 	const colDefs = ref<ColDef[]>([]);
 	const isTextEditorOpen = ref(false);
 	const { mapToAGCellType } = useDataStoreTypes();
+	const { copy: copyToClipboard } = useClipboard({ onPaste: onClipboardPaste });
+	const currentSortBy = ref<string>(DEFAULT_ID_COLUMN_NAME);
+	const currentSortOrder = ref<SortDirection>('asc');
+
+	// Track the last focused cell so we can start editing when users click on it
+	// AG Grid doesn't provide cell blur event so we need to reset this manually
+	const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
 	const initializedGridApi = computed(() => {
 		if (!gridApi.value) {
 			throw new Error('Grid API is not initialized');
@@ -70,32 +83,30 @@ export const useDataStoreGridBase = ({
 		colDefs?: ColDef[];
 		rowData?: DataStoreRow[];
 	}) => {
-		if (!gridApi.value) return;
-
 		if (colDefs) {
-			gridApi.value.setGridOption('columnDefs', colDefs);
+			initializedGridApi.value.setGridOption('columnDefs', colDefs);
 		}
 
 		if (rowData) {
-			gridApi.value.setGridOption('rowData', rowData);
+			initializedGridApi.value.setGridOption('rowData', rowData);
 		}
 
-		// special "add row" pinned to the bottom
-		gridApi.value.setGridOption('pinnedBottomRowData', [{ id: ADD_ROW_ROW_ID }]);
+		initializedGridApi.value.setGridOption('pinnedBottomRowData', [{ id: ADD_ROW_ROW_ID }]);
 	};
 
 	const focusFirstEditableCell = (rowId: number) => {
-		if (!gridApi.value) return;
-
-		const rowNode = gridApi.value.getRowNode(String(rowId));
+		const rowNode = initializedGridApi.value.getRowNode(String(rowId));
 		if (rowNode?.rowIndex === null) return;
 
 		const firstEditableCol = colDefs.value[1];
 		if (!firstEditableCol?.colId) return;
 
-		gridApi.value.ensureIndexVisible(rowNode!.rowIndex);
-		gridApi.value.setFocusedCell(rowNode!.rowIndex, firstEditableCol.colId);
-		gridApi.value.startEditingCell({ rowIndex: rowNode!.rowIndex, colKey: firstEditableCol.colId });
+		initializedGridApi.value.ensureIndexVisible(rowNode!.rowIndex);
+		initializedGridApi.value.setFocusedCell(rowNode!.rowIndex, firstEditableCol.colId);
+		initializedGridApi.value.startEditingCell({
+			rowIndex: rowNode!.rowIndex,
+			colKey: firstEditableCol.colId,
+		});
 	};
 
 	const createColumnDef = (col: DataStoreColumn, extraProps: Partial<ColDef> = {}) => {
@@ -345,6 +356,102 @@ export const useDataStoreGridBase = ({
 		colDefs.value = [colDefs.value[0], ...reorderedMiddle, colDefs.value[colDefs.value.length - 1]];
 	};
 
+	const handleCopyFocusedCell = async (params: CellKeyDownEvent<DataStoreRow>) => {
+		const focused = params.api.getFocusedCell();
+		if (!focused) {
+			return;
+		}
+		const row = params.api.getDisplayedRowAtIndex(focused.rowIndex);
+		const colDef = focused.column.getColDef();
+		if (row?.data && colDef.field) {
+			const rawValue = row.data[colDef.field];
+			const text = rawValue === null || rawValue === undefined ? '' : String(rawValue);
+			await copyToClipboard(text);
+		}
+	};
+
+	function onClipboardPaste(data: string) {
+		const focusedCell = initializedGridApi.value.getFocusedCell();
+		const isEditing = initializedGridApi.value.getEditingCells().length > 0;
+		if (!focusedCell || isEditing) return;
+		const row = initializedGridApi.value.getDisplayedRowAtIndex(focusedCell.rowIndex);
+		if (!row) return;
+
+		const colDef = focusedCell.column.getColDef();
+		if (colDef.cellDataType === 'text') {
+			row.setDataValue(focusedCell.column.getColId(), data);
+		} else if (colDef.cellDataType === 'number') {
+			if (!Number.isNaN(Number(data))) {
+				row.setDataValue(focusedCell.column.getColId(), Number(data));
+			}
+		} else if (colDef.cellDataType === 'date') {
+			if (!Number.isNaN(Date.parse(data))) {
+				row.setDataValue(focusedCell.column.getColId(), new Date(data));
+			}
+		} else if (colDef.cellDataType === 'boolean') {
+			if (data === 'true') {
+				row.setDataValue(focusedCell.column.getColId(), true);
+			} else if (data === 'false') {
+				row.setDataValue(focusedCell.column.getColId(), false);
+			}
+		}
+	}
+
+	const onCellClicked = (params: CellClickedEvent<DataStoreRow>) => {
+		const clickedCellColumn = params.column.getColId();
+		const clickedCellRow = params.rowIndex;
+
+		if (
+			clickedCellRow === null ||
+			params.api.isEditing({ rowIndex: clickedCellRow, column: params.column, rowPinned: null })
+		)
+			return;
+
+		// Check if this is the same cell that was focused before this click
+		const wasAlreadyFocused =
+			lastFocusedCell.value &&
+			lastFocusedCell.value.rowIndex === clickedCellRow &&
+			lastFocusedCell.value.colId === clickedCellColumn;
+
+		if (wasAlreadyFocused && params.column.getColDef()?.editable) {
+			// Cell was already selected, start editing
+			params.api.startEditingCell({
+				rowIndex: clickedCellRow,
+				colKey: clickedCellColumn,
+			});
+		}
+
+		// Update the last focused cell for next click
+		lastFocusedCell.value = {
+			rowIndex: clickedCellRow,
+			colId: clickedCellColumn,
+		};
+	};
+
+	const resetLastFocusedCell = () => {
+		lastFocusedCell.value = null;
+	};
+
+	const onSortChanged = async (event: SortChangedEvent) => {
+		const sortedColumn = event.columns?.filter((col) => col.getSort() !== null).pop() ?? null;
+
+		if (sortedColumn) {
+			const colId = sortedColumn.getColId();
+			const columnDef = colDefs.value.find((col) => col.colId === colId);
+
+			currentSortBy.value = columnDef?.field || colId;
+			currentSortOrder.value = sortedColumn.getSort() ?? 'asc';
+		} else {
+			currentSortBy.value = DEFAULT_ID_COLUMN_NAME;
+			currentSortOrder.value = 'asc';
+		}
+	};
+
+	onClickOutside(gridContainerRef, () => {
+		resetLastFocusedCell();
+		initializedGridApi.value.clearFocusedCell();
+	});
+
 	return {
 		onGridReady,
 		setGridData,
@@ -359,5 +466,11 @@ export const useDataStoreGridBase = ({
 		addColumn,
 		moveColumn,
 		gridApi: initializedGridApi,
+		handleCopyFocusedCell,
+		onCellClicked,
+		resetLastFocusedCell,
+		currentSortBy,
+		currentSortOrder,
+		onSortChanged,
 	};
 };
