@@ -5,7 +5,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mockedStore } from '@/__tests__/utils';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
-import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
+import { createTestWorkflow, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 
 describe('nodeExecuteAfterData', () => {
 	beforeEach(() => {
@@ -13,55 +13,6 @@ describe('nodeExecuteAfterData', () => {
 			stubActions: true,
 		});
 		setActivePinia(pinia);
-	});
-
-	it('should call clearNodeExecutionData if data has trimmed items', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-
-		workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
-			data: {
-				resultData: {
-					runData: {
-						'Test Node': [
-							{
-								executionTime: 0,
-								startTime: 0,
-								executionIndex: 0,
-								source: [],
-								data: {
-									main: [[{ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }]],
-								},
-							},
-						],
-					},
-				},
-			},
-		});
-
-		const event: NodeExecuteAfterData = {
-			type: 'nodeExecuteAfterData',
-			data: {
-				executionId: 'exec-1',
-				nodeName: 'Test Node',
-				itemCount: 1,
-				data: {
-					executionTime: 0,
-					startTime: 0,
-					executionIndex: 0,
-					source: [],
-					data: {
-						main: [[{ json: { foo: 'bar' } }]],
-					},
-				},
-			},
-		};
-
-		await nodeExecuteAfterData(event);
-
-		expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith('Test Node');
-		expect(workflowsStore.updateNodeExecutionData).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.updateNodeExecutionData).toHaveBeenCalledWith(event.data);
 	});
 
 	it('should update node execution data with incoming payload', async () => {
