@@ -563,6 +563,21 @@ export class WorkflowsController {
 		);
 	}
 
+	@Post('/:workflowId/preview/:nodeId')
+	async previewNode(req: WorkflowRequest.PreviewNode) {
+		const { workflowId, nodeId } = req.params;
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			req.user,
+			['workflow:read'],
+			{ includeTags: !this.globalConfig.tags.disabled, includeParentFolder: true },
+		);
+
+		if (!workflow) {
+			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
+		}
+	}
+
 	@Post('/with-node-types')
 	async getWorkflowsWithNodesIncluded(req: AuthenticatedRequest, res: express.Response) {
 		try {

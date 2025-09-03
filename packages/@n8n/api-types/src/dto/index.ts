@@ -15,6 +15,7 @@ export { OptionsRequestDto } from './dynamic-node-parameters/options-request.dto
 export { ResourceLocatorRequestDto } from './dynamic-node-parameters/resource-locator-request.dto';
 export { ResourceMapperFieldsRequestDto } from './dynamic-node-parameters/resource-mapper-fields-request.dto';
 export { ActionResultRequestDto } from './dynamic-node-parameters/action-result-request.dto';
+export { PreviewNodeRequestDto } from './dynamic-node-parameters/preview-node-request.dto';
 
 export { InviteUsersRequestDto } from './invitation/invite-users-request.dto';
 export { AcceptInvitationRequestDto } from './invitation/accept-invitation-request.dto';

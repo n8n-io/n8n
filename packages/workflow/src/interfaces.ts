@@ -1711,6 +1711,9 @@ export interface INodeType {
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
 	methods?: {
+		preview?: {
+			[key: string]: (this: ILoadOptionsFunctions) => Promise<string>;
+		};
 		loadOptions?: {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
 		};

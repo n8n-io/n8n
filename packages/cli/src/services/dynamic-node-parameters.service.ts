@@ -41,13 +41,15 @@ type ActionHandlerMethod = (
 	payload?: string,
 ) => Promise<NodeParameterValueType>;
 type ResourceMappingMethod = (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
+type PreviewMethod = (this: ILoadOptionsFunctions) => Promise<string>;
 
 type NodeMethod =
 	| LocalResourceMappingMethod
 	| ListSearchMethod
 	| LoadOptionsMethod
 	| ActionHandlerMethod
-	| ResourceMappingMethod;
+	| ResourceMappingMethod
+	| PreviewMethod;
 
 @Service()
 export class DynamicNodeParametersService {
@@ -55,6 +57,23 @@ export class DynamicNodeParametersService {
 		private nodeTypes: NodeTypes,
 		private workflowLoaderService: WorkflowLoaderService,
 	) {}
+
+	async previewNode(
+		path: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeTypeAndVersion: INodeTypeNameVersion,
+		currentNodeParameters: INodeParameters,
+		credentials?: INodeCredentials,
+	): Promise<string> {
+		const nodeType = this.getNodeType(nodeTypeAndVersion);
+		const method = this.getMethod('preview', 'getPreview', nodeType);
+		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
+		const thisArgs = this.getThisArg(path, additionalData, workflow);
+		// Need to use untyped call since `this` usage is widespread and we don't have `strictBindCallApply`
+		// enabled in `tsconfig.json`
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return method.call(thisArgs);
+	}
 
 	/** Returns the available options via a predefined method */
 	async getOptionsViaMethodName(
@@ -246,13 +265,15 @@ export class DynamicNodeParametersService {
 		methodName: string,
 		nodeType: INodeType,
 	): ActionHandlerMethod;
+	private getMethod(type: 'preview', methodName: string, nodeType: INodeType): PreviewMethod;
 	private getMethod(
 		type:
 			| 'resourceMapping'
 			| 'localResourceMapping'
 			| 'listSearch'
 			| 'loadOptions'
-			| 'actionHandler',
+			| 'actionHandler'
+			| 'preview',
 		methodName: string,
 		nodeType: INodeType,
 	): NodeMethod {
