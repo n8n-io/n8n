@@ -9,9 +9,7 @@ export namespace CommunityPackages {
 	export type AvailableUpdates = {
 		[packageName: string]: {
 			current: string;
-			wanted: string;
 			latest: string;
-			location: string;
 		};
 	};
 

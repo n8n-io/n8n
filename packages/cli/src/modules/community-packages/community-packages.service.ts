@@ -22,7 +22,7 @@ import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
-import { isVersionExists, verifyIntegrity } from './npm-utils';
+import { getNpmPackage, verifyIntegrity } from './npm-utils';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { License } from '@/license';
@@ -197,6 +197,11 @@ export class CommunityPackagesService {
 
 			throw new UnexpectedError(PACKAGE_FAILED_TO_INSTALL);
 		}
+	}
+
+	getAvailablePackageUpdates(): CommunityPackages.AvailableUpdates {
+		// TODO: reimplement updates
+		return {};
 	}
 
 	matchPackagesWithUpdates(
@@ -401,19 +406,21 @@ export class CommunityPackagesService {
 		options: { installedPackages?: InstalledPackages[]; version?: string; checksum?: string } = {},
 	) {
 		const isUpdate = 'installedPackage' in options;
-		const packageVersion = !options.version ? 'latest' : options.version;
+		const versionOrTag = options.version ?? 'latest';
 
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
 		this.checkInstallPermissions(shouldValidateChecksum);
 
+		// packageVersion can be a tag e.g. latest, resolve to a fixed version
+		const npmPackage = await getNpmPackage(packageName, versionOrTag, this.getNpmRegistry());
+		const packageVersion = npmPackage.version;
+
 		if (options.checksum) {
-			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
+			verifyIntegrity(npmPackage, options.checksum);
 		}
 
-		await isVersionExists(packageName, packageVersion, this.getNpmRegistry());
-
 		try {
-			await this.downloadPackage(packageName, packageVersion);
+			await this.downloadPackage(packageName, npmPackage.version);
 		} catch (error) {
 			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 				throw new UserError('npm package not found', { extra: { packageName } });
@@ -495,13 +502,9 @@ export class CommunityPackagesService {
 		this.logger.info(`Community package uninstalled: ${packageName}@${packageVersion}`);
 	}
 
-	private resolvePackageDirectoryBackwardsCompat(packageName: string) {
-		return `${this.downloadFolder}/node_modules/${packageName}`;
-	}
-
 	private resolvePackageDirectory(packageName: string, packageVersion?: string) {
 		return packageVersion
-			? `${this.downloadFolder}/${packageName}@${packageVersion}`
+			? `${this.downloadFolder}/node_modules/${packageName}@${packageVersion}`
 			: `${this.downloadFolder}/node_modules/${packageName}`;
 	}
 

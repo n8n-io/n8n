@@ -3,40 +3,30 @@ import { UnexpectedError } from 'n8n-workflow';
 
 const REQUEST_TIMEOUT = 30000;
 
-export async function verifyIntegrity(
+export type NpmRegistryPackage = {
+	name: string;
+	version: string;
+	description?: string;
+	dist?: {
+		integrity: string;
+		shasum: string;
+		tarball: string;
+		fileCount?: number;
+		unpackedSize?: number;
+		signatures?: Array<Record<string, string>>;
+	};
+};
+
+export async function getNpmPackage(
 	packageName: string,
 	version: string,
 	registryUrl: string,
-	expectedIntegrity: string,
-) {
+): Promise<NpmRegistryPackage> {
 	const timeoutOption = { timeout: REQUEST_TIMEOUT };
 
 	try {
-		const url = `${registryUrl.replace(/\/+$/, '')}/${encodeURIComponent(packageName)}`;
-		const metadata = await axios.get<{ dist: { integrity: string } }>(
-			`${url}/${version}`,
-			timeoutOption,
-		);
-
-		if (metadata?.data?.dist?.integrity !== expectedIntegrity) {
-			throw new UnexpectedError('Checksum verification failed. Package integrity does not match.');
-		}
-	} catch (error) {
-		throw new UnexpectedError('Checksum verification failed', { cause: error });
-	}
-}
-
-export async function isVersionExists(
-	packageName: string,
-	version: string,
-	registryUrl: string,
-): Promise<boolean> {
-	const timeoutOption = { timeout: REQUEST_TIMEOUT };
-
-	try {
-		const url = `${registryUrl.replace(/\/+$/, '')}/${encodeURIComponent(packageName)}`;
-		await axios.get(`${url}/${version}`, timeoutOption);
-		return true;
+		const url = new URL([packageName, version].join('/'), registryUrl);
+		return (await axios.get(url.toString(), timeoutOption)).data;
 	} catch (error) {
 		if (axios.isAxiosError(error) && error.response?.status === 404) {
 			throw new UnexpectedError('Package version does not exist', {
@@ -44,5 +34,11 @@ export async function isVersionExists(
 			});
 		}
 		throw new UnexpectedError('Failed to check package version existence', { cause: error });
+	}
+}
+
+export function verifyIntegrity(npmPackage: NpmRegistryPackage, expectedIntegrity: string) {
+	if (npmPackage?.dist?.integrity !== expectedIntegrity) {
+		throw new UnexpectedError('Checksum verification failed. Package integrity does not match.');
 	}
 }

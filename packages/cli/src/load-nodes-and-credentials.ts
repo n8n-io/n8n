@@ -212,6 +212,7 @@ export class LoadNodesAndCredentials {
 	async loadPackage(packageName: string, packageVersion: string) {
 		const finalNodeUnpackedPath = path.join(
 			this.instanceSettings.nodesDownloadDir,
+			'node_modules',
 			`${packageName}@${packageVersion}`,
 		);
 		try {
