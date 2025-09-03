@@ -59,5 +59,5 @@ export {
 
 export type {
 	DataTableFilter,
-	DataStoreFilterConditionType,
-} from './schemas/data-store-filter.schema';
+	DataTableFilterConditionType,
+} from './schemas/data-table-filter.schema';

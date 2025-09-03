@@ -7,7 +7,7 @@ import type {
 	DataStoreListOptions,
 	UpsertDataStoreRowsDto,
 	UpdateDataStoreDto,
-	UpdateDataStoreRowDto,
+	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -184,13 +184,13 @@ export class DataStoreService {
 	async updateRow<T extends boolean | undefined>(
 		dataStoreId: string,
 		projectId: string,
-		dto: Omit<UpdateDataStoreRowDto, 'returnData'>,
+		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
 		returnData?: T,
 	): Promise<T extends true ? DataStoreRowReturn[] : true>;
 	async updateRow(
 		dataStoreId: string,
 		projectId: string,
-		dto: Omit<UpdateDataStoreRowDto, 'returnData'>,
+		dto: Omit<UpdateDataTableRowDto, 'returnData'>,
 		returnData = false,
 	) {
 		await this.validateDataStoreExists(dataStoreId, projectId);

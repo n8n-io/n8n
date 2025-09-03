@@ -13,19 +13,19 @@ export const FilterConditionSchema = z.union([
 	z.literal('lte'),
 ]);
 
-export type DataStoreFilterConditionType = z.infer<typeof FilterConditionSchema>;
+export type DataTableFilterConditionType = z.infer<typeof FilterConditionSchema>;
 
-export const dataStoreFilterRecordSchema = z.object({
+export const dataTableFilterRecordSchema = z.object({
 	columnName: dataStoreColumnNameSchema,
 	condition: FilterConditionSchema.default('eq'),
 	value: z.union([z.string(), z.number(), z.boolean(), z.date(), z.null()]),
 });
 
-export const dataStoreFilterTypeSchema = z.union([z.literal('and'), z.literal('or')]);
+export const dataTableFilterTypeSchema = z.union([z.literal('and'), z.literal('or')]);
 
-export const dataStoreFilterSchema = z.object({
-	type: dataStoreFilterTypeSchema.default('and'),
-	filters: z.array(dataStoreFilterRecordSchema).default([]),
+export const dataTableFilterSchema = z.object({
+	type: dataTableFilterTypeSchema.default('and'),
+	filters: z.array(dataTableFilterRecordSchema).default([]),
 });
 
-export type DataTableFilter = z.infer<typeof dataStoreFilterSchema>;
+export type DataTableFilter = z.infer<typeof dataTableFilterSchema>;

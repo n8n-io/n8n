@@ -2,8 +2,8 @@ import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-import { dataStoreFilterSchema } from '../../schemas/data-store-filter.schema';
 import { dataStoreColumnNameSchema } from '../../schemas/data-store.schema';
+import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
 import { paginationSchema } from '../pagination/pagination.dto';
 
 // ---------------------
@@ -19,7 +19,7 @@ const filterValidator = z
 		try {
 			const parsed: unknown = jsonParse(val);
 			try {
-				return dataStoreFilterSchema.parse(parsed);
+				return dataTableFilterSchema.parse(parsed);
 			} catch (e) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,

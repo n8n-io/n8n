@@ -1,18 +1,18 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-import { dataStoreFilterSchema } from '../../schemas/data-store-filter.schema';
 import {
 	dataStoreColumnNameSchema,
 	dataStoreColumnValueSchema,
 } from '../../schemas/data-store.schema';
+import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
 
 // Reuse the shared filter schema but require at least one filter for updates
-const updateFilterSchema = dataStoreFilterSchema.refine((filter) => filter.filters.length > 0, {
+const updateFilterSchema = dataTableFilterSchema.refine((filter) => filter.filters.length > 0, {
 	message: 'filter must not be empty',
 });
 
-const updateDataStoreRowShape = {
+const updateDataTableRowShape = {
 	filter: updateFilterSchema,
 	data: z
 		.record(dataStoreColumnNameSchema, dataStoreColumnValueSchema)
@@ -22,4 +22,4 @@ const updateDataStoreRowShape = {
 	returnData: z.boolean().default(false),
 };
 
-export class UpdateDataStoreRowDto extends Z.class(updateDataStoreRowShape) {}
+export class UpdateDataTableRowDto extends Z.class(updateDataTableRowShape) {}
