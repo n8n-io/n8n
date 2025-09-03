@@ -3,7 +3,7 @@
 		{
 			"runner-type": "javascript",
 			"workdir": "/home/runner",
-			"command": "/usr/bin/node",
+			"command": "/usr/local/bin/node",
 			"args": [
 				"--disallow-code-generation-from-strings",
 				"--disable-proto=delete",
