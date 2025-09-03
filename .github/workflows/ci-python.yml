@@ -11,7 +11,7 @@ on:
 
 jobs:
   checks:
-    name: Lint
+    name: Checks
     runs-on: ubuntu-latest
     defaults:
       run:
