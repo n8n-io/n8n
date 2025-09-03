@@ -7,7 +7,7 @@ import {
 	AnnotationTagRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { AnnotationVote, IWorkflowBase } from 'n8n-workflow';
+import type { AnnotationVote, ExecutionStatus, IWorkflowBase } from 'n8n-workflow';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { Telemetry } from '@/telemetry';
@@ -105,17 +105,17 @@ export async function createWaitingExecution(workflow: IWorkflowBase) {
 }
 
 /**
- * Store a canceled execution in the DB and assign it to a workflow.
+ * Store an execution with a given status in the DB and assign it to a workflow.
  */
-export async function createCanceledExecution(workflow: IWorkflowBase) {
-	return await createExecution({ finished: false, status: 'canceled' }, workflow);
-}
+export async function createdExecutionWithStatus(workflow: IWorkflowBase, status: ExecutionStatus) {
+	const execution: Partial<ExecutionEntity> = {
+		status,
+		finished: status === 'success' ? true : false,
+		stoppedAt: ['crashed', 'error'].includes(status) ? new Date() : undefined,
+		waitTill: status === 'waiting' ? new Date() : undefined,
+	};
 
-/**
- * Store a canceled execution in the DB and assign it to a workflow.
- */
-export async function createRunningExecution(workflow: IWorkflowBase) {
-	return await createExecution({ finished: false, status: 'running' }, workflow);
+	return await createExecution(execution, workflow);
 }
 
 export async function annotateExecution(
