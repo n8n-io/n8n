@@ -13,6 +13,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
+import { createAgentLLMExecutionData } from '../../utils/langchain-test-fixtures';
 
 test.describe('Langchain Integration', () => {
 	test.beforeEach(async ({ n8n }) => {
@@ -60,7 +61,7 @@ test.describe('Langchain Integration', () => {
 			AI_TOOL_CALCULATOR_NODE_NAME,
 			AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME,
 		];
-		await n8n.canvas.addNode(AGENT_NODE_NAME);
+		await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: false });
 
 		await n8n.ndv.checkParameterCheckboxInputByName('hasOutputParser');
 		await n8n.ndv.clickBackToCanvasButton();
@@ -265,82 +266,17 @@ test.describe('Langchain Integration', () => {
 					main: { input: inputMessage },
 				},
 			}),
-			n8n.canvas.createMockNodeExecutionData(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, {
-				jsonData: {
-					ai_languageModel: {
-						response: {
-							generations: [
-								{
-									text: `{
-	"action": "Final Answer",
-	"action_input": "${outputMessage}"
-}`,
-									message: {
-										lc: 1,
-										type: 'constructor',
-										id: ['langchain', 'schema', 'AIMessage'],
-										kwargs: {
-											content: `{
-	"action": "Final Answer",
-	"action_input": "${outputMessage}"
-}`,
-											additional_kwargs: {},
-										},
-									},
-									generationInfo: { finish_reason: 'stop' },
-								},
-							],
-							llmOutput: {
-								tokenUsage: {
-									completionTokens: 26,
-									promptTokens: 519,
-									totalTokens: 545,
-								},
-							},
-						},
-					},
-				},
-				metadata: {
-					subRun: [{ node: AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, runIndex: 0 }],
-				},
-				source: [{ previousNode: AGENT_NODE_NAME, previousNodeRun: 0 }],
-				inputOverride: {
-					ai_languageModel: [
-						[
-							{
-								json: {
-									messages: [
-										{
-											lc: 1,
-											type: 'constructor',
-											id: ['langchain', 'schema', 'SystemMessage'],
-											kwargs: {
-												content:
-													'Assistant is a large language model trained by OpenAI.\n\nAssistant is designed to be able to assist with a wide range of tasks, from answering simple questions to providing in-depth explanations and discussions on a wide range of topics. As a language model, Assistant is able to generate human-like text based on the input it receives, allowing it to engage in natural-sounding conversations and provide responses that are coherent and relevant to the topic at hand.\n\nAssistant is constantly learning and improving, and its capabilities are constantly evolving. It is able to process and understand large amounts of text, and can use this knowledge to provide accurate and informative responses to a wide range of questions. Additionally, Assistant is able to generate its own text based on the input it receives, allowing it to engage in discussions and provide explanations and descriptions on a wide range of topics.\n\nOverall, Assistant is a powerful system that can help with a wide range of tasks and provide valuable insights and information on a wide range of topics. Whether you need help with a specific question or just want to have a conversation about a particular topic, Assistant is here to assist. However, above all else, all responses must adhere to the format of RESPONSE FORMAT INSTRUCTIONS.',
-												additional_kwargs: {},
-											},
-										},
-										{
-											lc: 1,
-											type: 'constructor',
-											id: ['langchain', 'schema', 'HumanMessage'],
-											kwargs: {
-												content:
-													'TOOLS\n------\nAssistant can ask the user to use tools to look up information that may be helpful in answering the users original question. The tools the human can use are:\n\n\n\nRESPONSE FORMAT INSTRUCTIONS\n----------------------------\n\nOutput a JSON markdown code snippet containing a valid JSON object in one of two formats:\n\n**Option 1:**\nUse this if you want the human to use a tool.\nMarkdown code snippet formatted in the following schema:\n\n```json\n{\n    "action": string, // The action to take. Must be one of []\n    "action_input": string // The input to the action. May be a stringified object.\n}\n```\n\n**Option #2:**\nUse this if you want to respond directly and conversationally to the human. Markdown code snippet formatted in the following schema:\n\n```json\n{\n    "action": "Final Answer",\n    "action_input": string // You should put what you want to return to use here and make sure to use valid json newline characters.\n}\n```\n\nFor both options, remember to always include the surrounding markdown code snippet delimiters (begin with "```json" and end with "```")!\n\n\nUSER\'S INPUT\n--------------------\nHere is the user\'s input (remember to respond with a markdown code snippet of a json blob with a single action, and NOTHING else):\n\nHello!',
-												additional_kwargs: {},
-											},
-										},
-									],
-									options: { stop: ['Observation:'], promptIndex: 0 },
-								},
-							},
-						],
-					],
-				},
-			}),
+			n8n.canvas.createMockNodeExecutionData(
+				AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+				createAgentLLMExecutionData(
+					AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+					AGENT_NODE_NAME,
+					outputMessage,
+				),
+			),
 			n8n.canvas.createMockNodeExecutionData(AGENT_NODE_NAME, {
 				jsonData: {
-					main: { output: 'Hi there! How can I assist you today?' },
+					main: { output: outputMessage },
 				},
 			}),
 		];
@@ -419,7 +355,7 @@ test.describe('Langchain Integration', () => {
 	});
 	test('should not show tool info notice if tools were used during execution', async ({ n8n }) => {
 		await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.addNode(AGENT_NODE_NAME);
+		await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: false });
 		await expect(n8n.ndv.getRunDataInfoCallout()).toBeHidden();
 		await n8n.ndv.clickBackToCanvasButton();
 
@@ -474,12 +410,71 @@ test.describe('Langchain Integration', () => {
 
 		await expect(n8n.ndv.getRunDataInfoCallout()).toBeHidden();
 	});
+
+	test('should render runItems for sub-nodes and allow switching between them', async ({ n8n }) => {
+		await n8n.start.fromImportedWorkflow('In_memory_vector_store_fake_embeddings.json');
+		await n8n.canvas.clickZoomToFitButton();
+		await n8n.canvas.deselectAll();
+
+		await n8n.canvas.executeNode('Populate VS');
+		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+			'Workflow executed successfully',
+		);
+
+		const assertInputOutputTextExists = async (text: string) => {
+			await expect(n8n.ndv.getOutputPanel()).toContainText(text);
+			await expect(n8n.ndv.getInputPanel()).toContainText(text);
+		};
+
+		const assertInputOutputTextNotExists = async (text: string) => {
+			await expect(n8n.ndv.getOutputPanel()).not.toContainText(text);
+			await expect(n8n.ndv.getInputPanel()).not.toContainText(text);
+		};
+
+		await n8n.canvas.openNode('Character Text Splitter');
+
+		await expect(n8n.ndv.getOutputRunSelector()).toBeVisible();
+		await expect(n8n.ndv.getInputRunSelector()).toBeVisible();
+		await expect(n8n.ndv.getInputRunSelectorInput()).toHaveValue('3 of 3');
+		await expect(n8n.ndv.getOutputRunSelectorInput()).toHaveValue('3 of 3');
+		await assertInputOutputTextExists('Kyiv');
+		await assertInputOutputTextNotExists('Berlin');
+		await assertInputOutputTextNotExists('Prague');
+
+		await n8n.ndv.changeOutputRunSelector('2 of 3');
+		await assertInputOutputTextExists('Berlin');
+		await assertInputOutputTextNotExists('Kyiv');
+		await assertInputOutputTextNotExists('Prague');
+
+		await n8n.ndv.changeOutputRunSelector('1 of 3');
+		await assertInputOutputTextExists('Prague');
+		await assertInputOutputTextNotExists('Berlin');
+		await assertInputOutputTextNotExists('Kyiv');
+
+		await n8n.ndv.toggleInputRunLinking();
+		await n8n.ndv.changeOutputRunSelector('2 of 3');
+		await expect(n8n.ndv.getInputRunSelectorInput()).toHaveValue('1 of 3');
+		await expect(n8n.ndv.getOutputRunSelectorInput()).toHaveValue('2 of 3');
+		await expect(n8n.ndv.getInputPanel()).toContainText('Prague');
+		await expect(n8n.ndv.getInputPanel()).not.toContainText('Berlin');
+
+		await expect(n8n.ndv.getOutputPanel()).toContainText('Berlin');
+		await expect(n8n.ndv.getOutputPanel()).not.toContainText('Prague');
+
+		await n8n.ndv.toggleInputRunLinking();
+		await expect(n8n.ndv.getInputRunSelectorInput()).toHaveValue('1 of 3');
+		await expect(n8n.ndv.getOutputRunSelectorInput()).toHaveValue('1 of 3');
+		await assertInputOutputTextExists('Prague');
+		await assertInputOutputTextNotExists('Berlin');
+		await assertInputOutputTextNotExists('Kyiv');
+	});
+
 	test('should execute up to Node 1 when using partial execution', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_workflow_chat_partial_execution.json');
 		await n8n.canvas.clickZoomToFitButton();
 
 		// Check that chat modal is not initially visible
-		await expect(n8n.canvas.getManualChatModal().locator('main')).not.toBeVisible();
+		await expect(n8n.canvas.getManualChatModal().locator('main')).toBeHidden();
 
 		// Open Node 1 and execute it
 		await n8n.canvas.openNode('Node 1');
