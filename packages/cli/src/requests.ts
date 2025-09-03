@@ -215,7 +215,7 @@ export declare namespace NodeRequest {
 		{ name?: string; verify?: boolean; version?: string; checksum?: string }
 	>;
 
-	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
+	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string; version?: string }>;
 
 	type Update = Post;
 }

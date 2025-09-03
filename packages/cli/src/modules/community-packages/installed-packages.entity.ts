@@ -8,7 +8,7 @@ export class InstalledPackages extends WithTimestamps {
 	@PrimaryColumn()
 	packageName: string;
 
-	@Column()
+	@PrimaryColumn()
 	installedVersion: string;
 
 	@Column()

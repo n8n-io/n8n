@@ -92,23 +92,32 @@ export class CommunityPackagesService {
 		return this.missingPackages.length > 0;
 	}
 
-	async findInstalledPackage(packageName: string) {
+	async findInstalledPackage(packageName: string, installedVersion: string) {
 		return await this.installedPackageRepository.findOne({
+			where: { packageName, installedVersion },
+			relations: ['installedNodes'],
+		});
+	}
+
+	async findInstalledPackagesByName(packageName: string) {
+		return await this.installedPackageRepository.find({
 			where: { packageName },
 			relations: ['installedNodes'],
 		});
 	}
 
-	async isPackageInstalled(packageName: string) {
-		return await this.installedPackageRepository.exist({ where: { packageName } });
+	async isPackageInstalled(packageName: string, installedVersion?: string) {
+		return await this.installedPackageRepository.exist({
+			where: { packageName, installedVersion },
+		});
 	}
 
 	async getAllInstalledPackages() {
 		return await this.installedPackageRepository.find({ relations: ['installedNodes'] });
 	}
 
-	private async removePackageFromDatabase(packageName: InstalledPackages) {
-		return await this.installedPackageRepository.remove(packageName);
+	private async removePackageFromDatabase(installedPackage: InstalledPackages) {
+		return await this.installedPackageRepository.remove(installedPackage);
 	}
 
 	private async persistInstalledPackage(packageLoader: PackageDirectoryLoader) {
@@ -346,11 +355,11 @@ export class CommunityPackagesService {
 
 	async updatePackage(
 		packageName: string,
-		installedPackage: InstalledPackages,
+		installedPackages: InstalledPackages[],
 		version?: string,
 		checksum?: string,
 	): Promise<InstalledPackages> {
-		return await this.installOrUpdatePackage(packageName, { installedPackage, version, checksum });
+		return await this.installOrUpdatePackage(packageName, { installedPackages, version, checksum });
 	}
 
 	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
@@ -384,9 +393,7 @@ export class CommunityPackagesService {
 
 	private async installOrUpdatePackage(
 		packageName: string,
-		options:
-			| { version?: string; checksum?: string }
-			| { installedPackage: InstalledPackages; version?: string; checksum?: string } = {},
+		options: { installedPackages?: InstalledPackages[]; version?: string; checksum?: string } = {},
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = !options.version ? 'latest' : options.version;
@@ -424,8 +431,10 @@ export class CommunityPackagesService {
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
-				if (isUpdate) {
-					await this.removePackageFromDatabase(options.installedPackage);
+				if (isUpdate && options.installedPackages?.length) {
+					for (const installedPackage of options.installedPackages) {
+						await this.removePackageFromDatabase(installedPackage);
+					}
 				}
 				const installedPackage = await this.persistInstalledPackage(loader);
 				void this.publisher.publishCommand({

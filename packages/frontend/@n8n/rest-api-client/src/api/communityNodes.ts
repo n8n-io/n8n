@@ -20,14 +20,18 @@ export async function installNewPackage(
 	return await post(context.baseUrl, '/community-packages', { name, verify, version });
 }
 
-export async function uninstallPackage(context: IRestApiContext, name: string): Promise<void> {
-	return await makeRestApiRequest(context, 'DELETE', '/community-packages', { name });
+export async function uninstallPackage(
+	context: IRestApiContext,
+	name: string,
+	version: string,
+): Promise<void> {
+	return await makeRestApiRequest(context, 'DELETE', '/community-packages', { name, version });
 }
 
 export async function updatePackage(
 	context: IRestApiContext,
 	name: string,
-	version?: string,
+	version: string,
 	checksum?: string,
 ): Promise<PublicInstalledPackage> {
 	return await makeRestApiRequest(context, 'PATCH', '/community-packages', {

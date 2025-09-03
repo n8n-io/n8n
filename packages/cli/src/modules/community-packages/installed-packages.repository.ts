@@ -37,7 +37,7 @@ export class InstalledPackagesRepository extends Repository<InstalledPackages> {
 					name: nodeTypes[loadedNode.name].type.description.displayName,
 					type: `${packageName}.${loadedNode.name}`,
 					latestVersion: loadedNode.version,
-					package: { packageName },
+					package: { packageName, installedVersion },
 				});
 
 				installedPackage.installedNodes.push(installedNode);

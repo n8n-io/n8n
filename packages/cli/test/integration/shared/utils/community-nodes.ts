@@ -24,7 +24,7 @@ export const mockNode = (packageName: string) => {
 		name: nodeName,
 		type: `${packageName}.${nodeName}`,
 		latestVersion: COMMUNITY_NODE_VERSION.CURRENT,
-		package: { packageName },
+		package: { packageName, installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT },
 	});
 };
 

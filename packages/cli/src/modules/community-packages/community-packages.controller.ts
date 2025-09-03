@@ -80,7 +80,10 @@ export class CommunityPackagesController {
 			);
 		}
 
-		const isInstalled = await this.communityPackagesService.isPackageInstalled(parsed.packageName);
+		const isInstalled = await this.communityPackagesService.isPackageInstalled(
+			parsed.packageName,
+			parsed.version,
+		);
 		const hasLoaded = this.communityPackagesService.hasPackageLoaded(name);
 
 		if (isInstalled && hasLoaded) {
@@ -192,7 +195,7 @@ export class CommunityPackagesController {
 	@Delete('/')
 	@GlobalScope('communityPackage:uninstall')
 	async uninstallPackage(req: NodeRequest.Delete) {
-		const { name } = req.query;
+		const { name, version } = req.query;
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
@@ -206,14 +209,20 @@ export class CommunityPackagesController {
 			throw new BadRequestError(message);
 		}
 
-		const installedPackage = await this.communityPackagesService.findInstalledPackage(name);
+		const installedPackages = version
+			? await this.communityPackagesService
+					.findInstalledPackage(name, version)
+					.then((p) => (p ? [p] : []))
+			: await this.communityPackagesService.findInstalledPackagesByName(name);
 
-		if (!installedPackage) {
+		if (!installedPackages.length) {
 			throw new BadRequestError(PACKAGE_NOT_INSTALLED);
 		}
 
 		try {
-			await this.communityPackagesService.removePackage(name, installedPackage);
+			for (const installedPackage of installedPackages) {
+				await this.communityPackagesService.removePackage(name, installedPackage);
+			}
 		} catch (error) {
 			const message = [
 				`Error removing package "${name}"`,
@@ -224,24 +233,28 @@ export class CommunityPackagesController {
 		}
 
 		// broadcast to connected frontends that node list has been updated
-		installedPackage.installedNodes.forEach((node) => {
-			this.push.broadcast({
-				type: 'removeNodeType',
-				data: {
-					name: node.type,
-					version: node.latestVersion,
-				},
+		installedPackages
+			.flatMap((p) => p.installedNodes)
+			.forEach((node) => {
+				this.push.broadcast({
+					type: 'removeNodeType',
+					data: {
+						name: node.type,
+						version: node.latestVersion,
+					},
+				});
 			});
-		});
 
-		this.eventService.emit('community-package-deleted', {
-			user: req.user,
-			packageName: name,
-			packageVersion: installedPackage.installedVersion,
-			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
-			packageAuthor: installedPackage.authorName,
-			packageAuthorEmail: installedPackage.authorEmail,
-		});
+		for (const installedPackage of installedPackages) {
+			this.eventService.emit('community-package-deleted', {
+				user: req.user,
+				packageName: name,
+				packageVersion: installedPackage.installedVersion,
+				packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
+				packageAuthor: installedPackage.authorName,
+				packageAuthorEmail: installedPackage.authorEmail,
+			});
+		}
 	}
 
 	@Patch('/')
@@ -253,31 +266,36 @@ export class CommunityPackagesController {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
-		const previouslyInstalledPackage =
-			await this.communityPackagesService.findInstalledPackage(name);
+		const previouslyInstalledPackages = version
+			? await this.communityPackagesService
+					.findInstalledPackage(name, version)
+					.then((p) => (p ? [p] : []))
+			: await this.communityPackagesService.findInstalledPackagesByName(name);
 
-		if (!previouslyInstalledPackage) {
+		if (!previouslyInstalledPackages.length) {
 			throw new BadRequestError(PACKAGE_NOT_INSTALLED);
 		}
 
 		try {
 			const newInstalledPackage = await this.communityPackagesService.updatePackage(
 				this.communityPackagesService.parseNpmPackageName(name).packageName,
-				previouslyInstalledPackage,
+				previouslyInstalledPackages,
 				version,
 				checksum,
 			);
 
 			// broadcast to connected frontends that node list has been updated
-			previouslyInstalledPackage.installedNodes.forEach((node) => {
-				this.push.broadcast({
-					type: 'removeNodeType',
-					data: {
-						name: node.type,
-						version: node.latestVersion,
-					},
+			previouslyInstalledPackages
+				.flatMap((p) => p.installedNodes)
+				.forEach((node) => {
+					this.push.broadcast({
+						type: 'removeNodeType',
+						data: {
+							name: node.type,
+							version: node.latestVersion,
+						},
+					});
 				});
-			});
 
 			newInstalledPackage.installedNodes.forEach((node) => {
 				this.push.broadcast({
@@ -289,27 +307,31 @@ export class CommunityPackagesController {
 				});
 			});
 
-			this.eventService.emit('community-package-updated', {
-				user: req.user,
-				packageName: name,
-				packageVersionCurrent: previouslyInstalledPackage.installedVersion,
-				packageVersionNew: newInstalledPackage.installedVersion,
-				packageNodeNames: newInstalledPackage.installedNodes.map((n) => n.name),
-				packageAuthor: newInstalledPackage.authorName,
-				packageAuthorEmail: newInstalledPackage.authorEmail,
-			});
+			for (const previouslyInstalledPackage of previouslyInstalledPackages) {
+				this.eventService.emit('community-package-updated', {
+					user: req.user,
+					packageName: name,
+					packageVersionCurrent: previouslyInstalledPackage.installedVersion,
+					packageVersionNew: newInstalledPackage.installedVersion,
+					packageNodeNames: newInstalledPackage.installedNodes.map((n) => n.name),
+					packageAuthor: newInstalledPackage.authorName,
+					packageAuthorEmail: newInstalledPackage.authorEmail,
+				});
+			}
 
 			return newInstalledPackage;
 		} catch (error) {
-			previouslyInstalledPackage.installedNodes.forEach((node) => {
-				this.push.broadcast({
-					type: 'removeNodeType',
-					data: {
-						name: node.type,
-						version: node.latestVersion,
-					},
+			previouslyInstalledPackages
+				.flatMap((p) => p.installedNodes)
+				.forEach((node) => {
+					this.push.broadcast({
+						type: 'removeNodeType',
+						data: {
+							name: node.type,
+							version: node.latestVersion,
+						},
+					});
 				});
-			});
 
 			const message = [
 				`Error removing package "${name}"`,

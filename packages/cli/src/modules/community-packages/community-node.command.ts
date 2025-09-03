@@ -113,16 +113,18 @@ export class CommunityNode extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async uninstallPackage(packageName: string) {
-		const communityPackage = await this.findCommunityPackage(packageName);
+		const communityPackages = await this.findCommunityPackages(packageName);
 
-		if (communityPackage === null) {
+		if (communityPackages.length === 0) {
 			this.logger.info(`Package ${packageName} not found`);
 			return;
 		}
 
-		await this.removeCommunityPackage(packageName, communityPackage);
+		for (const communityPackage of communityPackages) {
+			await this.removeCommunityPackage(packageName, communityPackage);
+		}
 
-		const installedNodes = communityPackage?.installedNodes;
+		const installedNodes = communityPackages.flatMap((p) => p.installedNodes);
 
 		if (!installedNodes) {
 			this.logger.info(`Nodes in ${packageName} not found`);
@@ -153,7 +155,7 @@ export class CommunityNode extends BaseCommand<z.infer<typeof flagsSchema>> {
 		);
 	}
 
-	async findCommunityPackage(packageName: string) {
-		return await Container.get(CommunityPackagesService).findInstalledPackage(packageName);
+	async findCommunityPackages(packageName: string) {
+		return await Container.get(CommunityPackagesService).findInstalledPackagesByName(packageName);
 	}
 }

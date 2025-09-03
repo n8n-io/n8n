@@ -13,7 +13,16 @@ export class InstalledNodes extends BaseEntity {
 	@Column()
 	latestVersion: number;
 
+	@Column()
+	packageName: string;
+
+	@Column()
+	packageVersion: string;
+
 	@ManyToOne('InstalledPackages', 'installedNodes')
-	@JoinColumn({ name: 'package', referencedColumnName: 'packageName' })
+	@JoinColumn([
+		{ name: 'packageName', referencedColumnName: 'packageName' },
+		{ name: 'packageVersion', referencedColumnName: 'installedVersion' },
+	])
 	package: InstalledPackages;
 }
