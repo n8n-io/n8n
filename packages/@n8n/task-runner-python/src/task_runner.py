@@ -153,23 +153,25 @@ class TaskRunner:
         if not self.running_tasks:
             return
 
-        self.logger.debug("Waiting for tasks to complete...")
+        timeout = self.config.graceful_shutdown_timeout
+        self.logger.debug(
+            f"Waiting for {len(self.running_tasks)} tasks to complete (timeout: {timeout}s)..."
+        )
 
         start_time = time.time()
-        while (
-            self.running_tasks
-            and (time.time() - start_time) < self.config.graceful_shutdown_timeout
-        ):
+        while self.running_tasks and (time.time() - start_time) < timeout:
             await asyncio.sleep(0.5)
 
         if self.running_tasks:
-            self.logger.warning("Timed out waiting for tasks to complete")
+            self.logger.warning(
+                f"Timed out waiting for {len(self.running_tasks)} tasks to complete"
+            )
 
     async def _terminate_tasks(self):
         if not self.running_tasks:
             return
 
-        self.logger.warning("Terminating tasks...")
+        self.logger.warning(f"Terminating {len(self.running_tasks)} tasks...")
 
         tasks_to_terminate = [
             asyncio.to_thread(self.executor.stop_process, task_state.process)
