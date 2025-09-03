@@ -10,7 +10,7 @@ on:
       - packages/@n8n/task-runner-python/**
 
 jobs:
-  lint:
+  checks:
     name: Lint
     runs-on: ubuntu-latest
     defaults:
