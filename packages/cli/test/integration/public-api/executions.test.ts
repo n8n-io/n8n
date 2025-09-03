@@ -234,6 +234,27 @@ describe('DELETE /executions/:id', () => {
 	});
 });
 
+describe('POST /executions/:id/retry', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/executions/1/retry', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/executions/1/retry', 'abcXYZ'),
+	);
+
+	test('should retry an execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(200);
+
+		// TODO: update assertion once unit tests for this file are working again.
+		expect(response.body).toEqual('waiting');
+	});
+});
+
 describe('GET /executions', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/executions', null));
 
