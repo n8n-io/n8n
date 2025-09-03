@@ -163,9 +163,9 @@ function hasRowReturnData(data: unknown): data is DataStoreRowReturn {
 		'id' in data &&
 		isNumber(data.id) &&
 		'createdAt' in data &&
-		isDate(data.createdAt) &&
+		(isDate(data.createdAt) || typeof data.createdAt === 'string') &&
 		'updatedAt' in data &&
-		isDate(data.updatedAt)
+		(isDate(data.updatedAt) || typeof data.updatedAt === 'string')
 	);
 }
 

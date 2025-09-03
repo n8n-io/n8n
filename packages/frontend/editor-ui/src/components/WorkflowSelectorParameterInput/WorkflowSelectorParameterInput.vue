@@ -92,7 +92,7 @@ const {
 	searchFilter,
 	onSearchFilter,
 	getWorkflowName,
-	renameDefaultNodeName,
+	applyDefaultExecuteWorkflowNodeName,
 	populateNextWorkflowsPage,
 	setWorkflowsResources,
 	reloadWorkflows,
@@ -178,7 +178,7 @@ function onListItemSelected(value: NodeParameterValue) {
 	// we rename defaults here to allow selecting the same workflow to
 	// update the name, as we don't eagerly update a changed workflow name
 	// but rather only react on changed id elsewhere
-	renameDefaultNodeName(value);
+	applyDefaultExecuteWorkflowNodeName(value);
 }
 
 function onInputFocus(): void {
@@ -252,7 +252,7 @@ watch(
 		// changed name means the workflow becomes unsaved and changed just by
 		// opening the ExecuteWorkflow node referencing the renamed workflow
 		if (old.value !== val.value) {
-			renameDefaultNodeName(val.value);
+			applyDefaultExecuteWorkflowNodeName(val.value);
 		}
 	},
 );
