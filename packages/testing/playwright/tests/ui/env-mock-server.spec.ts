@@ -2,7 +2,8 @@ import assert from 'node:assert';
 
 import { test, expect } from '../../fixtures/base';
 
-test.describe('Mock server', () => {
+// @capability:proxy tag ensures that test suite is only run when proxy is available
+test.describe('Proxy server @capability:proxy', () => {
 	test('should verify ProxyServer container is running', async ({ proxyServer }) => {
 		const mockResponse = await proxyServer.createGetExpectation('/health', {
 			status: 'healthy',

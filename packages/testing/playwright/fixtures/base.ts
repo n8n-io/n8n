@@ -1,5 +1,5 @@
 import { test as base, expect } from '@playwright/test';
-import type { N8NConfig, N8NStack } from 'n8n-containers/n8n-test-container-creation';
+import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
 
@@ -68,9 +68,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 				return;
 			}
 
-			const config: N8NConfig = { proxyServerEnabled: true, ...containerConfig };
-			console.log('Creating container with config:', config);
-			const container = await createN8NStack(config);
+			console.log('Creating container with config:', containerConfig);
+			const container = await createN8NStack(containerConfig);
 
 			console.log(`Container URL: ${container.baseUrl}`);
 
