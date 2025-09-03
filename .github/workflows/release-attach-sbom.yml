@@ -32,7 +32,7 @@ jobs:
         uses: actions/cache/restore@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
         with:
           path: ./packages/**/dist
-          key: ${{ github.event.release.tag_name }}-release:build
+          key: ${{ github.event.release.target_commitish }}-release:build
           fail-on-cache-miss: true
 
       - name: Install dependencies and pack packages
@@ -77,7 +77,7 @@ jobs:
             sbom-npm.cdx.json \
             sbom-npm.cdx.sig \
             sbom-npm.cdx.pem \
-            --clobber || echo "⚠️ Failed to upload SBOM files to release"
+            --clobber
 
           COMPONENT_COUNT=$(jq '.components | length' sbom-npm.cdx.json 2>/dev/null || echo "unknown")
           echo "✅ SBOM workflow completed"
