@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.dataTable",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"details": "Data Table",
+	"details": "Data table",
 	"categories": ["Core Nodes", "Development"],
 	"resources": {
 		"primaryDocumentation": [
