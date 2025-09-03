@@ -21,10 +21,16 @@ describe('SourceControlGitService - HTTPS functionality', () => {
 	let sourceControlGitService: SourceControlGitService;
 	let sourceControlPreferencesService: SourceControlPreferencesService;
 
-	const mockPreferences: Partial<SourceControlPreferences> = {
+	const mockPreferences: SourceControlPreferences = {
 		repositoryUrl: 'https://github.com/user/repo.git',
 		branchName: 'main',
 		connectionType: 'https',
+		branchReadOnly: false,
+		branchColor: '#5296D6',
+		connected: false,
+		publicKey: '',
+		initRepo: false,
+		keyGeneratorType: 'ed25519',
 	};
 
 	beforeEach(() => {
@@ -163,7 +169,7 @@ describe('SourceControlGitService - HTTPS functionality', () => {
 
 			expect(httpsPrefs.connectionType).toBe('https');
 			expect(sshPrefs.connectionType).toBe('ssh');
-			expect(httpsPrefs.connectionType !== sshPrefs.connectionType).toBe(true);
+			expect(httpsPrefs.connectionType).not.toBe(sshPrefs.connectionType);
 		});
 	});
 });

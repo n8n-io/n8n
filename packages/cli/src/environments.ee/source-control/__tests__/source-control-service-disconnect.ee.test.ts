@@ -4,6 +4,7 @@ import { SourceControlService } from '../source-control.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
+import type { SourceControlPreferences } from '../types/source-control-preferences';
 
 describe('SourceControlService - disconnect functionality', () => {
 	let sourceControlService: SourceControlService;
@@ -38,16 +39,22 @@ describe('SourceControlService - disconnect functionality', () => {
 	describe('disconnect', () => {
 		it('should clean up HTTPS credentials when connection type is HTTPS', async () => {
 			// Arrange
-			const httpsPreferences = {
+			const httpsPreferences: SourceControlPreferences = {
 				connectionType: 'https' as const,
 				repositoryUrl: 'https://github.com/user/repo.git',
 				connected: true,
+				branchName: 'main',
+				branchReadOnly: false,
+				branchColor: '#5296D6',
+				publicKey: '',
+				initRepo: false,
+				keyGeneratorType: 'ed25519',
 			};
 
-			mockPreferencesService.getPreferences.mockReturnValue(httpsPreferences);
-			mockPreferencesService.setPreferences.mockResolvedValue({} as any);
+			jest.spyOn(mockPreferencesService, 'getPreferences').mockReturnValue(httpsPreferences);
+			jest.spyOn(mockPreferencesService, 'setPreferences').mockResolvedValue({} as any);
 			mockPreferencesService.deleteHttpsCredentials = jest.fn().mockResolvedValue(undefined);
-			mockExportService.deleteRepositoryFolder.mockResolvedValue();
+			jest.spyOn(mockExportService, 'deleteRepositoryFolder').mockResolvedValue(undefined);
 
 			await sourceControlService.disconnect();
 
@@ -62,16 +69,22 @@ describe('SourceControlService - disconnect functionality', () => {
 		});
 
 		it('should clean up SSH key pair when connection type is SSH and keepKeyPair is false', async () => {
-			const sshPreferences = {
+			const sshPreferences: SourceControlPreferences = {
 				connectionType: 'ssh' as const,
 				repositoryUrl: 'git@github.com:user/repo.git',
 				connected: true,
+				branchName: 'main',
+				branchReadOnly: false,
+				branchColor: '#5296D6',
+				publicKey: '',
+				initRepo: false,
+				keyGeneratorType: 'ed25519',
 			};
 
-			mockPreferencesService.getPreferences.mockReturnValue(sshPreferences);
-			mockPreferencesService.setPreferences.mockResolvedValue({} as any);
-			mockPreferencesService.deleteKeyPair = jest.fn().mockResolvedValue();
-			mockExportService.deleteRepositoryFolder.mockResolvedValue();
+			jest.spyOn(mockPreferencesService, 'getPreferences').mockReturnValue(sshPreferences);
+			jest.spyOn(mockPreferencesService, 'setPreferences').mockResolvedValue({} as any);
+			mockPreferencesService.deleteKeyPair = jest.fn().mockResolvedValue(undefined);
+			jest.spyOn(mockExportService, 'deleteRepositoryFolder').mockResolvedValue(undefined);
 
 			await sourceControlService.disconnect({ keepKeyPair: false });
 
@@ -86,16 +99,22 @@ describe('SourceControlService - disconnect functionality', () => {
 		});
 
 		it('should keep SSH key pair when connection type is SSH and keepKeyPair is true', async () => {
-			const sshPreferences = {
+			const sshPreferences: SourceControlPreferences = {
 				connectionType: 'ssh' as const,
 				repositoryUrl: 'git@github.com:user/repo.git',
 				connected: true,
+				branchName: 'main',
+				branchReadOnly: false,
+				branchColor: '#5296D6',
+				publicKey: '',
+				initRepo: false,
+				keyGeneratorType: 'ed25519',
 			};
 
-			mockPreferencesService.getPreferences.mockReturnValue(sshPreferences);
-			mockPreferencesService.setPreferences.mockResolvedValue({} as any);
-			mockPreferencesService.deleteKeyPair = jest.fn().mockResolvedValue();
-			mockExportService.deleteRepositoryFolder.mockResolvedValue();
+			jest.spyOn(mockPreferencesService, 'getPreferences').mockReturnValue(sshPreferences);
+			jest.spyOn(mockPreferencesService, 'setPreferences').mockResolvedValue({} as any);
+			mockPreferencesService.deleteKeyPair = jest.fn().mockResolvedValue(undefined);
+			jest.spyOn(mockExportService, 'deleteRepositoryFolder').mockResolvedValue(undefined);
 
 			await sourceControlService.disconnect({ keepKeyPair: true });
 
@@ -110,17 +129,23 @@ describe('SourceControlService - disconnect functionality', () => {
 		});
 
 		it('should not delete SSH keys when connection type is HTTPS', async () => {
-			const httpsPreferences = {
+			const httpsPreferences: SourceControlPreferences = {
 				connectionType: 'https' as const,
 				repositoryUrl: 'https://github.com/user/repo.git',
 				connected: true,
+				branchName: 'main',
+				branchReadOnly: false,
+				branchColor: '#5296D6',
+				publicKey: '',
+				initRepo: false,
+				keyGeneratorType: 'ed25519',
 			};
 
-			mockPreferencesService.getPreferences.mockReturnValue(httpsPreferences);
-			mockPreferencesService.setPreferences.mockResolvedValue({} as any);
+			jest.spyOn(mockPreferencesService, 'getPreferences').mockReturnValue(httpsPreferences);
+			jest.spyOn(mockPreferencesService, 'setPreferences').mockResolvedValue({} as any);
 			mockPreferencesService.deleteHttpsCredentials = jest.fn().mockResolvedValue(undefined);
-			mockPreferencesService.deleteKeyPair = jest.fn().mockResolvedValue();
-			mockExportService.deleteRepositoryFolder.mockResolvedValue();
+			mockPreferencesService.deleteKeyPair = jest.fn().mockResolvedValue(undefined);
+			jest.spyOn(mockExportService, 'deleteRepositoryFolder').mockResolvedValue(undefined);
 
 			await sourceControlService.disconnect({ keepKeyPair: false });
 
@@ -129,14 +154,20 @@ describe('SourceControlService - disconnect functionality', () => {
 		});
 
 		it('should handle errors during disconnect gracefully', async () => {
-			const httpsPreferences = {
+			const httpsPreferences: SourceControlPreferences = {
 				connectionType: 'https' as const,
 				repositoryUrl: 'https://github.com/user/repo.git',
 				connected: true,
+				branchName: 'main',
+				branchReadOnly: false,
+				branchColor: '#5296D6',
+				publicKey: '',
+				initRepo: false,
+				keyGeneratorType: 'ed25519',
 			};
 
-			mockPreferencesService.getPreferences.mockReturnValue(httpsPreferences);
-			mockPreferencesService.setPreferences.mockRejectedValue(new Error('DB error'));
+			jest.spyOn(mockPreferencesService, 'getPreferences').mockReturnValue(httpsPreferences);
+			jest.spyOn(mockPreferencesService, 'setPreferences').mockRejectedValue(new Error('DB error'));
 
 			await expect(sourceControlService.disconnect()).rejects.toThrow(
 				'Failed to disconnect from source control',
@@ -144,16 +175,22 @@ describe('SourceControlService - disconnect functionality', () => {
 		});
 
 		it('should reset connection type to SSH by default', async () => {
-			const httpsPreferences = {
+			const httpsPreferences: SourceControlPreferences = {
 				connectionType: 'https' as const,
 				repositoryUrl: 'https://github.com/user/repo.git',
 				connected: true,
+				branchName: 'main',
+				branchReadOnly: false,
+				branchColor: '#5296D6',
+				publicKey: '',
+				initRepo: false,
+				keyGeneratorType: 'ed25519',
 			};
 
-			mockPreferencesService.getPreferences.mockReturnValue(httpsPreferences);
-			mockPreferencesService.setPreferences.mockResolvedValue({} as any);
+			jest.spyOn(mockPreferencesService, 'getPreferences').mockReturnValue(httpsPreferences);
+			jest.spyOn(mockPreferencesService, 'setPreferences').mockResolvedValue({} as any);
 			mockPreferencesService.deleteHttpsCredentials = jest.fn().mockResolvedValue(undefined);
-			mockExportService.deleteRepositoryFolder.mockResolvedValue();
+			jest.spyOn(mockExportService, 'deleteRepositoryFolder').mockResolvedValue(undefined);
 
 			await sourceControlService.disconnect();
 

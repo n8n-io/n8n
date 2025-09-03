@@ -3,6 +3,8 @@ import { vi } from 'vitest';
 
 import * as vcApi from '@/api/sourceControl';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import type { SourceControlPreferences } from '@/types/sourceControl.types';
+import type { SourceControlledFile } from '@n8n/api-types';
 
 vi.mock('@/api/sourceControl');
 
@@ -56,7 +58,7 @@ describe('useSourceControlStore', () => {
 			};
 
 			const mockSavePreferences = vi.mocked(vcApi.savePreferences);
-			mockSavePreferences.mockResolvedValue({} as any);
+			mockSavePreferences.mockResolvedValue({} as SourceControlPreferences);
 
 			await sourceControlStore.savePreferences(preferences);
 
@@ -75,7 +77,7 @@ describe('useSourceControlStore', () => {
 			};
 
 			const mockSavePreferences = vi.mocked(vcApi.savePreferences);
-			mockSavePreferences.mockResolvedValue({} as any);
+			mockSavePreferences.mockResolvedValue({} as SourceControlPreferences);
 
 			await sourceControlStore.savePreferences(preferences);
 
@@ -94,7 +96,7 @@ describe('useSourceControlStore', () => {
 			};
 
 			const mockSavePreferences = vi.mocked(vcApi.savePreferences);
-			mockSavePreferences.mockResolvedValue(preferences as any);
+			mockSavePreferences.mockResolvedValue(preferences);
 
 			await sourceControlStore.savePreferences(preferences);
 
@@ -113,10 +115,10 @@ describe('useSourceControlStore', () => {
 			};
 
 			const mockGenerateKeyPair = vi.mocked(vcApi.generateKeyPair);
-			mockGenerateKeyPair.mockResolvedValue(mockKeyPair as any);
+			mockGenerateKeyPair.mockResolvedValue('ssh-ed25519 AAAAC3NzaC1lZDI...');
 
 			const mockGetPreferences = vi.mocked(vcApi.getPreferences);
-			mockGetPreferences.mockResolvedValue(mockKeyPair as any);
+			mockGetPreferences.mockResolvedValue(mockKeyPair);
 
 			await sourceControlStore.generateKeyPair(keyType);
 
@@ -144,7 +146,7 @@ describe('useSourceControlStore', () => {
 			};
 
 			const mockGetBranches = vi.mocked(vcApi.getBranches);
-			mockGetBranches.mockResolvedValue(mockBranches as any);
+			mockGetBranches.mockResolvedValue(mockBranches);
 
 			await sourceControlStore.getBranches();
 
@@ -160,7 +162,7 @@ describe('useSourceControlStore', () => {
 			sourceControlStore.preferences.branchName = 'main';
 
 			const mockDisconnect = vi.mocked(vcApi.disconnect);
-			mockDisconnect.mockResolvedValue(undefined as any);
+			mockDisconnect.mockResolvedValue('Disconnected successfully');
 
 			await sourceControlStore.disconnect(false);
 
@@ -211,13 +213,21 @@ describe('useSourceControlStore', () => {
 		it('should call API with correct parameters', async () => {
 			const force = true;
 
-			const mockResult = {
-				statusCode: 200,
-				statusResult: 'Success',
-			};
+			const mockResult: SourceControlledFile[] = [
+				{
+					file: 'test.json',
+					id: 'test-id',
+					name: 'test-workflow',
+					type: 'workflow',
+					status: 'new',
+					location: 'local',
+					conflict: false,
+					updatedAt: '2023-01-01T00:00:00.000Z',
+				},
+			];
 
 			const mockPullWorkfolder = vi.mocked(vcApi.pullWorkfolder);
-			mockPullWorkfolder.mockResolvedValue(mockResult as any);
+			mockPullWorkfolder.mockResolvedValue(mockResult);
 
 			const result = await sourceControlStore.pullWorkfolder(force);
 
@@ -228,7 +238,7 @@ describe('useSourceControlStore', () => {
 
 	describe('getAggregatedStatus', () => {
 		it('should call API and return status', async () => {
-			const mockStatus = [
+			const mockStatus: SourceControlledFile[] = [
 				{
 					id: 'workflow1',
 					name: 'Test Workflow',
@@ -243,7 +253,7 @@ describe('useSourceControlStore', () => {
 			];
 
 			const mockGetAggregatedStatus = vi.mocked(vcApi.getAggregatedStatus);
-			mockGetAggregatedStatus.mockResolvedValue(mockStatus as any);
+			mockGetAggregatedStatus.mockResolvedValue(mockStatus);
 
 			const result = await sourceControlStore.getAggregatedStatus();
 

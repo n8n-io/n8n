@@ -13,7 +13,10 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 
 	beforeEach(() => {
 		mockInstanceSettings = mock<InstanceSettings>({ n8nFolder: '/test' });
-		mockCipher = mock<Cipher>();
+		mockCipher = {
+			encrypt: jest.fn(),
+			decrypt: jest.fn(),
+		} as unknown as Cipher;
 		mockSettingsRepository = mock<SettingsRepository>();
 
 		sourceControlPreferencesService = new SourceControlPreferencesService(
@@ -37,7 +40,7 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 			const encryptedUsername = 'encrypted_user';
 			const encryptedPassword = 'encrypted_pass';
 
-			mockCipher.encrypt
+			(mockCipher.encrypt as jest.Mock)
 				.mockReturnValueOnce(encryptedUsername)
 				.mockReturnValueOnce(encryptedPassword);
 
@@ -62,7 +65,7 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 			const username = 'testuser';
 			const password = 'testtoken';
 
-			mockCipher.encrypt.mockImplementation(() => {
+			jest.spyOn(mockCipher, 'encrypt').mockImplementation(() => {
 				throw new Error('Encryption failed');
 			});
 
@@ -83,12 +86,13 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 			const decryptedUsername = 'testuser';
 			const decryptedPassword = 'testtoken';
 
-			mockSettingsRepository.findByKey.mockResolvedValue({
+			jest.spyOn(mockSettingsRepository, 'findByKey').mockResolvedValue({
 				key: 'features.sourceControl.httpsCredentials',
 				value: JSON.stringify(encryptedCredentials),
 			} as any);
 
-			mockCipher.decrypt
+			jest
+				.spyOn(mockCipher, 'decrypt')
 				.mockReturnValueOnce(decryptedUsername)
 				.mockReturnValueOnce(decryptedPassword);
 
@@ -106,7 +110,7 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 
 		it('should return null when no credentials are stored', async () => {
 			// Arrange
-			mockSettingsRepository.findByKey.mockResolvedValue(null);
+			jest.spyOn(mockSettingsRepository, 'findByKey').mockResolvedValue(null);
 
 			// Act
 			const result = await sourceControlPreferencesService.getDecryptedHttpsCredentials();
@@ -117,7 +121,7 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 
 		it('should return null when stored value is invalid JSON', async () => {
 			// Arrange
-			mockSettingsRepository.findByKey.mockResolvedValue({
+			jest.spyOn(mockSettingsRepository, 'findByKey').mockResolvedValue({
 				key: 'features.sourceControl.httpsCredentials',
 				value: 'invalid-json',
 			} as any);
@@ -131,7 +135,7 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 
 		it('should return null when stored value is null', async () => {
 			// Arrange
-			mockSettingsRepository.findByKey.mockResolvedValue({
+			jest.spyOn(mockSettingsRepository, 'findByKey').mockResolvedValue({
 				key: 'features.sourceControl.httpsCredentials',
 				value: null,
 			} as any);
@@ -157,7 +161,7 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 
 		it('should handle deletion errors gracefully without throwing', async () => {
 			// Arrange
-			mockSettingsRepository.delete.mockRejectedValue(new Error('Delete failed'));
+			jest.spyOn(mockSettingsRepository, 'delete').mockRejectedValue(new Error('Delete failed'));
 
 			// Act & Assert - Should not throw
 			await expect(
@@ -179,9 +183,10 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 
 			const saveSpy = jest
 				.spyOn(sourceControlPreferencesService, 'saveHttpsCredentials')
-				.mockResolvedValue();
+				.mockResolvedValue(undefined);
 
-			mockCipher.encrypt
+			jest
+				.spyOn(mockCipher, 'encrypt')
 				.mockReturnValueOnce('encrypted_user')
 				.mockReturnValueOnce('encrypted_pass');
 
@@ -207,11 +212,14 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 				.spyOn(sourceControlPreferencesService as any, 'getKeyPairFromDatabase')
 				.mockResolvedValue(null);
 
+			const mockResult = { publicKey: 'mock-key' } as SourceControlPreferences;
 			const generateSpy = jest
 				.spyOn(sourceControlPreferencesService, 'generateAndSaveKeyPair')
-				.mockResolvedValue();
+				.mockResolvedValue(mockResult);
 
-			jest.spyOn(sourceControlPreferencesService, 'saveHttpsCredentials').mockResolvedValue();
+			jest
+				.spyOn(sourceControlPreferencesService, 'saveHttpsCredentials')
+				.mockResolvedValue(undefined);
 
 			// Act
 			await sourceControlPreferencesService.setPreferences(preferences);
@@ -230,9 +238,10 @@ describe('SourceControlPreferencesService - HTTPS functionality', () => {
 				.spyOn(sourceControlPreferencesService as any, 'getKeyPairFromDatabase')
 				.mockResolvedValue(null);
 
+			const mockResult = { publicKey: 'mock-key' } as SourceControlPreferences;
 			const generateSpy = jest
 				.spyOn(sourceControlPreferencesService, 'generateAndSaveKeyPair')
-				.mockResolvedValue();
+				.mockResolvedValue(mockResult);
 
 			// Act
 			await sourceControlPreferencesService.setPreferences(preferences);

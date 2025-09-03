@@ -1,30 +1,16 @@
 import { mock } from 'jest-mock-extended';
 
-import { SourceControlService } from '../source-control.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import type { SourceControlPreferences } from '../types/source-control-preferences';
 
 describe('SourceControl Integration Tests', () => {
-	let sourceControlService: SourceControlService;
 	let mockGitService: SourceControlGitService;
 	let mockPreferencesService: SourceControlPreferencesService;
 
 	beforeEach(() => {
 		mockGitService = mock<SourceControlGitService>();
 		mockPreferencesService = mock<SourceControlPreferencesService>();
-
-		sourceControlService = new SourceControlService(
-			mock(),
-			mockGitService,
-			mockPreferencesService,
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-		);
 	});
 
 	describe('HTTPS vs SSH Integration', () => {
@@ -202,12 +188,27 @@ describe('SourceControl Integration Tests', () => {
 		it('should handle connection errors gracefully', async () => {
 			// Arrange
 			const error = new Error('Connection failed');
-			jest.spyOn(mockGitService, 'hasRemoteConfigured').mockRejectedValue(error);
+			jest.spyOn(mockGitService, 'initService').mockRejectedValue(error);
 
 			// Act & Assert
-			await expect(mockGitService.hasRemoteConfigured('test-url')).rejects.toThrow(
-				'Connection failed',
-			);
+			const options = {
+				sourceControlPreferences: {
+					repositoryUrl: 'https://github.com/user/repo.git',
+					branchName: 'main',
+					connectionType: 'https' as const,
+					initRepo: true,
+					connected: false,
+					branchReadOnly: false,
+					branchColor: '#5296D6',
+					publicKey: '',
+					keyGeneratorType: 'ed25519' as const,
+				},
+				gitFolder: '/tmp/git',
+				sshFolder: '/tmp/ssh',
+				sshKeyName: 'id_ed25519',
+			};
+
+			await expect(mockGitService.initService(options)).rejects.toThrow('Connection failed');
 		});
 
 		it('should handle invalid preferences', () => {

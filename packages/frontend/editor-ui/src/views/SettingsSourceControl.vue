@@ -7,7 +7,7 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { useToast } from '@/composables/useToast';
 import { MODAL_CONFIRM } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import type { SshKeyTypes } from '@/types/sourceControl.types';
+import type { SshKeyTypes, SourceControlPreferences } from '@/types/sourceControl.types';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 import type { Rule, RuleGroup } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
@@ -44,7 +44,10 @@ const onConnect = async () => {
 	loadingService.startLoading();
 	loadingService.setLoadingText(locale.baseText('settings.sourceControl.loading.connecting'));
 	try {
-		const connectionData: any = {
+		const connectionData: Partial<SourceControlPreferences> & {
+			httpsUsername?: string;
+			httpsPassword?: string;
+		} = {
 			repositoryUrl: sourceControlStore.preferences.repositoryUrl,
 			connectionType: connectionType.value,
 		};
