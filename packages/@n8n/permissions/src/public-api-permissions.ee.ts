@@ -84,6 +84,7 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'workflow:deactivate',
 	'execution:delete',
 	'execution:read',
+	'execution:retry',
 	'execution:list',
 	'credential:create',
 	'credential:move',
