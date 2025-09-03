@@ -19,10 +19,10 @@ const POLL_DELAY_MS = 1000;
 interface MindeeV2UIParams {
 	modelId: string;
 	alias?: string;
-	rag: boolean;
-	polygon: boolean;
-	confidence: boolean;
-	rawText: boolean;
+	rag: string;
+	polygon: string;
+	confidence: string;
+	rawText: string;
 	maxDelayCount: number;
 	binaryPropertyName?: string;
 }
@@ -129,10 +129,10 @@ export function readUIParams(ctx: IExecuteFunctions, index: number): MindeeV2UIP
 	return {
 		modelId: ctx.getNodeParameter('modelId', index) as string,
 		alias: ctx.getNodeParameter('alias', index) as string,
-		rag: ctx.getNodeParameter('rag', index) as boolean,
-		polygon: ctx.getNodeParameter('polygon', index) as boolean,
-		confidence: ctx.getNodeParameter('confidence', index) as boolean,
-		rawText: ctx.getNodeParameter('rawText', index) as boolean,
+		rag: ctx.getNodeParameter('rag', index) as string,
+		polygon: ctx.getNodeParameter('polygon', index) as string,
+		confidence: ctx.getNodeParameter('confidence', index) as string,
+		rawText: ctx.getNodeParameter('rawText', index) as string,
 		maxDelayCount: ctx.getNodeParameter('maxDelayCount', index) as number,
 		binaryPropertyName: ctx.getNodeParameter('binaryPropertyName', index, ''),
 	};
@@ -151,17 +151,15 @@ export async function buildRequestBody(
 	uiParams: MindeeV2UIParams,
 	form: FormData,
 ) {
-	const name = uiParams.binaryPropertyName!;
+	const name = uiParams.binaryPropertyName ?? 'data';
 	const bin = ctx.helpers.assertBinaryData(index, name);
 	const buf = await ctx.helpers.getBinaryDataBuffer(index, name);
 	form.append('file', buf, { filename: bin.fileName });
 
 	form.append('model_id', uiParams.modelId);
-	if (uiParams.alias) {
-		form.append('alias', uiParams.alias);
-	}
-	form.append('rag', uiParams.rag ? 'true' : 'false');
-	form.append('polygon', uiParams.polygon ? 'true' : 'false');
-	form.append('confidence', uiParams.confidence ? 'true' : 'false');
-	form.append('raw_text', uiParams.rawText ? 'true' : 'false');
+	form.append('alias', uiParams.alias ?? '');
+	if (uiParams.rag !== 'default') form.append('rag', uiParams.rag);
+	if (uiParams.polygon !== 'default') form.append('polygon', uiParams.polygon);
+	if (uiParams.confidence !== 'default') form.append('confidence', uiParams.confidence);
+	if (uiParams.rawText !== 'default') form.append('raw_text', uiParams.rawText);
 }
