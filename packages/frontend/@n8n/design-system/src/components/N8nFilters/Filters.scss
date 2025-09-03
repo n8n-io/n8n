@@ -57,5 +57,12 @@ input {
 	justify-content: center;
 	position: absolute;
 	left: var(--spacing-2xs);
-	outline: 1px solid gray;
+	width: 16px;
+	height: 16px;
+	opacity: 0;
+	transition: opacity 0.2s ease;
+}
+
+.ComboboxItemIndicator[data-state='checked'] {
+	opacity: 1;
 }

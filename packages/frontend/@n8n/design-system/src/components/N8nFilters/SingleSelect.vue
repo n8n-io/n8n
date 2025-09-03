@@ -32,15 +32,25 @@ withDefaults(
 	},
 );
 
-defineEmits<{
+const emit = defineEmits<{
 	'update:modelValue': [value: Item | null];
 }>();
 
 const open = ref(true);
+
+function handleValueChange(value: Item | null) {
+	emit('update:modelValue', value);
+}
 </script>
 
 <template>
-	<ComboboxRoot class="root" v-bind="modelValue" :open="open" @update:open="() => {}">
+	<ComboboxRoot
+		class="root"
+		:model-value="modelValue"
+		:open="open"
+		@update:open="() => {}"
+		@update:model-value="handleValueChange"
+	>
 		<ComboboxAnchor class="ComboboxAnchor">
 			<ComboboxInput class="ComboboxInput" :placeholder="placeholder" />
 		</ComboboxAnchor>
@@ -49,7 +59,10 @@ const open = ref(true);
 				<ComboboxEmpty class="ComboboxEmpty" />
 				<template v-for="item in items" :key="item.id">
 					<ComboboxItem :value="item" class="ComboboxItem">
-						<ComboboxItemIndicator class="ComboboxItemIndicator">
+						<ComboboxItemIndicator
+							class="ComboboxItemIndicator"
+							:data-state="modelValue?.id === item.id ? 'checked' : 'unchecked'"
+						>
 							<N8nIcon size="small" icon="check" />
 						</ComboboxItemIndicator>
 						<N8nText size="small">

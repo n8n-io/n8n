@@ -304,8 +304,6 @@ function handleBlur() {
 }
 
 :deep(.filter-dropdown) {
-	padding: var(--spacing-4xs);
-
 	z-index: 1000;
 	min-width: 160px;
 	box-shadow: var(--box-shadow-light);
