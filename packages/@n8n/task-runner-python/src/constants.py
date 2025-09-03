@@ -28,6 +28,9 @@ MAX_VALIDATION_CACHE_SIZE = 500  # cached validation results
 # Executor
 EXECUTOR_USER_OUTPUT_KEY = "__n8n_internal_user_output__"
 EXECUTOR_CIRCULAR_REFERENCE_KEY = "__n8n_internal_circular_ref__"
+EXECUTOR_ALL_ITEMS_FILENAME = "<all_items_task_execution>"
+EXECUTOR_PER_ITEM_FILENAME = "<per_item_task_execution>"
+EXECUTOR_FILENAMES = {EXECUTOR_ALL_ITEMS_FILENAME, EXECUTOR_PER_ITEM_FILENAME}
 
 # Broker
 DEFAULT_TASK_BROKER_URI = "http://127.0.0.1:5679"
@@ -49,6 +52,14 @@ ENV_BUILTINS_DENY = "N8N_RUNNERS_BUILTINS_DENY"
 ENV_HEALTH_CHECK_SERVER_ENABLED = "N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED"
 ENV_HEALTH_CHECK_SERVER_HOST = "N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST"
 ENV_HEALTH_CHECK_SERVER_PORT = "N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT"
+ENV_SENTRY_DSN = "N8N_SENTRY_DSN"
+ENV_N8N_VERSION = "N8N_VERSION"
+ENV_ENVIRONMENT = "ENVIRONMENT"
+ENV_DEPLOYMENT_NAME = "DEPLOYMENT_NAME"
+
+# Sentry
+SENTRY_TAG_SERVER_TYPE = "server_type"
+SENTRY_TAG_SERVER_TYPE_VALUE = "task_runner_python"
 
 # Logging
 LOG_FORMAT = "%(asctime)s.%(msecs)03d\t%(levelname)s\t%(message)s"
@@ -59,6 +70,7 @@ LOG_TASK_CANCEL_UNKNOWN = (
     "Received cancel for unknown task: {task_id}. Discarding message."
 )
 LOG_TASK_CANCEL_WAITING = "Cancelled task {task_id} (waiting for settings)"
+LOG_SENTRY_MISSING = "Sentry is enabled but sentry-sdk is not installed. Install with: uv sync --all-extras"
 
 # RPC
 RPC_BROWSER_CONSOLE_LOG_METHOD = "logNodeOutput"
