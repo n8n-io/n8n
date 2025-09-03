@@ -8,6 +8,8 @@ from src.constants import (
     DEFAULT_MAX_PAYLOAD_SIZE,
     DEFAULT_TASK_BROKER_URI,
     DEFAULT_TASK_TIMEOUT,
+    DEFAULT_AUTO_SHUTDOWN_TIMEOUT,
+    DEFAULT_SHUTDOWN_TIMEOUT,
     ENV_BUILTINS_DENY,
     ENV_EXTERNAL_ALLOW,
     ENV_GRANT_TOKEN,
@@ -16,6 +18,8 @@ from src.constants import (
     ENV_STDLIB_ALLOW,
     ENV_TASK_BROKER_URI,
     ENV_TASK_TIMEOUT,
+    ENV_AUTO_SHUTDOWN_TIMEOUT,
+    ENV_GRACEFUL_SHUTDOWN_TIMEOUT,
 )
 
 
@@ -45,9 +49,15 @@ class TaskRunnerConfig:
     max_concurrency: int
     max_payload_size: int
     task_timeout: int
+    auto_shutdown_timeout: int
+    graceful_shutdown_timeout: int
     stdlib_allow: Set[str]
     external_allow: Set[str]
     builtins_deny: Set[str]
+
+    @property
+    def is_auto_shutdown_enabled(self) -> bool:
+        return self.auto_shutdown_timeout > 0
 
     @classmethod
     def from_env(cls):
@@ -59,6 +69,22 @@ class TaskRunnerConfig:
         if task_timeout <= 0:
             raise ValueError(f"Task timeout must be positive, got {task_timeout}")
 
+        auto_shutdown_timeout = int(
+            os.getenv(ENV_AUTO_SHUTDOWN_TIMEOUT, str(DEFAULT_AUTO_SHUTDOWN_TIMEOUT))
+        )
+        if auto_shutdown_timeout < 0:
+            raise ValueError(
+                f"Auto shutdown timeout must be non-negative, got {auto_shutdown_timeout}"
+            )
+
+        graceful_shutdown_timeout = int(
+            os.getenv(ENV_GRACEFUL_SHUTDOWN_TIMEOUT, str(DEFAULT_SHUTDOWN_TIMEOUT))
+        )
+        if graceful_shutdown_timeout <= 0:
+            raise ValueError(
+                f"Graceful shutdown timeout must be positive, got {graceful_shutdown_timeout}"
+            )
+
         return cls(
             grant_token=grant_token,
             task_broker_uri=os.getenv(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
@@ -69,6 +95,8 @@ class TaskRunnerConfig:
                 os.getenv(ENV_MAX_PAYLOAD_SIZE, str(DEFAULT_MAX_PAYLOAD_SIZE))
             ),
             task_timeout=task_timeout,
+            auto_shutdown_timeout=auto_shutdown_timeout,
+            graceful_shutdown_timeout=graceful_shutdown_timeout,
             stdlib_allow=parse_allowlist(
                 os.getenv(ENV_STDLIB_ALLOW, ""), ENV_STDLIB_ALLOW
             ),
