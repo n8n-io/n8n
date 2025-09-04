@@ -1,6 +1,6 @@
 import { expect, test } from '../../fixtures/base';
 
-test.describe('Evaluations', () => {
+test.describe('Evaluations @capability:proxy', () => {
 	test.beforeEach(async ({ n8n, proxyServer }) => {
 		await proxyServer.clearAllExpectations();
 
