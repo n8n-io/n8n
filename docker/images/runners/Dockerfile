@@ -86,24 +86,36 @@ ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
 
-# Copy over node from node alpine
-COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
-COPY --from=node-alpine /usr/local/bin/npm /usr/local/bin/npm
-COPY --from=node-alpine /usr/local/bin/npx /usr/local/bin/npx
-COPY --from=node-alpine /usr/local/lib/node_modules /usr/local/lib/node_modules
+# Copy over node, npm, npx and corepack enablers from node alpine
+COPY --from=node-alpine /usr/local/ /usr/local/
 
 # Node needs libstdc++
 RUN apk add --no-cache ca-certificates tini libstdc++
 
+RUN node -v && npm -v && corepack --version && corepack enable pnpm && pnpm -v
+
 RUN addgroup -g 1000 -S runner \
  && adduser -u 1000 -S -G runner -h /home/runner -D runner
-WORKDIR /home/runner
 
 COPY --from=app-artifact-processor /app/task-runner-javascript /opt/runners/task-runner-javascript
 COPY --from=python-runner-builder /app/task-runner-python /opt/runners/task-runner-python
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 
 COPY docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
+
+WORKDIR /opt/runners/task-runner-javascript
+
+# Install additional npm libraries
+RUN rm -f node_modules/.modules.yaml && rm -rf node_modules/.pnpm
+RUN mv package.json package.json.bak \
+ && printf '{ "name":"runtime-addons", "private": true }' > package.json
+
+RUN pnpm add moment@2.30.1 --no-lockfile
+
+RUN mv package.json runtime-addons.json
+RUN mv package.json.bak package.json
+
+WORKDIR /home/runner
 
 RUN chown -R runner:runner /opt/runners /home/runner
 USER runner
