@@ -16,7 +16,7 @@ RUN node -v && npm -v && corepack --version && corepack enable pnpm && pnpm -v
 RUN rm -f node_modules/.modules.yaml
 RUN mv package.json package.json.bak
 COPY docker/images/runners/package.json /app/task-runner-javascript/package.json
-RUN pnpm install --no-lockfile
+RUN pnpm install --no-lockfile --silent
 RUN mv package.json extra.json
 RUN mv package.json.bak package.json
 
