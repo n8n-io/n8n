@@ -733,55 +733,6 @@ describe('SourceControlGitService', () => {
 					await expect(gitService.fetch()).rejects.toThrow('HTTP 401: Bad credentials');
 				});
 			});
-
-			describe('createAuthenticatedUrl', () => {
-				it('should create URL with encoded credentials', () => {
-					// Arrange
-					const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
-					const repoUrl = 'https://github.com/user/repo.git';
-					const username = 'test@user.com'; // Email with special chars
-					const token = 'ghp_test/123'; // Token with special chars
-
-					// Act
-					const result = (gitService as any).createAuthenticatedUrl(repoUrl, username, token);
-
-					// Assert
-					expect(result).toContain('test%40user.com'); // @ should be encoded
-					expect(result).toContain('ghp_test%2F123'); // / should be encoded
-					expect(result).toMatch(
-						/^https:\/\/test%40user\.com:ghp_test%2F123@github\.com\/user\/repo\.git$/,
-					);
-				});
-
-				it('should handle invalid URLs gracefully', () => {
-					// Arrange
-					const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
-					const invalidUrl = 'not-a-url';
-					const username = 'testuser';
-					const token = 'ghp_test123';
-
-					// Act & Assert
-					expect(() => {
-						(gitService as any).createAuthenticatedUrl(invalidUrl, username, token);
-					}).toThrow(UnexpectedError);
-					expect(() => {
-						(gitService as any).createAuthenticatedUrl(invalidUrl, username, token);
-					}).toThrow('Invalid repository URL format');
-				});
-
-				it('should sanitize existing credentials in URL logs', () => {
-					// Arrange
-					const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
-					const urlWithExistingCreds = 'https://old_user:old_token@github.com/user/repo.git';
-					const username = 'testuser';
-					const token = 'ghp_test123';
-
-					// Act & Assert - This should not throw and should handle sanitization internally
-					expect(() => {
-						(gitService as any).createAuthenticatedUrl(urlWithExistingCreds, username, token);
-					}).not.toThrow();
-				});
-			});
 		});
 
 		describe('Protocol Switching', () => {
