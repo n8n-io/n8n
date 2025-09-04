@@ -1,4 +1,5 @@
-ARG PYTHON_IMAGE=python:3.13-slim
+ARG NODE_VERSION=22.19
+ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
@@ -8,25 +9,21 @@ COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
-# Produces a relocatable venv tied to PYTHON_IMAGE
+# Produces a relocatable venv tied to the python version used
 # ==============================================================================
-FROM ${PYTHON_IMAGE} AS python-runner-builder
+FROM python:${PYTHON_VERSION}-alpine AS python-runner-builder
 ARG TARGETPLATFORM
 ARG UV_VERSION=0.8.14
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      curl ca-certificates build-essential pkg-config git \
-    && rm -rf /var/lib/apt/lists/*
-
 RUN set -e; \
   case "$TARGETPLATFORM" in \
-    "linux/amd64") UV_ARCH="x86_64-unknown-linux-gnu" ;; \
-    "linux/arm64") UV_ARCH="aarch64-unknown-linux-gnu" ;; \
+    "linux/amd64") UV_ARCH="x86_64-unknown-linux-musl" ;; \
+    "linux/arm64") UV_ARCH="aarch64-unknown-linux-musl" ;; \
     *) echo "Unsupported platform: $TARGETPLATFORM" >&2; exit 1 ;; \
   esac; \
   mkdir -p /tmp/uv && cd /tmp/uv; \
-  curl -fsSLO "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}.tar.gz"; \
-  curl -fsSLO "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}.tar.gz.sha256"; \
+  wget -q "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}.tar.gz"; \
+  wget -q "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}.tar.gz.sha256"; \
   sha256sum -c "uv-${UV_ARCH}.tar.gz.sha256"; \
 	tar -xzf "uv-${UV_ARCH}.tar.gz"; \
   install -m 0755 "uv-${UV_ARCH}/uv" /usr/local/bin/uv; \
@@ -74,10 +71,14 @@ RUN set -e; \
     cd / && rm -rf /launcher-temp
 
 # ==============================================================================
-# STAGE 4: Runtime
+# STAGE 4: Node alpine base for JS task runner
 # ==============================================================================
-FROM ${PYTHON_IMAGE} AS runtime
-ARG NODE_VERSION=22
+FROM node:${NODE_VERSION}-alpine AS node-alpine
+
+# ==============================================================================
+# STAGE 5: Runtime
+# ==============================================================================
+FROM python:${PYTHON_VERSION}-alpine AS runtime
 ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
 
@@ -85,20 +86,17 @@ ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
 
-RUN apt-get update \
-	&& apt-get install -y --no-install-recommends curl gnupg ca-certificates tini \
-	&& mkdir -p /etc/apt/keyrings \
-	&& curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-		| gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-	&& echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_VERSION}.x nodistro main" \
-		> /etc/apt/sources.list.d/nodesource.list \
-	&& apt-get update \
-	&& apt-get install -y --no-install-recommends nodejs \
-	&& apt-get remove curl -y \
-	&& apt-get clean \
-	&& rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
+# Copy over node from node alpine
+COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-alpine /usr/local/bin/npm /usr/local/bin/npm
+COPY --from=node-alpine /usr/local/bin/npx /usr/local/bin/npx
+COPY --from=node-alpine /usr/local/lib/node_modules /usr/local/lib/node_modules
 
-RUN useradd -m -u 1000 runner
+# Node needs libstdc++
+RUN apk add --no-cache ca-certificates tini libstdc++
+
+RUN addgroup -g 1000 -S runner \
+ && adduser -u 1000 -S -G runner -h /home/runner -D runner
 WORKDIR /home/runner
 
 COPY --from=app-artifact-processor /app/task-runner-javascript /opt/runners/task-runner-javascript
