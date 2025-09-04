@@ -1,30 +1,9 @@
-import { Container, type Constructable } from '@n8n/di';
-import { DataSource, EntityManager, In, LessThan, type EntityMetadata } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
-import type { Class } from 'n8n-core';
-import type { DeepPartial } from 'ts-essentials';
+import { Container } from '@n8n/di';
+import { In, LessThan } from '@n8n/typeorm';
 
 import { ExecutionEntity } from '../../entities';
+import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { ExecutionRepository } from '../execution.repository';
-
-const mockInstance = <T>(
-	serviceClass: Constructable<T>,
-	data: DeepPartial<T> | undefined = undefined,
-) => {
-	const instance = mock<T>(data);
-	Container.set(serviceClass, instance);
-	return instance;
-};
-
-const mockEntityManager = (entityClass: Class) => {
-	const entityManager = mockInstance(EntityManager);
-	const dataSource = mockInstance(DataSource, {
-		manager: entityManager,
-		getMetadata: () => mock<EntityMetadata>({ target: entityClass }),
-	});
-	Object.assign(entityManager, { connection: dataSource });
-	return entityManager;
-};
 
 describe('ExecutionRepository', () => {
 	const entityManager = mockEntityManager(ExecutionEntity);
