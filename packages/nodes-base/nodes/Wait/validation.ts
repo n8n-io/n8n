@@ -1,5 +1,5 @@
 export function validateWaitAmount(amount: unknown): amount is number {
-	return typeof amount === 'number' && amount > 0;
+	return typeof amount === 'number' && amount >= 0;
 }
 
 export type WaitUnit = 'seconds' | 'minutes' | 'hours' | 'days';
