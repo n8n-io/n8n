@@ -55,4 +55,3 @@ return [{"result": result}]
             pytest.skip("Health check server not enabled in test environment")
 
     assert task_runner_manager.is_running()  # No issues
-
