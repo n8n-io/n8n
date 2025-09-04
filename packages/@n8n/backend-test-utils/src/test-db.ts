@@ -1,4 +1,4 @@
-import { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import type { entities } from '@n8n/db';
 import { AuthRolesService, DbConnection, DbConnectionOptions } from '@n8n/db';
 import { Container } from '@n8n/di';
