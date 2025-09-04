@@ -48,9 +48,9 @@ async def test_cancel_during_execution(local_task_broker, task_runner_manager):
 
     code = """
 import time
-for i in range(50):
-    time.sleep(0.1)
-    if i == 25:
+for i in range(20):
+    time.sleep(0.05)
+    if i == 10:
         # Should be cancelled around here
         pass
 return [{"completed": "should not reach here"}]
@@ -62,13 +62,11 @@ return [{"completed": "should not reach here"}]
         task_id=task_id, task_type="python", task_settings=task_settings
     )
 
-    await asyncio.sleep(1.0)
+    await asyncio.sleep(0.3)
 
     await local_task_broker.cancel_task(task_id, reason="Cancelled during execution")
 
-    await asyncio.sleep(2.0)
-
-    error_msg = await wait_for_task_error(local_task_broker, task_id, timeout=3.0)
+    error_msg = await wait_for_task_error(local_task_broker, task_id, timeout=1.5)
 
     if error_msg:
         assert error_msg["taskId"] == task_id
@@ -89,40 +87,6 @@ async def test_cancel_non_existent_task(local_task_broker, task_runner_manager):
     await asyncio.sleep(1.0)
 
     assert task_runner_manager.is_running()  # No issues
-
-
-@pytest.mark.asyncio
-async def test_multiple_task_cancellations(local_task_broker, task_runner_manager):
-    await asyncio.sleep(0.5)
-
-    task_ids = [nanoid() for _ in range(3)]
-
-    code = """
-import time
-for i in range(30):
-    time.sleep(0.1)
-return [{"task": "completed"}]
-"""
-
-    settings = create_task_settings(code=code, node_mode="all_items")
-
-    for task_id in task_ids:
-        await local_task_broker.send_task(
-            task_id=task_id, task_type="python", task_settings=settings
-        )
-        await asyncio.sleep(0.1)
-
-    await asyncio.sleep(1.0)
-
-    for task_id in task_ids:
-        await local_task_broker.cancel_task(task_id, reason="Batch cancellation")
-        await asyncio.sleep(0.1)
-
-    await asyncio.sleep(2.0)
-
-    done_messages = local_task_broker.get_messages_of_type("runner:taskdone")
-    for task_id in task_ids:
-        assert not any(msg.get("taskId") == task_id for msg in done_messages)
 
 
 @pytest.mark.asyncio

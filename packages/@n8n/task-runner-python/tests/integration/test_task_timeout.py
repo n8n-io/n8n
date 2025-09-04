@@ -7,6 +7,7 @@ from tests.integration.conftest import (
     create_task_settings,
     wait_for_task_error,
 )
+from tests.fixtures.test_constants import TASK_TIMEOUT
 
 
 @pytest.mark.asyncio
@@ -32,7 +33,9 @@ return [{"should": "not complete"}]
         task_id=task_id, task_type="python", task_settings=task_settings
     )
 
-    error = await wait_for_task_error(local_task_broker, task_id, timeout=5.0)
+    error = await wait_for_task_error(
+        local_task_broker, task_id, timeout=TASK_TIMEOUT + 0.5
+    )
 
     assert error is not None
     assert error["taskId"] == task_id
