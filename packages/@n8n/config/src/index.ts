@@ -5,6 +5,7 @@ import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { CredentialsConfig } from './configs/credentials.config';
+import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
 import { DeploymentConfig } from './configs/deployment.config';
 import { DiagnosticsConfig } from './configs/diagnostics.config';
@@ -35,7 +36,6 @@ import { VersionNotificationsConfig } from './configs/version-notifications.conf
 import { WorkflowHistoryConfig } from './configs/workflow-history.config';
 import { WorkflowsConfig } from './configs/workflows.config';
 import { Config, Env, Nested } from './decorators';
-import { DataTableConfig } from './configs/data-table.config';
 
 export { Config, Env, Nested } from './decorators';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
