@@ -63,7 +63,14 @@ test.describe('Data Table list view', () => {
 
 		await n8n.dataTableComposer.createNewDataTable(TEST_DATA_TABLE_NAME);
 
-		await checkDataTableAndProjectName(n8n, TEST_DATA_TABLE_NAME, 'Personal');
+		const dataTableDetailsContainer = n8n.dataTable.getDataTableDetailsWrapper();
+		await expect(dataTableDetailsContainer).toBeVisible();
+
+		const dataTableProjectBreadcrumb = n8n.dataTable.getDataTableProjectBreadcrumb();
+		await expect(dataTableProjectBreadcrumb).toHaveText('Personal');
+
+		const dataTableBreadcrumb = n8n.dataTable.getDataTableBreadcrumb();
+		await expect(dataTableBreadcrumb).toContainText(TEST_DATA_TABLE_NAME);
 	});
 
 	test('Should create data table from project empty state', async ({ n8n }) => {
@@ -90,5 +97,24 @@ test.describe('Data Table list view', () => {
 		);
 
 		await expect(n8n.dataTable.getDataTableCardByName(TEST_DATA_TABLE_NAME)).toBeVisible();
+	});
+
+	test('Should delete data table from card actions', async ({ n8n }) => {
+		const TEST_PROJECT_NAME = `Project ${nanoid(8)}`;
+		const TEST_DATA_TABLE_NAME = `Data Table ${nanoid(8)}`;
+
+		await n8n.dataTableComposer.createDataTableInNewProject(
+			TEST_PROJECT_NAME,
+			TEST_DATA_TABLE_NAME,
+			'empty-state',
+		);
+
+		await n8n.dataTable.clickDataTableCardActionsButton(TEST_DATA_TABLE_NAME);
+		await n8n.dataTable.getDataTableCardAction('delete').click();
+
+		await expect(n8n.dataTable.getDeleteDataTableModal()).toBeVisible();
+		await n8n.dataTable.clickDeleteDataTableConfirmButton();
+
+		await expect(n8n.dataTable.getDataTableCardByName(TEST_DATA_TABLE_NAME)).toBeHidden();
 	});
 });

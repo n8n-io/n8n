@@ -57,6 +57,22 @@ export class DataStoreView extends BasePage {
 		return this.getDataTableCards().filter({ hasText: name });
 	}
 
+	getDataTableCardActionsButton(dataTableName: string) {
+		return this.getDataTableCardByName(dataTableName).getByTestId('data-store-card-actions');
+	}
+
+	getDataTableCardAction(actionName: string) {
+		return this.page.getByTestId('action-toggle-dropdown').getByTestId(`action-${actionName}`);
+	}
+
+	getDeleteDataTableModal() {
+		return this.page.locator('.el-message-box').filter({ hasText: 'Delete Data table' });
+	}
+
+	getDeleteDataTableConfirmButton() {
+		return this.getDeleteDataTableModal().locator('.btn--confirm');
+	}
+
 	async clickDataTableOverviewTab() {
 		await this.clickByTestId('tab-data-stores');
 	}
@@ -75,5 +91,17 @@ export class DataStoreView extends BasePage {
 
 	async clickAddDataTableAction() {
 		await this.getAddDataTableAction().click();
+	}
+
+	async clickDataTableCardActionsButton(dataTableName: string) {
+		await this.getDataTableCardActionsButton(dataTableName).click();
+	}
+
+	async clickDataTableCardAction(actionName: string) {
+		await this.getDataTableCardAction(actionName).click();
+	}
+
+	async clickDeleteDataTableConfirmButton() {
+		await this.getDeleteDataTableConfirmButton().click();
 	}
 }
