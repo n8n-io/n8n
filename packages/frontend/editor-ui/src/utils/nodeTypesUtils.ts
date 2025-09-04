@@ -32,7 +32,7 @@ import {
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
 const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
-const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\[\"(.+)\"\]/;
+const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\["(.+?)"\]/s;
 
 export function getAppNameFromCredType(name: string) {
 	return name
@@ -100,10 +100,13 @@ export function isValueExpression(
 }
 
 export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObject[] =>
-	inputData.reduce<IDataObject[]>(
-		(acc, item) => (isJsonKeyObject(item) ? acc.concat(item.json) : acc),
-		[],
-	);
+	inputData.reduce<IDataObject[]>((acc, item) => {
+		if (isJsonKeyObject(item)) {
+			acc.push(item.json);
+		}
+
+		return acc;
+	}, []);
 
 export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 	return (

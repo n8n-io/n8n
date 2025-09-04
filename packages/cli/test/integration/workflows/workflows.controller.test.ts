@@ -145,6 +145,38 @@ describe('POST /workflows', () => {
 		);
 	});
 
+	test('should create workflow with uiContext parameter', async () => {
+		const payload = {
+			name: 'testing with context',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {},
+			active: false,
+			uiContext: 'workflow_list',
+		};
+
+		const response = await authMemberAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id, name },
+		} = response.body;
+
+		expect(id).toBeDefined();
+		expect(name).toBe('testing with context');
+	});
+
 	test('should create workflow history version when licensed', async () => {
 		license.enable('feat:workflowHistory');
 		const payload = {
@@ -657,7 +689,7 @@ describe('GET /workflows', () => {
 
 	test('should return workflows with scopes when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		const teamProject = await createTeamProject(undefined, member1);
@@ -824,6 +856,21 @@ describe('GET /workflows', () => {
 			expect(response.body).toEqual({
 				count: 1,
 				data: [objectContaining({ active: true })],
+			});
+		});
+
+		test('should filter workflows by field: availableInMCP', async () => {
+			const workflow1 = await createWorkflow({ settings: { availableInMCP: true } }, owner);
+			await createWorkflow({ settings: {} }, owner);
+
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('filter={ "availableInMCP": true }')
+				.expect(200);
+
+			expect(response.body).toEqual({
+				count: 1,
+				data: [objectContaining({ id: workflow1.id })],
 			});
 		});
 
@@ -1474,7 +1521,7 @@ describe('GET /workflows?includeFolders=true', () => {
 
 	test('should return workflows with scopes and folders when ?includeScopes=true', async () => {
 		const [member1, member2] = await createManyUsers(2, {
-			role: 'global:member',
+			role: { slug: 'global:member' },
 		});
 
 		const teamProject = await createTeamProject(undefined, member1);
@@ -2164,6 +2211,8 @@ describe('PATCH /workflows/:workflowId', () => {
 		};
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		console.log(response.body);
 
 		const {
 			data: { id },

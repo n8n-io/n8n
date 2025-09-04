@@ -1,0 +1,221 @@
+{
+	"name": "Floating Nodes",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "d0eda550-2526-42a1-aa19-dee411c8acf9",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [700, 560]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "30412165-1229-4b21-9890-05bfbd9952ab",
+			"name": "Node 1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [920, 560]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "201cc8fc-3124-47a3-bc08-b3917c1ddcd9",
+			"name": "Node 2",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1100, 560]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "a29802bb-a284-495d-9917-6c6e42fef01e",
+			"name": "Node 3",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1280, 560]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "a95a72b3-8b39-44e2-a05b-d8d677741c80",
+			"name": "Node 4",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1440, 560]
+		},
+		{
+			"parameters": {},
+			"id": "4674f10d-6144-4a17-bbbb-350c3974438e",
+			"name": "Chain",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"typeVersion": 1,
+			"position": [1580, 560]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "58e12ea5-bd3e-4abf-abec-fcfb5c0a7955",
+			"name": "Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1,
+			"position": [1600, 740]
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.1,
+			"position": [440, -140],
+			"id": "a00959d3-8d4b-40af-b4f2-35ca3d73fd84",
+			"name": "Merge"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-20, -120],
+			"id": "a5cbc221-ccfd-4034-a648-6a192834af81",
+			"name": "Edit Fields0"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [0, 100],
+			"id": "d3b4c17a-bee8-418b-a721-5debafd1ce11",
+			"name": "Edit Fields1"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.1,
+			"position": [440, 100],
+			"id": "b23a2a43-ffac-41a5-a265-054e21a57d70",
+			"name": "Merge1"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Node 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Node 1": {
+			"main": [
+				[
+					{
+						"node": "Node 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Node 3": {
+			"main": [
+				[
+					{
+						"node": "Node 4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Node 2": {
+			"main": [
+				[
+					{
+						"node": "Node 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chain": {
+			"main": [[]]
+		},
+		"Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Chain",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Node 4": {
+			"main": [
+				[
+					{
+						"node": "Chain",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields0": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields1": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "2730d156-a98a-4ac8-b481-5c16361fdba2",
+	"id": "6bzXMGxHuxeEaqsA",
+	"meta": {
+		"instanceId": "1838be0fa0389fbaf5e2e4aaedab4ddc79abc4175b433401abb22a281001b853"
+	},
+	"tags": []
+}

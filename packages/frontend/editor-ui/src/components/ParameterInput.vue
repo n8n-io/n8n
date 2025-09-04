@@ -11,7 +11,6 @@ import type {
 } from '@/Interface';
 import type {
 	CodeExecutionMode,
-	CodeNodeEditorLanguage,
 	EditorType,
 	IDataObject,
 	ILoadOptions,
@@ -22,8 +21,14 @@ import type {
 	IParameterLabel,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, isResourceLocatorValue, NodeHelpers } from 'n8n-workflow';
+import {
+	CREDENTIAL_EMPTY_VALUE,
+	isResourceLocatorValue,
+	NodeHelpers,
+	resolveRelativePath,
+} from 'n8n-workflow';
 
+import type { CodeNodeLanguageOption } from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEditModal from '@/components/ExpressionEditModal.vue';
@@ -81,6 +86,8 @@ import { completeExpressionSyntax, shouldConvertToExpression } from '@/utils/exp
 import CssEditor from './CssEditor/CssEditor.vue';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import ExperimentalEmbeddedNdvMapper from '@/components/canvas/experimental/components/ExperimentalEmbeddedNdvMapper.vue';
+import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -145,6 +152,8 @@ const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
+const experimentalNdvStore = useExperimentalNdvStore();
+const projectsStore = useProjectsStore();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -194,6 +203,7 @@ const dateTimePickerOptions = ref({
 	],
 });
 const isFocused = ref(false);
+const isMapperShown = ref(false);
 
 const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
 	expressionLocalResolveCtx.value.nodeName,
@@ -231,6 +241,11 @@ const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
+	// temporary filter until native Python runner is GA
+	if (props.parameter.name === 'language' && !settingsStore.isNativePythonRunnerEnabled) {
+		return safeOptions.filter((o) => o.value !== 'pythonNative');
+	}
+
 	return safeOptions;
 });
 
@@ -259,10 +274,12 @@ const editorIsReadOnly = computed<boolean>(() => {
 	return getTypeOption<boolean>('editorIsReadOnly') ?? false;
 });
 
-const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
-	if (editorType.value === 'json' || props.parameter.type === 'json')
-		return 'json' as CodeNodeEditorLanguage;
-	return getTypeOption<CodeNodeEditorLanguage>('editorLanguage') ?? 'javaScript';
+const editorLanguage = computed<CodeNodeLanguageOption>(() => {
+	if (editorType.value === 'json' || props.parameter.type === 'json') return 'json';
+
+	if (node.value?.parameters?.language === 'pythonNative') return 'pythonNative';
+
+	return getTypeOption<CodeNodeLanguageOption>('editorLanguage') ?? 'javaScript';
 });
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
@@ -374,7 +391,9 @@ const dependentParametersValues = computed<string | null>(() => {
 		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
 
 		const returnValues: string[] = [];
-		for (const parameterPath of loadOptionsDependsOn) {
+		for (let parameterPath of loadOptionsDependsOn) {
+			parameterPath = resolveRelativePath(props.path, parameterPath);
+
 			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 		}
 
@@ -600,11 +619,7 @@ const showDragnDropTip = computed(
 
 const shouldCaptureForPosthog = computed(() => node.value?.type === AI_TRANSFORM_NODE_TYPE);
 
-const shouldShowMapper = computed(
-	() =>
-		isFocused.value &&
-		(isModelValueExpression.value || props.forceShowExpression || props.modelValue === ''),
-);
+const mapperElRef = computed(() => mapperRef.value?.contentRef);
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -680,6 +695,7 @@ async function loadRemoteParameterOptions() {
 			loadOptions,
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: node.value.credentials,
+			projectId: projectsStore.currentProjectId,
 		});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
@@ -791,6 +807,10 @@ async function setFocus() {
 		}
 
 		isFocused.value = true;
+
+		if (isModelValueExpression.value || props.forceShowExpression || props.modelValue === '') {
+			isMapperShown.value = true;
+		}
 	}
 
 	emit('focus');
@@ -911,6 +931,7 @@ function valueChanged(untypedValue: unknown) {
 			is_custom: value === CUSTOM_API_CALL_KEY,
 			push_ref: ndvStore.pushRef,
 			parameter: props.parameter.name,
+			value: value as string,
 		});
 	}
 	// Track workflow input data mode change
@@ -931,17 +952,19 @@ function expressionUpdated(value: string) {
 }
 
 function onBlur(event?: FocusEvent | KeyboardEvent) {
-	if (
-		event?.target instanceof HTMLElement &&
-		mapperRef.value?.contentRef &&
-		(event.target === mapperRef.value.contentRef ||
-			mapperRef.value.contentRef.contains(event.target))
-	) {
-		return;
-	}
-
 	emit('blur');
 	isFocused.value = false;
+
+	if (
+		!(event?.target instanceof Node && mapperElRef.value?.contains(event.target)) &&
+		!(
+			event instanceof FocusEvent &&
+			event.relatedTarget instanceof Node &&
+			mapperElRef.value?.contains(event.relatedTarget)
+		)
+	) {
+		isMapperShown.value = false;
+	}
 }
 
 function onPaste(event: ClipboardEvent) {
@@ -987,6 +1010,12 @@ function onUpdateTextInput(value: string) {
 	onTextInputChange(value);
 }
 
+function onClickOutsideMapper() {
+	if (!isFocused.value) {
+		isMapperShown.value = false;
+	}
+}
+
 async function optionSelected(command: string) {
 	const prevValue = props.modelValue;
 
@@ -1001,6 +1030,7 @@ async function optionSelected(command: string) {
 
 		case 'removeExpression':
 			isFocused.value = false;
+			isMapperShown.value = false;
 			valueChanged(
 				parseFromExpression(
 					props.modelValue,
@@ -1025,10 +1055,19 @@ async function optionSelected(command: string) {
 
 		case 'focus':
 			nodeSettingsParameters.handleFocus(node.value, props.path, props.parameter);
-			telemetry.track('User opened focus panel', {
-				source: 'parameterButton',
-				parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
-			});
+
+			if (experimentalNdvStore.isNdvInFocusPanelEnabled) {
+				telemetry.track('User added focused param', {
+					source: 'parameterButton',
+					parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+				});
+			} else {
+				telemetry.track('User opened focus panel', {
+					source: 'parameterButton',
+					parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
+				});
+			}
+
 			return;
 	}
 
@@ -1148,7 +1187,7 @@ watch(remoteParameterOptionsLoading, () => {
 
 // Focus input field when changing between fixed and expression
 watch(isModelValueExpression, async (isExpression, wasExpression) => {
-	if (!props.isReadOnly && isExpression !== wasExpression) {
+	if (!props.isReadOnly && isFocused.value && isExpression !== wasExpression) {
 		await nextTick();
 		await setFocus();
 	}
@@ -1190,7 +1229,7 @@ onUpdated(async () => {
 	}
 });
 
-onClickOutside(wrapper, onBlur);
+onClickOutside(mapperElRef, onClickOutsideMapper);
 </script>
 
 <template>
@@ -1219,7 +1258,7 @@ onClickOutside(wrapper, onBlur);
 			:workflow="expressionLocalResolveCtx?.workflow"
 			:node="node"
 			:input-node-name="expressionLocalResolveCtx?.inputNode?.name"
-			:visible="shouldShowMapper"
+			:visible="isMapperShown"
 			:virtual-ref="wrapper"
 		/>
 
@@ -1232,6 +1271,7 @@ onClickOutside(wrapper, onBlur);
 				},
 			]"
 			:style="parameterInputWrapperStyle"
+			:data-parameter-path="path"
 		>
 			<ResourceLocator
 				v-if="parameter.type === 'resourceLocator'"

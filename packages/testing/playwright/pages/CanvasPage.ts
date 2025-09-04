@@ -9,20 +9,25 @@ export class CanvasPage extends BasePage {
 		return this.page.getByRole('button', { name: 'Save' });
 	}
 
-	workflowSaveButton(): Locator {
-		return this.page.getByTestId('workflow-save-button');
-	}
-
-	canvasAddButton(): Locator {
-		return this.page.getByTestId('canvas-add-button');
-	}
-
 	nodeCreatorItemByName(text: string): Locator {
 		return this.page.getByTestId('node-creator-item-name').getByText(text, { exact: true });
 	}
 
 	nodeCreatorSubItem(subItemText: string): Locator {
 		return this.page.getByTestId('node-creator-item-name').getByText(subItemText, { exact: true });
+	}
+
+	getNthCreatorItem(index: number): Locator {
+		return this.page.getByTestId('node-creator-item').nth(index);
+	}
+
+	getNodeCreatorHeader(text?: string) {
+		const header = this.page.getByTestId('nodes-list-header');
+		return text ? header.filter({ hasText: text }) : header.first();
+	}
+
+	async selectNodeCreatorItemByText(nodeName: string) {
+		await this.page.getByText(nodeName).click();
 	}
 
 	nodeByName(nodeName: string): Locator {
@@ -45,40 +50,83 @@ export class CanvasPage extends BasePage {
 		await this.clickByTestId('canvas-plus-button');
 	}
 
+	getCanvasNodes() {
+		return this.page.getByTestId('canvas-node');
+	}
+
 	async clickNodeCreatorPlusButton(): Promise<void> {
 		await this.clickByTestId('node-creator-plus-button');
 	}
 
 	async clickSaveWorkflowButton(): Promise<void> {
-		await this.clickButtonByName('Save');
+		await this.saveWorkflowButton().click();
 	}
 
 	async fillNodeCreatorSearchBar(text: string): Promise<void> {
-		await this.fillByTestId('node-creator-search-bar', text);
+		await this.nodeCreatorSearchBar().fill(text);
 	}
 
 	async clickNodeCreatorItemName(text: string): Promise<void> {
 		await this.nodeCreatorItemByName(text).click();
 	}
 
-	async addNode(text: string): Promise<void> {
+	/**
+	 * Add a node to the canvas with flexible options
+	 * @param nodeName - The name of the node to search for and add
+	 * @param options - Configuration options for node addition
+	 * @param options.closeNDV - Whether to close the NDV after adding (default: false, keeps open)
+	 * @param options.action - Specific action to select (Actions tab is default)
+	 * @param options.trigger - Specific trigger to select (will switch to Triggers)
+	 * @example
+	 * // Basic node addition
+	 * await canvas.addNode('Code');
+	 *
+	 * // Add with specific action
+	 * await canvas.addNode('Linear', { action: 'Create an issue' });
+	 *
+	 * // Add with trigger
+	 * await canvas.addNode('Jira', { trigger: 'On issue created' });
+	 *
+	 * // Add and explicitly close with back button
+	 * await canvas.addNode('Code', { closeNDV: true });
+	 */
+	async addNode(
+		nodeName: string,
+		options?: {
+			closeNDV?: boolean;
+			action?: string;
+			trigger?: string;
+		},
+	): Promise<void> {
+		// Always start with canvas plus button
 		await this.clickNodeCreatorPlusButton();
-		await this.fillNodeCreatorSearchBar(text);
-		await this.clickNodeCreatorItemName(text);
-	}
 
-	async addNodeAndCloseNDV(text: string, subItemText?: string): Promise<void> {
-		if (subItemText) {
-			await this.addNodeToCanvasWithSubItem(text, subItemText);
-		} else {
-			await this.addNode(text);
+		// Search for and select the node, works on exact name match only
+		await this.fillNodeCreatorSearchBar(nodeName);
+		await this.clickNodeCreatorItemName(nodeName);
+
+		if (options?.action) {
+			// Check if Actions category is collapsed and expand if needed
+			const actionsCategory = this.page
+				.getByTestId('node-creator-category-item')
+				.getByText('Actions');
+			if ((await actionsCategory.getAttribute('data-category-collapsed')) === 'true') {
+				await actionsCategory.click();
+			}
+			await this.nodeCreatorSubItem(options.action).click();
+		} else if (options?.trigger) {
+			// Check if Triggers category is collapsed and expand if needed
+			const triggersCategory = this.page
+				.getByTestId('node-creator-category-item')
+				.getByText('Triggers');
+			if ((await triggersCategory.getAttribute('data-category-collapsed')) === 'true') {
+				await triggersCategory.click();
+			}
+			await this.nodeCreatorSubItem(options.trigger).click();
 		}
-		await this.page.keyboard.press('Escape');
-	}
-
-	async addNodeToCanvasWithSubItem(searchText: string, subItemText: string): Promise<void> {
-		await this.addNode(searchText);
-		await this.nodeCreatorSubItem(subItemText).click();
+		if (options?.closeNDV) {
+			await this.page.getByTestId('back-to-canvas').click();
+		}
 	}
 
 	async deleteNodeByName(nodeName: string): Promise<void> {
@@ -89,6 +137,10 @@ export class CanvasPage extends BasePage {
 		await this.clickSaveWorkflowButton();
 	}
 
+	getExecuteWorkflowButton(): Locator {
+		return this.page.getByTestId('execute-workflow-button');
+	}
+
 	async clickExecuteWorkflowButton(): Promise<void> {
 		await this.page.getByTestId('execute-workflow-button').click();
 	}
@@ -97,12 +149,12 @@ export class CanvasPage extends BasePage {
 		await this.page.getByRole('button', { name: 'Debug in editor' }).click();
 	}
 
-	async pinNodeByNameUsingContextMenu(nodeName: string): Promise<void> {
+	async pinNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
 		await this.page.getByTestId('context-menu').getByText('Pin').click();
 	}
 
-	async unpinNodeByNameUsingContextMenu(nodeName: string): Promise<void> {
+	async unpinNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
 		await this.page.getByText('Unpin').click();
 	}
@@ -166,11 +218,16 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-tags').locator('.el-tag');
 	}
 	async activateWorkflow() {
+		const switchElement = this.page.getByTestId('workflow-activate-switch');
+		const statusElement = this.page.getByTestId('workflow-activator-status');
+
 		const responsePromise = this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
 		);
-		await this.page.getByTestId('workflow-activate-switch').click();
+
+		await switchElement.click();
+		await statusElement.locator('span').filter({ hasText: 'Active' }).waitFor({ state: 'visible' });
 		await responsePromise;
 	}
 
@@ -213,6 +270,10 @@ export class CanvasPage extends BasePage {
 		await this.page.click('body');
 
 		return tags;
+	}
+
+	getWorkflowSaveButton(): Locator {
+		return this.page.getByTestId('workflow-save-button');
 	}
 
 	// Production Checklist methods
@@ -258,5 +319,254 @@ export class CanvasPage extends BasePage {
 
 	async clickProductionChecklistAction(actionText: string): Promise<void> {
 		await this.getProductionChecklistActionItem(actionText).click();
+	}
+
+	async duplicateNode(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click({ button: 'right' });
+		await this.page.getByTestId('context-menu').getByText('Duplicate').click();
+	}
+
+	nodeConnections(): Locator {
+		return this.page.locator('[data-test-id="edge"]');
+	}
+
+	canvasNodePlusEndpointByName(nodeName: string): Locator {
+		return this.page
+			.locator(
+				`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus"]`,
+			)
+			.first();
+	}
+
+	nodeCreatorSearchBar(): Locator {
+		return this.page.getByTestId('node-creator-search-bar');
+	}
+
+	nodeCreatorNodeItems(): Locator {
+		return this.page.getByTestId('node-creator-item-name');
+	}
+
+	nodeCreatorActionItems(): Locator {
+		return this.page.getByTestId('node-creator-action-item');
+	}
+
+	nodeCreatorCategoryItems(): Locator {
+		return this.page.getByTestId('node-creator-category-item');
+	}
+
+	selectedNodes(): Locator {
+		return this.page
+			.locator('[data-test-id="canvas-node"]')
+			.locator('xpath=..')
+			.locator('.selected');
+	}
+
+	disabledNodes(): Locator {
+		return this.page.locator('[data-canvas-node-render-type][class*="disabled"]');
+	}
+
+	nodeExecuteButton(nodeName: string): Locator {
+		return this.nodeToolbar(nodeName).getByTestId('execute-node-button');
+	}
+
+	canvasPane(): Locator {
+		return this.page.getByTestId('canvas-wrapper');
+	}
+
+	canvasBody(): Locator {
+		return this.page.getByTestId('canvas');
+	}
+
+	toggleFocusPanelButton(): Locator {
+		return this.page.getByTestId('toggle-focus-panel-button');
+	}
+
+	// Actions
+
+	async addInitialNodeToCanvas(nodeName: string): Promise<void> {
+		await this.clickCanvasPlusButton();
+		await this.fillNodeCreatorSearchBar(nodeName);
+		await this.clickNodeCreatorItemName(nodeName);
+	}
+
+	async clickNodePlusEndpoint(nodeName: string): Promise<void> {
+		await this.canvasNodePlusEndpointByName(nodeName).click();
+	}
+
+	async executeNode(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).hover();
+		await this.nodeExecuteButton(nodeName).click();
+	}
+
+	async selectAll(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+a');
+	}
+
+	async copyNodes(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+c');
+	}
+
+	async deselectAll(): Promise<void> {
+		await this.canvasPane().click({ position: { x: 10, y: 10 } });
+	}
+
+	getNodeLeftPosition(nodeLocator: Locator): Promise<number> {
+		return nodeLocator.evaluate((el) => el.getBoundingClientRect().left);
+	}
+
+	// Connection helpers
+	connectionBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
+		return this.page.locator(
+			`[data-test-id="edge"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"]`,
+		);
+	}
+
+	connectionToolbarBetweenNodes(sourceNodeName: string, targetNodeName: string): Locator {
+		return this.page.locator(
+			`[data-test-id="edge-label"][data-source-node-name="${sourceNodeName}"][data-target-node-name="${targetNodeName}"] [data-test-id="canvas-edge-toolbar"]`,
+		);
+	}
+
+	// Canvas action helpers
+	async addNodeBetweenNodes(
+		sourceNodeName: string,
+		targetNodeName: string,
+		newNodeName: string,
+	): Promise<void> {
+		const specificConnection = this.connectionBetweenNodes(sourceNodeName, targetNodeName);
+		// eslint-disable-next-line playwright/no-force-option
+		await specificConnection.hover({ force: true });
+
+		const addNodeButton = this.connectionToolbarBetweenNodes(
+			sourceNodeName,
+			targetNodeName,
+		).getByTestId('add-connection-button');
+
+		await addNodeButton.click();
+		await this.fillNodeCreatorSearchBar(newNodeName);
+		await this.clickNodeCreatorItemName(newNodeName);
+		await this.page.keyboard.press('Escape');
+	}
+
+	async deleteConnectionBetweenNodes(
+		sourceNodeName: string,
+		targetNodeName: string,
+	): Promise<void> {
+		const specificConnection = this.connectionBetweenNodes(sourceNodeName, targetNodeName);
+		// eslint-disable-next-line playwright/no-force-option
+		await specificConnection.hover({ force: true });
+
+		const deleteButton = this.connectionToolbarBetweenNodes(
+			sourceNodeName,
+			targetNodeName,
+		).getByTestId('delete-connection-button');
+
+		await deleteButton.click();
+	}
+
+	async navigateNodesWithArrows(direction: 'left' | 'right' | 'up' | 'down'): Promise<void> {
+		const keyMap = {
+			left: 'ArrowLeft',
+			right: 'ArrowRight',
+			up: 'ArrowUp',
+			down: 'ArrowDown',
+		};
+		await this.canvasPane().focus();
+		await this.page.keyboard.press(keyMap[direction]);
+	}
+
+	async extendSelectionWithArrows(direction: 'left' | 'right' | 'up' | 'down'): Promise<void> {
+		const keyMap = {
+			left: 'Shift+ArrowLeft',
+			right: 'Shift+ArrowRight',
+			up: 'Shift+ArrowUp',
+			down: 'Shift+ArrowDown',
+		};
+		await this.canvasPane().focus();
+		await this.page.keyboard.press(keyMap[direction]);
+	}
+
+	/**
+	 * Visit the workflow page with a specific timestamp for NPS survey testing.
+	 * Uses Playwright's clock API to set a fixed time.
+	 */
+	async visitWithTimestamp(timestamp: number): Promise<void> {
+		// Set fixed time using Playwright's clock API
+		await this.page.clock.setFixedTime(timestamp);
+
+		await this.page.goto('/workflow/new');
+	}
+
+	async addNodeWithSubItem(searchText: string, subItemText: string): Promise<void> {
+		await this.addNode(searchText);
+		await this.nodeCreatorSubItem(subItemText).click();
+	}
+
+	getRagCalloutTip(): Locator {
+		return this.page.getByText('Tip: Get a feel for vector stores in n8n with our');
+	}
+
+	getRagTemplateLink(): Locator {
+		return this.page.getByText('RAG starter template');
+	}
+
+	async clickRagTemplateLink(): Promise<void> {
+		await this.getRagTemplateLink().click();
+	}
+
+	async rightClickNode(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click({ button: 'right' });
+	}
+
+	async clickContextMenuAction(actionText: string): Promise<void> {
+		await this.page.getByTestId('context-menu').getByText(actionText).click();
+	}
+
+	async executeNodeFromContextMenu(nodeName: string): Promise<void> {
+		await this.rightClickNode(nodeName);
+		await this.clickContextMenuAction('execute');
+	}
+
+	async clearExecutionData(): Promise<void> {
+		await this.page.getByTestId('clear-execution-data-button').click();
+	}
+
+	getManualChatModal(): Locator {
+		return this.page.getByTestId('canvas-chat');
+	}
+
+	getManualChatInput(): Locator {
+		return this.getManualChatModal().locator('.chat-inputs textarea');
+	}
+
+	getManualChatMessages(): Locator {
+		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
+	}
+
+	getNodesWithSpinner(): Locator {
+		return this.page.getByTestId('canvas-node').filter({
+			has: this.page.locator('[data-icon=refresh-cw]'),
+		});
+	}
+
+	getWaitingNodes(): Locator {
+		return this.page.getByTestId('canvas-node').filter({
+			has: this.page.locator('[data-icon=clock]'),
+		});
+	}
+
+	async sendManualChatMessage(message: string): Promise<void> {
+		await this.getManualChatInput().fill(message);
+		await this.getManualChatModal().locator('.chat-input-send-button').click();
+	}
+	/**
+	 * Get all currently selected nodes on the canvas
+	 */
+	getSelectedNodes() {
+		return this.page.locator('[data-test-id="canvas-node"].selected');
+	}
+
+	async openExecutions() {
+		await this.page.getByTestId('radio-button-executions').click();
 	}
 }

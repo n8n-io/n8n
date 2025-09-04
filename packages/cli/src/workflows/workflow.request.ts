@@ -25,6 +25,7 @@ export declare namespace WorkflowRequest {
 		meta: Record<string, unknown>;
 		projectId: string;
 		parentFolderId?: string;
+		uiContext?: string;
 	}>;
 
 	type ManualRunPayload = {
@@ -52,6 +53,7 @@ export declare namespace WorkflowRequest {
 			includeScopes?: string;
 			includeFolders?: string;
 			onlySharedWithMe?: string;
+			availableInMCP?: string;
 		}
 	> & {
 		listQueryOptions: ListQuery.Options;

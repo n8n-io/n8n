@@ -2,6 +2,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
+import type { WorkflowPlan } from './agents/workflow-planner-agent';
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
 import type { ChatPayload } from './workflow-builder-agent';
 
@@ -68,14 +69,28 @@ export const WorkflowState = Annotation.Root({
 	// Now a simple field without custom reducer - all updates go through operations
 	workflowJSON: Annotation<SimpleWorkflow>({
 		reducer: (x, y) => y ?? x,
-		default: () => ({ nodes: [], connections: {} }),
+		default: () => ({ nodes: [], connections: {}, name: '' }),
 	}),
 	// Operations to apply to the workflow - processed by a separate node
 	workflowOperations: Annotation<WorkflowOperation[] | null>({
 		reducer: operationsReducer,
 		default: () => [],
 	}),
-	// Whether the user prompt is a workflow prompt.
+	// The planned workflow nodes
+	workflowPlan: Annotation<WorkflowPlan | null>({
+		reducer: (x, y) => y ?? x,
+		default: () => null,
+	}),
+	// Status of the workflow plan
+	planStatus: Annotation<'pending' | 'approved' | 'rejected' | null>({
+		reducer: (x, y) => y ?? x,
+		default: () => null,
+	}),
+	// User feedback on the plan
+	planFeedback: Annotation<string | null>({
+		reducer: (x, y) => y ?? x,
+		default: () => null,
+	}),
 	// Latest workflow context
 	workflowContext: Annotation<ChatPayload['workflowContext'] | undefined>({
 		reducer: (x, y) => y ?? x,

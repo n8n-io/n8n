@@ -4,27 +4,31 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	AuthIdentity,
 	AuthIdentityRepository,
+	isValidEmail,
+	GLOBAL_MEMBER_ROLE,
 	SettingsRepository,
 	type User,
 	UserRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { randomUUID } from 'crypto';
 import { Cipher } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 import * as client from 'openid-client';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
 
-import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '../sso-helpers';
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 
 const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	clientId: '',
@@ -54,6 +58,7 @@ export class OidcService {
 		private readonly userRepository: UserRepository,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
+		private readonly jwtService: JwtService,
 	) {}
 
 	async init() {
@@ -74,46 +79,168 @@ export class OidcService {
 		};
 	}
 
-	async generateLoginUrl(): Promise<URL> {
+	generateState() {
+		const state = `n8n_state:${randomUUID()}`;
+		return {
+			signed: this.jwtService.sign({ state }, { expiresIn: '15m' }),
+			plaintext: state,
+		};
+	}
+
+	verifyState(signedState: string) {
+		let state: string;
+		try {
+			const decodedState = this.jwtService.verify(signedState);
+			state = decodedState?.state;
+		} catch (error) {
+			this.logger.error('Failed to verify state', { error });
+			throw new BadRequestError('Invalid state');
+		}
+
+		if (typeof state !== 'string') {
+			this.logger.error('Provided state has an invalid format');
+			throw new BadRequestError('Invalid state');
+		}
+
+		const splitState = state.split(':');
+
+		if (splitState.length !== 2 || splitState[0] !== 'n8n_state') {
+			this.logger.error('Provided state is missing the well-known prefix');
+			throw new BadRequestError('Invalid state');
+		}
+
+		if (
+			!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+				splitState[1],
+			)
+		) {
+			this.logger.error('Provided state is not formatted correctly');
+			throw new BadRequestError('Invalid state');
+		}
+		return state;
+	}
+
+	generateNonce() {
+		const nonce = `n8n_nonce:${randomUUID()}`;
+		return {
+			signed: this.jwtService.sign({ nonce }, { expiresIn: '15m' }),
+			plaintext: nonce,
+		};
+	}
+
+	verifyNonce(signedNonce: string) {
+		let nonce: string;
+		try {
+			const decodedNonce = this.jwtService.verify(signedNonce);
+			nonce = decodedNonce?.nonce;
+		} catch (error) {
+			this.logger.error('Failed to verify nonce', { error });
+			throw new BadRequestError('Invalid nonce');
+		}
+
+		if (typeof nonce !== 'string') {
+			this.logger.error('Provided nonce has an invalid format');
+			throw new BadRequestError('Invalid nonce');
+		}
+
+		const splitNonce = nonce.split(':');
+
+		if (splitNonce.length !== 2 || splitNonce[0] !== 'n8n_nonce') {
+			this.logger.error('Provided nonce is missing the well-known prefix');
+			throw new BadRequestError('Invalid nonce');
+		}
+
+		if (
+			!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+				splitNonce[1],
+			)
+		) {
+			this.logger.error('Provided nonce is not formatted correctly');
+			throw new BadRequestError('Invalid nonce');
+		}
+		return nonce;
+	}
+
+	async generateLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
 		const configuration = await this.getOidcConfiguration();
+
+		const state = this.generateState();
+		const nonce = this.generateNonce();
 
 		const authorizationURL = client.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
 			response_type: 'code',
 			scope: 'openid email profile',
 			prompt: 'select_account',
+			state: state.plaintext,
+			nonce: nonce.plaintext,
 		});
 
-		return authorizationURL;
+		return { url: authorizationURL, state: state.signed, nonce: nonce.signed };
 	}
 
-	async loginUser(callbackUrl: URL): Promise<User> {
+	async loginUser(callbackUrl: URL, storedState: string, storedNonce: string): Promise<User> {
 		const configuration = await this.getOidcConfiguration();
 
-		const tokens = await client.authorizationCodeGrant(configuration, callbackUrl);
+		const expectedState = this.verifyState(storedState);
+		const expectedNonce = this.verifyNonce(storedNonce);
 
-		const claims = tokens.claims();
+		let tokens;
+		try {
+			tokens = await client.authorizationCodeGrant(configuration, callbackUrl, {
+				expectedState,
+				expectedNonce,
+			});
+		} catch (error) {
+			this.logger.error('Failed to exchange authorization code for tokens', { error });
+			throw new BadRequestError('Invalid authorization code');
+		}
+
+		let claims;
+		try {
+			claims = tokens.claims();
+		} catch (error) {
+			this.logger.error('Failed to extract claims from tokens', { error });
+			throw new BadRequestError('Invalid token');
+		}
 
 		if (!claims) {
 			throw new ForbiddenError('No claims found in the OIDC token');
 		}
 
-		const userInfo = await client.fetchUserInfo(configuration, tokens.access_token, claims.sub);
+		let userInfo;
+		try {
+			userInfo = await client.fetchUserInfo(configuration, tokens.access_token, claims.sub);
+		} catch (error) {
+			this.logger.error('Failed to fetch user info', { error });
+			throw new BadRequestError('Invalid token');
+		}
 
 		if (!userInfo.email) {
 			throw new BadRequestError('An email is required');
 		}
 
+		if (!isValidEmail(userInfo.email)) {
+			throw new BadRequestError('Invalid email format');
+		}
+
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
-			relations: ['user'],
+			relations: {
+				user: {
+					role: true,
+				},
+			},
 		});
 
 		if (openidUser) {
 			return openidUser.user;
 		}
 
-		const foundUser = await this.userRepository.findOneBy({ email: userInfo.email });
+		const foundUser = await this.userRepository.findOne({
+			where: { email: userInfo.email },
+			relations: ['authIdentities', 'role'],
+		});
 
 		if (foundUser) {
 			this.logger.debug(
@@ -138,7 +265,7 @@ export class OidcService {
 					lastName: userInfo.family_name,
 					email: userInfo.email,
 					authIdentities: [],
-					role: 'global:member',
+					role: GLOBAL_MEMBER_ROLE,
 					password: 'no password set',
 				},
 				trx,
@@ -199,10 +326,23 @@ export class OidcService {
 			// Validating that discoveryEndpoint is a valid URL
 			discoveryEndpoint = new URL(newConfig.discoveryEndpoint);
 		} catch (error) {
-			throw new BadRequestError('Provided discovery endpoint is not a valid URL');
+			this.logger.error(`The provided endpoint is not a valid URL: ${newConfig.discoveryEndpoint}`);
+			throw new UserError('Provided discovery endpoint is not a valid URL');
 		}
 		if (newConfig.clientSecret === OIDC_CLIENT_SECRET_REDACTED_VALUE) {
 			newConfig.clientSecret = this.oidcConfig.clientSecret;
+		}
+		try {
+			const discoveredMetadata = await client.discovery(
+				discoveryEndpoint,
+				newConfig.clientId,
+				newConfig.clientSecret,
+			);
+			// TODO: validate Metadata against features
+			this.logger.debug(`Discovered OIDC metadata: ${JSON.stringify(discoveredMetadata)}`);
+		} catch (error) {
+			this.logger.error('Failed to discover OIDC metadata', { error });
+			throw new UserError('Failed to discover OIDC metadata, based on the provided configuration');
 		}
 		await this.settingsRepository.update(
 			{
@@ -225,6 +365,10 @@ export class OidcService {
 			...newConfig,
 			discoveryEndpoint,
 		};
+		this.cachedOidcConfiguration = undefined; // reset cached configuration
+		this.logger.debug(
+			`OIDC login is now ${this.oidcConfig.loginEnabled ? 'enabled' : 'disabled'}.`,
+		);
 
 		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
 	}
@@ -246,19 +390,24 @@ export class OidcService {
 	}
 
 	private cachedOidcConfiguration:
-		| {
+		| ({
 				configuration: Promise<client.Configuration>;
 				validTill: Date;
-		  }
+		  } & OidcRuntimeConfig)
 		| undefined;
 
 	private async getOidcConfiguration(): Promise<client.Configuration> {
 		const now = Date.now();
 		if (
 			this.cachedOidcConfiguration === undefined ||
-			now >= this.cachedOidcConfiguration.validTill.getTime()
+			now >= this.cachedOidcConfiguration.validTill.getTime() ||
+			this.oidcConfig.discoveryEndpoint.toString() !==
+				this.cachedOidcConfiguration.discoveryEndpoint.toString() ||
+			this.oidcConfig.clientId !== this.cachedOidcConfiguration.clientId ||
+			this.oidcConfig.clientSecret !== this.cachedOidcConfiguration.clientSecret
 		) {
 			this.cachedOidcConfiguration = {
+				...this.oidcConfig,
 				configuration: client.discovery(
 					this.oidcConfig.discoveryEndpoint,
 					this.oidcConfig.clientId,

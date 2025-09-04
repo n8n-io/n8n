@@ -4,7 +4,7 @@ import type { CanvasLayoutEvent, CanvasLayoutSource } from '@/composables/useCan
 import { useCanvasLayout } from '@/composables/useCanvasLayout';
 import { useCanvasNodeHover } from '@/composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '@/composables/useCanvasTraversal';
-import type { ContextMenuAction, ContextMenuTarget } from '@/composables/useContextMenu';
+import type { ContextMenuTarget } from '@/composables/useContextMenu';
 import { useContextMenu } from '@/composables/useContextMenu';
 import { type KeyMap, useKeybindings } from '@/composables/useKeybindings';
 import type { PinDataSource } from '@/composables/usePinnedData';
@@ -56,6 +56,7 @@ import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import { useExperimentalNdvStore } from './experimental/experimentalNdv.store';
+import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 
 const $style = useCssModule();
 
@@ -447,11 +448,7 @@ function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select'
 
 		const newViewport = updateViewportToContainNodes(viewport.value, dimensions.value, nodes, 100);
 
-		void setViewport(newViewport, {
-			duration: 200,
-			// TODO: restore when re-upgrading vue-flow to >= 1.45
-			// interpolate: 'linear',
-		});
+		void setViewport(newViewport, { duration: 200, interpolate: 'linear' });
 	}
 }
 
@@ -469,10 +466,16 @@ function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>)
 
 function onUpdateNodeInputs(id: string) {
 	emit('update:node:inputs', id);
+
+	// Let VueFlow update connection paths to match the new handle position
+	void nextTick(() => vueFlow.updateNodeInternals([id]));
 }
 
 function onUpdateNodeOutputs(id: string) {
 	emit('update:node:outputs', id);
+
+	// Let VueFlow update connection paths to match the new handle position
+	void nextTick(() => vueFlow.updateNodeInternals([id]));
 }
 
 function onFocusNode(id: string) {
@@ -906,6 +909,10 @@ provide(CanvasKey, {
 	isExperimentalNdvActive,
 	isPaneMoving,
 });
+
+defineExpose({
+	executeContextMenuAction: onContextMenuAction,
+});
 </script>
 
 <template>
@@ -922,7 +929,7 @@ provide(CanvasKey, {
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
 		:min-zoom="0"
-		:max-zoom="experimentalNdvStore.isEnabled ? experimentalNdvStore.maxCanvasZoom : 4"
+		:max-zoom="experimentalNdvStore.isZoomedViewEnabled ? experimentalNdvStore.maxCanvasZoom : 4"
 		:selection-key-code="selectionKeyCode"
 		:zoom-activation-key-code="panningKeyCode"
 		:pan-activation-key-code="panningKeyCode"

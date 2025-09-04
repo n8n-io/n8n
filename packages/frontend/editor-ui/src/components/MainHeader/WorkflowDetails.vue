@@ -1,4 +1,13 @@
 <script lang="ts" setup>
+import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
+import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
+import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
+import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
+import SaveButton from '@/components/SaveButton.vue';
+import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import WorkflowProductionChecklist from '@/components/WorkflowProductionChecklist.vue';
+import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -7,21 +16,11 @@ import {
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PROJECT_MOVE_RESOURCE_MODAL,
-	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
-import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import SaveButton from '@/components/SaveButton.vue';
-import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
-import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
-import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
-import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
-import WorkflowProductionChecklist from '@/components/WorkflowProductionChecklist.vue';
 import { ResourceType } from '@/utils/projects.utils';
 
 import { useProjectsStore } from '@/stores/projects.store';
@@ -33,39 +32,43 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { saveAs } from 'file-saver';
 import { useDocumentTitle } from '@/composables/useDocumentTitle';
 import { useMessage } from '@/composables/useMessage';
+import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
-import { getResourcePermissions } from '@n8n/permissions';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { nodeViewEventBus } from '@/event-bus';
-import { hasPermission } from '@/utils/rbac/permissions';
-import { useCanvasStore } from '@/stores/canvas.store';
-import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
+import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
+import { nodeViewEventBus } from '@/event-bus';
 import type {
 	ActionDropdownItem,
 	FolderShortInfo,
 	IWorkflowDb,
 	IWorkflowToShare,
 } from '@/Interface';
-import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { useTelemetry } from '@/composables/useTelemetry';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import { N8nInlineTextEdit } from '@n8n/design-system';
 import { useFoldersStore } from '@/stores/folders.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@/types/projects.types';
-import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
 import { sanitizeFilename } from '@/utils/fileUtils';
+import { hasPermission } from '@/utils/rbac/permissions';
+import { N8nInlineTextEdit } from '@n8n/design-system';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { saveAs } from 'file-saver';
+import { computed, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 
-const WORKFLOW_NAME_MAX_WIDTH_SMALL_SCREENS = 150;
-const WORKFLOW_NAME_MAX_WIDTH_WIDE_SCREENS = 200;
+const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
+	XS: 150,
+	SM: 200,
+	MD: 250,
+	LG: 500,
+	XL: 1000,
+};
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -82,7 +85,6 @@ const props = defineProps<{
 const $style = useCssModule();
 
 const rootStore = useRootStore();
-const canvasStore = useCanvasStore();
 const settingsStore = useSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const tagsStore = useTagsStore();
@@ -112,7 +114,6 @@ const tagsSaving = ref(false);
 const importFileRef = ref<HTMLInputElement | undefined>();
 
 const tagsEventBus = createEventBus();
-const sourceControlModalEventBus = createEventBus();
 const changeOwnerEventBus = createEventBus();
 
 const hasChanged = (prev: string[], curr: string[]) => {
@@ -146,8 +147,8 @@ const onExecutionsTab = computed(() => {
 
 const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
 
-const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
-	const actions: ActionDropdownItem[] = [
+const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>>>(() => {
+	const actions: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.download'),
@@ -433,8 +434,7 @@ async function handleFileImport(): Promise<void> {
 	}
 }
 
-async function onWorkflowMenuSelect(value: string): Promise<void> {
-	const action = value as WORKFLOW_MENU_ACTIONS;
+async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
 			uiStore.openModalWithData({
@@ -488,15 +488,15 @@ async function onWorkflowMenuSelect(value: string): Promise<void> {
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
-			canvasStore.startLoading();
 			try {
 				await onSaveButtonClick();
 
-				const status = await sourceControlStore.getAggregatedStatus();
-
-				uiStore.openModalWithData({
-					name: SOURCE_CONTROL_PUSH_MODAL_KEY,
-					data: { eventBus: sourceControlModalEventBus, status },
+				// Navigate to route with sourceControl param - modal will handle data loading and loading states
+				void router.push({
+					query: {
+						...route.query,
+						sourceControl: 'push',
+					},
 				});
 			} catch (error) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -511,8 +511,6 @@ async function onWorkflowMenuSelect(value: string): Promise<void> {
 					default:
 						toast.showError(error, locale.baseText('error'));
 				}
-			} finally {
-				canvasStore.stopLoading();
 			}
 
 			break;
@@ -647,36 +645,61 @@ function goToWorkflowHistoryUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 }
 
-function showCreateWorkflowSuccessToast(id?: string) {
-	if (!id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id)) {
-		let toastTitle = locale.baseText('workflows.create.personal.toast.title');
-		let toastText = locale.baseText('workflows.create.personal.toast.text');
-
-		if (projectsStore.currentProject) {
-			if (props.currentFolder) {
-				toastTitle = locale.baseText('workflows.create.folder.toast.title', {
-					interpolate: {
-						projectName: currentProjectName.value ?? '',
-						folderName: props.currentFolder.name ?? '',
-					},
-				});
-			} else if (projectsStore.currentProject.id !== projectsStore.personalProject?.id) {
-				toastTitle = locale.baseText('workflows.create.project.toast.title', {
-					interpolate: { projectName: currentProjectName.value ?? '' },
-				});
-			}
-
-			toastText = locale.baseText('workflows.create.project.toast.text', {
-				interpolate: { projectName: currentProjectName.value ?? '' },
-			});
-		}
-
-		toast.showMessage({
-			title: toastTitle,
-			message: toastText,
-			type: 'success',
-		});
+function getPersonalProjectToastContent() {
+	const title = locale.baseText('workflows.create.personal.toast.title');
+	if (!props.currentFolder) {
+		return { title };
 	}
+
+	const toastMessage = locale.baseText('workflows.create.folder.toast.title', {
+		interpolate: {
+			projectName: 'Personal',
+			folderName: props.currentFolder.name,
+		},
+	});
+
+	return { title, toastMessage };
+}
+
+function getToastContent() {
+	const currentProject = projectsStore.currentProject;
+	const isPersonalProject =
+		!projectsStore.currentProject || currentProject?.id === projectsStore.personalProject?.id;
+	const projectName = currentProjectName.value ?? '';
+
+	if (isPersonalProject) {
+		return getPersonalProjectToastContent();
+	}
+
+	const titleKey = props.currentFolder
+		? 'workflows.create.folder.toast.title'
+		: 'workflows.create.project.toast.title';
+
+	const interpolateData: Record<string, string> = props.currentFolder
+		? { projectName, folderName: props.currentFolder.name ?? '' }
+		: { projectName };
+
+	const title = locale.baseText(titleKey, { interpolate: interpolateData });
+
+	const toastMessage = locale.baseText('workflows.create.project.toast.text', {
+		interpolate: { projectName },
+	});
+
+	return { title, toastMessage };
+}
+
+function showCreateWorkflowSuccessToast(id?: string) {
+	const shouldShowToast = !id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id);
+
+	if (!shouldShowToast) return;
+
+	const { title, toastMessage } = getToastContent();
+
+	toast.showMessage({
+		title,
+		message: toastMessage,
+		type: 'success',
+	});
 }
 
 const onBreadcrumbsItemSelected = (item: PathItem) => {
@@ -717,11 +740,7 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 							class="name"
 							:model-value="name"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
-							:max-width="
-								['XS', 'SM'].includes(bp)
-									? WORKFLOW_NAME_MAX_WIDTH_SMALL_SCREENS
-									: WORKFLOW_NAME_MAX_WIDTH_WIDE_SCREENS
-							"
+							:max-width="WORKFLOW_NAME_BP_TO_WIDTH[bp]"
 							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							@update:model-value="onNameSubmit"

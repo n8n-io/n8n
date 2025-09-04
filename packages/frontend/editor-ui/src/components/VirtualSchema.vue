@@ -46,6 +46,7 @@ import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { I18nT } from 'vue-i18n';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
 type Props = {
 	nodes?: IConnectedNode[];
@@ -72,6 +73,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext();
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -117,11 +119,24 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 		}))
 		.filter(({ runIndex }) => runIndex !== -1);
 
-	// If outputIndex is specified, only use data from that specific output branch
-	const filteredOutputsWithData =
-		props.outputIndex !== undefined
-			? connectedOutputsWithData.filter(({ outputIndex }) => outputIndex === props.outputIndex)
-			: connectedOutputsWithData;
+	// For connected nodes with multiple outputs that connect to the current node,
+	// filter by outputIndex if it's specified and matches one of the connected outputs
+	// This ensures we show the correct branch when viewing multi-output nodes like SplitInBatches
+	let filteredOutputsWithData = connectedOutputsWithData;
+
+	// Only apply outputIndex filtering if:
+	// 1. outputIndex is specified
+	// 2. The node has multiple connected outputs
+	// 3. The specified outputIndex is one of the connected outputs
+	if (
+		props.outputIndex !== undefined &&
+		connectedOutputIndexes.length > 1 &&
+		connectedOutputIndexes.includes(props.outputIndex)
+	) {
+		filteredOutputsWithData = connectedOutputsWithData.filter(
+			({ outputIndex }) => outputIndex === props.outputIndex,
+		);
+	}
 
 	const nodeData = filteredOutputsWithData
 		.map(({ outputIndex, runIndex }) =>
@@ -403,6 +418,7 @@ const onDragEnd = (el: HTMLElement) => {
 			src_has_credential: hasCredential,
 			src_element: el,
 			success: false,
+			view_shown: telemetryContext.view_shown,
 			...mappingTelemetry,
 		};
 

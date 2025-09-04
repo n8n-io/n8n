@@ -11,12 +11,12 @@ import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
-import { InstalledNodes } from './installed-nodes';
-import { InstalledPackages } from './installed-packages';
 import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { Role } from './role';
+import { Scope } from './scope';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
@@ -33,8 +33,6 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
 	EventDestinations,
-	InstalledNodes,
-	InstalledPackages,
 	InvalidAuthToken,
 	ProcessedData,
 	Settings,
@@ -46,6 +44,8 @@ export {
 	Folder,
 	Project,
 	ProjectRelation,
+	Role,
+	Scope,
 	SharedCredentials,
 	SharedWorkflow,
 	TagEntity,
@@ -68,8 +68,6 @@ export {
 
 export const entities = {
 	EventDestinations,
-	InstalledNodes,
-	InstalledPackages,
 	InvalidAuthToken,
 	ProcessedData,
 	Settings,
@@ -81,6 +79,7 @@ export const entities = {
 	Folder,
 	Project,
 	ProjectRelation,
+	Scope,
 	SharedCredentials,
 	SharedWorkflow,
 	TagEntity,
@@ -99,4 +98,5 @@ export const entities = {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	Role,
 };

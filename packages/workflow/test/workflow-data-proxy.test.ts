@@ -160,6 +160,10 @@ describe('WorkflowDataProxy', () => {
 			expect(proxy.$('Rename').params).toEqual({ value1: 'data', value2: 'initialName' });
 		});
 
+		test('$("NodeName").context', () => {
+			expect(proxy.$('Rename').context).toBeDefined();
+		});
+
 		test('$("NodeName") not in workflow should throw', () => {
 			expect(() => proxy.$('doNotExist')).toThrowError(ExpressionError);
 		});
@@ -187,6 +191,12 @@ describe('WorkflowDataProxy', () => {
 		});
 		test('$input.item', () => {
 			expect(proxy.$input.item?.json?.data).toEqual(105);
+		});
+		test('$input.context', () => {
+			expect(proxy.$input.context).toBeDefined();
+		});
+		test('$input.params', () => {
+			expect(proxy.$input.params).toBeDefined();
 		});
 		test('$thisItem', () => {
 			expect(proxy.$thisItem.json.data).toEqual(105);
@@ -235,7 +245,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Error finding the referenced node');
+				expect(exprError.message).toEqual("Referenced node doesn't exist");
 			}
 		});
 
@@ -246,7 +256,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Error finding the referenced node');
+				expect(exprError.message).toEqual('Invalid expression');
 				expect(exprError.context.type).toEqual('paired_item_no_connection');
 			}
 		});
@@ -262,8 +272,8 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Error finding the referenced node');
-				expect(exprError.context.type).toEqual('paired_item_no_connection');
+				expect(exprError.message).toEqual("Node 'Impossible' hasn't been executed");
+				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
 
@@ -274,8 +284,8 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('No execution data available');
-				expect(exprError.context.type).toEqual('no_input_connection');
+				expect(exprError.message).toEqual("Node 'NoInputConnection' hasn't been executed");
+				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
 
@@ -286,10 +296,8 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('No execution data available');
-				expect(exprError.context.messageTemplate).toEqual(
-					'Execute node "Impossible if" for preview',
-				);
+				expect(exprError.message).toEqual("Node 'Impossible if' hasn't been executed");
+				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
 
@@ -300,7 +308,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('No execution data available');
+				expect(exprError.message).toEqual("Node 'Impossible' hasn't been executed");
 				expect(exprError.context.type).toEqual('no_execution_data');
 			}
 		});
@@ -891,9 +899,11 @@ describe('WorkflowDataProxy', () => {
 
 			expect(error).toBeDefined();
 			expect(error).toBeInstanceOf(ExpressionError);
-			expect(error!.message).toBe('No execution data available');
-			expect(error!.context.messageTemplate).toBe('Execute node "Telegram Trigger" for preview');
-			expect(error!.context.nodeCause).toBe('Telegram Trigger');
+			expect(error!.message).toBe("Node 'Telegram Trigger' hasn't been executed");
+			expect(error!.context.type).toBe('no_execution_data');
+			expect(error!.context.messageTemplate).toBe(
+				'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+			);
 		});
 
 		test('should show helpful error message for different node names', () => {
@@ -952,8 +962,11 @@ describe('WorkflowDataProxy', () => {
 			}
 
 			expect(error).toBeDefined();
-			expect(error!.context.messageTemplate).toBe('Execute node "HTTP Request" for preview');
-			expect(error!.context.nodeCause).toBe('HTTP Request');
+			expect(error!.message).toBe("Node 'HTTP Request' hasn't been executed");
+			expect(error!.context.type).toBe('no_execution_data');
+			expect(error!.context.messageTemplate).toBe(
+				'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+			);
 		});
 
 		test('should use improved error for first(), last(), and all() methods', () => {
@@ -1010,25 +1023,119 @@ describe('WorkflowDataProxy', () => {
 				error = e as ExpressionError;
 			}
 			expect(error).toBeDefined();
-			expect(error!.context.messageTemplate).toBe('Execute node "Start Node" for preview');
+			expect(error!.message).toBe("Node 'Start Node' hasn't been executed");
+			expect(error!.context.messageTemplate).toBe(
+				'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+			);
 
 			// Test last() method
+			error = undefined;
 			try {
 				proxy.$('Start Node').last();
 			} catch (e) {
 				error = e as ExpressionError;
 			}
 			expect(error).toBeDefined();
-			expect(error!.context.messageTemplate).toBe('Execute node "Start Node" for preview');
+			expect(error!.message).toBe("Node 'Start Node' hasn't been executed");
+			expect(error!.context.messageTemplate).toBe(
+				'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+			);
 
 			// Test all() method
+			error = undefined;
 			try {
 				proxy.$('Start Node').all();
 			} catch (e) {
 				error = e as ExpressionError;
 			}
 			expect(error).toBeDefined();
-			expect(error!.context.messageTemplate).toBe('Execute node "Start Node" for preview');
+			expect(error!.message).toBe("Node 'Start Node' hasn't been executed");
+			expect(error!.context.messageTemplate).toBe(
+				'An expression references this node, but the node is unexecuted. Consider re-wiring your nodes or checking for execution first, i.e. {{ $if( $("{{nodeName}}").isExecuted, <action_if_executed>, "") }}',
+			);
+		});
+
+		test('should show helpful error message when accessing non-existent node', () => {
+			const workflow: IWorkflowBase = {
+				id: '1',
+				name: 'test-workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Real Node',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const run = {
+				data: {
+					resultData: {
+						runData: {
+							'Real Node': [
+								{
+									data: {
+										main: [[{ json: { test: 'data' } }]],
+									},
+									source: [null],
+									startTime: 123,
+									executionTime: 456,
+									executionIndex: 0,
+								},
+							],
+						},
+					},
+				},
+				mode: 'manual' as const,
+				startedAt: new Date(),
+				status: 'success' as const,
+			};
+
+			const proxy = getProxyFromFixture(workflow, run, 'Real Node');
+
+			// Should throw helpful error when trying to access a non-existent node
+			let error: ExpressionError | undefined;
+			try {
+				proxy.$('NonExistentNode').item;
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+
+			expect(error).toBeDefined();
+			expect(error).toBeInstanceOf(ExpressionError);
+			expect(error!.message).toBe("Referenced node doesn't exist");
+			expect(error!.context.descriptionKey).toBe('nodeNotFound');
+			expect(error!.context.nodeCause).toBe('NonExistentNode');
+		});
+
+		test('should show error when accessing item with invalid index via direct proxy access', () => {
+			// Use existing fixture data to test the item index validation path
+			const fixture = loadFixture('base');
+
+			// Create a proxy with itemIndex that exceeds available items for a node
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Set Node', 'manual', {
+				throwOnMissingExecutionData: true,
+				runIndex: 10, // itemIndex way too high
+			});
+
+			let error: ExpressionError | undefined;
+			try {
+				// This should trigger the error path for invalid item index
+				proxy.$('Set Node').item;
+			} catch (e) {
+				error = e as ExpressionError;
+			}
+
+			expect(error).toBeDefined();
+			expect(error).toBeInstanceOf(ExpressionError);
 		});
 	});
 });

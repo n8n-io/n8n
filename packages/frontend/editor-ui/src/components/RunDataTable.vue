@@ -17,6 +17,7 @@ import { N8nIconButton, N8nInfoTip, N8nTooltip, N8nTree } from '@n8n/design-syst
 import { storeToRefs } from 'pinia';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { I18nT } from 'vue-i18n';
+import { useTelemetryContext } from '@/composables/useTelemetryContext';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -78,6 +79,7 @@ const workflowsStore = useWorkflowsStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const telemetryContext = useTelemetryContext();
 const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl } = useExecutionHelpers();
 
 const {
@@ -269,7 +271,7 @@ function getValueToRender(value: unknown): string {
 		return i18n.baseText('runData.emptyObject');
 	}
 	if (value === null || value === undefined) {
-		return `[${value}]`;
+		return `${value}`;
 	}
 	if (value === true || value === false || typeof value === 'number') {
 		return value.toString();
@@ -323,6 +325,7 @@ function onDragEnd(column: string, src: string, depth = '0') {
 			src_view: 'table',
 			src_element: src,
 			success: false,
+			view_shown: telemetryContext.view_shown,
 			...mappingTelemetry,
 		};
 
@@ -957,6 +960,7 @@ th.isCollapsingColumn + th {
 
 .empty {
 	color: var(--color-danger);
+	font-style: italic;
 }
 
 .limitColWidth {

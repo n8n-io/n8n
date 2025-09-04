@@ -1,7 +1,12 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-import { type DataStore } from '@/features/dataStore/datastore.types';
+import type {
+	DataStoreColumnCreatePayload,
+	DataStore,
+	DataStoreColumn,
+	DataStoreRow,
+} from '@/features/dataStore/datastore.types';
 
 export const fetchDataStoresApi = async (
 	context: IRestApiContext,
@@ -13,17 +18,17 @@ export const fetchDataStoresApi = async (
 	filter?: {
 		id?: string | string[];
 		name?: string | string[];
-		projectId?: string | string[];
+		projectId: string | string[];
 	},
 ) => {
-	const apiEndpoint = projectId ? `/projects/${projectId}/data-stores` : '/data-stores-global';
+	const apiEndpoint = projectId ? `/projects/${projectId}/data-tables` : '/data-tables-global';
 	return await makeRestApiRequest<{ count: number; data: DataStore[] }>(
 		context,
 		'GET',
 		apiEndpoint,
 		{
-			...options,
-			...(filter ?? {}),
+			options: options ?? undefined,
+			filter: filter ?? undefined,
 		},
 	);
 };
@@ -31,15 +36,16 @@ export const fetchDataStoresApi = async (
 export const createDataStoreApi = async (
 	context: IRestApiContext,
 	name: string,
-	projectId?: string,
+	projectId: string,
+	columns?: DataStoreColumnCreatePayload[],
 ) => {
 	return await makeRestApiRequest<DataStore>(
 		context,
 		'POST',
-		`/projects/${projectId}/data-stores`,
+		`/projects/${projectId}/data-tables`,
 		{
 			name,
-			columns: [],
+			columns: columns ?? [],
 		},
 	);
 };
@@ -47,12 +53,12 @@ export const createDataStoreApi = async (
 export const deleteDataStoreApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
-	projectId?: string,
+	projectId: string,
 ) => {
 	return await makeRestApiRequest<boolean>(
 		context,
 		'DELETE',
-		`/projects/${projectId}/data-stores/${dataStoreId}`,
+		`/projects/${projectId}/data-tables/${dataStoreId}`,
 		{
 			dataStoreId,
 			projectId,
@@ -64,14 +70,129 @@ export const updateDataStoreApi = async (
 	context: IRestApiContext,
 	dataStoreId: string,
 	name: string,
-	projectId?: string,
+	projectId: string,
 ) => {
 	return await makeRestApiRequest<DataStore>(
 		context,
 		'PATCH',
-		`/projects/${projectId}/data-stores/${dataStoreId}`,
+		`/projects/${projectId}/data-tables/${dataStoreId}`,
 		{
 			name,
+		},
+	);
+};
+
+export const addDataStoreColumnApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	projectId: string,
+	column: DataStoreColumnCreatePayload,
+) => {
+	return await makeRestApiRequest<DataStoreColumn>(
+		context,
+		'POST',
+		`/projects/${projectId}/data-tables/${dataStoreId}/columns`,
+		{
+			...column,
+		},
+	);
+};
+
+export const deleteDataStoreColumnApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	projectId: string,
+	columnId: string,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/data-tables/${dataStoreId}/columns/${columnId}`,
+	);
+};
+
+export const moveDataStoreColumnApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	projectId: string,
+	columnId: string,
+	targetIndex: number,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-tables/${dataStoreId}/columns/${columnId}/move`,
+		{
+			targetIndex,
+		},
+	);
+};
+
+export const getDataStoreRowsApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	projectId: string,
+	options?: {
+		skip?: number;
+		take?: number;
+		sortBy?: string;
+	},
+) => {
+	return await makeRestApiRequest<{
+		count: number;
+		data: DataStoreRow[];
+	}>(context, 'GET', `/projects/${projectId}/data-tables/${dataStoreId}/rows`, {
+		...(options ?? {}),
+	});
+};
+
+export const insertDataStoreRowApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	row: DataStoreRow,
+	projectId: string,
+) => {
+	return await makeRestApiRequest<DataStoreRow[]>(
+		context,
+		'POST',
+		`/projects/${projectId}/data-tables/${dataStoreId}/insert`,
+		{
+			returnData: true,
+			data: [row],
+		},
+	);
+};
+
+export const updateDataStoreRowsApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	rowId: number,
+	rowData: DataStoreRow,
+	projectId: string,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-tables/${dataStoreId}/rows`,
+		{
+			filter: { id: rowId },
+			data: rowData,
+		},
+	);
+};
+
+export const deleteDataStoreRowsApi = async (
+	context: IRestApiContext,
+	dataStoreId: string,
+	rowIds: number[],
+	projectId: string,
+) => {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/data-tables/${dataStoreId}/rows`,
+		{
+			ids: rowIds.join(','),
 		},
 	);
 };
