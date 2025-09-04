@@ -106,7 +106,11 @@ const pushRef = computed(() => ndvStore.pushRef);
 
 const activeNodeType = computed(() => {
 	if (activeNode.value) {
-		return nodeTypesStore.getNodeType(activeNode.value.type, activeNode.value.typeVersion);
+		return nodeTypesStore.getNodeType(
+			activeNode.value.type,
+			activeNode.value.typeVersion,
+			activeNode.value.packageVersion,
+		);
 	}
 	return null;
 });

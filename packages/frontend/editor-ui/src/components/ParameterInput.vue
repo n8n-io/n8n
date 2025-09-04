@@ -210,7 +210,9 @@ const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
 );
 const node = computed(() => contextNode ?? ndvStore.activeNode ?? undefined);
 const nodeType = computed(
-	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
+	() =>
+		node.value &&
+		nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion, node.value.packageVersion),
 );
 
 const shortPath = computed<string>(() => {
@@ -433,7 +435,7 @@ const getIssues = computed<string[]>(() => {
 		node.value.parameters,
 		newPath.join('.'),
 		node.value,
-		nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
+		nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion, node.value.packageVersion),
 	);
 
 	if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {

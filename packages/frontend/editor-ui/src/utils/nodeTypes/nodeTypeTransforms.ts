@@ -31,23 +31,25 @@ export function groupNodeTypesByNameAndType(
 ): NodeTypesByTypeNameAndVersion {
 	const groupedNodeTypes = nodeTypes.reduce<NodeTypesByTypeNameAndVersion>((groups, nodeType) => {
 		const newNodeVersions = getNodeVersions(nodeType);
+		let groupKey = nodeType.name;
+
+		if (nodeType.packageVersion) {
+			groupKey = addPackageVersionToNodeTypeName(nodeType.name, nodeType.packageVersion);
+		}
 
 		if (newNodeVersions.length === 0) {
 			const singleVersion = { [DEFAULT_NODETYPE_VERSION]: nodeType };
 
-			groups[nodeType.name] = singleVersion;
+			groups[groupKey] = singleVersion;
 			return groups;
 		}
 
 		for (const version of newNodeVersions) {
 			// Node exists with the same name
-			if (groups[nodeType.name]) {
-				groups[nodeType.name][version] = Object.assign(
-					groups[nodeType.name][version] ?? {},
-					nodeType,
-				);
+			if (groups[groupKey]) {
+				groups[groupKey][version] = Object.assign(groups[groupKey][version] ?? {}, nodeType);
 			} else {
-				groups[nodeType.name] = Object.assign(groups[nodeType.name] ?? {}, {
+				groups[groupKey] = Object.assign(groups[groupKey] ?? {}, {
 					[version]: nodeType,
 				});
 			}
@@ -57,4 +59,10 @@ export function groupNodeTypesByNameAndType(
 	}, {});
 
 	return groupedNodeTypes;
+}
+
+export function addPackageVersionToNodeTypeName(fullNodeTypeName: string, packageVersion: string) {
+	const [packageName, nodeTypeName] = fullNodeTypeName.split('.');
+	if (['n8n-nodes-base', '@n8n/n8n-nodes-langchain'].includes(packageName)) return fullNodeTypeName;
+	return `${packageName}@${packageVersion}.${nodeTypeName}`;
 }

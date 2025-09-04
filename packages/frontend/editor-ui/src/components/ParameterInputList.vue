@@ -126,7 +126,11 @@ const node = computed(() => props.node ?? ndvStore.activeNode);
 
 const nodeType = computed(() => {
 	if (node.value) {
-		return nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
+		return nodeTypesStore.getNodeType(
+			node.value.type,
+			node.value.typeVersion,
+			node.value.packageVersion,
+		);
 	}
 	return null;
 });

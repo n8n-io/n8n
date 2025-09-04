@@ -29,7 +29,10 @@ import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as utils from '@/utils/credentialOnlyNodes';
-import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
+import {
+	addPackageVersionToNodeTypeName,
+	groupNodeTypesByNameAndType,
+} from '@/utils/nodeTypes/nodeTypeTransforms';
 import { computed, ref } from 'vue';
 import { useActionsGenerator } from '../components/Node/NodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '../components/Node/NodeCreator/utils';
@@ -108,12 +111,21 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	});
 
 	const getNodeType = computed(() => {
-		return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
+		return (
+			nodeTypeName: string,
+			version?: number,
+			packageVersion?: string,
+		): INodeTypeDescription | null => {
 			if (utils.isCredentialOnlyNodeType(nodeTypeName)) {
 				return getCredentialOnlyNodeType.value(nodeTypeName, version);
 			}
 
-			const nodeVersions = nodeTypes.value[nodeTypeName];
+			const nodeVersions =
+				nodeTypes.value[
+					packageVersion
+						? addPackageVersionToNodeTypeName(nodeTypeName, packageVersion)
+						: nodeTypeName
+				];
 
 			if (!nodeVersions) return null;
 

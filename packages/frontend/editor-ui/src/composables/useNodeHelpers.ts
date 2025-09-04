@@ -171,7 +171,7 @@ export function useNodeHelpers() {
 		displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 	) {
 		const nodeTypeDescription = node?.type
-			? nodeTypesStore.getNodeType(node.type, node.typeVersion)
+			? nodeTypesStore.getNodeType(node.type, node.typeVersion, node.packageVersion)
 			: null;
 		return NodeHelpers.displayParameterPath(
 			nodeValues,

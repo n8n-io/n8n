@@ -10,6 +10,7 @@ import { N8nText, N8nLink } from '@n8n/design-system';
 
 export interface Props {
 	packageName: string;
+	packageVersion?: string;
 	showManage: boolean;
 }
 const props = defineProps<Props>();
@@ -52,7 +53,9 @@ async function getBugsUrl(packageName: string) {
 onMounted(async () => {
 	if (props.packageName) {
 		await getBugsUrl(props.packageName);
-		installedPackage.value = await useCommunityNodesStore().getInstalledPackage(props.packageName);
+		installedPackage.value = await useCommunityNodesStore().getInstalledPackage(
+			props.packageVersion ? `${props.packageName}@${props.packageVersion}` : props.packageName,
+		);
 	}
 });
 </script>

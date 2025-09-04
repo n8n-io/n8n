@@ -81,7 +81,11 @@ export function usePinnedData(
 		const targetNode = unref(node);
 		if (targetNode === null || PIN_DATA_NODE_TYPES_DENYLIST.includes(targetNode.type)) return false;
 
-		const nodeType = useNodeTypesStore().getNodeType(targetNode.type, targetNode.typeVersion);
+		const nodeType = useNodeTypesStore().getNodeType(
+			targetNode.type,
+			targetNode.typeVersion,
+			targetNode.packageVersion,
+		);
 		const dataToPin = getInputDataWithPinned(targetNode);
 
 		if (!nodeType || (checkDataEmpty && dataToPin.length === 0)) return false;

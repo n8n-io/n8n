@@ -278,7 +278,11 @@ const nodesSchemas = asyncComputed<SchemaNode[]>(async () => {
 		const fullNode = workflowsStore.getNodeByName(node.name);
 		if (!fullNode) continue;
 
-		const nodeType = nodeTypesStore.getNodeType(fullNode.type, fullNode.typeVersion);
+		const nodeType = nodeTypesStore.getNodeType(
+			fullNode.type,
+			fullNode.typeVersion,
+			fullNode.packageVersion,
+		);
 		if (!nodeType) continue;
 
 		const {

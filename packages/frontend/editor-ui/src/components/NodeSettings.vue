@@ -157,7 +157,9 @@ const isReadOnly = computed(
 const node = computed(() => props.activeNode ?? ndvStore.activeNode);
 
 const nodeType = computed(() =>
-	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
+	node.value
+		? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion, node.value.packageVersion)
+		: null,
 );
 
 const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
@@ -308,7 +310,12 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		};
 		emit('valueChanged', sendData);
 	} else if (parameterData.name === 'parameters') {
-		const _nodeType = nodeTypesStore.getNodeType(_node.type, _node.typeVersion);
+		const _nodeType = nodeTypesStore.getNodeType(
+			_node.type,
+			_node.typeVersion,
+			_node.packageVersion,
+		);
+
 		if (!_nodeType) {
 			return;
 		}
@@ -802,6 +809,7 @@ function handleSelectAction(params: INodeParameters) {
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
+			:package-version="node?.packageVersion"
 			:show-manage="useUsersStore().isInstanceOwner"
 		/>
 	</div>

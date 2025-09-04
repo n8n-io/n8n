@@ -239,6 +239,7 @@ function onBackButton() {
 			<CommunityNodeFooter
 				v-if="communityNodeDetails && !isCommunityNodeActionsMode"
 				:package-name="communityNodeDetails.packageName"
+				:package-version="communityNodeDetails.packageName"
 				:show-manage="communityNodeDetails.installed && isInstanceOwner"
 			/>
 		</aside>

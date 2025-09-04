@@ -112,6 +112,7 @@ import { useLogsStore } from '@/stores/logs.store';
 import { isChatNode } from '@/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
+import semver from 'semver';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
@@ -634,9 +635,10 @@ export function useCanvasOperations() {
 	function requireNodeTypeDescription(
 		type: INodeUi['type'],
 		version?: INodeUi['typeVersion'],
+		packageVersion?: INodeUi['packageVersion'],
 	): INodeTypeDescription {
 		return (
-			nodeTypesStore.getNodeType(type, version) ?? {
+			nodeTypesStore.getNodeType(type, version, packageVersion) ?? {
 				properties: [],
 				displayName: type,
 				name: type,
@@ -658,22 +660,27 @@ export function useCanvasOperations() {
 		let lastAddedNode: INodeUi | undefined;
 		const addedNodes: INodeUi[] = [];
 
-		const nodesWithTypeVersion = await Promise.all(
-			nodes.map(async (node) => {
-				const typeDescription = requireNodeTypeDescription(node.type);
-				const typeVersion = node.typeVersion ?? resolveNodeVersion(typeDescription);
-				const packageName = typeDescription.name.split('.').slice(0, -1).join('.');
-				console.log('packageName', packageName);
-				const installedPackage = await communityNodesStore.getInstalledPackage(packageName);
-				const packageVersion = installedPackage?.installedVersion;
-				console.log('packageVersion', packageVersion);
-				return {
-					...node,
-					typeVersion,
-					packageVersion,
-				};
-			}),
-		);
+		const nodesWithTypeVersion = nodes.map((node) => {
+			const typeDescription = requireNodeTypeDescription(
+				node.type,
+				node.typeVersion,
+				node.packageVersion,
+			);
+			const typeVersion = node.typeVersion ?? resolveNodeVersion(typeDescription);
+			const packageName = typeDescription.name.split('.').slice(0, -1).join('.');
+			console.log('packageName', packageName);
+			const versions = communityNodesStore.getInstalledPackages
+				.filter((pack) => pack.packageName === packageName)
+				.map((pack) => pack.installedVersion);
+
+			const packageVersion = semver.rsort(versions)[0];
+			console.log('packageVersion', versions, packageVersion);
+			return {
+				typeVersion,
+				packageVersion,
+				...node,
+			};
+		});
 
 		await loadNodeTypesProperties(nodesWithTypeVersion);
 
@@ -684,7 +691,11 @@ export function useCanvasOperations() {
 		for (const [index, nodeAddData] of nodesWithTypeVersion.entries()) {
 			const { isAutoAdd, openDetail: openNDV, actionName, ...node } = nodeAddData;
 			const position = node.position ?? insertPosition;
-			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
+			const nodeTypeDescription = requireNodeTypeDescription(
+				node.type,
+				node.typeVersion,
+				node.packageVersion,
+			);
 
 			try {
 				const newNode = addNode(
@@ -1098,6 +1109,7 @@ export function useCanvasOperations() {
 			const lastInteractedWithNodeTypeDescription = nodeTypesStore.getNodeType(
 				lastInteractedWithNode.type,
 				lastInteractedWithNode.typeVersion,
+				lastInteractedWithNode.packageVersion,
 			);
 			const lastInteractedWithNodeObject = editableWorkflowObject.value.getNode(
 				lastInteractedWithNode.name,
@@ -1481,7 +1493,7 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion, node.packageVersion);
 		if (!nodeType) {
 			return;
 		}
@@ -1542,7 +1554,11 @@ export function useCanvasOperations() {
 			return false;
 		}
 
-		const sourceNodeType = nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
+		const sourceNodeType = nodeTypesStore.getNodeType(
+			sourceNode.type,
+			sourceNode.typeVersion,
+			sourceNode.packageVersion,
+		);
 		const sourceWorkflowNode = editableWorkflowObject.value.getNode(sourceNode.name);
 		if (!sourceWorkflowNode) {
 			return false;
@@ -1570,7 +1586,11 @@ export function useCanvasOperations() {
 			return false;
 		}
 
-		const targetNodeType = nodeTypesStore.getNodeType(targetNode.type, targetNode.typeVersion);
+		const targetNodeType = nodeTypesStore.getNodeType(
+			targetNode.type,
+			targetNode.typeVersion,
+			targetNode.packageVersion,
+		);
 		const targetWorkflowNode = editableWorkflowObject.value.getNode(targetNode.name);
 		if (!targetWorkflowNode) {
 			return false;
@@ -1910,7 +1930,11 @@ export function useCanvasOperations() {
 				workflowData.nodes.forEach((node: INode) => {
 					// Provide a new name for nodes that don't have one
 					if (!node.name) {
-						const nodeType = nodeTypesStore.getNodeType(node.type);
+						const nodeType = nodeTypesStore.getNodeType(
+							node.type,
+							node.typeVersion,
+							node.packageVersion,
+						);
 						const newName = uniqueNodeName(
 							nodeType?.displayName ?? node.type,
 							Array.from(nodeNames),

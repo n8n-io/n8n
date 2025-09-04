@@ -20,7 +20,11 @@ export function useNodeType(
 
 		const activeNode = unref(options.node);
 		if (activeNode) {
-			return nodeTypesStore.getNodeType(activeNode.type, activeNode.typeVersion);
+			return nodeTypesStore.getNodeType(
+				activeNode.type,
+				activeNode.typeVersion,
+				activeNode.packageVersion,
+			);
 		}
 
 		return null;

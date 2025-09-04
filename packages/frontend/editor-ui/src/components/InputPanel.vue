@@ -236,7 +236,11 @@ const currentNodeDepth = computed(() => {
 
 const activeNodeType = computed(() => {
 	if (!activeNode.value) return null;
-	return nodeTypesStore.getNodeType(activeNode.value.type, activeNode.value.typeVersion);
+	return nodeTypesStore.getNodeType(
+		activeNode.value.type,
+		activeNode.value.typeVersion,
+		activeNode.value.packageVersion,
+	);
 });
 
 const waitingMessage = computed(() => {

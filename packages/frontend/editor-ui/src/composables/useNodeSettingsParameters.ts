@@ -48,7 +48,11 @@ export function useNodeSettingsParameters() {
 		node: INode,
 		isToolNode: boolean,
 	) {
-		const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		const nodeTypeDescription = nodeTypesStore.getNodeType(
+			node.type,
+			node.typeVersion,
+			node.packageVersion,
+		);
 		if (!nodeTypeDescription) {
 			return;
 		}

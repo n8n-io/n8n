@@ -267,7 +267,11 @@ const { activeNode } = storeToRefs(ndvStore);
 const nodeType = computed(() => {
 	if (!node.value) return null;
 
-	return nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
+	return nodeTypesStore.getNodeType(
+		node.value.type,
+		node.value.typeVersion,
+		node.value.packageVersion,
+	);
 });
 
 const isSchemaView = computed(() => props.displayMode === 'schema');

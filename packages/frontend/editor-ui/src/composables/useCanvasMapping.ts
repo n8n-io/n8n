@@ -153,7 +153,7 @@ export function useCanvasMapping({
 
 	const nodeTypeDescriptionByNodeId = computed(() =>
 		nodes.value.reduce<Record<string, INodeTypeDescription | null>>((acc, node) => {
-			acc[node.id] = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			acc[node.id] = nodeTypesStore.getNodeType(node.type, node.typeVersion, node.packageVersion);
 			return acc;
 		}, {}),
 	);
