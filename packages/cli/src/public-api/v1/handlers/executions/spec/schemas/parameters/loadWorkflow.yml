@@ -1,6 +1,0 @@
-name: loadWorkflow
-in: body
-description: Wether to load the currently saved workflow to execute instead of the one saved at the time of the execution.
-required: false
-schema:
-  type: boolean
