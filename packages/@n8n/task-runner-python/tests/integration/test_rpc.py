@@ -101,9 +101,7 @@ return [{"result": "success"}]
 
 
 @pytest.mark.asyncio
-async def test_print_edge_cases(
-    local_task_broker, task_runner_manager
-):
+async def test_print_edge_cases(local_task_broker, task_runner_manager):
     await asyncio.sleep(0.5)
 
     task_id = nanoid()
