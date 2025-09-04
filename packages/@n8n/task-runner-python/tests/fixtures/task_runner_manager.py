@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from src.constants import (
+    ENV_GRACEFUL_SHUTDOWN_TIMEOUT,
     ENV_GRANT_TOKEN,
     ENV_HEALTH_CHECK_SERVER_ENABLED,
     ENV_HEALTH_CHECK_SERVER_PORT,
@@ -22,8 +23,13 @@ from tests.fixtures.test_constants import (
 class TaskRunnerManager:
     """Responsible for managing the lifecycle of a task runner subprocess."""
 
-    def __init__(self, task_broker_url: str = LOCAL_TASK_BROKER_URL):
+    def __init__(
+        self,
+        task_broker_url: str = LOCAL_TASK_BROKER_URL,
+        graceful_shutdown_timeout: float | None = None,
+    ):
         self.task_broker_url = task_broker_url
+        self.graceful_shutdown_timeout = graceful_shutdown_timeout
         self.subprocess: asyncio.subprocess.Process | None = None
         self.stdout_buffer: list[str] = []
         self.stderr_buffer: list[str] = []
@@ -38,6 +44,10 @@ class TaskRunnerManager:
         env_vars[ENV_TASK_TIMEOUT] = str(TASK_TIMEOUT)
         env_vars[ENV_HEALTH_CHECK_SERVER_ENABLED] = "true"
         env_vars[ENV_HEALTH_CHECK_SERVER_PORT] = str(HEALTH_CHECK_PORT)
+        if self.graceful_shutdown_timeout is not None:
+            env_vars[ENV_GRACEFUL_SHUTDOWN_TIMEOUT] = str(
+                self.graceful_shutdown_timeout
+            )
         env_vars["PYTHONPATH"] = str(project_root)
 
         self.subprocess = await asyncio.create_subprocess_exec(
