@@ -7,10 +7,8 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { ExecutionEntity, User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { ExecutionStatus } from 'n8n-workflow';
-
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { Telemetry } from '@/telemetry';
 
 import {
 	createdExecutionWithStatus,
@@ -22,6 +20,10 @@ import {
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
+
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ExecutionService } from '@/executions/execution.service';
+import { Telemetry } from '@/telemetry';
 
 let owner: User;
 let user1: User;
@@ -243,6 +245,11 @@ describe('POST /executions/:id/retry', () => {
 	);
 
 	test('should retry an execution', async () => {
+		const mockedRetriedExecutionStatus = 'waiting';
+		jest
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue(mockedRetriedExecutionStatus);
+
 		const workflow = await createWorkflow({}, user1);
 		const execution = await createSuccessfulExecution(workflow);
 
@@ -250,8 +257,9 @@ describe('POST /executions/:id/retry', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		// TODO: update assertion once unit tests for this file are working again.
-		expect(response.body).toEqual({});
+		expect(response.body).toEqual({ status: mockedRetriedExecutionStatus });
+
+		jest.restoreAllMocks();
 	});
 });
 
