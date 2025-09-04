@@ -56,7 +56,9 @@ class TaskRunnerManager:
 
         self.subprocess.terminate()
         try:
-            await asyncio.wait_for(self.subprocess.wait(), timeout=GRACEFUL_SHUTDOWN_TIMEOUT)
+            await asyncio.wait_for(
+                self.subprocess.wait(), timeout=GRACEFUL_SHUTDOWN_TIMEOUT
+            )
         except asyncio.TimeoutError:
             self.subprocess.kill()
             await self.subprocess.wait()
