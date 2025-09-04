@@ -927,7 +927,7 @@ function getSchema(parameter: INodeProperties) {
 
 	.schema-btn {
 		position: relative;
-		top: 0px;
+		top: 0;
 	}
 
 	.schema-preview {
