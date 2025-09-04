@@ -15,4 +15,11 @@ sentry = ["sentry-sdk>=2.35.2"]
 dev = [
     "ruff>=0.12.8",
     "ty>=0.0.1a17",
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-v"

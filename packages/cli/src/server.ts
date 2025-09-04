@@ -13,6 +13,7 @@ import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
+import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
@@ -318,6 +319,23 @@ export class Server extends AbstractServer {
 		const maxAge = Time.days.toMilliseconds;
 		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
+
+		// Protect type files with authentication regardless of UI availability
+		const authService = Container.get(AuthService);
+		const protectedTypeFiles = ['/types/nodes.json', '/types/credentials.json'];
+		protectedTypeFiles.forEach((path) => {
+			this.app.get(
+				path,
+				authService.createAuthMiddleware(true),
+				async (_, res: express.Response) => {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+					res.sendFile(path.substring(1), {
+						root: staticCacheDir,
+					});
+				},
+			);
+		});
+
 		if (frontendService) {
 			this.app.use(
 				[
