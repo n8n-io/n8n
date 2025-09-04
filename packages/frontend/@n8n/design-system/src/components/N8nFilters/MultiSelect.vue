@@ -62,7 +62,7 @@ function onChange(value: Item[]) {
 				<ComboboxEmpty class="ComboboxEmpty" />
 				<template v-for="item in items" :key="item.id">
 					<ComboboxItem :value="item" class="ComboboxItem">
-						<ComboboxItemIndicator class="ComboboxItemIndicator">
+						<ComboboxItemIndicator as-child class="ComboboxItemIndicator">
 							<N8nIcon color="foreground-dark" size="small" icon="check" />
 						</ComboboxItemIndicator>
 						<N8nText size="small">
