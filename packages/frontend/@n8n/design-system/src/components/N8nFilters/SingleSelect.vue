@@ -20,15 +20,14 @@ interface Item {
 	value: string;
 }
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
 		items: Item[];
 		placeholder?: string;
-		modelValue?: Item | null;
+		initialItem?: Item;
 	}>(),
 	{
 		placeholder: 'Select item...',
-		modelValue: null,
 	},
 );
 
@@ -38,31 +37,30 @@ const emit = defineEmits<{
 
 const open = ref(true);
 
-function handleValueChange(value: Item | null) {
+function onChange(value: Item | null) {
 	emit('update:modelValue', value);
 }
+
+const selectedItem = ref<Item | null>(props.initialItem || null);
 </script>
 
 <template>
 	<ComboboxRoot
 		class="root"
-		:model-value="modelValue"
+		v-model="selectedItem"
 		:open="open"
 		@update:open="() => {}"
-		@update:model-value="handleValueChange"
+		@update:model-value="onChange"
 	>
-		<ComboboxAnchor class="ComboboxAnchor">
-			<ComboboxInput class="ComboboxInput" :placeholder="placeholder" />
+		<ComboboxAnchor class="filterDropdownAnchor">
+			<ComboboxInput :placeholder="placeholder" />
 		</ComboboxAnchor>
-		<ComboboxContent class="ComboboxContent">
-			<ComboboxViewport class="ComboboxViewport">
-				<ComboboxEmpty class="ComboboxEmpty" />
+		<ComboboxContent class="filterDropdownContent">
+			<ComboboxViewport>
+				<ComboboxEmpty class="filterDropdownEmpty" />
 				<template v-for="item in items" :key="item.id">
-					<ComboboxItem :value="item" class="ComboboxItem">
-						<ComboboxItemIndicator
-							class="ComboboxItemIndicator"
-							:data-state="modelValue?.id === item.id ? 'checked' : 'unchecked'"
-						>
+					<ComboboxItem :value="item" class="filterDropdownItem select">
+						<ComboboxItemIndicator as-child class="filterDropdownItemIndicator">
 							<N8nIcon size="small" icon="check" />
 						</ComboboxItemIndicator>
 						<N8nText size="small">

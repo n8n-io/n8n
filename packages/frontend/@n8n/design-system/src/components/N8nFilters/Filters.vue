@@ -17,6 +17,7 @@ import N8nIconButton from '../N8nIconButton';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 import MultiSelect from './MultiSelect.vue';
+import { filter } from 'lodash';
 
 interface ActiveFilter {
 	filterName: string;
@@ -60,7 +61,29 @@ const activeFilters = ref<ActiveFilter[]>([]);
 const filterOptions = computed(() => props.filters);
 const hasActiveFilters = computed(() => activeFilters.value.length > 0);
 
-function handleSingleSelectChange(filterName: string, value: FilterItem | null) {}
+function handleSingleSelectChange(filterName: string, value: FilterItem | null) {
+	const filterToUpdate = activeFilters.value.find((f) => f.filterName === filterName);
+
+	if (!filterToUpdate) {
+		activeFilters.value.push({
+			filterName,
+			values: value ? [value] : [],
+			type: 'single',
+		});
+		return;
+	}
+
+	if (!value || filterToUpdate.values[0]?.id === value.id) {
+		activeFilters.value = activeFilters.value.filter((f) => f.filterName !== filterName);
+		return;
+	}
+
+	activeFilters.value = activeFilters.value.map((f) =>
+		f.filterName === filterName ? { ...f, values: [value] } : f,
+	);
+
+	console.log(activeFilters.value);
+}
 
 function handleMultiSelectChange(filterName: string, values: FilterItem[]) {
 	const filterToUpdate = activeFilters.value.find((f) => f.filterName === filterName);
@@ -86,53 +109,58 @@ function handleMultiSelectChange(filterName: string, values: FilterItem[]) {
 
 function getSelectedSingleValue() {}
 
-function getSelectedMultiValues() {}
-
-// function removeFilter(filterName: string) {}
+// TODO
+// 1. Update single select
+// - Clear filters
+// - Date picker
+// - Custom values
+// - Small variant
 </script>
 
 <template>
-	<div class="toolbar">
-		<div class="filters">
-			<!-- Active Filters -->
-			<div v-if="hasActiveFilters" class="active-filters">
-				<template v-for="filter in activeFilters" :key="filter.filterName">
-					<button class="filter-tag active">
-						<N8nText size="small">{{ filter.filterName }} is</N8nText>
-						<N8nText bold size="small">{{
-							filter.values.map(({ name }) => name).join(', ')
-						}}</N8nText>
-						<N8nIcon icon="x" />
-					</button>
-				</template>
-			</div>
-			<!-- Filters Dropdown -->
-			<DropdownMenuRoot>
-				<DropdownMenuTrigger class="filter-button">
-					<N8nTooltip content="Filter">
-						<N8nIconButton
-							type="tertiary"
-							icon="list-filter"
-							text
-							:class="{ active: hasActiveFilters }"
-						/>
-					</N8nTooltip>
-				</DropdownMenuTrigger>
-				<DropdownMenuPortal>
-					<DropdownMenuContent class="filter-dropdown">
+	<div class="filters">
+		<!-- Active Filters -->
+		<div v-if="hasActiveFilters" class="filtersActiveList">
+			<template v-for="filter in activeFilters" :key="filter.filterName">
+				<button class="filterChip active">
+					<N8nText size="small">{{ filter.filterName }} is</N8nText>
+					<N8nText bold size="small">{{
+						filter.values.map(({ name }) => name).join(', ')
+					}}</N8nText>
+					<N8nIcon icon="x" />
+				</button>
+			</template>
+		</div>
+		<!-- Filters Dropdown -->
+		<DropdownMenuRoot>
+			<DropdownMenuTrigger class="filterDropdownButton">
+				<N8nTooltip content="Filter">
+					<N8nIconButton
+						type="tertiary"
+						icon="list-filter"
+						text
+						:class="{ active: hasActiveFilters }"
+					/>
+				</N8nTooltip>
+			</DropdownMenuTrigger>
+			<DropdownMenuPortal>
+				<DropdownMenuContent class="filterDropdown">
+					<div class="filterDropdownContent">
 						<template v-for="filterOption in filterOptions" :key="filterOption.label">
 							<DropdownMenuSub>
-								<DropdownMenuSubTrigger class="filter-item">
+								<DropdownMenuSubTrigger class="filterDropdownItem">
 									<N8nText size="small" color="text-dark">
 										{{ filterOption.label }}
 									</N8nText></DropdownMenuSubTrigger
 								>
 								<DropdownMenuPortal>
-									<DropdownMenuSubContent :side-offset="4" class="filter-dropdown">
+									<DropdownMenuSubContent :side-offset="4" class="filterDropdown">
 										<SingleSelect
 											v-if="filterOption.type === 'single'"
 											:items="filterOption.options"
-											:initialSelected="getSelectedSingleValue(filterOption.label)"
+											:initialSelected="
+												activeFilters.find((f) => f.filterName === filterOption.label)?.values || []
+											"
 											@update:model-value="
 												(value: FilterItem | null) =>
 													handleSingleSelectChange(filterOption.label, value)
@@ -154,85 +182,13 @@ function getSelectedMultiValues() {}
 								</DropdownMenuPortal>
 							</DropdownMenuSub>
 						</template>
-					</DropdownMenuContent>
-				</DropdownMenuPortal>
-			</DropdownMenuRoot>
-		</div>
+					</div>
+				</DropdownMenuContent>
+			</DropdownMenuPortal>
+		</DropdownMenuRoot>
 	</div>
 </template>
 
 <style scoped lang="scss">
-.toolbar {
-	display: flex;
-	justify-content: end;
-	align-items: center;
-	gap: var(--spacing-xs);
-	width: 100%;
-}
-
-.filters {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-3xs);
-}
-
-.active-filters {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-2xs);
-	flex-wrap: wrap;
-	max-width: 100%;
-}
-
-.active {
-	background-color: var(--color-callout-secondary-background);
-	border: var(--border-base);
-	border-color: var(--color-callout-secondary-border);
-	color: var(--color-callout-secondary-font);
-}
-
-.filter-tag {
-	outline: none;
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-4xs);
-	border-radius: var(--border-radius-base);
-	padding: var(--spacing-3xs) var(--spacing-3xs);
-	height: 30px;
-	font-size: var(--font-size-2xs);
-	color: var(--color-callout-secondary-font);
-}
-
-.filter-button {
-	padding: 0;
-	background-color: transparent;
-	border: none;
-	outline: none;
-}
-
-:deep(.filter-dropdown) {
-	z-index: 1000;
-	min-width: 160px;
-	box-shadow: var(--box-shadow-light);
-	border-radius: var(--border-radius-base);
-	background-color: var(--color-foreground-xlight);
-	border: var(--border-base);
-}
-
-.filter-item {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing-3xs) var(--spacing-2xs);
-	border-radius: var(--border-radius-small);
-	color: var(--color-text-base);
-	cursor: pointer;
-	transition: background-color 0.2s ease;
-
-	&:hover,
-	&:focus-visible,
-	&:focus {
-		background-color: var(--color-background-base);
-	}
-}
+@use './Filters.scss';
 </style>

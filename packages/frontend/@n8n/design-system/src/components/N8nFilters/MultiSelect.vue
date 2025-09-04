@@ -40,7 +40,6 @@ const open = ref(true);
 const selectedItems = ref<Item[]>(props.initialSelected || []);
 
 function onChange(value: Item[]) {
-	console.log('Selected items changed:', value);
 	emit('update:modelValue', value);
 }
 </script>
@@ -54,15 +53,15 @@ function onChange(value: Item[]) {
 		multiple
 		@update:model-value="onChange as any"
 	>
-		<ComboboxAnchor class="ComboboxAnchor">
-			<ComboboxInput class="ComboboxInput" :placeholder="placeholder" />
+		<ComboboxAnchor class="filterDropdownAnchor">
+			<ComboboxInput :placeholder="placeholder" />
 		</ComboboxAnchor>
-		<ComboboxContent class="ComboboxContent">
-			<ComboboxViewport class="ComboboxViewport">
-				<ComboboxEmpty class="ComboboxEmpty" />
+		<ComboboxContent class="filterDropdownContent">
+			<ComboboxViewport>
+				<ComboboxEmpty class="filterDropdownEmpty" />
 				<template v-for="item in items" :key="item.id">
-					<ComboboxItem :value="item" class="ComboboxItem">
-						<ComboboxItemIndicator as-child class="ComboboxItemIndicator">
+					<ComboboxItem :value="item" class="filterDropdownItem select">
+						<ComboboxItemIndicator as-child class="filterDropdownItemIndicator">
 							<N8nIcon color="foreground-dark" size="small" icon="check" />
 						</ComboboxItemIndicator>
 						<N8nText size="small">

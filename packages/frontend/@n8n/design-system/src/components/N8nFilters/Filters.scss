@@ -4,7 +4,58 @@ input {
 	all: unset;
 }
 
-.ComboboxAnchor {
+.filters {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
+}
+
+.filtersActiveList {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
+	flex-wrap: wrap;
+	max-width: 100%;
+}
+
+.filterChip {
+	outline: none;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4xs);
+	border-radius: var(--border-radius-base);
+	padding: 0 var(--spacing-3xs);
+	height: 30px;
+	font-size: var(--font-size-2xs);
+	color: var(--color-callout-secondary-font);
+}
+
+.active {
+	background-color: var(--color-callout-secondary-background);
+	border: var(--border-base);
+	border-color: var(--color-callout-secondary-border);
+	color: var(--color-callout-secondary-font);
+	border-radius: var(--border-radius-base);
+}
+
+.filterDropdownButton {
+	padding: 0;
+	background-color: transparent;
+	border: none;
+	outline: none;
+}
+
+:deep(.filterDropdown) {
+	z-index: 1000;
+	min-width: 200px;
+	box-shadow: var(--box-shadow-light);
+	border-radius: var(--border-radius-base);
+	background-color: var(--color-foreground-xlight);
+	border: var(--border-base);
+	overflow: hidden;
+}
+
+.filterDropdownAnchor {
 	display: inline-flex;
 	align-items: center;
 	justify-content: between;
@@ -17,7 +68,7 @@ input {
 	border-radius: var(--border-radius-base) var(--border-radius-base) 0 0;
 }
 
-.ComboboxContent {
+:deep(.filterDropdownContent) {
 	z-index: 10;
 	padding: var(--spacing-4xs);
 	max-width: 200px;
@@ -25,7 +76,7 @@ input {
 	border-radius: 0 0 var(--border-radius-base) var(--border-radius-base);
 }
 
-.ComboboxEmpty {
+.filterDropdownEmpty {
 	padding-top: 0.5rem;
 	padding-bottom: 0.5rem;
 	text-align: center;
@@ -34,24 +85,27 @@ input {
 	font-weight: 500;
 }
 
-.ComboboxItem {
+.filterDropdownItem {
 	display: flex;
 	align-items: center;
 	padding: var(--spacing-2xs);
-	padding-left: var(--spacing-xl);
 	border-radius: var(--border-radius-base);
 	position: relative;
 }
 
-.ComboboxItem[data-disabled] {
+.filterDropdownItem.select {
+	padding-left: var(--spacing-xl);
+}
+
+.filterDropdownItem[data-disabled] {
 	pointer-events: none;
 }
 
-.ComboboxItem[data-highlighted] {
+.filterDropdownItem[data-highlighted] {
 	background-color: var(--color-foreground-light);
 }
 
-.ComboboxItemIndicator {
+.filterDropdownItemIndicator {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -59,10 +113,4 @@ input {
 	left: var(--spacing-2xs);
 	width: 16px;
 	height: 16px;
-	opacity: 1;
-	transition: opacity 0.2s ease;
-}
-
-.ComboboxItemIndicator[data-state='checked'] {
-	opacity: 1;
 }
