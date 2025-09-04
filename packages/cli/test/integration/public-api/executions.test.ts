@@ -297,6 +297,7 @@ describe('GET /executions', () => {
 	});
 
 	describe('with query status', () => {
+		type AllowedQueryStatus = 'success' | 'error' | 'canceled' | 'waiting';
 		test.each`
 			queryStatus   | entityStatus
 			${'canceled'} | ${'canceled'}
@@ -309,7 +310,7 @@ describe('GET /executions', () => {
 			async ({
 				queryStatus,
 				entityStatus,
-			}: { queryStatus: ExecutionStatus; entityStatus: ExecutionStatus }) => {
+			}: { queryStatus: AllowedQueryStatus; entityStatus: ExecutionStatus }) => {
 				const workflow = await createWorkflow({}, owner);
 
 				await createdExecutionWithStatus(workflow, queryStatus === 'success' ? 'error' : 'success');
