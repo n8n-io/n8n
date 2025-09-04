@@ -185,7 +185,7 @@ describe('processRunExecutionData', () => {
 			);
 		});
 
-		test('does not complain about nodes with issue past the destination node', async () => {
+		test('does not complain about nodes with issue past the destination node', () => {
 			// ARRANGE
 			const node1 = createNodeData({ name: 'node1', type: types.passThrough });
 			const node2 = createNodeData({ name: 'node2', type: types.testNodeWithRequiredProperty });
