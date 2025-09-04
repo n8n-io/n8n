@@ -1161,7 +1161,7 @@ describe('dataStore', () => {
 			);
 		});
 
-		it('rejects a invalid date string to date column', async () => {
+		it('rejects an invalid date string to date column', async () => {
 			// ARRANGE
 			const { id: dataStoreId } = await dataStoreService.createDataStore(project1.id, {
 				name: 'dataStore',
@@ -1174,10 +1174,9 @@ describe('dataStore', () => {
 			]);
 
 			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreValidationError);
 			await expect(result).rejects.toThrow(
-				new DataStoreValidationError(
-					"value '2025-99-15T09:48:14.259Z' does not match column type 'date'",
-				),
+				"value '2025-99-15T09:48:14.259Z' does not match column type 'date'",
 			);
 		});
 
@@ -1211,14 +1210,16 @@ describe('dataStore', () => {
 			});
 
 			// ACT
+			const wrongValue = new Date().toISOString();
 			const result = dataStoreService.insertRows(dataStoreId, project1.id, [
 				{ c1: 3 },
-				{ c1: true },
+				{ c1: wrongValue },
 			]);
 
 			// ASSERT
+			await expect(result).rejects.toThrow(DataStoreValidationError);
 			await expect(result).rejects.toThrow(
-				new DataStoreValidationError("value 'true' does not match column type 'number'"),
+				`value '${wrongValue}' does not match column type 'number'`,
 			);
 		});
 
@@ -1901,9 +1902,8 @@ describe('dataStore', () => {
 			});
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				new DataStoreValidationError("value '30dfddf' does not match column type 'number'"),
-			);
+			await expect(result).rejects.toThrow(DataStoreValidationError);
+			await expect(result).rejects.toThrow("value '30dfddf' does not match column type 'number'");
 		});
 
 		it('should be able to update by boolean column', async () => {

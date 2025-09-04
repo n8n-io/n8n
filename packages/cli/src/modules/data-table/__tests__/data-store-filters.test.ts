@@ -365,9 +365,8 @@ describe('dataStore filters', () => {
 				});
 
 				// ASSERT
-				await expect(result).rejects.toThrow(
-					new DataStoreValidationError("value '30dfddf' does not match column type 'number'"),
-				);
+				await expect(result).rejects.toThrow(DataStoreValidationError);
+				await expect(result).rejects.toThrow("value '30dfddf' does not match column type 'number'");
 			});
 		});
 

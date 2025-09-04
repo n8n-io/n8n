@@ -1,4 +1,3 @@
-import { dateTimeSchema } from '@n8n/api-types';
 import type {
 	AddDataStoreColumnDto,
 	CreateDataStoreDto,
@@ -11,16 +10,20 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { DateTime } from 'luxon';
 import type {
+	DataStoreColumnJsType,
 	DataTableFilter,
 	DataStoreRow,
 	DataStoreRowReturn,
 	DataStoreRows,
 } from 'n8n-workflow';
+import { validateFieldType } from 'n8n-workflow';
 
 import { DataStoreColumnRepository } from './data-store-column.repository';
 import { DataStoreRowsRepository } from './data-store-rows.repository';
 import { DataStoreRepository } from './data-store.repository';
+import { columnTypeToFieldType } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-found.error';
 import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
@@ -269,45 +272,36 @@ export class DataStoreService {
 		if (cell === null) return;
 
 		const columnType = columnTypeMap.get(key);
-		switch (columnType) {
-			case 'boolean':
-				if (typeof cell !== 'boolean') {
-					throw new DataStoreValidationError(
-						`value '${String(cell)}' does not match column type 'boolean'`,
-					);
-				}
-				break;
-			case 'date':
-				if (typeof cell === 'string') {
-					const validated = dateTimeSchema.safeParse(cell);
-					if (validated.success) {
-						row[key] = validated.data.toISOString();
-						break;
-					}
-				} else if (cell instanceof Date) {
-					row[key] = cell.toISOString();
-					break;
-				}
+		if (!columnType) return;
 
-				throw new DataStoreValidationError(`value '${cell}' does not match column type 'date'`);
-			case 'string':
-				if (typeof cell !== 'string') {
-					throw new DataStoreValidationError(
-						`value '${String(cell)}' does not match column type 'string'`,
-					);
-				}
-				break;
-			case 'number':
-				if (
-					typeof cell === 'number' ||
-					(typeof cell === 'string' && !Number.isNaN(Number(cell))) // allow numeric strings
-				) {
-					break;
-				}
-				throw new DataStoreValidationError(
-					`value '${String(cell)}' does not match column type 'number'`,
-				);
+		const fieldType = columnTypeToFieldType[columnType];
+		if (!fieldType) return;
+
+		const validationResult = validateFieldType(key, cell, fieldType, {
+			strict: false, // Allow type coercion (e.g., string numbers to numbers)
+			parseStrings: false,
+		});
+
+		if (!validationResult.valid) {
+			throw new DataStoreValidationError(
+				`value '${String(cell)}' does not match column type '${columnType}': ${validationResult.errorMessage}`,
+			);
 		}
+
+		// Special handling for date type to convert from luxon DateTime to ISO string
+		if (columnType === 'date') {
+			try {
+				const dateInISO = (validationResult.newValue as DateTime).toISO();
+				row[key] = dateInISO;
+				return;
+			} catch {
+				throw new DataStoreValidationError(
+					`value '${String(cell)}' does not match column type 'date'`,
+				);
+			}
+		}
+
+		row[key] = validationResult.newValue as DataStoreColumnJsType;
 	}
 
 	private async validateDataStoreExists(dataStoreId: string, projectId: string) {
