@@ -63,13 +63,13 @@ test.describe('Data Table list view', () => {
 
 		await n8n.dataTableComposer.createNewDataTable(TEST_DATA_TABLE_NAME);
 
-		const dataTableDetailsContainer = n8n.dataTable.getDataTableDetailsWrapper();
+		const dataTableDetailsContainer = n8n.dataTableDetails.getPageWrapper();
 		await expect(dataTableDetailsContainer).toBeVisible();
 
-		const dataTableProjectBreadcrumb = n8n.dataTable.getDataTableProjectBreadcrumb();
+		const dataTableProjectBreadcrumb = n8n.dataTableDetails.getDataTableProjectBreadcrumb();
 		await expect(dataTableProjectBreadcrumb).toHaveText('Personal');
 
-		const dataTableBreadcrumb = n8n.dataTable.getDataTableBreadcrumb();
+		const dataTableBreadcrumb = n8n.dataTableDetails.getDataTableBreadcrumb();
 		await expect(dataTableBreadcrumb).toContainText(TEST_DATA_TABLE_NAME);
 	});
 

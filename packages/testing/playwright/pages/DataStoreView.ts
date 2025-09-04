@@ -29,18 +29,6 @@ export class DataStoreView extends BasePage {
 		return this.page.getByTestId('confirm-add-data-store-button');
 	}
 
-	getDataTableDetailsWrapper() {
-		return this.page.getByTestId('data-table-details-view');
-	}
-
-	getDataTableProjectBreadcrumb() {
-		return this.page.getByTestId('home-project');
-	}
-
-	getDataTableBreadcrumb() {
-		return this.page.getByTestId('datastore-header-name-input');
-	}
-
 	getAddResourceDropdown() {
 		return this.page.getByTestId('add-resource');
 	}

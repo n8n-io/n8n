@@ -4,6 +4,7 @@ import { AIAssistantPage } from './AIAssistantPage';
 import { BecomeCreatorCTAPage } from './BecomeCreatorCTAPage';
 import { CanvasPage } from './CanvasPage';
 import { CredentialsPage } from './CredentialsPage';
+import { DataStoreDetails } from './DataStoreDetails';
 import { DataStoreView } from './DataStoreView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
@@ -54,6 +55,7 @@ export class n8nPage {
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
 	readonly dataTable: DataStoreView;
+	readonly dataTableDetails: DataStoreDetails;
 
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
@@ -92,6 +94,7 @@ export class n8nPage {
 		this.sideBar = new SidebarPage(page);
 		this.workflowSharingModal = new WorkflowSharingModal(page);
 		this.dataTable = new DataStoreView(page);
+		this.dataTableDetails = new DataStoreDetails(page);
 
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
