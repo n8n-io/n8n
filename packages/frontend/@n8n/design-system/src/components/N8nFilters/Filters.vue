@@ -62,33 +62,25 @@ const hasActiveFilters = computed(() => activeFilters.value.length > 0);
 
 function handleSingleSelectChange(filterName: string, value: FilterItem | null) {}
 
-function handleMultiSelectChange(filterName: string, value: FilterItem) {
+function handleMultiSelectChange(filterName: string, values: FilterItem[]) {
 	const filterToUpdate = activeFilters.value.find((f) => f.filterName === filterName);
-
-	console.log('filterToUpdate', filterToUpdate);
 
 	if (!filterToUpdate) {
 		activeFilters.value.push({
 			filterName,
-			values: [value],
+			values,
 			type: 'multi',
 		});
 		return;
 	}
 
-	// Toggle off the value if it's already selected
-	if (filterToUpdate.values.some((v) => v.id === value.id)) {
-		filterToUpdate.values = filterToUpdate.values.filter((v) => v.id !== value.id);
-
-		if (filterToUpdate.values.length === 0) {
-			activeFilters.value = activeFilters.value.filter((f) => f.filterName !== filterName);
-		}
-
+	if (values.length === 0) {
+		activeFilters.value = activeFilters.value.filter((f) => f.filterName !== filterName);
 		return;
 	}
 
 	activeFilters.value = activeFilters.value.map((f) =>
-		f.filterName === filterName ? { ...f, values: [...f.values, value] } : f,
+		f.filterName === filterName ? { ...f, values } : f,
 	);
 }
 
@@ -140,7 +132,7 @@ function getSelectedMultiValues() {}
 										<SingleSelect
 											v-if="filterOption.type === 'single'"
 											:items="filterOption.options"
-											:model-value="getSelectedSingleValue(filterOption.label)"
+											:initialSelected="getSelectedSingleValue(filterOption.label)"
 											@update:model-value="
 												(value: FilterItem | null) =>
 													handleSingleSelectChange(filterOption.label, value)
@@ -150,7 +142,9 @@ function getSelectedMultiValues() {}
 										<MultiSelect
 											v-else
 											:items="filterOption.options"
-											:model-value="getSelectedMultiValues(filterOption.label)"
+											:initial-selected="
+												activeFilters.find((f) => f.filterName === filterOption.label)?.values || []
+											"
 											@update:model-value="
 												(values) => handleMultiSelectChange(filterOption.label, values)
 											"

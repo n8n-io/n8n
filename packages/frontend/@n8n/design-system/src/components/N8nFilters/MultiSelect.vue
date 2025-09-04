@@ -20,23 +20,32 @@ interface Item {
 	value: string;
 }
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
 		items: Item[];
 		placeholder?: string;
-		modelValue?: Item[];
+		initialSelected?: Item[];
 	}>(),
 	{
 		placeholder: 'Select items...',
-		modelValue: () => [],
 	},
 );
 
-defineEmits<{
-	'update:modelValue': [value: Item];
+const emit = defineEmits<{
+	'update:modelValue': [value: Item[]];
 }>();
 
 const open = ref(true);
+
+const selectedItems = ref<Item[]>(props.initialSelected || []);
+
+function onChange(value: Item[]) {
+	console.log('Selected items changed:', value);
+	// Emit the updated value to the parent component
+	// This will allow two-way binding with v-model
+	// @ts-ignore
+	emit('update:modelValue', value);
+}
 </script>
 
 <template>
@@ -44,7 +53,9 @@ const open = ref(true);
 		class="root"
 		:open="open"
 		@update:open="() => {}"
-		@update:model-value="(value) => $emit('update:modelValue', value as Item)"
+		v-model="selectedItems"
+		multiple
+		@update:model-value="onChange"
 	>
 		<ComboboxAnchor class="ComboboxAnchor">
 			<ComboboxInput class="ComboboxInput" :placeholder="placeholder" />
@@ -55,7 +66,7 @@ const open = ref(true);
 				<template v-for="item in items" :key="item.id">
 					<ComboboxItem :value="item" class="ComboboxItem">
 						<ComboboxItemIndicator class="ComboboxItemIndicator">
-							<N8nIcon size="small" icon="check" />
+							<N8nIcon color="foreground-dark" size="small" icon="check" />
 						</ComboboxItemIndicator>
 						<N8nText size="small">
 							{{ item.name }}
