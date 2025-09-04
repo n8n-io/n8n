@@ -37,11 +37,11 @@ const emit = defineEmits<{
 
 const open = ref(true);
 
+const selectedItem = ref<Item | null>(props.initialItem || null);
+
 function onChange(value: Item | null) {
 	emit('update:modelValue', value);
 }
-
-const selectedItem = ref<Item | null>(props.initialItem || null);
 </script>
 
 <template>

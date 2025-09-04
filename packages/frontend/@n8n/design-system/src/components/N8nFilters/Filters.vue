@@ -17,7 +17,6 @@ import N8nIconButton from '../N8nIconButton';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 import MultiSelect from './MultiSelect.vue';
-import { filter } from 'lodash';
 
 interface ActiveFilter {
 	filterName: string;
@@ -74,7 +73,6 @@ function handleSingleSelectChange(filterName: string, value: FilterItem | null) 
 	}
 
 	if (!value || filterToUpdate.values[0]?.id === value.id) {
-		console.log('removing filter');
 		activeFilters.value = activeFilters.value.filter((f) => f.filterName !== filterName);
 		return;
 	}
