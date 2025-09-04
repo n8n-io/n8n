@@ -22,6 +22,8 @@ put:
     - Variables
   summary: Update a variable
   description: Update a variable from your instance.
+  parameters:
+    - $ref: '../schemas/parameters/variableId.yml'
   requestBody:
     description: Payload for variable to update.
     content:
