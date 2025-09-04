@@ -118,7 +118,7 @@ test.describe('Data Table list view', () => {
 		await expect(n8n.dataTable.getDataTableCardByName(TEST_DATA_TABLE_NAME)).toBeHidden();
 	});
 
-	test('Should paginate data table list correctly', async ({ n8n, api }) => {
+	test('Should paginate data table list correctly', async ({ n8n }) => {
 		const TEST_PROJECT_NAME = `Project ${nanoid(8)}`;
 		const TOTAL_DATA_TABLES = 13;
 		const PAGE_SIZE = 10;
