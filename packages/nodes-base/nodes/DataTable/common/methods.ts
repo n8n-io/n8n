@@ -54,7 +54,7 @@ export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 	const columns = await proxy.getColumns();
 	for (const column of columns) {
 		returnData.push({
-			name: `${column.name} - (${column.type})`,
+			name: `${column.name} (${column.type})`,
 			value: column.name,
 			type: column.type,
 		});
