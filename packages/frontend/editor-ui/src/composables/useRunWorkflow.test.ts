@@ -2,9 +2,8 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import type router from 'vue-router';
-import { ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
-	IPinData,
 	IRunData,
 	Workflow,
 	IExecuteData,
@@ -22,7 +21,6 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useToast } from './useToast';
 import { useI18n } from '@n8n/i18n';
 import { captor, mock } from 'vitest-mock-extended';
-import { useSettingsStore } from '@/stores/settings.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
@@ -139,7 +137,6 @@ describe('useRunWorkflow({ router })', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let router: ReturnType<typeof useRouter>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
-	let settingsStore: ReturnType<typeof useSettingsStore>;
 	let agentRequestStore: ReturnType<typeof useAgentRequestStore>;
 
 	beforeEach(() => {
@@ -150,7 +147,6 @@ describe('useRunWorkflow({ router })', () => {
 		pushConnectionStore = usePushConnectionStore();
 		uiStore = useUIStore();
 		workflowsStore = useWorkflowsStore();
-		settingsStore = useSettingsStore();
 		agentRequestStore = useAgentRequestStore();
 
 		router = useRouter();
@@ -510,7 +506,6 @@ describe('useRunWorkflow({ router })', () => {
 		});
 
 		it('should send dirty nodes for partial executions v2', async () => {
-			vi.mocked(settingsStore).partialExecutionVersion = 2;
 			const composable = useRunWorkflow({ router });
 			const parentName = 'When clicking';
 			const executeName = 'Code';
@@ -698,38 +693,7 @@ describe('useRunWorkflow({ router })', () => {
 			);
 		});
 
-		it('does not use the original run data if `partialExecutionVersion` is set to 1', async () => {
-			// ARRANGE
-			const mockExecutionResponse = { executionId: '123' };
-			const mockRunData = { nodeName: [] };
-			const { runWorkflow } = useRunWorkflow({ router });
-			const dataCaptor = captor();
-			const workflow = mock<Workflow>({ name: 'Test Workflow' });
-			workflow.getParentNodes.mockReturnValue([]);
-
-			vi.mocked(settingsStore).partialExecutionVersion = 1;
-			vi.mocked(pushConnectionStore).isConnected = true;
-			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			vi.mocked(workflowsStore).nodesIssuesExist = false;
-			vi.mocked(workflowsStore).workflowObject = workflow;
-			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue(
-				mock<WorkflowData>({ id: 'workflowId', nodes: [] }),
-			);
-			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
-
-			// ACT
-			const result = await runWorkflow({ destinationNode: 'some node name' });
-
-			// ASSERT
-			expect(result).toEqual(mockExecutionResponse);
-			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledTimes(1);
-			expect(workflowsStore.setWorkflowExecutionData).toHaveBeenCalledWith(dataCaptor);
-			expect(dataCaptor.value).toMatchObject({
-				data: { resultData: { runData: {} } },
-			});
-		});
-
-		it('sends agentRequest on partial execution if `partialExecutionVersion` is set to 2', async () => {
+		it('sends agentRequest on partial execution', async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
 			const mockRunData = { nodeName: [] };
@@ -773,7 +737,6 @@ describe('useRunWorkflow({ router })', () => {
 
 			workflow.getParentNodes.mockReturnValue([]);
 
-			vi.mocked(settingsStore).partialExecutionVersion = 2;
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
@@ -811,7 +774,7 @@ describe('useRunWorkflow({ router })', () => {
 			expect(dataCaptor.value).toMatchObject({ data: { resultData: { runData: mockRunData } } });
 		});
 
-		it('retains the original run data if `partialExecutionVersion` is set to 2', async () => {
+		it('retains the original run data', async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
 			const mockRunData = { nodeName: [] };
@@ -820,7 +783,6 @@ describe('useRunWorkflow({ router })', () => {
 			const workflow = mock<Workflow>({ name: 'Test Workflow' });
 			workflow.getParentNodes.mockReturnValue([]);
 
-			vi.mocked(settingsStore).partialExecutionVersion = 2;
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
@@ -840,7 +802,7 @@ describe('useRunWorkflow({ router })', () => {
 			expect(dataCaptor.value).toMatchObject({ data: { resultData: { runData: mockRunData } } });
 		});
 
-		it("does not send run data if it's not a partial execution even if `partialExecutionVersion` is set to 2", async () => {
+		it("does not send run data if it's not a partial execution", async () => {
 			// ARRANGE
 			const mockExecutionResponse = { executionId: '123' };
 			const mockRunData = { nodeName: [] };
@@ -849,7 +811,6 @@ describe('useRunWorkflow({ router })', () => {
 			const workflow = mock<Workflow>({ name: 'Test Workflow' });
 			workflow.getParentNodes.mockReturnValue([]);
 
-			vi.mocked(settingsStore).partialExecutionVersion = 2;
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
@@ -886,110 +847,6 @@ describe('useRunWorkflow({ router })', () => {
 
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.setWorkflowExecutionData).lastCalledWith(null);
-		});
-	});
-
-	describe('consolidateRunDataAndStartNodes()', () => {
-		it('should return empty runData and startNodeNames if runData is null', () => {
-			const { consolidateRunDataAndStartNodes } = useRunWorkflow({ router });
-			const workflowMock = {
-				getParentNodes: vi.fn(),
-				nodes: {},
-			} as unknown as Workflow;
-
-			const result = consolidateRunDataAndStartNodes([], null, undefined, workflowMock);
-			expect(result).toEqual({ runData: undefined, startNodeNames: [] });
-		});
-
-		it('should return correct startNodeNames and newRunData for given directParentNodes and runData', () => {
-			const { consolidateRunDataAndStartNodes } = useRunWorkflow({ router });
-			const directParentNodes = ['node1', 'node2'];
-			const runData = {
-				node2: [{ data: { main: [[{ json: { value: 'data2' } }]] } }],
-				node3: [{ data: { main: [[{ json: { value: 'data3' } }]] } }],
-			} as unknown as IRunData;
-			const pinData: IPinData = {
-				node2: [{ json: { value: 'data2' } }],
-			};
-			const workflowMock = {
-				getParentNodes: vi.fn().mockImplementation((node) => {
-					if (node === 'node1') return ['node3'];
-					return [];
-				}),
-				nodes: {
-					node1: { disabled: false },
-					node2: { disabled: false },
-					node3: { disabled: true },
-				},
-			} as unknown as Workflow;
-
-			const result = consolidateRunDataAndStartNodes(
-				directParentNodes,
-				runData,
-				pinData,
-				workflowMock,
-			);
-
-			expect(result.startNodeNames).toContain('node1');
-			expect(result.startNodeNames).not.toContain('node3');
-			expect(result.runData).toEqual(runData);
-		});
-
-		it('should include directParentNode in startNodeNames if it has no runData or pinData', () => {
-			const { consolidateRunDataAndStartNodes } = useRunWorkflow({ router });
-			const directParentNodes = ['node1'];
-			const runData = {
-				node2: [
-					{
-						data: {
-							main: [[{ json: { value: 'data2' } }]],
-						},
-					},
-				],
-			} as unknown as IRunData;
-			const workflowMock = {
-				getParentNodes: vi.fn().mockReturnValue([]),
-				nodes: { node1: { disabled: false } },
-			} as unknown as Workflow;
-
-			const result = consolidateRunDataAndStartNodes(
-				directParentNodes,
-				runData,
-				undefined,
-				workflowMock,
-			);
-
-			expect(result.startNodeNames).toContain('node1');
-			expect(result.runData).toBeUndefined();
-		});
-
-		it('should rerun failed parent nodes, adding them to the returned list of start nodes and not adding their result to runData', () => {
-			const { consolidateRunDataAndStartNodes } = useRunWorkflow({ router });
-			const directParentNodes = ['node1'];
-			const runData = {
-				node1: [
-					{
-						error: new ExpressionError('error'),
-					},
-				],
-			} as unknown as IRunData;
-			const workflowMock = {
-				getParentNodes: vi.fn().mockReturnValue([]),
-				nodes: {
-					node1: { disabled: false },
-					node2: { disabled: false },
-				},
-			} as unknown as Workflow;
-
-			const result = consolidateRunDataAndStartNodes(
-				directParentNodes,
-				runData,
-				undefined,
-				workflowMock,
-			);
-
-			expect(result.startNodeNames).toContain('node1');
-			expect(result.runData).toEqual(undefined);
 		});
 	});
 
@@ -1064,39 +921,6 @@ describe('useRunWorkflow({ router })', () => {
 			// Assert that markExecutionAsStopped() is called eventually
 			await waitFor(() => expect(markStoppedSpy).toHaveBeenCalled());
 			expect(getExecutionSpy).toHaveBeenCalledWith('test-exec-id');
-		});
-	});
-
-	describe('sortNodesByYPosition()', () => {
-		const getNodeUi = (name: string, position: [number, number]) => {
-			return {
-				name,
-				position,
-				type: 'n8n-nodes-base.test',
-				typeVersion: 1,
-				id: name,
-				parameters: {},
-			};
-		};
-		it('should sort nodes by Y position in ascending order', () => {
-			const { sortNodesByYPosition } = useRunWorkflow({ router });
-
-			const topNode = 'topNode';
-			const middleNode = 'middleNode';
-			const bottomNode = 'bottomNode';
-
-			vi.mocked(workflowsStore.getNodeByName).mockImplementation((name) => {
-				if (name === topNode) return getNodeUi(topNode, [100, 50]);
-				if (name === middleNode) return getNodeUi(middleNode, [200, 200]);
-				if (name === bottomNode) return getNodeUi(bottomNode, [150, 350]);
-				return null;
-			});
-
-			// Test with different order of input nodes
-			const result = sortNodesByYPosition([bottomNode, topNode, middleNode]);
-
-			// Should be sorted by Y position (top to bottom)
-			expect(result).toEqual([topNode, middleNode, bottomNode]);
 		});
 	});
 });

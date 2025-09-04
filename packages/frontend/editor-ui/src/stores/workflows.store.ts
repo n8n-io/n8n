@@ -137,7 +137,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const usersStore = useUsersStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const version = computed(() => settingsStore.partialExecutionVersion);
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	const workflowObject = ref<Workflow>(
 		// eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -1757,7 +1756,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return await makeRestApiRequest(
 				rootStore.restApiContext,
 				'POST',
-				`/workflows/${startRunData.workflowData.id}/run?partialExecutionVersion=${version.value}`,
+				`/workflows/${startRunData.workflowData.id}/run?partialExecutionVersion=2`,
 				startRunData as unknown as IDataObject,
 			);
 		} catch (error) {

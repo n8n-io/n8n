@@ -6,12 +6,9 @@ import type {
 } from '@/Interface';
 
 import type {
-	IRunData,
 	IRunExecutionData,
 	ITaskData,
-	IPinData,
 	Workflow,
-	StartNodeData,
 	INode,
 	IDataObject,
 	IWorkflowBase,
@@ -34,9 +31,7 @@ import { displayForm } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
-import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@n8n/i18n';
-import get from 'lodash/get';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -66,20 +61,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const { startChat } = useCanvasOperations();
 
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
-
-	function sortNodesByYPosition(nodes: string[]) {
-		return [...nodes].sort((a, b) => {
-			const nodeA = workflowsStore.getNodeByName(a)?.position ?? [0, 0];
-			const nodeB = workflowsStore.getNodeByName(b)?.position ?? [0, 0];
-
-			const nodeAYPosition = nodeA[1];
-			const nodeBYPosition = nodeB[1];
-
-			if (nodeAYPosition === nodeBYPosition) return 0;
-
-			return nodeAYPosition > nodeBYPosition ? 1 : -1;
-		});
-	}
 
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
@@ -152,46 +133,18 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			const workflowData = await workflowHelpers.getWorkflowDataToSave();
 
-			const consolidatedData = consolidateRunDataAndStartNodes(
-				directParentNodes,
-				runData,
-				workflowData.pinData,
-				workflowObject.value,
-			);
-
-			const { startNodeNames } = consolidatedData;
 			const destinationNodeType = options.destinationNode
 				? workflowsStore.getNodeByName(options.destinationNode)?.type
 				: '';
 
-			let { runData: newRunData } = consolidatedData;
-			let executedNode: string | undefined;
-			let triggerToStartFrom: IStartRunData['triggerToStartFrom'];
-			if (
-				startNodeNames.length === 0 &&
-				directParentNodes.length === 0 &&
-				'destinationNode' in options &&
-				options.destinationNode !== undefined
-			) {
-				executedNode = options.destinationNode;
-				startNodeNames.push(options.destinationNode);
-			} else if (options.triggerNode && options.nodeData && !options.rerunTriggerNode) {
-				// starts execution from downstream nodes of trigger node
-				startNodeNames.push(
-					...workflowObject.value.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
-				);
-				newRunData = { [options.triggerNode]: [options.nodeData] };
-				executedNode = options.triggerNode;
-			} else if (options.destinationNode) {
-				executedNode = options.destinationNode;
-			}
-
-			if (options.triggerNode) {
-				triggerToStartFrom = {
-					name: options.triggerNode,
-					data: options.nodeData,
-				};
-			}
+			const executedNode =
+				options.destinationNode ??
+				(options.triggerNode && options.nodeData && !options.rerunTriggerNode
+					? options.triggerNode
+					: undefined);
+			const triggerToStartFrom = options.triggerNode
+				? { name: options.triggerNode, data: options.nodeData }
+				: undefined;
 
 			// If the destination node is specified, check if it is a chat node or has a chat parent
 			if (
@@ -244,43 +197,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			// partial executions must have a destination node
 			const isPartialExecution = options.destinationNode !== undefined;
-			const version = settingsStore.partialExecutionVersion;
-
-			// TODO: this will be redundant once we cleanup the partial execution v1
-			const startNodes: StartNodeData[] = sortNodesByYPosition(startNodeNames)
-				.map((name) => {
-					// Find for each start node the source data
-					let sourceData = get(runData, [name, 0, 'source', 0], null);
-					if (sourceData === null) {
-						const parentNodes = workflowObject.value.getParentNodes(
-							name,
-							NodeConnectionTypes.Main,
-							1,
-						);
-						const executeData = workflowHelpers.executeData(
-							workflowObject.value.connectionsBySourceNode,
-							parentNodes,
-							name,
-							NodeConnectionTypes.Main,
-							0,
-						);
-						sourceData = get(executeData, ['source', NodeConnectionTypes.Main, 0], null);
-					}
-					return {
-						name,
-						sourceData,
-					};
-				})
-				// If a destination node is specified and it has chat parent, we don't want to include it in the start nodes
-				.filter((node) => {
-					if (
-						options.destinationNode &&
-						workflowsStore.checkIfNodeHasChatParent(options.destinationNode)
-					) {
-						return node.name !== options.destinationNode;
-					}
-					return true;
-				});
 
 			const singleWebhookTrigger =
 				options.triggerNode === undefined
@@ -314,20 +230,14 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				runData: !isPartialExecution
 					? // if it's a full execution we don't want to send any run data
 						undefined
-					: version === 2
-						? // With the new partial execution version the backend decides
-							//what run data to use and what to ignore.
-							(runData ?? undefined)
-						: // for v0 we send the run data the FE constructed
-							newRunData,
-				startNodes,
+					: (runData ?? undefined),
 				triggerToStartFrom,
 			};
 
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
-				if (workflowObject.value.id && nodeId && version === 2) {
+				if (workflowObject.value.id && nodeId) {
 					const agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
 
 					if (agentRequest) {
@@ -423,57 +333,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		}
 	}
 
-	function consolidateRunDataAndStartNodes(
-		directParentNodes: string[],
-		runData: IRunData | null,
-		pinData: IPinData | undefined,
-		workflow: Workflow,
-	): { runData: IRunData | undefined; startNodeNames: string[] } {
-		const startNodeNames = new Set<string>();
-		let newRunData: IRunData | undefined;
-
-		if (runData !== null && Object.keys(runData).length !== 0) {
-			newRunData = {};
-			// Go over the direct parents of the node
-			for (const directParentNode of directParentNodes) {
-				// Go over the parents of that node so that we can get a start
-				// node for each of the branches
-				const parentNodes = workflow.getParentNodes(directParentNode, NodeConnectionTypes.Main);
-
-				// Add also the enabled direct parent to be checked
-				if (workflow.nodes[directParentNode].disabled) continue;
-
-				parentNodes.push(directParentNode);
-
-				for (const parentNode of parentNodes) {
-					// We want to execute nodes that don't have run data neither pin data
-					// in addition, if a node failed we want to execute it again
-					if (
-						(!runData[parentNode]?.length && !pinData?.[parentNode]?.length) ||
-						runData[parentNode]?.[0]?.error !== undefined
-					) {
-						// When we hit a node which has no data we stop and set it
-						// as a start node the execution from and then go on with other
-						// direct input nodes
-						startNodeNames.add(parentNode);
-						break;
-					}
-					if (runData[parentNode] && !runData[parentNode]?.[0]?.error) {
-						newRunData[parentNode] = runData[parentNode]?.slice(0, 1);
-					}
-				}
-			}
-
-			if (isEmpty(newRunData)) {
-				// If there is no data for any of the parent nodes make sure
-				// that run data is empty that it runs regularly
-				newRunData = undefined;
-			}
-		}
-
-		return { runData: newRunData, startNodeNames: [...startNodeNames] };
-	}
-
 	async function stopCurrentExecution() {
 		const executionId = workflowsStore.activeExecutionId;
 		if (!executionId) {
@@ -566,12 +425,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	}
 
 	return {
-		consolidateRunDataAndStartNodes,
 		runEntireWorkflow,
 		runWorkflow,
 		runWorkflowApi,
 		stopCurrentExecution,
 		stopWaitingForWebhook,
-		sortNodesByYPosition,
 	};
 }
