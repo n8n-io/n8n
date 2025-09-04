@@ -7,7 +7,6 @@ from tests.integration.conftest import (
     create_task_settings,
     get_task_console_messages,
     wait_for_task_done,
-    wait_for_task_error,
 )
 
 
