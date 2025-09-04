@@ -224,10 +224,7 @@ graph TB
         WH2[Webhook 2]
     end
 
-    subgraph "Redis"
-        QUEUE[Bull Queue<br/>'bull:jobs']
-        PUBSUB[Pub/Sub Channels]
-    end
+    REDIS[Redis]
 
     subgraph "Storage"
         DB[(Database)]
@@ -237,25 +234,23 @@ graph TB
     LB --> M1
     LB --> M2
 
-    M1 --> QUEUE
-    M2 --> QUEUE
+    M1 --> REDIS
+    M2 --> REDIS
 
-    WH1 --> QUEUE
-    WH2 --> QUEUE
+    WH1 --> REDIS
+    WH2 --> REDIS
 
-    QUEUE --> W1
-    QUEUE --> W2
-    QUEUE --> W3
+    REDIS --> W1
+    REDIS --> W2
+    REDIS --> W3
 
     W1 --> DB
     W2 --> DB
     W3 --> DB
 
-    M1 -.-> PUBSUB
-    M2 -.-> PUBSUB
-    W1 -.-> PUBSUB
-    W2 -.-> PUBSUB
-    W3 -.-> PUBSUB
+    W1 -.-> REDIS
+    W2 -.-> REDIS
+    W3 -.-> REDIS
 ```
 
 **Execution Flow:**
@@ -474,209 +469,3 @@ During shutdown:
 1. Worker stops accepting new jobs
 2. Waits for active executions to complete
 3. Force terminates after timeout
-
-## Best Practices
-
-### Regular Mode
-
-1. **Resource Management:**
-   - Set `N8N_CONCURRENCY_PRODUCTION_LIMIT` to prevent overload
-   - Configure execution timeouts: `EXECUTIONS_TIMEOUT=300`
-   - Enable execution pruning to manage database size
-   - Monitor process memory usage
-
-2. **Performance:**
-   - Use external binary data storage for large files
-   - Avoid CPU-intensive operations in webhook nodes
-   - Consider queue mode if experiencing performance issues
-
-### Queue Mode
-
-1. **Redis Configuration:**
-   - **Enable persistence**: Use AOF (append-only file) or RDB snapshots
-   - **Set memory policy**: `maxmemory-policy allkeys-lru`
-   - **Configure connection pooling**: Bull handles this automatically
-   - **Monitor memory usage**: Set alerts for high memory usage
-
-2. **Worker Deployment:**
-   ```bash
-   # Recommended starting configuration
-   CPU_CORES=$(nproc)
-   n8n worker --concurrency=$CPU_CORES
-   ```
-   - Deploy workers on separate machines from Redis
-   - Use container orchestration (Kubernetes, ECS) for auto-scaling
-   - Set resource limits to prevent memory leaks from affecting other processes
-
-3. **High Availability:**
-   - Run multiple main processes behind a load balancer
-   - Use Redis Sentinel or Redis Cluster for Redis HA
-   - Deploy workers across availability zones
-   - Implement health checks and auto-restart
-
-4. **Monitoring:**
-   - **Queue metrics**: Depth, wait time, processing time
-   - **Worker metrics**: CPU, memory, active jobs
-   - **Redis metrics**: Memory, connections, operations/sec
-   - **Application metrics**: Execution success/failure rates
-
-## Migration Between Modes
-
-### Regular to Queue Mode
-
-1. **Prepare Infrastructure:**
-   ```bash
-   # Install Redis (example for Ubuntu)
-   sudo apt-get install redis-server
-
-   # Configure Redis persistence
-   redis-cli CONFIG SET appendonly yes
-   ```
-
-2. **Update Configuration:**
-   ```bash
-   # Set environment variables
-   export EXECUTIONS_MODE=queue
-   export QUEUE_BULL_REDIS_HOST=localhost
-   export QUEUE_BULL_REDIS_PORT=6379
-   ```
-
-3. **Deploy Processes:**
-   ```bash
-   # Stop existing regular mode process
-   systemctl stop n8n
-
-   # Start main process
-   n8n start &
-
-   # Start worker(s)
-   n8n worker --concurrency=10 &
-
-   # Optional: Start webhook process
-   n8n webhook &
-   ```
-
-### Queue to Regular Mode
-
-1. **Verify Queue is Empty:**
-   ```bash
-   # Check Redis for pending jobs
-   redis-cli KEYS "bull:jobs:*"
-   ```
-
-2. **Stop Queue Mode Processes:**
-   ```bash
-   # Stop all workers and webhook processes
-   pkill -f "n8n worker"
-   pkill -f "n8n webhook"
-   ```
-
-3. **Update Configuration:**
-   ```bash
-   export EXECUTIONS_MODE=regular
-   # Remove Redis configuration variables
-   unset QUEUE_BULL_REDIS_HOST
-   unset QUEUE_BULL_REDIS_PORT
-   ```
-
-4. **Start Regular Mode:**
-   ```bash
-   n8n start
-   ```
-
-## Troubleshooting
-
-### Common Issues
-
-#### Jobs Not Processing
-
-1. **Check Redis Connection:**
-   ```bash
-   # Test Redis connectivity
-   redis-cli -h $QUEUE_BULL_REDIS_HOST ping
-
-   # Check for queued jobs
-   redis-cli LLEN bull:jobs:wait
-   redis-cli LLEN bull:jobs:active
-   ```
-
-2. **Verify Worker Status:**
-   ```bash
-   # Check worker logs
-   journalctl -u n8n-worker -f
-
-   # Check worker health endpoint (if enabled)
-   curl http://worker-host:5678/healthz
-   ```
-
-3. **Debug Job Data:**
-   ```bash
-   # Inspect job details in Redis
-   redis-cli --raw HGETALL bull:jobs:1
-   ```
-
-#### Stalled Executions
-
-1. **Check for Stalled Jobs:**
-   ```bash
-   redis-cli ZRANGE bull:jobs:stalled 0 -1
-   ```
-
-2. **Manual Recovery:**
-   - Stalled jobs are automatically recovered based on `QUEUE_WORKER_MAX_STALLED_COUNT`
-   - To force recovery, restart workers
-
-#### High Memory Usage
-
-1. **Worker Memory:**
-   - Reduce `--concurrency` value
-   - Enable execution pruning
-   - Use external binary data storage:
-     ```bash
-     N8N_DEFAULT_BINARY_DATA_MODE=s3
-     ```
-
-2. **Redis Memory:**
-   ```bash
-   # Check Redis memory usage
-   redis-cli INFO memory
-
-   # Set memory limit
-   redis-cli CONFIG SET maxmemory 2gb
-   redis-cli CONFIG SET maxmemory-policy allkeys-lru
-   ```
-
-#### Performance Issues
-
-1. **Queue Bottlenecks:**
-   ```bash
-   # Monitor queue depth over time
-   watch -n 1 'redis-cli LLEN bull:jobs:wait'
-
-   # Check job processing time
-   redis-cli --raw HGET bull:jobs:1 processedOn
-   redis-cli --raw HGET bull:jobs:1 finishedOn
-   ```
-
-2. **Worker Optimization:**
-   - Increase worker concurrency if CPU/memory allows
-   - Add more worker processes
-   - Distribute workers geographically closer to data sources
-
-### Debugging Tips
-
-1. **Enable Debug Logging:**
-   ```bash
-   N8N_LOG_LEVEL=debug
-   N8N_LOG_OUTPUT=console
-   ```
-
-2. **Monitor Bull Queue Events:**
-   - Workers emit events for job lifecycle
-   - Main process logs queue operations
-   - Check Redis for job data and state
-
-3. **Use Queue Monitoring Tools:**
-   - Bull Dashboard (for development)
-   - Redis monitoring tools
-   - Custom metrics via Prometheus
