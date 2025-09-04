@@ -50,7 +50,12 @@ export async function getDataTableColumns(this: ILoadOptionsFunctions) {
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 		{ name: 'updatedAt (date)', value: 'updatedAt', type: 'date' },
 	];
+
 	const proxy = await getDataTableProxyLoadOptions(this);
+	if (!proxy) {
+		return returnData;
+	}
+
 	const columns = await proxy.getColumns();
 	for (const column of columns) {
 		returnData.push({
@@ -69,6 +74,10 @@ const systemColumns = [
 ] as const;
 
 export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
+	const proxy = await getDataTableProxyLoadOptions(this);
+	if (!proxy) {
+		return [];
+	}
 	const keyName = this.getCurrentNodeParameter('&keyName') as string;
 
 	// Base conditions available for all column types
@@ -111,9 +120,7 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	// Get column type to determine available conditions
 	const column =
 		systemColumns.find((col) => col.name === keyName) ??
-		(await (await getDataTableProxyLoadOptions(this)).getColumns()).find(
-			(col) => col.name === keyName,
-		);
+		(await proxy.getColumns()).find((col) => col.name === keyName);
 
 	if (!column) {
 		return baseConditions;
@@ -135,6 +142,9 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 
 export async function getDataTables(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 	const proxy = await getDataTableProxyLoadOptions(this);
+	if (!proxy) {
+		return { fields: [] };
+	}
 	const result = await proxy.getColumns();
 
 	const fields: ResourceMapperField[] = [];
