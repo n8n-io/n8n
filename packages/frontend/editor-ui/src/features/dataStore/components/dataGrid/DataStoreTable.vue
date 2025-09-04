@@ -71,6 +71,7 @@ import ElDatePickerCellEditor from '@/features/dataStore/components/dataGrid/ElD
 import { onClickOutside } from '@vueuse/core';
 import { useClipboard } from '@/composables/useClipboard';
 import { reorderItem } from '@/features/dataStore/utils';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 // Register only the modules we actually use
 ModuleRegistry.registerModules([
@@ -105,6 +106,7 @@ const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
 const { mapToAGCellType } = useDataStoreTypes();
+const telemetry = useTelemetry();
 
 const dataStoreStore = useDataStoreStore();
 
@@ -226,6 +228,11 @@ const onDeleteColumn = async (columnId: string) => {
 			props.dataStore.projectId,
 			columnId,
 		);
+		telemetry.track('User deleted data table column', {
+			column_id: columnId,
+			column_type: columnToDelete.cellDataType,
+			data_table_id: props.dataStore.id,
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.deleteColumn.error'));
 		colDefs.value.splice(columnToDeleteIndex, 0, columnToDelete);
@@ -253,6 +260,11 @@ const onAddColumn = async (column: DataStoreColumnCreatePayload) => {
 			return { ...row, [newColumn.name]: null };
 		});
 		refreshGridData();
+		telemetry.track('User added data table column', {
+			column_id: newColumn.id,
+			column_type: newColumn.type,
+			data_table_id: props.dataStore.id,
+		});
 		return true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
@@ -421,6 +433,9 @@ const onAddRowClick = async () => {
 		refreshGridData();
 		await nextTick();
 		focusFirstEditableCell(newRow.id as number);
+		telemetry.track('User added row to data table', {
+			data_table_id: props.dataStore.id,
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 	} finally {
@@ -528,6 +543,12 @@ const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) =
 		emit('toggleSave', true);
 		await dataStoreStore.updateRow(props.dataStore.id, props.dataStore.projectId, id, {
 			[fieldName]: value,
+		});
+
+		telemetry.track('User edited data table content', {
+			data_table_id: props.dataStore.id,
+			column_id: colDef.colId,
+			column_type: colDef.cellDataType,
 		});
 	} catch (error) {
 		// Revert cell to original value if the update fails
@@ -763,6 +784,11 @@ const handleDeleteSelected = async () => {
 			title: i18n.baseText('dataStore.deleteRows.success'),
 			message: '',
 			type: 'success',
+		});
+
+		telemetry.track('User deleted rows in data table', {
+			data_table_id: props.dataStore.id,
+			deleted_row_count: idsToDelete.length,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataStore.deleteRows.error'));

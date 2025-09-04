@@ -316,6 +316,40 @@ export async function pollContainerHttpEndpoint(
 	);
 }
 
+export async function setupProxyServer({
+	proxyServerImage,
+	projectName,
+	network,
+	hostname,
+	port,
+}: {
+	proxyServerImage: string;
+	projectName: string;
+	network: StartedNetwork;
+	hostname: string;
+	port: number;
+}): Promise<StartedTestContainer> {
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
+
+	try {
+		return await new GenericContainer(proxyServerImage)
+			.withNetwork(network)
+			.withNetworkAliases(hostname)
+			.withExposedPorts(port)
+			// Wait.forListeningPorts strategy did not work here for some reason
+			.withWaitStrategy(Wait.forLogMessage(`INFO ${port} started on port: ${port}`))
+			.withLabels({
+				'com.docker.compose.project': projectName,
+				'com.docker.compose.service': 'proxyserver',
+			})
+			.withName(`${projectName}-proxyserver`)
+			.withReuse()
+			.withLogConsumer(consumer)
+			.start();
+	} catch (error) {
+		return throwWithLogs(error);
+	}
+}
+
 // TODO: Look at Ollama container?
 // TODO: Look at MariaDB container?
-// TODO: Look at MockServer container, could we use this for mocking out external services?

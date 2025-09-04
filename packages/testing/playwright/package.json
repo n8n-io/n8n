@@ -36,6 +36,7 @@
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
     "tsx": "catalog:",
+    "mockserver-client": "^5.15.0",
     "zod": "catalog:"
   }
 }
