@@ -91,16 +91,11 @@ describe('verifyIntegrity', () => {
 			.get(`/${encodeURIComponent(packageName)}/${version}`)
 			.replyWithError('ENOTFOUND some.internal.registry');
 
-		try {
-			await verifyIntegrity(packageName, version, registryUrl, integrity);
-			throw new Error('Expected error was not thrown');
-		} catch (error: any) {
-			expect(error).toBeInstanceOf(UnexpectedError);
-			expect(error.message).toBe(
+		await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
+			new UnexpectedError(
 				'Checksum verification failed. Please check your network connection and try again.',
-			);
-			expect(error.cause).toBeUndefined();
-		}
+			),
+		);
 	});
 });
 
@@ -187,7 +182,7 @@ describe('isVersionExists', () => {
 		} catch (error: any) {
 			expect(error).toBeInstanceOf(UnexpectedError);
 			expect(error.message).toBe(
-				'Failed to check package version existence. Please check your network connection and try again.',
+				'The community nodes service is temporarily unreachable. Please try again later.',
 			);
 			expect(error.cause).toBeUndefined();
 		}
@@ -204,7 +199,7 @@ describe('isVersionExists', () => {
 		} catch (error: any) {
 			expect(error).toBeInstanceOf(UnexpectedError);
 			expect(error.message).toBe(
-				'Failed to check package version existence. Please check your network connection and try again.',
+				'The community nodes service is temporarily unreachable. Please try again later.',
 			);
 			expect(error.cause).toBeUndefined();
 		}

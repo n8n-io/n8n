@@ -55,7 +55,7 @@ export async function isVersionExists(
 		}
 		if (isDnsError(error)) {
 			throw new UnexpectedError(
-				'Failed to check package version existence. Please check your network connection and try again.',
+				'The community nodes service is temporarily unreachable. Please try again later.',
 			);
 		}
 		throw new UnexpectedError('Failed to check package version existence', { cause: error });
