@@ -208,11 +208,7 @@ import NodeRecommendationModal from '@/experiments/templateRecoV2/components/Nod
 
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
-				<CommunityPackageManageConfirmModal
-					:modal-name="modalName"
-					:active-package-name="activeId"
-					:mode="mode"
-				/>
+				<CommunityPackageManageConfirmModal :id="activeId" :modal-name="modalName" :mode="mode" />
 			</template>
 		</ModalRoot>
 

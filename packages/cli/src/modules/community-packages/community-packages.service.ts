@@ -204,10 +204,13 @@ export class CommunityPackagesService {
 		return {};
 	}
 
+	toPublicInstalledPackage(pack: InstalledPackages): PublicInstalledPackage {
+		return { ...pack, id: `${pack.packageName}@${pack.installedVersion}` };
+	}
 	matchPackagesWithUpdates(
-		packages: InstalledPackages[],
+		packages: PublicInstalledPackage[],
 		updates?: CommunityPackages.AvailableUpdates,
-	) {
+	): PublicInstalledPackage[] {
 		if (!updates) return packages;
 
 		return packages.reduce<PublicInstalledPackage[]>((acc, cur) => {
@@ -454,7 +457,7 @@ export class CommunityPackagesService {
 					payload: { packageName, packageVersion },
 				});
 				await this.loadNodesAndCredentials.postProcessLoaders();
-				this.logger.info(`Community package installed: ${packageName}`);
+				this.logger.info(`Community package installed: ${packageName}@${packageVersion}`);
 				return installedPackage;
 			} catch (error) {
 				throw new UnexpectedError('Failed to save installed package', {
@@ -492,7 +495,7 @@ export class CommunityPackagesService {
 		await this.downloadPackage(packageName, packageVersion);
 		await this.loadNodesAndCredentials.loadPackage(packageName, packageVersion);
 		await this.loadNodesAndCredentials.postProcessLoaders();
-		this.logger.info(`Community package installed: ${packageName}`);
+		this.logger.info(`Community package installed: ${packageName}@${packageVersion}`);
 	}
 
 	private async removeNpmPackage(packageName: string, packageVersion?: string) {

@@ -20,7 +20,7 @@ export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-document
 
 interface Props {
 	modalName: string;
-	activePackageName: string;
+	id: string;
 	mode: CommunityPackageManageMode;
 }
 
@@ -46,22 +46,20 @@ const isUsingVerifiedAndUnverifiedPackages =
 const isUsingVerifiedPackagesOnly =
 	settingsStore.isCommunityNodesFeatureEnabled && !settingsStore.isUnverifiedPackagesEnabled;
 
-const communityStorePackage = computed(
-	() => communityNodesStore.installedPackages[props.activePackageName],
-);
+const communityStorePackage = computed(() => communityNodesStore.installedPackages.get(props.id));
 const updateVersion = computed(() => {
 	return settingsStore.isUnverifiedPackagesEnabled
-		? communityStorePackage.value.updateAvailable
+		? communityStorePackage.value?.updateAvailable
 		: nodeTypeStorePackage.value?.npmVersion;
 });
 const nodeTypeStorePackage = ref<CommunityNodeType>();
 
 const isLatestPackageVerified = ref<boolean>(true);
 
-const packageVersion = ref<string>(communityStorePackage.value.updateAvailable ?? '');
+const packageVersion = ref<string>(communityStorePackage.value?.updateAvailable ?? '');
 
 const includedNodes = computed(() => {
-	return communityStorePackage.value.installedNodes.map((node) => node.name).join(', ');
+	return communityStorePackage.value?.installedNodes.map((node) => node.name).join(', ') ?? '';
 });
 
 const getModalContent = computed(() => {
@@ -115,14 +113,14 @@ const onConfirmButtonClick = async () => {
 const onUninstall = async () => {
 	try {
 		telemetry.track('user started cnr package deletion', {
-			package_name: communityStorePackage.value.packageName,
-			package_node_names: communityStorePackage.value.installedNodes.map((node) => node.name),
-			package_version: communityStorePackage.value.installedVersion,
-			package_author: communityStorePackage.value.authorName,
-			package_author_email: communityStorePackage.value.authorEmail,
+			package_name: communityStorePackage.value?.packageName,
+			package_node_names: communityStorePackage.value?.installedNodes.map((node) => node.name),
+			package_version: communityStorePackage.value?.installedVersion,
+			package_author: communityStorePackage.value?.authorName,
+			package_author_email: communityStorePackage.value?.authorEmail,
 		});
 		loading.value = true;
-		await communityNodesStore.uninstallPackage(props.activePackageName);
+		await communityNodesStore.uninstallPackage(props.id);
 		await useNodeTypesStore().getNodeTypes();
 		toast.showMessage({
 			title: i18n.baseText('settings.communityNodes.messages.uninstall.success.title'),
@@ -139,20 +137,20 @@ const onUninstall = async () => {
 const onUpdate = async () => {
 	try {
 		telemetry.track('user started cnr package update', {
-			package_name: communityStorePackage.value.packageName,
-			package_node_names: communityStorePackage.value.installedNodes.map((node) => node.name),
-			package_version_current: communityStorePackage.value.installedVersion,
-			package_version_new: communityStorePackage.value.updateAvailable,
-			package_author: communityStorePackage.value.authorName,
-			package_author_email: communityStorePackage.value.authorEmail,
+			package_name: communityStorePackage.value?.packageName,
+			package_node_names: communityStorePackage.value?.installedNodes.map((node) => node.name),
+			package_version_current: communityStorePackage.value?.installedVersion,
+			package_version_new: communityStorePackage.value?.updateAvailable,
+			package_author: communityStorePackage.value?.authorName,
+			package_author_email: communityStorePackage.value?.authorEmail,
 		});
 		loading.value = true;
 
 		if (settingsStore.isUnverifiedPackagesEnabled) {
-			await communityNodesStore.updatePackage(props.activePackageName);
-		} else if (settingsStore.isCommunityNodesFeatureEnabled) {
+			await communityNodesStore.updatePackage(props.id, updateVersion.value ?? 'latest');
+		} else if (settingsStore.isCommunityNodesFeatureEnabled && updateVersion.value) {
 			await communityNodesStore.updatePackage(
-				props.activePackageName,
+				props.id,
 				updateVersion.value,
 				nodeTypeStorePackage.value?.checksum,
 			);
@@ -165,7 +163,7 @@ const onUpdate = async () => {
 			title: i18n.baseText('settings.communityNodes.messages.update.success.title'),
 			message: i18n.baseText('settings.communityNodes.messages.update.success.message', {
 				interpolate: {
-					packageName: props.activePackageName,
+					packageName: communityStorePackage.value?.packageName ?? '',
 					version: updateVersion.value ?? '',
 				},
 			}),
@@ -196,7 +194,7 @@ function setIsVerifiedLatestPackage() {
 	if (
 		isUsingVerifiedAndUnverifiedPackages &&
 		nodeTypeStorePackage.value?.npmVersion &&
-		communityStorePackage.value.updateAvailable
+		communityStorePackage.value?.updateAvailable
 	) {
 		isLatestPackageVerified.value = semver.eq(
 			nodeTypeStorePackage.value.npmVersion,
@@ -216,8 +214,8 @@ const onClick = async () => {
 };
 
 onMounted(async () => {
-	if (props.activePackageName) {
-		await fetchPackageInfo(props.activePackageName);
+	if (props.id) {
+		await fetchPackageInfo(props.id);
 	}
 
 	if (communityStorePackage.value?.installedNodes.length) {

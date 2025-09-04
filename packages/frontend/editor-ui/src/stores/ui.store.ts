@@ -467,9 +467,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 
-	const openCommunityPackageUninstallConfirmModal = (packageName: string) => {
+	const openCommunityPackageUninstallConfirmModal = (id: string) => {
 		setMode(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL);
-		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
+		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, id);
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 	};
 

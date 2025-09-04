@@ -16,7 +16,7 @@ export class InstalledNodes extends BaseEntity {
 	@Column()
 	packageName: string;
 
-	@Column()
+	@PrimaryColumn()
 	packageVersion: string;
 
 	@ManyToOne('InstalledPackages', 'installedNodes')

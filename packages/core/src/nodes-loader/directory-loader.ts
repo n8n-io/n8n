@@ -99,6 +99,7 @@ export abstract class DirectoryLoader {
 	}
 
 	abstract packageName: string;
+	abstract packageVersion?: string;
 
 	abstract loadAll(): Promise<void>;
 

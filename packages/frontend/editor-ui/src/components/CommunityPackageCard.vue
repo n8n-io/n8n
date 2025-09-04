@@ -65,7 +65,7 @@ async function onAction(value: string) {
 			window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${props.communityPackage.packageName}`, '_blank');
 			break;
 		case COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL:
-			openCommunityPackageUninstallConfirmModal(props.communityPackage.packageName);
+			openCommunityPackageUninstallConfirmModal(props.communityPackage.id);
 			break;
 		default:
 			break;

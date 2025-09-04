@@ -160,7 +160,9 @@ export class CommunityPackagesController {
 	@Get('/')
 	@GlobalScope('communityPackage:list')
 	async getInstalledPackages() {
-		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
+		const installedPackages = (await this.communityPackagesService.getAllInstalledPackages()).map(
+			(pack) => this.communityPackagesService.toPublicInstalledPackage(pack),
+		);
 
 		if (installedPackages.length === 0) return [];
 

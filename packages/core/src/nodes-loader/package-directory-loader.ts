@@ -13,12 +13,14 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 	packageJson: n8n.PackageJson;
 
 	packageName: string;
+	packageVersion: string;
 
 	constructor(directory: string, excludeNodes: string[] = [], includeNodes: string[] = []) {
 		super(directory, excludeNodes, includeNodes);
 
 		this.packageJson = this.readJSONSync('package.json');
 		this.packageName = this.packageJson.name;
+		this.packageVersion = this.packageJson.version;
 		this.excludeNodes = this.extractNodeTypes(excludeNodes);
 		this.includeNodes = this.extractNodeTypes(includeNodes);
 	}

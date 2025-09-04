@@ -8,6 +8,7 @@ import { DirectoryLoader } from './directory-loader';
  */
 export class CustomDirectoryLoader extends DirectoryLoader {
 	packageName = 'CUSTOM';
+	packageVersion = undefined;
 
 	override async loadAll() {
 		const nodes = await glob('**/*.node.js', {

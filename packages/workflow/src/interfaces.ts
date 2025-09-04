@@ -2783,6 +2783,7 @@ export interface IConnectedNode {
 }
 
 export type PublicInstalledPackage = {
+	id: string;
 	packageName: string;
 	installedVersion: string;
 	authorName?: string;
@@ -2798,7 +2799,6 @@ export type PublicInstalledNode = {
 	name: string;
 	type: string;
 	latestVersion: number;
-	package: PublicInstalledPackage;
 };
 
 export interface NodeExecutionWithMetadata extends INodeExecutionData {

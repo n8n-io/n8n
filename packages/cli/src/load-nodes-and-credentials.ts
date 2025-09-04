@@ -29,6 +29,7 @@ import type {
 import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
+import semver from 'semver';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 
@@ -218,12 +219,15 @@ export class LoadNodesAndCredentials {
 		try {
 			return await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
 		} catch (error) {
-			const backwardCompatiblePath = path.join(
-				this.instanceSettings.nodesDownloadDir,
-				'node_modules',
-				packageName,
-			);
-			return await this.runDirectoryLoader(PackageDirectoryLoader, backwardCompatiblePath);
+			if ('code' in error && error.code === 'ENOENT') {
+				const backwardCompatiblePath = path.join(
+					this.instanceSettings.nodesDownloadDir,
+					'node_modules',
+					packageName,
+				);
+				return await this.runDirectoryLoader(PackageDirectoryLoader, backwardCompatiblePath);
+			}
+			throw error;
 		}
 	}
 
@@ -305,7 +309,9 @@ export class LoadNodesAndCredentials {
 			);
 		}
 		await loader.loadAll();
-		this.loaders[loader.packageName] = loader;
+		this.loaders[
+			loader.packageVersion ? `${loader.packageName}@${loader.packageVersion}` : loader.packageName
+		] = loader;
 		return loader;
 	}
 
@@ -349,11 +355,12 @@ export class LoadNodesAndCredentials {
 
 		for (const loader of Object.values(this.loaders)) {
 			// list of node & credential types that will be sent to the frontend
-			const { known, types, directory, packageName } = loader;
+			const { known, types, directory, packageName, packageVersion } = loader;
 			this.types.nodes = this.types.nodes.concat(
 				types.nodes.map(({ name, ...rest }) => ({
 					...rest,
 					name: `${packageName}.${name}`,
+					packageVersion,
 				})),
 			);
 
@@ -436,11 +443,34 @@ export class LoadNodesAndCredentials {
 		return !!loader && nodeType in loader.known.nodes;
 	}
 
-	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
+	private getLoader(packageName: string, packageVersion?: string) {
+		if (packageVersion) {
+			return this.loaders[`${packageName}@${packageVersion}`];
+		}
+
+		const matches = Object.keys(this.loaders)
+			.filter((key) => key.startsWith(`${packageName}@`))
+			.map((key) => {
+				const atIndex = key.lastIndexOf('@');
+				const name = key.slice(0, atIndex);
+				const version = key.slice(atIndex + 1);
+				return { key, name, version };
+			})
+			.filter(({ name }) => name === packageName);
+
+		if (matches.length === 0) return undefined;
+
+		const latestVersion = semver.rsort(matches.map((m) => m.version))[0];
+		return this.loaders[`${packageName}@${latestVersion}`];
+	}
+
+	getNode(
+		fullNodeType: string,
+		packageVersion?: string,
+	): LoadedClass<INodeType | IVersionedNodeType> {
 		// split on the last dot
 		const [packageName, nodeType] = fullNodeType.split(/\.(?=[^\.]+$)/);
-		const { loaders } = this;
-		const loader = loaders[packageName];
+		const loader = this.getLoader(packageName, packageVersion);
 		if (!loader) {
 			throw new UnrecognizedNodeTypeError(packageName, nodeType);
 		}
