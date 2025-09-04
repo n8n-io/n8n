@@ -88,11 +88,14 @@ describe('useSourceControlStore', () => {
 		});
 
 		it('should update local preferences after successful API call', async () => {
-			const preferences = {
+			const preferences: SourceControlPreferences = {
 				repositoryUrl: 'https://github.com/user/repo.git',
 				branchName: 'main',
 				connectionType: 'https' as const,
 				connected: true,
+				branchColor: '#4f46e5',
+				branchReadOnly: false,
+				branches: ['main', 'develop'],
 			};
 
 			const mockSavePreferences = vi.mocked(vcApi.savePreferences);
@@ -110,23 +113,28 @@ describe('useSourceControlStore', () => {
 	describe('generateKeyPair', () => {
 		it('should call API and update public key', async () => {
 			const keyType = 'ed25519';
-			const mockKeyPair = {
-				publicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest',
-			};
+			const mockPublicKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest';
 
 			const mockGenerateKeyPair = vi.mocked(vcApi.generateKeyPair);
 			mockGenerateKeyPair.mockResolvedValue('ssh-ed25519 AAAAC3NzaC1lZDI...');
 
 			const mockGetPreferences = vi.mocked(vcApi.getPreferences);
-			mockGetPreferences.mockResolvedValue(mockKeyPair);
+			mockGetPreferences.mockImplementation(async () => {
+				return {
+					connected: false,
+					repositoryUrl: '',
+					branchReadOnly: false,
+					branchColor: '#000000',
+					branches: [],
+					branchName: '',
+					publicKey: mockPublicKey,
+				} satisfies SourceControlPreferences;
+			});
 
 			await sourceControlStore.generateKeyPair(keyType);
 
-			expect(mockGenerateKeyPair).toHaveBeenCalledWith(
-				{}, // restApiContext
-				keyType,
-			);
-			expect(sourceControlStore.preferences.publicKey).toBe(mockKeyPair.publicKey);
+			expect(mockGenerateKeyPair).toHaveBeenCalledWith({}, keyType);
+			expect(sourceControlStore.preferences.publicKey).toBe(mockPublicKey);
 			expect(sourceControlStore.preferences.keyGeneratorType).toBe(keyType);
 		});
 
