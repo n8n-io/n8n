@@ -96,18 +96,8 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	];
 
 	const stringConditions: INodePropertyOptions[] = [
-		{
-			name: 'Contains (Case-Sensitive)',
-			value: 'like',
-			description:
-				'Case-sensitive pattern matching. Use % as wildcard (e.g., "%Mar%" to match "Anne-Marie").',
-		},
-		{
-			name: 'Contains (Case-Insensitive)',
-			value: 'ilike',
-			description:
-				'Case-insensitive pattern matching. Use % as wildcard (e.g., "%mar%" to match "Anne-Marie").',
-		},
+		{ name: 'Contains (Case-Sensitive)', value: 'like' },
+		{ name: 'Contains (Case-Insensitive)', value: 'ilike' },
 	];
 
 	const allConditions = [...baseConditions, ...comparableConditions, ...stringConditions];
