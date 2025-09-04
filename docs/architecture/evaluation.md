@@ -87,14 +87,8 @@ sequenceDiagram
 ```
 
 **Key Implementation:**
-- `forceCustomOperation` mechanism bypasses normal node execution:
-  ```typescript
-  triggerNode.forceCustomOperation = {
-    resource: 'dataset',
-    operation: 'getRows'
-  };
-  ```
-- Execution engine checks this flag in `packages/core/src/workflow-execute.ts`
+- At the start of the test run, the test runner fetches the entire dataset using a custom operation on the EvaluationTrigger node
+- For each test case, the test runner executes the entire workflow with pinned data on the trigger node
 
 ## Core Components
 
@@ -118,7 +112,8 @@ Two execution paths:
 Location: `packages/nodes-base/nodes/Evaluation/Evaluation.node.ee.ts`
 
 Operations:
-- `setOutputs` (Set outputs): Updates Google Sheet row using trigger's row_number
+- `setInputs` (Set inputs): Captures input data fields for display in evaluation results (not saved to Google Sheets)
+- `setOutputs` (Set outputs): Updates Google Sheet row using trigger's row_number AND captures output data
 - `setMetrics` (Set metrics): Flags metrics for test runner extraction
 - `checkIfEvaluating` (Check if evaluating): Routes based on execution context
 
@@ -131,6 +126,7 @@ Key methods:
 - `runDatasetTrigger()`: Fetches dataset using forceCustomOperation
 - `runTestCase()`: Executes single test with pinned data
 - `extractMetrics()`: Collects user-defined and predefined metrics
+- `getEvaluationData()`: Extracts input/output data from Evaluation nodes
 
 ### Database Schema
 
@@ -143,8 +139,11 @@ erDiagram
 
 **Metrics Storage:**
 - `TestCaseExecution.metrics`: JSON object storing individual test case metrics (e.g., `{"correctness": 0.8, "latency": 1200}`)
+- `TestCaseExecution.inputs`: JSON object storing captured input data from evaluation
+- `TestCaseExecution.outputs`: JSON object storing captured output data from evaluation
 - `TestRun.metrics`: JSON object storing aggregated metrics across all test cases, same structure as individual metrics
-- Both use the format: `{ [metricName: string]: number }`
+- Metrics format: `{ [metricName: string]: number }`
+- Inputs/Outputs format: `{ [fieldName: string]: any }`
 
 ### Frontend State Management
 
@@ -186,12 +185,48 @@ Key characteristics:
 - Counted as production executions in statistics
 - Uses separate queue type in Bull/Redis
 
+## Input/Output Data Tracking
+
+The evaluation feature supports capturing and displaying input/output data for each test case execution. This feature was added in July 2025 to provide better visibility into what data was processed and what results were generated.
+
+### How It Works
+
+1. **Input Data Capture**: The `setInputs` operation in Evaluation nodes allows capturing specific fields from the dataset
+   - These fields are displayed in the evaluation results UI
+   - They are NOT written to Google Sheets
+   - Useful for tracking context like prompts, test descriptions, or reference data
+
+2. **Output Data Capture**: The `setOutputs` operation serves dual purposes:
+   - Writes results back to Google Sheets
+   - Captures output data for display in the UI
+   - Both actions happen in the same operation
+
+3. **Data Extraction**: During test execution, the test runner:
+   - Calls `getEvaluationData()` to find all Evaluation nodes with `setInputs` or `setOutputs`
+   - Extracts the `evaluationData` field from their execution results
+   - Stores this data in the `TestCaseExecution` entity
+
+4. **Storage**: The data is stored as JSON objects:
+   ```typescript
+   TestCaseExecution {
+     inputs: { prompt: "Hello", context: "..." },  // From setInputs nodes
+     outputs: { response: "Hi!", score: 0.95 }     // From setOutputs nodes
+   }
+   ```
+
+5. **Display**: The frontend can display these inputs/outputs in the test run detail view, providing full visibility into each test case's execution
+
+### Use Cases
+
+- **Prompt Engineering**: Track which prompts were used and what responses were generated
+- **Data Validation**: See the exact input data that caused a test to fail
+- **Result Analysis**: Compare outputs across different test cases
+- **Debugging**: Understand what data flowed through the evaluation
+
 ## Implementation Quirks
 
 ### Canvas Mode Loop Workaround
-The loop mechanism is a workaround because:
-- n8n doesn't support true loops in workflows
-- Each "iteration" is a complete workflow execution
+- The loop mechanism is a workaround because each "iteration" is a complete workflow execution
 - Frontend coordinates the loop through the `executionFinished` event handler, not the backend
 - `_rowsLeft` is a hidden communication channel embedded in the trigger node's output
 - The loop only continues if the execution was successful and there's no `destinationNode` specified
@@ -199,13 +234,11 @@ The loop mechanism is a workaround because:
 ### Dataset Fetching
 The test runner can't use normal node execution because:
 - It needs all rows at once for orchestration
-- Normal execution returns one row at a time
-- `forceCustomOperation` bypasses parameter-based operation selection
+- Normal execution returns one row at a time (in canvas mode, manual execution)
 
 ### Concurrency and Queue Management
-- Evaluation executions use a separate queue to avoid interfering with production
+- Evaluation executions use a separate queue to support different concurrency limits depending on the license
 - Queue type mapping in `packages/cli/src/scaling/queue/queue.constants.ts`
-- Allows independent scaling and prioritization
 
 ## API Endpoints
 
@@ -213,25 +246,27 @@ Controller: `packages/cli/src/evaluation.ee/test-runs.controller.ee.ts`
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/:workflowId/test-runs` | GET | List test runs |
-| `/:workflowId/test-runs/:id` | GET | Get test run details |
-| `/:workflowId/test-runs/:id/test-cases` | GET | Get test cases |
-| `/:workflowId/test-runs/new` | POST | Start evaluation |
-| `/:workflowId/test-runs/:id/cancel` | POST | Cancel running evaluation |
-| `/:workflowId/test-runs/:id` | DELETE | Delete test run |
+| `/workflows/:workflowId/test-runs` | GET | List test runs |
+| `/workflows/:workflowId/test-runs/:id` | GET | Get test run details |
+| `/workflows/:workflowId/test-runs/:id/test-cases` | GET | Get test cases |
+| `/workflows/:workflowId/test-runs/new` | POST | Start evaluation |
+| `/workflows/:workflowId/test-runs/:id/cancel` | POST | Cancel running evaluation |
+| `/workflows/:workflowId/test-runs/:id` | DELETE | Delete test run |
 
 ## Configuration
 
 Environment variables:
 - `N8N_CONCURRENCY_EVALUATION_LIMIT`: Max concurrent evaluation executions
-- License quotas: `quota:evaluations:maxWorkflows`
+
+License Quotas:
+- `quota:evaluations:maxWorkflows`: Max number of workflows having evaluations
 
 ## Known Limitations
 
 1. **Google Sheets only**: Dataset source is hardcoded to Google Sheets
-2. **No node mocking**: Canvas mode can't mock nodes (test runner mode has limited support)
-3. **Sequential execution**: Canvas mode executes sequentially, can't parallelize
-4. **Memory limitations**: Large datasets can cause memory issues in test runner mode
-5. **No recovery**: Interrupted test runs can't be resumed
-6. **Numeric metrics only**: Metrics must be numbers; boolean or string metrics are not supported (note: non-numeric data columns can be displayed in test results, but only numeric values can be used as metrics)
-7. **Average-only aggregation**: Test run metrics are calculated as simple averages of test case metrics
+2. **Sequential execution**: Both canvas mode and test runner mode execute rows sequentially, not in parallel
+3. **No recovery**: Interrupted test runs can't be resumed
+4. **Numeric metrics only**: Metrics must be numbers; boolean or string metrics are not supported
+   - Note: Non-numeric data columns can be displayed in test results using the `setInputs` and `setOutputs` operations
+   - These appear in the test case details but cannot be used for metric calculations
+5. **Average-only aggregation**: Test run metrics are calculated as simple averages of test case metrics
