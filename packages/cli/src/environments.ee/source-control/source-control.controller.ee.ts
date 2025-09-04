@@ -4,8 +4,8 @@ import {
 	PushWorkFolderRequestDto,
 	SourceControlPreferencesRequestDto,
 	type SourceControlPreferencesResponse,
+	type SourceControlledFile,
 } from '@n8n/api-types';
-import type { SourceControlledFile } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
 import express from 'express';
@@ -39,7 +39,7 @@ const validateSourceControlPreferences = (req: Request, _res: Response, next: Ne
 
 	if (!validationResult.success) {
 		const errorMessages = validationResult.error.errors
-			.map((err) => `${err.path.join('.')}: ${err.message}`)
+			.map((error) => `${error.path.join('.')}: ${error.message}`)
 			.join(', ');
 
 		throw new BadRequestError(`Invalid source control preferences: ${errorMessages}`);

@@ -191,7 +191,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 			await authOwnerAgent.post('/source-control/preferences').send(httpsPreferences).expect(200);
 
 			// Verify the token is stored encrypted in the preferences service
-			const storedPreferences = await sourceControlPreferencesService.getPreferences();
+			const storedPreferences = sourceControlPreferencesService.getPreferences();
 
 			// The raw stored token should be encrypted (different from the original)
 			expect(storedPreferences.personalAccessToken).toBeDefined();
@@ -252,7 +252,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 				.expect(200);
 
 			// Verify HTTPS credentials are cleared
-			const preferences = await sourceControlPreferencesService.getPreferences();
+			const preferences = sourceControlPreferencesService.getPreferences();
 			expect(preferences.protocol).toBe('ssh');
 			expect(preferences.username).toBe('');
 			expect(preferences.personalAccessToken).toBe('');
@@ -335,7 +335,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 			await authOwnerAgent.post('/source-control/preferences').send(httpsPreferences).expect(200);
 
 			// Step 2: Verify preferences are stored correctly
-			const storedPreferences = await sourceControlPreferencesService.getPreferences();
+			const storedPreferences = sourceControlPreferencesService.getPreferences();
 			expect(storedPreferences.protocol).toBe('https');
 			expect(storedPreferences.username).toBe('testuser');
 
