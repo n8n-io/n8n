@@ -104,11 +104,14 @@ function handleMultiSelectChange(filterName: string, values: FilterItem[]) {
 	);
 }
 
+function removeFilter(filterName: string) {
+	activeFilters.value = activeFilters.value.filter((f) => f.filterName !== filterName);
+}
+
 // TODO
-// 1. Update single select
 // - Clear filters
 // - Date picker
-// - Custom values
+// - Custom string/number values
 // - Small variant
 </script>
 
@@ -118,12 +121,12 @@ function handleMultiSelectChange(filterName: string, values: FilterItem[]) {
 			<!-- Active Filters -->
 			<div v-if="hasActiveFilters" class="filtersActiveList">
 				<template v-for="filter in activeFilters" :key="filter.filterName">
-					<button class="filterChip active">
-						<N8nText size="small">{{ filter.filterName }} is</N8nText>
+					<button @click="() => removeFilter(filter.filterName)" class="filterChip active">
+						<N8nText color="text-light" size="small">{{ filter.filterName }}: </N8nText>
 						<N8nText bold size="small">{{
 							filter.values.map(({ name }) => name).join(', ')
 						}}</N8nText>
-						<N8nIcon icon="x" />
+						<N8nIcon color="text-light" icon="x" />
 					</button>
 				</template>
 			</div>
@@ -134,6 +137,7 @@ function handleMultiSelectChange(filterName: string, values: FilterItem[]) {
 						<N8nIconButton
 							type="tertiary"
 							icon="list-filter"
+							size="small"
 							text
 							:class="{ active: hasActiveFilters }"
 						/>
@@ -195,5 +199,6 @@ function handleMultiSelectChange(filterName: string, values: FilterItem[]) {
 	align-items: center;
 	justify-content: flex-end;
 	width: 100vw;
+	padding: 30px;
 }
 </style>

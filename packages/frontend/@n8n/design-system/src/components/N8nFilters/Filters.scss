@@ -22,10 +22,10 @@ input {
 	outline: none;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing-3xs);
 	border-radius: var(--border-radius-base);
 	padding: 0 var(--spacing-3xs);
-	height: 30px;
+	height: 26px;
 	font-size: var(--font-size-2xs);
 	color: var(--color-callout-secondary-font);
 }
