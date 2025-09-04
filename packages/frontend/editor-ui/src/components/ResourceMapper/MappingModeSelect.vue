@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { INodePropertyTypeOptions, ResourceMapperFields } from 'n8n-workflow';
+import { DATA_TABLE_NODE_DISPLAY_NAME } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { i18n as locale } from '@n8n/i18n';
 import { useNodeSpecificationValues } from '@/composables/useNodeSpecificationValues';
@@ -70,7 +71,7 @@ const errorMessage = computed<string>(() => {
 			});
 		}
 		// No data error message
-		if (props.fieldsToMap.length === 0 && props.serviceName !== 'Data Table') {
+		if (props.fieldsToMap.length === 0 && props.serviceName !== DATA_TABLE_NODE_DISPLAY_NAME) {
 			return (
 				// Use custom error message if defined
 				resourceMapperTypeOptions.value?.noFieldsError ||
