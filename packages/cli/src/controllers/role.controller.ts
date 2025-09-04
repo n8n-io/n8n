@@ -37,7 +37,7 @@ export class RoleController {
 		_res: Response,
 		@Param('slug') slug: string,
 	): Promise<RoleDTO> {
-		return await this.roleService.getRole(slug);
+		return await this.roleService.getRole(slug, true);
 	}
 
 	@Patch('/:slug')
