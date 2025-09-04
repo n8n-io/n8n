@@ -3,7 +3,7 @@ import { addTokenUsageData, formatTokenUsageCount, parseAiContent } from '@/util
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 describe(parseAiContent, () => {
-	it('should parse inputOverride data', () => {
+	it('should parse input data', () => {
 		const executionData = [
 			{
 				json: {

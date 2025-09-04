@@ -157,8 +157,7 @@ watch(
 		const params = newNode.parameters;
 		const collectedArgs: FromAIArgument[] = [];
 		traverseNodeParameters(params, collectedArgs);
-		const inputOverrides =
-			nodeRunData.value?.inputOverride?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
+		const inputOverrides = nodeRunData.value?.data?.[NodeConnectionTypes.AiTool]?.[0]?.[0].json;
 
 		collectedArgs.forEach((value: FromAIArgument) => {
 			const type = value.type ?? 'string';

@@ -37,7 +37,6 @@ import type {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
-	NodePanelType,
 } from '@/Interface';
 
 import { isString } from '@/utils/typeGuards';
@@ -642,7 +641,7 @@ export function useNodeHelpers() {
 		node: INodeUi | null,
 		runIndex = 0,
 		outputIndex = 0,
-		paneType: NodePanelType = 'output',
+		paneType: 'input' | 'output' = 'output',
 		connectionType: NodeConnectionType = NodeConnectionTypes.Main,
 		execution?: IRunExecutionData,
 	): INodeExecutionData[] {
@@ -652,15 +651,41 @@ export function useNodeHelpers() {
 			return [];
 		}
 
-		let data: ITaskDataConnections | undefined = taskData.data;
-		if (paneType === 'input' && taskData.inputOverride) {
-			data = taskData.inputOverride;
-		}
+		const data: ITaskDataConnections | undefined = taskData.data;
 
 		if (!data) {
 			return [];
 		}
 
+		// With the new backend logic:
+		// - Input data is stored in data[connectionType] (e.g., data.ai_tool)
+		// - Output data is stored in data.main
+		if (paneType === 'input') {
+			// For input panel, look for AI-specific connection types first
+			const aiConnectionTypes = [
+				NodeConnectionTypes.AiTool,
+				NodeConnectionTypes.AiMemory,
+				NodeConnectionTypes.AiRetriever,
+				NodeConnectionTypes.AiEmbedding,
+				NodeConnectionTypes.AiReranker,
+				NodeConnectionTypes.AiDocument,
+				NodeConnectionTypes.AiTextSplitter,
+				NodeConnectionTypes.AiVectorStore,
+			];
+
+			for (const aiType of aiConnectionTypes) {
+				if (data[aiType]) {
+					return getInputData(data, outputIndex, aiType);
+				}
+			}
+		} else if (paneType === 'output') {
+			// For output panel, check main connection type first (where output is now stored)
+			if (data[NodeConnectionTypes.Main]) {
+				return getInputData(data, outputIndex, NodeConnectionTypes.Main);
+			}
+		}
+
+		// Fallback to original logic
 		return getInputData(data, outputIndex, connectionType);
 	}
 

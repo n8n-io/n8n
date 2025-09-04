@@ -2367,7 +2367,6 @@ export interface ITaskData extends ITaskStartedData {
 	executionTime: number;
 	executionStatus?: ExecutionStatus;
 	data?: ITaskDataConnections;
-	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
 	metadata?: ITaskMetadata;
 }

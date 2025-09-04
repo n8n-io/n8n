@@ -517,7 +517,7 @@ const parentNodeOutputData = computed(() => {
 			props.workflowObject.getNode(parentNode?.name),
 			props.runIndex,
 			outputIndex.value,
-			'input',
+			'output',
 			connectionType.value,
 		);
 	}
@@ -580,7 +580,8 @@ const hasInputOverwrite = computed((): boolean => {
 		return false;
 	}
 	const taskData = nodeHelpers.getNodeTaskData(node.value.name, props.runIndex);
-	return Boolean(taskData?.inputOverride);
+	// Check if there's AI tool input data (which indicates this is a subnode with input data)
+	return Boolean(taskData?.data?.[NodeConnectionTypes.AiTool]);
 });
 
 const isSchemaPreviewEnabled = computed(

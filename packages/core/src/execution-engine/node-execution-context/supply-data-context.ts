@@ -286,18 +286,24 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			if (type === 'output') {
 				taskData.executionStatus = 'success';
 			}
-			taskData.data = {
-				[connectionType]: data,
-			} as ITaskDataConnections;
+			// For output data, store in a different connection type to avoid overwriting input
+			// Input data is in [connectionType], output data goes to main
+			if (type === 'output') {
+				taskData.data = {
+					...taskData.data,
+					[NodeConnectionTypes.Main]: data,
+				} as ITaskDataConnections;
+			} else {
+				taskData.data = {
+					...taskData.data,
+					[connectionType]: data,
+				} as ITaskDataConnections;
+			}
 		}
 
 		if (type === 'input') {
 			if (!(data instanceof Error)) {
 				this.inputData[connectionType] = data;
-				// TODO: remove inputOverride
-				taskData.inputOverride = {
-					[connectionType]: data,
-				} as ITaskDataConnections;
 			}
 
 			if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {

@@ -203,8 +203,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				const startNode = workflowObject.value.getStartNode(options.destinationNode);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
 					// Check if the chat node has input data or pin data
-					const chatHasInputData =
-						nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
+					const chatHasInputData = nodeHelpers.getNodeInputData(startNode, 0, 0)?.length > 0;
 					const chatHasPinData = !!workflowData.pinData?.[startNode.name];
 
 					// If the chat node has no input data or pin data, open the chat modal

@@ -1041,7 +1041,7 @@ export class WorkflowDataProxy {
 				);
 			}
 			const inputData =
-				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
+				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].data;
 			const placeholdersDataInputData =
 				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
 

@@ -393,13 +393,13 @@ describe('useNodeHelpers()', () => {
 			expect(result).toEqual([]);
 		});
 
-		it('should return input data from inputOverride', () => {
+		it('should return input data from data', () => {
 			const nodeName = 'Code';
 			const data = [{ json: { hello: 'world' } }];
 			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
 				[nodeName]: [
 					{
-						inputOverride: {
+						data: {
 							main: [data],
 						},
 					},
@@ -411,7 +411,7 @@ describe('useNodeHelpers()', () => {
 				type: 'test',
 			});
 
-			const result = getNodeInputData(node, 0, 0, 'input');
+			const result = getNodeInputData(node, 0, 0);
 			expect(result).toEqual(data);
 		});
 

@@ -56,7 +56,7 @@ const mockRunData = {
 			runData: {
 				['Test Node']: [
 					{
-						inputOverride: {
+						data: {
 							[NodeConnectionTypes.AiTool]: [[{ json: { query: { testParam: 'override' } } }]],
 						},
 					},

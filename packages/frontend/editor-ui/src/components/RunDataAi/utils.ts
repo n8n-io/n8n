@@ -189,7 +189,7 @@ export function getReferencedData(
 	}
 
 	if (withInput) {
-		addFunction(taskData.inputOverride, 'input');
+		addFunction(taskData.data, 'input');
 	}
 	if (withOutput) {
 		addFunction(taskData.data, 'output');
