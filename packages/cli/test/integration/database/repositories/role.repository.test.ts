@@ -10,16 +10,13 @@ import {
 	createTestScopes,
 } from '../../shared/db/roles';
 import { createUser } from '../../shared/db/users';
-import { be } from 'zod/dist/types/v4/locales';
 
 describe('RoleRepository', () => {
 	let roleRepository: RoleRepository;
 	let scopeRepository: ScopeRepository;
 
 	beforeAll(async () => {
-		console.log('Before db init!');
 		await testDb.init();
-		console.log('After db init!');
 		roleRepository = Container.get(RoleRepository);
 		scopeRepository = Container.get(ScopeRepository);
 	});
@@ -37,7 +34,6 @@ describe('RoleRepository', () => {
 
 	describe('findAll()', () => {
 		it('should return empty array when no roles exist', async () => {
-			console.log('Trying to run findAll test');
 			//
 			// ARRANGE & ACT
 			//
