@@ -6,20 +6,20 @@ import { type ActionDropdownItem, N8nActionDropdown, N8nIcon } from '@n8n/design
 const props = defineProps<{
 	data: UsersList['items'][number];
 	roles: Record<Role, { label: string; desc: string }>;
-	actions: Array<ActionDropdownItem<Role | 'delete'>>;
+	actions: ActionDropdownItem[];
 }>();
 
 const emit = defineEmits<{
-	'update:role': [payload: { role: Role | 'delete'; userId: string }];
+	'update:role': [payload: { role: Role; userId: string }];
 }>();
 
 const selectedRole = ref<Role>(props.data.role ?? ROLE.Default);
 const isEditable = computed(() => props.data.role !== ROLE.Owner);
 const roleLabel = computed(() => props.roles[selectedRole.value].label);
 
-const onActionSelect = (role: Role | 'delete') => {
+const onActionSelect = (role: string) => {
 	emit('update:role', {
-		role,
+		role: role as Role,
 		userId: props.data.id,
 	});
 };

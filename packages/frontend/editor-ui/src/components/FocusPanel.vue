@@ -37,7 +37,6 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
 import ExperimentalFocusPanelHeader from '@/components/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 import { useTelemetryContext } from '@/composables/useTelemetryContext';
-import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 
 defineOptions({ name: 'FocusPanel' });
 
@@ -48,7 +47,6 @@ const props = defineProps<{
 const emit = defineEmits<{
 	focus: [];
 	saveKeyboardShortcut: [event: KeyboardEvent];
-	contextMenuAction: [action: ContextMenuAction, nodeIds: string[]];
 }>();
 
 // ESLint: false positive
@@ -206,8 +204,6 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 });
 
 const isNodeExecuting = computed(() => workflowsStore.isNodeExecuting(node.value?.name ?? ''));
-
-const selectedNodeIds = computed(() => vueFlow.getSelectedNodes.value.map((n) => n.id));
 
 const { resolvedExpression } = useResolvedExpression({
 	expression,
@@ -575,9 +571,8 @@ function onOpenNdv() {
 				<ExperimentalNodeDetailsDrawer
 					v-else-if="node && experimentalNdvStore.isNdvInFocusPanelEnabled"
 					:node="node"
-					:node-ids="selectedNodeIds"
+					:nodes="vueFlow.getSelectedNodes.value"
 					@open-ndv="onOpenNdv"
-					@context-menu-action="(action, nodeIds) => emit('contextMenuAction', action, nodeIds)"
 				/>
 				<div v-else :class="[$style.content, $style.emptyContent]">
 					<div :class="$style.emptyText">
@@ -715,8 +710,8 @@ function onOpenNdv() {
 		}
 
 		.editorContainer {
-			height: 0;
-			flex-grow: 1;
+			height: 100%;
+			overflow-y: auto;
 
 			.editor {
 				display: flex;

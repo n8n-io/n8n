@@ -61,7 +61,6 @@ export interface IAirtopInteractionRequest extends IDataObject {
 		waitForNavigationConfig?: {
 			waitUntil: string;
 		};
-		clickType?: string;
 	};
 }
 

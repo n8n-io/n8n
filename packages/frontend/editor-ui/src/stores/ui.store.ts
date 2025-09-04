@@ -253,7 +253,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * @example
 	 * uiStore.registerCustomTabs('overview', 'data-table', [
 	 *   {
-	 *     label: 'Data table',
+	 *     label: 'Data Table',
 	 *     value: 'data-table',
 	 *     to: { name: 'data-table' },
 	 *   },

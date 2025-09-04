@@ -9,10 +9,7 @@ export function constructInteractionRequest(
 ): IAirtopInteractionRequest {
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const request: IAirtopInteractionRequest = {
-		...parameters,
-		configuration: {
-			...(parameters.configuration ?? {}),
-		},
+		configuration: {},
 	};
 
 	if (additionalFields.visualScope) {
@@ -27,6 +24,8 @@ export function constructInteractionRequest(
 			waitUntil: additionalFields.waitForNavigation as string,
 		};
 	}
+
+	Object.assign(request, parameters);
 
 	return request;
 }

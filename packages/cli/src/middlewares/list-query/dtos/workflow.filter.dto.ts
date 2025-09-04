@@ -35,11 +35,6 @@ export class WorkflowFilter extends BaseFilter {
 	@Expose()
 	parentFolderId?: string;
 
-	@IsBoolean()
-	@IsOptional()
-	@Expose()
-	availableInMCP?: boolean;
-
 	static async fromString(rawFilter: string) {
 		return await this.toFilter(rawFilter, WorkflowFilter);
 	}

@@ -50,7 +50,7 @@ const actions = computed(() =>
 
 			return aY === bY ? aX - bX : aY - bY;
 		})
-		.map<ActionDropdownItem<string>>((node) => ({
+		.map<ActionDropdownItem>((node) => ({
 			label: truncateBeforeLast(node.name, 50),
 			disabled: !!node.disabled || props.executing,
 			id: node.name,
