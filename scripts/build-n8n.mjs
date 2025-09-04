@@ -22,6 +22,12 @@ const excludeTestController =
 $.verbose = !isCI;
 process.env.FORCE_COLOR = isCI ? '0' : '1';
 
+// Ensure enough memory for Node-based build tools (e.g., Vite, TS)
+const DEFAULT_OLD_SPACE_MB = process.env.MAX_OLD_SPACE_SIZE || '4096';
+const existingNodeOptions = process.env.NODE_OPTIONS || '';
+// Append/override max-old-space-size to reduce OOM failures during build
+process.env.NODE_OPTIONS = `${existingNodeOptions} --max-old-space-size=${DEFAULT_OLD_SPACE_MB}`.trim();
+
 const scriptDir = path.dirname(new URL(import.meta.url).pathname);
 const isInScriptsDir = path.basename(scriptDir) === 'scripts';
 const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
