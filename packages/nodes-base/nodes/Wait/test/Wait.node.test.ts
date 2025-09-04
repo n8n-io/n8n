@@ -92,6 +92,11 @@ describe('Execute Wait Node', () => {
 				},
 				{
 					unit: 'seconds',
+					amount: 0,
+					expectedWaitTill: () => DateTime.now().toJSDate(),
+				},
+				{
+					unit: 'seconds',
 					amount: -10,
 					error: 'Invalid wait amount. It must be a non-negative number.',
 				},
