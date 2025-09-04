@@ -12,6 +12,7 @@ import type {
 	IRunData,
 	ExecutionError,
 	INodeTypeBaseDescription,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import type {
 	ExecutionFilterType,
@@ -227,6 +228,13 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
 };
 
 /**
+ * Check whether node execution data contains a trimmed item.
+ */
+export function isTrimmedNodeExecutionData(data: INodeExecutionData[] | null) {
+	return data?.some((entry) => entry.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY]);
+}
+
+/**
  * Check whether task data contains a trimmed item.
  *
  * In manual executions in scaling mode, the payload in push messages may be
@@ -236,7 +244,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined) => {
  * finish, when the client receives the full data.
  */
 export function isTrimmedTaskData(taskData: ITaskData) {
-	return taskData.data?.main?.[0]?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY] ?? false;
+	return taskData.data?.main?.some((main) => isTrimmedNodeExecutionData(main));
 }
 
 /**
