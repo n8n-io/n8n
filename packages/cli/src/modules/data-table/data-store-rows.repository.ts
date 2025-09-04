@@ -336,7 +336,7 @@ export class DataStoreRowsRepository {
 					filters: Object.entries(whereData).map(([columnName, value]) => ({
 						columnName,
 						condition: 'eq' as const,
-						value: value as string | number | boolean | Date | null,
+						value,
 					})),
 				};
 				const result = await this.updateRow(dataStoreId, setData, filter, columns, returnData);
