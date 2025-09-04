@@ -172,7 +172,7 @@ export = {
 					publicApi: true,
 				});
 
-				return res.json(retryResponse);
+				return res.json({ status: retryResponse });
 			} catch (error) {
 				if (
 					error instanceof QueuedExecutionRetryError ||
