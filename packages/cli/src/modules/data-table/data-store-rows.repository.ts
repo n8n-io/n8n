@@ -1,5 +1,4 @@
 import type { ListDataStoreContentQueryDto, ListDataStoreContentFilter } from '@n8n/api-types';
-import { GlobalConfig } from '@n8n/config';
 import { CreateTable, DslColumn } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, DataSourceOptions, QueryRunner, SelectQueryBuilder, In } from '@n8n/typeorm';
@@ -12,7 +11,6 @@ import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 } from 'n8n-workflow';
 
-import { DataStoreUserTableName } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
 import {
 	addColumnQuery,
@@ -27,6 +25,7 @@ import {
 	toDslColumns,
 	toSqliteGlobFromPercent,
 } from './utils/sql-utils';
+import { DataStoreRepository } from './data-store.repository';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
@@ -135,13 +134,8 @@ function getConditionAndParams(
 export class DataStoreRowsRepository {
 	constructor(
 		private dataSource: DataSource,
-		private readonly globalConfig: GlobalConfig,
+		private readonly dataStoreRepository: DataStoreRepository,
 	) {}
-
-	toTableName(dataStoreId: string): DataStoreUserTableName {
-		const { tablePrefix } = this.globalConfig.database;
-		return `${tablePrefix}data_table_user_${dataStoreId}`;
-	}
 
 	async insertRows<T extends boolean | undefined>(
 		dataStoreId: string,
@@ -159,7 +153,7 @@ export class DataStoreRowsRepository {
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
 
-		const table = this.toTableName(dataStoreId);
+		const table = this.dataStoreRepository.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 			this.dataSource.driver.escape(x),
@@ -225,7 +219,7 @@ export class DataStoreRowsRepository {
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres';
 
-		const table = this.toTableName(dataStoreId);
+		const table = this.dataStoreRepository.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 			this.dataSource.driver.escape(x),
@@ -331,7 +325,7 @@ export class DataStoreRowsRepository {
 			return true;
 		}
 
-		const table = this.toTableName(dataStoreId);
+		const table = this.dataStoreRepository.toTableName(dataStoreId);
 
 		await this.dataSource
 			.createQueryBuilder()
@@ -349,15 +343,17 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 	) {
 		const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
-		const createTable = new CreateTable(this.toTableName(dataStoreId), '', queryRunner).withColumns(
-			...dslColumns,
-		).withTimestamps;
+		const createTable = new CreateTable(
+			this.dataStoreRepository.toTableName(dataStoreId),
+			'',
+			queryRunner,
+		).withColumns(...dslColumns).withTimestamps;
 
 		await createTable.execute(queryRunner);
 	}
 
 	async dropTable(dataStoreId: string, queryRunner: QueryRunner) {
-		await queryRunner.dropTable(this.toTableName(dataStoreId), true);
+		await queryRunner.dropTable(this.dataStoreRepository.toTableName(dataStoreId), true);
 	}
 
 	async addColumn(
@@ -366,7 +362,9 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 		dbType: DataSourceOptions['type'],
 	) {
-		await queryRunner.query(addColumnQuery(this.toTableName(dataStoreId), column, dbType));
+		await queryRunner.query(
+			addColumnQuery(this.dataStoreRepository.toTableName(dataStoreId), column, dbType),
+		);
 	}
 
 	async dropColumnFromTable(
@@ -375,7 +373,9 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 		dbType: DataSourceOptions['type'],
 	) {
-		await queryRunner.query(deleteColumnQuery(this.toTableName(dataStoreId), columnName, dbType));
+		await queryRunner.query(
+			deleteColumnQuery(this.dataStoreRepository.toTableName(dataStoreId), columnName, dbType),
+		);
 	}
 
 	async getManyAndCount(
@@ -394,7 +394,7 @@ export class DataStoreRowsRepository {
 	}
 
 	async getManyByIds(dataStoreId: string, ids: number[], columns: DataTableColumn[]) {
-		const table = this.toTableName(dataStoreId);
+		const table = this.dataStoreRepository.toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 			this.dataSource.driver.escape(x),
@@ -428,7 +428,7 @@ export class DataStoreRowsRepository {
 	): [QueryBuilder, QueryBuilder] {
 		const query = this.dataSource.createQueryBuilder();
 
-		query.from(this.toTableName(dataStoreId), 'dataStore');
+		query.from(this.dataStoreRepository.toTableName(dataStoreId), 'dataStore');
 		this.applyFilters(query, dto, columns);
 		const countQuery = query.clone().select('COUNT(*)');
 		this.applySorting(query, dto);
@@ -487,7 +487,7 @@ export class DataStoreRowsRepository {
 		const queryBuilder = this.dataSource
 			.createQueryBuilder()
 			.select(matchFields)
-			.from(this.toTableName(dataStoreId), 'datastore');
+			.from(this.dataStoreRepository.toTableName(dataStoreId), 'datastore');
 
 		rows.forEach((row, index) => {
 			const matchData = Object.fromEntries(matchFields.map((field) => [field, row[field]]));

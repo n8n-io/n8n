@@ -3,13 +3,13 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Query, RestController } from '@n8n/decorators';
 
 import { DataStoreAggregateService } from './data-store-aggregate.service';
-import { DataStoreService } from './data-store.service';
+import { DataStoreRepository } from './data-store.repository';
 
 @RestController('/data-tables-global')
 export class DataStoreAggregateController {
 	constructor(
 		private readonly dataStoreAggregateService: DataStoreAggregateService,
-		private readonly dataStoreService: DataStoreService,
+		private readonly dataStoreRepository: DataStoreRepository,
 	) {}
 
 	@Get('/')
@@ -22,10 +22,10 @@ export class DataStoreAggregateController {
 		return await this.dataStoreAggregateService.getManyAndCount(req.user, payload);
 	}
 
-	@Get('/current-size')
+	@Get('/limits')
 	@GlobalScope('dataStore:list')
 	async getDataTablesSize() {
-		const sizeInMbs = await this.dataStoreService.findDataTablesSize();
+		const sizeInMbs = await this.dataStoreRepository.findDataTablesSize();
 		return { sizeInMbs };
 	}
 }
