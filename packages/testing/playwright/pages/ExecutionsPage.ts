@@ -1,7 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
-import { LogsPanel } from '../components/LogsPanel';
+import { LogsPanel } from './parts/LogsPanel';
 
 export class ExecutionsPage extends BasePage {
 	readonly logsPanel: LogsPanel;

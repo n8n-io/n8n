@@ -4,7 +4,7 @@ import { expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { EditFieldsNode } from './nodes/EditFieldsNode';
-import { RunDataPanel } from '../components/RunDataPanel';
+import { RunDataPanel } from './parts/RunDataPanel';
 
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;

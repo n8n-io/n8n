@@ -2,9 +2,9 @@ import type { Locator, Page } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
-import { LogsPanel } from '../components/LogsPanel';
 import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
+import { LogsPanel } from './parts/LogsPanel';
 
 export class CanvasPage extends BasePage {
 	readonly logsPanel: LogsPanel;
