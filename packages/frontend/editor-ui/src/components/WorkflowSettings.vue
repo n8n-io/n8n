@@ -478,9 +478,6 @@ onMounted(async () => {
 	if (workflowSettingsData.executionOrder === undefined) {
 		workflowSettingsData.executionOrder = 'v0';
 	}
-	if (workflowSettingsData.queuePriority === undefined) {
-		workflowSettingsData.queuePriority = 'medium';
-	}
 
 	workflowSettings.value = workflowSettingsData;
 	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
