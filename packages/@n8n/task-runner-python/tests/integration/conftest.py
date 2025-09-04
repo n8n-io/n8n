@@ -70,8 +70,7 @@ async def wait_for_task_error(
 
 
 def get_task_console_messages(
-    local_task_broker: LocalTaskBroker,
-    task_id: str
+    local_task_broker: LocalTaskBroker, task_id: str
 ) -> list[list[str]]:
     """Get console log messages for a task"""
     rpc_messages = local_task_broker.get_task_rpc_messages(task_id)

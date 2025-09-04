@@ -43,19 +43,19 @@ return [{"printed": "ok"}]
 
     messages = get_task_console_messages(local_task_broker, task_id)
     assert len(messages) > 0, "Should have captured console messages"
-    
+
     all_args = []
     for msg in messages:
         all_args.extend(msg)
-    
+
     assert "'Hello, World!'" in all_args
     assert "42" in all_args
     assert "3.14" in all_args
     assert "True" in all_args
     assert "None" in all_args
-    
+
     assert "'Multiple'" in all_args
-    assert "'args'" in all_args  
+    assert "'args'" in all_args
     assert "123" in all_args
     assert "False" in all_args
 
@@ -94,9 +94,9 @@ return [{"result": "success"}]
 
     messages = get_task_console_messages(local_task_broker, task_id)
     assert len(messages) > 0, "Should have captured console messages"
-    
+
     all_output = " ".join(["".join(msg) for msg in messages])
-    
+
     assert '{"name":"John","age":30,"active":true}' in all_output.replace(" ", "")
     assert '[1,2,"three",{"four":4}]' in all_output.replace(" ", "")
 
@@ -140,7 +140,7 @@ return [{"handled": "circular"}]
         if error:
             print(f"Task error: {error}")
         return
-    
+
     assert result is not None
     assert "data" in result
     data = result["data"]
@@ -149,9 +149,9 @@ return [{"handled": "circular"}]
 
     messages = get_task_console_messages(local_task_broker, task_id)
     assert len(messages) > 0, "Should have captured console messages"
-    
+
     all_output = " ".join(["".join(msg) for msg in messages])
-    
+
     assert "[Circular Node]" in all_output
     assert "[Circular dict]" in all_output
 
@@ -200,7 +200,7 @@ return [{"non_serializable": "handled"}]
             print(f"Task error: {error}")
         # For this test, importing datetime might be blocked, which is acceptable
         return
-    
+
     assert result is not None
     assert "data" in result
     data = result["data"]
@@ -209,9 +209,9 @@ return [{"non_serializable": "handled"}]
 
     messages = get_task_console_messages(local_task_broker, task_id)
     assert len(messages) > 0, "Should have captured console messages"
-    
+
     all_output = " ".join(["".join(msg) for msg in messages])
-    
+
     assert "202" in all_output
     assert "CustomClass" in all_output or "test" in all_output
 
@@ -252,9 +252,9 @@ return [{"unicode": "✓"}]
 
     messages = get_task_console_messages(local_task_broker, task_id)
     assert len(messages) > 0, "Should have captured console messages"
-    
+
     all_output = " ".join(["".join(msg) for msg in messages])
-    
+
     assert "世界" in all_output
     assert "🌍" in all_output
     assert "🚀" in all_output
@@ -304,9 +304,8 @@ return [{"edge_cases": "tested"}]
 
     messages = get_task_console_messages(local_task_broker, task_id)
     assert len(messages) > 0, "Should have captured console messages"
-    
+
     all_output = " ".join(["".join(msg) for msg in messages])
-    
+
     assert "[]" in all_output
     assert "{}" in all_output
-
