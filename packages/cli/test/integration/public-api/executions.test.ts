@@ -251,7 +251,7 @@ describe('POST /executions/:id/retry', () => {
 		expect(response.statusCode).toBe(200);
 
 		// TODO: update assertion once unit tests for this file are working again.
-		expect(response.body).toEqual('waiting');
+		expect(response.body).toEqual({ status: 'waiting' });
 	});
 });
 
