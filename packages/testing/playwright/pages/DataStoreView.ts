@@ -73,6 +73,18 @@ export class DataStoreView extends BasePage {
 		return this.getDeleteDataTableModal().locator('.btn--confirm');
 	}
 
+	getDataTablePageSizeSelect() {
+		return this.page.getByTestId('resources-list-pagination').locator('.el-pagination__sizes');
+	}
+
+	getDataTablePageOption(pageSize: string) {
+		return this.page.locator('.el-select-dropdown__item').filter({ hasText: `${pageSize}/page` });
+	}
+
+	getPaginationNextButton() {
+		return this.page.getByTestId('resources-list-pagination').locator('button.btn-next');
+	}
+
 	async clickDataTableOverviewTab() {
 		await this.clickByTestId('tab-data-stores');
 	}
@@ -103,5 +115,14 @@ export class DataStoreView extends BasePage {
 
 	async clickDeleteDataTableConfirmButton() {
 		await this.getDeleteDataTableConfirmButton().click();
+	}
+
+	async selectDataTablePageSize(pageSize: string) {
+		await this.getDataTablePageSizeSelect().click();
+		await this.getDataTablePageOption(pageSize).click();
+	}
+
+	async clickPaginationNextButton() {
+		await this.getPaginationNextButton().click();
 	}
 }

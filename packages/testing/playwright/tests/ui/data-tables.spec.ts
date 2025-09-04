@@ -117,4 +117,30 @@ test.describe('Data Table list view', () => {
 
 		await expect(n8n.dataTable.getDataTableCardByName(TEST_DATA_TABLE_NAME)).toBeHidden();
 	});
+
+	test('Should paginate data table list correctly', async ({ n8n, api }) => {
+		const TEST_PROJECT_NAME = `Project ${nanoid(8)}`;
+		const TOTAL_DATA_TABLES = 13;
+		const PAGE_SIZE = 10;
+
+		await n8n.projectComposer.createProject(TEST_PROJECT_NAME);
+		await n8n.sideBar.clickProjectMenuItem(TEST_PROJECT_NAME);
+		await n8n.dataTable.clickDataTableProjectTab();
+
+		for (let i = 0; i < TOTAL_DATA_TABLES; i++) {
+			await n8n.dataTable.clickAddResourceDropdown();
+			await n8n.dataTable.clickAddDataTableAction();
+			await n8n.dataTableComposer.createNewDataTable(`Data Table ${i + 1}`);
+			await n8n.sideBar.clickProjectMenuItem(TEST_PROJECT_NAME);
+			await n8n.dataTable.clickDataTableProjectTab();
+		}
+
+		// First page should only have PAGE_SIZE items
+		await n8n.dataTable.selectDataTablePageSize(PAGE_SIZE.toString());
+		await expect(n8n.dataTable.getDataTableCards()).toHaveCount(PAGE_SIZE);
+
+		// Forward to next page, should show the rest
+		await n8n.dataTable.getPaginationNextButton().click();
+		await expect(n8n.dataTable.getDataTableCards()).toHaveCount(TOTAL_DATA_TABLES - PAGE_SIZE);
+	});
 });
