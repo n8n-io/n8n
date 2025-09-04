@@ -14,7 +14,7 @@ post:
       content:
         application/json:
           schema:
-            $ref: '../schemas/execution.yml'
+            $ref: '../schemas/executionStatus.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
