@@ -8,9 +8,7 @@ export class ExecutionsPage extends BasePage {
 
 	constructor(page: Page) {
 		super(page);
-		this.logsPanel = new LogsPanel(
-			page.getByTestId('workflow-preview-iframe').contentFrame().locator('body'),
-		);
+		this.logsPanel = new LogsPanel(this.getPreviewIframe().getByTestId('logs-panel'));
 	}
 
 	async clickDebugInEditorButton(): Promise<void> {
@@ -32,6 +30,10 @@ export class ExecutionsPage extends BasePage {
 
 	getAutoRefreshButton() {
 		return this.page.getByTestId('auto-refresh-checkbox');
+	}
+
+	getPreviewIframe() {
+		return this.page.getByTestId('workflow-preview-iframe').contentFrame();
 	}
 
 	async clickLastExecutionItem(): Promise<void> {
