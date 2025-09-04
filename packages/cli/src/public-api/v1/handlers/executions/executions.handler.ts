@@ -111,8 +111,10 @@ export = {
 			}
 
 			// get running workflows so we exclude them from the result
+			// but keep waiting executions as they should be visible in the API
 			const runningExecutionsIds = Container.get(ActiveExecutions)
 				.getActiveExecutions()
+				.filter(({ status }) => status !== 'waiting')
 				.map(({ id }) => id);
 
 			const filters = {
