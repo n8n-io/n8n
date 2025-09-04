@@ -1,7 +1,27 @@
 import type { Locator } from '@playwright/test';
 
+/**
+ * Page object for the run data view with configurable root element.
+ *
+ * @example
+ * // Include in a page
+ * class ExamplePage {
+ *   readonly runDataPanel = new RunDataPanel(this.page.getByTestId('run-data'));
+ * }
+ *
+ * // Usage in a test
+ * await n8n.example.runDataPanel.getRunSelector().click();
+ */
 export class RunDataPanel {
 	constructor(private root: Locator) {}
+
+	get() {
+		return this.root;
+	}
+
+	getRunSelector() {
+		return this.root.getByTestId('run-selector');
+	}
 
 	getRunSelectorInput() {
 		return this.root.locator('[data-test-id="run-selector"] input');
@@ -15,16 +35,32 @@ export class RunDataPanel {
 		return this.root.getByTestId('ndv-search');
 	}
 
+	getDataContainer() {
+		return this.root.getByTestId('ndv-data-container');
+	}
+
+	getPinDataButton() {
+		return this.root.getByTestId('ndv-pin-data');
+	}
+
 	getTable() {
 		return this.root.locator('table');
 	}
 
-	getTableHeader(index: number = 0) {
+	getTableHeaders() {
+		return this.root.locator('table th');
+	}
+
+	getTableHeader(index: number) {
 		return this.root.locator('table th').nth(index);
 	}
 
 	getTableRows() {
 		return this.root.locator('tr');
+	}
+
+	getTableRow(index: number) {
+		return this.root.locator('tr').nth(index);
 	}
 
 	getTbodyCell(row: number, col: number) {
@@ -55,9 +91,12 @@ export class RunDataPanel {
 			.first();
 	}
 
+	getSchemaItems() {
+		return this.root.getByTestId('run-data-schema-item');
+	}
+
 	getSchemaItem(text: string) {
-		return this.root
-			.getByTestId('run-data-schema-item')
+		return this.getSchemaItems()
 			.locator('span')
 			.filter({ hasText: new RegExp(`^${text}$`) })
 			.first();
@@ -65,10 +104,6 @@ export class RunDataPanel {
 
 	getNodeInputOptions() {
 		return this.root.getByTestId('ndv-input-select');
-	}
-
-	getRunSelector() {
-		return this.root.getByTestId('run-selector');
 	}
 
 	getLinkRun() {

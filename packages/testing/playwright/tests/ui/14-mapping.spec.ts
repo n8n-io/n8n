@@ -36,12 +36,12 @@ test.describe('Data Mapping', () => {
 
 				await n8n.ndv.execute();
 
-				await expect(n8n.ndv.getOutputTable()).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getTable()).toBeVisible();
 
-				await n8n.ndv.getOutputTbodyCell(0, 0).hover();
+				await n8n.ndv.outputPanel.getTbodyCell(0, 0).hover();
 				await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('0');
 
-				await n8n.ndv.getOutputTbodyCell(1, 0).hover();
+				await n8n.ndv.outputPanel.getTbodyCell(1, 0).hover();
 				await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1');
 			});
 		});
@@ -52,7 +52,7 @@ test.describe('Data Mapping', () => {
 
 		const expectedJsonText =
 			'[{"input": [{"count": 0,"with space": "!!","with.dot": "!!","with"quotes": "!!"}]},{"input": [{"count": 1}]}]';
-		await expect(n8n.ndv.getInputPanel().getByText(expectedJsonText)).toBeVisible();
+		await expect(n8n.ndv.inputPanel.get().getByText(expectedJsonText)).toBeVisible();
 
 		await expect(n8n.ndv.inputPanel.getJsonDataContainer()).toBeVisible();
 
@@ -97,7 +97,7 @@ test.describe('Data Mapping', () => {
 		await n8n.canvas.openNode('Set1');
 		await n8n.ndv.executePrevious();
 
-		const scheduleNode = n8n.ndv.getInputPanel().getByText('Schedule Trigger');
+		const scheduleNode = n8n.ndv.inputPanel.get().getByText('Schedule Trigger');
 		await expect(scheduleNode).toBeVisible();
 		await scheduleNode.click();
 

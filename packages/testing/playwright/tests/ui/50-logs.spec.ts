@@ -249,7 +249,10 @@ test.describe('Logs', () => {
 		await expect(n8n.canvas.logsPanel.getLogEntries().nth(1)).toContainText('Waiting');
 
 		await n8n.canvas.openNode(NODES.WAIT_NODE);
-		const webhookUrl = await n8n.ndv.getOutputDataContainer().locator('a').getAttribute('href');
+		const webhookUrl = await n8n.ndv.outputPanel
+			.getDataContainer()
+			.locator('a')
+			.getAttribute('href');
 		await n8n.ndv.clickBackToCanvasButton();
 
 		// Trigger the webhook

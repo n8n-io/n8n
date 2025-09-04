@@ -2,6 +2,18 @@ import type { Locator } from '@playwright/test';
 
 import { RunDataPanel } from './RunDataPanel';
 
+/**
+ * Page object for the log view with configurable root element.
+ *
+ * @example
+ * // Include in a page
+ * class ExamplePage {
+ *   readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
+ * }
+ *
+ * // Usage in a test
+ * await expect(n8n.example.logsPage.getLogEntries()).toHaveCount(2);
+ */
 export class LogsPanel {
 	readonly inputPanel = new RunDataPanel(this.getInputPanel());
 	readonly outputPanel = new RunDataPanel(this.getOutputPanel());
