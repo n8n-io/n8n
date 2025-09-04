@@ -1,166 +1,116 @@
-import asyncio
+import textwrap
 
 import pytest
 from src.nanoid import nanoid
 
 from tests.integration.conftest import (
     create_task_settings,
-    get_task_console_messages,
+    get_browser_console_msgs,
     wait_for_task_done,
 )
 
 
 @pytest.mark.asyncio
-async def test_print_basic_types(local_task_broker, task_runner_manager):
-    await asyncio.sleep(0.5)
-
+async def test_print_basic_types(broker, manager):
     task_id = nanoid()
-
-    code = """
-print("Hello, World!")
-print(42)
-print(3.14)
-print(True)
-print(None)
-print("Multiple", "args", 123, False)
-return [{"printed": "ok"}]
-"""
-
+    code = textwrap.dedent("""
+        print("Hello, World!")
+        print(42)
+        print(3.14)
+        print(True)
+        print(None)
+        print("Multiple", "args", 123, False)
+        return [{"printed": "ok"}]
+    """)
     task_settings = create_task_settings(code=code, node_mode="all_items", can_log=True)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
 
-    await local_task_broker.send_task(
-        task_id=task_id, task_type="python", task_settings=task_settings
-    )
+    done_msg = await wait_for_task_done(broker, task_id, timeout=5.0)
 
-    result = await wait_for_task_done(local_task_broker, task_id, timeout=5.0)
-    assert result is not None
-    assert result["taskId"] == task_id
-    assert "data" in result
-    data = result["data"]
-    assert "result" in data
-    assert data["result"] == [{"printed": "ok"}]
+    assert done_msg["taskId"] == task_id
+    assert done_msg["data"]["result"] == [{"printed": "ok"}]
 
-    messages = get_task_console_messages(local_task_broker, task_id)
-    assert len(messages) > 0, "Should have captured console messages"
+    msgs = get_browser_console_msgs(broker, task_id)
+
+    assert len(msgs) > 0, "Should have captured console messages"
 
     all_args = []
-    for msg in messages:
+    for msg in msgs:
         all_args.extend(msg)
 
-    assert "'Hello, World!'" in all_args
-    assert "42" in all_args
-    assert "3.14" in all_args
-    assert "True" in all_args
-    assert "None" in all_args
-
-    assert "'Multiple'" in all_args
-    assert "'args'" in all_args
-    assert "123" in all_args
-    assert "False" in all_args
-
-
-@pytest.mark.asyncio
-async def test_print_complex_types(local_task_broker, task_runner_manager):
-    await asyncio.sleep(0.5)
-
-    task_id = nanoid()
-
-    code = """
-# Dictionary
-print({"name": "John", "age": 30, "active": True})
-
-# List
-print([1, 2, "three", {"four": 4}])
-
-# Nested structure
-print({"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]})
-
-return [{"result": "success"}]
-"""
-
-    task_settings = create_task_settings(code=code, node_mode="all_items", can_log=True)
-
-    await local_task_broker.send_task(
-        task_id=task_id, task_type="python", task_settings=task_settings
-    )
-
-    result = await wait_for_task_done(local_task_broker, task_id, timeout=5.0)
-    assert result is not None
-    assert "data" in result
-    data = result["data"]
-    assert "result" in data
-    assert data["result"] == [{"result": "success"}]
-
-    messages = get_task_console_messages(local_task_broker, task_id)
-    assert len(messages) > 0, "Should have captured console messages"
-
-    all_output = " ".join(["".join(msg) for msg in messages])
-
-    assert '{"name":"John","age":30,"active":true}' in all_output.replace(" ", "")
-    assert '[1,2,"three",{"four":4}]' in all_output.replace(" ", "")
+    expected = [
+        "'Hello, World!'",
+        "42",
+        "3.14",
+        "True",
+        "None",
+        "'Multiple'",
+        "'args'",
+        "123",
+        "False",
+    ]
+    for item in expected:
+        assert item in all_args, f"Expected '{item}' not found in console output"
 
 
 @pytest.mark.asyncio
-async def test_print_edge_cases(local_task_broker, task_runner_manager):
-    await asyncio.sleep(0.5)
-
+async def test_print_complex_types(broker, manager):
     task_id = nanoid()
+    code = textwrap.dedent("""
+        print({"name": "John", "age": 30, "active": True})
+        print([1, 2, "three", {"four": 4}])
+        print({"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]})
+        return [{"result": "success"}]
+    """)
+    task_settings = create_task_settings(code=code, node_mode="all_items", can_log=True)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
 
-    code = """
-# Unicode characters
-print("Hello 世界 🌍")
-print({"emoji": "🚀", "chinese": "你好", "arabic": "مرحبا"})
+    result_msg = await wait_for_task_done(broker, task_id, timeout=5.0)
 
-# Special characters
-print("Line\\nbreak")
-print("Tab\\tseparated")
-print('Quote "test" here')
+    assert result_msg["data"]["result"] == [{"result": "success"}]
 
-# Empty print
-print()
+    msgs = get_browser_console_msgs(broker, task_id)
+    assert len(msgs) > 0, "Should have captured console messages"
 
-# Empty string
-print("")
+    all_output = " ".join(["".join(msg) for msg in msgs]).replace(" ", "")
+    expected = [
+        '{"name":"John","age":30,"active":true}',
+        '[1,2,"three",{"four":4}]',
+    ]
+    for item in expected:
+        assert item in all_output, f"Expected '{item}' not found in console output"
 
-# Just spaces
-print("   ")
 
-# Empty collections
-print([])
-print({})
-print(())
-
-# Very long string
-long_string = "x" * 1000
-print(long_string)
-
-return [{"test": "complete"}]
-"""
-
+@pytest.mark.asyncio
+async def test_print_edge_cases(broker, manager):
+    task_id = nanoid()
+    code = textwrap.dedent("""
+        print("Hello 世界 🌍")
+        print({"emoji": "🚀", "chinese": "你好", "arabic": "مرحبا"})
+        print("Line\\nbreak")
+        print("Tab\\tseparated")
+        print('Quote "test" here')
+        print()
+        print("")
+        print("   ")
+        print([])
+        print({})
+        print(())
+        print("x" * 1_000)
+        return [{"test": "complete"}]
+    """)
     task_settings = create_task_settings(code=code, node_mode="all_items", can_log=True)
 
-    await local_task_broker.send_task(
-        task_id=task_id, task_type="python", task_settings=task_settings
-    )
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
 
-    result = await wait_for_task_done(local_task_broker, task_id, timeout=5.0)
-    assert result is not None
-    assert "data" in result
-    data = result["data"]
-    assert "result" in data
-    assert data["result"] == [{"test": "complete"}]
+    done_msg = await wait_for_task_done(broker, task_id, timeout=5.0)
 
-    messages = get_task_console_messages(local_task_broker, task_id)
-    assert len(messages) > 0, "Should have captured console messages"
+    assert done_msg["data"]["result"] == [{"test": "complete"}]
 
-    all_output = " ".join(["".join(msg) for msg in messages])
+    msgs = get_browser_console_msgs(broker, task_id)
+    assert len(msgs) > 0, "Should have captured console messages"
 
-    # Unicode assertions
-    assert "世界" in all_output
-    assert "🌍" in all_output
-    assert "🚀" in all_output
-    assert "你好" in all_output
-
-    # Edge case assertions
-    assert "[]" in all_output
-    assert "{}" in all_output
+    all_output = " ".join(["".join(msg) for msg in msgs])
+    expected = ["世界", "🌍", "🚀", "你好", "[]", "{}"]
+    for item in expected:
+        assert item in all_output, f"Expected '{item}' not found in console output"

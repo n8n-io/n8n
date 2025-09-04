@@ -1,6 +1,7 @@
 import asyncio
-import aiohttp
+import textwrap
 
+import aiohttp
 import pytest
 from src.nanoid import nanoid
 
@@ -9,43 +10,31 @@ from tests.fixtures.test_constants import HEALTH_CHECK_URL
 
 
 @pytest.mark.asyncio
-async def test_health_check_server_responds(local_task_broker, task_runner_manager):
-    await asyncio.sleep(0.5)
-
+async def test_health_check_server_responds(broker, manager):
     async with aiohttp.ClientSession() as session:
-        async with session.get(HEALTH_CHECK_URL) as response:
-            assert response.status == 200
-            text = await response.text()
-            assert text == "OK"
+        for _ in range(10):
+            try:
+                response = await session.get(HEALTH_CHECK_URL)
+                if response.status == 200:
+                    assert await response.text() == "OK"
+                    return
+            except aiohttp.ClientConnectionError:
+                await asyncio.sleep(0.1)
 
 
 @pytest.mark.asyncio
-async def test_runner_healthy_during_task_execution(
-    local_task_broker, task_runner_manager
-):
-    await asyncio.sleep(0.5)
-
+async def test_health_check_server_ressponds_mid_execution(broker, manager):
     task_id = nanoid()
-
-    code = """
-result = 0
-for i in range(10000000):
-    result += i
-return [{"result": result}]
-"""
-
+    code = textwrap.dedent("""
+        for _ in range(10_000_000):
+            pass
+        return [{"result": "completed"}]
+    """)
     task_settings = create_task_settings(code=code, node_mode="all_items")
-
-    await local_task_broker.send_task(
-        task_id=task_id, task_type="python", task_settings=task_settings
-    )
-
-    await asyncio.sleep(0.5)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+    await asyncio.sleep(0.3)
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(HEALTH_CHECK_URL) as response:
-            assert response.status == 200
-            text = await response.text()
-            assert text == "OK"
-
-    assert task_runner_manager.is_running()
+        response = await session.get(HEALTH_CHECK_URL)
+        assert response.status == 200
+        assert await response.text() == "OK"

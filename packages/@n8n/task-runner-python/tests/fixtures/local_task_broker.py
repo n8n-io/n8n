@@ -13,13 +13,13 @@ from tests.fixtures.test_constants import (
     LOCAL_TASK_BROKER_WS_PATH,
 )
 
+TaskId = str
 TaskSettings = dict[str, Any]
 WebsocketMessage = dict[str, Any]
 
 
 @dataclass
 class ActiveTask:
-    type: str
     settings: TaskSettings
 
 
@@ -32,9 +32,9 @@ class LocalTaskBroker:
         self.connections: dict[str, web_ws.WebSocketResponse] = {}
         self.pending_messages: dict[str, asyncio.Queue[WebsocketMessage]] = {}
         self.received_messages: list[WebsocketMessage] = []
-        self.active_tasks: dict[str, ActiveTask] = {}
-        self.task_settings: dict[str, TaskSettings] = {}
-        self.rpc_messages: dict[str, list[dict]] = {}
+        self.active_tasks: dict[TaskId, ActiveTask] = {}
+        self.task_settings: dict[TaskId, TaskSettings] = {}
+        self.rpc_messages: dict[TaskId, list[dict]] = {}
         self.app.router.add_get(LOCAL_TASK_BROKER_WS_PATH, self.websocket_handler)
 
     async def start(self) -> None:
@@ -132,29 +132,26 @@ class LocalTaskBroker:
 
     async def send_task(
         self,
-        task_id: str,
-        task_type: str,
+        task_id: TaskId,
         task_settings: TaskSettings,
     ):
-        self.active_tasks[task_id] = ActiveTask(type=task_type, settings=task_settings)
+        self.active_tasks[task_id] = ActiveTask(task_settings)
         self.task_settings[task_id] = task_settings
 
-        offer_message = await self.wait_for_message("runner:taskoffer", timeout=2.0)
+        offer = await self.wait_for_msg("runner:taskoffer", timeout=2.0)
 
-        if offer_message:
-            offer_id = offer_message.get("offerId")
-
-            accept_msg = {
+        if offer:
+            accept = {
                 "type": "broker:taskofferaccept",
                 "taskId": task_id,
-                "offerId": offer_id,
+                "offerId": offer.get("offerId"),
             }
 
             if self.connections:
-                first_conn = next(iter(self.connections.keys()))
-                await self.send_to_connection(first_conn, accept_msg)
+                connection = next(iter(self.connections.keys()))
+                await self.send_to_connection(connection, accept)
 
-    async def cancel_task(self, task_id: str, reason: str):
+    async def cancel_task(self, task_id: TaskId, reason: str):
         cancel_message = {
             "type": "broker:taskcancel",
             "taskId": task_id,
@@ -164,9 +161,9 @@ class LocalTaskBroker:
         for connection_id in self.connections:
             await self.send_to_connection(connection_id, cancel_message)
 
-    async def wait_for_message(
+    async def wait_for_msg(
         self,
-        message_type: str,
+        msg_type: str,
         timeout: float = TASK_RESPONSE_WAIT,
         predicate: Callable[[WebsocketMessage], bool] | None = None,
     ) -> WebsocketMessage | None:
@@ -174,7 +171,7 @@ class LocalTaskBroker:
 
         while asyncio.get_running_loop().time() - start_time < timeout:
             for msg in self.received_messages:
-                if msg.get("type") == message_type:
+                if msg.get("type") == msg_type:
                     if predicate is None or predicate(msg):
                         return msg
 
@@ -182,10 +179,8 @@ class LocalTaskBroker:
 
         return None
 
-    def get_messages_of_type(self, message_type: str) -> list[WebsocketMessage]:
-        return [
-            msg for msg in self.received_messages if msg.get("type") == message_type
-        ]
+    def get_messages_of_type(self, msg_type: str) -> list[WebsocketMessage]:
+        return [msg for msg in self.received_messages if msg.get("type") == msg_type]
 
-    def get_task_rpc_messages(self, task_id: str) -> list[dict]:
+    def get_task_rpc_messages(self, task_id: TaskId) -> list[dict]:
         return self.rpc_messages.get(task_id, [])
