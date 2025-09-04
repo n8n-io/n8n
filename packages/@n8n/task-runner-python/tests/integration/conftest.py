@@ -33,6 +33,7 @@ def create_task_settings(
     node_mode: str,
     items: Items | None = None,
     continue_on_fail: bool = False,
+    can_log: bool = False,
 ):
     mode_mapping = {
         "all_items": "runOnceForAllItems",
@@ -44,6 +45,7 @@ def create_task_settings(
         "nodeMode": mode_mapping[node_mode],
         "items": items or [],
         "continueOnFail": continue_on_fail,
+        "canLog": can_log,
     }
 
 
@@ -65,3 +67,17 @@ async def wait_for_task_error(
         timeout=timeout,
         predicate=lambda msg: msg.get("taskId") == task_id,
     )
+
+
+def get_task_console_messages(
+    local_task_broker: LocalTaskBroker,
+    task_id: str
+) -> list[list[str]]:
+    """Get console log messages for a task"""
+    rpc_messages = local_task_broker.get_task_rpc_messages(task_id)
+    console_messages = []
+    for msg in rpc_messages:
+        if msg.get("method") == "logNodeOutput":
+            # params contains the formatted print arguments
+            console_messages.append(msg.get("params", []))
+    return console_messages

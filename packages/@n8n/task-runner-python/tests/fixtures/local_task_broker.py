@@ -34,6 +34,7 @@ class LocalTaskBroker:
         self.received_messages: list[WebsocketMessage] = []
         self.active_tasks: dict[str, ActiveTask] = {}
         self.task_settings: dict[str, TaskSettings] = {}
+        self.rpc_messages: dict[str, list[dict]] = {}
         self.app.router.add_get(LOCAL_TASK_BROKER_WS_PATH, self.websocket_handler)
 
     async def start(self) -> None:
@@ -115,6 +116,16 @@ class LocalTaskBroker:
                 task_id = message.get("taskId")
                 if task_id in self.active_tasks:
                     del self.active_tasks[task_id]
+            
+            case "runner:rpc":
+                task_id = message.get("taskId")
+                if task_id:
+                    if task_id not in self.rpc_messages:
+                        self.rpc_messages[task_id] = []
+                    self.rpc_messages[task_id].append({
+                        "method": message.get("name"), 
+                        "params": message.get("params")
+                    })
 
     async def send_to_connection(self, connection_id: str, message: WebsocketMessage):
         if connection_id in self.pending_messages:
@@ -176,3 +187,6 @@ class LocalTaskBroker:
         return [
             msg for msg in self.received_messages if msg.get("type") == message_type
         ]
+    
+    def get_task_rpc_messages(self, task_id: str) -> list[dict]:
+        return self.rpc_messages.get(task_id, [])
