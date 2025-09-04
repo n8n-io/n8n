@@ -78,7 +78,35 @@ m82JpEptTfAxFHtd8+Sb0U2G
 			return method === 'POST' && typeof path === 'string' && path.endsWith('/values:batchUpdate');
 		});
 
+		/**
+		 * Original Table in Google Sheets
+		 * The loop should execute twice over both rows here
+		 * Incrementing each value by 1 (expression in Set Output node)
+		 *
+		 * name	  email	 actual
+			 test	  test	 10
+			 hello	wolrd	 104
+		 */
+
 		// Set output node was called twice in a loop, updating Google sheets output value
 		expect(batchUpdateRequests.length).toEqual(2);
+		expect((batchUpdateRequests[0]?.httpRequest?.body as { json: object })?.json).toEqual({
+			data: [
+				{
+					range: 'Sheet2!C2',
+					values: [[11]],
+				},
+			],
+			valueInputOption: 'RAW',
+		});
+		expect((batchUpdateRequests[1]?.httpRequest?.body as { json: object })?.json).toEqual({
+			data: [
+				{
+					range: 'Sheet2!C3',
+					values: [[105]],
+				},
+			],
+			valueInputOption: 'RAW',
+		});
 	});
 });
