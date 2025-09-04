@@ -230,7 +230,6 @@ const onDeleteColumn = async (columnId: string) => {
 		);
 		telemetry.track('User deleted data table column', {
 			column_id: columnId,
-			column_name: columnToDelete.headerName,
 			column_type: columnToDelete.cellDataType,
 			data_table_id: props.dataStore.id,
 		});
@@ -263,7 +262,6 @@ const onAddColumn = async (column: DataStoreColumnCreatePayload) => {
 		refreshGridData();
 		telemetry.track('User added data table column', {
 			column_id: newColumn.id,
-			column_name: newColumn.name,
 			column_type: newColumn.type,
 			data_table_id: props.dataStore.id,
 		});
@@ -550,7 +548,6 @@ const onCellValueChanged = async (params: CellValueChangedEvent<DataStoreRow>) =
 		telemetry.track('User edited data table content', {
 			data_table_id: props.dataStore.id,
 			column_id: colDef.colId,
-			column_name: fieldName,
 			column_type: colDef.cellDataType,
 		});
 	} catch (error) {
