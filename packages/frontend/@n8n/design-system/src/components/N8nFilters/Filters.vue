@@ -11,24 +11,27 @@ import {
 import { ref, computed } from 'vue';
 
 import N8nIcon from '../N8nIcon';
-import SingleSelect from './SingleSelect.vue';
 import type { IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
+import DatePicker from './DatePicker.vue';
 import MultiSelect from './MultiSelect.vue';
+import SingleSelect from './SingleSelect.vue';
 
 interface ActiveFilter {
 	filterName: string;
 	values: FilterItem[];
-	type: 'single' | 'multi';
+	type: 'single' | 'multi' | 'date';
 }
 
 interface FilterOption {
 	label: string;
 	options: FilterItem[];
-	type: 'single' | 'multi';
+	type: 'single' | 'multi' | 'date';
 	allowCustomValues?: boolean;
+	minValue?: string; // For date filters: ISO date string
+	maxValue?: string; // For date filters: ISO date string
 }
 
 interface FilterItem {
@@ -104,13 +107,35 @@ function handleMultiSelectChange(filterName: string, values: FilterItem[]) {
 	);
 }
 
+function handleDateChange(filterName: string, value: FilterItem | null) {
+	const filterToUpdate = activeFilters.value.find((f) => f.filterName === filterName);
+
+	if (!filterToUpdate) {
+		if (value) {
+			activeFilters.value.push({
+				filterName,
+				values: [value],
+				type: 'date',
+			});
+		}
+		return;
+	}
+
+	if (!value || filterToUpdate.values[0]?.id === value.id) {
+		activeFilters.value = activeFilters.value.filter((f) => f.filterName !== filterName);
+		return;
+	}
+
+	activeFilters.value = activeFilters.value.map((f) =>
+		f.filterName === filterName ? { ...f, values: [value] } : f,
+	);
+}
+
 function removeFilter(filterName: string) {
 	activeFilters.value = activeFilters.value.filter((f) => f.filterName !== filterName);
 }
 
 // TODO
-// - Clear filters
-// - Date picker
 // - Custom string/number values
 // - Small variant
 </script>
@@ -158,7 +183,7 @@ function removeFilter(filterName: string) {
 											<SingleSelect
 												v-if="filterOption.type === 'single'"
 												:items="filterOption.options"
-												:initialItem="
+												:initial-item="
 													activeFilters.find((f) => f.filterName === filterOption.label)?.values[0]
 												"
 												@update:model-value="
@@ -168,7 +193,7 @@ function removeFilter(filterName: string) {
 												:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
 											/>
 											<MultiSelect
-												v-else
+												v-else-if="filterOption.type === 'multi'"
 												:items="filterOption.options"
 												:initial-selected="
 													activeFilters.find((f) => f.filterName === filterOption.label)?.values ||
@@ -176,6 +201,18 @@ function removeFilter(filterName: string) {
 												"
 												@update:model-value="
 													(values) => handleMultiSelectChange(filterOption.label, values)
+												"
+												:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
+											/>
+											<DatePicker
+												v-else-if="filterOption.type === 'date'"
+												:initial-value="
+													activeFilters.find((f) => f.filterName === filterOption.label)?.values[0]
+												"
+												:min-value="filterOption.minValue"
+												:max-value="filterOption.maxValue"
+												@update:model-value="
+													(value: FilterItem | null) => handleDateChange(filterOption.label, value)
 												"
 												:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
 											/>

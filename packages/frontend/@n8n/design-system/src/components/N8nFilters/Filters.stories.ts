@@ -96,3 +96,88 @@ WithMultiSelectFilter.args = {
 	],
 	primaryActionText: 'Apply Filters',
 };
+
+export const WithDateFilter = Template.bind({});
+WithDateFilter.args = {
+	filters: [
+		{
+			label: 'Created Date',
+			type: 'date',
+			options: [], // Date filters don't use options
+			minValue: '2020-01-01',
+			maxValue: '2030-12-31',
+		},
+		{
+			label: 'Due Date',
+			type: 'date',
+			options: [],
+		},
+		{
+			label: 'Status',
+			type: 'single',
+			options: [
+				{ name: 'Active', id: 'active', value: 'active' },
+				{ name: 'Completed', id: 'completed', value: 'completed' },
+				{ name: 'Overdue', id: 'overdue', value: 'overdue' },
+			],
+		},
+	],
+	actions: [
+		{
+			label: 'Filter',
+			icon: 'list-filter',
+			tooltip: 'Apply date filters',
+		},
+	],
+	primaryActionText: 'Search',
+};
+
+export const WithAllFilterTypes = Template.bind({});
+WithAllFilterTypes.args = {
+	filters: [
+		{
+			label: 'Status',
+			type: 'single',
+			options: [
+				{ name: 'Draft', id: 'draft', value: 'draft' },
+				{ name: 'Published', id: 'published', value: 'published' },
+				{ name: 'Archived', id: 'archived', value: 'archived' },
+			],
+		},
+		{
+			label: 'Tags',
+			type: 'multi',
+			options: [
+				{ name: 'Important', id: 'important', value: 'important' },
+				{ name: 'Featured', id: 'featured', value: 'featured' },
+				{ name: 'Trending', id: 'trending', value: 'trending' },
+				{ name: 'New', id: 'new', value: 'new' },
+			],
+		},
+		{
+			label: 'Created Date',
+			type: 'date',
+			options: [],
+			minValue: '2023-01-01',
+		},
+		{
+			label: 'Modified Date',
+			type: 'date',
+			options: [],
+			maxValue: '2024-12-31',
+		},
+	],
+	actions: [
+		{
+			label: 'Search',
+			icon: 'search',
+			tooltip: 'Search items',
+		},
+		{
+			label: 'Export',
+			icon: 'download',
+			tooltip: 'Export filtered results',
+		},
+	],
+	primaryActionText: 'Create New',
+};
