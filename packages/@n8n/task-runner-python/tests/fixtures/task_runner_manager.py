@@ -5,12 +5,15 @@ from pathlib import Path
 
 from src.constants import (
     ENV_GRANT_TOKEN,
+    ENV_HEALTH_CHECK_SERVER_ENABLED,
+    ENV_HEALTH_CHECK_SERVER_PORT,
     ENV_TASK_BROKER_URI,
     ENV_TASK_TIMEOUT,
 )
 
 from tests.fixtures.test_constants import (
     GRACEFUL_SHUTDOWN_TIMEOUT,
+    HEALTH_CHECK_PORT,
     LOCAL_TASK_BROKER_URL,
     TASK_TIMEOUT,
 )
@@ -33,6 +36,8 @@ class TaskRunnerManager:
         env_vars[ENV_GRANT_TOKEN] = "test_token"
         env_vars[ENV_TASK_BROKER_URI] = self.task_broker_url
         env_vars[ENV_TASK_TIMEOUT] = str(TASK_TIMEOUT)
+        env_vars[ENV_HEALTH_CHECK_SERVER_ENABLED] = "true"
+        env_vars[ENV_HEALTH_CHECK_SERVER_PORT] = str(HEALTH_CHECK_PORT)
         env_vars["PYTHONPATH"] = str(project_root)
 
         self.subprocess = await asyncio.create_subprocess_exec(
