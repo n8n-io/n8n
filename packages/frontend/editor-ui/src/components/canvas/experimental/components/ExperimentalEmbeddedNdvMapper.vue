@@ -78,6 +78,9 @@ defineExpose({
 	border: none !important;
 	box-shadow: none !important;
 	margin-top: -2px;
+
+	/* Override break-all set for el-popper */
+	word-break: normal;
 }
 
 .inputPanel {
