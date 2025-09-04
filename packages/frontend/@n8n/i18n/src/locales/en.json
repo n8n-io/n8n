@@ -3438,6 +3438,7 @@
 	"workflowDiff.changes": "Changes",
 	"workflowDiff.nodes": "Nodes",
 	"workflowDiff.connectors": "Connectors",
+	"workflowDiff.compare": "Compare versions",
 	"workflowDiff.settings": "Settings",
 	"workflowDiff.local": "Local",
 	"workflowDiff.remote": "Remote ({branchName})",
