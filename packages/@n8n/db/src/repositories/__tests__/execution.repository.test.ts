@@ -7,7 +7,7 @@ import type { DeepPartial } from 'ts-essentials';
 import { ExecutionEntity } from '../../entities';
 import { ExecutionRepository } from '../execution.repository';
 
-export const mockInstance = <T>(
+const mockInstance = <T>(
 	serviceClass: Constructable<T>,
 	data: DeepPartial<T> | undefined = undefined,
 ) => {
