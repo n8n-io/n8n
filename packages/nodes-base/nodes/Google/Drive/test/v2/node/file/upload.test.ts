@@ -5,6 +5,11 @@ import * as utils from '../../../../v2/helpers/utils';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, createTestStream, driveNode } from '../helpers';
 
+const fileContent = Buffer.from('Hello Drive!');
+const originalFilename = 'original.txt';
+const contentLength = 123;
+const mimeType = 'text/plain';
+
 jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
@@ -26,10 +31,10 @@ jest.mock('../../../../v2/helpers/utils', () => {
 		...originalModule,
 		getItemBinaryData: jest.fn(async function () {
 			return {
-				contentLength: '123',
-				fileContent: Buffer.from('Hello Drive!'),
-				originalFilename: 'original.txt',
-				mimeType: 'text/plain',
+				contentLength,
+				fileContent,
+				originalFilename,
+				mimeType,
 			};
 		}),
 	};
@@ -41,11 +46,13 @@ describe('test GoogleDriveV2: file upload', () => {
 	});
 
 	it('should upload buffers', async () => {
+		const name = 'newFile.txt';
+		const parent = 'folderIDxxxxxx';
 		const nodeParameters = {
-			name: 'newFile.txt',
+			name,
 			folderId: {
 				__rl: true,
-				value: 'folderIDxxxxxx',
+				value: parent,
 				mode: 'list',
 				cachedResultName: 'testFolder 3',
 				cachedResultUrl: 'https://drive.google.com/drive/folders/folderIDxxxxxx',
@@ -77,14 +84,13 @@ describe('test GoogleDriveV2: file upload', () => {
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
 			'/drive/v3/files/undefined',
-			{ mimeType: 'text/plain', name: 'newFile.txt', originalFilename: 'original.txt' },
+			{ mimeType, name, originalFilename },
 			{
-				addParents: 'folderIDxxxxxx',
+				addParents: parent,
 				supportsAllDrives: true,
 				corpora: 'allDrives',
 				includeItemsFromAllDrives: true,
 				spaces: 'appDataFolder, drive',
-				uploadType: 'multipart',
 			},
 		);
 
@@ -93,11 +99,15 @@ describe('test GoogleDriveV2: file upload', () => {
 	});
 
 	it('should stream large files in 2MB chunks', async () => {
+		const name = 'newFile.jpg';
+		const parent = 'folderIDxxxxxx';
+		const originalFilename = 'test.jpg';
+		const mimeType = 'image/jpg';
 		const nodeParameters = {
-			name: 'newFile.jpg',
+			name,
 			folderId: {
 				__rl: true,
-				value: 'folderIDxxxxxx',
+				value: parent,
 				mode: 'list',
 				cachedResultName: 'testFolder 3',
 				cachedResultUrl: 'https://drive.google.com/drive/folders/folderIDxxxxxx',
@@ -112,8 +122,8 @@ describe('test GoogleDriveV2: file upload', () => {
 
 		const fileSize = 7 * 1024 * 1024; // 7MB
 		jest.mocked(utils.getItemBinaryData).mockResolvedValue({
-			mimeType: 'image/jpg',
-			originalFilename: 'test.jpg',
+			mimeType,
+			originalFilename,
 			contentLength: fileSize,
 			fileContent: createTestStream(fileSize),
 		});
@@ -129,7 +139,7 @@ describe('test GoogleDriveV2: file upload', () => {
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
 			'/upload/drive/v3/files',
-			undefined,
+			{ name, parents: [parent] },
 			{ uploadType: 'resumable', supportsAllDrives: true },
 			undefined,
 			{ returnFullResponse: true, headers: { 'X-Upload-Content-Type': 'image/jpg' } },
@@ -137,9 +147,9 @@ describe('test GoogleDriveV2: file upload', () => {
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
 			'/drive/v3/files/undefined',
-			{ mimeType: 'image/jpg', name: 'newFile.jpg', originalFilename: 'test.jpg' },
+			{ mimeType, name, originalFilename },
 			{
-				addParents: 'folderIDxxxxxx',
+				addParents: parent,
 				supportsAllDrives: true,
 				corpora: 'allDrives',
 				includeItemsFromAllDrives: true,
