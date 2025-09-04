@@ -109,7 +109,7 @@ const roles = computed<Record<Role, { label: string; desc: string }>>(() => ({
 	},
 	[ROLE.Default]: { label: i18n.baseText('auth.roles.default'), desc: '' },
 }));
-const roleActions = computed<ActionDropdownItem[]>(() => [
+const roleActions = computed<Array<ActionDropdownItem<Role | 'delete'>>>(() => [
 	{
 		id: ROLE.Member,
 		label: i18n.baseText('auth.roles.member'),

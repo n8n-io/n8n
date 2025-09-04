@@ -20,6 +20,26 @@ export class ExecutionsPage extends BasePage {
 		return executionItems.nth(0);
 	}
 
+	getAutoRefreshButton() {
+		return this.page.getByTestId('auto-refresh-checkbox');
+	}
+
+	getPreviewIframe() {
+		return this.page.getByTestId('workflow-preview-iframe').contentFrame();
+	}
+
+	getManualChatMessages(): Locator {
+		return this.getPreviewIframe().locator('.chat-messages-list .chat-message');
+	}
+
+	getLogsOverviewStatus() {
+		return this.getPreviewIframe().getByTestId('logs-overview-status');
+	}
+
+	getLogEntries(): Locator {
+		return this.getPreviewIframe().getByTestId('logs-overview-body').getByRole('treeitem');
+	}
+
 	async clickLastExecutionItem(): Promise<void> {
 		const executionItem = this.getLastExecutionItem();
 		await executionItem.click();
@@ -30,7 +50,6 @@ export class ExecutionsPage extends BasePage {
 	 * @param action - The action to take.
 	 */
 	async handlePinnedNodesConfirmation(action: 'Unpin' | 'Cancel'): Promise<void> {
-		const confirmDialog = this.page.locator('.matching-pinned-nodes-confirmation');
 		await this.page.getByRole('button', { name: action }).click();
 	}
 }
