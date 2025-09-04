@@ -61,6 +61,9 @@ RUN uv sync \
       --frozen \
       --no-editable
 
+COPY docker/images/runners/extras.txt /app/task-runner-python/extras.txt
+RUN uv pip install -r /app/task-runner-python/extras.txt
+
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
