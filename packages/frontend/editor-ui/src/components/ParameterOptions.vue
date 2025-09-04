@@ -233,6 +233,9 @@ $container-height: 22px;
 }
 
 .focusButton {
+	outline: none;
+	color: var(--color-text-light);
+
 	&:hover {
 		cursor: pointer;
 		color: var(--color-primary);
