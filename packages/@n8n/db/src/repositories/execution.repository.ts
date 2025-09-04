@@ -662,6 +662,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			condition.status = In(['error', 'crashed']);
 		} else if (status === 'canceled') {
 			condition.status = 'canceled';
+		} else if (status === 'running') {
+			condition.status = 'running';
 		}
 
 		return condition;

@@ -56,6 +56,7 @@ describe('ExecutionRepository', () => {
 				filterStatus  | entityStatus
 				${'canceled'} | ${'canceled'}
 				${'error'}    | ${In(['error', 'crashed'])}
+				${'running'}  | ${'running'}
 				${'success'}  | ${'success'}
 				${'waiting'}  | ${'waiting'}
 			`('should find all "$filterStatus" executions', async ({ filterStatus, entityStatus }) => {
@@ -94,7 +95,6 @@ describe('ExecutionRepository', () => {
 				filterStatus
 				${'crashed'}
 				${'new'}
-				${'running'}
 				${'unknown'}
 			`(
 				'should find all executions and ignore status filter "$filterStatus"',
@@ -161,6 +161,7 @@ describe('ExecutionRepository', () => {
 				filterStatus  | entityStatus
 				${'canceled'} | ${'canceled'}
 				${'error'}    | ${In(['error', 'crashed'])}
+				${'running'}  | ${'running'}
 				${'success'}  | ${'success'}
 				${'waiting'}  | ${'waiting'}
 			`('should retrieve all $filterStatus executions', async ({ filterStatus, entityStatus }) => {
@@ -185,7 +186,6 @@ describe('ExecutionRepository', () => {
 				filterStatus
 				${'crashed'}
 				${'new'}
-				${'running'}
 				${'unknown'}
 			`(
 				'should find all executions and ignore status filter "$filterStatus"',
