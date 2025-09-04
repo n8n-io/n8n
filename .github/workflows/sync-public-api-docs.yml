@@ -97,7 +97,7 @@ jobs:
             --branch "${{ github.ref_name }}" \
             --status "success" \
             --json "headSha" \
-            --jq '.[0].headSha' \
+            --jq '.[0].headSha // empty' \
             -L 1)
 
           RELEVANT_COMMITS=""
@@ -125,11 +125,8 @@ jobs:
           else
             echo "Found relevant source commits:"
             echo "$RELEVANT_COMMITS"
-            SOURCE_LINK=$(cat <<EOF
-            Source commit(s):
-            $RELEVANT_COMMITS
-            EOF
-            )
+            # Build the string manually to avoid heredoc capturing leading whitespace from YAML
+            SOURCE_LINK="Source commit(s):"$'\n'"$RELEVANT_COMMITS"
           fi
 
           echo "source_link<<EOF" >> "$GITHUB_OUTPUT"
