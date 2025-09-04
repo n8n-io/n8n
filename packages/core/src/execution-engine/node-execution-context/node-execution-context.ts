@@ -388,9 +388,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this._getNodeParameter(parameterName, itemIndex, fallbackValue, options);
 	}
 
-	private extractParameterValue(
+	private getCollectionParameterValue(
 		parameters: INodeParameters,
 		parameterPath: string,
+		itemIndex: number,
 		fallbackValue?: NodeParameterValueType,
 	): NodeParameterValueType {
 		const segments = parameterPath
@@ -399,7 +400,29 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			.filter(Boolean);
 
 		if (segments.length === 1) {
-			return get(parameters, parameterPath, fallbackValue);
+			const value = get(parameters, parameterPath, fallbackValue);
+
+			if (typeof value === 'string') {
+				if (value.startsWith('=')) {
+					let s = value.replace(/^=/, '');
+					s = this.evaluateExpression(s, itemIndex) as string;
+					try {
+						if (typeof s === 'object') {
+							return s;
+						} else {
+							s = jsonParse(s, { acceptJSObject: true });
+							if (typeof s !== 'object') return fallbackValue;
+							return s;
+						}
+					} catch {
+						return fallbackValue;
+					}
+				} else {
+					return fallbackValue;
+				}
+			}
+
+			return value;
 		}
 
 		let current: unknown = parameters;
@@ -409,10 +432,15 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 			if (typeof current === 'string') {
 				const s = current.trim();
-				if (s.startsWith('={{')) {
-					const trimmed = s.replace(/^={{\s*/, '').replace(/\s*}}$/, '');
+				if (s.startsWith('=')) {
+					let value = s.replace(/^=/, '');
+					value = this.evaluateExpression(value, itemIndex) as string;
 					try {
-						current = jsonParse(trimmed, { acceptJSObject: true });
+						if (typeof value === 'object') {
+							current = value;
+						} else {
+							current = jsonParse(value, { acceptJSObject: true });
+						}
 					} catch {
 						return fallbackValue;
 					}
@@ -447,14 +475,29 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		// const value = get(node.parameters, parameterName, fallbackValue);
+		const parameterPath = parameterName.split('.');
 
-		const value = this.extractParameterValue(
-			node.parameters,
-			parameterName,
-			fallbackValue as unknown as NodeParameterValueType,
+		const propertyDescription = nodeType.description.properties.find(
+			(prop) =>
+				parameterPath[0] === prop.name &&
+				NodeHelpers.displayParameter(node.parameters, prop, node, nodeType.description),
 		);
+
+		let value;
+		if (
+			propertyDescription &&
+			['fixedCollection', 'collection'].includes(propertyDescription.type)
+		) {
+			value = this.getCollectionParameterValue(
+				node.parameters,
+				parameterName,
+				itemIndex,
+				fallbackValue as unknown as NodeParameterValueType,
+			);
+		} else {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			value = get(node.parameters, parameterName, fallbackValue);
+		}
 
 		if (value === undefined) {
 			throw new ApplicationError('Could not get parameter', { extra: { parameterName } });

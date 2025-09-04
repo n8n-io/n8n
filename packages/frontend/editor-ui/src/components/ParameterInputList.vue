@@ -383,15 +383,17 @@ async function onModeSelected(command: string, parameter: INodeProperties) {
 	switch (command) {
 		case 'addExpression':
 			if (isValueExpression(parameter, getParameterValue(parameter.name))) return;
-			value = `={{ ${JSON.stringify(getParameterValue(parameter.name))} }}`;
+			value = `=${JSON.stringify(getParameterValue(parameter.name), null, 2)}`;
 			break;
 
 		case 'removeExpression':
 			if (!isValueExpression(parameter, getParameterValue(parameter.name))) return;
-			value = (getParameterValue(parameter.name) as string)
-				.replace(/^=\{\{/, '')
-				.replace(/\}\}$/, '');
+			value = (getParameterValue(parameter.name) as string).replace(/^=/, '').trim();
+			if (value.startsWith('{{') && value.endsWith('}}')) {
+				value = value.replace(/^\{\{/, '').replace(/\}\}$/, '');
+			}
 			value = jsonParse(value, { acceptJSObject: true });
+			if (!value || typeof value !== 'object' || Array.isArray(value)) return;
 			break;
 
 		case 'openExpression':
@@ -665,9 +667,22 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 					</template>
 				</N8nInputLabel>
 				<div>{{ nodeValues['' + parameter.name + ''] }}</div>
-				<div v-if="isValueExpression(parameter, getParameterValue(parameter.name))">
-					{{ getParameterValue(parameter.name) }}
-				</div>
+				<ParameterInputFull
+					v-if="isValueExpression(parameter, getParameterValue(parameter.name))"
+					:parameter="parameter"
+					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
+					:value="getParameterValue(parameter.name)"
+					:display-options="false"
+					:path="getPath(parameter.name)"
+					:is-read-only="
+						isReadOnly ||
+						(parameter.disabledOptions && shouldDisplayNodeParameter(parameter, 'disabledOptions'))
+					"
+					:hide-label="true"
+					:node-values="nodeValues"
+					@update="valueChanged"
+					@blur="onParameterBlur(parameter.name)"
+				/>
 				<Suspense v-else-if="!asyncLoadingError">
 					<template #default>
 						<LazyCollectionParameter
