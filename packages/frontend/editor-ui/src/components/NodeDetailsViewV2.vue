@@ -861,8 +861,8 @@ onBeforeUnmount(() => {
 .dialog {
 	position: absolute;
 	z-index: var(--z-index-ndv);
-	width: calc(100% - var(--spacing-2xl));
-	height: calc(100% - var(--spacing-2xl));
+	width: calc(100dvw - var(--spacing-2xl));
+	height: calc(100dvh - var(--spacing-2xl));
 	top: var(--spacing-l);
 	left: var(--spacing-l);
 	border: none;
@@ -870,20 +870,21 @@ onBeforeUnmount(() => {
 	padding: 0;
 	margin: 0;
 	display: flex;
+	padding-bottom: env(safe-area-inset-bottom);
 
 	// Mobile optimization: use more screen space
-	@media (max-width: 768px) {
-		width: calc(100% - var(--spacing-s));
-		height: calc(100% - var(--spacing-s));
-		top: calc(var(--spacing-s) / 2);
-		left: calc(var(--spacing-s) / 2);
+	@media (max-width: 48rem) and (orientation: portrait) {
+		width: 100dvw;
+		height: 100dvh;
+		top: 0;
+		left: 0;
 	}
 
-	@media (max-width: 992px) and (orientation: landscape) {
-		width: calc(100% - var(--spacing-m));
-		height: calc(100% - var(--spacing-m));
-		top: calc(var(--spacing-m) / 2);
-		left: calc(var(--spacing-m) / 2);
+	@media (max-width: 62rem) and (orientation: landscape) {
+		width: 100dvw;
+		height: 100dvh;
+		top: 0;
+		left: 0;
 	}
 }
 
@@ -896,6 +897,7 @@ onBeforeUnmount(() => {
 	border-radius: var(--border-radius-large);
 	color: var(--color-text-base);
 	min-width: 0;
+	height: 100%;
 }
 
 .main {
@@ -908,35 +910,35 @@ onBeforeUnmount(() => {
 	position: relative;
 
 	// Mobile-first: Stack panels vertically on mobile devices
-	@media (max-width: 768px) {
+	@media (max-width: 48rem) and (orientation: portrait) {
 		flex-direction: column;
-		align-items: unset;
 		height: auto;
-		min-height: 100%;
+		overflow-y: auto;
 	}
 
 	// Tablet landscape: Also use vertical stacking for better UX
-	@media (max-width: 992px) and (orientation: landscape) {
+	@media (max-width: 62rem) and (orientation: landscape) {
 		flex-direction: column;
-		align-items: unset;
 		height: auto;
-		min-height: 100%;
+		overflow-y: auto;
 	}
 }
 
 .column {
 	min-width: 0;
+	display: flex;
+	flex-direction: column;
 
 	+ .column {
 		border-left: var(--border-base);
 
 		// Remove left border on mobile, add top border instead for vertical stacking
-		@media (max-width: 768px) {
+		@media (max-width: 48rem) and (orientation: portrait) {
 			border-left: none;
 			border-top: var(--border-base);
 		}
 
-		@media (max-width: 992px) and (orientation: landscape) {
+		@media (max-width: 62rem) and (orientation: landscape) {
 			border-left: none;
 			border-top: var(--border-base);
 		}
@@ -946,12 +948,12 @@ onBeforeUnmount(() => {
 		border-bottom-left-radius: var(--border-radius-large);
 
 		// On mobile, adjust border radius for vertical stacking
-		@media (max-width: 768px) {
+		@media (max-width: 48rem) and (orientation: portrait) {
 			border-bottom-left-radius: 0;
 			border-top-right-radius: var(--border-radius-large);
 		}
 
-		@media (max-width: 992px) and (orientation: landscape) {
+		@media (max-width: 62rem) and (orientation: landscape) {
 			border-bottom-left-radius: 0;
 			border-top-right-radius: var(--border-radius-large);
 		}
@@ -961,44 +963,40 @@ onBeforeUnmount(() => {
 		border-bottom-right-radius: var(--border-radius-large);
 
 		// On mobile, last column keeps bottom border radius
-		@media (max-width: 768px) {
+		@media (max-width: 48rem) and (orientation: portrait) {
 			border-bottom-left-radius: var(--border-radius-large);
 		}
 
-		@media (max-width: 992px) and (orientation: landscape) {
+		@media (max-width: 62rem) and (orientation: landscape) {
 			border-bottom-left-radius: var(--border-radius-large);
 		}
 	}
 
 	// Mobile adjustments for column sizing
-	@media (max-width: 768px) {
+	@media (max-width: 48rem) and (orientation: portrait) {
 		width: 100% !important; // Override inline styles for vertical stacking
-		max-width: none;
-		flex: none;
 	}
 
-	@media (max-width: 992px) and (orientation: landscape) {
+	@media (max-width: 62rem) and (orientation: landscape) {
 		width: 100% !important; // Override inline styles for vertical stacking
-		max-width: none;
-		flex: none;
 	}
 }
 
 .input,
 .output {
-	min-width: 280px;
+	min-width: 17.5rem;
+	flex: 1 1 auto;
+	overflow-y: auto;
 
 	// On mobile, reduce minimum width constraints for better fit
-	@media (max-width: 768px) {
+	@media (max-width: 48rem) and (orientation: portrait) {
 		min-width: 0;
 		width: 100%;
-		min-height: 200px; // Set minimum height instead for vertical stacking
 	}
 
-	@media (max-width: 992px) and (orientation: landscape) {
+	@media (max-width: 62rem) and (orientation: landscape) {
 		min-width: 0;
 		width: 100%;
-		min-height: 150px; // Slightly smaller for landscape orientation
 	}
 }
 
@@ -1006,14 +1004,12 @@ onBeforeUnmount(() => {
 	overflow-x: auto;
 
 	// On mobile, adjust overflow behavior for vertical stacking
-	@media (max-width: 768px) {
-		overflow-x: hidden; // Prevent horizontal scroll on mobile
-		overflow-y: auto;   // Allow vertical scrolling
+	@media (max-width: 48rem) and (orientation: portrait) {
+		overflow-x: visible;
 	}
 
-	@media (max-width: 992px) and (orientation: landscape) {
-		overflow-x: hidden; // Prevent horizontal scroll on tablets
-		overflow-y: auto;   // Allow vertical scrolling
+	@media (max-width: 62rem) and (orientation: landscape) {
+		overflow-x: visible;
 	}
 }
 
