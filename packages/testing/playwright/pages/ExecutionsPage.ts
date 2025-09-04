@@ -1,15 +1,10 @@
-import type { Locator, Page } from '@playwright/test';
+import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
-import { LogsPanel } from './parts/LogsPanel';
+import { LogsPanel } from './components/LogsPanel';
 
 export class ExecutionsPage extends BasePage {
-	readonly logsPanel: LogsPanel;
-
-	constructor(page: Page) {
-		super(page);
-		this.logsPanel = new LogsPanel(this.getPreviewIframe().getByTestId('logs-panel'));
-	}
+	readonly logsPanel = new LogsPanel(this.getPreviewIframe().getByTestId('logs-panel'));
 
 	async clickDebugInEditorButton(): Promise<void> {
 		await this.clickButtonByName('Debug in editor');

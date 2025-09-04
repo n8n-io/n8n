@@ -2,22 +2,20 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { RunDataPanel } from './components/RunDataPanel';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
 import { EditFieldsNode } from './nodes/EditFieldsNode';
-import { RunDataPanel } from './parts/RunDataPanel';
 
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
 	readonly editFields: EditFieldsNode;
-	readonly inputPanel: RunDataPanel;
-	readonly outputPanel: RunDataPanel;
+	readonly inputPanel = new RunDataPanel(this.getInputPanel());
+	readonly outputPanel = new RunDataPanel(this.getOutputPanel());
 
 	constructor(page: Page) {
 		super(page);
 		this.setupHelper = new NodeParameterHelper(this);
 		this.editFields = new EditFieldsNode(page);
-		this.inputPanel = new RunDataPanel(this.getInputPanel());
-		this.outputPanel = new RunDataPanel(this.getOutputPanel());
 	}
 
 	async clickBackToCanvasButton() {

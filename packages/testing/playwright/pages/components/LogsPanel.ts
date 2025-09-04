@@ -3,13 +3,10 @@ import type { Locator } from '@playwright/test';
 import { RunDataPanel } from './RunDataPanel';
 
 export class LogsPanel {
-	readonly inputPanel: RunDataPanel;
-	readonly outputPanel: RunDataPanel;
+	readonly inputPanel = new RunDataPanel(this.getInputPanel());
+	readonly outputPanel = new RunDataPanel(this.getOutputPanel());
 
-	constructor(private root: Locator) {
-		this.inputPanel = new RunDataPanel(this.getInputPanel());
-		this.outputPanel = new RunDataPanel(this.getOutputPanel());
-	}
+	constructor(private root: Locator) {}
 
 	/**
 	 * Accessors
