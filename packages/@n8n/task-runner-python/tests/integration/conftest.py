@@ -7,7 +7,7 @@ from tests.fixtures.local_task_broker import LocalTaskBroker
 from tests.fixtures.task_runner_manager import TaskRunnerManager
 from tests.fixtures.test_constants import (
     CONNECTION_WAIT,
-    DEFAULT_TIMEOUT,
+    TASK_RESPONSE_WAIT,
 )
 
 
@@ -48,7 +48,7 @@ def create_task_settings(
 
 
 async def wait_for_task_done(
-    local_task_broker, task_id: str, timeout: float = DEFAULT_TIMEOUT
+    local_task_broker, task_id: str, timeout: float = TASK_RESPONSE_WAIT
 ):
     return await local_task_broker.wait_for_message(
         "runner:taskdone",
@@ -58,7 +58,7 @@ async def wait_for_task_done(
 
 
 async def wait_for_task_error(
-    local_task_broker, task_id: str, timeout: float = DEFAULT_TIMEOUT
+    local_task_broker, task_id: str, timeout: float = TASK_RESPONSE_WAIT
 ):
     return await local_task_broker.wait_for_message(
         "runner:taskerror",

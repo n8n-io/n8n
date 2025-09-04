@@ -7,7 +7,11 @@ from typing import Any
 from aiohttp import web, web_ws
 from src.nanoid import nanoid
 
-from tests.fixtures.test_constants import BROKER_PORT, DEFAULT_TIMEOUT, WS_PATH
+from tests.fixtures.test_constants import (
+    TASK_RESPONSE_WAIT,
+    LOCAL_TASK_BROKER_PORT,
+    LOCAL_TASK_BROKER_WS_PATH,
+)
 
 TaskSettings = dict[str, Any]
 WebsocketMessage = dict[str, Any]
@@ -21,7 +25,7 @@ class ActiveTask:
 
 class LocalTaskBroker:
     def __init__(self):
-        self.port = BROKER_PORT
+        self.port = LOCAL_TASK_BROKER_PORT
         self.app = web.Application()
         self.runner: web.AppRunner | None = None
         self.site: web.TCPSite | None = None
@@ -30,7 +34,7 @@ class LocalTaskBroker:
         self.received_messages: list[WebsocketMessage] = []
         self.active_tasks: dict[str, ActiveTask] = {}
         self.task_settings: dict[str, TaskSettings] = {}
-        self.app.router.add_get(WS_PATH, self.websocket_handler)
+        self.app.router.add_get(LOCAL_TASK_BROKER_WS_PATH, self.websocket_handler)
 
     async def start(self) -> None:
         self.runner = web.AppRunner(self.app)
@@ -153,7 +157,7 @@ class LocalTaskBroker:
     async def wait_for_message(
         self,
         message_type: str,
-        timeout: float = DEFAULT_TIMEOUT,
+        timeout: float = TASK_RESPONSE_WAIT,
         predicate: Callable[[WebsocketMessage], bool] | None = None,
     ) -> WebsocketMessage | None:
         start_time = asyncio.get_running_loop().time()

@@ -3,13 +3,15 @@ import os
 import sys
 from pathlib import Path
 
-from tests.fixtures.test_constants import (
-    BROKER_URL,
-    ENV_BROKER_URI,
+from src.constants import (
     ENV_GRANT_TOKEN,
+    ENV_TASK_BROKER_URI,
     ENV_TASK_TIMEOUT,
+)
+
+from tests.fixtures.test_constants import (
     GRACEFUL_SHUTDOWN_TIMEOUT,
-    GRANT_TOKEN,
+    LOCAL_TASK_BROKER_URL,
     TASK_TIMEOUT,
 )
 
@@ -17,7 +19,7 @@ from tests.fixtures.test_constants import (
 class TaskRunnerManager:
     """Responsible for managing the lifecycle of a task runner subprocess."""
 
-    def __init__(self, task_broker_url: str = BROKER_URL):
+    def __init__(self, task_broker_url: str = LOCAL_TASK_BROKER_URL):
         self.task_broker_url = task_broker_url
         self.subprocess: asyncio.subprocess.Process | None = None
         self.stdout_buffer: list[str] = []
@@ -28,8 +30,8 @@ class TaskRunnerManager:
         runner_path = project_root / "src" / "main.py"
 
         env_vars = os.environ.copy()
-        env_vars[ENV_GRANT_TOKEN] = GRANT_TOKEN
-        env_vars[ENV_BROKER_URI] = self.task_broker_url
+        env_vars[ENV_GRANT_TOKEN] = "test_token"
+        env_vars[ENV_TASK_BROKER_URI] = self.task_broker_url
         env_vars[ENV_TASK_TIMEOUT] = str(TASK_TIMEOUT)
         env_vars["PYTHONPATH"] = str(project_root)
 
@@ -54,9 +56,7 @@ class TaskRunnerManager:
 
         self.subprocess.terminate()
         try:
-            await asyncio.wait_for(
-                self.subprocess.wait(), timeout=GRACEFUL_SHUTDOWN_TIMEOUT
-            )
+            await asyncio.wait_for(self.subprocess.wait(), timeout=GRACEFUL_SHUTDOWN_TIMEOUT)
         except asyncio.TimeoutError:
             self.subprocess.kill()
             await self.subprocess.wait()
