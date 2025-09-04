@@ -24,7 +24,7 @@ export type UseDataStoreOperationsParams = {
 	deleteGridColumn: (columnId: string) => void;
 	addGridColumn: (column: DataStoreColumn) => void;
 	setGridData: (params: { rowData?: DataStoreRow[]; colDefs?: ColDef[] }) => void;
-	insertGridColumn: (column: ColDef, index: number) => void;
+	insertGridColumnAtIndex: (column: ColDef, index: number) => void;
 	moveGridColumn: (oldIndex: number, newIndex: number) => void;
 	dataStoreId: string;
 	projectId: string;
@@ -49,7 +49,7 @@ export const useDataStoreOperations = ({
 	deleteGridColumn,
 	addGridColumn,
 	setGridData,
-	insertGridColumn,
+	insertGridColumnAtIndex,
 	moveGridColumn,
 	dataStoreId,
 	projectId,
@@ -104,7 +104,7 @@ export const useDataStoreOperations = ({
 			await dataStoreStore.deleteDataStoreColumn(dataStoreId, projectId, columnId);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('dataStore.deleteColumn.error'));
-			insertGridColumn(columnToDelete, columnToDeleteIndex);
+			insertGridColumnAtIndex(columnToDelete, columnToDeleteIndex);
 			rowData.value = rowDataOldValue;
 			setGridData({ rowData: rowData.value });
 		}

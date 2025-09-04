@@ -66,26 +66,7 @@ const emit = defineEmits<{
 
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
 
-const {
-	gridApi,
-	onGridReady,
-	setGridData,
-	focusFirstEditableCell,
-	onCellEditingStarted,
-	onCellEditingStopped,
-	loadColumns,
-	colDefs,
-	deleteColumn: deleteGridColumn,
-	insertColumn: insertGridColumn,
-	addColumn: addGridColumn,
-	moveColumn: moveGridColumn,
-	handleCopyFocusedCell,
-	onCellClicked,
-	resetLastFocusedCell,
-	currentSortBy,
-	currentSortOrder,
-	onSortChanged,
-} = useDataStoreGridBase({
+const dataStoreGridBase = useDataStoreGridBase({
 	gridContainerRef,
 	onDeleteColumn: onDeleteColumnFunction,
 	onAddRowClick: onAddRowClickFunction,
@@ -94,88 +75,66 @@ const {
 const rowData = ref<DataStoreRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
-// Pagination
-const {
-	currentPage,
-	pageSize,
-	pageSizeOptions,
-	totalItems,
-	setTotalItems,
-	setCurrentPage,
-	setPageSize,
-	ensureItemOnPage,
-} = useDataStorePagination({ onChange: fetchDataStoreRowsFunction });
+const pagination = useDataStorePagination({ onChange: fetchDataStoreRowsFunction });
 
-// Data store content
-const { rowSelection, onSelectionChanged, handleClearSelection, selectedRowIds, selectedCount } =
-	useDataStoreSelection({
-		gridApi,
-	});
+const selection = useDataStoreSelection({
+	gridApi: dataStoreGridBase.gridApi,
+});
 
-const {
-	onDeleteColumn,
-	onAddColumn,
-	onColumnMoved,
-	onAddRowClick,
-	contentLoading,
-	onCellValueChanged,
-	fetchDataStoreRows,
-	handleDeleteSelected,
-	onCellKeyDown,
-} = useDataStoreOperations({
-	colDefs,
+const dataStoreOperations = useDataStoreOperations({
+	colDefs: dataStoreGridBase.colDefs,
 	rowData,
-	deleteGridColumn,
-	setGridData,
-	insertGridColumn,
+	deleteGridColumn: dataStoreGridBase.deleteColumn,
+	setGridData: dataStoreGridBase.setGridData,
+	insertGridColumnAtIndex: dataStoreGridBase.insertColumnAtIndex,
 	dataStoreId: props.dataStore.id,
 	projectId: props.dataStore.projectId,
-	addGridColumn,
-	moveGridColumn,
-	gridApi,
-	totalItems,
-	setTotalItems,
-	ensureItemOnPage,
-	focusFirstEditableCell,
+	addGridColumn: dataStoreGridBase.addColumn,
+	moveGridColumn: dataStoreGridBase.moveColumn,
+	gridApi: dataStoreGridBase.gridApi,
+	totalItems: pagination.totalItems,
+	setTotalItems: pagination.setTotalItems,
+	ensureItemOnPage: pagination.ensureItemOnPage,
+	focusFirstEditableCell: dataStoreGridBase.focusFirstEditableCell,
 	toggleSave: emit.bind(null, 'toggleSave'),
-	currentPage,
-	pageSize,
-	currentSortBy,
-	currentSortOrder,
-	handleClearSelection,
-	selectedRowIds,
-	handleCopyFocusedCell,
+	currentPage: pagination.currentPage,
+	pageSize: pagination.pageSize,
+	currentSortBy: dataStoreGridBase.currentSortBy,
+	currentSortOrder: dataStoreGridBase.currentSortOrder,
+	handleClearSelection: selection.handleClearSelection,
+	selectedRowIds: selection.selectedRowIds,
+	handleCopyFocusedCell: dataStoreGridBase.handleCopyFocusedCell,
 });
 
 async function onDeleteColumnFunction(columnId: string) {
-	await onDeleteColumn(columnId);
+	await dataStoreOperations.onDeleteColumn(columnId);
 }
 
 async function onAddColumnFunction(column: DataStoreColumnCreatePayload) {
-	return await onAddColumn(column);
+	return await dataStoreOperations.onAddColumn(column);
 }
 
 async function onAddRowClickFunction() {
-	await onAddRowClick();
+	await dataStoreOperations.onAddRowClick();
 }
 
 async function fetchDataStoreRowsFunction() {
-	await fetchDataStoreRows();
+	await dataStoreOperations.fetchDataStoreRows();
 }
 
 const initialize = async (params: GridReadyEvent) => {
-	onGridReady(params);
-	loadColumns(props.dataStore.columns);
-	await fetchDataStoreRows();
+	dataStoreGridBase.onGridReady(params);
+	dataStoreGridBase.loadColumns(props.dataStore.columns);
+	await dataStoreOperations.fetchDataStoreRows();
 };
 
-watch([currentSortBy, currentSortOrder], async () => {
-	await setCurrentPage(1);
+watch([dataStoreGridBase.currentSortBy, dataStoreGridBase.currentSortOrder], async () => {
+	await pagination.setCurrentPage(1);
 });
 
 defineExpose({
-	addRow: onAddRowClick,
-	addColumn: onAddColumn,
+	addRow: dataStoreOperations.onAddRowClick,
+	addColumn: dataStoreOperations.onAddColumn,
 });
 </script>
 
@@ -194,41 +153,41 @@ defineExpose({
 				:animate-rows="false"
 				:theme="n8nTheme"
 				:suppress-drag-leave-hides-columns="true"
-				:loading="contentLoading"
-				:row-selection="rowSelection"
+				:loading="dataStoreOperations.contentLoading.value"
+				:row-selection="selection.rowSelection"
 				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
 				:suppress-multi-sort="true"
 				@grid-ready="initialize"
-				@cell-value-changed="onCellValueChanged"
-				@column-moved="onColumnMoved"
-				@cell-clicked="onCellClicked"
-				@cell-editing-started="onCellEditingStarted"
-				@cell-editing-stopped="onCellEditingStopped"
-				@column-header-clicked="resetLastFocusedCell"
-				@selection-changed="onSelectionChanged"
-				@sort-changed="onSortChanged"
-				@cell-key-down="onCellKeyDown"
+				@cell-value-changed="dataStoreOperations.onCellValueChanged"
+				@column-moved="dataStoreOperations.onColumnMoved"
+				@cell-clicked="dataStoreGridBase.onCellClicked"
+				@cell-editing-started="dataStoreGridBase.onCellEditingStarted"
+				@cell-editing-stopped="dataStoreGridBase.onCellEditingStopped"
+				@column-header-clicked="dataStoreGridBase.resetLastFocusedCell"
+				@selection-changed="selection.onSelectionChanged"
+				@sort-changed="dataStoreGridBase.onSortChanged"
+				@cell-key-down="dataStoreOperations.onCellKeyDown"
 			/>
 		</div>
 		<div :class="$style.footer">
 			<el-pagination
-				v-model:current-page="currentPage"
-				v-model:page-size="pageSize"
+				v-model:current-page="pagination.currentPage"
+				v-model:page-size="pagination.pageSize"
 				data-test-id="data-store-content-pagination"
 				background
-				:total="totalItems"
-				:page-sizes="pageSizeOptions"
+				:total="pagination.totalItems"
+				:page-sizes="pagination.pageSizeOptions"
 				layout="total, prev, pager, next, sizes"
-				@update:current-page="setCurrentPage"
-				@size-change="setPageSize"
+				@update:current-page="pagination.setCurrentPage"
+				@size-change="pagination.setPageSize"
 			/>
 		</div>
 		<SelectedItemsInfo
-			:selected-count="selectedCount"
-			@delete-selected="handleDeleteSelected"
-			@clear-selection="handleClearSelection"
+			:selected-count="selection.selectedCount.value"
+			@delete-selected="dataStoreOperations.handleDeleteSelected"
+			@clear-selection="selection.handleClearSelection"
 		/>
 	</div>
 </template>

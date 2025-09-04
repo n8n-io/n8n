@@ -3,7 +3,6 @@ import type {
 	CellClickedEvent,
 	CellEditingStartedEvent,
 	CellEditingStoppedEvent,
-	CellEditRequestEvent,
 	CellKeyDownEvent,
 	ColDef,
 	GridApi,
@@ -11,8 +10,6 @@ import type {
 	ICellRendererParams,
 	SortChangedEvent,
 	SortDirection,
-	ValueGetterParams,
-	ValueSetterParams,
 } from 'ag-grid-community';
 import type {
 	DataStoreColumn,
@@ -23,20 +20,24 @@ import {
 	ADD_ROW_ROW_ID,
 	DATA_STORE_ID_COLUMN_WIDTH,
 	DEFAULT_ID_COLUMN_NAME,
-	EMPTY_VALUE,
-	NULL_VALUE,
 } from '@/features/dataStore/constants';
 import { useDataStoreTypes } from '@/features/dataStore/composables/useDataStoreTypes';
 import ColumnHeader from '@/features/dataStore/components/dataGrid/ColumnHeader.vue';
-import NullEmptyCellRenderer from '@/features/dataStore/components/dataGrid/NullEmptyCellRenderer.vue';
 import ElDatePickerCellEditor from '@/features/dataStore/components/dataGrid/ElDatePickerCellEditor.vue';
-import { isDataStoreValue } from '@/features/dataStore/typeGuards';
 import orderBy from 'lodash/orderBy';
 import AddColumnButton from '@/features/dataStore/components/dataGrid/AddColumnButton.vue';
 import AddRowButton from '@/features/dataStore/components/dataGrid/AddRowButton.vue';
 import { reorderItem } from '@/features/dataStore/utils';
 import { useClipboard } from '@/composables/useClipboard';
 import { onClickOutside } from '@vueuse/core';
+import {
+	getCellClass,
+	createValueGetter,
+	createCellRendererSelector,
+	createStringValueSetter,
+	stringCellEditorParams,
+	dateValueFormatter,
+} from '@/features/dataStore/utils/columnUtils';
 
 export const useDataStoreGridBase = ({
 	gridContainerRef,
@@ -72,7 +73,7 @@ export const useDataStoreGridBase = ({
 		// Ensure popups (e.g., agLargeTextCellEditor) are positioned relative to the grid container
 		// to avoid misalignment when the page scrolls.
 		if (gridContainerRef.value) {
-			params.api.setGridOption('popupParent', gridContainerRef.value as unknown as HTMLElement);
+			params.api.setGridOption('popupParent', gridContainerRef.value);
 		}
 	};
 
@@ -123,99 +124,24 @@ export const useDataStoreGridBase = ({
 			headerComponentParams: { onDelete: onDeleteColumn, allowMenuActions: true },
 			cellEditorPopup: false,
 			cellDataType: mapToAGCellType(col.type),
-			cellClass: (params) => {
-				if (params.data?.id === ADD_ROW_ROW_ID) {
-					return 'add-row-cell';
-				}
-				if (params.column.getUserProvidedColDef()?.cellDataType === 'boolean') {
-					return 'boolean-cell';
-				}
-				return '';
-			},
-			valueGetter: (params: ValueGetterParams<DataStoreRow>) => {
-				// If the value is null, return null to show empty cell
-				if (params.data?.[col.name] === null || params.data?.[col.name] === undefined) {
-					return null;
-				}
-				// Parse dates
-				if (col.type === 'date') {
-					const value = params.data?.[col.name];
-					if (typeof value === 'string') {
-						return new Date(value);
-					}
-				}
-				return params.data?.[col.name];
-			},
-			cellRendererSelector: (params: ICellRendererParams) => {
-				if (params.data?.id === ADD_ROW_ROW_ID || col.id === 'add-column') {
-					return {};
-				}
-				let rowValue = params.data?.[col.name];
-				// When adding new column, rowValue is undefined (same below, in string cell editor)
-				if (rowValue === undefined) {
-					rowValue = null;
-				}
-
-				// Custom renderer for null or empty values
-				if (rowValue === null) {
-					return { component: NullEmptyCellRenderer, params: { value: NULL_VALUE } };
-				}
-				if (rowValue === '') {
-					return { component: NullEmptyCellRenderer, params: { value: EMPTY_VALUE } };
-				}
-				// Fallback to default cell renderer
-				return undefined;
-			},
+			cellClass: getCellClass,
+			valueGetter: createValueGetter(col),
+			cellRendererSelector: createCellRendererSelector(col),
 		};
-		// Enable large text editor for text columns
+
 		if (col.type === 'string') {
 			columnDef.cellEditor = 'agLargeTextCellEditor';
-			// Use popup editor so it is not clipped by the grid viewport and positions correctly
 			columnDef.cellEditorPopup = true;
 			columnDef.cellEditorPopupPosition = 'over';
-			// Provide initial value for the editor, otherwise agLargeTextCellEditor breaks
-			columnDef.cellEditorParams = (params: CellEditRequestEvent<DataStoreRow>) => ({
-				value: params.value ?? '',
-				// Rely on the backend to limit the length of the value
-				maxLength: 999999999,
-			});
-			columnDef.valueSetter = (params: ValueSetterParams<DataStoreRow>) => {
-				let originalValue = params.data[col.name];
-				if (originalValue === undefined) {
-					originalValue = null;
-				}
-				let newValue = params.newValue;
-
-				if (!isDataStoreValue(newValue)) {
-					return false;
-				}
-
-				// Make sure not to trigger update if cell content is not set and value was null
-				if (originalValue === null && newValue === '') {
-					return false;
-				}
-
-				// When clearing editor content, set value to empty string
-				if (isTextEditorOpen.value && newValue === null) {
-					newValue = '';
-				}
-
-				// Otherwise update the value
-				params.data[col.name] = newValue;
-				return true;
-			};
-		}
-		// Setup date editor
-		if (col.type === 'date') {
+			columnDef.cellEditorParams = stringCellEditorParams;
+			columnDef.valueSetter = createStringValueSetter(col, isTextEditorOpen);
+		} else if (col.type === 'date') {
 			columnDef.cellEditorSelector = () => ({
 				component: ElDatePickerCellEditor,
 			});
-			columnDef.valueFormatter = (params) => {
-				const value = params.value as Date | null | undefined;
-				if (value === null || value === undefined) return '';
-				return value.toISOString();
-			};
+			columnDef.valueFormatter = dateValueFormatter;
 		}
+
 		return {
 			...columnDef,
 			...extraProps,
@@ -328,7 +254,7 @@ export const useDataStoreGridBase = ({
 		setGridData({ colDefs: colDefs.value });
 	};
 
-	const insertColumn = (column: ColDef, index: number) => {
+	const insertColumnAtIndex = (column: ColDef, index: number) => {
 		colDefs.value.splice(index, 0, column);
 		setGridData({ colDefs: colDefs.value });
 	};
@@ -348,9 +274,8 @@ export const useDataStoreGridBase = ({
 		if (!columnToBeMoved) {
 			return;
 		}
-		const toIndex = newIndex; // exclude selection + ID columns used by AG Grid indices
 		const middleWithIndex = colDefs.value.slice(1, -1).map((col, index) => ({ ...col, index }));
-		const reorderedMiddle = reorderItem(middleWithIndex, fromIndex, toIndex)
+		const reorderedMiddle = reorderItem(middleWithIndex, fromIndex, newIndex)
 			.sort((a, b) => a.index - b.index)
 			.map(({ index, ...col }) => col);
 		colDefs.value = [colDefs.value[0], ...reorderedMiddle, colDefs.value[colDefs.value.length - 1]];
@@ -462,7 +387,7 @@ export const useDataStoreGridBase = ({
 		loadColumns,
 		colDefs,
 		deleteColumn,
-		insertColumn,
+		insertColumnAtIndex,
 		addColumn,
 		moveColumn,
 		gridApi: initializedGridApi,

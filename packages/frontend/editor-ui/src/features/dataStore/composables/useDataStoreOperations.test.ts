@@ -34,7 +34,7 @@ describe('useDataStoreOperations', () => {
 			deleteGridColumn: vi.fn(),
 			addGridColumn: vi.fn(),
 			setGridData: vi.fn(),
-			insertGridColumn: vi.fn(),
+			insertGridColumnAtIndex: vi.fn(),
 			moveGridColumn: vi.fn(),
 			dataStoreId: 'test',
 			projectId: 'test',
