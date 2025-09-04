@@ -375,7 +375,7 @@ export class SourceControlPreferencesService {
 					const decryptedPreferences = this.preparePreferencesFromStorage(storedPreferences);
 					// set local preferences but don't write back to db
 					await this.setPreferences(decryptedPreferences, false);
-					return decryptedPreferences;
+					return this.sourceControlPreferences;
 				}
 			} catch (error) {
 				this.logger.warn(
