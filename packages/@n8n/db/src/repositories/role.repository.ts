@@ -28,16 +28,15 @@ export class RoleRepository extends Repository<Role> {
 				},
 			});
 		} else if (role.roleType === 'project') {
-			const x = await this.manager
+			const projectRelationsWithRole = await this.manager
 				.createQueryBuilder(ProjectRelation, 'project_relation')
 				.select('COUNT(project_relation.user)', 'count')
 				.where('project_relation.role = :role', { role: role.slug })
 				.getRawOne<{ count: string }>();
-			console.log(`Count of users with role ${role.slug}: ${x?.count}`, { type: typeof x?.count });
-			if (typeof x?.count === 'number') {
-				return x.count;
-			} else if (typeof x?.count === 'string') {
-				return parseInt(x.count);
+			if (typeof projectRelationsWithRole?.count === 'number') {
+				return projectRelationsWithRole.count;
+			} else if (typeof projectRelationsWithRole?.count === 'string') {
+				return parseInt(projectRelationsWithRole.count);
 			}
 		}
 		return undefined;

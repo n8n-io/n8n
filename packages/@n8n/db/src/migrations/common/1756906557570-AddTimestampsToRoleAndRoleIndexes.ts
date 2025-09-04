@@ -9,12 +9,12 @@ const PROJECT_RELATION_ROLE_PROJECT_IDX_NAME = 'project_relation_role_project_id
 const USER_ROLE_IDX_NAME = 'user_role_idx';
 
 export class AddTimestampsToRoleAndRoleIndexes1756906557570 implements ReversibleMigration {
-	async up({ schemaBuilder, queryRunner }: MigrationContext) {
+	async up({ schemaBuilder, queryRunner, tablePrefix }: MigrationContext) {
 		// This loads the table metadata from the database and
 		// feeds the query runners cache with the table metadata
 		// Not doing this, seems to get TypeORM to wrongfully try to
 		// add the columns twice in the same statement.
-		await queryRunner.getTable(ROLE_TABLE_NAME);
+		await queryRunner.getTable(`${tablePrefix}${USER_TABLE_NAME}`);
 
 		await schemaBuilder.addColumns(ROLE_TABLE_NAME, [
 			new Column('createdAt').timestampTimezone().notNull.default('NOW()'),
