@@ -41,9 +41,6 @@ const selectedItems = ref<Item[]>(props.initialSelected || []);
 
 function onChange(value: Item[]) {
 	console.log('Selected items changed:', value);
-	// Emit the updated value to the parent component
-	// This will allow two-way binding with v-model
-	// @ts-ignore
 	emit('update:modelValue', value);
 }
 </script>
@@ -55,7 +52,7 @@ function onChange(value: Item[]) {
 		@update:open="() => {}"
 		v-model="selectedItems"
 		multiple
-		@update:model-value="onChange"
+		@update:model-value="onChange as any"
 	>
 		<ComboboxAnchor class="ComboboxAnchor">
 			<ComboboxInput class="ComboboxInput" :placeholder="placeholder" />
