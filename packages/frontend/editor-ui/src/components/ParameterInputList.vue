@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type {
 	CalloutAction,
+	IDataObject,
 	INodeParameters,
 	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
@@ -105,6 +108,12 @@ const {
 } = useCalloutHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
+
+const schemaVisible = ref(false);
+
+function onToggleSchema() {
+	schemaVisible.value = !schemaVisible.value;
+}
 
 onErrorCaptured((e, component) => {
 	if (
@@ -536,6 +545,43 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 
 	await dismissCallout(parameter.name);
 }
+
+function getParameterSchema(parameter: INodeProperties) {
+	if (['string', 'number', 'boolean'].includes(parameter.type)) return parameter.type;
+	if (['options'].includes(parameter.type)) {
+		if (parameter.typeOptions?.loadOptionsMethod) {
+			return 'string';
+		}
+		return (parameter?.options as INodePropertyOptions[]).map((option) => option.value).join(' | ');
+	}
+	if (parameter.type === 'collection') {
+		const schema: IDataObject = {};
+		for (const property of (parameter.options as INodeProperties[]) ?? []) {
+			if (property.type === 'notice') continue;
+			schema[property.name] = getParameterSchema(property);
+		}
+		return schema;
+	}
+	if (parameter.type === 'fixedCollection') {
+		const schema: IDataObject = {};
+
+		const values = (parameter.options?.[0] as INodePropertyCollection)?.values ?? [];
+
+		for (const property of values) {
+			if (property.type === 'notice') continue;
+			schema[property.name] = getParameterSchema(property);
+		}
+
+		const valuesKey = (parameter.options as INodeProperties[])[0].name;
+		const isMultipleValue = parameter?.typeOptions?.multipleValues;
+		return { [valuesKey]: isMultipleValue ? [schema] : schema };
+	}
+	return parameter;
+}
+
+function getSchema(parameter: INodeProperties) {
+	return JSON.stringify(getParameterSchema(parameter), null, 2);
+}
 </script>
 
 <template>
@@ -640,14 +686,19 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 					color="text-dark"
 				>
 					<template #options>
-						<ParameterOptions
-							:parameter="parameter"
-							:value="getParameterValue(parameter.name)"
-							:is-read-only="isReadOnly as boolean"
-							:show-options="false"
-							static-field-name="Widget"
-							@update:model-value="(command) => onModeSelected(command, parameter)"
-						/>
+						<N8nTooltip placement="right">
+							<template #content>
+								Switching between modes may require expressions adjustments
+							</template>
+							<ParameterOptions
+								:parameter="parameter"
+								:value="getParameterValue(parameter.name)"
+								:is-read-only="isReadOnly as boolean"
+								:show-options="false"
+								static-field-name="Widget"
+								@update:model-value="(command) => onModeSelected(command, parameter)"
+							/>
+						</N8nTooltip>
 					</template>
 					<template
 						v-if="
@@ -666,23 +717,40 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						</N8nTooltip>
 					</template>
 				</N8nInputLabel>
-				<div>{{ nodeValues['' + parameter.name + ''] }}</div>
-				<ParameterInputFull
-					v-if="isValueExpression(parameter, getParameterValue(parameter.name))"
-					:parameter="parameter"
-					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
-					:value="getParameterValue(parameter.name)"
-					:display-options="false"
-					:path="getPath(parameter.name)"
-					:is-read-only="
-						isReadOnly ||
-						(parameter.disabledOptions && shouldDisplayNodeParameter(parameter, 'disabledOptions'))
-					"
-					:hide-label="true"
-					:node-values="nodeValues"
-					@update="valueChanged"
-					@blur="onParameterBlur(parameter.name)"
-				/>
+
+				<div v-if="isValueExpression(parameter, getParameterValue(parameter.name))">
+					<ParameterInputFull
+						:parameter="parameter"
+						:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
+						:hide-hint="true"
+						:value="getParameterValue(parameter.name)"
+						:display-options="false"
+						:path="getPath(parameter.name)"
+						:is-read-only="
+							isReadOnly ||
+							(parameter.disabledOptions &&
+								shouldDisplayNodeParameter(parameter, 'disabledOptions'))
+						"
+						:hide-label="true"
+						:node-values="nodeValues"
+						@update="valueChanged"
+						@blur="onParameterBlur(parameter.name)"
+					/>
+
+					<code>
+						<div class="schema-btn">
+							<N8nButton
+								size="mini"
+								label="Schema"
+								type="tertiary"
+								@click="onToggleSchema"
+								style="margin-bottom: 5px; margin-top: 5px"
+							></N8nButton>
+						</div>
+
+						<pre class="schema-preview" v-if="schemaVisible">{{ getSchema(parameter) }}</pre>
+					</code>
+				</div>
 				<Suspense v-else-if="!asyncLoadingError">
 					<template #default>
 						<LazyCollectionParameter
@@ -855,6 +923,28 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 	.callout-dismiss:hover {
 		color: var(--color-icon-hover);
+	}
+
+	.schema-btn {
+		position: relative;
+		top: 0px;
+	}
+
+	.schema-preview {
+		font-size: var(--font-size-2xs);
+		color: var(--color-notice-font);
+		margin-bottom: var(--spacing-xs);
+		padding: var(--spacing-2xs);
+		background-color: var(--background-color);
+		border-width: 1px 1px 1px 7px;
+		border-style: solid;
+		border-color: var(--border-color);
+		border-radius: var(--border-radius-small);
+		line-height: var(--font-line-height-compact);
+		border-color: var(--color-info-tint-1);
+		background-color: var(--color-info-tint-2);
+		white-space: pre-wrap;
+		word-break: break-word;
 	}
 }
 </style>
