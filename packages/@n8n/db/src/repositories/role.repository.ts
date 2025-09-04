@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, Repository } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { Role } from '../entities';
+import { ProjectRelation, Role, User } from '../entities';
 
 @Service()
 export class RoleRepository extends Repository<Role> {
@@ -16,6 +16,28 @@ export class RoleRepository extends Repository<Role> {
 
 	async findAll() {
 		return await this.find({ relations: ['scopes'] });
+	}
+
+	async countUsersWithRole(role: Role) {
+		if (role.roleType === 'global') {
+			return await this.manager.getRepository(User).count({
+				where: {
+					role: {
+						slug: role.slug,
+					},
+				},
+			});
+		} else if (role.roleType === 'project') {
+			const x = await this.manager
+				.createQueryBuilder(ProjectRelation, 'project_relation')
+				.select('COUNT(project_relation.user)', 'count')
+				.where('project_relation.role = :role', { role: role.slug })
+				.getRawOne<{ count: string }>();
+			if (typeof x?.count === 'number') {
+				return x.count;
+			}
+		}
+		return undefined;
 	}
 
 	async findBySlug(slug: string) {

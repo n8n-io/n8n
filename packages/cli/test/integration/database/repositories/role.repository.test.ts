@@ -1,6 +1,6 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { testDb, linkUserToProject, createTeamProject } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { RoleRepository, ScopeRepository } from '@n8n/db';
+import { AuthRolesService, RoleRepository, ScopeRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import {
@@ -9,13 +9,17 @@ import {
 	createCustomRoleWithScopes,
 	createTestScopes,
 } from '../../shared/db/roles';
+import { createUser } from '../../shared/db/users';
+import { be } from 'zod/dist/types/v4/locales';
 
 describe('RoleRepository', () => {
 	let roleRepository: RoleRepository;
 	let scopeRepository: ScopeRepository;
 
 	beforeAll(async () => {
+		console.log('Before db init!');
 		await testDb.init();
+		console.log('After db init!');
 		roleRepository = Container.get(RoleRepository);
 		scopeRepository = Container.get(ScopeRepository);
 	});
@@ -24,7 +28,7 @@ describe('RoleRepository', () => {
 		// Truncate in the correct order to respect foreign key constraints
 		// user table references role via roleSlug
 		// ProjectRelation references role
-		await testDb.truncate(['User', 'ProjectRelation', 'Role', 'Scope']);
+		await testDb.truncate(['User', 'ProjectRelation', 'Project', 'Role', 'Scope']);
 	});
 
 	afterAll(async () => {
@@ -33,6 +37,7 @@ describe('RoleRepository', () => {
 
 	describe('findAll()', () => {
 		it('should return empty array when no roles exist', async () => {
+			console.log('Trying to run findAll test');
 			//
 			// ARRANGE & ACT
 			//
@@ -638,6 +643,219 @@ describe('RoleRepository', () => {
 				const foundRole = await roleRepository.findBySlug('role-for-undefined-scopes');
 				expect(foundRole!.scopes).toHaveLength(1);
 				expect(foundRole!.scopes[0].slug).toBe(readScope.slug);
+			});
+		});
+	});
+
+	describe('countUsersWithRole()', () => {
+		beforeEach(async () => {
+			// make sure to initalize the default roles for user creation
+			await Container.get(AuthRolesService).init();
+		});
+
+		describe('global roles', () => {
+			it('should return 0 when no users have the global role', async () => {
+				//
+				// ARRANGE
+				//
+				const globalRole = await createRole({
+					slug: 'global-empty-role',
+					displayName: 'Global Empty Role',
+					roleType: 'global',
+				});
+
+				//
+				// ACT
+				//
+				const count = await roleRepository.countUsersWithRole(globalRole);
+
+				//
+				// ASSERT
+				//
+				expect(count).toBe(0);
+			});
+
+			it('should return correct count when multiple users have the global role', async () => {
+				//
+				// ARRANGE
+				//
+				const globalRole = await createRole({
+					slug: 'global-multi-role',
+					displayName: 'Global Multi Role',
+					roleType: 'global',
+				});
+
+				await createUser({ role: globalRole });
+				await createUser({ role: globalRole });
+				await createUser({ role: globalRole });
+
+				// Create user with different role to ensure isolation
+				const otherRole = await createRole({
+					slug: 'other-global-role',
+					displayName: 'Other Global Role',
+					roleType: 'global',
+				});
+				await createUser({ role: otherRole });
+
+				//
+				// ACT
+				//
+				const count = await roleRepository.countUsersWithRole(globalRole);
+
+				//
+				// ASSERT
+				//
+				expect(count).toBe(3);
+			});
+		});
+
+		describe('project roles', () => {
+			it('should return 0 when no project relations exist for the project role', async () => {
+				//
+				// ARRANGE
+				//
+				const projectRole = await createRole({
+					slug: 'project-empty-role',
+					displayName: 'Project Empty Role',
+					roleType: 'project',
+				});
+
+				//
+				// ACT
+				//
+				const count = await roleRepository.countUsersWithRole(projectRole);
+
+				//
+				// ASSERT
+				//
+				expect(count).toBe(0);
+			});
+
+			it('should return correct count when multiple users have the project role', async () => {
+				//
+				// ARRANGE
+				//
+				const projectRole = await createRole({
+					slug: 'project-multi-role',
+					displayName: 'Project Multi Role',
+					roleType: 'project',
+				});
+
+				// Create users and projects
+				const user1 = await createUser();
+				const user2 = await createUser();
+				const user3 = await createUser();
+				const project1 = await createTeamProject('Test Project 1');
+				const project2 = await createTeamProject('Test Project 2');
+
+				// Link users to projects with the target role
+				await linkUserToProject(user1, project1, projectRole.slug);
+				await linkUserToProject(user2, project1, projectRole.slug);
+				await linkUserToProject(user3, project2, projectRole.slug);
+
+				//
+				// ACT
+				//
+				const count = await roleRepository.countUsersWithRole(projectRole);
+
+				//
+				// ASSERT
+				//
+				expect(count).toBe(3);
+			});
+
+			it('should only count users with the specific project role slug', async () => {
+				//
+				// ARRANGE
+				//
+				const targetRole = await createRole({
+					slug: 'project-target-role',
+					displayName: 'Project Target Role',
+					roleType: 'project',
+				});
+
+				const otherRole = await createRole({
+					slug: 'project-other-role',
+					displayName: 'Project Other Role',
+					roleType: 'project',
+				});
+
+				const user1 = await createUser();
+				const user2 = await createUser();
+				const user3 = await createUser();
+				const project = await createTeamProject('Test Project');
+
+				// Link users with different roles
+				await linkUserToProject(user1, project, targetRole.slug as any);
+				await linkUserToProject(user2, project, targetRole.slug as any);
+				await linkUserToProject(user3, project, otherRole.slug as any);
+
+				//
+				// ACT
+				//
+				const count = await roleRepository.countUsersWithRole(targetRole);
+
+				//
+				// ASSERT
+				//
+				expect(count).toBe(2);
+			});
+		});
+
+		describe('undefined role types', () => {
+			it('should return undefined for non-global, non-project role types', async () => {
+				//
+				// ARRANGE
+				//
+				const workflowRole = await createRole({
+					slug: 'workflow-role',
+					displayName: 'Workflow Role',
+					roleType: 'workflow',
+				});
+
+				const credentialRole = await createRole({
+					slug: 'credential-role',
+					displayName: 'Credential Role',
+					roleType: 'credential',
+				});
+
+				//
+				// ACT
+				//
+				const workflowCount = await roleRepository.countUsersWithRole(workflowRole);
+				const credentialCount = await roleRepository.countUsersWithRole(credentialRole);
+
+				//
+				// ASSERT
+				//
+				expect(workflowCount).toBeUndefined();
+				expect(credentialCount).toBeUndefined();
+			});
+		});
+
+		describe('edge cases', () => {
+			it('should handle project roles when query returns null count', async () => {
+				//
+				// ARRANGE
+				//
+				const projectRole = await createRole({
+					slug: 'project-null-count-role',
+					displayName: 'Project Null Count Role',
+					roleType: 'project',
+				});
+
+				// Create a project role but don't link any users to it
+				// This ensures the query returns a row but with null/0 count
+
+				//
+				// ACT
+				//
+				const count = await roleRepository.countUsersWithRole(projectRole);
+
+				//
+				// ASSERT
+				//
+				expect(count).toBe(0);
 			});
 		});
 	});
