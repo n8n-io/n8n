@@ -16,7 +16,7 @@ on:
       shards:
         description: 'Shards for parallel execution'
         required: false
-        default: '[1, 2]'
+        default: '[1, 2, 3]'
         type: string
       docker-image:
         description: 'Docker image to use (for docker-pull mode)'
