@@ -26,7 +26,7 @@ export class UpdateCommunityPackagesPrimaryKey1756891581000 implements Reversibl
 					'"latestVersion"	INTEGER DEFAULT 1,' +
 					'"packageName"	char(214) NOT NULL,' +
 					'"packageVersion"	char(50) NOT NULL,' +
-					'PRIMARY KEY("name"),' +
+					'PRIMARY KEY("type", "packageVersion"),' +
 					`FOREIGN KEY("packageName", "packageVersion") REFERENCES "${tablePrefix}installed_packages_new"("packageName", "installedVersion") ON DELETE CASCADE ON UPDATE CASCADE` +
 					');',
 			);
