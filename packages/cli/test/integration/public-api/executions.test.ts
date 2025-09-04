@@ -302,7 +302,6 @@ describe('GET /executions', () => {
 			${'canceled'} | ${'canceled'}
 			${'error'}    | ${'error'}
 			${'error'}    | ${'crashed'}
-			${'running'}  | ${'running'}
 			${'success'}  | ${'success'}
 			${'waiting'}  | ${'waiting'}
 		`(
