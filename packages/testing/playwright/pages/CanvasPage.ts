@@ -4,10 +4,12 @@ import { nanoid } from 'nanoid';
 import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
+import { StickyComponent } from './components/StickyComponent';
 import { LogsPanel } from './parts/LogsPanel';
 
 export class CanvasPage extends BasePage {
 	readonly logsPanel: LogsPanel;
+	readonly sticky = new StickyComponent(this.page);
 
 	constructor(page: Page) {
 		super(page);
