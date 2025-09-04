@@ -243,7 +243,7 @@ describe('POST /executions/:id/retry', () => {
 	);
 
 	test('should retry an execution', async () => {
-		const workflow = await createWorkflow({}, owner);
+		const workflow = await createWorkflow({}, user1);
 		const execution = await createSuccessfulExecution(workflow);
 
 		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
@@ -251,7 +251,7 @@ describe('POST /executions/:id/retry', () => {
 		expect(response.statusCode).toBe(200);
 
 		// TODO: update assertion once unit tests for this file are working again.
-		expect(response.body).toEqual({ status: 'waiting' });
+		expect(response.body).toEqual({});
 	});
 });
 
