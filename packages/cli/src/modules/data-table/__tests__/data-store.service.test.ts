@@ -71,7 +71,7 @@ describe('dataStore', () => {
 			]);
 
 			// Select the column from user table to check for its existence
-			const userTableName = dataStoreRowsRepository.toTableName(dataTableId);
+			const userTableName = dataStoreRepository.toTableName(dataTableId);
 			const rows = await dataStoreRepository.manager
 				.createQueryBuilder()
 				.select('foo')
@@ -94,7 +94,7 @@ describe('dataStore', () => {
 
 			await expect(dataStoreService.getColumns(dataStoreId, project1.id)).resolves.toEqual([]);
 
-			const userTableName = dataStoreRowsRepository.toTableName(dataStoreId);
+			const userTableName = dataStoreRepository.toTableName(dataStoreId);
 			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
 			try {
 				const table = await queryRunner.getTable(userTableName);
@@ -223,7 +223,7 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.deleteDataStore(dataStoreId, project1.id);
-			const userTableName = dataStoreRowsRepository.toTableName(dataStoreId);
+			const userTableName = dataStoreRepository.toTableName(dataStoreId);
 
 			// ASSERT
 			expect(result).toEqual(true);
@@ -303,7 +303,7 @@ describe('dataStore', () => {
 				}),
 			]);
 
-			const userTableName = dataStoreRowsRepository.toTableName(dataTableId);
+			const userTableName = dataStoreRepository.toTableName(dataTableId);
 			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
 			try {
 				const table = await queryRunner.getTable(userTableName);
@@ -360,7 +360,7 @@ describe('dataStore', () => {
 				}),
 			]);
 
-			const userTableName = dataStoreRowsRepository.toTableName(dataTableId);
+			const userTableName = dataStoreRepository.toTableName(dataTableId);
 			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
 			try {
 				const table = await queryRunner.getTable(userTableName);
