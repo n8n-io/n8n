@@ -18,8 +18,7 @@ async function checkDataTableAndProjectName(
 	await expect(dataTableBreadcrumb).toContainText(dataTableName);
 }
 
-test.describe('Data Tables', () => {
-	// TODO: Reset DB before tests
+test.describe('Data Table list view', () => {
 	test.beforeEach(async ({ n8n, api }) => {
 		await api.enableFeature('sharing');
 		await api.enableFeature('folders');
@@ -30,18 +29,53 @@ test.describe('Data Tables', () => {
 		await n8n.goHome();
 	});
 
+	test('Should correctly render project data tables in project and everything in overview', async ({
+		n8n,
+	}) => {
+		const TEST_PROJECTS = [
+			{
+				name: `Project ${nanoid(8)}`,
+				dataTable: `Data Table ${nanoid(8)}`,
+			},
+			{
+				name: `Project ${nanoid(8)}`,
+				dataTable: `Data Table ${nanoid(8)}`,
+			},
+		];
+
+		// Create projects and check that they only render their own data tables
+		for (const project of TEST_PROJECTS) {
+			await n8n.projectComposer.createProject(project.name);
+			await n8n.sideBar.clickProjectMenuItem(project.name);
+
+			await n8n.dataTable.clickDataTableProjectTab();
+			await n8n.dataTable.clickEmptyStateButton();
+			await n8n.dataTableComposer.createNewDataTable(project.dataTable);
+			await n8n.sideBar.clickProjectMenuItem(project.name);
+			await n8n.dataTable.clickDataTableProjectTab();
+
+			await expect(n8n.dataTable.getDataTableCardByName(project.dataTable)).toBeVisible();
+			await expect(n8n.dataTable.getDataTableCards()).toHaveCount(1);
+		}
+
+		// Go to overview, both data tables should be visible
+		await n8n.sideBar.clickHomeMenuItem();
+		await n8n.dataTable.clickDataTableOverviewTab();
+
+		for (const project of TEST_PROJECTS) {
+			await expect(n8n.dataTable.getDataTableCardByName(project.dataTable)).toBeVisible();
+		}
+	});
+
 	test('Should create data table in personal project when created from Overview', async ({
 		n8n,
 	}) => {
 		const TEST_DATA_TABLE_NAME = `Data Table ${nanoid(8)}`;
 
-		const dataTableTab = n8n.dataTable.getDataTableOverviewTab();
 		await n8n.dataTable.clickDataTableOverviewTab();
-		await expect(dataTableTab).toBeVisible();
 
-		const emptyActionBoxButton = n8n.dataTable.getEmptyStateActionBoxButton();
-		await expect(emptyActionBoxButton).toHaveText('Create Data Table in "Personal"');
-		await n8n.dataTable.clickEmptyStateButton();
+		await n8n.dataTable.clickAddResourceDropdown();
+		await n8n.dataTable.clickAddDataTableAction();
 
 		const newDataTableModal = n8n.dataTable.getNewDataTableModal();
 		await expect(newDataTableModal).toBeVisible();
@@ -62,7 +96,7 @@ test.describe('Data Tables', () => {
 		await n8n.dataTable.clickDataTableProjectTab();
 
 		const emptyActionBoxButton = n8n.dataTable.getEmptyStateActionBoxButton();
-		await expect(emptyActionBoxButton).toHaveText(`Create Data Table in "${TEST_PROJECT_NAME}"`);
+		await expect(emptyActionBoxButton).toHaveText(`Create Data table in "${TEST_PROJECT_NAME}"`);
 
 		await n8n.dataTable.clickEmptyStateButton();
 

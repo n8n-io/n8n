@@ -49,6 +49,14 @@ export class DataStoreView extends BasePage {
 		return this.page.getByTestId('action-dataStore');
 	}
 
+	getDataTableCards() {
+		return this.page.getByTestId('data-store-card');
+	}
+
+	getDataTableCardByName(name: string) {
+		return this.getDataTableCards().filter({ hasText: name });
+	}
+
 	async clickDataTableOverviewTab() {
 		await this.clickByTestId('tab-data-stores');
 	}
