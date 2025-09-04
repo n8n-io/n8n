@@ -331,10 +331,11 @@ export class SourceControlPreferencesService {
 	async setPreferences(
 		preferences: Partial<SourceControlPreferences>,
 		saveToDb = true,
+		generateKeyPairIfMissing = false,
 	): Promise<SourceControlPreferences> {
 		const noKeyPair = (await this.getKeyPairFromDatabase()) === null;
 
-		if (noKeyPair) await this.generateAndSaveKeyPair();
+		if (noKeyPair && generateKeyPairIfMissing) await this.generateAndSaveKeyPair();
 
 		// Set preferences in memory (without encryption for runtime use)
 		this.sourceControlPreferences = preferences;

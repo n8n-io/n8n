@@ -28,6 +28,7 @@ const documentTitle = useDocumentTitle();
 const loadingService = useLoadingService();
 
 const isConnected = ref(false);
+const originalProtocol = ref<SourceControlProtocol>('ssh');
 const branchNameOptions = computed(() =>
 	sourceControlStore.preferences.branches.map((branch) => ({
 		value: branch,
@@ -36,6 +37,27 @@ const branchNameOptions = computed(() =>
 );
 
 const onConnect = async () => {
+	// Check if protocol has changed and show confirmation if needed
+	const currentProtocol = sourceControlStore.preferences.protocol;
+	if (currentProtocol !== originalProtocol.value) {
+		try {
+			const confirmation = await message.confirm(
+				locale.baseText('settings.sourceControl.protocol.switch.message'),
+				locale.baseText('settings.sourceControl.protocol.switch.title'),
+				{
+					confirmButtonText: locale.baseText('settings.sourceControl.protocol.switch.confirm'),
+					cancelButtonText: locale.baseText('settings.sourceControl.protocol.switch.cancel'),
+				},
+			);
+
+			if (confirmation !== MODAL_CONFIRM) {
+				return; // User cancelled
+			}
+		} catch {
+			return; // User cancelled or error occurred
+		}
+	}
+
 	loadingService.startLoading();
 	loadingService.setLoadingText(locale.baseText('settings.sourceControl.loading.connecting'));
 	try {
@@ -56,6 +78,8 @@ const onConnect = async () => {
 		await sourceControlStore.savePreferences(connectionData);
 		await sourceControlStore.getBranches();
 		isConnected.value = true;
+		// Update original protocol after successful save
+		originalProtocol.value = currentProtocol ?? 'ssh';
 		toast.showMessage({
 			title: locale.baseText('settings.sourceControl.toast.connected.title'),
 			message: locale.baseText('settings.sourceControl.toast.connected.message'),
@@ -128,6 +152,8 @@ const goToUpgrade = () => {
 
 const initialize = async () => {
 	await sourceControlStore.getPreferences();
+	// Store the original protocol for comparison during save
+	originalProtocol.value = sourceControlStore.preferences.protocol || 'ssh';
 	if (sourceControlStore.preferences.connected) {
 		isConnected.value = true;
 		void sourceControlStore.getBranches();
@@ -229,7 +255,7 @@ const onSelectSshKeyType = (value: Validatable) => {
 	}
 };
 
-const onSelectProtocol = async (value: Validatable) => {
+const onSelectProtocol = (value: Validatable) => {
 	// Type guard to ensure we have a valid protocol
 	if (typeof value !== 'string' || !['ssh', 'https'].includes(value)) {
 		return;
@@ -240,45 +266,14 @@ const onSelectProtocol = async (value: Validatable) => {
 		return;
 	}
 
-	// Show confirmation dialog if switching protocols and credentials exist
-	const hasExistingCredentials =
-		(sourceControlStore.preferences.protocol === 'https' &&
-			(sourceControlStore.preferences.username ||
-				sourceControlStore.formState.personalAccessToken)) ||
-		(sourceControlStore.preferences.protocol === 'ssh' && sourceControlStore.preferences.publicKey);
-
-	if (hasExistingCredentials) {
-		try {
-			const confirmation = await message.confirm(
-				locale.baseText('settings.sourceControl.protocol.switch.message'),
-				locale.baseText('settings.sourceControl.protocol.switch.title'),
-				{
-					confirmButtonText: locale.baseText('settings.sourceControl.protocol.switch.confirm'),
-					cancelButtonText: locale.baseText('settings.sourceControl.protocol.switch.cancel'),
-				},
-			);
-
-			if (confirmation !== MODAL_CONFIRM) {
-				return; // User cancelled
-			}
-		} catch (error) {
-			return; // User cancelled or error occurred
-		}
-	}
-
 	sourceControlStore.preferences.protocol = protocol;
 
-	// Reset protocol-specific validation states and clear credentials when switching
+	// Reset protocol-specific validation states when switching protocols
 	if (protocol === 'https') {
-		formValidationStatus.keyGeneratorType = true; // SSH not required
-		// Clear SSH data for security
-		sourceControlStore.preferences.publicKey = '';
+		formValidationStatus.keyGeneratorType = true; // SSH not required for HTTPS
 	} else {
-		formValidationStatus.username = true; // HTTPS fields not required
+		formValidationStatus.username = true; // HTTPS fields not required for SSH
 		formValidationStatus.personalAccessToken = true;
-		// Clear HTTPS form data for security
-		sourceControlStore.preferences.username = '';
-		sourceControlStore.formState.personalAccessToken = '';
 	}
 };
 </script>
@@ -349,12 +344,13 @@ const onSelectProtocol = async (value: Validatable) => {
 					@update:model-value="onSelectProtocol"
 				/>
 			</div>
-			<div
-				v-if="sourceControlStore.isSshProtocol && sourceControlStore.preferences.publicKey"
-				:class="$style.group"
-			>
+			<div v-if="sourceControlStore.isSshProtocol" :class="$style.group">
 				<label>{{ locale.baseText('settings.sourceControl.sshKey') }}</label>
-				<div :class="{ [$style.sshInput]: !isConnected }">
+				<div
+					v-if="sourceControlStore.preferences.publicKey"
+					:class="{ [$style.sshInput]: !isConnected }"
+				>
+					<!-- SSH key exists - show key type selector, copy input, and refresh button -->
 					<n8n-form-input
 						v-if="!isConnected"
 						id="keyGeneratorType"
@@ -386,6 +382,32 @@ const onSelectProtocol = async (value: Validatable) => {
 						@click="refreshSshKey"
 					>
 						{{ locale.baseText('settings.sourceControl.refreshSshKey') }}
+					</n8n-button>
+				</div>
+				<div v-else :class="$style.group">
+					<!-- No SSH key yet - show key type selector and generate button -->
+					<n8n-form-input
+						id="keyGeneratorType"
+						:class="$style.sshKeyTypeSelect"
+						label=""
+						type="select"
+						name="keyGeneratorType"
+						data-test-id="source-control-ssh-key-type-select"
+						validate-on-blur
+						:validation-rules="keyGeneratorTypeValidationRules"
+						:options="sourceControlStore.sshKeyTypesWithLabel"
+						:model-value="sourceControlStore.preferences.keyGeneratorType"
+						@validate="(value: boolean) => onValidate('keyGeneratorType', value)"
+						@update:model-value="onSelectSshKeyType"
+					/>
+					<n8n-button
+						size="large"
+						type="primary"
+						icon="plus"
+						data-test-id="source-control-generate-ssh-key-button"
+						@click="refreshSshKey"
+					>
+						{{ locale.baseText('settings.sourceControl.generateSshKey') }}
 					</n8n-button>
 				</div>
 				<n8n-notice type="info" class="mt-s">

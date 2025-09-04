@@ -91,8 +91,11 @@ export class SourceControlController {
 			await this.sourceControlPreferencesService.validateSourceControlPreferences(
 				sanitizedPreferences,
 			);
-			const updatedPreferences =
-				await this.sourceControlPreferencesService.setPreferences(sanitizedPreferences);
+			const updatedPreferences = await this.sourceControlPreferencesService.setPreferences(
+				sanitizedPreferences,
+				true, // saveToDb
+				sanitizedPreferences.protocol === 'ssh', // generateKeyPairIfMissing only for SSH protocol
+			);
 			if (sanitizedPreferences.initRepo === true) {
 				try {
 					await this.sourceControlService.initializeRepository(
