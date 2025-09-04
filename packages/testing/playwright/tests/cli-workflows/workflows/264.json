@@ -71,7 +71,7 @@
 				"options": {}
 			},
 			"type": "@n8n/n8n-nodes-langchain.agent",
-			"typeVersion": 1.9,
+			"typeVersion": 2.2,
 			"position": [720, 112],
 			"id": "6a5b7f81-728c-48f6-807d-c271f61d19d0",
 			"name": "AI Agent5"
@@ -141,7 +141,7 @@
 				"options": {}
 			},
 			"type": "@n8n/n8n-nodes-langchain.agent",
-			"typeVersion": 1.9,
+			"typeVersion": 2.2,
 			"position": [720, 544],
 			"id": "83c78be6-d2eb-479e-8210-c20b5b1947ec",
 			"name": "AI Agent7"
