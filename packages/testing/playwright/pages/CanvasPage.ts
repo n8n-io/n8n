@@ -1,11 +1,19 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
+import { LogsPanel } from '../components/LogsPanel';
 import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
 
 export class CanvasPage extends BasePage {
+	readonly logsPanel: LogsPanel;
+
+	constructor(page: Page) {
+		super(page);
+		this.logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
+	}
+
 	saveWorkflowButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });
 	}
@@ -532,22 +540,6 @@ export class CanvasPage extends BasePage {
 		await this.clickContextMenuAction('execute');
 	}
 
-	async clearExecutionData(): Promise<void> {
-		await this.page.getByTestId('clear-execution-data-button').click();
-	}
-
-	getManualChatModal(): Locator {
-		return this.page.getByTestId('canvas-chat');
-	}
-
-	getManualChatInput(): Locator {
-		return this.getManualChatModal().locator('.chat-inputs textarea');
-	}
-
-	getManualChatMessages(): Locator {
-		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
-	}
-
 	getNodesWithSpinner(): Locator {
 		return this.page.getByTestId('canvas-node').filter({
 			has: this.page.locator('[data-icon=refresh-cw]'),
@@ -560,10 +552,6 @@ export class CanvasPage extends BasePage {
 		});
 	}
 
-	async sendManualChatMessage(message: string): Promise<void> {
-		await this.getManualChatInput().fill(message);
-		await this.getManualChatModal().locator('.chat-input-send-button').click();
-	}
 	/**
 	 * Get all currently selected nodes on the canvas
 	 */
@@ -573,5 +561,9 @@ export class CanvasPage extends BasePage {
 
 	async openExecutions() {
 		await this.page.getByTestId('radio-button-executions').click();
+	}
+
+	async openLogsPanel(): Promise<void> {
+		await this.page.getByTestId('logs-overview-header').click();
 	}
 }

@@ -52,9 +52,9 @@ test.describe('NDV', () => {
 		await n8n.canvas.getCanvasNodes().last().dblclick();
 		await n8n.ndv.execute();
 
-		await n8n.ndv.switchInputMode('Table');
+		await n8n.ndv.inputPanel.switchDisplayMode('table');
 
-		await n8n.ndv.getNodeInputOptions().last().click();
+		await n8n.ndv.inputPanel.getNodeInputOptions().last().click();
 
 		await expect(n8n.ndv.getInputPanel()).toContainText('start');
 
@@ -403,39 +403,39 @@ test.describe('NDV', () => {
 			);
 			await n8n.canvas.openNode('Set3');
 
-			await n8n.ndv.switchInputMode('Table');
+			await n8n.ndv.inputPanel.switchDisplayMode('table');
 			await n8n.ndv.switchOutputMode('Table');
 
 			await n8n.ndv.ensureOutputRunLinking(true);
-			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
 			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
 
 			await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
 			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
-			await expect(n8n.ndv.getInputTbodyCell(0, 0)).toHaveText('1111');
+			await expect(n8n.ndv.inputPanel.getTbodyCell(0, 0)).toHaveText('1111');
 			await expect(n8n.ndv.getOutputTbodyCell(0, 0)).toHaveText('1111');
 
-			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 			await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
 			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
 
 			await n8n.ndv.toggleOutputRunLinking();
-			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 			await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
 			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('2 of 2 (6 items)');
 
 			await n8n.ndv.toggleOutputRunLinking();
-			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 			expect(await n8n.ndv.getInputRunSelectorValue()).toContain('1 of 2 (6 items)');
 
-			await n8n.ndv.toggleInputRunLinking();
-			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.inputPanel.toggleInputRunLinking();
+			await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 			await n8n.ndv.changeInputRunSelector('2 of 2 (6 items)');
 			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('1 of 2 (6 items)');
 
-			await n8n.ndv.toggleInputRunLinking();
-			await n8n.ndv.getInputTbodyCell(0, 0).click();
+			await n8n.ndv.inputPanel.toggleInputRunLinking();
+			await n8n.ndv.inputPanel.getTbodyCell(0, 0).click();
 			expect(await n8n.ndv.getOutputRunSelectorValue()).toContain('2 of 2 (6 items)');
 		});
 	});
@@ -709,20 +709,20 @@ test.describe('NDV', () => {
 
 			await n8n.canvas.openNode('Only Item 1');
 			await expect(n8n.ndv.getInputPanel()).toBeVisible();
-			await n8n.ndv.switchInputMode('Schema');
-			await expect(n8n.ndv.getInputSchemaItem('onlyOnItem1')).toBeVisible();
+			await n8n.ndv.inputPanel.switchDisplayMode('schema');
+			await expect(n8n.ndv.inputPanel.getSchemaItem('onlyOnItem1')).toBeVisible();
 			await n8n.ndv.close();
 
 			await n8n.canvas.openNode('Only Item 2');
 			await expect(n8n.ndv.getInputPanel()).toBeVisible();
-			await n8n.ndv.switchInputMode('Schema');
-			await expect(n8n.ndv.getInputSchemaItem('onlyOnItem2')).toBeVisible();
+			await n8n.ndv.inputPanel.switchDisplayMode('schema');
+			await expect(n8n.ndv.inputPanel.getSchemaItem('onlyOnItem2')).toBeVisible();
 			await n8n.ndv.close();
 
 			await n8n.canvas.openNode('Only Item 3');
 			await expect(n8n.ndv.getInputPanel()).toBeVisible();
-			await n8n.ndv.switchInputMode('Schema');
-			await expect(n8n.ndv.getInputSchemaItem('onlyOnItem3')).toBeVisible();
+			await n8n.ndv.inputPanel.switchDisplayMode('schema');
+			await expect(n8n.ndv.inputPanel.getSchemaItem('onlyOnItem3')).toBeVisible();
 			await n8n.ndv.close();
 		});
 	});
@@ -737,7 +737,7 @@ test.describe('NDV', () => {
 			await n8n.ndv.switchOutputMode('Schema');
 			await n8n.ndv.searchOutputData('US');
 
-			await expect(n8n.ndv.getOutputItemsCount()).toBeHidden();
+			await expect(n8n.ndv.outputPanel.getItemsCount()).toBeHidden();
 		});
 
 		test('should show additional tooltip when searching in schema view if no matches', async ({

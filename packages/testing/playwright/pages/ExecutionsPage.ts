@@ -1,8 +1,18 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { LogsPanel } from '../components/LogsPanel';
 
 export class ExecutionsPage extends BasePage {
+	readonly logsPanel: LogsPanel;
+
+	constructor(page: Page) {
+		super(page);
+		this.logsPanel = new LogsPanel(
+			page.getByTestId('workflow-preview-iframe').contentFrame().locator('body'),
+		);
+	}
+
 	async clickDebugInEditorButton(): Promise<void> {
 		await this.clickButtonByName('Debug in editor');
 	}
@@ -22,22 +32,6 @@ export class ExecutionsPage extends BasePage {
 
 	getAutoRefreshButton() {
 		return this.page.getByTestId('auto-refresh-checkbox');
-	}
-
-	getPreviewIframe() {
-		return this.page.getByTestId('workflow-preview-iframe').contentFrame();
-	}
-
-	getManualChatMessages(): Locator {
-		return this.getPreviewIframe().locator('.chat-messages-list .chat-message');
-	}
-
-	getLogsOverviewStatus() {
-		return this.getPreviewIframe().getByTestId('logs-overview-status');
-	}
-
-	getLogEntries(): Locator {
-		return this.getPreviewIframe().getByTestId('logs-overview-body').getByRole('treeitem');
 	}
 
 	async clickLastExecutionItem(): Promise<void> {
