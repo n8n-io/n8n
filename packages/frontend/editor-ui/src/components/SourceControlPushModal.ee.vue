@@ -33,6 +33,7 @@ import {
 	N8nPopover,
 	N8nSelect,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -889,12 +890,17 @@ onMounted(async () => {
 													{{ getStatusText(file.status) }}
 												</N8nBadge>
 												<template v-if="isWorkflowDiffsEnabled">
-													<N8nIconButton
+													<N8nTooltip
 														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
-														icon="file-diff"
-														type="secondary"
-														@click="openDiffModal(file.id)"
-													/>
+														:content="i18n.baseText('workflowDiff.compare')"
+														placement="top"
+													>
+														<N8nIconButton
+															icon="file-diff"
+															type="secondary"
+															@click="openDiffModal(file.id)"
+														/>
+													</N8nTooltip>
 												</template>
 											</span>
 										</N8nCheckbox>

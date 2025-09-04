@@ -185,18 +185,36 @@ export class OidcService {
 		const expectedState = this.verifyState(storedState);
 		const expectedNonce = this.verifyNonce(storedNonce);
 
-		const tokens = await client.authorizationCodeGrant(configuration, callbackUrl, {
-			expectedState,
-			expectedNonce,
-		});
+		let tokens;
+		try {
+			tokens = await client.authorizationCodeGrant(configuration, callbackUrl, {
+				expectedState,
+				expectedNonce,
+			});
+		} catch (error) {
+			this.logger.error('Failed to exchange authorization code for tokens', { error });
+			throw new BadRequestError('Invalid authorization code');
+		}
 
-		const claims = tokens.claims();
+		let claims;
+		try {
+			claims = tokens.claims();
+		} catch (error) {
+			this.logger.error('Failed to extract claims from tokens', { error });
+			throw new BadRequestError('Invalid token');
+		}
 
 		if (!claims) {
 			throw new ForbiddenError('No claims found in the OIDC token');
 		}
 
-		const userInfo = await client.fetchUserInfo(configuration, tokens.access_token, claims.sub);
+		let userInfo;
+		try {
+			userInfo = await client.fetchUserInfo(configuration, tokens.access_token, claims.sub);
+		} catch (error) {
+			this.logger.error('Failed to fetch user info', { error });
+			throw new BadRequestError('Invalid token');
+		}
 
 		if (!userInfo.email) {
 			throw new BadRequestError('An email is required');
