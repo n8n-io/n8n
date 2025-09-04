@@ -152,7 +152,7 @@ return [{"should": "not reach here"}]
 
 
 @pytest.mark.asyncio
-async def test_per_item_simple_execution(local_task_broker, task_runner_manager):
+async def test_per_item_passthrough(local_task_broker, task_runner_manager):
     await asyncio.sleep(0.5)
 
     task_id = nanoid()
