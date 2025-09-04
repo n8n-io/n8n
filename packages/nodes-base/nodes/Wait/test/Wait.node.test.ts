@@ -92,8 +92,13 @@ describe('Execute Wait Node', () => {
 				},
 				{
 					unit: 'seconds',
+					amount: 0,
+					shortWait: true,
+				},
+				{
+					unit: 'seconds',
 					amount: -10,
-					error: 'Invalid wait amount. It must be a positive number.',
+					error: 'Invalid wait amount. Please enter a number that is 0 or greater.',
 				},
 				{
 					unit: 'years',
@@ -103,12 +108,13 @@ describe('Execute Wait Node', () => {
 				{
 					unit: 'minutes',
 					amount: 'test',
-					error: 'Invalid wait amount. It must be a positive number.',
+					error: 'Invalid wait amount. Please enter a number that is 0 or greater.',
 				},
 			])(
 				'Validate wait unit: $unit, amount: $amount',
-				async ({ unit, amount, expectedWaitTill, error }) => {
+				async ({ unit, amount, expectedWaitTill, error, shortWait }) => {
 					const putExecutionToWaitSpy = jest.fn();
+					const onExecutionCancellationSpy = jest.fn();
 					const waitNode = new Wait();
 					const executeFunctionsMock = mock<IExecuteFunctions>({
 						getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
@@ -118,15 +124,22 @@ describe('Execute Wait Node', () => {
 						}),
 						getTimezone: jest.fn().mockReturnValue('UTC'),
 						putExecutionToWait: putExecutionToWaitSpy,
-						getInputData: jest.fn(),
+						onExecutionCancellation: onExecutionCancellationSpy,
+						getInputData: jest.fn().mockReturnValue([]),
 						getNode: jest.fn(),
 					});
 
-					if (!error) {
+					if (error) {
+						await expect(waitNode.execute(executeFunctionsMock)).rejects.toThrowError(error);
+					} else if (shortWait) {
+						// For wait times < 65 seconds, it uses setTimeout instead of putExecutionToWait
+						const result = await waitNode.execute(executeFunctionsMock);
+						expect(result).toEqual([[]]);
+						expect(putExecutionToWaitSpy).not.toHaveBeenCalled();
+						expect(onExecutionCancellationSpy).toHaveBeenCalled();
+					} else {
 						await expect(waitNode.execute(executeFunctionsMock)).resolves.not.toThrow();
 						expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expectedWaitTill?.());
-					} else {
-						await expect(waitNode.execute(executeFunctionsMock)).rejects.toThrowError(error);
 					}
 				},
 			);
