@@ -241,11 +241,11 @@ export class ProxyServer {
 				}
 
 				const method = expectation.httpRequest.method;
-				let requestForProcessing: Record<string, unknown>;
+				let requestForProcessing: Record<string, unknown> | HttpRequest;
 
 				if (options?.raw) {
 					// Use raw request without cleaning
-					requestForProcessing = expectation.httpRequest as Record<string, unknown>;
+					requestForProcessing = expectation.httpRequest;
 				} else {
 					// Clean up the request data
 					const cleanedRequest: Record<string, unknown> = {
