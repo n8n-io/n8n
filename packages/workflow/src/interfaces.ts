@@ -2757,7 +2757,7 @@ export interface INodeGraphItem {
 	runs?: number;
 	items_total?: number;
 	metric_names?: string[];
-	language?: string; // only for Code node: 'javascript' or 'python'
+	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
 }
 
 export interface INodeNameIndex {
