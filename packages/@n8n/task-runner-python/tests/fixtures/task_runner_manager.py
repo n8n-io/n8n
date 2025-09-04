@@ -1,0 +1,82 @@
+import asyncio
+import os
+import sys
+from pathlib import Path
+
+from tests.fixtures.test_constants import (
+    BROKER_URL,
+    ENV_BROKER_URI,
+    ENV_GRANT_TOKEN,
+    ENV_TASK_TIMEOUT,
+    GRACEFUL_SHUTDOWN_TIMEOUT,
+    GRANT_TOKEN,
+    TASK_TIMEOUT,
+)
+
+
+class TaskRunnerManager:
+    """Responsible for managing the lifecycle of a task runner subprocess."""
+
+    def __init__(self, task_broker_url: str = BROKER_URL):
+        self.task_broker_url = task_broker_url
+        self.subprocess: asyncio.subprocess.Process | None = None
+        self.stdout_buffer: list[str] = []
+        self.stderr_buffer: list[str] = []
+
+    async def start(self):
+        project_root = Path(__file__).parent.parent.parent
+        runner_path = project_root / "src" / "main.py"
+
+        env_vars = os.environ.copy()
+        env_vars[ENV_GRANT_TOKEN] = GRANT_TOKEN
+        env_vars[ENV_BROKER_URI] = self.task_broker_url
+        env_vars[ENV_TASK_TIMEOUT] = str(TASK_TIMEOUT)
+        env_vars["PYTHONPATH"] = str(project_root)
+
+        self.subprocess = await asyncio.create_subprocess_exec(
+            sys.executable,
+            str(runner_path),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env_vars,
+            cwd=str(project_root),
+        )
+
+        asyncio.create_task(self._read_stdout())
+        asyncio.create_task(self._read_stderr())
+
+    def is_running(self) -> bool:
+        return self.subprocess is not None and self.subprocess.returncode is None
+
+    async def stop(self) -> None:
+        if not self.subprocess or self.subprocess.returncode is not None:
+            return
+
+        self.subprocess.terminate()
+        try:
+            await asyncio.wait_for(
+                self.subprocess.wait(), timeout=GRACEFUL_SHUTDOWN_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            self.subprocess.kill()
+            await self.subprocess.wait()
+
+    async def _read_stdout(self):
+        if not self.subprocess or not self.subprocess.stdout:
+            return
+
+        while True:
+            line = await self.subprocess.stdout.readline()
+            if not line:
+                break
+            self.stdout_buffer.append(line.decode().strip())
+
+    async def _read_stderr(self):
+        if not self.subprocess or not self.subprocess.stderr:
+            return
+
+        while True:
+            line = await self.subprocess.stderr.readline()
+            if not line:
+                break
+            self.stderr_buffer.append(line.decode().strip())
