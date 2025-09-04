@@ -1842,11 +1842,31 @@ export type Icon = IconRef | Themed<IconFile>;
 
 type NodeGroupType = 'input' | 'output' | 'organization' | 'schedule' | 'transform' | 'trigger';
 
+export type INodeParametersMigrationFunction = (oldValues: INodeParameters) => INodeParameters;
+
+export type INodeParameterMigrationFunction = (
+	oldValues: INodeParameters,
+) => NodeParameterValueType;
+
+export type INodeParameterMigrationDeclaration = INodeParameterRename | INodeParameterAssign;
+
+export interface INodeParameterRename {
+	type: 'rename';
+	oldName: string;
+}
+
+export interface INodeParameterAssign {
+	type: 'assign';
+	value: string; // Expression string that can reference $parameters.fieldName
+}
+
 export interface INodeTypeMigration {
 	from: number;
 	to: number;
 	// TODO: better types also allow for declarative transformations later
-	transform: (values: INodeParameters) => INodeParameters;
+	transform:
+		| INodeParametersMigrationFunction
+		| Record<string, INodeParameterMigrationFunction | INodeParameterMigrationDeclaration>;
 }
 
 export interface INodeTypeBaseDescription {

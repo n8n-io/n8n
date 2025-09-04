@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import type {
 	IDataObject,
 	INodeParameters,
@@ -8,7 +9,6 @@ import { VersionedNodeType } from 'n8n-workflow';
 
 import { SetV1 } from './v1/SetV1.node';
 import { SetV2 } from './v2/SetV2.node';
-import { randomUUID } from 'crypto';
 
 export class Set extends VersionedNodeType {
 	constructor() {
@@ -39,6 +39,16 @@ export class Set extends VersionedNodeType {
 								}),
 							},
 						} as INodeParameters;
+					},
+				},
+				{
+					from: 3.3,
+					to: 3.4,
+					transform: {
+						'options.stripBinary': {
+							type: 'assign',
+							value: '{{ !$parameters.options?.includeBinary }}',
+						},
 					},
 				},
 			],

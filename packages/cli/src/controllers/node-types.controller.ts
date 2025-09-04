@@ -3,7 +3,15 @@ import { Post, RestController } from '@n8n/decorators';
 import { Request } from 'express';
 import { readFile } from 'fs/promises';
 import get from 'lodash/get';
-import type { INodeTypeDescription, INodeTypeNameVersion, INodeParameters } from 'n8n-workflow';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
+import type {
+	INodeTypeDescription,
+	INodeTypeNameVersion,
+	INodeParameters,
+	NodeParameterValue,
+} from 'n8n-workflow';
+import { Expression } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 
@@ -84,11 +92,39 @@ export class NodeTypesController {
 		const { description } = this.nodeTypes.getByNameAndVersion(nodeType, targetVersion);
 		let migratedParameters = parameters;
 		for (const migration of description.migrations ?? []) {
-			if (migration.from >= typeVersion && migration.to <= targetVersion) {
-				migratedParameters = {
-					...migratedParameters,
-					...migration.transform(migratedParameters),
-				};
+			if (migration.from < typeVersion || migration.to > targetVersion) {
+				continue;
+			}
+
+			if (typeof migration.transform === 'function') {
+				migratedParameters = migration.transform(migratedParameters);
+			} else {
+				for (const [key, value] of Object.entries(migration.transform)) {
+					if (typeof value === 'function') {
+						set(migratedParameters, key, value(migratedParameters));
+					} else {
+						switch (value.type) {
+							case 'rename':
+								set(migratedParameters, key, get(migratedParameters, value.oldName));
+								unset(migratedParameters, value.oldName);
+								break;
+							case 'assign': {
+								const expressionResult = Expression.resolveWithoutWorkflow(value.value, {
+									$parameters: migratedParameters,
+								});
+								if (expressionResult !== null) {
+									console.log('expressionResult', expressionResult);
+									if (typeof expressionResult === 'function') {
+										set(migratedParameters, key, expressionResult() as NodeParameterValue);
+									} else {
+										set(migratedParameters, key, expressionResult);
+									}
+								}
+								break;
+							}
+						}
+					}
+				}
 			}
 		}
 
