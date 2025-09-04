@@ -17,6 +17,19 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('node-creator-item-name').getByText(subItemText, { exact: true });
 	}
 
+	getNthCreatorItem(index: number): Locator {
+		return this.page.getByTestId('node-creator-item').nth(index);
+	}
+
+	getNodeCreatorHeader(text?: string) {
+		const header = this.page.getByTestId('nodes-list-header');
+		return text ? header.filter({ hasText: text }) : header.first();
+	}
+
+	async selectNodeCreatorItemByText(nodeName: string) {
+		await this.page.getByText(nodeName).click();
+	}
+
 	nodeByName(nodeName: string): Locator {
 		return this.page.locator(`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`);
 	}
@@ -545,6 +558,12 @@ export class CanvasPage extends BasePage {
 	async sendManualChatMessage(message: string): Promise<void> {
 		await this.getManualChatInput().fill(message);
 		await this.getManualChatModal().locator('.chat-input-send-button').click();
+	}
+	/**
+	 * Get all currently selected nodes on the canvas
+	 */
+	getSelectedNodes() {
+		return this.page.locator('[data-test-id="canvas-node"].selected');
 	}
 
 	async openExecutions() {
