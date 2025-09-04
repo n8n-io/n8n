@@ -152,7 +152,7 @@ export class LoadNodesAndCredentials {
 	}
 
 	resolveIcon(packageName: string, url: string): string | undefined {
-		const loader = this.loaders[packageName];
+		const loader = this.getLoader(packageName);
 		if (!loader) {
 			return undefined;
 		}

@@ -94,7 +94,11 @@ export class WorkflowExecutionService {
 			return false;
 		}
 
-		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const nodeType = this.nodeTypes.getByNameAndVersion(
+			node.type,
+			node.typeVersion,
+			node.packageVersion,
+		);
 
 		return nodeType.description.group.includes('trigger');
 	}

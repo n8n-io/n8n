@@ -32,14 +32,14 @@ export class NodeTypes implements INodeTypes {
 		return this.loadNodesAndCredentials.getNode(nodeType).type;
 	}
 
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+	getByNameAndVersion(nodeType: string, version?: number, packageVersion?: string): INodeType {
 		const origType = nodeType;
 
 		const toolRequested = nodeType.endsWith('Tool');
 
 		// If an existing node name ends in `Tool`, then return that node, instead of creating a fake Tool node
 		if (toolRequested && this.loadNodesAndCredentials.recognizesNode(nodeType)) {
-			const node = this.loadNodesAndCredentials.getNode(nodeType);
+			const node = this.loadNodesAndCredentials.getNode(nodeType, packageVersion);
 			return NodeHelpers.getVersionedNodeType(node.type, version);
 		}
 
@@ -48,7 +48,7 @@ export class NodeTypes implements INodeTypes {
 			nodeType = nodeType.replace(/Tool$/, '');
 		}
 
-		const node = this.loadNodesAndCredentials.getNode(nodeType);
+		const node = this.loadNodesAndCredentials.getNode(nodeType, packageVersion);
 		const versionedNodeType = NodeHelpers.getVersionedNodeType(node.type, version);
 		if (toolRequested && typeof versionedNodeType.supplyData === 'function') {
 			throw new UnexpectedError('Node already has a `supplyData` method', { extra: { nodeType } });

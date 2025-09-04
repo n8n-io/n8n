@@ -374,6 +374,7 @@ export class WorkflowExecute {
 		const destinationNodeType = workflow.nodeTypes.getByNameAndVersion(
 			destination.type,
 			destination.typeVersion,
+			destination.packageVersion,
 		);
 		// Partial execution of nodes as tools
 		if (NodeHelpers.isTool(destinationNodeType.description, destination.parameters)) {
@@ -1045,7 +1046,11 @@ export class WorkflowExecute {
 				continue;
 			}
 
-			const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const nodeType = workflow.nodeTypes.getByNameAndVersion(
+				node.type,
+				node.typeVersion,
+				node.packageVersion,
+			);
 
 			if (nodeType === undefined) {
 				// Node type is not known
@@ -1404,7 +1409,11 @@ export class WorkflowExecute {
 			return this.handleDisabledNode(inputData);
 		}
 
-		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const nodeType = workflow.nodeTypes.getByNameAndVersion(
+			node.type,
+			node.typeVersion,
+			node.packageVersion,
+		);
 		const customOperation = this.getCustomOperation(node, nodeType);
 
 		const connectionInputData = this.prepareConnectionInputData(

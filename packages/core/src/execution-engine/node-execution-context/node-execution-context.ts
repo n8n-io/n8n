@@ -396,7 +396,11 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const { workflow, node, mode, runExecutionData, runIndex, connectionInputData, executeData } =
 			this;
 
-		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const nodeType = workflow.nodeTypes.getByNameAndVersion(
+			node.type,
+			node.typeVersion,
+			node.packageVersion,
+		);
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const value = get(node.parameters, parameterName, fallbackValue);

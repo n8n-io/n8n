@@ -95,7 +95,11 @@ export class Workflow {
 
 		let nodeType: INodeType | undefined;
 		for (const node of parameters.nodes) {
-			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			nodeType = this.nodeTypes.getByNameAndVersion(
+				node.type,
+				node.typeVersion,
+				node.packageVersion,
+			);
 
 			if (nodeType === undefined) {
 				// Go on to next node when its type is not known.

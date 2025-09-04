@@ -38,6 +38,7 @@ export function findTriggerForPartialExecution(
 	const destinationNodeType = workflow.nodeTypes.getByNameAndVersion(
 		destinationNode.type,
 		destinationNode.typeVersion,
+		destinationNode.packageVersion,
 	);
 
 	if (isTriggerNode(destinationNodeType) && !destinationNode.disabled) {

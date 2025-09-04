@@ -2039,6 +2039,7 @@ export type NodeDefaults = Partial<{
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
+	packageVersion?: string;
 	defaults: NodeDefaults;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
@@ -2220,7 +2221,7 @@ export type WebhookResponseMode =
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;
-	getByNameAndVersion(nodeType: string, version?: number): INodeType;
+	getByNameAndVersion(nodeType: string, version?: number, packageVersion?: string): INodeType;
 	getKnownTypes(): IDataObject;
 }
 

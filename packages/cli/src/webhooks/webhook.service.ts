@@ -173,7 +173,11 @@ export class WebhookService {
 			return [];
 		}
 
-		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const nodeType = this.nodeTypes.getByNameAndVersion(
+			node.type,
+			node.typeVersion,
+			node.packageVersion,
+		);
 
 		if (nodeType.description.webhooks === undefined) {
 			// Node does not have any webhooks so return
