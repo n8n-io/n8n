@@ -1,5 +1,10 @@
 import { IWorkflowToImport } from '@/interfaces';
-import { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
+import {
+	PullWorkFolderRequestDto,
+	PushWorkFolderRequestDto,
+	SourceControlPreferencesRequestDto,
+	type SourceControlPreferencesResponse,
+} from '@n8n/api-types';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
@@ -24,6 +29,27 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
+import type { Request, Response, NextFunction } from 'express';
+
+/**
+ * Middleware to validate source control preferences using DTO validation
+ */
+const validateSourceControlPreferences = (req: Request, res: Response, next: NextFunction) => {
+	const validationResult = SourceControlPreferencesRequestDto.validate(req.body);
+
+	if (!validationResult.success) {
+		const errorMessages = validationResult.error.errors
+			.map((err) => `${err.path.join('.')}: ${err.message}`)
+			.join(', ');
+
+		throw new BadRequestError(`Invalid source control preferences: ${errorMessages}`);
+	}
+
+	// Attach validated data to request
+	req.body = validationResult.data;
+	next();
+};
+
 @RestController('/source-control')
 export class SourceControlController {
 	constructor(
@@ -34,15 +60,19 @@ export class SourceControlController {
 	) {}
 
 	@Get('/preferences', { middlewares: [sourceControlLicensedMiddleware], skipAuth: true })
-	async getPreferences(): Promise<SourceControlPreferences> {
-		// returns the settings with the privateKey property redacted
+	async getPreferences(): Promise<SourceControlPreferencesResponse> {
+		// returns the settings with sensitive fields redacted (privateKey, personalAccessToken)
 		const publicKey = await this.sourceControlPreferencesService.getPublicKey();
-		return { ...this.sourceControlPreferencesService.getPreferences(), publicKey };
+		return { ...this.sourceControlPreferencesService.getPreferencesForResponse(), publicKey };
 	}
 
-	@Post('/preferences', { middlewares: [sourceControlLicensedMiddleware] })
+	@Post('/preferences', {
+		middlewares: [sourceControlLicensedMiddleware, validateSourceControlPreferences],
+	})
 	@GlobalScope('sourceControl:manage')
-	async setPreferences(req: SourceControlRequest.UpdatePreferences) {
+	async setPreferences(
+		req: SourceControlRequest.UpdatePreferences,
+	): Promise<SourceControlPreferencesResponse> {
 		if (
 			req.body.branchReadOnly === undefined &&
 			this.sourceControlPreferencesService.isSourceControlConnected()
@@ -98,15 +128,20 @@ export class SourceControlController {
 				repoType: getRepoType(resultingPreferences.repositoryUrl),
 			});
 			// #endregion
-			return resultingPreferences;
+			const publicKey = await this.sourceControlPreferencesService.getPublicKey();
+			return { ...this.sourceControlPreferencesService.getPreferencesForResponse(), publicKey };
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
 
-	@Patch('/preferences', { middlewares: [sourceControlLicensedMiddleware] })
+	@Patch('/preferences', {
+		middlewares: [sourceControlLicensedMiddleware, validateSourceControlPreferences],
+	})
 	@GlobalScope('sourceControl:manage')
-	async updatePreferences(req: SourceControlRequest.UpdatePreferences) {
+	async updatePreferences(
+		req: SourceControlRequest.UpdatePreferences,
+	): Promise<SourceControlPreferencesResponse> {
 		try {
 			const sanitizedPreferences: Partial<SourceControlPreferences> = {
 				...req.body,
@@ -142,7 +177,8 @@ export class SourceControlController {
 				readOnlyInstance: resultingPreferences.branchReadOnly,
 				repoType: getRepoType(resultingPreferences.repositoryUrl),
 			});
-			return resultingPreferences;
+			const publicKey = await this.sourceControlPreferencesService.getPublicKey();
+			return { ...this.sourceControlPreferencesService.getPreferencesForResponse(), publicKey };
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

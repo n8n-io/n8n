@@ -1,11 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ValidationError } from 'class-validator';
-import { validate } from 'class-validator';
+import { ValidationError, validate } from 'class-validator';
 import { rm as fsRm } from 'fs/promises';
 import { Cipher, InstanceSettings } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, UserError, OperationalError } from 'n8n-workflow';
 import { writeFile, readFile } from 'node:fs/promises';
 import path from 'path';
 
@@ -78,7 +77,7 @@ export class SourceControlPreferencesService {
 	private async getPrivateKeyFromDatabase() {
 		const dbKeyPair = await this.getKeyPairFromDatabase();
 
-		if (!dbKeyPair) throw new UnexpectedError('Failed to find key pair in database');
+		if (!dbKeyPair) throw new OperationalError('SSH key pair not found in database');
 
 		return this.cipher.decrypt(dbKeyPair.encryptedPrivateKey);
 	}
@@ -86,7 +85,7 @@ export class SourceControlPreferencesService {
 	private async getPublicKeyFromDatabase() {
 		const dbKeyPair = await this.getKeyPairFromDatabase();
 
-		if (!dbKeyPair) throw new UnexpectedError('Failed to find key pair in database');
+		if (!dbKeyPair) throw new OperationalError('SSH key pair not found in database');
 
 		return dbKeyPair.publicKey;
 	}
@@ -111,7 +110,7 @@ export class SourceControlPreferencesService {
 				tempFilePath,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			throw new UnexpectedError('Failed to create SSH private key file', { cause: error });
+			throw new OperationalError('Failed to create SSH private key file', { cause: error });
 		}
 
 		return tempFilePath;
@@ -161,7 +160,7 @@ export class SourceControlPreferencesService {
 				loadOnStartup: true,
 			});
 		} catch (error) {
-			throw new UnexpectedError('Failed to write key pair to database', { cause: error });
+			throw new OperationalError('Failed to save SSH key pair to database', { cause: error });
 		}
 
 		// update preferences only after generating key pair to prevent endless loop
@@ -192,6 +191,98 @@ export class SourceControlPreferencesService {
 		return this.sourceControlPreferences;
 	}
 
+	/**
+	 * Get preferences with sensitive fields redacted for API responses
+	 */
+	getPreferencesForResponse(): Omit<SourceControlPreferences, 'personalAccessToken'> {
+		const preferences = this.sourceControlPreferences;
+		// Return preferences without the personalAccessToken field
+		const { personalAccessToken, ...safePreferences } = preferences;
+		return safePreferences;
+	}
+
+	/**
+	 * Encrypts a personal access token for secure storage
+	 */
+	private encryptPersonalAccessToken(token: string): string {
+		return this.cipher.encrypt(token);
+	}
+
+	/**
+	 * Decrypts a personal access token from storage
+	 */
+	private decryptPersonalAccessToken(encryptedToken: string): string {
+		return this.cipher.decrypt(encryptedToken);
+	}
+
+	/**
+	 * Prepares preferences for database storage by encrypting sensitive fields
+	 */
+	private preparePreferencesForStorage(
+		preferences: Partial<SourceControlPreferences>,
+	): Partial<SourceControlPreferences> {
+		const preferencesToStore = { ...preferences };
+
+		// Encrypt personal access token if provided
+		if (preferencesToStore.personalAccessToken) {
+			preferencesToStore.personalAccessToken = this.encryptPersonalAccessToken(
+				preferencesToStore.personalAccessToken,
+			);
+		}
+
+		return preferencesToStore;
+	}
+
+	/**
+	 * Checks if a value is encrypted using n8n's cipher envelope format
+	 * n8n's cipher creates base64 strings that start with 'Salted__' when decoded
+	 */
+	private isEncryptedValue(value: string): boolean {
+		try {
+			// n8n cipher always creates base64 strings that start with the RANDOM_BYTES 'Salted__'
+			// when decoded. Check for valid base64 and minimum length for encrypted content.
+			if (value.length < 24) return false; // Too short to be encrypted
+
+			// Check if it's valid base64
+			const decoded = Buffer.from(value, 'base64');
+			if (decoded.length < 16) return false;
+
+			// Check if it starts with n8n's cipher prefix 'Salted__'
+			const expectedPrefix = Buffer.from('53616c7465645f5f', 'hex'); // 'Salted__'
+			return decoded.subarray(0, 8).equals(expectedPrefix);
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Prepares preferences from database by decrypting sensitive fields
+	 */
+	private preparePreferencesFromStorage(
+		preferences: Partial<SourceControlPreferences>,
+	): Partial<SourceControlPreferences> {
+		const decryptedPreferences = { ...preferences };
+
+		// Decrypt personal access token if it exists and is encrypted
+		if (decryptedPreferences.personalAccessToken) {
+			try {
+				// Only attempt decryption if it has the proper encryption envelope
+				if (this.isEncryptedValue(decryptedPreferences.personalAccessToken)) {
+					decryptedPreferences.personalAccessToken = this.decryptPersonalAccessToken(
+						decryptedPreferences.personalAccessToken,
+					);
+				}
+			} catch (error) {
+				this.logger.warn('Failed to decrypt personal access token, treating as plain text', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+				// If decryption fails, assume it's already plain text (backward compatibility)
+			}
+		}
+
+		return decryptedPreferences;
+	}
+
 	async validateSourceControlPreferences(
 		preferences: Partial<SourceControlPreferences>,
 		allowMissingProperties = true,
@@ -203,9 +294,35 @@ export class SourceControlPreferencesService {
 			stopAtFirstError: false,
 			validationError: { target: false },
 		});
+
+		// Add custom cross-field validation for HTTPS protocol
+		if (preferencesObject.protocol === 'https') {
+			const httpsValidationErrors: ValidationError[] = [];
+
+			if (!preferencesObject.username) {
+				const usernameError = new ValidationError();
+				usernameError.property = 'username';
+				usernameError.constraints = {
+					required: 'Username is required when using HTTPS protocol',
+				};
+				httpsValidationErrors.push(usernameError);
+			}
+
+			if (!preferencesObject.personalAccessToken) {
+				const tokenError = new ValidationError();
+				tokenError.property = 'personalAccessToken';
+				tokenError.constraints = {
+					required: 'Personal access token is required when using HTTPS protocol',
+				};
+				httpsValidationErrors.push(tokenError);
+			}
+
+			validationResult.push(...httpsValidationErrors);
+		}
+
 		if (validationResult.length > 0) {
-			throw new UnexpectedError('Invalid source control preferences', {
-				extra: { preferences: validationResult },
+			throw new UserError('Invalid source control preferences', {
+				extra: { validationErrors: validationResult },
 			});
 		}
 		return validationResult;
@@ -219,9 +336,15 @@ export class SourceControlPreferencesService {
 
 		if (noKeyPair) await this.generateAndSaveKeyPair();
 
+		// Set preferences in memory (without encryption for runtime use)
 		this.sourceControlPreferences = preferences;
+
 		if (saveToDb) {
-			const settingsValue = JSON.stringify(this._sourceControlPreferences);
+			// Prepare preferences for storage by encrypting sensitive fields
+			const preferencesForStorage = this.preparePreferencesForStorage({
+				...this._sourceControlPreferences,
+			});
+			const settingsValue = JSON.stringify(preferencesForStorage);
 			try {
 				await this.settingsRepository.save(
 					{
@@ -232,7 +355,7 @@ export class SourceControlPreferencesService {
 					{ transaction: false },
 				);
 			} catch (error) {
-				throw new UnexpectedError('Failed to save source control preferences', { cause: error });
+				throw new OperationalError('Failed to save source control preferences', { cause: error });
 			}
 		}
 		return this.sourceControlPreferences;
@@ -246,11 +369,13 @@ export class SourceControlPreferencesService {
 		});
 		if (loadedPreferences) {
 			try {
-				const preferences = jsonParse<SourceControlPreferences>(loadedPreferences.value);
-				if (preferences) {
+				const storedPreferences = jsonParse<SourceControlPreferences>(loadedPreferences.value);
+				if (storedPreferences) {
+					// Decrypt sensitive fields from storage
+					const decryptedPreferences = this.preparePreferencesFromStorage(storedPreferences);
 					// set local preferences but don't write back to db
-					await this.setPreferences(preferences, false);
-					return preferences;
+					await this.setPreferences(decryptedPreferences, false);
+					return decryptedPreferences;
 				}
 			} catch (error) {
 				this.logger.warn(
