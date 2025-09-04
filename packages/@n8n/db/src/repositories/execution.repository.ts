@@ -17,7 +17,6 @@ import {
 	LessThanOrEqual,
 	MoreThanOrEqual,
 	Not,
-	Raw,
 	Repository,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
@@ -636,14 +635,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		lastId?: string;
 		workflowIds?: string[];
 		status?: ExecutionStatus;
-		excludedWorkflowIds?: string[];
 	}): Promise<number> {
 		const executionsCount = await this.count({
 			where: {
 				...(data.lastId && { id: LessThan(data.lastId) }),
 				...(data.status && { ...this.getStatusCondition(data.status) }),
 				...(data.workflowIds && { workflowId: In(data.workflowIds) }),
-				...(data.excludedWorkflowIds && { workflowId: Not(In(data.excludedWorkflowIds)) }),
 			},
 			take: data.limit,
 		});
@@ -675,19 +672,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		lastId?: string;
 		workflowIds?: string[];
 		status?: ExecutionStatus;
-		excludedExecutionsIds?: string[];
 	}): Promise<IExecutionBase[]> {
 		let where: FindOptionsWhere<IExecutionFlattedDb> = {};
 
-		if (params.lastId && params.excludedExecutionsIds?.length) {
-			where.id = Raw((id) => `${id} < :lastId AND ${id} NOT IN (:...excludedExecutionsIds)`, {
-				lastId: params.lastId,
-				excludedExecutionsIds: params.excludedExecutionsIds,
-			});
-		} else if (params.lastId) {
+		if (params.lastId) {
 			where.id = LessThan(params.lastId);
-		} else if (params.excludedExecutionsIds?.length) {
-			where.id = Not(In(params.excludedExecutionsIds));
 		}
 
 		if (params.status) {
