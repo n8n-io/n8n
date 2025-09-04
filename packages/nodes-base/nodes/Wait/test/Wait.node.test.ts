@@ -133,5 +133,39 @@ describe('Execute Wait Node', () => {
 		});
 	});
 
+	test('should reject if canceled', async () => {
+		const putExecutionToWaitSpy = jest.fn();
+		const waitNode = new Wait();
+
+		let cancelSignal: (() => void) | null = null;
+
+		const executeFunctionsMock = mock<IExecuteFunctions>({
+			getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'resume') return 'timeInterval';
+				if (paramName === 'unit') return 'seconds';
+				if (paramName === 'amount') return 60;
+			}),
+			getTimezone: jest.fn().mockReturnValue('UTC'),
+			putExecutionToWait: putExecutionToWaitSpy,
+			getInputData: jest.fn(),
+			getNode: jest.fn(),
+			onExecutionCancellation: (handler) => {
+				cancelSignal = handler;
+			},
+		});
+
+		const waitPromise = waitNode.execute(executeFunctionsMock);
+
+		for (let index = 0; index < 20; index++) {
+			await new Promise((r) => setTimeout(r, 10));
+			if (cancelSignal !== null) break;
+		}
+
+		expect(cancelSignal).not.toBeNull();
+		cancelSignal!();
+
+		await expect(waitPromise).rejects.toThrow(NodeOperationError);
+	});
+
 	new NodeTestHarness().setupTests();
 });
