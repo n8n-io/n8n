@@ -45,7 +45,10 @@ export async function execute(
 	for (const match of matches) {
 		const updatedRows = await dataStoreProxy.updateRows({
 			data: row,
-			filter: { id: match.json.id },
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'id', condition: 'eq', value: match.json.id }],
+			},
 		});
 		if (updatedRows.length !== 1) {
 			throw new NodeOperationError(this.getNode(), 'invariant broken');

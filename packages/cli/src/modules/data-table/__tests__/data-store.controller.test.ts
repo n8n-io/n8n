@@ -3181,7 +3181,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 	test('should not update row when data store does not exist', async () => {
 		const project = await createTeamProject('test project', owner);
 		const payload = {
-			filter: { name: 'Alice' },
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 			data: { age: 31 },
 		};
 
@@ -3201,7 +3201,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { name: 'Alice' },
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 			data: { age: 31 },
 		};
 
@@ -3247,7 +3247,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { name: 'Alice' },
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 			data: { name: 'Alicia', age: 31, active: false, birthday: new Date('1990-01-02') },
 		};
 
@@ -3284,7 +3284,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { name: 'Alice' },
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 			data: { age: 31 },
 		};
 
@@ -3312,7 +3312,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { name: 'Alice' },
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 			data: { age: 31 },
 		};
 
@@ -3343,7 +3343,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { name: 'Alice' },
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 			data: { age: 31 },
 		};
 
@@ -3377,7 +3377,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { id: 1 },
+			filter: { type: 'and', filters: [{ columnName: 'id', condition: 'eq', value: 1 }] },
 			data: { age: 31 },
 		};
 
@@ -3422,7 +3422,13 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { name: 'Alice', age: 30 },
+			filter: {
+				type: 'and',
+				filters: [
+					{ columnName: 'name', condition: 'eq', value: 'Alice' },
+					{ columnName: 'age', condition: 'eq', value: 30 },
+				],
+			},
 			data: { department: 'Management' },
 		};
 
@@ -3470,7 +3476,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { name: 'Charlie' },
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Charlie' }] },
 			data: { age: 25 },
 		};
 
@@ -3516,7 +3522,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { name: 'Alice' },
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 			data: {},
 		};
 
@@ -3535,7 +3541,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { name: 'Alice' },
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 			data: { invalidColumn: 'value' },
 		};
 
@@ -3554,7 +3560,10 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { invalidColumn: 'Alice' },
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'invalidColumn', condition: 'eq', value: 'Alice' }],
+			},
 			data: { name: 'Updated' },
 		};
 
@@ -3576,7 +3585,10 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { age: 'invalid_number' },
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'age', condition: 'eq', value: 'invalid_number' }],
+			},
 			data: { name: 'Updated' },
 		};
 
@@ -3598,7 +3610,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { name: 'Alice' },
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 			data: { age: 'invalid_number' },
 		};
 
@@ -3621,7 +3633,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { name: 'Alice' },
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 			data: { age: 31 }, // Only updating age, not name or active
 		};
 
@@ -3652,7 +3664,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { name: 'Alice' },
+			filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'Alice' }] },
 			data: { birthdate: '1995-05-15T12:30:00.000Z' },
 		};
 
@@ -3687,7 +3699,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 		});
 
 		const payload = {
-			filter: { active: true },
+			filter: { type: 'and', filters: [{ columnName: 'active', condition: 'eq', value: true }] },
 			data: { active: false },
 			returnData: true,
 		};
@@ -3714,4 +3726,32 @@ describe('PATCH /projects/:projectId/data-tables/:dataStoreId/rows', () => {
 			},
 		]);
 	});
+
+	test.each(['like', 'ilike'])(
+		'should auto-wrap %s filters if no wildcard is present',
+		async (condition) => {
+			const dataStore = await createDataStore(memberProject, {
+				columns: [
+					{
+						name: 'name',
+						type: 'string',
+					},
+				],
+				data: [{ name: 'Alice Smith' }, { name: 'Bob Jones' }],
+			});
+
+			const payload = {
+				filter: { type: 'and', filters: [{ columnName: 'name', value: 'Alice', condition }] },
+				data: { name: 'Alice Johnson' },
+				returnData: true,
+			};
+
+			const result = await authMemberAgent
+				.patch(`/projects/${memberProject.id}/data-tables/${dataStore.id}/rows`)
+				.send(payload)
+				.expect(200);
+
+			expect(result.body.data).toEqual([expect.objectContaining({ name: 'Alice Johnson' })]);
+		},
+	);
 });
