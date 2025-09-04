@@ -58,6 +58,10 @@ export class LogsPanel {
 	 * Actions
 	 */
 
+	async open(): Promise<void> {
+		await this.root.getByTestId('logs-overview-header').click();
+	}
+
 	async clickLogEntryAtRow(rowIndex: number): Promise<void> {
 		await this.getLogEntries().nth(rowIndex).click();
 	}

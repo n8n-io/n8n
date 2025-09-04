@@ -562,8 +562,4 @@ export class CanvasPage extends BasePage {
 	async openExecutions() {
 		await this.page.getByTestId('radio-button-executions').click();
 	}
-
-	async openLogsPanel(): Promise<void> {
-		await this.page.getByTestId('logs-overview-header').click();
-	}
 }

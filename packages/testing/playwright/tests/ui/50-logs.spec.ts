@@ -25,7 +25,7 @@ test.describe('Logs', () => {
 		await setupRequirements({ workflow: 'Workflow_loop.json' });
 
 		await n8n.canvas.clickZoomToFitButton();
-		await n8n.canvas.openLogsPanel();
+		await n8n.canvas.logsPanel.open();
 		await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(0);
 
 		await n8n.canvas.clickExecuteWorkflowButton();
@@ -68,7 +68,7 @@ test.describe('Logs', () => {
 		await setupRequirements({ workflow: 'Workflow_if.json' });
 
 		await n8n.canvas.clickZoomToFitButton();
-		await n8n.canvas.openLogsPanel();
+		await n8n.canvas.logsPanel.open();
 
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
 		await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(6);
@@ -94,7 +94,7 @@ test.describe('Logs', () => {
 		await setupRequirements({ workflow: 'Workflow_ai_agent.json' });
 
 		await n8n.canvas.clickZoomToFitButton();
-		await n8n.canvas.openLogsPanel();
+		await n8n.canvas.logsPanel.open();
 		await n8n.canvas.logsPanel.sendManualChatMessage('Hi!');
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
 		await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(0)).toContainText('Hi!');
@@ -142,7 +142,7 @@ test.describe('Logs', () => {
 		await setupRequirements({ workflow: 'Workflow_if.json' });
 
 		await n8n.canvas.clickZoomToFitButton();
-		await n8n.canvas.openLogsPanel();
+		await n8n.canvas.logsPanel.open();
 		await n8n.canvas.clickExecuteWorkflowButton();
 
 		await n8n.canvas.logsPanel.clickLogEntryAtRow(2); // Run #1 of 'Edit Fields' node; input is 'Code' node
@@ -194,7 +194,7 @@ test.describe('Logs', () => {
 		await setupRequirements({ workflow: 'Workflow_if.json' });
 
 		await n8n.canvas.clickZoomToFitButton();
-		await n8n.canvas.openLogsPanel();
+		await n8n.canvas.logsPanel.open();
 
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
 		await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(6);
@@ -209,7 +209,7 @@ test.describe('Logs', () => {
 		await setupRequirements({ workflow: 'Workflow_ai_agent.json' });
 
 		await n8n.canvas.clickZoomToFitButton();
-		await n8n.canvas.openLogsPanel();
+		await n8n.canvas.logsPanel.open();
 
 		await n8n.canvas.logsPanel.sendManualChatMessage('Hi!');
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
@@ -238,7 +238,7 @@ test.describe('Logs', () => {
 
 		await n8n.canvas.canvasBody().click({ position: { x: 0, y: 0 } }); // click logs panel to deselect nodes in canvas
 		await n8n.canvas.clickZoomToFitButton();
-		await n8n.canvas.openLogsPanel();
+		await n8n.canvas.logsPanel.open();
 
 		await n8n.canvas.clickExecuteWorkflowButton();
 
