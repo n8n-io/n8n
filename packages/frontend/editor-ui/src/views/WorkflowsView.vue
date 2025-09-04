@@ -26,6 +26,7 @@ import SuggestedWorkflowCard from '@/experiments/personalizedTemplates/component
 import SuggestedWorkflows from '@/experiments/personalizedTemplates/components/SuggestedWorkflows.vue';
 import { usePersonalizedTemplatesStore } from '@/experiments/personalizedTemplates/stores/personalizedTemplates.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
 import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import InsightsSummary from '@/features/insights/components/InsightsSummary.vue';
@@ -124,6 +125,7 @@ const templatesStore = useTemplatesStore();
 const aiStarterTemplatesStore = useAITemplatesStarterCollectionStore();
 const personalizedTemplatesStore = usePersonalizedTemplatesStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
+const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 
 const documentTitle = useDocumentTitle();
@@ -437,6 +439,16 @@ const showPersonalizedTemplates = computed(
 	() => !loading.value && personalizedTemplatesStore.isFeatureEnabled(),
 );
 
+const showReadyToRunV2Card = computed(() => {
+	return (
+		!loading.value &&
+		readyToRunWorkflowsV2Store.isFeatureEnabled &&
+		readyToRunWorkflowsV2Store.userCanClaimOpenAiCredits &&
+		!readOnlyEnv.value &&
+		projectPermissions.value.workflow.create
+	);
+});
+
 /**
  * WATCHERS, STORE SUBSCRIPTIONS AND EVENT BUS HANDLERS
  */
@@ -498,7 +510,8 @@ const showInsights = computed(() => {
 	return (
 		projectPages.isOverviewSubPage &&
 		insightsStore.isSummaryEnabled &&
-		(!personalizedTemplatesV2Store.isFeatureEnabled() || workflowListResources.value.length > 0)
+		(!personalizedTemplatesV2Store.isFeatureEnabled() || workflowListResources.value.length > 0) &&
+		(!readyToRunWorkflowsV2Store.isFeatureEnabled || workflowListResources.value.length > 0)
 	);
 });
 
@@ -977,6 +990,18 @@ const onShowArchived = async () => {
 const handleDismissReadyToRunCallout = () => {
 	readyToRunWorkflowsStore.dismissCallout();
 	readyToRunWorkflowsStore.trackDismissCallout();
+};
+
+const handleReadyToRunV2Click = async () => {
+	const projectId = projectPages.isOverviewSubPage
+		? personalProject.value?.id
+		: (route.params.projectId as string);
+
+	await readyToRunWorkflowsV2Store.claimCreditsAndOpenWorkflow(
+		'card',
+		route.params.folderId as string,
+		projectId,
+	);
 };
 
 const onWorkflowActiveToggle = (data: { id: string; active: boolean }) => {
@@ -2037,6 +2062,25 @@ const onNameSubmit = async (name: string) => {
 					v-if="!readOnlyEnv && projectPermissions.workflow.create"
 					:class="['text-center', 'mt-2xl', $style.actionsContainer]"
 				>
+					<N8nCard
+						v-if="showReadyToRunV2Card"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="ready-to-run-v2-card"
+						@click="handleReadyToRunV2Click"
+					>
+						<div :class="$style.emptyStateCardContent">
+							<N8nIcon
+								:class="$style.emptyStateCardIcon"
+								icon="sparkles"
+								color="foreground-dark"
+								:stroke-width="1.5"
+							/>
+							<N8nText size="large" class="mt-xs">
+								{{ i18n.baseText('workflows.empty.readyToRunV2') }}
+							</N8nText>
+						</div>
+					</N8nCard>
 					<N8nCard
 						:class="$style.emptyStateCard"
 						hoverable

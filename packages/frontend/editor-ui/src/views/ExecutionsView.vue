@@ -12,8 +12,10 @@ import InsightsSummary from '@/features/insights/components/InsightsSummary.vue'
 import { useInsightsStore } from '@/features/insights/insights.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
+import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { storeToRefs } from 'pinia';
-import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -23,12 +25,23 @@ const externalHooks = useExternalHooks();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 const insightsStore = useInsightsStore();
+const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
+const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
 const overview = useProjectPages();
 
 const { executionsCount, executionsCountEstimated, filters, allExecutions } =
 	storeToRefs(executionsStore);
+
+const showInsights = computed(() => {
+	return (
+		overview.isOverviewSubPage &&
+		insightsStore.isSummaryEnabled &&
+		(!personalizedTemplatesV2Store.isFeatureEnabled() || allExecutions.value.length > 0) &&
+		(!readyToRunWorkflowsV2Store.isFeatureEnabled || allExecutions.value.length > 0)
+	);
+});
 
 onBeforeMount(async () => {
 	await loadWorkflows();
@@ -96,7 +109,7 @@ async function onExecutionStop() {
 	>
 		<ProjectHeader>
 			<InsightsSummary
-				v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
+				v-if="showInsights"
 				:loading="insightsStore.weeklySummary.isLoading"
 				:summary="insightsStore.weeklySummary.state"
 				time-range="week"

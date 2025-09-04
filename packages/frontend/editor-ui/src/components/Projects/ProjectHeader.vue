@@ -21,6 +21,7 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/stores/ui.store';
 import { PROJECT_DATA_STORES } from '@/features/dataStore/constants';
+import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
 
 const route = useRoute();
 const router = useRouter();
@@ -29,6 +30,7 @@ const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 
 const projectPages = useProjectPages();
 
@@ -241,6 +243,10 @@ const sectionDescription = computed(() => {
 	if (projectPages.isSharedSubPage) {
 		return i18n.baseText('projects.header.shared.subtitle');
 	} else if (projectPages.isOverviewSubPage) {
+		// Hide description when ready-to-run workflows V2 feature is enabled
+		if (readyToRunWorkflowsV2Store.isFeatureEnabled) {
+			return null;
+		}
 		return i18n.baseText(
 			settingsStore.isDataTableFeatureEnabled
 				? 'projects.header.overview.subtitleWithDataTables'

@@ -63,6 +63,7 @@ import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
 import { dismissBannerPermanently } from '@n8n/rest-api-client';
 import type { BannerName } from '@n8n/api-types';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
@@ -96,6 +97,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			write: identity,
 		},
 	});
+
+	const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 	const modalsById = ref<Record<string, ModalState>>({
 		...Object.fromEntries(
 			[
@@ -230,7 +233,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 
 	const modalStack = ref<string[]>([]);
-	const sidebarMenuCollapsedPreference = useLocalStorage<boolean>('sidebar.collapsed', false);
+	const initialCollapsedState = readyToRunWorkflowsV2Store.isFeatureEnabled ? true : false;
+	const sidebarMenuCollapsedPreference = useLocalStorage<boolean>(
+		'sidebar.collapsed',
+		initialCollapsedState,
+	);
 	const sidebarMenuCollapsed = ref<boolean>(sidebarMenuCollapsedPreference.value);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);

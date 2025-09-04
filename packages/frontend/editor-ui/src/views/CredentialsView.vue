@@ -25,6 +25,8 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { Project } from '@/types/projects.types';
+import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
+import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { isCredentialsResource } from '@/utils/typeGuards';
 import { N8nCheckbox } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -46,6 +48,8 @@ const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const insightsStore = useInsightsStore();
+const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
+const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 
 const documentTitle = useDocumentTitle();
 const route = useRoute();
@@ -111,6 +115,15 @@ const projectPermissions = computed(() =>
 
 const personalProject = computed<Project | null>(() => {
 	return projectsStore.personalProject;
+});
+
+const showInsights = computed(() => {
+	return (
+		overview.isOverviewSubPage &&
+		insightsStore.isSummaryEnabled &&
+		(!personalizedTemplatesV2Store.isFeatureEnabled() || allCredentials.value.length > 0) &&
+		(!readyToRunWorkflowsV2Store.isFeatureEnabled || allCredentials.value.length > 0)
+	);
 });
 
 const setRouteCredentialId = (credentialId?: string) => {
@@ -259,7 +272,7 @@ onMounted(() => {
 		<template #header>
 			<ProjectHeader>
 				<InsightsSummary
-					v-if="overview.isOverviewSubPage && insightsStore.isSummaryEnabled"
+					v-if="showInsights"
 					:loading="insightsStore.weeklySummary.isLoading"
 					:summary="insightsStore.weeklySummary.state"
 					time-range="week"

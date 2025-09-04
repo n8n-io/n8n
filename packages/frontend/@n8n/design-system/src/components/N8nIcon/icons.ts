@@ -169,6 +169,7 @@ import IconLucideSettings from '~icons/lucide/settings';
 import IconLucideShare from '~icons/lucide/share';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
+import IconLucideSparkles from '~icons/lucide/sparkles';
 import IconLucideSquare from '~icons/lucide/square';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquarePen from '~icons/lucide/square-pen';
@@ -583,6 +584,7 @@ export const updatedIconSet = {
 	share: IconLucideShare,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
 	smile: IconLucideSmile,
+	sparkles: IconLucideSparkles,
 	square: IconLucideSquare,
 	'square-check': IconLucideSquareCheck,
 	'square-pen': IconLucideSquarePen,
