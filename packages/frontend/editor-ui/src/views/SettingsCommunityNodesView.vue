@@ -188,7 +188,7 @@ onBeforeUnmount(() => {
 		<div v-else :class="$style.cardsContainer">
 			<CommunityPackageCard
 				v-for="communityPackage in communityNodesStore.getInstalledPackages"
-				:key="communityPackage.packageName"
+				:key="communityPackage.id"
 				:community-package="communityPackage"
 			></CommunityPackageCard>
 		</div>

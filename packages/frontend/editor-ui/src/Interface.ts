@@ -790,9 +790,7 @@ export interface NodeMetadataMap {
 	[nodeName: string]: INodeMetadata;
 }
 
-export interface CommunityPackageMap {
-	[name: string]: PublicInstalledPackage;
-}
+export type CommunityPackageMap = Map<string, PublicInstalledPackage>;
 
 export interface ICredentialTypeMap {
 	[name: string]: ICredentialType;

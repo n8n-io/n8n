@@ -10,7 +10,7 @@ const LOADER_DELAY = 300;
 
 export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => {
 	const availablePackageCount = ref(-1);
-	const installedPackages = ref<CommunityPackageMap>({});
+	const installedPackages = ref<CommunityPackageMap>(new Map());
 
 	// Stores
 
@@ -19,7 +19,7 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 	// Computed
 
 	const getInstalledPackages = computed(() => {
-		return Object.values(installedPackages.value).sort((a, b) =>
+		return Array.from(installedPackages.value.values()).sort((a, b) =>
 			a.packageName.localeCompare(b.packageName),
 		);
 	});
@@ -33,21 +33,17 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 	};
 
 	const setInstalledPackages = (packages: PublicInstalledPackage[]) => {
-		installedPackages.value = packages.reduce(
-			(packageMap: CommunityPackageMap, pack: PublicInstalledPackage) => {
-				packageMap[pack.packageName] = pack;
-				return packageMap;
-			},
-			{},
-		);
+		installedPackages.value = new Map(packages.map((pack) => [pack.id, pack]));
 	};
 
 	const fetchInstalledPackages = async (): Promise<void> => {
-		const installedPackages = await communityNodesApi.getInstalledCommunityNodes(
+		const newInstalledPackages = await communityNodesApi.getInstalledCommunityNodes(
 			rootStore.restApiContext,
 		);
-		setInstalledPackages(installedPackages);
-		const timeout = installedPackages.length > 0 ? 0 : LOADER_DELAY;
+		setInstalledPackages(newInstalledPackages);
+
+		const timeout = newInstalledPackages.length > 0 ? 0 : LOADER_DELAY;
+
 		setTimeout(() => {
 			return;
 		}, timeout);
@@ -67,26 +63,30 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		await fetchInstalledPackages();
 	};
 
-	const uninstallPackage = async (packageName: string): Promise<void> => {
-		await communityNodesApi.uninstallPackage(rootStore.restApiContext, packageName);
-		removePackageByName(packageName);
+	const removePackage = (id: string): void => {
+		installedPackages.value.delete(id);
 	};
 
-	const removePackageByName = (name: string): void => {
-		const { [name]: removedPackage, ...remainingPackages } = installedPackages.value;
-		installedPackages.value = remainingPackages;
+	const uninstallPackage = async (id: string): Promise<void> => {
+		const pack = installedPackages.value.get(id);
+		if (!pack) return;
+
+		await communityNodesApi.uninstallPackage(
+			rootStore.restApiContext,
+			pack.packageName,
+			pack.installedVersion,
+		);
+		removePackage(id);
 	};
 
 	const updatePackageObject = (newPackage: PublicInstalledPackage) => {
-		installedPackages.value[newPackage.packageName] = newPackage;
+		installedPackages.value.set(newPackage.id, newPackage);
 	};
 
-	const updatePackage = async (
-		packageName: string,
-		version?: string,
-		checksum?: string,
-	): Promise<void> => {
-		const packageToUpdate = installedPackages.value[packageName];
+	const updatePackage = async (id: string, version: string, checksum?: string): Promise<void> => {
+		const packageToUpdate = installedPackages.value.get(id);
+		if (!packageToUpdate) return;
+
 		const updatedPackage = await communityNodesApi.updatePackage(
 			rootStore.restApiContext,
 			packageToUpdate.packageName,
@@ -96,12 +96,12 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		updatePackageObject(updatedPackage);
 	};
 
-	const getInstalledPackage = async (packageName: string) => {
+	const getInstalledPackage = async (id: string) => {
 		if (!getInstalledPackages.value.length) {
 			await fetchInstalledPackages();
 		}
 
-		return getInstalledPackages.value.find((p) => p.packageName === packageName);
+		return installedPackages.value.get(id);
 	};
 
 	return {
