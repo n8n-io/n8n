@@ -367,7 +367,7 @@ jobs:
           context: .
           file: ./docker/images/runners/Dockerfile
           build-args: |
-            NODE_VERSION=22
+            NODE_VERSION=22.19
             PYTHON_VERSION=3.13
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
