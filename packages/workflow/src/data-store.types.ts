@@ -78,8 +78,6 @@ export type DataStoreColumnJsType = string | number | boolean | Date | null;
 
 export const DATA_TABLE_SYSTEM_COLUMNS = ['id', 'createdAt', 'updatedAt'] as const;
 
-export const DATA_TABLE_NODE_DISPLAY_NAME = 'Data Table';
-
 export type DataStoreRowReturnBase = {
 	id: number;
 	createdAt: Date;

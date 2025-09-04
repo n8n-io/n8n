@@ -32,6 +32,7 @@ export function makeAddRow(operation: string, displayOptions: IDisplayOptions) {
 				},
 				addAllFields: true,
 				multiKeyMatch: true,
+				hideNoDataError: true,
 			},
 		},
 		displayOptions,
