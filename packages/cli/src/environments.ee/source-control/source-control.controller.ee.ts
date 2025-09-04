@@ -34,7 +34,7 @@ import type { Request, Response, NextFunction } from 'express';
 /**
  * Middleware to validate source control preferences using DTO validation
  */
-const validateSourceControlPreferences = (req: Request, res: Response, next: NextFunction) => {
+const validateSourceControlPreferences = (req: Request, _res: Response, next: NextFunction) => {
 	const validationResult = SourceControlPreferencesRequestDto.validate(req.body);
 
 	if (!validationResult.success) {

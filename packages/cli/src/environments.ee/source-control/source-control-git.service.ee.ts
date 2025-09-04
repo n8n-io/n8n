@@ -378,32 +378,6 @@ export class SourceControlGitService {
 	}
 
 	/**
-	 * Transforms an HTTPS Git repository URL to include embedded credentials.
-	 * This is used as a fallback authentication method for Git providers.
-	 */
-	private createAuthenticatedUrl(
-		repositoryUrl: string,
-		username: string,
-		personalAccessToken: string,
-	): string {
-		try {
-			const url = new URL(repositoryUrl);
-			// Encode credentials to handle special characters
-			const encodedUsername = encodeURIComponent(username);
-			const encodedToken = encodeURIComponent(personalAccessToken);
-			url.username = encodedUsername;
-			url.password = encodedToken;
-			return url.toString();
-		} catch (error) {
-			this.logger.error('Failed to create authenticated URL', {
-				repositoryUrl: repositoryUrl.replace(/\/\/[^@/]+@/, '//[REDACTED]@'), // Sanitize existing auth in logs
-				error: error instanceof Error ? error.message : String(error),
-			});
-			throw new UnexpectedError('Invalid repository URL format', { cause: error });
-		}
-	}
-
-	/**
 	 * Re-authenticate Git based on current preferences.
 	 * This ensures credentials are always fresh before operations.
 	 */

@@ -185,9 +185,6 @@ describe('Source Control Protocol Switching Integration Tests', () => {
 	describe('Service Integration During Protocol Switching', () => {
 		test('should handle Git service re-authentication when switching protocols', async () => {
 			// Mock git service methods
-			const reAuthenticateSpy = jest
-				.spyOn(sourceControlGitService, 'reAuthenticate')
-				.mockResolvedValue();
 			const setGitSshCommandSpy = jest
 				.spyOn(sourceControlGitService, 'setGitSshCommand')
 				.mockResolvedValue();
@@ -232,7 +229,6 @@ describe('Source Control Protocol Switching Integration Tests', () => {
 			expect(sourceControlPreferencesService.getPreferences().username).toBe('testuser');
 
 			// Clean up mocks
-			reAuthenticateSpy.mockRestore();
 			setGitSshCommandSpy.mockRestore();
 			setGitHttpsAuthSpy.mockRestore();
 		});

@@ -3,7 +3,6 @@ import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
-import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import { SourceControlGitService } from '@/environments.ee/source-control/source-control-git.service.ee';
 import { Telemetry } from '@/telemetry';
 import type { SourceControlPreferences } from '@/environments.ee/source-control/types/source-control-preferences';
@@ -23,14 +22,12 @@ const testServer = utils.setupTestServer({
 });
 
 let sourceControlPreferencesService: SourceControlPreferencesService;
-let sourceControlService: SourceControlService;
 
 beforeAll(async () => {
 	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
-	sourceControlService = Container.get(SourceControlService);
 });
 
 describe('Source Control HTTPS Integration Tests', () => {
@@ -45,7 +42,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 	describe('HTTPS Authentication Flow', () => {
 		test('should successfully configure HTTPS authentication', async () => {
 			const httpsPreferences = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				repositoryUrl: 'https://github.com/n8n-test/test-repo.git',
 				branchName: 'main',
 				username: 'testuser',
@@ -60,7 +57,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 				.expect(200);
 
 			expect(response.body).toMatchObject({
-				protocol: 'https',
+				protocol: 'https' as const,
 				repositoryUrl: 'https://github.com/n8n-test/test-repo.git',
 				branchName: 'main',
 				username: 'testuser',
@@ -74,7 +71,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 
 		test('should validate HTTPS preferences with missing username', async () => {
 			const invalidHttpsPreferences = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				repositoryUrl: 'https://github.com/n8n-test/test-repo.git',
 				branchName: 'main',
 				personalAccessToken: 'ghp_test123456789',
@@ -89,7 +86,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 
 		test('should validate HTTPS preferences with missing personal access token', async () => {
 			const invalidHttpsPreferences = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				repositoryUrl: 'https://github.com/n8n-test/test-repo.git',
 				branchName: 'main',
 				username: 'testuser',
@@ -104,7 +101,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 
 		test('should reject invalid repository URL format', async () => {
 			const invalidHttpsPreferences = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				repositoryUrl: 'invalid-url',
 				branchName: 'main',
 				username: 'testuser',
@@ -122,7 +119,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 			await authOwnerAgent
 				.post('/source-control/preferences')
 				.send({
-					protocol: 'ssh',
+					protocol: 'ssh' as const,
 					repositoryUrl: 'git@github.com:n8n-test/test-repo.git',
 					branchName: 'main',
 					keyGeneratorType: 'ed25519',
@@ -131,7 +128,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 
 			// Switch to HTTPS
 			const httpsPreferences = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				repositoryUrl: 'https://github.com/n8n-test/test-repo.git',
 				branchName: 'main',
 				username: 'testuser',
@@ -153,7 +150,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 			await authOwnerAgent
 				.post('/source-control/preferences')
 				.send({
-					protocol: 'https',
+					protocol: 'https' as const,
 					repositoryUrl: 'https://github.com/n8n-test/test-repo.git',
 					branchName: 'main',
 					username: 'testuser',
@@ -184,7 +181,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 	describe('HTTPS Security Features', () => {
 		test('should encrypt personal access token in database', async () => {
 			const httpsPreferences = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				repositoryUrl: 'https://github.com/n8n-test/test-repo.git',
 				branchName: 'main',
 				username: 'testuser',
@@ -208,7 +205,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 
 		test('should sanitize credentials from API responses', async () => {
 			const httpsPreferences = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				repositoryUrl: 'https://github.com/n8n-test/test-repo.git',
 				branchName: 'main',
 				username: 'testuser',
@@ -236,7 +233,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 			await authOwnerAgent
 				.post('/source-control/preferences')
 				.send({
-					protocol: 'https',
+					protocol: 'https' as const,
 					repositoryUrl: 'https://github.com/n8n-test/test-repo.git',
 					branchName: 'main',
 					username: 'testuser',
@@ -248,7 +245,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 			await authOwnerAgent
 				.post('/source-control/preferences')
 				.send({
-					protocol: 'ssh',
+					protocol: 'ssh' as const,
 					repositoryUrl: 'git@github.com:n8n-test/test-repo.git',
 					branchName: 'main',
 				})
@@ -275,29 +272,39 @@ describe('Source Control HTTPS Integration Tests', () => {
 
 		test('should initialize Git service with HTTPS credentials', async () => {
 			const httpsPreferences = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				repositoryUrl: 'https://github.com/n8n-test/test-repo.git',
 				branchName: 'main',
 				username: 'testuser',
 				personalAccessToken: 'ghp_test123456789',
 				connected: true,
+				branchReadOnly: false,
+				branchColor: '#1d6acb',
+				keyGeneratorType: 'ed25519' as const,
 			};
 
 			await sourceControlPreferencesService.setPreferences(httpsPreferences);
 
 			// Initialize git service with HTTPS auth
 			const initSpy = jest.spyOn(gitService, 'initService');
-			await gitService.initService({ user: owner, preferences: httpsPreferences });
+			await gitService.initService({
+				sourceControlPreferences: httpsPreferences,
+				gitFolder: sourceControlPreferencesService.gitFolder,
+				sshFolder: sourceControlPreferencesService.sshFolder,
+				sshKeyName: sourceControlPreferencesService.sshKeyName,
+			});
 
 			expect(initSpy).toHaveBeenCalledWith({
-				user: owner,
-				preferences: httpsPreferences,
+				sourceControlPreferences: httpsPreferences,
+				gitFolder: sourceControlPreferencesService.gitFolder,
+				sshFolder: sourceControlPreferencesService.sshFolder,
+				sshKeyName: sourceControlPreferencesService.sshKeyName,
 			});
 		});
 
 		test('should handle HTTPS authentication errors gracefully', async () => {
 			const httpsPreferences = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				repositoryUrl: 'https://github.com/n8n-test/test-repo.git',
 				branchName: 'main',
 				username: 'testuser',
@@ -318,7 +325,7 @@ describe('Source Control HTTPS Integration Tests', () => {
 		test('should handle complete HTTPS workflow from API to Git operations', async () => {
 			// Step 1: Configure HTTPS via API
 			const httpsPreferences = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				repositoryUrl: 'https://github.com/n8n-test/test-repo.git',
 				branchName: 'main',
 				username: 'testuser',
@@ -343,7 +350,12 @@ describe('Source Control HTTPS Integration Tests', () => {
 			const gitService = Container.get(SourceControlGitService);
 			const initSpy = jest.spyOn(gitService, 'initService');
 
-			await gitService.initService({ user: owner, preferences: storedPreferences });
+			await gitService.initService({
+				sourceControlPreferences: storedPreferences,
+				gitFolder: sourceControlPreferencesService.gitFolder,
+				sshFolder: sourceControlPreferencesService.sshFolder,
+				sshKeyName: sourceControlPreferencesService.sshKeyName,
+			});
 			expect(initSpy).toHaveBeenCalled();
 		});
 	});

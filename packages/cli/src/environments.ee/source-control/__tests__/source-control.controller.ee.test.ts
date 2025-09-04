@@ -1,8 +1,4 @@
-import type {
-	PullWorkFolderRequestDto,
-	PushWorkFolderRequestDto,
-	SourceControlPreferencesResponse,
-} from '@n8n/api-types';
+import type { PullWorkFolderRequestDto, PushWorkFolderRequestDto } from '@n8n/api-types';
 import { SourceControlPreferencesRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Request, Response, NextFunction } from 'express';
@@ -117,7 +113,7 @@ describe('SourceControlController', () => {
 		describe('getPreferences', () => {
 			it('should return sanitized preferences with public key', async () => {
 				const mockPreferences = {
-					protocol: 'https',
+					protocol: 'https' as const,
 					username: 'testuser',
 					repositoryUrl: 'https://github.com/user/repo.git',
 					branchName: 'main',
@@ -126,8 +122,10 @@ describe('SourceControlController', () => {
 				};
 				const publicKey = 'ssh-rsa AAAAB3NzaC1yc2E...';
 
-				sourceControlPreferencesService.getPreferencesForResponse.mockReturnValue(mockPreferences);
-				sourceControlPreferencesService.getPublicKey.mockResolvedValue(publicKey);
+				(sourceControlPreferencesService.getPreferencesForResponse as jest.Mock).mockReturnValue(
+					mockPreferences,
+				);
+				(sourceControlPreferencesService.getPublicKey as jest.Mock).mockResolvedValue(publicKey);
 
 				const result = await controller.getPreferences();
 
@@ -141,7 +139,7 @@ describe('SourceControlController', () => {
 
 			it('should return SSH preferences without sensitive data', async () => {
 				const mockPreferences = {
-					protocol: 'ssh',
+					protocol: 'ssh' as const,
 					repositoryUrl: 'git@github.com:user/repo.git',
 					branchName: 'develop',
 					branchReadOnly: true,
@@ -149,8 +147,10 @@ describe('SourceControlController', () => {
 				};
 				const publicKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5...';
 
-				sourceControlPreferencesService.getPreferencesForResponse.mockReturnValue(mockPreferences);
-				sourceControlPreferencesService.getPublicKey.mockResolvedValue(publicKey);
+				(sourceControlPreferencesService.getPreferencesForResponse as jest.Mock).mockReturnValue(
+					mockPreferences,
+				);
+				(sourceControlPreferencesService.getPublicKey as jest.Mock).mockResolvedValue(publicKey);
 
 				const result = await controller.getPreferences();
 
@@ -164,9 +164,13 @@ describe('SourceControlController', () => {
 			const mockUser = { id: '1', firstName: 'John', lastName: 'Doe', email: 'john@example.com' };
 
 			beforeEach(() => {
-				sourceControlPreferencesService.isSourceControlConnected.mockReturnValue(false);
-				sourceControlPreferencesService.validateSourceControlPreferences.mockResolvedValue([]);
-				sourceControlPreferencesService.setPreferences.mockImplementation(
+				(sourceControlPreferencesService.isSourceControlConnected as jest.Mock).mockReturnValue(
+					false,
+				);
+				(
+					sourceControlPreferencesService.validateSourceControlPreferences as jest.Mock
+				).mockResolvedValue([]);
+				(sourceControlPreferencesService.setPreferences as jest.Mock).mockImplementation(
 					async (prefs) =>
 						({
 							...prefs,
@@ -174,22 +178,24 @@ describe('SourceControlController', () => {
 							branchName: prefs.branchName || 'main',
 						}) as SourceControlPreferences,
 				);
-				sourceControlPreferencesService.getPreferences.mockReturnValue({
+				(sourceControlPreferencesService.getPreferences as jest.Mock).mockReturnValue({
 					connected: true,
 					branchName: 'main',
 					repositoryUrl: 'https://github.com/user/repo.git',
 				} as SourceControlPreferences);
-				sourceControlPreferencesService.getPreferencesForResponse.mockReturnValue({
+				(sourceControlPreferencesService.getPreferencesForResponse as jest.Mock).mockReturnValue({
 					connected: true,
 					branchName: 'main',
 				});
-				sourceControlPreferencesService.getPublicKey.mockResolvedValue('mock-public-key');
+				(sourceControlPreferencesService.getPublicKey as jest.Mock).mockResolvedValue(
+					'mock-public-key',
+				);
 				// sourceControlService methods are already mocked in beforeEach
 			});
 
 			it('should successfully set HTTPS preferences', async () => {
 				const httpsPreferences = {
-					protocol: 'https',
+					protocol: 'https' as const,
 					username: 'testuser',
 					personalAccessToken: 'ghp_test123',
 					repositoryUrl: 'https://github.com/user/repo.git',
@@ -208,7 +214,7 @@ describe('SourceControlController', () => {
 					sourceControlPreferencesService.validateSourceControlPreferences,
 				).toHaveBeenCalledWith(
 					expect.objectContaining({
-						protocol: 'https',
+						protocol: 'https' as const,
 						username: 'testuser',
 						personalAccessToken: 'ghp_test123',
 						initRepo: true,
@@ -220,7 +226,7 @@ describe('SourceControlController', () => {
 
 			it('should successfully set SSH preferences', async () => {
 				const sshPreferences = {
-					protocol: 'ssh',
+					protocol: 'ssh' as const,
 					repositoryUrl: 'git@github.com:user/repo.git',
 					branchName: 'develop',
 					initRepo: true,
@@ -237,7 +243,7 @@ describe('SourceControlController', () => {
 					sourceControlPreferencesService.validateSourceControlPreferences,
 				).toHaveBeenCalledWith(
 					expect.objectContaining({
-						protocol: 'ssh',
+						protocol: 'ssh' as const,
 						initRepo: true,
 					}),
 				);
@@ -246,7 +252,9 @@ describe('SourceControlController', () => {
 			});
 
 			it('should prevent changing preferences while connected', async () => {
-				sourceControlPreferencesService.isSourceControlConnected.mockReturnValue(true);
+				(sourceControlPreferencesService.isSourceControlConnected as jest.Mock).mockReturnValue(
+					true,
+				);
 
 				const req = mock<SourceControlRequest.UpdatePreferences>({
 					body: {
@@ -263,7 +271,9 @@ describe('SourceControlController', () => {
 			});
 
 			it('should allow changing branchReadOnly while connected', async () => {
-				sourceControlPreferencesService.isSourceControlConnected.mockReturnValue(true);
+				(sourceControlPreferencesService.isSourceControlConnected as jest.Mock).mockReturnValue(
+					true,
+				);
 
 				const req = mock<SourceControlRequest.UpdatePreferences>({
 					body: {
@@ -280,12 +290,12 @@ describe('SourceControlController', () => {
 
 			it('should handle initialization failure and cleanup', async () => {
 				const initError = new Error('Repository initialization failed');
-				sourceControlService.initializeRepository.mockRejectedValue(initError);
-				sourceControlService.disconnect.mockResolvedValue(undefined);
+				(sourceControlService.initializeRepository as jest.Mock).mockRejectedValue(initError);
+				(sourceControlService.disconnect as jest.Mock).mockResolvedValue(undefined);
 
 				const req = mock<SourceControlRequest.UpdatePreferences>({
 					body: {
-						protocol: 'https',
+						protocol: 'https' as const,
 						username: 'testuser',
 						personalAccessToken: 'token',
 						repositoryUrl: 'https://github.com/user/repo.git',
@@ -300,14 +310,14 @@ describe('SourceControlController', () => {
 
 			it('should emit tracking event after setting preferences', async () => {
 				const preferences = {
-					protocol: 'https',
+					protocol: 'https' as const,
 					username: 'testuser',
 					personalAccessToken: 'token',
 					repositoryUrl: 'https://github.com/user/repo.git',
 					initRepo: false,
 				};
 
-				sourceControlPreferencesService.getPreferences.mockReturnValue({
+				(sourceControlPreferencesService.getPreferences as jest.Mock).mockReturnValue({
 					...preferences,
 					connected: true,
 					branchName: 'main',
@@ -334,20 +344,24 @@ describe('SourceControlController', () => {
 			const mockUser = { id: '1', firstName: 'John', lastName: 'Doe', email: 'john@example.com' };
 
 			beforeEach(() => {
-				sourceControlPreferencesService.validateSourceControlPreferences.mockResolvedValue([]);
-				sourceControlPreferencesService.getPreferences.mockReturnValue({
+				(
+					sourceControlPreferencesService.validateSourceControlPreferences as jest.Mock
+				).mockResolvedValue([]);
+				(sourceControlPreferencesService.getPreferences as jest.Mock).mockReturnValue({
 					branchName: 'main',
 					connected: true,
 					repositoryUrl: 'https://github.com/user/repo.git',
 				} as SourceControlPreferences);
-				sourceControlPreferencesService.setPreferences.mockResolvedValue(
+				(sourceControlPreferencesService.setPreferences as jest.Mock).mockResolvedValue(
 					{} as SourceControlPreferences,
 				);
-				sourceControlPreferencesService.getPreferencesForResponse.mockReturnValue({
+				(sourceControlPreferencesService.getPreferencesForResponse as jest.Mock).mockReturnValue({
 					branchName: 'main',
 					connected: true,
 				});
-				sourceControlPreferencesService.getPublicKey.mockResolvedValue('mock-public-key');
+				(sourceControlPreferencesService.getPublicKey as jest.Mock).mockResolvedValue(
+					'mock-public-key',
+				);
 				// sourceControlService methods are already mocked in beforeEach
 			});
 
@@ -396,7 +410,7 @@ describe('SourceControlController', () => {
 			});
 
 			it('should not call setBranch if branch name unchanged', async () => {
-				sourceControlPreferencesService.getPreferences.mockReturnValue({
+				(sourceControlPreferencesService.getPreferences as jest.Mock).mockReturnValue({
 					branchName: 'main',
 					connected: true,
 					repositoryUrl: 'https://github.com/user/repo.git',
@@ -444,15 +458,16 @@ describe('SourceControlController', () => {
 				);
 
 				// Check that the sanitized preferences exclude the filtered repositoryUrl field
-				const callArgs =
-					sourceControlPreferencesService.validateSourceControlPreferences.mock.calls[0][0];
+				const callArgs = (
+					sourceControlPreferencesService.validateSourceControlPreferences as jest.Mock
+				).mock.calls[0][0];
 				expect(callArgs.repositoryUrl).toBeUndefined();
 				expect(callArgs.connected).toBeUndefined();
 				expect(callArgs.publicKey).toBeUndefined();
 			});
 
 			it('should emit tracking event after updating preferences', async () => {
-				sourceControlPreferencesService.getPreferences.mockReturnValue({
+				(sourceControlPreferencesService.getPreferences as jest.Mock).mockReturnValue({
 					branchName: 'updated-branch',
 					connected: true,
 					branchReadOnly: true,
@@ -490,7 +505,7 @@ describe('SourceControlController', () => {
 		});
 
 		// Import and test the validation middleware directly
-		const validateSourceControlPreferences = (req: Request, res: Response, next: NextFunction) => {
+		const validateSourceControlPreferences = (req: Request, _res: Response, next: NextFunction) => {
 			const validationResult = SourceControlPreferencesRequestDto.validate(req.body);
 
 			if (!validationResult.success) {
@@ -507,7 +522,7 @@ describe('SourceControlController', () => {
 
 		it('should pass valid SSH preferences through middleware', () => {
 			req.body = {
-				protocol: 'ssh',
+				protocol: 'ssh' as const,
 				repositoryUrl: 'git@github.com:user/repo.git',
 				branchName: 'main',
 			};
@@ -516,7 +531,7 @@ describe('SourceControlController', () => {
 
 			expect(next).toHaveBeenCalled();
 			expect(req.body).toEqual({
-				protocol: 'ssh',
+				protocol: 'ssh' as const,
 				repositoryUrl: 'git@github.com:user/repo.git',
 				branchName: 'main',
 			});
@@ -524,7 +539,7 @@ describe('SourceControlController', () => {
 
 		it('should pass valid HTTPS preferences through middleware', () => {
 			req.body = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				username: 'testuser',
 				personalAccessToken: 'ghp_test123',
 				repositoryUrl: 'https://github.com/user/repo.git',
@@ -541,7 +556,7 @@ describe('SourceControlController', () => {
 
 		it('should reject HTTPS preferences missing username', () => {
 			req.body = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				personalAccessToken: 'ghp_test123',
 				repositoryUrl: 'https://github.com/user/repo.git',
 			};
@@ -555,7 +570,7 @@ describe('SourceControlController', () => {
 
 		it('should reject HTTPS preferences missing personal access token', () => {
 			req.body = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				username: 'testuser',
 				repositoryUrl: 'https://github.com/user/repo.git',
 			};
@@ -595,7 +610,7 @@ describe('SourceControlController', () => {
 
 		it('should handle multiple validation errors', () => {
 			req.body = {
-				protocol: 'https',
+				protocol: 'https' as const,
 				// Missing username and personalAccessToken
 				repositoryUrl: 'invalid-url',
 				branchColor: 'invalid-color',
@@ -634,9 +649,9 @@ describe('SourceControlController', () => {
 
 		it('should wrap service errors in BadRequestError for setPreferences', async () => {
 			const serviceError = new Error('Service validation failed');
-			sourceControlPreferencesService.validateSourceControlPreferences.mockRejectedValue(
-				serviceError,
-			);
+			(
+				sourceControlPreferencesService.validateSourceControlPreferences as jest.Mock
+			).mockRejectedValue(serviceError);
 
 			const req = mock<SourceControlRequest.UpdatePreferences>({
 				body: { repositoryUrl: 'https://github.com/user/repo.git' },
@@ -649,9 +664,9 @@ describe('SourceControlController', () => {
 
 		it('should wrap service errors in BadRequestError for updatePreferences', async () => {
 			const serviceError = new Error('Update service failed');
-			sourceControlPreferencesService.validateSourceControlPreferences.mockRejectedValue(
-				serviceError,
-			);
+			(
+				sourceControlPreferencesService.validateSourceControlPreferences as jest.Mock
+			).mockRejectedValue(serviceError);
 
 			const req = mock<SourceControlRequest.UpdatePreferences>({
 				body: { branchName: 'new-branch' },
@@ -663,9 +678,13 @@ describe('SourceControlController', () => {
 		});
 
 		it('should handle repository initialization errors correctly', async () => {
-			sourceControlPreferencesService.isSourceControlConnected.mockReturnValue(false);
-			sourceControlPreferencesService.validateSourceControlPreferences.mockResolvedValue([]);
-			sourceControlPreferencesService.setPreferences.mockResolvedValue({
+			(sourceControlPreferencesService.isSourceControlConnected as jest.Mock).mockReturnValue(
+				false,
+			);
+			(
+				sourceControlPreferencesService.validateSourceControlPreferences as jest.Mock
+			).mockResolvedValue([]);
+			(sourceControlPreferencesService.setPreferences as jest.Mock).mockResolvedValue({
 				branchName: 'main',
 			} as SourceControlPreferences);
 
@@ -675,7 +694,7 @@ describe('SourceControlController', () => {
 
 			const req = mock<SourceControlRequest.UpdatePreferences>({
 				body: {
-					protocol: 'https',
+					protocol: 'https' as const,
 					username: 'user',
 					personalAccessToken: 'token',
 					repositoryUrl: 'https://github.com/user/nonexistent.git',

@@ -160,7 +160,7 @@ describe('SourceControlGitService', () => {
 				const sshFolder = 'C:\\Users\\Test\\.n8n\\.ssh';
 
 				// Mock the getPrivateKeyPath to return a Windows path
-				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(windowsPath);
+				(mockPreferencesService.getPrivateKeyPath as jest.Mock).mockResolvedValue(windowsPath);
 
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 
@@ -190,7 +190,7 @@ describe('SourceControlGitService', () => {
 				const sshFolder = 'C:/Users/Test User/.n8n/.ssh';
 
 				// Mock the getPrivateKeyPath to return a path with spaces
-				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(privateKeyPath);
+				(mockPreferencesService.getPrivateKeyPath as jest.Mock).mockResolvedValue(privateKeyPath);
 
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 
@@ -223,7 +223,7 @@ describe('SourceControlGitService', () => {
 				const sshFolder = 'C:/Users/Test"User/.n8n/.ssh';
 
 				// Mock the getPrivateKeyPath to return a path with quotes
-				mockPreferencesService.getPrivateKeyPath.mockResolvedValue(pathWithQuotes);
+				(mockPreferencesService.getPrivateKeyPath as jest.Mock).mockResolvedValue(pathWithQuotes);
 
 				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 
@@ -250,8 +250,8 @@ describe('SourceControlGitService', () => {
 		beforeEach(() => {
 			jest.clearAllMocks();
 			mockPreferencesService = mock<SourceControlPreferencesService>();
+			(mockPreferencesService as any).gitFolder = '/test/git';
 			gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
-			mockPreferencesService.gitFolder = '/test/git';
 		});
 
 		describe('setGitHttpsAuth', () => {
@@ -420,7 +420,9 @@ describe('SourceControlGitService', () => {
 					sshKeyName: 'key',
 				};
 
-				mockPreferencesService.getPrivateKeyPath.mockResolvedValue('/test/ssh/private_key');
+				(mockPreferencesService.getPrivateKeyPath as jest.Mock).mockResolvedValue(
+					'/test/ssh/private_key',
+				);
 
 				// Mock setGitSshCommand to set up git instance properly
 				const setGitSshCommandSpy = jest
@@ -471,7 +473,9 @@ describe('SourceControlGitService', () => {
 					sshKeyName: 'key',
 				};
 
-				mockPreferencesService.getPrivateKeyPath.mockResolvedValue('/test/ssh/private_key');
+				(mockPreferencesService.getPrivateKeyPath as jest.Mock).mockResolvedValue(
+					'/test/ssh/private_key',
+				);
 
 				// Mock setGitSshCommand to set up git instance properly
 				const setGitSshCommandSpy = jest
@@ -542,8 +546,8 @@ describe('SourceControlGitService', () => {
 					branchColor: '#000000',
 				};
 
-				mockPreferencesService.getPreferences.mockReturnValue(mockPrefs);
-				mockPreferencesService.gitFolder = '/test/git';
+				(mockPreferencesService.getPreferences as jest.Mock).mockReturnValue(mockPrefs);
+				(mockPreferencesService as any).gitFolder = '/test/git';
 
 				// Set up the git instance
 				await gitService.setGitHttpsAuth('/test/git', 'testuser', 'ghp_test123');
@@ -552,7 +556,7 @@ describe('SourceControlGitService', () => {
 			describe('fetch', () => {
 				it('should re-authenticate before fetching', async () => {
 					// Arrange
-					jest.spyOn(gitService, 'setGitHttpsAuth' as any).mockResolvedValue();
+					jest.spyOn(gitService, 'setGitHttpsAuth').mockResolvedValue();
 
 					// Act
 					await gitService.fetch();
@@ -569,7 +573,7 @@ describe('SourceControlGitService', () => {
 				it('should handle authentication failures during fetch', async () => {
 					// Arrange
 					const authError = new Error('Authentication failed: Invalid credentials');
-					jest.spyOn(gitService, 'setGitHttpsAuth' as any).mockRejectedValue(authError);
+					jest.spyOn(gitService, 'setGitHttpsAuth').mockRejectedValue(authError);
 
 					// Act & Assert
 					await expect(gitService.fetch()).rejects.toThrow(UnexpectedError);
@@ -580,7 +584,7 @@ describe('SourceControlGitService', () => {
 			describe('pull', () => {
 				it('should re-authenticate before pulling', async () => {
 					// Arrange
-					jest.spyOn(gitService, 'setGitHttpsAuth' as any).mockResolvedValue();
+					jest.spyOn(gitService, 'setGitHttpsAuth').mockResolvedValue();
 
 					// Act
 					await gitService.pull();
@@ -596,7 +600,7 @@ describe('SourceControlGitService', () => {
 
 				it('should pull without fast-forward only when specified', async () => {
 					// Arrange
-					jest.spyOn(gitService, 'setGitHttpsAuth' as any).mockResolvedValue();
+					jest.spyOn(gitService, 'setGitHttpsAuth').mockResolvedValue();
 
 					// Act
 					await gitService.pull({ ffOnly: false });
@@ -609,7 +613,7 @@ describe('SourceControlGitService', () => {
 			describe('push', () => {
 				it('should re-authenticate before pushing', async () => {
 					// Arrange
-					jest.spyOn(gitService, 'setGitHttpsAuth' as any).mockResolvedValue();
+					jest.spyOn(gitService, 'setGitHttpsAuth').mockResolvedValue();
 
 					// Act
 					await gitService.push();
@@ -625,7 +629,7 @@ describe('SourceControlGitService', () => {
 
 				it('should push with force flag when specified', async () => {
 					// Arrange
-					jest.spyOn(gitService, 'setGitHttpsAuth' as any).mockResolvedValue();
+					jest.spyOn(gitService, 'setGitHttpsAuth').mockResolvedValue();
 
 					// Act
 					await gitService.push({ force: true, branch: 'feature' });
@@ -643,7 +647,7 @@ describe('SourceControlGitService', () => {
 					const repoUrlWithCreds = 'https://user:token@github.com/user/repo.git';
 					const mockError = new Error(`Authentication failed for ${repoUrlWithCreds}`);
 
-					mockPreferencesService.getPreferences.mockReturnValue({
+					(mockPreferencesService.getPreferences as jest.Mock).mockReturnValue({
 						protocol: 'https',
 						username: 'testuser',
 						personalAccessToken: 'ghp_test123',
@@ -652,7 +656,7 @@ describe('SourceControlGitService', () => {
 					// Set up git first to pass the initialization check
 					await gitService.setGitHttpsAuth('/test/git', 'testuser', 'ghp_test123');
 
-					jest.spyOn(gitService, 'setGitHttpsAuth' as any).mockRejectedValue(mockError);
+					jest.spyOn(gitService, 'setGitHttpsAuth').mockRejectedValue(mockError);
 
 					// Act & Assert
 					await expect(gitService.fetch()).rejects.toThrow('Failed to authenticate Git');
@@ -699,7 +703,7 @@ describe('SourceControlGitService', () => {
 					// Set up git first
 					await gitService.setGitHttpsAuth('/test/git', 'testuser', 'ghp_test123');
 
-					mockPreferencesService.getPreferences.mockReturnValue({
+					(mockPreferencesService.getPreferences as jest.Mock).mockReturnValue({
 						protocol: 'https',
 						// Missing username and personalAccessToken
 					} as SourceControlPreferences);
@@ -716,7 +720,7 @@ describe('SourceControlGitService', () => {
 					// Set up git first
 					await gitService.setGitHttpsAuth('/test/git', 'testuser', 'invalid_token');
 
-					mockPreferencesService.getPreferences.mockReturnValue({
+					(mockPreferencesService.getPreferences as jest.Mock).mockReturnValue({
 						protocol: 'https',
 						username: 'testuser',
 						personalAccessToken: 'invalid_token',
@@ -797,7 +801,9 @@ describe('SourceControlGitService', () => {
 					initRepo: false,
 				};
 
-				mockPreferencesService.getPrivateKeyPath.mockResolvedValue('/test/ssh/private_key');
+				(mockPreferencesService.getPrivateKeyPath as jest.Mock).mockResolvedValue(
+					'/test/ssh/private_key',
+				);
 				const setGitSshCommandSpy = jest
 					.spyOn(gitService, 'setGitSshCommand')
 					.mockImplementation(async () => {
@@ -910,7 +916,9 @@ describe('SourceControlGitService', () => {
 					initRepo: false,
 				};
 
-				mockPreferencesService.getPrivateKeyPath.mockResolvedValue('/test/ssh/private_key');
+				(mockPreferencesService.getPrivateKeyPath as jest.Mock).mockResolvedValue(
+					'/test/ssh/private_key',
+				);
 				const setGitSshCommandSpy = jest
 					.spyOn(gitService, 'setGitSshCommand')
 					.mockImplementation(async () => {
@@ -940,7 +948,9 @@ describe('SourceControlGitService', () => {
 					// Arrange
 					const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
 					const mockPrivateKeyPath = '/test/temp/ssh_private_key_temp';
-					mockPreferencesService.getPrivateKeyPath.mockResolvedValue(mockPrivateKeyPath);
+					(mockPreferencesService.getPrivateKeyPath as jest.Mock).mockResolvedValue(
+						mockPrivateKeyPath,
+					);
 
 					// Mock the trackTempFile method to verify it's called
 					const trackTempFileSpy = jest.spyOn(gitService as any, 'trackTempFile');
@@ -957,7 +967,7 @@ describe('SourceControlGitService', () => {
 				it('should track sensitive environment variables for SSH authentication', async () => {
 					// Arrange
 					const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
-					mockPreferencesService.getPrivateKeyPath.mockResolvedValue(
+					(mockPreferencesService.getPrivateKeyPath as jest.Mock).mockResolvedValue(
 						'/test/temp/ssh_private_key_temp',
 					);
 
