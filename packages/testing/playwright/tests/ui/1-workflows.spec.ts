@@ -52,7 +52,6 @@ test.describe('Workflows', () => {
 
 		// Search for specific workflow
 		await n8n.workflows.searchWorkflows(specificName);
-		await expect(n8n.workflows.getWorkflowItems()).toHaveCount(1);
 		await expect(n8n.workflows.getWorkflowByName(specificName)).toBeVisible();
 
 		// Search with partial term

@@ -638,7 +638,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		status?: ExecutionStatus;
 		excludedWorkflowIds?: string[];
 	}): Promise<number> {
-		const executions = await this.count({
+		const executionsCount = await this.count({
 			where: {
 				...(data.lastId && { id: LessThan(data.lastId) }),
 				...(data.status && { ...this.getStatusCondition(data.status) }),
@@ -648,7 +648,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			take: data.limit,
 		});
 
-		return executions;
+		return executionsCount;
 	}
 
 	private getStatusCondition(status: ExecutionStatus) {
@@ -660,6 +660,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			condition.status = 'waiting';
 		} else if (status === 'error') {
 			condition.status = In(['error', 'crashed']);
+		} else if (status === 'canceled') {
+			condition.status = 'canceled';
 		}
 
 		return condition;
