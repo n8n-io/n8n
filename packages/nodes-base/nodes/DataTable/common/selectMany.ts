@@ -140,7 +140,7 @@ export async function executeSelectMany(
 
 		// Fast path: everything fits in a single page
 		if (skip === 0 && count === data.length) {
-			return limit ? wrapped.slice(0, limit) : wrapped;
+			return wrapped;
 		}
 
 		// Ensure the total doesn't change mid-pagination
