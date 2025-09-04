@@ -7,7 +7,16 @@ post:
   description: Retry an execution from your instance.
   parameters:
     - $ref: '../schemas/parameters/executionId.yml'
-    - $ref: '../schemas/parameters/loadWorkflow.yml'
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            loadWorkflow:
+              type: boolean
+              description: Wether to load the currently saved workflow to execute instead of the one saved at the time of the execution.
   responses:
     '200':
       description: Operation successful.
