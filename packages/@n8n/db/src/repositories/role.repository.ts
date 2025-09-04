@@ -33,8 +33,11 @@ export class RoleRepository extends Repository<Role> {
 				.select('COUNT(project_relation.user)', 'count')
 				.where('project_relation.role = :role', { role: role.slug })
 				.getRawOne<{ count: string }>();
+			console.log(`Count of users with role ${role.slug}: ${x?.count}`, { type: typeof x?.count });
 			if (typeof x?.count === 'number') {
 				return x.count;
+			} else if (typeof x?.count === 'string') {
+				return parseInt(x.count);
 			}
 		}
 		return undefined;
