@@ -8,6 +8,11 @@ on:
         required: false
         default: 'local'
         type: string
+      test-command:
+        description: 'Test command to run'
+        required: false
+        default: 'pnpm --filter=n8n-playwright test:local'
+        type: string
       shards:
         description: 'Shards for parallel execution'
         required: false
@@ -21,6 +26,12 @@ on:
 
     secrets:
       CURRENTS_RECORD_KEY:
+        required: true
+      QA_PERFORMANCE_METRICS_WEBHOOK_URL:
+        required: true
+      QA_PERFORMANCE_METRICS_WEBHOOK_USER:
+        required: true
+      QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD:
         required: true
 
 env:
@@ -53,25 +64,18 @@ jobs:
         env:
           INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
 
-      - name: Install Browsers (Docker Build)
+      - name: Install Browsers
         if: inputs.test-mode == 'docker-build'
         run: pnpm turbo install-browsers:ci
 
-      - name: Run Tests (Local)
-        if: inputs.test-mode == 'local'
+      - name: Run Tests
         run: |
-          pnpm --filter=n8n-playwright test:local \
-            --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
-            --workers=${{ env.PLAYWRIGHT_WORKERS }}
-        env:
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
-
-      - name: Run Tests (Docker)
-        if: inputs.test-mode != 'local'
-        run: |
-          pnpm --filter=n8n-playwright test:container:standard \
+          ${{ inputs.test-command }} \
             --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
             --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
           N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
+          QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}

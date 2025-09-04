@@ -43,6 +43,7 @@ component_management:
         - packages/@n8n/imap/**
         - packages/@n8n/permissions/**
         - packages/@n8n/task-runner/**
+        - packages/@n8n/task-runner-python/**
         - packages/workflow/**
         - packages/core/**
         - packages/cli/**
@@ -67,3 +68,4 @@ ignore:
   - (?s:.*/[^\/]*\.spec\.ts.*)\Z
   - (?s:.*/[^\/]*\.test\.ts.*)\Z
   - (?s:.*/[^\/]*e2e[^\/]*\.ts.*)\Z
+  - (?s:.*/test_[^\/]*\.py.*)\Z

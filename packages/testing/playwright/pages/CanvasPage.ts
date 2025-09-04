@@ -2,9 +2,13 @@ import type { Locator } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
+import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
+import { StickyComponent } from './components/StickyComponent';
 
 export class CanvasPage extends BasePage {
+	readonly sticky = new StickyComponent(this.page);
+
 	saveWorkflowButton(): Locator {
 		return this.page.getByRole('button', { name: 'Save' });
 	}
@@ -15,6 +19,19 @@ export class CanvasPage extends BasePage {
 
 	nodeCreatorSubItem(subItemText: string): Locator {
 		return this.page.getByTestId('node-creator-item-name').getByText(subItemText, { exact: true });
+	}
+
+	getNthCreatorItem(index: number): Locator {
+		return this.page.getByTestId('node-creator-item').nth(index);
+	}
+
+	getNodeCreatorHeader(text?: string) {
+		const header = this.page.getByTestId('nodes-list-header');
+		return text ? header.filter({ hasText: text }) : header.first();
+	}
+
+	async selectNodeCreatorItemByText(nodeName: string) {
+		await this.page.getByText(nodeName).click();
 	}
 
 	nodeByName(nodeName: string): Locator {
@@ -360,6 +377,14 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-wrapper');
 	}
 
+	canvasBody(): Locator {
+		return this.page.getByTestId('canvas');
+	}
+
+	toggleFocusPanelButton(): Locator {
+		return this.page.getByTestId('toggle-focus-panel-button');
+	}
+
 	// Actions
 
 	async addInitialNodeToCanvas(nodeName: string): Promise<void> {
@@ -473,11 +498,83 @@ export class CanvasPage extends BasePage {
 		// Set fixed time using Playwright's clock API
 		await this.page.clock.setFixedTime(timestamp);
 
-		await this.page.goto('/workflow/new');
+		await this.openNewWorkflow();
 	}
 
 	async addNodeWithSubItem(searchText: string, subItemText: string): Promise<void> {
 		await this.addNode(searchText);
 		await this.nodeCreatorSubItem(subItemText).click();
+	}
+
+	async openNewWorkflow() {
+		await this.page.goto(ROUTES.NEW_WORKFLOW_PAGE);
+	}
+
+	getRagCalloutTip(): Locator {
+		return this.page.getByText('Tip: Get a feel for vector stores in n8n with our');
+	}
+
+	getRagTemplateLink(): Locator {
+		return this.page.getByText('RAG starter template');
+	}
+
+	async clickRagTemplateLink(): Promise<void> {
+		await this.getRagTemplateLink().click();
+	}
+
+	async rightClickNode(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click({ button: 'right' });
+	}
+
+	async clickContextMenuAction(actionText: string): Promise<void> {
+		await this.page.getByTestId('context-menu').getByText(actionText).click();
+	}
+
+	async executeNodeFromContextMenu(nodeName: string): Promise<void> {
+		await this.rightClickNode(nodeName);
+		await this.clickContextMenuAction('execute');
+	}
+
+	async clearExecutionData(): Promise<void> {
+		await this.page.getByTestId('clear-execution-data-button').click();
+	}
+
+	getManualChatModal(): Locator {
+		return this.page.getByTestId('canvas-chat');
+	}
+
+	getManualChatInput(): Locator {
+		return this.getManualChatModal().locator('.chat-inputs textarea');
+	}
+
+	getManualChatMessages(): Locator {
+		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
+	}
+
+	getNodesWithSpinner(): Locator {
+		return this.page.getByTestId('canvas-node').filter({
+			has: this.page.locator('[data-icon=refresh-cw]'),
+		});
+	}
+
+	getWaitingNodes(): Locator {
+		return this.page.getByTestId('canvas-node').filter({
+			has: this.page.locator('[data-icon=clock]'),
+		});
+	}
+
+	async sendManualChatMessage(message: string): Promise<void> {
+		await this.getManualChatInput().fill(message);
+		await this.getManualChatModal().locator('.chat-input-send-button').click();
+	}
+	/**
+	 * Get all currently selected nodes on the canvas
+	 */
+	getSelectedNodes() {
+		return this.page.locator('[data-test-id="canvas-node"].selected');
+	}
+
+	async openExecutions() {
+		await this.page.getByTestId('radio-button-executions').click();
 	}
 }
