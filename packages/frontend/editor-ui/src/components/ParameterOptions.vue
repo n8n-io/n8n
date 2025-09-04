@@ -225,8 +225,6 @@ $container-height: 22px;
 }
 
 .noExpressionSelector {
-	margin-bottom: var(--spacing-4xs);
-
 	span {
 		padding-right: 0 !important;
 	}
