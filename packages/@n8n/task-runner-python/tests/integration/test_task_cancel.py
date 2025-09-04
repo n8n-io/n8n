@@ -26,12 +26,11 @@ async def test_cancel_before_execution(local_task_broker, task_runner_manager):
         task_settings=None,  # We do not send settings yet
     )
 
-    await asyncio.sleep(0.2)
     await local_task_broker.cancel_task(task_id, reason="Cancelled before execution")
 
     local_task_broker.task_settings[task_id] = task_settings
 
-    await asyncio.sleep(1.0)
+    await asyncio.sleep(0.3)
 
     done_messages = local_task_broker.get_messages_of_type("runner:taskdone")
     error_messages = local_task_broker.get_messages_of_type("runner:taskerror")
@@ -84,7 +83,7 @@ async def test_cancel_non_existent_task(local_task_broker, task_runner_manager):
 
     await local_task_broker.cancel_task(fake_task_id, reason="Cancel non-existent")
 
-    await asyncio.sleep(1.0)
+    await asyncio.sleep(0.1)
 
     assert task_runner_manager.is_running()  # No issues
 
