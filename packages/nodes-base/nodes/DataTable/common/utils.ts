@@ -39,6 +39,8 @@ export async function getDataTableProxyExecute(
 		extractValue: true,
 	}) as string;
 
+	console.log(dataStoreId);
+
 	return await ctx.helpers.getDataStoreProxy(dataStoreId);
 }
 
