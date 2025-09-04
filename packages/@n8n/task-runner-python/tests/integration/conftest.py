@@ -1,12 +1,9 @@
-import asyncio
-
 import pytest_asyncio
 from src.message_types.broker import Items
 
 from tests.fixtures.local_task_broker import LocalTaskBroker
 from tests.fixtures.task_runner_manager import TaskRunnerManager
 from tests.fixtures.test_constants import (
-    CONNECTION_WAIT,
     TASK_RESPONSE_WAIT,
 )
 
@@ -15,7 +12,6 @@ from tests.fixtures.test_constants import (
 async def task_runner_manager():
     manager = TaskRunnerManager()
     await manager.start()
-    await asyncio.sleep(CONNECTION_WAIT)
     yield manager
     await manager.stop()
 
