@@ -13,13 +13,10 @@ async def test_health_check_server_responds(local_task_broker, task_runner_manag
     await asyncio.sleep(0.5)
 
     async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(HEALTH_CHECK_URL) as response:
-                assert response.status == 200
-                text = await response.text()
-                assert text == "OK"
-        except (aiohttp.ClientError, asyncio.TimeoutError):
-            pytest.skip("Health check server not enabled in test environment")
+        async with session.get(HEALTH_CHECK_URL) as response:
+            assert response.status == 200
+            text = await response.text()
+            assert text == "OK"
 
 
 @pytest.mark.asyncio
@@ -46,12 +43,9 @@ return [{"result": result}]
     await asyncio.sleep(0.5)
 
     async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(HEALTH_CHECK_URL) as response:
-                assert response.status == 200
-                text = await response.text()
-                assert text == "OK"
-        except (aiohttp.ClientError, asyncio.TimeoutError):
-            pytest.skip("Health check server not enabled in test environment")
+        async with session.get(HEALTH_CHECK_URL) as response:
+            assert response.status == 200
+            text = await response.text()
+            assert text == "OK"
 
-    assert task_runner_manager.is_running()  # No issues
+    assert task_runner_manager.is_running()
