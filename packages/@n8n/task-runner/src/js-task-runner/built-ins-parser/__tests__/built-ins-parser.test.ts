@@ -236,6 +236,7 @@ describe('BuiltInsParser', () => {
 					data.additionalData as IWorkflowExecuteAdditionalData,
 					data.mode,
 					data.runExecutionData,
+					'http://webhookResumeUrl',
 				),
 				executeData,
 				data.defaultReturnRunIndex,

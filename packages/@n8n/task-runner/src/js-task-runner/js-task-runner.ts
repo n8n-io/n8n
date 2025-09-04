@@ -81,6 +81,7 @@ export interface JsTaskData {
 	selfData: IDataObject;
 	contextNodeName: string;
 	additionalData: PartialAdditionalData;
+	resumeUrl: string;
 }
 
 type CustomConsole = {
@@ -402,6 +403,7 @@ export class JsTaskRunner extends TaskRunner {
 				data.additionalData as IWorkflowExecuteAdditionalData,
 				data.mode,
 				data.runExecutionData,
+				data.resumeUrl,
 			),
 			data.executeData,
 			data.defaultReturnRunIndex,

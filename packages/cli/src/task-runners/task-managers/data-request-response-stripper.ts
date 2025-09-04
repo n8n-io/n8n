@@ -45,6 +45,7 @@ export class DataRequestResponseStripper {
 		}
 
 		return {
+			version: runExecutionData.version,
 			startData: runExecutionData.startData,
 			resultData: {
 				error: runExecutionData.resultData.error,

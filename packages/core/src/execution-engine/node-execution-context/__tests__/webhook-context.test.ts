@@ -48,6 +48,8 @@ describe('WebhookContext', () => {
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		executionId: '123',
+		webhookWaitingBaseUrl: 'http://webhookWaitingBaseUrl',
 		credentialsHelper,
 	});
 	additionalData.httpRequest = {

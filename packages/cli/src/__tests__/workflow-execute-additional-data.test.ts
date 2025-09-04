@@ -215,6 +215,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		it('should return default data', async () => {
 			expect(await getRunData(workflow)).toEqual({
 				executionData: {
+					version: 1,
 					executionData: {
 						contextData: {},
 						metadata: {},
@@ -245,6 +246,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			};
 			expect(await getRunData(workflow, data, parentExecution)).toEqual({
 				executionData: {
+					version: 1,
 					executionData: {
 						contextData: {},
 						metadata: {},

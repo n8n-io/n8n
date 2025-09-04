@@ -80,6 +80,7 @@ export abstract class TaskRequester {
 		siblingParameters: INodeParameters,
 		mode: WorkflowExecuteMode,
 		envProviderState: EnvProviderState,
+		resumeUrl: string,
 		executeData?: IExecuteData,
 		defaultReturnRunIndex = -1,
 		selfData: IDataObject = {},
@@ -103,6 +104,7 @@ export abstract class TaskRequester {
 			contextNodeName,
 			activeNodeName,
 			additionalData,
+			resumeUrl,
 		};
 
 		const request: TaskRequest = {

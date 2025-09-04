@@ -1,0 +1,71 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "test-wait-node-resume-from-webhook",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [-144, 0],
+			"id": "adb8d849-fa9f-4ed0-97c5-429c56e255b3",
+			"name": "Webhook",
+			"webhookId": "165885c7-b73e-432c-8003-58eb23591e03"
+		},
+		{
+			"parameters": {
+				"resume": "webhook",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [256, 0],
+			"id": "ac326147-f7c4-45f4-8278-3cba7da67075",
+			"name": "Wait",
+			"webhookId": "bf3a3ada-abd5-4494-8627-6e6e8fe57d39"
+		},
+		{
+			"parameters": {
+				"respondWith": "json",
+				"responseBody": "={\n  \"executionId\": {{ $execution.id }},\n  \"resumeUrl\": \"{{ $execution.resumeUrl }}\"\n}",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.4,
+			"position": [64, 0],
+			"id": "43d3259d-68e2-480e-9474-20be7aa1f9cd",
+			"name": "Respond to Webhook"
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [[]]
+		},
+		"Respond to Webhook": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": true,
+	"pinData": {}
+}

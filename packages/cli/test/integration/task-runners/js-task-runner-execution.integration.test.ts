@@ -102,6 +102,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 		};
 
 		const runExecutionData: IRunExecutionData = {
+			version: 1,
 			startData: {},
 			resultData: {
 				runData: {
@@ -139,6 +140,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 			inputConnections,
 			runExecutionData,
 			envProviderState: createEnvProviderState(),
+			resumeUrl: 'http://webhookResumeUrl',
 		};
 	};
 
@@ -153,6 +155,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 			runExecutionData,
 			executeFunctions,
 			envProviderState,
+			resumeUrl,
 		} = newTaskData(jsCode);
 
 		return await taskRequester.startTask<INodeExecutionData[], Error>(
@@ -171,6 +174,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 			mock<INodeParameters>(),
 			mock<WorkflowExecuteMode>(),
 			envProviderState,
+			resumeUrl,
 		);
 	};
 

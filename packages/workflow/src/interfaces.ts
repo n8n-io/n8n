@@ -893,10 +893,11 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
+	// TODO: Unify these two into single function
 	/** Get the waiting resume url signed with the signature token */
 	getSignedResumeUrl(parameters?: Record<string, string>): string;
-	/** Set requirement in the execution for signature token validation */
-	setSignatureValidationRequired(): void;
+	/** Get the waiting resume url signed with the signature token for the current node */
+	getSignedResumeUrlWithoutNodeId(parameters?: Record<string, string>): string;
 	getChildNodes(
 		nodeName: string,
 		options?: { includeNodeParameters?: boolean },
@@ -2273,7 +2274,16 @@ export interface IRun {
 // Contains all the data which is needed to execute a workflow and so also to
 // start restart it again after it did fail.
 // The RunData, ExecuteData and WaitForExecution contain often the same data.
-export interface IRunExecutionData {
+export interface IRunExecutionDataV0 {
+	/**
+	 * The purpose of this field is twofold. Firstly version the interface
+	 * itself. Secondly version the code that creates instances of this
+	 * interface. E.g. when we add some new behaviour that we want to keep
+	 * backwards compatible, we can bump this version. That way we
+	 * know which executions have been created in an older n8n version
+	 * and which ones on the newer one.
+	 */
+	version?: number;
 	startData?: {
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
@@ -2301,6 +2311,7 @@ export interface IRunExecutionData {
 	/**
 	 * This is used to prevent breaking change
 	 * for waiting executions started before signature validation was added
+	 * @deprecated Left only so we can still the presence of this. Should be removed some time later
 	 */
 	validateSignature?: boolean;
 	waitTill?: Date;
@@ -2312,6 +2323,13 @@ export interface IRunExecutionData {
 		'partialExecutionVersion' | 'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
 	>;
 }
+
+export interface IRunExecutionDataV1 extends IRunExecutionDataV0 {
+	version: 1;
+}
+
+export type IRunExecutionData = IRunExecutionDataV1 | IRunExecutionDataV0;
+
 export type SchemaType =
 	| 'string'
 	| 'number'
@@ -2564,6 +2582,7 @@ export interface IWorkflowExecuteAdditionalData {
 		siblingParameters: INodeParameters,
 		mode: WorkflowExecuteMode,
 		envProviderState: EnvProviderState,
+		resumeUrl: string,
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 }

@@ -158,6 +158,7 @@ const taskData: DataRequestResponse = {
 		],
 	},
 	additionalData,
+	resumeUrl: 'http://webhookResumeUrl',
 } as const;
 
 describe('DataRequestResponseStripper', () => {
