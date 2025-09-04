@@ -103,13 +103,13 @@ async def test_cancel_already_completed_task(local_task_broker, task_runner_mana
         task_id=task_id, task_type="python", task_settings=settings
     )
 
-    result = await wait_for_task_done(local_task_broker, task_id, timeout=3.0)
+    result = await wait_for_task_done(local_task_broker, task_id, timeout=1.0)
     assert result is not None
     assert result["taskId"] == task_id
 
     await local_task_broker.cancel_task(task_id, reason="Too late")
 
-    await asyncio.sleep(1.0)
+    await asyncio.sleep(0.1)
 
     assert task_runner_manager.is_running()  # No issues
 
