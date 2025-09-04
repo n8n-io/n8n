@@ -74,6 +74,7 @@ function handleSingleSelectChange(filterName: string, value: FilterItem | null) 
 	}
 
 	if (!value || filterToUpdate.values[0]?.id === value.id) {
+		console.log('removing filter');
 		activeFilters.value = activeFilters.value.filter((f) => f.filterName !== filterName);
 		return;
 	}
@@ -81,8 +82,6 @@ function handleSingleSelectChange(filterName: string, value: FilterItem | null) 
 	activeFilters.value = activeFilters.value.map((f) =>
 		f.filterName === filterName ? { ...f, values: [value] } : f,
 	);
-
-	console.log(activeFilters.value);
 }
 
 function handleMultiSelectChange(filterName: string, values: FilterItem[]) {
@@ -107,8 +106,6 @@ function handleMultiSelectChange(filterName: string, values: FilterItem[]) {
 	);
 }
 
-function getSelectedSingleValue() {}
-
 // TODO
 // 1. Update single select
 // - Clear filters
@@ -118,77 +115,87 @@ function getSelectedSingleValue() {}
 </script>
 
 <template>
-	<div class="filters">
-		<!-- Active Filters -->
-		<div v-if="hasActiveFilters" class="filtersActiveList">
-			<template v-for="filter in activeFilters" :key="filter.filterName">
-				<button class="filterChip active">
-					<N8nText size="small">{{ filter.filterName }} is</N8nText>
-					<N8nText bold size="small">{{
-						filter.values.map(({ name }) => name).join(', ')
-					}}</N8nText>
-					<N8nIcon icon="x" />
-				</button>
-			</template>
+	<div class="placeholder">
+		<div class="filters">
+			<!-- Active Filters -->
+			<div v-if="hasActiveFilters" class="filtersActiveList">
+				<template v-for="filter in activeFilters" :key="filter.filterName">
+					<button class="filterChip active">
+						<N8nText size="small">{{ filter.filterName }} is</N8nText>
+						<N8nText bold size="small">{{
+							filter.values.map(({ name }) => name).join(', ')
+						}}</N8nText>
+						<N8nIcon icon="x" />
+					</button>
+				</template>
+			</div>
+			<!-- Filters Dropdown -->
+			<DropdownMenuRoot>
+				<DropdownMenuTrigger class="filterDropdownButton">
+					<N8nTooltip content="Filter">
+						<N8nIconButton
+							type="tertiary"
+							icon="list-filter"
+							text
+							:class="{ active: hasActiveFilters }"
+						/>
+					</N8nTooltip>
+				</DropdownMenuTrigger>
+				<DropdownMenuPortal>
+					<DropdownMenuContent class="filterDropdown">
+						<div class="filterDropdownContent">
+							<template v-for="filterOption in filterOptions" :key="filterOption.label">
+								<DropdownMenuSub>
+									<DropdownMenuSubTrigger class="filterDropdownItem">
+										<N8nText size="small" color="text-dark">
+											{{ filterOption.label }}
+										</N8nText></DropdownMenuSubTrigger
+									>
+									<DropdownMenuPortal>
+										<DropdownMenuSubContent :side-offset="4" class="filterDropdown">
+											<SingleSelect
+												v-if="filterOption.type === 'single'"
+												:items="filterOption.options"
+												:initialItem="
+													activeFilters.find((f) => f.filterName === filterOption.label)?.values[0]
+												"
+												@update:model-value="
+													(value: FilterItem | null) =>
+														handleSingleSelectChange(filterOption.label, value)
+												"
+												:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
+											/>
+											<MultiSelect
+												v-else
+												:items="filterOption.options"
+												:initial-selected="
+													activeFilters.find((f) => f.filterName === filterOption.label)?.values ||
+													[]
+												"
+												@update:model-value="
+													(values) => handleMultiSelectChange(filterOption.label, values)
+												"
+												:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
+											/>
+										</DropdownMenuSubContent>
+									</DropdownMenuPortal>
+								</DropdownMenuSub>
+							</template>
+						</div>
+					</DropdownMenuContent>
+				</DropdownMenuPortal>
+			</DropdownMenuRoot>
 		</div>
-		<!-- Filters Dropdown -->
-		<DropdownMenuRoot>
-			<DropdownMenuTrigger class="filterDropdownButton">
-				<N8nTooltip content="Filter">
-					<N8nIconButton
-						type="tertiary"
-						icon="list-filter"
-						text
-						:class="{ active: hasActiveFilters }"
-					/>
-				</N8nTooltip>
-			</DropdownMenuTrigger>
-			<DropdownMenuPortal>
-				<DropdownMenuContent class="filterDropdown">
-					<div class="filterDropdownContent">
-						<template v-for="filterOption in filterOptions" :key="filterOption.label">
-							<DropdownMenuSub>
-								<DropdownMenuSubTrigger class="filterDropdownItem">
-									<N8nText size="small" color="text-dark">
-										{{ filterOption.label }}
-									</N8nText></DropdownMenuSubTrigger
-								>
-								<DropdownMenuPortal>
-									<DropdownMenuSubContent :side-offset="4" class="filterDropdown">
-										<SingleSelect
-											v-if="filterOption.type === 'single'"
-											:items="filterOption.options"
-											:initialSelected="
-												activeFilters.find((f) => f.filterName === filterOption.label)?.values || []
-											"
-											@update:model-value="
-												(value: FilterItem | null) =>
-													handleSingleSelectChange(filterOption.label, value)
-											"
-											:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
-										/>
-										<MultiSelect
-											v-else
-											:items="filterOption.options"
-											:initial-selected="
-												activeFilters.find((f) => f.filterName === filterOption.label)?.values || []
-											"
-											@update:model-value="
-												(values) => handleMultiSelectChange(filterOption.label, values)
-											"
-											:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
-										/>
-									</DropdownMenuSubContent>
-								</DropdownMenuPortal>
-							</DropdownMenuSub>
-						</template>
-					</div>
-				</DropdownMenuContent>
-			</DropdownMenuPortal>
-		</DropdownMenuRoot>
 	</div>
 </template>
 
 <style scoped lang="scss">
 @use './Filters.scss';
+
+.placeholder {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	width: 100vw;
+}
 </style>

@@ -61,7 +61,7 @@ const selectedItem = ref<Item | null>(props.initialItem || null);
 				<template v-for="item in items" :key="item.id">
 					<ComboboxItem :value="item" class="filterDropdownItem select">
 						<ComboboxItemIndicator as-child class="filterDropdownItemIndicator">
-							<N8nIcon size="small" icon="check" />
+							<N8nIcon color="foreground-dark" size="small" icon="check" />
 						</ComboboxItemIndicator>
 						<N8nText size="small">
 							{{ item.name }}

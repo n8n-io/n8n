@@ -32,8 +32,8 @@ input {
 
 .active {
 	background-color: var(--color-callout-secondary-background);
-	border: var(--border-base);
-	border-color: var(--color-callout-secondary-border);
+	outline: var(--border-base);
+	outline-color: var(--color-callout-secondary-border);
 	color: var(--color-callout-secondary-font);
 	border-radius: var(--border-radius-base);
 }
