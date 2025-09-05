@@ -247,6 +247,8 @@ export class GmailTrigger implements INodeType {
 			| GmailWorkflowStaticData
 			| GmailWorkflowStaticDataDictionary;
 		const node = this.getNode();
+		const options = this.getNodeParameter('options', {}) as GmailTriggerOptions;
+		const filters = this.getNodeParameter('filters', {}) as GmailTriggerFilters;
 
 		let nodeStaticData = (workflowStaticData ?? {}) as GmailWorkflowStaticData;
 		if (node.typeVersion > 1) {
@@ -259,30 +261,17 @@ export class GmailTrigger implements INodeType {
 			nodeStaticData = dictionary[nodeName];
 		}
 
-		async function getLastEmailTimestamp() {
-			// here make api call
-
-			// fallback
-			return DateTime.now().toSeconds();
-		}
-
-		if (!nodeStaticData.lastMessageTimestamp) {
-			nodeStaticData.lastMessageTimestamp = await getLastEmailTimestamp();
-			return null;
-		}
-
-		// const now = Math.floor(DateTime.now().toSeconds()).toString();
-		const startDate = nodeStaticData.lastMessageTimestamp;
-		// const endDate = +now;
-
-		const options = this.getNodeParameter('options', {}) as GmailTriggerOptions;
-		const filters = this.getNodeParameter('filters', {}) as GmailTriggerFilters;
-
-		let responseData: INodeExecutionData[] = [];
-
-		try {
-			const qs: IDataObject = {};
-			const allFilters: GmailTriggerFilters = { ...filters, receivedAfter: startDate };
+		const getGmailMessages = async ({
+			maxResults,
+			startDate,
+			includeDrafts,
+		}: { maxResults?: number; startDate?: number; includeDrafts?: boolean } = {}) => {
+			const qs: IDataObject = { maxResults };
+			const allFilters: GmailTriggerFilters = {
+				...filters,
+				receivedAfter: startDate,
+				includeDrafts: includeDrafts ?? filters.includeDrafts,
+			};
 
 			if (this.getMode() === 'manual') {
 				qs.maxResults = 1;
@@ -299,14 +288,59 @@ export class GmailTrigger implements INodeType {
 				qs,
 			);
 
-			const messages = messagesResponse.messages ?? [];
+			return messagesResponse.messages ?? [];
+		};
+
+		const getEmailDateAsSeconds = (email: Message): number | null => {
+			let date;
+
+			if (email.internalDate) {
+				date = +email.internalDate / 1000;
+			} else if (email.date) {
+				date = +DateTime.fromJSDate(new Date(email.date)).toSeconds();
+			} else if (email.headers?.date) {
+				date = +DateTime.fromJSDate(new Date(email.headers.date)).toSeconds();
+			}
+
+			if (!date || isNaN(date)) {
+				return null;
+			}
+
+			return date;
+		};
+
+		const getLastEmailTimestamp = async () => {
+			const [lastMessage] = await getGmailMessages({ maxResults: 1, includeDrafts: false });
+
+			const fullMessage = (await googleApiRequest.call(
+				this,
+				'GET',
+				`/gmail/v1/users/me/messages/${lastMessage.id}`,
+				{},
+				{ format: 'metadata' },
+			)) as Message;
+
+			return getEmailDateAsSeconds(fullMessage) ?? DateTime.now().toSeconds();
+		};
+
+		if (!nodeStaticData.lastMessageTimestamp && this.getMode() !== 'manual') {
+			nodeStaticData.lastMessageTimestamp = await getLastEmailTimestamp();
+			return null;
+		}
+
+		const startDate = nodeStaticData.lastMessageTimestamp;
+
+		let responseData: INodeExecutionData[] = [];
+
+		try {
+			const messages = await getGmailMessages({ startDate });
 
 			if (!messages.length) {
-				// nodeStaticData.lastTimeChecked = endDate;
 				return null;
 			}
 
 			const simple = this.getNodeParameter('simple') as boolean;
+			const qs: Record<string, string | string[]> = {};
 
 			if (simple) {
 				qs.format = 'metadata';
@@ -321,8 +355,6 @@ export class GmailTrigger implements INodeType {
 			} else {
 				includeDrafts = filters.includeDrafts ?? true;
 			}
-
-			delete qs.includeDrafts;
 
 			for (const message of messages) {
 				const fullMessage = (await googleApiRequest.call(
@@ -377,40 +409,31 @@ export class GmailTrigger implements INodeType {
 			);
 		}
 		if (!responseData.length) {
-			// nodeStaticData.lastTimeChecked = endDate;
 			return null;
 		}
 
 		const emailsWithInvalidDate = new Set<string>();
 
-		const getEmailDateAsSeconds = (email: Message): number => {
-			let date;
+		const getEmailDateAsSecondsOrStartDate = (email: Message) => {
+			const date = getEmailDateAsSeconds(email);
 
-			if (email.internalDate) {
-				date = +email.internalDate / 1000;
-			} else if (email.date) {
-				date = +DateTime.fromJSDate(new Date(email.date)).toSeconds();
-			} else if (email.headers?.date) {
-				date = +DateTime.fromJSDate(new Date(email.headers.date)).toSeconds();
-			}
-
-			if (!date || isNaN(date)) {
+			if (date === null) {
 				emailsWithInvalidDate.add(email.id);
-				return +startDate;
+				return startDate ? +startDate : DateTime.now().toSeconds();
 			}
 
 			return date;
 		};
 
 		const lastEmailDate = responseData.reduce((lastDate, { json }) => {
-			const emailDate = getEmailDateAsSeconds(json as Message);
+			const emailDate = getEmailDateAsSecondsOrStartDate(json as Message);
 			return emailDate > lastDate ? emailDate : lastDate;
 		}, 0);
 
 		const nextPollPossibleDuplicates = responseData
 			.filter((item) => item.json)
 			.reduce((duplicates, { json }) => {
-				const emailDate = getEmailDateAsSeconds(json as Message);
+				const emailDate = getEmailDateAsSecondsOrStartDate(json as Message);
 				return emailDate <= lastEmailDate ? duplicates.concat((json as Message).id) : duplicates;
 			}, Array.from(emailsWithInvalidDate));
 
