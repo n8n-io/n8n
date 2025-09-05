@@ -299,7 +299,8 @@ export function useCanvasMapping({
 				if (
 					!!node.disabled ||
 					(triggerNodeName !== undefined && triggerNodeName !== node.name) ||
-					!['new', 'unknown', 'waiting'].includes(nodeExecutionStatusById.value[node.id])
+					!['new', 'unknown', 'waiting'].includes(nodeExecutionStatusById.value[node.id]) ||
+					nodePinnedDataById.value[node.id]
 				) {
 					return acc;
 				}

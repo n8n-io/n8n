@@ -1301,6 +1301,89 @@ describe('useCanvasMapping', () => {
 		});
 	});
 
+	describe('trigger tooltip behavior with pinned data', () => {
+		it('should show tooltip for trigger node with no pinned data when workflow is running', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const triggerNode = mockNode({
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				disabled: false,
+			});
+			const nodesList = [triggerNode];
+			const connections = {};
+			const workflowObject = createTestWorkflowObject({
+				nodes: nodesList,
+				connections,
+			});
+
+			workflowsStore.isWorkflowRunning = true;
+			workflowsStore.getWorkflowRunData = {};
+			workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+
+			const { nodes: mappedNodes } = useCanvasMapping({
+				nodes: ref(nodesList),
+				connections: ref(connections),
+				workflowObject: ref(workflowObject) as Ref<Workflow>,
+			});
+
+			expect(mappedNodes.value[0]?.data?.render.options.tooltip).toBeDefined();
+		});
+
+		it('should not show tooltip for trigger node with pinned data when workflow is running', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const triggerNode = mockNode({
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				disabled: false,
+			});
+			const nodesList = [triggerNode];
+			const connections = {};
+			const workflowObject = createTestWorkflowObject({
+				nodes: nodesList,
+				connections,
+			});
+
+			workflowsStore.isWorkflowRunning = true;
+			workflowsStore.getWorkflowRunData = {};
+			workflowsStore.pinDataByNodeName.mockReturnValue([{ json: {} }]); // Node has pinned data
+
+			const { nodes: mappedNodes } = useCanvasMapping({
+				nodes: ref(nodesList),
+				connections: ref(connections),
+				workflowObject: ref(workflowObject) as Ref<Workflow>,
+			});
+
+			expect(mappedNodes.value[0]?.data?.render.options.tooltip).toBeUndefined();
+		});
+
+		it('should not show tooltip when workflow is not running', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const triggerNode = mockNode({
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				disabled: false,
+			});
+			const nodesList = [triggerNode];
+			const connections = {};
+			const workflowObject = createTestWorkflowObject({
+				nodes: nodesList,
+				connections,
+			});
+
+			workflowsStore.isWorkflowRunning = false;
+			workflowsStore.getWorkflowRunData = {};
+			workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+
+			const { nodes: mappedNodes } = useCanvasMapping({
+				nodes: ref(nodesList),
+				connections: ref(connections),
+				workflowObject: ref(workflowObject) as Ref<Workflow>,
+			});
+
+			expect(mappedNodes.value[0]?.data?.render.options.tooltip).toBeUndefined();
+		});
+	});
+
 	describe('connections', () => {
 		it('should map connections to canvas connections', () => {
 			const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
