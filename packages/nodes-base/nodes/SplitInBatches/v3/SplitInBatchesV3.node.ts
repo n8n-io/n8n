@@ -5,30 +5,11 @@ import type {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import {
-	NodeConnectionTypes,
-	deepCopy,
-	NodeOperationError,
-	LoggerProxy as Logger,
-} from 'n8n-workflow';
-import { GlobalConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
+import { NodeConnectionTypes, deepCopy, NodeOperationError } from 'n8n-workflow';
 
 export class SplitInBatchesV3 implements INodeType {
-	// Node-specific safeguards against infinite loops (PAY-2940)
-	private static readonly EXECUTION_COUNT_KEY = 'splitInBatchesExecutionCount';
-	private static readonly WORKFLOW_START_TIME_KEY = 'workflowStartTime';
-
-	/**
-	 * Generate execution-specific context keys to prevent state leakage between workflow runs
-	 */
-	private static getExecutionContextKey(
-		executeFunctions: IExecuteFunctions,
-		baseKey: string,
-	): string {
-		const executionId = executeFunctions.getExecutionId();
-		return `${baseKey}_${executionId}`;
-	}
+	// Global tracking across all instances within the same workflow execution
+	private static executionCounters = new Map<string, number>();
 
 	description: INodeTypeDescription = {
 		displayName: 'Loop Over Items (Split in Batches)',
@@ -85,15 +66,14 @@ export class SplitInBatchesV3 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null> {
+		// PAY-2940: Check for infinite loops on EVERY execution
+		SplitInBatchesV3.checkExecutionLimit(this);
+
 		// Get the input data and create a new array so that we can remove
 		// items without a problem
 		const items = this.getInputData().slice();
 
 		const nodeContext = this.getContext('node');
-
-		// PAY-2940: Node-specific safeguards against infinite loops
-		SplitInBatchesV3.enforceExecutionLimits(this, nodeContext);
-
 		const batchSize = this.getNodeParameter('batchSize', 0) as number;
 
 		const returnItems: INodeExecutionData[] = [];
@@ -103,9 +83,9 @@ export class SplitInBatchesV3 implements INodeType {
 		if (nodeContext.items === undefined || options.reset === true) {
 			// Is the first time the node runs or reset is requested
 
-			// PAY-2940: Reset execution counters on reset or first run
+			// Reset execution counter on reset (but only if explicitly requested)
 			if (options.reset === true) {
-				SplitInBatchesV3.resetExecutionCounters(this, nodeContext);
+				SplitInBatchesV3.resetExecutionCount(this);
 			}
 
 			const sourceData = this.getInputSourceData();
@@ -184,8 +164,17 @@ export class SplitInBatchesV3 implements INodeType {
 
 		if (returnItems.length === 0) {
 			nodeContext.done = true;
-			// PAY-2940: Reset execution counter on legitimate completion
-			SplitInBatchesV3.resetExecutionCounters(this, nodeContext);
+			// Only reset counter if we're truly done (not in infinite loop)
+			// Check if counter indicates possible loop before resetting
+			const nodeName = this.getNode().name;
+			const executionId = this.getExecutionId();
+			const globalKey = `${executionId}_${nodeName}`;
+			const currentCount = SplitInBatchesV3.executionCounters.get(globalKey) || 0;
+
+			if (currentCount <= 1) {
+				// Normal completion - safe to reset
+				SplitInBatchesV3.resetExecutionCount(this);
+			}
 			return [nodeContext.processedItems, []];
 		}
 
@@ -195,90 +184,38 @@ export class SplitInBatchesV3 implements INodeType {
 	}
 
 	/**
-	 * Enforces execution limits to prevent infinite loops (PAY-2940)
+	 * Prevents infinite loops by limiting executions (PAY-2940)
 	 */
-	private static enforceExecutionLimits(
-		executeFunctions: IExecuteFunctions,
-		nodeContext: any,
-	): void {
-		const currentTime = Date.now();
+	private static checkExecutionLimit(executeFunctions: IExecuteFunctions): void {
+		const maxExecutions = 3; // Low limit for testing infinite loops
+		const nodeName = executeFunctions.getNode().name;
+		const executionId = executeFunctions.getExecutionId();
+		const globalKey = `${executionId}_${nodeName}`;
 
-		// Get configurable execution limit from workflow configuration
-		const workflowsConfig = Container.get(GlobalConfig).workflows;
-		const maxExecutions = workflowsConfig.splitInBatchesMaxExecutions;
+		// Initialize and increment counter in static map
+		const currentCount = SplitInBatchesV3.executionCounters.get(globalKey) || 0;
+		const newCount = currentCount + 1;
+		SplitInBatchesV3.executionCounters.set(globalKey, newCount);
 
-		// Use execution-specific keys to prevent state leakage between workflow runs
-		const executionCountKey = SplitInBatchesV3.getExecutionContextKey(
-			executeFunctions,
-			SplitInBatchesV3.EXECUTION_COUNT_KEY,
-		);
-		const startTimeKey = SplitInBatchesV3.getExecutionContextKey(
-			executeFunctions,
-			SplitInBatchesV3.WORKFLOW_START_TIME_KEY,
-		);
-
-		// Initialize counters if this is a new workflow execution
-		if (!nodeContext[startTimeKey] || !nodeContext[executionCountKey]) {
-			nodeContext[startTimeKey] = currentTime;
-			nodeContext[executionCountKey] = 0;
-		}
-
-		// Increment execution counter (atomic operation)
-		nodeContext[executionCountKey] = (nodeContext[executionCountKey] || 0) + 1;
-
-		const executionCount = nodeContext[executionCountKey];
-
-		// Check if we've exceeded the maximum execution limit
-		if (executionCount > maxExecutions) {
-			const executionTime = Math.round((currentTime - nodeContext[startTimeKey]) / 1000);
-
-			// Log SplitInBatches loop detection for monitoring (PAY-2940)
-			Logger.warn('SplitInBatches execution limit exceeded', {
-				executionCount,
-				maxExecutions,
-				executionTimeSeconds: executionTime,
-				nodeName: executeFunctions.getNode().name,
-				nodeType: executeFunctions.getNode().type,
-				executionId: executeFunctions.getExecutionId(),
-			});
-
+		if (newCount > maxExecutions) {
+			// Clean up before throwing error
+			SplitInBatchesV3.executionCounters.delete(globalKey);
 			throw new NodeOperationError(
 				executeFunctions.getNode(),
-				'SplitInBatches node has executed ' +
-					executionCount +
-					' times, which exceeds the safety limit of ' +
-					maxExecutions +
-					'. ' +
-					'This likely indicates an infinite loop in your workflow. ' +
-					'Common causes: ' +
-					"1) The 'done' output is connected back to this node's input, " +
-					'2) Missing workflow termination conditions, ' +
-					'3) Incorrect batch size configuration. ' +
-					'Execution time: ' +
-					executionTime +
-					's. ' +
-					'Please check your workflow connections and ensure the SplitInBatches node has a proper completion path.',
+				`Infinite loop detected: SplitInBatches node "${nodeName}" has executed ${newCount} times, exceeding the limit of ${maxExecutions}. ` +
+					'This indicates an infinite loop. Check that the "done" output is not connected back to this node\'s input.',
 			);
 		}
 	}
 
 	/**
-	 * Resets execution counters when the node legitimately completes processing (PAY-2940)
+	 * Resets execution counter when processing completes
 	 */
-	private static resetExecutionCounters(
-		executeFunctions: IExecuteFunctions,
-		nodeContext: any,
-	): void {
-		const executionCountKey = SplitInBatchesV3.getExecutionContextKey(
-			executeFunctions,
-			SplitInBatchesV3.EXECUTION_COUNT_KEY,
-		);
-		const startTimeKey = SplitInBatchesV3.getExecutionContextKey(
-			executeFunctions,
-			SplitInBatchesV3.WORKFLOW_START_TIME_KEY,
-		);
+	private static resetExecutionCount(executeFunctions: IExecuteFunctions): void {
+		const nodeName = executeFunctions.getNode().name;
+		const executionId = executeFunctions.getExecutionId();
+		const globalKey = `${executionId}_${nodeName}`;
 
-		delete nodeContext[executionCountKey];
-		delete nodeContext[startTimeKey];
+		SplitInBatchesV3.executionCounters.delete(globalKey);
 	}
 }

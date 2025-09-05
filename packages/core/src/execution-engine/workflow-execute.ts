@@ -2,9 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-import { GlobalConfig } from '@n8n/config';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
-import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
 import get from 'lodash/get';
@@ -64,6 +62,9 @@ import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
 import { isJsonCompatible } from '@/utils/is-json-compatible';
 
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import { ExecuteContext, PollContext } from './node-execution-context';
 import {
@@ -86,26 +87,6 @@ export class WorkflowExecute {
 
 	private readonly abortController = new AbortController();
 
-	// Loop detection enhancement - track node execution frequency using Map for O(1) operations
-	private readonly nodeExecutionHistory = new Map<
-		string,
-		Array<{ runIndex: number; timestamp: number }>
-	>();
-
-	// Iteration 2: Execution path tracking for sophisticated cycle detection
-	private readonly executionPathTracking = new Map<
-		string,
-		Array<{ nodeName: string; timestamp: number; runIndex: number }>
-	>();
-
-	// Configuration instance for loop detection settings (PAY-2940)
-	private readonly workflowsConfig = Container.get(GlobalConfig).workflows;
-	private static readonly PATH_CYCLE_CHECK_DEPTH = 20; // how deep to check for cycles
-	private static readonly PATH_CLEANUP_THRESHOLD = 100; // cleanup when total paths exceed this
-
-	// Store workflow instance for logging purposes
-	private workflow?: Workflow;
-
 	constructor(
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
 		private readonly mode: WorkflowExecuteMode,
@@ -123,376 +104,8 @@ export class WorkflowExecute {
 				waitingExecutionSource: {},
 			},
 		},
-	) {
-		// Log loop detection configuration at startup for troubleshooting (PAY-2940)
-		Logger.debug('WorkflowExecute initialized with loop detection configuration', {
-			maxExecutionRate: this.workflowsConfig.maxExecutionRate,
-			loopTimeWindow: this.workflowsConfig.loopTimeWindow,
-			maxPathLength: this.workflowsConfig.maxPathLength,
-			maxHistorySize: this.workflowsConfig.maxHistorySize,
-			clockSkewTolerance: this.workflowsConfig.clockSkewTolerance,
-			maxPathDepth: this.workflowsConfig.maxPathDepth,
-			splitInBatchesMaxExecutions: this.workflowsConfig.splitInBatchesMaxExecutions,
-		});
-	}
+	) {}
 
-	/**
-	 * Enhanced loop detection - checks for rapid re-execution patterns
-	 * that might indicate infinite loops bypassing the basic detection
-	 *
-	 * @param nodeName - The name of the node being executed
-	 * @param runIndex - The execution run index
-	 * @throws {OperationalError} When node execution rate exceeds safe limits
-	 */
-	private checkForRapidReExecution(nodeName: string, runIndex: number): void {
-		const now = Date.now();
-
-		// Handle potential clock skew by ensuring timestamp is reasonable
-		if (now < 0 || now > Date.now() + this.workflowsConfig.clockSkewTolerance) {
-			// Skip loop detection if system clock appears unreliable
-			return;
-		}
-
-		// Get or create history for this node
-		let nodeHistory = this.nodeExecutionHistory.get(nodeName);
-		if (!nodeHistory) {
-			nodeHistory = [];
-			this.nodeExecutionHistory.set(nodeName, nodeHistory);
-		}
-
-		// Clean up old entries for this node (more efficient than filtering all entries)
-		this.cleanupNodeHistory(nodeHistory, now);
-
-		// Add current execution to history
-		nodeHistory.push({ runIndex, timestamp: now });
-
-		// Check if we've exceeded the execution rate limit for this node
-		if (nodeHistory.length > this.workflowsConfig.maxExecutionRate) {
-			const timeSpan = Math.max(1, now - nodeHistory[0].timestamp);
-			const executionRate =
-				timeSpan > 0 ? Math.round((nodeHistory.length * 1000) / timeSpan) : nodeHistory.length;
-
-			const timeSpanSeconds = Math.max(0.001, timeSpan / 1000); // Prevent division by zero and ensure minimum value
-
-			// Log loop detection event for monitoring (PAY-2940)
-			Logger.warn('Loop detection triggered', {
-				nodeName,
-				executionCount: nodeHistory.length,
-				timeSpanSeconds: timeSpanSeconds.toFixed(3),
-				executionRate,
-				workflowId: this.workflow?.id ?? 'unknown',
-				workflowName: this.workflow?.name ?? 'unknown',
-				runIndex,
-				threshold: this.workflowsConfig.maxExecutionRate,
-				timeWindow: this.workflowsConfig.loopTimeWindow,
-			});
-
-			throw new OperationalError(
-				`Infinite loop detected: Node "${nodeName}" executed ${nodeHistory.length} times ` +
-					`in ${timeSpanSeconds.toFixed(3)} seconds (${executionRate}/sec). ` +
-					'Check for recursive connections, especially in nodes like SplitInBatches. ' +
-					'Consider reviewing your workflow logic or increasing loop detection thresholds.',
-			);
-		}
-
-		// Prevent total memory growth across all nodes
-		this.enforceGlobalHistoryLimit();
-	}
-
-	/**
-	 * Clean up old execution history entries for a specific node
-	 * @param nodeHistory - Array of execution entries for a node
-	 * @param currentTime - Current timestamp for comparison
-	 */
-	private cleanupNodeHistory(
-		nodeHistory: Array<{ runIndex: number; timestamp: number }>,
-		currentTime: number,
-	): void {
-		const cutoffTime = currentTime - this.workflowsConfig.loopTimeWindow;
-
-		// Remove old entries - find first valid entry and slice from there
-		let firstValidIndex = nodeHistory.length; // Default: all entries are old
-		for (let i = 0; i < nodeHistory.length; i++) {
-			if (nodeHistory[i].timestamp >= cutoffTime) {
-				firstValidIndex = i;
-				break;
-			}
-		}
-
-		// Remove old entries
-		if (firstValidIndex > 0) {
-			nodeHistory.splice(0, firstValidIndex);
-		}
-	}
-
-	/**
-	 * Enforce global memory limits across all node execution histories
-	 */
-	private enforceGlobalHistoryLimit(): void {
-		let totalEntries = 0;
-		for (const nodeHistory of this.nodeExecutionHistory.values()) {
-			totalEntries += nodeHistory.length;
-		}
-
-		if (totalEntries > this.workflowsConfig.maxHistorySize) {
-			// Remove oldest entries from the most active node
-			let largestNodeName = '';
-			let largestSize = 0;
-
-			for (const [nodeName, nodeHistory] of this.nodeExecutionHistory.entries()) {
-				if (nodeHistory.length > largestSize) {
-					largestSize = nodeHistory.length;
-					largestNodeName = nodeName;
-				}
-			}
-
-			if (largestNodeName) {
-				const nodeHistory = this.nodeExecutionHistory.get(largestNodeName)!;
-				nodeHistory.splice(0, Math.ceil(nodeHistory.length / 2)); // Remove half of entries
-			}
-		}
-	}
-
-	/**
-	 * Iteration 2: Advanced cycle detection using execution path tracking
-	 * Detects multi-node cycles (A→B→C→A) and complex indirect loops
-	 *
-	 * @param nodeName - The name of the node being executed
-	 * @param runIndex - The execution run index
-	 * @throws {OperationalError} When a cycle is detected in execution path
-	 */
-	private checkForExecutionPathCycles(nodeName: string, runIndex: number): void {
-		const now = Date.now();
-
-		// Handle potential clock skew
-		if (now < 0 || now > Date.now() + this.workflowsConfig.clockSkewTolerance) {
-			return;
-		}
-
-		// Create a path identifier based on the execution context
-		// Use a combination of node sequence and timing to track paths
-		const pathId = this.generatePathId(runIndex);
-
-		// Get or create path history for this execution path
-		let pathHistory = this.executionPathTracking.get(pathId);
-		if (!pathHistory) {
-			pathHistory = [];
-			this.executionPathTracking.set(pathId, pathHistory);
-		}
-
-		// Add current node to the execution path
-		const pathEntry = { nodeName, timestamp: now, runIndex };
-		pathHistory.push(pathEntry);
-
-		// Limit path depth to prevent unbounded memory growth
-		if (pathHistory.length > this.workflowsConfig.maxPathDepth) {
-			pathHistory.splice(0, pathHistory.length - this.workflowsConfig.maxPathDepth);
-		}
-
-		// Check for cycles in the current path
-		this.detectCyclesInPath(pathHistory, nodeName);
-
-		// Cleanup old paths periodically
-		this.cleanupExecutionPaths();
-	}
-
-	/**
-	 * Generate a path identifier for tracking execution flows
-	 * Uses timing and execution context to group related executions
-	 */
-	private generatePathId(runIndex: number): string {
-		// Create a path ID that groups related executions together
-		// Use a time window to group rapid successive executions
-		const timeWindow = Math.floor(Date.now() / 1000); // 1-second windows
-		return `path-${timeWindow}-${Math.floor(runIndex / 10)}`;
-	}
-
-	/**
-	 * Detect cycles within an execution path using multiple algorithms
-	 * @param pathHistory - The execution path history
-	 * @param currentNode - The current node being executed
-	 */
-	private detectCyclesInPath(
-		pathHistory: Array<{ nodeName: string; timestamp: number; runIndex: number }>,
-		currentNode: string,
-	): void {
-		const pathLength = pathHistory.length;
-
-		// Only check for cycles if we have enough path history
-		if (pathLength < 3) return;
-
-		// Method 1: Floyd's cycle detection adapted for execution paths
-		this.detectCycleUsingFloydAlgorithm(pathHistory, currentNode);
-
-		// Method 2: Direct pattern matching for common cycle patterns
-		this.detectDirectCyclePatterns(pathHistory, currentNode);
-	}
-
-	/**
-	 * Use Floyd's cycle detection algorithm adapted for execution paths
-	 */
-	private detectCycleUsingFloydAlgorithm(
-		pathHistory: Array<{ nodeName: string; timestamp: number; runIndex: number }>,
-		_currentNode: string,
-	): void {
-		const pathLength = pathHistory.length;
-		const checkDepth = Math.min(pathLength, WorkflowExecute.PATH_CYCLE_CHECK_DEPTH);
-
-		// Only check for cycles if we have enough history and potential for meaningful cycles
-		if (pathLength < 6) return; // Need at least 6 entries for a meaningful 3-node cycle
-
-		// Look for repeating subsequences in the execution path
-		for (let cycleLength = 3; cycleLength <= checkDepth / 3; cycleLength++) {
-			// Start with 3-node cycles minimum
-			if (pathLength < cycleLength * 3) continue; // Need at least 3 repetitions to be confident
-
-			// Check for 3 consecutive matching cycles
-			const cycle1 = pathHistory.slice(-cycleLength * 3, -cycleLength * 2);
-			const cycle2 = pathHistory.slice(-cycleLength * 2, -cycleLength);
-			const cycle3 = pathHistory.slice(-cycleLength);
-
-			// All three cycles must match to indicate a real cycle
-			if (this.pathsMatch(cycle1, cycle2) && this.pathsMatch(cycle2, cycle3)) {
-				const cyclePath = cycle1.map((entry) => entry.nodeName).join(' → ');
-				const cycleNodes = new Set(cycle1.map((entry) => entry.nodeName));
-
-				// Log cycle detection event for monitoring (PAY-2940)
-				Logger.warn('Multi-node execution cycle detected', {
-					cyclePath,
-					uniqueNodeCount: cycleNodes.size,
-					cycleLength,
-					workflowId: this.workflow?.id ?? 'unknown',
-					workflowName: this.workflow?.name ?? 'unknown',
-					pathHistoryLength: pathHistory.length,
-					detectionMethod: 'floyd-algorithm',
-				});
-
-				throw new OperationalError(
-					`Multi-node execution cycle detected: ${cyclePath} (${cycleNodes.size} unique nodes). ` +
-						'This pattern repeated at least 3 times. ' +
-						'Check your workflow for recursive connections or conditional loops that may cause infinite execution. ' +
-						'Consider adding termination conditions or reviewing node connections.',
-				);
-			}
-		}
-	}
-
-	/**
-	 * Detect direct cycle patterns in execution paths
-	 */
-	private detectDirectCyclePatterns(
-		pathHistory: Array<{ nodeName: string; timestamp: number; runIndex: number }>,
-		currentNode: string,
-	): void {
-		const pathLength = pathHistory.length;
-
-		// Only check for patterns if we have substantial history
-		if (pathLength < 12) return; // Need substantial history for reliable pattern detection
-
-		const recentNodes = pathHistory.slice(-Math.min(20, pathLength)).map((entry) => entry.nodeName);
-
-		// Look for the current node appearing multiple times in recent history
-		const currentNodeOccurrences: number[] = [];
-		recentNodes.forEach((node, index) => {
-			if (node === currentNode) {
-				currentNodeOccurrences.push(index);
-			}
-		});
-
-		// Need at least 4 occurrences to be confident about a pattern
-		if (currentNodeOccurrences.length >= 4) {
-			const intervals = [];
-			for (let i = 1; i < currentNodeOccurrences.length; i++) {
-				intervals.push(currentNodeOccurrences[i] - currentNodeOccurrences[i - 1]);
-			}
-
-			// If intervals are consistent, we likely have a cycle
-			const avgInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
-			const intervalVariance =
-				intervals.reduce((sum, interval) => sum + Math.abs(interval - avgInterval), 0) /
-				intervals.length;
-
-			// Very low variance indicates a consistent cycle pattern (stricter threshold)
-			if (intervalVariance <= 0.5 && avgInterval >= 3 && avgInterval <= 8) {
-				// More restrictive conditions
-				const cycleStart = Math.max(0, recentNodes.length - Math.floor(avgInterval) - 1);
-				const suspectedCycle = recentNodes.slice(cycleStart).join(' → ');
-
-				// Log pattern detection event for monitoring (PAY-2940)
-				Logger.warn('Execution cycle pattern detected', {
-					currentNode,
-					suspectedCycle,
-					nodeOccurrences: currentNodeOccurrences.length,
-					avgInterval,
-					intervalVariance,
-					workflowId: this.workflow?.id ?? 'unknown',
-					workflowName: this.workflow?.name ?? 'unknown',
-					detectionMethod: 'pattern-matching',
-				});
-
-				throw new OperationalError(
-					`Execution cycle pattern detected involving node "${currentNode}". ` +
-						`Suspected cycle path: ${suspectedCycle}. ` +
-						`Node "${currentNode}" appears ${currentNodeOccurrences.length} times in recent execution with consistent intervals. ` +
-						'This suggests a repeating execution pattern that may lead to infinite loops.',
-				);
-			}
-		}
-	}
-
-	/**
-	 * Check if two execution paths match (indicating a cycle)
-	 */
-	private pathsMatch(
-		path1: Array<{ nodeName: string; timestamp: number; runIndex: number }>,
-		path2: Array<{ nodeName: string; timestamp: number; runIndex: number }>,
-	): boolean {
-		if (path1.length !== path2.length) return false;
-
-		for (let i = 0; i < path1.length; i++) {
-			if (path1[i].nodeName !== path2[i].nodeName) return false;
-		}
-
-		return true;
-	}
-
-	/**
-	 * Clean up old execution paths to prevent unbounded memory growth
-	 */
-	private cleanupExecutionPaths(): void {
-		const totalPaths = this.executionPathTracking.size;
-
-		if (totalPaths <= WorkflowExecute.PATH_CLEANUP_THRESHOLD) return;
-
-		const now = Date.now();
-		const cutoffTime = now - this.workflowsConfig.loopTimeWindow * 2; // Keep paths for 2x the loop window
-
-		// Remove old path entries
-		for (const [pathId, pathHistory] of this.executionPathTracking.entries()) {
-			if (pathHistory.length === 0) {
-				this.executionPathTracking.delete(pathId);
-				continue;
-			}
-
-			// Check if the most recent entry in this path is too old
-			const mostRecentEntry = pathHistory[pathHistory.length - 1];
-			if (mostRecentEntry.timestamp < cutoffTime) {
-				this.executionPathTracking.delete(pathId);
-			}
-		}
-	}
-
-	/**
-	 * Executes the given workflow.
-	 *
-	 * @param {Workflow} workflow The workflow to execute
-	 * @param {INode[]} [startNode] Node to start execution from
-	 * @param {string} [destinationNode] Node to stop execution at
-	 */
-	// IMPORTANT: Do not add "async" to this function, it will then convert the
-	//            PCancelable to a regular Promise and does so not allow canceling
-	//            active executions anymore
-	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	run(
 		workflow: Workflow,
 		startNode?: INode,
@@ -1942,9 +1555,6 @@ export class WorkflowExecute {
 	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
 		Logger.debug('Workflow execution started', { workflowId: workflow.id });
 
-		// Store workflow instance for loop detection logging (PAY-2940)
-		this.workflow = workflow;
-
 		const { startedAt, hooks } = this.setupExecution();
 		this.checkForWorkflowIssues(workflow);
 		this.handleWaitingState(workflow);
@@ -2067,12 +1677,6 @@ export class WorkflowExecute {
 						runIndex = this.runExecutionData.resultData.runData[executionNode.name].length;
 					}
 					currentExecutionTry = `${executionNode.name}:${runIndex}`;
-
-					// Enhanced loop detection: check for rapid re-execution patterns
-					this.checkForRapidReExecution(executionNode.name, runIndex);
-
-					// Iteration 2: Advanced cycle detection using execution path tracking
-					this.checkForExecutionPathCycles(executionNode.name, runIndex);
 
 					// Original loop detection: check for immediate consecutive execution
 					if (currentExecutionTry === lastExecutionTry) {
