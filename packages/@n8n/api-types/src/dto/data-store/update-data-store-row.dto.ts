@@ -5,13 +5,14 @@ import {
 	dataStoreColumnNameSchema,
 	dataStoreColumnValueSchema,
 } from '../../schemas/data-store.schema';
+import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
 
-const updateDataStoreRowShape = {
-	filter: z
-		.record(dataStoreColumnNameSchema, dataStoreColumnValueSchema)
-		.refine((obj) => Object.keys(obj).length > 0, {
-			message: 'filter must not be empty',
-		}),
+const updateFilterSchema = dataTableFilterSchema.refine((filter) => filter.filters.length > 0, {
+	message: 'filter must not be empty',
+});
+
+const updateDataTableRowShape = {
+	filter: updateFilterSchema,
 	data: z
 		.record(dataStoreColumnNameSchema, dataStoreColumnValueSchema)
 		.refine((obj) => Object.keys(obj).length > 0, {
@@ -20,4 +21,4 @@ const updateDataStoreRowShape = {
 	returnData: z.boolean().default(false),
 };
 
-export class UpdateDataStoreRowDto extends Z.class(updateDataStoreRowShape) {}
+export class UpdateDataTableRowDto extends Z.class(updateDataTableRowShape) {}
