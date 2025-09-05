@@ -230,7 +230,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	</n8n-callout>
 	<div v-else>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
-			<FreeAiCreditsCallout />
+			<FreeAiCreditsCallout :credentialTypeName="credentialType.name" />
 			<Banner
 				v-show="showValidationWarning"
 				theme="danger"
