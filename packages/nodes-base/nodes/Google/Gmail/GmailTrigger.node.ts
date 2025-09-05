@@ -259,9 +259,21 @@ export class GmailTrigger implements INodeType {
 			nodeStaticData = dictionary[nodeName];
 		}
 
-		const now = Math.floor(DateTime.now().toSeconds()).toString();
-		const startDate = nodeStaticData.lastTimeChecked ?? +now;
-		const endDate = +now;
+		async function getLastEmailTimestamp() {
+			// here make api call
+
+			// fallback
+			return DateTime.now().toSeconds();
+		}
+
+		if (!nodeStaticData.lastMessageTimestamp) {
+			nodeStaticData.lastMessageTimestamp = await getLastEmailTimestamp();
+			return null;
+		}
+
+		// const now = Math.floor(DateTime.now().toSeconds()).toString();
+		const startDate = nodeStaticData.lastMessageTimestamp;
+		// const endDate = +now;
 
 		const options = this.getNodeParameter('options', {}) as GmailTriggerOptions;
 		const filters = this.getNodeParameter('filters', {}) as GmailTriggerFilters;
@@ -290,7 +302,7 @@ export class GmailTrigger implements INodeType {
 			const messages = messagesResponse.messages ?? [];
 
 			if (!messages.length) {
-				nodeStaticData.lastTimeChecked = endDate;
+				// nodeStaticData.lastTimeChecked = endDate;
 				return null;
 			}
 
@@ -351,7 +363,7 @@ export class GmailTrigger implements INodeType {
 				);
 			}
 		} catch (error) {
-			if (this.getMode() === 'manual' || !nodeStaticData.lastTimeChecked) {
+			if (this.getMode() === 'manual' || !nodeStaticData.lastMessageTimestamp) {
 				throw error;
 			}
 			const workflow = this.getWorkflow();
@@ -365,7 +377,7 @@ export class GmailTrigger implements INodeType {
 			);
 		}
 		if (!responseData.length) {
-			nodeStaticData.lastTimeChecked = endDate;
+			// nodeStaticData.lastTimeChecked = endDate;
 			return null;
 		}
 
@@ -411,7 +423,7 @@ export class GmailTrigger implements INodeType {
 		}
 
 		nodeStaticData.possibleDuplicates = nextPollPossibleDuplicates;
-		nodeStaticData.lastTimeChecked = lastEmailDate || endDate;
+		nodeStaticData.lastMessageTimestamp = lastEmailDate;
 
 		if (Array.isArray(responseData) && responseData.length) {
 			return [responseData];
