@@ -29,6 +29,7 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 
 	const dataStores = ref<DataStore[]>([]);
 	const totalCount = ref(0);
+	const dataStoreSize = ref(0);
 
 	const fetchDataStores = async (projectId: string, page: number, pageSize: number) => {
 		const response = await fetchDataStoresApi(rootStore.restApiContext, projectId, {
@@ -207,10 +208,18 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		return await deleteDataStoreRowsApi(rootStore.restApiContext, dataStoreId, rowIds, projectId);
 	};
 
+	const fetchDataStoreSize = async () => {
+		// mock this for now
+		dataStoreSize.value = 100;
+		return dataStoreSize.value;
+	};
+
 	return {
 		dataStores,
 		totalCount,
 		fetchDataStores,
+		fetchDataStoreSize,
+		dataStoreSize,
 		createDataStore,
 		deleteDataStore,
 		updateDataStore,

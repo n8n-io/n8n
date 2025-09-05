@@ -142,7 +142,7 @@ const menu = computed(() => {
 		});
 	}
 
-	if (settingsStore.isDataStoreFeatureEnabled) {
+	if (settingsStore.isDataTableFeatureEnabled) {
 		// TODO: this should probably be moved to the module descriptor as a setting
 		items.push({
 			value: ACTION_TYPES.DATA_STORE,
@@ -242,13 +242,13 @@ const sectionDescription = computed(() => {
 		return i18n.baseText('projects.header.shared.subtitle');
 	} else if (projectPages.isOverviewSubPage) {
 		return i18n.baseText(
-			settingsStore.isDataStoreFeatureEnabled
+			settingsStore.isDataTableFeatureEnabled
 				? 'projects.header.overview.subtitleWithDataTables'
 				: 'projects.header.overview.subtitle',
 		);
 	} else if (isPersonalProject.value) {
 		return i18n.baseText(
-			settingsStore.isDataStoreFeatureEnabled
+			settingsStore.isDataTableFeatureEnabled
 				? 'projects.header.personal.subtitleWithDataTables'
 				: 'projects.header.personal.subtitle',
 		);
