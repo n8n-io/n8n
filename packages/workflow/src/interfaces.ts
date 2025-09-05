@@ -1054,7 +1054,6 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'executeWorkflow'
 		| 'sendMessageToUI'
 		| 'startJob'
-		| 'continueOnFail'
 		| 'helpers'
 	> & {
 		getNextRunIndex(): number;
