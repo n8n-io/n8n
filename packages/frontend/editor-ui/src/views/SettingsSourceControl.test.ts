@@ -408,7 +408,7 @@ describe('SettingsSourceControl', () => {
 
 			// Add username but no token
 			const usernameInput = container.querySelector('input[name="username"]')!;
-			await userEvent.click(usernameInput);
+			await userEvent.clear(usernameInput);
 			await userEvent.type(usernameInput, 'testuser');
 			await userEvent.tab();
 
@@ -416,13 +416,15 @@ describe('SettingsSourceControl', () => {
 
 			// Add token - now should be enabled
 			const tokenInput = container.querySelector('input[name="personalAccessToken"]')!;
-			await userEvent.click(tokenInput);
+			await userEvent.clear(tokenInput);
 			await userEvent.type(tokenInput, 'ghp_token');
 			await userEvent.tab();
 
-			// Verify credentials are entered correctly
-			expect(usernameInput).toHaveValue('testuser');
-			expect(tokenInput).toHaveValue('ghp_token');
+			// Wait for reactivity to process the input changes
+			await waitFor(() => {
+				expect(usernameInput).toHaveValue('testuser');
+				expect(tokenInput).toHaveValue('ghp_token');
+			});
 		});
 
 		it('should clear HTTPS credentials when switching to SSH', async () => {
@@ -611,32 +613,39 @@ describe('SettingsSourceControl', () => {
 			const protocolSelect = getByTestId('source-control-protocol-select');
 			await switchProtocol(protocolSelect, 'HTTPS');
 
+			// Wait for protocol switch to complete
+			await waitFor(() => {
+				expect(getByTestId('source-control-username-input')).toBeVisible();
+			});
+
 			// Update URL to HTTPS format
 			await userEvent.clear(repoUrlInput);
 			await userEvent.type(repoUrlInput, 'https://github.com/user/repo.git');
 			await userEvent.tab();
 
-			// Should be disabled without HTTPS credentials
+			// Should be disabled without HTTPS credentials (need to wait for form validation)
 			await waitFor(() => expect(connectButton).toBeDisabled());
 
 			// Add credentials progressively and test button state
 			const usernameInput = container.querySelector('input[name="username"]')!;
-			await userEvent.click(usernameInput);
+			await userEvent.clear(usernameInput);
 			await userEvent.type(usernameInput, 'testuser');
 			await userEvent.tab();
 
 			// Still disabled without token
-			expect(connectButton).toBeDisabled();
+			await waitFor(() => expect(connectButton).toBeDisabled());
 
 			const tokenInput = container.querySelector('input[name="personalAccessToken"]')!;
-			await userEvent.click(tokenInput);
+			await userEvent.clear(tokenInput);
 			await userEvent.type(tokenInput, 'token');
 			await userEvent.tab();
 
-			// Verify all required HTTPS fields contain expected values
-			expect(repoUrlInput).toHaveValue('https://github.com/user/repo.git');
-			expect(usernameInput).toHaveValue('testuser');
-			expect(tokenInput).toHaveValue('token');
+			// Wait for form validation to process all inputs
+			await waitFor(() => {
+				expect(repoUrlInput).toHaveValue('https://github.com/user/repo.git');
+				expect(usernameInput).toHaveValue('testuser');
+				expect(tokenInput).toHaveValue('token');
+			});
 
 			// Button state depends on internal validation - we tested user interaction
 		});
