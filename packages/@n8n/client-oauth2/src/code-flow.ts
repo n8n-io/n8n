@@ -118,6 +118,6 @@ export class CodeFlow {
 		);
 
 		const responseData = await this.client.accessTokenRequest(requestOptions);
-		return this.client.createToken(responseData);
+		return this.client.createToken({ ...responseData, grant_type: 'authorization_code' });
 	}
 }
