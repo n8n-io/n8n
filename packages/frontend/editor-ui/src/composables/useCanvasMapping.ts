@@ -305,7 +305,7 @@ export function useCanvasMapping({
 					return acc;
 				}
 
-				if ('eventTriggerDescription' in nodeTypeDescription) {
+				if (typeof nodeTypeDescription.eventTriggerDescription === 'string') {
 					const nodeName = i18n.shortNodeType(nodeTypeDescription.name);
 					const { eventTriggerDescription } = nodeTypeDescription;
 					acc[node.id] = i18n
