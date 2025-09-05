@@ -1047,12 +1047,15 @@ export function getNodeOutputs(
 	} else {
 		// Calculate the outputs dynamically
 		try {
-			outputs = (workflow.expression.getSimpleParameterValue(
+			const result = workflow.expression.getSimpleParameterValue(
 				node,
 				nodeTypeData.outputs,
 				'internal',
 				{},
-			) || []) as NodeConnectionType[];
+			);
+			outputs = Array.isArray(result)
+				? (result as Array<NodeConnectionType | INodeOutputConfiguration>)
+				: [];
 		} catch (e) {
 			console.warn('Could not calculate outputs dynamically for node: ', node.name);
 		}
@@ -1657,11 +1660,14 @@ export function isTool(
 	}
 
 	// Check for other tool nodes
-	for (const output of nodeTypeDescription.outputs) {
-		if (typeof output === 'string') {
-			return output === NodeConnectionTypes.AiTool;
-		} else if (output?.type && output.type === NodeConnectionTypes.AiTool) {
-			return true;
+	if (Array.isArray(nodeTypeDescription.outputs)) {
+		// Handle static outputs (array case)
+		for (const output of nodeTypeDescription.outputs) {
+			if (typeof output === 'string') {
+				return output === NodeConnectionTypes.AiTool;
+			} else if (output?.type && output.type === NodeConnectionTypes.AiTool) {
+				return true;
+			}
 		}
 	}
 

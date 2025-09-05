@@ -284,18 +284,25 @@ async function onOidcSettingsSave() {
 		if (confirmAction !== MODAL_CONFIRM) return;
 	}
 
-	const newConfig = await ssoStore.saveOidcConfig({
-		clientId: clientId.value,
-		clientSecret: clientSecret.value,
-		discoveryEndpoint: discoveryEndpoint.value,
-		loginEnabled: ssoStore.isOidcLoginEnabled,
-	});
+	try {
+		const newConfig = await ssoStore.saveOidcConfig({
+			clientId: clientId.value,
+			clientSecret: clientSecret.value,
+			discoveryEndpoint: discoveryEndpoint.value,
+			loginEnabled: ssoStore.isOidcLoginEnabled,
+		});
 
-	// Update store with saved protocol selection
-	ssoStore.selectedAuthProtocol = authProtocol.value;
+		// Update store with saved protocol selection
+		ssoStore.selectedAuthProtocol = authProtocol.value;
 
-	clientSecret.value = newConfig.clientSecret;
-	trackUpdateSettings();
+		clientSecret.value = newConfig.clientSecret;
+		trackUpdateSettings();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
+		return;
+	} finally {
+		await getOidcConfig();
+	}
 }
 </script>
 

@@ -202,7 +202,7 @@ describe('useCalloutHelpers()', () => {
 				},
 			});
 
-			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(null);
+			expect(ndvStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(nodeCreatorStore.setNodeCreatorState).toHaveBeenCalledWith({
 				source: NODE_CREATOR_OPEN_SOURCES.TEMPLATES_CALLOUT,
 				createNodeActive: true,

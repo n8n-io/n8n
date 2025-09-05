@@ -316,7 +316,7 @@ describe('NodeExecuteButton', () => {
 
 		await userEvent.click(getByRole('button'));
 
-		expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(null);
+		expect(ndvStore.unsetActiveNodeName).toHaveBeenCalled();
 		expect(workflowsStore.chatPartialExecutionDestinationNode).toBe(node.name);
 		expect(nodeViewEventBusEmitSpy).toHaveBeenCalledWith('openChat');
 	});
@@ -330,7 +330,7 @@ describe('NodeExecuteButton', () => {
 
 		await userEvent.click(getByRole('button'));
 
-		expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(null);
+		expect(ndvStore.unsetActiveNodeName).toHaveBeenCalled();
 		expect(workflowsStore.chatPartialExecutionDestinationNode).toBe(node.name);
 		expect(nodeViewEventBusEmitSpy).toHaveBeenCalledWith('openChat');
 	});

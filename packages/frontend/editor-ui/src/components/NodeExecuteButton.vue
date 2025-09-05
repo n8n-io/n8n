@@ -332,7 +332,7 @@ async function onClick() {
 	}
 
 	if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
-		ndvStore.setActiveNodeName(null);
+		ndvStore.unsetActiveNodeName();
 		workflowsStore.chatPartialExecutionDestinationNode = props.nodeName;
 		nodeViewEventBus.emit('openChat');
 	} else if (isListeningForEvents.value) {

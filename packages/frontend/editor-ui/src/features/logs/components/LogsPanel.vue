@@ -115,7 +115,7 @@ function handleResizeOverviewPanelEnd() {
 }
 
 function handleOpenNdv(treeNode: LogEntry) {
-	ndvStore.setActiveNodeName(treeNode.node.name);
+	ndvStore.setActiveNodeName(treeNode.node.name, 'logs_view');
 
 	void nextTick(() => {
 		const source = treeNode.runData?.source[0];

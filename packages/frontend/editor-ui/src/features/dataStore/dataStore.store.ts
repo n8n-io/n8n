@@ -169,25 +169,23 @@ export const useDataStoreStore = defineStore(DATA_STORE_STORE, () => {
 		projectId: string,
 		page: number,
 		pageSize: number,
+		sortBy: string,
 	) => {
 		return await getDataStoreRowsApi(rootStore.restApiContext, datastoreId, projectId, {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
+			sortBy,
 		});
 	};
 
 	const insertEmptyRow = async (dataStore: DataStore) => {
-		const emptyRow: DataStoreRow = {};
-		dataStore.columns.forEach((column) => {
-			emptyRow[column.name] = null;
-		});
 		const inserted = await insertDataStoreRowApi(
 			rootStore.restApiContext,
 			dataStore.id,
-			emptyRow,
+			{},
 			dataStore.projectId,
 		);
-		return inserted[0].id;
+		return inserted[0];
 	};
 
 	const updateRow = async (
