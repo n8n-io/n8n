@@ -18,8 +18,9 @@ import {
 	Put,
 	Param,
 	Licensed,
+	Middleware,
 } from '@n8n/decorators';
-import { Response } from 'express';
+import { NextFunction, Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
@@ -38,6 +39,22 @@ export class ProjectController {
 		private readonly projectService: ProjectService,
 	) {}
 
+	@Middleware()
+	async validateProjectExists(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		next: NextFunction,
+	) {
+		try {
+			const { projectId } = req.params;
+			const project = await this.projectService.getProject(projectId);
+			console.log('project', project);
+			next();
+		} catch (err) {
+			res.status(404).send('Project not found');
+		}
+	}
+
 	@Post('/')
 	@ProjectScope('folder:create')
 	@Licensed('feat:folders')
@@ -47,11 +64,6 @@ export class ProjectController {
 		@Body payload: CreateFolderDto,
 	) {
 		const { projectId } = req.params;
-		try {
-			await this.projectService.getProject(projectId);
-		} catch (e) {
-			throw new NotFoundError('Project not found');
-		}
 
 		try {
 			const folder = await this.folderService.createFolder(payload, projectId);
@@ -161,12 +173,6 @@ export class ProjectController {
 		@Query payload: ListFolderQueryDto,
 	) {
 		const { projectId } = req.params;
-
-		try {
-			await this.projectService.getProject(projectId);
-		} catch (e) {
-			throw new NotFoundError('Project not found');
-		}
 
 		const [data, count] = await this.folderService.getManyAndCount(projectId, payload);
 
