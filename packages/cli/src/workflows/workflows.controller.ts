@@ -246,6 +246,26 @@ export class WorkflowsController {
 		}
 	}
 
+	@Get('/caller-policy-any', { middlewares: listQueryMiddleware })
+	async getAllCallerPolicyAny(req: WorkflowRequest.GetMany, res: express.Response) {
+		try {
+			const { workflows: data, count } = await this.workflowService.getMany(
+				req.user,
+				req.listQueryOptions,
+				!!req.query.includeScopes,
+				!!req.query.includeFolders,
+				!!req.query.onlySharedWithMe,
+				true,
+			);
+
+			res.json({ count, data });
+		} catch (maybeError) {
+			const error = utils.toError(maybeError);
+			ResponseHelper.reportError(error);
+			ResponseHelper.sendErrorResponse(res, error);
+		}
+	}
+
 	@Get('/new')
 	async getNewName(req: WorkflowRequest.NewName) {
 		const requestedName = req.query.name ?? this.globalConfig.workflows.defaultName;
