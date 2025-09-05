@@ -167,6 +167,13 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
+			maxExecutionRate: 10,
+			loopTimeWindow: 5000,
+			maxPathLength: 100,
+			maxHistorySize: 1000,
+			clockSkewTolerance: 1000,
+			maxPathDepth: 50,
+			splitInBatchesMaxExecutions: 100000,
 		},
 		endpoints: {
 			metrics: {
