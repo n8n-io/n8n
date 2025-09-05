@@ -9,7 +9,7 @@ import { EditFieldsNode } from './nodes/EditFieldsNode';
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
 	readonly editFields: EditFieldsNode;
-	readonly inputPanel = new RunDataPanel(this.page.getByTestId('input-panel'));
+	readonly inputPanel = new RunDataPanel(this.page.getByTestId('ndv-input-panel'));
 	readonly outputPanel = new RunDataPanel(this.page.getByTestId('output-panel'));
 
 	constructor(page: Page) {
