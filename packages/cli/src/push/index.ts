@@ -137,6 +137,46 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	/**
+	 * Parses the RFC 7239 Forwarded header to extract host and proto values.
+	 *
+	 * @param forwardedHeader The Forwarded header value (e.g., "for=192.0.2.60;proto=http;host=example.com")
+	 * @returns Object with host and proto, or null if parsing fails
+	 */
+	private parseForwardedHeader(forwardedHeader: string): { host?: string; proto?: string } | null {
+		if (!forwardedHeader || typeof forwardedHeader !== 'string') {
+			return null;
+		}
+
+		try {
+			// Parse the first forwarded entry (comma-separated list)
+			const firstEntry = forwardedHeader.split(',')[0]?.trim();
+			if (!firstEntry) return null;
+
+			const result: { host?: string; proto?: string } = {};
+
+			// Parse semicolon-separated key=value pairs
+			const pairs = firstEntry.split(';');
+			for (const pair of pairs) {
+				const [key, value] = pair.split('=', 2);
+				if (!key || !value) continue;
+
+				const cleanKey = key.trim().toLowerCase();
+				const cleanValue = value.trim().replace(/^["']|["']$/g, ''); // Remove quotes
+
+				if (cleanKey === 'host') {
+					result.host = cleanValue;
+				} else if (cleanKey === 'proto') {
+					result.proto = cleanValue;
+				}
+			}
+
+			return result;
+		} catch {
+			return null;
+		}
+	}
+
+	/**
 	 * Extracts protocol and normalized host from an origin URL using native URL class.
 	 *
 	 * @param origin The origin URL (e.g., "https://example.com", "http://localhost:3000")
@@ -189,25 +229,59 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (!pushRef) {
 			connectionError = 'The query parameter "pushRef" is missing!';
 		} else if (!originInfo) {
-			this.logger.warn('Origin header is missing or malformed', { origin: headers.origin });
+			this.logger.warn('Origin header is missing or malformed', {
+				origin: headers.origin,
+				forwarded: headers.forwarded,
+				'x-forwarded-host': headers['x-forwarded-host'],
+				'x-forwarded-proto': headers['x-forwarded-proto'],
+			});
 
 			connectionError = 'Invalid origin!';
 		} else if (inProduction) {
-			const rawExpectedHost =
-				typeof headers['x-forwarded-host'] === 'string'
-					? headers['x-forwarded-host']
-					: headers.host;
+			// Extract expected host from proxy headers using same precedence logic
+			let rawExpectedHost: string | undefined;
+			let expectedProtocol = originInfo.protocol;
 
-			// Normalize expected host using the same protocol as origin
-			const normalizedExpectedHost = this.normalizeHost(rawExpectedHost ?? '', originInfo.protocol);
+			// 1. Try RFC 7239 Forwarded header first
+			const forwarded = this.parseForwardedHeader(headers.forwarded ?? '');
+			if (forwarded?.host) {
+				rawExpectedHost = forwarded.host;
+				if (forwarded.proto) {
+					expectedProtocol = forwarded.proto.toLowerCase() as 'http' | 'https';
+				}
+			}
+			// 2. Try X-Forwarded-Host
+			else if (typeof headers['x-forwarded-host'] === 'string') {
+				rawExpectedHost = headers['x-forwarded-host'];
+				if (typeof headers['x-forwarded-proto'] === 'string') {
+					expectedProtocol = headers['x-forwarded-proto'].toLowerCase().split(',')[0]?.trim() as
+						| 'http'
+						| 'https';
+				}
+			}
+			// 3. Fallback to Host header
+			else {
+				rawExpectedHost = headers.host;
+			}
+
+			// Normalize expected host using the determined protocol
+			const normalizedExpectedHost = this.normalizeHost(rawExpectedHost ?? '', expectedProtocol);
 
 			if (normalizedExpectedHost !== originInfo.host) {
 				this.logger.warn(
 					'Origin header does NOT match the expected origin. ' +
 						`(Origin: "${headers.origin}" -> "${originInfo.host}", ` +
 						`Expected: "${rawExpectedHost}" -> "${normalizedExpectedHost}", ` +
-						`Protocol: "${originInfo.protocol}")`,
-					{ headers: pick(headers, ['host', 'origin', 'x-forwarded-proto', 'x-forwarded-host']) },
+						`Protocol: "${expectedProtocol}")`,
+					{
+						headers: pick(headers, [
+							'host',
+							'origin',
+							'x-forwarded-proto',
+							'x-forwarded-host',
+							'forwarded',
+						]),
+					},
 				);
 				connectionError = 'Invalid origin!';
 			}

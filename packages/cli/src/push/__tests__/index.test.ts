@@ -676,8 +676,12 @@ describe('Push', () => {
 				});
 
 				test('should handle missing host header when no x-forwarded-host', () => {
+					// Explicitly remove host header after beforeEach setup
 					delete req.headers.host;
 					req.headers.origin = `https://${host}`;
+					// Make sure no proxy headers exist
+					delete req.headers['x-forwarded-host'];
+					delete req.headers.forwarded;
 
 					if (backendName === 'sse') {
 						expect(() => push.handleRequest(req, res)).toThrow(
@@ -702,6 +706,206 @@ describe('Push', () => {
 
 					expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
 					expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+				});
+
+				describe('Forwarded header support', () => {
+					beforeEach(() => {
+						// Clean proxy headers for each test
+						delete req.headers.forwarded;
+						delete req.headers['x-forwarded-host'];
+						delete req.headers['x-forwarded-proto'];
+						// Explicitly set headers for forwarded tests
+						req.headers.host = host;
+						req.headers.origin = `https://${host}`;
+					});
+
+					test('should parse RFC 7239 Forwarded header with host and proto', () => {
+						req.headers.forwarded = `for=192.0.2.60;proto=https;host=${host}`;
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+
+					test('should handle Forwarded header with quoted values', () => {
+						req.headers.forwarded = `for="192.0.2.60";proto="https";host="${host}"`;
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+
+					test('should prioritize Forwarded header over X-Forwarded-* headers', () => {
+						req.headers.forwarded = `proto=https;host=${host}`;
+						req.headers['x-forwarded-host'] = 'wrong-host.com';
+						req.headers['x-forwarded-proto'] = 'http';
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+
+					test('should fallback to X-Forwarded-* when Forwarded header incomplete', () => {
+						req.headers.forwarded = 'for=192.0.2.60'; // Missing host and proto
+						req.headers['x-forwarded-host'] = host;
+						req.headers['x-forwarded-proto'] = 'https';
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+
+					test('should handle multiple Forwarded entries (use first)', () => {
+						req.headers.forwarded = `proto=https;host=${host}, proto=http;host=other.com`;
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+
+					test('should handle comma-separated X-Forwarded-Proto (use first)', () => {
+						req.headers['x-forwarded-host'] = host;
+						req.headers['x-forwarded-proto'] = 'https, http';
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+
+					test('should normalize default ports in Forwarded header', () => {
+						req.headers.forwarded = `proto=https;host=${host}:443`;
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+
+					test('should reject mismatched host in Forwarded header', () => {
+						req.headers.forwarded = 'proto=https;host=wrong-host.com';
+						req.headers.origin = `https://${host}`;
+
+						if (backendName === 'sse') {
+							expect(() => push.handleRequest(req, res)).toThrow(
+								new BadRequestError('Invalid origin!'),
+							);
+						} else {
+							push.handleRequest(req, res);
+							expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
+							expect(ws.close).toHaveBeenCalledWith(1008);
+						}
+						expect(backend.add).not.toHaveBeenCalled();
+					});
+
+					test('should allow invalid protocol in Forwarded header if host matches', () => {
+						req.headers.forwarded = `proto=ftp;host=${host}`;
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+				});
+			});
+
+			describe('parseForwardedHeader method', () => {
+				test('should parse simple forwarded header', () => {
+					// @ts-expect-error accessing private method for testing
+					const result = push.parseForwardedHeader('proto=https;host=example.com');
+					expect(result).toEqual({ proto: 'https', host: 'example.com' });
+				});
+
+				test('should parse forwarded header with quoted values', () => {
+					// @ts-expect-error accessing private method for testing
+					const result = push.parseForwardedHeader('proto="https";host="example.com"');
+					expect(result).toEqual({ proto: 'https', host: 'example.com' });
+				});
+
+				test('should parse forwarded header with single quotes', () => {
+					// @ts-expect-error accessing private method for testing
+					const result = push.parseForwardedHeader("proto='https';host='example.com'");
+					expect(result).toEqual({ proto: 'https', host: 'example.com' });
+				});
+
+				test('should handle multiple entries (use first)', () => {
+					// @ts-expect-error accessing private method for testing
+					const result = push.parseForwardedHeader(
+						'proto=https;host=example.com, proto=http;host=other.com',
+					);
+					expect(result).toEqual({ proto: 'https', host: 'example.com' });
+				});
+
+				test('should handle spaces around values', () => {
+					// @ts-expect-error accessing private method for testing
+					const result = push.parseForwardedHeader('  proto = https ; host = example.com  ');
+					expect(result).toEqual({ proto: 'https', host: 'example.com' });
+				});
+
+				test('should ignore unknown parameters', () => {
+					// @ts-expect-error accessing private method for testing
+					const result = push.parseForwardedHeader(
+						'for=192.0.2.60;proto=https;host=example.com;by=proxy.com',
+					);
+					expect(result).toEqual({ proto: 'https', host: 'example.com' });
+				});
+
+				test('should return null for invalid header', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.parseForwardedHeader('')).toBeNull();
+					// @ts-expect-error accessing private method for testing
+					expect(push.parseForwardedHeader('invalid')).toEqual({});
+				});
+
+				test('should return null for non-string input', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.parseForwardedHeader(null as any)).toBeNull();
+					// @ts-expect-error accessing private method for testing
+					expect(push.parseForwardedHeader(undefined as any)).toBeNull();
+				});
+
+				test('should handle partial parameters', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.parseForwardedHeader('proto=https')).toEqual({ proto: 'https' });
+					// @ts-expect-error accessing private method for testing
+					expect(push.parseForwardedHeader('host=example.com')).toEqual({ host: 'example.com' });
 				});
 			});
 		});
