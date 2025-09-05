@@ -1,8 +1,11 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { LogsPanel } from './components/LogsPanel';
 
 export class ExecutionsPage extends BasePage {
+	readonly logsPanel = new LogsPanel(this.getPreviewIframe().getByTestId('logs-panel'));
+
 	async clickDebugInEditorButton(): Promise<void> {
 		await this.clickButtonByName('Debug in editor');
 	}
@@ -26,18 +29,6 @@ export class ExecutionsPage extends BasePage {
 
 	getPreviewIframe() {
 		return this.page.getByTestId('workflow-preview-iframe').contentFrame();
-	}
-
-	getManualChatMessages(): Locator {
-		return this.getPreviewIframe().locator('.chat-messages-list .chat-message');
-	}
-
-	getLogsOverviewStatus() {
-		return this.getPreviewIframe().getByTestId('logs-overview-status');
-	}
-
-	getLogEntries(): Locator {
-		return this.getPreviewIframe().getByTestId('logs-overview-body').getByRole('treeitem');
 	}
 
 	async clickLastExecutionItem(): Promise<void> {

@@ -39,19 +39,19 @@ test.describe('Resource Mapper', () => {
 		await n8n.ndv.fillParameterInputByName('age', '30');
 		await n8n.ndv.execute();
 
-		await expect(n8n.ndv.getOutputTableHeaders().filter({ hasText: 'id' })).toBeVisible();
-		await expect(n8n.ndv.getOutputTableHeaders().filter({ hasText: 'name' })).toBeVisible();
-		await expect(n8n.ndv.getOutputTableHeaders().filter({ hasText: 'age' })).toBeVisible();
+		await expect(n8n.ndv.outputPanel.getTableHeaders().filter({ hasText: 'id' })).toBeVisible();
+		await expect(n8n.ndv.outputPanel.getTableHeaders().filter({ hasText: 'name' })).toBeVisible();
+		await expect(n8n.ndv.outputPanel.getTableHeaders().filter({ hasText: 'age' })).toBeVisible();
 
 		await n8n.ndv.getResourceMapperRemoveFieldButton('name').click();
 		await n8n.ndv.execute();
 
 		await expect(n8n.ndv.getParameterInput('id')).toBeVisible();
-		await expect(n8n.ndv.getOutputTableHeaders().filter({ hasText: 'id' })).toBeVisible();
+		await expect(n8n.ndv.outputPanel.getTableHeaders().filter({ hasText: 'id' })).toBeVisible();
 		await expect(n8n.ndv.getParameterInput('age')).toBeVisible();
-		await expect(n8n.ndv.getOutputTableHeaders().filter({ hasText: 'age' })).toBeVisible();
+		await expect(n8n.ndv.outputPanel.getTableHeaders().filter({ hasText: 'age' })).toBeVisible();
 		await expect(n8n.ndv.getParameterInput('name')).toHaveCount(0);
-		await expect(n8n.ndv.getOutputTableHeaders().filter({ hasText: 'name' })).toHaveCount(0);
+		await expect(n8n.ndv.outputPanel.getTableHeaders().filter({ hasText: 'name' })).toHaveCount(0);
 	});
 
 	test('should correctly delete all fields', async ({ n8n }) => {
@@ -60,19 +60,19 @@ test.describe('Resource Mapper', () => {
 		await n8n.ndv.fillParameterInputByName('age', '30');
 		await n8n.ndv.execute();
 
-		await expect(n8n.ndv.getOutputTableHeaders().filter({ hasText: 'id' })).toBeVisible();
-		await expect(n8n.ndv.getOutputTableHeaders().filter({ hasText: 'name' })).toBeVisible();
-		await expect(n8n.ndv.getOutputTableHeaders().filter({ hasText: 'age' })).toBeVisible();
+		await expect(n8n.ndv.outputPanel.getTableHeaders().filter({ hasText: 'id' })).toBeVisible();
+		await expect(n8n.ndv.outputPanel.getTableHeaders().filter({ hasText: 'name' })).toBeVisible();
+		await expect(n8n.ndv.outputPanel.getTableHeaders().filter({ hasText: 'age' })).toBeVisible();
 
 		await n8n.ndv.getResourceMapperColumnsOptionsButton().click();
 		await n8n.ndv.getResourceMapperRemoveAllFieldsOption().click();
 		await n8n.ndv.execute();
 
 		await expect(n8n.ndv.getParameterInput('id')).toBeVisible();
-		await expect(n8n.ndv.getOutputTableHeaders().filter({ hasText: 'id' })).toBeVisible();
+		await expect(n8n.ndv.outputPanel.getTableHeaders().filter({ hasText: 'id' })).toBeVisible();
 		await expect(n8n.ndv.getParameterInput('name')).toHaveCount(0);
-		await expect(n8n.ndv.getOutputTableHeaders().filter({ hasText: 'name' })).toHaveCount(0);
+		await expect(n8n.ndv.outputPanel.getTableHeaders().filter({ hasText: 'name' })).toHaveCount(0);
 		await expect(n8n.ndv.getParameterInput('age')).toHaveCount(0);
-		await expect(n8n.ndv.getOutputTableHeaders().filter({ hasText: 'age' })).toHaveCount(0);
+		await expect(n8n.ndv.outputPanel.getTableHeaders().filter({ hasText: 'age' })).toHaveCount(0);
 	});
 });
