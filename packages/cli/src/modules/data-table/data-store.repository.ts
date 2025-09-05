@@ -3,16 +3,15 @@ import {
 	type DataStoreCreateColumnSchema,
 	type ListDataStoreQueryDto,
 } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from './data-store-rows.repository';
+import { DataStoreUserTableName } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
-import { GlobalConfig } from '@n8n/config';
-import { Logger } from '@n8n/backend-common';
-import { DataStoreUserTableName } from './data-store.types';
 
 @Service()
 export class DataStoreRepository extends Repository<DataTable> {
@@ -20,7 +19,6 @@ export class DataStoreRepository extends Repository<DataTable> {
 		dataSource: DataSource,
 		private dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly globalConfig: GlobalConfig,
-		private readonly logger: Logger,
 	) {
 		super(DataTable, dataSource.manager);
 	}
@@ -271,7 +269,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 				break;
 
 			case 'mysqldb':
-			case 'mariadb':
+			case 'mariadb': {
 				const databaseName = this.globalConfig.database.mysqldb.database;
 				sql = `
 					SELECT ROUND(SUM((DATA_LENGTH + INDEX_LENGTH)) / 1024 / 1024, 1) AS total_mb
@@ -280,15 +278,15 @@ export class DataStoreRepository extends Repository<DataTable> {
 					AND table_name LIKE '${this.toTableName('%')}'
 				`;
 				break;
+			}
 
 			default:
-				this.logger.warn(`Unsupported database type for size calculation: ${dbType}`);
 				return 0;
 		}
 
-		const result = await this.query(sql);
+		const result = (await this.query(sql)) as Array<{ total_mb: number | null }>;
 
-		const currentSizeInMbs = result[0]?.total_mb || 0;
+		const currentSizeInMbs = result[0]?.total_mb ?? 0;
 
 		return currentSizeInMbs;
 	}
