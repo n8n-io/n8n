@@ -11,13 +11,13 @@ WORKDIR /app/task-runner-javascript
 
 RUN node -v && npm -v && corepack --version && corepack enable pnpm && pnpm -v
 
-# Install extra runtime-only npm libraries. Allow usage in the Code node via
+# Install extra runtime-only npm packages. Allow usage in the Code node via
 # 'NODE_FUNCTION_ALLOW_EXTERNAL' env variable on n8n-task-runners.json.
 RUN rm -f node_modules/.modules.yaml
 RUN mv package.json package.json.bak
 COPY docker/images/runners/package.json /app/task-runner-javascript/package.json
 RUN pnpm install --no-lockfile --silent
-RUN mv package.json extra.json
+RUN mv package.json extras.json
 RUN mv package.json.bak package.json
 
 # ==============================================================================
@@ -61,6 +61,8 @@ RUN uv sync \
       --frozen \
       --no-editable
 
+# Install extra runtime-only Python packages. Allow usage in the Code node via
+# 'N8N_RUNNERS_EXTERNAL_ALLOW' env variable on n8n-task-runners.json.
 COPY docker/images/runners/extras.txt /app/task-runner-python/extras.txt
 RUN uv pip install -r /app/task-runner-python/extras.txt
 
