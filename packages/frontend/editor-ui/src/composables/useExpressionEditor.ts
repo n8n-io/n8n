@@ -6,6 +6,7 @@ import {
 	ref,
 	toRef,
 	toValue,
+	unref,
 	watch,
 	watchEffect,
 	type MaybeRefOrGetter,
@@ -204,7 +205,7 @@ export const useExpressionEditor = ({
 
 	function onKeyDown(e: KeyboardEvent) {
 		if (
-			disableSearchDialog &&
+			unref(disableSearchDialog) &&
 			// Avoid blocking editor shortcuts like `ctrl+f` to go to next character on mac
 			((isMacOs && e.metaKey) || (!isMacOs && e.ctrlKey)) &&
 			e.key === 'f'
