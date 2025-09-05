@@ -4,14 +4,14 @@ import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { N8nLoading } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { INodeParameterResourceLocator, NodeParameterValue } from 'n8n-workflow';
+import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
 type Props = {
-	modelValue?: NodeParameterValue;
+	modelValue?: INodeParameterResourceLocator;
 	resources?: IResourceLocatorResultExpanded[];
 	show?: boolean;
 	filterable?: boolean;
@@ -60,14 +60,14 @@ const itemsRef = ref<HTMLDivElement[]>([]);
 
 const sortedResources = computed<IResourceLocatorResultExpanded[]>(() => {
 	const seen = new Set();
-	const { selected, notSelected } = props.resources.reduce(
+	const result = props.resources.reduce(
 		(acc, item: IResourceLocatorResultExpanded) => {
 			if (seen.has(item.value)) {
 				return acc;
 			}
 			seen.add(item.value);
 
-			if (props.modelValue && item.value === props.modelValue) {
+			if (props.modelValue && item.value === props.modelValue.value) {
 				acc.selected = item;
 			} else if (!item.isArchived) {
 				// Archived items are not shown in the list unless selected
@@ -82,11 +82,22 @@ const sortedResources = computed<IResourceLocatorResultExpanded[]>(() => {
 		},
 	);
 
-	if (selected) {
-		return [selected, ...notSelected];
+	// Resources are paginated, so the currently selected one may not actually be
+	// in the list.
+	// If that's the case we'll render the cached value.
+	if (result.selected === null && props.modelValue?.cachedResultName && props.modelValue.value) {
+		result.selected = {
+			name: props.modelValue.cachedResultName,
+			value: props.modelValue.value,
+			url: props.modelValue.cachedResultUrl,
+		};
 	}
 
-	return notSelected;
+	if (result.selected) {
+		return [result.selected, ...result.notSelected];
+	}
+
+	return result.notSelected;
 });
 
 watch(
@@ -105,12 +116,6 @@ watch(
 	},
 );
 
-watch(
-	() => props.loading,
-	() => {
-		setTimeout(() => onResultsEnd(), 0); // in case of filtering
-	},
-);
 onMounted(() => {
 	props.eventBus.on('keyDown', onKeyDown);
 });
@@ -197,7 +202,7 @@ function onItemHoverLeave() {
 }
 
 function onResultsEnd() {
-	if (props.loading || !props.loading) {
+	if (props.loading || !props.hasMore) {
 		return;
 	}
 
@@ -287,7 +292,7 @@ defineExpose({ isWithinDropdown });
 				ref="itemsRef"
 				:class="{
 					[$style.resourceItem]: true,
-					[$style.selected]: result.value === modelValue,
+					[$style.selected]: result.value === modelValue.value,
 					[$style.hovering]: hoverIndex === i + 1,
 				}"
 				data-test-id="rlc-item"

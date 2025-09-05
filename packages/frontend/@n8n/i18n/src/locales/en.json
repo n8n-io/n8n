@@ -74,6 +74,7 @@
 	"generic.refresh": "Refresh",
 	"generic.retry": "Retry",
 	"generic.error": "Something went wrong",
+	"generic.error.subworkflowCreationFailed": "Error creating sub-workflow",
 	"generic.settings": "Settings",
 	"generic.service": "the service",
 	"generic.star": "Star",
