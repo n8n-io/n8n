@@ -46,7 +46,7 @@ export class Redis implements ICredentialType {
 			default: false,
 		},
 		{
-			displayName: 'Disable TLS Verification',
+			displayName: 'Disable TLS Verification (insecure)',
 			name: 'disableTlsVerification',
 			type: 'boolean',
 			displayOptions: {
