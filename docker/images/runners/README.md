@@ -70,7 +70,7 @@ Edit the runtime extras manifest `docker/images/runners/package.json`:
   "description": "Runtime-only deps for the JS task-runner image, installed at image build.",
   "private": true,
   "dependencies": {
-    "moment": "^2.30.1"
+    "moment": "2.30.1"
   }
 }
 ```
@@ -79,8 +79,8 @@ Add any packages you want under `"dependencies"` (pin them for reproducibility),
 
 ```json
 "dependencies": {
-  "moment": "^2.30.1",
-  "uuid": "^9.0.0"
+  "moment": "2.30.1",
+  "uuid": "9.0.0"
 }
 ```
 
