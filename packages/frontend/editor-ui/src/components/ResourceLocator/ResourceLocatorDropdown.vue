@@ -197,7 +197,7 @@ function onItemHoverLeave() {
 }
 
 function onResultsEnd() {
-	if (props.loading || !props.loading) {
+	if (props.loading || !props.hasMore) {
 		return;
 	}
 
