@@ -83,7 +83,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'folder:delete',
 	'folder:create',
 	'folder:list',
-	'folder:update',
 	'oidc:manage',
 	'dataStore:list',
 	'role:manage',

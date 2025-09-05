@@ -874,7 +874,6 @@ describe('GET /project/:projectId', () => {
 				'folder:delete',
 				'folder:create',
 				'folder:list',
-				'folder:update',
 			]),
 		);
 	});
