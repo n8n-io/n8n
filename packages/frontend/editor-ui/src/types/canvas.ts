@@ -111,7 +111,8 @@ export interface CanvasNodeData {
 		[CanvasConnectionMode.Output]: INodeConnections;
 	};
 	issues: {
-		items: string[];
+		execution: string[];
+		validation: string[];
 		visible: boolean;
 	};
 	pinnedData: {

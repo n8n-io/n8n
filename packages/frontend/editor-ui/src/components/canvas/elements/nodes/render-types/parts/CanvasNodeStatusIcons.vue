@@ -25,7 +25,8 @@ const $style = useCssModule();
 const {
 	hasPinnedData,
 	issues,
-	hasIssues,
+	hasExecutionErrors,
+	hasValidationErrors,
 	executionStatus,
 	executionWaiting,
 	executionWaitingForNext,
@@ -66,12 +67,6 @@ const commonClasses = computed(() => [
 				<N8nIcon icon="clock" :size="size" />
 			</N8nTooltip>
 		</div>
-		<div
-			v-if="spinnerLayout === 'absolute'"
-			:class="[...commonClasses, $style['node-waiting-spinner']]"
-		>
-			<N8nIcon icon="refresh-cw" spin />
-		</div>
 	</div>
 	<div
 		v-else-if="isNodeExecuting"
@@ -84,7 +79,7 @@ const commonClasses = computed(() => [
 		<N8nIcon icon="power" :size="size" />
 	</div>
 	<div
-		v-else-if="hasIssues && !hideNodeIssues"
+		v-else-if="hasExecutionErrors && !hideNodeIssues"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-issues"
 	>
@@ -93,6 +88,18 @@ const commonClasses = computed(() => [
 				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
 			</template>
 			<N8nIcon icon="node-error" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
+		v-else-if="hasValidationErrors && !hideNodeIssues"
+		:class="[...commonClasses, $style.issues]"
+		data-test-id="node-issues"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="issues" />
+			</template>
+			<N8nIcon icon="node-validation-error" :size="size" />
 		</N8nTooltip>
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
@@ -152,7 +159,6 @@ const commonClasses = computed(() => [
 	color: var(--color-secondary);
 }
 
-.node-waiting-spinner,
 .running {
 	color: hsl(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l));
 
