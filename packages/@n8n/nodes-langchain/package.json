@@ -192,6 +192,8 @@
     "@modelcontextprotocol/sdk": "1.12.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/client-oauth2": "workspace:*",
+    "@n8n/config": "workspace:*",
+    "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:^",
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-12",

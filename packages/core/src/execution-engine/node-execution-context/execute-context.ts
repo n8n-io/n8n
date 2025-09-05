@@ -14,7 +14,6 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionHint,
-	Result,
 	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
@@ -22,7 +21,6 @@ import type {
 import {
 	ApplicationError,
 	createDeferredPromise,
-	createEnvProviderState,
 	jsonParse,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
@@ -171,31 +169,6 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		};
 
 		await this.additionalData.hooks?.runHook('sendChunk', [message]);
-	}
-
-	async startJob<T = unknown, E = unknown>(
-		jobType: string,
-		settings: unknown,
-		itemIndex: number,
-	): Promise<Result<T, E>> {
-		return await this.additionalData.startRunnerTask<T, E>(
-			this.additionalData,
-			jobType,
-			settings,
-			this,
-			this.inputData,
-			this.node,
-			this.workflow,
-			this.runExecutionData,
-			this.runIndex,
-			itemIndex,
-			this.node.name,
-			this.connectionInputData,
-			{},
-			this.mode,
-			createEnvProviderState(),
-			this.executeData,
-		);
 	}
 
 	async getInputConnectionData(
