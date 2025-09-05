@@ -41,6 +41,7 @@ import { useWorkflowsStore } from '../stores/workflows.store';
 import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
 import { ignoreUpdateAnnotation } from '../utils/forceParse';
 import { TARGET_NODE_PARAMETER_FACET } from '@/plugins/codemirror/completions/constants';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 
 export const useExpressionEditor = ({
 	editorRef,
@@ -68,6 +69,7 @@ export const useExpressionEditor = ({
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowHelpers = useWorkflowHelpers();
+	const { isMacOs } = useDeviceSupport();
 	const i18n = useI18n();
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
@@ -201,7 +203,12 @@ export const useExpressionEditor = ({
 	}
 
 	function onKeyDown(e: KeyboardEvent) {
-		if (disableSearchDialog && e.metaKey && e.key === 'f') {
+		if (
+			disableSearchDialog &&
+			// Avoid blocking editor shortcuts like `ctrl+f` to skip to next character on mac
+			((isMacOs && e.metaKey) || (!isMacOs && e.ctrlKey)) &&
+			e.key === 'f'
+		) {
 			e.preventDefault();
 		}
 	}
@@ -291,21 +298,12 @@ export const useExpressionEditor = ({
 		});
 	});
 
-	const handleKeyDown = (e: KeyboardEvent) => {
-		if (disableSearchDialog && e.key === 'f' && (e.ctrlKey || e.metaKey)) {
-			// Prevent the search field from opening when Ctrl or Command key is pressed
-			e.preventDefault();
-		}
-	};
-
 	onMounted(() => {
 		document.addEventListener('click', blurOnClickOutside);
-		// document.addEventListener('keydown', handleKeyDown);
 	});
 
 	onBeforeUnmount(() => {
 		document.removeEventListener('click', blurOnClickOutside);
-		// document.removeEventListener('keydown', handleKeyDown);
 		debouncedUpdateSegments.flush();
 		emitChanges.flush();
 		editor.value?.destroy();
