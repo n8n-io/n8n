@@ -49,7 +49,7 @@ export type Label = {
 };
 
 export type GmailWorkflowStaticData = {
-	lastTimeChecked?: number;
+	lastMessageTimestamp?: number;
 	possibleDuplicates?: string[];
 };
 export type GmailWorkflowStaticDataDictionary = Record<string, GmailWorkflowStaticData>;
