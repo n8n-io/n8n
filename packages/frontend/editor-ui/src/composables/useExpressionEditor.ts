@@ -205,7 +205,7 @@ export const useExpressionEditor = ({
 	function onKeyDown(e: KeyboardEvent) {
 		if (
 			disableSearchDialog &&
-			// Avoid blocking editor shortcuts like `ctrl+f` to skip to next character on mac
+			// Avoid blocking editor shortcuts like `ctrl+f` to go to next character on mac
 			((isMacOs && e.metaKey) || (!isMacOs && e.ctrlKey)) &&
 			e.key === 'f'
 		) {
