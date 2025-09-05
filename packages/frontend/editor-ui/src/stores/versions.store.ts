@@ -206,6 +206,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 							title: whatsNew.value.title,
 							message: whatsNew.value.calloutText,
 							duration: 0,
+							showClose: false,
 							position: 'bottom-left',
 							customClass: 'clickable whats-new-notification',
 							onClick: () => {
@@ -217,8 +218,6 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 									name: WHATS_NEW_MODAL_KEY,
 									data: { articleId },
 								});
-							},
-							onClose: () => {
 								dismissWhatsNewCallout();
 							},
 						});
