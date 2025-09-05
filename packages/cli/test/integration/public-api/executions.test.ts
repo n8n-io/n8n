@@ -7,10 +7,8 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { ExecutionEntity, User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { ExecutionStatus } from 'n8n-workflow';
-
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { Telemetry } from '@/telemetry';
 
 import {
 	createdExecutionWithStatus,
@@ -22,6 +20,10 @@ import {
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
+
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ExecutionService } from '@/executions/execution.service';
+import { Telemetry } from '@/telemetry';
 
 let owner: User;
 let user1: User;
@@ -231,6 +233,33 @@ describe('DELETE /executions/:id', () => {
 		expect(waitTill).toBeNull();
 
 		await authOwnerAgent.get(`/executions/${execution.id}`).expect(404);
+	});
+});
+
+describe('POST /executions/:id/retry', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/executions/1/retry', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/executions/1/retry', 'abcXYZ'),
+	);
+
+	test('should retry an execution', async () => {
+		const mockedRetriedExecutionStatus = 'waiting';
+		jest
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue(mockedRetriedExecutionStatus);
+
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(200);
+
+		expect(response.body).toEqual({ status: mockedRetriedExecutionStatus });
+
+		jest.restoreAllMocks();
 	});
 });
 

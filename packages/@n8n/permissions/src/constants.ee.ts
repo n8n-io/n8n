@@ -27,7 +27,7 @@ export const RESOURCES = {
 	insights: ['list'] as const,
 	oidc: ['manage'] as const,
 	dataStore: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
-	execution: ['delete', 'read', 'list', 'get'] as const,
+	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage'] as const,
 } as const;
@@ -39,7 +39,7 @@ export const API_KEY_RESOURCES = {
 	securityAudit: ['generate'] as const,
 	project: ['create', 'update', 'delete', 'list'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete', 'enforceMfa'] as const,
-	execution: ['delete', 'read', 'list', 'get'] as const,
+	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
 	credential: ['create', 'move', 'delete'] as const,
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
