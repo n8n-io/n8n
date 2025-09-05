@@ -29,6 +29,8 @@ const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
 // #region ===== Configuration =====
 const config = {
 	compiledAppDir: path.join(rootDir, 'compiled'),
+	compiledTaskRunnerDir: path.join(rootDir, 'dist', 'task-runner-javascript'),
+	cliDir: path.join(rootDir, 'packages', 'cli'),
 	rootDir: rootDir,
 };
 
@@ -81,6 +83,12 @@ startTimer('total_build');
 // 0. Clean Previous Build Output
 echo(chalk.yellow(`INFO: Cleaning previous output directory: ${config.compiledAppDir}...`));
 await fs.remove(config.compiledAppDir);
+echo(
+	chalk.yellow(
+		`INFO: Cleaning previous task runner output directory: ${config.compiledTaskRunnerDir}...`,
+	),
+);
+await fs.remove(config.compiledTaskRunnerDir);
 printDivider();
 
 // 1. Local Application Pre-build
@@ -110,7 +118,6 @@ try {
 	}
 
 	echo(chalk.green('✅ pnpm install and build completed'));
-
 } catch (error) {
 	console.error(chalk.red('\n🛑 BUILD PROCESS FAILED!'));
 	console.error(chalk.red('An error occurred during the build process:'));
@@ -196,6 +203,15 @@ if (excludeTestController) {
 }
 
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
+await fs.ensureDir(config.compiledTaskRunnerDir);
+
+echo(
+	chalk.yellow(
+		`INFO: Creating JavaScript task runner deployment in '${config.compiledTaskRunnerDir}'...`,
+	),
+);
+
+await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
 
 const packageDeployTime = getElapsedTime('package_deploy');
 
@@ -215,8 +231,11 @@ if (process.env.CI !== 'true') {
 
 // Calculate output size
 const compiledAppOutputSize = (await $`du -sh ${config.compiledAppDir} | cut -f1`).stdout.trim();
+const compiledTaskRunnerOutputSize = (
+	await $`du -sh ${config.compiledTaskRunnerDir} | cut -f1`
+).stdout.trim();
 
-// Generate build manifest
+// Generate build manifests
 const buildManifest = {
 	buildTime: new Date().toISOString(),
 	artifactSize: compiledAppOutputSize,
@@ -227,9 +246,33 @@ const buildManifest = {
 	},
 };
 
+// Copy third-party licenses if they exist
+const licensesSourcePath = path.join(config.cliDir, 'THIRD_PARTY_LICENSES.md');
+if (await fs.pathExists(licensesSourcePath)) {
+	await fs.copy(licensesSourcePath, path.join(config.compiledAppDir, 'THIRD_PARTY_LICENSES.md'));
+}
+
 await fs.writeJson(path.join(config.compiledAppDir, 'build-manifest.json'), buildManifest, {
 	spaces: 2,
 });
+
+const taskRunnerbuildManifest = {
+	buildTime: new Date().toISOString(),
+	artifactSize: compiledTaskRunnerOutputSize,
+	buildDuration: {
+		packageBuild: packageBuildTime,
+		packageDeploy: packageDeployTime,
+		total: getElapsedTime('total_build'),
+	},
+};
+
+await fs.writeJson(
+	path.join(config.compiledTaskRunnerDir, 'build-manifest.json'),
+	taskRunnerbuildManifest,
+	{
+		spaces: 2,
+	},
+);
 
 echo(chalk.green(`✅ Package deployment completed in ${formatDuration(packageDeployTime)}`));
 echo(`INFO: Size of ${config.compiledAppDir}: ${compiledAppOutputSize}`);
@@ -246,8 +289,13 @@ echo(chalk.green.bold('================ BUILD SUMMARY ================'));
 echo(chalk.green(`✅ n8n built successfully!`));
 echo('');
 echo(chalk.blue('📦 Build Output:'));
+echo(chalk.green('   n8n:'));
 echo(`   Directory:      ${path.resolve(config.compiledAppDir)}`);
 echo(`   Size:           ${compiledAppOutputSize}`);
+echo('');
+echo(chalk.green('   task-runner-javascript:'));
+echo(`   Directory:      ${path.resolve(config.compiledTaskRunnerDir)}`);
+echo(`   Size:           ${compiledTaskRunnerOutputSize}`);
 echo('');
 echo(chalk.blue('⏱️  Build Times:'));
 echo(`   Package Build:  ${formatDuration(packageBuildTime)}`);
@@ -255,8 +303,9 @@ echo(`   Package Deploy: ${formatDuration(packageDeployTime)}`);
 echo(chalk.gray('   -----------------------------'));
 echo(chalk.bold(`   Total Time:     ${formatDuration(totalBuildTime)}`));
 echo('');
-echo(chalk.blue('📋 Build Manifest:'));
+echo(chalk.blue('📋 Build Manifests:'));
 echo(`   ${path.resolve(config.compiledAppDir)}/build-manifest.json`);
+echo(`   ${path.resolve(config.compiledTaskRunnerDir)}/build-manifest.json`);
 echo(chalk.green.bold('=============================================='));
 
 // #endregion ===== Final Output =====

@@ -133,7 +133,7 @@ describe('WorkflowDiffModal', () => {
 
 		// Component should render with the basic structure
 		expect(container.querySelector('.header')).toBeInTheDocument();
-		expect(container.querySelector('h1')).toBeInTheDocument();
+		expect(container.querySelector('h4')).toBeInTheDocument();
 	});
 
 	it('should initialize with correct props', () => {

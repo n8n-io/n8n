@@ -11,8 +11,11 @@ const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')}
 // In local run they are a "dependency" which means they will be skipped if earlier tests fail, not ideal but needed for isolation
 const SERIAL_EXECUTION = /@db:reset/;
 
+// Tags that require proxy server
+const REQUIRES_PROXY_SERVER = /@capability:proxy/;
+
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
-	{ name: 'standard', config: {} },
+	{ name: 'standard', config: { proxyServerEnabled: true } },
 	{ name: 'postgres', config: { postgres: true } },
 	{ name: 'queue', config: { queueMode: true } },
 	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
@@ -35,17 +38,23 @@ export function getProjects(): Project[] {
 				name: 'ui:isolated',
 				testDir: './tests/ui',
 				grep: SERIAL_EXECUTION,
+				grepInvert: REQUIRES_PROXY_SERVER,
 				workers: 1,
 				use: { baseURL: process.env.N8N_BASE_URL },
 			},
 		);
 	} else {
 		for (const { name, config } of CONTAINER_CONFIGS) {
+			const grepInvertPatterns = [SERIAL_EXECUTION.source];
+			if (!config.proxyServerEnabled) {
+				grepInvertPatterns.push(REQUIRES_PROXY_SERVER.source);
+			}
+
 			projects.push(
 				{
 					name: `${name}:ui`,
 					testDir: './tests/ui',
-					grepInvert: SERIAL_EXECUTION,
+					grepInvert: new RegExp(grepInvertPatterns.join('|')),
 					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
 					fullyParallel: true,
 					use: { containerConfig: config },
@@ -54,6 +63,7 @@ export function getProjects(): Project[] {
 					name: `${name}:ui:isolated`,
 					testDir: './tests/ui',
 					grep: SERIAL_EXECUTION,
+					grepInvert: !config.proxyServerEnabled ? REQUIRES_PROXY_SERVER : undefined,
 					workers: 1,
 					use: { containerConfig: config },
 				},

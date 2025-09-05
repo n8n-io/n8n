@@ -13,7 +13,6 @@ import type { JsRunnerConfig } from '@/config/js-runner-config';
 import { MainConfig } from '@/config/main-config';
 import { ExecutionError } from '@/js-task-runner/errors/execution-error';
 import { UnsupportedFunctionError } from '@/js-task-runner/errors/unsupported-function.error';
-import { ValidationError } from '@/js-task-runner/errors/validation-error';
 import type { JSExecSettings } from '@/js-task-runner/js-task-runner';
 import { JsTaskRunner } from '@/js-task-runner/js-task-runner';
 import {
@@ -30,7 +29,6 @@ import {
 	withPairedItem,
 	wrapIntoJson,
 } from './test-data';
-import { ReservedKeyFoundError } from '../errors/reserved-key-not-found.error';
 
 jest.mock('ws');
 
@@ -237,7 +235,7 @@ describe('JsTaskRunner', () => {
 				inputItems,
 			});
 
-			expect(outcome.result).toEqual([wrapIntoJson(needsWrapping ? { val: expected } : expected)]);
+			expect(outcome.result).toEqual(needsWrapping ? { val: expected } : expected);
 		};
 
 		const testExpressionForEachItem = async (
@@ -250,22 +248,28 @@ describe('JsTaskRunner', () => {
 				inputItems,
 			});
 
-			expect(outcome.result).toEqual([
-				withPairedItem(0, wrapIntoJson(needsWrapping ? { val: expected } : expected)),
-			]);
+			// if expected has json property, use it, else use entire result
+			const expectedJson =
+				expected !== null && typeof expected === 'object' && 'json' in expected
+					? expected.json
+					: needsWrapping
+						? { val: expected }
+						: expected;
+
+			expect(outcome.result).toEqual([{ json: expectedJson, pairedItem: { item: 0 } }]);
 		};
 
 		const testGroups = {
 			// https://docs.n8n.io/code/builtin/current-node-input/
 			'current node input': [
-				['$input.first()', inputItems[0]],
-				['$input.last()', inputItems[inputItems.length - 1]],
+				['$input.first()', { json: inputItems[0] }],
+				['$input.last()', { json: inputItems[inputItems.length - 1] }],
 				['$input.params', { manualTriggerParam: 'empty' }],
 			],
 			// https://docs.n8n.io/code/builtin/output-other-nodes/
 			'output of other nodes': [
-				['$("Trigger").first()', inputItems[0]],
-				['$("Trigger").last()', inputItems[inputItems.length - 1]],
+				['$("Trigger").first()', { json: inputItems[0] }],
+				['$("Trigger").last()', { json: inputItems[inputItems.length - 1] }],
 				['$("Trigger").params', { manualTriggerParam: 'empty' }],
 			],
 			// https://docs.n8n.io/code/builtin/date-time/
@@ -360,7 +364,7 @@ describe('JsTaskRunner', () => {
 					}),
 				});
 
-				expect(outcome.result).toEqual([wrapIntoJson({ val: 'value' })]);
+				expect(outcome.result).toEqual({ val: 'value' });
 			});
 
 			it('should be possible to access env if it has been blocked', async () => {
@@ -411,7 +415,7 @@ describe('JsTaskRunner', () => {
 					}),
 				});
 
-				expect(outcome.result).toEqual([wrapIntoJson({ val: undefined })]);
+				expect(outcome.result).toEqual({ val: undefined });
 			});
 		});
 
@@ -431,7 +435,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
+				expect(outcome.result).toEqual({ val: expect.closeTo(helsinkiTimeNow, 1) });
 			});
 
 			it('should use the default timezone', async () => {
@@ -448,7 +452,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result[0].json.val).toBeCloseTo(helsinkiTimeNow, 1);
+				expect(outcome.result).toEqual({ val: expect.closeTo(helsinkiTimeNow, 1) });
 			});
 		});
 
@@ -466,7 +470,7 @@ describe('JsTaskRunner', () => {
 					}),
 				});
 
-				expect(outcome.result).toEqual([wrapIntoJson({ val: { key: 'value' } })]);
+				expect(outcome.result).toEqual({ val: { key: 'value' } });
 			});
 
 			it('should have the global workflow static data available in runOnceForEachItem', async () => {
@@ -559,7 +563,7 @@ describe('JsTaskRunner', () => {
 					taskData: createTaskDataWithNodeStaticData({ key: 'value' }),
 				});
 
-				expect(outcome.result).toEqual([wrapIntoJson({ val: { key: 'value' } })]);
+				expect(outcome.result).toEqual({ val: { key: 'value' } });
 			});
 
 			it('should have the node workflow static data available in runOnceForEachItem', async () => {
@@ -745,7 +749,7 @@ describe('JsTaskRunner', () => {
 				}),
 			});
 
-			expect(outcomeAll.result).toEqual([wrapIntoJson({ val: 'test-buffer' })]);
+			expect(outcomeAll.result).toEqual({ val: 'test-buffer' });
 
 			const outcomePer = await execTaskWithParams({
 				task: newTaskParamsWithSettings({
@@ -789,38 +793,6 @@ describe('JsTaskRunner', () => {
 			});
 		});
 
-		describe('invalid output', () => {
-			test.each([['undefined'], ['42'], ['"a string"']])(
-				'should throw a ValidationError if the code output is %s',
-				async (output) => {
-					await expect(
-						executeForAllItems({
-							code: `return ${output}`,
-							inputItems: [{ a: 1 }],
-						}),
-					).rejects.toThrow(ValidationError);
-				},
-			);
-
-			it('should throw a ValidationError if some items are wrapped in json and some are not', async () => {
-				await expect(
-					executeForAllItems({
-						code: 'return [{b: 1}, {json: {b: 2}}]',
-						inputItems: [{ a: 1 }],
-					}),
-				).rejects.toThrow(ValidationError);
-			});
-
-			it('should throw a ReservedKeyFoundError if there are unknown keys alongside reserved keys', async () => {
-				await expect(
-					executeForAllItems({
-						code: 'return [{json: {b: 1}, objectId: "123"}]',
-						inputItems: [{ a: 1 }],
-					}),
-				).rejects.toThrow(ReservedKeyFoundError);
-			});
-		});
-
 		it('should return static items', async () => {
 			const outcome = await executeForAllItems({
 				code: 'return [{json: {b: 1}}]',
@@ -852,19 +824,19 @@ describe('JsTaskRunner', () => {
 			});
 
 			expect(outcome).toEqual({
-				result: [wrapIntoJson({ b: 1 })],
+				result: [{ b: 1 }],
 				customData: undefined,
 			});
 		});
 
-		it('should wrap single item into an array and json', async () => {
+		it('should not wrap single item into an array and json', async () => {
 			const outcome = await executeForAllItems({
 				code: 'return {b: 1}',
 				inputItems: [{ a: 1 }],
 			});
 
 			expect(outcome).toEqual({
-				result: [wrapIntoJson({ b: 1 })],
+				result: { b: 1 },
 				customData: undefined,
 			});
 		});
@@ -912,20 +884,6 @@ describe('JsTaskRunner', () => {
 					}),
 				).rejects.toThrow('Error message');
 			});
-		});
-
-		describe('invalid output', () => {
-			test.each([['undefined'], ['42'], ['"a string"'], ['[]'], ['[1,2,3]']])(
-				'should throw a ValidationError if the code output is %s',
-				async (output) => {
-					await expect(
-						executeForEachItem({
-							code: `return ${output}`,
-							inputItems: [{ a: 1 }],
-						}),
-					).rejects.toThrow(ValidationError);
-				},
-			);
 		});
 
 		describe('chunked execution', () => {
@@ -1112,7 +1070,7 @@ describe('JsTaskRunner', () => {
 						runner,
 					});
 
-					expect(outcome.result).toEqual([wrapIntoJson({ val: expected })]);
+					expect(outcome.result).toEqual({ val: expected });
 				},
 			);
 
@@ -1174,7 +1132,7 @@ describe('JsTaskRunner', () => {
 						runner,
 					});
 
-					expect(outcome.result).toEqual([wrapIntoJson({ val: expected })]);
+					expect(outcome.result).toEqual({ val: expected });
 				},
 			);
 
@@ -1526,7 +1484,7 @@ describe('JsTaskRunner', () => {
 				inputItems: [],
 			});
 
-			expect(outcome.result).toEqual([wrapIntoJson({ val: 2 })]);
+			expect(outcome.result).toEqual({ val: 2 });
 		});
 	});
 });

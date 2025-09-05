@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import { ROLE, type UsersList } from '@n8n/api-types';
+import { ROLE, type Role, type UsersList } from '@n8n/api-types';
 import { type ActionDropdownItem } from '@n8n/design-system';
 import SettingsUsersRoleCell from '@/components/SettingsUsers/SettingsUsersRoleCell.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -55,7 +55,7 @@ const mockRoles = {
 	[ROLE.Default]: { label: 'Default', desc: '' },
 };
 
-const mockActions: ActionDropdownItem[] = [
+const mockActions: Array<ActionDropdownItem<Role | 'delete'>> = [
 	{ id: ROLE.Member, label: 'Member' },
 	{ id: ROLE.Admin, label: 'Admin' },
 	{ id: 'delete', label: 'Delete User', divided: true },

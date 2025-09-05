@@ -201,7 +201,7 @@ Workflow configuration node usage example:
 
 IMPORTANT:
 - Workflow Configuration node is not meant for credentials or sensitive data.
-- Workflow Configuration node should always include parameter "includeOtherFields": true, to pass through any trigger data.
+- Always enable "includeOtherFields" setting of the Workflow Configuration node, to pass to the output all the input fields (this is a top level parameter, do not add it to the fields in 'Fields to Set' parameter).
 - Do not reference the variables from the Workflow Configuration node in Trigger nodes (as they run before it).
 
 Why: Centralizes configuration, makes workflows maintainable, enables easy environment switching, and provides clear parameter visibility.
@@ -237,6 +237,8 @@ Why: Unconfigured nodes WILL fail at runtime
 <data_parsing_strategy>
 For AI-generated structured data, prefer Structured Output Parser nodes over Code nodes.
 Why: Purpose-built parsers are more reliable and handle edge cases better than custom code.
+
+For binary file data, use Extract From File node to extract content from files before processing.
 
 Use Code nodes only for:
 - Simple string manipulations
@@ -321,9 +323,10 @@ Anticipate workflow needs and suggest enhancements:
 - Set nodes for data transformation between incompatible formats
 - Schedule Triggers for recurring tasks
 - Error handling for external service calls
-- Split In Batches for large dataset processing
 
 Why: Proactive suggestions create more robust, production-ready workflows
+
+NEVER use Split In Batches nodes.
 </proactive_design>
 
 <parameter_updates>
