@@ -101,6 +101,79 @@ export class Push extends TypedEmitter<PushEvents> {
 		);
 	}
 
+	/**
+	 * Normalizes a host by removing default ports for the given protocol.
+	 * Removes port 80 for HTTP and port 443 for HTTPS, preserves other ports.
+	 *
+	 * @param host The host string (e.g., "example.com:80", "example.com", "[::1]:8080")
+	 * @param protocol The protocol ('http' or 'https')
+	 * @returns The normalized host string
+	 */
+	private normalizeHost(host: string, protocol: 'http' | 'https'): string {
+		if (!host) return host;
+
+		// Handle IPv6 addresses in brackets
+		const ipv6Match = host.match(/^\[([^\]]+)\](?::(\d+))?$/);
+		if (ipv6Match) {
+			const [, ipv6Address, port] = ipv6Match;
+			if (!port) return `[${ipv6Address}]`;
+
+			const portNum = parseInt(port, 10);
+			const shouldRemovePort =
+				(protocol === 'http' && portNum === 80) || (protocol === 'https' && portNum === 443);
+
+			return shouldRemovePort ? `[${ipv6Address}]` : host;
+		}
+
+		// Handle regular hostnames with optional port
+		const colonIndex = host.lastIndexOf(':');
+		if (colonIndex === -1) {
+			// No port specified
+			return host;
+		}
+
+		const hostname = host.substring(0, colonIndex);
+		const portStr = host.substring(colonIndex + 1);
+
+		// Validate port is numeric
+		const portNum = parseInt(portStr, 10);
+		if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+			// Invalid port, return as-is
+			return host;
+		}
+
+		// Remove default ports
+		const shouldRemovePort =
+			(protocol === 'http' && portNum === 80) || (protocol === 'https' && portNum === 443);
+
+		return shouldRemovePort ? hostname : host;
+	}
+
+	/**
+	 * Extracts the protocol from an origin URL.
+	 *
+	 * @param origin The origin URL (e.g., "https://example.com", "http://localhost:3000")
+	 * @returns The protocol ('http', 'https') or null if invalid/malformed
+	 */
+	private extractProtocolFromOrigin(origin: string): 'http' | 'https' | null {
+		if (!origin || typeof origin !== 'string') {
+			return null;
+		}
+
+		try {
+			const url = new URL(origin);
+			const protocol = url.protocol.toLowerCase();
+
+			if (protocol === 'http:') return 'http';
+			if (protocol === 'https:') return 'https';
+
+			return null;
+		} catch {
+			// Invalid URL format
+			return null;
+		}
+	}
+
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		const {
 			ws,
@@ -111,23 +184,32 @@ export class Push extends TypedEmitter<PushEvents> {
 
 		let connectionError = '';
 
-		// Extract host domain from origin
+		// Extract protocol and host from origin
+		const protocol = this.extractProtocolFromOrigin(headers.origin || '');
 		const originHost = headers.origin?.replace(/^https?:\/\//, '');
 
 		if (!pushRef) {
 			connectionError = 'The query parameter "pushRef" is missing!';
-		} else if (!originHost) {
-			this.logger.warn('Origin header is missing');
+		} else if (!originHost || !protocol) {
+			this.logger.warn('Origin header is missing or malformed', { origin: headers.origin });
 
 			connectionError = 'Invalid origin!';
 		} else if (inProduction) {
-			const expectedHost =
+			const rawExpectedHost =
 				typeof headers['x-forwarded-host'] === 'string'
 					? headers['x-forwarded-host']
 					: headers.host;
-			if (expectedHost !== originHost) {
+
+			// Normalize both hosts for comparison (handle default port differences)
+			const normalizedOriginHost = this.normalizeHost(originHost, protocol);
+			const normalizedExpectedHost = this.normalizeHost(rawExpectedHost || '', protocol);
+
+			if (normalizedExpectedHost !== normalizedOriginHost) {
 				this.logger.warn(
-					`Origin header does NOT match the expected origin. (Origin: "${originHost}", Expected: "${expectedHost}")`,
+					'Origin header does NOT match the expected origin. ' +
+						`(Origin: "${originHost}" -> "${normalizedOriginHost}", ` +
+						`Expected: "${rawExpectedHost}" -> "${normalizedExpectedHost}", ` +
+						`Protocol: "${protocol}")`,
 					{ headers: pick(headers, ['host', 'origin', 'x-forwarded-proto', 'x-forwarded-host']) },
 				);
 				connectionError = 'Invalid origin!';

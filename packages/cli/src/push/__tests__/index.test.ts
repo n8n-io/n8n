@@ -140,6 +140,11 @@ describe('Push', () => {
 				config.backend = backendName;
 				push = new Push(config, mock(), logger, mock(), mock());
 				req.ws = backendName === 'sse' ? undefined : ws;
+
+				// Reset headers for each test to prevent pollution
+				req.headers.host = host;
+				req.headers.origin = `https://${host}`;
+				delete req.headers['x-forwarded-host'];
 			});
 
 			describe('should throw on invalid origin', () => {
@@ -222,6 +227,64 @@ describe('Push', () => {
 					// ASSERT
 					expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
 					expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+				});
+			});
+
+			describe('port normalization bug reproduction', () => {
+				test.each([
+					{
+						name: 'HTTPS origin without port should match x-forwarded-host with default HTTPS port (443)',
+						origin: `https://${host}`,
+						xForwardedHost: `${host}:443`,
+						shouldPass: true,
+					},
+					{
+						name: 'HTTP origin without port should match x-forwarded-host with default HTTP port (80)',
+						origin: `http://${host}`,
+						xForwardedHost: `${host}:80`,
+						shouldPass: true,
+					},
+					{
+						name: 'origin with explicit port should match x-forwarded-host with same port',
+						origin: `https://${host}:8080`,
+						xForwardedHost: `${host}:8080`,
+						shouldPass: true,
+					},
+					{
+						name: 'origin without port should NOT match x-forwarded-host with non-default port',
+						origin: `https://${host}`,
+						xForwardedHost: `${host}:8080`,
+						shouldPass: false,
+					},
+				])('$name', ({ origin, xForwardedHost, shouldPass }) => {
+					// ARRANGE
+					req.headers.origin = origin;
+					req.headers['x-forwarded-host'] = xForwardedHost;
+
+					if (shouldPass) {
+						// Expected behavior: connection should be established
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						// ACT
+						push.handleRequest(req, res);
+
+						// ASSERT
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					} else {
+						// Expected behavior: connection should be rejected
+						if (backendName === 'sse') {
+							expect(() => push.handleRequest(req, res)).toThrow(
+								new BadRequestError('Invalid origin!'),
+							);
+						} else {
+							push.handleRequest(req, res);
+							expect(ws.send).toHaveBeenCalledWith('Invalid origin!');
+							expect(ws.close).toHaveBeenCalledWith(1008);
+						}
+						expect(backend.add).not.toHaveBeenCalled();
+					}
 				});
 			});
 
