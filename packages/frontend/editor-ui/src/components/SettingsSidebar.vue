@@ -1,14 +1,14 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
 import { useUserHelpers } from '@/composables/useUserHelpers';
-import type { IMenuItem } from '@n8n/design-system';
-import { useUIStore } from '@/stores/ui.store';
+import { ABOUT_MODAL_KEY, VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUIStore } from '@/stores/ui.store';
 import { hasPermission } from '@/utils/rbac/permissions';
-import { useRoute, useRouter } from 'vue-router';
+import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 const emit = defineEmits<{
 	return: [];
@@ -49,6 +49,14 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.USERS_SETTINGS),
 			route: { to: { name: VIEWS.USERS_SETTINGS } },
+		},
+		{
+			id: 'settings-project-roles',
+			icon: 'user-round',
+			label: i18n.baseText('settings.projectRoles'),
+			position: 'top',
+			available: canUserAccessRouteByName(VIEWS.PROJECT_ROLES_SETTINGS),
+			route: { to: { name: VIEWS.PROJECT_ROLES_SETTINGS } },
 		},
 		{
 			id: 'settings-api',

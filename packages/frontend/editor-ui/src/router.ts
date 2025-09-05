@@ -5,7 +5,7 @@ import type {
 	RouteLocationRaw,
 	RouteLocationNormalized,
 } from 'vue-router';
-import { createRouter, createWebHistory, isNavigationFailure } from 'vue-router';
+import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -564,6 +564,45 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'users',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'project-roles',
+				components: {
+					settingsView: RouterView,
+				},
+				children: [
+					{
+						path: '',
+						name: VIEWS.PROJECT_ROLES_SETTINGS,
+						component: async () => await import('@/features/project-roles/ProjectRolesView.vue'),
+					},
+					{
+						path: 'new',
+						name: VIEWS.PROJECT_NEW_ROLE,
+						component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+					},
+					{
+						path: 'edit/:roleSlug',
+						name: VIEWS.PROJECT_ROLE_SETTINGS,
+						component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+					},
+				],
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['role:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'project-roles',
 							};
 						},
 					},
