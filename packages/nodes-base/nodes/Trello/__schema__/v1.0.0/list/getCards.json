@@ -29,9 +29,6 @@
                 "checkItemsChecked": {
                     "type": "integer"
                 },
-                "checkItemsEarliestDue": {
-                    "type": "null"
-                },
                 "comments": {
                     "type": "integer"
                 },
@@ -40,6 +37,9 @@
                 },
                 "dueComplete": {
                     "type": "boolean"
+                },
+                "externalSource": {
+                    "type": "null"
                 },
                 "fogbugz": {
                     "type": "string"
@@ -151,9 +151,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "color": {
-                        "type": "string"
-                    },
                     "id": {
                         "type": "string"
                     },
@@ -203,5 +200,5 @@
             "type": "string"
         }
     },
-    "version": 6
+    "version": 7
 }

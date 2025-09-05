@@ -85,9 +85,6 @@
         "Created_Time": {
             "type": "string"
         },
-        "Email_Opt_Out": {
-            "type": "boolean"
-        },
         "Full_Name": {
             "type": "string"
         },
@@ -114,20 +111,6 @@
                 }
             }
         },
-        "Tag": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "Unsubscribed_Mode": {
             "type": "null"
         },
@@ -135,5 +118,5 @@
             "type": "null"
         }
     },
-    "version": 5
+    "version": 6
 }

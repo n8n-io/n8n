@@ -1,7 +1,7 @@
 {
     "type": "object",
     "properties": {
-        "Account_Name": {
+        "Created_By": {
             "type": "object",
             "properties": {
                 "id": {
@@ -12,32 +12,15 @@
                 }
             }
         },
-        "Contact_Name": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "Deal_Name": {
+        "Created_Time": {
             "type": "string"
         },
         "id": {
             "type": "string"
         },
-        "Numero_de_cotizaci_n": {
-            "type": "integer"
-        },
-        "Owner": {
+        "Modified_By": {
             "type": "object",
             "properties": {
-                "email": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -45,7 +28,10 @@
                     "type": "string"
                 }
             }
+        },
+        "Modified_Time": {
+            "type": "string"
         }
     },
-    "version": 3
+    "version": 1
 }

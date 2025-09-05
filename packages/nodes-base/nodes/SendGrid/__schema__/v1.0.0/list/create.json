@@ -1,26 +1,23 @@
 {
     "type": "object",
     "properties": {
-        "attributes": {
+        "_metadata": {
             "type": "object",
             "properties": {
-                "type": {
-                    "type": "string"
-                },
-                "url": {
+                "self": {
                     "type": "string"
                 }
             }
         },
-        "Id": {
+        "contact_count": {
+            "type": "integer"
+        },
+        "id": {
             "type": "string"
         },
-        "LastName": {
-            "type": "string"
-        },
-        "Status": {
+        "name": {
             "type": "string"
         }
     },
-    "version": 3
+    "version": 1
 }

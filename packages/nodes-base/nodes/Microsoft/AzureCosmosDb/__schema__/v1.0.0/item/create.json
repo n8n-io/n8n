@@ -1,21 +1,24 @@
 {
     "type": "object",
     "properties": {
-        "createdAt": {
+        "_attachments": {
             "type": "string"
         },
-        "documentId": {
+        "_etag": {
             "type": "string"
         },
-        "id": {
+        "_rid": {
+            "type": "string"
+        },
+        "_self": {
+            "type": "string"
+        },
+        "_ts": {
             "type": "integer"
         },
-        "publishedAt": {
-            "type": "string"
-        },
-        "updatedAt": {
+        "id": {
             "type": "string"
         }
     },
-    "version": 5
+    "version": 1
 }

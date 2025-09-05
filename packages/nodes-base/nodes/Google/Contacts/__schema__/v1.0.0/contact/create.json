@@ -115,6 +115,45 @@
                 }
             }
         },
+        "phoneNumbers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "canonicalForm": {
+                        "type": "string"
+                    },
+                    "formattedType": {
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "primary": {
+                                "type": "boolean"
+                            },
+                            "source": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "photos": {
             "type": "array",
             "items": {
@@ -152,5 +191,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

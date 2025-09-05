@@ -6,16 +6,7 @@
         },
         "name": {
             "type": "string"
-        },
-        "pathDisplay": {
-            "type": "string"
-        },
-        "pathLower": {
-            "type": "string"
-        },
-        "type": {
-            "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

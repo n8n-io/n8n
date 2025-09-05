@@ -9,7 +9,13 @@
         },
         "name": {
             "type": "string"
+        },
+        "tag_ids": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
         }
     },
-    "version": 6
+    "version": 7
 }

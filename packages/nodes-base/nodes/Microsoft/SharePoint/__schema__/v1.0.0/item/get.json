@@ -51,9 +51,6 @@
                 },
                 "Modified": {
                     "type": "string"
-                },
-                "Title": {
-                    "type": "string"
                 }
             }
         },
@@ -67,5 +64,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

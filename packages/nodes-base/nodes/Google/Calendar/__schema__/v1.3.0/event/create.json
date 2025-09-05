@@ -15,9 +15,6 @@
                 }
             }
         },
-        "description": {
-            "type": "string"
-        },
         "end": {
             "type": "object",
             "properties": {
@@ -90,5 +87,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

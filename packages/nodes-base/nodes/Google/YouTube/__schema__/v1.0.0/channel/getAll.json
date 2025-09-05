@@ -7,13 +7,7 @@
                 "channel": {
                     "type": "object",
                     "properties": {
-                        "country": {
-                            "type": "string"
-                        },
                         "description": {
-                            "type": "string"
-                        },
-                        "keywords": {
                             "type": "string"
                         },
                         "title": {
@@ -59,9 +53,6 @@
         "snippet": {
             "type": "object",
             "properties": {
-                "country": {
-                    "type": "string"
-                },
                 "customUrl": {
                     "type": "string"
                 },
@@ -163,9 +154,6 @@
                 "longUploadsStatus": {
                     "type": "string"
                 },
-                "madeForKids": {
-                    "type": "boolean"
-                },
                 "privacyStatus": {
                     "type": "string"
                 }
@@ -189,5 +177,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
