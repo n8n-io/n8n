@@ -30,20 +30,10 @@ const switchProtocol = async (protocolSelect: HTMLElement, protocol: 'SSH' | 'HT
 	const protocolItem = Array.from(dropdownItems).find((item) =>
 		item.textContent?.includes(protocol),
 	);
-
 	if (protocolItem) {
 		await userEvent.click(protocolItem as HTMLElement);
 		await nextTick();
 	}
-};
-
-// Helper function to setup source control store with public key
-const setupSourceControlStore = async () => {
-	// Ensure public key is available and generate one if needed
-	if (!sourceControlStore.preferences.publicKey) {
-		await sourceControlStore.generateKeyPair('ed25519');
-	}
-	await nextTick();
 };
 
 // Helper to check if fields are visible
@@ -74,6 +64,13 @@ describe('SettingsSourceControl', () => {
 		sourceControlStore = useSourceControlStore();
 
 		await settingsStore.getSettings();
+
+		// Enable enterprise feature and ensure SSH key is available for most tests
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		if (!sourceControlStore.preferences.publicKey) {
+			await sourceControlStore.generateKeyPair('ed25519');
+		}
+		await nextTick();
 	});
 
 	afterEach(() => {
@@ -86,8 +83,8 @@ describe('SettingsSourceControl', () => {
 	});
 
 	it('should render paywall state when there is no license', async () => {
+		// Override the default enterprise setting for this test
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = false;
-		await nextTick();
 
 		const { getByTestId, queryByTestId } = renderComponent({
 			pinia,
@@ -98,8 +95,7 @@ describe('SettingsSourceControl', () => {
 	});
 
 	it('should render licensed content', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
-		await nextTick();
+		// Enterprise is already enabled by default in beforeEach
 
 		const { getByTestId, queryByTestId } = renderComponent({
 			pinia,
@@ -111,8 +107,7 @@ describe('SettingsSourceControl', () => {
 	});
 
 	it('should render user flow happy path', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
-		await nextTick();
+		// Enterprise is already enabled by default in beforeEach
 
 		const updatePreferencesSpy = vi.spyOn(sourceControlStore, 'updatePreferences');
 		const generateKeyPairSpy = vi.spyOn(sourceControlStore, 'generateKeyPair');
@@ -124,7 +119,6 @@ describe('SettingsSourceControl', () => {
 			},
 		});
 
-		await setupSourceControlStore();
 		// Wait for SSH key to be generated and visible
 		await waitFor(() => {
 			const sshKeyDisplay = container.querySelector(
@@ -201,10 +195,6 @@ describe('SettingsSourceControl', () => {
 	});
 
 	describe('should test repo URLs for SSH', () => {
-		beforeEach(() => {
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
-		});
-
 		test.each([
 			['git@github.com:user/repository.git', true],
 			['git@github.enterprise.com:org-name/repo-name.git', true],
@@ -246,12 +236,6 @@ describe('SettingsSourceControl', () => {
 	});
 
 	describe('Protocol Selection and Field Visibility', () => {
-		beforeEach(async () => {
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
-			await nextTick();
-			await setupSourceControlStore();
-		});
-
 		it('should render protocol dropdown with SSH and HTTPS options', async () => {
 			const { getByTestId, getByText } = renderComponent({
 				pinia,
@@ -361,12 +345,6 @@ describe('SettingsSourceControl', () => {
 	});
 
 	describe('HTTPS Authentication Flow', () => {
-		beforeEach(async () => {
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
-			await nextTick();
-			await setupSourceControlStore();
-		});
-
 		it('should display HTTPS authentication form correctly', async () => {
 			const { container, getByTestId } = renderComponent({
 				pinia,
@@ -562,12 +540,6 @@ describe('SettingsSourceControl', () => {
 	});
 
 	describe('Protocol-Specific UI Behavior', () => {
-		beforeEach(async () => {
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
-			await nextTick();
-			await setupSourceControlStore();
-		});
-
 		it('should show correct protocol in dropdown and update UI accordingly', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				pinia,
@@ -621,7 +593,6 @@ describe('SettingsSourceControl', () => {
 				pinia,
 			});
 
-			await setupSourceControlStore();
 			const connectButton = getByTestId('source-control-connect-button');
 			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
 
@@ -689,45 +660,6 @@ describe('SettingsSourceControl', () => {
 	});
 
 	describe('Form Validation and User Experience', () => {
-		beforeEach(async () => {
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
-			await nextTick();
-			await setupSourceControlStore();
-		});
-
-		it('should disable connect button when required HTTPS fields are empty', async () => {
-			const { container, getByTestId } = renderComponent({
-				pinia,
-			});
-
-			// Switch to HTTPS
-			const protocolSelect = getByTestId('source-control-protocol-select');
-			await switchProtocol(protocolSelect, 'HTTPS');
-			await nextTick();
-
-			// Verify form fields exist and are empty
-			const usernameInput = container.querySelector('input[name="username"]')!;
-			const tokenInput = container.querySelector('input[name="personalAccessToken"]')!;
-			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
-
-			expect(usernameInput).toHaveValue('');
-			expect(tokenInput).toHaveValue('');
-			expect(repoUrlInput).toHaveValue('');
-
-			// Connect button should be disabled when fields are empty
-			const connectButton = getByTestId('source-control-connect-button');
-			expect(connectButton).toBeDisabled();
-
-			// Focus and blur to trigger any validation styling
-			await userEvent.click(usernameInput);
-			await userEvent.tab();
-			await userEvent.click(tokenInput);
-			await userEvent.tab();
-
-			// Button should still be disabled
-			expect(connectButton).toBeDisabled();
-		});
-
 		it('should disable connection button until all HTTPS fields are valid', async () => {
 			const { container, getByTestId } = renderComponent({
 				pinia,
