@@ -365,19 +365,24 @@ describe('SettingsSourceControl', () => {
 			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
 			await userEvent.clear(repoUrlInput);
 			await userEvent.type(repoUrlInput, 'https://github.com/user/repo.git');
+			await userEvent.tab();
 
 			const usernameInput = container.querySelector('input[name="username"]')!;
 			await userEvent.clear(usernameInput);
 			await userEvent.type(usernameInput, 'testuser');
+			await userEvent.tab();
 
 			const tokenInput = container.querySelector('input[name="personalAccessToken"]')!;
 			await userEvent.clear(tokenInput);
 			await userEvent.type(tokenInput, 'ghp_test_token_123');
+			await userEvent.tab();
 
-			// Verify form fields display correct values
-			expect(repoUrlInput).toHaveValue('https://github.com/user/repo.git');
-			expect(usernameInput).toHaveValue('testuser');
-			expect(tokenInput).toHaveValue('ghp_test_token_123');
+			// Wait for all form fields to be updated (important for CI environments)
+			await waitFor(() => {
+				expect(repoUrlInput).toHaveValue('https://github.com/user/repo.git');
+				expect(usernameInput).toHaveValue('testuser');
+				expect(tokenInput).toHaveValue('ghp_test_token_123');
+			});
 
 			// Verify connect button exists and can be interacted with
 			const connectButton = getByTestId('source-control-connect-button');
@@ -595,11 +600,14 @@ describe('SettingsSourceControl', () => {
 				pinia,
 			});
 
+			// Ensure we start with clean state
+			await userEvent.clear(container.querySelector('input[name="repoUrl"]')!);
+
 			const connectButton = getByTestId('source-control-connect-button');
 			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
 
-			// SSH protocol - should be disabled without repo URL
-			expect(connectButton).toBeDisabled();
+			// SSH protocol - should be disabled without repo URL even with SSH key available
+			await waitFor(() => expect(connectButton).toBeDisabled());
 
 			// Add SSH repo URL - should enable connect button (SSH key already exists from setup)
 			await userEvent.click(repoUrlInput);
