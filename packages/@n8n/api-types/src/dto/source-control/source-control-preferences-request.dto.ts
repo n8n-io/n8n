@@ -7,8 +7,8 @@ const KeyPairTypeSchema = z.enum(['ed25519', 'rsa']);
 // Custom Git URL validation that accepts both HTTPS and SSH formats
 const GitUrlSchema = z.string().refine(
 	(url) => {
-		// SSH format: git@hostname:user/repo.git
-		const sshPattern = /^git@[\w.-]+:[\w.-]+\/[\w.-]+(\.git)?$/;
+		// SSH format: git@hostname:user/repo.git (with optional additional path)
+		const sshPattern = /^git@[\w.-]+:[\w.-]+\/[\w.-]+(\.git)?(\/.*)?$/;
 		// HTTPS format: https://hostname/user/repo.git
 		const httpsPattern = /^https:\/\/[\w.-]+\/[\w.-]+\/[\w.-]+(\.git)?$/;
 

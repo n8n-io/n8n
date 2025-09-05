@@ -627,7 +627,12 @@ describe('SettingsSourceControl', () => {
 			await waitFor(() => expect(connectButton).toBeDisabled());
 
 			// Add credentials progressively and test button state
-			const usernameInput = container.querySelector('input[name="username"]')!;
+			// Wait for username input to be available after protocol switch
+			const usernameInput = await waitFor(() => {
+				const input = container.querySelector('input[name="username"]');
+				expect(input).toBeInTheDocument();
+				return input!;
+			});
 			await userEvent.clear(usernameInput);
 			await userEvent.type(usernameInput, 'testuser');
 			await userEvent.tab();
@@ -635,7 +640,12 @@ describe('SettingsSourceControl', () => {
 			// Still disabled without token
 			await waitFor(() => expect(connectButton).toBeDisabled());
 
-			const tokenInput = container.querySelector('input[name="personalAccessToken"]')!;
+			// Wait for token input to be available after protocol switch
+			const tokenInput = await waitFor(() => {
+				const input = container.querySelector('input[name="personalAccessToken"]');
+				expect(input).toBeInTheDocument();
+				return input!;
+			});
 			await userEvent.clear(tokenInput);
 			await userEvent.type(tokenInput, 'token');
 			await userEvent.tab();
