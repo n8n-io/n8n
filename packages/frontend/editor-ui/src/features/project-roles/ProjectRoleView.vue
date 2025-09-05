@@ -101,6 +101,7 @@ async function createProjectRole() {
 		return role;
 	} catch (error) {
 		showError(error, 'Error creating role');
+		return;
 	}
 }
 
@@ -124,6 +125,7 @@ async function updateProjectRole(slug: string) {
 		return role;
 	} catch (error) {
 		showError(error, 'Error updating role');
+		return;
 	}
 }
 
