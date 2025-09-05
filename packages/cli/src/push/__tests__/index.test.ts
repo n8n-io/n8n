@@ -844,6 +844,80 @@ describe('Push', () => {
 						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
 					});
 				});
+
+				describe('Array header parsing', () => {
+					test('should handle X-Forwarded-Host as array', () => {
+						req.headers['x-forwarded-host'] = [`${host}:443`, 'backup.example.com'];
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+
+					test('should handle X-Forwarded-Proto as array', () => {
+						req.headers['x-forwarded-host'] = host;
+						req.headers['x-forwarded-proto'] = ['https', 'http'];
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+				});
+
+				describe('Protocol validation', () => {
+					test('should reject invalid protocol in Forwarded header', () => {
+						// Invalid protocol should fallback to origin protocol
+						req.headers.forwarded = `proto=ftp;host=${host}`;
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+
+					test('should reject invalid protocol in X-Forwarded-Proto header', () => {
+						// Invalid protocol should fallback to origin protocol
+						req.headers['x-forwarded-host'] = host;
+						req.headers['x-forwarded-proto'] = 'websocket';
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+
+					test('should handle comma-separated X-Forwarded-Proto with invalid first value', () => {
+						req.headers['x-forwarded-host'] = host;
+						req.headers['x-forwarded-proto'] = 'ftp,https';
+						req.headers.origin = `https://${host}`;
+
+						const emitSpy = jest.spyOn(push, 'emit');
+						const connection = backendName === 'sse' ? { req, res } : ws;
+
+						push.handleRequest(req, res);
+
+						expect(backend.add).toHaveBeenCalledWith(pushRef, user.id, connection);
+						expect(emitSpy).toHaveBeenCalledWith('editorUiConnected', pushRef);
+					});
+				});
 			});
 
 			describe('parseForwardedHeader method', () => {
@@ -906,6 +980,59 @@ describe('Push', () => {
 					expect(push.parseForwardedHeader('proto=https')).toEqual({ proto: 'https' });
 					// @ts-expect-error accessing private method for testing
 					expect(push.parseForwardedHeader('host=example.com')).toEqual({ host: 'example.com' });
+				});
+			});
+
+			describe('getFirstHeaderValue method', () => {
+				test('should return string as-is', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.getFirstHeaderValue('test')).toBe('test');
+				});
+
+				test('should return first element from array', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.getFirstHeaderValue(['first', 'second'])).toBe('first');
+				});
+
+				test('should return undefined for undefined input', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.getFirstHeaderValue(undefined)).toBe(undefined);
+				});
+
+				test('should return undefined for empty array', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.getFirstHeaderValue([])).toBe(undefined);
+				});
+			});
+
+			describe('validateProtocol method', () => {
+				test('should return http for valid http', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.validateProtocol('http')).toBe('http');
+					// @ts-expect-error accessing private method for testing
+					expect(push.validateProtocol('HTTP')).toBe('http');
+					// @ts-expect-error accessing private method for testing
+					expect(push.validateProtocol('  http  ')).toBe('http');
+				});
+
+				test('should return https for valid https', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.validateProtocol('https')).toBe('https');
+					// @ts-expect-error accessing private method for testing
+					expect(push.validateProtocol('HTTPS')).toBe('https');
+					// @ts-expect-error accessing private method for testing
+					expect(push.validateProtocol('  https  ')).toBe('https');
+				});
+
+				test('should return undefined for invalid protocols', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.validateProtocol('ftp')).toBe(undefined);
+					// @ts-expect-error accessing private method for testing
+					expect(push.validateProtocol('websocket')).toBe(undefined);
+					// @ts-expect-error accessing private method for testing
+					expect(push.validateProtocol('')).toBe(undefined);
+					// @ts-expect-error accessing private method for testing
+					expect(push.validateProtocol(undefined)).toBe(undefined);
 				});
 			});
 		});

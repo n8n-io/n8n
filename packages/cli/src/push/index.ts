@@ -137,6 +137,30 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	/**
+	 * Safely extracts the first value from a header that could be string or string[].
+	 *
+	 * @param header The header value (string or string[])
+	 * @returns First header value or undefined
+	 */
+	private getFirstHeaderValue(header: string | string[] | undefined): string | undefined {
+		if (!header) return undefined;
+		if (typeof header === 'string') return header;
+		return header[0]; // Take first value from array
+	}
+
+	/**
+	 * Validates and normalizes a protocol value to ensure it's http or https.
+	 *
+	 * @param proto Protocol value from headers
+	 * @returns 'http' or 'https' if valid, undefined if invalid
+	 */
+	private validateProtocol(proto: string | undefined): 'http' | 'https' | undefined {
+		if (!proto) return undefined;
+		const normalized = proto.toLowerCase().trim();
+		return normalized === 'http' || normalized === 'https' ? normalized : undefined;
+	}
+
+	/**
 	 * Parses the RFC 7239 Forwarded header to extract host and proto values.
 	 *
 	 * @param forwardedHeader The Forwarded header value (e.g., "for=192.0.2.60;proto=http;host=example.com")
@@ -247,21 +271,29 @@ export class Push extends TypedEmitter<PushEvents> {
 			if (forwarded?.host) {
 				rawExpectedHost = forwarded.host;
 				if (forwarded.proto) {
-					expectedProtocol = forwarded.proto.toLowerCase() as 'http' | 'https';
+					const validatedProto = this.validateProtocol(forwarded.proto);
+					if (validatedProto) {
+						expectedProtocol = validatedProto;
+					}
 				}
 			}
 			// 2. Try X-Forwarded-Host
-			else if (typeof headers['x-forwarded-host'] === 'string') {
-				rawExpectedHost = headers['x-forwarded-host'];
-				if (typeof headers['x-forwarded-proto'] === 'string') {
-					expectedProtocol = headers['x-forwarded-proto'].toLowerCase().split(',')[0]?.trim() as
-						| 'http'
-						| 'https';
-				}
-			}
-			// 3. Fallback to Host header
 			else {
-				rawExpectedHost = headers.host;
+				const xForwardedHost = this.getFirstHeaderValue(headers['x-forwarded-host']);
+				if (xForwardedHost) {
+					rawExpectedHost = xForwardedHost;
+					const xForwardedProto = this.getFirstHeaderValue(headers['x-forwarded-proto']);
+					if (xForwardedProto) {
+						const validatedProto = this.validateProtocol(xForwardedProto.split(',')[0]?.trim());
+						if (validatedProto) {
+							expectedProtocol = validatedProto;
+						}
+					}
+				}
+				// 3. Fallback to Host header
+				else {
+					rawExpectedHost = headers.host;
+				}
 			}
 
 			// Normalize expected host using the determined protocol
