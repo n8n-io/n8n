@@ -152,6 +152,7 @@ const insertFields: INodeProperties[] = [
 export const mongoConfig = {
 	client: null as MongoClient | null,
 	connectionString: '',
+	nodeVersion: 0,
 };
 
 /**
@@ -164,17 +165,26 @@ type IFunctionsContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptions
  * @param context - The context.
  * @returns the MongoClient for the node.
  */
-export async function getMongoClient(context: any) {
+export async function getMongoClient(context: any, version: number) {
 	const credentials = await context.getCredentials(MONGODB_CREDENTIALS);
 	const connectionString = credentials.connectionString as string;
-	if (!mongoConfig.client || mongoConfig.connectionString !== connectionString) {
+	if (
+		!mongoConfig.client ||
+		mongoConfig.connectionString !== connectionString ||
+		mongoConfig.nodeVersion !== version
+	) {
 		if (mongoConfig.client) {
 			await mongoConfig.client.close();
 		}
 
 		mongoConfig.connectionString = connectionString;
+		mongoConfig.nodeVersion = version;
 		mongoConfig.client = new MongoClient(connectionString, {
 			appName: 'devrel.integration.n8n_vector_integ',
+			driverInfo: {
+				name: 'n8n_vector',
+				version: version.toString(),
+			},
 		});
 		await mongoConfig.client.connect();
 	}
@@ -198,7 +208,7 @@ export async function getDatabase(context: IFunctionsContext, client: MongoClien
  */
 export async function getCollections(this: ILoadOptionsFunctions) {
 	try {
-		const client = await getMongoClient(this);
+		const client = await getMongoClient(this, this.getNode().typeVersion);
 		const db = await getDatabase(this, client);
 		const collections = await db.listCollections().toArray();
 		const results = collections.map((collection) => ({
@@ -308,7 +318,7 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	sharedFields,
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		try {
-			const client = await getMongoClient(context);
+			const client = await getMongoClient(context, context.getNode().typeVersion);
 			const db = await getDatabase(context, client);
 			const collectionName = getCollectionName(context, itemIndex);
 			const mongoVectorIndexName = getVectorIndexName(context, itemIndex);
@@ -358,7 +368,7 @@ export class VectorStoreMongoDBAtlas extends createVectorStoreNode({
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		try {
-			const client = await getMongoClient(context);
+			const client = await getMongoClient(context, context.getNode().typeVersion);
 			const db = await getDatabase(context, client);
 			const collectionName = getCollectionName(context, itemIndex);
 			const mongoVectorIndexName = getVectorIndexName(context, itemIndex);
