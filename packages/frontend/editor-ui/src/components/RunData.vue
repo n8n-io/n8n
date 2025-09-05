@@ -1291,7 +1291,7 @@ function getOutputName(outputIndex: number) {
 function refreshDataSize() {
 	// Hide by default the data from being displayed
 	showData.value = false;
-	const jsonItems = inputDataPage.value.map((item) => item.json);
+	const jsonItems = inputData.value.map((item) => item.json);
 	const byteSize = new Blob([JSON.stringify(jsonItems)]).size;
 	dataSize.value = byteSize;
 	updateShowData();
