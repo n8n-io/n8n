@@ -47,6 +47,7 @@ vi.mock('ag-grid-community', () => ({
 	CellStyleModule: {},
 	ScrollApiModule: {},
 	PinnedRowModule: {},
+	ColumnApiModule: {},
 }));
 
 // Mock the n8n theme
@@ -70,6 +71,16 @@ vi.mock('@/composables/useToast', () => ({
 	useToast: () => ({
 		showError: vi.fn(),
 		showSuccess: vi.fn(),
+	}),
+}));
+
+vi.mock('@/features/dataStore/composables/useDataStorePagination', () => ({
+	useDataStorePagination: () => ({
+		totalItems: 0,
+		setTotalItems: vi.fn(),
+		ensureItemOnPage: vi.fn(),
+		currentPage: 1,
+		setCurrentPage: vi.fn(),
 	}),
 }));
 
