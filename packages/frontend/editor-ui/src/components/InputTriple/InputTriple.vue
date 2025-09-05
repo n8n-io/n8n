@@ -68,6 +68,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 }
 
 .item {
+	position: relative;
 	flex-shrink: 0;
 	flex-basis: 240px;
 	flex-grow: 1;

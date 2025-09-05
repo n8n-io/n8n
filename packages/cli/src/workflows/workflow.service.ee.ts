@@ -344,7 +344,10 @@ export class EnterpriseWorkflowService {
 		// @ts-ignore CAT-957
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
-		// 10. try to activate it again if it was active
+		// 10. Update potential cached project association
+		await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
+
+		// 11. try to activate it again if it was active
 		if (wasActive) {
 			return await this.attemptWorkflowReactivation(workflowId);
 		}

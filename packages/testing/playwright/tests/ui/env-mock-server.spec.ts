@@ -4,6 +4,10 @@ import { test, expect } from '../../fixtures/base';
 
 // @capability:proxy tag ensures that test suite is only run when proxy is available
 test.describe('Proxy server @capability:proxy', () => {
+	test.beforeEach(async ({ proxyServer }) => {
+		await proxyServer.clearAllExpectations();
+	});
+
 	test('should verify ProxyServer container is running', async ({ proxyServer }) => {
 		const mockResponse = await proxyServer.createGetExpectation('/health', {
 			status: 'healthy',
@@ -12,7 +16,7 @@ test.describe('Proxy server @capability:proxy', () => {
 		assert(typeof mockResponse !== 'string');
 		expect(mockResponse.statusCode).toBe(201);
 
-		expect(await proxyServer.wasGetRequestMade('/health')).toBe(false);
+		expect(await proxyServer.wasRequestMade({ method: 'GET', path: '/health' })).toBe(false);
 
 		// Verify the mock endpoint works
 		const healthResponse = await fetch(`${proxyServer.url}/health`);
@@ -20,7 +24,7 @@ test.describe('Proxy server @capability:proxy', () => {
 		const healthData = await healthResponse.json();
 		expect(healthData.status).toBe('healthy');
 
-		expect(await proxyServer.wasGetRequestMade('/health')).toBe(true);
+		expect(await proxyServer.wasRequestMade({ method: 'GET', path: '/health' })).toBe(true);
 	});
 
 	test('should run a simple workflow calling http endpoint', async ({ n8n, proxyServer }) => {
@@ -41,18 +45,22 @@ test.describe('Proxy server @capability:proxy', () => {
 
 		// Verify the request was handled by mockserver
 		expect(
-			await proxyServer.wasGetRequestMade('/data', {
-				test: '1',
+			await proxyServer.wasRequestMade({
+				method: 'GET',
+				path: '/data',
+				queryStringParameters: { test: ['1'] },
 			}),
 		).toBe(true);
 	});
 
 	test('should use stored expectations respond to api request', async ({ proxyServer }) => {
+		await proxyServer.loadExpectations('proxy-server');
+
 		const response = await fetch(`${proxyServer.url}/mock-endpoint`);
 		expect(response.ok).toBe(true);
 		const data = await response.json();
 		expect(data.title).toBe('delectus aut autem');
-		expect(await proxyServer.wasGetRequestMade('/mock-endpoint')).toBe(true);
+		expect(await proxyServer.wasRequestMade({ method: 'GET', path: '/mock-endpoint' })).toBe(true);
 	});
 
 	test('should run a simple workflow proxying HTTPS request', async ({ n8n }) => {
