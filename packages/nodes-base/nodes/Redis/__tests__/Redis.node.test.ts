@@ -37,6 +37,8 @@ describe('Redis Node', () => {
 					host: 'redis.domain',
 					port: 1234,
 					tls: false,
+					connectTimeout: 10000,
+					reconnectStrategy: undefined,
 				},
 			});
 		});
@@ -54,6 +56,8 @@ describe('Redis Node', () => {
 					host: 'redis.domain',
 					port: 1234,
 					tls: true,
+					connectTimeout: 10000,
+					reconnectStrategy: undefined,
 				},
 			});
 		});
@@ -73,6 +77,8 @@ describe('Redis Node', () => {
 					port: 1234,
 					tls: true,
 					rejectUnauthorized: false,
+					connectTimeout: 10000,
+					reconnectStrategy: undefined,
 				},
 			});
 		});
@@ -91,6 +97,8 @@ describe('Redis Node', () => {
 					host: 'redis.domain',
 					port: 1234,
 					tls: true,
+					connectTimeout: 10000,
+					reconnectStrategy: undefined,
 				},
 			});
 		});
@@ -109,6 +117,8 @@ describe('Redis Node', () => {
 					host: 'redis.domain',
 					port: 1234,
 					tls: false,
+					connectTimeout: 10000,
+					reconnectStrategy: undefined,
 				},
 			});
 		});
@@ -129,6 +139,8 @@ describe('Redis Node', () => {
 					host: 'redis.domain',
 					port: 1234,
 					tls: false,
+					connectTimeout: 10000,
+					reconnectStrategy: undefined,
 				},
 			});
 		});
@@ -152,6 +164,8 @@ describe('Redis Node', () => {
 					port: 1234,
 					tls: true,
 					rejectUnauthorized: false,
+					connectTimeout: 10000,
+					reconnectStrategy: undefined,
 				},
 			});
 		});
@@ -173,10 +187,14 @@ describe('Redis Node', () => {
 				host: 'localhost',
 				port: 6379,
 				tls: false,
+				connectTimeout: 10000,
+				reconnectStrategy: false,
 			},
 			database: 0,
 			username: 'username',
 			password: 'password',
+			disableOfflineQueue: true,
+			enableOfflineQueue: false,
 		};
 
 		it('should return success when connection is established', async () => {
@@ -230,10 +248,14 @@ describe('Redis Node', () => {
 					port: 6379,
 					tls: true,
 					rejectUnauthorized: false,
+					connectTimeout: 10000,
+					reconnectStrategy: false,
 				},
 				database: 0,
 				username: 'username',
 				password: 'password',
+				disableOfflineQueue: true,
+				enableOfflineQueue: false,
 			});
 			expect(mockClient.connect).toHaveBeenCalled();
 			expect(mockClient.ping).toHaveBeenCalled();
