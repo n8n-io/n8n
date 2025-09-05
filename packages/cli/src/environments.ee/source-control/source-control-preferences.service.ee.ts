@@ -91,6 +91,52 @@ export class SourceControlPreferencesService {
 		return dbKeyPair.publicKey;
 	}
 
+	private async getHttpsCredentialsFromDatabase() {
+		const dbSetting = await this.settingsRepository.findByKey(
+			'features.sourceControl.httpsCredentials',
+		);
+
+		if (!dbSetting?.value) return null;
+
+		type HttpsCredentials = { encryptedUsername: string; encryptedPassword: string };
+
+		return jsonParse<HttpsCredentials | null>(dbSetting.value, { fallbackValue: null });
+	}
+
+	async getDecryptedHttpsCredentials(): Promise<{ username: string; password: string } | null> {
+		const credentials = await this.getHttpsCredentialsFromDatabase();
+
+		if (!credentials) return null;
+
+		return {
+			username: this.cipher.decrypt(credentials.encryptedUsername),
+			password: this.cipher.decrypt(credentials.encryptedPassword),
+		};
+	}
+
+	async saveHttpsCredentials(username: string, password: string): Promise<void> {
+		try {
+			await this.settingsRepository.save({
+				key: 'features.sourceControl.httpsCredentials',
+				value: JSON.stringify({
+					encryptedUsername: this.cipher.encrypt(username),
+					encryptedPassword: this.cipher.encrypt(password),
+				}),
+				loadOnStartup: true,
+			});
+		} catch (error) {
+			throw new UnexpectedError('Failed to save HTTPS credentials to database', { cause: error });
+		}
+	}
+
+	async deleteHttpsCredentials(): Promise<void> {
+		try {
+			await this.settingsRepository.delete({ key: 'features.sourceControl.httpsCredentials' });
+		} catch (error) {
+			this.logger.error('Failed to delete HTTPS credentials from database', { error });
+		}
+	}
+
 	async getPrivateKeyPath() {
 		const dbPrivateKey = await this.getPrivateKeyFromDatabase();
 
@@ -217,9 +263,22 @@ export class SourceControlPreferencesService {
 	): Promise<SourceControlPreferences> {
 		const noKeyPair = (await this.getKeyPairFromDatabase()) === null;
 
-		if (noKeyPair) await this.generateAndSaveKeyPair();
+		if (noKeyPair && preferences.connectionType !== 'https') await this.generateAndSaveKeyPair();
 
-		this.sourceControlPreferences = preferences;
+		if (
+			preferences.connectionType === 'https' &&
+			preferences.httpsUsername &&
+			preferences.httpsPassword
+		) {
+			await this.saveHttpsCredentials(preferences.httpsUsername, preferences.httpsPassword);
+			const sanitizedPreferences = { ...preferences };
+			delete sanitizedPreferences.httpsUsername;
+			delete sanitizedPreferences.httpsPassword;
+			this.sourceControlPreferences = sanitizedPreferences;
+		} else {
+			this.sourceControlPreferences = preferences;
+		}
+
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
 			try {
