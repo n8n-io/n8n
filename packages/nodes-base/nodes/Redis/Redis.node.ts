@@ -662,7 +662,11 @@ export class Redis implements INodeType {
 				await client.quit();
 			} catch {
 				// If quit fails, forcefully disconnect
-				await client.disconnect();
+				try {
+					await client.disconnect();
+				} catch {
+					// Ignore disconnect errors in cleanup
+				}
 			}
 		}
 	}
