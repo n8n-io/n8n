@@ -54,8 +54,6 @@ describe('GET /roles/', () => {
 		expect(resp.status).toBe(200);
 		expect(Array.isArray(resp.body.data.global)).toBe(true);
 
-		console.log(resp.body.data.global);
-		console.log(expectedGlobalRoles);
 		for (const role of expectedGlobalRoles) {
 			checkForRole(role, resp.body.data.global);
 		}
