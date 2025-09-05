@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
+import type { IExecuteFunctions, IWorkflowDataProxyData, INode } from 'n8n-workflow';
 
 import { ExecuteWorkflow } from './ExecuteWorkflow.node';
 import { getWorkflowInfo } from './GenericFunctions';
@@ -88,7 +88,7 @@ describe('ExecuteWorkflow', () => {
 			.mockReturnValueOnce(true) // waitForSubWorkflow
 			.mockReturnValueOnce([]); // workflowInputs.schema
 
-		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.2 });
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.2 } as INode);
 
 		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
 		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
@@ -105,7 +105,7 @@ describe('ExecuteWorkflow', () => {
 			.mockReturnValueOnce(true) // waitForSubWorkflow
 			.mockReturnValue([]); // workflowInputs.schema
 
-		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.2 });
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.2 } as INode);
 		executeFunctions.getInputData.mockReturnValueOnce([
 			{ json: { key: '1' } },
 			{ json: { key: '2' } },
@@ -131,7 +131,7 @@ describe('ExecuteWorkflow', () => {
 			.mockReturnValueOnce(true) // waitForSubWorkflow
 			.mockReturnValueOnce([]); // workflowInputs.schema
 
-		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.3 });
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.3 } as INode);
 
 		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
 		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
@@ -148,7 +148,7 @@ describe('ExecuteWorkflow', () => {
 			.mockReturnValueOnce(true) // waitForSubWorkflow
 			.mockReturnValueOnce([]); // workflowInputs.schema
 
-		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.3 });
+		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.3 } as INode);
 		executeFunctions.getInputData.mockReturnValueOnce([
 			{ json: { key: '1' } },
 			{ json: { key: '2' } },
