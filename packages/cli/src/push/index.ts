@@ -103,59 +103,46 @@ export class Push extends TypedEmitter<PushEvents> {
 
 	/**
 	 * Normalizes a host by removing default ports for the given protocol.
-	 * Removes port 80 for HTTP and port 443 for HTTPS, preserves other ports.
+	 * Uses native URL class for robust parsing of hosts and ports.
 	 *
 	 * @param host The host string (e.g., "example.com:80", "example.com", "[::1]:8080")
 	 * @param protocol The protocol ('http' or 'https')
-	 * @returns The normalized host string
+	 * @returns The normalized host string with default ports removed
 	 */
 	private normalizeHost(host: string, protocol: 'http' | 'https'): string {
 		if (!host) return host;
 
-		// Handle IPv6 addresses in brackets
-		const ipv6Match = host.match(/^\[([^\]]+)\](?::(\d+))?$/);
-		if (ipv6Match) {
-			const [, ipv6Address, port] = ipv6Match;
-			if (!port) return `[${ipv6Address}]`;
+		try {
+			// Use URL constructor to parse the host properly
+			// We need to prepend a protocol to make it a valid URL
+			const url = new URL(`${protocol}://${host}`);
 
-			const portNum = parseInt(port, 10);
-			const shouldRemovePort =
-				(protocol === 'http' && portNum === 80) || (protocol === 'https' && portNum === 443);
+			// URL.host includes port, URL.hostname excludes port
+			// If the port is default for the protocol, URL.host will exclude it
+			// Otherwise, it will include it
+			const defaultPort = protocol === 'https' ? '443' : '80';
+			const actualPort = url.port || defaultPort;
 
-			return shouldRemovePort ? `[${ipv6Address}]` : host;
-		}
+			// If the port matches the default, return hostname only
+			if (actualPort === defaultPort) {
+				return url.hostname;
+			}
 
-		// Handle regular hostnames with optional port
-		const colonIndex = host.lastIndexOf(':');
-		if (colonIndex === -1) {
-			// No port specified
+			// Return hostname:port for non-default ports
+			return url.host;
+		} catch {
+			// If URL parsing fails, fall back to original host
 			return host;
 		}
-
-		const hostname = host.substring(0, colonIndex);
-		const portStr = host.substring(colonIndex + 1);
-
-		// Validate port is numeric
-		const portNum = parseInt(portStr, 10);
-		if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
-			// Invalid port, return as-is
-			return host;
-		}
-
-		// Remove default ports
-		const shouldRemovePort =
-			(protocol === 'http' && portNum === 80) || (protocol === 'https' && portNum === 443);
-
-		return shouldRemovePort ? hostname : host;
 	}
 
 	/**
-	 * Extracts the protocol from an origin URL.
+	 * Extracts protocol and normalized host from an origin URL using native URL class.
 	 *
 	 * @param origin The origin URL (e.g., "https://example.com", "http://localhost:3000")
-	 * @returns The protocol ('http', 'https') or null if invalid/malformed
+	 * @returns Object with protocol and normalized host, or null if invalid
 	 */
-	private extractProtocolFromOrigin(origin: string): 'http' | 'https' | null {
+	private parseOrigin(origin: string): { protocol: 'http' | 'https'; host: string } | null {
 		if (!origin || typeof origin !== 'string') {
 			return null;
 		}
@@ -164,10 +151,22 @@ export class Push extends TypedEmitter<PushEvents> {
 			const url = new URL(origin);
 			const protocol = url.protocol.toLowerCase();
 
-			if (protocol === 'http:') return 'http';
-			if (protocol === 'https:') return 'https';
+			if (protocol !== 'http:' && protocol !== 'https:') {
+				return null;
+			}
 
-			return null;
+			const protocolName = protocol === 'https:' ? 'https' : 'http';
+
+			// Use the same normalization logic - remove default ports
+			const defaultPort = protocolName === 'https' ? '443' : '80';
+			const actualPort = url.port || defaultPort;
+
+			const normalizedHost = actualPort === defaultPort ? url.hostname : url.host;
+
+			return {
+				protocol: protocolName,
+				host: normalizedHost,
+			};
 		} catch {
 			// Invalid URL format
 			return null;
@@ -184,13 +183,12 @@ export class Push extends TypedEmitter<PushEvents> {
 
 		let connectionError = '';
 
-		// Extract protocol and host from origin
-		const protocol = this.extractProtocolFromOrigin(headers.origin || '');
-		const originHost = headers.origin?.replace(/^https?:\/\//, '');
+		// Parse and normalize the origin using native URL class
+		const originInfo = this.parseOrigin(headers.origin ?? '');
 
 		if (!pushRef) {
 			connectionError = 'The query parameter "pushRef" is missing!';
-		} else if (!originHost || !protocol) {
+		} else if (!originInfo) {
 			this.logger.warn('Origin header is missing or malformed', { origin: headers.origin });
 
 			connectionError = 'Invalid origin!';
@@ -200,16 +198,15 @@ export class Push extends TypedEmitter<PushEvents> {
 					? headers['x-forwarded-host']
 					: headers.host;
 
-			// Normalize both hosts for comparison (handle default port differences)
-			const normalizedOriginHost = this.normalizeHost(originHost, protocol);
-			const normalizedExpectedHost = this.normalizeHost(rawExpectedHost || '', protocol);
+			// Normalize expected host using the same protocol as origin
+			const normalizedExpectedHost = this.normalizeHost(rawExpectedHost ?? '', originInfo.protocol);
 
-			if (normalizedExpectedHost !== normalizedOriginHost) {
+			if (normalizedExpectedHost !== originInfo.host) {
 				this.logger.warn(
 					'Origin header does NOT match the expected origin. ' +
-						`(Origin: "${originHost}" -> "${normalizedOriginHost}", ` +
+						`(Origin: "${headers.origin}" -> "${originInfo.host}", ` +
 						`Expected: "${rawExpectedHost}" -> "${normalizedExpectedHost}", ` +
-						`Protocol: "${protocol}")`,
+						`Protocol: "${originInfo.protocol}")`,
 					{ headers: pick(headers, ['host', 'origin', 'x-forwarded-proto', 'x-forwarded-host']) },
 				);
 				connectionError = 'Invalid origin!';
