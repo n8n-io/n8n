@@ -15,8 +15,8 @@ import { RunDataPanel } from './RunDataPanel';
  * await expect(n8n.example.logsPage.getLogEntries()).toHaveCount(2);
  */
 export class LogsPanel {
-	readonly inputPanel = new RunDataPanel(this.getInputPanel());
-	readonly outputPanel = new RunDataPanel(this.getOutputPanel());
+	readonly inputPanel = new RunDataPanel(this.root.getByTestId('log-details-input'));
+	readonly outputPanel = new RunDataPanel(this.root.getByTestId('log-details-output'));
 
 	constructor(private root: Locator) {}
 
@@ -41,14 +41,6 @@ export class LogsPanel {
 
 	getSelectedLogEntry(): Locator {
 		return this.root.getByTestId('logs-overview-body').getByRole('treeitem', { selected: true });
-	}
-
-	getInputPanel(): Locator {
-		return this.root.getByTestId('log-details-input');
-	}
-
-	getOutputPanel(): Locator {
-		return this.root.getByTestId('log-details-output');
 	}
 
 	getManualChatModal(): Locator {

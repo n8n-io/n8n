@@ -104,7 +104,7 @@ test.describe('Logs', () => {
 		await expect(n8n.canvas.logsPanel.getLogEntries().nth(2)).toHaveText('E2E Chat Model');
 		await n8n.canvas.logsPanel.getLogEntries().nth(2).click();
 
-		await expect(n8n.canvas.logsPanel.getOutputPanel()).toContainText('Hello from e2e model!!!');
+		await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText('Hello from e2e model!!!');
 		await n8n.canvas.logsPanel.outputPanel.switchDisplayMode('table');
 		await expect(n8n.canvas.logsPanel.outputPanel.getTbodyCell(0, 0)).toContainText(
 			'text:Hello from **e2e** model!!!',
@@ -113,24 +113,24 @@ test.describe('Logs', () => {
 			'completionTokens:20',
 		);
 		await n8n.canvas.logsPanel.outputPanel.switchDisplayMode('schema');
-		await expect(n8n.canvas.logsPanel.getOutputPanel()).toContainText('generations[0]');
-		await expect(n8n.canvas.logsPanel.getOutputPanel()).toContainText(
+		await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText('generations[0]');
+		await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText(
 			'Hello from **e2e** model!!!',
 		);
 		await n8n.canvas.logsPanel.outputPanel.switchDisplayMode('json');
-		await expect(n8n.canvas.logsPanel.getOutputPanel()).toContainText(
+		await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText(
 			'[{"response": {"generations": [',
 		);
 
 		await n8n.canvas.logsPanel.toggleInputPanel();
-		await expect(n8n.canvas.logsPanel.getInputPanel()).toContainText('Human: Hi!');
+		await expect(n8n.canvas.logsPanel.inputPanel.get()).toContainText('Human: Hi!');
 		await n8n.canvas.logsPanel.inputPanel.switchDisplayMode('table');
 		await expect(n8n.canvas.logsPanel.inputPanel.getTbodyCell(0, 0)).toContainText('0:Human: Hi!');
 		await n8n.canvas.logsPanel.inputPanel.switchDisplayMode('schema');
-		await expect(n8n.canvas.logsPanel.getInputPanel()).toContainText('messages[0]');
-		await expect(n8n.canvas.logsPanel.getInputPanel()).toContainText('Human: Hi!');
+		await expect(n8n.canvas.logsPanel.inputPanel.get()).toContainText('messages[0]');
+		await expect(n8n.canvas.logsPanel.inputPanel.get()).toContainText('Human: Hi!');
 		await n8n.canvas.logsPanel.inputPanel.switchDisplayMode('json');
-		await expect(n8n.canvas.logsPanel.getInputPanel()).toContainText(
+		await expect(n8n.canvas.logsPanel.inputPanel.get()).toContainText(
 			'[{"messages": ["Human: Hi!"],',
 		);
 	});
@@ -147,7 +147,7 @@ test.describe('Logs', () => {
 
 		await n8n.canvas.logsPanel.clickLogEntryAtRow(2); // Run #1 of 'Edit Fields' node; input is 'Code' node
 		await n8n.canvas.logsPanel.toggleInputPanel();
-		await n8n.canvas.logsPanel.getInputPanel().hover();
+		await n8n.canvas.logsPanel.inputPanel.get().hover();
 		await n8n.canvas.logsPanel.inputPanel.switchDisplayMode('table');
 		await expect(n8n.canvas.logsPanel.inputPanel.getTableRows()).toHaveCount(11);
 		await expect(n8n.canvas.logsPanel.inputPanel.getTbodyCell(0, 0)).toContainText('0');
