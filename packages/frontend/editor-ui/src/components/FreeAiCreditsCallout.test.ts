@@ -183,4 +183,48 @@ describe('FreeAiCreditsCallout', () => {
 
 		assertUserCannotClaimCredits();
 	});
+
+	describe('credentialTypeName prop (credentials page)', () => {
+		it('should not show claim callout when editing a non-openapi credential', async () => {
+			(useNDVStore as any).mockReturnValue({
+				activeNode: null,
+			});
+
+			renderComponent(FreeAiCreditsCallout, {
+				props: {
+					credentialTypeName: 'googleSheetsOAuth2Api',
+				},
+			});
+
+			assertUserCannotClaimCredits();
+		});
+
+		it('should show claim callout editing openapi credential with no active node', async () => {
+			(useNDVStore as any).mockReturnValue({
+				activeNode: null,
+			});
+
+			renderComponent(FreeAiCreditsCallout, {
+				props: {
+					credentialTypeName: 'openAiApi',
+				},
+			});
+
+			assertUserCanClaimCredits();
+		});
+
+		it('should not show claim callout when credential type is undefined and no valid active node', async () => {
+			(useNDVStore as any).mockReturnValue({
+				activeNode: null,
+			});
+
+			renderComponent(FreeAiCreditsCallout, {
+				props: {
+					credentialTypeName: undefined,
+				},
+			});
+
+			assertUserCannotClaimCredits();
+		});
+	});
 });

@@ -32,6 +32,7 @@ import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
 import { useAssistantStore } from '@/stores/assistant.store';
 import InlineAskAssistantButton from '@n8n/design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
+import FreeAiCreditsCallout from '@/components/FreeAiCreditsCallout.vue';
 
 type Props = {
 	mode: string;
@@ -229,6 +230,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	</n8n-callout>
 	<div v-else>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
+			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
 			<Banner
 				v-show="showValidationWarning"
 				theme="danger"
