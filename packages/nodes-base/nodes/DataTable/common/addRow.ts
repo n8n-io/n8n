@@ -23,7 +23,7 @@ export function makeAddRow(operation: string, displayOptions: IDisplayOptions) {
 		typeOptions: {
 			loadOptionsDependsOn: [`${DATA_TABLE_ID_FIELD}.value`],
 			resourceMapper: {
-				valuesLabel: `Columns to ${operation}`,
+				valuesLabel: `Values to ${operation}`,
 				resourceMapperMethod: 'getDataTables',
 				mode: 'add',
 				fieldWords: {
@@ -32,6 +32,7 @@ export function makeAddRow(operation: string, displayOptions: IDisplayOptions) {
 				},
 				addAllFields: true,
 				multiKeyMatch: true,
+				hideNoDataError: true,
 			},
 		},
 		displayOptions,
