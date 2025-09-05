@@ -1,5 +1,6 @@
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
+import { useTelemetry } from '@/composables/useTelemetry';
 import type {
 	DataStoreColumn,
 	DataStoreColumnCreatePayload,
@@ -72,6 +73,7 @@ export const useDataStoreOperations = ({
 	const message = useMessage();
 	const dataStoreStore = useDataStoreStore();
 	const contentLoading = ref(false);
+	const telemetry = useTelemetry();
 
 	async function onDeleteColumn(columnId: string) {
 		const columnToDelete = colDefs.value.find((col) => col.colId === columnId);
@@ -102,6 +104,11 @@ export const useDataStoreOperations = ({
 		setGridData({ rowData: rowData.value });
 		try {
 			await dataStoreStore.deleteDataStoreColumn(dataStoreId, projectId, columnId);
+			telemetry.track('User deleted data table column', {
+				column_id: columnId,
+				column_type: columnToDelete.cellDataType,
+				data_table_id: dataStoreId,
+			});
 		} catch (error) {
 			toast.showError(error, i18n.baseText('dataStore.deleteColumn.error'));
 			insertGridColumnAtIndex(columnToDelete, columnToDeleteIndex);
@@ -118,6 +125,11 @@ export const useDataStoreOperations = ({
 				return { ...row, [newColumn.name]: null };
 			});
 			setGridData({ rowData: rowData.value });
+			telemetry.track('User added data table column', {
+				column_id: newColumn.id,
+				column_type: newColumn.type,
+				data_table_id: dataStoreId,
+			});
 			return true;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('dataStore.addColumn.error'));
@@ -163,6 +175,9 @@ export const useDataStoreOperations = ({
 			setTotalItems(totalItems.value + 1);
 			setGridData({ rowData: rowData.value });
 			focusFirstEditableCell(newRow.id as number);
+			telemetry.track('User added row to data table', {
+				data_table_id: dataStoreId,
+			});
 		} catch (error) {
 			toast.showError(error, i18n.baseText('dataStore.addRow.error'));
 		} finally {
@@ -189,6 +204,11 @@ export const useDataStoreOperations = ({
 			toggleSave(true);
 			await dataStoreStore.updateRow(dataStoreId, projectId, id, {
 				[fieldName]: value,
+			});
+			telemetry.track('User edited data table content', {
+				data_table_id: dataStoreId,
+				column_id: colDef.colId,
+				column_type: colDef.cellDataType,
 			});
 		} catch (error) {
 			// Revert cell to original value if the update fails
@@ -254,6 +274,10 @@ export const useDataStoreOperations = ({
 				title: i18n.baseText('dataStore.deleteRows.success'),
 				message: '',
 				type: 'success',
+			});
+			telemetry.track('User deleted rows in data table', {
+				data_table_id: dataStoreId,
+				deleted_row_count: idsToDelete.length,
 			});
 		} catch (error) {
 			toast.showError(error, i18n.baseText('dataStore.deleteRows.error'));
