@@ -105,7 +105,7 @@ export const test = base.extend<CloudOnlyFixtures>({
 	},
 
 	// Browser context with cloud container URL and interceptors
-	context: async ({ context, baseURL }, use) => {
+	context: async ({ context }, use) => {
 		await setupDefaultInterceptors(context);
 		await use(context);
 	},
@@ -123,8 +123,8 @@ export const test = base.extend<CloudOnlyFixtures>({
 	},
 
 	// n8n page object
-	n8n: async ({ page }, use) => {
-		const n8nInstance = new n8nPage(page);
+	n8n: async ({ page, api }, use) => {
+		const n8nInstance = new n8nPage(page, api);
 		await use(n8nInstance);
 	},
 

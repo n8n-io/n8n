@@ -114,6 +114,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/components/canvas/experimental/experimentalNdv.store';
 import { useFocusPanelStore } from '@/stores/focusPanel.store';
+import type { TelemetryNdvSource, TelemetryNdvType } from '@/types/telemetry';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -325,7 +326,7 @@ export function useCanvasOperations() {
 
 		const isRenamingActiveNode = ndvStore.activeNodeName === currentName;
 		if (isRenamingActiveNode) {
-			ndvStore.activeNodeName = newName;
+			ndvStore.setActiveNodeName(newName, 'other');
 		}
 
 		if (trackHistory && trackBulk) {
@@ -529,22 +530,22 @@ export function useCanvasOperations() {
 		}
 	}
 
-	function setNodeActive(id: string) {
+	function setNodeActive(id: string, source: TelemetryNdvSource) {
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
 			return;
 		}
 
 		workflowsStore.setNodePristine(node.name, false);
-		setNodeActiveByName(node.name);
+		setNodeActiveByName(node.name, source);
 	}
 
-	function setNodeActiveByName(name: string) {
-		ndvStore.activeNodeName = name;
+	function setNodeActiveByName(name: string, source: TelemetryNdvSource) {
+		ndvStore.setActiveNodeName(name, source);
 	}
 
 	function clearNodeActive() {
-		ndvStore.activeNodeName = null;
+		ndvStore.unsetActiveNodeName();
 	}
 
 	function setNodeParameters(id: string, parameters: Record<string, unknown>) {
@@ -787,25 +788,31 @@ export function useCanvasOperations() {
 			nodeHelpers.updateNodeCredentialIssues(nodeData);
 			nodeHelpers.updateNodeInputIssues(nodeData);
 
+			const isStickyNode = nodeData.type === STICKY_NODE_TYPE;
+			const nextView =
+				isStickyNode || !options.openNDV || preventOpeningNDV
+					? undefined
+					: experimentalNdvStore.isNdvInFocusPanelEnabled &&
+							focusPanelStore.focusPanelActive &&
+							focusPanelStore.resolvedParameter === undefined
+						? 'focus_panel'
+						: experimentalNdvStore.isZoomedViewEnabled
+							? 'zoomed_view'
+							: 'ndv';
+
 			if (options.telemetry) {
-				trackAddNode(nodeData, options);
+				trackAddNode(nodeData, options, nextView);
 			}
 
-			if (nodeData.type !== STICKY_NODE_TYPE) {
+			if (!isStickyNode) {
 				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
 
-				if (options.openNDV && !preventOpeningNDV) {
-					if (
-						experimentalNdvStore.isNdvInFocusPanelEnabled &&
-						focusPanelStore.focusPanelActive &&
-						focusPanelStore.focusedNodeParameters.length === 0
-					) {
-						// Do nothing. The added node get selected and the details are shown in the focus panel
-					} else if (experimentalNdvStore.isZoomedViewEnabled) {
-						experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
-					} else {
-						ndvStore.setActiveNodeName(nodeData.name);
-					}
+				if (nextView === 'focus_panel') {
+					// Do nothing. The added node get selected and the details are shown in the focus panel
+				} else if (nextView === 'zoomed_view') {
+					experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
+				} else if (nextView === 'ndv') {
+					ndvStore.setActiveNodeName(nodeData.name, 'added_new_node');
 				}
 			}
 		});
@@ -897,13 +904,13 @@ export function useCanvasOperations() {
 		}
 	}
 
-	function trackAddNode(nodeData: INodeUi, options: AddNodeOptions) {
+	function trackAddNode(nodeData: INodeUi, options: AddNodeOptions, nextView?: TelemetryNdvType) {
 		switch (nodeData.type) {
 			case STICKY_NODE_TYPE:
 				trackAddStickyNoteNode();
 				break;
 			default:
-				trackAddDefaultNode(nodeData, options);
+				trackAddDefaultNode(nodeData, options, nextView);
 		}
 	}
 
@@ -913,7 +920,11 @@ export function useCanvasOperations() {
 		});
 	}
 
-	function trackAddDefaultNode(nodeData: INodeUi, options: AddNodeOptions) {
+	function trackAddDefaultNode(
+		nodeData: INodeUi,
+		options: AddNodeOptions,
+		nextView?: TelemetryNdvType,
+	) {
 		// Extract action-related parameters from node parameters if available
 		const nodeParameters = nodeData.parameters;
 		const resource =
@@ -934,6 +945,7 @@ export function useCanvasOperations() {
 			resource,
 			operation,
 			action: options.actionName,
+			next_view_shown: nextView,
 		});
 	}
 
@@ -2192,7 +2204,7 @@ export function useCanvasOperations() {
 		if (nodeId) {
 			const node = workflowsStore.getNodeById(nodeId);
 			if (node) {
-				ndvStore.activeNodeName = node.name;
+				ndvStore.setActiveNodeName(node.name, 'other');
 			} else {
 				toast.showError(
 					new Error(`Node with id "${nodeId}" could not be found!`),

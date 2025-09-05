@@ -21,12 +21,6 @@ export const description: INodeProperties[] = [
 			},
 		},
 		options: [
-			// 	{
-			// 		name: 'Create or Update',
-			// 		value: 'upsert',
-			// 		description: 'Create a new record, or update the current one if it already exists (upsert)',
-			// 		action: 'Create or update a row',
-			// 	},
 			{
 				name: 'Delete',
 				value: deleteRows.FIELD,
@@ -39,12 +33,6 @@ export const description: INodeProperties[] = [
 				description: 'Get row(s)',
 				action: 'Get row(s)',
 			},
-			// 	{
-			// 		name: 'Get Many',
-			// 		value: 'getAll',
-			// 		description: 'Get many rows',
-			// 		action: 'Get many rows',
-			// 	},
 			{
 				name: 'Insert',
 				value: insert.FIELD,
@@ -67,7 +55,8 @@ export const description: INodeProperties[] = [
 		default: 'insert',
 	},
 	{
-		displayName: 'Data Table',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+		displayName: 'Data table',
 		name: DATA_TABLE_ID_FIELD,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },

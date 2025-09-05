@@ -28,6 +28,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 		let dataTableId: string | undefined;
 		await this.manager.transaction(async (em) => {
 			const dataStore = em.create(DataTable, { name, columns, projectId });
+			// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 			await em.insert(DataTable, dataStore);
 			dataTableId = dataStore.id;
 
@@ -47,6 +48,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 			);
 
 			if (columnEntities.length > 0) {
+				// @ts-ignore Workaround for intermittent typecheck issue with _QueryDeepPartialEntity
 				await em.insert(DataTableColumn, columnEntities);
 			}
 

@@ -51,7 +51,11 @@ async function createPiniaStore(
 		{},
 	);
 
-	ndvStore.activeNodeName = activeNodeName;
+	if (activeNodeName) {
+		ndvStore.setActiveNodeName(activeNodeName, 'other');
+	} else {
+		ndvStore.unsetActiveNodeName();
+	}
 
 	await useSettingsStore().getSettings();
 	await useUsersStore().loginWithCookie();
@@ -201,7 +205,7 @@ describe('NodeDetailsViewV2', () => {
 				pinia,
 			});
 
-			ndvStore.activeNodeName = 'Manual Trigger';
+			ndvStore.setActiveNodeName('Manual Trigger', 'other');
 
 			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 

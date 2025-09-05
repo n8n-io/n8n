@@ -1,5 +1,5 @@
 <mj-section>
-	<mj-column>
-		<mj-image src="cid:n8n-logo" height="40px" width="70px" />
+	<mj-column padding-left="15px">
+		<mj-image src="cid:n8n-logo" width="125px" padding="0" />
 	</mj-column>
 </mj-section>

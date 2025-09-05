@@ -41,24 +41,24 @@ export type ListDataStoreOptions = {
 	skip?: number;
 };
 
-export type ListDataStoreContentFilter = {
+export type DataTableFilter = {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq';
+		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
 		value: DataStoreColumnJsType;
 	}>;
 };
 
 export type ListDataStoreRowsOptions = {
-	filter?: ListDataStoreContentFilter;
+	filter?: DataTableFilter;
 	sortBy?: [string, 'ASC' | 'DESC'];
 	take?: number;
 	skip?: number;
 };
 
 export type UpdateDataStoreRowsOptions = {
-	filter: Record<string, DataStoreColumnJsType>;
+	filter: DataTableFilter;
 	data: DataStoreRow;
 };
 

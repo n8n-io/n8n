@@ -40,6 +40,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		dataStore: {},
 		execution: {},
 		workflowTags: {},
+		role: {},
 	});
 
 	function addGlobalRole(role: Role) {

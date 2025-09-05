@@ -1,3 +1,3 @@
 export * from './canvas';
-export * from './externalHooks';
-export * from './pushConnection';
+export type * from './externalHooks';
+export type * from './pushConnection';

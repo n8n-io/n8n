@@ -35,8 +35,8 @@ export class DataStoreProxyService implements DataStoreProxyProvider {
 	}
 
 	private validateRequest(node: INode) {
-		if (node.type !== 'n8n-nodes-base.dataTable') {
-			throw new Error('This proxy is only available for data table nodes');
+		if (node.type !== 'n8n-nodes-base.dataTable' && node.type !== 'n8n-nodes-base.dataTableTool') {
+			throw new Error('This proxy is only available for Data table nodes');
 		}
 	}
 
