@@ -1,3 +1,9 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createTestingPinia } from '@pinia/testing';
 import WorkflowSelectorParameterInput, {
 	type Props,
@@ -43,6 +49,11 @@ const workflowsStore = mockedStore(useWorkflowsStore);
 describe('WorkflowSelectorParameterInput', () => {
 	beforeEach(() => {
 		createAppModals();
+		// Mock store methods to prevent unhandled errors
+		workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
+		workflowsStore.totalWorkflowCount = 0;
+		workflowsStore.getWorkflowById.mockReturnValue(null as any);
+		workflowsStore.fetchWorkflow.mockResolvedValue({} as any);
 	});
 
 	afterEach(() => {
@@ -65,13 +76,20 @@ describe('WorkflowSelectorParameterInput', () => {
 				default: '',
 			},
 		};
-		const { emitted } = renderComponent({ props });
+		const wrapper = renderComponent({ props });
 		await flushPromises();
-		expect(emitted()['update:modelValue']?.[0]).toEqual([props.modelValue]);
+
+		// The component adds cachedResultUrl to the model value
+		const expectedModelValue = {
+			...props.modelValue,
+			cachedResultUrl: '/projects/1/folders/1',
+		};
+
+		expect(wrapper.emitted()['update:modelValue']?.[0]).toEqual([expectedModelValue]);
 		expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(props.modelValue.value);
 	});
 
-	it('should update cached workflow when page is visible', async () => {
+	it('should update cached workflow when document becomes visible', async () => {
 		const props: Props = {
 			modelValue: {
 				__rl: true,
@@ -90,7 +108,12 @@ describe('WorkflowSelectorParameterInput', () => {
 		await flushPromises();
 
 		// on mount
-		expect(emitted()['update:modelValue']?.[0]).toEqual([props.modelValue]);
+		const expectedModelValue = {
+			...props.modelValue,
+			cachedResultUrl: '/projects/1/folders/1',
+		};
+
+		expect(emitted()['update:modelValue']?.[0]).toEqual([expectedModelValue]);
 		expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(props.modelValue.value);
 		workflowsStore.fetchWorkflow.mockReset();
 
@@ -98,7 +121,7 @@ describe('WorkflowSelectorParameterInput', () => {
 		const onDocumentVisibleCallback = onDocumentVisible.mock.lastCall?.[0];
 		await onDocumentVisibleCallback();
 
-		expect(emitted()['update:modelValue']?.[1]).toEqual([props.modelValue]);
+		expect(emitted()['update:modelValue']?.[1]).toEqual([expectedModelValue]);
 		expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(props.modelValue.value);
 	});
 
@@ -125,5 +148,92 @@ describe('WorkflowSelectorParameterInput', () => {
 
 		expect(getByTestId('parameter-issues')).toBeInTheDocument();
 		expect(getByTestId('rlc-open-resource-link')).toBeInTheDocument();
+	});
+
+	describe('workflow caching behavior', () => {
+		it('should include cached URL in model value updates', async () => {
+			const props: Props = {
+				modelValue: {
+					__rl: true,
+					value: 'test-workflow',
+					mode: 'list',
+				},
+				path: '',
+				parameter: {
+					displayName: 'display-name',
+					type: 'workflowSelector',
+					name: 'name',
+					default: '',
+				},
+			};
+
+			const wrapper = renderComponent({ props });
+			await flushPromises();
+
+			const updateEvents = wrapper.emitted()['update:modelValue'] as any[];
+			const lastUpdate = updateEvents[updateEvents.length - 1][0];
+
+			expect(lastUpdate).toMatchObject({
+				__rl: true,
+				value: 'test-workflow',
+				mode: 'list',
+				cachedResultUrl: '/projects/1/folders/1',
+			});
+		});
+
+		it('should handle workflow name caching from store', async () => {
+			const mockWorkflow = {
+				id: 'existing-workflow',
+				name: 'Existing Workflow',
+			};
+
+			workflowsStore.getWorkflowById.mockReturnValue(mockWorkflow as any);
+
+			const props: Props = {
+				modelValue: {
+					__rl: true,
+					value: 'existing-workflow',
+					mode: 'list',
+				},
+				path: '',
+				parameter: {
+					displayName: 'display-name',
+					type: 'workflowSelector',
+					name: 'name',
+					default: '',
+				},
+			};
+
+			renderComponent({ props });
+			await flushPromises();
+
+			// Verify workflow was fetched via fetchWorkflow, not getWorkflowById directly
+			expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith('existing-workflow');
+		});
+	});
+
+	describe('error handling', () => {
+		it('should attempt to fetch workflow even with invalid IDs', async () => {
+			const props: Props = {
+				modelValue: {
+					__rl: true,
+					value: 'invalid-workflow-id',
+					mode: 'list',
+				},
+				path: '',
+				parameter: {
+					displayName: 'display-name',
+					type: 'workflowSelector',
+					name: 'name',
+					default: '',
+				},
+			};
+
+			renderComponent({ props });
+			await flushPromises();
+
+			// Should attempt to fetch the workflow
+			expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith('invalid-workflow-id');
+		});
 	});
 });
