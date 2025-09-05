@@ -886,4 +886,8 @@ export class NodeDetailsViewPage extends BasePage {
 	getOutputRunSelectorInput() {
 		return this.getOutputPanel().locator('[data-test-id="run-selector"] input');
 	}
+
+	getCredentialLabel(credentialType: string) {
+		return this.page.getByText(credentialType);
+	}
 }
