@@ -2070,6 +2070,7 @@
 	"settings.users.table.row.role.description.member": "Manage and create own workflows and credentials",
 	"settings.users.table.row.2fa.enabled": "@:_reusableBaseText.enabled",
 	"settings.users.table.row.2fa.disabled": "@:_reusableBaseText.disabled",
+	"settings.projectRoles": "Project Roles",
 	"settings.api": "API",
 	"settings.api.scopes.upgrade": "{link} to unlock the ability to modify API key scopes",
 	"settings.n8napi": "n8n API",
