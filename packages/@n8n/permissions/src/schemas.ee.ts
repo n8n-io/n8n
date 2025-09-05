@@ -62,6 +62,9 @@ export const roleSchema = z.object({
 	roleType: roleNamespaceSchema,
 	licensed: z.boolean(),
 	scopes: z.array(scopeSchema),
+	createdAt: z.date().optional(),
+	updatedAt: z.date().optional(),
+	usedByUsers: z.number().optional(),
 });
 
 export type Role = z.infer<typeof roleSchema>;

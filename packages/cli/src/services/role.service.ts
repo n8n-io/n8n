@@ -38,11 +38,12 @@ export class RoleService {
 		private readonly scopeRepository: ScopeRepository,
 	) {}
 
-	private dbRoleToRoleDTO(role: Role): RoleDTO {
+	private dbRoleToRoleDTO(role: Role, usedByUsers?: number): RoleDTO {
 		return {
 			...role,
 			scopes: role.scopes.map((s) => s.slug),
 			licensed: this.isRoleLicensed(role.slug),
+			usedByUsers,
 		};
 	}
 
@@ -51,10 +52,13 @@ export class RoleService {
 		return roles.map((r) => this.dbRoleToRoleDTO(r));
 	}
 
-	async getRole(slug: string): Promise<RoleDTO> {
+	async getRole(slug: string, withCount: boolean = false): Promise<RoleDTO> {
 		const role = await this.roleRepository.findBySlug(slug);
 		if (role) {
-			return this.dbRoleToRoleDTO(role);
+			const usedByUsers = withCount
+				? await this.roleRepository.countUsersWithRole(role)
+				: undefined;
+			return this.dbRoleToRoleDTO(role, usedByUsers);
 		}
 		throw new NotFoundError('Role not found');
 	}
