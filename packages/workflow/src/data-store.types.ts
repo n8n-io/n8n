@@ -116,7 +116,10 @@ export interface IDataStoreProjectService {
 		dto: Partial<ListDataStoreRowsOptions>,
 	): Promise<{ count: number; data: DataStoreRowsReturn }>;
 
-	insertRows(rows: DataStoreRows): Promise<DataStoreRowReturn[]>;
+	insertRows(
+		rows: DataStoreRows,
+		returnData: boolean,
+	): Promise<DataStoreRowReturn[] | Array<Pick<DataStoreRowReturn, 'id'>>>;
 
 	updateRows(options: UpdateDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
 

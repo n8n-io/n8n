@@ -139,7 +139,7 @@ export class DataStoreService {
 		projectId: string,
 		rows: DataStoreRows,
 		returnData?: T,
-	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
+	): Promise<T extends true ? DataStoreRowReturn[] : Array<Pick<DataStoreRowReturn, 'id'>>>;
 	async insertRows(
 		dataStoreId: string,
 		projectId: string,

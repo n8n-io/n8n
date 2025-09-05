@@ -162,7 +162,7 @@ export class DataStoreRowsRepository {
 		rows: DataStoreRows,
 		columns: DataTableColumn[],
 		returnData?: T,
-	): Promise<Array<T extends true ? DataStoreRowReturn : Pick<DataStoreRowReturn, 'id'>>>;
+	): Promise<T extends true ? DataStoreRowReturn[] : Array<Pick<DataStoreRowReturn, 'id'>>>;
 	async insertRows(
 		dataStoreId: string,
 		rows: DataStoreRows,
@@ -179,6 +179,45 @@ export class DataStoreRowsRepository {
 			this.dataSource.driver.escape(x),
 		);
 		const selectColumns = [...escapedSystemColumns, ...escapedColumns];
+
+		if (returnData === false) {
+			const batchSize = 5000;
+			const batches = Math.floor((columns.length * rows.length) / batchSize) + 1; // + 1 to account for cuts in the middle of columns
+			const results: unknown[] = [];
+			for (let i = 0; i < batches; ++i) {
+				const start = i * Math.floor(rows.length / batches);
+				const endExclusive = Math.min(rows.length, (i + 1) * Math.floor(rows.length / batches));
+				const completeRows = new Array(endExclusive - start);
+				for (let j = start; j < endExclusive; ++j) {
+					// Fill missing columns with null values to support partial data insertion
+					const completeRow = { ...rows[j] };
+					for (const column of columns) {
+						if (!(column.name in completeRow)) {
+							completeRow[column.name] = null;
+						}
+						completeRow[column.name] = normalizeValue(
+							completeRow[column.name],
+							column.type,
+							dbType,
+						);
+					}
+					completeRows[j - start] = completeRow;
+				}
+				console.log(completeRows.slice(0, 10));
+				console.log(completeRows.slice(-10));
+				const query = this.dataSource
+					.createQueryBuilder()
+					.insert()
+					.into(table)
+					.values(completeRows);
+				const result = await query.execute();
+				results.push.apply(results, result.raw);
+			}
+
+			console.log(results);
+
+			return results as never;
+		}
 
 		// We insert one by one as the default behavior of returning the last inserted ID
 		// is consistent, whereas getting all inserted IDs when inserting multiple values is
