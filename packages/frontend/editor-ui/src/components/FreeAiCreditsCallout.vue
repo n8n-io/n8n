@@ -8,7 +8,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, ref } from 'vue';
-import { type ICredentialType, OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
+import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { N8nCallout, N8nText } from '@n8n/design-system';
 
 type Props = {
