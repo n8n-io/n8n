@@ -14,7 +14,6 @@ import {
 	NODES_WITH_RENAMABLE_FORM_HTML_CONTENT,
 	NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
 	STARTING_NODE_TYPES,
-	SPLIT_IN_BATCHES_NODE_TYPE,
 } from './constants';
 import { UserError } from './errors';
 import { ApplicationError } from '@n8n/errors';
@@ -37,8 +36,6 @@ import type {
 	IObservableObject,
 	NodeParameterValueType,
 	NodeConnectionType,
-	IWorkflowValidationResult,
-	IWorkflowValidationWarning,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
 import * as NodeHelpers from './node-helpers';
