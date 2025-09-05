@@ -63,7 +63,12 @@ export function routesForSourceControl(server: Server) {
 		// Simulate validation based on protocol
 		if (currentProtocol === 'https') {
 			// HTTPS requires username and token for successful connection
-			if (requestBody.repositoryUrl && requestBody.username && !currentPreferences.connected) {
+			if (
+				requestBody.repositoryUrl &&
+				requestBody.username &&
+				(requestBody as any).personalAccessToken &&
+				!currentPreferences.connected
+			) {
 				currentPreferences.connected = true;
 				currentPreferences.branches = ['main', 'develop', 'feature/https-auth'];
 				currentPreferences.currentBranch = 'main';

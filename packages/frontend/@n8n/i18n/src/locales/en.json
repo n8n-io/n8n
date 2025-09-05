@@ -2234,7 +2234,7 @@
 	"settings.sourceControl.gitConfig": "Git configuration",
 	"settings.sourceControl.protocol": "Authentication Protocol",
 	"settings.sourceControl.repoUrl": "Git repository URL",
-	"settings.sourceControl.repoUrlPlaceholder": "e.g. git@github.com:my-team/my-repository or https://github.com/my-team/my-repository",
+	"settings.sourceControl.repoUrlPlaceholder": "e.g. git{'@'}github.com:my-team/my-repository or https://github.com/my-team/my-repository",
 	"settings.sourceControl.repoUrlInvalid": "The Git repository URL is not valid",
 	"settings.sourceControl.authorName": "Commit author  name",
 	"settings.sourceControl.authorEmail": "Commit author  email",
