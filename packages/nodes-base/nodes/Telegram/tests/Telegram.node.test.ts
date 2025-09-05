@@ -200,13 +200,10 @@ describe('Telegram node', () => {
 					case 'binaryData':
 						return true;
 					case 'chatId':
-						// Different chat IDs for different indices to test proper indexing
 						return index === 0 ? 'chat-id-0' : index === 1 ? 'chat-id-1' : 'chat-id-2';
 					case 'binaryPropertyName':
-						// Different binary property names for different indices
 						return index === 0 ? 'data0' : index === 1 ? 'data1' : 'data2';
 					case 'additionalFields.fileName':
-						// Different file names for different indices
 						return index === 0 ? 'photo0.jpg' : index === 1 ? 'photo1.png' : 'photo2.gif';
 					case 'additionalFields':
 						return {};
@@ -217,7 +214,6 @@ describe('Telegram node', () => {
 		});
 
 		it('should use correct index for binaryPropertyName parameter', async () => {
-			// Setup multiple input items
 			executeFunctionsMock.getInputData.mockReturnValue([
 				{
 					json: {},
@@ -245,7 +241,6 @@ describe('Telegram node', () => {
 
 			await node.execute.call(executeFunctionsMock);
 
-			// Verify that binaryPropertyName was called with correct indices
 			expect(executeFunctionsMock.getNodeParameter).toHaveBeenCalledWith('binaryPropertyName', 0);
 			expect(executeFunctionsMock.getNodeParameter).toHaveBeenCalledWith('binaryPropertyName', 1);
 			expect(executeFunctionsMock.getNodeParameter).not.toHaveBeenCalledWith(
@@ -261,7 +256,6 @@ describe('Telegram node', () => {
 		});
 
 		it('should use correct index for additionalFields.fileName parameter', async () => {
-			// Setup multiple input items
 			executeFunctionsMock.getInputData.mockReturnValue([
 				{
 					json: {},
@@ -287,7 +281,6 @@ describe('Telegram node', () => {
 
 			await node.execute.call(executeFunctionsMock);
 
-			// Verify that additionalFields.fileName was called with correct indices
 			expect(executeFunctionsMock.getNodeParameter).toHaveBeenCalledWith(
 				'additionalFields.fileName',
 				0,
@@ -301,7 +294,6 @@ describe('Telegram node', () => {
 		});
 
 		it('should use correct binary data for each item based on binaryPropertyName index', async () => {
-			// Setup multiple input items with different binary property names
 			executeFunctionsMock.getInputData.mockReturnValue([
 				{
 					json: {},
@@ -337,10 +329,8 @@ describe('Telegram node', () => {
 
 			await node.execute.call(executeFunctionsMock);
 
-			// Verify API was called twice with correct data
 			expect(apiRequestSpy).toHaveBeenCalledTimes(2);
 
-			// Check first call
 			const firstCall = apiRequestSpy.mock.calls[0];
 			expect(firstCall[0]).toBe('POST');
 			expect(firstCall[1]).toBe('sendPhoto');
@@ -357,7 +347,6 @@ describe('Telegram node', () => {
 				}),
 			});
 
-			// Check second call
 			const secondCall = apiRequestSpy.mock.calls[1];
 			expect(secondCall[0]).toBe('POST');
 			expect(secondCall[1]).toBe('sendPhoto');
@@ -389,7 +378,6 @@ describe('Telegram node', () => {
 					case 'binaryPropertyName':
 						return index === 0 ? 'data0' : 'data1';
 					case 'additionalFields.fileName':
-						// Empty fileName for first item, provided for second
 						return index === 0 ? '' : 'custom-name.jpg';
 					case 'additionalFields':
 						return {};
@@ -425,7 +413,6 @@ describe('Telegram node', () => {
 
 			await node.execute.call(executeFunctionsMock);
 
-			// Check first call uses fallback fileName from binary data
 			const firstCall = apiRequestSpy.mock.calls[0];
 			expect(firstCall[4]).toEqual({
 				formData: expect.objectContaining({
@@ -437,7 +424,6 @@ describe('Telegram node', () => {
 				}),
 			});
 
-			// Check second call uses custom fileName from additionalFields
 			const secondCall = apiRequestSpy.mock.calls[1];
 			expect(secondCall[4]).toEqual({
 				formData: expect.objectContaining({
@@ -488,12 +474,10 @@ describe('Telegram node', () => {
 
 			await node.execute.call(executeFunctionsMock);
 
-			// Verify chatId parameter was called with correct indices
 			expect(executeFunctionsMock.getNodeParameter).toHaveBeenCalledWith('chatId', 0);
 			expect(executeFunctionsMock.getNodeParameter).toHaveBeenCalledWith('chatId', 1);
 			expect(executeFunctionsMock.getNodeParameter).toHaveBeenCalledWith('chatId', 2);
 
-			// Verify correct chat IDs were used in API calls
 			expect(apiRequestSpy).toHaveBeenCalledTimes(3);
 
 			const calls = apiRequestSpy.mock.calls;
