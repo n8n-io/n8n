@@ -97,6 +97,10 @@ class TaskRunner:
             f"ws://{websocket_host}{TASK_BROKER_WS_PATH}?id={self.runner_id}"
         )
 
+    @property
+    def running_tasks_count(self) -> int:
+        return len(self.running_tasks)
+
     async def start(self) -> None:
         if self.config.is_auto_shutdown_enabled and not self.on_idle_timeout:
             raise NoIdleTimeoutHandlerError(self.config.auto_shutdown_timeout)
@@ -155,7 +159,7 @@ class TaskRunner:
 
         timeout = self.config.graceful_shutdown_timeout
         self.logger.debug(
-            f"Waiting for {len(self.running_tasks)} tasks to complete (timeout: {timeout}s)..."
+            f"Waiting for {self.running_tasks_count} tasks to complete (timeout: {timeout}s)..."
         )
 
         start_time = time.time()
@@ -164,14 +168,14 @@ class TaskRunner:
 
         if self.running_tasks:
             self.logger.warning(
-                f"Timed out waiting for {len(self.running_tasks)} tasks to complete"
+                f"Timed out waiting for {self.running_tasks_count} tasks to complete"
             )
 
     async def _terminate_tasks(self):
         if not self.running_tasks:
             return
 
-        self.logger.warning(f"Terminating {len(self.running_tasks)} tasks...")
+        self.logger.warning(f"Terminating {self.running_tasks_count} tasks...")
 
         tasks_to_terminate = [
             asyncio.to_thread(self.executor.stop_process, task_state.process)
@@ -237,7 +241,7 @@ class TaskRunner:
             await self._send_message(response)
             return
 
-        if len(self.running_tasks) >= self.config.max_concurrency:
+        if self.running_tasks_count >= self.config.max_concurrency:
             response = RunnerTaskRejected(
                 task_id=message.task_id,
                 reason=TASK_REJECTED_REASON_AT_CAPACITY,
@@ -403,7 +407,7 @@ class TaskRunner:
             self.open_offers.pop(offer_id, None)
 
         offers_to_send = self.config.max_concurrency - (
-            len(self.open_offers) + len(self.running_tasks)
+            len(self.open_offers) + self.running_tasks_count
         )
 
         for _ in range(offers_to_send):
@@ -442,7 +446,7 @@ class TaskRunner:
         try:
             await asyncio.sleep(self.config.auto_shutdown_timeout)
 
-            if len(self.running_tasks) > 0:
+            if self.running_tasks_count > 0:
                 return
 
             assert self.on_idle_timeout is not None  # validated at start()
