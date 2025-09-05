@@ -77,14 +77,14 @@ describe('Push', () => {
 		});
 
 		test('should handle IPv6 hosts correctly', () => {
-			// IPv6 hosts are returned with brackets by the URL constructor when port is removed
+			// IPv6 hosts should have brackets stripped for consistency
 			// @ts-expect-error accessing private method for testing
-			expect(push.normalizeHost('[::1]:443', 'https')).toBe('[::1]');
+			expect(push.normalizeHost('[::1]:443', 'https')).toBe('::1');
 			// @ts-expect-error accessing private method for testing
-			expect(push.normalizeHost('[::1]:80', 'http')).toBe('[::1]');
-			// Non-default ports preserve the full format
+			expect(push.normalizeHost('[::1]:80', 'http')).toBe('::1');
+			// Non-default ports preserve the full format but strip brackets
 			// @ts-expect-error accessing private method for testing
-			expect(push.normalizeHost('[::1]:8080', 'https')).toBe('[::1]:8080');
+			expect(push.normalizeHost('[::1]:8080', 'https')).toBe('::1:8080');
 		});
 
 		test('should handle complex domain names', () => {
@@ -193,18 +193,18 @@ describe('Push', () => {
 		});
 
 		test('should handle IPv6 origins', () => {
-			// IPv6 with default port: hostname should remove brackets but host keeps them
+			// IPv6 with default port: brackets should be stripped for consistency
 			// @ts-expect-error accessing private method for testing
 			expect(push.parseOrigin('https://[::1]:443')).toEqual({
 				protocol: 'https',
-				host: '[::1]',
+				host: '::1',
 			});
 
-			// IPv6 with non-default port: should preserve format
+			// IPv6 with non-default port: brackets should be stripped but port preserved
 			// @ts-expect-error accessing private method for testing
 			expect(push.parseOrigin('http://[2001:db8::1]:8080')).toEqual({
 				protocol: 'http',
-				host: '[2001:db8::1]:8080',
+				host: '2001:db8::1:8080',
 			});
 		});
 
@@ -1002,6 +1002,40 @@ describe('Push', () => {
 				test('should return undefined for empty array', () => {
 					// @ts-expect-error accessing private method for testing
 					expect(push.getFirstHeaderValue([])).toBe(undefined);
+				});
+			});
+
+			describe('stripIPv6Brackets method', () => {
+				test('should strip brackets from IPv6 addresses', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.stripIPv6Brackets('[::1]')).toBe('::1');
+					// @ts-expect-error accessing private method for testing
+					expect(push.stripIPv6Brackets('[2001:db8::1]')).toBe('2001:db8::1');
+				});
+
+				test('should strip brackets from IPv6 addresses with ports', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.stripIPv6Brackets('[::1]:8080')).toBe('::1:8080');
+					// @ts-expect-error accessing private method for testing
+					expect(push.stripIPv6Brackets('[2001:db8::1]:443')).toBe('2001:db8::1:443');
+				});
+
+				test('should leave non-bracketed strings unchanged', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.stripIPv6Brackets('example.com')).toBe('example.com');
+					// @ts-expect-error accessing private method for testing
+					expect(push.stripIPv6Brackets('192.168.1.1')).toBe('192.168.1.1');
+					// @ts-expect-error accessing private method for testing
+					expect(push.stripIPv6Brackets('::1')).toBe('::1');
+					// @ts-expect-error accessing private method for testing
+					expect(push.stripIPv6Brackets('example.com:8080')).toBe('example.com:8080');
+				});
+
+				test('should handle partial brackets', () => {
+					// @ts-expect-error accessing private method for testing
+					expect(push.stripIPv6Brackets('[incomplete')).toBe('[incomplete');
+					// @ts-expect-error accessing private method for testing
+					expect(push.stripIPv6Brackets('incomplete]')).toBe('incomplete]');
 				});
 			});
 

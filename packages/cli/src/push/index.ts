@@ -123,17 +123,39 @@ export class Push extends TypedEmitter<PushEvents> {
 			const defaultPort = protocol === 'https' ? '443' : '80';
 			const actualPort = url.port || defaultPort;
 
-			// If the port matches the default, return hostname only
+			// If the port matches the default, return hostname only (strip IPv6 brackets)
 			if (actualPort === defaultPort) {
-				return url.hostname;
+				return this.stripIPv6Brackets(url.hostname);
 			}
 
-			// Return hostname:port for non-default ports
-			return url.host;
+			// Return hostname:port for non-default ports (strip IPv6 brackets)
+			return this.stripIPv6Brackets(url.host);
 		} catch {
 			// If URL parsing fails, fall back to original host
 			return host;
 		}
+	}
+
+	/**
+	 * Strips brackets from IPv6 addresses for consistency.
+	 * IPv6 brackets are URL syntax and should be removed when comparing hosts.
+	 *
+	 * @param hostname The hostname that may contain IPv6 brackets (e.g., "[::1]" or "[::1]:8080")
+	 * @returns Hostname with IPv6 brackets removed if present (e.g., "::1" or "::1:8080")
+	 */
+	private stripIPv6Brackets(hostname: string): string {
+		// Handle IPv6 with port: [::1]:8080 -> ::1:8080
+		if (hostname.startsWith('[') && hostname.includes(']:')) {
+			const closingBracket = hostname.indexOf(']:');
+			const ipv6 = hostname.slice(1, closingBracket); // Extract ::1
+			const port = hostname.slice(closingBracket + 2); // Extract 8080
+			return `${ipv6}:${port}`;
+		}
+		// Handle IPv6 without port: [::1] -> ::1
+		if (hostname.startsWith('[') && hostname.endsWith(']')) {
+			return hostname.slice(1, -1);
+		}
+		return hostname;
 	}
 
 	/**
@@ -221,11 +243,12 @@ export class Push extends TypedEmitter<PushEvents> {
 
 			const protocolName = protocol === 'https:' ? 'https' : 'http';
 
-			// Use the same normalization logic - remove default ports
+			// Use the same normalization logic - remove default ports and IPv6 brackets
 			const defaultPort = protocolName === 'https' ? '443' : '80';
 			const actualPort = url.port || defaultPort;
 
-			const normalizedHost = actualPort === defaultPort ? url.hostname : url.host;
+			const rawHost = actualPort === defaultPort ? url.hostname : url.host;
+			const normalizedHost = this.stripIPv6Brackets(rawHost);
 
 			return {
 				protocol: protocolName,
