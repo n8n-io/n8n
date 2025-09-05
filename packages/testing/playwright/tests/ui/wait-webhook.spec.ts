@@ -23,9 +23,17 @@ test.describe('Wait node with resume on webhook call', () => {
 		const execution = await api.workflowApi.getExecution(body.executionId.toString());
 		expect(execution.status).toBe('waiting');
 
+		expect(body.resumeUrl).toContain('signature=');
+		const resumeUrlWoSignature = new URL(body.resumeUrl);
+		resumeUrlWoSignature.searchParams.delete('signature');
+
+		const unsignedWaitWebhookResponse = await api.request.get(resumeUrlWoSignature.toString());
+		expect(unsignedWaitWebhookResponse.status()).toBe(401);
+
 		const waitWebhookResponse = await api.request.get(body.resumeUrl);
 		expect(waitWebhookResponse.ok()).toBe(true);
 
-		await api.workflowApi.waitForExecution(workflowId);
+		const continuedExecution = await api.workflowApi.waitForExecution(workflowId);
+		expect(continuedExecution.status).toBe('success');
 	});
 });
