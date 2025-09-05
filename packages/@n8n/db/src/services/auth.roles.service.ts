@@ -52,9 +52,9 @@ export class AuthRolesService {
 		}).filter((scope) => scope !== null);
 
 		if (scopesToUpdate.length > 0) {
-			this.logger.info(`Updating ${scopesToUpdate.length} scopes...`);
+			this.logger.debug(`Updating ${scopesToUpdate.length} scopes...`);
 			await this.scopeRepository.save(scopesToUpdate);
-			this.logger.info('Scopes updated successfully.');
+			this.logger.debug('Scopes updated successfully.');
 		} else {
 			this.logger.debug('No scopes to update.');
 		}
@@ -85,12 +85,12 @@ export class AuthRolesService {
 		for (const roleNamespace of Object.keys(ALL_ROLES) as Array<keyof typeof ALL_ROLES>) {
 			const rolesToUpdate = ALL_ROLES[roleNamespace]
 				.map((role) => {
-					const existingRole = existingRolesMap.get(role.role);
+					const existingRole = existingRolesMap.get(role.slug);
 
 					if (!existingRole) {
 						const newRole = this.roleRepository.create({
-							slug: role.role,
-							displayName: role.name,
+							slug: role.slug,
+							displayName: role.displayName,
 							description: role.description ?? null,
 							roleType: roleNamespace,
 							systemRole: true,
@@ -100,14 +100,14 @@ export class AuthRolesService {
 					}
 
 					const needsUpdate =
-						existingRole.displayName !== role.name ||
+						existingRole.displayName !== role.displayName ||
 						existingRole.description !== role.description ||
 						existingRole.roleType !== roleNamespace ||
 						existingRole.scopes.some((scope) => !role.scopes.includes(scope.slug)) || // DB roles has scope that it should not have
 						role.scopes.some((scope) => !existingRole.scopes.some((s) => s.slug === scope)); // A role has scope that is not in DB
 
 					if (needsUpdate) {
-						existingRole.displayName = role.name;
+						existingRole.displayName = role.displayName;
 						existingRole.description = role.description ?? null;
 						existingRole.roleType = roleNamespace;
 						existingRole.scopes = allScopes.filter((scope) => role.scopes.includes(scope.slug));
@@ -118,9 +118,9 @@ export class AuthRolesService {
 				})
 				.filter((role) => role !== null);
 			if (rolesToUpdate.length > 0) {
-				this.logger.info(`Updating ${rolesToUpdate.length} ${roleNamespace} roles...`);
+				this.logger.debug(`Updating ${rolesToUpdate.length} ${roleNamespace} roles...`);
 				await this.roleRepository.save(rolesToUpdate);
-				this.logger.info(`${roleNamespace} roles updated successfully.`);
+				this.logger.debug(`${roleNamespace} roles updated successfully.`);
 			} else {
 				this.logger.debug(`No ${roleNamespace} roles to update.`);
 			}
@@ -128,9 +128,9 @@ export class AuthRolesService {
 	}
 
 	async init() {
-		this.logger.info('Initializing AuthRolesService...');
+		this.logger.debug('Initializing AuthRolesService...');
 		await this.syncScopes();
 		await this.syncRoles();
-		this.logger.info('AuthRolesService initialized successfully.');
+		this.logger.debug('AuthRolesService initialized successfully.');
 	}
 }

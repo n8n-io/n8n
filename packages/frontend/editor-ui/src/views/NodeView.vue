@@ -12,6 +12,7 @@ import {
 	watch,
 	h,
 	onBeforeUnmount,
+	useTemplateRef,
 } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
@@ -122,7 +123,10 @@ import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { createCanvasConnectionHandleString } from '@/utils/canvasUtils';
+import {
+	createCanvasConnectionHandleString,
+	shouldIgnoreCanvasShortcut,
+} from '@/utils/canvasUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import { getSampleWorkflowByTemplateId } from '@/utils/templates/workflowSamples';
 import type { CanvasLayoutEvent } from '@/composables/useCanvasLayout';
@@ -141,6 +145,7 @@ import { useFocusPanelStore } from '@/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useKeybindings } from '@/composables/useKeybindings';
+import { type ContextMenuAction } from '@/composables/useContextMenuItems';
 
 defineOptions({
 	name: 'NodeView',
@@ -260,6 +265,7 @@ useKeybindings({
 	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
 });
 
+const canvasRef = useTemplateRef('canvas');
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
 const readOnlyNotification = ref<null | { visible: boolean }>(null);
@@ -769,7 +775,7 @@ function onSetNodeActivated(id: string, event?: MouseEvent) {
 		}
 	}
 
-	setNodeActive(id);
+	setNodeActive(id, 'canvas_default_view');
 }
 
 function onOpenSubWorkflow(id: string) {
@@ -882,6 +888,10 @@ async function onSaveWorkflow() {
 	}
 }
 
+function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
+	canvasRef.value?.executeContextMenuAction(action, nodeIds);
+}
+
 function addWorkflowSavedEventBindings() {
 	canvasEventBus.on('saved:workflow', npsSurveyStore.fetchPromptsData);
 	canvasEventBus.on('saved:workflow', onSaveFromWithinNDV);
@@ -917,7 +927,7 @@ async function onOpenRenameNodeModal(id: string) {
 
 	const activeElement = document.activeElement;
 
-	if (activeElement && activeElement.tagName === 'INPUT') {
+	if (activeElement && shouldIgnoreCanvasShortcut(activeElement)) {
 		// If an input is focused, do not open the rename modal
 		return;
 	}
@@ -1212,7 +1222,7 @@ function onSwitchActiveNode(nodeName: string) {
 	const node = workflowsStore.getNodeByName(nodeName);
 	if (!node) return;
 
-	setNodeActiveByName(nodeName);
+	setNodeActiveByName(nodeName, 'other');
 	selectNodes([node.id]);
 }
 
@@ -1773,7 +1783,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'openNodeDetail',
 		action: ({ node }: { node: string }) => {
-			setNodeActiveByName(node);
+			setNodeActiveByName(node, 'other');
 		},
 	});
 
@@ -1795,7 +1805,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'showNodeCreator',
 		action: () => {
-			ndvStore.activeNodeName = null;
+			ndvStore.unsetActiveNodeName();
 
 			void nextTick(() => {
 				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
@@ -1824,7 +1834,7 @@ function showAddFirstStepIfEnabled() {
 function updateNodeRoute(nodeId: string) {
 	const nodeUi = workflowsStore.findNodeByPartialId(nodeId);
 	if (nodeUi) {
-		setNodeActive(nodeUi.id);
+		setNodeActive(nodeUi.id, 'other');
 	} else {
 		toast.showToast({
 			title: i18n.baseText('nodeView.showMessage.ndvUrl.missingNodes.title'),
@@ -1879,7 +1889,9 @@ watch(
 		};
 
 		fallbackNodes.value =
-			builderStore.isAIBuilderEnabled && builderStore.isAssistantEnabled
+			builderStore.isAIBuilderEnabled &&
+			builderStore.isAssistantEnabled &&
+			builderStore.assistantMessages.length === 0
 				? [aiPromptItem]
 				: [addNodesItem];
 	},
@@ -1889,7 +1901,7 @@ watch(
 watch(
 	() => route.params.nodeId,
 	async (newId) => {
-		if (typeof newId !== 'string' || newId === '') ndvStore.activeNodeName = null;
+		if (typeof newId !== 'string' || newId === '') ndvStore.unsetActiveNodeName();
 		else {
 			updateNodeRoute(newId);
 		}
@@ -2038,6 +2050,7 @@ onBeforeUnmount(() => {
 	<div :class="$style.wrapper">
 		<WorkflowCanvas
 			v-if="editableWorkflow && editableWorkflowObject && !isLoading"
+			ref="canvas"
 			:id="editableWorkflow.id"
 			:workflow="editableWorkflow"
 			:workflow-object="editableWorkflowObject"
@@ -2197,6 +2210,7 @@ onBeforeUnmount(() => {
 			v-if="!isLoading"
 			:is-canvas-read-only="isCanvasReadOnly"
 			@save-keyboard-shortcut="onSaveWorkflow"
+			@context-menu-action="onContextMenuAction"
 		/>
 	</div>
 </template>

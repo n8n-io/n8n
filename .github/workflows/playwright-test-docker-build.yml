@@ -10,4 +10,5 @@ jobs:
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
       test-mode: docker-build
+      test-command: pnpm --filter=n8n-playwright test:container:standard
     secrets: inherit

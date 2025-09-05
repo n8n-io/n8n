@@ -15,6 +15,7 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import glob from 'fast-glob';
@@ -22,14 +23,6 @@ import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { jsonParse, ensureError, UserError, UnexpectedError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { CredentialsService } from '@/credentials/credentials.service';
-import type { IWorkflowToImport } from '@/interfaces';
-import { isUniqueConstraintError } from '@/response-helper';
-import { TagService } from '@/services/tag.service';
-import { assertNever } from '@/utils';
-import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -52,6 +45,14 @@ import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../variables/variables.service.ee';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialsService } from '@/credentials/credentials.service';
+import type { IWorkflowToImport } from '@/interfaces';
+import { isUniqueConstraintError } from '@/response-helper';
+import { TagService } from '@/services/tag.service';
+import { assertNever } from '@/utils';
+import { WorkflowService } from '@/workflows/workflow.service';
+
 const findOwnerProject = (
 	owner: RemoteResourceOwner,
 	accessibleProjects: Project[],
@@ -59,7 +60,7 @@ const findOwnerProject = (
 	if (typeof owner === 'string') {
 		return accessibleProjects.find((project) =>
 			project.projectRelations.some(
-				(r) => r.role === 'project:personalOwner' && r.user.email === owner,
+				(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG && r.user.email === owner,
 			),
 		);
 	}
@@ -68,7 +69,7 @@ const findOwnerProject = (
 			(project) =>
 				project.type === 'personal' &&
 				project.projectRelations.some(
-					(r) => r.role === 'project:personalOwner' && r.user.email === owner.personalEmail,
+					(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG && r.user.email === owner.personalEmail,
 				),
 		);
 	}
@@ -82,7 +83,7 @@ const getOwnerFromProject = (remoteOwnerProject: Project): StatusResourceOwner |
 
 	if (remoteOwnerProject?.type === 'personal') {
 		const personalEmail = remoteOwnerProject.projectRelations?.find(
-			(r) => r.role === 'project:personalOwner',
+			(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG,
 		)?.user?.email;
 
 		if (personalEmail) {
@@ -148,7 +149,7 @@ export class SourceControlImportService {
 		});
 
 		const accessibleProjects =
-			await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
 
 		const remoteWorkflowsRead = await Promise.all(
 			remoteWorkflowFiles.map(async (file) => {
@@ -251,7 +252,9 @@ export class SourceControlImportService {
 						name: true,
 						type: true,
 						projectRelations: {
-							role: true,
+							role: {
+								slug: true,
+							},
 							user: {
 								email: true,
 							},
@@ -300,7 +303,7 @@ export class SourceControlImportService {
 		});
 
 		const accessibleProjects =
-			await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
 
 		const remoteCredentialFilesRead = await Promise.all(
 			remoteCredentialFiles.map(async (file) => {
@@ -368,7 +371,9 @@ export class SourceControlImportService {
 						name: true,
 						type: true,
 						projectRelations: {
-							role: true,
+							role: {
+								slug: true,
+							},
 							user: {
 								email: true,
 							},
@@ -426,7 +431,7 @@ export class SourceControlImportService {
 			});
 
 			const accessibleProjects =
-				await this.sourceControlScopedService.getAdminProjectsFromContext(context);
+				await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
 
 			mappedFolders.folders = mappedFolders.folders.filter(
 				(folder) =>

@@ -41,20 +41,25 @@ export type ListDataStoreOptions = {
 	skip?: number;
 };
 
-export type ListDataStoreContentFilter = {
+export type DataTableFilter = {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
-		condition: 'eq' | 'neq';
+		condition: 'eq' | 'neq' | 'like' | 'ilike' | 'gt' | 'gte' | 'lt' | 'lte';
 		value: DataStoreColumnJsType;
 	}>;
 };
 
 export type ListDataStoreRowsOptions = {
-	filter?: ListDataStoreContentFilter;
+	filter?: DataTableFilter;
 	sortBy?: [string, 'ASC' | 'DESC'];
 	take?: number;
 	skip?: number;
+};
+
+export type UpdateDataStoreRowsOptions = {
+	filter: DataTableFilter;
+	data: DataStoreRow;
 };
 
 export type UpsertDataStoreRowsOptions = {
@@ -112,6 +117,8 @@ export interface IDataStoreProjectService {
 	): Promise<{ count: number; data: DataStoreRowsReturn }>;
 
 	insertRows(rows: DataStoreRows): Promise<DataStoreRowReturn[]>;
+
+	updateRows(options: UpdateDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
 
 	upsertRows(options: UpsertDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
 

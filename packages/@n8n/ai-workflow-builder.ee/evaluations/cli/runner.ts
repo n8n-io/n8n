@@ -24,7 +24,7 @@ import { generateMarkdownReport } from '../utils/evaluation-reporter.js';
  * Main CLI evaluation runner that executes all test cases in parallel
  * Supports concurrency control via EVALUATION_CONCURRENCY environment variable
  */
-export async function runCliEvaluation(): Promise<void> {
+export async function runCliEvaluation(testCaseFilter?: string): Promise<void> {
 	console.log(formatHeader('AI Workflow Builder Full Evaluation', 70));
 	console.log();
 	try {
@@ -34,11 +34,24 @@ export async function runCliEvaluation(): Promise<void> {
 		// Determine test cases to run
 		let testCases: TestCase[] = basicTestCases;
 
-		// Optionally generate additional test cases
-		if (shouldGenerateTestCases()) {
-			console.log(pc.blue('➔ Generating additional test cases...'));
-			const generatedCases = await generateTestCases(llm, howManyTestCasesToGenerate());
-			testCases = [...testCases, ...generatedCases];
+		// Filter to single test case if specified
+		if (testCaseFilter) {
+			const filteredCase = testCases.find((tc) => tc.id === testCaseFilter);
+			if (filteredCase) {
+				testCases = [filteredCase];
+				console.log(pc.blue(`➔ Running single test case: ${filteredCase.name}`));
+			} else {
+				console.log(pc.red(`❌ Test case '${testCaseFilter}' not found`));
+				console.log(pc.dim(`Available test cases: ${testCases.map((tc) => tc.id).join(', ')}`));
+				return;
+			}
+		} else {
+			// Optionally generate additional test cases
+			if (shouldGenerateTestCases()) {
+				console.log(pc.blue('➔ Generating additional test cases...'));
+				const generatedCases = await generateTestCases(llm, howManyTestCasesToGenerate());
+				testCases = [...testCases, ...generatedCases];
+			}
 		}
 
 		// Get concurrency from environment

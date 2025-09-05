@@ -1,4 +1,5 @@
 import { PopOutWindowKey } from '@/constants';
+import { shouldIgnoreCanvasShortcut } from '@/utils/canvasUtils';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import type { MaybeRefOrGetter } from 'vue';
@@ -36,16 +37,9 @@ export const useKeybindings = (
 
 	const isDisabled = computed(() => toValue(options?.disabled));
 
-	const ignoreKeyPresses = computed(() => {
-		if (!activeElement.value) return false;
-
-		const active = activeElement.value;
-		const isInput = ['INPUT', 'TEXTAREA'].includes(active.tagName);
-		const isContentEditable = active.closest('[contenteditable]') !== null;
-		const isIgnoreClass = active.closest('.ignore-key-press-canvas') !== null;
-
-		return isInput || isContentEditable || isIgnoreClass;
-	});
+	const ignoreKeyPresses = computed(
+		() => activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value),
+	);
 
 	const normalizedKeymap = computed(() =>
 		Object.fromEntries(

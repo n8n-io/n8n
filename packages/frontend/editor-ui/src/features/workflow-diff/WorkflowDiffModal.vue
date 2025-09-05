@@ -13,6 +13,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { removeWorkflowExecutionData } from '@/utils/workflowUtils';
 import { N8nButton, N8nHeading, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
@@ -86,8 +87,8 @@ const sourceWorkFlow = computed(() => (props.data.direction === 'push' ? remote 
 const targetWorkFlow = computed(() => (props.data.direction === 'push' ? local : remote));
 
 const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
-	computed(() => sourceWorkFlow.value.state.value?.workflow),
-	computed(() => targetWorkFlow.value.state.value?.workflow),
+	computed(() => removeWorkflowExecutionData(sourceWorkFlow.value.state.value?.workflow)),
+	computed(() => removeWorkflowExecutionData(targetWorkFlow.value.state.value?.workflow)),
 );
 
 type SettingsChange = {
@@ -266,9 +267,16 @@ const nodeDiffs = computed(() => {
 	const targetNode = targetWorkFlow.value?.state.value?.workflow?.nodes.find(
 		(node) => node.id === selectedDetailId.value,
 	);
+	function replacer(key: string, value: unknown) {
+		if (key === 'position') {
+			return undefined; // exclude this property
+		}
+		return value;
+	}
+
 	return {
-		oldString: JSON.stringify(sourceNode, null, 2) ?? '',
-		newString: JSON.stringify(targetNode, null, 2) ?? '',
+		oldString: JSON.stringify(sourceNode, replacer, 2) ?? '',
+		newString: JSON.stringify(targetNode, replacer, 2) ?? '',
 	};
 });
 
@@ -398,7 +406,7 @@ const modifiers = [
 						icon-size="large"
 						@click="handleBeforeClose"
 					></N8nIconButton>
-					<N8nHeading tag="h1" size="xlarge">
+					<N8nHeading tag="h4" size="medium">
 						{{
 							sourceWorkFlow.state.value?.workflow?.name ||
 							targetWorkFlow.state.value?.workflow?.name

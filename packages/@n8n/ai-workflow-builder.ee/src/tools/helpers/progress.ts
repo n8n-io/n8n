@@ -10,22 +10,36 @@ import type {
 
 /**
  * Create a progress reporter for a tool execution
+ *
+ * @param config
+ * @param toolName
+ * @param displayTitle the general tool action name, for example "Searching for nodes"
+ * @param customTitle custom title per tool call, for example "Searching for OpenAI"
  */
 export function createProgressReporter<TToolName extends string = string>(
 	config: ToolRunnableConfig & LangGraphRunnableConfig,
 	toolName: TToolName,
+	displayTitle: string,
+	customTitle?: string,
 ): ProgressReporter {
 	const toolCallId = config.toolCall?.id;
+
+	let customDisplayTitle = customTitle;
 
 	const emit = (message: ToolProgressMessage<TToolName>): void => {
 		config.writer?.(message);
 	};
 
-	const start = <T>(input: T): void => {
+	const start = <T>(input: T, options?: { customDisplayTitle: string }): void => {
+		if (options?.customDisplayTitle) {
+			customDisplayTitle = options.customDisplayTitle;
+		}
 		emit({
 			type: 'tool',
 			toolName,
 			toolCallId,
+			displayTitle,
+			customDisplayTitle,
 			status: 'running',
 			updates: [
 				{
@@ -41,6 +55,8 @@ export function createProgressReporter<TToolName extends string = string>(
 			type: 'tool',
 			toolName,
 			toolCallId,
+			displayTitle,
+			customDisplayTitle,
 			status: 'running',
 			updates: [
 				{
@@ -56,6 +72,8 @@ export function createProgressReporter<TToolName extends string = string>(
 			type: 'tool',
 			toolName,
 			toolCallId,
+			displayTitle,
+			customDisplayTitle,
 			status: 'completed',
 			updates: [
 				{
@@ -71,6 +89,8 @@ export function createProgressReporter<TToolName extends string = string>(
 			type: 'tool',
 			toolName,
 			toolCallId,
+			displayTitle,
+			customDisplayTitle,
 			status: 'error',
 			updates: [
 				{
