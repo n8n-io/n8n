@@ -19,6 +19,7 @@ import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 } from 'n8n-workflow';
 
+import { DataStoreRepository } from './data-store.repository';
 import { DataTableColumn } from './data-table-column.entity';
 import {
 	addColumnQuery,
@@ -32,8 +33,8 @@ import {
 	splitRowsByExistence,
 	toDslColumns,
 	toSqliteGlobFromPercent,
+	toTableName,
 } from './utils/sql-utils';
-import { DataStoreRepository } from './data-store.repository';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type QueryBuilder = SelectQueryBuilder<any>;
@@ -167,7 +168,7 @@ export class DataStoreRowsRepository {
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres' || dbType === 'mariadb';
 
-		const table = this.dataStoreRepository.toTableName(dataStoreId);
+		const table = toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 			this.dataSource.driver.escape(x),
@@ -233,7 +234,7 @@ export class DataStoreRowsRepository {
 		const dbType = this.dataSource.options.type;
 		const useReturning = dbType === 'postgres';
 
-		const table = this.dataStoreRepository.toTableName(dataStoreId);
+		const table = toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 			this.dataSource.driver.escape(x),
@@ -348,7 +349,7 @@ export class DataStoreRowsRepository {
 			return true;
 		}
 
-		const table = this.dataStoreRepository.toTableName(dataStoreId);
+		const table = toTableName(dataStoreId);
 
 		await this.dataSource
 			.createQueryBuilder()
@@ -366,17 +367,15 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 	) {
 		const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
-		const createTable = new CreateTable(
-			this.dataStoreRepository.toTableName(dataStoreId),
-			'',
-			queryRunner,
-		).withColumns(...dslColumns).withTimestamps;
+		const createTable = new CreateTable(toTableName(dataStoreId), '', queryRunner).withColumns(
+			...dslColumns,
+		).withTimestamps;
 
 		await createTable.execute(queryRunner);
 	}
 
 	async dropTable(dataStoreId: string, queryRunner: QueryRunner) {
-		await queryRunner.dropTable(this.dataStoreRepository.toTableName(dataStoreId), true);
+		await queryRunner.dropTable(toTableName(dataStoreId), true);
 	}
 
 	async addColumn(
@@ -385,9 +384,7 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 		dbType: DataSourceOptions['type'],
 	) {
-		await queryRunner.query(
-			addColumnQuery(this.dataStoreRepository.toTableName(dataStoreId), column, dbType),
-		);
+		await queryRunner.query(addColumnQuery(toTableName(dataStoreId), column, dbType));
 	}
 
 	async dropColumnFromTable(
@@ -396,9 +393,7 @@ export class DataStoreRowsRepository {
 		queryRunner: QueryRunner,
 		dbType: DataSourceOptions['type'],
 	) {
-		await queryRunner.query(
-			deleteColumnQuery(this.dataStoreRepository.toTableName(dataStoreId), columnName, dbType),
-		);
+		await queryRunner.query(deleteColumnQuery(toTableName(dataStoreId), columnName, dbType));
 	}
 
 	async getManyAndCount(
@@ -417,7 +412,7 @@ export class DataStoreRowsRepository {
 	}
 
 	async getManyByIds(dataStoreId: string, ids: number[], columns: DataTableColumn[]) {
-		const table = this.dataStoreRepository.toTableName(dataStoreId);
+		const table = toTableName(dataStoreId);
 		const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
 		const escapedSystemColumns = DATA_TABLE_SYSTEM_COLUMNS.map((x) =>
 			this.dataSource.driver.escape(x),
@@ -452,7 +447,7 @@ export class DataStoreRowsRepository {
 		const query = this.dataSource.createQueryBuilder();
 
 		const tableReference = 'dataTable';
-		query.from(this.dataStoreRepository.toTableName(dataStoreId), tableReference);
+		query.from(toTableName(dataStoreId), tableReference);
 		if (dto.filter) {
 			this.applyFilters(query, dto.filter, tableReference, columns);
 		}
@@ -514,7 +509,7 @@ export class DataStoreRowsRepository {
 		const queryBuilder = this.dataSource
 			.createQueryBuilder()
 			.select(matchFields)
-			.from(this.dataStoreRepository.toTableName(dataStoreId), 'datatable');
+			.from(toTableName(dataStoreId), 'datatable');
 
 		rows.forEach((row, index) => {
 			const matchData = Object.fromEntries(matchFields.map((field) => [field, row[field]]));

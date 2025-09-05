@@ -13,6 +13,8 @@ import type { DataStoreUserTableName } from '../data-store.types';
 import type { DataTableColumn } from '../data-table-column.entity';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { Container } from '@n8n/di';
+import { GlobalConfig } from '@n8n/config';
 
 export function toDslColumns(columns: DataStoreCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -317,4 +319,9 @@ export function escapeLikeSpecials(input: string): string {
 	return input
 		.replace(/\\/g, '\\\\') // escape the escape char itself
 		.replace(/_/g, '\\_'); // make '_' literal ('%' stays a wildcard)
+}
+
+export function toTableName(dataStoreId: string): DataStoreUserTableName {
+	const { tablePrefix } = Container.get(GlobalConfig).database;
+	return `${tablePrefix}data_table_user_${dataStoreId}`;
 }

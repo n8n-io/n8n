@@ -9,9 +9,9 @@ import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DataStoreRowsRepository } from './data-store-rows.repository';
-import { DataStoreUserTableName } from './data-store.types';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
+import { toTableName } from './utils/sql-utils';
 
 @Service()
 export class DataStoreRepository extends Repository<DataTable> {
@@ -253,7 +253,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 				sql = `
 					SELECT ROUND(SUM(pgsize) / 1024.0 / 1024.0, 2) AS total_mb
 					FROM dbstat
-					WHERE name LIKE '${this.toTableName('%')}'
+					WHERE name LIKE '${toTableName('%')}'
 				`;
 				break;
 
@@ -264,7 +264,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 					) AS total_mb
 					FROM pg_tables
 					WHERE schemaname = '${schemaName}'
-					AND tablename LIKE '${this.toTableName('%')}'
+					AND tablename LIKE '${toTableName('%')}'
 				`;
 				break;
 
@@ -275,7 +275,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 					SELECT ROUND(SUM((DATA_LENGTH + INDEX_LENGTH)) / 1024 / 1024, 1) AS total_mb
 					FROM information_schema.tables
 					WHERE table_schema = '${databaseName}'
-					AND table_name LIKE '${this.toTableName('%')}'
+					AND table_name LIKE '${toTableName('%')}'
 				`;
 				break;
 			}
@@ -289,10 +289,5 @@ export class DataStoreRepository extends Repository<DataTable> {
 		const currentSizeInMbs = result[0]?.total_mb ?? 0;
 
 		return currentSizeInMbs;
-	}
-
-	toTableName(dataStoreId: string): DataStoreUserTableName {
-		const { tablePrefix } = this.globalConfig.database;
-		return `${tablePrefix}data_table_user_${dataStoreId}`;
 	}
 }
