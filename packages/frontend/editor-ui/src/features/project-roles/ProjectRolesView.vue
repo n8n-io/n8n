@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { VIEWS } from '@/constants';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useRolesStore } from '@/stores/roles.store';
 import {
 	N8nActionToggle,
@@ -13,8 +15,11 @@ import type { Role } from '@n8n/permissions';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+const { showError, showMessage } = useToast();
+
 const rolesStore = useRolesStore();
 const router = useRouter();
+const message = useMessage();
 
 const headers = ref<Array<TableHeader<Role>>>([
 	{
@@ -53,26 +58,73 @@ const headers = ref<Array<TableHeader<Role>>>([
 	},
 ]);
 
+async function deleteRole(item: Role) {
+	const deleteConfirmed = await message.confirm(
+		`Are you sure that you want to delete '${item.displayName}' permanently? This action cannot be undone.`,
+		`Delete "${item.displayName}"?`,
+		{
+			type: 'warning',
+			confirmButtonText: 'Delete',
+			cancelButtonText: 'Cancel',
+		},
+	);
+
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	try {
+		await rolesStore.deleteProjectRole(item.slug);
+
+		const index = rolesStore.roles.project.findIndex((role) => role.slug === item.slug);
+		if (index !== -1) {
+			rolesStore.roles.project.splice(index, 1);
+		}
+
+		showMessage({ title: 'Role deleted', type: 'success' });
+	} catch (error) {
+		showError(error, 'Error deleting role');
+		return;
+	}
+}
+
+async function duplicateRole(item: Role) {
+	try {
+		const displayName = `Copy of ${item.displayName}`;
+		const role = await rolesStore.createProjectRole({
+			displayName,
+			description: item.description ?? undefined,
+			roleType: 'project',
+			scopes: item.scopes,
+		});
+		rolesStore.roles.project.push(role);
+
+		showMessage({
+			type: 'success',
+			message: `Role "${item.displayName}" duplicated successfully as "${displayName}"`,
+		});
+
+		return role;
+	} catch (error) {
+		showError(error, 'Error duplicating role');
+		return;
+	}
+}
+
 const actions = {
-	set_default: (item: Role) => {
-		// Handle set as default action
-		console.log('Set as default:', item);
-	},
-	duplicate: (item: Role) => {
-		// Handle duplicate action
-		console.log('Duplicate:', item);
-	},
-	delete: (item: Role) => {
-		// Handle delete action
-		console.log('Delete:', item);
-	},
+	// TODO: implement in P1
+	// set_default: (_item: Role) => {
+	// },
+	duplicate: duplicateRole,
+	delete: deleteRole,
 } as const;
 
 const rowActions = computed<Array<{ label: string; value: keyof typeof actions }>>(() => [
-	{
-		label: 'Set as default',
-		value: 'set_default',
-	},
+	// TODO: implement in P1
+	// {
+	// 	label: 'Set as default',
+	// 	value: 'set_default',
+	// },
 	{
 		label: 'Duplicate',
 		value: 'duplicate',
@@ -84,7 +136,7 @@ const rowActions = computed<Array<{ label: string; value: keyof typeof actions }
 ]);
 
 function handleAction(action: string, item: Role) {
-	actions[action as keyof typeof actions](item);
+	void actions[action as keyof typeof actions](item);
 }
 </script>
 
