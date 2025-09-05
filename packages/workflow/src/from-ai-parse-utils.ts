@@ -104,32 +104,19 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
 	return schema;
 }
 
-function isFromAIArgumentType(value: string): value is FromAIArgumentType {
-	return ['string', 'number', 'boolean', 'json'].includes(value.toLowerCase());
-}
-
 /**
  * Parses the default value, preserving its original type.
  * @param value The default value as a string.
- * @param type The expected type of the default value.
  * @returns The parsed default value in its appropriate type.
  */
 function parseDefaultValue(
 	value: string | undefined,
-	type: FromAIArgumentType = 'string',
 ): string | number | boolean | Record<string, unknown> | undefined {
-	if (value === undefined) return value;
-
+	if (value === undefined || value === '') return undefined;
 	const lowerValue = value.toLowerCase();
-	if (type === 'string') {
-		return value.toString();
-	}
-
-	if (type === 'boolean' && (lowerValue === 'true' || lowerValue === 'false'))
-		return lowerValue === 'true';
-	if (type === 'number' && !isNaN(Number(value))) return Number(value);
-
-	// For type 'json' or any other case, attempt to parse as JSON
+	if (lowerValue === 'true') return true;
+	if (lowerValue === 'false') return false;
+	if (!isNaN(Number(value))) return Number(value);
 	try {
 		return jsonParse(value);
 	} catch {
@@ -210,17 +197,17 @@ function parseArguments(argsString: string): FromAIArgument {
 		return trimmed;
 	});
 
-	const type = cleanArgs?.[2] ?? 'string';
+	const type = cleanArgs?.[2] || 'string';
 
-	if (!isFromAIArgumentType(type)) {
+	if (!['string', 'number', 'boolean', 'json'].includes(type.toLowerCase())) {
 		throw new ParseError(`Invalid type: ${type}`);
 	}
 
 	return {
 		key: cleanArgs[0] || '',
 		description: cleanArgs[1],
-		type,
-		defaultValue: parseDefaultValue(cleanArgs[3], type),
+		type: (cleanArgs?.[2] ?? 'string') as FromAIArgumentType,
+		defaultValue: parseDefaultValue(cleanArgs[3]),
 	};
 }
 

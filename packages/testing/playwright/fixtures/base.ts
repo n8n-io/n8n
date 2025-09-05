@@ -6,7 +6,6 @@ import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers'
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
-import { ProxyServer } from '../services/proxy-server';
 import { TestError, type TestRequirements } from '../Types';
 import { setupTestRequirements } from '../utils/requirements';
 
@@ -15,7 +14,6 @@ type TestFixtures = {
 	api: ApiHelpers;
 	baseURL: string;
 	setupRequirements: (requirements: TestRequirements) => Promise<void>;
-	proxyServer: ProxyServer;
 };
 
 type WorkerFixtures = {
@@ -33,7 +31,6 @@ interface ContainerConfig {
 		workers: number;
 	};
 	env?: Record<string, string>;
-	proxyServerEnabled?: boolean;
 }
 
 /**
@@ -160,31 +157,6 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		};
 
 		await use(setupFunction);
-	},
-
-	proxyServer: async ({ n8nContainer }, use) => {
-		// n8nContainer is "null" if running tests in "local" mode
-		if (!n8nContainer) {
-			throw new TestError(
-				'Testing with Proxy server is not supported when using N8N_BASE_URL environment variable. Remove N8N_BASE_URL to use containerized testing.',
-			);
-		}
-
-		const proxyServerContainer = n8nContainer.containers.find((container) =>
-			container.getName().endsWith('proxyserver'),
-		);
-
-		// proxy server is not initialized in local mode (it be only supported in container modes)
-		// tests that require proxy server should have "@capability:proxy" so that they are skipped in local mode
-		if (!proxyServerContainer) {
-			throw new TestError('Proxy server container not initialized. Cannot initialize client.');
-		}
-
-		const serverUrl = `http://${proxyServerContainer?.getHost()}:${proxyServerContainer?.getFirstMappedPort()}`;
-		const proxyServer = new ProxyServer(serverUrl);
-		await proxyServer.loadExpectations();
-
-		await use(proxyServer);
 	},
 });
 

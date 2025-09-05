@@ -41,7 +41,7 @@ export type ListDataStoreOptions = {
 	skip?: number;
 };
 
-export type DataTableFilter = {
+export type ListDataStoreContentFilter = {
 	type: 'and' | 'or';
 	filters: Array<{
 		columnName: string;
@@ -51,14 +51,14 @@ export type DataTableFilter = {
 };
 
 export type ListDataStoreRowsOptions = {
-	filter?: DataTableFilter;
+	filter?: ListDataStoreContentFilter;
 	sortBy?: [string, 'ASC' | 'DESC'];
 	take?: number;
 	skip?: number;
 };
 
 export type UpdateDataStoreRowsOptions = {
-	filter: DataTableFilter;
+	filter: Record<string, DataStoreColumnJsType>;
 	data: DataStoreRow;
 };
 

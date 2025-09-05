@@ -132,12 +132,7 @@ export class ErrorReporter {
 		];
 
 		const eventLoopBlockIntegration = withEventLoopBlockDetection
-			? // The EventLoopBlockIntegration doesn't automatically include the
-				// same tags, so we set them explicitly.
-				await this.getEventLoopBlockIntegration({
-					server_name: serverName,
-					server_type: serverType,
-				})
+			? await this.getEventLoopBlockIntegration()
 			: [];
 
 		init({
@@ -267,14 +262,10 @@ export class ErrorReporter {
 		if (tags) event.tags = { ...event.tags, ...tags };
 	}
 
-	private async getEventLoopBlockIntegration(tags: Record<string, string>) {
+	private async getEventLoopBlockIntegration() {
 		try {
 			const { eventLoopBlockIntegration } = await import('@sentry/node-native');
-			return [
-				eventLoopBlockIntegration({
-					staticTags: tags,
-				}),
-			];
+			return [eventLoopBlockIntegration()];
 		} catch {
 			this.logger.debug(
 				"Sentry's event loop block integration is disabled, because the native binary for `@sentry/node-native` was not found",

@@ -115,7 +115,6 @@ export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: Them
 		'&.cm-editor': {
 			...(isReadOnly ? { backgroundColor: 'var(--color-code-background-readonly)' } : {}),
 			borderColor: 'var(--border-color-base)',
-			overflow: 'hidden',
 		},
 		'&.cm-editor.cm-focused': {
 			outline: 'none',

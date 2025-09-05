@@ -1,4 +1,4 @@
-<script lang="ts" setup generic="T extends string">
+<script lang="ts" setup>
 // This component is visually similar to the ActionToggle component
 // but it offers more options when it comes to dropdown items styling
 // (supports icons, separators, custom styling and all options provided
@@ -19,7 +19,7 @@ import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 const TRIGGER = ['click', 'hover'] as const;
 
 interface ActionDropdownProps {
-	items: Array<ActionDropdownItem<T>>;
+	items: ActionDropdownItem[];
 	placement?: Placement;
 	activatorIcon?: IconName;
 	activatorSize?: ButtonSize;
@@ -46,7 +46,7 @@ const attrs = useAttrs();
 const testIdPrefix = attrs['data-test-id'];
 
 const $style = useCssModule();
-const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> => {
+const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
 	return {
 		[$style.itemContainer]: true,
 		[$style.disabled]: !!item.disabled,
@@ -56,13 +56,13 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 };
 
 const emit = defineEmits<{
-	select: [action: T];
+	select: [action: string];
 	visibleChange: [open: boolean];
 }>();
 
 defineSlots<{
 	activator: {};
-	menuItem: (props: ActionDropdownItem<T>) => void;
+	menuItem: (props: ActionDropdownItem) => void;
 }>();
 
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
@@ -72,7 +72,7 @@ const popperClass = computed(
 		`${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''} ${props.extraPopperClass ?? ''}`,
 );
 
-const onSelect = (action: T) => emit('select', action);
+const onSelect = (action: string) => emit('select', action);
 const onVisibleChange = (open: boolean) => emit('visibleChange', open);
 
 const onButtonBlur = (event: FocusEvent) => {

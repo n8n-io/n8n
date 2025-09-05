@@ -7,10 +7,10 @@ run:
     uv run python -m src.main
 
 sync:
-    uv sync --group dev
+    uv sync
 
 sync-all:
-    uv sync --all-extras --group dev
+    uv sync --all-extras
 
 lint:
     uv run ruff check
@@ -25,13 +25,7 @@ format-check:
     uv run ruff format --check
 
 test:
-    uv run pytest
-
-test-cov:
-    uv run pytest --cov=src --cov-report=term-missing
-
-test-v:
-    uv run pytest -vv
+    @echo "No tests yet"
 
 typecheck:
     uv run ty check src/

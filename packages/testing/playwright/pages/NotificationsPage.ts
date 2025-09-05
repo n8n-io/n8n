@@ -91,7 +91,7 @@ export class NotificationsPage {
 		text: string | RegExp,
 		options: { timeout?: number; maxRetries?: number } = {},
 	): Promise<number> {
-		const { maxRetries = 15 } = options;
+		const { timeout = 1500, maxRetries = 15 } = options;
 		let closedCount = 0;
 		let retries = 0;
 

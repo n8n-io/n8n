@@ -430,13 +430,7 @@ export function generateNodesGraph(
 		} else if (node.type === CODE_NODE_TYPE) {
 			const { language } = node.parameters;
 			nodeItem.language =
-				language === undefined
-					? 'javascript'
-					: language === 'python'
-						? 'python'
-						: language === 'pythonNative'
-							? 'pythonNative'
-							: 'unknown';
+				language === undefined ? 'javascript' : language === 'python' ? 'python' : 'unknown';
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);

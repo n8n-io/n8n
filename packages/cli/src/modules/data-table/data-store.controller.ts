@@ -7,7 +7,7 @@ import {
 	ListDataStoreQueryDto,
 	MoveDataStoreColumnDto,
 	UpdateDataStoreDto,
-	UpdateDataTableRowDto,
+	UpdateDataStoreRowDto,
 	UpsertDataStoreRowsDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -306,7 +306,7 @@ export class DataStoreController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('dataStoreId') dataStoreId: string,
-		@Body dto: UpdateDataTableRowDto,
+		@Body dto: UpdateDataStoreRowDto,
 	) {
 		try {
 			return await this.dataStoreService.updateRow(

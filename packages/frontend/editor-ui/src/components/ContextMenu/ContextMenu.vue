@@ -1,14 +1,12 @@
 <script lang="ts" setup>
-import { useContextMenu } from '@/composables/useContextMenu';
-import { type ContextMenuAction } from '@/composables/useContextMenuItems';
+import { type ContextMenuAction, useContextMenu } from '@/composables/useContextMenu';
 import { useStyles } from '@/composables/useStyles';
 import { N8nActionDropdown } from '@n8n/design-system';
-import { ref, watch } from 'vue';
-import { type ComponentExposed } from 'vue-component-type-helpers';
+import { watch, ref } from 'vue';
 
 const contextMenu = useContextMenu();
 const { position, isOpen, actions, target } = contextMenu;
-const dropdown = ref<ComponentExposed<typeof N8nActionDropdown>>();
+const dropdown = ref<InstanceType<typeof N8nActionDropdown>>();
 const emit = defineEmits<{ action: [action: ContextMenuAction, nodeIds: string[]] }>();
 const { APP_Z_INDEXES } = useStyles();
 
@@ -24,8 +22,10 @@ watch(
 	{ flush: 'post' },
 );
 
-function onActionSelect(item: ContextMenuAction) {
-	emit('action', item, contextMenu.targetNodeIds.value);
+function onActionSelect(item: string) {
+	const action = item as ContextMenuAction;
+	contextMenu._dispatchAction(action);
+	emit('action', action, contextMenu.targetNodeIds.value);
 }
 
 function onVisibleChange(open: boolean) {

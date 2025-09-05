@@ -55,8 +55,7 @@ export const description: INodeProperties[] = [
 		default: 'insert',
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-		displayName: 'Data table',
+		displayName: 'Data Table',
 		name: DATA_TABLE_ID_FIELD,
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },

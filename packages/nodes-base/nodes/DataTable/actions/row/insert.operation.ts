@@ -1,5 +1,4 @@
 import type {
-	IDataStoreProjectService,
 	IDisplayOptions,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -30,14 +29,4 @@ export async function execute(
 
 	const insertedRows = await dataStoreProxy.insertRows([row]);
 	return insertedRows.map((json) => ({ json }));
-}
-
-export async function executeBulk(
-	this: IExecuteFunctions,
-	proxy: IDataStoreProjectService,
-): Promise<INodeExecutionData[]> {
-	const rows = this.getInputData().flatMap((_, i) => [getAddRow(this, i)]);
-
-	const insertedRows = await proxy.insertRows(rows);
-	return insertedRows.map((json, item) => ({ json, pairedItem: { item } }));
 }

@@ -20,14 +20,14 @@ const i18n = useI18n();
 
 const isHovered = ref(false);
 const isDropdownOpen = ref(false);
-const dropdownRef = ref<{ $el?: Node }>();
+const dropdownRef = ref<InstanceType<typeof N8nActionDropdown>>();
 
 const enum ItemAction {
 	Delete = 'delete',
 }
 
-const onItemClick = (action: ItemAction) => {
-	if (action === ItemAction.Delete) {
+const onItemClick = (action: string) => {
+	if (action === (ItemAction.Delete as string)) {
 		props.params.onDelete(props.params.column.getColId());
 	}
 };
