@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import { useVersionsStore } from '@/stores/versions.store';
-import { N8nButton, N8nLink } from '@n8n/design-system';
+import { N8nButton, N8nLink, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VERSIONS_MODAL_KEY } from '@/constants';
+
+interface Props {
+	disabled?: boolean;
+	tooltipText?: string;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	disabled: false,
+	tooltipText: undefined,
+});
 
 const i18n = useI18n();
 const versionsStore = useVersionsStore();
@@ -32,6 +42,7 @@ const onUpdateClick = async () => {
 			size="small"
 			theme="text"
 			data-test-id="version-update-next-versions-link"
+			:disabled="props.disabled"
 			@click="openUpdatesPanel"
 		>
 			{{
@@ -44,13 +55,16 @@ const onUpdateClick = async () => {
 			}}
 		</N8nLink>
 
-		<N8nButton
-			:class="$style.button"
-			:label="i18n.baseText('whatsNew.update')"
-			data-test-id="version-update-cta-button"
-			size="mini"
-			@click="onUpdateClick"
-		/>
+		<N8nTooltip :disabled="!props.tooltipText" :content="props.tooltipText">
+			<N8nButton
+				:class="$style.button"
+				:label="i18n.baseText('whatsNew.update')"
+				data-test-id="version-update-cta-button"
+				size="mini"
+				:disabled="props.disabled"
+				@click="onUpdateClick"
+			/>
+		</N8nTooltip>
 	</div>
 </template>
 

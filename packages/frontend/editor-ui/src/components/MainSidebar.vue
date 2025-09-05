@@ -263,8 +263,13 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			{
 				id: 'version-upgrade-cta',
 				component: VersionUpdateCTA,
-				available: versionsStore.hasVersionUpdates,
-				props: {},
+				available: true,
+				props: {
+					disabled: !canUserUpdateVersion.value,
+					tooltipText: !canUserUpdateVersion.value
+						? i18n.baseText('whatsNew.updateNudgeTooltip')
+						: undefined,
+				},
 			},
 		],
 	},
@@ -275,6 +280,10 @@ const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
 const showUserArea = computed(() => hasPermission(['authenticated']));
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
+
+const canUserUpdateVersion = computed(() => {
+	return usersStore.isInstanceOwner;
+});
 
 onMounted(async () => {
 	window.addEventListener('resize', onResize);
