@@ -1,6 +1,6 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const scopes = ['files.content.write', 'files.content.read', 'sharing.read', 'account_info.read'];
+const scopes = ['account_info.write', 'account_info.read', 'files.metadata.write', 'files.metadata.read', 'files.content.write', 'files.content.read', 'sharing.write', 'sharing.read', 'file_requests.write', 'file_requests.read', 'contacts.write', 'contacts.read', 'profile', 'openid', 'email', 'team_info.write', 'team_info.read', 'team_data.member', 'team_data.team_space', 'team_data.governance.write', 'team_data.governance.read', 'team_data.content.write', 'team_data.content.read', 'files.team_metadata.write', 'files.team_metadata.read', 'files.permanent_delete', 'members.write', 'members.read', 'members.delete', 'groups.write', 'groups.read', 'sessions.modify', 'sessions.list', 'events.write', 'events.read'];
 
 export class DropboxOAuth2Api implements ICredentialType {
 	name = 'dropboxOAuth2Api';
