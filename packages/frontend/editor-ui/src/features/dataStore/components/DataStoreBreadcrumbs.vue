@@ -98,7 +98,7 @@ watch(
 </script>
 
 <template>
-	<div :class="$style['data-store-breadcrumbs']">
+	<div :class="$style['data-store-breadcrumbs']" data-test-id="data-table-breadcrumbs">
 		<n8n-breadcrumbs
 			:items="breadcrumbs"
 			:separator="BREADCRUMBS_SEPARATOR"
