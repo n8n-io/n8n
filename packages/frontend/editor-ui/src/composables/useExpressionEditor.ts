@@ -51,6 +51,7 @@ export const useExpressionEditor = ({
 	skipSegments = [],
 	autocompleteTelemetry,
 	isReadOnly = false,
+	disableSearchDialog = false,
 	onChange = () => {},
 }: {
 	editorRef: MaybeRefOrGetter<HTMLElement | undefined>;
@@ -61,6 +62,7 @@ export const useExpressionEditor = ({
 	skipSegments?: MaybeRefOrGetter<string[]>;
 	autocompleteTelemetry?: MaybeRefOrGetter<{ enabled: true; parameterPath: string }>;
 	isReadOnly?: MaybeRefOrGetter<boolean>;
+	disableSearchDialog?: MaybeRefOrGetter<boolean>;
 	onChange?: (viewUpdate: ViewUpdate) => void;
 }) => {
 	const ndvStore = useNDVStore();
@@ -198,6 +200,12 @@ export const useExpressionEditor = ({
 		dragging.value = false;
 	}
 
+	function onKeyDown(e: KeyboardEvent) {
+		if (disableSearchDialog && e.metaKey && e.key === 'f') {
+			e.preventDefault();
+		}
+	}
+
 	watch(toRef(editorRef), () => {
 		const parent = toValue(editorRef);
 
@@ -237,6 +245,8 @@ export const useExpressionEditor = ({
 			editor.value.destroy();
 		}
 		editor.value = new EditorView({ parent, state });
+		// Capture is needed here to prevent the browser search window to open in the inline editor
+		editor.value.dom.addEventListener('keydown', onKeyDown, { capture: true });
 		debouncedUpdateSegments();
 	});
 
@@ -281,12 +291,21 @@ export const useExpressionEditor = ({
 		});
 	});
 
+	const handleKeyDown = (e: KeyboardEvent) => {
+		if (disableSearchDialog && e.key === 'f' && (e.ctrlKey || e.metaKey)) {
+			// Prevent the search field from opening when Ctrl or Command key is pressed
+			e.preventDefault();
+		}
+	};
+
 	onMounted(() => {
 		document.addEventListener('click', blurOnClickOutside);
+		// document.addEventListener('keydown', handleKeyDown);
 	});
 
 	onBeforeUnmount(() => {
 		document.removeEventListener('click', blurOnClickOutside);
+		// document.removeEventListener('keydown', handleKeyDown);
 		debouncedUpdateSegments.flush();
 		emitChanges.flush();
 		editor.value?.destroy();
