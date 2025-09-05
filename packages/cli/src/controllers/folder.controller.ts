@@ -49,7 +49,7 @@ export class ProjectController {
 			const { projectId } = req.params;
 			await this.projectService.getProject(projectId);
 			next();
-		} catch (err) {
+		} catch (e) {
 			res.status(404).send('Project not found');
 			return;
 		}
