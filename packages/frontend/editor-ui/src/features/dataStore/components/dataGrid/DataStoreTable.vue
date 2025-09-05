@@ -200,9 +200,8 @@ defineExpose({
 </script>
 
 <template>
-	<div :class="$style.wrapper">
+	<div ref="gridContainerRef" :class="$style.wrapper">
 		<div
-			ref="gridContainerRef"
 			:class="[$style['grid-container'], { [$style['has-records']]: hasRecords }]"
 			data-test-id="data-store-grid"
 		>
@@ -256,17 +255,6 @@ defineExpose({
 
 <style module lang="scss">
 .wrapper {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-m);
-	align-items: center;
-}
-
-.grid-container {
-	position: relative;
-	display: flex;
-	width: 100%;
-
 	// AG Grid style overrides
 	--ag-foreground-color: var(--color-text-base);
 	--ag-cell-text-color: var(--color-text-dark);
@@ -291,6 +279,12 @@ defineExpose({
 	--ag-input-padding-start: var(--spacing-2xs);
 	--ag-input-background-color: var(--color-text-xlight);
 	--ag-focus-shadow: none;
+
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-m);
+	align-items: center;
+	min-height: 500px;
 
 	:global(.ag-cell) {
 		display: flex;
@@ -403,6 +397,12 @@ defineExpose({
 	:global(.ag-row[row-id='__n8n_add_row__']) {
 		border-bottom: none;
 	}
+}
+
+.grid-container {
+	position: relative;
+	display: flex;
+	width: 100%;
 }
 
 .footer {
