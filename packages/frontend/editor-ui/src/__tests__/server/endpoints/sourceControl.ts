@@ -4,6 +4,11 @@ import { jsonParse } from 'n8n-workflow';
 import type { AppSchema } from '@/__tests__/server/types';
 import type { SourceControlPreferences } from '@/types/sourceControl.types';
 
+// Request body type that includes sensitive fields like personalAccessToken
+type SourceControlPreferencesRequest = Partial<SourceControlPreferences> & {
+	personalAccessToken?: string;
+};
+
 export function routesForSourceControl(server: Server) {
 	const sourceControlApiRoot = '/rest/source-control';
 	const defaultSshPreferences: SourceControlPreferences = {
@@ -47,7 +52,7 @@ export function routesForSourceControl(server: Server) {
 	});
 
 	server.post(`${sourceControlApiRoot}/preferences`, (_schema: AppSchema, request: Request) => {
-		const requestBody: Partial<SourceControlPreferences> = jsonParse(request.requestBody);
+		const requestBody: SourceControlPreferencesRequest = jsonParse(request.requestBody);
 
 		// Update protocol context if provided
 		if (requestBody.protocol) {
@@ -66,7 +71,7 @@ export function routesForSourceControl(server: Server) {
 			if (
 				requestBody.repositoryUrl &&
 				requestBody.username &&
-				(requestBody as any).personalAccessToken &&
+				requestBody.personalAccessToken &&
 				!currentPreferences.connected
 			) {
 				currentPreferences.connected = true;
@@ -106,7 +111,7 @@ export function routesForSourceControl(server: Server) {
 			{
 				data: {
 					branches,
-					currentBranch: currentPreferences.currentBranch || 'main',
+					currentBranch: currentPreferences.currentBranch ?? 'main',
 				},
 			},
 		);
@@ -130,7 +135,7 @@ export function routesForSourceControl(server: Server) {
 			const requestBody: { keyGeneratorType?: 'ed25519' | 'rsa' } = jsonParse(
 				request.requestBody || '{}',
 			);
-			const keyType = requestBody.keyGeneratorType || 'ed25519';
+			const keyType = requestBody.keyGeneratorType ?? 'ed25519';
 
 			// Generate mock public key based on type
 			const mockPublicKey =
