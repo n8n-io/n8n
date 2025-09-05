@@ -495,6 +495,7 @@ export interface IExecutionsListResponse {
 	count: number;
 	results: ExecutionSummaryWithScopes[];
 	estimated: boolean;
+	concurrentExecutionsCount: number;
 }
 
 export interface IExecutionsCurrentSummaryExtended {

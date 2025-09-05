@@ -356,6 +356,8 @@ export class ExecutionService {
 	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
 		const results = await this.executionRepository.findManyByRangeQuery(query);
 
+		const concurrentExecutionsCount = this.activeExecutions.getConcurrentExecutionsCount();
+
 		if (this.globalConfig.database.type === 'postgresdb') {
 			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
 
@@ -371,7 +373,7 @@ export class ExecutionService {
 
 		const count = await this.executionRepository.fetchCount({ ...countQuery, kind: 'count' });
 
-		return { results, count, estimated: false };
+		return { results, count, estimated: false, concurrentExecutionsCount };
 	}
 
 	/**
@@ -406,6 +408,7 @@ export class ExecutionService {
 			results: current.results.concat(completed.results),
 			count: completed.count, // exclude current from count for pagination
 			estimated: completed.estimated,
+			concurrentExecutionsCount: completed.concurrentExecutionsCount,
 		};
 	}
 
