@@ -98,7 +98,7 @@ const getMCPTools = async (newNode: INode, newSelectedTool: string): Promise<IFo
 			name: newNode.type,
 			version: newNode.typeVersion,
 		},
-		path: 'parmeters.includedTools',
+		path: 'parameters.includedTools',
 		methodName: 'getTools',
 		currentNodeParameters: newNode.parameters,
 		credentials: newNode.credentials,
@@ -129,17 +129,17 @@ const getMCPTools = async (newNode: INode, newSelectedTool: string): Promise<IFo
 		const schema = selectedToolData?.inputSchema as JSONSchema7;
 		if (schema.properties) {
 			for (const [propertyName, value] of Object.entries(schema.properties)) {
-				const typedValue = value as {
-					type: string;
-					description: string;
-				};
+				const type =
+					typeof value === 'object' && 'type' in value && typeof value.type === 'string'
+						? value.type
+						: 'text';
 
 				result.push({
 					name: 'query.' + propertyName,
 					initialValue: '',
 					properties: {
 						label: propertyName,
-						type: mapTypes[typedValue.type ?? 'text'].inputType,
+						type: mapTypes[type].inputType,
 						required: true,
 					},
 				});

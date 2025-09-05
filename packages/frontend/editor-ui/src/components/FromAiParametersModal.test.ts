@@ -313,7 +313,7 @@ describe('FromAiParametersModal', () => {
 				name: AI_MCP_TOOL_NODE_TYPE,
 				version: 1,
 			},
-			path: 'parmeters.includedTools',
+			path: 'parameters.includedTools',
 			methodName: 'getTools',
 			currentNodeParameters: {},
 			credentials: undefined,
