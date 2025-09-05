@@ -78,12 +78,16 @@ export class Telegram implements INodeType {
 					// 	value: 'bot',
 					// },
 					{
+						name: 'Callback',
+						value: 'callback',
+					},
+					{
 						name: 'Chat',
 						value: 'chat',
 					},
 					{
-						name: 'Callback',
-						value: 'callback',
+						name: 'Custom',
+						value: 'custom',
 					},
 					{
 						name: 'File',
@@ -176,6 +180,35 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'get',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'string',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['custom'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Telegram Bot API method to call, e.g. sendMessage',
+			},
+
+			{
+				displayName: 'Payload',
+				name: 'payload',
+				type: 'json',
+				displayOptions: {
+					show: {
+						resource: ['custom'],
+					},
+				},
+				default: '{}',
+				required: true,
+				description: 'JSON payload to send as the request body',
 			},
 
 			{
@@ -1267,6 +1300,46 @@ export class Telegram implements INodeType {
 			},
 
 			{
+				displayName: 'Specify Keyboard',
+				name: 'specifyKeyboard',
+				type: 'options',
+				displayOptions: {
+					show: {
+						replyMarkup: ['inlineKeyboard', 'replyKeyboard'],
+						resource: ['message'],
+					},
+				},
+				options: [
+					{
+						name: 'Using Fields Below',
+						value: 'ui',
+					},
+					{
+						name: 'Using JSON',
+						value: 'json',
+					},
+				],
+				default: 'ui',
+				description: 'How to specify the keyboard',
+			},
+
+			{
+				displayName: 'Keyboard (JSON)',
+				name: 'keyboardJson',
+				type: 'json',
+				displayOptions: {
+					show: {
+						replyMarkup: ['inlineKeyboard', 'replyKeyboard'],
+						resource: ['message'],
+						specifyKeyboard: ['json'],
+					},
+				},
+				default: '',
+				description: 'Keyboard as JSON object',
+				placeholder: '{"inline_keyboard": [[{"text": "Button", "callback_data": "data"}]]}',
+			},
+
+			{
 				displayName: 'Inline Keyboard',
 				name: 'inlineKeyboard',
 				placeholder: 'Add Keyboard Row',
@@ -1279,6 +1352,7 @@ export class Telegram implements INodeType {
 					show: {
 						replyMarkup: ['inlineKeyboard'],
 						resource: ['message'],
+						specifyKeyboard: ['ui'],
 					},
 				},
 				default: {},
@@ -1397,6 +1471,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						replyMarkup: ['replyKeyboard'],
+						specifyKeyboard: ['ui'],
 					},
 				},
 				default: {},
@@ -1489,6 +1564,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						replyMarkup: ['replyKeyboard'],
+						specifyKeyboard: ['ui'],
 					},
 				},
 				default: {},
@@ -1799,6 +1875,7 @@ export class Telegram implements INodeType {
 					},
 				],
 			},
+
 			...getSendAndWaitProperties(
 				[
 					{
@@ -2136,6 +2213,30 @@ export class Telegram implements INodeType {
 
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
+					}
+				} else if (resource === 'custom') {
+					// ----------------------------------
+					//         custom:generic
+					// ----------------------------------
+
+					endpoint = this.getNodeParameter('operation', i) as string;
+					if (!endpoint || typeof endpoint !== 'string') {
+						throw new NodeOperationError(this.getNode(), 'Operation (method) is required', {
+							itemIndex: i,
+						});
+					}
+
+					const payloadParam = this.getNodeParameter('payload', i) as IDataObject | string;
+					if (typeof payloadParam === 'string') {
+						try {
+							body = JSON.parse(payloadParam);
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), 'Payload is not valid JSON', {
+								itemIndex: i,
+							});
+						}
+					} else {
+						body = payloadParam || {};
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
