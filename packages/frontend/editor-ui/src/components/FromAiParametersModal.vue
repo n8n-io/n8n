@@ -19,6 +19,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { type JSONSchema7 } from 'json-schema';
 import { useProjectsStore } from '@/stores/projects.store';
+import type { INode } from 'n8n-workflow';
 
 type Value = string | number | boolean | null | undefined;
 
@@ -89,6 +90,66 @@ const mapTypes: {
 	},
 };
 
+const getMCPTools = async (newNode: INode, newSelectedTool: string): Promise<IFormInput[]> => {
+	const result: IFormInput[] = [];
+
+	const tools = await nodeTypesStore.getNodeParameterOptions({
+		nodeTypeAndVersion: {
+			name: newNode.type,
+			version: newNode.typeVersion,
+		},
+		path: 'parmeters.includedTools',
+		methodName: 'getTools',
+		currentNodeParameters: newNode.parameters,
+		credentials: newNode.credentials,
+		projectId: projectsStore.currentProjectId,
+	});
+
+	// Load available tools
+	const toolOptions = tools?.map((tool) => ({
+		label: tool.name,
+		value: String(tool.value),
+		disabled: false,
+	}));
+
+	result.push({
+		name: 'toolName',
+		initialValue: '',
+		properties: {
+			label: 'Tool name',
+			type: 'select',
+			options: toolOptions,
+			required: true,
+		},
+	});
+
+	// Only show parameters for selected tool
+	if (newSelectedTool) {
+		const selectedToolData = tools?.find((tool) => String(tool.value) === newSelectedTool);
+		const schema = selectedToolData?.inputSchema as JSONSchema7;
+		if (schema.properties) {
+			for (const [propertyName, value] of Object.entries(schema.properties)) {
+				const typedValue = value as {
+					type: string;
+					description: string;
+				};
+
+				result.push({
+					name: 'query.' + propertyName,
+					initialValue: '',
+					properties: {
+						label: propertyName,
+						type: mapTypes[typedValue.type ?? 'text'].inputType,
+						required: true,
+					},
+				});
+			}
+		}
+	}
+
+	return result;
+};
+
 watch(
 	[node, selectedTool],
 	async ([newNode, newSelectedTool]) => {
@@ -104,65 +165,12 @@ watch(
 		// Handle MCPClientTool nodes differently
 		if (newNode.type === AI_MCP_TOOL_NODE_TYPE) {
 			try {
-				const tools = await nodeTypesStore.getNodeParameterOptions({
-					nodeTypeAndVersion: {
-						name: newNode.type,
-						version: newNode.typeVersion,
-					},
-					path: 'parmeters.includedTools',
-					methodName: 'getTools',
-					currentNodeParameters: newNode.parameters,
-					credentials: newNode.credentials,
-					projectId: projectsStore.currentProjectId,
-				});
-
-				// Load available tools
-				const toolOptions = tools?.map((tool) => ({
-					label: tool.name,
-					value: String(tool.value),
-					disabled: false,
-				}));
-
-				result.push({
-					name: 'toolName',
-					initialValue: '',
-					properties: {
-						label: 'Tool name',
-						type: 'select',
-						options: toolOptions,
-						required: true,
-					},
-				});
-
-				// Only show parameters for selected tool
-				if (newSelectedTool) {
-					const selectedToolData = tools?.find((tool) => String(tool.value) === newSelectedTool);
-					const schema = selectedToolData?.inputSchema as JSONSchema7;
-					if (schema.properties) {
-						for (const [propertyName, value] of Object.entries(schema.properties)) {
-							const typedValue = value as {
-								type: string;
-								description: string;
-							};
-
-							result.push({
-								name: 'query.' + propertyName,
-								initialValue: '',
-								properties: {
-									label: propertyName,
-									type: mapTypes[typedValue.type ?? 'text'].inputType,
-									required: true,
-								},
-							});
-						}
-					}
-				}
-
-				parameters.value = result;
-			} catch (e: unknown) {
-				error.value = e instanceof Error ? e : new Error('Unknown error occurred');
+				const mcpResult = await getMCPTools(newNode, newSelectedTool);
+				parameters.value = mcpResult;
 
 				return;
+			} catch (e: unknown) {
+				error.value = e instanceof Error ? e : new Error('Unknown error occurred');
 			}
 		}
 
