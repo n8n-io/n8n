@@ -285,9 +285,11 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	}
 
 	if (taskRunnerEnabled && network) {
-		// Always connect directly to the first main instance for task broker
-		// Load balancer doesn't proxy task broker port 5679
-		const taskBrokerUri = `http://${uniqueProjectName}-n8n-main-1:5679`;
+		// Connect to first available broker (main or worker)
+		// In queue mode, workers also run task brokers
+		const taskBrokerUri = queueConfig?.workers
+			? `http://${uniqueProjectName}-n8n-worker-1:5679` // Prefer worker broker in queue mode
+			: `http://${uniqueProjectName}-n8n-main-1:5679`; // Use main broker otherwise
 
 		const taskRunnerContainer = await setupTaskRunner({
 			projectName: uniqueProjectName,
@@ -442,6 +444,7 @@ async function createN8NContainer({
 	directPort,
 	resourceQuota,
 }: CreateContainerOptions): Promise<StartedTestContainer> {
+	const taskRunnerEnabled = environment.N8N_RUNNERS_ENABLED === 'true';
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	let container = new GenericContainer(N8N_IMAGE);
@@ -473,13 +476,23 @@ async function createN8NContainer({
 	}
 
 	if (isWorker) {
-		container = container.withCommand(['worker']).withWaitStrategy(N8N_WORKER_WAIT_STRATEGY);
+		// Workers expose task broker port if task runners are enabled
+		const workerPorts = taskRunnerEnabled ? [5678, 5679] : [5678];
+		container = container
+			.withCommand(['worker'])
+			.withExposedPorts(...workerPorts)
+			.withWaitStrategy(N8N_WORKER_WAIT_STRATEGY);
 	} else {
-		container = container.withExposedPorts(5678, 5679).withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
+		// Mains always expose both ports (5678 for web, 5679 for task broker when enabled)
+		const mainPorts = taskRunnerEnabled ? [5678, 5679] : [5678];
+		container = container.withExposedPorts(...mainPorts).withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
 
 		if (directPort) {
+			const portMappings = taskRunnerEnabled
+				? [{ container: 5678, host: directPort }, 5679]
+				: [{ container: 5678, host: directPort }];
 			container = container
-				.withExposedPorts({ container: 5678, host: directPort }, 5679)
+				.withExposedPorts(...portMappings)
 				.withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
 		}
 	}

@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "test:all": "playwright test",
-    "test:local": "N8N_BASE_URL=http://localhost:5680 RESET_E2E_DB=true playwright test --project=*ui*",
+    "test:local": "N8N_BASE_URL=http://localhost:5680 RESET_E2E_DB=true playwright test --project=ui --project=ui:isolated",
     "test:ui": "playwright test --project=*ui*",
     "test:performance": "playwright test --project=performance",
     "test:chaos": "playwright test --project='*:chaos'",
