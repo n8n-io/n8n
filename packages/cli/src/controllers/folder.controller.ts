@@ -48,7 +48,6 @@ export class ProjectController {
 		try {
 			const { projectId } = req.params;
 			const project = await this.projectService.getProject(projectId);
-			console.log('project', project);
 			next();
 		} catch (err) {
 			res.status(404).send('Project not found');
