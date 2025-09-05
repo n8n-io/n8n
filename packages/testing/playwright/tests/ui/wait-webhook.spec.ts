@@ -27,6 +27,7 @@ test.describe('Wait node with resume on webhook call', () => {
 		const resumeUrlWoSignature = new URL(body.resumeUrl);
 		resumeUrlWoSignature.searchParams.delete('signature');
 
+		// Should reject the request if signature is missing
 		const unsignedWaitWebhookResponse = await api.request.get(resumeUrlWoSignature.toString());
 		expect(unsignedWaitWebhookResponse.status()).toBe(401);
 
