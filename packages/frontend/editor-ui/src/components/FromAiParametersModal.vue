@@ -18,6 +18,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { type JSONSchema7 } from 'json-schema';
+import { useProjectsStore } from '@/stores/projects.store';
 
 type Value = string | number | boolean | null | undefined;
 
@@ -38,6 +39,7 @@ const nodeTypesStore = useNodeTypesStore();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 const agentRequestStore = useAgentRequestStore();
+const projectsStore = useProjectsStore();
 
 const node = computed(() =>
 	props.data.nodeName ? workflowsStore.getNodeByName(props.data.nodeName) : undefined,
@@ -110,6 +112,8 @@ watch(
 					path: 'parmeters.includedTools',
 					methodName: 'getTools',
 					currentNodeParameters: newNode.parameters,
+					credentials: newNode.credentials,
+					projectId: projectsStore.currentProjectId,
 				});
 
 				// Load available tools
