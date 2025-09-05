@@ -17,7 +17,7 @@ import { STORES } from '@n8n/stores';
 import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createCanvasConnectionHandleString, createCanvasConnectionId } from '@/utils/canvasUtils';
-import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
+import { CanvasConnectionMode, CanvasNodeRenderType, type CanvasNodeDefaultRender } from '@/types';
 import { MarkerType } from '@vue-flow/core';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -1326,7 +1326,10 @@ describe('useCanvasMapping', () => {
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 
-			expect(mappedNodes.value[0]?.data?.render.options.tooltip).toBeDefined();
+			const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
+			expect(renderOptions.options.tooltip).toBe(
+				'Waiting for you to create an event in n8n-nodes-base.manualTrigger',
+			);
 		});
 
 		it('should not show tooltip for trigger node with pinned data when workflow is running', () => {
@@ -1353,7 +1356,8 @@ describe('useCanvasMapping', () => {
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 
-			expect(mappedNodes.value[0]?.data?.render.options.tooltip).toBeUndefined();
+			const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
+			expect(renderOptions.options.tooltip).toBeUndefined();
 		});
 
 		it('should not show tooltip when workflow is not running', () => {
@@ -1380,7 +1384,8 @@ describe('useCanvasMapping', () => {
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 
-			expect(mappedNodes.value[0]?.data?.render.options.tooltip).toBeUndefined();
+			const renderOptions = mappedNodes.value[0]?.data?.render as CanvasNodeDefaultRender;
+			expect(renderOptions.options.tooltip).toBeUndefined();
 		});
 	});
 
