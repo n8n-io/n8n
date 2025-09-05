@@ -56,6 +56,10 @@ class RedisConfig {
 	/** Whether to enable dual-stack hostname resolution for Redis connections. */
 	@Env('QUEUE_BULL_REDIS_DUALSTACK')
 	dualStack: boolean = false;
+
+	/** Whether to enable AWS ElastiCache Serverless support. */
+	@Env('QUEUE_BULL_REDIS_ELASTICACHE_SERVERLESS')
+	elasticacheServerless: boolean = false;
 }
 
 @Config
