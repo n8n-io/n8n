@@ -9,6 +9,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useUsersStore } from '@/stores/users.store';
+import type { Version } from '@n8n/rest-api-client/api/versions';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -22,6 +23,18 @@ let uiStore: MockedStore<typeof useUIStore>;
 let sourceControlStore: MockedStore<typeof useSourceControlStore>;
 let versionsStore: MockedStore<typeof useVersionsStore>;
 let usersStore: MockedStore<typeof useUsersStore>;
+
+const mockVersion: Version = {
+	name: '1.2.0',
+	nodes: [],
+	createdAt: '2025-01-01T00:00:00Z',
+	description: 'Test version',
+	documentationUrl: 'https://docs.n8n.io',
+	hasBreakingChange: false,
+	hasSecurityFix: false,
+	hasSecurityIssue: false,
+	securityIssueFixVersion: '',
+};
 
 describe('MainSidebar', () => {
 	beforeEach(() => {
@@ -75,7 +88,7 @@ describe('MainSidebar', () => {
 
 		it('should render version update CTA disabled when canUserUpdateVersion is false', () => {
 			versionsStore.hasVersionUpdates = true;
-			versionsStore.nextVersions = [{ name: '1.2.0' } as any];
+			versionsStore.nextVersions = [mockVersion];
 			usersStore.canUserUpdateVersion = false;
 
 			const { getByTestId } = renderComponent();
@@ -87,7 +100,7 @@ describe('MainSidebar', () => {
 
 		it('should render version update CTA enabled when canUserUpdateVersion is true and hasVersionUpdates is true', () => {
 			versionsStore.hasVersionUpdates = true;
-			versionsStore.nextVersions = [{ name: '1.2.0' } as any];
+			versionsStore.nextVersions = [mockVersion];
 			usersStore.canUserUpdateVersion = true;
 
 			const { getByTestId } = renderComponent();
