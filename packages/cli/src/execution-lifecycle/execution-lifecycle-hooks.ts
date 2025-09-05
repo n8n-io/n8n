@@ -185,7 +185,29 @@ function hookFunctionsPush(
 			workflowId: this.workflowData.id,
 		});
 
-		pushInstance.send({ type: 'nodeExecuteAfter', data: { executionId, nodeName, data } }, pushRef);
+		const itemCount = data.data?.main?.[0]?.length ?? 0;
+		const { data: _, ...taskData } = data;
+
+		pushInstance.send(
+			{ type: 'nodeExecuteAfter', data: { executionId, nodeName, itemCount, data: taskData } },
+			pushRef,
+		);
+
+		// We send the node execution data as a WS binary message to the FE. Not
+		// because it's more efficient on the wire: the content is a JSON string
+		// so both text and binary would end the same on the wire. The reason
+		// is that the FE can then receive the data directly as an ArrayBuffer,
+		// and we can pass it directly to a web worker for processing without
+		// extra copies.
+		const asBinary = true;
+		pushInstance.send(
+			{
+				type: 'nodeExecuteAfterData',
+				data: { executionId, nodeName, itemCount, data },
+			},
+			pushRef,
+			asBinary,
+		);
 	});
 	hooks.addHandler('workflowExecuteBefore', function (_workflow, data) {
 		const { executionId } = this;

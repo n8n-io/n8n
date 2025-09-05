@@ -16,12 +16,7 @@ import type {
 	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import {
-	parseErrorMetadata,
-	NodeConnectionTypes,
-	NodeHelpers,
-	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
-} from 'n8n-workflow';
+import { parseErrorMetadata, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type { INodeUi, IRunDataDisplayMode, ITab, NodePanelType } from '@/Interface';
@@ -93,6 +88,7 @@ import { parseAiContent } from '@/utils/aiUtils';
 import { usePostHog } from '@/stores/posthog.store';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from '@/components/RunDataBinary.vue';
+import { isTrimmedNodeExecutionData } from '@/utils/executionUtils';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -299,8 +295,8 @@ const isArtificialRecoveredEventItem = computed(
 	() => rawInputData.value?.[0]?.json?.isArtificialRecoveredEventItem,
 );
 
-const isTrimmedManualExecutionDataItem = computed(
-	() => rawInputData.value?.[0]?.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY],
+const isTrimmedManualExecutionDataItem = computed(() =>
+	isTrimmedNodeExecutionData(rawInputData.value),
 );
 
 const subworkflowExecutionError = computed(() => {

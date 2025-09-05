@@ -9,7 +9,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, h, nextTick, ref } from 'vue';
 import {
 	aiAgentNode,
-	aiChatExecutionResponse,
+	aiChatExecutionResponse as aiChatExecutionResponseTemplate,
 	aiChatWorkflow,
 	aiManualExecutionResponse,
 	aiManualWorkflow,
@@ -61,6 +61,8 @@ describe('LogsPanel', () => {
 	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
 	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+
+	let aiChatExecutionResponse: typeof aiChatExecutionResponseTemplate;
 
 	function render() {
 		const wrapper = renderComponent(LogsPanel, {
@@ -116,6 +118,8 @@ describe('LogsPanel', () => {
 		} as DOMRect);
 
 		localStorage.clear();
+
+		aiChatExecutionResponse = deepCopy(aiChatExecutionResponseTemplate);
 	});
 
 	afterEach(() => {
@@ -326,6 +330,7 @@ describe('LogsPanel', () => {
 		workflowsStore.updateNodeExecutionData({
 			nodeName: 'AI Agent',
 			executionId: '567',
+			itemCount: 1,
 			data: {
 				executionIndex: 0,
 				startTime: Date.parse('2025-04-20T12:34:51.000Z'),
@@ -459,7 +464,7 @@ describe('LogsPanel', () => {
 
 		// Create deep copy so that renaming doesn't affect other test cases
 		workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
-		workflowsStore.setWorkflowExecutionData(deepCopy(aiChatExecutionResponse));
+		workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 
@@ -541,7 +546,7 @@ describe('LogsPanel', () => {
 			const canvasOperations = useCanvasOperations();
 
 			workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
-			workflowsStore.setWorkflowExecutionData(deepCopy(aiChatExecutionResponse));
+			workflowsStore.setWorkflowExecutionData(aiChatExecutionResponse);
 
 			logsStore.toggleLogSelectionSync(true);
 
@@ -600,7 +605,10 @@ describe('LogsPanel', () => {
 
 				// Verify message and response
 				expect(await findByText('Hello AI!')).toBeInTheDocument();
-				workflowsStore.setWorkflowExecutionData({ ...aiChatExecutionResponse, status: 'success' });
+				workflowsStore.setWorkflowExecutionData({
+					...aiChatExecutionResponse,
+					status: 'success',
+				});
 				await waitFor(() => expect(getByText('AI response message')).toBeInTheDocument());
 
 				// Verify workflow execution

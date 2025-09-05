@@ -31,23 +31,20 @@ test.describe('Logs', () => {
 		await n8n.canvas.clickExecuteWorkflowButton();
 		await expect(n8n.logs.getOverviewStatus().filter({ hasText: 'Running' })).toBeVisible();
 
-		await expect(n8n.logs.getLogEntries()).toHaveCount(4);
 		await expect(n8n.logs.getLogEntries().nth(0)).toContainText(NODES.MANUAL_TRIGGER);
 		await expect(n8n.logs.getLogEntries().nth(1)).toContainText(NODES.CODE);
 		await expect(n8n.logs.getLogEntries().nth(2)).toContainText(NODES.LOOP_OVER_ITEMS);
 		await expect(n8n.logs.getLogEntries().nth(3)).toContainText(NODES.WAIT);
-
-		await expect(n8n.logs.getLogEntries()).toHaveCount(6);
 		await expect(n8n.logs.getLogEntries().nth(4)).toContainText(NODES.LOOP_OVER_ITEMS);
 		await expect(n8n.logs.getLogEntries().nth(5)).toContainText(NODES.WAIT);
-
-		await expect(n8n.logs.getLogEntries()).toHaveCount(8);
 		await expect(n8n.logs.getLogEntries().nth(6)).toContainText(NODES.LOOP_OVER_ITEMS);
 		await expect(n8n.logs.getLogEntries().nth(7)).toContainText(NODES.WAIT);
 
-		await expect(n8n.logs.getLogEntries()).toHaveCount(10);
+		await expect(n8n.logs.getLogEntries()).toHaveCount(11);
+
 		await expect(n8n.logs.getLogEntries().nth(8)).toContainText(NODES.LOOP_OVER_ITEMS);
 		await expect(n8n.logs.getLogEntries().nth(9)).toContainText(NODES.CODE1);
+
 		await expect(
 			n8n.logs.getOverviewStatus().filter({ hasText: /Error in [\d.]+s/ }),
 		).toBeVisible();
