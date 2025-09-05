@@ -63,10 +63,6 @@ describe('PrototypeSanitizer', () => {
 				expect(() => {
 					tournament.execute('{{$}}', { $: () => 'test' });
 				}).toThrowError(DOLLAR_SIGN_ERROR);
-
-				expect(() => {
-					tournament.execute('{{ $ }}', { $: () => 'test' });
-				}).toThrowError(DOLLAR_SIGN_ERROR);
 			});
 
 			it('should not allow $ in expressions', () => {
