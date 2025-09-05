@@ -71,6 +71,7 @@ export class WorkflowService {
 		includeScopes?: boolean,
 		includeFolders?: boolean,
 		onlySharedWithMe?: boolean,
+		withAnyWorkflowCallerPolicy?: boolean,
 	) {
 		let count;
 		let workflows;
@@ -94,6 +95,14 @@ export class WorkflowService {
 			sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 				scopes: ['workflow:read'],
 			});
+		}
+
+		if (withAnyWorkflowCallerPolicy) {
+			const workflowsForSubExecution =
+				await this.workflowRepository.findWorkflowsWithCallerPolicyAny();
+
+			sharedWorkflowIds.push(...workflowsForSubExecution.map((wf) => wf.id));
+			sharedWorkflowIds = [...new Set(sharedWorkflowIds)];
 		}
 
 		if (includeFolders) {
