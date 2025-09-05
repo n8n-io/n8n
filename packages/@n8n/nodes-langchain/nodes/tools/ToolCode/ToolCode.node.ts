@@ -1,24 +1,25 @@
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 import type { JSONSchema7 } from 'json-schema';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
+import { JsTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/JsTaskRunnerSandbox';
 import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import type {
+	ExecutionError,
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ISupplyDataFunctions,
 	SupplyData,
-	ExecutionError,
-	IDataObject,
 } from 'n8n-workflow';
+
 import {
 	jsonParse,
 	NodeConnectionTypes,
-	NodeOperationError,
 	nodeNameToToolName,
+	NodeOperationError,
 } from 'n8n-workflow';
-
 import {
 	buildInputSchemaField,
 	buildJsonSchemaExampleField,
@@ -218,6 +219,7 @@ export class ToolCode implements INodeType {
 			code = this.getNodeParameter('pythonCode', itemIndex) as string;
 		}
 
+		// @deprecated - TODO: Remove this after a new python runner is implemented
 		const getSandbox = (query: string | IDataObject, index = 0) => {
 			const context = getSandboxContext.call(this, index);
 			context.query = query;
@@ -240,8 +242,15 @@ export class ToolCode implements INodeType {
 		};
 
 		const runFunction = async (query: string | IDataObject): Promise<string> => {
-			const sandbox = getSandbox(query, itemIndex);
-			return await sandbox.runCode<string>();
+			const workflowMode = this.getMode();
+			if (language === 'javaScript') {
+				const sandbox = new JsTaskRunnerSandbox(code, 'runOnceForAllItems', workflowMode, this);
+				const executionData = await sandbox.runCodeForTool();
+				return executionData;
+			} else {
+				const sandbox = getSandbox(query, itemIndex);
+				return await sandbox.runCode<string>();
+			}
 		};
 
 		const toolHandler = async (query: string | IDataObject): Promise<string> => {
