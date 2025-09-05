@@ -265,8 +265,8 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				component: VersionUpdateCTA,
 				available: versionsStore.hasVersionUpdates,
 				props: {
-					disabled: !canUserUpdateVersion.value,
-					tooltipText: !canUserUpdateVersion.value
+					disabled: !usersStore.canUserUpdateVersion,
+					tooltipText: !usersStore.canUserUpdateVersion
 						? i18n.baseText('whatsNew.updateNudgeTooltip')
 						: undefined,
 				},
@@ -280,10 +280,6 @@ const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
 const showUserArea = computed(() => hasPermission(['authenticated']));
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
-
-const canUserUpdateVersion = computed(() => {
-	return usersStore.isInstanceOwner;
-});
 
 onMounted(async () => {
 	window.addEventListener('resize', onResize);

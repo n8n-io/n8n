@@ -7,6 +7,8 @@ import MainSidebar from '@/components/MainSidebar.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useVersionsStore } from '@/stores/versions.store';
+import { useUsersStore } from '@/stores/users.store';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -18,6 +20,8 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let uiStore: MockedStore<typeof useUIStore>;
 let sourceControlStore: MockedStore<typeof useSourceControlStore>;
+let versionsStore: MockedStore<typeof useVersionsStore>;
+let usersStore: MockedStore<typeof useUsersStore>;
 
 describe('MainSidebar', () => {
 	beforeEach(() => {
@@ -27,8 +31,15 @@ describe('MainSidebar', () => {
 		settingsStore = mockedStore(useSettingsStore);
 		uiStore = mockedStore(useUIStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
+		versionsStore = mockedStore(useVersionsStore);
+		usersStore = mockedStore(useUsersStore);
 
 		settingsStore.settings = defaultSettings;
+
+		// Default store values
+		versionsStore.hasVersionUpdates = false;
+		versionsStore.nextVersions = [];
+		usersStore.canUserUpdateVersion = true;
 	});
 
 	it('renders the sidebar without error', () => {
@@ -51,4 +62,39 @@ describe('MainSidebar', () => {
 			expect(queryByTestId('read-only-env-icon') !== null).toBe(shouldRender);
 		},
 	);
+
+	describe('Version Update CTA', () => {
+		it('should not render version update CTA when hasVersionUpdates is false', () => {
+			versionsStore.hasVersionUpdates = false;
+			usersStore.canUserUpdateVersion = true;
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('version-update-cta-button')).not.toBeInTheDocument();
+		});
+
+		it('should render version update CTA disabled when canUserUpdateVersion is false', () => {
+			versionsStore.hasVersionUpdates = true;
+			versionsStore.nextVersions = [{ name: '1.2.0' } as any];
+			usersStore.canUserUpdateVersion = false;
+
+			const { getByTestId } = renderComponent();
+
+			const updateButton = getByTestId('version-update-cta-button');
+			expect(updateButton).toBeInTheDocument();
+			expect(updateButton).toBeDisabled();
+		});
+
+		it('should render version update CTA enabled when canUserUpdateVersion is true and hasVersionUpdates is true', () => {
+			versionsStore.hasVersionUpdates = true;
+			versionsStore.nextVersions = [{ name: '1.2.0' } as any];
+			usersStore.canUserUpdateVersion = true;
+
+			const { getByTestId } = renderComponent();
+
+			const updateButton = getByTestId('version-update-cta-button');
+			expect(updateButton).toBeInTheDocument();
+			expect(updateButton).toBeEnabled();
+		});
+	});
 });
