@@ -22,6 +22,7 @@ on:
       release_type:
         description: 'Release type (stable, nightly, dev)'
         required: false
+        
         type: string
         default: 'stable'
       push_enabled:
@@ -161,7 +162,7 @@ jobs:
   build-and-push-docker:
     name: Build App, then Build and Push Docker Image (${{ matrix.platform }})
     needs: determine-build-context
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       matrix: ${{ fromJSON(needs.determine-build-context.outputs.build_matrix) }}
