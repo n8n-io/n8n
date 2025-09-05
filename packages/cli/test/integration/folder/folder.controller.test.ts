@@ -87,7 +87,7 @@ describe('POST /projects/:projectId/folders', () => {
 			name: 'Test Folder',
 		};
 
-		await authOwnerAgent.post('/projects/non-existing-id/folders').send(payload).expect(403);
+		await authOwnerAgent.post('/projects/non-existing-id/folders').send(payload).expect(404);
 	});
 
 	test('should not create folder when name is empty', async () => {

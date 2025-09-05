@@ -28,12 +28,14 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { FolderService } from '@/services/folder.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { ProjectService } from '@/services/project.service.ee';
 
 @RestController('/projects/:projectId/folders')
 export class ProjectController {
 	constructor(
 		private readonly folderService: FolderService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
+		private readonly projectService: ProjectService,
 	) {}
 
 	@Post('/')
@@ -44,8 +46,15 @@ export class ProjectController {
 		_res: Response,
 		@Body payload: CreateFolderDto,
 	) {
+		const { projectId } = req.params;
 		try {
-			const folder = await this.folderService.createFolder(payload, req.params.projectId);
+			await this.projectService.getProject(projectId);
+		} catch (e) {
+			throw new NotFoundError('Project not found');
+		}
+
+		try {
+			const folder = await this.folderService.createFolder(payload, projectId);
 			return folder;
 		} catch (e) {
 			if (e instanceof FolderNotFoundError) {
@@ -152,6 +161,12 @@ export class ProjectController {
 		@Query payload: ListFolderQueryDto,
 	) {
 		const { projectId } = req.params;
+
+		try {
+			await this.projectService.getProject(projectId);
+		} catch (e) {
+			throw new NotFoundError('Project not found');
+		}
 
 		const [data, count] = await this.folderService.getManyAndCount(projectId, payload);
 
