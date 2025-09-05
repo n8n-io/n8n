@@ -291,7 +291,7 @@ export class MergeV2 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		let returnData: INodeExecutionData[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const mode = this.getNodeParameter('mode', 0) as string;
 
@@ -536,7 +536,7 @@ export class MergeV2 implements INodeType {
 						output = [...output, ...unmatched1, ...unmatched2];
 					}
 
-					returnData = returnData.concat(output);
+					returnData.push(...output);
 				}
 
 				if (joinMode === 'keepNonMatches') {
@@ -565,21 +565,15 @@ export class MergeV2 implements INodeType {
 
 					if (joinMode === 'enrichInput1') {
 						if (clashResolveOptions.resolveClash === 'addSuffix') {
-							returnData = returnData.concat(
-								mergedEntries,
-								addSuffixToEntriesKeys(matches.unmatched1, '1'),
-							);
+							returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched1, '1'));
 						} else {
-							returnData = returnData.concat(mergedEntries, matches.unmatched1);
+							returnData.push(...mergedEntries, ...matches.unmatched1);
 						}
 					} else {
 						if (clashResolveOptions.resolveClash === 'addSuffix') {
-							returnData = returnData.concat(
-								mergedEntries,
-								addSuffixToEntriesKeys(matches.unmatched2, '2'),
-							);
+							returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched2, '2'));
 						} else {
-							returnData = returnData.concat(mergedEntries, matches.unmatched2);
+							returnData.push(...mergedEntries, ...matches.unmatched2);
 						}
 					}
 				}

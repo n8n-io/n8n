@@ -32,7 +32,7 @@ export class ExecutionEntity {
 	id: string;
 
 	/**
-	 * Whether the execution finished successfully.
+	 * Whether the execution finished sucessfully.
 	 *
 	 * @deprecated Use `status` instead
 	 */

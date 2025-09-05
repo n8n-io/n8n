@@ -11,7 +11,6 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { randomUUID } from 'crypto';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 import * as client from 'openid-client';
@@ -19,16 +18,15 @@ import * as client from 'openid-client';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
 
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 import {
 	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '../sso-helpers';
-import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 
 const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	clientId: '',
@@ -58,7 +56,6 @@ export class OidcService {
 		private readonly userRepository: UserRepository,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
-		private readonly jwtService: JwtService,
 	) {}
 
 	async init() {
@@ -79,142 +76,31 @@ export class OidcService {
 		};
 	}
 
-	generateState() {
-		const state = `n8n_state:${randomUUID()}`;
-		return {
-			signed: this.jwtService.sign({ state }, { expiresIn: '15m' }),
-			plaintext: state,
-		};
-	}
-
-	verifyState(signedState: string) {
-		let state: string;
-		try {
-			const decodedState = this.jwtService.verify(signedState);
-			state = decodedState?.state;
-		} catch (error) {
-			this.logger.error('Failed to verify state', { error });
-			throw new BadRequestError('Invalid state');
-		}
-
-		if (typeof state !== 'string') {
-			this.logger.error('Provided state has an invalid format');
-			throw new BadRequestError('Invalid state');
-		}
-
-		const splitState = state.split(':');
-
-		if (splitState.length !== 2 || splitState[0] !== 'n8n_state') {
-			this.logger.error('Provided state is missing the well-known prefix');
-			throw new BadRequestError('Invalid state');
-		}
-
-		if (
-			!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-				splitState[1],
-			)
-		) {
-			this.logger.error('Provided state is not formatted correctly');
-			throw new BadRequestError('Invalid state');
-		}
-		return state;
-	}
-
-	generateNonce() {
-		const nonce = `n8n_nonce:${randomUUID()}`;
-		return {
-			signed: this.jwtService.sign({ nonce }, { expiresIn: '15m' }),
-			plaintext: nonce,
-		};
-	}
-
-	verifyNonce(signedNonce: string) {
-		let nonce: string;
-		try {
-			const decodedNonce = this.jwtService.verify(signedNonce);
-			nonce = decodedNonce?.nonce;
-		} catch (error) {
-			this.logger.error('Failed to verify nonce', { error });
-			throw new BadRequestError('Invalid nonce');
-		}
-
-		if (typeof nonce !== 'string') {
-			this.logger.error('Provided nonce has an invalid format');
-			throw new BadRequestError('Invalid nonce');
-		}
-
-		const splitNonce = nonce.split(':');
-
-		if (splitNonce.length !== 2 || splitNonce[0] !== 'n8n_nonce') {
-			this.logger.error('Provided nonce is missing the well-known prefix');
-			throw new BadRequestError('Invalid nonce');
-		}
-
-		if (
-			!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-				splitNonce[1],
-			)
-		) {
-			this.logger.error('Provided nonce is not formatted correctly');
-			throw new BadRequestError('Invalid nonce');
-		}
-		return nonce;
-	}
-
-	async generateLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+	async generateLoginUrl(): Promise<URL> {
 		const configuration = await this.getOidcConfiguration();
-
-		const state = this.generateState();
-		const nonce = this.generateNonce();
 
 		const authorizationURL = client.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
 			response_type: 'code',
 			scope: 'openid email profile',
 			prompt: 'select_account',
-			state: state.plaintext,
-			nonce: nonce.plaintext,
 		});
 
-		return { url: authorizationURL, state: state.signed, nonce: nonce.signed };
+		return authorizationURL;
 	}
 
-	async loginUser(callbackUrl: URL, storedState: string, storedNonce: string): Promise<User> {
+	async loginUser(callbackUrl: URL): Promise<User> {
 		const configuration = await this.getOidcConfiguration();
 
-		const expectedState = this.verifyState(storedState);
-		const expectedNonce = this.verifyNonce(storedNonce);
+		const tokens = await client.authorizationCodeGrant(configuration, callbackUrl);
 
-		let tokens;
-		try {
-			tokens = await client.authorizationCodeGrant(configuration, callbackUrl, {
-				expectedState,
-				expectedNonce,
-			});
-		} catch (error) {
-			this.logger.error('Failed to exchange authorization code for tokens', { error });
-			throw new BadRequestError('Invalid authorization code');
-		}
-
-		let claims;
-		try {
-			claims = tokens.claims();
-		} catch (error) {
-			this.logger.error('Failed to extract claims from tokens', { error });
-			throw new BadRequestError('Invalid token');
-		}
+		const claims = tokens.claims();
 
 		if (!claims) {
 			throw new ForbiddenError('No claims found in the OIDC token');
 		}
 
-		let userInfo;
-		try {
-			userInfo = await client.fetchUserInfo(configuration, tokens.access_token, claims.sub);
-		} catch (error) {
-			this.logger.error('Failed to fetch user info', { error });
-			throw new BadRequestError('Invalid token');
-		}
+		const userInfo = await client.fetchUserInfo(configuration, tokens.access_token, claims.sub);
 
 		if (!userInfo.email) {
 			throw new BadRequestError('An email is required');

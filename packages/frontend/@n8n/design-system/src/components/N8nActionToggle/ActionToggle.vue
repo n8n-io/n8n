@@ -141,8 +141,6 @@ defineExpose({
 	cursor: pointer;
 	padding: var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
-	display: flex;
-	align-items: center;
 
 	&:hover {
 		color: var(--color-primary);

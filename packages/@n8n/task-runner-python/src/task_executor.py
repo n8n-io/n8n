@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import tempfile
+import pickle
 
 from src.errors import (
     TaskResultMissingError,
@@ -26,7 +27,7 @@ from typing import Any, Set
 from multiprocessing.context import SpawnProcess
 
 MULTIPROCESSING_CONTEXT = multiprocessing.get_context("spawn")
-MAX_PRINT_ARGS_ALLOWED = 100
+MAX_PRINT_STATEMENTS_ALLOWED = 100
 
 PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
 
@@ -104,8 +105,8 @@ class TaskExecutor:
 
             result_file = returned["result_file"]
             try:
-                with open(result_file, "r", encoding="utf-8") as f:
-                    result = json.load(f)
+                with open(result_file, "rb") as f:
+                    result = pickle.load(f)
             finally:
                 os.unlink(result_file)
 
@@ -226,13 +227,9 @@ class TaskExecutor:
         queue: multiprocessing.Queue, result: list[Any], print_args: PrintArgs
     ):
         with tempfile.NamedTemporaryFile(
-            mode="w",
-            delete=False,
-            prefix="n8n_result_",
-            suffix=".json",
-            encoding="utf-8",
+            mode="wb", delete=False, prefix="n8n_result_"
         ) as f:
-            json.dump(result, f, default=str, ensure_ascii=False)
+            pickle.dump(result, f)
             result_file = f.name
 
         print_args_to_send = TaskExecutor._truncate_print_args(print_args)
@@ -305,13 +302,13 @@ class TaskExecutor:
     def _truncate_print_args(print_args: PrintArgs) -> PrintArgs:
         """Truncate print_args to prevent pipe buffer overflow."""
 
-        if not print_args or len(print_args) <= MAX_PRINT_ARGS_ALLOWED:
+        if not print_args or len(print_args) <= MAX_PRINT_STATEMENTS_ALLOWED:
             return print_args
 
-        truncated = print_args[:MAX_PRINT_ARGS_ALLOWED]
+        truncated = print_args[:MAX_PRINT_STATEMENTS_ALLOWED]
         truncated.append(
             [
-                f"[Output truncated - {len(print_args) - MAX_PRINT_ARGS_ALLOWED} more print statements]"
+                f"[Output truncated - {len(print_args) - MAX_PRINT_STATEMENTS_ALLOWED} more print statements]"
             ]
         )
 

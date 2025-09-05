@@ -15,19 +15,19 @@ const defaultHeaders = {
 	'x-airtop-sdk-version': N8N_VERSION,
 };
 
-export async function apiRequest<T extends IAirtopResponse = IAirtopResponse>(
+export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<T> {
+) {
 	const options: IHttpRequestOptions = {
 		headers: defaultHeaders,
 		method,
 		body,
 		qs: query,
-		url: `${BASE_URL}${endpoint}`,
+		url: endpoint.startsWith('http') ? endpoint : `${BASE_URL}${endpoint}`,
 		json: true,
 	};
 
@@ -35,9 +35,9 @@ export async function apiRequest<T extends IAirtopResponse = IAirtopResponse>(
 		delete options.body;
 	}
 
-	return await this.helpers.httpRequestWithAuthentication.call<
-		IExecuteFunctions | ILoadOptionsFunctions,
-		[string, IHttpRequestOptions],
-		Promise<T>
-	>(this, 'airtopApi', options);
+	return (await this.helpers.httpRequestWithAuthentication.call(
+		this,
+		'airtopApi',
+		options,
+	)) as IAirtopResponse;
 }

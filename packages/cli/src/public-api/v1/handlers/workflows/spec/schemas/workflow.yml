@@ -30,7 +30,7 @@ properties:
       $ref: './node.yml'
   connections:
     type: object
-    example: { Jira: { main: [[{ node: 'Jira', type: 'main', index: 0 }]] } }
+    example: { main: [{ node: 'Jira', type: 'main', index: 0 }] }
   settings:
     $ref: './workflowSettings.yml'
   staticData:
