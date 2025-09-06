@@ -21,3 +21,4 @@ export * from './node-execution-context/utils/execution-metadata';
 export * from './workflow-execute';
 export { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-secrets-proxy';
+export { isRequest } from './requests-response';
