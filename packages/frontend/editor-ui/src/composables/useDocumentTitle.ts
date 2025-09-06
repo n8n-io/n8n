@@ -1,7 +1,7 @@
 import { useSettingsStore } from '@/stores/settings.store';
 import type { Ref } from 'vue';
 
-const DEFAULT_TITLE = 'n8n';
+const DEFAULT_TITLE = 'ADECOM n8n';
 const DEFAULT_TAGLINE = 'Workflow Automation';
 
 export function useDocumentTitle(windowRef?: Ref<Window | undefined>) {
