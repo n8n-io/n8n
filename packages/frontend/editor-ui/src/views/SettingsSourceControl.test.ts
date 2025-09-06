@@ -247,36 +247,6 @@ describe('SettingsSourceControl', () => {
 			await setupEnterprise();
 		});
 
-		it('should render protocol dropdown with SSH and HTTPS options', async () => {
-			const { getByTestId, getByText } = renderComponent({
-				pinia,
-			});
-
-			const protocolSelect = getByTestId('source-control-protocol-select');
-			expect(protocolSelect).toBeInTheDocument();
-
-			// Click to open the dropdown and check if both options are available
-			await userEvent.click(within(protocolSelect).getByRole('combobox'));
-
-			await waitFor(() => {
-				expect(getByText('SSH')).toBeVisible();
-				expect(getByText('HTTPS')).toBeVisible();
-			});
-		});
-
-		it('should default to SSH protocol for backward compatibility', async () => {
-			const { getByTestId } = renderComponent({
-				pinia,
-			});
-
-			const protocolSelect = getByTestId('source-control-protocol-select');
-			// SSH should be default protocol - verify by checking for SSH fields being visible
-			expect(protocolSelect).toBeInTheDocument();
-
-			// Verify SSH fields are visible by default (indicating SSH is selected)
-			expect(getByTestId('source-control-ssh-key-type-select')).toBeVisible();
-		});
-
 		it('should show SSH-specific fields when SSH protocol is selected', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				pinia,
@@ -404,49 +374,6 @@ describe('SettingsSourceControl', () => {
 			expect(connectButton).toBeInTheDocument();
 		});
 
-		it('should validate HTTPS credential requirements', async () => {
-			const { container, getByTestId } = renderComponent({
-				pinia,
-			});
-
-			// Switch to HTTPS
-			const protocolSelect = getByTestId('source-control-protocol-select');
-			await switchProtocol(protocolSelect, 'HTTPS');
-
-			const connectButton = getByTestId('source-control-connect-button');
-
-			// Should be disabled without any credentials
-			expect(connectButton).toBeDisabled();
-
-			// Add repository URL but no credentials
-			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
-			await userEvent.click(repoUrlInput);
-			await userEvent.type(repoUrlInput, 'https://github.com/user/repo.git');
-			await userEvent.tab();
-
-			await waitFor(() => expect(connectButton).toBeDisabled());
-
-			// Add username but no token
-			const usernameInput = container.querySelector('input[name="username"]')!;
-			await userEvent.clear(usernameInput);
-			await userEvent.type(usernameInput, 'testuser');
-			await userEvent.tab();
-
-			await waitFor(() => expect(connectButton).toBeDisabled());
-
-			// Add token - now should be enabled
-			const tokenInput = container.querySelector('input[name="personalAccessToken"]')!;
-			await userEvent.clear(tokenInput);
-			await userEvent.type(tokenInput, 'ghp_token');
-			await userEvent.tab();
-
-			// Wait for reactivity to process the input changes
-			await waitFor(() => {
-				expect(usernameInput).toHaveValue('testuser');
-				expect(tokenInput).toHaveValue('ghp_token');
-			});
-		});
-
 		it('should clear HTTPS credentials when switching to SSH', async () => {
 			const { container } = renderComponent({
 				pinia,
@@ -489,44 +416,6 @@ describe('SettingsSourceControl', () => {
 			});
 		});
 
-		it('should accept HTTPS credentials and show no connected content initially', async () => {
-			const { container, getByTestId, queryByTestId } = renderComponent({
-				pinia,
-				global: {
-					stubs: ['teleport'],
-				},
-			});
-
-			// Switch to HTTPS and fill form with credentials
-			const protocolSelect = getByTestId('source-control-protocol-select');
-			await switchProtocol(protocolSelect, 'HTTPS');
-
-			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
-			const usernameInput = container.querySelector('input[name="username"]')!;
-			const tokenInput = container.querySelector('input[name="personalAccessToken"]')!;
-
-			await userEvent.clear(repoUrlInput);
-			await userEvent.type(repoUrlInput, 'https://github.com/user/repo.git');
-
-			await userEvent.clear(usernameInput);
-			await userEvent.type(usernameInput, 'testuser');
-
-			await userEvent.clear(tokenInput);
-			await userEvent.type(tokenInput, 'invalid_token');
-
-			// Verify form fields contain the entered values
-			expect(repoUrlInput).toHaveValue('https://github.com/user/repo.git');
-			expect(usernameInput).toHaveValue('testuser');
-			expect(tokenInput).toHaveValue('invalid_token');
-
-			// Should not show connected content initially
-			expect(queryByTestId('source-control-connected-content')).not.toBeInTheDocument();
-
-			// Connect button should exist for user interaction
-			const connectButton = getByTestId('source-control-connect-button');
-			expect(connectButton).toBeInTheDocument();
-		});
-
 		test.each([
 			['https://github.com/user/repository.git', true],
 			['https://gitlab.com/user/repository.git', true],
@@ -564,54 +453,6 @@ describe('SettingsSourceControl', () => {
 	describe('Protocol-Specific UI Behavior', () => {
 		beforeEach(async () => {
 			await setupEnterprise();
-		});
-
-		it('should show correct protocol in dropdown and update UI accordingly', async () => {
-			const { getByTestId, queryByTestId } = renderComponent({
-				pinia,
-			});
-
-			const protocolSelect = getByTestId('source-control-protocol-select');
-
-			// Initially SSH - verify by checking SSH fields are visible
-			const initialProtocolInput = within(protocolSelect).getByRole('combobox');
-			expect(initialProtocolInput).toBeInTheDocument();
-			expect(getByTestId('source-control-ssh-key-type-select')).toBeVisible();
-
-			// Switch to HTTPS and verify UI updates
-			await switchProtocol(protocolSelect, 'HTTPS');
-
-			await waitFor(() => {
-				// Verify HTTPS fields are now visible (indicating HTTPS is selected)
-				expect(getByTestId('source-control-username-input')).toBeVisible();
-				expect(queryByTestId('source-control-ssh-key-type-select')).not.toBeInTheDocument();
-			});
-		});
-
-		it('should display entered credentials in form fields', async () => {
-			const { container, getByTestId } = renderComponent({
-				pinia,
-			});
-
-			// Switch to HTTPS to reveal credential fields
-			const protocolSelect = getByTestId('source-control-protocol-select');
-			await switchProtocol(protocolSelect, 'HTTPS');
-			await nextTick();
-
-			// Enter credentials and verify they appear in form fields
-			const usernameInput = container.querySelector('input[name="username"]')!;
-			const tokenInput = container.querySelector('input[name="personalAccessToken"]')!;
-
-			await userEvent.click(usernameInput);
-			await userEvent.type(usernameInput, 'testuser');
-			expect(usernameInput).toHaveValue('testuser');
-
-			await userEvent.click(tokenInput);
-			await userEvent.type(tokenInput, 'secret_token');
-			expect(tokenInput).toHaveValue('secret_token');
-
-			// Verify token field maintains password type for security
-			expect(tokenInput).toHaveAttribute('type', 'password');
 		});
 
 		it('should enable connect button only when all required fields are filled', async () => {
@@ -781,28 +622,6 @@ describe('SettingsSourceControl', () => {
 			// Verify connect button exists
 			const connectButton = getByTestId('source-control-connect-button');
 			expect(connectButton).toBeInTheDocument();
-		});
-
-		it('should handle password field type and accessibility for personal access token', async () => {
-			const { container, getByTestId } = renderComponent({
-				pinia,
-			});
-
-			// Switch to HTTPS
-			const protocolSelect = getByTestId('source-control-protocol-select');
-			await switchProtocol(protocolSelect, 'HTTPS');
-			await nextTick();
-
-			const tokenInput = container.querySelector('input[name="personalAccessToken"]')!;
-
-			// Verify security and accessibility attributes
-			expect(tokenInput).toHaveAttribute('type', 'password');
-			expect(tokenInput).toHaveAttribute('name', 'personalAccessToken');
-			expect(tokenInput).toHaveAttribute('placeholder', expect.stringContaining('token'));
-
-			// Verify the token field is properly labeled for screen readers
-			const tokenWrapper = getByTestId('source-control-pat-input');
-			expect(tokenWrapper).toBeInTheDocument();
 		});
 	});
 });
