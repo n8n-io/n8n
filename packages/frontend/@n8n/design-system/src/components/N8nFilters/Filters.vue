@@ -7,6 +7,7 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
+	FocusScope,
 } from 'reka-ui';
 import { ref, computed } from 'vue';
 
@@ -18,6 +19,7 @@ import N8nTooltip from '../N8nTooltip';
 import DatePicker from './DatePicker.vue';
 import MultiSelect from './MultiSelect.vue';
 import SingleSelect from './SingleSelect.vue';
+import DatePickerV2 from './DatePickerV2.vue';
 
 interface ActiveFilter {
 	filterName: string;
@@ -204,18 +206,26 @@ function removeFilter(filterName: string) {
 												"
 												:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
 											/>
-											<DatePicker
+											<FocusScope
+												asChild
+												loop
 												v-else-if="filterOption.type === 'date'"
-												:initial-value="
-													activeFilters.find((f) => f.filterName === filterOption.label)?.values[0]
-												"
-												:min-value="filterOption.minValue"
-												:max-value="filterOption.maxValue"
-												@update:model-value="
-													(value: FilterItem | null) => handleDateChange(filterOption.label, value)
-												"
-												:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
-											/>
+												@mount-auto-focus="(e) => console.log(e)"
+											>
+												<DatePickerV2
+													:initial-value="
+														activeFilters.find((f) => f.filterName === filterOption.label)
+															?.values[0]
+													"
+													:min-value="filterOption.minValue"
+													:max-value="filterOption.maxValue"
+													@update:model-value="
+														(value: FilterItem | null) =>
+															handleDateChange(filterOption.label, value)
+													"
+													:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
+												/>
+											</FocusScope>
 										</DropdownMenuSubContent>
 									</DropdownMenuPortal>
 								</DropdownMenuSub>
