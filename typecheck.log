@@ -1,0 +1,895 @@
+
+> n8n-monorepo@1.109.0 typecheck /Users/robsquires/repos/n8n
+> turbo typecheck
+
+turbo 2.5.4
+
+• Packages in scope: @n8n/ai-workflow-builder, @n8n/api-types, @n8n/backend-common, @n8n/backend-test-utils, @n8n/chat, @n8n/client-oauth2, @n8n/codemirror-lang, @n8n/composables, @n8n/config, @n8n/constants, @n8n/create-node, @n8n/db, @n8n/decorators, @n8n/design-system, @n8n/di, @n8n/errors, @n8n/eslint-config, @n8n/extension-sdk, @n8n/i18n, @n8n/imap, @n8n/json-schema-to-zod, @n8n/n8n-benchmark, @n8n/n8n-extension-insights, @n8n/n8n-nodes-langchain, @n8n/node-cli, @n8n/permissions, @n8n/rest-api-client, @n8n/stores, @n8n/storybook, @n8n/stylelint-config, @n8n/task-runner, @n8n/typescript-config, @n8n/utils, @n8n/vitest-config, n8n, n8n-containers, n8n-core, n8n-cypress, n8n-editor-ui, n8n-node-dev, n8n-nodes-base, n8n-playwright, n8n-workflow
+• Running typecheck in 43 packages
+• Remote caching disabled
+@n8n/di:build: cache hit, replaying logs 5ae67063f946933e
+@n8n/di:build: 
+@n8n/di:build: > @n8n/di@0.9.0 build /Users/robsquires/repos/n8n/packages/@n8n/di
+@n8n/di:build: > tsc -p tsconfig.build.json
+@n8n/di:build: 
+@n8n/vitest-config:build: cache hit, replaying logs 7ae689c9d4616b0a
+@n8n/vitest-config:build: 
+@n8n/vitest-config:build: > @n8n/vitest-config@1.5.0 build /Users/robsquires/repos/n8n/packages/@n8n/vitest-config
+@n8n/vitest-config:build: > tsc -p tsconfig.build.json
+@n8n/vitest-config:build: 
+@n8n/errors:build: cache hit, replaying logs c7486e3f97a40fdb
+@n8n/errors:build: 
+@n8n/errors:build: > @n8n/errors@0.4.0 build /Users/robsquires/repos/n8n/packages/@n8n/errors
+@n8n/errors:build: > tsc -p tsconfig.build.json
+@n8n/errors:build: 
+@n8n/vitest-config:typecheck: cache miss, executing d2f66dd82f399c48
+@n8n/stylelint-config:build: cache hit, replaying logs 52b2dbe00405fb03
+@n8n/stylelint-config:build: 
+@n8n/stylelint-config:build: > @n8n/stylelint-config@0.0.1 build /Users/robsquires/repos/n8n/packages/@n8n/stylelint-config
+@n8n/stylelint-config:build: > tsc
+@n8n/stylelint-config:build: 
+@n8n/stylelint-config:typecheck: cache miss, executing 72ad037f3a81ee16
+@n8n/constants:build: cache hit, replaying logs 357d87f4dac1191c
+@n8n/constants:build: 
+@n8n/constants:build: > @n8n/constants@0.11.0 build /Users/robsquires/repos/n8n/packages/@n8n/constants
+@n8n/constants:build: > tsc -p tsconfig.build.json
+@n8n/constants:build: 
+@n8n/di:typecheck: cache miss, executing 3251cbfb078b155a
+@n8n/codemirror-lang:build: cache hit, replaying logs 2576f924dc71ba94
+@n8n/codemirror-lang:build: 
+@n8n/codemirror-lang:build: > @n8n/codemirror-lang@0.3.0 build /Users/robsquires/repos/n8n/packages/@n8n/codemirror-lang
+@n8n/codemirror-lang:build: > tsc -p tsconfig.build.json
+@n8n/codemirror-lang:build: 
+@n8n/client-oauth2:build: cache hit, replaying logs 5f9f463a8c08a722
+@n8n/client-oauth2:build: 
+@n8n/client-oauth2:build: > @n8n/client-oauth2@0.28.0 build /Users/robsquires/repos/n8n/packages/@n8n/client-oauth2
+@n8n/client-oauth2:build: > tsc -p tsconfig.build.json
+@n8n/client-oauth2:build: 
+@n8n/json-schema-to-zod:typecheck: cache miss, executing e660e35e15dbab93
+@n8n/permissions:typecheck: cache miss, executing b53d09c3371a19df
+@n8n/errors:typecheck: cache miss, executing f73b099329ce30af
+@n8n/constants:typecheck: cache miss, executing a0ba4e2d97e966a5
+@n8n/extension-sdk:build: cache hit, replaying logs 26004cb2f8c97e4a
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.6.0 build /Users/robsquires/repos/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > pnpm "/^typecheck:.+/" && pnpm clean && tsup && pnpm create-json-schema
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.6.0 clean /Users/robsquires/repos/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > rimraf dist
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: CLI Building entry: src/index.ts, src/schema.ts
+@n8n/extension-sdk:build: CLI Using tsconfig: tsconfig.common.json
+@n8n/extension-sdk:build: CLI tsup v8.5.0
+@n8n/extension-sdk:build: CLI Using tsup config: /Users/robsquires/repos/n8n/packages/@n8n/extension-sdk/tsup.config.ts
+@n8n/extension-sdk:build: CLI Building entry: src/backend/define.ts, src/backend/index.ts, src/backend/types.ts
+@n8n/extension-sdk:build: CLI Using tsconfig: tsconfig.backend.json
+@n8n/extension-sdk:build: CLI tsup v8.5.0
+@n8n/extension-sdk:build: CLI Using tsup config: /Users/robsquires/repos/n8n/packages/@n8n/extension-sdk/tsup.config.ts
+@n8n/extension-sdk:build: CLI Building entry: src/frontend/define.ts, src/frontend/index.ts, src/frontend/types.ts
+@n8n/extension-sdk:build: CLI Using tsconfig: tsconfig.frontend.json
+@n8n/extension-sdk:build: CLI tsup v8.5.0
+@n8n/extension-sdk:build: CLI Using tsup config: /Users/robsquires/repos/n8n/packages/@n8n/extension-sdk/tsup.config.ts
+@n8n/extension-sdk:build: CLI Target: es2021
+@n8n/extension-sdk:build: CJS Build start
+@n8n/extension-sdk:build: ESM Build start
+@n8n/extension-sdk:build: CLI Target: es2021
+@n8n/extension-sdk:build: CJS Build start
+@n8n/extension-sdk:build: ESM Build start
+@n8n/extension-sdk:build: CLI Target: esnext
+@n8n/extension-sdk:build: CJS Build start
+@n8n/extension-sdk:build: ESM Build start
+@n8n/extension-sdk:build: CJS dist/index.cjs      3.04 KB
+@n8n/extension-sdk:build: CJS dist/schema.cjs     3.02 KB
+@n8n/extension-sdk:build: CJS dist/schema.cjs.map 2.94 KB
+@n8n/extension-sdk:build: CJS dist/index.cjs.map  2.99 KB
+@n8n/extension-sdk:build: CJS ⚡️ Build success in 44ms
+@n8n/extension-sdk:build: ESM dist/index.js              136.00 B
+@n8n/extension-sdk:build: ESM dist/chunk-4ERGEAXV.js     1.76 KB
+@n8n/extension-sdk:build: ESM dist/schema.js             137.00 B
+@n8n/extension-sdk:build: ESM dist/index.js.map          71.00 B
+@n8n/extension-sdk:build: ESM dist/chunk-4ERGEAXV.js.map 2.90 KB
+@n8n/extension-sdk:build: ESM dist/schema.js.map         71.00 B
+@n8n/extension-sdk:build: ESM ⚡️ Build success in 44ms
+@n8n/extension-sdk:build: ESM dist/backend/define.js             135.00 B
+@n8n/extension-sdk:build: ESM dist/backend/types.js              63.00 B
+@n8n/extension-sdk:build: ESM dist/backend/index.js              164.00 B
+@n8n/extension-sdk:build: ESM dist/backend/chunk-B7CLIGBD.js     172.00 B
+@n8n/extension-sdk:build: ESM dist/backend/chunk-EHKZI4ZY.js     42.00 B
+@n8n/extension-sdk:build: ESM dist/backend/define.js.map         71.00 B
+@n8n/extension-sdk:build: ESM dist/backend/index.js.map          71.00 B
+@n8n/extension-sdk:build: ESM dist/backend/chunk-EHKZI4ZY.js.map 71.00 B
+@n8n/extension-sdk:build: ESM dist/backend/chunk-B7CLIGBD.js.map 310.00 B
+@n8n/extension-sdk:build: ESM dist/backend/types.js.map          71.00 B
+@n8n/extension-sdk:build: ESM ⚡️ Build success in 41ms
+@n8n/extension-sdk:build: CJS dist/backend/define.cjs     1.17 KB
+@n8n/extension-sdk:build: CJS dist/backend/index.cjs      1.19 KB
+@n8n/extension-sdk:build: CJS dist/backend/types.cjs      800.00 B
+@n8n/extension-sdk:build: CJS dist/backend/types.cjs.map  346.00 B
+@n8n/extension-sdk:build: CJS dist/backend/index.cjs.map  441.00 B
+@n8n/extension-sdk:build: CJS dist/backend/define.cjs.map 354.00 B
+@n8n/extension-sdk:build: CJS ⚡️ Build success in 42ms
+@n8n/extension-sdk:build: CJS dist/frontend/index.cjs      1.20 KB
+@n8n/extension-sdk:build: CJS dist/frontend/types.cjs      801.00 B
+@n8n/extension-sdk:build: CJS dist/frontend/define.cjs     1.18 KB
+@n8n/extension-sdk:build: CJS dist/frontend/index.cjs.map  447.00 B
+@n8n/extension-sdk:build: CJS dist/frontend/types.cjs.map  569.00 B
+@n8n/extension-sdk:build: CJS dist/frontend/define.cjs.map 359.00 B
+@n8n/extension-sdk:build: CJS ⚡️ Build success in 41ms
+@n8n/extension-sdk:build: ESM dist/frontend/chunk-LTKOPDVC.js     175.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/chunk-HR6XC6O7.js     42.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/types.js              63.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/index.js              166.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/define.js             137.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/chunk-HR6XC6O7.js.map 71.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/chunk-LTKOPDVC.js.map 315.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/types.js.map          71.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/index.js.map          71.00 B
+@n8n/extension-sdk:build: ESM dist/frontend/define.js.map         71.00 B
+@n8n/extension-sdk:build: ESM ⚡️ Build success in 41ms
+@n8n/extension-sdk:build: DTS Build start
+@n8n/extension-sdk:build: DTS Build start
+@n8n/extension-sdk:build: DTS Build start
+@n8n/extension-sdk:build: DTS ⚡️ Build success in 1844ms
+@n8n/extension-sdk:build: DTS dist/frontend/types.d.cts  490.00 B
+@n8n/extension-sdk:build: DTS dist/frontend/define.d.cts 213.00 B
+@n8n/extension-sdk:build: DTS dist/frontend/index.d.cts  192.00 B
+@n8n/extension-sdk:build: DTS dist/frontend/types.d.ts   490.00 B
+@n8n/extension-sdk:build: DTS dist/frontend/define.d.ts  212.00 B
+@n8n/extension-sdk:build: DTS dist/frontend/index.d.ts   190.00 B
+@n8n/extension-sdk:build: DTS ⚡️ Build success in 4180ms
+@n8n/extension-sdk:build: DTS dist/backend/types.d.cts  276.00 B
+@n8n/extension-sdk:build: DTS dist/backend/define.d.cts 173.00 B
+@n8n/extension-sdk:build: DTS dist/backend/index.d.cts  153.00 B
+@n8n/extension-sdk:build: DTS dist/backend/types.d.ts   276.00 B
+@n8n/extension-sdk:build: DTS dist/backend/define.d.ts  172.00 B
+@n8n/extension-sdk:build: DTS dist/backend/index.d.ts   151.00 B
+@n8n/extension-sdk:build: DTS ⚡️ Build success in 4234ms
+@n8n/extension-sdk:build: DTS dist/schema.d.cts 2.61 KB
+@n8n/extension-sdk:build: DTS dist/index.d.cts  89.00 B
+@n8n/extension-sdk:build: DTS dist/schema.d.ts  2.61 KB
+@n8n/extension-sdk:build: DTS dist/index.d.ts   88.00 B
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.6.0 create-json-schema /Users/robsquires/repos/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > tsx scripts/create-json-schema.ts
+@n8n/extension-sdk:build: 
+@n8n/client-oauth2:typecheck: cache miss, executing 3d99bfee6fd42d16
+@n8n/permissions:build: cache hit, replaying logs b4e1651dbeb38f11
+@n8n/permissions:build: 
+@n8n/permissions:build: > @n8n/permissions@0.32.0 build /Users/robsquires/repos/n8n/packages/@n8n/permissions
+@n8n/permissions:build: > tsc -p tsconfig.build.json
+@n8n/permissions:build: 
+@n8n/n8n-benchmark:typecheck: cache miss, executing 4492c8e30926aa8a
+@n8n/json-schema-to-zod:build: cache hit, replaying logs 9835088ddfec2e18
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build /Users/robsquires/repos/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:types /Users/robsquires/repos/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.types.json
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:cjs /Users/robsquires/repos/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.cjs.json && node postcjs.cjs
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:esm /Users/robsquires/repos/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.esm.json && node postesm.cjs
+@n8n/json-schema-to-zod:build: 
+@n8n/codemirror-lang:typecheck: cache miss, executing 635e5d89b7e59261
+@n8n/stylelint-config:typecheck: 
+@n8n/stylelint-config:typecheck: > @n8n/stylelint-config@0.0.1 typecheck /Users/robsquires/repos/n8n/packages/@n8n/stylelint-config
+@n8n/stylelint-config:typecheck: > tsc --noEmit
+@n8n/stylelint-config:typecheck: 
+@n8n/json-schema-to-zod:typecheck: 
+@n8n/json-schema-to-zod:typecheck: > @n8n/json-schema-to-zod@1.5.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:typecheck: > tsc --noEmit
+@n8n/json-schema-to-zod:typecheck: 
+@n8n/vitest-config:typecheck: 
+@n8n/vitest-config:typecheck: > @n8n/vitest-config@1.5.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/vitest-config
+@n8n/vitest-config:typecheck: > tsc --noEmit
+@n8n/vitest-config:typecheck: 
+@n8n/client-oauth2:typecheck: 
+@n8n/client-oauth2:typecheck: > @n8n/client-oauth2@0.28.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/client-oauth2
+@n8n/client-oauth2:typecheck: > tsc --noEmit
+@n8n/client-oauth2:typecheck: 
+@n8n/errors:typecheck: 
+@n8n/errors:typecheck: > @n8n/errors@0.4.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/errors
+@n8n/errors:typecheck: > tsc --noEmit
+@n8n/errors:typecheck: 
+@n8n/di:typecheck: 
+@n8n/di:typecheck: > @n8n/di@0.9.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/di
+@n8n/di:typecheck: > tsc --noEmit
+@n8n/di:typecheck: 
+@n8n/permissions:typecheck: 
+@n8n/permissions:typecheck: > @n8n/permissions@0.32.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/permissions
+@n8n/permissions:typecheck: > tsc --noEmit
+@n8n/permissions:typecheck: 
+@n8n/n8n-benchmark:typecheck: 
+@n8n/n8n-benchmark:typecheck: > @n8n/n8n-benchmark@1.22.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/benchmark
+@n8n/n8n-benchmark:typecheck: > tsc --noEmit
+@n8n/n8n-benchmark:typecheck: 
+@n8n/constants:typecheck: 
+@n8n/constants:typecheck: > @n8n/constants@0.11.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/constants
+@n8n/constants:typecheck: > tsc --noEmit
+@n8n/constants:typecheck: 
+@n8n/codemirror-lang:typecheck: 
+@n8n/codemirror-lang:typecheck: > @n8n/codemirror-lang@0.3.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/codemirror-lang
+@n8n/codemirror-lang:typecheck: > tsc --noEmit
+@n8n/codemirror-lang:typecheck: 
+@n8n/config:build: cache hit, replaying logs 0f73e13b5eba2705
+@n8n/config:build: 
+@n8n/config:build: > @n8n/config@1.52.0 build /Users/robsquires/repos/n8n/packages/@n8n/config
+@n8n/config:build: > tsc -p tsconfig.build.json
+@n8n/config:build: 
+@n8n/eslint-config:build: cache miss, executing a66dbe852363e625
+@n8n/imap:build: cache hit, replaying logs 7a226365d8d01b1c
+@n8n/imap:build: 
+@n8n/imap:build: > @n8n/imap@0.14.0 build /Users/robsquires/repos/n8n/packages/@n8n/imap
+@n8n/imap:build: > tsc -p tsconfig.build.json
+@n8n/imap:build: 
+@n8n/node-cli:build: cache miss, executing 571368031d8d01aa
+@n8n/eslint-config:build: 
+@n8n/eslint-config:build: > @n8n/eslint-config@0.0.1 build /Users/robsquires/repos/n8n/packages/@n8n/eslint-config
+@n8n/eslint-config:build: > tsc
+@n8n/eslint-config:build: 
+n8n-workflow:build: cache hit, replaying logs 65d983b7bfe69434
+n8n-workflow:build: 
+n8n-workflow:build: > n8n-workflow@1.106.0 build /Users/robsquires/repos/n8n/packages/workflow
+n8n-workflow:build: > tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json
+n8n-workflow:build: 
+@n8n/config:typecheck: cache miss, executing 20ab5dffd8b66419
+@n8n/eslint-config:typecheck: cache miss, executing e268b6dd9aa3fa1f
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.2.0 build /Users/robsquires/repos/n8n/packages/@n8n/node-cli
+@n8n/node-cli:build: > tsc -p tsconfig.build.json && pnpm copy-templates
+@n8n/node-cli:build: 
+@n8n/imap:typecheck: cache miss, executing 1e97595ba7f3d082
+@n8n/node-cli:typecheck: cache miss, executing da139d831a1ea705
+@n8n/api-types:build: cache hit, replaying logs c559e8d69aa6e38e
+@n8n/api-types:build: 
+@n8n/api-types:build: > @n8n/api-types@0.43.0 build /Users/robsquires/repos/n8n/packages/@n8n/api-types
+@n8n/api-types:build: > tsc -p tsconfig.build.json
+@n8n/api-types:build: 
+@n8n/decorators:build: cache hit, replaying logs c579714c34f86378
+@n8n/decorators:build: 
+@n8n/decorators:build: > @n8n/decorators@0.19.0 build /Users/robsquires/repos/n8n/packages/@n8n/decorators
+@n8n/decorators:build: > tsc -p tsconfig.build.json
+@n8n/decorators:build: 
+@n8n/n8n-extension-insights:typecheck: cache miss, executing 4628d11742fa6b96
+@n8n/config:typecheck: 
+@n8n/config:typecheck: > @n8n/config@1.52.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/config
+@n8n/config:typecheck: > tsc --noEmit
+@n8n/config:typecheck: 
+@n8n/backend-common:build: cache hit, replaying logs b02d53abf259ed01
+@n8n/backend-common:build: 
+@n8n/backend-common:build: > @n8n/backend-common@0.19.0 build /Users/robsquires/repos/n8n/packages/@n8n/backend-common
+@n8n/backend-common:build: > tsc -p tsconfig.build.json
+@n8n/backend-common:build: 
+@n8n/eslint-config:typecheck: 
+@n8n/eslint-config:typecheck: > @n8n/eslint-config@0.0.1 typecheck /Users/robsquires/repos/n8n/packages/@n8n/eslint-config
+@n8n/eslint-config:typecheck: > tsc --noEmit
+@n8n/eslint-config:typecheck: 
+@n8n/imap:typecheck: 
+@n8n/imap:typecheck: > @n8n/imap@0.14.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/imap
+@n8n/imap:typecheck: > tsc --noEmit
+@n8n/imap:typecheck: 
+n8n-core:build: cache hit, replaying logs 7211f8fc2a26fd22
+n8n-core:build: 
+n8n-core:build: > n8n-core@1.108.0 build /Users/robsquires/repos/n8n/packages/core
+n8n-core:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+n8n-core:build: 
+@n8n/ai-workflow-builder:build: cache hit, replaying logs d8f308f81e48083f
+@n8n/ai-workflow-builder:build: 
+@n8n/ai-workflow-builder:build: > @n8n/ai-workflow-builder@0.19.0 build /Users/robsquires/repos/n8n/packages/@n8n/ai-workflow-builder.ee
+@n8n/ai-workflow-builder:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/ai-workflow-builder:build: 
+n8n-nodes-base:build: cache miss, executing 9db1e8cff394424a
+@n8n/node-cli:typecheck: 
+@n8n/node-cli:typecheck: > @n8n/node-cli@0.2.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/node-cli
+@n8n/node-cli:typecheck: > tsc --noEmit
+@n8n/node-cli:typecheck: 
+@n8n/n8n-extension-insights:typecheck: 
+@n8n/n8n-extension-insights:typecheck: > @n8n/n8n-extension-insights@0.6.0 typecheck /Users/robsquires/repos/n8n/packages/extensions/insights
+@n8n/n8n-extension-insights:typecheck: > vue-tsc --noEmit
+@n8n/n8n-extension-insights:typecheck: 
+n8n-nodes-base:build: 
+n8n-nodes-base:build: > n8n-nodes-base@1.107.0 build /Users/robsquires/repos/n8n/packages/nodes-base
+n8n-nodes-base:build: > tsc --build tsconfig.build.cjs.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata
+n8n-nodes-base:build: 
+@n8n/db:build: cache hit, replaying logs e33bceb35204f294
+@n8n/db:build: 
+@n8n/db:build: > @n8n/db@0.20.0 build /Users/robsquires/repos/n8n/packages/@n8n/db
+@n8n/db:build: > tsc -p tsconfig.build.json
+@n8n/db:build: 
+@n8n/task-runner:build: cache hit, replaying logs 772d855ccf756943
+@n8n/task-runner:build: 
+@n8n/task-runner:build: > @n8n/task-runner@1.45.0 build /Users/robsquires/repos/n8n/packages/@n8n/task-runner
+@n8n/task-runner:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/task-runner:build: 
+@n8n/backend-test-utils:build: cache hit, replaying logs 84480120fe5efe8d
+@n8n/backend-test-utils:build: 
+@n8n/backend-test-utils:build: > @n8n/backend-test-utils@0.12.0 build /Users/robsquires/repos/n8n/packages/@n8n/backend-test-utils
+@n8n/backend-test-utils:build: > tsc -p tsconfig.build.json
+@n8n/backend-test-utils:build: 
+n8n-nodes-base:build: 
+n8n-nodes-base:build: > n8n-nodes-base@1.107.0 copy-nodes-json /Users/robsquires/repos/n8n/packages/nodes-base
+n8n-nodes-base:build: > node scripts/copy-nodes-json.js .
+n8n-nodes-base:build: 
+n8n-workflow:typecheck: cache miss, executing 4d7e66cc4a31a5a1
+@n8n/composables:build: cache miss, executing 4f96a8a7ed6fabd9
+@n8n/utils:build: cache miss, executing 6b46c55f52d7202b
+@n8n/i18n:build: cache miss, executing bf0a8892edace06d
+@n8n/stores:build: cache miss, executing d133818eaed19834
+n8n-workflow:typecheck: 
+n8n-workflow:typecheck: > n8n-workflow@1.106.0 typecheck /Users/robsquires/repos/n8n/packages/workflow
+n8n-workflow:typecheck: > tsc --noEmit
+n8n-workflow:typecheck: 
+@n8n/utils:build: 
+@n8n/utils:build: > @n8n/utils@1.15.0 build /Users/robsquires/repos/n8n/packages/@n8n/utils
+@n8n/utils:build: > tsup
+@n8n/utils:build: 
+@n8n/stores:build: 
+@n8n/stores:build: > @n8n/stores@1.16.0 build /Users/robsquires/repos/n8n/packages/frontend/@n8n/stores
+@n8n/stores:build: > tsup
+@n8n/stores:build: 
+@n8n/composables:build: 
+@n8n/composables:build: > @n8n/composables@1.9.0 build /Users/robsquires/repos/n8n/packages/frontend/@n8n/composables
+@n8n/composables:build: > tsup
+@n8n/composables:build: 
+@n8n/composables:typecheck: cache miss, executing 7e9ba9c149810c1f
+@n8n/utils:typecheck: cache miss, executing 209a22120682ea63
+@n8n/i18n:build: 
+@n8n/i18n:build: > @n8n/i18n@1.13.0 build /Users/robsquires/repos/n8n/packages/frontend/@n8n/i18n
+@n8n/i18n:build: > tsup
+@n8n/i18n:build: 
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.2.0 copy-templates /Users/robsquires/repos/n8n/packages/@n8n/node-cli
+@n8n/node-cli:build: > node scripts/copy-templates.mjs
+@n8n/node-cli:build: 
+@n8n/composables:typecheck: 
+@n8n/composables:typecheck: > @n8n/composables@1.9.0 typecheck /Users/robsquires/repos/n8n/packages/frontend/@n8n/composables
+@n8n/composables:typecheck: > vue-tsc --noEmit
+@n8n/composables:typecheck: 
+@n8n/utils:typecheck: 
+@n8n/utils:typecheck: > @n8n/utils@1.15.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/utils
+@n8n/utils:typecheck: > tsc --noEmit
+@n8n/utils:typecheck: 
+@n8n/composables:build: CLI Building entry: src/useDeviceSupport.ts, src/useShortKeyPress.ts
+@n8n/composables:build: CLI Using tsconfig: tsconfig.json
+@n8n/composables:build: CLI tsup v8.5.0
+@n8n/composables:build: CLI Using tsup config: /Users/robsquires/repos/n8n/packages/frontend/@n8n/composables/tsup.config.ts
+@n8n/composables:build: CLI Target: esnext
+@n8n/composables:build: CLI Cleaning output folder
+@n8n/composables:build: CJS Build start
+@n8n/composables:build: ESM Build start
+@n8n/utils:build: CLI Building entry: src/assert.ts, src/event-bus.ts, src/event-queue.ts, src/retry.ts, src/number/smartDecimal.ts, src/sort/sortByProperty.ts, src/string/truncate.ts, src/search/sublimeSearch.ts
+@n8n/utils:build: CLI Using tsconfig: tsconfig.json
+@n8n/utils:build: CLI tsup v8.5.0
+@n8n/utils:build: CLI Using tsup config: /Users/robsquires/repos/n8n/packages/@n8n/utils/tsup.config.ts
+@n8n/utils:build: CLI Target: esnext
+@n8n/utils:build: CLI Cleaning output folder
+@n8n/utils:build: CJS Build start
+@n8n/utils:build: ESM Build start
+@n8n/stores:build: CLI Building entry: src/constants.ts, src/index.ts, src/useAgentRequestStore.ts, src/useRootStore.ts
+@n8n/stores:build: CLI Using tsconfig: tsconfig.json
+@n8n/stores:build: CLI tsup v8.5.0
+@n8n/stores:build: CLI Using tsup config: /Users/robsquires/repos/n8n/packages/frontend/@n8n/stores/tsup.config.ts
+@n8n/stores:build: CLI Target: esnext
+@n8n/i18n:build: CLI Building entry: src/index.ts, src/types.ts, src/utils.ts
+@n8n/i18n:build: CLI Using tsconfig: tsconfig.json
+@n8n/i18n:build: CLI tsup v8.5.0
+@n8n/i18n:build: CLI Using tsup config: /Users/robsquires/repos/n8n/packages/frontend/@n8n/i18n/tsup.config.ts
+@n8n/i18n:build: CLI Target: esnext
+@n8n/stores:build: CLI Cleaning output folder
+@n8n/stores:build: CJS Build start
+@n8n/stores:build: ESM Build start
+@n8n/i18n:build: CLI Cleaning output folder
+@n8n/i18n:build: CJS Build start
+@n8n/i18n:build: ESM Build start
+@n8n/composables:build: ESM dist/useShortKeyPress.js     658.00 B
+@n8n/composables:build: ESM dist/useDeviceSupport.js     1.14 KB
+@n8n/composables:build: ESM dist/useShortKeyPress.js.map 1.37 KB
+@n8n/composables:build: ESM dist/useDeviceSupport.js.map 2.47 KB
+@n8n/composables:build: ESM ⚡️ Build success in 312ms
+@n8n/composables:build: CJS dist/useDeviceSupport.cjs     1.35 KB
+@n8n/composables:build: CJS dist/useShortKeyPress.cjs     819.00 B
+@n8n/composables:build: CJS dist/useShortKeyPress.cjs.map 1.83 KB
+@n8n/composables:build: CJS dist/useDeviceSupport.cjs.map 3.15 KB
+@n8n/composables:build: CJS ⚡️ Build success in 312ms
+@n8n/utils:build: ESM dist/retry.js                    840.00 B
+@n8n/utils:build: ESM dist/assert.js                   188.00 B
+@n8n/utils:build: ESM dist/event-queue.js              680.00 B
+@n8n/utils:build: ESM dist/event-bus.js                932.00 B
+@n8n/utils:build: ESM dist/string/truncate.js          1.16 KB
+@n8n/utils:build: ESM dist/number/smartDecimal.js      324.00 B
+@n8n/utils:build: ESM dist/sort/sortByProperty.js      357.00 B
+@n8n/utils:build: ESM dist/search/sublimeSearch.js     5.63 KB
+@n8n/utils:build: ESM dist/retry.js.map                2.36 KB
+@n8n/utils:build: ESM dist/assert.js.map               456.00 B
+@n8n/utils:build: ESM dist/event-bus.js.map            2.96 KB
+@n8n/utils:build: ESM dist/event-queue.js.map          1.73 KB
+@n8n/utils:build: ESM dist/string/truncate.js.map      2.32 KB
+@n8n/utils:build: ESM dist/sort/sortByProperty.js.map  683.00 B
+@n8n/utils:build: ESM dist/search/sublimeSearch.js.map 12.06 KB
+@n8n/utils:build: ESM dist/number/smartDecimal.js.map  650.00 B
+@n8n/utils:build: ESM ⚡️ Build success in 243ms
+@n8n/utils:build: CJS dist/number/smartDecimal.cjs      410.00 B
+@n8n/utils:build: CJS dist/string/truncate.cjs          1.27 KB
+@n8n/utils:build: CJS dist/event-queue.cjs              770.00 B
+@n8n/utils:build: CJS dist/sort/sortByProperty.cjs      445.00 B
+@n8n/utils:build: CJS dist/retry.cjs                    919.00 B
+@n8n/utils:build: CJS dist/assert.cjs                   393.00 B
+@n8n/utils:build: CJS dist/event-bus.cjs                1020.00 B
+@n8n/utils:build: CJS dist/search/sublimeSearch.cjs     5.74 KB
+@n8n/utils:build: CJS dist/number/smartDecimal.cjs.map  994.00 B
+@n8n/utils:build: CJS dist/string/truncate.cjs.map      3.10 KB
+@n8n/utils:build: CJS dist/event-queue.cjs.map          2.21 KB
+@n8n/utils:build: CJS dist/sort/sortByProperty.cjs.map  1.01 KB
+@n8n/utils:build: CJS dist/assert.cjs.map               675.00 B
+@n8n/utils:build: CJS dist/event-bus.cjs.map            3.60 KB
+@n8n/utils:build: CJS dist/retry.cjs.map                2.93 KB
+@n8n/utils:build: CJS dist/search/sublimeSearch.cjs.map 14.92 KB
+@n8n/utils:build: CJS ⚡️ Build success in 249ms
+@n8n/stores:build: ESM dist/useAgentRequestStore.js     1.96 KB
+@n8n/stores:build: ESM dist/useRootStore.js             5.52 KB
+@n8n/stores:build: ESM dist/index.js                    102.00 B
+@n8n/stores:build: ESM dist/chunk-PEB425EF.js           1.12 KB
+@n8n/stores:build: ESM dist/constants.js                106.00 B
+@n8n/stores:build: ESM dist/index.js.map                71.00 B
+@n8n/stores:build: ESM dist/chunk-PEB425EF.js.map       1.75 KB
+@n8n/stores:build: ESM dist/constants.js.map            71.00 B
+@n8n/stores:build: ESM dist/useAgentRequestStore.js.map 4.01 KB
+@n8n/stores:build: ESM dist/useRootStore.js.map         10.65 KB
+@n8n/stores:build: ESM ⚡️ Build success in 292ms
+@n8n/stores:build: CJS dist/useAgentRequestStore.cjs     2.92 KB
+@n8n/stores:build: CJS dist/index.cjs                    211.00 B
+@n8n/stores:build: CJS dist/useRootStore.cjs             6.18 KB
+@n8n/stores:build: CJS dist/chunk-LKE35HEP.cjs           1.19 KB
+@n8n/stores:build: CJS dist/constants.cjs                215.00 B
+@n8n/stores:build: CJS dist/index.cjs.map                250.00 B
+@n8n/stores:build: CJS dist/useRootStore.cjs.map         9.72 KB
+@n8n/stores:build: CJS dist/useAgentRequestStore.cjs.map 5.05 KB
+@n8n/stores:build: CJS dist/chunk-LKE35HEP.cjs.map       2.32 KB
+@n8n/stores:build: CJS dist/constants.cjs.map            258.00 B
+@n8n/stores:build: CJS ⚡️ Build success in 294ms
+@n8n/utils:build: DTS Build start
+@n8n/i18n:build: ESM dist/types.js              63.00 B
+@n8n/i18n:build: ESM dist/utils.js              254.00 B
+@n8n/i18n:build: ESM dist/chunk-NITZKE2M.js     1.38 KB
+@n8n/i18n:build: ESM dist/index.js              283.78 KB
+@n8n/i18n:build: ESM dist/chunk-55J6XMHW.js     42.00 B
+@n8n/i18n:build: ESM dist/chunk-NITZKE2M.js.map 3.41 KB
+@n8n/i18n:build: ESM dist/types.js.map          71.00 B
+@n8n/i18n:build: ESM dist/index.js.map          369.94 KB
+@n8n/i18n:build: ESM dist/chunk-55J6XMHW.js.map 71.00 B
+@n8n/i18n:build: ESM dist/utils.js.map          71.00 B
+@n8n/i18n:build: ESM ⚡️ Build success in 543ms
+@n8n/i18n:build: CJS dist/chunk-MOPMPZJO.cjs     1.55 KB
+@n8n/i18n:build: CJS dist/chunk-PO2SPQJP.cjs     56.00 B
+@n8n/i18n:build: CJS dist/index.cjs              285.68 KB
+@n8n/i18n:build: CJS dist/utils.cjs              438.00 B
+@n8n/i18n:build: CJS dist/types.cjs              80.00 B
+@n8n/i18n:build: CJS dist/chunk-MOPMPZJO.cjs.map 4.28 KB
+@n8n/i18n:build: CJS dist/chunk-PO2SPQJP.cjs.map 225.00 B
+@n8n/i18n:build: CJS dist/types.cjs.map          214.00 B
+@n8n/i18n:build: CJS dist/utils.cjs.map          276.00 B
+@n8n/i18n:build: CJS dist/index.cjs.map          403.21 KB
+@n8n/i18n:build: CJS ⚡️ Build success in 547ms
+@n8n/composables:build: DTS Build start
+@n8n/i18n:build: DTS Build start
+@n8n/stores:build: DTS Build start
+n8n-nodes-base:build: Default locale set to: [35men[0m
+n8n-nodes-base:build: No translation required - Skipping translations build...
+@n8n/composables:build: DTS ⚡️ Build success in 3386ms
+@n8n/composables:build: DTS dist/useDeviceSupport.d.cts 314.00 B
+@n8n/composables:build: DTS dist/useShortKeyPress.d.cts 313.00 B
+@n8n/composables:build: DTS dist/useDeviceSupport.d.ts  314.00 B
+@n8n/composables:build: DTS dist/useShortKeyPress.d.ts  313.00 B
+@n8n/stores:build: DTS ⚡️ Build success in 3596ms
+@n8n/stores:build: DTS dist/useAgentRequestStore.d.cts 2.41 KB
+@n8n/stores:build: DTS dist/useRootStore.d.cts         7.42 KB
+@n8n/stores:build: DTS dist/constants.d.cts            1.45 KB
+@n8n/stores:build: DTS dist/index.d.cts                42.00 B
+@n8n/stores:build: DTS dist/useAgentRequestStore.d.ts  2.41 KB
+@n8n/stores:build: DTS dist/useRootStore.d.ts          7.42 KB
+@n8n/stores:build: DTS dist/constants.d.ts             1.45 KB
+@n8n/stores:build: DTS dist/index.d.ts                 41.00 B
+@n8n/api-types:typecheck: cache miss, executing 42a09a2916a563d9
+@n8n/decorators:typecheck: cache miss, executing 6db35e9630fe4d9c
+@n8n/stores:typecheck: cache miss, executing 246dd49bf5a3fba0
+@n8n/i18n:typecheck: cache miss, executing 28ccd83632c48949
+@n8n/api-types:typecheck: 
+@n8n/api-types:typecheck: > @n8n/api-types@0.43.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/api-types
+@n8n/api-types:typecheck: > tsc --noEmit
+@n8n/api-types:typecheck: 
+@n8n/stores:typecheck: 
+@n8n/stores:typecheck: > @n8n/stores@1.16.0 typecheck /Users/robsquires/repos/n8n/packages/frontend/@n8n/stores
+@n8n/stores:typecheck: > vue-tsc --noEmit
+@n8n/stores:typecheck: 
+@n8n/i18n:typecheck: 
+@n8n/i18n:typecheck: > @n8n/i18n@1.13.0 typecheck /Users/robsquires/repos/n8n/packages/frontend/@n8n/i18n
+@n8n/i18n:typecheck: > vue-tsc --noEmit
+@n8n/i18n:typecheck: 
+@n8n/decorators:typecheck: 
+@n8n/decorators:typecheck: > @n8n/decorators@0.19.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/decorators
+@n8n/decorators:typecheck: > tsc --noEmit
+@n8n/decorators:typecheck: 
+@n8n/utils:build: DTS ⚡️ Build success in 5550ms
+@n8n/utils:build: DTS dist/assert.d.cts               102.00 B
+@n8n/utils:build: DTS dist/event-bus.d.cts            919.00 B
+@n8n/utils:build: DTS dist/event-queue.d.cts          149.00 B
+@n8n/utils:build: DTS dist/retry.d.cts                206.00 B
+@n8n/utils:build: DTS dist/number/smartDecimal.d.cts  100.00 B
+@n8n/utils:build: DTS dist/sort/sortByProperty.d.cts  123.00 B
+@n8n/utils:build: DTS dist/string/truncate.d.cts      187.00 B
+@n8n/utils:build: DTS dist/search/sublimeSearch.d.cts 299.00 B
+@n8n/utils:build: DTS dist/assert.d.ts                102.00 B
+@n8n/utils:build: DTS dist/event-bus.d.ts             919.00 B
+@n8n/utils:build: DTS dist/event-queue.d.ts           149.00 B
+@n8n/utils:build: DTS dist/retry.d.ts                 206.00 B
+@n8n/utils:build: DTS dist/number/smartDecimal.d.ts   100.00 B
+@n8n/utils:build: DTS dist/sort/sortByProperty.d.ts   123.00 B
+@n8n/utils:build: DTS dist/string/truncate.d.ts       187.00 B
+@n8n/utils:build: DTS dist/search/sublimeSearch.d.ts  299.00 B
+@n8n/design-system:typecheck: cache miss, executing 1bebf55f55d21f4d
+@n8n/design-system:build: cache miss, executing 67ccff06596a537b
+@n8n/design-system:typecheck: 
+@n8n/design-system:typecheck: > @n8n/design-system@1.96.0 typecheck /Users/robsquires/repos/n8n/packages/frontend/@n8n/design-system
+@n8n/design-system:typecheck: > vue-tsc --noEmit
+@n8n/design-system:typecheck: 
+@n8n/design-system:build: 
+@n8n/design-system:build: > @n8n/design-system@1.96.0 build /Users/robsquires/repos/n8n/packages/frontend/@n8n/design-system
+@n8n/design-system:build: > vite build
+@n8n/design-system:build: 
+@n8n/n8n-nodes-langchain:build: cache miss, executing d4c57b50309825d6
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.108.0 build /Users/robsquires/repos/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata
+@n8n/n8n-nodes-langchain:build: 
+@n8n/design-system:build: vite v6.3.5 building for production...
+@n8n/design-system:build: transforming...
+@n8n/backend-common:typecheck: cache miss, executing 1a8b7cfcc2306198
+@n8n/backend-common:typecheck: 
+@n8n/backend-common:typecheck: > @n8n/backend-common@0.19.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/backend-common
+@n8n/backend-common:typecheck: > tsc --noEmit
+@n8n/backend-common:typecheck: 
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.108.0 copy-nodes-json /Users/robsquires/repos/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > node ../../nodes-base/scripts/copy-nodes-json.js .
+@n8n/n8n-nodes-langchain:build: 
+n8n-cypress:typecheck: cache miss, executing 254dd6d9d687f09f
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.108.0 copy-tokenizer-json /Users/robsquires/repos/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > node scripts/copy-tokenizer-json.js .
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/cl100k_base.json -> dist/utils/tokenizer/cl100k_base.json
+@n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/o200k_base.json -> dist/utils/tokenizer/o200k_base.json
+n8n-cypress:typecheck: 
+n8n-cypress:typecheck: > n8n-cypress@ typecheck /Users/robsquires/repos/n8n/cypress
+n8n-cypress:typecheck: > tsc --noEmit
+n8n-cypress:typecheck: 
+n8n-core:typecheck: cache miss, executing 2fc779c4a947a79d
+@n8n/ai-workflow-builder:typecheck: cache miss, executing dfa9d72793e1f8bb
+@n8n/ai-workflow-builder:typecheck: 
+@n8n/ai-workflow-builder:typecheck: > @n8n/ai-workflow-builder@0.19.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/ai-workflow-builder.ee
+@n8n/ai-workflow-builder:typecheck: > tsc --noEmit
+@n8n/ai-workflow-builder:typecheck: 
+n8n-core:typecheck: 
+n8n-core:typecheck: > n8n-core@1.108.0 typecheck /Users/robsquires/repos/n8n/packages/core
+n8n-core:typecheck: > tsc --noEmit
+n8n-core:typecheck: 
+@n8n/design-system:build: Browserslist: browsers data (caniuse-lite) is 7 months old. Please run:
+@n8n/design-system:build:   npx update-browserslist-db@latest
+@n8n/design-system:build:   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+n8n-nodes-base:typecheck: cache miss, executing ba47343de214551d
+@n8n/task-runner:typecheck: cache miss, executing d36db040d7c883d1
+@n8n/db:typecheck: cache miss, executing 09bde867cb372b00
+n8n-nodes-base:typecheck: 
+n8n-nodes-base:typecheck: > n8n-nodes-base@1.107.0 typecheck /Users/robsquires/repos/n8n/packages/nodes-base
+n8n-nodes-base:typecheck: > tsc --noEmit
+n8n-nodes-base:typecheck: 
+@n8n/db:typecheck: 
+@n8n/db:typecheck: > @n8n/db@0.20.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/db
+@n8n/db:typecheck: > tsc --noEmit
+@n8n/db:typecheck: 
+@n8n/task-runner:typecheck: 
+@n8n/task-runner:typecheck: > @n8n/task-runner@1.45.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/task-runner
+@n8n/task-runner:typecheck: > tsc --noEmit
+@n8n/task-runner:typecheck: 
+@n8n/design-system:build: ✓ 2696 modules transformed.
+@n8n/design-system:build: [plugin vite:reporter] 
+@n8n/design-system:build: (!) /Users/robsquires/repos/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /Users/robsquires/repos/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /Users/robsquires/repos/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/design-system:build: 
+@n8n/design-system:build: rendering chunks...
+@n8n/design-system:build: computing gzip size...
+@n8n/design-system:build: dist/design-system.css          124.01 kB │ gzip:  16.24 kB
+@n8n/design-system:build: dist/n8n-design-system.es.js  1,684.64 kB │ gzip: 435.21 kB
+@n8n/i18n:build: DTS ⚡️ Build success in 16700ms
+@n8n/i18n:build: DTS dist/index.d.cts 189.03 KB
+@n8n/i18n:build: DTS dist/types.d.cts 268.97 KB
+@n8n/i18n:build: DTS dist/utils.d.cts 393.00 B
+@n8n/i18n:build: DTS dist/index.d.ts  189.03 KB
+@n8n/i18n:build: DTS dist/types.d.ts  268.97 KB
+@n8n/i18n:build: DTS dist/utils.d.ts  393.00 B
+@n8n/rest-api-client:typecheck: cache miss, executing 39802a0e71a927c5
+@n8n/rest-api-client:build: cache miss, executing d77f8bed89e8c5a3
+@n8n/rest-api-client:typecheck: 
+@n8n/rest-api-client:typecheck: > @n8n/rest-api-client@1.12.0 typecheck /Users/robsquires/repos/n8n/packages/frontend/@n8n/rest-api-client
+@n8n/rest-api-client:typecheck: > vue-tsc --noEmit
+@n8n/rest-api-client:typecheck: 
+@n8n/design-system:build: dist/design-system.css           124.01 kB │ gzip:  16.24 kB
+@n8n/design-system:build: dist/n8n-design-system.umd.js  1,242.28 kB │ gzip: 370.10 kB
+@n8n/design-system:build: ✓ built in 10.45s
+@n8n/rest-api-client:build: 
+@n8n/rest-api-client:build: > @n8n/rest-api-client@1.12.0 build /Users/robsquires/repos/n8n/packages/frontend/@n8n/rest-api-client
+@n8n/rest-api-client:build: > tsup
+@n8n/rest-api-client:build: 
+@n8n/chat:build: cache miss, executing 22f9e43cc39ec1bb
+@n8n/rest-api-client:build: CLI Building entry: src/index.ts, src/types.ts, src/utils.ts, src/api/api-keys.ts, src/api/cloudPlans.ts, src/api/communityNodes.ts, src/api/ctas.ts, src/api/eventbus.ee.ts, src/api/events.ts, src/api/execution.ts, src/api/index.ts, src/api/ldap.ts, src/api/mfa.ts, src/api/module-settings.ts, src/api/nodeTypes.ts, src/api/npsSurvey.ts, src/api/orchestration.ts, src/api/prompts.ts, src/api/roles.ts, src/api/settings.ts, src/api/sso.ts, src/api/tags.ts, src/api/templates.ts, src/api/ui.ts, src/api/users.ts, src/api/versions.ts, src/api/webhooks.ts, src/api/workflowHistory.ts, src/api/workflows.ts
+@n8n/rest-api-client:build: CLI Using tsconfig: tsconfig.json
+@n8n/rest-api-client:build: CLI tsup v8.5.0
+@n8n/rest-api-client:build: CLI Using tsup config: /Users/robsquires/repos/n8n/packages/frontend/@n8n/rest-api-client/tsup.config.ts
+@n8n/rest-api-client:build: CLI Target: esnext
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.54.0 build /Users/robsquires/repos/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > pnpm build:vite && pnpm build:bundle
+@n8n/chat:build: 
+@n8n/rest-api-client:build: CLI Cleaning output folder
+@n8n/rest-api-client:build: CJS Build start
+@n8n/rest-api-client:build: ESM Build start
+@n8n/rest-api-client:build: ESM dist/api/versions.js            199.00 B
+@n8n/rest-api-client:build: ESM dist/api/users.js               874.00 B
+@n8n/rest-api-client:build: ESM dist/api/workflows.js           68.00 B
+@n8n/rest-api-client:build: ESM dist/api/webhooks.js            147.00 B
+@n8n/rest-api-client:build: ESM dist/api/orchestration.js       168.00 B
+@n8n/rest-api-client:build: ESM dist/api/prompts.js             194.00 B
+@n8n/rest-api-client:build: ESM dist/api/roles.js               138.00 B
+@n8n/rest-api-client:build: ESM dist/api/sso.js                 422.00 B
+@n8n/rest-api-client:build: ESM dist/api/tags.js                63.00 B
+@n8n/rest-api-client:build: ESM dist/api/ui.js                  167.00 B
+@n8n/rest-api-client:build: ESM dist/api/settings.js            147.00 B
+@n8n/rest-api-client:build: ESM dist/api/templates.js           390.00 B
+@n8n/rest-api-client:build: ESM dist/api/events.js              151.00 B
+@n8n/rest-api-client:build: ESM dist/api/execution.js           37.00 B
+@n8n/rest-api-client:build: ESM dist/api/mfa.js                 296.00 B
+@n8n/rest-api-client:build: ESM dist/api/index.js               4.74 KB
+@n8n/rest-api-client:build: ESM dist/api/nodeTypes.js           666.00 B
+@n8n/rest-api-client:build: ESM dist/api/module-settings.js     166.00 B
+@n8n/rest-api-client:build: ESM dist/index.js                   5.10 KB
+@n8n/rest-api-client:build: ESM dist/chunk-54IORXZH.js          42.00 B
+@n8n/rest-api-client:build: ESM dist/api/ldap.js                315.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-G754AW6V.js          3.02 KB
+@n8n/rest-api-client:build: ESM dist/chunk-CNMQ7SBK.js          662.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-DF4BVDPB.js          277.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-Z3MR4DYO.js          594.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-5WLGK635.js          340.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-P652HZKI.js          42.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-EUNMFLT6.js          606.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-YRSZGEY2.js          257.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-UGZNYI5O.js          247.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-QGKFNOJQ.js          42.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-XTYCPRC6.js          1.65 KB
+@n8n/rest-api-client:build: ESM dist/chunk-NXNKIFZJ.js          1.39 KB
+@n8n/rest-api-client:build: ESM dist/chunk-5FX7YWDX.js          331.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-VOYJTRVH.js          275.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-CTVC4ZIX.js          879.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-ZF3NQSOQ.js          2.47 KB
+@n8n/rest-api-client:build: ESM dist/chunk-WHNF366H.js          938.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-QSM5AFBE.js          283.00 B
+@n8n/rest-api-client:build: ESM dist/types.js                   63.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-QBXXTACM.js          301.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-55J6XMHW.js          42.00 B
+@n8n/rest-api-client:build: ESM dist/utils.js                   438.00 B
+@n8n/rest-api-client:build: ESM dist/api/api-keys.js            279.00 B
+@n8n/rest-api-client:build: ESM dist/api/cloudPlans.js          335.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-ZAUV75AT.js          796.00 B
+@n8n/rest-api-client:build: ESM dist/api/communityNodes.js      373.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-2SKC47YZ.js          814.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-FC2VBZ34.js          1.17 KB
+@n8n/rest-api-client:build: ESM dist/api/ctas.js                159.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-GDYGMQZG.js          279.00 B
+@n8n/rest-api-client:build: ESM dist/api/eventbus.ee.js         440.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-TEZ2GX74.js          1.20 KB
+@n8n/rest-api-client:build: ESM dist/chunk-NTAW2A35.js          6.53 KB
+@n8n/rest-api-client:build: ESM dist/api/workflowHistory.js     212.00 B
+@n8n/rest-api-client:build: ESM dist/api/npsSurvey.js           166.00 B
+@n8n/rest-api-client:build: ESM dist/api/versions.js.map        71.00 B
+@n8n/rest-api-client:build: ESM dist/api/webhooks.js.map        71.00 B
+@n8n/rest-api-client:build: ESM dist/api/workflows.js.map       71.00 B
+@n8n/rest-api-client:build: ESM dist/api/orchestration.js.map   71.00 B
+@n8n/rest-api-client:build: ESM dist/api/prompts.js.map         71.00 B
+@n8n/rest-api-client:build: ESM dist/api/roles.js.map           71.00 B
+@n8n/rest-api-client:build: ESM dist/api/tags.js.map            71.00 B
+@n8n/rest-api-client:build: ESM dist/api/ui.js.map              71.00 B
+@n8n/rest-api-client:build: ESM dist/api/settings.js.map        71.00 B
+@n8n/rest-api-client:build: ESM dist/api/events.js.map          71.00 B
+@n8n/rest-api-client:build: ESM dist/api/templates.js.map       71.00 B
+@n8n/rest-api-client:build: ESM dist/api/execution.js.map       71.00 B
+@n8n/rest-api-client:build: ESM dist/api/index.js.map           71.00 B
+@n8n/rest-api-client:build: ESM dist/api/mfa.js.map             71.00 B
+@n8n/rest-api-client:build: ESM dist/api/nodeTypes.js.map       71.00 B
+@n8n/rest-api-client:build: ESM dist/api/module-settings.js.map 71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-54IORXZH.js.map      71.00 B
+@n8n/rest-api-client:build: ESM dist/api/ldap.js.map            71.00 B
+@n8n/rest-api-client:build: ESM dist/index.js.map               71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-G754AW6V.js.map      8.54 KB
+@n8n/rest-api-client:build: ESM dist/chunk-DF4BVDPB.js.map      695.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-Z3MR4DYO.js.map      1.61 KB
+@n8n/rest-api-client:build: ESM dist/api/users.js.map           71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-EUNMFLT6.js.map      1.16 KB
+@n8n/rest-api-client:build: ESM dist/chunk-5WLGK635.js.map      517.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-YRSZGEY2.js.map      485.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-UGZNYI5O.js.map      476.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-QGKFNOJQ.js.map      71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-XTYCPRC6.js.map      6.24 KB
+@n8n/rest-api-client:build: ESM dist/chunk-NXNKIFZJ.js.map      2.77 KB
+@n8n/rest-api-client:build: ESM dist/api/sso.js.map             71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-5FX7YWDX.js.map      641.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-VOYJTRVH.js.map      431.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-CTVC4ZIX.js.map      2.54 KB
+@n8n/rest-api-client:build: ESM dist/chunk-WHNF366H.js.map      1.83 KB
+@n8n/rest-api-client:build: ESM dist/chunk-ZF3NQSOQ.js.map      4.72 KB
+@n8n/rest-api-client:build: ESM dist/chunk-P652HZKI.js.map      71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-CNMQ7SBK.js.map      2.03 KB
+@n8n/rest-api-client:build: ESM dist/chunk-55J6XMHW.js.map      71.00 B
+@n8n/rest-api-client:build: ESM dist/utils.js.map               71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-QBXXTACM.js.map      515.00 B
+@n8n/rest-api-client:build: ESM dist/api/cloudPlans.js.map      71.00 B
+@n8n/rest-api-client:build: ESM dist/api/communityNodes.js.map  71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-2SKC47YZ.js.map      1.70 KB
+@n8n/rest-api-client:build: ESM dist/api/ctas.js.map            71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-FC2VBZ34.js.map      2.06 KB
+@n8n/rest-api-client:build: ESM dist/chunk-GDYGMQZG.js.map      451.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-TEZ2GX74.js.map      2.31 KB
+@n8n/rest-api-client:build: ESM dist/api/eventbus.ee.js.map     71.00 B
+@n8n/rest-api-client:build: ESM dist/types.js.map               71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-NTAW2A35.js.map      12.54 KB
+@n8n/rest-api-client:build: ESM dist/chunk-ZAUV75AT.js.map      2.24 KB
+@n8n/rest-api-client:build: ESM dist/api/workflowHistory.js.map 71.00 B
+@n8n/rest-api-client:build: ESM dist/api/npsSurvey.js.map       71.00 B
+@n8n/rest-api-client:build: ESM dist/chunk-QSM5AFBE.js.map      521.00 B
+@n8n/rest-api-client:build: ESM dist/api/api-keys.js.map        71.00 B
+@n8n/rest-api-client:build: ESM ⚡️ Build success in 186ms
+@n8n/rest-api-client:build: CJS dist/api/users.cjs               1.40 KB
+@n8n/rest-api-client:build: CJS dist/api/webhooks.cjs            259.00 B
+@n8n/rest-api-client:build: CJS dist/api/workflowHistory.cjs     349.00 B
+@n8n/rest-api-client:build: CJS dist/api/workflows.cjs           85.00 B
+@n8n/rest-api-client:build: CJS dist/api/orchestration.cjs       280.00 B
+@n8n/rest-api-client:build: CJS dist/api/prompts.cjs             331.00 B
+@n8n/rest-api-client:build: CJS dist/api/roles.cjs               250.00 B
+@n8n/rest-api-client:build: CJS dist/api/settings.cjs            259.00 B
+@n8n/rest-api-client:build: CJS dist/api/sso.cjs                 734.00 B
+@n8n/rest-api-client:build: CJS dist/api/tags.cjs                80.00 B
+@n8n/rest-api-client:build: CJS dist/api/templates.cjs           652.00 B
+@n8n/rest-api-client:build: CJS dist/api/events.cjs              263.00 B
+@n8n/rest-api-client:build: CJS dist/api/execution.cjs           51.00 B
+@n8n/rest-api-client:build: CJS dist/api/ldap.cjs                527.00 B
+@n8n/rest-api-client:build: CJS dist/api/index.cjs               7.49 KB
+@n8n/rest-api-client:build: CJS dist/api/mfa.cjs                 533.00 B
+@n8n/rest-api-client:build: CJS dist/api/ui.cjs                  279.00 B
+@n8n/rest-api-client:build: CJS dist/api/nodeTypes.cjs           1003.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-UJOGK5LF.cjs          56.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-HZTJD4WD.cjs          4.14 KB
+@n8n/rest-api-client:build: CJS dist/chunk-6EOXPQPA.cjs          392.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-QUUEZXZJ.cjs          56.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-LJBEN4XS.cjs          463.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-2MKCR5R2.cjs          359.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-YLVJV4AT.cjs          372.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-F2BR3GFD.cjs          56.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-E7DC7LJE.cjs          2.11 KB
+@n8n/rest-api-client:build: CJS dist/chunk-LPNDZTUA.cjs          459.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-VFQIXX6C.cjs          393.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-FQANWCTG.cjs          1.20 KB
+@n8n/rest-api-client:build: CJS dist/chunk-6ZTX4I3G.cjs          1.28 KB
+@n8n/rest-api-client:build: CJS dist/chunk-U3YVBLF7.cjs          404.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-ICKNSBDI.cjs          3.31 KB
+@n8n/rest-api-client:build: CJS dist/chunk-UUMSEI6O.cjs          425.00 B
+@n8n/rest-api-client:build: CJS dist/types.cjs                   80.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-PO2SPQJP.cjs          56.00 B
+@n8n/rest-api-client:build: CJS dist/utils.cjs                   797.00 B
+@n8n/rest-api-client:build: CJS dist/api/api-keys.cjs            491.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-HVKVUYHG.cjs          1.92 KB
+@n8n/rest-api-client:build: CJS dist/chunk-TKGDZLC6.cjs          806.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-BWR373PP.cjs          790.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-3IH3LKGT.cjs          1.13 KB
+@n8n/rest-api-client:build: CJS dist/api/cloudPlans.cjs          547.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-UJI6HACT.cjs          1.51 KB
+@n8n/rest-api-client:build: CJS dist/api/ctas.cjs                271.00 B
+@n8n/rest-api-client:build: CJS dist/api/communityNodes.cjs      585.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-TG35HP5C.cjs          417.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-TWENYPGK.cjs          1.60 KB
+@n8n/rest-api-client:build: CJS dist/chunk-76QO7IXK.cjs          8.01 KB
+@n8n/rest-api-client:build: CJS dist/api/eventbus.ee.cjs         677.00 B
+@n8n/rest-api-client:build: CJS dist/api/versions.cjs            336.00 B
+@n8n/rest-api-client:build: CJS dist/api/npsSurvey.cjs           278.00 B
+@n8n/rest-api-client:build: CJS dist/api/module-settings.cjs     278.00 B
+@n8n/rest-api-client:build: CJS dist/index.cjs                   8.14 KB
+@n8n/rest-api-client:build: CJS dist/chunk-CG7MWVBX.cjs          854.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-CK22VKYY.cjs          1.12 KB
+@n8n/rest-api-client:build: CJS dist/api/users.cjs.map           470.00 B
+@n8n/rest-api-client:build: CJS dist/api/workflowHistory.cjs.map 319.00 B
+@n8n/rest-api-client:build: CJS dist/api/prompts.cjs.map         303.00 B
+@n8n/rest-api-client:build: CJS dist/api/workflows.cjs.map       252.00 B
+@n8n/rest-api-client:build: CJS dist/api/webhooks.cjs.map        295.00 B
+@n8n/rest-api-client:build: CJS dist/api/orchestration.cjs.map   305.00 B
+@n8n/rest-api-client:build: CJS dist/api/roles.cjs.map           289.00 B
+@n8n/rest-api-client:build: CJS dist/api/tags.cjs.map            242.00 B
+@n8n/rest-api-client:build: CJS dist/api/sso.cjs.map             366.00 B
+@n8n/rest-api-client:build: CJS dist/api/settings.cjs.map        295.00 B
+@n8n/rest-api-client:build: CJS dist/api/templates.cjs.map       357.00 B
+@n8n/rest-api-client:build: CJS dist/api/mfa.cjs.map             335.00 B
+@n8n/rest-api-client:build: CJS dist/api/execution.cjs.map       245.00 B
+@n8n/rest-api-client:build: CJS dist/api/index.cjs.map           1.58 KB
+@n8n/rest-api-client:build: CJS dist/api/ui.cjs.map              283.00 B
+@n8n/rest-api-client:build: CJS dist/api/ldap.cjs.map            327.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-6EOXPQPA.cjs.map      1001.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-HZTJD4WD.cjs.map      8.33 KB
+@n8n/rest-api-client:build: CJS dist/chunk-UJOGK5LF.cjs.map      247.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-QUUEZXZJ.cjs.map      247.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-LJBEN4XS.cjs.map      824.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-2MKCR5R2.cjs.map      772.00 B
+@n8n/rest-api-client:build: CJS dist/api/nodeTypes.cjs.map       388.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-F2BR3GFD.cjs.map      247.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-YLVJV4AT.cjs.map      771.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-LPNDZTUA.cjs.map      947.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-E7DC7LJE.cjs.map      6.78 KB
+@n8n/rest-api-client:build: CJS dist/chunk-VFQIXX6C.cjs.map      717.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-FQANWCTG.cjs.map      3.01 KB
+@n8n/rest-api-client:build: CJS dist/chunk-6ZTX4I3G.cjs.map      2.34 KB
+@n8n/rest-api-client:build: CJS dist/chunk-U3YVBLF7.cjs.map      807.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-ICKNSBDI.cjs.map      5.03 KB
+@n8n/rest-api-client:build: CJS dist/chunk-UUMSEI6O.cjs.map      811.00 B
+@n8n/rest-api-client:build: CJS dist/types.cjs.map               236.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-PO2SPQJP.cjs.map      247.00 B
+@n8n/rest-api-client:build: CJS dist/utils.cjs.map               369.00 B
+@n8n/rest-api-client:build: CJS dist/api/api-keys.cjs.map        335.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-HVKVUYHG.cjs.map      2.67 KB
+@n8n/rest-api-client:build: CJS dist/chunk-TKGDZLC6.cjs.map      1.54 KB
+@n8n/rest-api-client:build: CJS dist/chunk-BWR373PP.cjs.map      1.85 KB
+@n8n/rest-api-client:build: CJS dist/chunk-3IH3LKGT.cjs.map      2.69 KB
+@n8n/rest-api-client:build: CJS dist/api/cloudPlans.cjs.map      339.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-UJI6HACT.cjs.map      2.62 KB
+@n8n/rest-api-client:build: CJS dist/api/ctas.cjs.map            287.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-TWENYPGK.cjs.map      2.58 KB
+@n8n/rest-api-client:build: CJS dist/api/communityNodes.cjs.map  347.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-TG35HP5C.cjs.map      753.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-76QO7IXK.cjs.map      11.65 KB
+@n8n/rest-api-client:build: CJS dist/api/versions.cjs.map        305.00 B
+@n8n/rest-api-client:build: CJS dist/api/eventbus.ee.cjs.map     351.00 B
+@n8n/rest-api-client:build: CJS dist/api/npsSurvey.cjs.map       297.00 B
+@n8n/rest-api-client:build: CJS dist/api/module-settings.cjs.map 309.00 B
+@n8n/rest-api-client:build: CJS dist/index.cjs.map               1.70 KB
+@n8n/rest-api-client:build: CJS dist/api/events.cjs.map          291.00 B
+@n8n/rest-api-client:build: CJS dist/chunk-CG7MWVBX.cjs.map      2.41 KB
+@n8n/rest-api-client:build: CJS dist/chunk-CK22VKYY.cjs.map      2.06 KB
+@n8n/rest-api-client:build: CJS ⚡️ Build success in 206ms
+@n8n/rest-api-client:build: DTS Build start
+@n8n/backend-test-utils:typecheck: cache miss, executing 18e8750311ac2261
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.54.0 build:vite /Users/robsquires/repos/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > cross-env vite build
+@n8n/chat:build: 
+@n8n/backend-test-utils:typecheck: 
+@n8n/backend-test-utils:typecheck: > @n8n/backend-test-utils@0.12.0 typecheck /Users/robsquires/repos/n8n/packages/@n8n/backend-test-utils
+@n8n/backend-test-utils:typecheck: > tsc --noEmit
+@n8n/backend-test-utils:typecheck: 
+@n8n/chat:build: vite v6.3.5 building for production...
+@n8n/design-system:typecheck: src/components/N8nFilters/DatePicker.vue(55,10): error TS6133: 'clearSelection' is declared but its value is never read.
+@n8n/design-system:typecheck: src/components/N8nFilters/Filters.vue(191,15): error TS2339: Property 'setTimeout' does not exist on type 'CreateComponentPublicInstanceWithMixins<ToResolvedProps<Props, {}>, { DropdownMenuContent: __VLS_WithTemplateSlots_120<DefineComponent<DropdownMenuContentProps, {}, {}, {}, {}, ComponentOptionsMixin, ... 13 more ..., any>, { ...; }>; ... 19 more ...; removeFilter: (filterName: string) => void; }, ... 23 more ..., { ...'.
+@n8n/design-system:typecheck:  ELIFECYCLE  Command failed with exit code 2.
+@n8n/design-system:typecheck: ERROR: command finished with error: command (/Users/robsquires/repos/n8n/packages/frontend/@n8n/design-system) /Users/robsquires/.nvm/versions/node/v22.16.0/bin/pnpm run typecheck exited (2)
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.54.0 build:bundle /Users/robsquires/repos/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > cross-env INCLUDE_VUE=true vite build
+@n8n/chat:build: 
+@n8n/design-system#typecheck: command (/Users/robsquires/repos/n8n/packages/frontend/@n8n/design-system) /Users/robsquires/.nvm/versions/node/v22.16.0/bin/pnpm run typecheck exited (2)
+
+ Tasks:    60 successful, 64 total
+Cached:    21 cached, 64 total
+  Time:    29.478s 
+Failed:    @n8n/design-system#typecheck
+
+ ERROR  run failed: command  exited (2)
+ ELIFECYCLE  Command failed with exit code 2.

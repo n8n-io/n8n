@@ -3,8 +3,6 @@ import {
 	DatePickerRoot,
 	DatePickerField,
 	DatePickerInput,
-	DatePickerTrigger,
-	DatePickerContent,
 	DatePickerCalendar,
 	DatePickerHeader,
 	DatePickerHeading,
@@ -17,8 +15,9 @@ import {
 	DatePickerHeadCell,
 	DatePickerNext,
 	DatePickerPrev,
+	FocusScope,
 } from 'reka-ui';
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted, nextTick } from 'vue';
 
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
@@ -47,14 +46,30 @@ const emit = defineEmits<{
 }>();
 
 const selectedDate = ref(props.initialValue || null);
+const datePickerFieldRef = ref<any>(null);
 
 watch(selectedDate, (newDate) => {
 	emit('update:modelValue', newDate);
 });
 
-function clearSelection() {
-	selectedDate.value = null;
-}
+// Focus the date picker field when the component is mounted
+onMounted(async () => {
+	await nextTick();
+	// Try different approaches to focus the DatePickerField
+	if (datePickerFieldRef.value) {
+		// Try the component's focus method first
+		if (typeof datePickerFieldRef.value.focus === 'function') {
+			datePickerFieldRef.value.focus();
+		} else if (datePickerFieldRef.value.$el) {
+			// Fallback to focusing the root element
+			const rootEl = datePickerFieldRef.value.$el as HTMLElement;
+			const firstSegment = rootEl.querySelector('.dateFieldSegment');
+			if (firstSegment instanceof HTMLElement) {
+				firstSegment.focus();
+			}
+		}
+	}
+});
 
 function handleDateSelect(dateValue: unknown) {
 	if (!dateValue) {
@@ -87,8 +102,8 @@ function handleDateSelect(dateValue: unknown) {
 
 <template>
 	<div class="datePickerContainer">
-		<DatePickerRoot autofocus @update:model-value="handleDateSelect" class="datePickerRoot">
-			<DatePickerField v-slot="{ segments }" class="datePickerField">
+		<DatePickerRoot @update:model-value="handleDateSelect" class="datePickerRoot">
+			<DatePickerField ref="datePickerFieldRef" v-slot="{ segments }" class="datePickerField">
 				<template v-for="item in segments" :key="item.part">
 					<DatePickerInput
 						v-if="item.part === 'literal'"
@@ -97,7 +112,7 @@ function handleDateSelect(dateValue: unknown) {
 					>
 						{{ item.value }}
 					</DatePickerInput>
-					<DatePickerInput v-else :part="item.part" class="dateFieldSegment">
+					<DatePickerInput v-else :part="item.part" class="dateFieldSegment" :tabindex="0">
 						{{ item.value }}
 					</DatePickerInput>
 				</template>
