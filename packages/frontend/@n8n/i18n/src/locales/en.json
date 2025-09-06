@@ -1,4 +1,9 @@
 {
+	"_brand.name": "ADECOM n8n",
+	"about.aboutN8n": "About @:_brand.name",
+	"about.n8nVersion": "@:_brand.name Version"
+}
+{
 	"_reusableBaseText": {
 		"cancel": "Cancel",
 		"codeNodeEditor": {
@@ -31,9 +36,6 @@
 			"clientSecret": "Client Secret"
 		}
 	},
-	"_brand.name": "ADECOM n8n",
-	"about.aboutN8n": "About @:_brand.name",
-	"about.n8nVersion": "@:_brand.name Version",
 	"generic.annotations": "Annotations",
 	"generic.annotationData": "Highlighted data",
 	"generic.any": "Any",
