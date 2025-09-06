@@ -27,10 +27,12 @@ const props = withDefaults(
 		executions: ExecutionSummaryWithScopes[];
 		filters: ExecutionFilterType;
 		total?: number;
+		concurrentTotal?: number;
 		estimated?: boolean;
 	}>(),
 	{
 		total: 0,
+		concurrentTotal: 0,
 		estimated: false,
 	},
 );
@@ -75,17 +77,6 @@ const workflows = computed<IWorkflowDb[]>(() => {
 const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
-
-/**
- * Calculate the number of executions counted towards the production executions concurrency limit.
- * Evaluation executions are not counted towards this limit and the evaluation limit isn't shown in the UI.
- */
-const runningExecutionsCount = computed(() => {
-	return props.executions.filter(
-		(execution) =>
-			execution.status === 'running' && ['webhook', 'trigger'].includes(execution.mode),
-	).length;
-});
 
 watch(
 	() => props.executions,
@@ -339,7 +330,7 @@ const goToUpgrade = () => {
 			<div style="margin-left: auto">
 				<ConcurrentExecutionsHeader
 					v-if="settingsStore.isConcurrencyEnabled"
-					:running-executions-count="runningExecutionsCount"
+					:running-executions-count="concurrentTotal"
 					:concurrency-cap="settingsStore.concurrency"
 					:is-cloud-deployment="settingsStore.isCloudDeployment"
 					@go-to-upgrade="goToUpgrade"

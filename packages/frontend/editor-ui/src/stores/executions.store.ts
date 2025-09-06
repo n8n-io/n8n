@@ -52,6 +52,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const executionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
 	const executionsCount = ref(0);
 	const executionsCountEstimated = ref(false);
+	const concurrentExecutionsCount = ref(0);
 	const executions = computed(() => {
 		const data = Object.values(executionsById.value);
 
@@ -176,6 +177,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 			executionsCount.value = data.count;
 			executionsCountEstimated.value = data.estimated;
+			concurrentExecutionsCount.value = data.concurrentExecutionsCount;
 			return data;
 		} finally {
 			loading.value = false;
@@ -284,6 +286,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		currentExecutionsById.value = {};
 		executionsCount.value = 0;
 		executionsCountEstimated.value = false;
+		concurrentExecutionsCount.value = 0;
 	}
 
 	function reset() {
@@ -301,6 +304,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executions,
 		executionsCount,
 		executionsCountEstimated,
+		concurrentExecutionsCount,
 		executionsByWorkflowId,
 		currentExecutions,
 		currentExecutionsByWorkflowId,
