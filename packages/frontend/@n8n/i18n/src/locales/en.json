@@ -3451,5 +3451,8 @@
 	"workflowDiff.newWorkflow.remote": "The workflow will be created on remote",
 	"preBuiltAgentTemplates.title": "Pre-built agents",
 	"preBuiltAgentTemplates.tutorials": "Tutorial templates",
-	"preBuiltAgentTemplates.viewAllLink": "View all templates"
+	"preBuiltAgentTemplates.viewAllLink": "View all templates",
+	"_brand.name": "ADECOM n8n",
+	"about.aboutN8n": "About @:_brand.name",
+	"about.n8nVersion": "@:_brand.name Version"
 }
