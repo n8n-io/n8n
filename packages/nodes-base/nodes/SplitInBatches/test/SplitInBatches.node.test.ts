@@ -107,7 +107,7 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 
 			// Counter should be cleaned up
 			const executionCounters = (SplitInBatchesV3 as any).executionCounters;
-			const globalKey = `test-execution-id_SplitInBatches`;
+			const globalKey = 'test-execution-id_SplitInBatches';
 			expect(executionCounters.has(globalKey)).toBe(false);
 		});
 
@@ -171,7 +171,7 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 
 			const executionCounters = (SplitInBatchesV3 as any).executionCounters;
-			const globalKey = `test-execution-id_SplitInBatches`;
+			const globalKey = 'test-execution-id_SplitInBatches';
 			expect(executionCounters.has(globalKey)).toBe(true);
 
 			// Reset counter
@@ -192,8 +192,8 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2);
 
 			const executionCounters = (SplitInBatchesV3 as any).executionCounters;
-			const globalKey1 = `test-execution-id_SplitInBatches`;
-			const globalKey2 = `test-execution-id_AnotherSplitInBatches`;
+			const globalKey1 = 'test-execution-id_SplitInBatches';
+			const globalKey2 = 'test-execution-id_AnotherSplitInBatches';
 
 			expect(executionCounters.has(globalKey1)).toBe(true);
 			expect(executionCounters.has(globalKey2)).toBe(true);
