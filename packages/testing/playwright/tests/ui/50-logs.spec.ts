@@ -57,7 +57,7 @@ test.describe('Logs', () => {
 
 		await n8n.logs.getClearExecutionButton().click();
 		await expect(n8n.logs.getLogEntries()).toHaveCount(0);
-		await expect(n8n.canvas.getNodeIssuesByName(NODES.CODE1)).not.toBeVisible();
+		await expect(n8n.canvas.getNodeIssuesByName(NODES.CODE1)).toBeHidden();
 	});
 
 	test('should allow to trigger partial execution', async ({ n8n, setupRequirements }) => {
@@ -241,8 +241,8 @@ test.describe('Logs', () => {
 		const response = await n8n.page.request.get(webhookUrl!);
 		expect(response.status()).toBe(200);
 
-		await expect(n8n.canvas.getNodesWithSpinner()).not.toBeVisible();
-		await expect(n8n.canvas.getWaitingNodes()).not.toBeVisible();
+		await expect(n8n.canvas.getNodesWithSpinner()).toBeHidden();
+		await expect(n8n.canvas.getWaitingNodes()).toBeHidden();
 		await expect(
 			n8n.logs.getOverviewStatus().filter({ hasText: /Success in [\d.]+m?s/ }),
 		).toBeVisible();

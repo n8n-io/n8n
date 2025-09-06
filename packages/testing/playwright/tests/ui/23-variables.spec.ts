@@ -1,6 +1,11 @@
-import { nanoid } from 'nanoid';
+import { customAlphabet } from 'nanoid';
 
 import { test, expect } from '../../fixtures/base';
+
+const generateValidId = customAlphabet(
+	'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_',
+	8,
+);
 
 test.describe('Variables', () => {
 	// These tests are serial since it's at an instance level and they interact with the same variables
@@ -25,7 +30,7 @@ test.describe('Variables', () => {
 		});
 
 		test('should create a new variable using empty state', async ({ n8n }) => {
-			const key = `ENV_VAR_${nanoid(8)}`;
+			const key = `ENV_VAR_${generateValidId()}`;
 			const value = 'test_value';
 
 			await n8n.variables.createVariableFromEmptyState(key, value);
@@ -37,12 +42,12 @@ test.describe('Variables', () => {
 		});
 
 		test('should create multiple variables', async ({ n8n }) => {
-			const key1 = `ENV_VAR_NEW_${nanoid(8)}`;
+			const key1 = `ENV_VAR_NEW_${generateValidId()}`;
 			const value1 = 'test_value_1';
 			await n8n.variables.createVariableFromEmptyState(key1, value1);
 			await expect(n8n.variables.getVariablesRows()).toHaveCount(1);
 
-			const key2 = `ENV_EXAMPLE_${nanoid(8)}`;
+			const key2 = `ENV_EXAMPLE_${generateValidId()}`;
 			const value2 = 'test_value_2';
 			await n8n.variables.createVariable(key2, value2);
 
@@ -58,10 +63,13 @@ test.describe('Variables', () => {
 		});
 
 		test('should get validation errors and cancel variable creation', async ({ n8n }) => {
-			await n8n.variables.createVariableFromEmptyState(`ENV_BASE_${nanoid(8)}`, 'base_value');
+			await n8n.variables.createVariableFromEmptyState(
+				`ENV_BASE_${generateValidId()}`,
+				'base_value',
+			);
 			const initialCount = await n8n.variables.getVariablesRows().count();
 
-			const key = `ENV_VAR_INVALID_${nanoid(8)}$`; // Invalid key with special character
+			const key = `ENV_VAR_INVALID_${generateValidId()}$`; // Invalid key with special character
 			const value = 'test_value';
 
 			await n8n.variables.getCreateVariableButton().click();
@@ -79,7 +87,7 @@ test.describe('Variables', () => {
 		});
 
 		test('should edit a variable', async ({ n8n }) => {
-			const key = `ENV_VAR_EDIT_${nanoid(8)}`;
+			const key = `ENV_VAR_EDIT_${generateValidId()}`;
 			const initialValue = 'initial_value';
 			await n8n.variables.createVariableFromEmptyState(key, initialValue);
 
@@ -96,7 +104,7 @@ test.describe('Variables', () => {
 		});
 
 		test('should delete a variable', async ({ n8n }) => {
-			const key = `TO_DELETE_${nanoid(8)}`;
+			const key = `TO_DELETE_${generateValidId()}`;
 			const value = 'delete_test_value';
 
 			await n8n.variables.createVariableFromEmptyState(key, value);
@@ -110,7 +118,7 @@ test.describe('Variables', () => {
 		});
 
 		test('should search for a variable', async ({ n8n, page }) => {
-			const uniqueId = nanoid(8);
+			const uniqueId = generateValidId();
 
 			const key1 = `SEARCH_VAR_${uniqueId}`;
 			const key2 = `SEARCH_VAR_NEW_${uniqueId}`;
@@ -144,7 +152,7 @@ test.describe('Variables', () => {
 			await expect(page).toHaveURL(new RegExp('search=SEARCH_'));
 
 			await n8n.variables.getSearchBar().clear();
-			await n8n.variables.getSearchBar().fill(`NonExistent_${nanoid(8)}`);
+			await n8n.variables.getSearchBar().fill(`NonExistent_${generateValidId()}`);
 			await n8n.variables.getSearchBar().press('Enter');
 			await expect(n8n.variables.getVariablesRows()).toBeHidden();
 			await expect(page).toHaveURL(/search=NonExistent_/);

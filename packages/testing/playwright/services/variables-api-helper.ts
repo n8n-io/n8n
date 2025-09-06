@@ -105,7 +105,7 @@ export class VariablesApiHelper {
 		value: string = 'test_value',
 	): Promise<VariableResponse> {
 		const key = `${keyPrefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-		return this.createVariable({ key, value });
+		return await this.createVariable({ key, value });
 	}
 
 	/**
