@@ -62,7 +62,11 @@ describe('ExecuteContext', () => {
 		nullParameter: null,
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		executionId: '123',
+		credentialsHelper,
+		webhookWaitingBaseUrl: 'http://webhookWaitingBaseUrl',
+	});
 	const mode: WorkflowExecuteMode = 'manual';
 	const runExecutionData = mock<IRunExecutionData>();
 	const connectionInputData: INodeExecutionData[] = [];

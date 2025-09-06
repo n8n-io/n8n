@@ -63,6 +63,7 @@ export class WorkflowExecutionService {
 		];
 
 		const executionData: IRunExecutionData = {
+			version: 1,
 			startData: {},
 			resultData: {
 				runData: {},
@@ -351,6 +352,7 @@ export class WorkflowExecutionService {
 			});
 
 			const runExecutionData: IRunExecutionData = {
+				version: 1,
 				startData: {},
 				resultData: {
 					runData: {},

@@ -80,6 +80,7 @@ export async function getRunData(
 	});
 
 	const runExecutionData: IRunExecutionData = {
+		version: 1,
 		startData: {},
 		resultData: {
 			runData: {},
@@ -418,6 +419,7 @@ export async function getBase(
 			siblingParameters: INodeParameters,
 			mode: WorkflowExecuteMode,
 			envProviderState: EnvProviderState,
+			resumeUrl: string,
 			executeData?: IExecuteData,
 		) {
 			return await Container.get(TaskRequester).startTask(
@@ -436,6 +438,7 @@ export async function getBase(
 				siblingParameters,
 				mode,
 				envProviderState,
+				resumeUrl,
 				executeData,
 			);
 		},

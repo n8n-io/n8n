@@ -44,7 +44,11 @@ describe('LoadOptionsContext', () => {
 		testParameter: 'testValue',
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		executionId: '123',
+		webhookWaitingBaseUrl: 'http://webhookWaitingBaseUrl',
+		credentialsHelper,
+	});
 	const path = 'testPath';
 
 	const loadOptionsContext = new LoadOptionsContext(workflow, node, additionalData, path);

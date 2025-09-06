@@ -55,6 +55,8 @@ export function WorkflowExecuteAdditionalData(
 	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
 	hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
 	return mock<IWorkflowExecuteAdditionalData>({
+		executionId: '123',
+		webhookWaitingBaseUrl: 'http://webhookWaitingBaseUrl',
 		hooks,
 		currentNodeExecutionIndex: 0,
 		// Not setting this to undefined would set it to a mock which would trigger

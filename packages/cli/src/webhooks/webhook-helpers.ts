@@ -311,6 +311,7 @@ export function prepareExecutionData(
 	];
 
 	runExecutionData ??= {
+		version: 1,
 		startData: {},
 		resultData: {
 			runData: {},
@@ -448,8 +449,9 @@ export async function executeWebhook(
 				source: null,
 			});
 			runExecutionData =
-				runExecutionData ||
+				runExecutionData ??
 				({
+					version: 1,
 					startData: {},
 					resultData: {
 						runData: {},

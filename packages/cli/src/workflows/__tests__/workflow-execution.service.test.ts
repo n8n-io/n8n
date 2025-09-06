@@ -563,6 +563,7 @@ describe('WorkflowExecutionService', () => {
 			expect(workflowRunnerMock.run).toHaveBeenCalledWith({
 				executionMode: 'error',
 				executionData: {
+					version: 1,
 					executionData: {
 						contextData: {},
 						metadata: {},

@@ -90,6 +90,7 @@ export class WorkflowExecute {
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
 		private readonly mode: WorkflowExecuteMode,
 		private runExecutionData: IRunExecutionData = {
+			version: 1,
 			startData: {},
 			resultData: {
 				runData: {},

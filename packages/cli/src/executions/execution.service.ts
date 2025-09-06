@@ -285,6 +285,7 @@ export class ExecutionService {
 		if (saveDataErrorExecutionDisabled) return;
 
 		const executionData: IRunExecutionData = {
+			version: 1,
 			startData: {
 				destinationNode: node.name,
 				runNodeFilter: [node.name],

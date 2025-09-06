@@ -220,6 +220,7 @@ export class NodeTestHarness {
 
 		let executionData: IRun;
 		const runExecutionData: IRunExecutionData = {
+			version: 1,
 			resultData: {
 				runData: {},
 			},

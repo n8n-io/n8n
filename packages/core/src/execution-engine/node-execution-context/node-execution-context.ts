@@ -37,7 +37,6 @@ import {
 	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
-	WAITING_TOKEN_QUERY_PARAM,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
 
@@ -46,7 +45,7 @@ import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
-import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
+import { generateResumeUrl } from '../../utils/signature-helpers';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -203,10 +202,28 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.instanceSettings.instanceId;
 	}
 
-	setSignatureValidationRequired() {
-		if (this.runExecutionData) this.runExecutionData.validateSignature = true;
+	/**
+	 * Returns the webhook resume URL without including the node ID in the URL
+	 */
+	getSignedResumeUrlWithoutNodeId(parameters: Record<string, string> = {}) {
+		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
+
+		if (typeof executionId !== 'string') {
+			throw new UnexpectedError('Execution id is missing');
+		}
+
+		return generateResumeUrl({
+			webhookWaitingBaseUrl,
+			executionId,
+			signingSecret: this.instanceSettings.hmacSignatureSecret,
+			parameters,
+		});
 	}
 
+	/**
+	 * Returns the webhook resume URL and includes the node ID in the URL.
+	 * This is meant for HITL nodes, that use the node ID for certain things.
+	 */
 	getSignedResumeUrl(parameters: Record<string, string> = {}) {
 		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
 
@@ -214,19 +231,13 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			throw new UnexpectedError('Execution id is missing');
 		}
 
-		const baseURL = new URL(`${webhookWaitingBaseUrl}/${executionId}/${this.node.id}`);
-
-		for (const [key, value] of Object.entries(parameters)) {
-			baseURL.searchParams.set(key, value);
-		}
-
-		const urlForSigning = prepareUrlForSigning(baseURL);
-
-		const token = generateUrlSignature(urlForSigning, this.instanceSettings.hmacSignatureSecret);
-
-		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
-
-		return baseURL.toString();
+		return generateResumeUrl({
+			webhookWaitingBaseUrl,
+			executionId,
+			nodeId: this.node.id,
+			signingSecret: this.instanceSettings.hmacSignatureSecret,
+			parameters,
+		});
 	}
 
 	getTimezone() {
@@ -372,7 +383,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	@Memoized
 	protected get additionalKeys() {
-		return getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData);
+		const { executionId } = this.additionalData;
+		const resumeUrl = executionId ? this.getSignedResumeUrlWithoutNodeId() : undefined;
+
+		return getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData, resumeUrl);
 	}
 
 	/** Returns the requested resolved (all expressions replaced) node parameters. */

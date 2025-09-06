@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 
-import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_EXECUTION_ID, PLACEHOLDER_EMPTY_RESUME_URL } from '@/constants';
 
 import {
 	setWorkflowExecutionMetadata,
@@ -16,16 +16,21 @@ import {
 } from './execution-metadata';
 import { getSecretsProxy } from './get-secrets-proxy';
 
-/** Returns the additional keys for Expressions and Function-Nodes */
+/**
+ * Returns the additional keys for Expressions and Function-Nodes
+ */
 export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	runExecutionData: IRunExecutionData | null,
+	resumeUrl?: string,
 	options?: { secretsEnabled?: boolean },
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
-	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
+
+	resumeUrl ??= PLACEHOLDER_EMPTY_RESUME_URL;
 	const resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
+
 	return {
 		$execution: {
 			id: executionId,

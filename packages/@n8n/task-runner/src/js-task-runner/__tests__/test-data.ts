@@ -126,6 +126,7 @@ export const newDataRequestResponse = (
 			isEnvAccessBlocked: true,
 			isProcessAvailable: true,
 		},
+		resumeUrl: 'http://webhookResumeUrl',
 		additionalData: {
 			executionId: 'exec-id',
 			instanceBaseUrl: '',

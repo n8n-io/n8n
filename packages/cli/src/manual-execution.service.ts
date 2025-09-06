@@ -83,6 +83,7 @@ export class ManualExecutionService {
 			}
 
 			const executionData: IRunExecutionData = {
+				version: 1,
 				resultData: { runData, pinData },
 				executionData: {
 					contextData: {},

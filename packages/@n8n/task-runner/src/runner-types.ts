@@ -56,6 +56,7 @@ export interface DataRequestResponse {
 	selfData: IDataObject;
 	contextNodeName: string;
 	additionalData: PartialAdditionalData;
+	resumeUrl: string;
 }
 
 export interface TaskResultData {
@@ -84,6 +85,7 @@ export interface TaskData {
 	selfData: IDataObject;
 	contextNodeName: string;
 	additionalData: IWorkflowExecuteAdditionalData;
+	resumeUrl: string;
 }
 
 export interface PartialAdditionalData {

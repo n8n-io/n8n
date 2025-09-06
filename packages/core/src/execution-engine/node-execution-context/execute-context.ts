@@ -178,6 +178,8 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		settings: unknown,
 		itemIndex: number,
 	): Promise<Result<T, E>> {
+		const resumeUrl = this.getSignedResumeUrlWithoutNodeId();
+
 		return await this.additionalData.startRunnerTask<T, E>(
 			this.additionalData,
 			jobType,
@@ -194,6 +196,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			{},
 			this.mode,
 			createEnvProviderState(),
+			resumeUrl,
 			this.executeData,
 		);
 	}

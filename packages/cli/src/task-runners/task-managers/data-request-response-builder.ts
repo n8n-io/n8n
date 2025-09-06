@@ -30,6 +30,7 @@ export class DataRequestResponseBuilder {
 			selfData: taskData.selfData,
 			siblingParameters: taskData.siblingParameters,
 			additionalData: this.buildAdditionalData(taskData.additionalData),
+			resumeUrl: taskData.resumeUrl,
 		};
 	}
 

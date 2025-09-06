@@ -288,7 +288,7 @@ describe('JsTaskRunner', () => {
 						id: 'exec-id',
 						mode: 'test',
 						resumeFormUrl: 'http://formWaitingBaseUrl/exec-id',
-						resumeUrl: 'http://webhookWaitingBaseUrl/exec-id',
+						resumeUrl: 'http://webhookResumeUrl',
 						customData: {
 							get: expect.any(Function),
 							getAll: expect.any(Function),

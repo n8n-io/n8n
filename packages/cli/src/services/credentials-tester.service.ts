@@ -319,6 +319,7 @@ export class CredentialsTester {
 		};
 		const connectionInputData: INodeExecutionData[] = [];
 		const runExecutionData: IRunExecutionData = {
+			version: 1,
 			resultData: {
 				runData: {},
 			},

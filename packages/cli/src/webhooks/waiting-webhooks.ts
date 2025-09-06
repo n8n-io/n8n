@@ -130,15 +130,12 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const execution = await this.getExecution(executionId);
 
-		if (execution?.data.validateSignature) {
-			const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-			const lastNode = execution.workflowData.nodes.find((node) => node.name === lastNodeExecuted);
-			const shouldValidate = lastNode?.parameters.operation === SEND_AND_WAIT_OPERATION;
-
-			if (shouldValidate && !this.validateSignatureInRequest(req)) {
-				res.status(401).json({ error: 'Invalid token' });
-				return { noWebhookResponse: true };
-			}
+		// We started requiring the signature first for HITL nodes
+		// (validateSignature), and later on for Wait for webhook
+		const requireSignature = !!execution?.data.version || !!execution?.data.validateSignature;
+		if (requireSignature && !this.validateSignatureInRequest(req)) {
+			res.status(401).json({ error: 'Invalid token' });
+			return { noWebhookResponse: true };
 		}
 
 		if (!execution) {

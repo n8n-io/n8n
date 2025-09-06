@@ -404,7 +404,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(credential);
-		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
+		// There is no workflow execution at this point so resume URL won't be
+		// available either
+		const resumeUrl = undefined;
+		const additionalKeys = getAdditionalKeys(additionalData, mode, null, resumeUrl, {
 			secretsEnabled: canUseExternalSecrets,
 		});
 
