@@ -1,5 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { SplitInBatchesV3 } from '../v3/SplitInBatchesV3.node';
 
@@ -9,7 +9,7 @@ describe('Execute SplitInBatches Node', () => {
 
 describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 	let splitInBatchesNode: SplitInBatchesV3;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Partial<IExecuteFunctions>;
 
 	beforeEach(() => {
 		splitInBatchesNode = new SplitInBatchesV3();
@@ -36,7 +36,7 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 			continueOnFail: jest.fn().mockReturnValue(false),
 			getInputSourceData: jest.fn().mockReturnValue([]),
 			helpers: {} as any,
-		} as jest.Mocked<IExecuteFunctions>;
+		};
 	});
 
 	afterEach(() => {
@@ -48,38 +48,38 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 		it('should allow executions under the limit', () => {
 			// Test that executions under the limit (3) are allowed
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).not.toThrow();
 
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).not.toThrow();
 
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).not.toThrow();
 		});
 
 		it('should throw NodeOperationError when execution limit is exceeded', () => {
 			// Execute up to the limit
 			for (let i = 0; i < 3; i++) {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
 			// The 4th execution should throw
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).toThrow(NodeOperationError);
 		});
 
 		it('should include proper error message with node name and execution count', () => {
 			// Execute up to the limit
 			for (let i = 0; i < 3; i++) {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
 			try {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 				fail('Expected NodeOperationError to be thrown');
 			} catch (error) {
 				expect(error).toBeInstanceOf(NodeOperationError);
@@ -96,11 +96,11 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 		it('should clean up execution counter after throwing error', () => {
 			// Execute up to the limit and trigger error
 			for (let i = 0; i < 3; i++) {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
 			try {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			} catch (error) {
 				// Expected error
 			}
@@ -119,25 +119,25 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 
 			// Execute node 1 up to limit
 			for (let i = 0; i < 3; i++) {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
 			// Node 2 should still be able to execute
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
 			}).not.toThrow();
 
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
 			}).not.toThrow();
 
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
 			}).not.toThrow();
 
 			// But node 1 should still throw
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).toThrow(NodeOperationError);
 		});
 
@@ -149,17 +149,17 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 
 			// Execute first execution up to limit
 			for (let i = 0; i < 3; i++) {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}
 
 			// Different execution ID should still be able to execute
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2 as IExecuteFunctions);
 			}).not.toThrow();
 
 			// First execution should throw
 			expect(() => {
-				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+				(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			}).toThrow(NodeOperationError);
 		});
 	});
@@ -167,15 +167,15 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 	describe('resetExecutionCount', () => {
 		it('should remove execution counter for the node', () => {
 			// Build up counter
-			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
-			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
+			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 
 			const executionCounters = (SplitInBatchesV3 as any).executionCounters;
 			const globalKey = `test-execution-id_SplitInBatches`;
 			expect(executionCounters.has(globalKey)).toBe(true);
 
 			// Reset counter
-			(SplitInBatchesV3 as any).resetExecutionCount(mockExecuteFunctions);
+			(SplitInBatchesV3 as any).resetExecutionCount(mockExecuteFunctions as IExecuteFunctions);
 
 			// Counter should be removed
 			expect(executionCounters.has(globalKey)).toBe(false);
@@ -188,7 +188,7 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 			};
 
 			// Build up counters for both nodes
-			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions);
+			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions as IExecuteFunctions);
 			(SplitInBatchesV3 as any).checkExecutionLimit(mockExecuteFunctions2);
 
 			const executionCounters = (SplitInBatchesV3 as any).executionCounters;
@@ -199,7 +199,7 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 			expect(executionCounters.has(globalKey2)).toBe(true);
 
 			// Reset only first node
-			(SplitInBatchesV3 as any).resetExecutionCount(mockExecuteFunctions);
+			(SplitInBatchesV3 as any).resetExecutionCount(mockExecuteFunctions as IExecuteFunctions);
 
 			// Only first node's counter should be removed
 			expect(executionCounters.has(globalKey1)).toBe(false);
@@ -227,9 +227,13 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 				getInputSourceData: jest.fn().mockReturnValue([]),
 			};
 
-			await splitInBatchesNode.execute.call(executeFunctionsWithContext);
+			await splitInBatchesNode.execute.call(
+				executeFunctionsWithContext as unknown as IExecuteFunctions,
+			);
 
-			expect(checkExecutionLimitSpy).toHaveBeenCalledWith(executeFunctionsWithContext);
+			expect(checkExecutionLimitSpy).toHaveBeenCalledWith(
+				executeFunctionsWithContext as unknown as IExecuteFunctions,
+			);
 
 			checkExecutionLimitSpy.mockRestore();
 		});
@@ -256,9 +260,13 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 				getInputSourceData: jest.fn().mockReturnValue([]),
 			};
 
-			await splitInBatchesNode.execute.call(executeFunctionsWithContext);
+			await splitInBatchesNode.execute.call(
+				executeFunctionsWithContext as unknown as IExecuteFunctions,
+			);
 
-			expect(resetExecutionCountSpy).toHaveBeenCalledWith(executeFunctionsWithContext);
+			expect(resetExecutionCountSpy).toHaveBeenCalledWith(
+				executeFunctionsWithContext as unknown as IExecuteFunctions,
+			);
 
 			resetExecutionCountSpy.mockRestore();
 		});
@@ -288,9 +296,13 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 				getInputSourceData: jest.fn().mockReturnValue([]),
 			};
 
-			await splitInBatchesNode.execute.call(executeFunctionsWithContext);
+			await splitInBatchesNode.execute.call(
+				executeFunctionsWithContext as unknown as IExecuteFunctions,
+			);
 
-			expect(resetExecutionCountSpy).toHaveBeenCalledWith(executeFunctionsWithContext);
+			expect(resetExecutionCountSpy).toHaveBeenCalledWith(
+				executeFunctionsWithContext as unknown as IExecuteFunctions,
+			);
 
 			resetExecutionCountSpy.mockRestore();
 		});
@@ -312,7 +324,9 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 					getInputSourceData: jest.fn().mockReturnValue([]),
 				};
 
-				await splitInBatchesNode.execute.call(executeFunctionsWithContext);
+				await splitInBatchesNode.execute.call(
+					executeFunctionsWithContext as unknown as IExecuteFunctions,
+				);
 			}
 
 			// 4th execution should throw
@@ -330,9 +344,11 @@ describe('SplitInBatchesV3 Infinite Loop Protection', () => {
 				getInputSourceData: jest.fn().mockReturnValue([]),
 			};
 
-			await expect(splitInBatchesNode.execute.call(executeFunctionsWithContext)).rejects.toThrow(
-				NodeOperationError,
-			);
+			await expect(
+				splitInBatchesNode.execute.call(
+					executeFunctionsWithContext as unknown as IExecuteFunctions,
+				),
+			).rejects.toThrow(NodeOperationError);
 		});
 	});
 });
