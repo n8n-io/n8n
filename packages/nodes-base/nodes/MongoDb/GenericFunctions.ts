@@ -153,8 +153,16 @@ export function stringifyObjectIDs(items: INodeExecutionData[]) {
 	return items;
 }
 
-export async function connectMongoClient(connectionString: string, credentials: IDataObject = {}) {
+export async function connectMongoClient(
+	connectionString: string,
+	nodeVersion: number,
+	credentials: IDataObject = {},
+) {
 	let client: MongoClient;
+	const driverInfo = {
+		name: 'n8n_crud',
+		version: nodeVersion > 0 ? nodeVersion.toString() : 'unknown',
+	};
 
 	if (credentials.tls) {
 		const ca = credentials.ca ? formatPrivateKey(credentials.ca as string) : undefined;
@@ -172,10 +180,10 @@ export async function connectMongoClient(connectionString: string, credentials: 
 		client = await MongoClient.connect(connectionString, {
 			tls: true,
 			secureContext,
+			driverInfo,
 		});
 	} else {
-		client = await MongoClient.connect(connectionString);
+		client = await MongoClient.connect(connectionString, { driverInfo });
 	}
-
 	return client;
 }

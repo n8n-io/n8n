@@ -1,6 +1,11 @@
 import axios from 'axios';
 import { UnexpectedError } from 'n8n-workflow';
 
+function isDnsError(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.includes('getaddrinfo') || message.includes('ENOTFOUND');
+}
+
 const REQUEST_TIMEOUT = 30000;
 
 export async function verifyIntegrity(
@@ -22,6 +27,11 @@ export async function verifyIntegrity(
 			throw new UnexpectedError('Checksum verification failed. Package integrity does not match.');
 		}
 	} catch (error) {
+		if (isDnsError(error)) {
+			throw new UnexpectedError(
+				'Checksum verification failed. Please check your network connection and try again.',
+			);
+		}
 		throw new UnexpectedError('Checksum verification failed', { cause: error });
 	}
 }
@@ -42,6 +52,11 @@ export async function isVersionExists(
 			throw new UnexpectedError('Package version does not exist', {
 				cause: error,
 			});
+		}
+		if (isDnsError(error)) {
+			throw new UnexpectedError(
+				'The community nodes service is temporarily unreachable. Please try again later.',
+			);
 		}
 		throw new UnexpectedError('Failed to check package version existence', { cause: error });
 	}
