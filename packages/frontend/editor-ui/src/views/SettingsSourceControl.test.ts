@@ -50,6 +50,15 @@ const expectFieldsVisible = (
 	});
 };
 
+// Helper for common test setup
+const setupEnterprise = async () => {
+	settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+	if (!sourceControlStore.preferences.publicKey) {
+		await sourceControlStore.generateKeyPair('ed25519');
+	}
+	await nextTick();
+};
+
 describe('SettingsSourceControl', () => {
 	beforeAll(() => {
 		server = setupServer();
@@ -64,13 +73,6 @@ describe('SettingsSourceControl', () => {
 		sourceControlStore = useSourceControlStore();
 
 		await settingsStore.getSettings();
-
-		// Enable enterprise feature and ensure SSH key is available for most tests
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
-		if (!sourceControlStore.preferences.publicKey) {
-			await sourceControlStore.generateKeyPair('ed25519');
-		}
-		await nextTick();
 	});
 
 	afterEach(() => {
@@ -95,7 +97,8 @@ describe('SettingsSourceControl', () => {
 	});
 
 	it('should render licensed content', async () => {
-		// Enterprise is already enabled by default in beforeEach
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		await nextTick();
 
 		const { getByTestId, queryByTestId } = renderComponent({
 			pinia,
@@ -107,7 +110,7 @@ describe('SettingsSourceControl', () => {
 	});
 
 	it('should render user flow happy path', async () => {
-		// Enterprise is already enabled by default in beforeEach
+		await setupEnterprise();
 
 		const updatePreferencesSpy = vi.spyOn(sourceControlStore, 'updatePreferences');
 		const generateKeyPairSpy = vi.spyOn(sourceControlStore, 'generateKeyPair');
@@ -195,6 +198,10 @@ describe('SettingsSourceControl', () => {
 	});
 
 	describe('should test repo URLs for SSH', () => {
+		beforeEach(() => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		});
+
 		test.each([
 			['git@github.com:user/repository.git', true],
 			['git@github.enterprise.com:org-name/repo-name.git', true],
@@ -236,6 +243,10 @@ describe('SettingsSourceControl', () => {
 	});
 
 	describe('Protocol Selection and Field Visibility', () => {
+		beforeEach(async () => {
+			await setupEnterprise();
+		});
+
 		it('should render protocol dropdown with SSH and HTTPS options', async () => {
 			const { getByTestId, getByText } = renderComponent({
 				pinia,
@@ -345,6 +356,10 @@ describe('SettingsSourceControl', () => {
 	});
 
 	describe('HTTPS Authentication Flow', () => {
+		beforeEach(async () => {
+			await setupEnterprise();
+		});
+
 		it('should display HTTPS authentication form correctly', async () => {
 			const { container, getByTestId } = renderComponent({
 				pinia,
@@ -547,6 +562,10 @@ describe('SettingsSourceControl', () => {
 	});
 
 	describe('Protocol-Specific UI Behavior', () => {
+		beforeEach(async () => {
+			await setupEnterprise();
+		});
+
 		it('should show correct protocol in dropdown and update UI accordingly', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				pinia,
@@ -687,6 +706,10 @@ describe('SettingsSourceControl', () => {
 	});
 
 	describe('Form Validation and User Experience', () => {
+		beforeEach(async () => {
+			await setupEnterprise();
+		});
+
 		it('should disable connection button until all HTTPS fields are valid', async () => {
 			const { container, getByTestId } = renderComponent({
 				pinia,
