@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-// Use the non connected components to acheive this, Calendar, DateField and TimeField
+// Use the non connected components to achieve this, Calendar, DateField and TimeField
 
 import {
 	DateFieldInput,
@@ -17,11 +17,67 @@ import {
 	CalendarPrev,
 	CalendarRoot,
 } from 'reka-ui';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, nextTick, computed } from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
+import { getLocalTimeZone, parseDate, today, type DateValue } from '@internationalized/date';
 
-const dateFieldRoot = ref<InstanceType<typeof DateFieldRoot>>();
+interface FilterItem {
+	name: string;
+	id: string;
+	value: string; // ISO date string
+}
+
+const props = withDefaults(
+	defineProps<{
+		placeholder?: string;
+		initialValue?: FilterItem | null;
+		minValue?: string; // ISO date string
+		maxValue?: string; // ISO date string
+	}>(),
+	{
+		placeholder: 'Select date...',
+		initialValue: null,
+	},
+);
+
+const emit = defineEmits<{
+	'update:modelValue': [value: FilterItem | null];
+}>();
+
+// Parse initial value or use today's date
+const parsedInitialDate = computed(() => {
+	if (props.initialValue?.value) {
+		return parseDate(props.initialValue.value);
+	}
+	return today(getLocalTimeZone());
+});
+
+// Core state - single source of truth
+const selectedDate = ref<DateValue | undefined>(parsedInitialDate.value);
+
+// Parse min/max constraints
+const minDate = computed(() => (props.minValue ? parseDate(props.minValue) : undefined));
+const maxDate = computed(() => (props.maxValue ? parseDate(props.maxValue) : undefined));
+
+// Handle date changes from either component
+function handleDateChange(newDate: DateValue | undefined) {
+	selectedDate.value = newDate;
+
+	if (newDate) {
+		// Format date as ISO string for emission
+		const isoString = newDate.toString();
+		const formattedDisplay = newDate.toDate(getLocalTimeZone()).toLocaleDateString();
+
+		emit('update:modelValue', {
+			id: isoString,
+			value: isoString,
+			name: formattedDisplay,
+		});
+	} else {
+		emit('update:modelValue', null);
+	}
+}
 
 // Stop all keyboard events from bubbling up to the dropdown
 function stopKeyboardPropagation(e: KeyboardEvent) {
@@ -29,7 +85,10 @@ function stopKeyboardPropagation(e: KeyboardEvent) {
 	e.stopPropagation();
 }
 
-onMounted(() => {
+const dateFieldRoot = ref<any>(null);
+
+onMounted(async () => {
+	await nextTick();
 	// Focus the first segment after a small delay to ensure DOM is ready
 	setTimeout(() => {
 		const firstSegment = dateFieldRoot.value?.$el?.querySelector('.dateFieldSegment');
@@ -46,7 +105,13 @@ onMounted(() => {
 		@keyup="stopKeyboardPropagation"
 		class="datePickerContainer"
 	>
-		<DateFieldRoot v-slot="{ segments }" class="datePickerRoot" ref="dateFieldRoot">
+		<DateFieldRoot
+			v-slot="{ segments }"
+			class="datePickerRoot"
+			ref="dateFieldRoot"
+			v-model="selectedDate"
+			@update:model-value="handleDateChange"
+		>
 			<div class="datePickerField">
 				<template v-for="item in segments" :key="item.part">
 					<DateFieldInput v-if="item.part === 'literal'" :part="item.part" class="dateFieldLiteral">
@@ -58,7 +123,13 @@ onMounted(() => {
 				</template>
 			</div>
 		</DateFieldRoot>
-		<CalendarRoot v-slot="{ weekDays, grid }" class="datePickerCalendar">
+		<CalendarRoot
+			v-slot="{ weekDays, grid }"
+			class="datePickerCalendar"
+			ref="calendarRoot"
+			v-model="selectedDate"
+			@update:model-value="handleDateChange"
+		>
 			<CalendarHeader class="datePickerHeader">
 				<CalendarPrev class="datePickerNavButton">
 					<N8nIcon icon="chevron-left" size="small" />
