@@ -1,14 +1,13 @@
-<script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { onClickOutside, type VueInstance } from '@vueuse/core';
-
 {
 	"_brand.name": "ADECOM n8n",
 	//replace n8n with link to _brand.name
 	"about.aboutN8n": "About @:_brand.name",
 	"about.n8nVersion": "@:_brand.name Version",
-};
+}
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 import { useI18n } from '@n8n/i18n';
 import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
