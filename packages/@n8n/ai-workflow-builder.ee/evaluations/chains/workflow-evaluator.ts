@@ -121,7 +121,7 @@ Evaluate whether expressions correctly reference nodes and data using modern n8n
 **Check for these violations:**
 - **Critical (-40 to -50 points)**:
   - Invalid JavaScript syntax that would cause runtime errors (unclosed brackets, syntax errors, malformed JSON)
-  - Referencing truly non-existent nodes or fields that would cause runtime errors
+  - Referencing truly non-existent nodes or fields that would cause runtime errors (e.g. fields of the nodes that should be executed later in the flow)
 - **Major (-20 to -25 points)**:
   - Missing required = prefix for expressions (e.g., \`{{ $json.name }}\` instead of \`={{ $json.name }}\`)
   - Using $fromAI in non-tool nodes (would cause runtime error)

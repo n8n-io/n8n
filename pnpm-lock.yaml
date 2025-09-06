@@ -3009,8 +3009,8 @@ importers:
         specifier: 4.0.1
         version: 4.0.1
       rhea:
-        specifier: 1.0.24
-        version: 1.0.24
+        specifier: 3.0.4
+        version: 3.0.4
       rrule:
         specifier: 2.8.1
         version: 2.8.1
@@ -14694,8 +14694,8 @@ packages:
   rfdc@1.3.0:
     resolution: {integrity: sha512-V2hovdzFbOi77/WajaSMXk2OLm+xNIeQdMMuB7icj7bk6zi2F8GGAxigcnDFpJHbNyNcgyJDiP+8nOrY5cZGrA==}
 
-  rhea@1.0.24:
-    resolution: {integrity: sha512-PEl62U2EhxCO5wMUZ2/bCBcXAVKN9AdMSNQOrp3+R5b77TEaOSiy16MQ0sIOmzj/iqsgIAgPs1mt3FYfu1vIXA==}
+  rhea@3.0.4:
+    resolution: {integrity: sha512-n3kw8syCdrsfJ72w3rohpoHHlmv/RZZEP9VY5BVjjo0sEGIt4YSKypBgaiA+OUSgJAzLjOECYecsclG5xbYtZw==}
 
   rimraf@2.6.3:
     resolution: {integrity: sha512-mwqeW5XsA2qAejG46gYdENaxXjx9onRNCfn7L0duuP4hCuTIi/QO7PDK07KJfp1d+izWPrzEJDcSqBa0OZQriA==}
@@ -31397,9 +31397,9 @@ snapshots:
 
   rfdc@1.3.0: {}
 
-  rhea@1.0.24:
+  rhea@3.0.4:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 4.4.1(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 

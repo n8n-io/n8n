@@ -101,21 +101,63 @@ test.describe('Proxy tests @capability:proxy', () => {
 
 The ProxyServer service supports recording HTTP requests for test mocking and replay. All proxied requests are automatically recorded by the mock server as described in the [Mock Server documentation](https://www.mock-server.com/proxy/record_and_replay.html).
 
-```typescript
-// Record all requests
-await proxyServer.recordExpectations();
+#### Recording Expectations
 
-// Record requests with matching criteria
-await proxyServer.recordExpectations({
-  method: 'POST',
-  path: '/api/workflows',
-  queryStringParameters: {
-    'userId': ['123']
+```typescript
+// Record all requests (the request is simplified/cleansed to method/path/body/query)
+await proxyServer.recordExpectations('test-folder');
+
+// Record with filtering and options
+await proxyServer.recordExpectations('test-folder', {
+  host: 'googleapis.com',           // Filter by host (partial match)
+  dedupe: true,                     // Remove duplicate requests
+  raw: false                        // Save cleaned requests (default)
+});
+
+// Record raw requests with all headers and metadata
+await proxyServer.recordExpectations('test-folder', {
+  raw: true                         // Save complete original requests
+});
+
+// Record requests matching specific criteria
+await proxyServer.recordExpectations('test-folder', {
+  pathOrRequestDefinition: {
+    method: 'POST',
+    path: '/api/workflows'
   }
 });
 ```
 
-Recorded expectations are saved as JSON files in the `expectations/` directory with unique names based on the request details. When the ProxyServer fixture initializes, all saved expectations are automatically loaded and mocked for subsequent test runs.
+#### Loading and Using Recorded Expectations
+
+Recorded expectations are saved as JSON files in the `expectations/` directory. To use them in tests, you must explicitly load them:
+
+```typescript
+test('should use recorded expectations', async ({ proxyServer }) => {
+  // Load expectations from a specific folder
+  await proxyServer.loadExpectations('test-folder');
+
+  // Your test code here - requests will be mocked using loaded expectations
+});
+```
+
+#### Important: Cleanup Expectations
+
+**Remember to clean up expectations before or after test runs:**
+
+```typescript
+test.beforeEach(async ({ proxyServer }) => {
+  // Clear any existing expectations before test
+  await proxyServer.clearAllExpectations();
+});
+
+test.afterEach(async ({ proxyServer }) => {
+  // Or clear expectations after test
+  await proxyServer.clearAllExpectations();
+});
+```
+
+This prevents expectations from one test affecting others and ensures test isolation.
 
 ## Writing Tests
 For guidelines on writing new tests, see [CONTRIBUTING.md](./CONTRIBUTING.md).
