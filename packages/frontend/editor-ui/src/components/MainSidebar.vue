@@ -7,8 +7,8 @@ import { onClickOutside, type VueInstance } from '@vueuse/core';
 	"_brand.name": "ADECOM n8n",
 	//replace n8n with link to _brand.name
 	"about.aboutN8n": "About @:_brand.name",
-	"about.n8nVersion": "@:_brand.name Version",
-}
+	"about.n8nVersion": "@:_brand.name Version"
+},
 
 import { useI18n } from '@n8n/i18n';
 import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
