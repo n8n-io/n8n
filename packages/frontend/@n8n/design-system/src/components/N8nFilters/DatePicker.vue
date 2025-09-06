@@ -21,6 +21,7 @@ import {
 import { ref, watch } from 'vue';
 
 import N8nIcon from '../N8nIcon';
+import N8nText from '../N8nText';
 
 interface DateValue {
 	name: string;
@@ -100,60 +101,56 @@ function handleDateSelect(dateValue: unknown) {
 						{{ item.value }}
 					</DatePickerInput>
 				</template>
-
-				<DatePickerTrigger class="datePickerTrigger">
-					<N8nIcon icon="calendar" color="foreground-xdark" />
-				</DatePickerTrigger>
 			</DatePickerField>
 
-			<DatePickerContent class="datePickerContent">
-				<DatePickerCalendar v-slot="{ weekDays, grid }" class="datePickerCalendar">
-					<DatePickerHeader class="datePickerHeader">
-						<DatePickerPrev class="datePickerNavButton">
-							<N8nIcon icon="chevron-left" size="small" />
-						</DatePickerPrev>
-						<DatePickerHeading class="datePickerHeading" />
-						<DatePickerNext class="datePickerNavButton">
-							<N8nIcon icon="chevron-right" size="small" />
-						</DatePickerNext>
-					</DatePickerHeader>
-					<div class="datePickerWrapper">
-						<DatePickerGrid
-							v-for="month in grid"
-							:key="month.value.toString()"
-							class="datePickerGrid"
-						>
-							<DatePickerGridHead>
-								<DatePickerGridRow class="datePickerGridRow">
-									<DatePickerHeadCell v-for="day in weekDays" :key="day" class="datePickerHeadCell">
-										{{ day }}
-									</DatePickerHeadCell>
-								</DatePickerGridRow>
-							</DatePickerGridHead>
-							<DatePickerGridBody>
-								<DatePickerGridRow
-									v-for="(weekDates, index) in month.rows"
-									:key="`weekDate-${index}`"
-									class="datePickerGridRow"
+			<DatePickerCalendar v-slot="{ weekDays, grid }" class="datePickerCalendar">
+				<DatePickerHeader class="datePickerHeader">
+					<DatePickerPrev class="datePickerNavButton">
+						<N8nIcon icon="chevron-left" size="small" />
+					</DatePickerPrev>
+					<DatePickerHeading as-child v-slot="{ headingValue }">
+						<N8nText size="small">{{ headingValue }}</N8nText>
+					</DatePickerHeading>
+					<DatePickerNext class="datePickerNavButton">
+						<N8nIcon icon="chevron-right" size="small" />
+					</DatePickerNext>
+				</DatePickerHeader>
+				<div class="datePickerWrapper">
+					<DatePickerGrid
+						v-for="month in grid"
+						:key="month.value.toString()"
+						class="datePickerGrid"
+					>
+						<DatePickerGridHead>
+							<DatePickerGridRow class="datePickerGridRow">
+								<DatePickerHeadCell v-for="day in weekDays" :key="day" class="datePickerHeadCell">
+									{{ day }}
+								</DatePickerHeadCell>
+							</DatePickerGridRow>
+						</DatePickerGridHead>
+						<DatePickerGridBody>
+							<DatePickerGridRow
+								v-for="(weekDates, index) in month.rows"
+								:key="`weekDate-${index}`"
+								class="datePickerGridRow"
+							>
+								<DatePickerCell
+									v-for="weekDate in weekDates"
+									:key="weekDate.toString()"
+									:date="weekDate"
+									class="datePickerCell"
 								>
-									<DatePickerCell
-										v-for="weekDate in weekDates"
-										:key="weekDate.toString()"
-										:date="weekDate"
-										class="datePickerCell"
-									>
-										<DatePickerCellTrigger
-											:day="weekDate"
-											:month="month.value"
-											class="datePickerCellTrigger"
-										/>
-									</DatePickerCell>
-								</DatePickerGridRow>
-							</DatePickerGridBody>
-						</DatePickerGrid>
-					</div>
-				</DatePickerCalendar>
-			</DatePickerContent>
+									<DatePickerCellTrigger
+										:day="weekDate"
+										:month="month.value"
+										class="datePickerCellTrigger"
+									/>
+								</DatePickerCell>
+							</DatePickerGridRow>
+						</DatePickerGridBody>
+					</DatePickerGrid>
+				</div>
+			</DatePickerCalendar>
 		</DatePickerRoot>
 	</div>
 </template>
@@ -163,14 +160,7 @@ function handleDateSelect(dateValue: unknown) {
 
 .datePickerContainer {
 	position: relative;
-	display: inline-flex;
-	align-items: center;
 	width: 200px;
-	z-index: 4000;
-
-	/* & :deep() {
-
-	} */
 }
 
 .datePickerRoot {
@@ -263,27 +253,25 @@ function handleDateSelect(dateValue: unknown) {
 	display: flex;
 	flex-direction: column;
 	z-index: 1000;
-	min-width: 280px;
+	max-width: 200px;
 	position: relative;
-	border: var(--border-base);
-	background-color: var(--color-foreground-xlight);
-	box-shadow: var(--box-shadow-light);
-	border-radius: var(--border-radius-base);
+	border-top: var(--border-base);
+	border-color: var(--color-foreground-light);
 }
 
 .datePickerHeader {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	margin-bottom: var(--spacing-s);
+	padding: var(--spacing-4xs);
 }
 
 .datePickerNavButton {
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
-	width: 32px;
-	height: 32px;
+	width: var(--spacing-l);
+	height: var(--spacing-l);
 	border: none;
 	background: none;
 	cursor: pointer;
@@ -296,20 +284,11 @@ function handleDateSelect(dateValue: unknown) {
 	color: var(--color-text-dark);
 }
 
-.datePickerHeading {
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
-	color: var(--color-text-dark);
-}
-
 .datePickerWrapper {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	padding-top: var(--spacing-xs);
-	margin-top: var(--spacing-xs);
-	border-top: var(--border-base);
-	z-index: 4000;
+	padding: var(--spacing-4xs);
 }
 
 .datePickerGrid {
@@ -329,8 +308,8 @@ function handleDateSelect(dateValue: unknown) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: 24px;
-	font-size: var(--font-size-2xs);
+	height: var(--spacing-l);
+	font-size: var(--font-size-3xs);
 	font-weight: var(--font-weight-regular);
 	color: var(--color-text-light);
 	text-transform: uppercase;
@@ -338,7 +317,6 @@ function handleDateSelect(dateValue: unknown) {
 
 .datePickerCell {
 	position: relative;
-	font-size: var(--font-size-xs);
 	text-align: center;
 }
 
@@ -347,11 +325,10 @@ function handleDateSelect(dateValue: unknown) {
 	position: relative;
 	justify-content: center;
 	align-items: center;
-	width: 32px;
-	height: 32px;
-	border: 1px solid transparent;
+	width: var(--spacing-l);
+	height: var(--spacing-l);
 	border-radius: var(--border-radius-base);
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-regular);
 	color: var(--color-text-base);
 	background-color: transparent;
@@ -365,8 +342,7 @@ function handleDateSelect(dateValue: unknown) {
 }
 
 :deep(.datePickerCellTrigger:focus) {
-	outline: 2px solid var(--color-primary);
-	outline-offset: 2px;
+	outline: 1px solid var(--color-secondary);
 }
 
 :deep(.datePickerCellTrigger[data-disabled]) {
@@ -376,12 +352,14 @@ function handleDateSelect(dateValue: unknown) {
 }
 
 :deep(.datePickerCellTrigger[data-selected]) {
-	background-color: var(--color-primary);
-	color: white;
-	font-weight: var(--font-weight-bold);
+	background-color: var(--color-callout-secondary-background);
+	outline: var(--border-base);
+	outline-color: var(--color-callout-secondary-border);
+	color: var(--color-callout-secondary-font);
+	border-radius: var(--border-radius-base);
 }
 
-:deep(.datePickerCellTrigger[data-outside-month]) {
+:deep(.datePickerCellTrigger[data-outside-view]) {
 	color: var(--color-text-lighter);
 }
 
