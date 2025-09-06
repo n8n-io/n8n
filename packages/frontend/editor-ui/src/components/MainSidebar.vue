@@ -3,6 +3,13 @@ import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'v
 import { useRoute, useRouter } from 'vue-router';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 
+{
+	"_brand.name": "ADECOM n8n",
+	//replace n8n with link to _brand.name
+	"about.aboutN8n": "About @:_brand.name",
+	"about.n8nVersion": "@:_brand.name Version",
+}
+
 import { useI18n } from '@n8n/i18n';
 import { N8nNavigationDropdown, N8nTooltip, N8nLink, N8nIconButton } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
@@ -704,11 +711,5 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	padding: 2px;
 	border-radius: var(--border-radius-small);
 	margin: 7px 12px 0 5px;
-}
-{
-	"_brand.name": "ADECOM n8n",
-	//replace n8n with link to _brand.name
-	"about.aboutN8n": "About @:_brand.name",
-	"about.n8nVersion": "@:_brand.name Version",
 }
 </style>
