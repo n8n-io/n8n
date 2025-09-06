@@ -705,4 +705,10 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	border-radius: var(--border-radius-small);
 	margin: 7px 12px 0 5px;
 }
+{
+	"_brand.name": "ADECOM n8n",
+	//replace n8n with link to _brand.name
+	"about.aboutN8n": "About @:_brand.name",
+	"about.n8nVersion": "@:_brand.name Version",
+}
 </style>
