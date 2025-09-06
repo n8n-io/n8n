@@ -43,6 +43,11 @@ const router = createRouter({
 					name: 'Executions',
 					component,
 				},
+				{
+					path: 'project-roles',
+					name: 'ProjectRolesSettingsView',
+					component,
+				},
 			],
 		},
 		{
