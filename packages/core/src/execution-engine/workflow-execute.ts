@@ -105,6 +105,16 @@ export class WorkflowExecute {
 		},
 	) {}
 
+	/**
+	 * Executes the given workflow.
+	 *
+	 * @param {Workflow} workflow The workflow to execute
+	 * @param {INode} [startNode] Node to start execution from
+	 * @param {string} [destinationNode] Node to stop execution at
+	 */
+	// IMPORTANT: Do not add "async" to this function, it will then convert the
+	//            PCancelable to a regular Promise and does so not allow canceling
+	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	run(
 		workflow: Workflow,
