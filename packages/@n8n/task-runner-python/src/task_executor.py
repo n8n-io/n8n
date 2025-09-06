@@ -336,6 +336,8 @@ class TaskExecutor:
             "sys",
             "traceback",
             "linecache",
+            "importlib",
+            "importlib.machinery",
         }
 
         if "*" in stdlib_allow:
