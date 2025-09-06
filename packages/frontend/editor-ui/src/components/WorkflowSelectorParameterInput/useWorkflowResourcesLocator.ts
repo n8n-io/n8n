@@ -1,10 +1,9 @@
 import { ref, computed } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import sortBy from 'lodash/sortBy';
 import type { Router } from 'vue-router';
 import { VIEWS } from '@/constants';
 
-import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import type { NodeParameterValue } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
@@ -14,62 +13,16 @@ export function useWorkflowResourcesLocator(router: Router) {
 	const ndvStore = useNDVStore();
 	const { renameNode } = useCanvasOperations();
 
-	const workflowsResources = ref<Array<{ name: string; value: string; url: string }>>([]);
+	const workflowsResources = ref<
+		Array<{ name: string; value: string; url: string; isArchived: boolean }>
+	>([]);
 	const isLoadingResources = ref(true);
 	const searchFilter = ref('');
+	const currentPage = ref(0);
 	const PAGE_SIZE = 40;
+	const totalCount = ref(0);
 
-	const sortedWorkflows = computed(() =>
-		sortBy(workflowsStore.allWorkflows, (workflow) =>
-			new Date(workflow.updatedAt).valueOf(),
-		).reverse(),
-	);
-
-	const hasMoreWorkflowsToLoad = computed(
-		() => workflowsStore.allWorkflows.length > workflowsResources.value.length,
-	);
-
-	const filteredResources = computed(() => {
-		return workflowsStore.allWorkflows
-			.filter((resource) => resource.name.toLowerCase().includes(searchFilter.value.toLowerCase()))
-			.map(workflowDbToResourceMapper);
-	});
-
-	async function populateNextWorkflowsPage() {
-		await workflowsStore.fetchAllWorkflows();
-		const nextPage = sortedWorkflows.value.slice(
-			workflowsResources.value.length,
-			workflowsResources.value.length + PAGE_SIZE,
-		);
-
-		workflowsResources.value.push(...nextPage.map(workflowDbToResourceMapper));
-	}
-
-	async function setWorkflowsResources() {
-		isLoadingResources.value = true;
-		await populateNextWorkflowsPage();
-		isLoadingResources.value = false;
-	}
-
-	async function reloadWorkflows() {
-		isLoadingResources.value = true;
-		await workflowsStore.fetchAllWorkflows();
-		isLoadingResources.value = false;
-	}
-
-	function workflowDbToResourceMapper(workflow: IWorkflowDb) {
-		return {
-			name: getWorkflowName(workflow.id),
-			value: workflow.id,
-			url: getWorkflowUrl(workflow.id),
-			isArchived: workflow.isArchived,
-		};
-	}
-
-	function getWorkflowUrl(workflowId: string) {
-		const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
-		return href;
-	}
+	const hasMoreWorkflowsToLoad = computed(() => totalCount.value > workflowsResources.value.length);
 
 	function getWorkflowName(id: string): string {
 		const workflow = workflowsStore.getWorkflowById(id);
@@ -91,8 +44,44 @@ export function useWorkflowResourcesLocator(router: Router) {
 		return null;
 	}
 
-	function onSearchFilter(filter: string) {
+	function getWorkflowUrl(workflowId: string) {
+		const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
+		return href;
+	}
+
+	function workflowDbToResourceMapper(workflow: WorkflowListResource | IWorkflowDb) {
+		return {
+			name: workflow.name,
+			value: workflow.id,
+			url: getWorkflowUrl(workflow.id),
+			isArchived: 'isArchived' in workflow ? workflow.isArchived : false,
+		};
+	}
+
+	async function populateNextWorkflowsPage() {
+		currentPage.value++;
+		const workflows = await workflowsStore.fetchWorkflowsPage(
+			undefined,
+			currentPage.value,
+			PAGE_SIZE,
+			'updatedAt:desc',
+			searchFilter.value ? { name: searchFilter.value } : undefined,
+		);
+		totalCount.value = workflowsStore.totalWorkflowCount;
+		workflowsResources.value.push(...workflows.map(workflowDbToResourceMapper));
+	}
+
+	async function setWorkflowsResources() {
+		isLoadingResources.value = true;
+		await populateNextWorkflowsPage();
+		isLoadingResources.value = false;
+	}
+
+	async function onSearchFilter(filter: string) {
 		searchFilter.value = filter;
+		currentPage.value = 0;
+		workflowsResources.value = [];
+		await populateNextWorkflowsPage();
 	}
 
 	function applyDefaultExecuteWorkflowNodeName(workflowId: NodeParameterValue) {
@@ -115,14 +104,13 @@ export function useWorkflowResourcesLocator(router: Router) {
 		workflowsResources,
 		isLoadingResources,
 		hasMoreWorkflowsToLoad,
-		filteredResources,
 		searchFilter,
-		reloadWorkflows,
 		getWorkflowUrl,
 		onSearchFilter,
 		getWorkflowName,
 		applyDefaultExecuteWorkflowNodeName,
 		populateNextWorkflowsPage,
 		setWorkflowsResources,
+		workflowDbToResourceMapper,
 	};
 }
