@@ -39,7 +39,7 @@ jobs:
           output-file: sbom-source.cdx.json
 
       - name: Attest build provenance for source release
-        uses: actions/attest-build-provenance@977bb37082e0bfde04bb18e63b0632b7b5a1c4a3 # v3.0.0
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
         with:
           subject-path: './package.json'
 
