@@ -114,3 +114,220 @@ input {
 	width: 16px;
 	height: 16px;
 }
+
+/* Date Picker Styles */
+.datePickerContainer {
+	position: relative;
+	width: 200px;
+}
+
+.datePickerRoot {
+	position: relative;
+	width: 100%;
+}
+
+.datePickerField {
+	display: inline-flex;
+	align-items: center;
+	justify-content: between;
+	line-height: 1;
+	font-size: var(--font-size-xs);
+	padding: var(--spacing-2xs) var(--spacing-xs);
+	width: 200px;
+	background-color: var(--color-foreground-xlight);
+	border-radius: var(--border-radius-base) var(--border-radius-base) 0 0;
+}
+
+.dateFieldLiteral {
+	padding: var(--spacing-4xs);
+	color: var(--color-foreground-base);
+}
+
+.dateFieldSegment {
+	padding: var(--spacing-4xs);
+	color: var(--color-text-base);
+	border-radius: var(--border-radius-small);
+}
+
+.dateFieldSegment:hover {
+	background-color: var(--color-foreground-light);
+}
+
+.dateFieldSegment:focus {
+	background-color: var(--color-foreground-base);
+	outline: none;
+}
+
+.dateFieldSegment[aria-valuetext='Empty'] {
+	color: var(--color-text-light);
+}
+
+.datePickerTrigger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing-4xs);
+	margin-left: auto;
+	background: none;
+	border: none;
+	cursor: pointer;
+	border-radius: var(--border-radius-small);
+}
+
+.datePickerTrigger:hover {
+	background-color: var(--color-foreground-light);
+}
+
+.datePickerTrigger:focus {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+
+.clearButton {
+	position: absolute;
+	right: var(--spacing-xl);
+	top: 50%;
+	transform: translateY(-50%);
+	background: none;
+	border: none;
+	padding: var(--spacing-4xs);
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--border-radius-small);
+}
+
+.clearButton:hover {
+	background-color: var(--color-foreground-light);
+}
+
+.datePickerContent {
+	z-index: 9999;
+	position: relative;
+}
+
+.datePickerCalendar {
+	display: flex;
+	flex-direction: column;
+	z-index: 1000;
+	max-width: 200px;
+	position: relative;
+	border-top: var(--border-base);
+	border-color: var(--color-foreground-light);
+}
+
+.datePickerHeader {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--spacing-4xs);
+}
+
+.datePickerNavButton {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+	width: var(--spacing-l);
+	height: var(--spacing-l);
+	border: none;
+	background: none;
+	cursor: pointer;
+	border-radius: var(--border-radius-base);
+	color: var(--color-text-base);
+}
+
+.datePickerNavButton:hover {
+	background-color: var(--color-foreground-light);
+	color: var(--color-text-dark);
+}
+
+.datePickerWrapper {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	padding: var(--spacing-4xs);
+}
+
+.datePickerGrid {
+	width: 100%;
+	user-select: none;
+	border-collapse: collapse;
+}
+
+.datePickerGridRow {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: var(--spacing-4xs);
+	margin-bottom: var(--spacing-4xs);
+}
+
+.datePickerHeadCell {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: var(--spacing-l);
+	font-size: var(--font-size-3xs);
+	font-weight: var(--font-weight-regular);
+	color: var(--color-text-light);
+	text-transform: uppercase;
+}
+
+.datePickerCell {
+	position: relative;
+	text-align: center;
+}
+
+.datePickerCellTrigger {
+	display: flex;
+	position: relative;
+	justify-content: center;
+	align-items: center;
+	width: var(--spacing-l);
+	height: var(--spacing-l);
+	border-radius: var(--border-radius-base);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-regular);
+	color: var(--color-text-base);
+	background-color: transparent;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.datePickerCellTrigger:hover {
+	background-color: var(--color-foreground-light);
+	border-color: var(--color-foreground-dark);
+}
+
+.datePickerCellTrigger:focus {
+	outline: 1px solid var(--color-secondary);
+}
+
+.datePickerCellTrigger[data-disabled] {
+	cursor: not-allowed;
+	color: var(--color-text-lighter);
+	opacity: 0.5;
+}
+
+.datePickerCellTrigger[data-selected] {
+	background-color: var(--color-callout-secondary-background);
+	outline: var(--border-base);
+	outline-color: var(--color-callout-secondary-border);
+	color: var(--color-callout-secondary-font);
+	border-radius: var(--border-radius-base);
+}
+
+.datePickerCellTrigger[data-outside-view] {
+	color: var(--color-text-lighter);
+}
+
+.datePickerCellTrigger[data-today]:not([data-selected]) {
+	background-color: var(--color-foreground-base);
+	font-weight: var(--font-weight-bold);
+}
+
+.datePickerCellTrigger[data-unavailable] {
+	color: var(--color-text-lighter);
+	text-decoration: line-through;
+	cursor: not-allowed;
+}
