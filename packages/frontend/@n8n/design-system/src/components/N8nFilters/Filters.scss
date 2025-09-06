@@ -162,27 +162,6 @@ input {
 	color: var(--color-text-light);
 }
 
-.datePickerTrigger {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--spacing-4xs);
-	margin-left: auto;
-	background: none;
-	border: none;
-	cursor: pointer;
-	border-radius: var(--border-radius-small);
-}
-
-.datePickerTrigger:hover {
-	background-color: var(--color-foreground-light);
-}
-
-.datePickerTrigger:focus {
-	outline: 2px solid var(--color-primary);
-	outline-offset: 2px;
-}
-
 .clearButton {
 	position: absolute;
 	right: var(--spacing-xl);
@@ -203,14 +182,12 @@ input {
 }
 
 .datePickerContent {
-	z-index: 9999;
 	position: relative;
 }
 
 .datePickerCalendar {
 	display: flex;
 	flex-direction: column;
-	z-index: 1000;
 	max-width: 200px;
 	position: relative;
 	border-top: var(--border-base);
@@ -240,6 +217,10 @@ input {
 .datePickerNavButton:hover {
 	background-color: var(--color-foreground-light);
 	color: var(--color-text-dark);
+}
+
+.datePickerNavButton:focus {
+	outline: 1px solid var(--color-secondary);
 }
 
 .datePickerWrapper {
