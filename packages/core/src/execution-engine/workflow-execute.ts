@@ -182,6 +182,384 @@ export class WorkflowExecute {
 	}
 
 	/**
+	 * Check if parallel execution is enabled (v2 mode)
+	 */
+	isParallelExecutionEnabled(workflow: Workflow): boolean {
+		return workflow.settings.executionOrder === ('v2' as any);
+	}
+
+	/**
+	 * Deep clones execution data to prevent sharing references between parallel executions
+	 */
+	private cloneExecutionData(executionData: IExecuteData): IExecuteData {
+		try {
+			// Deep clone the execution data to prevent shared references in parallel execution
+			const clonedData: ITaskDataConnections = {};
+
+			// Clone each connection type
+			for (const [connectionType, connections] of Object.entries(executionData.data)) {
+				clonedData[connectionType] = connections.map((items) =>
+					items
+						? items.map(
+								(item) =>
+									({
+										json: item.json ? JSON.parse(JSON.stringify(item.json)) : {},
+										binary: item.binary ? { ...item.binary } : undefined,
+										pairedItem: item.pairedItem
+											? Array.isArray(item.pairedItem)
+												? item.pairedItem.map((pi) => (pi ? { ...pi } : pi))
+												: typeof item.pairedItem === 'object' && item.pairedItem !== null
+													? { ...item.pairedItem }
+													: item.pairedItem
+											: undefined,
+										error: item.error,
+									}) as INodeExecutionData,
+							)
+						: items,
+				);
+			}
+
+			// Clone the source data if it exists
+			const clonedSource = executionData.source
+				? {
+						main: executionData.source.main?.map((sourceItem) =>
+							sourceItem ? { ...sourceItem } : sourceItem,
+						),
+					}
+				: null;
+
+			// Deep clone the node to prevent parameter corruption in parallel execution
+			const clonedNode = {
+				...executionData.node,
+				parameters: executionData.node.parameters
+					? JSON.parse(JSON.stringify(executionData.node.parameters))
+					: {},
+			};
+
+			return {
+				node: clonedNode,
+				data: clonedData,
+				source: clonedSource,
+				metadata: executionData.metadata ? { ...executionData.metadata } : undefined,
+			};
+		} catch (error) {
+			// Fallback to original data if cloning fails, but log the issue
+			Logger.warn('Failed to clone execution data for parallel execution, using original data', {
+				nodeName: executionData.node.name,
+				error: error.message,
+			});
+			return executionData;
+		}
+	}
+
+	/**
+	 * Executes workflow in parallel mode (v2 execution order)
+	 */
+	private async executeWorkflowInParallel(
+		workflow: Workflow,
+		hooks: ExecutionLifecycleHooks,
+	): Promise<void> {
+		const activeExecutions = new Set<Promise<void>>();
+		const maxParallel = (workflow.settings as any).maxParallel ?? Infinity;
+
+		const launchReadyNodes = () => {
+			// Find all nodes that are ready to execute
+			const readyToExecute: IExecuteData[] = [];
+			const remainingStack: IExecuteData[] = [];
+
+			// Snapshot current stack to avoid concurrent modification
+			const currentStack = [...this.runExecutionData.executionData!.nodeExecutionStack];
+			this.runExecutionData.executionData!.nodeExecutionStack = [];
+
+			for (const executionData of currentStack) {
+				if (this.ensureInputData(workflow, executionData.node, executionData)) {
+					readyToExecute.push(executionData);
+				} else {
+					remainingStack.push(executionData);
+				}
+			}
+
+			// Put non-ready nodes back on the stack
+			this.runExecutionData.executionData!.nodeExecutionStack.push(...remainingStack);
+
+			// Launch ready nodes up to the parallel limit
+			const toLaunch = readyToExecute.slice(0, maxParallel - activeExecutions.size);
+
+			for (const executionData of toLaunch) {
+				// Clone execution data to prevent shared references
+				const isolatedExecutionData = this.cloneExecutionData(executionData);
+
+				const executionPromise = this.executeNodeInParallel(workflow, isolatedExecutionData, hooks)
+					.catch((error: any) => {
+						// Handle errors from individual node executions
+						Logger.error(`Node execution failed: ${error.message}`, {
+							nodeName: executionData.node.name,
+							workflowId: workflow.id,
+						});
+						// Re-throw the error to stop workflow execution
+						throw error;
+					})
+					.finally(() => {
+						activeExecutions.delete(executionPromise);
+					});
+
+				activeExecutions.add(executionPromise);
+			}
+
+			// Put remaining ready nodes back on stack if we hit the parallel limit
+			if (toLaunch.length < readyToExecute.length) {
+				this.runExecutionData.executionData!.nodeExecutionStack.unshift(
+					...readyToExecute.slice(toLaunch.length),
+				);
+			}
+		};
+
+		// Main parallel execution loop
+		while (true) {
+			// Check for timeout
+			if (
+				this.additionalData.executionTimeoutTimestamp !== undefined &&
+				Date.now() >= this.additionalData.executionTimeoutTimestamp
+			) {
+				this.status = 'canceled';
+			}
+
+			if (this.status === 'canceled') {
+				// Cancel all active executions
+				this.abortController.abort();
+				await Promise.allSettled(activeExecutions);
+				return;
+			}
+
+			// Launch all ready nodes
+			launchReadyNodes();
+
+			// If no active executions and no nodes in stack, check for waiting nodes
+			if (
+				activeExecutions.size === 0 &&
+				this.runExecutionData.executionData!.nodeExecutionStack.length === 0
+			) {
+				const waitingNodes = Object.keys(this.runExecutionData.executionData!.waitingExecution);
+
+				if (waitingNodes.length === 0) {
+					break; // No more work to do
+				}
+
+				// Try to promote waiting nodes (simplified version for v2)
+				let promotedAny = false;
+				for (const nodeName of waitingNodes) {
+					const waitingData = this.runExecutionData.executionData!.waitingExecution[nodeName];
+					const runIndexes = Object.keys(waitingData).sort();
+					const firstRunIndex = parseInt(runIndexes[0]);
+
+					const taskDataMain = waitingData[firstRunIndex].main.map((data) =>
+						data === null ? [] : data,
+					);
+
+					if (taskDataMain.some((data) => data.length > 0)) {
+						this.runExecutionData.executionData!.nodeExecutionStack.push({
+							node: workflow.nodes[nodeName],
+							data: { main: taskDataMain },
+							source:
+								this.runExecutionData.executionData!.waitingExecutionSource![nodeName][
+									firstRunIndex
+								],
+						});
+
+						// Remove from waiting
+						delete this.runExecutionData.executionData!.waitingExecution[nodeName][firstRunIndex];
+						delete this.runExecutionData.executionData!.waitingExecutionSource![nodeName][
+							firstRunIndex
+						];
+
+						if (
+							Object.keys(this.runExecutionData.executionData!.waitingExecution[nodeName])
+								.length === 0
+						) {
+							delete this.runExecutionData.executionData!.waitingExecution[nodeName];
+							delete this.runExecutionData.executionData!.waitingExecutionSource![nodeName];
+						}
+
+						promotedAny = true;
+						break;
+					}
+				}
+
+				if (!promotedAny) {
+					break; // No nodes could be promoted
+				}
+			}
+
+			// Wait for at least one active execution to complete before continuing
+			if (activeExecutions.size > 0) {
+				try {
+					await Promise.race(activeExecutions);
+				} catch (error) {
+					// If any node fails, cancel all other executions and propagate the error
+					this.abortController.abort();
+					await Promise.allSettled(activeExecutions);
+					throw error;
+				}
+			}
+		}
+
+		// Wait for all remaining executions to complete
+		try {
+			await Promise.all(activeExecutions);
+		} catch (error) {
+			// Propagate any errors from parallel execution
+			throw error;
+		}
+	}
+
+	/**
+	 * Executes a single node in parallel mode with proper error handling and scheduling
+	 */
+	private async executeNodeInParallel(
+		workflow: Workflow,
+		executionData: IExecuteData,
+		hooks: ExecutionLifecycleHooks,
+	): Promise<void> {
+		const executionNode = executionData.node;
+		let runIndex = 0;
+		if (Object.hasOwn(this.runExecutionData.resultData.runData, executionNode.name)) {
+			runIndex = this.runExecutionData.resultData.runData[executionNode.name].length;
+		}
+
+		const taskStartedData: ITaskStartedData = {
+			startTime: Date.now(),
+			executionIndex: this.additionalData.currentNodeExecutionIndex++,
+			source: !executionData.source ? [] : executionData.source.main,
+			hints: [],
+		};
+
+		// Update the pairedItem information on items
+		const newTaskDataConnections: ITaskDataConnections = {};
+		for (const connectionType of Object.keys(executionData.data)) {
+			newTaskDataConnections[connectionType] = executionData.data[connectionType].map(
+				(input, inputIndex) => {
+					if (input === null) {
+						return input;
+					}
+
+					return input.map((item, itemIndex) => {
+						return {
+							...item,
+							pairedItem: {
+								item: itemIndex,
+								input: inputIndex || undefined,
+							},
+						};
+					});
+				},
+			);
+		}
+		executionData.data = newTaskDataConnections;
+
+		Logger.debug(`Start executing node "${executionNode.name}"`, {
+			node: executionNode.name,
+			workflowId: workflow.id,
+		});
+
+		await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
+
+		let nodeSuccessData: INodeExecutionData[][] | null | undefined = null;
+		let executionError: ExecutionBaseError | undefined;
+
+		try {
+			const runNodeData = await this.runNode(
+				workflow,
+				executionData,
+				this.runExecutionData,
+				runIndex,
+				this.additionalData,
+				this.mode,
+				this.abortController.signal,
+			);
+
+			nodeSuccessData = runNodeData.data;
+
+			if (runNodeData.hints?.length) {
+				taskStartedData.hints!.push(...runNodeData.hints);
+			}
+		} catch (error) {
+			executionError = { ...error, message: error.message, stack: error.stack };
+			Logger.debug(`Running node "${executionNode.name}" finished with error`, {
+				node: executionNode.name,
+				workflowId: workflow.id,
+			});
+		}
+
+		// Create task data
+		const taskData: ITaskData = {
+			...taskStartedData,
+			executionTime: Date.now() - taskStartedData.startTime,
+			metadata: executionData.metadata,
+			executionStatus: executionError ? 'error' : 'success',
+		};
+
+		if (executionError) {
+			taskData.error = executionError;
+
+			if (
+				executionData.node.continueOnFail !== true &&
+				!['continueRegularOutput', 'continueErrorOutput'].includes(executionData.node.onError || '')
+			) {
+				// Add the execution data to results
+				if (!Object.hasOwn(this.runExecutionData.resultData.runData, executionNode.name)) {
+					this.runExecutionData.resultData.runData[executionNode.name] = [];
+				}
+				this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
+
+				await hooks.runHook('nodeExecuteAfter', [
+					executionNode.name,
+					taskData,
+					this.runExecutionData,
+				]);
+
+				throw executionError;
+			}
+		}
+
+		// Node executed successfully
+		nodeSuccessData = this.assignPairedItems(nodeSuccessData, executionData);
+
+		taskData.data = {
+			main: nodeSuccessData,
+		} as ITaskDataConnections;
+
+		// Add to run data
+		if (!Object.hasOwn(this.runExecutionData.resultData.runData, executionNode.name)) {
+			this.runExecutionData.resultData.runData[executionNode.name] = [];
+		}
+		this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
+
+		// Schedule child nodes for execution
+		if (Object.hasOwn(workflow.connectionsBySourceNode, executionNode.name)) {
+			if (Object.hasOwn(workflow.connectionsBySourceNode[executionNode.name], 'main')) {
+				for (const outputIndex in workflow.connectionsBySourceNode[executionNode.name].main) {
+					for (const connectionData of workflow.connectionsBySourceNode[executionNode.name].main[
+						outputIndex
+					] ?? []) {
+						if (nodeSuccessData![outputIndex] && nodeSuccessData![outputIndex].length !== 0) {
+							this.addNodeToBeExecuted(
+								workflow,
+								connectionData,
+								parseInt(outputIndex, 10),
+								executionNode.name,
+								nodeSuccessData!,
+								runIndex,
+							);
+						}
+					}
+				}
+			}
+		}
+
+		await hooks.runHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData]);
+	}
+
+	/**
 	 * Executes the given workflow but only
 	 *
 	 * @param {Workflow} workflow The workflow to execute
@@ -1630,6 +2008,13 @@ export class WorkflowExecute {
 					throw error;
 				}
 
+				// V2 Parallel Execution Mode
+				if (this.isParallelExecutionEnabled(workflow)) {
+					await this.executeWorkflowInParallel(workflow, hooks);
+					return;
+				}
+
+				// V0/V1 Sequential Execution Mode (original behavior)
 				executionLoop: while (
 					this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
 				) {
