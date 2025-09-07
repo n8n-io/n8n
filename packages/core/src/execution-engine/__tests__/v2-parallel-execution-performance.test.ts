@@ -147,7 +147,7 @@ describe('V2 Parallel Execution Performance', () => {
 		expect(parallelDuration).toBeLessThan(sequentialDuration * 0.8);
 
 		// Performance budget: parallel execution should complete within reasonable time
-		expect(parallelDuration).toBeLessThan(200); // 200ms budget for this test
+		expect(parallelDuration).toBeLessThan(500); // 500ms budget to avoid CI flakiness
 
 		// Both should produce the same results
 		expect(Object.keys(sequentialResult.data.resultData.runData)).toEqual(

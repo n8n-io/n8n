@@ -314,7 +314,28 @@ export class WorkflowExecute {
 		this.runExecutionData.executionData!.nodeExecutionStack = [];
 
 		for (const executionData of currentStack) {
-			if (this.ensureInputData(workflow, executionData.node, executionData)) {
+			// Check if node has required input data without modifying the stack
+			const inputConnections =
+				workflow.connectionsByDestinationNode[executionData.node.name]?.main ?? [];
+			let hasRequiredData = true;
+
+			for (let connectionIndex = 0; connectionIndex < inputConnections.length; connectionIndex++) {
+				if (!Object.hasOwn(executionData.data, 'main')) {
+					hasRequiredData = false;
+					break;
+				}
+				if (this.isLegacyExecutionOrder(workflow)) {
+					if (
+						executionData.data.main.length < connectionIndex ||
+						executionData.data.main[connectionIndex] === null
+					) {
+						hasRequiredData = false;
+						break;
+					}
+				}
+			}
+
+			if (hasRequiredData) {
 				readyToExecute.push(executionData);
 			} else {
 				remainingStack.push(executionData);

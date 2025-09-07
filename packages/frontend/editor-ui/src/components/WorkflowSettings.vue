@@ -505,13 +505,7 @@ onBeforeUnmount(() => {
 						{{ i18n.baseText('workflowSettings.executionOrder') }}
 						<N8nTooltip placement="top">
 							<template #content>
-								<div>
-									Controls how workflow nodes are executed.<br />
-									<strong>v0 (legacy):</strong> Original execution order<br />
-									<strong>v1 (recommended):</strong> Optimized sequential execution<br />
-									<strong>v2 (parallel):</strong> Execute independent branches simultaneously for
-									2-3x performance improvement
-								</div>
+								<div v-n8n-html="helpTexts.executionOrder"></div>
 							</template>
 							<n8n-icon icon="circle-help" />
 						</N8nTooltip>

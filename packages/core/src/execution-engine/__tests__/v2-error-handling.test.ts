@@ -345,8 +345,12 @@ describe('V2 Parallel Execution - Error Handling Tests', () => {
 			// ACT
 			const executionPromise = workflowExecute.run(workflow, nodes[0]);
 
-			// Wait a bit then complete fast operations
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			// Wait for operations to start - deterministic wait
+			let waitAttempts = 0;
+			while (completionPromises.length === 0 && waitAttempts < 50) {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				waitAttempts++;
+			}
 
 			// Complete some operations before timeout
 			if (completionPromises.length > 0) {

@@ -22,6 +22,7 @@ describe('WorkflowExecute - V2 Parallel Execution', () => {
 	it('should execute nodes in parallel when executionOrder is v2', async () => {
 		// ARRANGE
 		const executionOrder: string[] = [];
+		const executionTimes: Record<string, number> = {};
 
 		const createTrackingNode = (name: string): INodeType => {
 			return mock<INodeType>({
@@ -34,6 +35,10 @@ describe('WorkflowExecute - V2 Parallel Execution', () => {
 					outputs: [{ type: NodeConnectionTypes.Main }],
 				},
 				async execute(this: IExecuteFunctions) {
+					const startTime = Date.now();
+					// Add small delay to make timing differences visible
+					await new Promise((resolve) => setTimeout(resolve, 50));
+					executionTimes[name] = Date.now() - startTime;
 					executionOrder.push(name);
 					return [[{ json: { result: name } }]];
 				},
@@ -96,7 +101,9 @@ describe('WorkflowExecute - V2 Parallel Execution', () => {
 		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 		// ACT
+		const startTime = Date.now();
 		const result = await workflowExecute.run(workflow, nodes[0]);
+		const totalTime = Date.now() - startTime;
 
 		// ASSERT
 		expect(result.finished).toBe(true);
@@ -104,6 +111,10 @@ describe('WorkflowExecute - V2 Parallel Execution', () => {
 		expect(executionOrder).toContain('branch1');
 		expect(executionOrder).toContain('branch2');
 		expect(executionOrder.length).toBe(3);
+
+		// Verify parallelism: total time should be less than sum of all execution times
+		const sumOfExecutionTimes = Object.values(executionTimes).reduce((sum, time) => sum + time, 0);
+		expect(totalTime).toBeLessThan(sumOfExecutionTimes * 0.8); // Should be significantly less due to parallelism
 	});
 
 	it('should maintain backward compatibility - v1 execution should work unchanged', async () => {
@@ -276,8 +287,12 @@ describe('WorkflowExecute - V2 Parallel Execution', () => {
 		// ACT
 		const executionPromise = workflowExecute.run(workflow, nodes[0]);
 
-		// Wait for executions to start
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		// Wait for executions to start - deterministic wait with timeout
+		let waitAttempts = 0;
+		while (completionPromises.length < 2 && waitAttempts < 50) {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			waitAttempts++;
+		}
 
 		// Complete executions in batches to test the limit
 		while (completionPromises.length > 0) {

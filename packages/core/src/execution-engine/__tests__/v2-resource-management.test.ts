@@ -101,8 +101,12 @@ describe('V2 Parallel Execution - Resource Management Tests', () => {
 			// ACT
 			const executionPromise = workflowExecute.run(workflow, nodes[0]);
 
-			// Wait for initial executions to start
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			// Wait for executions to start - deterministic wait with timeout
+			let waitAttempts = 0;
+			while (completionPromises.length < 3 && waitAttempts < 50) {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				waitAttempts++;
+			}
 
 			// Complete executions in controlled batches
 			while (completionPromises.length > 0) {
