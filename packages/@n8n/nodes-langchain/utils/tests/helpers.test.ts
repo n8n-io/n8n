@@ -277,6 +277,37 @@ describe('getConnectedTools', () => {
 			{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
 		]);
 	});
+
+	it('should flatten tools from a toolkit-like object', async () => {
+		class MockToolkit {
+			tools: Tool[];
+
+			getTools() {
+				return this.tools;
+			}
+
+			constructor(tools: unknown[]) {
+				this.tools = tools as Tool[];
+			}
+		}
+		const mockTools = [
+			{ name: 'tool1', description: 'desc1' },
+
+			new MockToolkit([
+				{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
+				{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
+			]),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+		expect(tools).toEqual([
+			{ name: 'tool1', description: 'desc1' },
+			{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
+			{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
+		]);
+	});
 });
 
 describe('unwrapNestedOutput', () => {
