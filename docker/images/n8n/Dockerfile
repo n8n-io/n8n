@@ -2,16 +2,34 @@ ARG NODE_VERSION=22
 ARG N8N_VERSION=snapshot
 ARG LAUNCHER_VERSION=1.3.0
 ARG TARGETPLATFORM
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
 
 # ==============================================================================
 # STAGE 1: System Dependencies & Base Setup
 # ==============================================================================
 FROM n8nio/base:${NODE_VERSION} AS system-deps
+ENV http_proxy=$http_proxy \
+    https_proxy=$https_proxy \
+    no_proxy=$no_proxy \
+    HTTP_PROXY=$HTTP_PROXY \
+    HTTPS_PROXY=$HTTPS_PROXY \
+    NO_PROXY=$NO_PROXY
 
 # ==============================================================================
 # STAGE 2: Application Artifact Processor
 # ==============================================================================
 FROM alpine:3.22.0 AS app-artifact-processor
+ENV http_proxy=$http_proxy \
+    https_proxy=$https_proxy \
+    no_proxy=$no_proxy \
+    HTTP_PROXY=$HTTP_PROXY \
+    HTTPS_PROXY=$HTTPS_PROXY \
+    NO_PROXY=$NO_PROXY
 
 COPY ./compiled /app/
 
@@ -21,6 +39,18 @@ COPY ./compiled /app/
 FROM alpine:3.22.0 AS launcher-downloader
 ARG TARGETPLATFORM
 ARG LAUNCHER_VERSION
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+ENV http_proxy=$http_proxy \
+    https_proxy=$https_proxy \
+    no_proxy=$no_proxy \
+    HTTP_PROXY=$HTTP_PROXY \
+    HTTPS_PROXY=$HTTPS_PROXY \
+    NO_PROXY=$NO_PROXY
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \
@@ -41,6 +71,18 @@ RUN set -e; \
 # STAGE 4: Final Runtime Image
 # ==============================================================================
 FROM system-deps AS runtime
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+ENV http_proxy=$http_proxy \
+    https_proxy=$https_proxy \
+    no_proxy=$no_proxy \
+    HTTP_PROXY=$HTTP_PROXY \
+    HTTPS_PROXY=$HTTPS_PROXY \
+    NO_PROXY=$NO_PROXY
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev

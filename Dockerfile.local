@@ -1,0 +1,6 @@
+FROM nexus-proxy.neo.corp.amdocs.aws:10001/devops/n8n-dox:1.109.2
+
+# Replace the app with locally compiled production build
+COPY compiled /usr/local/lib/node_modules/n8n
+
+

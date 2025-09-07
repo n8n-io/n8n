@@ -1,13 +1,19 @@
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
-	NodeConnectionTypes,
 	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+import type { NodeConnectionType } from 'n8n-workflow';
+
+// Local minimal copy to avoid IDE export-resolution issues in Problems tab
+const NODE_CONNECTION_TYPES: { AiAgent: NodeConnectionType; AiTool: NodeConnectionType } = {
+	AiAgent: 'ai_agent' as unknown as NodeConnectionType,
+	AiTool: 'ai_tool' as unknown as NodeConnectionType,
+};
 
 import { getTools } from './loadOptions';
 import type { McpServerTransport, McpAuthenticationOption, McpToolIncludeMode } from './types';
@@ -50,7 +56,7 @@ export class McpClientTool implements INodeType {
 			},
 		},
 		inputs: [],
-		outputs: [{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' }],
+		outputs: [{ type: NODE_CONNECTION_TYPES.AiTool, displayName: 'Tools' }],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -71,9 +77,18 @@ export class McpClientTool implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'httpCustomAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['customAuth'],
+					},
+				},
+			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
+			getConnectionHintNoticeField([NODE_CONNECTION_TYPES.AiAgent]),
 			{
 				displayName: 'SSE Endpoint',
 				name: 'sseEndpoint',
@@ -134,6 +149,10 @@ export class McpClientTool implements INodeType {
 						value: 'bearerAuth',
 					},
 					{
+						name: 'Custom Auth',
+						value: 'customAuth',
+					},
+					{
 						name: 'Header Auth',
 						value: 'headerAuth',
 					},
@@ -152,7 +171,7 @@ export class McpClientTool implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth', 'bearerAuth'],
+						authentication: ['headerAuth', 'bearerAuth', 'customAuth'],
 					},
 				},
 			},
@@ -271,16 +290,16 @@ export class McpClientTool implements INodeType {
 
 		const setError = (message: string, description?: string): SupplyData => {
 			const error = new NodeOperationError(node, message, { itemIndex, description });
-			this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
+			this.addOutputData(NODE_CONNECTION_TYPES.AiTool, itemIndex, error);
 			throw error;
 		};
 
 		if (!client.ok) {
 			this.logger.error('McpClientTool: Failed to connect to MCP Server', {
-				error: client.error,
+				error: (client as any).error,
 			});
 
-			switch (client.error.type) {
+			switch ((client as any).error.type) {
 				case 'invalid_url':
 					return setError('Could not connect to your MCP server. The provided URL is invalid.');
 				case 'connection':
@@ -316,7 +335,7 @@ export class McpClientTool implements INodeType {
 					tool,
 					createCallTool(tool.name, client.result, timeout, (errorMessage) => {
 						const error = new NodeOperationError(node, errorMessage, { itemIndex });
-						void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
+						void this.addOutputData(NODE_CONNECTION_TYPES.AiTool, itemIndex, error);
 						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
 					}),
 				),

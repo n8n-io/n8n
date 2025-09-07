@@ -10,7 +10,9 @@ import {
 	createResultOk,
 	type IDataObject,
 	type IExecuteFunctions,
+	type IRequestOptionsSimplified,
 	type Result,
+	jsonParse,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -149,7 +151,7 @@ function normalizeAndValidateUrl(input: string): Result<URL, Error> {
 	const parsedUrl = safeCreateUrl(withProtocol);
 
 	if (!parsedUrl.ok) {
-		return createResultError(parsedUrl.error);
+		return parsedUrl;
 	}
 
 	return parsedUrl;
@@ -174,17 +176,21 @@ export async function connectMcpClient({
 	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
 	if (!endpoint.ok) {
-		return createResultError({ type: 'invalid_url', error: endpoint.error });
+		return createResultError({ type: 'invalid_url', error: (endpoint as any).error });
 	}
 
 	const client = new Client({ name, version: version.toString() }, { capabilities: { tools: {} } });
 
 	if (serverTransport === 'httpStreamable') {
 		try {
+			const defaultHeaders: Record<string, string> = {
+				Accept: 'application/json',
+				'Content-Type': 'application/json',
+			};
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
-				requestInit: { headers },
+				requestInit: { headers: { ...defaultHeaders, ...(headers ?? {}) } },
 			});
-			await client.connect(transport);
+			await client.connect(transport as unknown as Parameters<Client['connect']>[0]);
 			return createResultOk(client);
 		} catch (error) {
 			return createResultError({ type: 'connection', error });
@@ -234,6 +240,37 @@ export async function getAuthHeaders(
 			if (!result) return {};
 
 			return { headers: { Authorization: `Bearer ${result.token}` } };
+		}
+		case 'customAuth': {
+			const customAuth = await ctx
+				.getCredentials<{ json: string }>('httpCustomAuth')
+				.catch(() => null);
+
+			if (!customAuth) return {};
+
+			const raw = jsonParse<unknown>((customAuth.json as string) || '{}', {
+				errorMessage: 'Invalid Custom Auth JSON',
+			});
+
+			if (raw && typeof raw === 'object') {
+				// Support both { headers: { ... } } and a plain object of headers { 'x-key': 'value' }
+				if (
+					'headers' in (raw as IRequestOptionsSimplified) &&
+					(raw as IRequestOptionsSimplified).headers &&
+					typeof (raw as IRequestOptionsSimplified).headers === 'object'
+				) {
+					return {
+						headers: (raw as IRequestOptionsSimplified).headers as Record<string, string>,
+					};
+				}
+
+				const entries = Object.entries(raw as Record<string, unknown>);
+				if (entries.length > 0 && entries.every(([, v]) => typeof v === 'string')) {
+					return { headers: raw as Record<string, string> };
+				}
+			}
+
+			return {};
 		}
 		case 'none':
 		default: {
