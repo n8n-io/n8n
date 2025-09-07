@@ -1,0 +1,20 @@
+[
+	{
+		"id": "12345678",
+		"name": "All Website Data",
+		"websiteUrl": "https://example.com",
+		"type": "WEB",
+		"permissions": {
+			"effective": ["COLLABORATE", "EDIT", "MANAGE_USERS", "READ_AND_ANALYZE"]
+		}
+	},
+	{
+		"id": "87654321",
+		"name": "Mobile App View",
+		"websiteUrl": "https://play.google.com/store/apps/details?id=com.example.app",
+		"type": "APP",
+		"permissions": {
+			"effective": ["READ_AND_ANALYZE"]
+		}
+	}
+]

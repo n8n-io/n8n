@@ -1,0 +1,96 @@
+{
+	"name": "Google Analytics V1 Return All Report Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [320, 300],
+			"id": "trigger",
+			"name": "Manual Trigger"
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "get",
+				"viewId": "12345678",
+				"returnAll": true,
+				"simple": true,
+				"additionalFields": {
+					"dateRangesUi": {
+						"dateRanges": {
+							"startDate": "2023-01-01",
+							"endDate": "2023-01-31"
+						}
+					},
+					"metricsUi": {
+						"metricValues": [
+							{
+								"expression": "ga:sessions"
+							},
+							{
+								"expression": "ga:users"
+							}
+						]
+					},
+					"dimensionUi": {
+						"dimensionValues": [
+							{
+								"name": "ga:date"
+							}
+						]
+					}
+				}
+			},
+			"type": "n8n-nodes-base.googleAnalytics",
+			"typeVersion": 1,
+			"position": [540, 300],
+			"id": "analytics",
+			"name": "Google Analytics",
+			"credentials": {
+				"googleAnalyticsOAuth2": {
+					"id": "test-credential",
+					"name": "Test Google Analytics"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Google Analytics": [
+			{
+				"json": {
+					"ga:date": "20230101",
+					"ga:sessions": "100",
+					"ga:users": "85"
+				}
+			},
+			{
+				"json": {
+					"ga:date": "20230102",
+					"ga:sessions": "150",
+					"ga:users": "120"
+				}
+			},
+			{
+				"json": {
+					"ga:date": "20230103",
+					"ga:sessions": "200",
+					"ga:users": "180"
+				}
+			}
+		]
+	},
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Google Analytics",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
