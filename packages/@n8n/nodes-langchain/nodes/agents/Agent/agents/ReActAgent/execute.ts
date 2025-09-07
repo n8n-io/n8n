@@ -2,6 +2,10 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
+import type {
+	ChatAgent as ChatAgentType,
+	ZeroShotAgent as ZeroShotAgentType,
+} from 'langchain/agents';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -40,7 +44,7 @@ export async function reActAgentAgentExecute(
 		humanMessageTemplate?: string;
 		returnIntermediateSteps?: boolean;
 	};
-	let agent: ChatAgent | ZeroShotAgent;
+	let agent: ChatAgentType | ZeroShotAgentType;
 
 	if (isChatInstance(model)) {
 		agent = ChatAgent.fromLLMAndTools(model, tools, {

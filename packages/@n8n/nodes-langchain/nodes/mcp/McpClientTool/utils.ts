@@ -11,6 +11,7 @@ import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type Result,
+	jsonParse,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -29,6 +30,18 @@ export async function getAllTools(client: Client, cursor?: string): Promise<McpT
 	}
 
 	return tools as McpTool[];
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+	if (!value || typeof value !== 'object') return false;
+	const entries = Object.entries(value as Record<string, unknown>);
+	return entries.length > 0 && entries.every(([, v]) => typeof v === 'string');
+}
+
+function hasHeadersRecord(value: unknown): value is { headers: Record<string, string> } {
+	if (!value || typeof value !== 'object') return false;
+	const maybe = value as { headers?: unknown };
+	return isStringRecord(maybe.headers);
 }
 
 export function getSelectedTools({
@@ -149,7 +162,7 @@ function normalizeAndValidateUrl(input: string): Result<URL, Error> {
 	const parsedUrl = safeCreateUrl(withProtocol);
 
 	if (!parsedUrl.ok) {
-		return createResultError(parsedUrl.error);
+		return parsedUrl;
 	}
 
 	return parsedUrl;
@@ -181,10 +194,25 @@ export async function connectMcpClient({
 
 	if (serverTransport === 'httpStreamable') {
 		try {
+			const defaultHeaders: Record<string, string> = {
+				Accept: 'application/json',
+				'Content-Type': 'application/json',
+			};
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
-				requestInit: { headers },
+				requestInit: { headers: { ...defaultHeaders, ...(headers ?? {}) } },
 			});
-			await client.connect(transport);
+			// StreamableHTTPClientTransport implements the MCP Transport interface
+			// Cast to the minimal transport shape to satisfy the Client.connect signature
+			type ClientTransport = {
+				start(): Promise<void>;
+				send(message: unknown, options?: unknown): Promise<void>;
+				close(): Promise<void>;
+				onclose?: () => void;
+				onerror?: (error: Error) => void;
+				onmessage?: (message: unknown, extra?: { authInfo?: unknown }) => void;
+				sessionId?: string;
+			};
+			await client.connect(transport as ClientTransport);
 			return createResultOk(client);
 		} catch (error) {
 			return createResultError({ type: 'connection', error });
@@ -234,6 +262,22 @@ export async function getAuthHeaders(
 			if (!result) return {};
 
 			return { headers: { Authorization: `Bearer ${result.token}` } };
+		}
+		case 'customAuth': {
+			const customAuth = await ctx
+				.getCredentials<{ json: string }>('httpCustomAuth')
+				.catch(() => null);
+
+			if (!customAuth) return {};
+
+			const raw = jsonParse<unknown>((customAuth.json as string) || '{}', {
+				errorMessage: 'Invalid Custom Auth JSON',
+			});
+
+			if (hasHeadersRecord(raw)) return { headers: raw.headers };
+			if (isStringRecord(raw)) return { headers: raw };
+
+			return {};
 		}
 		case 'none':
 		default: {
