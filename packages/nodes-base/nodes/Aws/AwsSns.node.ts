@@ -103,6 +103,32 @@ export class AwsSns implements INodeType {
 				},
 			},
 			{
+				displayName: 'Target',
+				name: 'target',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Topic',
+						value: 'topic',
+						description: 'Publish to a topic',
+						action: 'Publish to a topic',
+					},
+					{
+						name: 'Phone',
+						value: 'phone',
+						description: 'Publish to a phone number',
+						action: 'Publish to a phone number',
+					},
+				],
+				default: 'topic',
+				displayOptions: {
+					show: {
+						operation: ['publish'],
+					},
+				},
+			},
+			{
 				displayName: 'Topic',
 				name: 'topic',
 				type: 'resourceLocator',
@@ -160,8 +186,23 @@ export class AwsSns implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['publish', 'delete'],
+						target: ['topic'],
 					},
 				},
+			},
+			{
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				displayOptions: {
+					show: {
+						target: ['phone'],
+					},
+				},
+				default: '',
+				placeholder: '+123456789',
+				required: true,
+				description: 'The number where the message is published to',
 			},
 			{
 				displayName: 'Subject',
@@ -301,12 +342,22 @@ export class AwsSns implements INodeType {
 					const topic = this.getNodeParameter('topic', i, undefined, {
 						extractValue: true,
 					}) as string;
+					const number = this.getNodeParameter('number', i, undefined, {
+						extractValue: true,
+					}) as string;
+					const target = this.getNodeParameter('mode', 0);
 
 					const params = [
-						'TopicArn=' + topic,
 						'Subject=' + encodeURIComponent(this.getNodeParameter('subject', i) as string),
 						'Message=' + encodeURIComponent(this.getNodeParameter('message', i) as string),
 					];
+
+					if (target === 'topic') {
+						params.push('TopicArn=' + topic)
+					}
+					if (target === 'phone') {
+						params.push('PhoneNumber=' + number)
+					}
 
 					const responseData = await awsApiRequestSOAP.call(
 						this,
