@@ -21,7 +21,7 @@ import {
 	TimeFieldRoot,
 	TimeFieldInput,
 } from 'reka-ui';
-import { onMounted, ref, nextTick, computed, useTemplateRef } from 'vue';
+import { ref, computed, useTemplateRef } from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 import { getLocalTimeZone, parseDate, type DateValue } from '@internationalized/date';
@@ -83,8 +83,14 @@ function handleDateChange(newDate: DateValue | undefined) {
 	}
 }
 
-// Stop all keyboard events from bubbling up to the dropdown
 function stopKeyboardPropagation(e: KeyboardEvent) {
+	// Check if the event originated from the month field
+	const target = e.target as HTMLElement;
+	if (target?.id === 'month' && e.key === 'ArrowLeft') {
+		return; // Don't stop propagation
+	}
+
+	// Stop propagation for everything else except Escape
 	if (e.key === 'Escape') return;
 	e.stopPropagation();
 }
@@ -93,7 +99,6 @@ function stopKeyboardPropagation(e: KeyboardEvent) {
 const dateFieldRoot = useTemplateRef('dateFieldRoot');
 defineExpose({
 	focusInto: () => {
-		console.log('Focusing date picker');
 		if (dateFieldRoot.value) {
 			const firstSegment = dateFieldRoot.value.$el.querySelector('.dateFieldSegment');
 			if (firstSegment instanceof HTMLElement) {
@@ -245,7 +250,7 @@ const includeTime = ref(false);
 	align-items: center;
 	justify-content: space-between;
 	margin-top: 4px;
-	padding: 8px 8px 8px;
+	padding: 8px;
 	border-top: var(--border-base);
 	border-color: var(--color-foreground-light);
 }
