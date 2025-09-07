@@ -517,6 +517,9 @@ export class Wordpress implements INodeType {
 						if (additionalFields.slug) {
 							body.slug = additionalFields.slug as string;
 						}
+						if (additionalFields.roles) {
+							body.roles = additionalFields.roles as number[];
+						}
 						responseData = await wordpressApiRequest.call(this, 'POST', '/users', body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#update-a-user
@@ -555,6 +558,9 @@ export class Wordpress implements INodeType {
 						}
 						if (updateFields.slug) {
 							body.slug = updateFields.slug as string;
+						}
+						if (updateFields.roles) {
+							body.roles = updateFields.roles as number[];
 						}
 						responseData = await wordpressApiRequest.call(this, 'POST', `/users/${userId}`, body);
 					}
