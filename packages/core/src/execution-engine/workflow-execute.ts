@@ -190,7 +190,7 @@ export class WorkflowExecute {
 	 *
 	 * @remarks
 	 * V2 parallel execution allows independent workflow branches to execute simultaneously,
-	 * improving performance by 3-5x for workflows with parallel-safe operations.
+	 * improving performance by 2-3x for workflows with parallel-safe operations.
 	 *
 	 * Use v2 when:
 	 * - Branches are independent (no shared state)
