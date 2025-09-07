@@ -1,0 +1,80 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"id": "5a128d93ea24e7f3b8bd3c37"
+			},
+			"id": "ec188f16-b2c5-44e3-bd83-259a94f15c94",
+			"name": "TrelloTrigger",
+			"type": "n8n-nodes-base.trelloTrigger",
+			"typeVersion": 1,
+			"webhookId": "a59a3be7-6d43-47e7-951d-86b8172c2006"
+		}
+	],
+	"connections": {
+		"TrelloTrigger": {
+			"main": [[]]
+		}
+	},
+	"trigger": {
+		"mode": "webhook",
+		"input": {
+			"json": {
+				"headers": {
+					"x-trello-webhook": "validSignatureHere",
+					"content-type": "application/json"
+				},
+				"params": {},
+				"query": {},
+				"body": {
+					"model": {
+						"id": "5a128d93ea24e7f3b8bd3c37",
+						"name": "Test List",
+						"closed": false
+					},
+					"action": {
+						"id": "testActionId",
+						"type": "updateCard",
+						"data": {
+							"card": {
+								"id": "testCardId",
+								"name": "Test Card"
+							}
+						}
+					},
+					"webhook": {
+						"id": "testWebhookId",
+						"callbackURL": "https://test.n8n.io/webhook/test-webhook-id/webhook"
+					}
+				}
+			}
+		}
+	},
+	"pinData": {
+		"TrelloTrigger": [
+			{
+				"json": {
+					"model": {
+						"id": "5a128d93ea24e7f3b8bd3c37",
+						"name": "Test List",
+						"closed": false
+					},
+					"action": {
+						"id": "testActionId",
+						"type": "updateCard",
+						"data": {
+							"card": {
+								"id": "testCardId",
+								"name": "Test Card"
+							}
+						}
+					},
+					"webhook": {
+						"id": "testWebhookId",
+						"callbackURL": "https://test.n8n.io/webhook/test-webhook-id/webhook"
+					}
+				}
+			}
+		]
+	}
+}
