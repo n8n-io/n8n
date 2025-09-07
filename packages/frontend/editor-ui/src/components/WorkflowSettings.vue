@@ -67,6 +67,8 @@ const helpTexts = computed(() => ({
 	executionTimeout: i18n.baseText('workflowSettings.helpTexts.executionTimeout'),
 	workflowCallerPolicy: i18n.baseText('workflowSettings.helpTexts.workflowCallerPolicy'),
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
+	executionOrder: i18n.baseText('workflowSettings.helpTexts.executionOrder'),
+	maxParallel: i18n.baseText('workflowSettings.helpTexts.maxParallel'),
 }));
 const defaultValues = ref({
 	timezone: 'America/New_York',
@@ -501,6 +503,18 @@ onBeforeUnmount(() => {
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ i18n.baseText('workflowSettings.executionOrder') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div>
+									Controls how workflow nodes are executed.<br />
+									<strong>v0 (legacy):</strong> Original execution order<br />
+									<strong>v1 (recommended):</strong> Optimized sequential execution<br />
+									<strong>v2 (parallel):</strong> Execute independent branches simultaneously for
+									2-3x performance improvement
+								</div>
+							</template>
+							<n8n-icon icon="circle-help" />
+						</N8nTooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
@@ -529,10 +543,7 @@ onBeforeUnmount(() => {
 						Max Parallel Nodes
 						<N8nTooltip placement="top">
 							<template #content>
-								<div>
-									Maximum number of nodes that can execute simultaneously in parallel mode. Higher
-									values may improve performance but consume more resources.
-								</div>
+								<div v-n8n-html="helpTexts.maxParallel"></div>
 							</template>
 							<n8n-icon icon="circle-help" />
 						</N8nTooltip>

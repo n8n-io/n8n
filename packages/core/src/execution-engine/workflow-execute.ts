@@ -439,7 +439,7 @@ export class WorkflowExecute {
 	 * 4. Waits for completion and handles errors appropriately
 	 * 5. Promotes waiting nodes when their dependencies complete
 	 *
-	 * **Performance:** 3-5x faster than sequential execution for independent branches
+	 * **Performance:** 2-3x faster than sequential execution for independent branches
 	 * **Safety:** Complete context isolation prevents data corruption
 	 * **Resource Management:** Respects maxParallel limits to prevent system overload
 	 *
