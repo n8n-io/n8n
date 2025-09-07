@@ -3,7 +3,13 @@
 import { DateTime } from 'luxon';
 import * as oracleDBTypes from 'oracledb';
 
-import { addSortRules, getCompatibleValue, getOutBindDefsForExecute } from '../helpers/utils';
+import type { ExecuteOpBindParam } from '../helpers/interfaces';
+import {
+	addSortRules,
+	getBindParameters,
+	getCompatibleValue,
+	getOutBindDefsForExecute,
+} from '../helpers/utils';
 
 describe('Test addSortRules', () => {
 	it('should ORDER BY ASC', () => {
@@ -107,5 +113,128 @@ describe('Test getCompatibleValue ', () => {
 		const result = getCompatibleValue('DATE', dtUTC);
 
 		expect(result).toBeInstanceOf(Date);
+	});
+});
+
+describe('Test getBindParameters ', () => {
+	it('Verify different types are accepted', () => {
+		const query = `INSERT INTO demo_all_types (id, col_number, col_varchar, col_char, col_date, col_timestamp, col_blob, col_json, col_bool, col_vector)
+		VALUES (:pid, 12345.67, 'Hello World', 'ABC', DATE '2024-05-01', TIMESTAMP '2024-05-01 10:15:30', :pblob, :pjs, TRUE, :pvecsp)`;
+		const paramList: ExecuteOpBindParam[] = [
+			{
+				name: 'pblob',
+				bindDirection: 'in',
+				datatype: 'blob',
+				valueBlob: Buffer.from([
+					98, 105, 110, 97, 114, 121, 95, 100, 97, 116, 97, 95, 104, 101, 114, 101, 32, 102, 111,
+					114, 32, 66, 76, 79, 66,
+				]),
+				parseInStatement: false,
+			},
+			{
+				name: 'pjs',
+				bindDirection: 'in',
+				datatype: 'json',
+				valueJson: {
+					user: 'John',
+					active: true,
+					roles: ['admin', 'developer'],
+				},
+				parseInStatement: false,
+			},
+			{
+				name: 'pvecsp',
+				bindDirection: 'in',
+				datatype: 'sparse',
+				valueSparse: {
+					dimensions: 4,
+					indices: [0, 2],
+					values: [3, 4],
+				},
+				parseInStatement: false,
+			},
+			{
+				name: 'pid',
+				bindDirection: 'in',
+				datatype: 'number',
+				valueNumber: 2471,
+				parseInStatement: false,
+			},
+		];
+
+		const expectedBindParams: any = {
+			pblob: {
+				type: oracleDBTypes.BLOB,
+				val: Buffer.from([
+					98, 105, 110, 97, 114, 121, 95, 100, 97, 116, 97, 95, 104, 101, 114, 101, 32, 102, 111,
+					114, 32, 66, 76, 79, 66,
+				]),
+				dir: 3001,
+			},
+			pjs: {
+				type: oracleDBTypes.DB_TYPE_JSON,
+				val: {
+					user: 'John',
+					active: true,
+					roles: ['admin', 'developer'],
+				},
+				dir: 3001,
+			},
+			pvecsp: {
+				type: oracleDBTypes.DB_TYPE_VECTOR,
+				val: new oracleDBTypes.SparseVector({
+					indices: new Uint32Array([0, 2]),
+					values: new Float64Array([3, 4]),
+					numDimensions: 4,
+				}),
+				dir: 3001,
+			},
+			pid: {
+				type: oracleDBTypes.NUMBER,
+				val: 2471,
+				dir: 3001,
+			},
+		};
+		let updatedQuery: string;
+		let bindParameters: oracleDBTypes.BindParameters;
+
+		// test Sparse Vector
+		({ updatedQuery, bindParameters } = getBindParameters(query, paramList));
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual(expectedBindParams);
+
+		// test VECTOR type
+		paramList[2] = {
+			name: 'pvecsp',
+			bindDirection: 'in',
+			datatype: 'vector',
+			valueVector: [3, 4, 5, 6, 78],
+			parseInStatement: false,
+		};
+		expectedBindParams.pvecsp = {
+			type: oracleDBTypes.DB_TYPE_VECTOR,
+			val: [3, 4, 5, 6, 78],
+			dir: 3001,
+		};
+		({ updatedQuery, bindParameters } = getBindParameters(query, paramList));
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual(expectedBindParams);
+
+		//  test null value
+		paramList[2] = {
+			name: 'pvecsp',
+			bindDirection: 'in',
+			datatype: 'vector',
+			valueVector: null,
+			parseInStatement: false,
+		};
+		expectedBindParams.pvecsp = {
+			type: oracleDBTypes.DB_TYPE_VECTOR,
+			val: null,
+			dir: 3001,
+		};
+		({ updatedQuery, bindParameters } = getBindParameters(query, paramList));
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual(expectedBindParams);
 	});
 });

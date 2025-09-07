@@ -115,7 +115,6 @@ export async function execute(
 			extractValue: true,
 		}) as string;
 
-		const options = nodeOptions;
 		let query: string = '';
 		let bindDefs: any = [];
 		const quotedTableName = quoteSqlIdentifier(schema) + '.' + quoteSqlIdentifier(table);
@@ -147,8 +146,8 @@ export async function execute(
 			executeManyValues.push(result);
 		}
 
-		options.bindDefs = bindDefs;
-		queries.push({ query, options, executeManyValues });
+		nodeOptions.bindDefs = bindDefs;
+		queries.push({ query, executeManyValues });
 	} else {
 		for (let i = 0; i < items.length; i++) {
 			const schema = this.getNodeParameter('schema', i, undefined, {
