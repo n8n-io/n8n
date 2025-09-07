@@ -10,7 +10,12 @@ import type oracledb from 'oracledb';
 
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
-import type { OracleDBNodeOptions, QueriesRunner, QueryWithValues } from '../../helpers/interfaces';
+import type {
+	ExecuteOpBindParam,
+	OracleDBNodeOptions,
+	QueriesRunner,
+	QueryWithValues,
+} from '../../helpers/interfaces';
 import { getBindParameters } from '../../helpers/utils';
 import { optionsCollection } from '../common.descriptions';
 
@@ -75,13 +80,8 @@ export async function execute(
 
 		// get list of param objects entered by user
 		const parameterIDataObjectList =
-			((this.getNodeParameter('options.params', index, {}) as IDataObject).values as Array<{
-				name: string;
-				value: string | number;
-				datatype: string;
-				parseInStatement: boolean;
-				bindDirection: string;
-			}>) || [];
+			((this.getNodeParameter('options.params', index, {}) as IDataObject)
+				.values as ExecuteOpBindParam[]) || [];
 		if (parameterIDataObjectList.length) {
 			const { updatedQuery, bindParameters } = getBindParameters(query, parameterIDataObjectList);
 			query = updatedQuery;

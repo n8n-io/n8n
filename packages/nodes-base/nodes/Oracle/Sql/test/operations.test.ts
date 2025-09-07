@@ -17,7 +17,7 @@ import * as insert from '../actions/database/insert.operation';
 import * as select from '../actions/database/select.operation';
 import * as update from '../actions/database/update.operation';
 import * as upsert from '../actions/database/upsert.operation';
-import type { OracleDBNodeCredentials, QueryWithValues, QueryValue } from '../helpers/interfaces';
+import type { OracleDBNodeCredentials, QueryWithValues } from '../helpers/interfaces';
 import { configureQueryRunner } from '../helpers/utils';
 import { configureOracleDB } from '../transport';
 
@@ -630,7 +630,6 @@ VALUES (
 					queries.push({
 						query: expectedQuery,
 						executeManyValues,
-						options,
 					});
 				} else {
 					queries.push({
@@ -674,13 +673,13 @@ VALUES (
 								name: 'Dno',
 								// JSON Expression like value: "={{ $json.DEPTNO }}" needs
 								// to mock getParameterValue, so giving value directly.
-								value: 10,
+								valueNumber: 10,
 								datatype: 'number',
 								parseInStatement: false,
 							},
 							{
 								name: 'En',
-								value: 'ALICE',
+								valueString: 'ALICE',
 								datatype: 'string',
 								parseInStatement: false,
 							},
@@ -744,13 +743,13 @@ VALUES (
 								name: 'Dno',
 								// JSON Expression like value: "={{ $json.DEPTNO }}" needs
 								// to mock getParameterValue, so giving value directly.
-								value: 10,
+								valueNumber: 10,
 								datatype: 'number',
 								parseInStatement: false,
 							},
 							{
 								name: 'Names',
-								value: 'Alice,Bob',
+								valueString: 'Alice,Bob',
 								datatype: 'string',
 								parseInStatement: true,
 							},
@@ -1095,17 +1094,15 @@ VALUES (
 		]);
 
 		beforeAll(function () {
-			queries = [
-				{ query: expectedQuery, options: expectedOptions, executeManyValues: expectedValues },
-			];
+			queries = [{ query: expectedQuery, executeManyValues: expectedValues }];
 			queriesIndependent = [
 				{
 					query: expectedQuery,
-					values: expectedBindValuesForIndependent[0] as unknown as QueryValue,
+					values: expectedBindValuesForIndependent[0],
 				},
 				{
 					query: expectedQuery,
-					values: expectedBindValuesForIndependent[1] as unknown as QueryValue,
+					values: expectedBindValuesForIndependent[1],
 				},
 			];
 		});
@@ -1406,17 +1403,15 @@ VALUES (
 
 		beforeAll(function () {
 			// initialize global variables to repective operation values.
-			queries = [
-				{ query: expectedQuery, options: expectedOptions, executeManyValues: expectedValues },
-			];
+			queries = [{ query: expectedQuery, executeManyValues: expectedValues }];
 			queriesIndependent = [
 				{
 					query: expectedQuery,
-					values: expectedBindValuesForIndependent[0] as unknown as QueryValue,
+					values: expectedBindValuesForIndependent[0],
 				},
 				{
 					query: expectedQuery,
-					values: expectedBindValuesForIndependent[1] as unknown as QueryValue,
+					values: expectedBindValuesForIndependent[1],
 				},
 			];
 		});
@@ -1808,7 +1803,7 @@ VALUES (
 					};
 				}
 				return {
-					values: modifiedValues as unknown as QueryValue,
+					values: modifiedValues,
 				};
 			},
 		);
@@ -1831,17 +1826,15 @@ VALUES (
 
 		beforeAll(function () {
 			// initialize global variables to respective operation values.
-			queries = [
-				{ query: expectedQuery, options: expectedOptions, executeManyValues: expectedValues },
-			];
+			queries = [{ query: expectedQuery, executeManyValues: expectedValues }];
 			queriesIndependent = [
 				{
 					query: expectedQuery,
-					values: expectedBindValuesForIndependent[0] as unknown as QueryValue,
+					values: expectedBindValuesForIndependent[0],
 				},
 				{
 					query: expectedQuery,
-					values: expectedBindValuesForIndependent[1] as unknown as QueryValue,
+					values: expectedBindValuesForIndependent[1],
 				},
 			];
 		});
@@ -1883,8 +1876,8 @@ VALUES (
 			if (originalColumnsValue) {
 				(nodeParameters.columns as any).value = originalColumnsValue;
 			}
-			queriesIndependent[0].values = expectedBindValuesForIndependent[0] as unknown as QueryValue;
-			queriesIndependent[1].values = expectedBindValuesForIndependent[1] as unknown as QueryValue;
+			queriesIndependent[0].values = expectedBindValuesForIndependent[0];
+			queriesIndependent[1].values = expectedBindValuesForIndependent[1];
 			queries[0].executeManyValues = expectedValues;
 		});
 

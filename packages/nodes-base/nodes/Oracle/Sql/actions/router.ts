@@ -5,6 +5,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import * as database from './database/Database.resource';
 import type { OracleDBType } from './node.type';
+import { isOracleDBOperation } from './node.type';
 import type { OracleDBNodeCredentials, OracleDBNodeOptions } from '../helpers/interfaces';
 import { configureQueryRunner } from '../helpers/utils';
 import { configureOracleDB } from '../transport';
@@ -16,6 +17,13 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const resource = this.getNodeParameter<OracleDBType>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 
+	if (!isOracleDBOperation(operation)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`The operation "${operation}" is not a valid value!`,
+		);
+	}
+
 	const credentials = await this.getCredentials<OracleDBNodeCredentials>('oracleDBApi');
 	const options = this.getNodeParameter('options', 0, {}) as OracleDBNodeOptions;
 	const node = this.getNode();
@@ -25,10 +33,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	const pool = await configureOracleDB.call(this, credentials, options);
 	const runQueries = configureQueryRunner.call(this, this.getNode(), this.continueOnFail(), pool);
-	const oracleDBNodeData = {
+	const oracleDBNodeData: OracleDBType = {
 		resource,
 		operation,
-	} as OracleDBType;
+	};
 
 	switch (oracleDBNodeData.resource) {
 		case 'database':
