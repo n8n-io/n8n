@@ -9,14 +9,13 @@ import {
 	DropdownMenuTrigger,
 	FocusScope,
 } from 'reka-ui';
-import { ref, computed } from 'vue';
+import { ref, computed, useTemplateRef, nextTick } from 'vue';
 
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
-import DatePicker from './DatePicker.vue';
 import MultiSelect from './MultiSelect.vue';
 import SingleSelect from './SingleSelect.vue';
 import DatePickerV2 from './DatePickerV2.vue';
@@ -140,6 +139,27 @@ function removeFilter(filterName: string) {
 // TODO
 // - Custom string/number values
 // - Small variant
+
+const datePickerRefs = new Map<string, any>();
+
+function setDatePickerRef(label: string) {
+	return (el: any) => {
+		if (el) {
+			datePickerRefs.set(label, el);
+		} else {
+			datePickerRefs.delete(label);
+		}
+	};
+}
+
+function handleDatePickerFocus(filterOption: FilterOption) {
+	if (filterOption.type === 'date') {
+		setTimeout(() => {
+			const datePicker = datePickerRefs.get(filterOption.label);
+			datePicker?.focusInto();
+		}, 50);
+	}
+}
 </script>
 
 <template>
@@ -181,7 +201,11 @@ function removeFilter(filterName: string) {
 										</N8nText></DropdownMenuSubTrigger
 									>
 									<DropdownMenuPortal>
-										<DropdownMenuSubContent :side-offset="4" class="filterDropdown">
+										<DropdownMenuSubContent
+											:side-offset="4"
+											class="filterDropdown"
+											@entry-focus="() => handleDatePickerFocus(filterOption)"
+										>
 											<SingleSelect
 												v-if="filterOption.type === 'single'"
 												:items="filterOption.options"
@@ -206,13 +230,9 @@ function removeFilter(filterName: string) {
 												"
 												:placeholder="`Select ${filterOption.label.toLowerCase()}...`"
 											/>
-											<FocusScope
-												asChild
-												loop
-												v-else-if="filterOption.type === 'date'"
-												@mount-auto-focus="(e) => console.log(e)"
-											>
+											<FocusScope asChild loop v-else-if="filterOption.type === 'date'">
 												<DatePickerV2
+													:ref="setDatePickerRef(filterOption.label)"
 													:initial-value="
 														activeFilters.find((f) => f.filterName === filterOption.label)
 															?.values[0]

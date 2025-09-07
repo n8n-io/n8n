@@ -16,11 +16,15 @@ import {
 	CalendarNext,
 	CalendarPrev,
 	CalendarRoot,
+	SwitchRoot,
+	SwitchThumb,
+	TimeFieldRoot,
+	TimeFieldInput,
 } from 'reka-ui';
-import { onMounted, ref, nextTick, computed } from 'vue';
+import { onMounted, ref, nextTick, computed, useTemplateRef } from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
-import { getLocalTimeZone, parseDate, today, type DateValue } from '@internationalized/date';
+import { getLocalTimeZone, parseDate, type DateValue } from '@internationalized/date';
 
 interface FilterItem {
 	name: string;
@@ -50,7 +54,7 @@ const parsedInitialDate = computed(() => {
 	if (props.initialValue?.value) {
 		return parseDate(props.initialValue.value);
 	}
-	return today(getLocalTimeZone());
+	return undefined;
 });
 
 // Core state - single source of truth
@@ -85,18 +89,21 @@ function stopKeyboardPropagation(e: KeyboardEvent) {
 	e.stopPropagation();
 }
 
-const dateFieldRoot = ref<any>(null);
-
-onMounted(async () => {
-	await nextTick();
-	// Focus the first segment after a small delay to ensure DOM is ready
-	setTimeout(() => {
-		const firstSegment = dateFieldRoot.value?.$el?.querySelector('.dateFieldSegment');
-		if (firstSegment) {
-			firstSegment.focus();
+// Focus management - focus the first segment when mounted
+const dateFieldRoot = useTemplateRef('dateFieldRoot');
+defineExpose({
+	focusInto: () => {
+		console.log('Focusing date picker');
+		if (dateFieldRoot.value) {
+			const firstSegment = dateFieldRoot.value.$el.querySelector('.dateFieldSegment');
+			if (firstSegment instanceof HTMLElement) {
+				firstSegment.focus();
+			}
 		}
-	}, 100);
+	},
 });
+
+const includeTime = ref(false);
 </script>
 
 <template>
@@ -173,9 +180,73 @@ onMounted(async () => {
 				</CalendarGrid>
 			</div>
 		</CalendarRoot>
+		<div class="TimeContainer">
+			<label class="Label" for="include-time">
+				<N8nText size="small" color="text-base">Include time</N8nText>
+			</label>
+			<SwitchRoot id="include-time" v-model="includeTime" class="SwitchRoot">
+				<SwitchThumb class="SwitchThumb" />
+			</SwitchRoot>
+		</div>
+		<div v-if="includeTime" class="">
+			<TimeFieldRoot
+				id="time-field"
+				v-slot="{ segments }"
+				granularity="second"
+				class="datePickerField"
+			>
+				<template v-for="item in segments" :key="item.part">
+					<TimeFieldInput v-if="item.part === 'literal'" :part="item.part" class="dateFieldLiteral">
+						{{ item.value }}
+					</TimeFieldInput>
+					<TimeFieldInput v-else :part="item.part" class="dateFieldSegment">
+						{{ item.value }}
+					</TimeFieldInput>
+				</template>
+			</TimeFieldRoot>
+		</div>
 	</div>
 </template>
 
 <style lang="scss" scoped>
 @use 'Filters.scss';
+
+.SwitchRoot {
+	width: 36px;
+	height: 18px;
+	border-radius: 9999px;
+	position: relative;
+	background-color: var(--color-foreground-dark);
+	-webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+.SwitchRoot:focus-visible {
+	box-shadow: 0 0 0 2px var(--color-secondary);
+}
+.SwitchRoot[data-state='checked'] {
+	background-color: var(--color-success);
+}
+
+.SwitchThumb {
+	display: block;
+	width: 16px;
+	height: 16px;
+	background-color: var(--color-background-light);
+	border-radius: 9999px;
+	transition: transform 100ms;
+	transform: translateX(1px);
+	will-change: transform;
+}
+.SwitchThumb[data-state='checked'] {
+	transform: translateX(19px);
+}
+
+.TimeContainer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 4px;
+	padding: 8px 8px 8px;
+	border-top: var(--border-base);
+	border-color: var(--color-foreground-light);
+}
 </style>
