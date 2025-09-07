@@ -40,7 +40,20 @@ export function generateSchemaFromExample(
 ): JSONSchema7 {
 	const parsedExample = jsonParse<SchemaObject>(exampleJsonString);
 
-	const schema = generateJsonSchema(parsedExample) as unknown as JSONSchema7;
+	const generated = generateJsonSchema(parsedExample);
+
+	function isJsonSchema7(value: unknown): value is JSONSchema7 {
+		if (!value || typeof value !== 'object') return false;
+		// Basic shape checks to avoid unsafe casting
+		const obj = value as Record<string, unknown>;
+		return 'type' in obj || 'properties' in obj || 'items' in obj || '$schema' in obj;
+	}
+
+	if (!isJsonSchema7(generated)) {
+		throw new Error('Generated schema is not a valid JSONSchema7');
+	}
+
+	const schema = generated;
 
 	if (allFieldsRequired) {
 		return makeAllPropertiesRequired(schema);

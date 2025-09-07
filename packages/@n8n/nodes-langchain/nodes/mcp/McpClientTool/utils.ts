@@ -35,7 +35,9 @@ export async function getAllTools(client: Client, cursor?: string): Promise<McpT
 function isStringRecord(value: unknown): value is Record<string, string> {
 	if (!value || typeof value !== 'object') return false;
 	const entries = Object.entries(value as Record<string, unknown>);
-	return entries.length > 0 && entries.every(([, v]) => typeof v === 'string');
+	return (
+		!Array.isArray(value) && entries.length > 0 && entries.every(([, v]) => typeof v === 'string')
+	);
 }
 
 function hasHeadersRecord(value: unknown): value is { headers: Record<string, string> } {
@@ -201,18 +203,37 @@ export async function connectMcpClient({
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
 				requestInit: { headers: { ...defaultHeaders, ...(headers ?? {}) } },
 			});
-			// StreamableHTTPClientTransport implements the MCP Transport interface
-			// Cast to the minimal transport shape to satisfy the Client.connect signature
-			type ClientTransport = {
-				start(): Promise<void>;
-				send(message: unknown, options?: unknown): Promise<void>;
-				close(): Promise<void>;
-				onclose?: () => void;
-				onerror?: (error: Error) => void;
-				onmessage?: (message: unknown, extra?: { authInfo?: unknown }) => void;
-				sessionId?: string;
+			// Wrap to a minimal transport shape without asserting the transport type
+			const clientTransport = {
+				start: () => (transport as any).start(),
+				send: (message: unknown, options?: unknown) =>
+					(transport as any).send(message as any, options as any),
+				close: () => (transport as any).close(),
+				get onclose() {
+					return (transport as any).onclose;
+				},
+				set onclose(handler: (() => void) | undefined) {
+					(transport as any).onclose = handler;
+				},
+				get onerror() {
+					return (transport as any).onerror;
+				},
+				set onerror(handler: ((error: Error) => void) | undefined) {
+					(transport as any).onerror = handler;
+				},
+				get onmessage() {
+					return (transport as any).onmessage as any;
+				},
+				set onmessage(handler:
+					| ((message: unknown, extra?: { authInfo?: unknown }) => void)
+					| undefined) {
+					(transport as any).onmessage = handler as any;
+				},
+				get sessionId() {
+					return (transport as any).sessionId;
+				},
 			};
-			await client.connect(transport as ClientTransport);
+			await client.connect(clientTransport);
 			return createResultOk(client);
 		} catch (error) {
 			return createResultError({ type: 'connection', error });
