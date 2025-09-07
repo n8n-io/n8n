@@ -319,9 +319,13 @@ describe('V2 Parallel Execution - Resource Management Tests', () => {
 			// or fail gracefully without hanging
 			const result = await workflowExecute.run(workflow, nodes[0]);
 
-			// If it completes, it should be successful
+			// Should either complete successfully or fail gracefully
+			expect(result).toBeDefined();
 			if (result.finished) {
 				expect(result.finished).toBe(true);
+			} else {
+				// If it failed, should have error information
+				expect(result.data.resultData.error).toBeDefined();
 			}
 			// Memory should never have exceeded the limit significantly
 			expect(memoryUsage).toBeLessThanOrEqual(maxMemoryUsage);
