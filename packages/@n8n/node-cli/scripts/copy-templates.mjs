@@ -3,10 +3,9 @@
 import glob from 'fast-glob';
 import { cp } from 'node:fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
 const templateFiles = glob.sync(['src/template/templates/**/*'], {
-  cwd: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
+	cwd: path.resolve(import.meta.dirname, '..'),
 	ignore: ['**/node_modules', '**/dist'],
 	dot: true,
 });
