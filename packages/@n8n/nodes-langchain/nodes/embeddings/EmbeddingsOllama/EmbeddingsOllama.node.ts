@@ -10,7 +10,7 @@ import {
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
-import { ollamaDescription, ollamaModel } from '../../llms/LMOllama/description';
+import { ollamaDescription, ollamaModel } from '../../llms/LMChatOllama/description';
 
 export class EmbeddingsOllama implements INodeType {
 	description: INodeTypeDescription = {
