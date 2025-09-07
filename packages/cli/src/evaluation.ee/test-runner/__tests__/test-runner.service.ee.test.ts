@@ -538,8 +538,13 @@ describe('TestRunnerService', () => {
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
 
-			expect(runCallArg).not.toHaveProperty('executionData.executionData');
-			expect(runCallArg).not.toHaveProperty('executionData.executionData.nodeExecutionStack');
+			expect(runCallArg).toHaveProperty('executionData.executionData', {
+				contextData: {},
+				metadata: {},
+				nodeExecutionStack: [],
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			});
 			expect(runCallArg).toHaveProperty('workflowData.nodes[0].forceCustomOperation', {
 				resource: 'dataset',
 				operation: 'getRows',

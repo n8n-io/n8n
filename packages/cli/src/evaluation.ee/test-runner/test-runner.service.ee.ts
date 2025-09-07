@@ -12,6 +12,7 @@ import {
 	metricRequiresModelConnection,
 	DEFAULT_EVALUATION_METRIC,
 	ManualExecutionCancelledError,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -332,12 +333,9 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
-			executionData: {
+			executionData: createRunExecutionData({
 				startData: {
 					destinationNode: triggerNode.name,
-				},
-				resultData: {
-					runData: {},
 				},
 				manualData: {
 					userId: metadata.userId,
@@ -345,7 +343,7 @@ export class TestRunnerService {
 						name: triggerNode.name,
 					},
 				},
-			},
+			}),
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},

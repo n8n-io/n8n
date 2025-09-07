@@ -37,6 +37,7 @@ import {
 	IRunExecutionData,
 	INodeParameters,
 	INode,
+	createRunExecutionData,
 } from 'n8n-workflow';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
@@ -758,22 +759,14 @@ export class ChatHubService {
 			},
 		];
 
-		const executionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
+		const executionData = createRunExecutionData({
 			executionData: {
-				contextData: {},
-				metadata: {},
 				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
 			manualData: {
 				userId: user.id,
 			},
-		};
+		});
 
 		return {
 			workflowData: {
