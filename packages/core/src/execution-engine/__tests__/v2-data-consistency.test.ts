@@ -115,7 +115,7 @@ describe('V2 Parallel Execution - Data Consistency Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 					maxParallel: 3,
 				},
 			});
@@ -231,7 +231,7 @@ describe('V2 Parallel Execution - Data Consistency Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 				},
 			});
 
@@ -345,7 +345,7 @@ describe('V2 Parallel Execution - Data Consistency Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 				},
 			});
 
@@ -498,7 +498,7 @@ describe('V2 Parallel Execution - Data Consistency Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 				},
 			});
 
@@ -621,7 +621,7 @@ describe('V2 Parallel Execution - Data Consistency Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 				},
 			});
 

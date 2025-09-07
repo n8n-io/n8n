@@ -291,19 +291,16 @@ describe('V2 Parallel Execution - Backward Compatibility Tests', () => {
 			};
 
 			// Test both v1 and v2 modes
-			const modes = [
-				{ executionOrder: 'v1', label: 'v1' },
-				{ executionOrder: 'v2' as any, label: 'v2' },
-			];
+			const modes = ['v1', 'v2'] as const;
 
-			for (const mode of modes) {
+			for (const executionOrder of modes) {
 				const workflow = new Workflow({
-					id: `api-compatibility-${mode.label}`,
+					id: `api-compatibility-${executionOrder}`,
 					nodes: [testNode],
 					connections: {},
 					active: false,
 					nodeTypes,
-					settings: mode,
+					settings: { executionOrder },
 				});
 
 				const waitPromise = createDeferredPromise<IRun>();
@@ -365,19 +362,16 @@ describe('V2 Parallel Execution - Backward Compatibility Tests', () => {
 			};
 
 			// Test both modes handle errors the same way
-			const modes = [
-				{ executionOrder: 'v1', label: 'v1' },
-				{ executionOrder: 'v2' as any, label: 'v2' },
-			];
+			const modes = ['v1', 'v2'] as const;
 
-			for (const mode of modes) {
+			for (const executionOrder of modes) {
 				const workflow = new Workflow({
-					id: `error-compatibility-${mode.label}`,
+					id: `error-compatibility-${executionOrder}`,
 					nodes: [errorNode],
 					connections: {},
 					active: false,
 					nodeTypes,
-					settings: mode,
+					settings: { executionOrder },
 				});
 
 				const waitPromise = createDeferredPromise<IRun>();

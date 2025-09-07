@@ -86,7 +86,7 @@ describe('WorkflowExecute - V2 Parallel Execution', () => {
 			active: false,
 			nodeTypes,
 			settings: {
-				executionOrder: 'v2' as any, // V2 parallel execution mode
+				executionOrder: 'v2', // V2 parallel execution mode
 				maxParallel: 2,
 			},
 		});
@@ -264,7 +264,7 @@ describe('WorkflowExecute - V2 Parallel Execution', () => {
 			active: false,
 			nodeTypes,
 			settings: {
-				executionOrder: 'v2' as any,
+				executionOrder: 'v2',
 				maxParallel: 2, // Limit to 2 concurrent executions
 			},
 		});

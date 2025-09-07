@@ -97,7 +97,7 @@ describe('V2 Parallel Execution - Resource Management Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 					maxParallel: 3, // Strict limit
 				},
 			});
@@ -201,7 +201,7 @@ describe('V2 Parallel Execution - Resource Management Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 					// No maxParallel specified - should allow unlimited
 				},
 			});
@@ -309,7 +309,7 @@ describe('V2 Parallel Execution - Resource Management Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 					maxParallel: 4, // Limit that should prevent memory exhaustion
 				},
 			});

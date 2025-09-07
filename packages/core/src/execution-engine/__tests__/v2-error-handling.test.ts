@@ -130,7 +130,7 @@ describe('V2 Parallel Execution - Error Handling Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 				},
 			});
 
@@ -212,7 +212,7 @@ describe('V2 Parallel Execution - Error Handling Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 				},
 			});
 
@@ -331,7 +331,7 @@ describe('V2 Parallel Execution - Error Handling Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 				},
 			});
 
@@ -463,7 +463,7 @@ describe('V2 Parallel Execution - Error Handling Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 				},
 			});
 
@@ -567,7 +567,7 @@ describe('V2 Parallel Execution - Error Handling Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 					maxParallel: 2, // Limit concurrent executions to prevent memory exhaustion
 				},
 			});
@@ -680,7 +680,7 @@ describe('V2 Parallel Execution - Error Handling Tests', () => {
 				active: false,
 				nodeTypes,
 				settings: {
-					executionOrder: 'v2' as any,
+					executionOrder: 'v2',
 				},
 			});
 
