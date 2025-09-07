@@ -16,7 +16,6 @@ import type {
 	OracleDBNodeOptions,
 	QueryMode,
 	QueriesRunner,
-	QueryValue,
 	QueryWithValues,
 } from '../../helpers/interfaces';
 import {
@@ -126,7 +125,6 @@ export async function execute(
 
 		let query = `UPDATE ${quoteSqlIdentifier(schema)}.${quoteSqlIdentifier(table)}`;
 		const outputColumns = this.getNodeParameter('options.outputColumns', 0, []) as string[];
-		const options: OracleDBNodeOptions = nodeOptions;
 
 		query = getBindDefsForExecuteMany(
 			this.getNode(),
@@ -135,7 +133,7 @@ export async function execute(
 			updateColumns,
 			outputColumns,
 			item,
-			options,
+			nodeOptions,
 			'update',
 			columnsToMatchOn,
 		);
@@ -158,7 +156,7 @@ export async function execute(
 			}
 			executeManyValues.push(result);
 		}
-		queries.push({ query, options, executeManyValues });
+		queries.push({ query, executeManyValues });
 	} else {
 		for (let index = 0; index < items.length; index++) {
 			schema = this.getNodeParameter('schema', index, undefined, {
@@ -239,7 +237,7 @@ export async function execute(
 				query = updatedQuery;
 			}
 
-			queries.push({ query, values: bindParams as unknown as QueryValue });
+			queries.push({ query, values: bindParams });
 		}
 	}
 

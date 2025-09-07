@@ -69,6 +69,7 @@ export const optionsCollection: INodeProperties = {
 							required: true,
 							default: 'string',
 							options: [
+								{ name: 'BLOB', value: 'blob' },
 								{ name: 'Boolean', value: 'boolean' },
 								{ name: 'Date', value: 'date' },
 								{ name: 'JSON', value: 'json' },
@@ -80,7 +81,7 @@ export const optionsCollection: INodeProperties = {
 						},
 						{
 							displayName: 'Value (String)',
-							name: 'value',
+							name: 'valueString',
 							type: 'string',
 							default: '',
 							displayOptions: {
@@ -91,7 +92,7 @@ export const optionsCollection: INodeProperties = {
 						},
 						{
 							displayName: 'Value (Number)',
-							name: 'value',
+							name: 'valueNumber',
 							type: 'number',
 							default: 0,
 							displayOptions: {
@@ -102,7 +103,7 @@ export const optionsCollection: INodeProperties = {
 						},
 						{
 							displayName: 'Value (Date)',
-							name: 'value',
+							name: 'valueDate',
 							type: 'dateTime',
 							default: 0,
 							displayOptions: {
@@ -113,7 +114,7 @@ export const optionsCollection: INodeProperties = {
 						},
 						{
 							displayName: 'Value (Boolean)',
-							name: 'value',
+							name: 'valueBoolean',
 							type: 'boolean',
 							default: false,
 							displayOptions: {
@@ -124,9 +125,9 @@ export const optionsCollection: INodeProperties = {
 						},
 						{
 							displayName: 'Value (JSON)',
-							name: 'value',
+							name: 'valueJson',
 							type: 'json',
-							default: '',
+							default: '{}',
 							displayOptions: {
 								show: {
 									datatype: ['json'],
@@ -134,8 +135,8 @@ export const optionsCollection: INodeProperties = {
 							},
 						},
 						{
-							displayName: 'Dimensions',
-							name: 'value',
+							displayName: 'Value (VECTOR)',
+							name: 'valueVector',
 							type: 'json',
 							default: '[]',
 							displayOptions: {
@@ -147,8 +148,21 @@ export const optionsCollection: INodeProperties = {
 							description: 'A JSON array of dimension values',
 						},
 						{
-							displayName: 'Sparse Vector',
-							name: 'value',
+							displayName: 'Value (BLOB)',
+							name: 'valueBlob',
+							type: 'json',
+							default: '[]',
+							displayOptions: {
+								show: {
+									datatype: ['blob'],
+								},
+							},
+							placeholder: '{ "type": "Buffer", "data": [98,10] }',
+							description: 'A Binary data',
+						},
+						{
+							displayName: 'Value (Sparse Vector)',
+							name: 'valueSparse',
 							type: 'collection',
 							default: {},
 							displayOptions: {

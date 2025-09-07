@@ -3109,7 +3109,7 @@ importers:
         specifier: ^6.4.14
         version: 6.4.14
       '@types/oracledb':
-        specifier: ^6.5.4
+        specifier: ^6.9.1
         version: 6.9.1
       '@types/promise-ftp':
         specifier: ^1.3.4
@@ -19679,7 +19679,7 @@ snapshots:
   '@jest/console@29.6.2':
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       chalk: 4.1.2
       jest-message-util: 29.6.2
       jest-util: 29.6.2
@@ -19799,7 +19799,7 @@ snapshots:
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
       '@jridgewell/trace-mapping': 0.3.30
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       chalk: 4.1.2
       collect-v8-coverage: 1.0.1
       exit: 0.1.2
@@ -22374,7 +22374,7 @@ snapshots:
 
   '@types/docker-modem@3.0.6':
     dependencies:
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       '@types/ssh2': 1.11.6
 
   '@types/dockerode@3.3.42':
@@ -22654,7 +22654,7 @@ snapshots:
   '@types/request@2.48.12':
     dependencies:
       '@types/caseless': 0.12.5
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       '@types/tough-cookie': 4.0.5
       form-data: 4.0.4
 
@@ -22701,11 +22701,11 @@ snapshots:
 
   '@types/ssh2-streams@0.1.12':
     dependencies:
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
 
   '@types/ssh2@0.5.52':
     dependencies:
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       '@types/ssh2-streams': 0.1.12
 
   '@types/ssh2@1.11.6':
@@ -28058,7 +28058,7 @@ snapshots:
     dependencies:
       '@jest/types': 29.6.1
       '@types/graceful-fs': 4.1.6
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       anymatch: 3.1.3
       fb-watchman: 2.0.2
       graceful-fs: 4.2.11
@@ -28170,7 +28170,7 @@ snapshots:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       chalk: 4.1.2
       emittery: 0.13.1
       graceful-fs: 4.2.11
@@ -28198,7 +28198,7 @@ snapshots:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       chalk: 4.1.2
       cjs-module-lexer: 1.2.2
       collect-v8-coverage: 1.0.1
@@ -28272,7 +28272,7 @@ snapshots:
     dependencies:
       '@jest/test-result': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 20.19.10
+      '@types/node': 20.19.11
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       emittery: 0.13.1

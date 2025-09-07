@@ -7,7 +7,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import * as database from './database/Database.resource';
 
 export const versionDescription: INodeTypeDescription = {
-	displayName: 'Oracle Database ',
+	displayName: 'Oracle Database',
 	name: 'oracleDatabase',
 	icon: 'file:oracle.svg',
 	group: ['input'],

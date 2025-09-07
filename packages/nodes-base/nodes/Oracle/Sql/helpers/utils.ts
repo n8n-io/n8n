@@ -1,6 +1,7 @@
 // Copyright (c) 2025, Oracle and/or its affiliates.
 
 import { randomUUID } from 'crypto';
+import { DateTime } from 'luxon';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -17,6 +18,7 @@ import type {
 	ColumnInfo,
 	ColumnDefinition,
 	ExecuteOpBindParam,
+	ObjectQueryValue,
 	QueryMode,
 	QueryWithValues,
 	QueryValue,
@@ -26,7 +28,7 @@ import type {
 	OracleDBNodeOptions,
 } from './interfaces';
 
-const n8nTypetoDBType: { [key: string]: any } = {
+const n8nTypetoDBType: { [key: string]: oracledb.DbType } = {
 	array: oracledb.DB_TYPE_VECTOR,
 	boolean: oracledb.DB_TYPE_BOOLEAN,
 	date: oracledb.DATE,
@@ -34,7 +36,9 @@ const n8nTypetoDBType: { [key: string]: any } = {
 	json: oracledb.DB_TYPE_JSON,
 	number: oracledb.NUMBER,
 	sparse: oracledb.DB_TYPE_VECTOR,
+	vector: oracledb.DB_TYPE_VECTOR,
 	string: oracledb.STRING,
+	blob: oracledb.BLOB,
 };
 
 function isDateType(type: string) {
@@ -107,21 +111,13 @@ export function getCompatibleValue(type: string, value: unknown) {
 	if (value === null || value === undefined) return value;
 
 	if (isDateType(type)) {
+		if (value instanceof DateTime) {
+			return value.isValid ? value.toJSDate() : null;
+		}
 		if (value instanceof Date) {
 			return isNaN(value.getTime()) ? null : value;
 		} else if (typeof value === 'string') {
 			return new Date(value);
-		}
-		if (
-			typeof value === 'object' &&
-			'toJSDate' in value &&
-			typeof (value as { toJSDate: unknown }).toJSDate === 'function' &&
-			'isValid' in value &&
-			typeof (value as { isValid: unknown }).isValid === 'boolean'
-		) {
-			// It looks like a Luxon DateTime object. convert to accepted bindtype, date
-			const dt = value as { toJSDate: () => Date; isValid: boolean };
-			return dt.isValid ? dt.toJSDate() : null;
 		}
 	}
 
@@ -135,21 +131,33 @@ export function getCompatibleValue(type: string, value: unknown) {
 	}
 
 	if ((type === 'BLOB' || type === 'RAW' || type === 'LONG RAW') && !Buffer.isBuffer(value)) {
-		// User enters an array or string manually, we convert to buffer.
+		// User enters an array or string(For BLOB) manually, we convert to buffer.
 		return Buffer.from(value as any);
 	}
 
 	return value;
 }
 
-function getExecuteOptions(options: OracleDBNodeOptions = {}): any {
-	const execOptions: any = {
+function getExecuteOptions(options: OracleDBNodeOptions = {}): Partial<oracledb.ExecuteOptions> {
+	const execOptions = {
 		autoCommit: options.autoCommit,
 		fetchArraySize: options.fetchArraySize,
 		maxRows: options.maxRows,
 		prefetchRows: options.prefetchRows,
 		stmtCacheSize: options.stmtCacheSize,
 		keepInStmtCache: options.keepInStmtCache,
+		bindDefs: options.bindDefs,
+	};
+	return execOptions;
+}
+
+function getExecuteManyOptions(
+	options: OracleDBNodeOptions = {},
+): Partial<oracledb.ExecuteManyOptions> {
+	const execOptions = {
+		autoCommit: options.autoCommit,
+		keepInStmtCache: options.keepInStmtCache,
+		stmtCacheSize: options.stmtCacheSize,
 		bindDefs: options.bindDefs,
 	};
 	return execOptions;
@@ -354,6 +362,7 @@ export function configureQueryRunner(
 ) {
 	return async (queries: QueryWithValues[], items: INodeExecutionData[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
+		let execOptions: Partial<oracledb.ExecuteManyOptions & oracledb.ExecuteOptions> = {};
 		const defaultBatching =
 			options.operation === 'insert' ||
 			options.operation === 'update' ||
@@ -362,53 +371,55 @@ export function configureQueryRunner(
 				: 'independently';
 		const stmtBatching = (options.stmtBatching as QueryMode) || defaultBatching;
 
-		// setup fetch Handler for specific types.
-		const executeFetchHandler = function (metaData: oracledb.Metadata<any>) {
-			if (
-				metaData.dbType &&
-				[
-					oracledb.DB_TYPE_CLOB,
-					oracledb.DB_TYPE_DATE,
-					oracledb.DB_TYPE_TIMESTAMP_TZ,
-					oracledb.DB_TYPE_TIMESTAMP_LTZ,
-				].includes(metaData.dbType as any)
-			) {
-				return { type: oracledb.STRING };
-			}
-			if (metaData.dbType === oracledb.DB_TYPE_BLOB) {
-				return { type: oracledb.BUFFER };
-			}
-			if (options.largeNumbersOutputAsString) {
-				if (metaData.dbType === oracledb.NUMBER) {
+		if (stmtBatching === 'transaction' || stmtBatching === 'independently') {
+			// setup fetch Handler for specific types.
+			const executeFetchHandler = function (metaData: oracledb.Metadata<any>) {
+				if (
+					metaData.dbType &&
+					[
+						oracledb.DB_TYPE_CLOB,
+						oracledb.DB_TYPE_DATE,
+						oracledb.DB_TYPE_TIMESTAMP_TZ,
+						oracledb.DB_TYPE_TIMESTAMP_LTZ,
+					].includes(metaData.dbType as any)
+				) {
 					return { type: oracledb.STRING };
 				}
-			}
-			if (metaData.dbType === oracledb.DB_TYPE_VECTOR) {
-				const myConverter = (v: any) => {
-					if (v !== null) {
-						return Array.from(v);
+				if (metaData.dbType === oracledb.DB_TYPE_BLOB) {
+					return { type: oracledb.BUFFER };
+				}
+				if (options.largeNumbersOutputAsString) {
+					if (metaData.dbType === oracledb.NUMBER) {
+						return { type: oracledb.STRING };
 					}
-					return v;
-				};
-				return { converter: myConverter };
-			}
-			return undefined;
-		};
+				}
+				if (metaData.dbType === oracledb.DB_TYPE_VECTOR) {
+					const myConverter = (v: any) => {
+						if (v !== null) {
+							return Array.from(v);
+						}
+						return v;
+					};
+					return { converter: myConverter };
+				}
+				return undefined;
+			};
+			execOptions = getExecuteOptions(options);
+			execOptions.outFormat = oracledb.OUT_FORMAT_OBJECT; // used for execute operation.
+			execOptions.fetchTypeHandler = executeFetchHandler;
+		}
 
-		const execOptions = getExecuteOptions(options);
-		execOptions.outFormat = oracledb.OUT_FORMAT_OBJECT; // used for executeQuery operation.
-		execOptions.fetchTypeHandler = executeFetchHandler;
-
-		if (stmtBatching === 'single') {
+		if (stmtBatching === 'single' && queries[0].executeManyValues) {
 			const connection = await pool.getConnection();
 			try {
+				execOptions = getExecuteManyOptions(options);
 				if (continueOnFail) {
 					execOptions.batchErrors = true;
 				}
 
-				const results = await connection.executeMany(
+				const results: oracledb.Results<unknown> = await connection.executeMany(
 					queries[0].query,
-					queries[0].executeManyValues as any,
+					queries[0].executeManyValues,
 					execOptions,
 				);
 
@@ -664,10 +675,10 @@ export function checkItemAgainstSchema(
  */
 function generateBindVariablesList(
 	item: ExecuteOpBindParam,
-	bindParameters: QueryValue,
+	bindParameters: ObjectQueryValue,
 	query: string,
 ) {
-	const valList: string[] = typeof item.value === 'string' ? item.value.split(',') : [];
+	const valList: string[] = item.datatype === 'string' ? item.valueString.split(',') : [];
 	let generatedSqlString = '(';
 
 	if (valList) {
@@ -679,6 +690,7 @@ function generateBindVariablesList(
 				type: mapDbType(item.datatype).oracledbType,
 				val: getCompatibleValue(item.datatype, valList[i]),
 			};
+
 			generatedSqlString += `:${newParamName}`;
 			generatedSqlString += ',';
 		}
@@ -700,32 +712,46 @@ export function getBindParameters(
 	query: string,
 	parameterList: ExecuteOpBindParam[],
 ): { updatedQuery: string; bindParameters: QueryValue } {
-	const bindParameters: QueryValue = {};
+	const bindParameters: ObjectQueryValue = {};
 
 	for (const item of parameterList) {
 		if (!item.parseInStatement) {
-			let bindVal;
+			let bindVal = null;
 			const type = item.datatype;
-			const val: any = item.value;
 
 			switch (type) {
 				case 'number':
-				case 'string':
-				case 'boolean':
-					bindVal = val;
+					bindVal = item.valueNumber;
 					break;
-				case 'date':
+				case 'string':
+					bindVal = item.valueString;
+					break;
+				case 'boolean':
+					bindVal = item.valueBoolean;
+					break;
+				case 'blob':
+					bindVal = item.valueBlob;
+					break;
+				case 'date': {
+					const val = item.valueDate;
 					if (typeof val === 'string') {
-						bindVal = new Date(val);
+						bindVal = new Date(val); // string → Date
+					} else if (val instanceof Date) {
+						bindVal = val; // already a Date
 					} else {
-						// convert DateTime (from Luxon) to Date
-						bindVal = val?.toJSDate();
+						// Luxon DateTime
+						if (val instanceof DateTime) {
+							bindVal = val.isValid ? val.toJSDate() : null;
+						}
 					}
 					break;
+				}
 				case 'sparse': {
+					const val = item.valueSparse;
 					let indices = val.indices;
 					let values = val.values;
 					const dims = val.dimensions;
+
 					if (typeof indices === 'string') {
 						try {
 							indices = JSON.parse(indices);
@@ -744,7 +770,7 @@ export function getBindParameters(
 							);
 						}
 					}
-					bindVal = new (oracledb as any).SparseVector({
+					bindVal = new oracledb.SparseVector({
 						indices,
 						values,
 						numDimensions: dims,
@@ -752,24 +778,32 @@ export function getBindParameters(
 					break;
 				}
 				case 'vector':
-					bindVal = val;
-					if (typeof val === 'string') {
-						try {
-							bindVal = JSON.parse(val);
-						} catch (caughtError) {
-							throw new UserError(
-								`Value field must be a valid JSON array or use an expression like {{ [1, 2, 3] }}, Err: ${caughtError}`,
-							);
+					{
+						const val = item.valueVector;
+
+						bindVal = val;
+						if (typeof val === 'string') {
+							try {
+								bindVal = JSON.parse(val);
+							} catch (caughtError) {
+								throw new UserError(
+									`Value field must be a valid JSON array or use an expression like {{ [1, 2, 3] }}, Err: ${caughtError}`,
+								);
+							}
 						}
 					}
 					break;
 				case 'json':
-					bindVal = val;
-					if (typeof val === 'string') {
-						try {
-							bindVal = JSON.parse(val);
-						} catch {
-							throw new UserError('Value must be a valid JSON ');
+					{
+						const val = item.valueJson;
+
+						bindVal = val;
+						if (typeof val === 'string') {
+							try {
+								bindVal = JSON.parse(val);
+							} catch {
+								throw new UserError('Value must be a valid JSON ');
+							}
 						}
 					}
 					break;

@@ -1,22 +1,23 @@
 // Copyright (c) 2025, Oracle and/or its affiliates.
 
-import type { IDataObject, GenericValue, INodeExecutionData } from 'n8n-workflow';
+import type { DateTime } from 'luxon';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type * as oracleDBTypes from 'oracledb';
 
 export type QueryMode = 'single' | 'transaction' | 'independently';
 
-// A single set of values for a query
-export type QueryValue = Record<string, oracleDBTypes.BindParameter> | IDataObject;
+export type ObjectQueryValue = Extract<oracleDBTypes.BindParameters, Record<string, unknown>>;
 
-// A single set of values for executeMany or batch DMLs.
-export type QueryValues = oracleDBTypes.BindParameters | IDataObject;
+// For execute
+export type QueryValue =
+	| ObjectQueryValue // named binds in object form
+	| oracleDBTypes.BindParameters; // positional binds in array form
 
-// A query string along with its bind values and options.
+// A query string along with its bind values.
 export type QueryWithValues = {
 	query: string;
-	values?: QueryValue;
-	options?: oracleDBTypes.ExecuteManyOptions;
-	executeManyValues?: QueryValues;
+	values?: QueryValue; // For execute
+	executeManyValues?: QueryValue[]; // for executeMany
 };
 
 export type WhereClause = { column: string; condition: string; value: any };
@@ -100,10 +101,27 @@ export type ColumnMap = {
 	[key: string]: ColumnDefinition;
 };
 
-export type ExecuteOpBindParam = {
-	name: string;
-	value: GenericValue;
-	datatype: string;
+// shared fields
+type BaseBindFields = {
+	name: string; // bind param name
 	parseInStatement: boolean;
-	bindDirection: string;
+	bindDirection: 'in' | 'out' | 'inout'; // restrict to known directions
 };
+
+// discriminated union
+export type ExecuteOpBindParam =
+	| (BaseBindFields & { datatype: 'string'; valueString: string })
+	| (BaseBindFields & { datatype: 'number'; valueNumber: number })
+	| (BaseBindFields & { datatype: 'boolean'; valueBoolean: boolean })
+	| (BaseBindFields & { datatype: 'date'; valueDate: string | Date | DateTime | null })
+	| (BaseBindFields & { datatype: 'json'; valueJson: Record<string, unknown> | null })
+	| (BaseBindFields & { datatype: 'vector'; valueVector: number[] | null })
+	| (BaseBindFields & { datatype: 'blob'; valueBlob: Buffer | null })
+	| (BaseBindFields & {
+			datatype: 'sparse';
+			valueSparse: {
+				dimensions: number;
+				indices: number[];
+				values: number[];
+			};
+	  });
