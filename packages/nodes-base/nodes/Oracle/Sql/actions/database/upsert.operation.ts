@@ -17,7 +17,6 @@ import type {
 	QueryMode,
 	OracleDBNodeOptions,
 	QueriesRunner,
-	QueryValue,
 	QueryWithValues,
 } from '../../helpers/interfaces';
 import {
@@ -193,7 +192,7 @@ export async function execute(
 	const stmtBatching = (nodeOptions.stmtBatching as QueryMode) || 'single';
 	const queries: QueryWithValues[] = [];
 	if (stmtBatching === 'single') {
-		const executeManyValues: any = [];
+		const executeManyValues: oracleDBTypes.BindParameters[] = [];
 		const bindDefs: oracleDBTypes.BindDefinition[] = [];
 		const schema = this.getNodeParameter('schema', 0, undefined, {
 			extractValue: true,
@@ -217,9 +216,8 @@ export async function execute(
 			executeManyValues,
 		);
 
-		const options: OracleDBNodeOptions = nodeOptions;
-		options.bindDefs = bindDefs;
-		queries.push({ query, options, executeManyValues });
+		nodeOptions.bindDefs = bindDefs;
+		queries.push({ query, executeManyValues });
 	} else {
 		let schema = this.getNodeParameter('schema', 0, undefined, {
 			extractValue: true,
@@ -243,7 +241,7 @@ export async function execute(
 			const bindParams: oracleDBTypes.BindParameter[] = []; // bindParameters
 			const query = getQuery(this, items, schema, table, tableSchema, bindParams, null, i, null);
 
-			queries.push({ query, values: bindParams as unknown as QueryValue });
+			queries.push({ query, values: bindParams });
 		}
 	}
 

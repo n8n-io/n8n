@@ -13,7 +13,6 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 
 	const pool: oracleDBTypes.Pool = await configureOracleDB.call(this, credentials, options);
 
-	//const conn = await pool.getConnection();
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,
 	}) as string;
