@@ -1,9 +1,17 @@
 import { mock } from 'jest-mock-extended';
-import type { INode, INodeType, INodeTypes, IRun, IExecuteFunctions } from 'n8n-workflow';
-import { createDeferredPromise, NodeConnectionTypes, Workflow } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INode,
+	INodeType,
+	INodeTypes,
+	IRun,
+	IExecuteFunctions,
+	INodeExecutionData,
+} from 'n8n-workflow';
+import { createDeferredPromise, deepCopy, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 
-import * as Helpers from '@test/helpers';
 import { WorkflowExecute } from '@/execution-engine/workflow-execute';
+import * as Helpers from '@test/helpers';
 
 describe('V2 Parallel Execution - Data Consistency Tests', () => {
 	let nodeTypes: jest.Mocked<INodeTypes>;
@@ -15,8 +23,8 @@ describe('V2 Parallel Execution - Data Consistency Tests', () => {
 	describe('Context Isolation and Race Condition Prevention', () => {
 		it('should prevent parameter corruption between parallel nodes', async () => {
 			// ARRANGE
-			const parameterValues: Record<string, any> = {};
-			const executionContexts: Record<string, any> = {};
+			const parameterValues: Record<string, string> = {};
+			const executionContexts: Record<string, IDataObject> = {};
 
 			const createParameterNode = (name: string, expectedValue: string): INodeType => {
 				return mock<INodeType>({
@@ -148,7 +156,10 @@ describe('V2 Parallel Execution - Data Consistency Tests', () => {
 
 		it('should prevent data corruption in shared data structures', async () => {
 			// ARRANGE
-			const sharedDataAccess: Record<string, any[]> = {};
+			const sharedDataAccess: Record<
+				string,
+				Array<{ originalJson: object; hasProcessedBy: boolean }>
+			> = {};
 
 			const createDataAccessNode = (name: string): INodeType => {
 				return mock<INodeType>({
@@ -261,7 +272,7 @@ describe('V2 Parallel Execution - Data Consistency Tests', () => {
 
 		it('should handle complex data structures without corruption', async () => {
 			// ARRANGE
-			const receivedData: Record<string, any> = {};
+			const receivedData: Record<string, INodeExecutionData[]> = {};
 
 			const createComplexDataNode = (name: string): INodeType => {
 				return mock<INodeType>({
@@ -277,7 +288,7 @@ describe('V2 Parallel Execution - Data Consistency Tests', () => {
 						const inputData = this.getInputData();
 
 						// Deep clone to capture what we received
-						receivedData[name] = JSON.parse(JSON.stringify(inputData));
+						receivedData[name] = deepCopy(inputData);
 
 						// Create complex output data
 						const complexOutput = {
@@ -381,7 +392,8 @@ describe('V2 Parallel Execution - Data Consistency Tests', () => {
 		it('should properly handle merge nodes that wait for multiple parallel inputs', async () => {
 			// ARRANGE
 			const executionOrder: string[] = [];
-			const mergeInputData: any[] = [];
+			const mergeInputData: Array<{ input1: INodeExecutionData[]; input2: INodeExecutionData[] }> =
+				[];
 
 			const createSimpleNode = (name: string): INodeType => {
 				return mock<INodeType>({
@@ -533,7 +545,10 @@ describe('V2 Parallel Execution - Data Consistency Tests', () => {
 
 		it('should handle binary data without corruption in parallel execution', async () => {
 			// ARRANGE
-			const binaryDataAccess: Record<string, any> = {};
+			const binaryDataAccess: Record<
+				string,
+				Array<{ json: IDataObject; binary?: IDataObject }>
+			> = {};
 
 			const createBinaryNode = (name: string): INodeType => {
 				return mock<INodeType>({

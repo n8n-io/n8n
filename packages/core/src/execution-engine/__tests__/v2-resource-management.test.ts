@@ -1,17 +1,9 @@
 import { mock } from 'jest-mock-extended';
-import type {
-	IConnection,
-	INode,
-	INodeExecutionData,
-	INodeType,
-	INodeTypes,
-	IRun,
-	IExecuteFunctions,
-} from 'n8n-workflow';
+import type { IConnection, INode, INodeType, INodeTypes, IRun } from 'n8n-workflow';
 import { createDeferredPromise, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 
-import * as Helpers from '@test/helpers';
 import { WorkflowExecute } from '@/execution-engine/workflow-execute';
+import * as Helpers from '@test/helpers';
 
 describe('V2 Parallel Execution - Resource Management Tests', () => {
 	let nodeTypes: jest.Mocked<INodeTypes>;
@@ -38,7 +30,7 @@ describe('V2 Parallel Execution - Resource Management Tests', () => {
 						outputs: [{ type: NodeConnectionTypes.Main }],
 					},
 					async execute() {
-						return new Promise((resolve) => {
+						return await new Promise((resolve) => {
 							currentConcurrentExecutions++;
 							maxConcurrentExecutions = Math.max(
 								maxConcurrentExecutions,
@@ -145,7 +137,7 @@ describe('V2 Parallel Execution - Resource Management Tests', () => {
 						outputs: [{ type: NodeConnectionTypes.Main }],
 					},
 					async execute() {
-						return new Promise((resolve) => {
+						return await new Promise((resolve) => {
 							concurrentExecutions++;
 							maxConcurrentExecutions = Math.max(maxConcurrentExecutions, concurrentExecutions);
 

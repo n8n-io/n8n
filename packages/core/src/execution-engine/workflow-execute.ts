@@ -506,12 +506,7 @@ export class WorkflowExecute {
 		}
 
 		// Wait for all remaining executions to complete
-		try {
-			await Promise.all(activeExecutions);
-		} catch (error) {
-			// Propagate any errors from parallel execution
-			throw error;
-		}
+		await Promise.all(activeExecutions);
 	}
 
 	/**

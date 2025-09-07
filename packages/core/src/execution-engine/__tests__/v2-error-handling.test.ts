@@ -14,8 +14,8 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import * as Helpers from '@test/helpers';
 import { WorkflowExecute } from '@/execution-engine/workflow-execute';
+import * as Helpers from '@test/helpers';
 
 describe('V2 Parallel Execution - Error Handling Tests', () => {
 	let nodeTypes: jest.Mocked<INodeTypes>;
@@ -259,7 +259,7 @@ describe('V2 Parallel Execution - Error Handling Tests', () => {
 					async execute() {
 						const startTime = Date.now();
 
-						return new Promise((resolve) => {
+						return await new Promise((resolve) => {
 							const timeoutId = setTimeout(() => {
 								executionTimes[name] = Date.now() - startTime;
 								resolve([[{ json: { completed: true, node: name } }]]);
@@ -590,7 +590,7 @@ describe('V2 Parallel Execution - Error Handling Tests', () => {
 			// ARRANGE
 			const cancelledNodes: string[] = [];
 			const completedNodes: string[] = [];
-			let cancellationRequested = false;
+			const cancellationRequested = false;
 
 			const createCancellableNode = (name: string): INodeType => {
 				return mock<INodeType>({
@@ -605,7 +605,7 @@ describe('V2 Parallel Execution - Error Handling Tests', () => {
 					async execute(this: IExecuteFunctions) {
 						const abortSignal = this.getExecutionCancelSignal();
 
-						return new Promise((resolve, reject) => {
+						return await new Promise((resolve, reject) => {
 							const timeoutId = setTimeout(
 								() => {
 									if (cancellationRequested || abortSignal?.aborted) {

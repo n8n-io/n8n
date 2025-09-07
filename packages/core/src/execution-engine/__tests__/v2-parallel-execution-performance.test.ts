@@ -3,6 +3,7 @@ import type { INode, INodeType, INodeTypes, IRun } from 'n8n-workflow';
 import { createDeferredPromise, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 
 import * as Helpers from '@test/helpers';
+
 import { WorkflowExecute } from '../workflow-execute';
 
 describe('V2 Parallel Execution Performance', () => {
@@ -152,13 +153,5 @@ describe('V2 Parallel Execution Performance', () => {
 		expect(Object.keys(sequentialResult.data.resultData.runData)).toEqual(
 			Object.keys(parallelResult.data.resultData.runData),
 		);
-
-		// Log performance metrics for PR documentation
-		const improvement = (sequentialDuration / parallelDuration).toFixed(2);
-		console.log(`\n📊 V2 Parallel Execution Performance:`);
-		console.log(`  Sequential (v1): ${sequentialDuration}ms`);
-		console.log(`  Parallel (v2):   ${parallelDuration}ms`);
-		console.log(`  Improvement:     ${improvement}x faster`);
-		console.log(`  Budget met:      ${parallelDuration < 200 ? '✅' : '❌'} (< 200ms)`);
 	});
 });

@@ -2,8 +2,8 @@ import { mock } from 'jest-mock-extended';
 import type { INode, INodeType, INodeTypes, IRun, IExecuteFunctions } from 'n8n-workflow';
 import { createDeferredPromise, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 
-import * as Helpers from '@test/helpers';
 import { WorkflowExecute } from '@/execution-engine/workflow-execute';
+import * as Helpers from '@test/helpers';
 
 describe('V2 Parallel Execution - Backward Compatibility Tests', () => {
 	let nodeTypes: jest.Mocked<INodeTypes>;
