@@ -482,6 +482,7 @@ function onFocusNode(id: string) {
 	const node = vueFlow.nodeLookup.value.get(id);
 
 	if (node) {
+		addSelectedNodes([node]);
 		experimentalNdvStore.focusNode(node, {
 			canvasViewport: viewport.value,
 			canvasDimensions: dimensions.value,
