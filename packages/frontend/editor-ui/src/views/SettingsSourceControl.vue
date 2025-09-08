@@ -113,7 +113,7 @@ const onSave = async () => {
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, 'Error setting branch');
+		toast.showError(error, locale.baseText('settings.sourceControl.saved.error'));
 	}
 	loadingService.stopLoading();
 };
@@ -274,9 +274,9 @@ watch(connectionType, () => {
 			}}</n8n-heading>
 
 			<div v-if="!isConnected" :class="$style.group">
-				<label for="connectionType"
-					>Connection Typelocale.baseText('settings.sourceControl.connectionType')</label
-				>
+				<label for="connectionType">{{
+					locale.baseText('settings.sourceControl.connectionType')
+				}}</label>
 				<n8n-form-input
 					id="connectionType"
 					v-model="connectionType"
@@ -291,7 +291,11 @@ watch(connectionType, () => {
 			<!-- Repository URL -->
 			<div :class="$style.group">
 				<label for="repoUrl">
-					{{ connectionType === 'ssh' ? 'SSH Repository URL' : 'HTTPS Repository URL' }}
+					{{
+						connectionType === 'ssh'
+							? locale.baseText('settings.sourceControl.sshRepoUrl')
+							: locale.baseText('settings.sourceControl.httpsRepoUrl')
+					}}
 				</label>
 				<div :class="$style.groupFlex">
 					<n8n-form-input
@@ -305,8 +309,8 @@ watch(connectionType, () => {
 						:disabled="isConnected"
 						:placeholder="
 							connectionType === 'ssh'
-								? 'git@github.com:user/repository.git'
-								: 'https://github.com/user/repository.git'
+								? locale.baseText('settings.sourceControl.sshRepoUrlPlaceholder')
+								: locale.baseText('settings.sourceControl.httpsRepoUrlPlaceholder')
 						"
 						@validate="(value: boolean) => onValidate('repoUrl', value)"
 					/>
@@ -322,15 +326,17 @@ watch(connectionType, () => {
 					>
 				</div>
 				<n8n-notice v-if="!isConnected && connectionType === 'ssh'" type="info" class="mt-s">
-					Use SSH format: git@github.com:user/repository.git
+					{{ locale.baseText('settings.sourceControl.sshFormatNotice') }}
 				</n8n-notice>
 				<n8n-notice v-if="!isConnected && connectionType === 'https'" type="info" class="mt-s">
-					Use HTTPS format: https://github.com/user/repository.git
+					{{ locale.baseText('settings.sourceControl.httpsFormatNotice') }}
 				</n8n-notice>
 			</div>
 
 			<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
-				<label for="httpsUsername">Username</label>
+				<label for="httpsUsername">{{
+					locale.baseText('settings.sourceControl.httpsUsername')
+				}}</label>
 				<n8n-form-input
 					id="httpsUsername"
 					v-model="httpsUsername"
@@ -339,13 +345,15 @@ watch(connectionType, () => {
 					type="text"
 					validate-on-blur
 					:validation-rules="httpsCredentialValidationRules"
-					placeholder="Enter your GitHub username"
+					:placeholder="locale.baseText('settings.sourceControl.httpsUsernamePlaceholder')"
 					@validate="(value: boolean) => onValidate('httpsUsername', value)"
 				/>
 			</div>
 
 			<div v-if="connectionType === 'https' && !isConnected" :class="$style.group">
-				<label for="httpsPassword">Personal Access Token</label>
+				<label for="httpsPassword">{{
+					locale.baseText('settings.sourceControl.httpsPersonalAccessToken')
+				}}</label>
 				<n8n-form-input
 					id="httpsPassword"
 					v-model="httpsPassword"
@@ -354,17 +362,28 @@ watch(connectionType, () => {
 					type="password"
 					validate-on-blur
 					:validation-rules="httpsCredentialValidationRules"
-					placeholder="Enter your Personal Access Token (PAT)"
+					:placeholder="
+						locale.baseText('settings.sourceControl.httpsPersonalAccessTokenPlaceholder')
+					"
 					@validate="(value: boolean) => onValidate('httpsPassword', value)"
 				/>
 				<n8n-notice type="warning" class="mt-s">
-					<strong>For GitHub with 2FA enabled:</strong> Use a Personal Access Token instead of your
-					password. Create one at GitHub Settings → Developer settings → Personal access tokens →
-					Tokens (classic). Required scopes: <code>repo</code> for private repositories or
-					<code>public_repo</code> for public ones.
+					<I18nT keypath="settings.sourceControl.httpsWarningNotice" tag="span" scope="global">
+						<template #strong>
+							<strong>{{
+								locale.baseText('settings.sourceControl.httpsWarningNotice.strong')
+							}}</strong>
+						</template>
+						<template #repo>
+							<code>repo</code>
+						</template>
+						<template #publicRepo>
+							<code>public_repo</code>
+						</template>
+					</I18nT>
 				</n8n-notice>
 				<n8n-notice type="info" class="mt-s">
-					Credentials are securely encrypted and stored locally
+					{{ locale.baseText('settings.sourceControl.httpsCredentialsNotice') }}
 				</n8n-notice>
 			</div>
 
