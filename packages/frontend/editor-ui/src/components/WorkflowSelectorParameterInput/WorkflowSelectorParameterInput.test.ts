@@ -29,7 +29,7 @@ vi.mock('vue-router', () => {
 		useRouter: () => ({
 			push,
 			resolve: vi.fn().mockReturnValue({
-				href: '/projects/1/folders/1',
+				href: '/projects/1/workflows/1',
 			}),
 		}),
 		useRoute: () => ({}),
@@ -82,7 +82,7 @@ describe('WorkflowSelectorParameterInput', () => {
 		// The component adds cachedResultUrl to the model value
 		const expectedModelValue = {
 			...props.modelValue,
-			cachedResultUrl: '/projects/1/folders/1',
+			cachedResultUrl: '/projects/1/workflows/1',
 		};
 
 		expect(wrapper.emitted()['update:modelValue']?.[0]).toEqual([expectedModelValue]);
@@ -177,7 +177,7 @@ describe('WorkflowSelectorParameterInput', () => {
 				__rl: true,
 				value: 'test-workflow',
 				mode: 'list',
-				cachedResultUrl: '/projects/1/folders/1',
+				cachedResultUrl: '/projects/1/workflows/1',
 			});
 		});
 
