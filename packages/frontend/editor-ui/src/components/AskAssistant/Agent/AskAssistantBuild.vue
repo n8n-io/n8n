@@ -114,6 +114,10 @@ function shouldShowPlanControls(message: NodesPlanMessageType) {
 	return planMessageIndex === builderStore.chatMessages.length - 1;
 }
 
+function dedupeToolNames(toolNames: string[]): string[] {
+	return [...new Set(toolNames)];
+}
+
 function trackWorkflowModifications() {
 	if (workflowUpdated.value) {
 		// Track tool usage for telemetry
@@ -126,7 +130,7 @@ function trackWorkflowModifications() {
 
 		newToolMessages.forEach((toolMsg) => trackedTools.value.add(toolMsg.toolCallId ?? ''));
 		telemetry.track('Workflow modified by builder', {
-			tools_called: newToolMessages.map((toolMsg) => toolMsg.toolName),
+			tools_called: dedupeToolNames(newToolMessages.map((toolMsg) => toolMsg.toolName)),
 			session_id: builderStore.trackingSessionId,
 			start_workflow_json: workflowUpdated.value.start,
 			end_workflow_json: workflowUpdated.value.end,
