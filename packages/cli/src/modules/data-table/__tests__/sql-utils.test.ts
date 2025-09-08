@@ -1,6 +1,4 @@
-import type { DataStoreRows } from 'n8n-workflow';
-
-import { addColumnQuery, deleteColumnQuery, splitRowsByExistence } from '../utils/sql-utils';
+import { addColumnQuery, deleteColumnQuery } from '../utils/sql-utils';
 
 describe('sql-utils', () => {
 	describe('addColumnQuery', () => {
@@ -49,73 +47,6 @@ describe('sql-utils', () => {
 			const query = deleteColumnQuery(tableName, column, 'sqlite');
 
 			expect(query).toBe('ALTER TABLE "data_table_user_abc" DROP COLUMN "email"');
-		});
-	});
-
-	describe('splitRowsByExistence', () => {
-		it('should correctly separate rows into insert and update based on matchFields', () => {
-			const existing = [
-				{ name: 'Alice', age: 30 },
-				{ name: 'Bob', age: 25 },
-			];
-			const matchFields = ['name'];
-			const rows: DataStoreRows = [
-				{ name: 'Alice', age: 30 },
-				{ name: 'Bob', age: 26 },
-				{ name: 'Charlie', age: 35 },
-			];
-
-			const { rowsToInsert, rowsToUpdate } = splitRowsByExistence(existing, matchFields, rows);
-
-			expect(rowsToUpdate).toEqual([
-				{ name: 'Alice', age: 30 },
-				{ name: 'Bob', age: 26 },
-			]);
-			expect(rowsToInsert).toEqual([{ name: 'Charlie', age: 35 }]);
-		});
-
-		it('should treat rows as new if matchFields combination does not exist', () => {
-			const existing = [{ name: 'Bob', city: 'Berlin' }];
-			const matchFields = ['name', 'city'];
-			const rows: DataStoreRows = [{ name: 'Alice', city: 'Berlin' }];
-
-			const { rowsToInsert, rowsToUpdate } = splitRowsByExistence(existing, matchFields, rows);
-
-			expect(rowsToUpdate).toEqual([]);
-			expect(rowsToInsert).toEqual([{ name: 'Alice', city: 'Berlin' }]);
-		});
-
-		it('should insert all rows if existing set is empty', () => {
-			const existing: Array<Record<string, unknown>> = [];
-			const matchFields = ['name'];
-			const rows: DataStoreRows = [{ name: 'Alice' }, { name: 'Bob' }];
-
-			const { rowsToInsert, rowsToUpdate } = splitRowsByExistence(existing, matchFields, rows);
-
-			expect(rowsToUpdate).toEqual([]);
-			expect(rowsToInsert).toEqual(rows);
-		});
-
-		it('should update all rows if all keys match existing', () => {
-			const existing = [{ name: 'Alice' }, { name: 'Bob' }];
-			const matchFields = ['name'];
-			const rows: DataStoreRows = [{ name: 'Alice' }, { name: 'Bob' }];
-
-			const { rowsToInsert, rowsToUpdate } = splitRowsByExistence(existing, matchFields, rows);
-
-			expect(rowsToInsert).toEqual([]);
-			expect(rowsToUpdate).toEqual(rows);
-		});
-
-		it('should handle empty input rows', () => {
-			const existing = [{ name: 'Alice' }];
-			const matchFields = ['name'];
-			const rows: DataStoreRows = [];
-
-			const { rowsToInsert, rowsToUpdate } = splitRowsByExistence(existing, matchFields, rows);
-
-			expect(rowsToInsert).toEqual([]);
-			expect(rowsToUpdate).toEqual([]);
 		});
 	});
 });

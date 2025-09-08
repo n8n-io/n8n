@@ -57,14 +57,14 @@ export type ListDataStoreRowsOptions = {
 	skip?: number;
 };
 
-export type UpdateDataStoreRowsOptions = {
+export type UpdateDataStoreRowOptions = {
 	filter: DataTableFilter;
 	data: DataStoreRow;
 };
 
-export type UpsertDataStoreRowsOptions = {
-	rows: DataStoreRows;
-	matchFields: string[];
+export type UpsertDataStoreRowOptions = {
+	filter: DataTableFilter;
+	data: DataStoreRow;
 };
 
 export type MoveDataStoreColumnOptions = {
@@ -118,9 +118,9 @@ export interface IDataStoreProjectService {
 
 	insertRows(rows: DataStoreRows): Promise<DataStoreRowReturn[]>;
 
-	updateRows(options: UpdateDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
+	updateRow(options: UpdateDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
 
-	upsertRows(options: UpsertDataStoreRowsOptions): Promise<DataStoreRowReturn[]>;
+	upsertRow(options: UpsertDataStoreRowOptions): Promise<DataStoreRowReturn[]>;
 
 	deleteRows(ids: number[]): Promise<boolean>;
 }
