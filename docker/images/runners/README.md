@@ -159,7 +159,7 @@ Use the following docker compose as a reference to add a task runner sidecar con
 Keep in mind:
 
 - The `n8nio/runners` image version must match that of the `n8nio/n8n` image.
-- [n8n docs](https://docs.n8n.io/hosting/configuration/task-runners/) on task runners configuration.
+- See [n8n docs](https://docs.n8n.io/hosting/configuration/task-runners/) on task runners configuration.
 
 ```yaml
 services:
