@@ -30,6 +30,7 @@ import { DataStoreColumnNotFoundError } from './errors/data-store-column-not-fou
 import { DataStoreNameConflictError } from './errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from './errors/data-store-not-found.error';
 import { DataStoreValidationError } from './errors/data-store-validation.error';
+import { ThrottledExecutor } from './throttled-executor.service';
 import { normalizeRows } from './utils/sql-utils';
 
 @Service()
@@ -43,6 +44,7 @@ export class DataStoreService {
 		private readonly dataStoreRowsRepository: DataStoreRowsRepository,
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
+		private readonly throttledExecutor: ThrottledExecutor,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -386,42 +388,15 @@ export class DataStoreService {
 	}
 
 	private async validateDataTableSize() {
-		const now = new Date();
+		await this.throttledExecutor.executeIfNeeded(async () => {
+			const maxSize = this.globalConfig.datatable.maxSize;
+			const currentSizeInMbs = await this.dataStoreRepository.findDataTablesSize();
 
-		// If there's already a pending check, wait for it to complete
-		if (this.pendingSizeCheck) {
-			await this.pendingSizeCheck;
-			return;
-		}
-
-		// Check if we need to run the size check
-		const shouldRunCheck =
-			!this.lastCacheSizeCheck || now.getTime() - this.lastCacheSizeCheck.getTime() >= 1000;
-
-		if (shouldRunCheck) {
-			// Create and store the promise to prevent concurrent checks
-			this.pendingSizeCheck = this.performSizeCheck(now);
-
-			try {
-				await this.pendingSizeCheck;
-			} finally {
-				// Clear the pending check once it's done
-				this.pendingSizeCheck = null;
+			if (currentSizeInMbs >= maxSize) {
+				throw new DataStoreValidationError(
+					`Data store size limit exceeded: ${currentSizeInMbs}MB used, limit is ${maxSize}MB`,
+				);
 			}
-		}
-	}
-
-	private async performSizeCheck(checkTime: Date): Promise<void> {
-		const maxSize = this.globalConfig.datatable.maxSize;
-
-		this.lastCacheSizeCheck = checkTime;
-
-		const currentSizeInMbs = await this.dataStoreRepository.findDataTablesSize();
-
-		if (currentSizeInMbs >= maxSize) {
-			throw new DataStoreValidationError(
-				`Data store size limit exceeded: ${currentSizeInMbs}MB used, limit is ${this.globalConfig.datatable.maxSize}MB`,
-			);
-		}
+		}, new Date());
 	}
 }
