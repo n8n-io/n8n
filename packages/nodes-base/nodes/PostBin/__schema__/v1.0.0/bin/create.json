@@ -1,27 +1,27 @@
 {
     "type": "object",
     "properties": {
-        "datas_fname": {
+        "binId": {
             "type": "string"
         },
-        "db_datas": {
-            "type": "boolean"
-        },
-        "display_name": {
+        "expiresIso": {
             "type": "string"
         },
-        "id": {
+        "expiresTimestamp": {
             "type": "integer"
         },
-        "index_content": {
+        "nowIso": {
             "type": "string"
         },
-        "res_id": {
+        "nowTimestamp": {
             "type": "integer"
         },
-        "type": {
+        "requestUrl": {
+            "type": "string"
+        },
+        "viewUrl": {
             "type": "string"
         }
     },
-    "version": 4
+    "version": 1
 }

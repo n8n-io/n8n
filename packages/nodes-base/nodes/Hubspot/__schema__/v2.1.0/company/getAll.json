@@ -45,6 +45,9 @@
                                     "timestamp": {
                                         "type": "integer"
                                     },
+                                    "updatedByUserId": {
+                                        "type": "integer"
+                                    },
                                     "useTimestampAsPersistenceTimestamp": {
                                         "type": "boolean"
                                     },
@@ -57,7 +60,21 @@
                     }
                 }
             }
+        },
+        "stateChanges": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "changeFlag": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    }
+                }
+            }
         }
     },
-    "version": 6
+    "version": 7
 }

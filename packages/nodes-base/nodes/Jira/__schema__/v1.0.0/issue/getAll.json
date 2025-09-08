@@ -7,57 +7,11 @@
         "fields": {
             "type": "object",
             "properties": {
-                "assignee": {
-                    "type": "object",
-                    "properties": {
-                        "accountId": {
-                            "type": "string"
-                        },
-                        "accountType": {
-                            "type": "string"
-                        },
-                        "active": {
-                            "type": "boolean"
-                        },
-                        "avatarUrls": {
-                            "type": "object",
-                            "properties": {
-                                "16x16": {
-                                    "type": "string"
-                                },
-                                "24x24": {
-                                    "type": "string"
-                                },
-                                "32x32": {
-                                    "type": "string"
-                                },
-                                "48x48": {
-                                    "type": "string"
-                                }
-                            }
-                        },
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "self": {
-                            "type": "string"
-                        },
-                        "timeZone": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "created": {
-                    "type": "string"
-                },
-                "fixVersions": {
+                "components": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "archived": {
-                                "type": "boolean"
-                            },
                             "description": {
                                 "type": "string"
                             },
@@ -67,17 +21,14 @@
                             "name": {
                                 "type": "string"
                             },
-                            "released": {
-                                "type": "boolean"
-                            },
-                            "releaseDate": {
-                                "type": "string"
-                            },
                             "self": {
                                 "type": "string"
                             }
                         }
                     }
+                },
+                "created": {
+                    "type": "string"
                 },
                 "issuetype": {
                     "type": "object",
@@ -86,9 +37,6 @@
                             "type": "integer"
                         },
                         "description": {
-                            "type": "string"
-                        },
-                        "entityId": {
                             "type": "string"
                         },
                         "hierarchyLevel": {
@@ -174,49 +122,6 @@
                         }
                     }
                 },
-                "reporter": {
-                    "type": "object",
-                    "properties": {
-                        "accountId": {
-                            "type": "string"
-                        },
-                        "accountType": {
-                            "type": "string"
-                        },
-                        "active": {
-                            "type": "boolean"
-                        },
-                        "avatarUrls": {
-                            "type": "object",
-                            "properties": {
-                                "16x16": {
-                                    "type": "string"
-                                },
-                                "24x24": {
-                                    "type": "string"
-                                },
-                                "32x32": {
-                                    "type": "string"
-                                },
-                                "48x48": {
-                                    "type": "string"
-                                }
-                            }
-                        },
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "emailAddress": {
-                            "type": "string"
-                        },
-                        "self": {
-                            "type": "string"
-                        },
-                        "timeZone": {
-                            "type": "string"
-                        }
-                    }
-                },
                 "status": {
                     "type": "object",
                     "properties": {
@@ -256,9 +161,6 @@
                             }
                         }
                     }
-                },
-                "statuscategorychangedate": {
-                    "type": "string"
                 },
                 "subtasks": {
                     "type": "array",
@@ -379,34 +281,6 @@
                 },
                 "updated": {
                     "type": "string"
-                },
-                "votes": {
-                    "type": "object",
-                    "properties": {
-                        "hasVoted": {
-                            "type": "boolean"
-                        },
-                        "self": {
-                            "type": "string"
-                        },
-                        "votes": {
-                            "type": "integer"
-                        }
-                    }
-                },
-                "watches": {
-                    "type": "object",
-                    "properties": {
-                        "isWatching": {
-                            "type": "boolean"
-                        },
-                        "self": {
-                            "type": "string"
-                        },
-                        "watchCount": {
-                            "type": "integer"
-                        }
-                    }
                 }
             }
         },
@@ -420,5 +294,5 @@
             "type": "string"
         }
     },
-    "version": 6
+    "version": 7
 }
