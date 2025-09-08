@@ -142,6 +142,8 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css';
+
 .insights {
 	display: grid;
 	grid-template-rows: auto 1fr;
