@@ -240,23 +240,19 @@ export class ExecutionService {
 
 		const retriedExecutionId = await this.workflowRunner.run(data);
 
-		// TODO: discuss wether we can omit this getPostExecutePromise call altogether in favor of a single findWithUnflattenedData call
-		// or wether we keep using getPostExecutePromise and return a merged object of { ...execution, ...executionData }, dropping the findWithUnflattenedData call.
+		// TODO: discuss wether this.executionRepository.findWithUnflattenedData(retriedExecutionId,sharedWorkflowIds) is preferred
+		// over using getPostExecutePromise and creating the complete response by merging execution, executionData and the retriedExecutionId
 		const executionData = await this.activeExecutions.getPostExecutePromise(retriedExecutionId);
 
 		if (!executionData) {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
-		const retriedExecutionResponse = await this.executionRepository.findWithUnflattenedData(
-			retriedExecutionId,
-			sharedWorkflowIds,
-		);
-		if (!retriedExecutionResponse) {
-			throw new UnexpectedError('Could not retrieve the retried execution data.');
-		}
-
-		return retriedExecutionResponse;
+		return {
+			...execution,
+			...executionData,
+			id: retriedExecutionId,
+		};
 	}
 
 	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {
