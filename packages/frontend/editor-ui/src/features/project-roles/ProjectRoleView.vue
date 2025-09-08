@@ -211,6 +211,7 @@ const displayNameValidationRules = [
 					<N8nCheckbox
 						v-for="scope in scopes[type]"
 						:key="scope"
+						:data-test-id="`scope-checkbox-${scope}`"
 						:model-value="form.scopes.includes(scope)"
 						:label="i18n.baseText(`projectRoles.${scope}`)"
 						@update:model-value="() => toggleScope(scope)"

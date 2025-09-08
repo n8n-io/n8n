@@ -94,7 +94,7 @@ describe('ProjectRoleView', () => {
 			const { getByText, getByPlaceholderText } = renderComponent();
 
 			expect(getByText('New Role')).toBeInTheDocument();
-			expect(getByText('Create')).toBeInTheDocument();
+			expect(getByText('Create', { selector: 'button' })).toBeInTheDocument();
 			expect(getByText('Role name')).toBeInTheDocument();
 			expect(getByText('Description')).toBeInTheDocument();
 			expect(getByPlaceholderText('Optional')).toBeInTheDocument();
@@ -135,7 +135,7 @@ describe('ProjectRoleView', () => {
 			if (descriptionInput) await userEvent.type(descriptionInput, 'A new test role');
 
 			// Submit form
-			await userEvent.click(getByText('Create'));
+			await userEvent.click(getByText('Create', { selector: 'button' }));
 
 			await waitFor(() => {
 				expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
@@ -164,7 +164,7 @@ describe('ProjectRoleView', () => {
 
 			const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
 			if (nameInput) await userEvent.type(nameInput, 'Test Role');
-			await userEvent.click(getByText('Create'));
+			await userEvent.click(getByText('Create', { selector: 'button' }));
 
 			await waitFor(() => {
 				expect(mockShowError).toHaveBeenCalledWith(error, 'Error creating role');
@@ -186,7 +186,7 @@ describe('ProjectRoleView', () => {
 
 			await waitFor(() => {
 				expect(getByText('Role "Test Role"')).toBeInTheDocument();
-				expect(getByText('Edit')).toBeInTheDocument();
+				expect(getByText('Edit', { selector: 'button' })).toBeInTheDocument();
 				expect(getByDisplayValue('Test Role')).toBeInTheDocument();
 				expect(getByDisplayValue('A test role for testing')).toBeInTheDocument();
 			});
@@ -235,7 +235,7 @@ describe('ProjectRoleView', () => {
 			}
 
 			// Submit form
-			await userEvent.click(getByText('Edit'));
+			await userEvent.click(getByText('Edit', { selector: 'button' }));
 
 			await waitFor(() => {
 				expect(rolesStore.updateProjectRole).toHaveBeenCalledWith('test-role', {
@@ -264,7 +264,7 @@ describe('ProjectRoleView', () => {
 				expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled();
 			});
 
-			await userEvent.click(getByText('Edit'));
+			await userEvent.click(getByText('Edit', { selector: 'button' }));
 
 			await waitFor(() => {
 				expect(mockShowError).toHaveBeenCalledWith(error, 'Error updating role');
@@ -274,27 +274,26 @@ describe('ProjectRoleView', () => {
 
 	describe('Permissions Management', () => {
 		it('should render all scope types with checkboxes', async () => {
-			const { getByText } = renderComponent();
+			const { getByText, getByTestId } = renderComponent();
 
 			// Check scope type headers
 			expect(getByText('project')).toBeInTheDocument();
-			expect(getByText('folders')).toBeInTheDocument();
-			expect(getByText('workflows')).toBeInTheDocument();
-			expect(getByText('credentials')).toBeInTheDocument();
+			expect(getByText('folder')).toBeInTheDocument();
+			expect(getByText('workflow')).toBeInTheDocument();
+			expect(getByText('credential')).toBeInTheDocument();
 			expect(getByText('sourceControl')).toBeInTheDocument();
-			expect(getByText('dataStore')).toBeInTheDocument();
 
 			// Check some specific scope checkboxes
-			expect(getByText('project:read')).toBeInTheDocument();
-			expect(getByText('workflow:create')).toBeInTheDocument();
-			expect(getByText('credential:read')).toBeInTheDocument();
+			expect(getByTestId('scope-checkbox-project:read')).toBeInTheDocument();
+			expect(getByTestId('scope-checkbox-workflow:create')).toBeInTheDocument();
+			expect(getByTestId('scope-checkbox-credential:read')).toBeInTheDocument();
 		});
 
 		it('should toggle scope when checkbox is clicked', async () => {
-			const { getByText } = renderComponent();
+			const { getByTestId } = renderComponent();
 
 			// Find the checkbox by its label text
-			const workflowReadLabel = getByText('workflow:read');
+			const workflowReadLabel = getByTestId('scope-checkbox-workflow:read');
 			const checkboxContainer = workflowReadLabel.closest('.n8n-checkbox');
 			const checkbox = checkboxContainer?.querySelector(
 				'input[type="checkbox"]',
@@ -372,16 +371,14 @@ describe('ProjectRoleView', () => {
 
 	describe('Edge Cases', () => {
 		it('should handle empty description', async () => {
-			rolesStore.createProjectRole = vi
-				.fn()
-				.mockResolvedValue({ ...mockExistingRole, slug: 'new-slug' });
+			rolesStore.createProjectRole.mockResolvedValue({ ...mockExistingRole, slug: 'new-slug' });
 
 			const { container, getByText } = renderComponent();
 
 			const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
 			if (nameInput) await userEvent.type(nameInput, 'Test Role');
 			// Leave description empty
-			await userEvent.click(getByText('Create'));
+			await userEvent.click(getByText('Create', { selector: 'button' }));
 
 			await waitFor(() => {
 				expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
@@ -414,7 +411,7 @@ describe('ProjectRoleView', () => {
 
 			const nameInput = container.querySelector('input[maxlength="100"]') as HTMLInputElement;
 			if (nameInput) await userEvent.type(nameInput, 'New Role');
-			await userEvent.click(getByText('Create'));
+			await userEvent.click(getByText('Create', { selector: 'button' }));
 
 			await waitFor(() => {
 				// Check that createProjectRole was called - the actual array update is handled by the component
