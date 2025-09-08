@@ -2873,7 +2873,7 @@
 	"dataStore.addColumn.nameInput.placeholder": "Enter column name",
 	"dataStore.addColumn.typeInput.label": "@:_reusableBaseText.type",
 	"dataStore.addColumn.error": "Error adding column",
-	"dataStore.addColumn.alreadyExistsError": "Column '{name}' already exists",
+	"dataStore.addColumn.alreadyExistsError": "This column already exists",
 	"dataStore.moveColumn.error": "Error moving column",
 	"dataStore.deleteColumn.error": "Error deleting column",
 	"dataStore.deleteColumn.confirm.title": "Delete column",
