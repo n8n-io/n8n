@@ -4,6 +4,7 @@ import type {
 	INode,
 	INodeExecutionData,
 	NodeExecutionWithMetadata,
+	IDataObject,
 } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
@@ -499,9 +500,9 @@ describe('Telegram node', () => {
 			expect(apiRequestSpy).toHaveBeenCalledTimes(3);
 
 			const calls = apiRequestSpy.mock.calls;
-			expect((calls[0][4]?.formData as any)?.chat_id).toBe('chat-id-0');
-			expect((calls[1][4]?.formData as any)?.chat_id).toBe('chat-id-1');
-			expect((calls[2][4]?.formData as any)?.chat_id).toBe('chat-id-2');
+			expect((calls[0][4]?.formData as IDataObject)?.chat_id).toBe('chat-id-0');
+			expect((calls[1][4]?.formData as IDataObject)?.chat_id).toBe('chat-id-1');
+			expect((calls[2][4]?.formData as IDataObject)?.chat_id).toBe('chat-id-2');
 		});
 	});
 });
