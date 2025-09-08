@@ -84,6 +84,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:pane-type="paneType"
 		:disable-run-index-selection="true"
 		:compact="true"
+		:show-actions-on-hover="true"
 		:disable-pin="true"
 		:disable-edit="true"
 		:disable-hover-highlight="true"
