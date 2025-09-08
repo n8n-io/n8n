@@ -181,7 +181,7 @@ describe('DataStoreView', () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByTestId('empty-shared-action-box')).toBeInTheDocument();
+			expect(getByTestId('empty-data-table-action-box')).toBeInTheDocument();
 		});
 
 		it('should show description for overview sub page', async () => {
@@ -194,7 +194,7 @@ describe('DataStoreView', () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			const emptyBox = getByTestId('empty-shared-action-box');
+			const emptyBox = getByTestId('empty-data-table-action-box');
 			expect(emptyBox).toBeInTheDocument();
 		});
 	});

@@ -62,15 +62,17 @@ describe('IconPicker', () => {
 		await fireEvent.click(getByTestId('icon-picker-button'));
 		// Tabs should be visible and icons should be selected by default
 		expect(getByTestId('icon-picker-tabs')).toBeVisible();
-		expect(getByTestId('tab-icons').className).toContain('activeTab');
+		const tabIcons = getByTestId('tab-icons').firstElementChild;
+		expect(tabIcons?.className).toContain('activeTab');
 		expect(getByTestId('icon-picker-popup')).toBeVisible();
 		// All icons should be rendered
 		expect(getAllByTestId('icon-picker-icon')).toHaveLength(ALL_ICON_PICKER_ICONS.length);
 
 		// Click on emojis tab
-		await fireEvent.click(getByTestId('tab-emojis'));
+		const emojiTab = getByTestId('tab-emojis').firstElementChild;
+		await fireEvent.click(emojiTab!);
 		// Emojis tab should be active
-		expect(getByTestId('tab-emojis').className).toContain('activeTab');
+		expect(emojiTab?.className).toContain('activeTab');
 		// All emojis should be rendered
 		expect(getAllByTestId('icon-picker-emoji')).toHaveLength(TEST_EMOJI_COUNT);
 	});
@@ -166,7 +168,8 @@ describe('IconPicker', () => {
 			},
 		});
 		await fireEvent.click(getByTestId('icon-picker-button'));
-		await fireEvent.click(getByTestId('tab-emojis'));
+		const tabEmojis = getByTestId('tab-emojis').firstElementChild;
+		await fireEvent.click(tabEmojis!);
 		expect(getByTestId('icon-picker-popup')).toBeVisible();
 		// Select the first emoji
 		await fireEvent.click(getAllByTestId('icon-picker-emoji')[0]);

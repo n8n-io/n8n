@@ -96,7 +96,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div :class="$style['data-store-details-view']">
+	<div :class="$style['data-store-details-view']" data-test-id="data-table-details-view">
 		<div v-if="loading" data-test-id="data-store-details-loading">
 			<n8n-loading
 				variant="h1"

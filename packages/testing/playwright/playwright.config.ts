@@ -46,6 +46,7 @@ export default defineConfig({
 					N8N_USER_FOLDER: USER_FOLDER,
 					N8N_LOG_LEVEL: 'debug',
 					N8N_METRICS: 'true',
+					N8N_ENABLED_MODULES: 'data-table', // Enable data-table module
 				},
 			}
 		: undefined,
