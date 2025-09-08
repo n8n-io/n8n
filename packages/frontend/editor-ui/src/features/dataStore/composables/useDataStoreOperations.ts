@@ -270,11 +270,6 @@ export const useDataStoreOperations = ({
 			await dataStoreStore.deleteRows(dataStoreId, projectId, idsToDelete);
 			await fetchDataStoreRows();
 
-			toast.showToast({
-				title: i18n.baseText('dataStore.deleteRows.success'),
-				message: '',
-				type: 'success',
-			});
 			telemetry.track('User deleted rows in data table', {
 				data_table_id: dataStoreId,
 				deleted_row_count: idsToDelete.length,
