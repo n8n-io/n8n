@@ -201,9 +201,9 @@ test.describe('Langchain Integration', () => {
 			const inputMessage = 'Hello!';
 			const outputMessage = 'Hi there! How can I assist you today?';
 
-			await n8n.ndv.clickExecuteNode();
+			await n8n.ndv.execute();
 			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => await n8n.canvas.sendManualChatMessage(inputMessage),
+				trigger: async () => await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage),
 				runData: [
 					createMockNodeExecutionData(BASIC_LLM_CHAIN_NODE_NAME, {
 						jsonData: {
@@ -240,9 +240,9 @@ test.describe('Langchain Integration', () => {
 			const inputMessage = 'Hello!';
 			const outputMessage = 'Hi there! How can I assist you today?';
 
-			await n8n.ndv.clickExecuteNode();
+			await n8n.ndv.execute();
 			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => await n8n.canvas.sendManualChatMessage(inputMessage),
+				trigger: async () => await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage),
 				runData: [
 					createMockNodeExecutionData(AGENT_NODE_NAME, {
 						jsonData: {
@@ -304,7 +304,7 @@ test.describe('Langchain Integration', () => {
 
 			await runMockWorkflowExecution(n8n.page, {
 				trigger: async () => {
-					await n8n.canvas.sendManualChatMessage(inputMessage);
+					await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage);
 				},
 				runData,
 				lastNodeExecuted: AGENT_NODE_NAME,
@@ -356,10 +356,10 @@ test.describe('Langchain Integration', () => {
 			const inputMessage = 'Hello!';
 			const outputMessage = 'Hi there! How can I assist you today?';
 
-			await n8n.ndv.clickExecuteNode();
+			await n8n.ndv.execute();
 
 			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => await n8n.canvas.sendManualChatMessage(inputMessage),
+				trigger: async () => await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage),
 				runData: [
 					createMockNodeExecutionData(AGENT_NODE_NAME, {
 						jsonData: {
@@ -411,10 +411,10 @@ test.describe('Langchain Integration', () => {
 			const inputMessage = 'Hello!';
 			const outputMessage = 'Hi there! How can I assist you today?';
 
-			await n8n.ndv.clickExecuteNode();
+			await n8n.ndv.execute();
 
 			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => await n8n.canvas.sendManualChatMessage(inputMessage),
+				trigger: async () => await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage),
 				runData: [
 					createMockNodeExecutionData(AGENT_NODE_NAME, {
 						jsonData: {
@@ -614,7 +614,7 @@ test.describe('Langchain Integration', () => {
 			// Execute workflow with chat trigger
 			await n8n.canvas.clickManualChatButton();
 			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => await n8n.canvas.sendManualChatMessage(inputMessage),
+				trigger: async () => await n8n.canvas.logsPanel.sendManualChatMessage(inputMessage),
 				runData: runDataWithError,
 				lastNodeExecuted: AGENT_NODE_NAME,
 			});
@@ -652,7 +652,7 @@ test.describe('Langchain Integration', () => {
 
 			// Set manual trigger to output standard pinned data
 			await n8n.canvas.openNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
-			await n8n.ndv.editPinnedData();
+			await n8n.ndv.getEditPinnedDataButton().click();
 			await n8n.ndv.savePinnedData();
 			await n8n.ndv.close();
 
@@ -666,7 +666,7 @@ test.describe('Langchain Integration', () => {
 			const runDataWithError = createPostgresErrorMockData(inputMessage, MANUAL_TRIGGER_NODE_NAME);
 
 			await runMockWorkflowExecution(n8n.page, {
-				trigger: async () => await n8n.ndv.clickExecuteNode(),
+				trigger: async () => await n8n.ndv.execute(),
 				runData: runDataWithError,
 				lastNodeExecuted: AGENT_NODE_NAME,
 			});
@@ -747,13 +747,13 @@ test.describe('Langchain Integration', () => {
 
 			// Open Node 1 and execute it
 			await n8n.canvas.openNode('Node 1');
-			await n8n.ndv.clickExecuteNode();
+			await n8n.ndv.execute();
 
 			// Chat modal should now be visible
 			await expect(n8n.canvas.getManualChatModal().locator('main')).toBeVisible();
 
 			// Send first message
-			await n8n.canvas.sendManualChatMessage('Test');
+			await n8n.canvas.logsPanel.sendManualChatMessage('Test');
 			await expect(n8n.canvas.getManualChatLatestBotMessage()).toContainText('this_my_field_1');
 
 			// Refresh session
@@ -761,7 +761,7 @@ test.describe('Langchain Integration', () => {
 			await expect(n8n.canvas.getManualChatMessages()).not.toBeAttached();
 
 			// Send another message
-			await n8n.canvas.sendManualChatMessage('Another test');
+			await n8n.canvas.logsPanel.sendManualChatMessage('Another test');
 			await expect(n8n.canvas.getManualChatLatestBotMessage()).toContainText('this_my_field_3');
 			await expect(n8n.canvas.getManualChatLatestBotMessage()).toContainText('this_my_field_4');
 		});

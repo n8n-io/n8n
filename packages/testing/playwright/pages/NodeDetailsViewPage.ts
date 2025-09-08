@@ -97,7 +97,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getOutputPanel().getByTestId('ndv-data-container');
 	}
 
-
 	async setPinnedData(data: object | string) {
 		const pinnedData = typeof data === 'string' ? data : JSON.stringify(data);
 		await this.getEditPinnedDataButton().click();
@@ -809,9 +808,5 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getAiOutputModeToggle() {
 		return this.page.getByTestId('ai-output-mode-select');
-	}
-
-	async editPinnedData() {
-		await this.getEditPinnedDataButton().click();
 	}
 }
