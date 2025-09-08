@@ -13,6 +13,7 @@ import { DataStoreColumnNotFoundError } from '../errors/data-store-column-not-fo
 import { DataStoreNameConflictError } from '../errors/data-store-name-conflict.error';
 import { DataStoreNotFoundError } from '../errors/data-store-not-found.error';
 import { DataStoreValidationError } from '../errors/data-store-validation.error';
+import { toTableName } from '../utils/sql-utils';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);
@@ -71,7 +72,7 @@ describe('dataStore', () => {
 			]);
 
 			// Select the column from user table to check for its existence
-			const userTableName = dataStoreRepository.toTableName(dataTableId);
+			const userTableName = toTableName(dataTableId);
 			const rows = await dataStoreRepository.manager
 				.createQueryBuilder()
 				.select('foo')
@@ -94,7 +95,7 @@ describe('dataStore', () => {
 
 			await expect(dataStoreService.getColumns(dataStoreId, project1.id)).resolves.toEqual([]);
 
-			const userTableName = dataStoreRepository.toTableName(dataStoreId);
+			const userTableName = toTableName(dataStoreId);
 			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
 			try {
 				const table = await queryRunner.getTable(userTableName);
@@ -223,7 +224,7 @@ describe('dataStore', () => {
 
 			// ACT
 			const result = await dataStoreService.deleteDataStore(dataStoreId, project1.id);
-			const userTableName = dataStoreRepository.toTableName(dataStoreId);
+			const userTableName = toTableName(dataStoreId);
 
 			// ASSERT
 			expect(result).toEqual(true);
@@ -303,7 +304,7 @@ describe('dataStore', () => {
 				}),
 			]);
 
-			const userTableName = dataStoreRepository.toTableName(dataTableId);
+			const userTableName = toTableName(dataTableId);
 			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
 			try {
 				const table = await queryRunner.getTable(userTableName);
@@ -360,7 +361,7 @@ describe('dataStore', () => {
 				}),
 			]);
 
-			const userTableName = dataStoreRepository.toTableName(dataTableId);
+			const userTableName = toTableName(dataTableId);
 			const queryRunner = dataStoreRepository.manager.connection.createQueryRunner();
 			try {
 				const table = await queryRunner.getTable(userTableName);
