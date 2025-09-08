@@ -42,7 +42,6 @@
     "acorn-walk": "8.3.4",
     "lodash": "catalog:",
     "luxon": "catalog:",
-    "moment": "2.30.1",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",

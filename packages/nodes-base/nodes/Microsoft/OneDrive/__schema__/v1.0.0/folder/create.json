@@ -42,6 +42,9 @@
                         },
                         "email": {
                             "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
                         }
                     }
                 }
@@ -72,20 +75,6 @@
             "properties": {
                 "childCount": {
                     "type": "integer"
-                },
-                "view": {
-                    "type": "object",
-                    "properties": {
-                        "sortBy": {
-                            "type": "string"
-                        },
-                        "sortOrder": {
-                            "type": "string"
-                        },
-                        "viewType": {
-                            "type": "string"
-                        }
-                    }
                 }
             }
         },
@@ -113,6 +102,9 @@
                             "type": "string"
                         },
                         "email": {
+                            "type": "string"
+                        },
+                        "id": {
                             "type": "string"
                         }
                     }
@@ -172,5 +164,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

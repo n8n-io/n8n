@@ -1,37 +1,8 @@
 {
     "type": "object",
     "properties": {
-        "_links": {
-            "type": "object",
-            "properties": {
-                "self": {
-                    "type": "object",
-                    "properties": {
-                        "href": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "created": {
             "type": "string"
-        },
-        "credentials": {
-            "type": "object",
-            "properties": {
-                "provider": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "type": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
         },
         "id": {
             "type": "string"
@@ -58,15 +29,7 @@
         },
         "status": {
             "type": "string"
-        },
-        "type": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
         }
     },
-    "version": 2
+    "version": 3
 }
