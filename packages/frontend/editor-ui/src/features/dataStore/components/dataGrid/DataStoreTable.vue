@@ -265,6 +265,11 @@ defineExpose({
 		color: var(--color-text-light);
 	}
 
+	:global(.system-column),
+	:global(.system-cell) {
+		color: var(--color-text-light);
+	}
+
 	:global(.ag-header-cell[col-id='id']) {
 		text-align: center;
 	}

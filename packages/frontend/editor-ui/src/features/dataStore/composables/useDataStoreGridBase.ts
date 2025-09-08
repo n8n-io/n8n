@@ -174,6 +174,8 @@ export const useDataStoreGridBase = ({
 			headerComponentParams: {
 				allowMenuActions: false,
 			},
+			cellClass: 'system-cell',
+			headerClass: 'system-column',
 		};
 		return [
 			// Always add the ID column, it's not returned by the back-end but all data stores have it
@@ -194,6 +196,7 @@ export const useDataStoreGridBase = ({
 					minWidth: DATA_STORE_ID_COLUMN_WIDTH,
 					maxWidth: DATA_STORE_ID_COLUMN_WIDTH,
 					resizable: false,
+					headerClass: 'system-column',
 					cellClass: (params) =>
 						params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'id-column',
 					cellRendererSelector: (params: ICellRendererParams) => {
