@@ -172,7 +172,7 @@ const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
 			name: 'MATCH_REGEX',
 			config: {
 				regex: /^https?:\/\/.+$/,
-				message: 'Please enter a valid HTTPS URL',
+				message: locale.baseText('settings.sourceControl.enterValidHttpsUrl'),
 			},
 		});
 	}
